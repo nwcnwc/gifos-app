@@ -1,0 +1,10 @@
+name = "gifos-gifs"
+main = "src/gifs.js"
+compatibility_date = "2026-01-01"
+# No *.workers.dev hostname and no route. A route on gifos.app does not
+# run until that name is proxied, so this script has no public hostname yet.
+workers_dev = false
+
+[[r2_buckets]]
+binding = "GIFS"
+bucket_name = "gifos-gifs"
