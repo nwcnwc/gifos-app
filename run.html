@@ -704,7 +704,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.broadcast.notadmin:not(.stage-granted) #flipcam,
   body.broadcast.notadmin:not(.stage-granted) .blurctl,
   body.broadcast.notadmin #appbtn,
-  body.broadcast.notadmin #sharebtn,   /* a viewer is not a broadcaster — same rule as Run app */
+  body.broadcast.notadmin:not(.share-granted) #sharebtn,   /* a viewer is not a broadcaster until an admin allows their screen */
   body.broadcast.notadmin #recbtn,
   body.broadcast.notadmin #ccbtn,
   body.broadcast.notadmin #pwbtn,
@@ -949,6 +949,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .avatar { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: none; align-items: center; justify-content: center;
                   font-size: 3rem; font-weight: 800; color: #3a3a55; background: var(--surface, #14141f); }
   .tile.cam-off .avatar { display: flex; }
+  .tile.cam-off > video { visibility: hidden; }
   .tile .chips { position: absolute; top: .4rem; left: .4rem; display: flex; flex-direction: column;
                  gap: .25rem; align-items: flex-start; z-index: 3; pointer-events: none; }
   .tile .chips span { background: rgba(10,10,15,.78); border: 1px solid rgba(255,255,255,.14); border-radius: .4rem;
@@ -1256,6 +1257,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="sharebtn" title="Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)" style="display:none">Share screen</button>
     <button id="blurall" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
     <button id="camall" title="Turn video OFF for every guest at once (admins) — stronger than blur" style="display:none">Turn Video off</button>
+    <button id="shareall" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
     <button id="pwbtn" title="Lock this room with a password">Password</button>
     <button id="votebtn" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
     <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
@@ -1362,7 +1364,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div class="name-box" style="max-width:430px;text-align:left">
       <h3>Share your screen</h3>
       <div id="share-appnote" class="share-note"></div>
-      <div id="share-denied" class="share-note" style="display:none;border-left-color:#ffd23c;background:rgba(255,210,60,.08)"><b>🛡 Only this room’s admins — or people they allow — can share a screen.</b> Ask an admin to allow you: they hover (or tap) your tile and choose <b>Allow apps &amp; sharing</b>. Then open this sheet again.</div>
+      <div id="share-denied" class="share-note" style="display:none;border-left-color:#ffd23c;background:rgba(255,210,60,.08)"><b>🛡 Only this room’s admins — or people they allow — can share a screen.</b> Ask an admin to allow you: <b>Allow screen share</b> on your tile, or <b>Allow screen share</b> for the whole room. Then open this sheet again.</div>
       <p style="font-size:.86rem">A screen share is for what an app can’t be: <b>a deck on your disk, a tool that isn’t GifOS, a window from somewhere else</b>. It takes a seat on the stage, so the whole room sees it — and everyone can see that it’s you sharing.</p>
       <p style="font-size:.8rem;color:var(--muted,#8888aa)">Your camera pauses while you share, and comes back when you stop. Sound from the shared tab doesn’t travel — talk over it.</p>
       <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-top:.9rem">
@@ -2034,6 +2036,42 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // A DOM hacker can set their own flag, but every RECEIVER runs this
     // filter — the open/admin room principle, unchanged.
     const canStage = (id) => !hasAdminRoom() || admins.includes(id) || !!(modOf(id).app && modOf(id).app.on);
+    // SCREEN SHARE IS ITS OWN GRANT, NOT THE STAGE GRANT. In an admin room a
+    // guest cannot share until an admin allows it, and allowing apps or the
+    // stage does not allow the screen. Two signed orders, both off until an
+    // admin writes one: a per-person `share` (their tile — a share takes one
+    // of the C stage seats, so it is handed to a person) and a room-wide
+    // `share` under '*' (the meeting bar — one switch for everyone here and
+    // anyone who joins). modOf's later-wins rule is the same one blur and
+    // camera use, so a per-person revoke still stops one person while the
+    // room-wide allow stands, and turning the room-wide switch off clears
+    // older per-person allows. Admins always may. An open room has no admin,
+    // so everyone may, as before.
+    // A modified client can still claim `scr` and put a display track on its
+    // senders. Every receiver applies mayShareScreen before it paints,
+    // composites or records that video, and the honest client's one outbound
+    // answer (sentVideoTrack) will not emit a screen it is not allowed to.
+    const mayShareScreen = (id) => {
+      if (!hasAdminRoom()) return true;
+      const self = id === 'me' || id === myId;
+      const pid = self ? myId : id;
+      // amAdmin, not only the admins view: that view refreshes on the sweep,
+      // and the host is already signed in before their own id is copied in.
+      if (self ? (amAdmin || admins.includes(myId)) : admins.includes(pid)) return true;
+      const m = modOf(self ? 'me' : id).share;
+      return !!(m && m.on);
+    };
+    // The sender's claim that the video leaving them is a screen, before the
+    // grant is applied. A fresh status wins; past one section the fold's
+    // share bit (f & 2) is the only word a far section has.
+    const shareClaim = (id) => {
+      if (id === myId || id === 'me') return !!myStatus.scr;
+      const st = statusOf.get(id);
+      if (st && freshSt(id)) return !!st.scr;
+      const e = digStageEntry(id);
+      if (e) return !!(e.f & 2);
+      return !!(st && st.scr);
+    };
     // ONE DERIVATION PER REPAINT PASS. stageIds() and allConsent() walk the
     // roster (and past one section build a seat map), and updateTile asked for
     // both once per tile, so one refreshAllTiles cost O(tiles x roster). Inside
@@ -2070,7 +2108,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const id of new Set([myId, ...rosterIds])) {
         if (!id) continue;
         const t = stgOf(id);
-        if (!t || !canStage(id)) continue;
+        // A share grant is a stage seat only while they are actually sharing.
+        // It is not a general pass onto the stage.
+        if (!t || !(canStage(id) || (shareClaim(id) && mayShareScreen(id)))) continue;
         if (vt) { const dv = devFor(id); if (dv && (vt.down[dv] || 0) >= vt.need) continue; }
         out.push([id, t]);
       }
@@ -2081,7 +2121,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (dg) {
         const have = new Set(out.map((x) => x[0]));
         for (const e of dg.stage) {
-          if (!e.id || have.has(e.id) || e.id === myId || stHold(e.id) || !notTomb(e.id) || !canStage(e.id)) continue;
+          if (!e.id || have.has(e.id) || e.id === myId || stHold(e.id) || !notTomb(e.id) || !(canStage(e.id) || ((e.f & 2) && mayShareScreen(e.id)))) continue;
           if (vt) { const dv = e.dv || devFor(e.id); if (dv && (vt.down[dv] || 0) >= vt.need) continue; }
           out.push([e.id, e.k]);
         }
@@ -2905,7 +2945,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // (no CSS there), so a peer an admin turned off, or one a moderator
         // blurred, is never floated — the receiver-side rule holds in every
         // sink, not only the grid tile.
-        if (forcedCamOff(pid) || modBlurOn(pid)) continue;
+        if (forcedCamOff(pid) || modBlurOn(pid) || (typeof shareBlocked === 'function' && shareBlocked(pid))) continue;
         if (speakingOf.get(pid)) return p.video; // the talker beats first-connected
         first = first || p.video;
       }
@@ -3109,7 +3149,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // field (the admin's chat on/off switch). It rides the same signed
         // table as every per-target order, so it reaches late joiners on the
         // heartbeat and a forged copy dies in takeMod's admVerify.
-        for (const field of ['mute', 'blur', 'cam', 'app', 'chat', 'cc']) {
+        for (const field of ['mute', 'blur', 'cam', 'app', 'share', 'chat', 'cc']) {
           const inc = incoming[target][field];
           if (!inc || typeof inc !== 'object') continue;
           // The TARGET cannot lift a restriction the group put on them —
@@ -3118,13 +3158,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (!mine[field] || inc.at > mine[field].at) { mine[field] = inc; changed = true; }
         }
       }
-      if (changed) { enforceForcedCam(); refreshAllTiles(); refreshOutbound(); paintControls(); reactHandCall(); paintChatGate(); paintStage(); if (typeof applyCcAll === 'function') applyCcAll(); } // re-derive every tile + my broadcast; an admin cam-off stops my camera; a fresh grant may be a call-up (don't wait for the beat); a chat/app order repaints its gates
+      if (changed) { enforceForcedCam(); refreshAllTiles(); refreshOutbound(); paintControls(); reactHandCall(); paintChatGate(); paintStage(); if (typeof applyCcAll === 'function') applyCcAll(); } // re-derive every tile + my broadcast; an admin cam-off stops my camera; a revoked screen share stops too; a fresh grant may be a call-up (don't wait for the beat); a chat/app order repaints its gates
     }
     function setMod(target, field, on) {
       if (target === myId) return; // you moderate others, never yourself
       // The 'app' right only exists in admin rooms (open rooms let everyone
       // run apps already), and only admins hand it out.
-      if (field === 'app' && (!hasAdminRoom() || !amAdmin)) return;
+      if ((field === 'app' || field === 'share') && (!hasAdminRoom() || !amAdmin)) return;
       // The room-wide chat switch is the admin's alone, and only means
       // anything where there IS an admin to sign it.
       if ((field === 'chat' || field === 'cc') && (!hasAdminRoom() || !amAdmin)) return;
@@ -3146,13 +3186,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // admin can still lift one guest by hand, and lifting the room-wide order
     // clears the per-tile orders it came after.
     function modOf(id) {
-      const pid = id === 'me' ? myId : id;
+      const self = id === 'me' || id === myId;
+      const pid = self ? myId : id;
       const own = modTable[pid] || {};
       const all = modTable['*'];
       if (!all || pid === '*' || !hasAdminRoom()) return own;
-      if (id === 'me' ? amAdmin || admins.includes(myId) : admins.includes(pid)) return own;
+      if (self ? (amAdmin || admins.includes(myId)) : admins.includes(pid)) return own;
       let out = own;
-      for (const f of ['blur', 'cam']) { // the two room-wide hammers; mute and app stay per-target
+      for (const f of ['blur', 'cam', 'share']) { // room-wide hammers; mute and app stay per-target. share is a grant (on = may), blur and cam are blocks (on = stopped)
         const w = all[f];
         if (w && typeof w === 'object' && (!own[f] || (+w.at || 0) > (+own[f].at || 0))) {
           if (out === own) out = Object.assign({}, own);
@@ -3179,6 +3220,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // rule can prevent.
     const forcedCamOff = (id) => { const m = modOf(id).cam; return !!(m && m.on); };
     const modBlurOn = (id) => { const m = modOf(id).blur; return !!(m && m.on); };
+    // A claimed screen from someone who may not share. Their video track is
+    // the screen, so a receiver treats it the way it treats an admin video-off:
+    // the pixels are not shown, composited or recorded. My own page is not
+    // hidden here — enforceForcedCam stops an honest client, and a stop chip
+    // has to stay reachable.
+    const shareBlocked = (id) => {
+      if (!id || id === 'me' || id === myId) return false;
+      if (!hasAdminRoom() || mayShareScreen(id)) return false;
+      return !!shareClaim(id);
+    };
     function enforceForcedCam() {
       // "Video off for everyone" means VIDEO, not "camera". A screen share is
       // video leaving this device on the same senders, so a share that survived
@@ -3187,6 +3238,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // get to skip the blur ladder for free (see sentVideoTrack).
       if (forcedCamOff('me') && myStatus.scr && typeof stopScreenShare === 'function') {
         stopScreenShare('an admin turned video off for the room');
+      }
+      // The screen-share grant was revoked, or was never given. Stop even if
+      // the only thing armed is the capture itself (a client that set the
+      // stream without the scr bit).
+      if (!mayShareScreen('me') && (myStatus.scr || screenStream) && typeof stopScreenShare === 'function') {
+        stopScreenShare('an admin turned screen sharing off');
       }
       if (!localStream) return;
       const track = localStream.getVideoTracks()[0]; if (!track) return;
@@ -3204,7 +3261,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { updateTile('me', true); for (const pid of peers.keys()) updateTile(pid, true); }
       finally { passMemo = null; }
       layout();
-      if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn(); if (typeof updateCamAllBtn === 'function') updateCamAllBtn();
+      if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn(); if (typeof updateCamAllBtn === 'function') updateCamAllBtn(); if (typeof updateShareAllBtn === 'function') updateShareAllBtn();
     }
     // ============================ THE BLUR RULE ==============================
     // ONE rule, computed identically on every device from shared state, drives
@@ -3480,7 +3537,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // hides the peer here too (the ORDER, not their status — a sender
         // that ignores it keeps transmitting), and the receiver blur level
         // rides along so the big feed and the thumb paint it.
-        if (p.connected && pipReady(p.video) && !seatDark(statusOf.get(pid)) && !forcedCamOff(pid)) {
+        if (p.connected && pipReady(p.video) && !seatDark(statusOf.get(pid)) && !forcedCamOff(pid) && !(typeof shareBlocked === 'function' && shareBlocked(pid))) {
           out.push({ key: 'peer:' + pid, label: displayName(pid), v: p.video, bl: blurLevelFor(pid) });
         }
       }
@@ -3625,7 +3682,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The native player paints the RAW frames: no CSS blur, no cam-off
         // hide. So a remote feed that is blurred or video-off never takes
         // it; the in-page overlay (position:fixed, same CSS) serves instead.
-        const moderated = !isMe && (forcedCamOff(id) || blurLevelFor(id) > 0);
+        const moderated = !isMe && (forcedCamOff(id) || (typeof shareBlocked === 'function' && shareBlocked(id)) || blurLevelFor(id) > 0);
         if (!document.fullscreenEnabled && video.webkitEnterFullscreen && !moderated) { try { video.webkitEnterFullscreen(); } catch (e2) {} return; }
         openFsView(isMe ? 'me' : 'peer:' + id);
       });
@@ -3642,7 +3699,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         modbar = document.createElement('div');
         modbar.className = 'modbar';
         modbar.innerHTML = '<button data-mod="mute" aria-label="Mute for everyone"></button><button data-mod="blur" aria-label="Blur for everyone"></button>'
-          + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & sharing"></button>'
+          + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage"></button>'
+          + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share"></button>'
           + '<button class="banbtn" data-adm="ban" title="Ban this person&#39;s device from the room" aria-label="Ban this device">Ban</button>';
         modbar.addEventListener('click', (e) => {
           if (e.target.dataset.adm === 'ban') {
@@ -3709,7 +3767,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // thing that ends it. (The browser's own "Stop sharing" bar still works
       // and still lands here through track.onended — this is the third way,
       // not the only one.)
-      if (st.scr) {
+      if (st.scr && (isMe || !(typeof shareBlocked === 'function' && shareBlocked(id)))) {
         chips.push(isMe
           ? '<span class="warn stopshare" role="button" tabindex="0" title="Stop sharing your screen">🖥 you are sharing your screen — tap to stop</span>'
           : '<span class="warn">🖥 sharing their screen</span>');
@@ -3732,7 +3790,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       else if (bl) chips.push('<span>🌫 ' + (bl === 2 ? 'max blur' : 'blurred') + '</span>');
       if (gCam) chips.push('<span class="warn">📷 video off for everyone by ' + esc(mod.cam.by) + '</span>');
       else if (st.camOff) chips.push('<span>📷 camera off</span>');
-      if (hasAdminRoom() && mod.app && mod.app.on && !admins.includes(id)) chips.push('<span>🧩 may run apps and share a screen — allowed by ' + esc(mod.app.by) + '</span>');
+      if (hasAdminRoom() && mod.app && mod.app.on && !admins.includes(id)) chips.push('<span>🧩 may run apps — allowed by ' + esc(mod.app.by) + '</span>');
+      // The chip names a per-person allow only. A room-wide allow covers
+      // everyone and would chip every tile; modOf would not tell them apart.
+      const sharePid = isMe ? myId : id;
+      const ownShare = hasAdminRoom() && modTable[sharePid] && modTable[sharePid].share;
+      if (ownShare && ownShare.on === true && !admins.includes(sharePid)) chips.push('<span>🖥 may share a screen — allowed by ' + esc(ownShare.by) + '</span>');
       // vote-off progress (non-admin rooms): show how close a tile is to removal
       const dv = devOf[id];
       if (!isMe && voteNeed && dv && voteTally[dv]) chips.push('<span class="warn">🗳 ' + voteTally[dv] + '/' + voteNeed + ' to remove</span>');
@@ -3748,7 +3811,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const chipHtml = chips.join('');
       if (t.chipsHtml !== chipHtml) { t.chipsHtml = chipHtml; t.chips.innerHTML = chipHtml; reactStats.chipWrites++; }
       t.tile.classList.toggle('noroute', !isMe && !!t.noRoute);
-      t.tile.classList.toggle('cam-off', seatDark(st) || !!gCam); // admin video-off hides the tile on every receiver; a screen share is not a dark seat
+      t.tile.classList.toggle('cam-off', seatDark(st) || !!gCam || (!isMe && typeof shareBlocked === 'function' && !!shareBlocked(id))); // admin video-off, and an unpermitted screen claim, hide the tile on every receiver; a permitted share is not a dark seat
       t.video.classList.remove('blur1', 'blur2');
       // The ME tile already SHOWS the pre-blurred outbound pixels (WYSIWYG), so
       // a CSS blur on top would double it; receiver-side CSS blur is for the
@@ -3774,10 +3837,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (t.modbar) {
           const muteLabel = gMute ? 'Unmute for everyone' : 'Mute for everyone';
           const blurLabel = gBlur ? 'Unblur for everyone' : 'Blur for everyone';
-          const appLabel = (mod.app && mod.app.on) ? 'Revoke apps & sharing' : 'Allow apps & sharing';
+          const appLabel = (mod.app && mod.app.on) ? 'Revoke apps & stage' : 'Allow apps & stage';
           t.modbar.children[0].textContent = muteLabel; t.modbar.children[0].setAttribute('aria-label', muteLabel);
           t.modbar.children[1].textContent = blurLabel; t.modbar.children[1].setAttribute('aria-label', blurLabel);
           t.modbar.children[2].textContent = appLabel; t.modbar.children[2].setAttribute('aria-label', appLabel);
+          for (const b of t.modbar.children) {
+            if (!b.getAttribute || b.getAttribute('data-mod') !== 'share') continue;
+            const shareOn = !!(mod.share && mod.share.on);
+            const shareLabel = shareOn ? 'Revoke screen share' : 'Allow screen share';
+            b.textContent = shareLabel; b.setAttribute('aria-label', shareLabel);
+          }
         }
       } else if (gMute && localStream) {
         // the group muted ME: cut the source too, not just everyone's speakers
@@ -3846,12 +3915,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // scr=true. Every caller is a stage-media choice; none of them lifts a
     // moderator's blur (the strip bakes it on a share too).
     const sharingScreen = (pid) => {
-      if (pid === myId) return !!myStatus.scr;
-      const st = statusOf.get(pid);
-      if (st && freshSt(pid)) return !!st.scr;
-      const e = digStageEntry(pid);
-      if (e) return !!(e.f & 2);
-      return !!(st && st.scr);
+      let claimed;
+      if (pid === myId) claimed = !!myStatus.scr;
+      else {
+        const st = statusOf.get(pid);
+        if (st && freshSt(pid)) claimed = !!st.scr;
+        else {
+          const e = digStageEntry(pid);
+          if (e) claimed = !!(e.f & 2);
+          else claimed = !!(st && st.scr);
+        }
+      }
+      if (!claimed) return false;
+      // A claim is not a share unless this room allows that person to share.
+      // Where that rule is not in scope, the claim stands as it did before.
+      if (typeof mayShareScreen === 'function' && !mayShareScreen(pid)) return false;
+      return true;
     };
     const fitFor = (pid) => (sharingScreen(pid) ? 'contain' : null);
     const labelFor = (pid) => {
@@ -4300,7 +4379,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // first would have silently dropped the share 20 seconds in, which is
       // exactly the shape of the stage-voice bug (see mySelfStream).
       const scr = screenStream && screenStream.getVideoTracks()[0];
-      if (scr && scr.readyState === 'live') {
+      // THE GRANT IS THE GATE ON THE BYTES, not only on the button. Every
+      // outbound video sender reads this function. A client that armed a
+      // capture without permission publishes its camera (or nothing) instead.
+      if (scr && scr.readyState === 'live' && mayShareScreen('me')) {
         // NO BLUR ON A SHARED SCREEN. Blur exists to protect a face and the
         // room behind it from people who have not yet all consented, and it is
         // the DEFAULT state (everyone joins Max-blurred). Applied to a slide it
@@ -4566,7 +4648,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (roomPastSection()) return true;
       for (const [pid, st] of statusOf) {
         if (pid === myId || !stHold(pid)) continue;
-        if (seatDark(st) || forcedCamOff(pid)) continue;
+        if (seatDark(st) || forcedCamOff(pid) || (typeof shareBlocked === 'function' && shareBlocked(pid))) continue;
         return true;
       }
       return false;
@@ -11785,7 +11867,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (now === undefined) now = Date.now();
       for (const id of stagers) {
         if (id === screenSid) continue;
-        if (forcedCamOff(id)) { faces.push({ id, vt: null, crop: null, cell: null, bl: 0 }); continue; }
+        if (forcedCamOff(id) || (typeof shareBlocked === 'function' && shareBlocked(id))) { faces.push({ id, vt: null, crop: null, cell: null, bl: 0 }); continue; }
         const bl = stageFaceBlur(id);
         const vt = stageRawFace(id, !strip);
         if (vt) { faces.push({ id, vt, crop: null, cell: null, bl }); continue; }
@@ -12863,7 +12945,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // An admin turned this sharer's video off. An honest sharer has already
         // stopped (enforceForcedCam); a defiant one is shown by nobody honest.
         // The strip stands, and its compositor paints that cell dark.
-        if (forcedCamOff(sid)) return null;
+        if (forcedCamOff(sid) || (typeof shareBlocked === 'function' && shareBlocked(sid))) return null;
         // A moderator blurred this sharer. The raw feed would show it clear,
         // and the share bit is the sender's own claim; the strip stands, with
         // the blur baked into that cell.
@@ -13329,7 +13411,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         stagers.forEach((sid, j) => {
           const sc = srcFor(sid, 'stg:' + sid);
           if (sc && sc.el) {
-            const dark = forcedCamOff(sid) ? 1 : 0;
+            const dark = (forcedCamOff(sid) || (typeof shareBlocked === 'function' && shareBlocked(sid))) ? 1 : 0;
             const blur = (!dark && sid !== myId && modBlurOn(sid)) ? Math.max(1, blurLevelFor(sid)) : 0;
             stripPack.setTile(sid, j, sc.el, sc.stream, { n: 1, cols: 1, lbl: labelFor(sid), fit: fitFor(sid), dark, blur });
             stgKeep.add(sid);
@@ -14097,9 +14179,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // platform, and it already calls getUserMedia directly for camera and mic
     // and getDisplayMedia directly for the local recorder. The gate on a screen
     // share here is the BROWSER's — its own picker, its own gesture
-    // requirement, its own stop bar — plus the room's rules below (a Stage
-    // seat, so canStage applies; an admin video-off ends it) and the honesty
-    // the room can see. There is no capability to declare, and the App-GIF
+    // requirement, its own stop bar — plus the room's rules below (in an admin
+    // room, mayShareScreen; an admin video-off ends it) and the same rule on
+    // every receiver, which will not show a share the sender was not allowed
+    // to start. There is no capability to declare, and the App-GIF
     // capability model (capabilities.pointer / .fullscreen) is the wrong shape
     // here: it exists to hand narrow powers to UNTRUSTED code in a sandbox.
     // (It also could not deliver this one — see runtime.js on why a
@@ -14119,12 +14202,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const out = [];
       for (const id of new Set([myId, ...rosterIds])) {
         if (!id) continue;
-        const st = id === myId ? myStatus : statusOf.get(id);
-        if (st && st.scr && (id === myId || stHold(id))) out.push(id);
+        // sharingScreen applies the grant, so a claimed share that this room
+        // does not allow is not a sharer on any device.
+        if (!sharingScreen(id)) continue;
+        if (id !== myId && !stHold(id)) continue;
+        out.push(id);
       }
       // A sharer is a stager; beyond my section it arrives as a folded stage claim (G9).
       const dg = digLists();
-      if (dg) for (const e of dg.stage) if (e.id && (e.f & 2) && out.indexOf(e.id) < 0 && e.id !== myId && !freshSt(e.id) && notTomb(e.id)) out.push(e.id);
+      if (dg) for (const e of dg.stage) if (e.id && sharingScreen(e.id) && out.indexOf(e.id) < 0 && e.id !== myId && !freshSt(e.id) && notTomb(e.id)) out.push(e.id);
       return out;
     };
     function paintShare() {
@@ -14144,6 +14230,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A screen on the Stage wants height. This does not rebuild the layout —
       // it lets the strip grow the way the broadcast skin already does.
       document.body.classList.toggle('screen-on', screenSharers().length > 0);
+      // A broadcast viewer has no share button until an admin allows them.
+      document.body.classList.toggle('share-granted', mayShareScreen(myId));
     }
     function startScreenShare() {
       if (myStatus.scr) return;
@@ -14153,13 +14241,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        // the API is absent, so only a scripted caller gets here.
       if (!canScreenShare()) { setStatus('This browser can’t share a screen — it has no screen-capture support. A computer browser can; several phone browsers cannot.'); return; }
       if (forcedCamOff('me')) { setStatus('📷 An admin turned your video off for the room — screen sharing is off too until they lift it.'); return; }
-      if (!myStatus.stg && !canStage(myId)) { setStatus('🛡 Only this room’s admins — or people they allow — can share a screen here.'); return; }
+      // Already being on stage does not waive this. The stage grant and the
+      // screen grant are different orders.
+      if (!mayShareScreen(myId)) { setStatus('🛡 Only this room’s admins — or people they allow — can share a screen here.'); return; }
       if (!myStatus.stg && stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' seats) — someone has to step down first.'); return; }
       setStatus('Choose what to share…');
       navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: false })
         .then((s) => {
           const vt = s.getVideoTracks()[0];
           if (!vt) { try { s.getTracks().forEach((t) => t.stop()); } catch (e) {} return; }
+          // The grant can be revoked while the browser's picker is open.
+          if (!mayShareScreen('me') || forcedCamOff('me')) {
+            try { s.getTracks().forEach((t) => t.stop()); } catch (e) {}
+            setStatus('🛡 Screen sharing was turned off before it started.');
+            return;
+          }
           // TELL THE ENCODER IT IS LOOKING AT TEXT. Without a contentHint a
           // track is encoded under the default 'balanced' degradation, which
           // buys frame rate by throwing RESOLUTION away — the one thing a
@@ -14259,7 +14355,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // the picker button, then a 4s grey line in the bar — which she missed,
       // twice, while the sheet had already closed. The sheet itself now says
       // no, says who can fix it, and does not offer a picker that will refuse.
-      const blocked = !myStatus.scr && !myStatus.stg && !canStage(myId);
+      const blocked = !myStatus.scr && !mayShareScreen(myId);
       document.getElementById('share-go').style.display = blocked ? 'none' : '';
       document.getElementById('share-denied').style.display = blocked ? '' : 'none';
       shareSheetOpener = (document.activeElement && document.activeElement !== document.body) ? document.activeElement : shareBtn;
@@ -15855,7 +15951,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const st = statusOf.get(pid) || {};
       src.blur = blurLevelFor(pid);
       src.mute = !!(modOf(pid).mute && modOf(pid).mute.on);
-      src.camOff = seatDark(st) || !!(modOf(pid).cam && modOf(pid).cam.on); // an admin's video-off holds in the recording too, whatever the sender claims
+      src.camOff = seatDark(st) || !!(modOf(pid).cam && modOf(pid).cam.on) || (typeof shareBlocked === 'function' && !!shareBlocked(pid)); // an admin's video-off, and an unpermitted screen claim, hold in the recording too, whatever the sender claims
       if (p) {
         src.label = p.name || '…';
         src.video = p.video;
@@ -15890,7 +15986,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const [pid, p] of peers) {
         const st = statusOf.get(pid) || {};
         const src = { key: pid, video: p.video, label: p.name || '…', blur: blurLevelFor(pid), stream: p.video.srcObject,
-          mute: !!(modOf(pid).mute && modOf(pid).mute.on), camOff: seatDark(st) };
+          mute: !!(modOf(pid).mute && modOf(pid).mute.on), camOff: seatDark(st) || (typeof shareBlocked === 'function' && !!shareBlocked(pid)) };
         if (stg.has(pid)) {
           const f = mosIn.get('stg:' + pid);
           if (f && f.stream) { src.video = recStageVideo(f); src.stream = f.stream; }
@@ -16675,6 +16771,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setMod('*', 'cam', on);        // one entry, one flood, whatever the room's size
       updateCamAllBtn();
       setStatus(on ? 'Turned every guest\'s video off.' : 'Guests may turn their video back on.');
+    };
+    // "Allow screen share" (admin) — ONE room-wide grant, modTable['*'].share.
+    // Off until the admin turns it on. A per-tile share order still wins when
+    // it is later, so one guest can be stopped while the room is allowed, or
+    // allowed while the room is not.
+    const shareAllBtn = document.getElementById('shareall');
+    function guestsMayShare() { const m = modTable['*'] && modTable['*'].share; return !!(m && m.on); }
+    function updateShareAllBtn() {
+      if (!shareAllBtn) return;
+      shareAllBtn.style.display = amAdmin ? '' : 'none';
+      if (!amAdmin) return;
+      const on = guestsMayShare();
+      shareAllBtn.classList.toggle('on', on);
+      shareAllBtn.textContent = on ? 'Stop guest shares' : 'Allow screen share';
+    }
+    if (shareAllBtn) shareAllBtn.onclick = () => {
+      if (!amAdmin) return;
+      const on = !guestsMayShare();
+      setMod('*', 'share', on);
+      updateShareAllBtn();
+      setStatus(on ? 'Guests may share their screen.' : 'Guests can no longer share their screen.');
     };
     function toggleVote(id) {
       if (hasAdminRoom()) return; // admin rooms use the admin's ban, not votes
@@ -18293,8 +18410,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const r2 = el.getBoundingClientRect();
           return r2.width > 0 && r2.height > 0 && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden';
         };
+        const denied = document.getElementById('share-denied');
+        const go = document.getElementById('share-go');
         return { open: shown(m), note: n.textContent || '',
-          runAppShown: shown(r), runAppLabel: r.textContent || '' };
+          runAppShown: shown(r), runAppLabel: r.textContent || '',
+          denied: shown(denied), goShown: shown(go) };
       },
       closeShareSheetForTest: () => { document.getElementById('share-modal').style.display = 'none'; return true; },
       // TEST: what the stage EAR actually PLAYS — peak level over `ms` of the
@@ -18737,6 +18857,35 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       appLeading: () => appLeadOn,
       canRunApp: () => canIRunApp(),
       grantApp: (pid, on) => setMod(pid, 'app', !!on),
+      grantShare: (pid, on) => setMod(pid, 'share', !!on),
+      mayShareScreenNow: (id) => mayShareScreen(id || myId),
+      shareBlockedNow: (id) => shareBlocked(id),
+      // A modified client: claim a share and put a display track on the
+      // senders without startScreenShare. Receivers still apply the grant.
+      defyShareForTest: async () => {
+        let track = null;
+        try {
+          if (screenStream && screenStream.getVideoTracks()[0] && screenStream.getVideoTracks()[0].readyState === 'live') track = screenStream.getVideoTracks()[0];
+          else if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+            const s = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 5 }, audio: false });
+            screenStream = s;
+            track = s.getVideoTracks()[0] || null;
+          }
+        } catch (e) {}
+        myStatus.scr = Date.now();
+        if (!myStatus.stg) myStatus.stg = Date.now();
+        if (track) {
+          for (const p of peers.values()) {
+            if (!p.pc || !p.pc.getSenders) continue;
+            for (const sd of p.pc.getSenders()) {
+              if (sd.track && sd.track.kind === 'video') { try { sd.replaceTrack(track); } catch (e2) {} }
+            }
+          }
+        }
+        try { broadcastStatus(); } catch (e) {}
+        try { refreshAllTiles(); } catch (e) {}
+        return { claimed: !!myStatus.scr, track: !!track };
+      },
       myPid: () => myId, // S4 peer id (H(pubkey)); what modTable/admins/grants key on
 
       stopRoomAppForTest: () => { const w = findSharedApp(); if (w) stopRoomApp(w); },
