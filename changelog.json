@@ -2,6 +2,19 @@
  "note": "Release notes shown in Settings → Advanced → Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" — a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
  "entries": [
   {
+   "version": "0.9.21",
+   "date": "2026-10-08",
+   "headline": "Admins choose who can share a screen",
+   "critical": false,
+   "features": [
+    "In a meeting you run, Allow screen share on the meeting bar lets every guest share their screen. You can also allow or stop one person from their tile."
+   ],
+   "fixes": [
+    "Guests in a meeting with an admin could not share their screen even when the admin wanted them to. The admin can now allow it directly.",
+    "Turning screen sharing off stops a share that is already going."
+   ]
+  },
+  {
    "version": "0.9.20",
    "date": "2026-10-08",
    "headline": "Broadcast opens again, and people who drop out of a meeting get back in fast",
