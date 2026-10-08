@@ -7,14 +7,16 @@ const HOLD_SECONDS = 60;
 
 export default {
   async fetch(request, env, ctx) {
+    const key = gifKey(new URL(request.url).pathname);
+    // The route covers all of /apps/, including covers and app.json.
+    // Anything that is not a GIF is the Pages origin.
+    if (!key) return fetch(request);
     if (request.method !== "GET" && request.method !== "HEAD") {
       return new Response("method not allowed", {
         status: 405,
         headers: { allow: "GET, HEAD" },
       });
     }
-    const key = gifKey(new URL(request.url).pathname);
-    if (!key) return new Response("not found", { status: 404 });
 
     const url = new URL(request.url);
     const cacheKey = new Request(url.origin + "/" + key, { method: "GET" });

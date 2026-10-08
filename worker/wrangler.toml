@@ -1,9 +1,18 @@
 name = "gifos-gifs"
 main = "src/gifs.js"
 compatibility_date = "2026-01-01"
-# No *.workers.dev hostname and no route. A route on gifos.app does not
-# run until that name is proxied, so this script has no public hostname yet.
+# A wildcard is only allowed at the start of the host or the end of the
+# path, so gifos.app/*.gif is rejected. These routes are the apex only.
+# Subdomains belong to other workers and are not matched.
 workers_dev = false
+
+[[routes]]
+pattern = "gifos.app/apps/*"
+zone_name = "gifos.app"
+
+[[routes]]
+pattern = "gifos.app/_goal.gif*"
+zone_name = "gifos.app"
 
 [[r2_buckets]]
 binding = "GIFS"

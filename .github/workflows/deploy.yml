@@ -1,6 +1,6 @@
 # Push to main only. A pull request from a fork must not receive the token.
-# This deploys the repo root. It does not attach gifos.app and it does not
-# add a worker route. DNS stays where it is.
+# This deploys the repo root. It does not attach gifos.app. DNS stays where
+# it is. The GIF worker routes are whatever worker/wrangler.toml declares.
 name: Deploy
 
 on:
