@@ -1,0 +1,62 @@
+{
+  "catalog": "1.0",
+  "slug": "polygon-shredder",
+  "appId": "polygon-shredder",
+  "name": "Polygon Shredder",
+  "shortName": "Shredder",
+  "version": "1.0.0",
+  "minBuild": 947,
+  "tagline": "Cubes shred into confetti. Twiddle the knobs, save the look.",
+  "description": "The knobs you set are remembered. Press Play together, then Invite in the bar above the app, and a friend lands on the same shred.\n\nMove around the picture and cubes pour out, then tear apart into coloured flakes. Drag to orbit. Pinch or scroll to zoom. Factor is how fast they run; Evolution twists the flow over time; Radius is the bubble that shoves them away.\n\nOn a phone the knobs start closed so the cloud fills the screen. A weak GPU gets a smaller cloud instead of a black screen.\n\nAn unofficial port of The Polygon Shredder by spite.",
+  "author": {
+    "name": "spite",
+    "url": "https://github.com/spite/polygon-shredder"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Creativity"
+  ],
+  "tags": [
+    "confetti",
+    "cubes",
+    "toy",
+    "particles",
+    "art",
+    "multiplayer",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2016 Jaume Sanchez; Copyright © 2010-2014 three.js authors",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/polygon-shredder",
+  "accent": [
+    237,
+    106,
+    90
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/polygon-shredder/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/polygon-shredder/polygon-shredder.gif",
+  "bytes": 409939,
+  "download": 0,
+  "provides": null,
+  "sha256": "a5b4c55bb54c755b42e2fe7ccfbd068529f6c13014fdd8c13402c87c326cf829",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "The Polygon Shredder",
+    "url": "https://github.com/spite/polygon-shredder",
+    "blessed": false
+  }
+}

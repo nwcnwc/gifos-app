@@ -1,0 +1,61 @@
+{
+  "catalog": "1.0",
+  "slug": "svgomg",
+  "appId": "svgomg",
+  "name": "SVGOMG",
+  "shortName": "SVGOMG",
+  "version": "1.0",
+  "minBuild": 947,
+  "tagline": "Make SVG files smaller. Watch the bytes fall as you tune.",
+  "description": "Drop an SVG and it comes back smaller. Turn clean-up steps on and off, watch the picture and the file size change, then download. Paste the markup if you would rather not pick a file. A sample picture is included so you can try it straight away.\n\nAn unofficial port of SVGOMG by jakearchibald. The picture you drop in stays on this device.\n\nWhat you choose — which clean-up steps, how many decimal places — stays in the app so the next picture starts where you left off.",
+  "author": {
+    "name": "jakearchibald",
+    "url": "https://github.com/jakearchibald/svgomg"
+  },
+  "releaseDate": "2026-08-23",
+  "updated": "2026-08-23",
+  "categories": [
+    "Utilities"
+  ],
+  "tags": [
+    "svg",
+    "optimize",
+    "minify",
+    "vector",
+    "image",
+    "offline",
+    "svgomg"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) Kir Belevich; Copyright (c) 2015 Jake Archibald",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/svgomg",
+  "accent": [
+    63,
+    81,
+    181
+  ],
+  "capabilities": {
+    "db": true
+  },
+  "cover": "/apps/svgomg/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/svgomg/svgomg.gif",
+  "bytes": 508977,
+  "download": 0,
+  "provides": null,
+  "sha256": "4175c191716c45e6119f32cb18e4767c95c7764aa2026fd3c3074e2e14e5dc4b",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-26"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "SVGOMG",
+    "url": "https://github.com/jakearchibald/svgomg",
+    "blessed": false
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "catalog": "1.0",
+  "slug": "drawphone",
+  "appId": "drawphone",
+  "name": "Drawphone",
+  "shortName": "Drawphone",
+  "version": "1.0",
+  "minBuild": 947,
+  "tagline": "Telephone with pictures: draw, pass, guess. One link deals everyone in.",
+  "description": "Send the invite. Everyone who opens it sits at the same table — no code to type.\n\nSomeone draws a word. The next person guesses. The next person draws that guess. Around it goes until a cat has become a hat. There is no winning. The point is the chain.\n\nOr pass this device around a table. Add names, start, and hand the phone to whoever is up. A splash hides the last turn so nobody peeks. Draw with a finger or a mouse.\n\nAn unofficial port of Drawphone by Tanner Krewson.",
+  "author": {
+    "name": "tannerkrewson",
+    "url": "https://github.com/tannerkrewson/drawphone"
+  },
+  "releaseDate": "2026-08-23",
+  "updated": "2026-08-23",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "telephone",
+    "drawing",
+    "party",
+    "multiplayer",
+    "pictionary"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2016 Tanner Krewson",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/drawphone",
+  "accent": [
+    232,
+    92,
+    64
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/drawphone/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/drawphone/drawphone.gif",
+  "bytes": 204760,
+  "download": 0,
+  "provides": null,
+  "sha256": "a51520d6fa4ce4a6939b2e5b2a0886dd759638321078bcd61a2c1ce4e40aed0a",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "Drawphone",
+    "url": "https://github.com/tannerkrewson/drawphone",
+    "blessed": false
+  }
+}

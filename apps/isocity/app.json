@@ -1,0 +1,61 @@
+{
+  "catalog": "1.0",
+  "slug": "isocity",
+  "appId": "isocity",
+  "name": "IsoCity",
+  "shortName": "IsoCity",
+  "version": "1.1",
+  "minBuild": 947,
+  "tagline": "Build an isometric city, and invite a friend to build on the same map.",
+  "description": "Press Share the map, then Invite in the bar above the app, and send the link. Everyone paints on the same city. The city you built is saved with the app.\n\nOn your own it is IsoCity, on a city sixteen tiles on a side. Pick a tile — a road, a tree, a house, a tower — and tap to put it down. Drag to pan, pinch to zoom. There is no budget and no score. Close it, come back, the streets are where you left them.\n\nPress Compare cities and each of you keeps your own, and you can peek at the others.\n\nAn unofficial port of IsoCity by victorqribeiro. The pictures are Kenney's. Bugs go to GifOS, not upstream.",
+  "author": {
+    "name": "victorqribeiro",
+    "url": "https://github.com/victorqribeiro/isocity"
+  },
+  "releaseDate": "2026-08-23",
+  "updated": "2026-08-23",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "city",
+    "isometric",
+    "builder",
+    "tiles",
+    "multiplayer",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2019 Victor Ribeiro",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/isocity",
+  "accent": [
+    176,
+    83,
+    85
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/isocity/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/isocity/isocity.gif",
+  "bytes": 649111,
+  "download": 0,
+  "provides": null,
+  "sha256": "928061536a93ce84fb2f3bd1214b9b9a71caa1499a7978b812e4bde203e8ec97",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-27"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "IsoCity",
+    "url": "https://github.com/victorqribeiro/isocity",
+    "blessed": false
+  }
+}

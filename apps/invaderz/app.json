@@ -1,0 +1,60 @@
+{
+  "catalog": "1.0",
+  "slug": "invaderz",
+  "appId": "invaderz",
+  "name": "InvaderZ",
+  "shortName": "InvaderZ",
+  "version": "1.0.0",
+  "minBuild": 947,
+  "tagline": "Space Invaders where every friend who joins gets another cannon.",
+  "description": "Send the invite and extra cannons appear on the same ground — each person aiming their own, everyone shooting the same wave.\n\nOn your own it is InvaderZ: the invaders change shape as you play. Each body is how it moves. Miss one and it teaches the next wave. You get one shot at a time. Five through the line and the sky is lost.\n\nOn a phone the buttons sit under the board — left, right, fire. On a computer it is the arrows (or A and D) and the space bar.\n\nAn unofficial port of InvaderZ by victorqribeiro, MIT-licensed. This copy adds the extra cannons over a meeting.",
+  "author": {
+    "name": "victorqribeiro",
+    "url": "https://github.com/victorqribeiro/invaderz"
+  },
+  "releaseDate": "2026-08-23",
+  "updated": "2026-08-23",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "invaders",
+    "arcade",
+    "space",
+    "multiplayer",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2018 Victor Ribeiro",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/invaderz",
+  "accent": [
+    0,
+    140,
+    186
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/invaderz/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/invaderz/invaderz.gif",
+  "bytes": 196458,
+  "download": 0,
+  "provides": null,
+  "sha256": "8ef6f9e8d5fbe603be804f409ce48fea1796c5a9238b312e7c72ae19b6b6b133",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "InvaderZ",
+    "url": "https://github.com/victorqribeiro/invaderz",
+    "blessed": false
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "catalog": "1.0",
+  "slug": "tiny-yurts",
+  "appId": "tiny-yurts",
+  "name": "Tiny Yurts",
+  "shortName": "Yurts",
+  "version": "1.1.0",
+  "minBuild": 947,
+  "tagline": "Drag a path from the yurt to the farm. The file keeps your best.",
+  "description": "Your best score is saved — share the GIF and the high score goes with it. Press Invite in the bar above and a friend sees the score you have reached; each of you plays your own valley.\n\nPeople live in yurts. Farms need tending. Drag with a finger or the left mouse button from a yurt onto a farm; the red grid (or a right-click) rubs a path out. Score is settlers plus animals. You get a handful of path tiles each year — spend them well. Pause to think; you can still draw.\n\nAn unofficial port of Tiny Yurts by burntcustard (John), js13k 2023 4th place. The farms, the yurts, and the animals are his. This copy makes a phone drag actually draw a path.",
+  "author": {
+    "name": "burntcustard",
+    "url": "https://github.com/burntcustard/tiny-yurts"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "puzzle",
+    "js13k",
+    "paths",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2015 Steven Lambert; Copyright (c) 2023 John",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/tiny-yurts",
+  "accent": [
+    90,
+    160,
+    70
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/tiny-yurts/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/tiny-yurts/tiny-yurts.gif",
+  "bytes": 205846,
+  "download": 0,
+  "provides": null,
+  "sha256": "905a5d73626398b18cf048fc6a8acb226d36df6f6d155bbb19539c9b088739d6",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-24"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "Tiny Yurts",
+    "url": "https://github.com/burntcustard/tiny-yurts",
+    "blessed": false
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "catalog": "1.0",
+  "slug": "pivot",
+  "appId": "pivot",
+  "name": "Pivot",
+  "shortName": "Pivot",
+  "version": "1.1",
+  "minBuild": 947,
+  "tagline": "Drop in a CSV, drag fields, get a pivot table.",
+  "description": "Choose a CSV or paste comma-separated text. Put fields on rows and columns — drag them on a computer, tap a role on a phone. Count, sum, or list unique values. Close the app and come back: the last table and the last arrangement come back with it. Your data stays on your device.\n\nAn unofficial port of PivotTable.js by Nicolas Kruchten. Same drag-and-drop grid. Charts that need extra libraries are not in this app.",
+  "author": {
+    "name": "Nicolas Kruchten",
+    "url": "https://github.com/nicolaskruchten/pivottable"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Productivity",
+    "Utilities"
+  ],
+  "tags": [
+    "pivot",
+    "table",
+    "spreadsheet",
+    "csv",
+    "grid",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2015 Matthew Holt; Copyright (c) 2012 Nicolas Kruchten, Datacratic, other contributors; Copyright 2011–2014, Dave Furfero",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/pivot",
+  "accent": [
+    26,
+    115,
+    232
+  ],
+  "capabilities": {
+    "db": true
+  },
+  "cover": "/apps/pivot/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/pivot/pivot.gif",
+  "bytes": 382569,
+  "download": 0,
+  "provides": null,
+  "sha256": "09968b57304748ac7426b61a9ea70f11e60c296686081cd2e512d8e29bc61063",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-27"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "PivotTable.js",
+    "url": "https://github.com/nicolaskruchten/pivottable",
+    "blessed": false
+  }
+}

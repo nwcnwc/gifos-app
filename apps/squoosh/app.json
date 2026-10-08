@@ -1,0 +1,67 @@
+{
+  "catalog": "1.0",
+  "slug": "squoosh",
+  "appId": "squoosh",
+  "name": "Squoosh",
+  "shortName": "Squoosh",
+  "version": "1.0",
+  "minBuild": 1178,
+  "tagline": "Make images smaller, on this device. Nothing is uploaded.",
+  "description": "Drop a photo and it comes back smaller. Pick JPEG, WebP, AVIF, JPEG XL, PNG or QOI, drag the quality, and watch the file size change next to a side-by-side of before and after. The encoders doing the work are the ones from Squoosh, running in this browser.\n\nAn unofficial port of Squoosh by GoogleChromeLabs. The picture you drop in stays on this device.\n\nThe first time you pick AVIF or JPEG XL it can take a moment on a phone; JPEG and WebP are ready immediately. Resize if you want, then download. What you choose — format, quality, resize — stays in the app so the next photo starts where you left off.",
+  "author": {
+    "name": "GoogleChromeLabs",
+    "url": "https://github.com/GoogleChromeLabs/squoosh"
+  },
+  "releaseDate": "2026-08-22",
+  "updated": "2026-08-22",
+  "categories": [
+    "Media",
+    "Utilities",
+    "Creativity"
+  ],
+  "tags": [
+    "image",
+    "compression",
+    "jpeg",
+    "webp",
+    "avif",
+    "jxl",
+    "png",
+    "qoi",
+    "offline",
+    "squoosh"
+  ],
+  "license": "Apache-2.0",
+  "copyright": "Copyright (c) 2016 Joshua Holmer",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/squoosh",
+  "accent": [
+    0,
+    149,
+    255
+  ],
+  "capabilities": {
+    "wasm": true,
+    "db": true
+  },
+  "cover": "/apps/squoosh/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/squoosh/squoosh.gif",
+  "bytes": 2632832,
+  "download": 0,
+  "provides": null,
+  "sha256": "c53240beb48301e638c910715dce9f3d878c3737e2486de19f1763f733db4bcb",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-29"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "Squoosh",
+    "url": "https://github.com/GoogleChromeLabs/squoosh",
+    "blessed": false
+  }
+}

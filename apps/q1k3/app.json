@@ -1,0 +1,63 @@
+{
+  "catalog": "1.0",
+  "slug": "q1k3",
+  "appId": "q1k3",
+  "name": "Q1K3",
+  "shortName": "Q1K3",
+  "version": "1.0.1",
+  "minBuild": 1314,
+  "tagline": "Quake in 13 kB: a shotgun and two torch-lit halls.",
+  "description": "This is Q1K3 in a GIF. Open the file and you are in the halls. Close it, come back — your settings and the map you reached are saved.\n\nYou wake up in a brown stone hall with a shotgun in your hands and something waiting around the corner. Grunts, ogres, a hound that runs at you. Doors that need a key. A nailgun and a handful of grenades if you live long enough to pick them up. Two maps, then the end.\n\nOn a phone the left thumb walks and the right thumb looks; tap to shoot, jump with the button. On a computer it is WASD, the mouse, and a click.\n\nSend the invite and extra people appear in the same halls.\n\nAn unofficial port of Q1K3 by phoboslab. Music by Andy Lösch.",
+  "author": {
+    "name": "phoboslab",
+    "url": "https://github.com/phoboslab"
+  },
+  "releaseDate": "2026-08-23",
+  "updated": "2026-08-23",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "quake",
+    "fps",
+    "shooter",
+    "3d",
+    "offline",
+    "multiplayer"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2021 Dominic Szablewski; Copyright (c) 2014 Nicolas Vanhoren; Copyright (c) 2011 Marcus Geelnard; Copyright (c) 2008-2009 Jake Taylor",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/q1k3",
+  "accent": [
+    196,
+    92,
+    36
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true,
+    "pointer": true,
+    "fullscreen": true
+  },
+  "cover": "/apps/q1k3/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/q1k3/q1k3.gif",
+  "bytes": 234634,
+  "download": 0,
+  "provides": null,
+  "sha256": "16c75cf083282875b4928de13cc9988fa9e0d7ed402b946781d53a59273c1ec5",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "Q1K3",
+    "url": "https://github.com/phoboslab/q1k3",
+    "blessed": false
+  }
+}

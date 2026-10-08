@@ -1,0 +1,61 @@
+{
+  "catalog": "1.0",
+  "slug": "slots",
+  "appId": "slots",
+  "name": "Slots",
+  "shortName": "Slots",
+  "version": "1.1",
+  "minBuild": 947,
+  "tagline": "Five fruit reels and a lever. Friends watch the same spin from one link.",
+  "description": "Five fruit reels, a gold payline, a lever. Land three of a kind and the credits jump. Auto keeps pulling. Stake 10, 25, 50 or 100. Go broke and Top up restores your credits.\n\nSend one link and everyone at the table watches the same spin — anyone can pull. Your credits are saved with your copy of the app.\n\nAn unofficial port of html5-slot-machine by johakr.",
+  "author": {
+    "name": "johakr",
+    "url": "https://github.com/johakr/html5-slot-machine"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "slots",
+    "party",
+    "reels",
+    "arcade",
+    "multiplayer",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2017 Johannes Kronmüller",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/slots",
+  "accent": [
+    212,
+    160,
+    48
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/slots/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/slots/slots.gif",
+  "bytes": 194567,
+  "download": 0,
+  "provides": null,
+  "sha256": "cf7b3ff46fab5dbf2ff10d26052eeb6ac1046b9df489b9ce44545e15bd342670",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "html5-slot-machine",
+    "url": "https://github.com/johakr/html5-slot-machine",
+    "blessed": false
+  }
+}

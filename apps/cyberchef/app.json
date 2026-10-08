@@ -1,0 +1,65 @@
+{
+  "catalog": "1.0",
+  "slug": "cyberchef",
+  "appId": "cyberchef",
+  "name": "CyberChef",
+  "shortName": "CyberChef",
+  "version": "11.4.0",
+  "minBuild": 1178,
+  "tagline": "Encode, decode, encrypt, hash, compress — hundreds of operations, all on this device.",
+  "description": "Drag operations into a recipe, drop some data in, and Bake. Base64, AES, gzip, hex dumps, hashes, timestamps, character encodings, and hundreds more, chained in whatever order you like. Nothing is uploaded: every conversion runs in this app, on this device.\n\nFavourites, options and saved recipes stay on this device, inside the app.\n\nAn unofficial port of GCHQ's CyberChef, the Cyber Swiss Army Knife. GCHQ did not endorse this listing. This copy keeps the same operations. There is no path out to the internet, so operations that would have fetched a URL (an HTTP request, or extra language files for reading pictures) simply cannot, and say so.",
+  "author": {
+    "name": "GCHQ",
+    "url": "https://github.com/gchq/CyberChef"
+  },
+  "releaseDate": "2026-08-22",
+  "updated": "2026-08-22",
+  "categories": [
+    "Utilities",
+    "Developer"
+  ],
+  "tags": [
+    "converter",
+    "encoder",
+    "decoder",
+    "crypto",
+    "hash",
+    "base64",
+    "hex",
+    "offline",
+    "cyberchef"
+  ],
+  "license": "Apache-2.0",
+  "copyright": "Copyright 2016-2026 Crown Copyright; Copyright 2026 GifOS contributors.",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/cyberchef",
+  "accent": [
+    244,
+    67,
+    54
+  ],
+  "capabilities": {
+    "db": true,
+    "wasm": true
+  },
+  "cover": "/apps/cyberchef/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/cyberchef/cyberchef.gif",
+  "bytes": 11835382,
+  "download": 0,
+  "provides": null,
+  "sha256": "059f44c8011231acca71b02b73abf1159478d4193edf619f5ebd469587ab773b",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "CyberChef",
+    "url": "https://github.com/gchq/CyberChef",
+    "blessed": false
+  }
+}

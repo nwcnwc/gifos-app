@@ -1,0 +1,63 @@
+{
+  "catalog": "1.0",
+  "slug": "fieldplay",
+  "appId": "fieldplay",
+  "name": "Field Play",
+  "shortName": "Field",
+  "version": "1.0.0",
+  "minBuild": 947,
+  "tagline": "A plane of arrows. Pour particles with a finger and watch them flow.",
+  "description": "The last field, camera, and knobs are saved with the app. Press Play together, then Invite in the bar above the app, and a friend lands on the same recipe.\n\nEvery point on the plane has a little arrow. Particles follow those arrows: spirals, cogs, rain, a black hole. Tap a named field to try one. Tap the picture to pour more particles. Drag to pan, pinch or scroll to zoom. Change a number in the recipe, press Apply, and the flow becomes yours.\n\nOn a phone the recipe sheet starts closed so the field fills the screen. Recipe opens the program and the knobs.\n\nAn unofficial port of Field Play by anvaka.",
+  "author": {
+    "name": "anvaka",
+    "url": "https://github.com/anvaka/fieldplay"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Creativity"
+  ],
+  "tags": [
+    "particles",
+    "field",
+    "flow",
+    "toy",
+    "math",
+    "art",
+    "multiplayer",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2017-2026 Andrei Kashcha; Copyright (c) 2016, Mapbox",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/fieldplay",
+  "accent": [
+    57,
+    208,
+    197
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/fieldplay/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/fieldplay/fieldplay.gif",
+  "bytes": 206310,
+  "download": 0,
+  "provides": null,
+  "sha256": "9293b54a63128058bf6704cb769da50da050143a020015a46e88f330dfab9c40",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "Field Play",
+    "url": "https://github.com/anvaka/fieldplay",
+    "blessed": false
+  }
+}

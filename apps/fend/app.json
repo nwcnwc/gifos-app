@@ -1,0 +1,60 @@
+{
+  "catalog": "1.0",
+  "slug": "fend",
+  "appId": "fend",
+  "name": "fend",
+  "shortName": "fend",
+  "version": "1.1",
+  "minBuild": 947,
+  "tagline": "A calculator that speaks units: type 1 ft to cm, get the answer.",
+  "description": "Type a line, press Enter: 1 ft to cm, 5 kg in lb, 100 C to F. The last pad comes back the next time you open the app.\n\nOn a phone the keypad has digits and units so you can convert without a keyboard. A line that does not calculate says why. Variables stick: a = 3 then a * 2.\n\nUnofficial port of fend by printfn. Same engine as their calculator.",
+  "author": {
+    "name": "printfn",
+    "url": "https://github.com/printfn/fend"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Utilities"
+  ],
+  "tags": [
+    "calculator",
+    "units",
+    "math",
+    "notepad",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2020-2025",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/fend",
+  "accent": [
+    200,
+    80,
+    40
+  ],
+  "capabilities": {
+    "db": true,
+    "wasm": true
+  },
+  "cover": "/apps/fend/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/fend/fend.gif",
+  "bytes": 594059,
+  "download": 0,
+  "provides": null,
+  "sha256": "00ffe3ad17a7a6c0ec07084d06e3ee8be69c3dc818c3b638260a7cb53e059bc3",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-30"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "fend",
+    "url": "https://github.com/printfn/fend",
+    "blessed": false
+  }
+}

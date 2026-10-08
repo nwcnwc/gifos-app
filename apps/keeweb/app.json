@@ -1,0 +1,62 @@
+{
+  "catalog": "1.0",
+  "slug": "keeweb",
+  "appId": "keeweb",
+  "name": "KeeWeb",
+  "shortName": "KeeWeb",
+  "version": "1.0",
+  "minBuild": 947,
+  "tagline": "A KeePass vault on this device. Copy a password; it does not fill other sites.",
+  "description": "Open a .kdbx, or start a new vault, and keep logins on this device. Groups, entries, a password generator, and one-time login codes — the same file KeePass and KeeWeb already use. Unlock with your master password (and an optional key file). Export writes a .kdbx you can open in KeePassXC.\n\nCopy-paste only. There is no browser extension and no autofill into other sites: username, password, website and login code copy to the clipboard when you ask, and that is the whole hand-off. Closing the app locks the vault. The master password is not stored.\n\nAn unofficial port of KeeWeb by Antelle, MIT-licensed. KeeWeb's Dropbox, Google Drive, OneDrive, cloud-folder sync, plugin gallery and browser autofill are not in this app. There is no network at all.",
+  "author": {
+    "name": "Antelle",
+    "url": "https://github.com/keeweb/keeweb"
+  },
+  "releaseDate": "2026-08-22",
+  "updated": "2026-08-22",
+  "categories": [
+    "Utilities"
+  ],
+  "tags": [
+    "password",
+    "keepass",
+    "kdbx",
+    "vault",
+    "offline",
+    "totp",
+    "keeweb"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (C) 2021 Antelle; Copyright (c) 2021 Antelle https://antelle.net; Copyright (c) 2022 Paul Miller (https://paulmillr.com)",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/keeweb",
+  "accent": [
+    107,
+    189,
+    88
+  ],
+  "capabilities": {
+    "db": true
+  },
+  "cover": "/apps/keeweb/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/keeweb/keeweb.gif",
+  "bytes": 264956,
+  "download": 0,
+  "provides": null,
+  "sha256": "bb1fc77fcefe740b5fbe45123f7c09b05cfe0cf16d5af9688a5759759018a0b3",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-29"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "KeeWeb",
+    "url": "https://github.com/keeweb/keeweb",
+    "blessed": false,
+    "donate": "https://opencollective.com/keeweb"
+  }
+}

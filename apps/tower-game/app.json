@@ -1,0 +1,60 @@
+{
+  "catalog": "1.0",
+  "slug": "tower-game",
+  "appId": "tower-game",
+  "name": "Tower Game",
+  "shortName": "Tower",
+  "version": "1.0",
+  "minBuild": 947,
+  "tagline": "Tap to drop each floor. Race a friend to the tallest tower.",
+  "description": "Press Invite in the bar above the app and send the link. You each build your own tower. Live heights as you go, tallest when the hearts run out wins. Your best score is saved.\n\nOn your own it is the original game. A crane swings a floor out. Tap to drop it. Land it on the floor below and you climb. Miss three times and it is over. A perfect stack scores more, and a streak of perfects more still. The crane gets meaner the higher you go. A thumb on a phone works the same as a click.\n\nAn unofficial port of Tower Building Game by iamkun. This copy adds the race. Bugs go to GifOS, not upstream.",
+  "author": {
+    "name": "iamkun",
+    "url": "https://github.com/iamkun/tower_game"
+  },
+  "releaseDate": "2026-08-23",
+  "updated": "2026-08-23",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "arcade",
+    "tap",
+    "stacking",
+    "multiplayer",
+    "race"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2018 BMQB, Inc; Copyright 2018 BMQB, Inc / iamkun; Copyright 2026 GifOS contributors.",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/tower-game",
+  "accent": [
+    249,
+    82,
+    64
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/tower-game/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/tower-game/tower-game.gif",
+  "bytes": 875662,
+  "download": 0,
+  "provides": null,
+  "sha256": "96f237a9da571cfd55ba51db39da34308c2496c6408997dced23655377035509",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "Tower Building Game",
+    "url": "https://github.com/iamkun/tower_game",
+    "blessed": false
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "catalog": "1.0",
+  "slug": "memory",
+  "appId": "memory",
+  "name": "Memory",
+  "shortName": "Memory",
+  "version": "1.1.0",
+  "minBuild": 947,
+  "tagline": "Watch the pads light up, tap them back. Each round adds one more.",
+  "description": "Your best score is saved. Press Invite in the bar above and a friend gets the same sequence — a race. You never see their taps, only the level they have reached.\n\nFour coloured pads light up. Repeat them. Each round adds one more step, then the pads get faster, then two more appear, then two more again. Miss and the round is over. On a phone the pads are thumb-sized and each one has a tone; on a computer you can also use 1–4 or Q W A S.\n\nAn unofficial port of Mnimi by Sepand Haghighi, a Simon-style memory game. The sequence, the extra pads, and the speed curve are his.",
+  "author": {
+    "name": "Sepand Haghighi",
+    "url": "https://github.com/sepandhaghighi/mnimi"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "memory",
+    "simon",
+    "puzzle",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2019 Sepand Haghighi",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/memory",
+  "accent": [
+    80,
+    180,
+    220
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/memory/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/memory/memory.gif",
+  "bytes": 128530,
+  "download": 0,
+  "provides": null,
+  "sha256": "34ab2d4f013be353d7e11c7ea04a259dfc2536ab44955f1e46ac8d4dadbecd23",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "Mnimi",
+    "url": "https://github.com/sepandhaghighi/mnimi",
+    "blessed": false
+  }
+}

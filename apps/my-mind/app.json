@@ -1,0 +1,60 @@
+{
+  "catalog": "1.0",
+  "slug": "my-mind",
+  "appId": "my-mind",
+  "name": "My Mind",
+  "shortName": "Mind",
+  "version": "1.1",
+  "minBuild": 947,
+  "tagline": "Mind maps at typing speed: Tab for a child, Enter for a sibling.",
+  "description": "Close it, come back, or send someone your copy — the same bubbles are there.\n\nClick a bubble and type. Tab inserts a child, Enter a sibling, arrows walk the map, Delete removes a node. Drag to pan, wheel to zoom. Colours, layouts (map, graph, tree), shapes, and a yes/no status live on each item. New starts a blank map.\n\nOn a phone, tap a bubble to select it, tap again to type, and use Child / Sibling / Edit / Delete at the bottom.\n\nPress Invite in the bar above so a friend can watch the same map.\n\nAn unofficial port of My Mind by Ondřej Žára. Same map, same keys.",
+  "author": {
+    "name": "Ondřej Žára",
+    "url": "https://github.com/ondras/my-mind"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Productivity"
+  ],
+  "tags": [
+    "mindmap",
+    "outline",
+    "notes",
+    "ideas",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2013-2019 Ondrej Zara",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/my-mind",
+  "accent": [
+    68,
+    136,
+    221
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/my-mind/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/my-mind/my-mind.gif",
+  "bytes": 394625,
+  "download": 0,
+  "provides": null,
+  "sha256": "5335e283f1d263ec60581e177fc3da07c8cbd0cacbcd03df5e2f36aba7edac3f",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-29"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "My Mind",
+    "url": "https://github.com/ondras/my-mind",
+    "blessed": false
+  }
+}

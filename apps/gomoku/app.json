@@ -1,0 +1,60 @@
+{
+  "catalog": "1.0",
+  "slug": "gomoku",
+  "appId": "gomoku",
+  "name": "Gomoku",
+  "shortName": "Gomoku",
+  "version": "1.0",
+  "minBuild": 947,
+  "tagline": "Five in a row. Play the computer, or a friend from one invite.",
+  "description": "Five in a row. The computer thinks on this device. Press Play a friend, send the invite, and they sit the other colour on the same board.\n\nA wooden 15-by-15. Black and white take turns putting a stone down. First to get five in a line — across, down, or diagonal — wins. Play the computer at novice, medium, or expert, or pass the phone. Close it and come back: the game keeps.\n\nAn unofficial port of HTML5 Gomoku by yyjhao. The computer is the same one that shipped with that game.",
+  "author": {
+    "name": "yyjhao",
+    "url": "https://github.com/yyjhao/HTML5-Gomoku"
+  },
+  "releaseDate": "2026-08-23",
+  "updated": "2026-08-23",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "gomoku",
+    "five-in-a-row",
+    "board",
+    "multiplayer",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2013 Yao Yujian",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/gomoku",
+  "accent": [
+    196,
+    140,
+    70
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/gomoku/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/gomoku/gomoku.gif",
+  "bytes": 264218,
+  "download": 0,
+  "provides": null,
+  "sha256": "98b313b50267250b4ef8671e6f6d62bc570912d1935a0a4d6c7d27631093c831",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-29"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "HTML5 Gomoku",
+    "url": "https://github.com/yyjhao/HTML5-Gomoku",
+    "blessed": false
+  }
+}

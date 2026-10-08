@@ -1,0 +1,60 @@
+{
+  "catalog": "1.0",
+  "slug": "spyfall",
+  "appId": "spyfall",
+  "name": "Spyfall",
+  "shortName": "Spyfall",
+  "version": "1.0",
+  "minBuild": 947,
+  "tagline": "One link deals everyone a role. One of you is the spy.",
+  "description": "Send the invite. Everyone who opens it is in the same game, each on their own phone. There is no lobby code to type.\n\nEveryone but one person is at the same place — a bank, a pirate ship, a circus tent — and each of you has a job there. The spy does not know the place. Ask questions. Try not to give it away. Catch the spy, or, if you are the spy, guess where you are.\n\nOr pass this phone around the table. Add names, deal, tap your own name, look at your card, hide it, pass it on. Nobody else's card is waiting on the screen.\n\nAn unofficial port of Spyfall by tannerkrewson.",
+  "author": {
+    "name": "tannerkrewson",
+    "url": "https://github.com/tannerkrewson/spyfall"
+  },
+  "releaseDate": "2026-08-23",
+  "updated": "2026-08-23",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "spyfall",
+    "party",
+    "spy",
+    "multiplayer",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2020 Tanner Krewson",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/spyfall",
+  "accent": [
+    196,
+    40,
+    48
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/spyfall/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/spyfall/spyfall.gif",
+  "bytes": 198513,
+  "download": 0,
+  "provides": null,
+  "sha256": "19f805812973672881cf809ea261e4d883a4546a5f17e198954db357cd6719f2",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "Spyfall",
+    "url": "https://github.com/tannerkrewson/spyfall",
+    "blessed": false
+  }
+}

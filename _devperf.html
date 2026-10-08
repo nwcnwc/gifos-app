@@ -1,0 +1,43 @@
+<!doctype html><meta charset="utf-8"><title>dev perf</title>
+<body style="font:13px system-ui;background:#111;color:#eee;padding:1rem">
+<pre id="o">reading…</pre>
+<script src="js/gifos-gif.js"></script><script src="js/gifos-ed.js"></script>
+<script src="js/gifos-sign.js"></script><script src="js/gifos-zip.js"></script>
+<script src="js/gifos-icons.js"></script><script src="js/gifos-themes.js"></script>
+<script src="js/gifos-store.js"></script>
+<script>
+// Dev-only: read what the app recorded and beacon it to the server, which is
+// the only way a phone's numbers get back here.
+(async function () {
+  const out = document.getElementById('o');
+  try {
+    const f = (await GifOS.store.allFiles()).find((x) => x.appId === 'fps-simple');
+    if (!f) { out.textContent = 'app not installed'; return; }
+    const st = await GifOS.store.getState(f.id);
+    const cols = (st && st.collections) || {};
+    const perfRows = (cols.perf && cols.perf.items) || {};
+    const perf = perfRows.last || Object.values(perfRows)[0] || null;
+    const frames = perfRows.frames || null;   // written by framelog.js during play
+    // A collection is {items: {id -> record}, seq} — counting the COLLECTION's
+    // own keys returns 2 forever, which is exactly what it did, and is why the
+    // cache looked broken on this phone for hours while working fine.
+    const rows = (cols.textures && cols.textures.items) || {};
+    const tex = Object.keys(rows).length;
+    const flushlog = rows.flushlog || null;
+    const keys = Object.keys(rows).map(function (k) {
+      var r = rows[k], n = 0;
+      if (r && r.sets) { for (var x in r.sets) n++; }
+      if (r && r.items) { for (var y in r.items) n++; }
+      return k + (n ? '(' + n + ')' : '') + ' ~' + Math.round(JSON.stringify(r).length / 1024) + 'KB';
+    }).slice(0, 8);
+    const meshRows = (cols.meshes && cols.meshes.items) || {};
+    const meshKeys = Object.keys(meshRows).slice(0, 4);
+    const colnames = Object.keys(cols);
+    const payload = JSON.stringify({ perf: perf, frames: frames,
+      stick: perfRows.stick || null,   // touch.js dead-stick diagnostics
+      cachedSurfaces: tex, flushlog: flushlog, keys: keys, mesh: meshKeys, collections: colnames });
+    out.textContent = payload;
+    new Image().src = '/report?d=' + encodeURIComponent(payload);
+  } catch (e) { out.textContent = 'ERR ' + (e && e.message || e); }
+})();
+</script>

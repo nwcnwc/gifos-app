@@ -1,0 +1,62 @@
+{
+  "catalog": "1.0",
+  "slug": "mini-photo-editor",
+  "appId": "mini-photo-editor",
+  "name": "Mini Photo Editor",
+  "shortName": "Photo",
+  "version": "1.1.0",
+  "minBuild": 947,
+  "tagline": "Crop, rotate and filter a photo — right on your device.",
+  "description": "Open a picture or take one. Drag a corner to crop. Rotate, flip, pick a look — Vintage, Polaroid, Kodak, Browni — and turn bright, contrast, sat, warmth and vignette. Download keeps a JPEG here. The picture stays on this device.\n\nThis is not a drawing app and not a compressor. It is the crop / rotate / filter loop.\n\nThe last picture and the last recipe come back the next time you open the app. Press Invite (the GifOS bar) and a friend gets your sliders and look, not your photo.\n\nAn unofficial port of mini-photo-editor by xdadda.",
+  "author": {
+    "name": "xdadda",
+    "url": "https://github.com/xdadda/mini-photo-editor"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Creativity"
+  ],
+  "tags": [
+    "photo",
+    "crop",
+    "rotate",
+    "filter",
+    "edit",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2025 xdadda",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/mini-photo-editor",
+  "accent": [
+    196,
+    92,
+    38
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true,
+    "camera": true
+  },
+  "cover": "/apps/mini-photo-editor/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/mini-photo-editor/mini-photo-editor.gif",
+  "bytes": 194860,
+  "download": 0,
+  "provides": null,
+  "sha256": "4ead60d891945a49f48ae55465caea3391618848a26e248dc304a95817db4ac8",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "mini-photo-editor",
+    "url": "https://github.com/xdadda/mini-photo-editor",
+    "blessed": false
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "catalog": "1.0",
+  "slug": "duck-hunt",
+  "appId": "duck-hunt",
+  "name": "Pond Hunt",
+  "shortName": "Pond Hunt",
+  "version": "1.2",
+  "minBuild": 947,
+  "tagline": "Click the ducks. The dog laughs.",
+  "description": "Open the file, tap a duck, and the dog will tell you how you did. Close it, come back — your best run is saved.\n\nDucks fly left and right. You have three shots a wave. Miss too many and the dog laughs. Hit enough and the next round is faster. On a phone the tap is the zapper; a thumb does not have to be pixel-perfect.\n\nSend the invite and a friend sits their own pond on their device. Two zappers, two dogs, one board of bests.\n\nAn unofficial remake based on DuckHunt JS by MattSurabian, MIT-licensed. Pictures and sounds are from that port. This copy adds the save and the pond.",
+  "author": {
+    "name": "MattSurabian",
+    "url": "https://github.com/MattSurabian/DuckHunt-JS"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "arcade",
+    "shooter",
+    "tap",
+    "offline",
+    "multiplayer"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2015 Matt Surabian",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/duck-hunt",
+  "accent": [
+    100,
+    176,
+    255
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/duck-hunt/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/duck-hunt/duck-hunt.gif",
+  "bytes": 1542091,
+  "download": 0,
+  "provides": null,
+  "sha256": "cc782db04756336fc168f0ee65a27f2800df7cc2a1d4e32fc95acfe947a191b3",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-29"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "DuckHunt JS",
+    "url": "https://github.com/MattSurabian/DuckHunt-JS",
+    "blessed": false
+  }
+}

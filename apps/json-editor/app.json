@@ -1,0 +1,61 @@
+{
+  "catalog": "1.0",
+  "slug": "json-editor",
+  "appId": "json-editor",
+  "name": "JSON Editor",
+  "shortName": "JSON",
+  "version": "1.1",
+  "minBuild": 947,
+  "tagline": "Edit JSON as a tree or as code, side by side.",
+  "description": "The last JSON you edited comes back next time — and the text stays on this device. Open it as a tree you can expand, or as code you can type. Search, format, compact, and repair from the toolbar. A line that is not valid JSON is named as such; it is not silently rewritten.\n\nOn a phone, Tree and Code are two taps at the top so the keyboard does not bury the switch. Press Invite in the bar above to let a meeting watch the same document, read-only.\n\nAn unofficial port of JSONEditor by Jos de Jong. Same tree and code views.",
+  "author": {
+    "name": "Jos de Jong",
+    "url": "https://github.com/josdejong/jsoneditor"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Developer",
+    "Utilities"
+  ],
+  "tags": [
+    "editor",
+    "tree",
+    "code",
+    "document",
+    "offline"
+  ],
+  "license": "Apache-2.0",
+  "copyright": "Copyright (C) 2011-2026 Jos de Jong",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/json-editor",
+  "accent": [
+    255,
+    165,
+    0
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/json-editor/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/json-editor/json-editor.gif",
+  "bytes": 802574,
+  "download": 0,
+  "provides": null,
+  "sha256": "4bf7d7b86346dadf842a1093283000cff5f47340c80b8fb6fcf166ee74e272a6",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-27"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "JSONEditor",
+    "url": "https://github.com/josdejong/jsoneditor",
+    "blessed": false
+  }
+}

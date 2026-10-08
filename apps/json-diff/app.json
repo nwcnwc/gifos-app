@@ -1,0 +1,60 @@
+{
+  "catalog": "1.0",
+  "slug": "json-diff",
+  "appId": "json-diff",
+  "name": "JSON Diff",
+  "shortName": "Diff",
+  "version": "1.1",
+  "minBuild": 947,
+  "tagline": "Paste two JSON documents, see exactly what changed.",
+  "description": "Paste the old document on the left and the new one on the right. Added bits light up green, removed bits red, and changed bits show both. The text stays on this device.\n\nThe last pair you pasted comes back the next time you open the app. Press Invite in the GifOS bar to show the same difference, read-only, for everyone in a meeting. They can look; they do not type over it.\n\nAn unofficial port of jsondiffpatch by benjamine. Same visual difference the original demo draws, plus the JSON delta and JSON Patch. List items that carry an id are matched by that id, not only by position.",
+  "author": {
+    "name": "benjamine",
+    "url": "https://github.com/benjamine/jsondiffpatch"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Developer"
+  ],
+  "tags": [
+    "diff",
+    "compare",
+    "json",
+    "offline",
+    "developer"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2018 Benjamin Eidelman, https://twitter.com/beneidel",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/json-diff",
+  "accent": [
+    80,
+    170,
+    90
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/json-diff/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/json-diff/json-diff.gif",
+  "bytes": 245438,
+  "download": 0,
+  "provides": null,
+  "sha256": "468e43d94621f7d6886519ad27896c767d85586a39c8cac609e79e8c42b6cd0a",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-29"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "jsondiffpatch",
+    "url": "https://github.com/benjamine/jsondiffpatch",
+    "blessed": false
+  }
+}

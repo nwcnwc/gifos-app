@@ -1,0 +1,61 @@
+{
+  "catalog": "1.0",
+  "slug": "pixelit",
+  "appId": "pixelit",
+  "name": "Pixel It",
+  "shortName": "PixelIt",
+  "version": "1.1",
+  "minBuild": 947,
+  "tagline": "Turn a photo into pixel art, right on your device.",
+  "description": "A photo becomes pixel art on this device. Take a still or open a picture — nothing is sent anywhere. Drag the block size, tick greyscale, or snap the colours to a palette. Hold the picture to see the original.\n\nThe last picture and the last recipe are remembered.\n\nThis is a converter, not a drawing app: you start from a photo. An unofficial port of Pixel It by giventofly.",
+  "author": {
+    "name": "giventofly",
+    "url": "https://github.com/giventofly/pixelit"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Creativity"
+  ],
+  "tags": [
+    "pixel",
+    "pixel-art",
+    "photo",
+    "palette",
+    "convert",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2019 José Moreira",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/pixelit",
+  "accent": [
+    228,
+    148,
+    58
+  ],
+  "capabilities": {
+    "db": true,
+    "camera": true
+  },
+  "cover": "/apps/pixelit/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/pixelit/pixelit.gif",
+  "bytes": 193893,
+  "download": 0,
+  "provides": null,
+  "sha256": "edad932c949fbb595e5891d976137eb74f74725fb635d1f65dd1d3f8aad6fa28",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-26"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "Pixel It",
+    "url": "https://github.com/giventofly/pixelit",
+    "blessed": false
+  }
+}

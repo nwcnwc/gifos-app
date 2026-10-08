@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!-- FRAME GUARD. GitHub Pages sends no X-Frame-Options and a <meta> cannot
+     carry frame-ancestors, so this is the only thing that keeps a third-party
+     page from framing GifOS at opacity 0 and steering a click onto Allow,
+     Install or Approve. Same-origin framing (booted images, app mounts) is
+     allowed; anything else sees a link to open the page itself. Parser-
+     blocking and ES5 on purpose: it runs before any chrome paints.
+     Guarded by test/unit/frame-guard.js. -->
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<meta name="robots" content="noindex">
+<title>GifOS</title>
+<!-- Link-preview card for pretty invite links. GitHub Pages serves THIS file for
+     /meet/… and /join/… (the router below redirects real users to the
+     right page). A JS-less scraper can't tell those apart, so the static card is
+     neutral ("Join on GifOS"). On theme subdomains the mirror Worker upgrades
+     /meet to the themed MEETING card with a 200 status (mirror/src/mirror.js).
+     og:url is omitted so the scraper keeps the actual invite URL (incl. subdomain). -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GifOS">
+<meta property="og:title" content="Join on GifOS">
+<meta property="og:description" content="Tap the link and you're in — right in your browser. One link, no account, no installs.">
+<meta property="og:image" content="https://gifos.app/og-join.png">
+<meta property="og:image:width" content="2400">
+<meta property="og:image:height" content="1260">
+<meta property="og:image:alt" content="Join on GifOS — one link, no account, no installs.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Join on GifOS">
+<meta name="twitter:description" content="Tap the link and you're in. One link · no account · no installs.">
+<meta name="twitter:image" content="https://gifos.app/og-join.png">
+<script>
+/*
+ * 404.html — the pretty-link router. GitHub Pages serves this for any path it
+ * doesn't know, which is exactly how gifos.app/join/… (an app session) and
+ * gifos.app/meet/… (a meeting) work on a fully static site — no server state
+ * anywhere. The code in a link is a SECRET CAPABILITY: the client derives the
+ * relay-facing session id, token, and end-to-end key from it (see
+ * gifos-net.js "derive, don't send"); the relay never sees the code itself.
+ * Anything unrecognized just goes home.
+ */
+(function () {
+  // /versions/<v>/… that Pages does not have — a RETIRED release (old
+  // snapshots get pruned; version.json.versions is what still ships). Without
+  // this branch a visitor whose localStorage still names <v> (an explicit
+  // gifos_pin, or gifos_current — the last-known release every default
+  // visitor redirects on without re-reading version.json) loops forever:
+  // / → loader → /versions/<v>/ → this file → / → loader → … A JS redirect
+  // loop never trips the browser's limit; the tab just flickers.
+  //
+  // Two cases, told apart by ONE probe at the snapshot's build.js (every
+  // archived build has one): the build is there and only this PAGE is missing
+  // (e.g. a store.html in a snapshot cut before the store existed) → that
+  // build's own desktop; the build is gone → forget it, remember WHICH one
+  // for the desktop's one-line notice (gifos_gone), and go home ONCE. The
+  // page and hash ride along so a run.html#id=… link still lands on its app,
+  // now on the live release, with the desktop (per-origin, additive-only
+  // data) intact.
+  var rv = location.pathname.match(/^\/versions\/(\d+\.\d+\.\d+)\/(.*)$/);
+  if (rv) {
+    var alive = false;
+    try {
+      var x = new XMLHttpRequest();
+      x.open('HEAD', '/versions/' + rv[1] + '/js/build.js?ts=' + Date.now(), false);
+      x.send();
+      alive = x.status >= 200 && x.status < 300;
+    } catch (e) { alive = false; }
+    if (alive) { location.replace('/versions/' + rv[1] + '/index.html' + location.hash); return; }
+    try {
+      localStorage.removeItem('gifos_pin');
+      localStorage.removeItem('gifos_current');
+      localStorage.setItem('gifos_gone', rv[1]);
+    } catch (e) {}
+    var page = /^[a-z0-9-]+\.html$/i.test(rv[2]) ? rv[2] : '';
+    location.replace('/' + page + location.search + location.hash);
+    return;
+  }
+
+  // EVERY ROUTE BELOW REFRESHES THE RELEASE POINTER FIRST. The channel loader
+  // a route lands on redirects a default-channel visitor on gifos_current, the
+  // last-known release, without re-reading version.json. A device that only
+  // ever opens links never runs the code that refreshes it inside a release
+  // (desktop.js; run.html from 0.9.17), so a 0.9.16 snapshot left it at 0.9.16
+  // and every later link reopened 0.9.16 — and releases are not compatible
+  // with each other. This page is served from the ROOT for every pretty link,
+  // never frozen into a snapshot, so it is the one place that reaches every
+  // build ever shipped. One version.json read (network-first in sw.js, so it
+  // answers from cache offline), bounded at 3 s; a pin or the edge channel is
+  // the visitor's own choice and is routed at once — except that a pin does
+  // not apply to a ROOM (/meet, /cast, /join): meetings run the live release
+  // (the channel loader's room rule), so a pinned visitor's room link reads the
+  // pointer too.
+  function go(url, room) {
+    var own = false;
+    try { own = (!room && !!localStorage.getItem('gifos_pin')) || localStorage.getItem('gifos_channel') === 'edge'; } catch (e) {}
+    if (own || !/(^|\.)gifos\.app$/.test(location.hostname)) { location.replace(url); return; }
+    var done = false;
+    function finish() { if (done) return; done = true; location.replace(url); }
+    try {
+      var x = new XMLHttpRequest();
+      x.open('GET', '/version.json?ts=' + Date.now(), true);
+      x.timeout = 3000;
+      x.onload = function () {
+        try {
+          var v = String((JSON.parse(x.responseText) || {}).current || '');
+          if (x.status >= 200 && x.status < 300 && /^\d+\.\d+\.\d+$/.test(v)) localStorage.setItem('gifos_current', v);
+        } catch (e) {}
+        finish();
+      };
+      x.onerror = x.ontimeout = x.onabort = finish;
+      x.send();
+    } catch (e) { finish(); }
+    setTimeout(finish, 3500);
+  }
+
+  // /store and /store/<slug> — the App Store, and a shareable link to one
+  // listing. The slug is a public catalog name (site/apps/<slug>/), NOT a
+  // capability like a join code: nothing is derived from it and anyone may
+  // hold it. store.js rewrites ?app= back to the pretty form.
+  var s = location.pathname.match(/^\/store(?:\/([a-z0-9-]{1,64}))?\/?$/i);
+  if (s) {
+    // Into the HASH, like every other pretty route here: store.html's channel
+    // loader carries `pathname + hash` across a version redirect and drops the
+    // query, so a slug in ?app= would vanish for anyone on a pinned build.
+    var q = location.search ? '&' + location.search.slice(1) : '';
+    go('/store.html' + (s[1] ? '#app=' + encodeURIComponent(s[1].toLowerCase()) + q : (q ? '#' + q.slice(1) : '')));
+    return;
+  }
+  // Bare /meet, no room = START A FRESH MEETING, identical to double-clicking
+  // the Meeting app on the Home Screen (which loads run.html with no room and
+  // mints one). Keeps the two entry points equal.
+  if (/^\/meet\/?$/i.test(location.pathname)) {
+    go('/run.html', true);
+    return;
+  }
+  // Bare /cast, no room = the Broadcast app's lobby (run.html's broadcast
+  // skin — see the BROADCAST block in run.html).
+  if (/^\/cast\/?$/i.test(location.pathname)) {
+    go('/run.html#bc=1', true);
+    return;
+  }
+  // /meet/<room>/<verifier> is an ADMIN-MANAGED room — a DIFFERENT room from
+  // /meet/<room>. The verifier segment is part of the room's identity (safe
+  // to share publicly); admin power is knowing the password it derives from.
+  // Room ids can be as short as ONE character: gifos.app/meet/a is a global
+  // public channel anyone in the world can wander into. Group moderation
+  // (anyone can mute/blur anyone) keeps the low channels civilized.
+  //
+  // App links: /join/<code> is a self-healing session (the code is the whole
+  // capability); /join/<room>/<verifier>/<code> is an OWNED app — the public
+  // room.verifier names the session (only the creator's app can host it), and
+  // the trailing code is the guests' join-and-decrypt secret.
+  var m = location.pathname.match(/^\/(?:join|meet|cast)\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64})(?:\/([a-z0-9]{1,64}))?)?\/?$/i);
+  if (m) {
+    var code = m[1];
+    var verifier = m[2] ? m[2].toLowerCase() : '';
+    var lsec = m[3] || '';
+    var extra = location.search ? '&' + location.search.slice(1) : '';
+    if (/^\/(?:meet|cast)\//.test(location.pathname)) {
+      // A meeting has no separate join token — the room id IS the capability, so
+      // no &k= (the app branch below still needs it: an owned app carries one).
+      // /cast/<room>/<V> is the SAME admin room worn as the Broadcast skin —
+      // the flag rides the hash, like everything that must survive a redirect.
+      go('/run.html#v=' + code + (verifier ? '&av=' + verifier : '')
+        + (/^\/cast\//i.test(location.pathname) ? '&bc=1' : '') + extra, true);
+    } else if (verifier && lsec) {
+      go('/run.html#s=' + code + '.' + verifier + '&k=' + lsec + extra, true);
+    } else if (!verifier) {
+      go('/run.html#j=' + code + extra, true);
+    } else {
+      go('/'); // an owned link without its secret opens nothing
+      return;
+    }
+    return;
+  }
+  go('/');
+})();
+</script>
+</head>
+<body></body>
+</html>

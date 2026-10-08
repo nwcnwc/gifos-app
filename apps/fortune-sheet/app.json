@@ -1,0 +1,60 @@
+{
+  "catalog": "1.0",
+  "slug": "fortune-sheet",
+  "appId": "fortune-sheet",
+  "name": "Fortune Sheet",
+  "shortName": "Sheets",
+  "version": "1.0",
+  "minBuild": 947,
+  "tagline": "An Excel-like spreadsheet. Your workbook is saved on your device, not a cloud.",
+  "description": "A full spreadsheet: cells, formulas, formatting, freeze, sort, filter, comments, and as many sheets as you need. Type a budget, a roster, a grade book — it stays on this device, inside the app — your numbers do not visit anyone's server.\n\nIt opens on a small demo sheet so you can see formulas working, then it is yours. Every edit is saved a moment after you make it; close the app and come back, the grid is where you left it. New workbook wipes the grid, not the app.\n\nAn unofficial port of FortuneSheet by ruilisi, MIT-licensed. Their live collaboration is not in this app.",
+  "author": {
+    "name": "ruilisi",
+    "url": "https://github.com/ruilisi/fortune-sheet"
+  },
+  "releaseDate": "2026-08-22",
+  "updated": "2026-08-22",
+  "categories": [
+    "Productivity"
+  ],
+  "tags": [
+    "spreadsheet",
+    "excel",
+    "sheets",
+    "formulas",
+    "offline",
+    "workbook"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2022 Suzhou Ruilisi Technology Co., Ltd; Copyright (c) Facebook, Inc. and its affiliates.",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/fortune-sheet",
+  "accent": [
+    1,
+    136,
+    251
+  ],
+  "capabilities": {
+    "db": true
+  },
+  "cover": "/apps/fortune-sheet/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/fortune-sheet/fortune-sheet.gif",
+  "bytes": 1268204,
+  "download": 0,
+  "provides": null,
+  "sha256": "ad66e19e399db824a91565a4745f41c5f4e802f9b9c2014e3f011692c32b117b",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-29"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "FortuneSheet",
+    "url": "https://github.com/ruilisi/fortune-sheet",
+    "blessed": false
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "catalog": "1.0",
+  "slug": "thumb-sprint",
+  "appId": "thumb-sprint",
+  "name": "Thumb Sprint",
+  "shortName": "Sprint",
+  "version": "1.0.0",
+  "minBuild": 947,
+  "tagline": "Mash your thumb to sprint. A friend races the next lane from one link.",
+  "description": "Mash the pad on your phone. Your sticker sprints. First across the tape wins. A friend sits in the next lane from one invite.\n\nJump the countdown and everyone sees it: you lurch, you go back, you wait. The last second of the race loops so you can see whose nose broke the tape.\n\nOn your own, race a ghost of your best run, or a computer with a fair cadence — beatable if you mash, not asleep if you don't. Close the app: your best time is still there.\n\nThe pad is most of the lower half of the phone. On a laptop, hit space.",
+  "author": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "releaseDate": "2026-08-23",
+  "updated": "2026-08-23",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "race",
+    "party",
+    "multiplayer",
+    "touch",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/thumb-sprint",
+  "accent": [
+    255,
+    92,
+    74
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/thumb-sprint/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/thumb-sprint/thumb-sprint.gif",
+  "bytes": 225768,
+  "download": 0,
+  "provides": null,
+  "sha256": "8d1a776c193bf55de28f1b159aad238aa531b95079f46cd7cbc2d43b402b8a99",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  }
+}

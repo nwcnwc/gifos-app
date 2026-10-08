@@ -1,0 +1,61 @@
+{
+  "catalog": "1.0",
+  "slug": "emoji-minesweeper",
+  "appId": "emoji-minesweeper",
+  "name": "Emoji Minesweeper",
+  "shortName": "Minesweeper",
+  "version": "1.0",
+  "minBuild": 947,
+  "tagline": "Minesweeper with emoji. Race a friend on the same board.",
+  "description": "A minesweeper board made of emoji — chicks, cake, flowers, storms, whichever set you pick. Tap a square to step on it. Hold (or right-click) to plant a flag. Double-tap a number to open the squares around it. Change the size and how many mines before you start.\n\nOn your own it is the original game. Send the invite and you both get the same board: first to clear it wins, and you can see each other's times as you go.\n\nYour last board size is remembered.\n\nAn unofficial port of emoji-minesweeper by muan. This copy adds the race, and a long-press so a phone can plant a flag.",
+  "author": {
+    "name": "muan",
+    "url": "https://github.com/muan/emoji-minesweeper"
+  },
+  "releaseDate": "2026-08-23",
+  "updated": "2026-08-23",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "minesweeper",
+    "emoji",
+    "puzzle",
+    "multiplayer",
+    "race",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2019 Mu-An Chiou",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/emoji-minesweeper",
+  "accent": [
+    255,
+    184,
+    48
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/emoji-minesweeper/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/emoji-minesweeper/emoji-minesweeper.gif",
+  "bytes": 195470,
+  "download": 0,
+  "provides": null,
+  "sha256": "4044b52eb01b566bc8e8014be0ea0be21df0b0a2978360f415b57f40202f6841",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-24"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "emoji-minesweeper",
+    "url": "https://github.com/muan/emoji-minesweeper",
+    "blessed": false
+  }
+}

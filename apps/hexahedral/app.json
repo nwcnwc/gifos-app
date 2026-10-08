@@ -1,0 +1,59 @@
+{
+  "catalog": "1.0",
+  "slug": "hexahedral",
+  "appId": "hexahedral",
+  "name": "Hexahedral",
+  "shortName": "Hexahedral",
+  "version": "1.1",
+  "minBuild": 947,
+  "tagline": "Drag the green cube through thirty puzzle levels.",
+  "description": "Close it on level 18 and it opens on level 18 — the level you reached and your best moves are saved.\n\nYou are the green cube. Pink blocks are up, blue are down, beige are broken. Step onto a neighbour and it toggles. Push every pink down before you run out of moves. Drag the cube on a phone and it slides along the isometric faces; tap a neighbour; arrows work on a laptop. Undo if you step wrong.\n\nEasy, medium, and hard — ten Global Game Jam levels each. Finish one and the next is waiting.\n\nAn unofficial port of Hexahedral by mminer. Same thirty puzzles.",
+  "author": {
+    "name": "mminer",
+    "url": "https://github.com/mminer/hexahedral"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "puzzle",
+    "hex",
+    "jam",
+    "blocks",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2018 Matthew Miner",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/hexahedral",
+  "accent": [
+    211,
+    45,
+    143
+  ],
+  "capabilities": {
+    "db": true
+  },
+  "cover": "/apps/hexahedral/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/hexahedral/hexahedral.gif",
+  "bytes": 192496,
+  "download": 0,
+  "provides": null,
+  "sha256": "0bb81efc53910ceacc51bb140c60779dfc2ad51c199e2de3c31bba41020c9b34",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "Hexahedral",
+    "url": "https://github.com/mminer/hexahedral",
+    "blessed": false
+  }
+}

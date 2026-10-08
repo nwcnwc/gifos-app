@@ -1,0 +1,62 @@
+{
+  "catalog": "1.0",
+  "slug": "kana-quiz",
+  "appId": "kana-quiz",
+  "name": "Kana Quiz",
+  "shortName": "Kana",
+  "version": "1.0.0",
+  "minBuild": 947,
+  "tagline": "Learn hiragana and katakana. Quiz yourself, or race a friend.",
+  "description": "Tap the rows you know — you see the actual あ か さ, not a list of names — then a kana, four sounds. Or flip it: the sound first, pick the kana. Right or wrong lands at once.\n\nMiss one and it comes back until it sticks. Close the app and come back: your place is still there.\n\nPress Play a friend, then Invite in the bar above. You both get the same shuffled deck. First to ten right wins, or whoever has more when the cards run out.\n\nAn unofficial port of Kana Quiz by anzzstuff. The tables are the ones that shipped with that quiz.",
+  "author": {
+    "name": "anzzstuff",
+    "url": "https://github.com/anzzstuff/kanaquiz"
+  },
+  "releaseDate": "2026-08-23",
+  "updated": "2026-08-23",
+  "categories": [
+    "Learning"
+  ],
+  "tags": [
+    "japanese",
+    "kana",
+    "hiragana",
+    "katakana",
+    "quiz",
+    "offline",
+    "multiplayer"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2016 Antti Pilto",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/kana-quiz",
+  "accent": [
+    232,
+    72,
+    88
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/kana-quiz/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/kana-quiz/kana-quiz.gif",
+  "bytes": 202414,
+  "download": 0,
+  "provides": null,
+  "sha256": "760b1dbc55a6218e6b61ed47484fe6fc20d704914479aed98c137326b46420ff",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "Kana Quiz",
+    "url": "https://github.com/anzzstuff/kanaquiz",
+    "blessed": false
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "catalog": "1.0",
+  "slug": "js-gauntlet",
+  "appId": "js-gauntlet",
+  "name": "Dungeon Party",
+  "shortName": "Dungeon",
+  "version": "1.0.1",
+  "minBuild": 947,
+  "tagline": "Gauntlet: four classes, one dungeon, friends join from one invite.",
+  "description": "Send Invite in the bar above. Extra adventurers walk into the same dungeon — warrior, valkyrie, wizard, elf.\n\nOn your own it is Jake Gordon's HTML5 dungeon crawler: pick a class, shoot the generators, grab the key, find the exit. Health ticks down on its own. Potions clear the room.\n\nOn a phone the pad is move, fire, and potion. On a computer it is the arrows or WASD, space to fire, enter for a potion. Your high score and how far you got are saved.\n\nAn unofficial port of HTML5 Gauntlet by Jake Gordon, MIT-licensed. This copy adds the extra adventurers. The dungeon is silent: the original music was licensed only for that project. Not affiliated with Namco.",
+  "author": {
+    "name": "Jake Gordon",
+    "url": "https://github.com/jakesgordon/javascript-gauntlet"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Games"
+  ],
+  "tags": [
+    "dungeon",
+    "arcade",
+    "co-op",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2013, 2014, 2015, 2016 Jake Gordon and contributors",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/js-gauntlet",
+  "accent": [
+    249,
+    5,
+    3
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/js-gauntlet/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/js-gauntlet/js-gauntlet.gif",
+  "bytes": 1144624,
+  "download": 0,
+  "provides": null,
+  "sha256": "96b438281967ce71cb0507ffbff63791d2b56e94a5baa24cf5f83c3bc66f0468",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "HTML5 Gauntlet",
+    "url": "https://github.com/jakesgordon/javascript-gauntlet",
+    "blessed": false
+  }
+}

@@ -1,0 +1,57 @@
+<!doctype html><meta charset="utf-8"><title>dev fullscreen probe</title>
+<body style="margin:0;font:16px system-ui;background:#111;color:#eee">
+<!--
+  Dev-only probe. The app reports `refused:TypeError:Permissions check failed`
+  from requestFullscreen() on the phone while the same code succeeds on a
+  desktop, and the app frame demonstrably carries allow="fullscreen *" plus
+  allow-orientation-lock. That leaves a platform question our runtime cannot
+  answer from inside itself: what does Chrome on THIS Android actually require
+  before it will let a sandboxed, srcdoc, opaque-origin frame go fullscreen?
+  So: four frames, four spellings, one tap each, and the answers beaconed back.
+-->
+<h3 style="padding:.6rem">fullscreen probe — tap each button</h3>
+<div id="out" style="padding:.6rem;white-space:pre-wrap;font:13px ui-monospace,monospace"></div>
+<div id="frames"></div>
+<script>
+const out = document.getElementById('out');
+const log = (m) => { out.textContent += m + '\n'; new Image().src = '/report?fs=' + encodeURIComponent(m); };
+log('parent fullscreenEnabled=' + document.fullscreenEnabled);
+
+// Each case differs in ONE thing, so whichever works names the requirement.
+const CASES = [
+  { id: 'A', sandbox: 'allow-scripts',                      allow: 'fullscreen' },
+  { id: 'B', sandbox: 'allow-scripts',                      allow: 'fullscreen *' },
+  { id: 'C', sandbox: 'allow-scripts allow-same-origin',    allow: 'fullscreen *' },
+  { id: 'D', sandbox: 'allow-scripts',                      allow: 'fullscreen *', legacy: true },
+  // E and F mirror the REAL app frame, one difference at a time: first its full
+  // sandbox token list, then that plus the app CSP the runtime injects.
+  { id: 'E', sandbox: 'allow-scripts allow-forms allow-downloads allow-pointer-lock allow-orientation-lock',
+    allow: 'fullscreen *' },
+  { id: 'F', sandbox: 'allow-scripts allow-forms allow-downloads allow-pointer-lock allow-orientation-lock',
+    allow: 'fullscreen *', csp: true },
+];
+const INNER = (id, csp) => `<!doctype html>${csp ? '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data:; connect-src \'none\'">' : ''}<body style="margin:0;background:#204;color:#fff;font:16px system-ui">
+<button id="b" style="width:100%;height:70px;font:16px system-ui">${id}: go fullscreen</button>
+<div id="s" style="padding:.4rem;font:12px ui-monospace,monospace">enabled=<span id="e"></span></div>
+<script>
+document.getElementById('e').textContent = document.fullscreenEnabled;
+document.getElementById('b').onclick = function () {
+  var say = function (m) { parent.postMessage('${id} ' + m, '*'); document.getElementById('s').textContent = m; };
+  try {
+    var p = document.documentElement.requestFullscreen();
+    if (p && p.then) p.then(function () { say('OK fullscreen'); }, function (e) { say('REFUSED ' + e.name + ':' + e.message); });
+    else say('sync-return');
+  } catch (e) { say('THREW ' + e.message); }
+};
+<\/script>`;
+addEventListener('message', (e) => log(String(e.data).slice(0, 160)));
+for (const c of CASES) {
+  const f = document.createElement('iframe');
+  f.setAttribute('sandbox', c.sandbox);
+  f.setAttribute('allow', c.allow);
+  if (c.legacy) f.setAttribute('allowfullscreen', '');
+  f.style.cssText = 'width:100%;height:120px;border:1px solid #444;display:block;margin:.4rem 0';
+  f.srcdoc = INNER(c.id, c.csp);
+  document.getElementById('frames').appendChild(f);
+}
+</script>

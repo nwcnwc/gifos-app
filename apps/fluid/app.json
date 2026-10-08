@@ -1,0 +1,60 @@
+{
+  "catalog": "1.0",
+  "slug": "fluid",
+  "appId": "fluid",
+  "name": "Fluid",
+  "shortName": "Fluid",
+  "version": "1.1",
+  "minBuild": 947,
+  "tagline": "Drag a finger through ink and watch it swirl.",
+  "description": "Press and drag. Colour blooms behind the pointer, then folds into itself — a Navier–Stokes toy that already ran on phones. The quality, dye, bloom, and pause settings you pick come back next time, along with a still of the last swirl.\n\nA random-splat button and a screenshot live in the panel. On a phone the panel starts closed; tap the bar. If this GPU cannot keep up, quality steps down and the app says so. If there is no WebGL, it says that too, instead of a black screen.\n\nAn unofficial port of WebGL Fluid Simulation by Pavel Dobryakov. Same ink, same pointer.",
+  "author": {
+    "name": "Pavel Dobryakov",
+    "url": "https://github.com/PavelDoGreat/WebGL-Fluid-Simulation"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Creativity"
+  ],
+  "tags": [
+    "fluid",
+    "ink",
+    "webgl",
+    "toy",
+    "touch",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2017 Pavel Dobryakov",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/fluid",
+  "accent": [
+    0,
+    180,
+    220
+  ],
+  "capabilities": {
+    "db": true
+  },
+  "cover": "/apps/fluid/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/fluid/fluid.gif",
+  "bytes": 240937,
+  "download": 0,
+  "provides": null,
+  "sha256": "4ba7ee9dc58a3f965616148f23d7ae3f1a0b5b868129a30e02b5cbd5b2e2502e",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-29"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "WebGL Fluid Simulation",
+    "url": "https://github.com/PavelDoGreat/WebGL-Fluid-Simulation",
+    "blessed": false
+  }
+}

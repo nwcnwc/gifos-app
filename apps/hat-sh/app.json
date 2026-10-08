@@ -1,0 +1,60 @@
+{
+  "catalog": "1.0",
+  "slug": "hat-sh",
+  "appId": "hat-sh",
+  "name": "hat.sh",
+  "shortName": "hat.sh",
+  "version": "1.0",
+  "minBuild": 947,
+  "tagline": "Encrypt and decrypt files in this tab. Nothing leaves this device.",
+  "description": "Drop a file, pick a password (or a pair of keys), and get an encrypted copy back — or drop a .enc and get the original back. The file stays on this device.\n\nAn unofficial port of hat.sh by sh-dv. Same file format: a file this app encrypts opens in hat.sh, and a file hat.sh encrypted opens here. You can lock it with a password, or with a key pair if you would rather exchange keys than share a password.\n\nVery large files have to fit in this tab at once, the same way hat.sh already does in Safari. A few hundred megabytes is fine; a multi-gigabyte file may not fit. Old hat.sh v1 files (the “Encrypted Using Hat.sh” header) are refused rather than guessed at. Passwords must be at least 12 characters.",
+  "author": {
+    "name": "sh-dv",
+    "url": "https://github.com/sh-dv/hat.sh"
+  },
+  "releaseDate": "2026-08-22",
+  "updated": "2026-08-22",
+  "categories": [
+    "Utilities"
+  ],
+  "tags": [
+    "encryption",
+    "decryption",
+    "privacy",
+    "offline",
+    "password"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2021 sh-dv; Copyright (c) 2015-2023",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/hat-sh",
+  "accent": [
+    107,
+    140,
+    255
+  ],
+  "capabilities": {
+    "wasm": true
+  },
+  "cover": "/apps/hat-sh/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/hat-sh/hat-sh.gif",
+  "bytes": 661317,
+  "download": 0,
+  "provides": null,
+  "sha256": "8625338d2f5327f2475ea4b19d619a95a0623a3c87361b52cd580c981acde03d",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-29"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "hat.sh",
+    "url": "https://github.com/sh-dv/hat.sh",
+    "blessed": false,
+    "donate": "https://ko-fi.com/shdvapps"
+  }
+}

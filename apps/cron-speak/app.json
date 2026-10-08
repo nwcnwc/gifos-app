@@ -1,0 +1,60 @@
+{
+  "catalog": "1.0",
+  "slug": "cron-speak",
+  "appId": "cron-speak",
+  "name": "Cron Speak",
+  "shortName": "Cron",
+  "version": "1.1.0",
+  "minBuild": 947,
+  "tagline": "Paste a cron expression, read it back in plain English.",
+  "description": "Type a five-field schedule. The app says it in English, names each field, and lists the next times it fires.\n\nThe last expression you typed comes back the next time you open the app. Press Invite (the GifOS bar) and the same sentence shows up, read-only, for everyone in a meeting.\n\nAn unofficial port of cRonstrue by bradymholt. English only.",
+  "author": {
+    "name": "bradymholt",
+    "url": "https://github.com/bradymholt/cRonstrue"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Developer",
+    "Utilities"
+  ],
+  "tags": [
+    "cron",
+    "schedule",
+    "english",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2017 Brady Holt",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/cron-speak",
+  "accent": [
+    90,
+    160,
+    220
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true
+  },
+  "cover": "/apps/cron-speak/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/cron-speak/cron-speak.gif",
+  "bytes": 207954,
+  "download": 0,
+  "provides": null,
+  "sha256": "b98f6f2a651003f8f73149965a27ede7089f51f87cd001ea1a937252386a5fd9",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-29"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "cRonstrue",
+    "url": "https://github.com/bradymholt/cRonstrue",
+    "blessed": false
+  }
+}

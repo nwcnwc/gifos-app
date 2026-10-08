@@ -1,0 +1,62 @@
+{
+  "catalog": "1.0",
+  "slug": "drawnix",
+  "appId": "drawnix",
+  "name": "Drawnix",
+  "shortName": "Drawnix",
+  "version": "0.4.0",
+  "minBuild": 947,
+  "tagline": "Freehand, mind maps and flowcharts on one infinite canvas — saved on this device.",
+  "description": "A whiteboard that holds a mind map, a flowchart and a pencil sketch on the same infinite canvas, so you do not have to open three tools to finish one thought.\n\nDraw boxes and arrows, grow a mind map from the keyboard, or just scribble. Undo, redo, copy, paste, zoom and pan all work the way a board should. Drop in a picture. Export a PNG, an SVG or a Drawnix file when you want a copy in your hands. Paste a text flowchart and it becomes boxes and arrows; paste a Markdown outline and it becomes a mind map.\n\nThe board auto-saves on this device — there is no cloud copy. Close the window, open it later, the canvas is where you left it.\n\nAn unofficial port of Drawnix by plait-board, MIT-licensed.",
+  "author": {
+    "name": "plait-board",
+    "url": "https://github.com/plait-board/drawnix"
+  },
+  "releaseDate": "2026-08-22",
+  "updated": "2026-08-22",
+  "categories": [
+    "Creativity",
+    "Productivity"
+  ],
+  "tags": [
+    "whiteboard",
+    "mindmap",
+    "flowchart",
+    "freehand",
+    "drawing",
+    "offline",
+    "canvas"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2024 Drawnix; Copyright (c) Meta Platforms, Inc. and affiliates.",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/drawnix",
+  "accent": [
+    70,
+    120,
+    230
+  ],
+  "capabilities": {
+    "db": true
+  },
+  "cover": "/apps/drawnix/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/drawnix/drawnix.gif",
+  "bytes": 2234094,
+  "download": 0,
+  "provides": null,
+  "sha256": "32fdc7c3b0bd96332f4fa9f7ae243bb39d4d381ab3b276226a868cd054b39ffc",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-26"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "Drawnix",
+    "url": "https://github.com/plait-board/drawnix",
+    "blessed": false
+  }
+}

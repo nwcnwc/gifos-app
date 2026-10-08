@@ -1,0 +1,64 @@
+{
+  "catalog": "1.0",
+  "slug": "sandspiel",
+  "appId": "sandspiel",
+  "name": "Sandspiel",
+  "shortName": "Sand",
+  "version": "1.1.0",
+  "minBuild": 947,
+  "tagline": "Pour sand, water, fire and plants. Watch them react.",
+  "description": "Close it, keep the GIF, and the dunes go with it.\n\nPick an element and paint with a finger or a mouse. Sand piles. Water finds a way down. Lava turns water to stone. Fire eats wood. Plants drink. Pause, undo, reset. Five brush sizes, from a dot to a splash.\n\nName a board to keep an extra copy on this device. Playing with friends is a wall of worlds: press Play together, then Invite in the bar above the app, and send the link. Friends land on the wall, pin a board as a card, tap a card to open it.\n\nAn unofficial port of Sandspiel by Max Bittker. This copy swaps the public gallery for a meeting wall.",
+  "author": {
+    "name": "Max Bittker",
+    "url": "https://github.com/MaxBittker/sandspiel"
+  },
+  "releaseDate": "2026-08-24",
+  "updated": "2026-08-24",
+  "categories": [
+    "Creativity",
+    "Games"
+  ],
+  "tags": [
+    "sand",
+    "falling-sand",
+    "elements",
+    "paint",
+    "toy",
+    "multiplayer",
+    "offline"
+  ],
+  "license": "MIT",
+  "copyright": "Copyright (c) 2018 Max Bittker",
+  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/sandspiel",
+  "accent": [
+    230,
+    196,
+    110
+  ],
+  "capabilities": {
+    "db": true,
+    "multiplayer": true,
+    "wasm": true
+  },
+  "cover": "/apps/sandspiel/cover.jpg",
+  "screenshots": [],
+  "gif": "/apps/sandspiel/sandspiel.gif",
+  "bytes": 283727,
+  "download": 0,
+  "provides": null,
+  "sha256": "3b452b0c67ae40dfd6ce28a3759c08070fbd0cf660be5817e7d33b67c434f531",
+  "signature": {
+    "type": "domain",
+    "id": "gifos.app",
+    "ts": "2026-08-25"
+  },
+  "porter": {
+    "name": "GifOS",
+    "url": "https://gifos.app"
+  },
+  "basedOn": {
+    "name": "Sandspiel",
+    "url": "https://github.com/MaxBittker/sandspiel",
+    "blessed": false
+  }
+}
