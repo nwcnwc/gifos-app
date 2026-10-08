@@ -2,6 +2,21 @@
  "note": "Release notes shown in Settings → Advanced → Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" — a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
  "entries": [
   {
+   "version": "0.9.20",
+   "date": "2026-10-08",
+   "headline": "Broadcast opens again, and people who drop out of a meeting get back in fast",
+   "critical": true,
+   "fixes": [
+    "The Broadcast app on the Home Screen opens again. It used to reload itself over and over and never start.",
+    "If everyone in a small meeting lost their seat at once, nobody could get back in. The meeting now restarts itself.",
+    "Someone who reloaded while the meeting's host was offline could be left outside for good. They now get back in.",
+    "After someone's device froze and came back, the meeting could keep two hosts for minutes. It now settles in seconds.",
+    "Joining or rejoining while someone was offline could take 15 to 30 seconds. It now takes a few seconds.",
+    "A reloaded page goes straight back into the meeting it was in.",
+    "While you wait to get back in, the meeting no longer says \"Just you\"; it says it is getting you back in."
+   ]
+  },
+  {
    "version": "0.9.19",
    "date": "2026-10-07",
    "headline": "Meetings keep their picture on slow devices, and people who drop out come back fast",
