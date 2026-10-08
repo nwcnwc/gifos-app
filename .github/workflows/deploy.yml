@@ -1,0 +1,144 @@
+# Push to main only. A pull request from a fork must not receive the token.
+# This deploys the repo root. It does not attach gifos.app and it does not
+# add a worker route. DNS stays where it is.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare
+  cancel-in-progress: false
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Install wrangler
+        run: npm install --prefix "$RUNNER_TEMP/tools" --no-audit --no-fund wrangler@4.128.0
+
+      - name: Stage the site
+        run: |
+          set -euo pipefail
+          # The published build number must not move backward. 2560 is the
+          # live edge at anchor 5296640 (the public-link fix). Later commits
+          # that touch the site add to it. worker/ and this workflow do not.
+          ANCHOR_SHA=529664078fa25206f8ffd45465db57f9494152ff
+          ANCHOR_BUILD=2560
+          if ! git cat-file -e "${ANCHOR_SHA}^{commit}" 2>/dev/null; then
+            echo "::error::ANCHOR_SHA ${ANCHOR_SHA} is not in this checkout."
+            exit 1
+          fi
+          SINCE=$(git rev-list --count ${ANCHOR_SHA}..HEAD -- . ':(exclude)worker' ':(exclude).github' ':(exclude)README.md' ':(exclude)NOTICE')
+          BUILD=$((ANCHOR_BUILD + SINCE))
+          if [ "$BUILD" -lt 2560 ]; then
+            echo "::error::edge build ${BUILD} is below the live number 2560"
+            exit 1
+          fi
+          echo "edge build = $BUILD (anchor $ANCHOR_BUILD + $SINCE)"
+          echo "BUILD=$BUILD" >> "$GITHUB_ENV"
+
+          rsync -a \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'worker' \
+            --exclude 'dist' \
+            --exclude 'README.md' \
+            --exclude 'NOTICE' \
+            --exclude '*.gif' \
+            ./ dist/
+          gifs=$(find . -path ./.git -prune -o -name '*.gif' -print | wc -l)
+          echo "gif files = $gifs"
+          if [ "$gifs" -ne 204 ]; then
+            echo "::error::expected 204 GIFs, found $gifs"
+            exit 1
+          fi
+          if find dist -type f -name '*.gif' | grep -q .; then
+            echo "::error::a GIF was staged for Pages"
+            exit 1
+          fi
+          big=$(find dist -type f -size +25M -print)
+          if [ -n "$big" ]; then
+            echo "::error::Pages file over 25 MiB"
+            printf '%s\n' "$big"
+            exit 1
+          fi
+          printf '/* baked at deploy */\nwindow.GIFOS_BUILD = %s;\n' "$BUILD" > dist/js/build.js
+          node -e "const f='dist/version.json',j=JSON.parse(require('fs').readFileSync(f));j.edgeBuild=$BUILD;require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
+          SHA="${GITHUB_SHA::8}"
+          find dist -path dist/versions -prune -o -name '*.html' -print0 \
+            | xargs -0 sed -i -E "s/(href|src)=\"([^\":?]+\.(css|js))\"/\1=\"\2?v=${SHA}\"/g"
+          if grep -q "?v=${SHA}" dist/versions/0.9.19/index.html; then
+            echo "::error::versions/0.9.19 was cache-busted"
+            exit 1
+          fi
+
+      - name: Deploy Pages
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/tools/node_modules/.bin/wrangler"
+          "$W" pages deploy dist \
+            --project-name gifos \
+            --branch main \
+            --commit-hash "$GITHUB_SHA"
+
+      - name: Upload GIFs
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/tools/node_modules/.bin/wrangler"
+          fail=$(mktemp)
+          export W fail
+          find . -path ./.git -prune -o -name '*.gif' -print0 \
+            | xargs -0 -P 4 -I{} bash -c '
+                rel="${1#./}"
+                if ! "$W" r2 object put "gifos-gifs/$rel" --file="$1" --content-type image/gif --remote -y; then
+                  echo "$rel" >> "$fail"
+                  exit 1
+                fi
+              ' _ {}
+          if [ -s "$fail" ]; then
+            echo "::error::R2 upload failed"
+            cat "$fail"
+            exit 1
+          fi
+
+      - name: Deploy the GIF worker
+        run: |
+          set -euo pipefail
+          W="$RUNNER_TEMP/tools/node_modules/.bin/wrangler"
+          "$W" deploy --config worker/wrangler.toml
+
+      - name: Preview serves this build
+        run: |
+          set -euo pipefail
+          ok=0
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -fsS https://gifos-pq5.pages.dev/js/build.js | grep -q "GIFOS_BUILD = ${BUILD}"; then
+              ok=1
+              break
+            fi
+            sleep 3
+          done
+          if [ "$ok" != 1 ]; then
+            echo "::error::preview build.js did not reach GIFOS_BUILD = ${BUILD}"
+            exit 1
+          fi
+          code=$(curl -sS -o /dev/null -w '%{http_code}' https://gifos-pq5.pages.dev/apps/2048/2048.gif)
+          if [ "$code" != 404 ]; then
+            echo "::error::GIF on Pages returned $code"
+            exit 1
+          fi
