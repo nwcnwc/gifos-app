@@ -52,6 +52,11 @@ jobs:
           echo "edge build = $BUILD (anchor $ANCHOR_BUILD + $SINCE)"
           echo "BUILD=$BUILD" >> "$GITHUB_ENV"
 
+          # Refresh store reviews before upload. The clone is a sibling of this
+          # checkout so the script writes apps/reviews.json here. Do not commit.
+          git clone --depth 1 https://github.com/nwcnwc/gifos-apps-source.git ../gifos-apps-source
+          node ../gifos-apps-source/scripts/build-app-reviews.mjs
+
           rsync -a \
             --exclude '.git' \
             --exclude '.github' \

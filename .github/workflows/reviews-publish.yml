@@ -1,0 +1,39 @@
+# Regenerate the committed store reviews from the public app sources.
+# A token push does not start deploy.yml; the dispatch below does.
+name: Publish reviews
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - name: Regenerate apps/reviews.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Sibling of this checkout: the script writes ../gifos-app/apps/reviews.json.
+          git clone --depth 1 https://github.com/nwcnwc/gifos-apps-source.git ../gifos-apps-source
+          node ../gifos-apps-source/scripts/build-app-reviews.mjs
+          if git diff --quiet -- apps/reviews.json; then
+            echo "apps/reviews.json unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- apps/reviews.json
+          git commit -m "Regenerate apps/reviews.json from merged store reviews."
+          git push origin HEAD:main
+          gh workflow run deploy.yml --ref main
