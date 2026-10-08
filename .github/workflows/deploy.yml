@@ -96,25 +96,104 @@ jobs:
             --branch main \
             --commit-hash "$GITHUB_SHA"
 
-      - name: Upload GIFs
+      # One ListObjects returns every etag. A single PUT stores the MD5 as
+      # that etag, so an unchanged GIF is not written again.
+      - name: Upload changed GIFs
+        env:
+          WRANGLER: ${{ runner.temp }}/tools/node_modules/.bin/wrangler
         run: |
           set -euo pipefail
-          W="$RUNNER_TEMP/tools/node_modules/.bin/wrangler"
-          fail=$(mktemp)
-          export W fail
-          find . -path ./.git -prune -o -name '*.gif' -print0 \
-            | xargs -0 -P 4 -I{} bash -c '
-                rel="${1#./}"
-                if ! "$W" r2 object put "gifos-gifs/$rel" --file="$1" --content-type image/gif --remote -y; then
-                  echo "$rel" >> "$fail"
-                  exit 1
-                fi
-              ' _ {}
-          if [ -s "$fail" ]; then
-            echo "::error::R2 upload failed"
-            cat "$fail"
-            exit 1
-          fi
+          python3 - << 'PY'
+          import hashlib, json, os, subprocess, urllib.parse, urllib.request
+          from concurrent.futures import ThreadPoolExecutor, as_completed
+
+          account = os.environ["CLOUDFLARE_ACCOUNT_ID"]
+          token = os.environ["CLOUDFLARE_API_TOKEN"]
+          wrangler = os.environ["WRANGLER"]
+          bucket = "gifos-gifs"
+
+          def list_page(cursor):
+              query = {"per_page": "1000"}
+              if cursor:
+                  query["cursor"] = cursor
+              url = (
+                  "https://api.cloudflare.com/client/v4/accounts/"
+                  + account
+                  + "/r2/buckets/"
+                  + bucket
+                  + "/objects?"
+                  + urllib.parse.urlencode(query)
+              )
+              req = urllib.request.Request(url, headers={"Authorization": "Bearer " + token})
+              with urllib.request.urlopen(req, timeout=60) as response:
+                  data = json.load(response)
+              if not data.get("success"):
+                  raise SystemExit("R2 list failed")
+              return data
+
+          stored = {}
+          cursor = None
+          while True:
+              page = list_page(cursor)
+              for obj in page["result"]:
+                  stored[obj["key"]] = str(obj.get("etag") or "").strip('"').lower()
+              info = page.get("result_info") or {}
+              if not info.get("is_truncated"):
+                  break
+              cursor = info.get("cursor")
+              if not cursor:
+                  raise SystemExit("R2 list truncated without a cursor")
+
+          def md5(path):
+              digest = hashlib.md5()
+              with open(path, "rb") as handle:
+                  for chunk in iter(lambda: handle.read(1 << 20), b""):
+                      digest.update(chunk)
+              return digest.hexdigest()
+
+          uploads = []
+          same = 0
+          for dirpath, dirs, names in os.walk("."):
+              dirs[:] = [name for name in dirs if name not in (".git", "dist")]
+              for name in names:
+                  if not name.endswith(".gif"):
+                      continue
+                  path = os.path.join(dirpath, name)
+                  key = os.path.relpath(path, ".").replace(os.sep, "/")
+                  if stored.get(key) == md5(path):
+                      same += 1
+                  else:
+                      uploads.append((key, path))
+          print(f"r2 objects {len(stored)}, unchanged {same}, upload {len(uploads)}", flush=True)
+          if same + len(uploads) != 204:
+              raise SystemExit(f"expected 204 GIFs, found {same + len(uploads)}")
+
+          def put(item):
+              key, path = item
+              cmd = [
+                  wrangler, "r2", "object", "put", f"{bucket}/{key}",
+                  "--file", path,
+                  "--content-type", "image/gif",
+                  "--remote",
+                  "-y",
+              ]
+              proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+              return key, proc.returncode, proc.stdout[-500:]
+
+          failed = []
+          if uploads:
+              with ThreadPoolExecutor(max_workers=4) as pool:
+                  futures = [pool.submit(put, item) for item in uploads]
+                  for future in as_completed(futures):
+                      key, code, out = future.result()
+                      if code != 0:
+                          failed.append((key, out))
+                          print(f"FAIL {key}", flush=True)
+          if failed:
+              for key, out in failed:
+                  print(f"--- {key}\n{out}")
+              raise SystemExit(1)
+          PY
 
       - name: Deploy the GIF worker
         run: |
