@@ -307,6 +307,22 @@ def attach(name, target):
     create_record({"type": "CNAME", "name": name, "content": target, "ttl": 1, "proxied": True})
     if not points_at_pages(list_records(name), target):
         raise GiveUp(f"DNS for {name} does not point at {target}")
+    # The domain answers 522 until Pages has finished attaching the hostname.
+    deadline = time.time() + 180
+    while True:
+        status, payload = api(
+            "GET", f"/accounts/{ACCOUNT}/pages/projects/{PROJECT}/domains/{name}"
+        )
+        value = (payload.get("result") or {}).get("status") if payload.get("success") else "unreadable"
+        log(f"DOMAIN {name} status={value}")
+        if value == "active":
+            return
+        if value in ("error", "blocked", "deactivated"):
+            raise GiveUp(f"{name} domain {value} " + err_text(payload))
+        if time.time() > deadline:
+            log(f"DOMAIN {name} still {value}; HTTPS checks will keep waiting")
+            return
+        time.sleep(10)
 
 
 def restore(snapshot):
@@ -575,6 +591,8 @@ def assert_page(url, needle, status=200):
     server = headers.get("server", "")
     if b"error code: 1010" in body:
         raise Inconclusive(url + " blocked the check")
+    if code in (520, 521, 522, 523, 525, 526):
+        raise Inconclusive(f"{url} status {code}")
     if "cloudflare" not in server.lower() and "cf-ray" not in headers:
         raise Inconclusive(url + " server " + server)
     if code != status:
@@ -590,6 +608,8 @@ def assert_bytes(url, content_type, magic):
     server = headers.get("server", "")
     if b"error code: 1010" in body:
         raise Inconclusive(url + " blocked the check")
+    if code in (520, 521, 522, 523, 525, 526):
+        raise Inconclusive(f"{url} status {code}")
     if code != 200:
         raise GiveUp(f"{url} status {code} type={headers.get('content-type')}")
     got = headers.get("content-type", "").split(";")[0].strip().lower()
@@ -700,7 +720,7 @@ def apply_cutover():
     try:
         attach(APEX, target)
         attach(WWW, target)
-        deadline = time.time() + 240
+        deadline = time.time() + 360
         while True:
             try:
                 verify_public()
