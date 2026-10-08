@@ -38,14 +38,14 @@
   "cover": "/apps/regexper/cover.jpg",
   "screenshots": [],
   "gif": "/apps/regexper/regexper.gif",
-  "bytes": 297555,
+  "bytes": 297557,
   "download": 0,
   "provides": null,
-  "sha256": "482185f9f27b95353ecc95bca88924af280f35ff8f38852a533aaf57dc2cfb42",
+  "sha256": "02333d5bf92cbc86a4eeec3edf9d4c3ecf4fb3db53a66e5a95c8a70f6b5a91d3",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

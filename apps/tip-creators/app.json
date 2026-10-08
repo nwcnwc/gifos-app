@@ -43,13 +43,13 @@
   "cover": "/apps/tip-creators/cover.jpg",
   "screenshots": [],
   "gif": "/apps/tip-creators/tip-creators.gif",
-  "bytes": 184233,
+  "bytes": 184238,
   "download": 0,
   "provides": null,
-  "sha256": "86fccf5182309477b566b09816f4e41b2e37628122d3f9f61859af079248b4d8",
+  "sha256": "01aaed3b7db3646c890bad9ed433403ed20dde49356ecdbd7b990f66b0cb4824",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-09-29"
+    "ts": "2026-10-08"
   }
 }

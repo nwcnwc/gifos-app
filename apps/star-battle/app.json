@@ -39,14 +39,14 @@
   "cover": "/apps/star-battle/cover.jpg",
   "screenshots": [],
   "gif": "/apps/star-battle/star-battle.gif",
-  "bytes": 789403,
+  "bytes": 789411,
   "download": 0,
   "provides": null,
-  "sha256": "f6958af63fe7c79bf602fdf0cc1f32dc84ecd1b4cc1b965f6f34b2bcf42eda63",
+  "sha256": "b40ac839df2ad9642ba3fd638003d41977b53aa06b77b62ab88e915177992db4",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

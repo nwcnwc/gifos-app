@@ -39,14 +39,14 @@
   "cover": "/apps/fluid/cover.jpg",
   "screenshots": [],
   "gif": "/apps/fluid/fluid.gif",
-  "bytes": 240937,
+  "bytes": 240948,
   "download": 0,
   "provides": null,
-  "sha256": "4ba7ee9dc58a3f965616148f23d7ae3f1a0b5b868129a30e02b5cbd5b2e2502e",
+  "sha256": "94a28e9e9c35d0018742b08ca16d236d7111f755df4c9f2c182230329c904849",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-29"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

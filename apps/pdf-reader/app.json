@@ -41,14 +41,14 @@
   "cover": "/apps/pdf-reader/cover.jpg",
   "screenshots": [],
   "gif": "/apps/pdf-reader/pdf-reader.gif",
-  "bytes": 832299,
+  "bytes": 832298,
   "download": 0,
   "provides": null,
-  "sha256": "914082028f47e51a09a8789e398e3861a5eac21c93045ade6dd6b08eab180e8a",
+  "sha256": "e149e999283f3080c9fe6241f76ccacca569268e3d9c875a31bcd45cede353b4",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

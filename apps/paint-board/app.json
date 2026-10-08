@@ -41,14 +41,14 @@
   "cover": "/apps/paint-board/cover.jpg",
   "screenshots": [],
   "gif": "/apps/paint-board/paint-board.gif",
-  "bytes": 193996,
+  "bytes": 194146,
   "download": 0,
   "provides": null,
-  "sha256": "26a958b5d4285e83fb9c23ff4906c1c9efef0790fe706f615356b21271abdb3a",
+  "sha256": "3fc11bc94aa834e4bb4d9e755b634187e248a595a4dd2b6559f93a9695dd553b",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-24"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

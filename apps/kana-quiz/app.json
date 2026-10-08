@@ -41,14 +41,14 @@
   "cover": "/apps/kana-quiz/cover.jpg",
   "screenshots": [],
   "gif": "/apps/kana-quiz/kana-quiz.gif",
-  "bytes": 202414,
+  "bytes": 202417,
   "download": 0,
   "provides": null,
-  "sha256": "760b1dbc55a6218e6b61ed47484fe6fc20d704914479aed98c137326b46420ff",
+  "sha256": "70fffe9b42e389dd6e0e7715d76101504588917ed001eb7d590238611734b61f",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

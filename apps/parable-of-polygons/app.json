@@ -41,14 +41,14 @@
   "cover": "/apps/parable-of-polygons/cover.jpg",
   "screenshots": [],
   "gif": "/apps/parable-of-polygons/parable-of-polygons.gif",
-  "bytes": 240118,
+  "bytes": 240123,
   "download": 0,
   "provides": null,
-  "sha256": "b9be8785054c816e5d841d4532da6d18f5ac6c708a1c8a05de01136c85d467f4",
+  "sha256": "144ccc4bb911b98e883a04e9d8989d98444a094bf8f4079f05a357ce57a4c4d9",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

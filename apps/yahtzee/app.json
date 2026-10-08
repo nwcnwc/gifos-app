@@ -39,14 +39,14 @@
   "cover": "/apps/yahtzee/cover.jpg",
   "screenshots": [],
   "gif": "/apps/yahtzee/yahtzee.gif",
-  "bytes": 338104,
+  "bytes": 338106,
   "download": 0,
   "provides": null,
-  "sha256": "58bb888d829a21048123d6a4344299766ca889d085b79a965b037227cbb78147",
+  "sha256": "9c7b02444cb3b50aa122a94d70c89f6fca723ca96f7f12f2bba6fbd81d648f04",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-30"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

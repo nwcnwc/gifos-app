@@ -42,14 +42,14 @@
   "cover": "/apps/fieldplay/cover.jpg",
   "screenshots": [],
   "gif": "/apps/fieldplay/fieldplay.gif",
-  "bytes": 206310,
+  "bytes": 206317,
   "download": 0,
   "provides": null,
-  "sha256": "9293b54a63128058bf6704cb769da50da050143a020015a46e88f330dfab9c40",
+  "sha256": "87e71c5c8000d779f0bab501324b2c971ad3df06cb7fa99d2310234db5e9db0d",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

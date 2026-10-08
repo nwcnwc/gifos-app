@@ -39,14 +39,14 @@
   "cover": "/apps/fend/cover.jpg",
   "screenshots": [],
   "gif": "/apps/fend/fend.gif",
-  "bytes": 594059,
+  "bytes": 594062,
   "download": 0,
   "provides": null,
-  "sha256": "00ffe3ad17a7a6c0ec07084d06e3ee8be69c3dc818c3b638260a7cb53e059bc3",
+  "sha256": "6e2842043bec08beed163f00a2471f9326cf44772c2498166a35da8a605f0eed",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-30"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

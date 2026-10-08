@@ -39,14 +39,14 @@
   "cover": "/apps/cron-speak/cover.jpg",
   "screenshots": [],
   "gif": "/apps/cron-speak/cron-speak.gif",
-  "bytes": 207954,
+  "bytes": 207966,
   "download": 0,
   "provides": null,
-  "sha256": "b98f6f2a651003f8f73149965a27ede7089f51f87cd001ea1a937252386a5fd9",
+  "sha256": "c70c578094996e8bfaeb018c266b3d30796c43369e6bea2a26a7a1e59200da32",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-29"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

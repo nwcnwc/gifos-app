@@ -39,14 +39,14 @@
   "cover": "/apps/2048/cover.jpg",
   "screenshots": [],
   "gif": "/apps/2048/2048.gif",
-  "bytes": 320331,
+  "bytes": 320334,
   "download": 0,
   "provides": null,
-  "sha256": "4942aa92b36a6ded5a0393836389f51dd8fe365788f175c3c896a3198541b501",
+  "sha256": "07e473339d2f47336be1f2e9704d03bbe1926a316197d227f53e47d0d532b993",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-26"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

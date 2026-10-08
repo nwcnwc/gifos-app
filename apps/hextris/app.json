@@ -40,14 +40,14 @@
   "cover": "/apps/hextris/cover.jpg",
   "screenshots": [],
   "gif": "/apps/hextris/hextris.gif",
-  "bytes": 336292,
+  "bytes": 336299,
   "download": 0,
   "provides": null,
-  "sha256": "579280a3438c4a8e3387c4123c4fdb8883563cc7566938e0d221b0c2eb46b03e",
+  "sha256": "28d9ffac1618021e92b769faa7756adac3085630d864dd2e4e1c599e59e81c09",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

@@ -41,14 +41,14 @@
   "cover": "/apps/hexgl/cover.jpg",
   "screenshots": [],
   "gif": "/apps/hexgl/hexgl.gif",
-  "bytes": 4191260,
+  "bytes": 4191268,
   "download": 0,
   "provides": null,
-  "sha256": "32ac5443f6cd59947f322b0c2260bfe2c6b081aabd86bd06a96b92546a7eecd8",
+  "sha256": "b066598a9fe0a467b5ca0644e2e8c79fdc2ba51c389abaed9fd4cb4af6923740",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

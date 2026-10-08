@@ -43,14 +43,14 @@
   "cover": "/apps/cascade-studio/cover.jpg",
   "screenshots": [],
   "gif": "/apps/cascade-studio/cascade-studio.gif",
-  "bytes": 9301900,
+  "bytes": 9301902,
   "download": 0,
   "provides": null,
-  "sha256": "c1faacf6b47173aa508495bf84e2025f31efd05358575f3f9aca342dba12fb1b",
+  "sha256": "6f18a0f6003bf253882f1c569514b520ff2c216dd5a707bd46b4bb7df1711e98",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-09-01"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

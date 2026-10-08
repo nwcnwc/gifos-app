@@ -39,14 +39,14 @@
   "cover": "/apps/longwave/cover.jpg",
   "screenshots": [],
   "gif": "/apps/longwave/longwave.gif",
-  "bytes": 202949,
+  "bytes": 202960,
   "download": 0,
   "provides": null,
-  "sha256": "0d900fe9e1cff7569f6ecba9ba323c93261d54cbdec700fb38269f3e1e6ab20d",
+  "sha256": "5a25177bfc1ef0816423f417ddd599b20e5e3f347833b0ae8569c8e8b85a6bc7",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-26"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

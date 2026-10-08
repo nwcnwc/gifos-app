@@ -39,14 +39,14 @@
   "cover": "/apps/blackjack/cover.jpg",
   "screenshots": [],
   "gif": "/apps/blackjack/blackjack.gif",
-  "bytes": 192959,
+  "bytes": 192968,
   "download": 0,
   "provides": null,
-  "sha256": "bac0ec66717f59a3417f58967c8bab051092a93b6ff111b63a2cd789bf80265f",
+  "sha256": "533e7e04b52ed730b4c7e8339acebe4b6e173ac83569bae30a095797a7731f29",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

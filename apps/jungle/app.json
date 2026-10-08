@@ -39,13 +39,13 @@
   "cover": "/apps/jungle/cover.jpg",
   "screenshots": [],
   "gif": "/apps/jungle/jungle.gif",
-  "bytes": 201405,
+  "bytes": 201406,
   "download": 0,
   "provides": null,
-  "sha256": "e51f13488146bb2d924d7468566586a496e0208706666fdc1c6dc90800e4c56a",
+  "sha256": "d7e6237e88dd764133e8e96674eec5f263bdb0d9fdf4f01d43b0d15681e92edc",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   }
 }

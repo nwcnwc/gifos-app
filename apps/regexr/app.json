@@ -41,14 +41,14 @@
   "cover": "/apps/regexr/cover.jpg",
   "screenshots": [],
   "gif": "/apps/regexr/regexr.gif",
-  "bytes": 192428,
+  "bytes": 192430,
   "download": 0,
   "provides": null,
-  "sha256": "c0548e2ca4b2554b1bee6d231e9693c356b3988fd17e5b77d0a6c0bc85386043",
+  "sha256": "077147045bc8fddce1c89a085f3347e8c530cb0da646e6a81b433c915a75e9a3",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-09-01"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

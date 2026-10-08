@@ -39,14 +39,14 @@
   "cover": "/apps/typing/cover.jpg",
   "screenshots": [],
   "gif": "/apps/typing/typing.gif",
-  "bytes": 202259,
+  "bytes": 202261,
   "download": 0,
   "provides": null,
-  "sha256": "4049a68cdae154553d2d8044d94787fadacdc94c368a1ed1378720d53470f434",
+  "sha256": "dc5a87cb8e6ae9a9a3eab73c9c31028c07c1c1b9de40f00213091d2521a18200",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-27"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

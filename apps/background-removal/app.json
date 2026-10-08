@@ -45,16 +45,16 @@
   "cover": "/apps/background-removal/cover.jpg",
   "screenshots": [],
   "gif": "/apps/background-removal/background-removal.gif",
-  "bytes": 12453691,
+  "bytes": 12453694,
   "download": 0,
   "optionalCount": 3,
   "optionalDownload": 308651454,
   "provides": null,
-  "sha256": "c0d9038eba821544295940cc50fac16c7625fbdc5bf22f3aaa98d2ccb07077ba",
+  "sha256": "be7b804622d276c68896177d6781009ef5e39ceee7b8e476392eefbbeb332680",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

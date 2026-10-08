@@ -40,14 +40,14 @@
   "cover": "/apps/a-dark-room/cover.jpg",
   "screenshots": [],
   "gif": "/apps/a-dark-room/a-dark-room.gif",
-  "bytes": 5307861,
+  "bytes": 5307863,
   "download": 0,
   "provides": null,
-  "sha256": "7c6c76eeae276fb3b7ca9fbebf5d5ff9fd7d7ceeb8823c80107d0739f9aafbc2",
+  "sha256": "8973ac97591218f517102a6410b1da4a2b5311168dc962b7ec280a10462bafa6",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

@@ -45,14 +45,14 @@
   "cover": "/apps/monaco-code/cover.jpg",
   "screenshots": [],
   "gif": "/apps/monaco-code/monaco-code.gif",
-  "bytes": 4321220,
+  "bytes": 4321224,
   "download": 0,
   "provides": null,
-  "sha256": "f36197bce20eed064994d0f8aa1c179068cb9db0831915e4efabdb6b451a1116",
+  "sha256": "f22af705b70ad3f6733f3ff1ccc9871f162d8f25b377c15f12c653416acdb924",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

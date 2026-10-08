@@ -39,14 +39,14 @@
   "cover": "/apps/texgen/cover.jpg",
   "screenshots": [],
   "gif": "/apps/texgen/texgen.gif",
-  "bytes": 197753,
+  "bytes": 197761,
   "download": 0,
   "provides": null,
-  "sha256": "0dab2e65127091bf0a0d31720094686701d7ff9685211124c5526f05e044dd66",
+  "sha256": "2a86077347325bba0d8825aa1673ed2c5bb424929144f85a157257324dadfcc3",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

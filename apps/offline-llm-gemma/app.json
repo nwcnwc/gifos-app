@@ -42,7 +42,7 @@
   "cover": "/apps/offline-llm-gemma/cover.jpg",
   "screenshots": [],
   "gif": "/apps/offline-llm-gemma/offline-llm-gemma.gif",
-  "bytes": 10227843,
+  "bytes": 10227858,
   "download": 806058240,
   "requiredCount": 1,
   "provides": {
@@ -50,10 +50,10 @@
       "cheapest"
     ]
   },
-  "sha256": "0e48cb459a3cb711c96bea49f8a8e01b7d22514aaf9a30f8ba427d86272af4ef",
+  "sha256": "a5ddfc604ca4d46def43fe6abbbefe1539c0b4d6551c6f33390cc2190c4d4f6c",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-26"
+    "ts": "2026-10-08"
   }
 }

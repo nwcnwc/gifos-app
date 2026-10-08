@@ -41,14 +41,14 @@
   "cover": "/apps/nullboard/cover.jpg",
   "screenshots": [],
   "gif": "/apps/nullboard/nullboard.gif",
-  "bytes": 400342,
+  "bytes": 400351,
   "download": 0,
   "provides": null,
-  "sha256": "9f19c8049c88335f0b11586cc63f3e118d6a269961a05456ce940e59138e95f9",
+  "sha256": "9881d34a638e09985c6a973302d71e6b1a0414d7f6cc34bf83067a1614beb6db",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

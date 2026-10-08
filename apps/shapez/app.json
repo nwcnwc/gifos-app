@@ -42,14 +42,14 @@
   "cover": "/apps/shapez/cover.jpg",
   "screenshots": [],
   "gif": "/apps/shapez/shapez.gif",
-  "bytes": 253010,
+  "bytes": 253019,
   "download": 0,
   "provides": null,
-  "sha256": "a921b36d9875906490355bd343fe200ecd4d62623500851bb54d3d9628f7cb6c",
+  "sha256": "e73df83c4538df26300664381dd8c49b8f16e54f35d9f51d84680434bf4af95b",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-09-01"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

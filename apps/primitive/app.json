@@ -40,14 +40,14 @@
   "cover": "/apps/primitive/cover.jpg",
   "screenshots": [],
   "gif": "/apps/primitive/primitive.gif",
-  "bytes": 204326,
+  "bytes": 204330,
   "download": 0,
   "provides": null,
-  "sha256": "3d36c19af78da363e6151764a861b7183ca19693a0662d8564449b403a0ec69f",
+  "sha256": "f611b6cb2361bb08abbd9cfdb9a92b07d5548267cbbe47c3825dcec41da8d78d",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

@@ -44,15 +44,15 @@
   "cover": "/apps/bible/cover.jpg",
   "screenshots": [],
   "gif": "/apps/bible/bible.gif",
-  "bytes": 4069035,
+  "bytes": 4069049,
   "download": 0,
   "optionalCount": 148,
   "optionalDownload": 155743007,
   "provides": null,
-  "sha256": "5ebb0d35a93c08982a82522c841dc3bdc79d9411b1a41456fff7a471174a1d0f",
+  "sha256": "dbac87ae0fc1ebd8153fdd693f4006d4b1c4965024a361eb63cd75941baa5d35",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-30"
+    "ts": "2026-10-08"
   }
 }

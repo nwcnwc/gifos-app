@@ -44,14 +44,14 @@
   "cover": "/apps/webamp/cover.jpg",
   "screenshots": [],
   "gif": "/apps/webamp/webamp.gif",
-  "bytes": 639683,
+  "bytes": 639699,
   "download": 0,
   "provides": null,
-  "sha256": "37472152777feb7da3896fcae63a99e826033e6f372476c99509f6e8d14d2da3",
+  "sha256": "1ff4952cc47edf31d7be5ea2ad41cc412c0b67e91be5c601d6217634fb9605a4",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

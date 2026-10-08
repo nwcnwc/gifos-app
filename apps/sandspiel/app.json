@@ -43,14 +43,14 @@
   "cover": "/apps/sandspiel/cover.jpg",
   "screenshots": [],
   "gif": "/apps/sandspiel/sandspiel.gif",
-  "bytes": 283727,
+  "bytes": 283726,
   "download": 0,
   "provides": null,
-  "sha256": "3b452b0c67ae40dfd6ce28a3759c08070fbd0cf660be5817e7d33b67c434f531",
+  "sha256": "629f462e53f2d2aabfec7894a3c5db7929f375df1fbe5c1bd00d0cbc95607ab3",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

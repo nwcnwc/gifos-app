@@ -42,14 +42,14 @@
   "cover": "/apps/evolution-of-trust/cover.jpg",
   "screenshots": [],
   "gif": "/apps/evolution-of-trust/evolution-of-trust.gif",
-  "bytes": 4785786,
+  "bytes": 4785792,
   "download": 0,
   "provides": null,
-  "sha256": "fffacce13984da9676465daf6fa5068049146284d6414cf4b926dd49a0fbb925",
+  "sha256": "87c93e5ff99c2150965d51eb1cdf8efc736d53369e3ac7c85ae474eb7fcbfb07",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

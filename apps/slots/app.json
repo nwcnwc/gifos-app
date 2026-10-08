@@ -40,14 +40,14 @@
   "cover": "/apps/slots/cover.jpg",
   "screenshots": [],
   "gif": "/apps/slots/slots.gif",
-  "bytes": 194652,
+  "bytes": 194657,
   "download": 0,
   "provides": null,
-  "sha256": "3bc21d8bf8c81860df3354003c676d1cb1a83ef52e47004351a1810e952f3f82",
+  "sha256": "ce951444455feb2d7a9284924b946694d1ed5b8fbef48129a5485789e78ca4ca",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-07"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

@@ -40,14 +40,14 @@
   "cover": "/apps/otpauth/cover.jpg",
   "screenshots": [],
   "gif": "/apps/otpauth/otpauth.gif",
-  "bytes": 231802,
+  "bytes": 231809,
   "download": 0,
   "provides": null,
-  "sha256": "e708ee60acc020e2b82dd1d45cdf6f1f4e0f9e1175a436a4647408937e695819",
+  "sha256": "78108df9049fb6a0bce1114b140d74e50feade9ac36a48edd8ed818ace47c444",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

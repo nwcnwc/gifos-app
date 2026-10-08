@@ -41,14 +41,14 @@
   "cover": "/apps/hydra/cover.jpg",
   "screenshots": [],
   "gif": "/apps/hydra/hydra.gif",
-  "bytes": 229737,
+  "bytes": 229739,
   "download": 0,
   "provides": null,
-  "sha256": "15558daef176207367d7bafd428307619801a27cdae9084f855003a125a0a330",
+  "sha256": "286b72af52a3196a28c0134dc0354fad77eebf164fe602c06a32cb4127b09214",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-09-01"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

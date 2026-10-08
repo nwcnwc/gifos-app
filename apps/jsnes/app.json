@@ -40,14 +40,14 @@
   "cover": "/apps/jsnes/cover.jpg",
   "screenshots": [],
   "gif": "/apps/jsnes/jsnes.gif",
-  "bytes": 315475,
+  "bytes": 315480,
   "download": 0,
   "provides": null,
-  "sha256": "bf85c331f08cb958b8a754f6d3e4665d0f9e18f3484c7ad9b70a5f3a757f15de",
+  "sha256": "397bb92cc99d50912aff1fdb7bb1ff9d187df227d0efbd8819c2b99a9f4e3dcb",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

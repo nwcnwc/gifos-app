@@ -42,14 +42,14 @@
   "cover": "/apps/digitaljs/cover.jpg",
   "screenshots": [],
   "gif": "/apps/digitaljs/digitaljs.gif",
-  "bytes": 625344,
+  "bytes": 625342,
   "download": 0,
   "provides": null,
-  "sha256": "4755370debc5ad49acfb341e0aea1a29bcff289336b41274f8da72a7e0b0144c",
+  "sha256": "627b1b01e21029ba24c1ba98a36a3af383f886499af552467bc956b544f7e9b3",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

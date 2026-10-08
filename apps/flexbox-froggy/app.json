@@ -42,14 +42,14 @@
   "cover": "/apps/flexbox-froggy/cover.jpg",
   "screenshots": [],
   "gif": "/apps/flexbox-froggy/flexbox-froggy.gif",
-  "bytes": 254175,
+  "bytes": 254185,
   "download": 0,
   "provides": null,
-  "sha256": "fb36bb869c50fef31fed31ef8d570337574a9579a4e18cd1e9dac2ebb566bcdf",
+  "sha256": "595a159a9f454d7ffdcad6078020f9b79a06375681913e6ca6e43d100be0fd19",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

@@ -47,11 +47,11 @@
   "download": 32232419,
   "requiredCount": 1,
   "provides": null,
-  "sha256": "a26e74a075a5f32f36cfff11986ecb41cd0b4872fa3f3ce8b84851a557feac7f",
+  "sha256": "16c62735b00101d2929acaf6991888360f2fb83438621bbfda653ed6b812be21",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

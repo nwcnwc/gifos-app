@@ -40,14 +40,14 @@
   "cover": "/apps/tuner/cover.jpg",
   "screenshots": [],
   "gif": "/apps/tuner/tuner.gif",
-  "bytes": 192889,
+  "bytes": 192892,
   "download": 0,
   "provides": null,
-  "sha256": "73fefc7d924d445d86b563a4cd651283f21fd8caf123cc8fb8dee3e8e2725a40",
+  "sha256": "abd8cd69b8ce74914020279cffe8b256ea84ccc7e3951c26878840c422eb9623",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-29"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

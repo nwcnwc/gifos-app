@@ -39,14 +39,14 @@
   "cover": "/apps/io-blobs/cover.jpg",
   "screenshots": [],
   "gif": "/apps/io-blobs/io-blobs.gif",
-  "bytes": 202749,
+  "bytes": 202752,
   "download": 0,
   "provides": null,
-  "sha256": "9dc9a73270d520c3d6b4464106a3d206b1f6beba3f5ffa0094a4fe0ad53dae83",
+  "sha256": "09a1a6ecb0a75678c06b4375560be403dc4dedf694c31ec0dd95dd9193a61d1f",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

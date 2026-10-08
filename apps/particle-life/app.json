@@ -41,14 +41,14 @@
   "cover": "/apps/particle-life/cover.jpg",
   "screenshots": [],
   "gif": "/apps/particle-life/particle-life.gif",
-  "bytes": 193588,
+  "bytes": 193591,
   "download": 0,
   "provides": null,
-  "sha256": "f78285702495fbc548b6d0db5cb619e13d2bc373090236c771e3a88cccfa133d",
+  "sha256": "d08e9994d8d5ce31efc7fb884782c9d0f1fd866e6ecbeaaef326b27610d826fc",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

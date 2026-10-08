@@ -40,14 +40,14 @@
   "cover": "/apps/learn-git-branching/cover.jpg",
   "screenshots": [],
   "gif": "/apps/learn-git-branching/learn-git-branching.gif",
-  "bytes": 207646,
+  "bytes": 207651,
   "download": 0,
   "provides": null,
-  "sha256": "e0b85ceb730c93b3dd4e5a7b5d59da576a9ab55be8298bc142bac7f167f566e0",
+  "sha256": "f9d0b9570a172752a3f8fe01eccec63edfc19903bbe105434728529d0b61d822",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

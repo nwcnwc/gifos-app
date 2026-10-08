@@ -39,14 +39,14 @@
   "cover": "/apps/drawphone/cover.jpg",
   "screenshots": [],
   "gif": "/apps/drawphone/drawphone.gif",
-  "bytes": 204760,
+  "bytes": 204759,
   "download": 0,
   "provides": null,
-  "sha256": "a51520d6fa4ce4a6939b2e5b2a0886dd759638321078bcd61a2c1ce4e40aed0a",
+  "sha256": "093e006beb9f31002fe2b68097d4a04eb8fbd6dd46fd456e875bffaa3a0cae78",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

@@ -39,14 +39,14 @@
   "cover": "/apps/floppy-bird/cover.jpg",
   "screenshots": [],
   "gif": "/apps/floppy-bird/floppy-bird.gif",
-  "bytes": 303309,
+  "bytes": 303318,
   "download": 0,
   "provides": null,
-  "sha256": "f25e3e6272a4fad840d6c59d3ae141bdd8548971295a64023ce70df6a2099481",
+  "sha256": "3de78467c5d00dec6ad014a0ac49fe840ae3b099b8386fd20223345dedd36b97",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

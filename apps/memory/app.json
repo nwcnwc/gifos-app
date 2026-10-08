@@ -38,14 +38,14 @@
   "cover": "/apps/memory/cover.jpg",
   "screenshots": [],
   "gif": "/apps/memory/memory.gif",
-  "bytes": 128530,
+  "bytes": 128536,
   "download": 0,
   "provides": null,
-  "sha256": "34ab2d4f013be353d7e11c7ea04a259dfc2536ab44955f1e46ac8d4dadbecd23",
+  "sha256": "76030e53db8e564b29190af05540f63401adcbfbabaf3c420c9fdb06ec4d270b",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

@@ -41,14 +41,14 @@
   "cover": "/apps/algorithm-visualizer/cover.jpg",
   "screenshots": [],
   "gif": "/apps/algorithm-visualizer/algorithm-visualizer.gif",
-  "bytes": 212060,
+  "bytes": 212069,
   "download": 0,
   "provides": null,
-  "sha256": "03343050530a2558e310eb70820f05d94787d925693313e06cb4fede40622f99",
+  "sha256": "7a000ca6a39e803bdb85371c6ebd2c41b09627172a7573765cc692cf1bc4adde",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

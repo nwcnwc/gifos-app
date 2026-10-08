@@ -39,14 +39,14 @@
   "cover": "/apps/duck-hunt/cover.jpg",
   "screenshots": [],
   "gif": "/apps/duck-hunt/duck-hunt.gif",
-  "bytes": 1542091,
+  "bytes": 1542098,
   "download": 0,
   "provides": null,
-  "sha256": "cc782db04756336fc168f0ee65a27f2800df7cc2a1d4e32fc95acfe947a191b3",
+  "sha256": "05d9c608f3fb3e051e9f80af273a3aa5ed4c09b51e0fb2bb2cbcc00cf4ae4c74",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-29"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

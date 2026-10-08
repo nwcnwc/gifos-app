@@ -40,14 +40,14 @@
   "cover": "/apps/yopass/cover.jpg",
   "screenshots": [],
   "gif": "/apps/yopass/yopass.gif",
-  "bytes": 256937,
+  "bytes": 256943,
   "download": 0,
   "provides": null,
-  "sha256": "2d5b977b3da4c5992c17c5ce04ba8f6fcf72b866006d37fe3c4c82a52be6c821",
+  "sha256": "ba962c0b119fa22dccc3717b091b03a1ba4fcbd27c35e79838fb38ce2eeacd48",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-26"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

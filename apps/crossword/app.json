@@ -38,14 +38,14 @@
   "cover": "/apps/crossword/cover.jpg",
   "screenshots": [],
   "gif": "/apps/crossword/crossword.gif",
-  "bytes": 166462,
+  "bytes": 166465,
   "download": 0,
   "provides": null,
-  "sha256": "37623e0f44adbe8e9456b1cd585d9796495b981ac4b9b112fda8936ec6f96a15",
+  "sha256": "9e0a73b83adf0f4342173f78d02185ad76bffd106749e1f47ed014032b831f67",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

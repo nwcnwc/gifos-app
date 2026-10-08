@@ -40,14 +40,14 @@
   "cover": "/apps/mykonos/cover.jpg",
   "screenshots": [],
   "gif": "/apps/mykonos/mykonos.gif",
-  "bytes": 198650,
+  "bytes": 198658,
   "download": 0,
   "provides": null,
-  "sha256": "6fb6eef2b2120fa2fe2b333e43bb0595b2074164cfc65ae293b0ac2c019edee6",
+  "sha256": "4f7e41ca4933bce16b956b129461482232a2d9559e7f4a52734053eaf4b34f14",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

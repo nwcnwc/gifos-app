@@ -45,13 +45,13 @@
   "cover": "/apps/finance/cover.jpg",
   "screenshots": [],
   "gif": "/apps/finance/finance.gif",
-  "bytes": 347122,
+  "bytes": 347132,
   "download": 0,
   "provides": null,
-  "sha256": "23e1d4fe728766b48077b0202115869d5b851a72a894f61c9e2a8c8cb5e5084b",
+  "sha256": "d9ba6b46074c74acb1a4875f31ce98ad63c3c95f11d792f431cfacf2cb01ab24",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-26"
+    "ts": "2026-10-08"
   }
 }

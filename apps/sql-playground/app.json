@@ -41,14 +41,14 @@
   "cover": "/apps/sql-playground/cover.jpg",
   "screenshots": [],
   "gif": "/apps/sql-playground/sql-playground.gif",
-  "bytes": 751808,
+  "bytes": 751815,
   "download": 0,
   "provides": null,
-  "sha256": "96ef76c1463d2768702fe3e0c3aea945664b8296157bfe07f77e1e37ba69630f",
+  "sha256": "b4bd582fc83c2e5f188fc94af5ae2952ba4db05f70f3e6760909354122c8386f",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

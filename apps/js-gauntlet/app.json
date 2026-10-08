@@ -41,11 +41,11 @@
   "bytes": 1144624,
   "download": 0,
   "provides": null,
-  "sha256": "96b438281967ce71cb0507ffbff63791d2b56e94a5baa24cf5f83c3bc66f0468",
+  "sha256": "4c37b492ba71c29b94769828d3a854581560c49e1f350e511a58c4e9e4114ee7",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

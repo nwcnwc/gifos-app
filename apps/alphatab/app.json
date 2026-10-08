@@ -43,14 +43,14 @@
   "cover": "/apps/alphatab/cover.jpg",
   "screenshots": [],
   "gif": "/apps/alphatab/alphatab.gif",
-  "bytes": 1367056,
+  "bytes": 1367062,
   "download": 0,
   "provides": null,
-  "sha256": "3ea9774accf0faa121e23be4ea13aa709713e24ba672176ff2621ddfa52cc39e",
+  "sha256": "4434a09b48f93ef9105c2af4e44e406ce7363f6d57730803dbe3cf5355285ac3",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

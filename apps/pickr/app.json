@@ -39,14 +39,14 @@
   "cover": "/apps/pickr/cover.jpg",
   "screenshots": [],
   "gif": "/apps/pickr/pickr.gif",
-  "bytes": 200868,
+  "bytes": 200875,
   "download": 0,
   "provides": null,
-  "sha256": "cc9cecb9ee54f02ad7533903eb2bb66362f7c0c65ec2660622ec6578d29236d0",
+  "sha256": "4741d9a97d6ab2b0a0cd50475fa771944126de10e893d3ff30ad4a32de66e6fe",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

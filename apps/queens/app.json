@@ -39,14 +39,14 @@
   "cover": "/apps/queens/cover.jpg",
   "screenshots": [],
   "gif": "/apps/queens/queens.gif",
-  "bytes": 246188,
+  "bytes": 246196,
   "download": 0,
   "provides": null,
-  "sha256": "f4e61b561465b82e7e053f15e1cc1a82d4f4690dde2a2b70ac8c1abf7129b31a",
+  "sha256": "29ac7db90c954092c6b48a090d5de9a260f223d6972ad3ec11b00d459f143177",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-27"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

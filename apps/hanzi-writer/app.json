@@ -41,14 +41,14 @@
   "cover": "/apps/hanzi-writer/cover.jpg",
   "screenshots": [],
   "gif": "/apps/hanzi-writer/hanzi-writer.gif",
-  "bytes": 1014332,
+  "bytes": 1014337,
   "download": 0,
   "provides": null,
-  "sha256": "a4f513adf8e0ef0ab21201ec0d5ca26f33e271ed9d8e29e3a8cb3e2f33f7c9ca",
+  "sha256": "469a4091e9aa5a018819d65ce3d38924b7ea59447af2cb37827f4f183f5866b5",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

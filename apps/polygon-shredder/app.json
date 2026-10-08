@@ -41,14 +41,14 @@
   "cover": "/apps/polygon-shredder/cover.jpg",
   "screenshots": [],
   "gif": "/apps/polygon-shredder/polygon-shredder.gif",
-  "bytes": 409939,
+  "bytes": 409946,
   "download": 0,
   "provides": null,
-  "sha256": "a5b4c55bb54c755b42e2fe7ccfbd068529f6c13014fdd8c13402c87c326cf829",
+  "sha256": "f57b4dee445354ba15708f10dc978950815e56d56e9fb2681a3e6baeb8087013",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

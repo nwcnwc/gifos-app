@@ -40,14 +40,14 @@
   "cover": "/apps/monkeytype/cover.jpg",
   "screenshots": [],
   "gif": "/apps/monkeytype/monkeytype.gif",
-  "bytes": 238302,
+  "bytes": 238304,
   "download": 0,
   "provides": null,
-  "sha256": "70bb28857ff0fb07dd5e1ec60a62d290d25b2d6f3c0e8641dbf51ae937906780",
+  "sha256": "f07c6ede590633197ac5b835a1386efff4993348ea99039855b544bde25871ea",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

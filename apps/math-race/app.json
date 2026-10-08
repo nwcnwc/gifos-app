@@ -40,14 +40,14 @@
   "cover": "/apps/math-race/cover.jpg",
   "screenshots": [],
   "gif": "/apps/math-race/math-race.gif",
-  "bytes": 197987,
+  "bytes": 197994,
   "download": 0,
   "provides": null,
-  "sha256": "a0e4e4f639788d69dd481ee686fa7c942f9b451d8b6e26e42fbb5654ac02c22f",
+  "sha256": "9d6ce16fdc8848bcaafa22ee3cf256af804472a1a49f600873202a824c3a38d1",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-27"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

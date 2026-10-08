@@ -38,14 +38,14 @@
   "cover": "/apps/connect-four/cover.jpg",
   "screenshots": [],
   "gif": "/apps/connect-four/connect-four.gif",
-  "bytes": 258037,
+  "bytes": 258048,
   "download": 0,
   "provides": null,
-  "sha256": "10990c31a7930ddb6110a6619ba822c5c55a4dff90dbd18d386b1bd088657646",
+  "sha256": "9faa68c896aff7e3d5b315f6f6c3d5d04753ea08f1f0db7e8663a959e54f248d",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

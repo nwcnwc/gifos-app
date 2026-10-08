@@ -39,14 +39,14 @@
   "cover": "/apps/bingo/cover.jpg",
   "screenshots": [],
   "gif": "/apps/bingo/bingo.gif",
-  "bytes": 204434,
+  "bytes": 204444,
   "download": 0,
   "provides": null,
-  "sha256": "61ecd8044c0f60e0f6c6c909ad422b99dcfa8280400b54c6b8a5f951a5db53f2",
+  "sha256": "5e209570c9481069e74b8cf941c524490ff1e29fabc437201816941194018537",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

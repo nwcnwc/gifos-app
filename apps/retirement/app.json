@@ -43,13 +43,13 @@
   "cover": "/apps/retirement/cover.jpg",
   "screenshots": [],
   "gif": "/apps/retirement/retirement.gif",
-  "bytes": 395240,
+  "bytes": 395255,
   "download": 0,
   "provides": null,
-  "sha256": "b84f372877a48aa67aa0520d38752a19fd16cf2e45a5a7a152e1386c6b61eeea",
+  "sha256": "9d783de67fab8e5871b764d494c659bcd443bd1f356d78190c7c5965a1ce53b9",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-26"
+    "ts": "2026-10-08"
   }
 }

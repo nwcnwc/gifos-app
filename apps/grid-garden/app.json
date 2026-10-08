@@ -42,14 +42,14 @@
   "cover": "/apps/grid-garden/cover.jpg",
   "screenshots": [],
   "gif": "/apps/grid-garden/grid-garden.gif",
-  "bytes": 422980,
+  "bytes": 422986,
   "download": 0,
   "provides": null,
-  "sha256": "e5bc22973f902a459cced7660fc87c3c62598a6763ce63234ae648f6da92f27d",
+  "sha256": "814980a7bcebdea7d53a6b69825c742616fd21877c605d51254eda80c6a6723f",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

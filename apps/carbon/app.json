@@ -43,14 +43,14 @@
   "cover": "/apps/carbon/cover.jpg",
   "screenshots": [],
   "gif": "/apps/carbon/carbon.gif",
-  "bytes": 287499,
+  "bytes": 287498,
   "download": 0,
   "provides": null,
-  "sha256": "d5fd9325313154929de9837701b6669a312d1ca553d57f60539c4794534d10d0",
+  "sha256": "98e4030ae097e13dc5a24dd00507d1b8d355cd1917635b8788073ab9a8621fea",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

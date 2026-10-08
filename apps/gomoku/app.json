@@ -39,14 +39,14 @@
   "cover": "/apps/gomoku/cover.jpg",
   "screenshots": [],
   "gif": "/apps/gomoku/gomoku.gif",
-  "bytes": 264218,
+  "bytes": 264225,
   "download": 0,
   "provides": null,
-  "sha256": "98b313b50267250b4ef8671e6f6d62bc570912d1935a0a4d6c7d27631093c831",
+  "sha256": "1d9ce1d532864667e8f39f0f2e0740c27d6bab4fa081b791145f9db0773e9641",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-29"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

@@ -42,14 +42,14 @@
   "cover": "/apps/q1k3/cover.jpg",
   "screenshots": [],
   "gif": "/apps/q1k3/q1k3.gif",
-  "bytes": 234634,
+  "bytes": 234644,
   "download": 0,
   "provides": null,
-  "sha256": "16c75cf083282875b4928de13cc9988fa9e0d7ed402b946781d53a59273c1ec5",
+  "sha256": "f7274129b4ae7c760a286703f689e7fd11b00a61a6d00bae43420df520e368c8",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

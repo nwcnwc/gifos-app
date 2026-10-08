@@ -40,14 +40,14 @@
   "cover": "/apps/nxn-cube/cover.jpg",
   "screenshots": [],
   "gif": "/apps/nxn-cube/nxn-cube.gif",
-  "bytes": 405455,
+  "bytes": 406583,
   "download": 0,
   "provides": null,
-  "sha256": "482ce1c3ecb6a9e1dc08bf39cc460f76d8f297069948b2ce9bd8804d2029ecbf",
+  "sha256": "dbda947a3e45b2d58f7993a745f120e8bd203605c724d30321d687a5788a0272",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-24"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

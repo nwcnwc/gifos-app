@@ -41,14 +41,14 @@
   "cover": "/apps/stolen-sword/cover.jpg",
   "screenshots": [],
   "gif": "/apps/stolen-sword/stolen-sword.gif",
-  "bytes": 196766,
+  "bytes": 196773,
   "download": 0,
   "provides": null,
-  "sha256": "51da4bfe30f7ce5bb13e3ab3107349978bc25ff3cd535e884ed3024f3aa7fe1a",
+  "sha256": "8c3e5ea3e5f9b134b256c3f89a855397bf65e095e7d11339874f595a3fc40ee4",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-29"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

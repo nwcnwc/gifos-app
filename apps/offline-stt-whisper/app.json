@@ -44,7 +44,7 @@
   "cover": "/apps/offline-stt-whisper/cover.jpg",
   "screenshots": [],
   "gif": "/apps/offline-stt-whisper/offline-stt-whisper.gif",
-  "bytes": 13156554,
+  "bytes": 13156560,
   "download": 0,
   "optionalCount": 4,
   "optionalDownload": 117738860,
@@ -53,10 +53,10 @@
       "stt"
     ]
   },
-  "sha256": "7f11e46a920c48be09841296db514310cdf79af86882dae524f2808bc95d602b",
+  "sha256": "3902d713d195e65c8df9213f3b729c553635abb6ad2bad9b62fb29d7003666d3",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-03"
+    "ts": "2026-10-08"
   }
 }

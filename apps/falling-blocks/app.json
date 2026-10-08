@@ -40,14 +40,14 @@
   "cover": "/apps/falling-blocks/cover.jpg",
   "screenshots": [],
   "gif": "/apps/falling-blocks/falling-blocks.gif",
-  "bytes": 256160,
+  "bytes": 256162,
   "download": 0,
   "provides": null,
-  "sha256": "6ce512981e62f92c2f2186764ab284409c52fdb6e1385301266582553694f600",
+  "sha256": "9c187debbbe66cfceb581e9948abbffc5e26c18212df9bb085a3128b527d02ef",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

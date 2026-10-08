@@ -40,13 +40,13 @@
   "cover": "/apps/one-stroke/cover.jpg",
   "screenshots": [],
   "gif": "/apps/one-stroke/one-stroke.gif",
-  "bytes": 199613,
+  "bytes": 199621,
   "download": 0,
   "provides": null,
-  "sha256": "831a21aec18bc38e0245614ca580ef6c8792af8ba6340c32b5e4abfe8dfb0fb9",
+  "sha256": "a3498fa13737bda82c872ecb78396693f3a58d4f31efa02e2c79c263f5bc5fac",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   }
 }

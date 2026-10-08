@@ -41,14 +41,14 @@
   "cover": "/apps/openjscad/cover.jpg",
   "screenshots": [],
   "gif": "/apps/openjscad/openjscad.gif",
-  "bytes": 292877,
+  "bytes": 292891,
   "download": 0,
   "provides": null,
-  "sha256": "178d14b9be35289955220f3cc663da693f04069ca181f22694275b34dd5837aa",
+  "sha256": "681cba84a214bace615de56243c36eefcd447451983e66ba376b7279c24c092f",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

@@ -40,14 +40,14 @@
   "cover": "/apps/breaklock/cover.jpg",
   "screenshots": [],
   "gif": "/apps/breaklock/breaklock.gif",
-  "bytes": 264003,
+  "bytes": 264013,
   "download": 0,
   "provides": null,
-  "sha256": "d0053de98ae54a3dbee343a44e8269ee1e6319cfa207a211babe3da218e22ffa",
+  "sha256": "eae429a93d92545457f41e3c827aa062ab10bb4528b78ce5b4b8be8eb474861b",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

@@ -40,14 +40,14 @@
   "cover": "/apps/periodic-table/cover.jpg",
   "screenshots": [],
   "gif": "/apps/periodic-table/periodic-table.gif",
-  "bytes": 176924,
+  "bytes": 176934,
   "download": 0,
   "provides": null,
-  "sha256": "5bacdf0f41780a31d3ef24a035ac1c9244aeee53cbb2aa82dc3d12658b5f4f6b",
+  "sha256": "263d4081f0bdb6d0be7c1e1130f422d337a68fdd691463f149e731028691a1c1",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

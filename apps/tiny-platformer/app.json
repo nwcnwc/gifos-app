@@ -37,14 +37,14 @@
   "cover": "/apps/tiny-platformer/cover.jpg",
   "screenshots": [],
   "gif": "/apps/tiny-platformer/tiny-platformer.gif",
-  "bytes": 191736,
+  "bytes": 191750,
   "download": 0,
   "provides": null,
-  "sha256": "8678ff277d74567192c6b98991bab4b0ee320a517933b8a73c0c8010d92a3917",
+  "sha256": "4bc4d9399e3d6ce38a550034d0c3e4b5a12c3c0910d7dbd1f6c43ae0101f237f",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-27"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

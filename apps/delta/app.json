@@ -38,14 +38,14 @@
   "cover": "/apps/delta/cover.jpg",
   "screenshots": [],
   "gif": "/apps/delta/delta.gif",
-  "bytes": 321767,
+  "bytes": 321764,
   "download": 0,
   "provides": null,
-  "sha256": "898ebb19b362545ab519157071d48f0b2a4a74d66fdabd003c2fee89957682de",
+  "sha256": "b27a108b3c1c0bfd5884108fb4ead5e08298333ce916ffadb148480ab3d53d86",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

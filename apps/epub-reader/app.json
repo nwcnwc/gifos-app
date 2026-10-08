@@ -40,14 +40,14 @@
   "cover": "/apps/epub-reader/cover.jpg",
   "screenshots": [],
   "gif": "/apps/epub-reader/epub-reader.gif",
-  "bytes": 355554,
+  "bytes": 355557,
   "download": 0,
   "provides": null,
-  "sha256": "d8cbb6a8d6b82563ce6507d313cf81fdb8b58f0a45e434421a2dca20fedbcb96",
+  "sha256": "3d1fedd2aae450cb6142c79e8ff7c49f5fafea5bfb1600dc8e7f457cd976763c",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-09-01"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

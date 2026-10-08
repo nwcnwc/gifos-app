@@ -41,14 +41,14 @@
   "cover": "/apps/io-808/cover.jpg",
   "screenshots": [],
   "gif": "/apps/io-808/io-808.gif",
-  "bytes": 203553,
+  "bytes": 203741,
   "download": 0,
   "provides": null,
-  "sha256": "99012b49b21a6a89e5002084c24ac0207f65b63f891a30ff7b6a1adfa5d958ff",
+  "sha256": "8f9e14be54d4e41c78c7a0e6e45dcadd4bf8f750cebfba09b545bdad63094401",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-24"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

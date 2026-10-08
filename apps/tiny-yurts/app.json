@@ -38,14 +38,14 @@
   "cover": "/apps/tiny-yurts/cover.jpg",
   "screenshots": [],
   "gif": "/apps/tiny-yurts/tiny-yurts.gif",
-  "bytes": 205846,
+  "bytes": 206147,
   "download": 0,
   "provides": null,
-  "sha256": "905a5d73626398b18cf048fc6a8acb226d36df6f6d155bbb19539c9b088739d6",
+  "sha256": "9c5ec1ce5d236853c3e192df2f3db0df016f7fc400db0d174b9a4c2f1e0021d8",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-24"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

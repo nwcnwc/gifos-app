@@ -60,14 +60,14 @@
   "cover": "/apps/anyroad/cover.jpg",
   "screenshots": [],
   "gif": "/apps/anyroad/anyroad.gif",
-  "bytes": 411399,
+  "bytes": 411402,
   "download": 0,
   "provides": null,
-  "sha256": "b96c0ff3ef50e60d83551481f34eecc903c0a2ae11c2e235597f6e865b172643",
+  "sha256": "042a633cb318b27caf1f05df821bef3516f1009c8bbaff7892a0e45a640c7e91",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-24"
+    "ts": "2026-10-08"
   },
   "inspiredBy": {
     "name": "Hop.Earth",

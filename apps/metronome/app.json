@@ -40,14 +40,14 @@
   "cover": "/apps/metronome/cover.jpg",
   "screenshots": [],
   "gif": "/apps/metronome/metronome.gif",
-  "bytes": 195488,
+  "bytes": 195494,
   "download": 0,
   "provides": null,
-  "sha256": "7e04a30dc63d1cfdf38143d0666882ee34767458759b43cc7778a0a089187678",
+  "sha256": "57696018f0690a30d41c8a6f635c351a02b8a0c7e56b2696d753e10ec0f714b4",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

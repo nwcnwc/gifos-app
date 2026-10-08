@@ -38,14 +38,14 @@
   "cover": "/apps/pacman/cover.jpg",
   "screenshots": [],
   "gif": "/apps/pacman/pacman.gif",
-  "bytes": 174111,
+  "bytes": 174122,
   "download": 0,
   "provides": null,
-  "sha256": "1a787f9eb41c03d6a9f2557427990296bdedae4f2b36efea9cc9d51a36caf43f",
+  "sha256": "a7b7c9106310495788cca69125ff83eccccbda15d0cb59abe1a5c4c0ee5a5cd8",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

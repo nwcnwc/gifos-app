@@ -40,14 +40,14 @@
   "cover": "/apps/vintage-poker/cover.jpg",
   "screenshots": [],
   "gif": "/apps/vintage-poker/vintage-poker.gif",
-  "bytes": 199906,
+  "bytes": 199911,
   "download": 0,
   "provides": null,
-  "sha256": "cbb5d35a888b45fc7e7cfa02e828c9a98446abeaa37ab9ef75dbfac1105fb846",
+  "sha256": "97011a9058fc934650d741f39233cdf7c95297e187c251e0558c9f467677a1df",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

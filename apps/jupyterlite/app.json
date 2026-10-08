@@ -42,16 +42,16 @@
   "cover": "/apps/jupyterlite/cover.jpg",
   "screenshots": [],
   "gif": "/apps/jupyterlite/jupyterlite.gif",
-  "bytes": 2996025,
+  "bytes": 2996035,
   "download": 0,
   "optionalCount": 1,
   "optionalDownload": 10105545,
   "provides": null,
-  "sha256": "a5ede44aa9a7dec466a62e46ab3dd1ec28d8af2312ae904a70c94385f9325ec6",
+  "sha256": "cf633be6564328d03cf038768074d65cb4ebf647a717ddb10b1126ca81eacbb6",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-09-02"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

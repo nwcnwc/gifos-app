@@ -40,14 +40,14 @@
   "cover": "/apps/breakout/cover.jpg",
   "screenshots": [],
   "gif": "/apps/breakout/breakout.gif",
-  "bytes": 273052,
+  "bytes": 273059,
   "download": 0,
   "provides": null,
-  "sha256": "4e63a5770c73d8460e0904358a684f19ad140b0471f54480ac97b9ad715ce085",
+  "sha256": "ae8f91b2c6603c554f8fe5e67977c98287a8cdd7b80c010660ed1cb2161da6fc",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-31"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

@@ -39,14 +39,14 @@
   "cover": "/apps/fortune-sheet/cover.jpg",
   "screenshots": [],
   "gif": "/apps/fortune-sheet/fortune-sheet.gif",
-  "bytes": 1268204,
+  "bytes": 1268210,
   "download": 0,
   "provides": null,
-  "sha256": "ad66e19e399db824a91565a4745f41c5f4e802f9b9c2014e3f011692c32b117b",
+  "sha256": "5cc1becff9ed4412640bc8f0b673514d17158a3e29f4c0b1ee08ae3dc4c211d6",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-29"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

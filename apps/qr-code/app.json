@@ -41,14 +41,14 @@
   "cover": "/apps/qr-code/cover.jpg",
   "screenshots": [],
   "gif": "/apps/qr-code/qr-code.gif",
-  "bytes": 211053,
+  "bytes": 211068,
   "download": 0,
   "provides": null,
-  "sha256": "f6787bd598a5b15627f49058873fb7d9f98029bbdea375154fd01fda0cc4c6e9",
+  "sha256": "9b39b9a6c4391fb076f63fe1e6d9a653f064951417e8d90b7fd97c81e50eef7c",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-25"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",

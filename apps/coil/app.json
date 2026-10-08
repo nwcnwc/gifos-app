@@ -37,14 +37,14 @@
   "cover": "/apps/coil/cover.jpg",
   "screenshots": [],
   "gif": "/apps/coil/coil.gif",
-  "bytes": 367824,
+  "bytes": 367829,
   "download": 0,
   "provides": null,
-  "sha256": "ff1662f03be68f3f7998b5d8d6685f826c7aa3fe4349a9683cae3d63d20ae025",
+  "sha256": "6b19b063bd98c3954f1c265319bfd1b55f1728401549ef92db565295ddf64cad",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-29"
+    "ts": "2026-10-08"
   },
   "porter": {
     "name": "GifOS",
