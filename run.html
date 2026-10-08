@@ -2100,7 +2100,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // reach right now" — a target NOT in this set is a socketless deep seat the
     // relay would silently drop, so signaling to it must sponsor-forward (§FWD).
     let relaySocketed = new Set();
-    let relayRosterScope = 'full';  // 'door' ⇒ relaySocketed holds only the greeters (see the roster handler)
+    let relayRosterScope = 'full';
+    let doorAnswerAt = 0;           // a dark return's {t:'who'} pull is pending: its roster answers the door's knockers once (answerDoor)  // 'door' ⇒ relaySocketed holds only the greeters (see the roster handler)
     let pendingDoorGrant = null;    // an admin re-grant waiting on a pulled full list
     // Peers the relay answered {t:'nosock'} for, and when. Under a 'door' roster
     // this — not absence from the list — is what "unreachable by relay" means.
@@ -2577,6 +2578,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // THE DARK RETURN: the OS says offline and then online again (a coverage
     // dropout). Nothing blocked our loop, so the beat gap never shows it;
     // the dark span is measured here and judged by the same threshold.
+    // THE DOOR ROUND (mesh.js doorRound): a seat that has
+    // waited at the door for more than 6 s pulls the relay's FULL socket list
+    // every ~6 s ({t:'who'}, inside the relay's 5 s rate limit) and hands it
+    // to the seat, which asks every socket for HOME. When every member is at
+    // the door at once nobody is seated to admit anyone; two complete rounds
+    // over the same sockets let the lowest id found (Seat.foundDoor).
+    let doorWaitSince = 0, doorRoundAt = 0, doorRoundPending = false;
+    function doorRoundBeat(now) {
+      const s = meshSeat();
+      if (!s || !s.doorRound || !(s.state === 1 || s.state === 2) || !relayUp()) { doorWaitSince = 0; return; }
+      if (!doorWaitSince) { doorWaitSince = now; return; }
+      if (now - doorWaitSince < 6000 || now - doorRoundAt < 6000) return;
+      try { relaySendObj({ t: 'who' }); doorRoundAt = now; doorRoundPending = true; } catch (e) {}
+    }
     function netDarkBeat(now) {
       const dark = typeof navigator !== 'undefined' && navigator.onLine === false;
       if (dark) { if (!netDarkAt) netDarkAt = now; return; }
@@ -2594,7 +2609,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // every offer and dial request to it went to the sponsor path, where
       // nothing carried it (preset 14a on b13bbf6e: the returning head's
       // pair to the newcomer sat new for 11 s, relay path unused).
-      if (span > 2000) { try { relaySendObj({ t: 'who' }); } catch (e) {} }
+      if (span > 2000) { try { relaySendObj({ t: 'who' }); doorAnswerAt = now; } catch (e) {} }   // ...and the list that comes back is the door's knockers (doorAnswerAt: the roster handler answers them once)
       if (span > WAKE_SUSPECT_MS) wakeProbe(now, 'dark ' + Math.round(span / 1000) + 's');
     }
     try {
@@ -2625,6 +2640,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The dark return (radio) arrives through the 'online' edge below.
       if (beatGap > WAKE_SUSPECT_MS && !frozeGap) wakeProbe(nowBeat, 'beat gap ' + Math.round(beatGap / 1000) + 's');
       netDarkBeat(nowBeat);
+      doorRoundBeat(nowBeat);
       // A hidden tab beats at a third of the pace (12s — still inside every 15s
       // freshness window): a phone in a pocket keeps its seat without waking
       // the relay 21,600 times a day. The worker clock makes the 12s REAL —
@@ -4985,8 +5001,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // cannot see. Say it while she is alone — that is exactly when she is
       // waiting for the guest who is being refused.
       const savedLock = (n === 1 && roomPw && pwFromStore) ? ' · 🔒 locked with a password you saved earlier — guests need it' : '';
-      const statusText = (n === 1 ? 'Just you — send the invite; the link has no expiry'
+      // ALONE IS NOT THE SAME AS STILL AT THE DOOR: a page
+      // that is asking to be let back in (mesh state 1 or 2: it has knocked
+      // and is waiting for a member to answer) sees nobody yet, but the
+      // meeting is not empty, and "Just you — send the invite" told a person
+      // whose only partner was in a tunnel that the meeting had emptied. Say
+      // what is happening: we are getting back in, waiting on the others.
+      const seat0 = meshSeat(), atDoor = !!(seat0 && (seat0.state === 1 || seat0.state === 2));
+      const statusText = (n === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry')
         : displayCount() + ' in the meeting · ' + q.label) + link + savedLock + extra;
+      // The line's KIND is state, not wording: 'door' (asking to be let back
+      // in), 'alone' (seated, nobody else), 'meeting' (others here). Tests and
+      // styling read this, never the sentence.
+      const statusKind = n === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
+      if (statusEl.dataset && statusEl.dataset.kind !== statusKind) statusEl.dataset.kind = statusKind;
       if (statusEl.textContent !== statusText) {
         statusEl.textContent = statusText;
         statusEl.title = statusText;
@@ -5187,7 +5215,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // door — it is beat-retried at high volume and the fan would hose the
       // relay; a lost control beat costs one tick, not the handshake.
       const doors = doorPeers(to, envl.tc);
-      if (doors.length) {
+      // A target the relay can reach is its own door too. doorPeers lists only
+      // hops (never the target), so when every hop was dark the frame died
+      // while the relay held the target's socket (Faye back
+      // from 35 s dark, Jun the only other door and still dark; her answer,
+      // offers and HELLOs to Theo all went to Jun for 27 s). The envelope
+      // names its target, which takes it as if a door had handed it on.
+      // ...but never GOSSIP (GSP/GSPS, the mesh's re-fan). A direct copy of
+      // gossip reaches a knocker at the door, which still holds the previous
+      // key generation: the password case, a late joiner refused with a stale
+      // password and then given the new one, adopted the room's FIRST pwinfo
+      // grant (ep 1, the old password, flooded under the open key; her own
+      // epoch was 0) and never read the room again. The gossip copy is the
+      // likely carrier (not traced frame by frame): 2 of 2 red with gossip
+      // copied, 2 of 2 green without. The frames that rescue a lone head after
+      // a dark spell (answer, offers, HELLOs) keep their direct copy. Limiting
+      // the copy to seated targets or to a seated sender was tried and broke
+      // one case or the other.
+      const gossip = envl.k === 'fmesh' && envl.m && (envl.m.t === 'GSP' || envl.m.t === 'GSPS');
+      const self = relaySocketed.has(to) && !relayNoSockRecently(to) && !gossip;
+      if (doors.length || self) {
         if (envl.k === 'fmesh') { // beat-retried control only — fsig (offers/answers/one-shot ICE) is never swallowed
           // One lane PER (target, frame type): PHONE fires before _gspRefan in
           // the same tick, so a single per-target lane would starve GSP (the
@@ -5207,7 +5254,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let nFan = 1;
         if (envl.k === 'fsig') nFan = 3;
         else if (envl.k === 'fmesh' && envl.m && (envl.m.t === 'HELLO' || envl.m.t === 'CLAIM')) nFan = Math.min(doors.length, 6); // wide enough to land past one dead-end greeter, never the whole pool per beat
-        const fan = doors.slice(0, Math.min(nFan, doors.length));
+        const fan = (self ? [to] : []).concat(doors.slice(0, Math.min(nFan, doors.length)));
         txStats.doorSig += fan.length;
         for (const d of fan) {
           txm(() => net.seal(roomE2E, envl).then((sealed) => net.sendChunked(sealed, (piece) => relaySendObj({ t: 'peer', to: d, msg: piece }))));
@@ -7454,6 +7501,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (fragPingId) { fragPingAt = 0; fragRescue(fragPingId); }
       }, 16000);
     }
+    // RELOAD TREE MEMORY: while seated, the tab keeps the
+    // genesis key and the Section-1 member ids of the tree it sits in
+    // (sessionStorage: this tab only, gone with it). A reload hands them to
+    // the new seat (mesh.js prevTree): a HOME from that tree is taken at once
+    // instead of waiting FORK_GRACE for the other doors, one of which may be
+    // dark. Kept only 2 minutes: an older memory is no evidence of the room.
+    const TREE_MEM_MS = 120000;
+    let treeMemAt = 0;
+    function treeMemKey() { return 'gifos_tree:' + String(room || ''); }
+    function saveTreeMem() {
+      const now = Date.now(); if (now - treeMemAt < 2000) return;
+      const s = meshSeat(); if (!s || s.state !== 3 || !s.hasCoord || s.genKey == null) return;
+      treeMemAt = now;
+      try {
+        const ids = s.s1Roster().map((e) => String(e.v)).filter((v) => v !== String(myId));
+        if (ids.length) sessionStorage.setItem(treeMemKey(), JSON.stringify({ gkey: String(s.genKey), ids, at: now }));
+      } catch (e) {}
+    }
+    function readTreeMem() {
+      try {
+        const o = JSON.parse(sessionStorage.getItem(treeMemKey()) || 'null');
+        if (!o || o.gkey == null || !Array.isArray(o.ids) || !o.ids.length || !(Date.now() - (+o.at || 0) < TREE_MEM_MS)) return null;
+        return { gkey: String(o.gkey), ids: o.ids.slice(0, 64).map(String) };
+      } catch (e) { return null; }
+    }
     function startMesh() {
       const relay = relayUrl();
       if (!relay) { setStatus('No connection service is set up, so nobody can be invited in.'); return; }
@@ -7672,8 +7744,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             return { stage: stg, stadium: [...stad] };
           } catch (e) { return { stage: [], stadium: [] }; }
         },
-        onUpdate: () => renderFromOcc(),
+        onUpdate: () => { renderFromOcc(); saveTreeMem(); },
         onRelayMsg: onRelayFrame,
+        prevTree: readTreeMem(),
       });
       updateStatus(); applyAdminUi();
       });
@@ -7696,6 +7769,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // peer-join/peer-leave deltas; everyone else gets only the doors
         // ('door'). A relay that sends no scope sends everyone the full list.
         relayRosterScope = m.scope || 'full';
+        // A DOOR BACK FROM DARK answers the sockets still knocking at it (mesh.js
+        // answerDoor): once per dark return, on the full list
+        // the return pulled; a member's socket is skipped by the seat.
+        if (doorAnswerAt && Date.now() - doorAnswerAt < 15000 && relayRosterScope === 'full') { doorAnswerAt = 0; try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor(Array.from(relaySocketed).filter((id) => id !== myId)); } catch (e) {} }
+        if (doorRoundPending && relayRosterScope === 'full') { doorRoundPending = false; try { const s = meshSeat(); if (s && s.doorRound) s.doorRound(Array.from(relaySocketed).filter((id) => id !== myId)); } catch (e) {} }   // the door round's list (doorRoundBeat)
         if (relayRosterScope === 'full' && pendingDoorGrant) { const g = pendingDoorGrant; pendingDoorGrant = null; g(); }
         roomBan = m.ban || []; // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
         Object.assign(devOf, m.devs || {}); // MERGE (absence grace keeps tiles whose Ban button must work)
@@ -18361,12 +18439,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       meshSeatForTest: () => { const s = meshSeat(); if (!s) return null; const T = s.env.TICK; const ck = net.topo.ckey;
         return { tick: T, state: s.state, coord: s.hasCoord ? ck(s.coord) : null, lastAsked: s.lastAsked ? String(s.lastAsked).slice(0, 8) : null, findAckAt: s.findAckAt, retryAgo: T - s.retryAt, seatTries: s.seatTries, roster: (s.roster || []).map((e) => e.k + '=' + String(e.v).slice(0, 6)), greeters: (s.lastGreeters || []).map((g) => String(g).slice(0, 6)), greetersAgo: T - s.greetersAt, lastAckAgo: T - s.lastAck, seatedAgo: T - s.seatedAt,
           occ: [...s.occ.entries()].map(([k, v]) => k + '=' + String(v).slice(0, 6) + (s.firstHandLive(k) ? '!' : '')), sitting: [...s.sitting.entries()].map(([k, v]) => k + '=' + String(v.joiner).slice(0, 6) + '@' + (T - v.at) + (v.pingAt >= 0 ? 'p' : '')), tlLog: (s.tlLog || []).slice(-6), moving: !!s.moving, drainAt: s.drainAt, stranded: !!s.stranded }; },
-      meshTraceForTest: (on) => { const s = meshSeat(); if (!s) return false; if (s.__trace) return true; const ring = s.__trace = []; s.__traceSeq = 0; const KEEP = new Set(['FIND', 'FINDACK', 'PLACE', 'NOROOM', 'HELLO', 'CLAIM', 'SITPING', 'SITPONG', 'YIELD', 'CONFIRM', 'CHALLENGE', 'LEAVE', 'MOVED', 'GREETERS', 'HOME', 'WHOHOME', 'PP', 'PHONE', 'PONG']);
-        // columns: tick, dir, type, peer, cell, nonce, id, link-proven id, s4, list length (GREETERS) / tock (PHONE: the cell the caller believes I hold) / yp (PONG: the hearing PONG ahead of a YIELD)
-        const push = (dir, m, to) => { if (!KEEP.has(m.t)) return; ring.push([s.env.TICK, dir, m.t, String(to || m.from || '').slice(0, 6), m.ck || (m.coord ? net.topo.ckey(m.coord) : ''), m.nc ? String(m.nc).slice(0, 6) : '', m.id ? String(m.id).slice(0, 6) : '', m.lk ? String(m.lk).slice(0, 6) : '', m.s4ok === true ? 's4' : '', m.list ? m.list.length : (m.t === 'PHONE' ? (m.tock || '') : (m.t === 'PONG' && m.yp === 1 ? 'yp' : ''))]); s.__traceSeq++; if (ring.length > 400) ring.shift(); };
-        const r0 = s.recv.bind(s), e0 = s.emit.bind(s); s.recv = (m) => { push('rx', m); return r0(m); }; s.emit = (to, m) => { push('tx', m, to); return e0(to, m); };
+      meshTraceForTest: (on) => { const s = meshSeat(); if (!s) return false; if (s.__trace) return true; const G = window.__meshTraceRing || (window.__meshTraceRing = { ring: [], seq: 0 }); const ring = s.__trace = G.ring; Object.defineProperty(s, '__traceSeq', { configurable: true, get: () => G.seq, set: (v) => { G.seq = v; } });   // ONE ring per page: a second Seat object (a restarted node) traces into the same ring, its rows tagged by its serial
+        const KEEP = new Set(['FIND', 'FINDACK', 'PLACE', 'NOROOM', 'HELLO', 'CLAIM', 'SITPING', 'SITPONG', 'YIELD', 'CONFIRM', 'CHALLENGE', 'LEAVE', 'MOVED', 'GREETERS', 'HOME', 'WHOHOME', 'PP', 'PHONE', 'PONG']);
+        // columns: tick, dir, type, peer, cell, nonce, id, link-proven id, s4, list length (GREETERS) / tock (PHONE: the cell the caller believes I hold) / yp (PONG: the hearing PONG ahead of a YIELD) / why (a sent NOROOM: mesh.js noroomWhy)
+        const tag = () => 's' + s.serial + (s.alive ? '' : '!dead'); const push = (dir, m, to) => { if (!KEEP.has(m.t)) return; ring.push([s.env.TICK, dir, m.t, String(to || m.from || '').slice(0, 6), m.ck || (m.coord ? net.topo.ckey(m.coord) : ''), m.nc ? String(m.nc).slice(0, 6) : '', m.id ? String(m.id).slice(0, 6) : '', m.lk ? String(m.lk).slice(0, 6) : '', m.s4ok === true ? 's4' : '', m.list ? m.list.length : (m.t === 'PHONE' ? (m.tock || '') : (m.t === 'PONG' && m.yp === 1 ? 'yp' : (m.t === 'NOROOM' && dir === 'tx' ? String(s.noroomWhy || '').slice(0, 80) : ''))), tag()]); s.__traceSeq++; if (ring.length > 400) ring.shift(); };
+        const r0 = s.recv.bind(s), e0 = s.emit.bind(s); s.recv = (m) => { push('rx', m); s.rivalWhy = null; s.yieldWhy = null; const out = r0(m); if (m && m.t === 'HELLO' && s.rivalWhy) { ring.push([s.env.TICK, 'ev', 'rival', String(m.id || '').slice(0, 6), m.ck || '', '', '', String(s.rivalWhy).slice(0, 40), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } if (m && m.t === 'YIELD' && s.yieldWhy) { ring.push([s.env.TICK, 'ev', 'yield', String(m.id || '').slice(0, 6), m.ck || '', '', '', String(s.yieldWhy).slice(0, 60), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } return out; };   // ...and which exit the rival branch took for a HELLO about my own cell (mesh.js rivalWhy)
+        s.emit = (to, m) => { push('tx', m, to); return e0(to, m); };
         // seat transitions (the frames say what was heard; these say what the seat DID with it): the method, its cell argument, and the calling method
         for (const fn of ['heal', 'doMove', 'take', 'requeue', 'rollbackMove', 'confirmMove', 'reseatViaRoster']) { const f0 = s[fn]; if (typeof f0 !== 'function') continue; s[fn] = function (...a) { let by = ''; try { const st = String(new Error().stack).split('\n'); const ln = st[2] || ''; const mm = /at (?:Seat\.)?([\w$.]+)/.exec(ln); by = mm ? mm[1] : ''; } catch (e) {} const c = a[0] && typeof a[0] === 'object' && 'pc' in a[0] ? net.topo.ckey(a[0]) : ''; ring.push([s.env.TICK, 'ev', fn, '', c, '', s.hasCoord ? net.topo.ckey(s.coord) : '', by.slice(0, 24), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); return f0.apply(this, a); }; }
+        // ...and any write that names ANOTHER seat at my own cell (my view of my own seat: never someone else's), with its caller
+        { const so0 = s.setOcc; if (typeof so0 === 'function') s.setOcc = function (k, v) { if (s.hasCoord && k === net.topo.ckey(s.coord) && v != null && v !== s.id) { let by = ''; try { const st = String(new Error().stack).split('\n'); const ln = (st[2] || '') + ' ' + (st[3] || ''); const mm = ln.match(/at (?:Seat\.)?([\w$.]+)/g) || []; by = mm.map((x) => x.replace(/^at (?:Seat\.)?/, '')).join('<'); } catch (e) {} ring.push([s.env.TICK, 'ev', 'ownCellTo', String(v).slice(0, 6), k, '', '', by.slice(0, 40), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } return so0.call(this, k, v); }; }
         // ...and every Section-1 death verdict a heal rests on, with the evidence it read (live stamp, hole clock, D5 record)
         { const rc0 = s.ringConfirmDead; if (typeof rc0 === 'function') s.ringConfirmDead = function (h) { const hk = net.topo.ckey(h); const lv = s.live.get(hk), hs = s.holeSince.get(hk), tl = s.translost.get(hk); const r = rc0.call(this, h); if (r) { ring.push([s.env.TICK, 'ev', 'ringDead', String(s.occ.get(hk) || '').slice(0, 6), hk, '', 'live=' + (lv === undefined ? '-' : lv) + ' hole=' + (hs === undefined ? '-' : hs) + ' tl=' + (tl === undefined ? '-' : tl), '', '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } return r; }; }
         return true; },
@@ -18388,12 +18470,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const from = (Number.isFinite(since) && since >= 0 && since <= seq) ? since : 0; // a cursor past this ring belongs to an earlier seat object (a rejoin): start over
         const skip = Math.max(0, ring.length - (seq - from));             // entries with sequence number < from are already recorded
         return {
+          serial: s.serial, alive: !!s.alive, nodeSerial: meshNode && meshNode.seat === s ? 'current' : 'stale',
           tick: s.env.TICK, estAt: s.estAt, rookSeenAt: s.rookSeenAt, seatedAt: s.seatedAt, moving: !!s.moving,
           pendY: s.pendY ? { by: six(s.pendY.by), at: s.pendY.at, ck: s.pendY.ck } : null,
           rival: s.rival ? { id: six(s.rival.id), at: s.rival.at } : null,
           rosterAskAt: s.rosterAskAt, challTo: s.challTo ? { id: six(s.challTo.id), at: s.challTo.at } : null,
           occ, linked, live, liveBy, translost: (() => { const o = {}; try { for (const [k, t] of s.translost) o[k] = t; } catch (e) {} return o; })(),
           tlLog: (s.tlLog || []).slice(-6),
+          nbrAt: s.nbrAt, admBy: six(s.admBy), greeters: { ids: (s.lastGreeters || []).map(six), age: s.greetersAt == null ? null : s.env.TICK - s.greetersAt },
+          healTry: (() => { const o = {}; try { for (const [k, t] of s.healTry) o[k] = s.env.TICK - t; } catch (e) {} return o; })(),
           seq, trace: ring.slice(skip),
         };
       },

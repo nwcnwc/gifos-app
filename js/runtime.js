@@ -3815,13 +3815,20 @@
         const ns = (manifest.system === 'store' && store.dbName && store.dbName !== 'gifos')
           ? '?db=' + encodeURIComponent(store.dbName) : '';
         const target = SYSTEM_PAGES[manifest.system] + ns;
+        // Reload ONLY when the target is a same-document fragment hop (same
+        // path and query, new hash): that hop never re-boots on its own. Any
+        // other target is a real navigation, and a reload would race it and
+        // re-boot the OLD url — which opens this system app again, forever.
+        // That was the Broadcast reload loop on gifos.app (2026-10-08): the
+        // host serves run.html as /run, so 'run.html#bc=1' from /run#id=… is a
+        // DIFFERENT path, yet the old check reloaded on any '#'.
+        let hop = false;
+        try {
+          const to = new URL(target, location.href);
+          hop = to.origin === location.origin && to.pathname === location.pathname && to.search === location.search;
+        } catch (e) { /* unparsable — a plain navigation */ }
         location.replace(target);
-        // A hash-carrying target (broadcast → run.html#bc=1) from THIS page
-        // (the app host is run.html too) is a same-document fragment hop —
-        // it never re-boots on its own, so force the reload. Hash-less
-        // targets are real navigations already; reloading those would race
-        // the replace and re-boot the OLD url.
-        if (target.indexOf('#') !== -1) location.reload();
+        if (hop && target.indexOf('#') !== -1) location.reload();
         return noop;
       }
       document.title = (manifest.name || 'App') + ' — GifOS';

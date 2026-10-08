@@ -633,7 +633,7 @@
     // it stops the moment I am seated.
     function AT_THE_DOOR_ASKING_TO_BE_LET_IN(to, m) {
       if (iAmInsideTheRoom()) return false;             // I am inside — use the mesh
-      if (m.t !== 'WHOHOME' && m.t !== 'FIND') return false;  // entry asks only
+      if (m.t !== 'WHOHOME' && m.t !== 'FIND' && !(m.t === 'HOME' && !m.roster)) return false;  // entry asks only — and a bare HOME, the one answer a knocker can give another knocker: "I am not seated either" (mesh.js doorRound)
       net.seal(roomKey, { mw: 1, m }).then((b) => sendRaw({ t: 'peer', to, msg: b })).catch(() => {});
       return true;
     }
@@ -753,6 +753,7 @@
         if (preState !== 3) fireLocked(); // R6: sealed list I can't read — wrong password (joiners only)
       } else if (!ids.length && !m.founded) {
         action = 'hold-mint-gap';                                         // hold; the join loop re-knocks
+        if (preState === 3) seat.recv({ t: 'GREETERS', list: [], fa });   // ...but a SEATED seat learns nobody else is registered: its old list may name the departed
       } else {
         // empty+founded + still joining ⇒ R3/R6 take-over mints 0/0.0;
         // empty+founded while already seated is a no-op (mesh.js gates on state===0).
@@ -983,6 +984,7 @@
     function build() {
       seat = new mesh.Seat(peer, env);
       seat.myKey = myKey;
+      if (opts.prevTree && opts.prevTree.gkey != null) { seat.prevTree = opts.prevTree; seat.lastTree = { gkey: opts.prevTree.gkey, n: (Array.isArray(opts.prevTree.ids) ? opts.prevTree.ids.length : 0) + 1 }; }   // a reloaded page's last tree (mesh.js R5 HOME intake; foundDoor's key)
       if (s4on) { seat.s4 = true; seat.identity = identity; seat.pins = ident.newPins(); }
       // The goodbye is pre-signed THE MOMENT a cell is taken, not at the next
       // tick: a tab closed inside that tick (the ghost-churn window, ~700 ms

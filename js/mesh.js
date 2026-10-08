@@ -84,6 +84,8 @@
   // on a still-seeking SITPONG, and to a re-ask that reaches it (the SAME
   // chair — never a twin vouch).
   const FIND_ACK_WAIT = 12, PLACE_REPLAY = 12;
+  const DOOR_ROUND_WAIT = 8;
+  const KNOCK_FRESH = 40;      // a FIND from x in the last 40 ticks: x is knocking (serveFind's split-off guard)   // a door round's answers are in after 8 ticks (doorRound; app-paced every few seconds)
   // D5 EARLY-PROBE (healing-laws D5): when MY OWN transport to a neighbour dies
   // (DataChannel close / hard pc failure — a FIRST-HAND observation, never
   // gossip), the confirm probe may start immediately instead of waiting out the
@@ -326,8 +328,10 @@
     return (h >>> 0).toString(16) || '1';
   }
 
+  let SEAT_SERIAL = 0;   // forensics: which Seat object this is (two in one page are distinguishable)
   class Seat {
     constructor(id, env) {
+      this.serial = ++SEAT_SERIAL;
       this.id = id; this.env = env;
       this.state = 0;            // 0 join, 1 ask, 2 search, 3 seated
       this.hasCoord = false; this.coord = { pc: 0, r: 0, i: 0 };
@@ -365,7 +369,7 @@
       // rowGenSeen — the last generation my down-child head phoned me.
       // gbProbe — goodbyes about a cell someone else holds in my view, under
       // probe; upAck — a probe answer that keeps a never-proven pairing alive.
-      this.pp = null; this.oldPp = null; this.ppAt = new Map(); this.oldPP = new Map(); this.ppGiven = new Map(); this.ppAskAt = -1;
+      this.backAt = -1; this.pp = null; this.oldPp = null; this.admBy = null; this.oldAdmBy = null; this.ppAt = new Map(); this.oldPP = new Map(); this.ppGiven = new Map(); this.ppAskAt = -1;
       this.rowGen = 0; this.rowLedgerLast = ''; this.rowGenSeen = null; this.gbProbe = new Map(); this.upAck = new Map(); this.upExpired = new Map(); this.upUsed = new Map(); this.upOpen = new Map(); this.upProbeAt = -1;
       this.tn = null; this.oldTn = null; this.tnSeq = 0; this.pendY = null; this.tnSalt = (env && env.tnSalt) ? String(env.tnSalt) : String(id).slice(-6);   // the wire supplies per-page entropy; buses stay deterministic
       // born: CLAIM BIRTH — the tick (on MY clock, LT) each (cell → claimant)
@@ -412,7 +416,8 @@
       // real. A same-tick repeat is DEFERRED (reAsk/reJoin), fired next tick.
       this.askTick = -1; this.joinTick = -1; this.reAsk = false; this.reJoin = false;
       this.healAt = -99; this.drainAt = 0; this.rosterAskAt = -999; this.xlinkAt = 0;
-      this.seatedAt = 0; this.challAt = 0; this.s1CheckAt = -1;
+      this.seatedAt = 0; this.challAt = -999;   // "never": a 0 start paced a young seat (clock <= 20) out of every challenge
+      this.s1CheckAt = -1;
       this.rookSeenAt = 0;   // last tick I heard ANY rook neighbour first-hand (split-off fragment detection)
       this.myKey = 'mk_' + id;   // throwaway personal genesis key (unique per seat)
       this.genKey = null;        // THIS meeting's genesis key (learned via the dance, or minted)
@@ -431,6 +436,8 @@
       // genesis key AND by roster overlap (same-key torn home = two greeter
       // halves the newcomer alone can see). Two+ clusters ⇒ human pick-one.
       // Faces for the UI: Stage first, else Stadium (app fills via HOME fields).
+      this.lastTree = null; this.dr = null; this.drPrev = null;   // the tree I last sat in {gkey, n} and the door round (doorRound)
+      this.prevTree = null;   // a reloaded page's last tree {gkey, ids} (mesh-wire opts.prevTree; R5 HOME intake)
       this.forkProbe = false; this.forkAt = -1; this.forkLastAt = -1; // forkLastAt: the tick the latest HOME sample landed
       this.forkSamples = []; // raw HOME samples before clustering
       this.forkOpts = new Map(); // optionId -> { id, gkey, gateway, roster, stage, stadium, faces }
@@ -838,7 +845,10 @@
       const p = this.pongBy.get(k); return p !== undefined && p.id === x && this.TICK - p.at <= 60;
     }
     // A transport-proven frame from x about k: remember it (and its tenancy).
-    noteLinked(k, x, tn) { const p = this.linkedBy.get(k); if (p !== x) { if (p != null) { const w = this.wasAt.get(k) || []; if (!w.includes(p)) { w.push(p); if (w.length > 3) w.shift(); } this.wasAt.set(k, w); const pm = this.ppAt.get(k), n = pm && pm.get(p); if (n) { this.oldPP.set(k + '|' + p, n.sig); if (this.oldPP.size > 256) this.oldPP.delete(this.oldPP.keys().next().value); } } const cs = this.carrySince.get(x); this.linkedSince.set(k, (cs && cs.k === k && this.TICK - cs.t <= 60) ? Math.min(cs.at, this.TICK) : this.TICK); if (cs) this.carrySince.delete(x); } this.linkedBy.set(k, x); if (tn != null) this.tenOf.set(k, { id: x, tn: String(tn) }); else { const t = this.tenOf.get(k); if (t && t.id !== x) this.tenOf.delete(k); } }
+    // wasLinked: p, a link proved at k, is there no longer (wasAt; its proof
+    // for k is now an OLD one, oldPP).
+    wasLinked(k, p) { if (p == null) return; const w = this.wasAt.get(k) || []; if (!w.includes(p)) { w.push(p); if (w.length > 3) w.shift(); } this.wasAt.set(k, w); const pm = this.ppAt.get(k), n = pm && pm.get(p); if (n) { this.oldPP.set(k + '|' + p, n.sig); if (this.oldPP.size > 256) this.oldPP.delete(this.oldPP.keys().next().value); } }
+    noteLinked(k, x, tn) { const p = this.linkedBy.get(k); if (p !== x) { this.wasLinked(k, p); const cs = this.carrySince.get(x); this.linkedSince.set(k, (cs && cs.k === k && this.TICK - cs.t <= 60) ? Math.min(cs.at, this.TICK) : this.TICK); if (cs) this.carrySince.delete(x); } this.linkedBy.set(k, x); if (tn != null) this.tenOf.set(k, { id: x, tn: String(tn) }); else { const t = this.tenOf.get(k); if (t && t.id !== x) this.tenOf.delete(k); } }
     // UNPROVEN LIVENESS: an unproven heartbeat (sponsor / relay: the pair's
     // DataChannel is not open, not yet authenticated, or can never form — an
     // ISLAND pair whose two networks cannot meet) may keep x alive at k only
@@ -952,7 +962,13 @@
     // returning head was not fresh (its clock held through the dead spot),
     // its only possible arbiter joined after it, and lateQuorum wants a
     // second arbiter a 3-person room does not have.
-    arbOk(x) { const k = this.arbCellOf(x); if (k == null) return false; if (this.fresh()) return this.ppSigned(k, x); const ls = this.linkedSince.get(k); if (ls !== undefined && ls <= this.estAt + FRESH) return true; return this.ppBacked(k, x); }
+    // ...and the seat that ADMITTED me (the verified signer of the proof for my
+    // own cell: the PLACE that seated me, or the grant on my CLAIM) is my
+    // arbiter whatever its own proof: it vouched me in, it is no late-comer
+    // (R3), and the room's founder holds no proof at all. A fresh seat refused
+    // its founder-head's YIELD until its freshness ran out (seated 8 ticks before a 45 s dark spell,
+    // the clock held, 23.5 s back).
+    arbOk(x) { const k = this.arbCellOf(x); if (k == null) return false; if (x != null && x === this.admBy && this.pp && this.hasCoord && this.pp.ck === ck(this.coord)) return true; if (this.fresh()) return this.ppSigned(k, x); const ls = this.linkedSince.get(k); if (ls !== undefined && ls <= this.estAt + FRESH) return true; return this.ppBacked(k, x); }
     // lateQuorum: a heard, linked arbiter that joined my neighbourhood after I
     // sat down YIELDs me; it counts once a second such arbiter, at another
     // arbiter cell, has YIELDed me for this cell within 40 ticks.
@@ -1179,6 +1195,19 @@
       for (const [k, t] of this.s1seen) this.s1seen.set(k, t - n);
       for (const [k, p] of this.pongBy) this.pongBy.set(k, { id: p.id, at: p.at - n });   // a link-proven PONG is first-hand hearing too (heardAt)
       this.rookSeenAt -= n;
+      // ...and so does the last proven neighbour frame (nbrAt): the gap WAS n
+      // ticks cut off from every neighbour, so the first frame after it makes
+      // my seat fresh again (nbrHeard). Left at the held clock's value, a head
+      // back from a 75 s freeze read a gap of a few ticks, never became fresh,
+      // and refused the YIELD of the arbiter the row had admitted while it was
+      // frozen (a duplicate head for 150 s).
+      if (this.nbrAt >= 0) this.nbrAt -= n;
+      this.backAt = this.TICK;   // the return: only hearing newer than this refreshes rookSeenAt (tick)
+      // ...and the head's own admit pace (healTry, 45 ticks per chair): an
+      // attempt made just before a freeze still read as fresh after it, and
+      // the chair stayed shut for the rest of the pace in wall time beyond
+      // the gap (16 NOROOMs over 8 s).
+      for (const [k, t] of this.healTry) this.healTry.set(k, t - n);
     }
     // tlSweep — D5 cleanup at EVERY observer (D3's "a corpse stops riding
     // rosters", started early): once my own observation CONFIRMS (probe
@@ -1204,11 +1233,12 @@
     // Do I hear ANY rook neighbour (row/col/down) first-hand? An S1 seat that
     // hears NONE for a long time is an isolated fragment — it can neither phone
     // (heartbeat is occ-gated) nor route-probe (no link), so E2 can't yield it.
-    anyRookLive() {
+    anyRookLive(after) {
       if (!this.hasCoord || this.coord.pc !== 0) return false;
-      for (const m of topo.rowMates(this.coord)) if (this.firstHandLive(ck(m))) return true;
-      for (const m of topo.colMates(this.coord)) if (this.firstHandLive(ck(m))) return true;
-      return this.firstHandLive(ck(topo.down(this.coord)));
+      const ok = (k) => this.firstHandLive(k) && (after == null || this.live.get(k) > after);   // after: only hearing newer than that tick
+      for (const m of topo.rowMates(this.coord)) if (ok(ck(m))) return true;
+      for (const m of topo.colMates(this.coord)) if (ok(ck(m))) return true;
+      return ok(ck(topo.down(this.coord)));
     }
     // 11a FRONTIER-ONLY ADMISSION: admit a newcomer only into a TRUE frontier
     // slot — a free cell whose down-child is NOT occupied. A free cell that
@@ -1542,7 +1572,7 @@
       this.rowLedger = !(c.pc === 0 && c.i === 0 && owner != null);   // V4: an admitted S1 row head waits for its assigner's SITXFER
       // PP: the proof my admitter signed with this PLACE; a healer (no
       // admitter) asks the hole's admitter for one with a CLAIM (below).
-      this.pp = (owner != null && pp && pp.sig != null) ? { ck: ck(c), s4: pp } : null; this.ppAskAt = -1;
+      this.pp = (owner != null && pp && pp.sig != null) ? { ck: ck(c), s4: pp } : null; this.ppAskAt = -1; this.admBy = null;   // admBy: set by the PLACE intake (the verified signer), never by take
       this.rowGen = 0; this.rowLedgerLast = ''; this.rowGenSeen = null;   // V7b: a new seat's row ledger starts at generation 0 (its first beats delete nothing at the owner)
       this.tn = this.tnSalt + '.' + (++this.tnSeq);   // a new tenancy (see emit)
       this.coord = c; this.hasCoord = true; this.state = 3; this.joinStart = -1; this.stranded = false; this.reAsk = false; this.reJoin = false; this.noroomSeen = 0; this.rowLedgerAt = -1; // seated: any deferred entry retry is moot; T7: the NOROOM evidence dies; V7: a new seat holds no child-row ledger yet with the attempt it belonged to
@@ -1603,6 +1633,73 @@
         this.goodbyeHeal(k);
       }
     }
+    // A ROOM OF KNOCKERS FOUNDS ITSELF. The only founding
+    // rule was R3: mint when the door's greeter list comes back empty. Seats
+    // that were seated a moment ago keep their registration for the relay's
+    // GREETER_TTL, so when every member is at the door at once (requeued,
+    // reloaded) each knocker's list names the others, nobody mints, and
+    // nobody is seated to admit anyone: never. The app hands a knocker the
+    // relay's FULL socket list every few seconds while it waits (doorRound);
+    // the knocker asks every socket for HOME. A round is complete when every
+    // socket answered with a bare HOME (at the door, like me) and none
+    // answered seated. After TWO consecutive complete rounds over the SAME
+    // socket set (a member mid-reload has no socket for a moment), the LOWEST
+    // id of them all founds 0/0.0 — with its remembered tree's genesis key
+    // when it has one (lastTree), so a seated member that surfaces late is
+    // the same tree and the two-heads contest settles it; a new key only
+    // without memory. A remembered tree larger than one Section-1 home (deep
+    // seats hold no socket: they would be invisible) never founds.
+    // App-triggered: driven by the relay's socket list.
+    doorRound(ids) {
+      if (this.state === 3 || !Array.isArray(ids)) return;
+      const set = ids.filter((x) => x != null && x !== this.id).map(String).sort();
+      if (!set.length || set.length > C() * C()) { this.dr = null; this.drPrev = null; return; }
+      this.dr = { key: set.join(','), ids: set, at: this.TICK, bare: new Set() };
+      for (const x of set) this.emit(x, { t: 'WHOHOME', from: this.id, ttl: 60 });
+    }
+    closeDoorRound() {
+      const r = this.dr; this.dr = null; if (!r) return;
+      const complete = r.ids.every((x) => r.bare.has(x));
+      if (complete && this.drPrev === r.key) { this.drPrev = null; this.foundDoor(r.ids); return; }
+      this.drPrev = complete ? r.key : null;
+    }
+    foundDoor(ids) {
+      if (this.state === 3 || ids.some((x) => x < this.id)) return;   // the lowest id founds; the rest knock on it
+      const mem = this.lastTree;
+      if (mem && mem.n > C() * C()) return;                          // a remembered tree with deep seats: they would be invisible
+      this.genKey = mem && mem.gkey != null ? mem.gkey : this.myKey;
+      this.doorFounded = this.TICK;
+      this.take({ pc: 0, r: 0, i: 0 }, null, []);
+    }
+    noteTree() { if (this.state !== 3 || !this.hasCoord || this.genKey == null) return; const n = this.occ.size; if (!this.lastTree || this.lastTree.gkey !== this.genKey || n > this.lastTree.n) this.lastTree = { gkey: this.genKey, n }; }
+    // HOME: a Section-1 seat's answer to a WHOHOME (the door's introduction).
+    homeFor(to) {
+      // App may attach Stage / Stadium face lists for R5 pick-one UI.
+      let stage = [], stadium = [];
+      try {
+        if (typeof this.env.homeFaces === 'function') {
+          const f = this.env.homeFaces() || {};
+          stage = (f.stage || []).map(String);
+          stadium = (f.stadium || []).map(String);
+        }
+      } catch (e) {}
+      this.emit(to, { t: 'HOME', roster: this.s1Roster(), id: this.id, gkey: this.genKey, stage, stadium });
+    }
+    // A DOOR BACK FROM DARK ANSWERS ITS KNOCKERS: seats
+    // still knocking (state 1) whose WHOHOME went into my dark re-ask only on
+    // their 20-tick retry, and nothing tells them I am back — they are not
+    // greeters, so neither the relay's deltas nor my greeting reach them. The
+    // app hands me, once per dark return, the relay's socket list; each socket
+    // my view does not hold as a member gets the HOME it would have had — the
+    // entry answer, which the wire lets a member send to someone at the door.
+    // One answer per id per return, at most 8: never a loop, never a flood.
+    // App-triggered: driven by the relay's socket list.
+    answerDoor(ids) {
+      if (this.state !== 3 || !this.hasCoord || this.coord.pc !== 0 || !Array.isArray(ids)) return 0;
+      const members = new Set(this.occ.values()); let n = 0;
+      for (const x of ids) { if (n >= 8) break; if (x == null || x === this.id || members.has(x)) continue; this.homeFor(x); n++; }
+      return n;
+    }
     // GREET: my cell to one peer over the channel that just opened to it,
     // whether or not my view holds it at an owned link (announce covers
     // those). A HELLO is a statement: the receiver takes it only for a cell
@@ -1649,12 +1746,33 @@
     }
     // FINDACK: I am the seeker's own greeter (it sent me this FIND) and I handed
     // it on rather than answering — tell the seeker its FIND is alive.
-    findAck(mm) { if (mm.from != null && mm.from === mm.nc) this.emit(mm.nc, { t: 'FINDACK', nc: mm.nc }); }
+    // ...but NOT when the admitter I handed it to (cell k) is already silent:
+    // two of my 8-tick phone beats unanswered (its stamp still reads first-hand
+    // live). The FIND still goes (a silent-but-real head stays reachable: the
+    // ring-hold), unacknowledged, so the seeker re-asks after FIND_ACK_WAIT.
+    // With the ack it held its 60-tick window while the FIND sat in a dark
+    // head (33 s at the door).
+    // ...nor, after a return from a dark spell or a freeze (backAt), to an
+    // admitter I have not heard since: no stamp, or only one from before the
+    // dark, is no hearing (a thawed seat acknowledged a
+    // hand-off to the dark head and the seeker waited its full window). A seat
+    // that never had a dark spell is unchanged. deep:
+    // the descend hand-off, where only this rule applies.
+    findAck(mm, k, deep) {
+      if (mm.from == null || mm.from !== mm.nc) return;
+      if (k != null && !deep && this.silentFor(k, LONE_GREET_AFTER)) return;
+      if (k != null && this.backAt >= 0 && !(this.live.get(k) > this.backAt)) return;
+      this.emit(mm.nc, { t: 'FINDACK', nc: mm.nc });
+    }
+    noteKnock(x) { if (x == null) return; const K = this.knockAt || (this.knockAt = new Map()); K.delete(x); K.set(x, this.TICK); if (K.size > 64) K.delete(K.keys().next().value); }
+    knocking(x) { const t = this.knockAt && this.knockAt.get(x); return t !== undefined && this.TICK - t <= KNOCK_FRESH; }
+    silentFor(k, n) { const it = this.live.get(k); return it !== undefined && this.TICK - it > n; }
     serveFind(mm) {
       const TICK = this.TICK;
-      if (!this.hasCoord || mm.ttl <= 0) { this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
+      if (!this.hasCoord || mm.ttl <= 0) { this.noroomWhy = 'unseated'; this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
       for (const s of this.sitting.values()) if (s.joiner === mm.nc && s.assigner === this.id && s.pl && TICK - s.at <= SIT_TTL) { this.emit(mm.nc, Object.assign({}, s.pl)); return; } // FINDACK: a re-ask reaching the admitter that already vouches this seeker gets the SAME chair again (its PLACE was lost) — never a twin vouch
       if (this.coord.pc === 0) {
+        const skip = [];   // forensics: why each Section-1 cell was passed over (noroomWhy, the test trace's NOROOM row)
         // A SPLIT-OFF SEAT ADMITS NOBODY INTO SECTION 1 (sim twin). A healer
         // that left-packed on a stale view of the hole's links can hear no
         // rook neighbour at all (its hint of the head cell was a corpse, the
@@ -1671,7 +1789,13 @@
         // race (loneGreet) requeued into this hold — the winner alone at the
         // head cell, hearing no rook peer, refused the loser's FIND for as
         // long as the loser stayed in the pool.
-        if (TICK - this.rookSeenAt > OWNER_SILENT && this.greetersAt !== undefined && TICK - this.greetersAt <= RELAY_TTL && this.lastGreeters.some((g) => g != null && g !== this.id && g !== mm.nc)) { this.emit(mm.nc, { t: 'NOROOM', nd: 0 }); return; }
+        // ...and a greeter that is itself KNOCKING on me (a FIND from it in the
+        // last KNOCK_FRESH ticks) is at the door, not seated in a second ring.
+        // The head came back alone (its mates had
+        // healed around it and were CONFIRMed back out), and each mate's
+        // listing blocked the other's admission: NOROOM 'split-off' to every
+        // FIND until the page reloaded itself (84 s, 64 s).
+        if (TICK - this.rookSeenAt > OWNER_SILENT && this.greetersAt !== undefined && TICK - this.greetersAt <= RELAY_TTL && this.lastGreeters.some((g) => g != null && g !== this.id && g !== mm.nc && !this.knocking(g))) { this.noroomWhy = 'split-off'; this.emit(mm.nc, { t: 'NOROOM', nd: 0 }); return; }
         // H7 ROW-FILL seating (replaces the old column backfill): Section 1
         // fills ROW-MAJOR — row 0 seats 0..C-1, then row 1, ... — so the first
         // C people in a room are ROW-MATES (the media plane's near field is
@@ -1773,7 +1897,7 @@
             // through to the bottom-up cascade, so two whole home rows on the
             // far side of a split still resurrect (repro-partition seed 11).
             if (aid != null && aid !== this.id && !fh) { const t = this.fwdSeen.get(mm.nc); if (t !== undefined && TICK - t <= 240) aid = null; else { if (this.fwdSeen.size >= 64) this.fwdSeen.delete(this.fwdSeen.keys().next().value); this.fwdSeen.set(mm.nc, TICK); } }
-            if (aid != null && aid !== this.id) { this.emit(aid, { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }); this.findAck(mm); return; }
+            if (aid != null && aid !== this.id) { this.emit(aid, { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }); this.findAck(mm, this.occGet(ac) === aid ? ac : ah); return; }
             // The whole admitter row below is dead too. "Resolve bottom-up"
             // DEADLOCKED here when EVERY row below was dead or empty (s1all
             // recovery: fresh greeters in rows 0-1, rows 2-4 dead, one stale
@@ -1808,9 +1932,9 @@
           for (let j = 0; j < C(); j++) {
             const cell = { pc: 0, r: t, i: j }; const k = ck(cell);
             // Soft / real occupant reserved; phantoms free for rejoin.
-            if (this.cellReserved(k)) continue;
+            if (this.cellReserved(k)) { skip.push('R' + t + '.' + j); continue; }
             const dk = ck(topo.down(cell));
-            if (this.softSitting(dk) || (this.cellReserved(dk) && !this.occIsPhantom(dk))) continue;
+            if (this.softSitting(dk) || (this.cellReserved(dk) && !this.occIsPhantom(dk))) { skip.push('D' + t + '.' + j); continue; }
             // HEADLESS-ROW admission (the H7 amendment; roadmap §3 gap):
             //  - the vacated HEAD of a LIVE row is an INTERNAL HOLE owned by
             //    its designated healer (the H2 scoocher / vertical promotion)
@@ -1854,7 +1978,7 @@
               // of the row is definitionally lagged (its cells may be promised
               // to admittees still in flight). Past 60 ticks a silent assigner
               // is dead and its vouches died with it.
-              if (this.coord.i === 0 && cell.r === this.coord.r && !this.rowLedger && TICK - this.seatedAt <= 60) continue;
+              if (this.coord.i === 0 && cell.r === this.coord.r && !this.rowLedger && TICK - this.seatedAt <= 60) { skip.push('L' + t + '.' + j); continue; }
               if (TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45) {
                 this.healTry.set(k, TICK);
                 if (this.occIsPhantom(k)) {
@@ -1862,11 +1986,11 @@
                 }
                 this.admit(cell, mm); return;
               }
-              continue;                                  // admit gate cooling — consider the next cell
+              skip.push('C' + t + '.' + j + '@' + (TICK - this.healTry.get(k))); continue;                                  // admit gate cooling — consider the next cell
             }
             // Hand off to reachable real admitter; never emit to a corpse.
             if (this.admitterReachable(ck(adm))) {
-              this.emit(this.occGet(ck(adm)), { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }); this.findAck(mm); return;
+              this.emit(this.occGet(ck(adm)), { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }); this.findAck(mm, ck(adm)); return;
             }
           }
         }
@@ -1883,7 +2007,7 @@
         // free cells look unservable fast-tracks silent death past the H1-S1
         // ring-hold (headless-row leg C), and buys nothing — the partitioned
         // half recovers on the reachable-forward fix below alone.
-        if (s1admFree > 0) { this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
+        if (s1admFree > 0) { this.noroomWhy = 's1:' + skip.join(' '); this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
       }
       const f = this.firstFreeInRoster();
       if (f) {
@@ -1905,7 +2029,7 @@
       // V4 THE DEPTH WALL (twin of the sim's uint32 guard): never forward a
       // FIND toward the 13th floor — NOROOM is honest, and the twins must
       // refuse at the same depth or they diverge exactly where a dup storm goes.
-      if (topo.pcDepth(this.coord.pc) >= 12) { this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
+      if (topo.pcDepth(this.coord.pc) >= 12) { this.noroomWhy = 'depth'; this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
       const rc = this.rosterCells(); const idx = this.shuf(Array.from({ length: C() }, (_, k) => k));
       for (let pass = 0; pass < 2; pass++)
         for (const q of idx) {
@@ -1915,9 +2039,9 @@
           // compete in pass 0. First contact is untouched; a partitioned seeker
           // never gets here (it fails silent, not loud); the hop is still
           // strictly DOWNWARD, so no cycle is possible.
-          if (pass === 0 ? (this.firstHandLive(rk) || (mm.spread && this.admitterReachable(rk))) : this.admitterReachable(rk)) { this.emit(x, { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }); this.findAck(mm); return; }
+          if (pass === 0 ? (this.firstHandLive(rk) || (mm.spread && this.admitterReachable(rk))) : this.admitterReachable(rk)) { this.emit(x, { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }); this.findAck(mm, rk, true); return; }
         }
-      this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 });
+      this.noroomWhy = 'deep'; this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 });
     }
     // Column j of this head's row is a densify slot the mover can still leave.
     // Free, and not an internal hole (its down-child heals that, C1). A column
@@ -2099,7 +2223,7 @@
       if (!this.hasCoord || ck(this.coord) === ck(hole) || this.moving) return;
       if (this.env.bumpMoves) this.env.bumpMoves();
       this.lastChurn = this.TICK; // Q2 hysteresis: a move is churn
-      this.oldCoord = this.coord; this.oldCk = ck(this.coord); this.oldTn = this.tn; this.oldEstAt = this.estAt; this.oldPp = this.pp;
+      this.oldCoord = this.coord; this.oldCk = ck(this.coord); this.oldTn = this.tn; this.oldEstAt = this.estAt; this.oldPp = this.pp; this.oldAdmBy = this.admBy;
       this.oldNbrIds = []; { const seen = new Set();
         for (const olc of topo.ownedLinks(this.oldCoord)) { const x = this.occGet(ck(olc)); if (x != null && x !== this.id && !seen.has(x)) { seen.add(x); this.oldNbrIds.push(x); } } }
       this.holdOcc = new Map(this.occ); this.holdSeen = new Map(this.s1seen); this.holdCous = new Map(this.cousins); // rollback snapshots
@@ -2139,7 +2263,7 @@
       if (!this.moving) return; this.moving = false;
       const newCk = ck(this.coord); const seen = new Set();
       for (const olc of topo.ownedLinks(this.coord)) { const x = this.occGet(ck(olc)); if (x != null && x !== this.id && !seen.has(x)) { seen.add(x); this.emit(x, { t: 'LEAVE', ck: newCk, id: this.id }); } }
-      this.coord = this.oldCoord; this.tn = this.oldTn; this.estAt = this.oldEstAt; this.nbrAt = this.TICK; this.pp = this.oldPp; this.oldPp = null;
+      this.coord = this.oldCoord; this.tn = this.oldTn; this.estAt = this.oldEstAt; this.nbrAt = this.TICK; this.pp = this.oldPp; this.oldPp = null; this.admBy = this.oldAdmBy; this.oldAdmBy = null;
       this.occ = this.holdOcc || new Map(); this.s1seen = this.holdSeen || new Map(); this.cousins = this.holdCous || new Map();
       this.occ.set(this.oldCk, this.id);
       this.oldNbrIds = []; this.holdOcc = null; this.holdSeen = null; this.holdCous = null;
@@ -3060,7 +3184,12 @@
       const TICK = this.TICK, HEALING = this.env.HEALING;
       switch (m.t) {
         case 'GREETERS': {
-          if (!m.list.length) { if (this.state === 0) { this.genKey = this.myKey; this.take({ pc: 0, r: 0, i: 0 }, null, []); } return; } // R3 mint / R6 take-over
+          // An EMPTY list to a seated seat is news too: nobody else is registered.
+          // Dropped, the seat kept its previous list, and a head back from a
+          // dark spell whose list named a departed mate held every seeker off
+          // at the split-off guard (serveFind) for the list's whole TTL
+          // the reloaded mate never got a seat).
+          if (!m.list.length) { if (this.state === 0) { this.genKey = this.myKey; this.take({ pc: 0, r: 0, i: 0 }, null, []); } else if (this.state === 3) { this.lastGreeters = []; this.greetersAt = TICK; } return; } // R3 mint / R6 take-over
           // R6: greeters exist (meeting alive) but I've REACHED none (no HOME
           // roster came back) for a full TTL ⇒ voted off / unreachable subnet.
           // A seat that keeps reaching greeters but only gets NOROOM is
@@ -3154,22 +3283,7 @@
         case 'WHOHOME': {
           if (!this.hasCoord) { this.emit(m.from, { t: 'HOME' }); return; }
           if (m.ttl <= 0) return;
-          if (this.coord.pc === 0) {
-            // App may attach Stage / Stadium face lists for R5 pick-one UI.
-            let stage = [], stadium = [];
-            try {
-              if (typeof this.env.homeFaces === 'function') {
-                const f = this.env.homeFaces() || {};
-                stage = (f.stage || []).map(String);
-                stadium = (f.stadium || []).map(String);
-              }
-            } catch (e) {}
-            this.emit(m.from, {
-              t: 'HOME', roster: this.s1Roster(), id: this.id, gkey: this.genKey,
-              stage, stadium,
-            });
-            return;
-          }
+          if (this.coord.pc === 0) { this.homeFor(m.from); return; }
           const fwd = (x) => { if (x != null && x !== this.id && x !== m.via) { this.emit(x, { t: 'WHOHOME', from: m.from, via: this.id, ttl: m.ttl - 1 }); return true; } return false; };
           if (this.coord.i !== 0) { if (fwd(this.occGet(ck({ pc: this.coord.pc, r: this.coord.r, i: 0 })))) return; } else { if (fwd(this.ownerId())) return; }
           const x = topo.crossLink(this.coord); if (x && fwd(this.occGet(ck(x)))) return;
@@ -3177,6 +3291,7 @@
           return;
         }
         case 'HOME': {
+          if (this.dr && m.from != null && this.dr.ids.includes(m.from) && !(Array.isArray(m.roster) && m.roster.length)) this.dr.bare.add(m.from);   // a door round's answer (doorRound): at the door like me (a seated answer carries its roster and leaves the round incomplete)
           if (this.triedSilent && m.id != null) this.triedSilent.delete(m.id); // it answered — not silent
           // R5 multi-greeter probe: collect samples; cluster later.
           if (this.forkProbe && this.state === 1 && !this.forkPaused) {
@@ -3194,6 +3309,20 @@
                 stadium: (m.stadium || []).map(String),
                 faces,
               });
+              // A RELOADED page re-enters the tree it was in: run.html hands the
+              // seat its last genesis key and member ids (prevTree). A HOME from
+              // that tree (same key, a roster naming one of them) is where this
+              // person belongs, whatever another door would say, so it is taken
+              // at once instead of waiting FORK_GRACE for doors that may be dark
+              // (a reload while one of two doors was dark lost
+              // ~6 s there). Any other HOME waits as before. Browser-only:
+              // it needs a page reload.
+              const pt = this.prevTree;
+              if (pt && gk === String(pt.gkey) && Array.isArray(pt.ids) && faces.some((f) => pt.ids.some((id) => String(id).slice(0, 12) === f))) {
+                this.prevTree = null;
+                const o = this.clusterForkSamples([this.forkSamples[this.forkSamples.length - 1]])[0];
+                if (o) { this.acceptFork(o); return; }
+              }
             }
             this.maybeResolveFork();
             return;
@@ -3233,11 +3362,11 @@
           }
           return;
         }
-        case 'FIND': if (m.tag === 1) this.serveCompact(m); else { this.findNc = m.nc; try { this.serveFind(m); } finally { this.findNc = null; } } return; // Q2: tag==1 is a compaction probe (up-chain walk), never newcomer admission. Untagged: the seeker is at the door for the whole scan (knock-is-evidence phantom scope — 03c)
+        case 'FIND': if (m.tag === 1) this.serveCompact(m); else { this.noteKnock(m.nc); this.findNc = m.nc; try { this.serveFind(m); } finally { this.findNc = null; } } return; // Q2: tag==1 is a compaction probe (up-chain walk), never newcomer admission. Untagged: the seeker is at the door for the whole scan (knock-is-evidence phantom scope — 03c)
         case 'FINDACK': if (this.state === 2 && m.nc === this.id && m.from === this.lastAsked && this.findAckAt < 0) this.findAckAt = TICK; return; // the seeker's own greeter handed my FIND on (only the first hop: the seeker knows nobody further down)
         case 'FINDLEAF': if (!this.verifyFill(m)) return; this.findLeaf(m.hole, m.nbrs, m.ttl); return; // S4 identity hook gates fill authorship
         case 'PLACE':
-          if (this.state === 2 && this.verifyFill(m)) { this.take(m.coord, m.owner, m.nbrs, m.pp); return; } // S4 identity hook
+          if (this.state === 2 && this.verifyFill(m)) { this.take(m.coord, m.owner, m.nbrs, m.pp); if (this.pp && m.s4from != null && m.s4from !== this.id) this.admBy = m.s4from; return; } // S4 identity hook; admBy: the verified signer of the PLACE that seated me (arbOk)
           // Q2: a compaction PLACE for a seated leaf — atomically MOVE (law T
           // dual-hold) into the shallower cell, keeping the old seat warm until
           // confirm. Re-validate at the moment of action (the frontier may have
@@ -3314,8 +3443,8 @@
             // Ending its liveness on the claim alone let a low-id hostile make
             // me hear no rook, challenge it, and requeue on its CONFIRM
             // (repro-adversary: 49 of 300 honest seats unseated).
-            if (sure && !(this.movedClaim && this.movedClaim.id === m.id)) for (const [k2, v2] of this.occ) { if (v2 !== m.id || k2 === m.ck || !this.firstHandLive(k2) || this.linkedBy.get(k2) !== m.id) continue; if (!this.translost.has(k2)) { this.translost.set(k2, TICK); this.tlProbeAt.set(k2, TICK); this.routeToProbe(unck(k2)); } this.movedClaim = { id: m.id, k: k2, at: TICK }; break; }
-            if (this.coord.pc !== 0 || this.liveElsewhere(m.id, m.ck)) return;
+            if (sure && !(this.movedClaim && this.movedClaim.id === m.id)) for (const [k2, v2] of this.occ) { if (v2 !== m.id || k2 === m.ck || !this.firstHandLive(k2) || this.linkedBy.get(k2) !== m.id) continue; if (!this.translost.has(k2)) { this.translost.set(k2, TICK); this.tlProbeAt.set(k2, TICK); this.routeToProbe(unck(k2)); } this.movedClaim = { id: m.id, k: k2, at: TICK, m }; break; }
+            if (this.coord.pc !== 0 || this.liveElsewhere(m.id, m.ck)) { this.rivalWhy = this.coord.pc !== 0 ? 'deep' : 'live-elsewhere'; return; }
             // A FRAGMENT OF ONE MEETS THE RING (behavior 14a: a row head
             // back from a dead spot after its row-mate healed into its cell
             // and admitted a newcomer). A Section-1 seat that hears no rook
@@ -3343,7 +3472,7 @@
             // YIELDed until it learns the ring; my HELLO is the statement
             // that lets it ask (loneAsk -> WHOHOME -> HOME -> its row-mate's
             // YIELD). One frame per 20 ticks; it evicts nobody.
-            if (!(xrS || this.fresh() || !this.hearRook())) { if (sure && TICK - this.challAt > 20) { this.challAt = TICK; this.emit(m.id, { t: 'HELLO', ck: m.ck, id: this.id }); } return; }
+            if (!(xrS || this.fresh() || !this.hearRook())) { this.rivalWhy = 'tenured-hears-rook' + (TICK - this.challAt > 20 ? '' : ':paced@' + this.challAt); if (sure && TICK - this.challAt > 20) { this.challAt = TICK; this.emit(m.id, { t: 'HELLO', ck: m.ck, id: this.id }); } return; }
             if (!sure && !xr) { for (const [k2, v2] of this.occ) if (v2 === m.id && k2 !== m.ck) return; }
             // PP (§AUTH): a rival contests my cell only with a placement proof
             // for it whose admitter my view admits here. The one exception is
@@ -3352,7 +3481,8 @@
             // ...and a rival whose claim carries no proof my view admits is
             // ANSWERED before it is refused: my HELLO is a statement, not an
             // eviction, and a lone rival learns of the contest only from it.
-            if (!(ppn && this.ppAdm(m.ck, m.ppfrom, m.id)) && !(this.pp == null && !this.hearRook())) { if (sure && TICK - this.challAt > 20) { this.challAt = TICK; this.emit(m.id, { t: 'HELLO', ck: m.ck, id: this.id }); } return; }
+            if (!(ppn && this.ppAdm(m.ck, m.ppfrom, m.id)) && !(this.pp == null && !this.hearRook())) { this.rivalWhy = 'no-admitted-proof' + (ppn ? '' : ':none') + (this.pp == null ? '' : ':i-hold-one') + (TICK - this.challAt > 20 ? '' : ':paced@' + this.challAt); if (sure && TICK - this.challAt > 20) { this.challAt = TICK; this.emit(m.id, { t: 'HELLO', ck: m.ck, id: this.id }); } return; }
+            this.rivalWhy = TICK - this.challAt > 20 ? (m.id < this.id ? 'challenge' : 'answer') : 'paced@' + this.challAt;
             if (TICK - this.challAt > 20) {
               this.challAt = TICK;
               if (m.id < this.id) { this.challTo = { id: m.id, ck: m.ck, at: TICK }; this.emit(m.id, { t: 'CHALLENGE', ck: m.ck, from: this.id }); }
@@ -3438,13 +3568,14 @@
           // returning head landed a beat before its proof's verdict and was
           // dropped, and it never had cause to YIELD again). tick() re-reads
           // arbOk for PEND_Y ticks.
-          if (!mayYield) { const ak = this.arbCellOf(by); if (!this.arbiterIs(by) || (ak != null && this.ppPending(ak, by))) this.pendY = { by, at: TICK, ck: m.ck }; return; } // not (yet) heard: its hearing PONG may be a tick behind
+          if (!mayYield) { const ak = this.arbCellOf(by); this.yieldWhy = 'refused:arb=' + (ak == null ? 'none' : ak) + (this.fresh() ? ':fresh' : '') + ':ls=' + (ak != null && this.linkedSince.has(ak) ? this.linkedSince.get(ak) - this.estAt : '-') + ':adm=' + (this.admBy == null ? '-' : String(this.admBy).slice(0, 6)) + (this.rival ? ':rival=' + String(this.rival.id).slice(0, 6) : ''); if (!this.arbiterIs(by) || (ak != null && this.ppPending(ak, by))) { this.pendY = { by, at: TICK, ck: m.ck }; this.yieldWhy += ':pending'; } return; } // not (yet) heard: its hearing PONG may be a tick behind
           // ONE arbiter's word is enough, on purpose: a contest is often seen
           // by a single arbiter (an asymmetric partition — a newcomer reaches
           // a seat its old neighbours cannot). Requiring two left that
           // duplicate standing forever (repro-adversary's dark seat, measured
           // 2026-10-03). So a hostile arbiter can YIELD the seats it arbitrates
           // — its own links, law S — and nothing beyond them.
+          this.yieldWhy = 'yielded';
           if (this.moving) this.rollbackMove(); else this.requeue(); // T1: a mover contradicted at its NEW cell goes home, not homeless
           return;
         }
@@ -3636,7 +3767,7 @@
           // proof from a seat my view does not admit here replaces nothing.
           if (!this.verifyFill(m) || m.id !== this.id || !m.coord || !this.hasCoord || this.state !== 3 || ck(m.coord) !== ck(this.coord) || m.s4from == null || m.s4from === this.id || !m.s4 || m.s4.sig == null) return;
           if (this.pp != null && !this.ppAdm(ck(m.coord), m.s4from, this.id)) return;
-          this.pp = { ck: ck(m.coord), s4: m.s4 }; return;
+          this.pp = { ck: ck(m.coord), s4: m.s4 }; this.admBy = m.s4from; return;
         }
         case 'MOVED': { // T3: the cell I phoned was vacated by a MOVE — first-hand vacancy + redirect, right now
           // FRAME AUTHORITY: the mover's own S4-signed word (`mvd` inside the
@@ -3646,6 +3777,14 @@
           if (!this.ownedLinkCell(m.ck) || this.occGet(m.ck) !== m.id) return;
           const mvdFrom = m.mvd != null && this.linkedBy.get(m.ck) === m.id && this.mvdOk(m.ck, m.mvd, m.id);   // see LEAVE: a link-proven stay, a related cell nobody I hear holds
           if (mvdFrom) this.carryLinked(m.ck, m.mvd, m.id);
+          // ...and a link-proven mover WAS at the cell it left (wasAt), as when
+          // its successor's link replaces it there: the cell's next seat may
+          // hold a proof it signed (ppAdm's rival clause). A
+          // head frozen 20 s; its row-mate healed into the head cell and moved
+          // the third seat into the cell it left. That seat's YIELD was the
+          // only arbiter word the frozen head would get, and its proof's
+          // signer had been erased from the cell here: never.
+          if (this.linkedBy.get(m.ck) === m.id) this.wasLinked(m.ck, m.id);
           this.linkedBy.delete(m.ck); this.tenOf.delete(m.ck);
           // ...and a standing D5 observation of the cell ENDS here, as a LEAVE
           // ends it: the mover answered the probe. Left standing, the app
@@ -3819,7 +3958,11 @@
         // only an answer echoing that probe's nonce counts (it used to write
         // any id into any cell of my occ, and to stamp probeAck for a corpse),
         // and it never displaces a seat I hear at that cell first-hand.
-        case 'ROUTED': if (m.tag === 1 || m.tag === 2) { if (m.id != null && this.hasCoord && m.target && this.probeAsked(ck(m.target), m.pn) && !(this.occGet(ck(m.target)) != null && this.occGet(ck(m.target)) !== m.id && this.holdsCell(ck(m.target), 60))) { this.setOcc(ck(m.target), m.id); this.noteS1(ck(m.target)); this.probeAck.set(ck(m.target), TICK); this.upAck.set(ck(m.target), { id: m.id, at: TICK }); if (this.upAck.size > 64) this.upAck.delete(this.upAck.keys().next().value); if (this.upExpired.get(ck(m.target)) === m.id) this.upExpired.delete(ck(m.target)); this.tlLog.push([ck(m.target), TICK, 'pa:routed-tag' + m.tag + ' id=' + String(m.id).slice(0, 6)]); if (this.tlLog.length > 24) this.tlLog.shift(); this.emit(m.id, { t: 'HELLO', ck: ck(this.coord), id: this.id }); } } return; // probeAck AFTER setOcc (a changed occupant clears the observation first)
+        // A probe answer about MY OWN cell (I healed into the cell I had probed
+        // before the answer landed) names a rival, not my cell's occupant: it is
+        // not written (the new head's view named the
+        // thawed old head at its own seat and NOROOMed it).
+        case 'ROUTED': if (m.tag === 1 || m.tag === 2) { if (m.id != null && this.hasCoord && m.target && ck(m.target) !== ck(this.coord) && this.probeAsked(ck(m.target), m.pn) && !(this.occGet(ck(m.target)) != null && this.occGet(ck(m.target)) !== m.id && this.holdsCell(ck(m.target), 60))) { this.setOcc(ck(m.target), m.id); this.noteS1(ck(m.target)); this.probeAck.set(ck(m.target), TICK); this.upAck.set(ck(m.target), { id: m.id, at: TICK }); if (this.upAck.size > 64) this.upAck.delete(this.upAck.keys().next().value); if (this.upExpired.get(ck(m.target)) === m.id) this.upExpired.delete(ck(m.target)); this.tlLog.push([ck(m.target), TICK, 'pa:routed-tag' + m.tag + ' id=' + String(m.id).slice(0, 6)]); if (this.tlLog.length > 24) this.tlLog.shift(); this.emit(m.id, { t: 'HELLO', ck: ck(this.coord), id: this.id }); } } return; // probeAck AFTER setOcc (a changed occupant clears the observation first)
         default: return;
       }
     }
@@ -3922,6 +4065,7 @@
           if (a && this.haveRoster && this.roster.length) { const t = this.pickRoster(); if (t != null) { this.askSeat(t); this.wake(); return; } }
           this.join(); this.wake(); return;
         }
+        if (this.dr && TICK - this.dr.at >= DOOR_ROUND_WAIT) this.closeDoorRound();
         if ((this.state === 0 || this.state === 1) && TICK - this.retryAt > 20) { if (!this.resumeAsk()) this.join(); } // ENTRY RESUME: re-enter at WHOHOME while the greeter list is fresh; full knock only when it isn't
         // Graded state-2 retry, SOLE-CANDIDATE ONLY: with exactly one live
         // greeter to ask there is no second admission chain to race, so a void
@@ -3939,6 +4083,7 @@
         this.wake(); return;
       }
       if (this.evil) this.attack();
+      this.noteTree();   // the tree I sit in, for a later door round (foundDoor)
       // T: transit bookkeeping — a claim window that closes with NO
       // contradiction CONFIRMS (a wiped region has nobody to answer; a
       // contradiction would have rolled back already); the tombstone
@@ -3947,7 +4092,12 @@
       if (this.leaseUntil >= 0 && TICK > this.leaseUntil) { this.leaseCk = null; this.leaseUntil = -1; }
       this.recheckSitting(); // A: assigner frees soft sitting-down if PLACE never confirmed
       if (this.coord.pc === 0) {
-        if (this.anyRookLive()) this.rookSeenAt = TICK;   // fragment detector: reset while I hear anyone
+        // ...and after an absence only hearing from AFTER the return counts: the
+        // aged pre-dark stamps can still read under 60 ticks, and counting them
+        // reset this clock on the first tick back and held the lone greeting
+        // 16 ticks (8 s before the returning head spoke to
+        // anyone). backAt: set by absence.
+        if (this.anyRookLive(this.backAt >= 0 ? this.backAt : null)) this.rookSeenAt = TICK;   // fragment detector: reset while I hear anyone
         if (this.rival) this.loneAsk();
         { const mc = this.movedClaim;   // a rival's claim at my cell, its old cell under a D5 probe (see the HELLO rival branch)
           if (mc && (TICK - mc.at > 60 || this.state !== 3 || !this.hasCoord)) this.movedClaim = null;
@@ -3964,6 +4114,14 @@
               // and the rival learns of the contest only from my HELLO. The
               // ask alone left it to the rival's next greeting beat.
               if (TICK - this.rosterAskAt > 20) { this.rosterAskAt = TICK; this.emit(mc.id, { t: 'WHOHOME', from: this.id, ttl: 60 }); this.emit(mc.id, { t: 'HELLO', ck: ck(this.coord), id: this.id }); }
+              // ...and the claim it made is judged NOW, through the whole rival
+              // branch (every gate: proof, freshness, hearing), with one
+              // decision free of the answer pacing. It was already in hand:
+              // waiting for the rival to repeat it cost the contest the
+              // rival's own pacing (an answer it sent 2 ticks before) and then
+              // its next door greeting (13.6 s).
+              // movedClaimMsg.
+              if (mc.m && this.state === 3 && this.hasCoord && mc.m.ck === ck(this.coord)) { this.challAt = Math.min(this.challAt, TICK - 21); this.recv(mc.m); }
             } } }
         { const py = this.pendY;   // a YIELD held for its arbiter's proof verdict (see case 'YIELD')
           if (py && TICK - py.at > PEND_Y) this.pendY = null;
