@@ -30,7 +30,7 @@
   ],
   "license": "Apache-2.0",
   "copyright": "Copyright (c) Microsoft Corporation",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/offline-tts-kokoro",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/offline-tts-kokoro",
   "accent": [
     124,
     92,

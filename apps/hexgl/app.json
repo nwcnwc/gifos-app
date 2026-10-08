@@ -27,7 +27,7 @@
   ],
   "license": "MIT",
   "copyright": "Copyright (c) 2015 Thibaut Despoulain; Copyright (c) 2010-2012 Three.js authors.",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/hexgl",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/hexgl",
   "accent": [
     65,
     144,

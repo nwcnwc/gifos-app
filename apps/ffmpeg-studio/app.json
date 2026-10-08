@@ -30,7 +30,7 @@
   ],
   "license": "GPL-2.0-or-later",
   "copyright": "Copyright (c) 2019 Jerome Wu",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/ffmpeg-studio",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/ffmpeg-studio",
   "accent": [
     16,
     185,

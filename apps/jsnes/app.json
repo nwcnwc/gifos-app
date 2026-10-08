@@ -27,7 +27,7 @@
   ],
   "license": "Apache-2.0",
   "copyright": "Copyright (c) 2010 Damian Yerrick <croom@pineight.com>; Copyright (c) 2011 Shiru (http://shiru.untergrund.net)",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/jsnes",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/jsnes",
   "accent": [
     228,
     56,

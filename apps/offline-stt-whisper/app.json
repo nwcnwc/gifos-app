@@ -31,7 +31,7 @@
   ],
   "license": "MIT",
   "copyright": "Copyright (c) Microsoft Corporation; Copyright (c) 2022 OpenAI",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/offline-stt-whisper",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/offline-stt-whisper",
   "accent": [
     92,
     200,

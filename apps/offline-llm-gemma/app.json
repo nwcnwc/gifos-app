@@ -30,7 +30,7 @@
   ],
   "license": "MIT (app + engine); weights under the Gemma Terms of Use",
   "copyright": "Copyright (c) 2024 Xuan Son NGUYEN",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/offline-llm-gemma",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/offline-llm-gemma",
   "accent": [
     122,
     162,

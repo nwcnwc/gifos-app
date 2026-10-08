@@ -19,7 +19,7 @@
   const VERSION = root.GIFOS_VERSION || '0.6.0';
   const BUILD = Number(root.GIFOS_BUILD) || 0;   // this build's edge build number (build.js)
   const TRASH_ID = 'sys_trash';
-  const REPO_URL = 'https://github.com/nwcnwc/gifos';
+  const REPO_URL = 'https://github.com/nwcnwc/gifos-app';
   // The GitHub new-issue link, pre-filled with where it was clicked from and
   // this build (GifOS.help.issueUrl is the one builder; every surface uses it).
   const issueUrl = (from) => (root.GifOS && GifOS.help && GifOS.help.issueUrl)
@@ -3736,7 +3736,8 @@
   // window.open would be popup-blocked). Non-app GIFs (folders, backups, plain)
   // are still filed in; only real app GIFs auto-run.
   // A catalog SLUG instead of a URL: ?run=anyroad. The store's own layout is
-  // the rule (site/apps/<slug>/<slug>.gif, one copy, nowhere else), so this
+  // the rule (/apps/<slug>/<slug>.gif, one copy, nowhere else — on the public
+  // site repo that path has no site/ prefix), so this
   // resolves rather than invents — and it is what makes a run-link something a
   // person can type and read: /?run=anyroad&go.at=Grand%20Canyon&go.fly=1.
   // Anything with a scheme, a dot, or a slash is left alone as a plain URL.

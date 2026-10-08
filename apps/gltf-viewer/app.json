@@ -28,7 +28,7 @@
   ],
   "license": "MIT",
   "copyright": "Copyright (c) 2023 Don McCurdy; Copyright © 2010-2025 three.js authors",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/gltf-viewer",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/gltf-viewer",
   "accent": [
     88,
     166,

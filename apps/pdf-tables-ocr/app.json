@@ -32,7 +32,7 @@
   ],
   "license": "Apache-2.0",
   "copyright": "Copyright (c) Microsoft Corporation; Copyright (c) PaddlePaddle Authors",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/pdf-tables-ocr",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/pdf-tables-ocr",
   "accent": [
     58,
     134,

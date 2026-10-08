@@ -28,7 +28,7 @@
   ],
   "license": "MIT",
   "copyright": "Copyright (c) 2010-2012 James Coglan; Copyright (c) 2014 Iconic (P.J. Onori); Copyright (c) 2014 Jeffrey Avallone",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/regexper",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/regexper",
   "accent": [
     186,
     218,

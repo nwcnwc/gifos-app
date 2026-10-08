@@ -28,7 +28,7 @@
   ],
   "license": "MIT",
   "copyright": "Copyright (c) 2022 Paul Miller (https://paulmillr.com); Copyright © Héctor Molinero Fernández; Copyright (c) 2009 Kazuhiko Arase; Copyright (c) 2012 davidshimjs",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/otpauth",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/otpauth",
   "accent": [
     64,
     210,

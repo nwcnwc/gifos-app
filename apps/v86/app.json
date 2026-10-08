@@ -28,7 +28,7 @@
   ],
   "license": "BSD-2-Clause",
   "copyright": "Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>; Copyright (c) 2003, 2007 Jocelyn Mayer; Copyright (c) 2008 Hervé Poussineau; Copyright (c) 2012, The v86 contributors",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/v86",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/v86",
   "accent": [
     72,
     220,

@@ -27,7 +27,7 @@
   ],
   "license": "BSD-2-Clause",
   "copyright": "Copyright (c) 2013, FuturePress; Copyright (c) 2009-2016 Stuart Knightley, David Duponchel, Franz Buchinger, António Afonso; Copyright (C) 2014-2017 by Vitaly Puzrin and Andrei Tuputcyn",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/epub-reader",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/epub-reader",
   "accent": [
     196,
     122,

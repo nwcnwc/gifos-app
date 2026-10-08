@@ -250,11 +250,15 @@
   // REPORT A PROBLEM — the very last line of every Help. GitHub's new-issue
   // page takes ?title=&body= and pre-fills the form, so the link carries the
   // context a reporter never thinks to include: which app, which version,
-  // where it lives in the repo (apps/<slug>) and in the store, the page they
-  // were on, the GifOS build and the browser. Everything is encoded, so the
-  // URL has no ')' or whitespace for the markdown link parser to trip on.
-  const ISSUES_NEW = 'https://github.com/nwcnwc/gifos/issues/new';
-  const REPO_TREE = 'https://github.com/nwcnwc/gifos/tree/main/';
+  // where it lives in the app repo (<slug> at the root of that tree) and in
+  // the store, the page they were on, the GifOS build and the browser.
+  // Everything is encoded, so the URL has no ')' or whitespace for the
+  // markdown link parser to trip on.
+  // A report that names an app is an app bug. A report with no app — About,
+  // the desktop menu — is a problem with the site.
+  const SITE_ISSUES = 'https://github.com/nwcnwc/gifos-app/issues/new';
+  const APP_ISSUES = 'https://github.com/nwcnwc/gifos-apps-source/issues/new';
+  const APP_TREE = 'https://github.com/nwcnwc/gifos-apps-source/tree/main/';
   function issueUrl(ctx) {
     ctx = ctx || {};
     const app = mdText(ctx.name);
@@ -263,7 +267,7 @@
     const lines = [];
     if (app) lines.push('**App:** ' + app + (ver ? ' ' + ver : '') + (ctx.appId && mdText(ctx.appId).toLowerCase() !== app.toLowerCase() ? ' (`' + mdText(ctx.appId) + '`)' : ''));
     if (slug) {
-      lines.push('**Source:** ' + REPO_TREE + 'apps/' + slug);
+      lines.push('**Source:** ' + APP_TREE + slug);
       lines.push('**Store:** https://gifos.app/store/' + slug);
     }
     const from = mdText(ctx.from);
@@ -290,7 +294,8 @@
     // encodeURIComponent leaves ( ) ' ! * alone; a browser UA is full of
     // parentheses and one ')' ends the markdown link. Encode them too.
     const enc = (s) => encodeURIComponent(s).replace(/[()'!*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
-    return ISSUES_NEW + '?title=' + enc(title) + '&body=' + enc(body);
+    const issues = slug ? APP_ISSUES : SITE_ISSUES;
+    return issues + '?title=' + enc(title) + '&body=' + enc(body);
   }
   function issueMd(ctx) {
     return '## Something wrong?\n\n[Report a problem on GitHub](' + issueUrl(ctx) + ') — the issue form opens with this app, page and build already filled in; just say what happened.';

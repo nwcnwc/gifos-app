@@ -32,7 +32,7 @@
   ],
   "license": "MIT (app + engine); weights Apache-2.0",
   "copyright": "Copyright (c) 2024 Xuan Son NGUYEN",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/offline-llm-gemma4",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/offline-llm-gemma4",
   "accent": [
     167,
     139,

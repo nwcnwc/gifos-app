@@ -28,7 +28,7 @@
   ],
   "license": "Apache-2.0",
   "copyright": "Copyright (c) Microsoft Corporation",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/offline-tts-neural",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/offline-tts-neural",
   "accent": [
     255,
     138,

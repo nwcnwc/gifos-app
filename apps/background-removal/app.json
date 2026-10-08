@@ -29,7 +29,7 @@
   ],
   "license": "AGPL-3.0",
   "copyright": "Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>; Copyright (c) Microsoft Corporation",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/background-removal",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/background-removal",
   "accent": [
     56,
     196,

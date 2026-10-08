@@ -27,7 +27,7 @@
   ],
   "license": "MIT",
   "copyright": "Copyright (c) 2025 Kostyantyn Pshenychnyy; Copyright © 2010-2021 three.js authors",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/server-survival",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/server-survival",
   "accent": [
     0,
     255,

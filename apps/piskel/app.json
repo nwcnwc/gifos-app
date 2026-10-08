@@ -29,7 +29,7 @@
   ],
   "license": "Apache-2.0",
   "copyright": "Copyright 2013-2026 Julian Descottes; Copyright 2026 GifOS contributors.",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/piskel",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/piskel",
   "accent": [
     255,
     215,

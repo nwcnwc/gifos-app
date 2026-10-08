@@ -27,7 +27,7 @@
   ],
   "license": "BSD-3-Clause",
   "copyright": "Copyright (c) 2021-, JupyterLite Contributors",
-  "homepage": "https://github.com/nwcnwc/gifos/tree/main/apps/jupyterlite",
+  "homepage": "https://github.com/nwcnwc/gifos-apps-source/tree/main/jupyterlite",
   "accent": [
     243,
     118,

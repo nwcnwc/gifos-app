@@ -373,21 +373,22 @@
       : esc(p.name);
   }
 
-  // The repo behind the catalog — where apps are submitted, fixed, and REVIEWED.
-  const REPO = 'https://github.com/nwcnwc/gifos';
+  // The repo the apps live in — where they are submitted, fixed, and REVIEWED.
+  // Its root is the app tree, so a review file is <slug>/reviews/<user>.json.
+  const APPS_REPO = 'https://github.com/nwcnwc/gifos-apps-source';
   // Bugs in a port go HERE, never to the upstream issue tracker. Hard-coded
   // on purpose: a listing.json field exists to be pointed at UVR's 1,500 issues.
-  const PORT_BUGS = REPO + '/issues';
+  const PORT_BUGS = APPS_REPO + '/issues';
 
   // ---------- reviews ----------
   // Stars and comments are COMMITTED DATA, not a service: one JSON file per
-  // reviewer at apps/<slug>/reviews/<github-username>.json in the repo, landed
+  // reviewer at <slug>/reviews/<github-username>.json in the app repo, landed
   // by pull request and aggregated into /apps/reviews.json by
   // scripts/build-app-reviews.mjs. GitHub is the whole backend — the account
   // system, the spam bar (a PR costs effort and carries history) and the
   // moderation queue (review-by-merge). The store only ever READS the one
   // published file; with it missing or empty everything below renders fine.
-  const HOW_REVIEWS = REPO + '/blob/main/apps/README.md#reviews';
+  const HOW_REVIEWS = APPS_REPO + '/blob/main/README.md#reviews';
   const revOf = (slug) => (reviews && reviews.apps && reviews.apps[slug]) || null;
   const starRow = (n) => { const f = Math.round(n); return '★★★★★'.slice(0, f) + '☆☆☆☆☆'.slice(f); };
   // GitHub's new-file page, prefilled: the right folder, a template that
@@ -400,7 +401,7 @@
       review: 'What you think of it — a sentence is plenty.',
       date: new Date().toISOString().slice(0, 10),
     }, null, 2) + '\n';
-    return REPO + '/new/main/apps/' + encodeURIComponent(slug) + '/reviews' +
+    return APPS_REPO + '/new/main/' + encodeURIComponent(slug) + '/reviews' +
       '?filename=your-github-username.json&value=' + encodeURIComponent(tmpl);
   }
   function reviewsBlock(app) {

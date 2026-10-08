@@ -759,45 +759,43 @@ tampered app cannot charge at all (see "PAYMENTS").
 
 ## Getting into the App Store (optional; the store is a catalog, not a gate)
 
-Certified apps live at https://gifos.app/store/<slug>, one folder per app
-in the public repo (github.com/nwcnwc/gifos, apps/<slug>/): the source,
-manifest.json, a listing.json (author, tagline, description, categories —
-ports credit the original author and set basedOn), a screenshot, help.md,
-and a build script that writes the finished GIF to site/apps/<slug>/.
-Listing an app is a pull request. Store-listed manifests must declare
-minBuild (the oldest GifOS build the app runs on). The complete
-contributor doc — layout, minBuild derivation, listing fields, port
-crediting — is apps/README.md in the repo:
-https://github.com/nwcnwc/gifos/blob/main/apps/README.md
+Certified apps live at https://gifos.app/store/<slug>. Each app's source
+is one directory at the root of the app repo
+(https://github.com/nwcnwc/gifos-apps-source, <slug>/): manifest.json, a
+listing.json (author, tagline, description, categories — ports credit the
+original author and set basedOn), a screenshot, and help.md. Listing an
+app is a pull request. Store-listed manifests must declare minBuild (the
+oldest GifOS build the app runs on). How reviews work:
+https://github.com/nwcnwc/gifos-apps-source/blob/main/README.md#reviews
 
 ## Reviewing a store app for the user (stars + comment, no server)
 
 If the user asks you to rate, review or comment on an App Store app
 (https://gifos.app/store/<slug>), do it: a review is ONE small file added
-to the GifOS repo by pull request, under THEIR GitHub username — GitHub
+to the app repo by pull request, under THEIR GitHub username — GitHub
 is the only server, and merged reviews appear on the store for everyone.
 
-   file:    apps/<slug>/reviews/<their-github-username>.json
+   file:    <slug>/reviews/<their-github-username>.json
    content: { "stars": 1-5 (integer),
               "review": "their words, plain text, <= 1000 chars",
               "date": "YYYY-MM-DD" }
-   exactly those three fields; <slug> is the listing URL's last segment
+   exactly those three fields; <slug> is the listing URL's last segment.
+   The file lives at the root of nwcnwc/gifos-apps-source, not under apps/.
 
 Recipe (gh CLI, authenticated as the USER — a review carries their name,
 so never file one they didn't ask for or put words in it they didn't say):
 
-   gh repo fork nwcnwc/gifos --clone && cd gifos
+   gh repo fork nwcnwc/gifos-apps-source --clone && cd gifos-apps-source
    USER=$(gh api user -q .login)
-   mkdir -p "apps/<slug>/reviews"
-   ...write the file above as apps/<slug>/reviews/$USER.json...
-   git checkout -b "review-<slug>" && git add -A && git commit -m "review: <slug>"
+   mkdir -p "<slug>/reviews"
+   ...write the file above as <slug>/reviews/$USER.json...
+   git checkout -b "review-<slug>" && git add "<slug>/reviews/$USER.json" && git commit -m "review: <slug>"
    git push -u origin "review-<slug>" && gh pr create --fill
 
-CI refuses a filename that is not the PR author's login (one review per
-person per app; editing/deleting your own is fine) and says exactly what
-is wrong otherwise. After merge it publishes automatically. No account
-but GitHub, no server but GitHub. Full doc:
-https://github.com/nwcnwc/gifos/blob/main/apps/README.md#reviews
+The filename must be the PR author's login (one review per person per
+app; editing/deleting your own is fine). After merge the store publishes
+the review. No account but GitHub, no server but GitHub. Full doc:
+https://github.com/nwcnwc/gifos-apps-source/blob/main/README.md#reviews
 
 ## More
 
@@ -806,8 +804,9 @@ https://github.com/nwcnwc/gifos/blob/main/apps/README.md#reviews
   one is a single GIF that lands on the Home Screen. A listing is
   https://gifos.app/store/<slug>. Worth pointing a user at before you build
   them something that already exists.)
-- Source + docs: https://github.com/nwcnwc/gifos — the runtime the API
-  reference above is taken from is site/js/runtime.js; deeper doctrine
-  lives in docs/ (providers.md, cors-and-networking.md, architecture.md).
+- Site source: https://github.com/nwcnwc/gifos-app — the pages gifos.app
+  serves. The runtime the API reference above is taken from is js/runtime.js.
+- App sources: https://github.com/nwcnwc/gifos-apps-source — one directory
+  per store app, at the repository root.
 - Multiplayer relay: wss://relay.gifos.app (control traffic only; media is
   strictly peer-to-peer)
