@@ -4073,15 +4073,15 @@
         0
       ],
       "cover": "/apps/json-editor/cover.jpg",
-      "bytes": 802574,
+      "bytes": 802688,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-08-27"
+        "ts": "2026-10-07"
       },
-      "sha256": "4bf7d7b86346dadf842a1093283000cff5f47340c80b8fb6fcf166ee74e272a6"
+      "sha256": "80a21cb3019b226778ebd4038756f16c319c2f0349fab300e55ba4f24ffc9698"
     },
     {
       "slug": "jspaint",
@@ -4567,15 +4567,15 @@
         197
       ],
       "cover": "/apps/lrc-maker/cover.jpg",
-      "bytes": 193015,
+      "bytes": 193092,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-08-26"
+        "ts": "2026-10-07"
       },
-      "sha256": "450260f4ff4be5351fff01c1345b149d50c96f6ec1fbfa899c6519b14f99648d"
+      "sha256": "327e6e3b26873ceafa545abc3fb1e3f455a8466f8877e030eeb8fb743c95e880"
     },
     {
       "slug": "ludo",
@@ -5898,15 +5898,15 @@
         194
       ],
       "cover": "/apps/orca/cover.jpg",
-      "bytes": 269078,
+      "bytes": 269316,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-08-29"
+        "ts": "2026-10-07"
       },
-      "sha256": "e65d15e09b6e83fb36d2802db3169dcaf04da3b93fc489ab562d487c0fa238be"
+      "sha256": "9ee3827b7d850a7e1e772e2b2150926f0c9b64f035e71cb96ad0b7fdb47fcda0"
     },
     {
       "slug": "otpauth",
@@ -6646,15 +6646,15 @@
         58
       ],
       "cover": "/apps/pixelit/cover.jpg",
-      "bytes": 193893,
+      "bytes": 193970,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-08-26"
+        "ts": "2026-10-07"
       },
-      "sha256": "edad932c949fbb595e5891d976137eb74f74725fb635d1f65dd1d3f8aad6fa28"
+      "sha256": "fb96815ec48c544dfd3c1aeba173f74a2b87d694d0ba84f43ad7caa171c9a527"
     },
     {
       "slug": "polygon-shredder",
@@ -7843,15 +7843,15 @@
         48
       ],
       "cover": "/apps/slots/cover.jpg",
-      "bytes": 194567,
+      "bytes": 194652,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-08-25"
+        "ts": "2026-10-07"
       },
-      "sha256": "cf7b3ff46fab5dbf2ff10d26052eeb6ac1046b9df489b9ce44545e15bd342670"
+      "sha256": "3bc21d8bf8c81860df3354003c676d1cb1a83ef52e47004351a1810e952f3f82"
     },
     {
       "slug": "smartcrop",
@@ -8134,15 +8134,15 @@
         48
       ],
       "cover": "/apps/spider/cover.jpg",
-      "bytes": 194196,
+      "bytes": 194273,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-08-30"
+        "ts": "2026-10-07"
       },
-      "sha256": "f3647cefea5df5bddb892fb6167fe3527df9c1fd6e19b437080c0d8c46925457"
+      "sha256": "aeed7df389a9b5d53e53ebff6c058f04f0a1f932a43b2a92331b46955626819b"
     },
     {
       "slug": "splat",
@@ -9990,15 +9990,15 @@
         255
       ],
       "cover": "/apps/worldview/cover.jpg",
-      "bytes": 1086277,
+      "bytes": 1086725,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-08-25"
+        "ts": "2026-10-07"
       },
-      "sha256": "586de25a113d2d232585374b8a7c5f3af037d2c8ad54035cb3b8f074f5450556"
+      "sha256": "9ad952deafe4efbe8280c2fbfe5a3bef28fe3ba63f4dd767141eef43e9d4d36e"
     },
     {
       "slug": "yahtzee",

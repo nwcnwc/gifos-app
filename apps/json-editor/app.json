@@ -40,14 +40,14 @@
   "cover": "/apps/json-editor/cover.jpg",
   "screenshots": [],
   "gif": "/apps/json-editor/json-editor.gif",
-  "bytes": 802574,
+  "bytes": 802688,
   "download": 0,
   "provides": null,
-  "sha256": "4bf7d7b86346dadf842a1093283000cff5f47340c80b8fb6fcf166ee74e272a6",
+  "sha256": "80a21cb3019b226778ebd4038756f16c319c2f0349fab300e55ba4f24ffc9698",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-27"
+    "ts": "2026-10-07"
   },
   "porter": {
     "name": "GifOS",

@@ -40,14 +40,14 @@
   "cover": "/apps/pixelit/cover.jpg",
   "screenshots": [],
   "gif": "/apps/pixelit/pixelit.gif",
-  "bytes": 193893,
+  "bytes": 193970,
   "download": 0,
   "provides": null,
-  "sha256": "edad932c949fbb595e5891d976137eb74f74725fb635d1f65dd1d3f8aad6fa28",
+  "sha256": "fb96815ec48c544dfd3c1aeba173f74a2b87d694d0ba84f43ad7caa171c9a527",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-26"
+    "ts": "2026-10-07"
   },
   "porter": {
     "name": "GifOS",

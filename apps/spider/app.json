@@ -38,14 +38,14 @@
   "cover": "/apps/spider/cover.jpg",
   "screenshots": [],
   "gif": "/apps/spider/spider.gif",
-  "bytes": 194196,
+  "bytes": 194273,
   "download": 0,
   "provides": null,
-  "sha256": "f3647cefea5df5bddb892fb6167fe3527df9c1fd6e19b437080c0d8c46925457",
+  "sha256": "aeed7df389a9b5d53e53ebff6c058f04f0a1f932a43b2a92331b46955626819b",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-08-30"
+    "ts": "2026-10-07"
   },
   "porter": {
     "name": "GifOS",

@@ -2,6 +2,24 @@
  "note": "Release notes shown in Settings → Advanced → Version. Newest first. SHORT, PLAIN bullets under \"features\" and \"fixes\" — a line or two each, no jargon, no filler; anyone who wants the long story can read the repo. Every release needs at least one bullet. Set \"critical\": true on a release that fixes data loss, a security issue, or a breaking sync change so the desktop calls it out.",
  "entries": [
   {
+   "version": "0.9.19",
+   "date": "2026-10-07",
+   "headline": "Meetings keep their picture on slow devices, and people who drop out come back fast",
+   "critical": false,
+   "fixes": [
+    "On a slow computer or phone, your blurred camera could stop sending for many seconds, so everyone saw your picture freeze. It now keeps sending.",
+    "Someone who lost their connection or went offline for a while now rejoins the meeting within seconds, even if the room rearranged while they were away.",
+    "Orca saves your grid again; it used to save an empty file.",
+    "Pixelit keeps a photo you opened after you close and reopen the file.",
+    "In Slots, a friend's spin now shows who pulled.",
+    "In Spider, choosing a new number of suits before a new game now deals that many suits.",
+    "In the JSON editor, Compact now works in Code mode.",
+    "In the LRC maker, the Stamp button keeps its own look.",
+    "A booted computer image no longer shows every folder twice.",
+    "Turning down the camera at the start of a meeting no longer leaves a hidden error behind."
+   ]
+  },
+  {
    "version": "0.9.18",
    "date": "2026-10-06",
    "headline": "Meetings recover cleanly, and your name shows from the start",

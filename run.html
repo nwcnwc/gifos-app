@@ -2463,6 +2463,144 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return (wallDelta > 150000 || monoDelta > 150000) && peerCount > 0;
     }
     let hbTick = 0, hbLastAt = Date.now(), hbLastMono = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0, frozeGap = 0;
+    // THE WAKE PROBE (chaos round 1: every "back, but over 10 s" and both
+    // "never came back" freeze seeds). A page that was AWAY — renderer frozen
+    // (Android tab freeze, SIGSTOP), suspended, or dark (no coverage) — for
+    // longer than its peers' receive-silence threshold (the starve sweeper's
+    // 12 s) comes back to pairs its peers have already judged: each of them
+    // kicked its pc toward us (an offer that may be waiting in the relay
+    // socket), or D5-confirmed us gone and dropped the pair. Our own pcs
+    // still READ connected for seconds (ICE consent has not expired), our
+    // receive-silence clocks are discounted by our own blockage
+    // (starveDebtSince — rightly: that silence was ours), and the dc-watchdog
+    // waits 20 s to be sure it is awake. So nothing here rebuilt for 12-20 s
+    // after a 25 s freeze, the peer's queued offer was negotiated into the
+    // old pc, and the two met again 13-16 s later on a rescue dial (seed 12:
+    // 22.7 s; seed 8 minimized: never, both ended solo at 0/0.0).
+    //
+    // Being away is first-hand knowledge, so act on it the moment we are
+    // back: ask every pair over its channel, and REBUILD (fresh pc + our
+    // offer — the offerer creates the DataChannel, see sendOffer) each pair
+    // that has delivered nothing by WAKE_PROBE_MS. A pair that survived the
+    // nap answers in one round trip and is left alone, so a long-hidden tab
+    // whose worker beats arrive a minute apart (Chrome's intensive throttling)
+    // probes its healthy pairs once a minute and rebuilds none. A pair the
+    // peer rebuilt meanwhile (its offer landed — see onSignal's new-pc rule —
+    // or our own rebuild) is left to form, and judged again at WAKE_SETTLE_MS:
+    // the offer that drained at the thaw may have come from a pc the peer has
+    // since closed (it gave us up at its D5 confirm), and the answer we made
+    // went into the void — a pair that is not connected by then is rebuilt.
+    // Rebuilding on the gap alone would have torn down the survivors.
+    //
+    // THE ANSWER IS THE wpong, NOT A RECEIVE: every frame the peer sent into
+    // the channel while we were frozen drains in the same burst as the beat
+    // that measures the gap, so "heard since the wake" read true on a channel
+    // the peer had closed 20 s earlier (chaos seed 8: the probe skipped the
+    // one pair it was for; 27 s to rejoin). A wpong can only follow our wping.
+    const WAKE_SUSPECT_MS = 12000, WAKE_PROBE_MS = 1500, WAKE_SETTLE_MS = 6000;
+    let wakeLastAt = 0, netDarkAt = 0, netDarkEndAt = 0;
+    // A PROBE IN THE DARK IS NO PROBE. With the radio off nothing we send
+    // leaves and nothing comes back, so an unanswered wping says nothing
+    // about the pair — and the rebuild it triggered tore down three healthy
+    // pairs whose offers could not leave either: chaos seed 14 #5, a 5 s
+    // dropout on a throttled phone (its 16 s beat gap fired the probe two
+    // seconds into the dark), 11.1 s to rejoin where the untouched pairs
+    // would have carried on. A probe is not started while dark, and its
+    // verdicts are dropped when a dark spell began or ended after it (the
+    // online edge starts its own probe after a long one).
+    const darkSince = (at) => !!netDarkAt || netDarkEndAt > at || (typeof navigator !== 'undefined' && navigator.onLine === false);
+    function wakeProbe(at, why) {
+      if (leaving || bannedOut || !peers.size) return;
+      if (darkSince(at)) return;
+      if (at - wakeLastAt < WAKE_PROBE_MS * 2) return; // one probe per wake (the beat and the online edge can both see it)
+      wakeLastAt = at;
+      let asked = 0;
+      for (const p of peers.values()) {
+        if (!p.pc) continue;
+        p.wakeAt = at; p.wakePongAt = 0; p.wakeBuiltAt = 0;
+        p.wakeAsked = !!(p.dc && p.dc.readyState === 'open');
+        if (p.wakeAsked) { asked++; dcSend(p, { k: 'wping' }); }
+      }
+      if (typeof clog === 'function') clog('wake (' + why + '): probing ' + peers.size + ' pair(s), ' + asked + ' over an open channel');
+      const rebuild = (pid, p, stage) => {
+        const sv = (window.__starve = window.__starve || { beats: 0, eligible: 0, kicked: 0, why: {} });
+        sv.kicked++; sv.why.wake = (sv.why.wake || 0) + 1;
+        p.meshKickAt = Date.now(); p.wakeBuiltAt = at;
+        if (typeof clog === 'function') clog('wake rebuild ' + String(pid).slice(0, 6) + ' (' + stage + ') pc=' + (p.pc.connectionState || '?') + ' dc=' + (p.dc ? p.dc.readyState : 'none'));
+        newPcFor(p);
+        sendOffer(pid, false);
+      };
+      // BACK FROM THE DARK, a pair with no open channel and no live transport
+      // whose pc predates the return has nothing to ask and nothing to wait
+      // for: every offer it made went into the dark. Rebuild it now, not at
+      // WAKE_PROBE_MS (preset 14a: the head's pair to its mate sat new for
+      // the 1.5 s, on a 10 s budget). A pc built since the return (the peer's
+      // offer landed) is left to form, as below.
+      if (/^dark/.test(why)) for (const [pid, p] of peers) {
+        if (p.wakeAt !== at || !p.pc || p.wakeAsked || p.connected || (p.dc && p.dc.readyState === 'open')) continue;
+        if (Math.max(p.rebuiltAt || 0, p.bornAt || 0) >= at) continue;
+        rebuild(pid, p, 'dark');
+      }
+      setTimeout(() => {
+        if (leaving || bannedOut) return;
+        if (darkSince(at)) { for (const p of peers.values()) if (p.wakeAt === at) p.wakeAt = 0; return; }
+        for (const [pid, p] of peers) {
+          if (p.wakeAt !== at || !p.pc) continue;
+          if (p.wakePongAt > at) { p.wakeAt = 0; continue; }                   // it answered: the pair survived
+          if (!p.wakeAsked && p.connected && p.dc && p.dc.readyState === 'open') { p.wakeAt = 0; continue; } // not asked (no channel at the wake) and open now: it formed since — alive
+          const built = Math.max(p.rebuiltAt || 0, p.bornAt || 0), st = p.pc.connectionState;
+          if (built >= at || (built > at - 5000 && (st === 'connecting' || st === 'connected'))) continue; // (re)built at the wake — judged at WAKE_SETTLE_MS
+          rebuild(pid, p, 'silent');
+        }
+      }, WAKE_PROBE_MS);
+      setTimeout(() => {
+        if (leaving || bannedOut) return;
+        if (darkSince(at)) { for (const p of peers.values()) if (p.wakeAt === at) p.wakeAt = 0; return; }
+        for (const [pid, p] of peers) {
+          if (p.wakeAt !== at || !p.pc) continue;
+          p.wakeAt = 0;
+          if (p.connected && p.dc && p.dc.readyState === 'open') continue;
+          // OUR wake rebuild went unanswered while the pairs beside it formed:
+          // a first-hand transport death, the edge D5 waits for (mesh.js
+          // absence: "a new observation needs the app's transport edge after
+          // the return"). The mesh probes the seat across the rook before it
+          // believes us, so a live-but-slow peer is safe; a peer that reloaded
+          // while we were dark is confirmed in EARLY_HOLD instead of RING_HOLD
+          // (chaos seed 11 #5: a row-mate back from 45 s dark held the head's
+          // old id for 46 s more, and a rejoiner was NOROOM'd the whole time).
+          if (p.wakeBuiltAt === at) { onTransportDead(pid, 'wake-dead'); continue; }
+          if (Math.max(p.rebuiltAt || 0, p.bornAt || 0) > at + WAKE_PROBE_MS) continue; // a later healer's pc, still forming
+          rebuild(pid, p, 'unsettled');
+        }
+      }, WAKE_SETTLE_MS);
+    }
+    // THE DARK RETURN: the OS says offline and then online again (a coverage
+    // dropout). Nothing blocked our loop, so the beat gap never shows it;
+    // the dark span is measured here and judged by the same threshold.
+    function netDarkBeat(now) {
+      const dark = typeof navigator !== 'undefined' && navigator.onLine === false;
+      if (dark) { if (!netDarkAt) netDarkAt = now; return; }
+      if (!netDarkAt) return;
+      const span = now - netDarkAt; netDarkAt = 0; netDarkEndAt = now;
+      // The mesh dropped every dark-era observation at the edge (mesh-wire
+      // netHold); the once-per-silence-episode guard on the starve edge must
+      // go with it, or a peer whose edge fired before the dark is never
+      // reported again (seed 11 #5: the mesh learned of a reloaded head only
+      // from the RING_HOLD horizon).
+      tlFiredPid.clear();
+      // ...and so are the relay's socket deltas (peer-join/peer-leave) of the
+      // dark span: who the relay can reach is pulled fresh ({t:'who'}). Left
+      // stale, a member that joined while I was dark read as socketless and
+      // every offer and dial request to it went to the sponsor path, where
+      // nothing carried it (preset 14a on b13bbf6e: the returning head's
+      // pair to the newcomer sat new for 11 s, relay path unused).
+      if (span > 2000) { try { relaySendObj({ t: 'who' }); } catch (e) {} }
+      if (span > WAKE_SUSPECT_MS) wakeProbe(now, 'dark ' + Math.round(span / 1000) + 's');
+    }
+    try {
+      window.addEventListener('offline', () => { if (!netDarkAt) netDarkAt = Date.now(); });
+      window.addEventListener('online', () => netDarkBeat(Date.now()));
+    } catch (e) {}
     if (bgClock(SCALE.HB, () => {
       hbTick++;
       // THE FREEZE DETECTOR'S CLOCK — the gap is measured HERE, before the
@@ -2476,10 +2614,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // we are visible (here, or in visibilitychange below).
       const nowBeat = Date.now();
       const nowMono = (typeof performance !== 'undefined' && performance.now) ? performance.now() : nowBeat;
-      if (frozeThisBeat(nowBeat - hbLastAt, nowMono - hbLastMono, peers.size)) frozeGap = nowBeat - hbLastAt;
+      const beatGap = nowBeat - hbLastAt;
+      if (frozeThisBeat(beatGap, nowMono - hbLastMono, peers.size)) frozeGap = beatGap;
       hbLastAt = nowBeat;
       hbLastMono = nowMono;
       if (frozeGap && !document.hidden) { resumeReload(); return; }
+      // THE WAKE PROBE: a beat this late means the page was away — frozen,
+      // suspended, blocked — for longer than every peer's receive-silence
+      // threshold, and each of them has judged that silence (see wakeProbe).
+      // The dark return (radio) arrives through the 'online' edge below.
+      if (beatGap > WAKE_SUSPECT_MS && !frozeGap) wakeProbe(nowBeat, 'beat gap ' + Math.round(beatGap / 1000) + 's');
+      netDarkBeat(nowBeat);
       // A hidden tab beats at a third of the pace (12s — still inside every 15s
       // freshness window): a phone in a pocket keeps its seat without waking
       // the relay 21,600 times a day. The worker clock makes the 12s REAL —
@@ -3923,6 +4068,35 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       ctx.imageSmoothingEnabled = true; ctx.drawImage(a, 0, 0, w, h, dx, dy, dw, dh);
     }
 
+    // STAGE-BLUR-GOVERNOR
+    // THE PAINT GOVERNOR, as a rule of its own. A paint may start when the
+    // rung's frame budget has passed since the last one STARTED and the
+    // painter has rested twice the AVERAGE paint cost since the last one
+    // ENDED — so painting never takes more than about a third of the main
+    // thread, the reason the governor exists (a 4-minute wedge, 95% drawImage).
+    // Two things it no longer does. It read the LAST paint's cost, so one slow
+    // paint ruled alone: on a loaded ARM stager one drawImage took 7.8 s, the
+    // governor then dropped every frame for 3 x 7.8 = 23 s, the canvas that IS
+    // the outbound camera went still, its encoder ran at 0 fps and every
+    // receiver of the Stage froze (e2e-pipe-freeze, 2026-10-07: 12.8-15 s
+    // without a paint while frame callbacks kept arriving). And the rest is
+    // capped at BLUR_REST_MAX_MS: however slow the box, the canvas gets a new
+    // frame about once a second, well inside the 12 s freeze bound. For a
+    // steady paint cost under 500 ms the schedule is the one it always was.
+    const BLUR_REST_MAX_MS = 1000;
+    function blurPaintDue(gov, now, budget) {
+      if (now - gov.start < budget) return false;
+      return now - gov.end >= Math.min(2 * gov.avg, BLUR_REST_MAX_MS);
+    }
+    function blurPaintDone(gov, start, end) {
+      const cost = Math.max(0, end - start);
+      // A stall longer than the rest cap counts as the cap: one 7.8 s paint
+      // must not keep the painter at one frame a second for the next ten.
+      const c = Math.min(cost, BLUR_REST_MAX_MS);
+      gov.avg = gov.n ? gov.avg * 0.7 + c * 0.3 : c;
+      gov.n = (gov.n || 0) + 1; gov.start = start; gov.end = end; gov.cost = cost;
+    }
+    // END-STAGE-BLUR-GOVERNOR
     // STAGE-BLUR-FRAME
     function noteBlurFrame(pipe, drew) {
       if (!pipe) return null;
@@ -3987,9 +4161,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // they complete and the main thread's task queue grows into a MINUTES-
       // long backlog — everything (offers, mesh ticks, UI) stalls behind it
       // (found by CPU profile: 95% drawImage during a 4-minute wedge). So:
-      // never spend more than ~1/3 of wall time painting — each paint's cost
-      // sets the earliest next paint (≥66ms = the captureStream 15fps budget).
-      let paintLast = 0, paintCost = 0;
+      // never spend more than ~1/3 of wall time painting — the AVERAGE paint
+      // cost sets the rest after each paint, capped at a second so one slow
+      // paint cannot still the camera (blurPaintDue, STAGE-BLUR-GOVERNOR).
+      const gov = { start: -1e9, end: -1e9, avg: 0, n: 0, cost: 0 };
       // Blur DESTROYS detail — painting and encoding it at capture size is
       // pure heat. Cap the canvas at 480w (light) / 320w (heavy); receivers
       // stretch the tile and a stretched blur is indistinguishable from a
@@ -4012,7 +4187,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // device.
         const rf = (lastQ && lastQ.fps) || 15;
         const budget = Math.max(66, 1000 / Math.min(15, Math.max(8, rf)));
-        if (now - paintLast < Math.max(budget, paintCost * 3)) return; // drop the frame
+        if (!blurPaintDue(gov, now, budget)) return; // drop the frame
         // The frame ships at the CAMERA'S OWN shape — no crop, no transpose
         // (the 2026-08-01 canvas center-crop was reverted: stacked on the
         // camera pipeline's own cropping it double-zoomed a face; the camera
@@ -4038,13 +4213,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // first, so blackCamWatch read a dead pipe as frames flowing.
         const why = noteBlurFrame(pipe, drew);
         if (why) regrabCamera(why);
-        paintLast = now; paintCost = performance.now() - now;
+        blurPaintDone(gov, now, performance.now());
+        pipe.cost = gov.cost; pipe.lastPaintAt = Date.now();
       };
       // Draw on every DECODED camera frame when the browser supports it (the
       // correct, smooth path on iOS/Safari) — and ALSO on the worker metronome,
       // which keeps ticking when the tab is hidden and main-thread timers are
       // clamped (a backgrounded phone used to broadcast a near-frozen blur).
-      const onFrame = () => { if (blurPipe !== pipe) return; paint(); if (src.requestVideoFrameCallback) pipe.rvfc = src.requestVideoFrameCallback(onFrame); };
+      const onFrame = () => { if (blurPipe !== pipe) return; pipe.rvfcN = (pipe.rvfcN || 0) + 1; paint(); if (src.requestVideoFrameCallback) pipe.rvfc = src.requestVideoFrameCallback(onFrame); };
       src.play().catch(() => {});
       const stream = canvas.captureStream(15);
       pipe.track = stream.getVideoTracks()[0];
@@ -4072,7 +4248,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // comes back on the visibility flip, which is a human action — rare
       // enough that the churn is free.
       const rvfcDrives = !!src.requestVideoFrameCallback;
-      const tick = () => { if (blurPipe === pipe) paint(); };
+      const tick = () => { if (blurPipe === pipe) { pipe.metroN = (pipe.metroN || 0) + 1; paint(); } };
       let metroOff = null;
       const syncMetro = () => {
         if (blurPipe !== pipe) return;
@@ -4864,7 +5040,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const rxStats = { offer: 0, answer: 0, ice: 0, status: 0, offerRejected: 0, answerNoPeer: 0, negFail: 0, answerStale: 0 }; // reception mirror: what actually ARRIVED (and what was refused)
     function noteNegFail(kind, from, e) {
       rxStats.negFail++;
-      if (typeof clog === 'function') clog('neg-fail ' + kind + ' ' + String(from).slice(0, 6) + ' ' + String(e && e.message || e).slice(0, 60));
+      if (typeof clog === 'function') clog('neg-fail ' + kind + ' ' + String(from).slice(0, 6) + ' ' + String(e && e.message || e).slice(0, 160));
     }
     // ---- §FWD sponsor-forward machinery (docs/meet-security.md) -------------
     // Shared by fsig (WebRTC signaling) and fmesh (mesh control). The old rule
@@ -5397,6 +5573,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       p.glareTimer = null; p.glareOffer = null;
       p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
       p.offering = null; // an offer still minting belongs to the closed pc (sendOffer drops it)
+      p.offerFp = ''; // no remote offer has landed on this pc yet (onSignal's new-pc rule)
       // A new pc gathers afresh: its first host candidate must leave at once,
       // so the old pc's batch (sawHost, a pending flush) is dropped.
       { const ib = iceBatch.get(p.id); if (ib && ib.t) clearTimeout(ib.t); iceBatch.delete(p.id); }
@@ -5583,9 +5760,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // pair that had heard one relayed frame read as carried (traced: the
     // Rex-Tia pair in e2e-video, 17 s to mesh).
     const noLiveTransport = (p) => !p.connected && !(p.dc && p.dc.readyState === 'open');
+    // A STALE OFFER YIELDS AT ONCE. An offer of ours that has stood
+    // unanswered past GLARE_YIELD_MS on a pair with no live transport went
+    // somewhere nobody answers (made while the peer was dark: chaos seed 9 #1,
+    // Yara's dark-return rebuild offered into Wren's dark spell); the polite
+    // peer's offer is its live attempt. Waiting GLARE_YIELD_MS more, with a
+    // rebuild in between cancelling the yield (newPcFor), left Wren's offer
+    // unanswered for 16 s (18.7 s to rejoin).
     function armGlareYield(p, from, msg) {
       p.glareOffer = msg;
       if (p.glareTimer) return;                       // already waiting
+      const stale = noLiveTransport(p) && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) > GLARE_YIELD_MS;
       p.glareTimer = setTimeout(() => {
         p.glareTimer = null;
         const m = p.glareOffer; p.glareOffer = null;
@@ -5609,11 +5794,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // only from the higher id left the polite side with a pc nobody offered on.
             try { newPcFor(p); sendOffer(from, false); } catch (e2) { noteNegFail('glare', from, e2 || e); }
           });
-      }, GLARE_YIELD_MS);
+      }, stale ? 0 : GLARE_YIELD_MS);
     }
 
     function sendOffer(peerId, iceRestart) {
       const p = makePeer(peerId, null);
+      // ONE OFFER AT A TIME PER PC. A second createOffer→setLocalDescription
+      // while the first is still minting on the same pc fails in Chromium
+      // ("the order of m-lines in subsequent offer doesn't match order from
+      // previous offer/answer" — probed standalone, 2026-10-06), and the
+      // starve and dc-watchdog rebuilds share a beat with the plain re-offer
+      // sweep, so every rebuild logged exactly that neg-fail. The offer in
+      // flight IS this pair's offer; a restart asked for meanwhile comes
+      // round on the next sweep.
+      if (p.offering) return;
       // The OFFERER creates the DataChannel (whoever dials — id-initiator,
       // unwired newcomer, or a starved answerer-side rebuild), BEFORE
       // createOffer so the data m-line rides this offer. Idempotent: a
@@ -5878,6 +6072,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // 'failed' tore down recovering pairs in a loop the moment both tabs
         // were hidden/throttled (the 06a regression this line first caused).
         if (p.pc && p.deadSince && Date.now() - p.deadSince > 12000) newPcFor(p);
+        // THE NEW-PC RULE: an offer whose DTLS fingerprint is not the one our
+        // remote description holds comes from a DIFFERENT RTCPeerConnection —
+        // the peer REBUILT the pair (its starve kick while we were frozen,
+        // its rescue dial after it gave us up). A certificate is minted per
+        // pc, so a renegotiation or ICE restart of the pc we hold keeps its
+        // fingerprint and is never touched. Negotiated into our old pc the
+        // offer fails ("the order of m-lines in subsequent offer doesn't
+        // match", chaos seed 8 at the thaw) and the pair waits 12-27 s for a
+        // healer; on a fresh pc it is the reunion itself, one round trip.
+        // Nothing of ours is lost: the pc we hold was built against a pc the
+        // peer has closed.
+        // The fingerprint compared is the one of the LAST OFFER ROUTED INTO
+        // THIS PC (p.offerFp, stamped synchronously below), not
+        // pc.remoteDescription: two offers from two of the peer's pcs drain in
+        // one burst at a thaw (a throttled row-mate's wake probe rebuilt its
+        // pair with the frozen page every beat), and the second arrived while
+        // the first's setRemoteDescription was still pending — remoteDescription
+        // read null, the rule stood down, and the second offer failed on the
+        // first's pc ("m-lines in subsequent offer", seed 12 #1: 25.8 s).
+        { const fpOf = (sdp) => { const m = /\r?\na=fingerprint:([^\r\n]+)/.exec(String(sdp && sdp.sdp || sdp || '')); return m ? m[1] : ''; };
+          const fp = fpOf(msg.sdp);
+          const cur = p.pc ? (p.pc.remoteDescription ? fpOf(p.pc.remoteDescription) : (p.offerFp || '')) : '';
+          if (p.pc && fp && cur && fp !== cur) {
+            if (typeof clog === 'function') clog('offer from a new pc: fresh pc for ' + String(from).slice(0, 6) + ' (was ' + p.pc.connectionState + '/' + p.pc.signalingState + ')');
+            newPcFor(p);
+          }
+          if (fp) p.offerFp = fp; }
         // A NEVER-OPENED pair is the other corpse class (pair-probe.js): ICE
         // says connected, the DC never opened, and this side reads healthy
         // (deadSince=0) — so the dialer's dc-watchdog rebuild offer was
@@ -6110,6 +6331,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (sponsorSend({ k: 'fhi', from: myId, to: pid, tc: coordKeyOf(pid), id: myId + ':hi:' + (++fwdSeq), ttl: 12, m: hi })) return;
       if (!relayDown) sendRelay();
     }
+    // A DIAL REQUEST to the id-order initiator of a pair that is not forming:
+    // no channel, nothing being negotiated on my side, and nothing heard from
+    // its side. Throttled per pair; the frag-ping handler ignores a request
+    // for a pair it is already forming.
+    function askDial(pid, p) {
+      if (!p || iInitiate(pid) || p.connected || (p.dc && p.dc.readyState === 'open')) return;
+      if (p.pc && p.pc.signalingState !== 'stable') return;   // an offer is in flight one way or the other
+      const now = Date.now(); if (now - (p.dialReqAt || 0) < 5000) return;
+      p.dialReqAt = now;
+      try { sendSig(pid, { k: 'frag-ping' }); } catch (e) {}
+    }
     function ensureLink(pid, name) {
       if (!linkTo(pid)) return; // the sweeper retires unwanted links, with grace
       let p = peers.get(pid);
@@ -6129,7 +6361,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // rare double-dial; id order governs everything after first wiring.
         let anyDc = false; for (const q of peers.values()) if (q.dc && q.dc.readyState === 'open') { anyDc = true; break; }
         if (iInitiate(pid) || !anyDc) { sendOffer(pid, false); p = peers.get(pid); }
-        else p = makePeer(pid, name); // their offer is on its way
+        else {
+          p = makePeer(pid, name); // their offer is on its way...
+          // ...IF they know the pair exists. The mesh may have named this
+          // seat to me alone: a head back from a dead spot learns the
+          // newcomer its row admitted from the ring (HOME), and the newcomer
+          // has never heard of it. Waiting on id order left the pair unbuilt
+          // until an unrelated healer re-offered (preset 14a: the arbiter's
+          // YIELD reached the returning head 8 s late; 13.5 s to rejoin). A
+          // dial REQUEST (frag-ping: the initiator dials a member it has no
+          // live pair with) costs one signaling frame and is a no-op for an
+          // initiator already dialing.
+          askDial(pid, p);
+        }
         // Newcomers can't trust gossip for moderation in admin rooms — an
         // admin hands them the table over the relay's stamped path.
         if (amAdmin) sendSig(pid, { kind: 'mod', mod: modTable, modw: gossipModW() });
@@ -6190,6 +6434,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function confirmGone(pid, why) {
       if (!pid || pid === myId || meshGone.has(pid)) return;
       meshGone.set(pid, Date.now());
+      { const s = meshSeat(); meshGoneTick.set(pid, s && typeof s.TICK === 'number' ? s.TICK : -1); }
       occVanish.delete(pid);
       if (typeof dropStatus === 'function') dropStatus(pid); else statusOf.delete(pid); forgetConns(pid); delete rosterNames[pid]; delete ipsOf[pid]; delete devOf[pid];
       pidFirstSeen.delete(pid); meshRxByPid.delete(pid); tlFiredPid.delete(pid); speakingOf.delete(pid);
@@ -6222,10 +6467,39 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // from the peer itself, never third-hand — takeStatus stamps receipt), or
     // a live connection. Then the tombstone lifts — a wrong verdict costs one
     // tile flicker, never an eviction (the mesh's own E2/tenure is untouched).
+    // THE MESH'S OWN HEARING LIFTS A TOMBSTONE TOO. A sealed HELLO from the
+    // peer at a cell, received at a mesh tick strictly after the verdict, is
+    // first-hand proof of life of the same class as a status frame — and it
+    // arrives sooner: a status rides the peer's heartbeat (16 s apart on a
+    // throttled phone), the mesh re-hears a returned row-mate within a beat
+    // of the path reopening. Without this, two members a sever had made
+    // confirm each other gone were re-named by gossip in 4 s and re-heard by
+    // the mesh in 4 s, and the dial still waited for the next status
+    // heartbeat (chaos seed 14 #1: 14.1 s; seed 12 #5: 11.7 s; seed 10 #5:
+    // 13.7 s). Strict '>' on the tick: the verdict's own tick may still hold
+    // the dead peer's frame tail (mesh.js translostConfirmed, same rule).
+    // A ROW-MATE'S WORD COUNTS THE SAME WAY: in a 3-person room the two
+    // severed members share no path a HELLO could take, but the third hears
+    // both first-hand and its S1SYNC re-seats each at the other within a
+    // beat, stamped with the end-to-end sighting age (s1seen = TICK - age; a
+    // hop can only age an entry, never freshen it, so a stamp past the
+    // verdict is a sighting past the verdict). A lingering corpse's hint is
+    // never refreshed by anyone and stays older than the verdict.
+    const meshGoneTick = new Map();   // pid -> seat.TICK at the verdict
+    const meshHeardSince = (pid) => {
+      const gt = meshGoneTick.get(pid); const s = meshSeat();
+      if (gt === undefined || !s || !s.occ) return false;
+      for (const [k, v] of s.occ) {
+        if (v !== pid) continue;
+        const t = s.live ? s.live.get(k) : undefined; if (t !== undefined && t > gt) return true;
+        const g = s.s1seen ? s.s1seen.get(k) : undefined; if (g !== undefined && g > gt) return true;
+      }
+      return false;
+    };
     const notTomb = (pid) => {
       const g = meshGone.get(pid); if (g === undefined) return true;
       const st = statusOf.get(pid); const p = peers.get(pid);
-      if ((st && (st.rx || 0) > g + TOMB_GRACE) || (p && p.connected)) { meshGone.delete(pid); return true; }
+      if ((st && (st.rx || 0) > g + TOMB_GRACE) || (p && p.connected) || meshHeardSince(pid)) { meshGone.delete(pid); meshGoneTick.delete(pid); return true; }
       return false;
     };
     function departSweep(s) {
@@ -6438,8 +6712,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // is the authority on who our neighbours are; if linkTo() says a seat is
       // ours, we dial it, heard-from or not.
       for (const v of s.occ.values()) {
-        if (!v || v === myId || !notTomb(v) || peers.has(v)) continue;
+        if (!v || v === myId || !notTomb(v)) continue;
         if (devOf[v] && devOf[v] === myDevHash) continue;   // a stale session of my own device
+        // A pair object can exist with nothing negotiating it: made when the
+        // peer's status arrived, or by my own half of an id-order wait. The
+        // initiator may not know the mesh names us neighbours (a seat back
+        // from a dead spot learned the ring's newcomer from HOME; preset 14a
+        // on 3065c883: the pair sat new/- for 8 s), so ask it to dial.
+        if (peers.has(v)) { if (linkTo(v)) askDial(v, peers.get(v)); continue; }
         if (linkTo(v)) ensureLink(v, rosterNames[v] || null);
       }
       for (const [pid] of statusOf) if (pid !== myId && stHold(pid) && notTomb(pid)) ids.add(pid);
@@ -7157,6 +7437,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // dial REQUEST (frag-ping) so whichever half's door probe fires first,
     // the same one side ends up dialing.
     let fragPingId = null, fragPingAt = 0, fragRetryT = 0;
+    let fragDialAt = 0; const FRAG_DIAL_WAIT_MS = 30000; // F8 multi-id: the dial round before the reload, and how long it gets
     function fragRescue(id) {
       if (Date.now() - fragPingAt < 15000) return; // one outstanding rescue at a time
       fragPingId = id; fragPingAt = Date.now();
@@ -7348,6 +7629,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // gated exactly as before.
             return;
           }
+          // THE DIAL BEATS THE RELOAD HERE TOO. The door knowing two or more
+          // identities I have tombstoned says they are REGISTERED, not that
+          // they are reachable: a 3-person room whose other two went dark
+          // within seconds of each other left the one healthy member solo
+          // against two door-listed ids, and this reload threw away the only
+          // seat that was still right. It came back as a stranger, the first
+          // returner was NOROOM'd by the second's stale view, and both
+          // disrupted people rejoined 55-75 s after their coverage came back
+          // (chaos seed 9 #1). Dial every door id first (an offer to a dark
+          // peer is a no-op; a live one answers in seconds and the pair
+          // heals without a reset); the reload stays as the backstop for a
+          // solo view that no dial could mend within FRAG_DIAL_WAIT_MS.
+          const nowF = Date.now();
+          if (!fragDialAt || nowF - fragDialAt > FRAG_DIAL_WAIT_MS * 3) {
+            fragDialAt = nowF;
+            let dialed = 0;
+            for (const id of all) {
+              if (!id || id === myId) continue;
+              const q = peers.get(id); if (q && q.connected) continue;
+              try { if (iInitiate(id)) { makePeer(id, null); sendOffer(id, false); } else sendSig(id, { k: 'frag-ping' }); dialed++; } catch (e) {}
+            }
+            if (typeof clog === 'function') clog('frag-dial ' + dialed + ' door id(s) before any reload');
+            return;
+          }
+          if (nowF - fragDialAt < FRAG_DIAL_WAIT_MS) return;
           const last = +sessionStorage.getItem('gifos_fragrescue') || 0;
           if (Date.now() - last < 90000) return; // once per 90s \u2014 never a reload loop
           try { sessionStorage.setItem('gifos_fragrescue', String(Date.now())); } catch (e) {}
@@ -8854,6 +9160,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             })
             : Promise.reject(new Error('no media devices'));
           bootGumPending = gum.finally(() => { bootGumPending = null; });
+          // finally() is a new promise that rejects with gum. A tap during the
+          // prompt handles it (lateMedia); with no tap nothing does, and a
+          // refused camera would log "Uncaught (in promise)". gum.then below
+          // owns the refusal; this only marks the copy as handled.
+          bootGumPending.catch(() => {});
           gum.then((stream) => {
             localStream = stream;
             // Join QUIET by default: mic and camera acquired (permission
@@ -9283,8 +9594,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (!ok || p.dc !== dc) return;
           dc.__authBy = p.id;
           // frames from now on are the peer's own word: re-announce so my
-          // HELLO reaches it as a first-hand claim, not a hint
-          try { const s = meshSeat(); if (s && s.hasCoord && s.state === 3) s.announce(); } catch (e) {}
+          // HELLO reaches it as a first-hand claim, not a hint (and greet
+          // it — see dc.onopen)
+          try { const s = meshSeat(); if (s && s.hasCoord && s.state === 3) { s.announce(); if (s.greet) s.greet(p.id); } } catch (e) {}
         }).catch(() => {});
     }
     function wireDc(p, dc) {
@@ -9316,7 +9628,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // HELLO announce so occupancy converges now instead of at the next
         // PHONE beat (and to neighbours beyond this pair via §FWD, which
         // needs at least one open channel to sponsor through — this one).
-        try { const s = meshSeat(); if (s && s.hasCoord && s.state === 3) s.announce(); } catch (e) {}
+        // ...and THIS PEER hears my cell over its own channel even when my
+        // view does not hold it at one of my owned links (greet): a head
+        // back from 100 s dark held 0/0.0 while the row had healed around
+        // it; its view had lost the healer at the head cell, the healer's
+        // view had never held it, so neither ever said a link-proven word
+        // to the other, the row-mate's YIELDs went unbacked, and both held
+        // 0/0.0 for good (chaos seed 6 #2 on 403c6f81). The healer's mesh
+        // settles a claim on its own cell from here (the rival branch).
+        try { const s = meshSeat(); if (s && s.hasCoord && s.state === 3) { s.announce(); if (s.greet) s.greet(p.id); } } catch (e) {}
       };
       // D5: my channel to this peer died. On an ungraceful peer death (mobile
       // tab kill, OOM, crash) this lands within ~1-5s — first-hand evidence
@@ -9419,8 +9739,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // dialed IS the fork evidence — dial it (I'm the id-order initiator
         // by construction; the pairing is probe and heal in one). Guarded by
         // the ordinary pairing paths — a duplicate dial is a no-op offer.
-        if (typeof clog === 'function') clog('frag-ping from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1));
-        if (participantCount() <= 1 && iInitiate(p.id)) { makePeer(p.id, null); sendOffer(p.id, false); }
+        // ...and so is a member whose pair with me is NOT LIVE, solo or not:
+        // the sender has no pair with me at all (that is what the request
+        // says), so whatever pc I hold toward it faces one it has closed — a
+        // page back from a 20 s freeze still counting the sender as seated
+        // (chaos seed 8) ignored the request as "not solo" and the two met
+        // only on the 15 s retry. A live pair means the request predates it.
+        // Rebuilt on a fresh pc: an answer may be in flight on the one we hold
+        // (the sender's stale offer, drained at the thaw) and it is the void.
+        const pLive = p.connected && p.dc && p.dc.readyState === 'open';
+        if (typeof clog === 'function') clog('frag-ping from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive);
+        // A pair of mine still forming (built under 5 s ago) is the dial the
+        // request asks for: re-offering on a fresh pc would only restart it.
+        const forming = !pLive && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+        if ((participantCount() <= 1 || !pLive) && !forming && iInitiate(p.id) && Date.now() - (p.fragDialAt || 0) > 5000) {
+          p.fragDialAt = Date.now();
+          if (!pLive && p.pc) newPcFor(p);
+          makePeer(p.id, null); sendOffer(p.id, false);
+        }
       } else if (m.k === 'fmeta') {
         // Never re-broadcast to the ROOM (see chat) — but handed on, once, over
         // my OWN links: a file's bytes travel link by link (P0/P1 only), so
@@ -9662,6 +9998,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Still owner-SIGNED: the verifier in runtime.js checks the signature,
         // so a relaying peer can pass the bytes on but can never forge them.
         sgaRecvApp(m.m);
+      } else if (m.k === 'wping') {
+        dcSend(p, { k: 'wpong' }); // the wake probe (wakeProbe): the one answer it accepts
+      } else if (m.k === 'wpong') {
+        p.wakePongAt = Date.now();
       } else if (m.k === 'bye') {
         // The peer's own farewell (sendMeshLeave, D2's app-level echo): an
         // ANNOUNCED departure — remove them from the human view now. Sealed
@@ -9669,6 +10009,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // sender); a wrong/forged bye self-heals — the victim's next status
         // pulse lifts the tombstone (notTomb) and re-seats their tile.
         confirmGone(p.id, 'bye');
+        // ...and over the leaver's own authenticated channel it is the mesh's
+        // departure too (mesh.js goodbye): the LEAVE behind it is lost when
+        // the page dies first (chaos seed 10 #1: 10.5 s against 4.2 s).
+        if (dc && dc.__authBy === p.id) { try { const s = meshSeat(); if (s && s.goodbye) s.goodbye(p.id); } catch (e) {} }
       } else if (m.k === 'dcauth') {
         dcAuthRecv(p, dc, m);   // §DCAUTH: the peer proves it is the far end of THIS channel
       } else if (m.k === 'mesh') {
@@ -10543,12 +10887,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const st = jiggleState.get(sd);
       if (st) st.base = base; else jiggleState.set(sd, { base: base, busy: false });
     }
+    // A STARVED ENCODER GETS ONE FORCED KEY PER STARVED_KEY_MS, FROM ANY
+    // LEVER. The pulse already stood down on a stalled or cpu-limited
+    // encoder (2026-09-03), but every receiver's PLI still reached the
+    // producer as a kfNeed jiggle: two encoder re-inits and a forced key per
+    // hit, on EVERY sender of the key at once. On a starved stager that was
+    // the freeze's engine (e2e-pipe-freeze reds, 2026-10-07: a stager on a
+    // loaded ARM box at 7.5 fps, already stepped down to 240x135, 20% of its
+    // frames keys, 46 jiggles in one run; every receiver bright-froze 15-20 s).
+    // The pulse timer reads each stage sender's own row every 3 s and records
+    // here whether it is starved; armJiggle then lets one forced key through
+    // per STARVED_KEY_MS per sender (a waiting receiver still gets a key well
+    // inside the 12 s freeze bound), and kfNeed stops fanning a key out to
+    // every sender of a starved key.
+    const STARVED_KEY_MS = 6000;
+    const encHealth = new WeakMap();   // sender -> { starved, at } from the pulse timer
+    const keyForcedAt = new WeakMap(); // sender -> ms of the last forced key (pulse or jiggle)
+    function senderStarved(sd) {
+      const h = encHealth.get(sd);
+      return !!(h && h.starved && Date.now() - h.at < 10000);
+    }
     // One jiggle at a time per sender. Restore to the stored base, never to
     // the scale read at entry: a pulse and a kfNeed used to each restore the
     // 1.25 they had just written, and the encoder stayed shrunk.
     function armJiggle(sd, key, act) {
       const st0 = jiggleState.get(sd);
       if (st0 && st0.busy) { kfEv(key, act + '-skip', { why: 'jiggling' }); return false; }
+      if (senderStarved(sd) && Date.now() - (keyForcedAt.get(sd) || 0) < STARVED_KEY_MS) { kfEv(key, act + '-skip', { why: 'starved' }); return false; }
+      keyForcedAt.set(sd, Date.now());
       try {
         const prm = sd.getParameters();
         if (!prm.encodings || !prm.encodings.length) return false;
@@ -10628,11 +10994,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const job2 = mosJobs.get(jk2); if (!job2) continue;
         for (const sd of job2.senders || []) {
           if (!sd || !sd.track || sd.track.kind !== 'video') continue;
-          if (armJiggle(sd, key, 'jiggle') && one) return;
+          if (armJiggle(sd, key, 'jiggle') && (one || senderStarved(sd))) return;
         }
       }
     }
     if (MPipe) MPipe.on('kf-need', (m) => { const job = mosJobs.get(m.pipeId); if (job && pipeJobs.has(m.pipeId)) kfNeed(job.key); });
+    // THE STRIP'S ENCODERS ARE JUDGED TOO. The composited Stage strip
+    // ('sgs') has no pulse, but kfNeed jiggles its senders exactly like a
+    // stager's whenever a deep receiver starves for a key — and a strip
+    // compositor on a busy box starves the same way (e2e-pipe-freeze red,
+    // 2026-10-07: a deep forwarder's own 'sgs' inbound froze 23 s, and the
+    // seat below it 27 s). Sample each sgs sender every 3 s so armJiggle's
+    // starved-encoder rule covers the strip as well as the stage.
+    const sgsSeen = new WeakMap(); // sender -> framesEncoded at the last sample
+    setInterval(() => {
+      for (const [jk2, job2] of mosJobs) {
+        if (job2.key !== 'sgs' || pipeJobs.has(jk2) || !job2.active) continue;
+        const sd = (job2.senders || []).find((x) => x && x.track && x.track.kind === 'video');
+        if (!sd || !sd.getStats) continue;
+        sd.getStats().then((rep) => {
+          let fenc = null, qlim = null, fps = null;
+          rep.forEach((r) => { if (r.type === 'outbound-rtp' && r.kind === 'video') { fenc = r.framesEncoded || 0; qlim = r.qualityLimitationReason || null; fps = r.framesPerSecond != null ? r.framesPerSecond : null; } });
+          const was = sgsSeen.get(sd);
+          if (fenc != null) sgsSeen.set(sd, fenc);
+          encHealth.set(sd, { at: Date.now(), starved: (fenc != null && was != null && fenc === was) || qlim === 'cpu' || (fps != null && fps < 5) });
+        }).catch(() => {});
+      }
+    }, 3000);
     // THE STG KEY PULSE (frza20, closing the lane). REACTIVE key recovery
     // measured 14-20s at healthy fps across piped chains: SKR dies at the
     // first demand-minted carrier (Chromium doesn't latch PLIs into it), and
@@ -10672,7 +11060,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (rep) rep.forEach((r) => { if (r.type === 'outbound-rtp' && r.kind === 'video') { fps = r.framesPerSecond != null ? r.framesPerSecond : null; fw = r.frameWidth || 0; } });
             const was = pulseSeen.get(sd);
             if (fenc != null) pulseSeen.set(sd, fenc);
-            if (fenc != null && was != null && fenc === was) { kfEv(key2, 'pulse-skip', { why: 'stalled', fenc, qlim }); return; }
+            // Starved: stalled, cpu-limited, under 5 fps, or stepped down and
+            // not yet back over the 12 fps the step-up needs.
+            let srNow = 1; try { const pe = sd.getParameters().encodings; srNow = (pe && pe[0] && pe[0].scaleResolutionDownBy) || 1; } catch (e) {}
+            const stalledNow = fenc != null && was != null && fenc === was;
+            encHealth.set(sd, { at: Date.now(), starved: stalledNow || qlim === 'cpu' || (fps != null && fps < 5) || (srNow >= 2 && fps != null && fps <= 12) });
+            if (stalledNow) { kfEv(key2, 'pulse-skip', { why: 'stalled', fenc, qlim }); return; }
             if (qlim === 'cpu') { kfEv(key2, 'pulse-skip', { why: 'cpu', fenc }); return; }
             try {
               const prm = sd.getParameters();
@@ -17968,29 +18361,40 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       meshSeatForTest: () => { const s = meshSeat(); if (!s) return null; const T = s.env.TICK; const ck = net.topo.ckey;
         return { tick: T, state: s.state, coord: s.hasCoord ? ck(s.coord) : null, lastAsked: s.lastAsked ? String(s.lastAsked).slice(0, 8) : null, findAckAt: s.findAckAt, retryAgo: T - s.retryAt, seatTries: s.seatTries, roster: (s.roster || []).map((e) => e.k + '=' + String(e.v).slice(0, 6)), greeters: (s.lastGreeters || []).map((g) => String(g).slice(0, 6)), greetersAgo: T - s.greetersAt, lastAckAgo: T - s.lastAck, seatedAgo: T - s.seatedAt,
           occ: [...s.occ.entries()].map(([k, v]) => k + '=' + String(v).slice(0, 6) + (s.firstHandLive(k) ? '!' : '')), sitting: [...s.sitting.entries()].map(([k, v]) => k + '=' + String(v.joiner).slice(0, 6) + '@' + (T - v.at) + (v.pingAt >= 0 ? 'p' : '')), tlLog: (s.tlLog || []).slice(-6), moving: !!s.moving, drainAt: s.drainAt, stranded: !!s.stranded }; },
-      meshTraceForTest: (on) => { const s = meshSeat(); if (!s) return false; if (s.__trace) return true; const ring = s.__trace = []; const KEEP = new Set(['FIND', 'FINDACK', 'PLACE', 'NOROOM', 'HELLO', 'CLAIM', 'SITPING', 'SITPONG', 'YIELD', 'CONFIRM', 'CHALLENGE', 'LEAVE', 'MOVED', 'GREETERS', 'HOME', 'WHOHOME', 'PP']);
-        const push = (dir, m, to) => { if (!KEEP.has(m.t)) return; ring.push([s.env.TICK, dir, m.t, String(to || m.from || '').slice(0, 6), m.ck || (m.coord ? net.topo.ckey(m.coord) : ''), m.nc ? String(m.nc).slice(0, 6) : '', m.id ? String(m.id).slice(0, 6) : '', m.lk ? String(m.lk).slice(0, 6) : '', m.s4ok === true ? 's4' : '', m.list ? m.list.length : '']); if (ring.length > 400) ring.shift(); };
-        const r0 = s.recv.bind(s), e0 = s.emit.bind(s); s.recv = (m) => { push('rx', m); return r0(m); }; s.emit = (to, m) => { push('tx', m, to); return e0(to, m); }; return true; },
+      meshTraceForTest: (on) => { const s = meshSeat(); if (!s) return false; if (s.__trace) return true; const ring = s.__trace = []; s.__traceSeq = 0; const KEEP = new Set(['FIND', 'FINDACK', 'PLACE', 'NOROOM', 'HELLO', 'CLAIM', 'SITPING', 'SITPONG', 'YIELD', 'CONFIRM', 'CHALLENGE', 'LEAVE', 'MOVED', 'GREETERS', 'HOME', 'WHOHOME', 'PP', 'PHONE', 'PONG']);
+        // columns: tick, dir, type, peer, cell, nonce, id, link-proven id, s4, list length (GREETERS) / tock (PHONE: the cell the caller believes I hold) / yp (PONG: the hearing PONG ahead of a YIELD)
+        const push = (dir, m, to) => { if (!KEEP.has(m.t)) return; ring.push([s.env.TICK, dir, m.t, String(to || m.from || '').slice(0, 6), m.ck || (m.coord ? net.topo.ckey(m.coord) : ''), m.nc ? String(m.nc).slice(0, 6) : '', m.id ? String(m.id).slice(0, 6) : '', m.lk ? String(m.lk).slice(0, 6) : '', m.s4ok === true ? 's4' : '', m.list ? m.list.length : (m.t === 'PHONE' ? (m.tock || '') : (m.t === 'PONG' && m.yp === 1 ? 'yp' : ''))]); s.__traceSeq++; if (ring.length > 400) ring.shift(); };
+        const r0 = s.recv.bind(s), e0 = s.emit.bind(s); s.recv = (m) => { push('rx', m); return r0(m); }; s.emit = (to, m) => { push('tx', m, to); return e0(to, m); };
+        // seat transitions (the frames say what was heard; these say what the seat DID with it): the method, its cell argument, and the calling method
+        for (const fn of ['heal', 'doMove', 'take', 'requeue', 'rollbackMove', 'confirmMove', 'reseatViaRoster']) { const f0 = s[fn]; if (typeof f0 !== 'function') continue; s[fn] = function (...a) { let by = ''; try { const st = String(new Error().stack).split('\n'); const ln = st[2] || ''; const mm = /at (?:Seat\.)?([\w$.]+)/.exec(ln); by = mm ? mm[1] : ''; } catch (e) {} const c = a[0] && typeof a[0] === 'object' && 'pc' in a[0] ? net.topo.ckey(a[0]) : ''; ring.push([s.env.TICK, 'ev', fn, '', c, '', s.hasCoord ? net.topo.ckey(s.coord) : '', by.slice(0, 24), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); return f0.apply(this, a); }; }
+        // ...and every Section-1 death verdict a heal rests on, with the evidence it read (live stamp, hole clock, D5 record)
+        { const rc0 = s.ringConfirmDead; if (typeof rc0 === 'function') s.ringConfirmDead = function (h) { const hk = net.topo.ckey(h); const lv = s.live.get(hk), hs = s.holeSince.get(hk), tl = s.translost.get(hk); const r = rc0.call(this, h); if (r) { ring.push([s.env.TICK, 'ev', 'ringDead', String(s.occ.get(hk) || '').slice(0, 6), hk, '', 'live=' + (lv === undefined ? '-' : lv) + ' hole=' + (hs === undefined ? '-' : hs) + ' tl=' + (tl === undefined ? '-' : tl), '', '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } return r; }; }
+        return true; },
       meshTraceDump: () => { const s = meshSeat(); return s && s.__trace ? s.__trace.slice() : []; },
       // Seat forensics for the behavior battery's per-actor record (meet.js
       // snapshotInPage): the clocks and memories that decide a contest, and
-      // the trace ring entries since `sinceTick` (the caller keeps the cursor).
-      meshForensics: (sinceTick) => {
+      // the trace ring entries after cursor `since` — the ring's sequence
+      // number as of the caller's last read (`seq` in the answer); the caller
+      // keeps the cursor. A tick is not a cursor: a tick holds many frames.
+      meshForensics: (since) => {
         const s = meshSeat(); if (!s) return null;
         const six = (x) => (x == null ? null : String(x).slice(0, 6));
         const occ = {}; try { for (const [k, v] of s.occ) occ[k] = six(v); } catch (e) {}
         const linked = {}; try { for (const [k, v] of s.linkedBy) linked[k] = six(v); } catch (e) {}
         const live = {}; try { for (const [k, t] of s.live) live[k] = s.env.TICK - t; } catch (e) {}
+        const liveBy = {}; try { for (const [k, v] of s.liveBy) liveBy[k] = six(v); } catch (e) {}
         const ring = s.__trace || [];
-        const from = Number.isFinite(sinceTick) ? sinceTick : -1;
+        const seq = s.__traceSeq || 0;                                    // ring entry i has sequence number seq - ring.length + i
+        const from = (Number.isFinite(since) && since >= 0 && since <= seq) ? since : 0; // a cursor past this ring belongs to an earlier seat object (a rejoin): start over
+        const skip = Math.max(0, ring.length - (seq - from));             // entries with sequence number < from are already recorded
         return {
           tick: s.env.TICK, estAt: s.estAt, rookSeenAt: s.rookSeenAt, seatedAt: s.seatedAt, moving: !!s.moving,
           pendY: s.pendY ? { by: six(s.pendY.by), at: s.pendY.at, ck: s.pendY.ck } : null,
           rival: s.rival ? { id: six(s.rival.id), at: s.rival.at } : null,
           rosterAskAt: s.rosterAskAt, challTo: s.challTo ? { id: six(s.challTo.id), at: s.challTo.at } : null,
-          occ, linked, live, translost: (() => { const o = {}; try { for (const [k, t] of s.translost) o[k] = t; } catch (e) {} return o; })(),
+          occ, linked, live, liveBy, translost: (() => { const o = {}; try { for (const [k, t] of s.translost) o[k] = t; } catch (e) {} return o; })(),
           tlLog: (s.tlLog || []).slice(-6),
-          trace: ring.filter((r) => r[0] > from),
+          seq, trace: ring.slice(skip),
         };
       },
       meshLinks: () => { const s = meshSeat(); return s ? Array.from(s.linkPeers()) : []; },
@@ -18365,6 +18769,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       blurClassOf: (id) => { if (id === 'me') return blurLevelFor('me'); const t = peers.get(id); if (!t) return null; return t.video.classList.contains('blur2') ? 2 : t.video.classList.contains('blur1') ? 1 : 0; },
       // what this browser actually SENDS: 'blurred' (canvas) vs 'raw' (camera)
       outboundKind: () => (blurPipe && blurLevelFor('me') > 0 && !myStatus.camOff ? 'blurred' : 'raw'),
+      // read-only blur-pipe forensics (e2e-pipe-freeze): how often the canvas
+      // that IS the outbound camera was painted, by which driver, at what cost
+      blurPipeForTest: () => (blurPipe ? { painted: blurPipe.painted || 0, rvfcN: blurPipe.rvfcN || 0, metroN: blurPipe.metroN || 0,
+        cost: Math.round(blurPipe.cost || 0), sinceMs: blurPipe.lastPaintAt ? Date.now() - blurPipe.lastPaintAt : null,
+        w: blurPipe.canvas.width, h: blurPipe.canvas.height, srcW: blurPipe.src.videoWidth, srcState: blurPipe.srcTrack && blurPipe.srcTrack.readyState,
+        srcMuted: !!(blurPipe.srcTrack && blurPipe.srcTrack.muted), hidden: document.hidden } : null),
       voteNeed: () => voteNeed,
       stageVotes: () => { const vt = stageVoteTallies(); return { up: Object.assign({}, vt.up), down: Object.assign({}, vt.down), need: vt.need }; },
       voteMode: () => voteMode,
