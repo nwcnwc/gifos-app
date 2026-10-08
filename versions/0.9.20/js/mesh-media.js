@@ -1,0 +1,959 @@
+/*
+ * mesh-media.js — the compositing core of the media plane (docs/media-plane.md).
+ * Pure engine, no transport: run.html feeds it sources (video elements) and
+ * ships its output tracks over the links the mesh already holds.
+ *
+ * THE MODEL (media-plane "concrete rendering recursion"): every mosaic frame
+ * is a C×C grid for one section; cell (r,i) shows seat (pc,r,i)'s camera if it
+ * is a leaf, else its subtree's sub-mosaic. Assembly is DISTRIBUTED: a row
+ * HEAD composites its row's BAND — a horizontal 1×C strip (each cell = that
+ * seat's camera or its down-link's sub-mosaic) — and sends ONE band up its
+ * up-link; the head one level up stacks C bands VERTICALLY into the full
+ * frame. Row-layout horizontal, band-stack vertical — the H/V alternation of
+ * the fractal, by construction. Section-1 heads finish redundantly in
+ * parallel over cross-links (no election) and the full Stadium flows back
+ * down every down-link. The Stage strip is the same band engine with the ≤C
+ * chosen stagers as cells. Frame budget is CONSTANT per hop (SCALE.COMP_W ×
+ * COMP_H) — a seat's forward cost never grows with the tree below it.
+ *
+ * GOVERNOR (learned the hard way — see the blur-pipe stall, 0698bb8): every
+ * draw loop here is gated by its own measured cost (next paint ≥ max(frame
+ * budget, 3× last cost)). Compositing may DROP frames, never queue them —
+ * a weak phone gets a slower mosaic, never a dead page.
+ */
+(function (root) {
+  const GifOS = root.GifOS = root.GifOS || {};
+  const net = GifOS.net;
+
+  // ---- layout math (pure — Node-testable) ----------------------------------
+  // A BAND: 1×C horizontal strip, cell i at [i*W/C, 0, W/C, H].
+  // A FRAME: C bands stacked, band r at [0, r*H/C, W, H/C].
+  // Cells keep the slot even when empty (space is by tree POSITION, not
+  // population — the fractal-space property, accepted by design).
+  // PACK-GOVERNOR
+  // THE PACKERS' PAINT GOVERNOR (same rule as run.html's blur canvas,
+  // STAGE-BLUR-GOVERNOR). It used to wait 3x the LAST paint's cost after a
+  // paint started, so one slow paint on a loaded box ruled alone: a 7.8 s
+  // drawImage stopped the canvas for 23 s, and a composite canvas that stops
+  // painting is a stalled encoder for every seat it feeds (e2e-pipe-freeze,
+  // 2026-10-07: the strip 'sgs' froze 23 s at a forwarder whose stager was
+  // healthy). Now: the paint's own cost, then a rest of twice the AVERAGE
+  // cost capped at PACK_REST_MAX_MS; a stall counts as the cap in the
+  // average. Under ~500 ms of steady cost the schedule is the old one.
+  const PACK_REST_MAX_MS = 1000;
+  function packWait(cost, avg, minMs) { return Math.max(minMs, cost + Math.min(2 * avg, PACK_REST_MAX_MS)); }
+  function packAvg(avg, cost, n) { const c = Math.min(cost, PACK_REST_MAX_MS); return n ? avg * 0.7 + c * 0.3 : c; }
+  // END-PACK-GOVERNOR
+  function bandRects(C, W, H) {
+    const out = []; const cw = W / C;
+    for (let i = 0; i < C; i++) out.push({ x: Math.round(i * cw), y: 0, w: Math.round((i + 1) * cw) - Math.round(i * cw), h: H });
+    return out;
+  }
+  function frameRects(C, W, H) {
+    const out = []; const bh = H / C;
+    for (let r = 0; r < C; r++) out.push({ x: 0, y: Math.round(r * bh), w: W, h: Math.round((r + 1) * bh) - Math.round(r * bh) });
+    return out;
+  }
+  // A CENTERED SQUARE cut from the source's SHORTEST dimension — the same for a
+  // landscape webcam or a portrait phone (a conference call is a mix of both).
+  // Cells are square, so this square fills the cell with no distortion; faces
+  // sit centered, no nostril-zoom, no flipped aspect.
+  function coverBox(sw, sh, rect) {
+    const side = Math.min(sw, sh) || 1;
+    return { sx: (sw - side) / 2, sy: (sh - side) / 2, sw: side, sh: side };
+  }
+  // A SCREEN IS NOT A FACE (screen share, docs/media-plane.md Channel St).
+  // coverBox is right for a webcam — a face sits in the middle, so the centered
+  // square keeps the person and throws away wallpaper. Run the same rule over a
+  // shared screen and it throws away the SLIDE: a 1920×1080 share cut to a
+  // centered square keeps 1080 of 1920 columns — 56% of the width, the left and
+  // right thirds of every deck gone, with no way for the viewer to know. So a
+  // tile may declare `fit:'contain'` and be LETTERBOXED into its square cell
+  // instead: whole surface, aspect preserved, dark bars top and bottom.
+  // PURE, and exported, for the same reason cellSize is (below): the number
+  // that decides whether a viewer sees the whole slide must be reachable from
+  // the unit tier, not buried in a paint() that needs a canvas.
+  // fitBox(fit, sw, sh, cell) → { dx, dy, dw, dh } offsets INSIDE the cell.
+  function fitBox(fit, sw, sh, cell) {
+    if (fit !== 'contain') return { dx: 0, dy: 0, dw: cell, dh: cell };
+    const s = Math.min(cell / (sw || 1), cell / (sh || 1));
+    const dw = (sw || 1) * s, dh = (sh || 1) * s;
+    return { dx: (cell - dw) / 2, dy: (cell - dh) / 2, dw, dh };
+  }
+
+  // ---- the composite engine --------------------------------------------------
+  // createComposite({ kind:'band'|'frame', C, w, h, fps, label }) →
+  //   { canvas, stream, track, setCell(idx, videoEl|null, meta), cells,
+  //     start(), stop(), stats() }
+  // Draw is driven by an interval at fps, gated by the governor. Empty cells
+  // paint a quiet placeholder (dark + slot index) so the grid reads as seats.
+  function createComposite(opts) {
+    const C = opts.C || (net && net.SCALE.C) || 5;
+    const W = opts.w || (net && net.SCALE.COMP_W) || 756;
+    const H = opts.h || (net && net.SCALE.COMP_H) || 1344;
+    const fps = opts.fps || (net && net.SCALE.COMP_FPS) || 12;
+    const N = opts.cells || C; // a head's product = band + C subs = C+1 slots
+    const rects = (opts.kind === 'frame' ? frameRects : bandRects)(N, W, H);
+    const canvas = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
+    if (canvas) { canvas.width = W; canvas.height = H; }
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    const cells = new Array(N).fill(null); // { el, streamId } | null
+    // Optional AUDIO FOLD: the composite's audio is the summed audio of its
+    // cells' source streams. A nested sub-mosaic's stream already carries its
+    // OWN fold, so folding it re-sums recursively up the tree — a band folds
+    // its row, a frame folds its bands, and so on, by construction.
+    const fold = (opts.ac && createAudioFold(opts.ac)) || null;
+    let timer = null, last = 0, cost = 0, costAvg = 0, costN = 0, drawn = 0, dropped = 0;
+
+    function drawCell(i) {
+      const r = rects[i], c = cells[i];
+      const el = c && c.el;
+      const sw = el ? (el.videoWidth || el.width || 0) : 0;   // <video> or <canvas> source
+      const sh = el ? (el.videoHeight || el.height || 0) : 0;
+      if (!sw || !sh) {
+        ctx.fillStyle = '#101418'; ctx.fillRect(r.x, r.y, r.w, r.h);
+        return;
+      }
+      // WHAT a cell holds depends on the KIND, not on <video> vs <canvas> (a
+      // received sub-mosaic arrives as a <video> too, so tag-name can't tell):
+      //   BAND cells  = LEAF faces → centered-square crop, so every face is square.
+      //   FRAME cells = NESTED composites (a row band, a sub-product, the stadium)
+      //                 → draw WHOLE, aspect-preserved (contain), NEVER cropped —
+      //                 else a 756×151 strip of 5 faces gets its centre square cut
+      //                 out and smeared across the cell (the stretched bands bug).
+      if (opts.kind === 'frame') {
+        const s = Math.min(r.w / sw, r.h / sh);
+        const dw = sw * s, dh = sh * s, dx = r.x + (r.w - dw) / 2, dy = r.y + (r.h - dh) / 2;
+        ctx.fillStyle = '#101418'; ctx.fillRect(r.x, r.y, r.w, r.h);
+        try { ctx.drawImage(el, 0, 0, sw, sh, dx, dy, dw, dh); } catch (e) {}
+        return;
+      }
+      const b = coverBox(sw, sh, r);
+      try { ctx.drawImage(el, b.sx, b.sy, b.sw, b.sh, r.x, r.y, r.w, r.h); } catch (e) {}
+    }
+    function paint() {
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      if (now - last < packWait(cost, costAvg, 1000 / fps)) { dropped++; return; } // GOVERNOR: drop, never queue
+      for (let i = 0; i < N; i++) drawCell(i);
+      last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++); drawn++;
+    }
+
+    const comp = {
+      canvas, cells, rects,
+      stream: null, track: null,
+      setCell(i, el, stream) {
+        const sid = stream ? stream.id : null;
+        const prev = cells[i];
+        if (!el) { if (fold && prev) fold.remove('c' + i); cells[i] = null; return; }
+        if (fold) {
+          if (prev && prev.streamId !== sid) fold.remove('c' + i);
+          // A matching stream id can still be unfolded: the first add records
+          // nothing when the audio track has not arrived yet.
+          if (sid && !fold.has('c' + i)) fold.add('c' + i, stream, opts.gain == null ? 1 : opts.gain);
+        }
+        cells[i] = { el, streamId: sid };
+      },
+      start() {
+        if (timer || !canvas) return comp;
+        const vTrack = canvas.captureStream(fps).getVideoTracks()[0];
+        const aTrack = fold && fold.track();
+        comp.stream = new MediaStream(aTrack ? [vTrack, aTrack] : [vTrack]);
+        comp.track = vTrack;
+        timer = setInterval(paint, Math.max(20, 1000 / fps));
+        paint();
+        return comp;
+      },
+      stop() {
+        if (timer) { clearInterval(timer); timer = null; }
+        if (fold) fold.clear();
+        cells.fill(null);
+        if (comp.track) { try { comp.track.stop(); } catch (e) {} }
+        comp.stream = null; comp.track = null;
+      },
+      stats() { return { drawn, dropped, cost: Math.round(cost * 10) / 10 }; },
+    };
+    return comp;
+  }
+
+  // ---- the GAPLESS PACKER (docs/media-plane.md, approach A) -------------------
+  // Every shipped mosaic is a ROW-MAJOR PACKED GRID of square faces: n faces in
+  // a cols-wide grid, NO internal holes — only a computable tail gap at the
+  // bottom-right ((cols*rows − n) cells). The announce meta carries {n, cols}
+  // (two ints on the existing control frame — zero video bandwidth), so a
+  // receiver knows exactly where every face sits and can BLIT any face out of a
+  // received block by sub-rect (pixels are addressable even though the stream
+  // is one blended video — approach A: one stream per link, never per-face
+  // fan-out). The packer lays ALL faces it holds — received blocks + its own
+  // live leaves — into ONE gapless grid, which self-describes for the next
+  // level up. Empty seats are simply never drawn: no black cells, no fixed C×C.
+  //
+  // packGrid(T, shape): the grid for T faces — 'bar' ⇒ 1×T; 'grid' ⇒ near-square
+  // (cols = ceil(sqrt(T))), the tail gap always < cols; 'stad' ⇒ the STADIUM
+  // packing (see stadiumGrid) — ~STAD_COLS wide, grows DOWNWARD, caps + densifies.
+  function packGrid(T, shape) {
+    if (T <= 0) return { cols: 1, rows: 1 };
+    if (shape === 'bar') return { cols: T, rows: 1 };
+    if (shape === 'stad') { const g = stadiumGrid(T); return { cols: g.cols, rows: g.rows }; }
+    const cols = Math.ceil(Math.sqrt(T));
+    return { cols, rows: Math.ceil(T / cols) };
+  }
+
+  // ---- the STADIUM packing (docs/media-plane.md, Channel Sd) ------------------
+  // Every person is an EQUAL-SIZE SQUARE (never a fractal cell): the whole room
+  // is one flat gapless grid. It grows DOWNWARD (for vertical scroll), ~STAD_COLS
+  // columns wide in the readable range: square-ish near 25 (5×5), a tall ~1:4
+  // rectangle by STAD_CAP (~5×20). Past STAD_CAP the FOOTPRINT caps — the grid
+  // subdivides further (more, SMALLER squares) so pixels/person shrink while the
+  // footprint stays fixed. stadiumGrid gives the grid; createPacker('stad') sizes
+  // the square against the fixed footprint width so the cap/densify falls out.
+  const STAD_COLS = 5, STAD_CAP = 100;
+  function stadiumGrid(T) {
+    if (T <= 0) return { cols: 1, rows: 1, dense: false };
+    if (T <= 25) { const cols = Math.max(1, Math.ceil(Math.sqrt(T))); return { cols, rows: Math.ceil(T / cols), dense: false }; }
+    if (T <= STAD_CAP) return { cols: STAD_COLS, rows: Math.ceil(T / STAD_COLS), dense: false };
+    // DENSE: hold the capped rectangle's ~1:4 aspect and subdivide (rows ≈ 4·cols).
+    const capRows = Math.ceil(STAD_CAP / STAD_COLS); // the capped footprint's rows (~20)
+    const cols = Math.max(STAD_COLS, Math.round(Math.sqrt(T * STAD_COLS / capRows)));
+    return { cols, rows: Math.ceil(T / cols), dense: true };
+  }
+  // Overlay threshold: past STAD_CAP each square is too small for a burned
+  // name/frame — drop the overlay, show the raw tapestry + a small audio dot.
+  function stadiumTiny(T) { return T > STAD_CAP; }
+  // cellSize(shape, cellPref, maxW, cols): the square edge a packed grid draws
+  // each face at. PURE — extracted from paint() so the sizing law is Node-
+  // testable like packGrid/stadiumGrid (paint() itself needs a canvas, so the
+  // one number that decides whether a feed is a portrait or a thumbnail was
+  // unreachable from the unit tier — which is how the Stage strip sat at the
+  // 110px secondary-tile default for as long as it did).
+  //   'stad' — square sized against a FIXED footprint (STAD_COLS·cellPref), so
+  //            ≤STAD_COLS columns render at full cellPref and denser grids
+  //            shrink the square (footprint fixed, pixels/person fall). No
+  //            floor above 1 px: a 6 px floor grew the canvas with N past
+  //            about 28k faces (3 Oct 2026 audit).
+  //   else   — cellPref, capped so the whole canvas fits in maxW.
+  function cellSize(shape, cellPref, maxW, cols) {
+    const G = Math.max(1, cols | 0);
+    if (shape === 'stad') return Math.max(1, Math.min(cellPref, Math.floor((STAD_COLS * cellPref) / G)));
+    return Math.max(24, Math.min(cellPref, Math.floor(maxW / G)));
+  }
+  // faceSrcRect(j, n, cols, sw, sh): source rect of face j inside a packed block
+  // (row-major). Cells are square by construction; derive size from the block.
+  function faceSrcRect(j, n, cols, sw, sh) {
+    const rows = Math.max(1, Math.ceil(n / cols));
+    const cw = sw / cols;
+    // Cells are square. Extra height under rows*cw is the stad row-step tail,
+    // not a taller face. Dividing sh by rows would smear that tail into every face.
+    const ch = Math.min(cw, sh / rows);
+    return { sx: (j % cols) * cw, sy: Math.floor(j / cols) * ch, sw: cw, sh: ch };
+  }
+  // cellCrop(j, n, cols, vw, vh, box): faceSrcRect for a RECEIVER that shows
+  // face j of a packed block without copying a pixel. The block's own <video>
+  // is sized w x h and shifted by (x, y) inside an overflow-hidden box x box
+  // window, so cell j fills the window: the same decoded track, no canvas, no
+  // extra bandwidth. The frame must agree with the announced grid: square
+  // cells within 8% (a stale cols, or a frame painted before a join, fails
+  // here), j inside n, a decoded frame. Otherwise null, and the caller shows
+  // the whole block, never a guessed crop.
+  function cellCrop(j, n, cols, vw, vh, box) {
+    if (!Number.isInteger(n) || !Number.isInteger(cols) || !Number.isInteger(j)) return null;
+    if (n < 1 || cols < 1 || j < 0 || j >= n) return null;
+    if (!(vw > 0) || !(vh > 0) || !(box > 0)) return null;
+    const rows = Math.ceil(n / cols);
+    const cw = vw / cols, ch = vh / rows;
+    if (Math.abs(cw - ch) > 0.08 * cw) return null;
+    const s = faceSrcRect(j, n, cols, vw, vh);
+    const k = box / s.sw;
+    return { w: vw * k, h: vh * k, x: -s.sx * k, y: -s.sy * k };
+  }
+
+  // createPacker({ shape:'bar'|'grid', cell, maxW, fps, ac, gain }) →
+  //   { canvas, stream, setTile(id, ord, el, stream, {n, cols}), delTile(id),
+  //     count(), cols(), rows(), start(), stop(), stats() }
+  // A tile is a leaf face ({n:1, cols:1} — center-square cropped) or a packed
+  // block (n faces, cols wide — faces blitted through). Tiles draw in ord
+  // order, so the layout is deterministic on every device.
+  // ---- THE BACKGROUND CLOCK (2026-10-03) ----------------------------------
+  // A hidden tab's page timers are throttled: Chrome aligns setInterval to
+  // 1 Hz at once and to once a minute after five minutes hidden. A relay
+  // seat's packers paint the composite its whole branch below receives, so a
+  // head that switched tab froze the Stadium/Stage for everyone under it.
+  // Painting stays on the main thread (a canvas paint needs the DOM); only
+  // the TICK moves, to a Worker timer, which the browser does not throttle
+  // like page timers (the heartbeat's bgClock and the blur pipe's metroSub
+  // in run.html already ride one for the same reason).
+  //
+  // workerClock(ms, fn) — a dedicated Worker posting every `ms`; plain
+  //   setInterval where a Worker cannot be made. Returns { via, stop() }.
+  // createBgClock() — clock(fn, ms) -> stop(). Each subscriber keeps its
+  //   plain setInterval (a VISIBLE tab paints exactly as before); while the
+  //   tab is hidden ONE shared Worker beat (BG_BEAT_MS) also ticks every
+  //   subscriber whose own period has run out. No Worker: the setIntervals
+  //   alone, i.e. the old behaviour. `env` injects Worker/URL/Blob/document/
+  //   timers/now for the Node test (test/unit/bg-clock.js).
+  const BG_BEAT_MS = 50; // the shared hidden-tab beat: 20 Hz covers the fastest packer (the Stage strip, 20 fps)
+  function clockEnv(env) {
+    env = env || {};
+    const pick = (k) => (k in env ? env[k] : root[k]);
+    return {
+      Worker: pick('Worker'), URL: pick('URL'), Blob: pick('Blob'), document: pick('document'),
+      setInterval: env.setInterval || ((f, ms) => setInterval(f, ms)), clearInterval: env.clearInterval || ((t) => clearInterval(t)),
+      now: env.now || (() => Date.now()),
+    };
+  }
+  function workerClock(ms, fn, env) {
+    const E = clockEnv(env);
+    ms = Math.max(1, ms | 0);
+    let w = null, url = null, iv = null;
+    try {
+      if (typeof E.Worker !== 'function' || !E.URL || typeof E.Blob !== 'function') throw new Error('no Worker');
+      url = E.URL.createObjectURL(new E.Blob(['setInterval(function(){postMessage(0)},' + ms + ')'], { type: 'text/javascript' }));
+      w = new E.Worker(url);
+      w.onmessage = () => fn(); // an error still surfaces as the page's own, as it did from setInterval
+    } catch (e) {
+      w = null;
+      if (url) { try { E.URL.revokeObjectURL(url); } catch (e2) {} url = null; }
+      iv = E.setInterval(fn, ms);
+    }
+    return {
+      via: w ? 'worker' : 'interval',
+      stop() {
+        if (w) { try { w.terminate(); } catch (e) {} w = null; }
+        if (url) { try { E.URL.revokeObjectURL(url); } catch (e) {} url = null; }
+        if (iv) { E.clearInterval(iv); iv = null; }
+      },
+    };
+  }
+  function createBgClock(env) {
+    const E = clockEnv(env);
+    const subs = new Set();
+    let bg = null, noWorker = false;
+    const hidden = () => !!(E.document && E.document.hidden);
+    const beat = () => {
+      const t = E.now();
+      for (const s of Array.from(subs)) if (subs.has(s) && t - s.last >= s.ms) { s.last = t; try { s.fn(); } catch (e) { setTimeout(() => { throw e; }); } } // one failing subscriber neither starves the rest nor hides its error
+    };
+    const sync = () => {
+      const want = hidden() && subs.size > 0 && !noWorker;
+      if (want && !bg) {
+        bg = workerClock(BG_BEAT_MS, beat, env);
+        if (bg.via !== 'worker') { bg.stop(); bg = null; noWorker = true; } // no Worker here: the per-subscriber setIntervals carry on alone
+      } else if (!want && bg) { bg.stop(); bg = null; }
+    };
+    if (E.document && typeof E.document.addEventListener === 'function') E.document.addEventListener('visibilitychange', sync);
+    function clock(fn, ms) {
+      ms = Math.max(1, ms | 0);
+      const s = { fn, ms, last: E.now() };
+      let iv = E.setInterval(() => { s.last = E.now(); fn(); }, ms);
+      subs.add(s); sync();
+      return () => { if (iv) { E.clearInterval(iv); iv = null; } subs.delete(s); sync(); };
+    }
+    clock.via = () => (bg ? 'worker' : 'interval');
+    clock.sync = sync;
+    return clock;
+  }
+  let sharedBg = null; // one shared hidden-tab beat per page, minted on first use
+  const bgClock = () => (sharedBg = sharedBg || createBgClock());
+
+  function createPacker(opts) {
+    opts = opts || {};
+    const shape = opts.shape || 'grid';
+    // SECONDARY-TILE defaults: right for the stadium's tapestry of onlookers,
+    // wrong for a feed the room is looking AT. The Stage strip passes its own
+    // (run.html, "THE STAGE IS NOT A SECONDARY TILE"); everything else inherits.
+    let cellPref = opts.cell || 110; // composite face cell px — small secondary tiles, keep encode/ship cheap (was COMP_W/C=151)
+    const maxW = opts.maxW || 640; // cap composite canvas width — bounds encode CPU + bandwidth at scale (was 1080)
+    // THE RATE IS A CEILING AT start(), A DIAL AFTERWARDS (see setFps): opts.fps
+    // is what captureStream is told, and the paint loop may only run at or below
+    // it. Construct at the highest rate this packer will ever want.
+    let fps = opts.fps || (net && net.SCALE.COMP_FPS) || 12;
+    const canvas = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    const tiles = new Map(); // id -> { ord, el, streamId, n, cols }
+    const fold = (opts.ac && createAudioFold(opts.ac)) || null;
+    let timer = null, last = 0, cost = 0, costAvg = 0, costN = 0, drawn = 0, dropped = 0, active = true;
+    let G = 1, R = 1, lastNonEmpty = 0; // lastNonEmpty: empty-packer linger (see paint)
+    // Stad canvas height is in ROW steps, not raw rows. A join that only
+    // crosses a row boundary must not change the capture height (that opens
+    // a keyframe on every hop). Shrink waits until one smaller step has held.
+    let heldRows = 0, pendingRows = 0, pendingSince = 0;
+    const ROW_STEP = 4, ROW_HOLD_MS = 5000;
+    function stadRows(natural, now) {
+      // Small stadiums keep their own height (1, 2, then 4 rows): padding one
+      // row of faces to a 4-row step painted three dark rows and encoded four
+      // times the area. Past 4 rows the step holds the height across joins.
+      const want = natural <= 2 ? Math.max(1, natural) : natural <= ROW_STEP ? ROW_STEP : Math.ceil(natural / ROW_STEP) * ROW_STEP;
+      if (heldRows === 0 || want >= heldRows) {
+        heldRows = want; pendingRows = 0; pendingSince = 0;
+        return heldRows;
+      }
+      if (want !== pendingRows) { pendingRows = want; pendingSince = now; return heldRows; }
+      if (now - pendingSince >= ROW_HOLD_MS) { heldRows = want; pendingRows = 0; pendingSince = 0; }
+      return heldRows;
+    }
+
+    const total = () => { let t = 0; for (const v of tiles.values()) t += v.n; return t; };
+
+    // ---- DENSE MODE: compose composites, not faces (3 Oct 2026 audit) ----
+    // Per-face blits cost one drawImage per face in the room, and a Section-1
+    // head holds the whole room: O(N) per paint. So per-face repacking runs
+    // only while the packer holds <= STAD_CAP faces. Past that, every received
+    // block KEEPS ITS OWN GEOMETRY (cols × rows of face squares) and is ONE
+    // drawImage, scaled so its faces match the common square. Blocks are
+    // placed by a skyline packer; the square is sized so the whole grid fits
+    // the shape's FIXED FOOTPRINT (stad: STAD_COLS·cell × capRows·cell; grid:
+    // maxW²). Cost per paint = number of tiles (≤ ~2C), area ≤ footprint,
+    // whatever N is. The output is no longer gapless, so its {n, cols} only
+    // says "n faces, cols squares wide"; rows come from the frame's aspect.
+    // That is safe: a block with n > STAD_CAP can only reach a packer holding
+    // more than STAD_CAP faces, which is dense too and never blits per face.
+    const DENSE = shape !== 'bar';
+    let denseNow = false, cellNow = 0;
+    function footprint() {
+      return shape === 'stad' ? { w: STAD_COLS * cellPref, h: Math.ceil(STAD_CAP / STAD_COLS) * cellPref } : { w: maxW, h: maxW };
+    }
+    // A tile's geometry in face squares, and the source height holding them.
+    function blockGeom(t) {
+      const el = t.el;
+      const sw = el ? (el.videoWidth || el.width || 0) : 0;
+      const sh = el ? (el.videoHeight || el.height || 0) : 0;
+      if (t.n === 1 && t.cols === 1) return { w: 1, h: 1, sw, sh, srcH: sh };
+      const rows = Math.max(1, Math.ceil(t.n / t.cols));
+      if (!sw || !sh) return { w: t.cols, h: rows, sw, sh, srcH: sh };
+      // A gapless sender (n <= STAD_CAP): the faces fill `rows` rows; any
+      // height below them is the stad row-step tail. A dense sender: the
+      // whole frame is its grid.
+      if (t.n <= STAD_CAP) return { w: t.cols, h: rows, sw, sh, srcH: Math.min(sh, rows * sw / t.cols) };
+      return { w: t.cols, h: Math.max(1, Math.round(sh * t.cols / sw)), sw, sh, srcH: sh };
+    }
+    // The draw list: whole blocks, plus (when `split`) single faces. Small
+    // gapless blocks are split into their faces (smallest first) while the
+    // list stays within STAD_CAP draws, so loose faces can fill the gaps
+    // between big blocks. paint() keeps whichever layout scores better.
+    function denseItems(order, splitOn) {
+      const items = order.map((t) => Object.assign({ t, j: -1 }, blockGeom(t)));
+      let budget = STAD_CAP - items.length;
+      const small = items.filter((it) => it.t.n > 1 && it.t.n <= STAD_CAP && it.sw && it.sh)
+        .sort((a, b) => a.t.n - b.t.n);
+      const split = new Set();
+      for (const it of small) { if (it.t.n - 1 > budget) break; budget -= it.t.n - 1; split.add(it); }
+      if (!splitOn || !split.size) return items;
+      const out = [];
+      for (const it of items) {
+        if (!split.has(it)) { out.push(it); continue; }
+        for (let j = 0; j < it.t.n; j++) out.push({ t: it.t, j, w: 1, h: 1, sw: it.sw, sh: it.sh, src: faceSrcRect(j, it.t.n, it.t.cols, it.sw, it.sh) });
+      }
+      return out;
+    }
+    const layCache = new Map(); // geometry key -> layout (a churn-free room repaints with no layout work)
+    function denseLayout(geo) {
+      let key = '';
+      for (const g of geo) key += g.w + 'x' + g.h + ',';
+      const fp = footprint();
+      key += fp.w + ':' + fp.h;
+      const hit = layCache.get(key);
+      if (hit) return hit;
+      let area = 0, wmax = 1;
+      for (const g of geo) { area += g.w * g.h; if (g.w > wmax) wmax = g.w; }
+      const g0 = Math.sqrt(area * fp.w / fp.h);
+      let best = null;
+      // Place tall blocks first and single faces last, so faces fill the
+      // gaps blocks leave. Ties keep tile order (deterministic everywhere).
+      const seq = geo.map((g, i) => i).sort((i, j) => (geo[j].h - geo[i].h) || (geo[j].w - geo[i].w) || (i - j));
+      let wsum = 0;
+      for (const g of geo) wsum += g.w;
+      const cands = new Set();
+      for (const k of [0.7, 0.8, 0.9, 1, 1.12, 1.25, 1.4]) cands.add(Math.max(wmax, Math.round(g0 * k)));
+      for (let q = 0; q <= 12; q++) cands.add(Math.round(wmax * Math.pow(Math.max(1, wsum / wmax), q / 12)));
+      for (const Gc of cands) {
+        const sky = new Array(Gc).fill(0), at = [];
+        let Hc = 0;
+        for (const i of seq) {
+          const g = geo[i];
+          // Lowest spot; candidates are x=0 and each skyline step.
+          let bx = 0, by = Infinity;
+          for (let x = 0; x + g.w <= Gc; x++) {
+            if (x > 0 && sky[x] === sky[x - 1]) continue;
+            let y = 0;
+            for (let q = x; q < x + g.w; q++) if (sky[q] > y) y = sky[q];
+            if (y < by) { by = y; bx = x; }
+          }
+          for (let x = bx; x < bx + g.w; x++) sky[x] = by + g.h;
+          at[i] = { x: bx, y: by };
+          if (by + g.h > Hc) Hc = by + g.h;
+        }
+        const c = Math.min(fp.w / Gc, fp.h / Math.max(1, Hc));
+        // Score: face size, weighted hard toward FILL. A hole in this frame
+        // rides inside the block to every level above, so holes compound
+        // with depth; c alone picked roomy layouts (top fill 0.45 at 100k).
+        const sc = c * Math.pow(area / (Gc * Math.max(1, Hc)), 4);
+        if (!best || sc > best.sc) best = { G: Gc, R: Math.max(1, Hc), c, at, sc };
+      }
+      if (layCache.size >= 4) layCache.clear();
+      layCache.set(key, best);
+      return best;
+    }
+
+    // Burn identity onto a leaf face cell: a green TALKING frame, the NAME on a
+    // bottom strip, a HAND glyph top-right. Baked at the leaf so it travels the
+    // tree inside the one blended stream — no extra bandwidth, no receiver-side
+    // identity (approach A). lbl = { name, hand, talking } | null.
+    function drawOverlay(dx, dy, cell, lbl) {
+      if (!lbl) return;
+      // TAPESTRY mode (stadium past the overlay threshold): no name/frame — too
+      // small to read — just a small light-green shaded dot when the seat is
+      // talking, so you can see whose audio is blended into the mix.
+      if (lbl.dot) {
+        if (lbl.talking) {
+          const rr = Math.max(2, cell * 0.16);
+          ctx.beginPath(); ctx.arc(dx + cell - rr * 1.4, dy + rr * 1.4, rr, 0, 7);
+          ctx.fillStyle = 'rgba(120,231,150,0.9)'; ctx.fill();
+        }
+        return;
+      }
+      if (lbl.talking) {
+        const lw = Math.max(2, cell * 0.035);
+        ctx.strokeStyle = '#37d67a'; ctx.lineWidth = lw;
+        ctx.strokeRect(dx + lw / 2, dy + lw / 2, cell - lw, cell - lw);
+      }
+      if (lbl.name) {
+        const fs = Math.max(8, Math.round(cell * 0.11)), pad = Math.round(cell * 0.03);
+        const bh = fs + pad * 2;
+        ctx.fillStyle = 'rgba(10,10,15,0.62)'; ctx.fillRect(dx, dy + cell - bh, cell, bh);
+        ctx.fillStyle = '#eef'; ctx.font = '600 ' + fs + 'px system-ui, sans-serif';
+        ctx.textBaseline = 'middle';
+        let nm = String(lbl.name); const maxW = cell - pad * 2;
+        while (nm.length > 1 && ctx.measureText(nm).width > maxW) nm = nm.slice(0, -1);
+        if (nm !== String(lbl.name)) nm = nm.slice(0, -1) + '…';
+        ctx.fillText(nm, dx + pad, dy + cell - bh / 2);
+      }
+      if (lbl.hand) {
+        const r = Math.max(6, cell * 0.12);
+        ctx.font = (r * 1.4 | 0) + 'px system-ui'; ctx.textBaseline = 'top';
+        ctx.fillText('✋', dx + cell - r * 1.6, dy + r * 0.3);
+      }
+    }
+    // STILL-FRAME SKIP (2026-07-30 power work). The governor below bounds how
+    // OFTEN we paint; nothing asked whether painting would change anything.
+    // A composite whose sources have not advanced redraws an IDENTICAL frame —
+    // and because the canvas is captureStream'd, that identical frame is then
+    // ENCODED and SHIPPED to everyone downstream. A room where cameras are off
+    // or a phone is parked is exactly that case, and it is the common one
+    // (join-quiet is the default). Skipping costs nothing: captureStream simply
+    // emits no new frame, WebRTC is happy with variable frame rate, and every
+    // receiver's decoder idles too — the saving compounds down the tree.
+    // Sources that cannot report progress (a nested composite's <canvas>) are
+    // treated as always-advancing, and a forced repaint every STILL_MAX_MS
+    // guarantees no wedge can outlive a second.
+    const STILL_MAX_MS = 1000;
+    let lastSig = '', lastRealPaint = 0, still = 0;
+    function frameSig() {
+      let s = '';
+      for (const [id, t] of tiles) {
+        const el = t.el;
+        // videos report currentTime; canvases cannot, so force a redraw
+        if (el && typeof el.currentTime === 'number') s += id + ':' + el.currentTime.toFixed(3) + ';';
+        else return null;
+        s += t.n + 'x' + t.cols + ';';
+        if (t.dark) s += 'D|';
+        if (t.blur) s += 'B' + t.blur + '|';
+        if (t.lbl) s += (t.lbl.talking ? 'T' : '') + (t.lbl.hand ? 'H' : '') + (t.lbl.name || '') + '|';
+        if (t.fit) s += t.fit + '|'; // a cover→contain flip changes the frame with the source untouched
+      }
+      return s;
+    }
+    // A MODERATOR'S BLUR, BAKED. The face is drawn into a tiny canvas and
+    // stretched back, so its detail is gone before it reaches the composite.
+    // This works on every canvas; ctx.filter does not exist everywhere.
+    let blurCv = null, blurCx = null;
+    // dw/dh default to the square cell; the letterboxed (contain) path passes
+    // its own fitted rect so a blurred sharer is blurred there too.
+    function blurBlit(el, b, dx, dy, cell, level, dw, dh) {
+      if (dw == null) dw = cell;
+      if (dh == null) dh = cell;
+      const q = Math.max(3, Math.round(cell / (level >= 2 ? 40 : 16)));
+      if (!blurCv) { blurCv = document.createElement('canvas'); blurCx = blurCv && blurCv.getContext('2d'); }
+      if (!blurCx) { ctx.fillStyle = '#07090c'; ctx.fillRect(dx, dy, dw, dh); return; } // no scratch canvas: no face, never a clear one
+      if (blurCv.width !== q) { blurCv.width = q; blurCv.height = q; }
+      blurCx.drawImage(el, b.sx, b.sy, b.sw, b.sh, 0, 0, q, q);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(blurCv, 0, 0, q, q, dx, dy, dw, dh);
+    }
+    function drawLeaf(t, el, sw, sh, dx, dy, cell) {
+      if (t.fit === 'contain') {
+        // A SHARED SCREEN, LETTERBOXED (see fitBox): whole surface, no
+        // crop. The bars are painted first so a re-aspect (a sharer
+        // switching from a window to a monitor) can never leave the
+        // previous source's pixels stranded in the margin.
+        const f = fitBox('contain', sw, sh, cell);
+        ctx.fillStyle = '#07090c'; ctx.fillRect(dx, dy, cell, cell);
+        // A moderator's blur reaches this path too: fitFor() turns
+        // 'contain' on from the sender's own share claim, so a blurred
+        // person who claims a share must never be drawn clear here.
+        if (t.blur) blurBlit(el, { sx: 0, sy: 0, sw, sh }, dx + f.dx, dy + f.dy, cell, t.blur, f.dw, f.dh);
+        else ctx.drawImage(el, 0, 0, sw, sh, dx + f.dx, dy + f.dy, f.dw, f.dh);
+      } else {
+        const b = coverBox(sw, sh, { w: cell, h: cell });    // leaf camera → centered square
+        if (t.blur) blurBlit(el, b, dx, dy, cell, t.blur);
+        else ctx.drawImage(el, b.sx, b.sy, b.sw, b.sh, dx, dy, cell, cell);
+      }
+      drawOverlay(dx, dy, cell, t.lbl);                       // BURN IN name/hand/talking (approach A: baked once at the leaf, rides pixels up the tree)
+    }
+    function paint() {
+      if (!ctx || active === false) return;                                    // demand-gated: a composite nobody ships or shows isn't painted (static canvas ⇒ ~0 encode too)
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      if (now - last < packWait(cost, costAvg, 1000 / fps)) { dropped++; return; } // GOVERNOR: drop, never queue
+      const T = total();
+      if (T === 0) {
+        // EMPTY-PACKER LINGER: tiles flap transiently (a claim mid-failover, a
+        // gossip beat) — collapsing the canvas to 2×2 at once makes every
+        // receiver's decoder see the dimensions implode (a visible black/tiny
+        // flash), then re-negotiate the size back up. Freeze the last frame +
+        // dims for a few seconds; only a packer EMPTY for that long collapses.
+        if (lastNonEmpty && now - lastNonEmpty < 5000) { last = now; return; }
+        if (canvas.width !== 2) { canvas.width = 2; canvas.height = 2; } heldRows = 0; pendingRows = 0; pendingSince = 0; last = now; return; // long-empty packer — don't paint a grid of nothing
+      }
+      lastNonEmpty = now;
+      // Nothing moved and nothing was relabelled ⇒ the frame would be byte-identical.
+      const order = [...tiles.values()].sort((a, b) => (a.ord < b.ord ? -1 : a.ord > b.ord ? 1 : 0));
+      const dense = DENSE && T > STAD_CAP;
+      let cell, W, H, geo = null, dl = null;
+      if (dense) {
+        // Fixed footprint, one drawImage per tile (see DENSE MODE above).
+        geo = denseItems(order, false);
+        dl = denseLayout(geo);
+        // Split faces only in the stadium itself: splitting inside a 'grid'
+        // product changes the block shapes the next level must fit.
+        const geoS = shape === 'stad' ? denseItems(order, true) : geo;
+        if (geoS !== geo) { const dlS = denseLayout(geoS); if (dlS.sc > dl.sc) { geo = geoS; dl = dlS; } }
+        G = dl.G; R = dl.R; cell = dl.c;
+        W = Math.max(1, Math.round(G * cell)); H = Math.max(1, Math.round(R * cell));
+      } else {
+        const g = packGrid(T, shape); G = g.cols; R = g.rows;
+        cell = cellSize(shape, cellPref, maxW, G);
+        // Stad squares use the fixed footprint width. Other shapes use the maxW cap.
+        // The stad canvas then rounds UP to a 4-row step. The dark rows under the
+        // real grid are not faces; faceSrcRect sizes a face from the block width.
+        const rowsDrawn = shape === 'stad' ? stadRows(R, now) : R;
+        W = Math.max(1, G * cell); H = Math.max(1, rowsDrawn * cell);
+      }
+      denseNow = dense; cellNow = cell;
+      const sig = frameSig();
+      // A due resize is a different frame even when every source currentTime is frozen.
+      const sizeDue = canvas.width !== W || canvas.height !== H;
+      if (!sizeDue && sig !== null && sig === lastSig && now - lastRealPaint < STILL_MAX_MS) { still++; last = now; return; }
+      lastSig = sig === null ? '' : sig; lastRealPaint = now;
+      if (canvas.width !== W) canvas.width = W;
+      if (canvas.height !== H) canvas.height = H;
+      ctx.fillStyle = '#101418'; ctx.fillRect(0, 0, W, H);
+      if (dense) {
+        for (let i = 0; i < geo.length; i++) {
+          const g = geo[i], t = g.t, p = dl.at[i];
+          if (!g.sw || !g.sh) continue; // source not ready — leave dark, next paint fills
+          const dx = p.x * cell, dy = p.y * cell;
+          try {
+            if (t.n === 1 && t.cols === 1) drawLeaf(t, t.el, g.sw, g.sh, dx, dy, cell);
+            else if (g.src) ctx.drawImage(t.el, g.src.sx, g.src.sy, g.src.sw, g.src.sh, dx, dy, cell, cell); // one face of a split block
+            else ctx.drawImage(t.el, 0, 0, g.sw, g.srcH, dx, dy, g.w * cell, g.h * cell); // whole block, one blit
+          } catch (e) {}
+        }
+        last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++); drawn++;
+        return;
+      }
+      let f = 0;
+      for (const t of order) {
+        const el = t.el;
+        const sw = el ? (el.videoWidth || el.width || 0) : 0;
+        const sh = el ? (el.videoHeight || el.height || 0) : 0;
+        for (let j = 0; j < t.n; j++, f++) {
+          const dx = (f % G) * cell, dy = Math.floor(f / G) * cell;
+          // VIDEO OFF BY AN ADMIN. The cell keeps its place, because a receiver
+          // cuts faces out by position, and it keeps the name. No pixel of the
+          // source is drawn, whatever the source still sends.
+          if (t.dark && t.n === 1) {
+            ctx.fillStyle = '#07090c'; ctx.fillRect(dx, dy, cell, cell);
+            drawOverlay(dx, dy, cell, t.lbl);
+            continue;
+          }
+          if (!sw || !sh) { continue; } // source not ready — leave dark, next paint fills
+          try {
+            if (t.n === 1 && t.cols === 1) {
+              drawLeaf(t, el, sw, sh, dx, dy, cell);
+            } else {
+              const s = faceSrcRect(j, t.n, t.cols, sw, sh);         // block face → straight blit (overlay already baked by the sender)
+              ctx.drawImage(el, s.sx, s.sy, s.sw, s.sh, dx, dy, cell, cell);
+            }
+          } catch (e) {}
+        }
+      }
+      last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++); drawn++;
+    }
+
+    const pk = {
+      canvas, stream: null, track: null,
+      setTile(id, ord, el, stream, meta) {
+        const sid = stream ? stream.id : null;
+        const prev = tiles.get(id);
+        if (!el) { if (fold && prev) fold.remove('t' + id); tiles.delete(id); return; }
+        if (fold) {
+          if (prev && prev.streamId !== sid) fold.remove('t' + id);
+          // A matching stream id can still be unfolded: the first add records
+          // nothing when the audio track has not arrived yet.
+          if (sid && !fold.has('t' + id)) fold.add('t' + id, stream, opts.gain == null ? 1 : opts.gain);
+        }
+        const n = Math.max(1, (meta && meta.n) | 0 || 1);
+        const cols = Math.max(1, (meta && meta.cols) | 0 || n); // a bar's cols = n
+        // dark: an admin turned this face's video off. blur: a moderator blurred
+        // it (1 or 2). Both apply to a leaf face only; run.html decides them
+        // from the room's moderation table, the same on every compositing seat.
+        tiles.set(id, { ord, el, streamId: sid, n, cols, lbl: (meta && meta.lbl) || null, fit: (meta && meta.fit) || null,
+          dark: !!(meta && meta.dark), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)) });
+      },
+      // Update just the overlay (name/hand/talking) without touching the source
+      // — called every tick from status/audio so the frame tracks speech live.
+      label(id, lbl) { const t = tiles.get(id); if (t) t.lbl = lbl; },
+      delTile(id) { if (fold) fold.remove('t' + id); tiles.delete(id); },
+      setActive(on) { active = on !== false; }, // run.html gates a composite that has no consumer (not shipped, not displayed)
+      // Resize the face cell on a LIVE packer. The power tier moves under a
+      // long-lived composite (the Stage strip outlives many battery events), and
+      // rebuilding the packer to change one number would mint a new stream id —
+      // re-shipping to every receiver and resetting their decoders. paint()
+      // re-derives the canvas from cellPref each frame, so this is enough; a
+      // no-op guard keeps a per-sweep call from touching anything.
+      setCell(px) { const v = Math.max(6, px | 0); if (v && v !== cellPref) { cellPref = v; lastSig = ''; } },
+      // Same doctrine as setCell, for the other number the power tier moves:
+      // the paint RATE. captureStream's rate is fixed at start() and is a
+      // CEILING, not a promise — a canvas that paints slower simply emits
+      // fewer frames (WebRTC is happy with variable frame rate, and the
+      // still-frame skip above already suppresses byte-identical repaints).
+      // So a live packer can be slowed and re-quickened up to its ceiling
+      // without a rebuild — and a rebuild is what we are avoiding, because it
+      // mints a new stream id and re-ships to every receiver.
+      // Junk is REFUSED, not clamped: `v | 0` would turn a NaN from an
+      // un-initialised power tier into 1fps — a frozen-looking broadcast that
+      // no caller ever asked for. Only a real, positive rate moves the dial.
+      setFps(v) {
+        const n = Math.round(Number(v));
+        if (!isFinite(n) || n <= 0) return;
+        const q = Math.max(1, Math.min(60, n));
+        if (q === fps) return;
+        fps = q;
+        if (timer) { timer(); timer = (opts.clock || bgClock())(paint, Math.max(20, 1000 / fps)); }
+      },
+      clearTiles() { for (const id of [...tiles.keys()]) pk.delTile(id); },
+      ids: () => [...tiles.keys()],
+      count: total, cols: () => G, rows: () => R,
+      start() {
+        if (timer || !canvas) return pk;
+        const vTrack = canvas.captureStream(fps).getVideoTracks()[0];
+        const aTrack = fold && fold.track();
+        pk.stream = new MediaStream(aTrack ? [vTrack, aTrack] : [vTrack]);
+        pk.track = vTrack;
+        timer = (opts.clock || bgClock())(paint, Math.max(20, 1000 / fps)); // a Worker-backed tick while hidden: a relay seat's branch must not freeze when its tab does
+        paint();
+        return pk;
+      },
+      stop() {
+        if (timer) { timer(); timer = null; }
+        if (fold) fold.clear();
+        tiles.clear();
+        if (pk.track) { try { pk.track.stop(); } catch (e) {} }
+        pk.stream = null; pk.track = null;
+      },
+      // w/h: the canvas actually being encoded and shipped. Without these the
+      // single number that decides whether a feed is a portrait or a thumbnail
+      // was invisible to every harness — you could read faces/cols/rows and
+      // still not know the Stage was going out at 110px. The cross-device
+      // harnesses (test/README.md, "ONE BOX CANNOT ANSWER…") are where stage
+      // sizing has to be confirmed, and they can only report what stats() says.
+      stats() { return { drawn, dropped, still, cost: Math.round(cost * 10) / 10, faces: total(), cols: G, rows: R, fps, active, dense: denseNow, cell: Math.round(cellNow * 100) / 100, w: canvas ? canvas.width : 0, h: canvas ? canvas.height : 0 }; },
+    };
+    return pk;
+  }
+
+  // ---- the PER-LINK BUNDLE (approach A: one stream per link) ------------------
+  // A seat owes a neighbour several composites (its band, the stadium, a product
+  // to forward…). Encoding each as its own track is one WebRTC encode PER
+  // composite PER peer — the 10-15-encodes blowup. A bundle packs all the
+  // composites bound for ONE peer into ONE canvas (stacked, each scaled to a
+  // fixed width by its own aspect) and ships ONE stream; a MANIFEST of normalised
+  // rects + each part's {key,n,cols} rides the announce so the receiver crops
+  // each part back out (a cheap draw, no decode-per-part). Encodes now = LINKS.
+  function createBundle(opts) {
+    opts = opts || {};
+    const W = opts.w || 512, fps = opts.fps || (net && net.SCALE.COMP_FPS) || 8;
+    const canvas = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    const parts = new Map(); // key -> { el, n, cols, ord }
+    const fold = (opts.ac && createAudioFold(opts.ac)) || null;
+    let timer = null, last = 0, cost = 0, costAvg = 0, costN = 0, active = true;
+    const layout = () => { // vertical stack, each part W wide, h = W/aspect
+      const ps = [...parts.entries()].sort((a, b) => (a[1].ord < b[1].ord ? -1 : 1));
+      let y = 0; const rects = []; let H = 0;
+      for (const [key, p] of ps) {
+        const sw = p.el ? (p.el.videoWidth || p.el.width || 1) : 1, sh = p.el ? (p.el.videoHeight || p.el.height || 1) : 1;
+        const h = Math.max(1, Math.round(W * sh / sw));
+        rects.push({ key, x: 0, y, w: W, h, n: p.n, cols: p.cols, el: p.el }); y += h; H = y;
+      }
+      return { rects, H: Math.max(1, H) };
+    };
+    function paint() {
+      if (!ctx || !active) return;
+      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+      if (now - last < packWait(cost, costAvg, 1000 / fps)) return;
+      const { rects, H } = layout();
+      if (canvas.width !== W) canvas.width = W;
+      if (canvas.height !== H) canvas.height = H;
+      ctx.fillStyle = '#101418'; ctx.fillRect(0, 0, W, H);
+      for (const r of rects) { const sw = r.el && (r.el.videoWidth || r.el.width), sh = r.el && (r.el.videoHeight || r.el.height);
+        if (sw && sh) { try { ctx.drawImage(r.el, 0, 0, sw, sh, r.x, r.y, r.w, r.h); } catch (e) {} } }
+      last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++);
+    }
+    const bd = {
+      canvas, stream: null, track: null,
+      setPart(key, ord, el, stream, meta) {
+        const prev = parts.get(key);
+        const sid = stream && stream.id;
+        if (!el) { if (fold && prev) fold.remove('p' + key); parts.delete(key); return; }
+        if (fold) {
+          if (prev && prev.sid !== sid) fold.remove('p' + key);
+          if (sid && !fold.has('p' + key)) fold.add('p' + key, stream, 1);
+        }
+        parts.set(key, { el, ord, sid, n: (meta && meta.n) || 1, cols: (meta && meta.cols) || 1 });
+      },
+      has: (key) => parts.has(key), keys: () => [...parts.keys()], count: () => parts.size,
+      // The manifest that rides the announce: normalised rects + per-part meta.
+      manifest() { const { rects, H } = layout(); return rects.map((r) => ({ key: r.key, y: r.y / H, h: r.h / H, n: r.n, cols: r.cols })); },
+      setActive(on) { active = on !== false; },
+      start() { if (timer || !canvas) return bd; const v = canvas.captureStream(fps).getVideoTracks()[0]; const a = fold && fold.track(); bd.stream = new MediaStream(a ? [v, a] : [v]); bd.track = v; timer = setInterval(paint, Math.max(20, 1000 / fps)); paint(); return bd; },
+      stop() { if (timer) { clearInterval(timer); timer = null; } if (fold) fold.clear(); if (bd.track) { try { bd.track.stop(); } catch (e) {} } bd.stream = null; },
+    };
+    return bd;
+  }
+  // Receiver side: a cropped view of one part of a bundle — a tiny <canvas> that
+  // redraws the bundle video's normalised {y,h} band each frame, so downstream
+  // code can treat it exactly like a standalone composite source element.
+  function cropView(bundleVideo, band, fps) {
+    const c = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
+    if (!c) return { el: null, stop() {} };
+    const ctx = c.getContext('2d'); let timer = null;
+    const draw = () => {
+      if (bundleVideo.paused || bundleVideo.ended) return;
+      const vw = bundleVideo.videoWidth || 0, vh = bundleVideo.videoHeight || 0; if (!vw || !vh) return;
+      const sy = Math.round(band.y * vh), sh = Math.max(1, Math.round(band.h * vh));
+      if (c.width !== vw) c.width = vw; if (c.height !== sh) c.height = sh;
+      try { ctx.drawImage(bundleVideo, 0, sy, vw, sh, 0, 0, vw, sh); } catch (e) {} };
+    timer = setInterval(draw, Math.max(20, 1000 / (fps || 8))); draw();
+    return { el: c, stop() { if (timer) clearInterval(timer); } };
+  }
+
+  // ---- the SDN DORMANT-MIRROR route (docs/media-plane.md, Phase 2) -----------
+  // The parent-seat → child-head 'sdn' hop is the ONE mix-minus leg with no
+  // second path. This computes its link-disjoint mirror: a chain of coords
+  // from the PRODUCER (the parent row's head (pc,r,0), which already builds
+  // the per-child ingredient) to the child branch head (childPath(pc,i),r,0),
+  // entering the child section through transit row t's down-link — using ONLY
+  // links the topology already holds, sharing NO edge with the direct legs
+  // (head→(pc,r,i) row, (pc,r,i)→child-head down) and never touching the
+  // parent seat (pc,r,i) itself (its death is the failure being covered; for
+  // i==0 that seat IS the producer head, and the mirror covers only the
+  // direct edge). Pure math — re-derived from occ every sweep by the caller,
+  // so churn re-routes within a sweep. Returns null when (pc,r,i,t) admits no
+  // disjoint route over current links:
+  //   - t==r never works (the child enters through a DIFFERENT row's down);
+  //   - deep sections need t!=i ((pc,r,t) would be the avoided seat) and the
+  //     t==0 entry needs r>=1 && i!=r ((pc,r,r) is the cross fold used);
+  //   - and — occupancy, checked by the caller: every hop must hold a seat.
+  //     A child section with only ONE occupied row head has exactly one
+  //     physical edge from above (the direct hop) and NO mirror can exist.
+  function sdnMirrorRoute(topo, C, pc, r, i, t) {
+    if (!(t >= 0 && t < C && r >= 0 && r < C && i >= 0 && i < C) || t === r) return null;
+    const cpc = topo.childPath(pc, i);
+    const route = [{ pc, r, i: 0 }];
+    if (pc === 0) {
+      // S1 rook's graph: head → (0,t,0) over the COLUMN, → (0,t,i) over row t.
+      route.push({ pc: 0, r: t, i: 0 });
+      if (i !== 0) route.push({ pc: 0, r: t, i });
+    } else if (t === 0) {
+      // deep, enter via row 0: head → (pc,r,r) row → cross fold (r,r)↔(0,r) →
+      // (pc,0,i) row.
+      if (r === 0 || i === r) return null;
+      route.push({ pc, r, i: r });
+      route.push({ pc, r: 0, i: r });
+      if (i !== r) route.push({ pc, r: 0, i });
+    } else {
+      // deep, enter via row t≥1.
+      if (t === i) return null; // (pc,r,t) would be the avoided seat
+      if (r === 0) { route.push({ pc, r: 0, i: t }); route.push({ pc, r: t, i: t }); if (i !== t) route.push({ pc, r: t, i }); } // cross fold (0,t)↔(t,t)
+      else { route.push({ pc, r, i: t }); route.push({ pc, r: t, i: r }); if (i !== r) route.push({ pc, r: t, i }); }           // cross (r,t)↔(t,r)
+    }
+    // the down edge into the child section (row t's head), then across to the
+    // child branch head over row/cross links inside the child section.
+    route.push({ pc: cpc, r: t, i: 0 });
+    if (r === 0) { route.push({ pc: cpc, r: t, i: t }); route.push({ pc: cpc, r: 0, i: t }); route.push({ pc: cpc, r: 0, i: 0 }); }
+    else if (t === 0) { route.push({ pc: cpc, r: 0, i: r }); route.push({ pc: cpc, r, i: r }); route.push({ pc: cpc, r, i: 0 }); }
+    else { route.push({ pc: cpc, r: t, i: r }); route.push({ pc: cpc, r, i: t }); route.push({ pc: cpc, r, i: 0 }); }
+    return route;
+  }
+
+  // ---- audio fold (WebAudio sum, bounded) ------------------------------------
+  // A band's audio = the sum of its cells' audio tracks through per-cell gains
+  // (the recorder's primitive). Callers own the AudioContext lifecycle.
+  function createAudioFold(ac) {
+    const dest = ac.createMediaStreamDestination();
+    const srcs = new Map(); // key -> { src, gain }
+    const waiting = new Map(); // key -> { stream, fn } until an audio track exists
+    function dropWait(key) {
+      const w = waiting.get(key);
+      if (!w) return;
+      waiting.delete(key);
+      try { w.stream.removeEventListener('addtrack', w.fn); } catch (e) {}
+    }
+    function attach(key, stream, gain) {
+      if (srcs.has(key)) return true;
+      const t = stream.getAudioTracks()[0];
+      if (!t) return false;
+      try {
+        const src = ac.createMediaStreamSource(new MediaStream([t]));
+        const g = ac.createGain(); g.gain.value = gain == null ? 1 : gain;
+        src.connect(g); g.connect(dest);
+        srcs.set(key, { src, gain: g });
+        return true;
+      } catch (e) { return false; }
+    }
+    return {
+      dest, track: () => dest.stream.getAudioTracks()[0] || null,
+      has: (key) => srcs.has(key),
+      add(key, stream, gain) {
+        if (srcs.has(key) || !stream) return;
+        if (attach(key, stream, gain)) { dropWait(key); return; }
+        if (stream.getAudioTracks()[0]) return; // the track is there; the graph refused it
+        dropWait(key);
+        const fn = (ev) => {
+          const tr = ev && ev.track;
+          if (tr && tr.kind && tr.kind !== 'audio') return;
+          if (attach(key, stream, gain)) dropWait(key);
+        };
+        try {
+          stream.addEventListener('addtrack', fn);
+          waiting.set(key, { stream, fn });
+          // The track can land between the empty check and the listener.
+          if (attach(key, stream, gain)) dropWait(key);
+        } catch (e) {}
+      },
+      remove(key) {
+        dropWait(key);
+        const s = srcs.get(key);
+        if (!s) return;
+        try { s.src.disconnect(); s.gain.disconnect(); } catch (e) {}
+        srcs.delete(key);
+      },
+      // Drive a folded source's gain in place. 0 silences it and the node stays.
+      // An unknown key is a no-op.
+      setGain(key, v) { const s = srcs.get(key); if (s && s.gain.gain.value !== v) s.gain.gain.value = v; },
+      clear() { for (const k of new Set([...srcs.keys(), ...waiting.keys()])) this.remove(k); },
+      keys: () => [...srcs.keys()],
+    };
+  }
+
+  GifOS.meshMedia = { workerClock, createBgClock, bandRects, frameRects, coverBox, fitBox, createComposite, createAudioFold, packGrid, stadiumGrid, stadiumTiny, cellSize, faceSrcRect, cellCrop, createPacker, createBundle, cropView, sdnMirrorRoute };
+})(typeof window !== 'undefined' ? window : globalThis);
