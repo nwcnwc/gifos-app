@@ -7,7 +7,15 @@ const HOLD_SECONDS = 60;
 
 export default {
   async fetch(request, env, ctx) {
-    const key = gifKey(new URL(request.url).pathname);
+    const url = new URL(request.url);
+    // www is a different origin, so a desktop opened there is a different
+    // computer. This host only forwards to the apex.
+    if (url.hostname === "www.gifos.app") {
+      url.hostname = "gifos.app";
+      url.protocol = "https:";
+      return Response.redirect(url.toString(), 301);
+    }
+    const key = gifKey(url.pathname);
     // The route covers all of /apps/, including covers and app.json.
     // Anything that is not a GIF is the Pages origin.
     if (!key) return fetch(request);
@@ -18,7 +26,6 @@ export default {
       });
     }
 
-    const url = new URL(request.url);
     const cacheKey = new Request(url.origin + "/" + key, { method: "GET" });
     if (request.method === "GET") {
       const hit = await caches.default.match(cacheKey);

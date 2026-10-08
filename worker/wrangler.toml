@@ -2,8 +2,8 @@ name = "gifos-gifs"
 main = "src/gifs.js"
 compatibility_date = "2026-01-01"
 # A wildcard is only allowed at the start of the host or the end of the
-# path, so gifos.app/*.gif is rejected. These routes are the apex only.
-# Subdomains belong to other workers and are not matched.
+# path, so gifos.app/*.gif is rejected. Other subdomains belong to other
+# workers. www.gifos.app only redirects to the apex.
 workers_dev = false
 
 [[routes]]
@@ -12,6 +12,10 @@ zone_name = "gifos.app"
 
 [[routes]]
 pattern = "gifos.app/_goal.gif*"
+zone_name = "gifos.app"
+
+[[routes]]
+pattern = "www.gifos.app/*"
 zone_name = "gifos.app"
 
 [[r2_buckets]]
