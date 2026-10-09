@@ -3769,9 +3769,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const gMute = mod.mute && mod.mute.on, gBlur = mod.blur && mod.blur.on, gCam = mod.cam && mod.cam.on;
       const chips = [];
       if (!isMe && peerAway(id, 25000)) chips.push('<span>⏾ stepped away</span>');
-      // My own warning needs no attestOn (I have no statement): the relay is
-      // signing for others here but not for me, so they hold my media.
-      if (isMe && (typeof keysTrusted === 'function' && keysTrusted() === true) && !myIpAttV && [...whoLog.values()].some((e) => e.att)) chips.push('<span class="warn">\u26a0 the relay has not verified you yet \u2014 others cannot see or hear you until it does. If this stays, update GifOS.</span>');
+      // Not verified myself: everyone holds my media.
+      if (isMe && (typeof keysTrusted === 'function' && keysTrusted() === true) && !myIpAttV) chips.push('<span class="warn">\u26a0 the relay has not verified you yet \u2014 others cannot see or hear you until it does. If this stays, update GifOS.</span>');
       if ((typeof attestOn === 'function' && attestOn() === true) && !isMe && !(typeof isEjected === 'function' && isEjected(id) === true)) {
         if (!(typeof isVerified === 'function' && isVerified(id) === true)) {
           const e = whoLog.get(id), young = e && Date.now() - e.first < 15000;
@@ -5454,13 +5453,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // A page in another section, which never hears that person's statement,
     // relies on the first honest page that did: it only ever composites or
     // forwards verified people. With no trusted key, nothing changes.
-    // ON ONLY ONCE THE RELAY IS SIGNING: a page enforces this after the relay
-    // has signed its OWN address under a trusted key. Until the relay signs,
-    // nobody holds a statement and every page stays open, so the site and the
-    // relay can go live in either order without a moment where everyone's
-    // media is refused.
+    // No exception for anyone, and no waiting: a page that trusts a key
+    // requires verification from the first frame. (The relay refuses entry to
+    // a device that cannot prove its key, so nobody can claim to be an older
+    // client to slip past this.)
     const keysTrusted = () => { try { return Object.keys(window.GIFOS_RELAY_ATTEST_KEYS || {}).length > 0; } catch (e) { return false; } };
-    const attestOn = () => keysTrusted() && !!myIpAttV;
+    const attestOn = () => keysTrusted();
     const isVerified = (pid) => { const e = whoLog.get(pid); return !!(e && e.att) && !isEjected(pid); };
     const mediaOk = (pid) => !isEjected(pid) && (!attestOn() || isVerified(pid)); // strictly boolean: callers test === false
     // DEBUG sever (see severPair): while a pid is severed, every frame to or
@@ -7972,6 +7970,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // stale host, bad token) keeps its own path.
         onRejected: (code) => {
           if (code === 4011) { setStatus('\u26d4 This room already has you connected from another device. Close it there, or reload here.'); return; }
+          if (code === 4013) { setStatus('\u26d4 This meeting needs the current GifOS. Reload the page to update.'); return; }
           if (code !== 4004 && code !== 4007) return;
           bannedOut = true;
           for (const pid of Array.from(peers.keys())) dropPeer(pid);
@@ -8110,9 +8109,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (myIpAtt !== a) return;
             myIpAttV = v && !v.forged ? v : null;
             whoRefresh();
-            // The relay is signing: from now on media only from the verified,
-            // so streams already on screen from unverified people are held.
-            try { for (const q of peers.values()) claimOwnStream(q); updateTile('me'); } catch (e) {}
+            try { updateTile('me'); } catch (e) {}
           });
         }
         broadcastStatus(); // push my sealed address out now
