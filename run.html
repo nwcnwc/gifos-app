@@ -3160,6 +3160,46 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (changed) { enforceForcedCam(); refreshAllTiles(); refreshOutbound(); paintControls(); reactHandCall(); paintChatGate(); paintStage(); if (typeof applyCcAll === 'function') applyCcAll(); } // re-derive every tile + my broadcast; an admin cam-off stops my camera; a revoked screen share stops too; a fresh grant may be a call-up (don't wait for the beat); a chat/app order repaints its gates
     }
+    // A DEPARTURE VERDICT CAN BE WRONG, AND THE ORDERS MUST OUTLIVE IT.
+    // confirmGone takes a departed target's orders out of the table so the
+    // beat does not grow with the room's history. But a verdict is a guess
+    // from silence: a phone whose page was frozen for a minute is confirmed
+    // gone by everyone else and then comes back as itself. Its own table never
+    // lost its orders, everyone else's did, and the admin's next signed table
+    // cannot put them back (a table only ever adds and updates, it never
+    // deletes). A called-up guest then saw itself on the Stage while the room
+    // did not, and a muted guest came back unmuted. So the orders are PARKED,
+    // not dropped: the target's first status after the verdict (proof of
+    // life) puts them back, field by field, unless a newer order replaced
+    // them meanwhile. A parked entry nobody returns for is dropped after
+    // MOD_PARK_MS, and the map is capped, so the table still holds the room.
+    const MOD_PARK_MS = 600000, MOD_PARK_MAX = 256;
+    const modParked = new Map(); // pid -> { m: their orders, at: the verdict's time }
+    function parkMod(pid) {
+      const m = modTable[pid];
+      if (!m) return;
+      modParked.delete(pid);
+      modParked.set(pid, { m, at: Date.now() });
+      while (modParked.size > MOD_PARK_MAX) modParked.delete(modParked.keys().next().value);
+    }
+    function pruneModParked(now) {
+      for (const [pid, p] of modParked) if (now - p.at > MOD_PARK_MS) modParked.delete(pid);
+    }
+    function unparkMod(pid) {
+      const p = modParked.get(pid);
+      if (!p) return false;
+      modParked.delete(pid);
+      if (Date.now() - p.at > MOD_PARK_MS) return false;
+      const mine = modTable[pid] = modTable[pid] || {};
+      let changed = false;
+      for (const f in p.m) {
+        const o = p.m[f];
+        if (!o || typeof o !== 'object') continue;
+        if (!mine[f] || (+o.at || 0) > (+mine[f].at || 0)) { mine[f] = o; changed = true; }
+      }
+      if (changed) { enforceForcedCam(); refreshAllTiles(); refreshOutbound(); paintControls(); reactHandCall(); paintChatGate(); paintStage(); if (typeof applyCcAll === 'function') applyCcAll(); } // the same re-derivation as mergeMod; an admin's next beat re-signs the table with them back in
+      return changed;
+    }
     function setMod(target, field, on) {
       if (target === myId) return; // you moderate others, never yourself
       // The 'app' right only exists in admin rooms (open rooms let everyone
@@ -6036,6 +6076,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const scribeBit = !!(cur && cur.scribe) !== !!st.scribe;
       if (typeof noteStatusFlags === 'function') noteStatusFlags(cur, st);
       statusOf.set(from, st);
+      // Proof of life past a departure verdict: the orders confirmGone parked
+      // for this peer come back (unparkMod). notTomb lifts the tombstone on
+      // this same frame, so mergeMod treats them as an ordinary target again.
+      if (typeof unparkMod === 'function' && notTomb(from)) unparkMod(from);
       if (scribeBit && typeof scribeWatch === 'function') scribeWatch();
       // §LOCK EPOCH FLOOR: a member whose sealed frames I can OPEN is speaking
       // my key generation — so its epoch number is mine too, and adopting the
@@ -6585,7 +6629,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A confirmed departure takes its orders with it; the room-wide '*'
       // orders have no target and stay. mergeMod keeps the entry out while
       // the tombstone stands; a returning peer re-proves life and is an
-      // ordinary target again.
+      // ordinary target again — and its orders come back with it (parkMod).
+      if (typeof parkMod === 'function') parkMod(pid);
       delete modTable[pid];
       rosterIds = rosterIds.filter((x) => x !== pid); // the roster view drops them NOW, not next tick
       recSrcDirty = true;
@@ -8048,6 +8093,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Departure tombstones expire once every occ echo of the freed seat has
       // settled — after that a same-id RE-JOIN is an ordinary newcomer.
       for (const [pid, at] of meshGone) if (now - at > 60000) meshGone.delete(pid);
+      pruneModParked(now);
       // NO STATUS OUTLIVES ITS PEER — the STRUCTURAL floor (scale audit V2).
       // Both delete sites are EVENT-driven: dropPeer needs a peers record,
       // confirmGone needs a departure verdict aimed at this id. An entry that
