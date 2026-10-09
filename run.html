@@ -3842,9 +3842,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const gMute = mod.mute && mod.mute.on, gBlur = mod.blur && mod.blur.on, gCam = mod.cam && mod.cam.on;
       const chips = [];
       if (!isMe && peerAway(id, 25000)) chips.push('<span>⏾ stepped away</span>');
-      if (attestOn() && !isEjected(isMe ? '' : id)) {
-        if (isMe && !myIpAttV) chips.push('<span class="warn">\u26a0 the relay has not verified you yet \u2014 others cannot see or hear you until it does. If this stays, update GifOS.</span>');
-        else if (!isMe && !isVerified(id)) {
+      // My own warning needs no attestOn (I have no statement): the relay is
+      // signing for others here but not for me, so they hold my media.
+      if (isMe && keysTrusted() && !myIpAttV && [...whoLog.values()].some((e) => e.att)) chips.push('<span class="warn">\u26a0 the relay has not verified you yet \u2014 others cannot see or hear you until it does. If this stays, update GifOS.</span>');
+      if (attestOn() && !isMe && !isEjected(id)) {
+        if (!isVerified(id)) {
           const e = whoLog.get(id), young = e && Date.now() - e.first < 15000;
           chips.push('<span class="warn">\ud83d\udd12 ' + (young ? 'verifying who they are\u2026 video and sound held' : 'not verified \u2014 video and sound held. They need to update GifOS.') + '</span>');
         }
@@ -5706,7 +5708,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // A page in another section, which never hears that person's statement,
     // relies on the first honest page that did: it only ever composites or
     // forwards verified people. With no trusted key, nothing changes.
-    const attestOn = () => { try { return Object.keys(window.GIFOS_RELAY_ATTEST_KEYS || {}).length > 0; } catch (e) { return false; } };
+    // ON ONLY ONCE THE RELAY IS SIGNING: a page enforces this after the relay
+    // has signed its OWN address under a trusted key. Until the relay signs,
+    // nobody holds a statement and every page stays open, so the site and the
+    // relay can go live in either order without a moment where everyone's
+    // media is refused.
+    const keysTrusted = () => { try { return Object.keys(window.GIFOS_RELAY_ATTEST_KEYS || {}).length > 0; } catch (e) { return false; } };
+    const attestOn = () => keysTrusted() && !!myIpAttV;
     const isVerified = (pid) => { const e = whoLog.get(pid); return !!(e && e.att) && !isEjected(pid); };
     const mediaOk = (pid) => !isEjected(pid) && (!attestOn() || isVerified(pid));
     // DEBUG sever (see severPair): while a pid is severed, every frame to or
@@ -8377,7 +8385,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else {
           const a = { sp: m.att.sp, sig: m.att.sig }; // never cut: a cut statement no longer verifies, and reads as forged
           myIpAtt = a; ipaSends = 0; ipaShownTo.clear();
-          verifyIpAtt(myId, a).then((v) => { if (myIpAtt === a) { myIpAttV = v && !v.forged ? v : null; whoRefresh(); try { updateTile('me'); } catch (e) {} } });
+          verifyIpAtt(myId, a).then((v) => {
+            if (myIpAtt !== a) return;
+            myIpAttV = v && !v.forged ? v : null;
+            whoRefresh();
+            // The relay is signing: from now on media only from the verified,
+            // so streams already on screen from unverified people are held.
+            try { for (const q of peers.values()) claimOwnStream(q); updateTile('me'); } catch (e) {}
+          });
         }
         broadcastStatus(); // push my sealed address out now
       }
