@@ -1997,6 +1997,21 @@
             }
             // Hand off to reachable real admitter; never emit to a corpse.
             if (this.admitterReachable(ck(adm))) {
+              // A SEAT IS IN ONE PLACE: a FIND handed back to me by the very
+              // seat I would hand it to, which I also hear first-hand at
+              // another cell, is my echo of a claim it no longer holds — it
+              // sent the FIND back because its own view names no such
+              // admitter. A view kept across a freeze can still name a
+              // mate at the head cell it has since left, first-hand live for
+              // its whole window; handing on, the two seats bounced the
+              // FIND and the seeker, holding my FINDACK, waited its full
+              // window at the door. The echo goes and the scan runs again.
+              const to = this.occGet(ck(adm));
+              if (to === mm.from && mm.from !== mm.nc && this.liveElsewhere(to, ck(adm))) {
+                const ek = ck(adm);
+                this.occ.delete(ek); this.live.delete(ek); this.liveBy.delete(ek); this.s1seen.delete(ek); this.kidful.delete(ek); this.tlForget(ek, 'echo-bounce');
+                this.serveFind(mm); return;
+              }
               this.emit(this.occGet(ck(adm)), { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }); this.findAck(mm, ck(adm)); return;
             }
           }
