@@ -3769,6 +3769,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const gMute = mod.mute && mod.mute.on, gBlur = mod.blur && mod.blur.on, gCam = mod.cam && mod.cam.on;
       const chips = [];
       if (!isMe && peerAway(id, 25000)) chips.push('<span>⏾ stepped away</span>');
+      if (attestOn() && !isEjected(isMe ? '' : id)) {
+        if (isMe && !myIpAttV) chips.push('<span class="warn">\u26a0 the relay has not verified you yet \u2014 others cannot see or hear you until it does. If this stays, update GifOS.</span>');
+        else if (!isMe && !isVerified(id)) {
+          const e = whoLog.get(id), young = e && Date.now() - e.first < 15000;
+          chips.push('<span class="warn">\ud83d\udd12 ' + (young ? 'verifying who they are\u2026 video and sound held' : 'not verified \u2014 video and sound held. They need to update GifOS.') + '</span>');
+        }
+      }
       if (!isMe && t.relayed) chips.push('<span>📡 via ' + esc(displayName(t.relayed)) + '</span>');
       else if (!isMe && t.noRoute && !peerAway(id)) chips.push('<span class="warn">🚧 can’t connect straight to them — something on this network blocks video (common at work)</span>');
       if (stageIds().includes(isMe ? myId : id)) chips.push('<span>🎙 on stage</span>');
@@ -5435,6 +5442,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // client chooses, so excluding by tag would let a forger get an innocent
     // device locked out by naming its tag.
     const isEjected = (pid) => !!pid && ejected.size > 0 && ejected.has(pid);
+    // MEDIA ONLY FROM THE VERIFIED. Once this page trusts a relay key
+    // (relay-config.js GIFOS_RELAY_ATTEST_KEYS is not empty), it shows,
+    // plays, forwards and composites a person's video and sound only after
+    // checking the relay's signed statement of their address itself, and
+    // takes relayed or composite feeds only from verified forwarders. A
+    // source that cannot be identified is never accepted. Someone on an
+    // out-of-date GifOS sends no statement and stays held until they update.
+    // A page in another section, which never hears that person's statement,
+    // relies on the first honest page that did: it only ever composites or
+    // forwards verified people. With no trusted key, nothing changes.
+    const attestOn = () => { try { return Object.keys(window.GIFOS_RELAY_ATTEST_KEYS || {}).length > 0; } catch (e) { return false; } };
+    const isVerified = (pid) => { const e = whoLog.get(pid); return !!(e && e.att) && !isEjected(pid); };
+    const mediaOk = (pid) => !isEjected(pid) && (!attestOn() || isVerified(pid));
     // DEBUG sever (see severPair): while a pid is severed, every frame to or
     // from it is dropped — a partition in miniature for the fork drill.
     const isSevered = (pid) => isEjected(pid) || (DEBUG_ON && window.__severed && (window.__severed.get(pid) || 0) > Date.now());
@@ -5627,6 +5647,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         p.stream = null;
       }
       if (!p.ownSid) { updateTile(p.id); return; } // wait for gossip to prove identity
+      if (!mediaOk(p.id)) { // held until the relay's statement of them checks out
+        if (p.stream) { if (p.video.srcObject === p.stream) p.video.srcObject = null; p.stream = null; try { releaseMeter(p.id); } catch (e) {} }
+        updateTile(p.id); return;
+      }
       const own = (p.incoming || []).find((s) => s.id === p.ownSid);
       if (own && p.stream !== own) {
         p.stream = own;
@@ -7235,7 +7259,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // change.
         const lie = !v.forged && msg.ip && String(msg.ip).slice(0, 64) !== v.ip
           ? 'reports ' + String(msg.ip).slice(0, 64) + ' but the relay saw it connect from ' + v.ip : '';
-        if (!v.forged) e2.att = v;
+        if (!v.forged) {
+          const was = !!e2.att; e2.att = v;
+          if (!was && !e2.forged) { const pp = peers.get(pid); if (pp) claimOwnStream(pp); try { claimRelayStreams(); } catch (err) {} } // verified: their held media may now show
+        }
         if (v.forged || lie) { if (!e2.forged) e2.forged = { why: v.forged || lie, at: Date.now() }; ejectForger(pid, e2.forged.why); }
         whoRefresh();
       });
@@ -8071,7 +8098,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else {
           const a = { sp: m.att.sp, sig: m.att.sig }; // never cut: a cut statement no longer verifies, and reads as forged
           myIpAtt = a; ipaSends = 0; ipaShownTo.clear();
-          verifyIpAtt(myId, a).then((v) => { if (myIpAtt === a) { myIpAttV = v && !v.forged ? v : null; whoRefresh(); } });
+          verifyIpAtt(myId, a).then((v) => { if (myIpAtt === a) { myIpAttV = v && !v.forged ? v : null; whoRefresh(); try { updateTile('me'); } catch (e) {} } });
         }
         broadcastStatus(); // push my sealed address out now
       }
@@ -10391,7 +10418,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         ref[p.id] = Date.now();
         relayRefusal.set(m.target, ref);
       } else if (m.k === 'relay-stream') {
-        if (isEjected(String(m.target || ''))) return; // a forger's stream, relayed: refused
+        if (!mediaOk(String(m.target || '')) || !mediaOk(p.id)) return; // relayed: only a verified person's stream, from a verified relayer
         relayVia.set(String(m.target || ''), { via: p.id, streamId: m.streamId, stream: null });
         claimRelayStreams();
       } else if (m.k === 'relay-stop') {
@@ -10407,6 +10434,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const annNew = !prevAnn || prevAnn.streamId !== m.streamId;
         const annIds = mxIds(m.ids);
         if (mosHasEjected(m.key, annIds)) return; // a feed carrying a forger's picture: refused
+        if (!mediaOk(p.id)) return; // a feed from a forwarder this page has not verified: refused
         // STAGE-FACES: the strip's cell order (or count, or grid) changed under
         // the same container. A relay must pass the new order on within one
         // beat, not at the 2s sweep: the re-packed frames are already flowing
