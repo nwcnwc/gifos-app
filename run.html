@@ -7564,15 +7564,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // contradicting.
         try { const st = meshSeat(); if (st && st.goodbye) st.goodbye(pid); } catch (err) {}
         // A seat whose links all ran through the forger is cut off from the
-        // room: go back through the door to be seated again.
-        setTimeout(() => {
-          try {
-            const st = meshSeat();
-            if (!st || !st.hasCoord || st.state !== 3 || typeof st.requeue !== 'function') return;
-            const live = [...peers.values()].some((q) => q.connected && !(typeof isEjected === 'function' && isEjected(q.id) === true));
-            if (!live) st.requeue();
-          } catch (err) {}
-        }, 3000);
+        // room: cutOffByEjection (below) sends it back through the door.
+        ejectWatchUntil = Date.now() + 120000;
       };
       Promise.race([whoObserve(pid), new Promise((r) => setTimeout(r, 1500))]).then(drop, drop);
       rosterIds = rosterIds.filter((x) => x !== pid);
@@ -7591,6 +7584,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { updateStatus(); } catch (err) {}
       whoRefresh();
     }
+    // CUT OFF BY AN EJECTION. A seat whose only links ran through an ejected
+    // forger hears nobody, and nothing else will rescue it: the room's own
+    // fragment rescue stands down while the room is known to hold others. So
+    // for two minutes after any ejection, a SEATED page with no live link to
+    // anyone not ejected, while the room was heard from lately, goes back
+    // through the door (at most every 15 s). A one-shot check right after the
+    // ejection was not enough: a seat still joining at that moment — e.g.
+    // seated by a forger that came back under a new key — was never
+    // re-checked and stayed alone.
+    let ejectWatchUntil = 0, cutOffSince = 0, ejectRequeueAt = 0;
+    function cutOffByEjection() {
+      if (!ejectWatchUntil || Date.now() > ejectWatchUntil) { cutOffSince = 0; return; }
+      const st = meshSeat();
+      if (!st || !st.hasCoord || st.state !== 3 || typeof st.requeue !== 'function') { cutOffSince = 0; return; }
+      const linked = [...peers.values()].some((q) => q.connected && !isEjected(q.id));
+      const roomHeard = [...whoLog].some(([pid, e]) => !isEjected(pid) && Date.now() - e.last < 60000);
+      if (linked || !roomHeard) { cutOffSince = 0; return; }
+      if (!cutOffSince) { cutOffSince = Date.now(); return; }
+      if (Date.now() - cutOffSince < 3000 || Date.now() - ejectRequeueAt < 15000) return;
+      cutOffSince = 0; ejectRequeueAt = Date.now();
+      try { st.requeue(); } catch (err) {}
+    }
+    setInterval(cutOffByEjection, 1500);
     // A departure: stamp what is about to be forgotten elsewhere.
     function whoGone(pid) {
       const e = whoLog.get(pid); if (!e) return;
