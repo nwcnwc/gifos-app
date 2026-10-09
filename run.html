@@ -12188,7 +12188,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const c = meshCoord();
       if (rk === 'sdm') { if (c && c.i === 0) return; paintStadiumTile(stream); }
       else if (rk === 'sgs') { if (c && c.pc === 0) return; schedReconcile(); }
-      // stg:* has no direct <video> — the S1 strip compositor re-reads mosIn.
+      // stg:* has no <video> of its own, but the Stage paints from it: the
+      // strip compositor re-reads mosIn on the sweep, and a shared screen is
+      // shown as the stg track itself (stageDirect). A swap made outside the
+      // sweep (an announce, a track, a departure) parks the old path at once,
+      // so waiting for the next beat leaves the Stage on a frozen frame; on a
+      // throttled clock that beat is many seconds away. Repaint now.
+      else if (rk.indexOf('stg:') === 0) schedReconcile();
       // 'sdn'/'sdx' feed this head's packers, which re-read mosIn on the sweep;
       // schedule a fast off-stack sweep so a failover swap repaints in ~60ms
       // instead of waiting out the 2s reconcile beat.
@@ -12675,9 +12681,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // tore the audio-only stg claim in the gate. The husk-promotion case
         // it targeted (redun hunt hr2) belongs to the SENDER-side container-
         // identity campaign; see known-unfixed.sh FAILOVER-WAKE.)
+        // A PURE FAILBACK (primary alive and flowing, the preferred path woken
+        // beside it) leaves a working picture for a path that has not shown
+        // one yet. The videoWidth fallback is no evidence here: a relayed
+        // video path can carry bytes and hold a decoded size while it never
+        // produces a frame (no keyframe arrives), and swapping onto it turned
+        // a working Stage black. A video standby must decode two frames since
+        // wake before a pure failback moves the claim; a standby with no video
+        // track (an audio-only claim) keeps the old gate, as does any failover
+        // from a dead or dark primary, which has nothing to lose.
+        const pureFailback = !!(priLive && !fb.dark);
+        const stdVideo = !!(std.stream && std.stream.getVideoTracks && std.stream.getVideoTracks().length);
         const flowing = (fb.dark && priLive)
           ? (fb.d0 >= 0 && fb.stdFdec > fb.d0)
-          : (frames(std.el) > fb.f0 || (std.el && std.el.videoWidth > 0 && now - fb.wakeAt > 1500));
+          : (pureFailback && stdVideo)
+            ? (frames(std.el) >= fb.f0 + 2)
+            : (frames(std.el) > fb.f0 || (std.el && std.el.videoWidth > 0 && now - fb.wakeAt > 1500));
         // A dead-or-dark primary swaps the moment the standby flows; a live one
         // (pure failback) additionally waits out the settle window — hysteresis
         // (dark skips it: dark IS a failover, and MOS_SETTLE on lastSwitch
