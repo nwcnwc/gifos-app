@@ -16518,7 +16518,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (added) { if (p.dc && p.dc.readyState === 'open') compKick(pid); else renegotiate(p); }
       }
     }
+    // A late grant must honour the room's orders exactly as the buttons do: an
+    // admin's video-off keeps the camera off, and a room-wide mute keeps the
+    // microphone off, even when the permission is answered after the order.
+    function lateRefusal(kind) {
+      if (kind === 'cam' && forcedCamOff('me')) return '📷 An admin turned your video off for the room — only they can turn it back on.';
+      if (kind === 'mic' && amGloballyMuted()) {
+        const by = modOf('me').mute.by;
+        return 'You were muted for everyone' + (by ? ' by ' + by : '') + ' — another participant has to lift it.';
+      }
+      return null;
+    }
     function lateMedia(kind) {
+      if (lateRefusal(kind)) { setStatus(lateRefusal(kind)); return; }
       if (lateAsk) { setStatus('Still asking for the camera and microphone\u2026'); return; }
       // THE BOOT ASK IS THE ONLY ASK (knock-first, 2026-08-05): the knock no
       // longer waits on getUserMedia, so "page live, localStream still null"
@@ -16534,6 +16546,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         p.then(() => {
           const tr = localStream && (kind === 'cam' ? localStream.getVideoTracks() : localStream.getAudioTracks())[0];
           if (!tr) return lateMedia(kind);
+          if (lateRefusal(kind)) { setStatus(lateRefusal(kind)); return; }
           tr.enabled = true;
           if (kind === 'mic') myStatus.muted = false; else myStatus.camOff = false;
           paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateMediaSession();
@@ -16571,7 +16584,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             try { for (const tr of s.getTracks()) tr.stop(); } catch (e) {}
             if (gen === lateGen) lateAsk = false;
             const held = localStream && (kind === 'cam' ? localStream.getVideoTracks() : localStream.getAudioTracks())[0];
-            if (held && !held.enabled) {
+            if (held && !held.enabled && !lateRefusal(kind)) {
               held.enabled = true;
               if (kind === 'mic') myStatus.muted = false; else myStatus.camOff = false;
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateMediaSession();
@@ -16583,8 +16596,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           lateWon++;
           clearTimeout(lateTimer);
           lateAsk = false;
-          // Quiet-join discipline still holds: only the tapped control goes on.
-          for (const tr of s.getTracks()) tr.enabled = tr.kind === (kind === 'cam' ? 'video' : 'audio');
+          // Quiet-join discipline still holds: only the tapped control goes on,
+          // and not even that one if a room order arrived during the ask.
+          const refused = lateRefusal(kind);
+          for (const tr of s.getTracks()) tr.enabled = !refused && tr.kind === (kind === 'cam' ? 'video' : 'audio');
           if (!localStream) {
             localStream = s;
             maybeShowFlip();
@@ -16603,8 +16618,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // The camera goes on only when a video track was actually taken:
           // the audio-only fallback lands the mic (quiet) and says why.
           const gotCam = !!localStream.getVideoTracks()[0];
-          myStatus.muted = kind !== 'mic';
-          myStatus.camOff = kind !== 'cam' || !gotCam;
+          myStatus.muted = kind !== 'mic' || !!refused;
+          myStatus.camOff = kind !== 'cam' || !gotCam || !!refused;
           attachLocalTracks();
           paintControls();
           refreshOutbound();
@@ -16612,7 +16627,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           reactRoomState();
           updateMediaSession();
           if (typeof syncSpeech === 'function') syncSpeech();
-          setStatus(kind === 'cam'
+          if (refused) setStatus(refused);
+          else setStatus(kind === 'cam'
             ? (gotCam ? 'Camera on.' : 'No camera on this device (' + ((camErr && camErr.name) || 'error') + '). Your microphone is ready — tap the mic button to talk.')
             : 'Mic on.');
           if (typeof noteAudioDevices === 'function') noteAudioDevices();
