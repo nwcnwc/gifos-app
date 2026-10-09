@@ -2152,8 +2152,10 @@
 
     // ---- healing (C3 fixed designation + diversified leaf-sourcing) ----
     // A room that is one row has nobody below anybody: a heal's FINDLEAF can never promote a seat into
-    // a hole there, so only admitting a newcomer fills it.
-    oneRowRoom() { for (const k of this.occ.keys()) if (k.slice(0, 4) !== '0_0_') return false; return true; }
+    // a hole there, so only admitting a newcomer fills it. A seat past the first row counts only while I
+    // hear it first-hand: one that went quiet (a reload, a closed tab) waits out its ring hold in my
+    // occupancy, and counting it kept the hole shut to the newcomer at the door for that whole hold.
+    oneRowRoom() { for (const k of this.occ.keys()) if (k.slice(0, 4) !== '0_0_' && this.firstHandLive(k)) return false; return true; }
     heal(hole) {
       const TICK = this.TICK;
       if (!this.hasCoord || this.state !== 3 || TICK - this.healAt < 12) return;
