@@ -421,6 +421,7 @@
       this.seatedAt = 0; this.challAt = -999;   // "never": a 0 start paced a young seat (clock <= 20) out of every challenge
       this.s1CheckAt = -1;
       this.rookSeenAt = 0;   // last tick I heard ANY rook neighbour first-hand (split-off fragment detection)
+      this.splitKnockAt = -999; // last split-off re-knock (serveFind): the hold re-reads the door before it refuses again
       this.myKey = 'mk_' + id;   // throwaway personal genesis key (unique per seat)
       this.genKey = null;        // THIS meeting's genesis key (learned via the dance, or minted)
       this.joinStart = -1; this.stranded = false; this.evil = false; this.alive = true;
@@ -1828,7 +1829,18 @@
         // healed around it and were CONFIRMed back out), and each mate's
         // listing blocked the other's admission: NOROOM 'split-off' to every
         // FIND until the page reloaded itself (84 s, 64 s).
-        if (TICK - this.rookSeenAt > OWNER_SILENT && this.greetersAt !== undefined && TICK - this.greetersAt <= RELAY_TTL && this.lastGreeters.some((g) => g != null && g !== this.id && g !== mm.nc && !this.knocking(g) && !(Array.isArray(mm.dark) && mm.dark.includes(g)))) { this.noroomWhy = 'split-off'; this.emit(mm.nc, { t: 'NOROOM', nd: 0 }); return; }
+        // THE HOLD READS THE DOOR AS IT IS NOW. My list is refreshed only by
+        // my own knocks (seating, then every E3_PERIOD), so it can name a mate
+        // that has since left: a frozen mate that reloaded under a new id
+        // stays on my list for minutes, and this hold refused the reloaded
+        // mate's every FIND until my next re-knock. The door drops a closed
+        // socket at once, so while the hold refuses anyone I re-knock (one
+        // knock per 8 ticks): a live second ring stays listed and the hold
+        // stands; a departed one is gone by the seeker's next FIND.
+        if (TICK - this.rookSeenAt > OWNER_SILENT && this.greetersAt !== undefined && TICK - this.greetersAt <= RELAY_TTL && this.lastGreeters.some((g) => g != null && g !== this.id && g !== mm.nc && !this.knocking(g) && !(Array.isArray(mm.dark) && mm.dark.includes(g)))) {
+          if (TICK - this.splitKnockAt >= 8) { this.splitKnockAt = TICK; this.emitRelay(this.genKey); }
+          this.noroomWhy = 'split-off'; this.emit(mm.nc, { t: 'NOROOM', nd: 0 }); return;
+        }
         // H7 ROW-FILL seating (replaces the old column backfill): Section 1
         // fills ROW-MAJOR — row 0 seats 0..C-1, then row 1, ... — so the first
         // C people in a room are ROW-MATES (the media plane's near field is
