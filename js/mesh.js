@@ -907,7 +907,7 @@
     fresh() { return this.TICK - this.estAt < FRESH; }
     // A proven frame from a seat at one of my owned links: a silence longer
     // than NBR_GAP before it means I was cut off, and my seat is fresh again.
-    nbrHeard() { if (this.nbrAt >= 0 && this.TICK - this.nbrAt > NBR_GAP) this.estAt = this.TICK; this.nbrAt = this.TICK; }
+    nbrHeard() { if (this.nbrAt !== -1 && this.TICK - this.nbrAt > NBR_GAP) this.estAt = this.TICK; this.nbrAt = this.TICK; }   // -1 is "never"; an aged stamp may be negative (absence)
     // An arbiter that a link proved at its cell within FRESH ticks of my
     // (re)establishment was my neighbour when I sat down. A seat that turns up
     // at a free cell next to me LATER (any member can) may not unseat me
@@ -1201,7 +1201,12 @@
       // back from a 75 s freeze read a gap of a few ticks, never became fresh,
       // and refused the YIELD of the arbiter the row had admitted while it was
       // frozen (a duplicate head for 150 s).
-      if (this.nbrAt >= 0) this.nbrAt -= n;
+      // An aged stamp may fall below zero (a gap longer than my clock had run
+      // when it began: a seat that sat down shortly before). It is still a
+      // stamp; only -1 means "never", so it is stepped past -1. Read as
+      // "never", the first frame back left the seat stale, and it refused its
+      // row's YIELD until another neighbour came back.
+      if (this.nbrAt !== -1) { this.nbrAt -= n; if (this.nbrAt === -1) this.nbrAt = -2; }
       this.backAt = this.TICK;   // the return: only hearing newer than this refreshes rookSeenAt (tick)
       // ...and the head's own admit pace (healTry, 45 ticks per chair): an
       // attempt made just before a freeze still read as fresh after it, and
