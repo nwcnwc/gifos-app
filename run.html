@@ -2690,6 +2690,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // DataChannel (status prefers DCs — see sendSig — so a healing relay
       // socket no longer silences the room's pulse).
       const audible = relayUp() || Array.from(peers.values()).some((p) => p.dc && p.dc.readyState === 'open');
+      try { holdForcedCam(); } catch (e) {}
       if (peers.size && audible && !throttled) broadcastStatus();
       // HALF-OPEN PAIR SELF-HEAL (behavior battery F1, 2026-07-26): a join
       // glare can leave an ASYMMETRIC DataChannel pair — both ends read
@@ -3274,6 +3275,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!hasAdminRoom() || mayShareScreen(id)) return false;
       return !!shareClaim(id);
     };
+    // An admin's video-off holds on every beat, not only when the order
+    // changes: a camera that came on by any path while the order stands goes
+    // back off before the next status leaves the page.
+    let camDefiant = false; // test hook: a client that ignores the order (receivers must still hide it)
+    function holdForcedCam() {
+      if (camDefiant || !localStream) return;
+      const track = localStream.getVideoTracks()[0];
+      if (track && track.enabled && forcedCamOff('me')) {
+        track.enabled = false;
+        myStatus.camOff = true;
+        paintControls();
+      }
+    }
     function enforceForcedCam() {
       // "Video off for everyone" means VIDEO, not "camera". A screen share is
       // video leaving this device on the same senders, so a share that survived
@@ -18876,7 +18890,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       fsMain: () => ({ key: fsmain.dataset.key || null, bl: fsmain.classList.contains('blur2') ? 2 : fsmain.classList.contains('blur1') ? 1 : 0 }),
       fsThumbBlur: (key) => { const th = Array.from(fsstrip.children).find((t) => t.dataset.key === key); const tv = th && th.querySelector('video'); if (!tv) return null; return tv.classList.contains('blur2') ? 2 : tv.classList.contains('blur1') ? 1 : 0; },
       peerCamOff: (pid) => seatDark(statusOf.get(pid)),
-      defyCamOffForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; t.enabled = true; myStatus.camOff = false; broadcastStatus(); return true; },
+      defyCamOffForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; camDefiant = true; t.enabled = true; myStatus.camOff = false; broadcastStatus(); return true; },
+      // a camera that comes on by a path that never asked the order (the page itself is honest)
+      slipCamOnForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; t.enabled = true; myStatus.camOff = false; return true; },
       // freeze my outgoing pulses (throttled-phone simulation for the G1 drill)
       haltPulseForTest: (on) => { pulseHalt = !!on; },
       // backdate the beat clock (renderer-freeze simulation for the resume self-heal drill)
