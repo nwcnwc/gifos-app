@@ -5231,14 +5231,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof inner.k !== 'string' || !RELAY_ENVELOPE_KINDS.has(inner.k)) return null;
       if (inner.k === 'fmesh') {
         // A forwarded mesh frame is control (HELLO, CLAIM, PHONE, the entry
-        // handshake...) — except gossip, which is the room's carrier for app
-        // payloads. Gossip rides the relay only when its payload is a
-        // signaling pulse; a chat-class payload is content and is refused.
+        // handshake...) — never GOSSIP (GSP/GSPS), whatever it carries.
+        // Gossip is the room's carrier for chat, transcripts, file listings and
+        // deletions; it does not ride the relay at all, in either direction
+        // (sponsorSend and fwdOnward ask this same function before using it).
+        // A newcomer without a channel still gets status by the direct
+        // kind:'status' frame above.
         const t = inner.m && inner.m.t;
-        if (t === 'GSP' || t === 'GSPS') {
-          const pay = inner.m.m && inner.m.m.msg;
-          return (pay && pay.kind != null && RELAY_SIGNAL_KINDS.has(pay.kind)) ? 'fmesh:' + t + ':' + pay.kind : null;
-        }
+        if (t === 'GSP' || t === 'GSPS') return null;
         return 'fmesh';
       }
       return inner.k;
