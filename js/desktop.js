@@ -1530,6 +1530,39 @@
     return it;
   }
 
+  // ---------- one icon per cell on THIS screen ------------------------------
+  // Icons are stored in pixels laid out at the pitch of the screen that placed
+  // them, and the pitch follows the screen width (72-104 px). Folders set up on
+  // a narrow phone and opened later on a wider screen (a rotation, a resized
+  // window) put neighbours closer than one cell: they drew on top of each other
+  // and the grid counted them as one cell, so a drop could land on them too.
+  // At start-up, every icon that shares a cell with an earlier sibling (or with
+  // a folder's up-hole) moves to the nearest free cell. Earlier = top-to-bottom,
+  // then left-to-right, so the first icon of a pair keeps its place.
+  async function destackForThisScreen() {
+    const byParent = new Map();
+    for (const it of items) {
+      if (it.id === 'sys_wallpaper') continue;
+      const p = it.parent || null;
+      if (!byParent.has(p)) byParent.set(p, []);
+      byParent.get(p).push(it);
+    }
+    const moves = [];
+    for (const [parent, sibs] of byParent) {
+      const taken = new Set(parent ? ['0,0'] : []);
+      sibs.sort((a, b) => ((a.y || 0) - (b.y || 0)) || ((a.x || 0) - (b.x || 0)));
+      for (const it of sibs) {
+        const c = cellOf(it.x, it.y), key = c.col + ',' + c.row;
+        if (taken.has(key)) moves.push(it); else taken.add(key);
+      }
+    }
+    for (const it of moves) {
+      try { await saveItem(it); } catch (e) { /* the next start-up tries again */ }
+    }
+    return moves.length;
+  }
+  // end destackForThisScreen
+
   // ---------- Arrange mode (icons are LOCKED by default) --------------------
   // Scrolling a phone used to pick icons up: a finger that landed on an icon
   // owned the gesture from pixel one (touch-action:none + pointer capture), so a
@@ -4219,7 +4252,7 @@
 
   // ---------- boot ----------
   requestPersistence();
-  load().then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(handleRunParam).then(handlePlaceParam).then(checkForUpdate).then(reclaimOrphanAssets).then(backfillOrnaments);
+  load().then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(handleRunParam).then(handlePlaceParam).then(checkForUpdate).then(reclaimOrphanAssets).then(backfillOrnaments);
 
   GifOS.desktop = { render, load, backfillOrnaments, get stats() { return renderStats; },
     // The lazy seed, awaitable: the promise the boot armed (resolves once it has run), and what it decided.
