@@ -93,7 +93,7 @@
     // code, and only an explicit s.kick() (the app changed something: new
     // password, deliberate re-join) re-arms. CROWD codes (full / rate-limited /
     // no host yet) keep retrying on a longer leash.
-    const FATAL_CLOSES = [1008, 4000, 4001, 4003, 4004, 4007, 4008, 4009, 4010, 4011, 4012];
+    const FATAL_CLOSES = [1008, 4000, 4001, 4003, 4004, 4007, 4008, 4009, 4010, 4011, 4012, 4013]; // 4013: no key proof — update GifOS
     const SLOW_CLOSES = [1011, 1013];
     const setState = (st) => {
       if (s.state === st) return;
