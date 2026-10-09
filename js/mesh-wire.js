@@ -512,8 +512,13 @@
     // HELLO, CLAIM, PHONE, gossip — crosses a link.
     const ENTRY_T = new Set(['WHOHOME', 'FIND', 'HOME', 'NOROOM', 'FINDACK', 'PLACE']);
     let relayRefused = 0; // mesh frames of any other type that arrived over the relay (dropped)
+    // Every close code the relay socket saw in this node's life, newest last
+    // (survives the socket being dropped and re-made). stats() reports it so
+    // a page can tell a socket the relay CUT from one the network dropped.
+    const relayCloses = [];
+    const RELAY_CLOSES_KEPT = 64;
     function makeSock() {
-      sock = net.steadySocket(makeUrl);
+      sock = net.steadySocket(makeUrl, { onClose: (code) => { relayCloses.push({ code, at: Date.now() }); if (relayCloses.length > RELAY_CLOSES_KEPT) relayCloses.shift(); } });
       lastRelayRx = Date.now(); // fresh socket starts its idle clock now
       // EVERY (re)connect: if I am a seated Section-1 greeter, my pool entry
       // died with the old socket — restore it NOW, not at the next E3 tick.
@@ -1075,7 +1080,7 @@
       // "wrong password") until every greeter's E3 re-knock… which would also
       // have used the stale key, locking them out until a reload.
       setKey(k) { if (k) { roomKey = k; sealedSoloRuns = 0; /* the counter means "sealed replies under MY CURRENT key" — evidence gathered under the old key must not fire a challenge past a re-key */ try { if (sock && sock.rejected) sock.kick(); } catch (e) {} /* credential change: the ONE sanctioned re-arm of a policy-rejected socket */ try { if (seat && seat.hasCoord && seat.state === 3 && seat.coord.pc === 0) env.knock(peer, seat.genKey || myKey); } catch (e) {} } },
-      stats() { return { peer, state: seat ? seat.state : 0, coord: (seat && seat.hasCoord) ? { pc: seat.coord.pc, r: seat.coord.r, i: seat.coord.i } : null, stranded: !!(seat && seat.stranded), tick: env.TICK, relayRefused }; },
+      stats() { return { peer, state: seat ? seat.state : 0, coord: (seat && seat.hasCoord) ? { pc: seat.coord.pc, r: seat.coord.r, i: seat.coord.i } : null, stranded: !!(seat && seat.stranded), tick: env.TICK, relayRefused, closes: relayCloses.slice() }; },
       // Greeter-list forensics: ring of recent onGreeters outcomes (listLen /
       // open / founded / action). See greeterTrace push in onGreeters.
       greeterTrace() { return greeterTrace.slice(); },

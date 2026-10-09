@@ -5148,13 +5148,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // whose only partner was in a tunnel that the meeting had emptied. Say
       // what is happening: we are getting back in, waiting on the others.
       const seat0 = meshSeat(), atDoor = !!(seat0 && (seat0.state === 1 || seat0.state === 2));
-      const statusText = (n === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry')
-        : displayCount() + ' in the meeting · ' + q.label) + link + savedLock + extra;
+      // REACH (see REACH_MSG): a network that blocks direct connections
+      // rewrites the line — locked out, or unreachable, is the one thing a
+      // person must read — and a partly reachable meeting gets its honest
+      // count. The state id is on the test API (reachState) and on the line
+      // (data-reach); the count of people this page cannot see or hear is
+      // data-unreached.
+      const reach = typeof reachInfo === 'function' ? reachInfo() : null;
+      const reachState = reach ? reach.state : null;
+      const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
+      const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState]
+        : (n === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry')
+        : displayCount() + ' in the meeting · ' + q.label) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
-      // in), 'alone' (seated, nobody else), 'meeting' (others here). Tests and
-      // styling read this, never the sentence.
-      const statusKind = n === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
-      if (statusEl.dataset && statusEl.dataset.kind !== statusKind) statusEl.dataset.kind = statusKind;
+      // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
+      // of the reach states that replace the line. Tests and styling read
+      // this, never the sentence.
+      const statusKind = reachState && reachState !== 'partial' ? reachState : n === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
+      if (statusEl.dataset) {
+        if (statusEl.dataset.kind !== statusKind) statusEl.dataset.kind = statusKind;
+        const dr = reachState || '', du = reachState === 'partial' ? String(reach.dead) : '';
+        if (statusEl.dataset.reach !== dr) statusEl.dataset.reach = dr;
+        if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
+      }
+      if (reachState && reachState !== 'partial') statusEl.classList.add('alert');
       if (statusEl.textContent !== statusText) {
         statusEl.textContent = statusText;
         statusEl.title = statusText;
@@ -5204,6 +5221,122 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if ((msg.kind === 'offer' || msg.kind === 'answer') && msg.sdp) return Object.assign({}, msg, { sdp: sdpSansIce(msg.sdp) });
       return msg;
     };
+    // ---- REACH: why a person is locked out, or sees a poor meeting ----------
+    // Media never crosses a server: every pair is a direct connection, and a
+    // network that blocks them (common at work) leaves a tile black. The
+    // per-tile chip says so pair by pair; this block says it for the whole
+    // meeting, in one line, with what happens next. Four states, each read
+    // from facts the page actually holds, never guessed:
+    //   udp-blocked              my own network returns no public address from
+    //                            the connection probe, and no pair of mine
+    //                            works
+    //   cannot-reach-room        my network looks fine, yet every pair the
+    //                            meeting named for me is dead (or the door
+    //                            never answered) — the page keeps dialling
+    //   outsiders-cannot-reach-me my network blocks direct connections, but
+    //                            the people on it reach me — anyone elsewhere
+    //                            cannot
+    //   partial                  some pairs work and some are dead: the count
+    //                            line says how many I cannot see or hear
+    // The wording claims only what the page knows; tests read the state id
+    // on the test API (reachState), never the sentence.
+    const REACH_MSG = {
+      'udp-blocked': '📡 Your network blocks the direct connections this meeting needs, so you cannot join from here.',
+      'cannot-reach-room': '📡 This meeting was started on a network your device cannot connect to directly. This page keeps trying and joins as soon as the room is free.',
+      'outsiders-cannot-reach-me': '📡 People outside your network cannot connect to this meeting.',
+    };
+    // The count-line note for a partial meeting (state 'partial'): appended
+    // to the ordinary "N in the meeting" line with the number of people this
+    // page has no sound or picture from.
+    const reachNote = (dead) => ' · ' + dead + ' you cannot see or hear because a network blocks direct connections';
+    // RESERVED, NOT SHOWN ANYWHERE YET: the admin-room variant for when a
+    // meeting's admin holds a plan that lets a locked-out guest in once the
+    // admin arrives. No such plan exists today, so no code reads this; it is
+    // the one place that wording will live when it does.
+    const REACH_MSG_ADMIN_PLAN = 'If this meeting’s admin has a paid plan, you can join after the admin arrives.';
+    // probeDirectPath(makePc, timeoutMs) → 'ok' | 'blocked' | 'unknown'.
+    // Gathers candidates on a throwaway connection: a server-reflexive
+    // candidate (the public address a STUN server reflected back) proves
+    // this network lets a direct connection out; gathering that ENDS, or
+    // times out, without one means it does not. A probe that cannot even
+    // start (no WebRTC, offer refused) proves nothing: 'unknown'.
+    function probeDirectPath(makePc, timeoutMs) {
+      return new Promise((resolve) => {
+        let pc;
+        try { pc = makePc(); } catch (e) { resolve('unknown'); return; }
+        if (!pc) { resolve('unknown'); return; }
+        let done = false;
+        const finish = (v) => { if (done) return; done = true; clearTimeout(timer); try { pc.close(); } catch (e) {} resolve(v); };
+        const timer = setTimeout(() => finish('blocked'), timeoutMs);
+        pc.onicecandidate = (ev) => {
+          const c = ev && ev.candidate;
+          if (!c) { finish('blocked'); return; } // end of candidates, none reflexive
+          if (c.type === 'srflx' || / typ srflx(?: |$)/.test(String(c.candidate || ''))) finish('ok');
+        };
+        pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === 'complete') finish('blocked'); };
+        try { pc.createDataChannel('probe'); } catch (e) {}
+        Promise.resolve().then(() => pc.createOffer()).then((o) => pc.setLocalDescription(o)).catch(() => finish('unknown'));
+      });
+    }
+    const REACH_PROBE_MS = 8000;
+    let directPath = 'pending'; // 'pending' | 'ok' | 'blocked' | 'unknown' — this network's verdict
+    let directPathRun = 0;
+    // Run (or re-run) the probe. Called when the meeting starts and when the
+    // browser reports the network came back, since a new network is a new
+    // verdict. Under DEBUG a test may fix the verdict (window.__gifosDirectPath)
+    // instead of asking the network, so a drill on a box with no outside
+    // reach is not read as a blocked office.
+    function startDirectPathProbe() {
+      const gen = ++directPathRun;
+      const forced = (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && window.__gifosDirectPath) ? String(window.__gifosDirectPath) : '';
+      if (forced === 'ok' || forced === 'blocked') { directPath = forced; updateStatus(); return Promise.resolve(forced); }
+      if (typeof RTCPeerConnection !== 'function') { directPath = 'unknown'; return Promise.resolve('unknown'); }
+      return probeDirectPath(() => new RTCPeerConnection({ iceServers: ICE_SERVERS }), REACH_PROBE_MS).then((v) => {
+        if (gen !== directPathRun) return v; // a newer probe owns the verdict
+        directPath = v; updateStatus(); return v;
+      });
+    }
+    try { window.addEventListener('online', () => { if (meshNode) startDirectPathProbe(); }); } catch (e) {}
+    // reachCounts(peerList, isAway) → { live, dead } over the pairs the
+    // meeting named for me: live = a working connection (direct, or carried
+    // by a friend); dead = the tile chip's own verdict (no path for 15 s, not
+    // merely away). A pair still dialling is neither.
+    function reachCounts(peerList, isAway) {
+      let live = 0, dead = 0;
+      for (const p of peerList) {
+        if (!p || p.absentSince) continue;
+        if (p.connected || p.relayed) live++;
+        else if (p.noRoute && !isAway(p.id)) dead++;
+      }
+      return { live, dead };
+    }
+    // reachStateOf(f) → state id or null. f = { probe, n, live, dead,
+    // stranded, atDoor }: probe is this network's verdict, n the people in
+    // the meeting (me included), live/dead from reachCounts, stranded the
+    // mesh's own "the meeting is live but unreachable" verdict (R6), atDoor
+    // whether I am still asking to be let in.
+    function reachStateOf(f) {
+      if (f.probe === 'blocked') {
+        // My network is the problem. If anyone reaches me, they share it:
+        // the people elsewhere are the ones who cannot. Alone and seated,
+        // the same is true of whoever is yet to come.
+        if (f.live > 0) return f.dead > 0 ? 'outsiders-cannot-reach-me' : null;
+        if (f.n <= 1 && !f.atDoor && !f.stranded) return 'outsiders-cannot-reach-me';
+        return 'udp-blocked';
+      }
+      if (f.stranded) return 'cannot-reach-room';
+      if (f.live === 0 && f.dead > 0) return 'cannot-reach-room';
+      if (f.live > 0 && f.dead > 0) return 'partial';
+      return null;
+    }
+    function reachInfo() {
+      const s = meshSeat();
+      const c = reachCounts(peers.values(), peerAway);
+      const f = { probe: directPath, n: participantCount(), live: c.live, dead: c.dead,
+        stranded: !!(s && s.stranded), atDoor: !!(s && (s.state === 1 || s.state === 2)) };
+      f.state = reachStateOf(f);
+      return f;
+    }
     const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0 }; // test/inspection hook: where heartbeats + signaling + sponsor hops actually travel
     const rxStats = { offer: 0, answer: 0, ice: 0, status: 0, offerRejected: 0, answerNoPeer: 0, negFail: 0, answerStale: 0, relayAccepted: {}, relayDropped: {} }; // reception mirror: what actually ARRIVED (and what was refused); relayAccepted/relayDropped: sealed relay frames by kind, dispatched vs refused (relayFrameAllowed)
     // THE RELAY CARRIES NO CONTENT. The relay is a door, not a transport: it
@@ -7724,6 +7857,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!relay) { setStatus('No connection service is set up, so nobody can be invited in.'); return; }
       if (meshNode) { try { meshNode.stop(); } catch (e) {} meshNode = null; }
       meshBootGen++;
+      if (directPath === 'pending') startDirectPathProbe(); // this network's verdict, once per page (re-run when the network comes back)
       if (!myId) myIdReady = new Promise((res) => { myIdReadyResolve = res; });
       ensureIdentity().then((identity) => {
       myId = identity.peerId; // S4: peer id = H(pubkey), unforgeable
@@ -7836,7 +7970,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           try { meshNode && meshNode.stop(); } catch (e) {}
           setStatus(code === 4007 ? '⛔ The people on this meeting voted you off.' : '⛔ You were banned from this room.');
         },
-        onStranded: () => setStatus('\ud83d\udce1 The meeting is happening, but this network will not let you connect to it.'), // R6
+        onStranded: () => updateStatus(), // R6: the line reads the seat's verdict (REACH_MSG 'cannot-reach-room') until the re-knock gets in
         // S4 CLOCK SKEW: every seating frame is a signed fill with a 10-minute
         // window, so a device whose clock is wrong is never seated and, after
         // the TTL, was told the NETWORK refused it. The wire reports the signed
@@ -8314,6 +8448,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         if (p.noRoute && peerAway(pid)) { p.noRoute = false; updateTile(pid); }
       }
+      updateStatus(); // the reach line follows the pair verdicts just made (REACH_MSG)
       // Admin presence + the signed mod table re-derive on the beat (§9):
       // `admins` is a VIEW over signature-verified sightings, and the
       // signature re-mints when the table (or freshness bucket) changed.
@@ -18359,6 +18494,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // use: a half-open pair passes liveLinks and carries nothing (pair-probe.js).
       liveDataLinks: () => Array.from(peers.values()).filter((p) => p.connected && p.dc && p.dc.readyState === 'open').length,
       txStats: () => Object.assign({}, txStats), // heartbeat transport split (relay vs DC vs sponsor hops)
+      // REACH: the meeting-wide connectivity verdict (REACH_MSG): state id
+      // ('udp-blocked' | 'cannot-reach-room' | 'outsiders-cannot-reach-me' |
+      // 'partial' | null) with the live/dead pair counts, the people count
+      // and this network's probe verdict behind it.
+      reachState: () => reachInfo(),
+      // Every close code the relay socket saw in this node's life, newest
+      // last ({code, at}) — a policy cut reads differently from a drop.
+      relayCloses: () => { try { return meshNode ? meshNode.stats().closes : []; } catch (e) { return []; } },
       rxStats: () => Object.assign({}, rxStats), // reception mirror (offers/answers/ice arrived, offers refused)
       relayUp: () => relayUp(), // does my mesh node hold a live relay socket right now?
       // Event-driven departures (D2/D5 → UI): the confirmed-gone tombstones.
