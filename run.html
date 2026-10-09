@@ -6106,7 +6106,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // raise the floor only to a safe integer at most PW_EP_MAX: a pulse
       // carrying 1e20 once set every listener's epoch to a number where
       // epoch + 1 === epoch, and no grant could ever land again (pwEpInt).
-      if (pwEpInt(st.pwEp) && st.pwEp <= PW_EP_MAX && st.pwEp > pwEpoch) storePwEpoch(st.pwEp);
+      if (pwEpInt(st.pwEp) && st.pwEp <= PW_EP_MAX && st.pwEp > pwEpoch) { storePwEpoch(st.pwEp); if (heldGrant) releaseHeldGrant(false); } // the room has spoken: a held grant is decided now
       recSrcDirty = true; // a new status can move who the recorder puts on the stage
       return true;
     }
@@ -7067,6 +7067,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let prevRoomE2E = null;   // exactly ONE previous generation, for stale-neighbour recognition + healing
     let pwEpoch = 0;          // generation counter, carried inside the signed grant
     let retainedGrant = null; // the admin's pwinfo, verbatim — replayable by any member
+    // A GRANT BEFORE THE ROOM HAS SPOKEN (§LOCK). A member who typed the
+    // password at the door holds the room's CURRENT password but knows no
+    // generation number yet (epoch 0): the epoch guard alone cannot tell an
+    // old grant from a new one until the first sealed pulse floors her. In
+    // that gap a grant is HELD, not adopted: the pulse arrives with the
+    // room's generation and the guard then decides. A room that never says
+    // its generation releases the hold after PW_GRANT_HOLD_MS, and the old
+    // rule applies. The hold is armed only by typing at the door.
+    let heldGrant = null;     // { p, m, admOk } waiting for the room's generation
+    let grantHoldUntil = 0;   // the hold's deadline; 0 = no hold armed
+    const PW_GRANT_HOLD_MS = 6000;
     let rekeyAt = 0;          // when the current key took over (heal eligibility: peers from before it)
     // THE RE-KEY WINDOW (§LOCK). A member who adopts a new password derives
     // its key with the slow password stretch: about half a second, seconds on
@@ -7509,6 +7520,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function pwEpInt(n) { return Number.isSafeInteger(n) && n >= 0; }
     const PW_EP_MAX = 1e9;
     function storePwEpoch(ep) { pwEpoch = ep; try { myStatus.pwEp = ep; } catch (e) {} try { localStorage.setItem(pwEpochKey(), String(ep)); } catch (e) {} mirrorRoomState({ pwEp: ep }); }
+    // The held grant goes back through the pwinfo handler: once the room's
+    // generation is known the epoch guard decides it; past the deadline
+    // (expired) the hold is dropped and the old rule applies.
+    function releaseHeldGrant(expired) {
+      if (expired) grantHoldUntil = 0;
+      const g = heldGrant; heldGrant = null;
+      if (g) onDc(g.p, null, g.m, g.admOk);
+    }
     // §LOCK EXPIRY (2026-08-06). The password store is a LAST-USED cache, not a
     // permanent property of a room name. Its clock lives beside it (same idiom
     // as the epoch above) and is refreshed while the password is actually
@@ -8701,6 +8720,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!v) return;
         storePw(v);
         pwBlocked = false;
+        if (pwEpoch === 0) grantHoldUntil = Date.now() + PW_GRANT_HOLD_MS; // typed at the door: grants wait for the room's generation (heldGrant)
         pwModal.style.display = 'none';
         setStatus('Trying the password…');
         // The relay only ever sees the PROOF of this password, never the text —
@@ -10281,6 +10301,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (m.ep != null && !pwEpInt(m.ep)) return; // a generation that is not exact arithmetic is nobody's (pwEpInt)
         if (m.ep != null && m.ep <= pwEpoch) return; // (no `pwEpoch &&`: epoch 0 is a real generation — see myStatus.pwEp)
         if (String(m.pw || '') === String(roomPw || '')) { if (m.ep != null && m.ep > pwEpoch) storePwEpoch(m.ep); return; } // already adopted
+        if (roomPw && pwEpoch === 0 && Date.now() < grantHoldUntil) {
+          // Typed at the door, no generation yet (see heldGrant): keep the
+          // newest grant and let the room's first pulse decide it.
+          if (!heldGrant || m.ep == null || heldGrant.m.ep == null || m.ep > heldGrant.m.ep) heldGrant = { p, m, admOk };
+          const until = grantHoldUntil;
+          setTimeout(() => { if (grantHoldUntil === until) releaseHeldGrant(true); }, Math.max(0, until - Date.now()) + 10);
+          return;
+        }
         const cleared = !m.pw && roomPw;
         pwLog('pwinfo-adopt from=' + String(p.id || '?').slice(0, 6) + ' by=' + (m.by || '?') + ' ep=' + m.ep + ' myEp=' + pwEpoch + ' pwSame=' + (String(m.pw || '') === String(roomPw || '')));
         storePwEpoch(m.ep != null ? m.ep : pwEpoch + 1);
@@ -19064,6 +19092,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       chatHas: (id) => chat.has(id),
       nameOf: (pid) => rosterNames[pid] || (peers.get(pid) || {}).name || '', // what this seat calls a peer (the sealed pulse teaches it)
       poisonEpochForTest: (n) => { myStatus.pwEp = n; broadcastStatus(); }, // a hostile client's pulse claiming generation n (its own epoch is untouched)
+      sealedCopyForTest: (to, obj) => net.seal(roomE2E, obj).then((env) => { net.sendChunked(env, (piece) => relaySendObj({ t: 'peer', to, msg: piece })); return true; }), // a member's sealed relay copy of any frame to one peer (what a replayed grant looks like on the wire)
+      heldGrantForTest: () => !!heldGrant,
       floodForTest: (n, kind) => { let k = 0; for (let i = 0; i < (n | 0); i++) { if (meshNode) { meshNode.gossip({ a: 1, msg: kind === 'status' ? { kind: 'status', s: Object.assign({}, myStatus, { at: Date.now() + i }), name: 'flood' } : { k: 'noop', i } }); k++; } } return k; }, // a hostile client's room-wide flood
       gossipStats: () => (meshNode && meshNode.seat ? { dropped: meshNode.seat.gspDropped || 0, refused: meshNode.seat.gspRefused || 0, forged: meshNode.seat.gspForged || 0, inAll: meshNode.seat.gspInAll || 0, roomFlood: txStats.roomFlood || 0 } : null),
       forgeGossipForTest: (src, n) => { if (!meshNode || !meshNode._forgeGossipForTest) return 0; const ps = []; for (let i = 0; i < (n | 0); i++) ps.push({ a: 1, msg: { k: 'chat', m: { id: 'forged_' + i, by: 'Impostor', byId: src, at: Date.now(), text: 'forged line ' + i } } }); return meshNode._forgeGossipForTest(src, ps); }, // a hostile client speaking in someone else's name, with a valid signature of its own
