@@ -724,6 +724,17 @@
     hearRook() { if (!this.hasCoord || this.coord.pc !== 0) return false; for (const olc of topo.ownedLinks(this.coord)) { const k = ck(olc); if (olc.pc === 0 && this.heardAt(k, this.occGet(k))) return true; } return false; }
     // x is first-hand live at a cell other than k: a seat is in ONE place.
     liveElsewhere(x, k) { for (const [k2, v2] of this.occ) if (v2 === x && k2 !== k && this.firstHandLive(k2)) return true; return false; }
+    // ...not counting hearing stamped only by the burst that lands as I come
+    // back from a dark spell or a freeze (backAt): the frames my mates sent
+    // while I was away are all delivered on the return tick, after absence()
+    // aged my stamps. A mate that phoned me from its old cell and then healed
+    // into MY cell is not live at the old one: its buffered PHONE re-stamped
+    // that cell, and its claim on my cell was held off as "live elsewhere"
+    // until a probe of the old cell confirmed the move (a returning head
+    // stayed off its own cell 12-18 s on a slowed clock). Its next beat from
+    // a cell it really holds restores the rule at once.
+    returnBurst(k) { const t = this.live.get(k); return this.backAt >= 0 && t !== undefined && t >= this.backAt && t <= this.backAt + 1; }
+    liveElsewhereSinceReturn(x, k) { for (const [k2, v2] of this.occ) if (v2 === x && k2 !== k && this.firstHandLive(k2) && !this.returnBurst(k2)) return true; return false; }
     // An UNPROVEN claim (signed, but over the relay or a sponsor: nothing
     // proves the claimant is on a link to me — a newcomer whose channels are
     // still opening, or anyone). It may teach a FREE cell, as a hint (no
@@ -3469,7 +3480,7 @@
             // me hear no rook, challenge it, and requeue on its CONFIRM
             // (repro-adversary: 49 of 300 honest seats unseated).
             if (sure && !(this.movedClaim && this.movedClaim.id === m.id)) for (const [k2, v2] of this.occ) { if (v2 !== m.id || k2 === m.ck || !this.firstHandLive(k2) || this.linkedBy.get(k2) !== m.id) continue; if (!this.translost.has(k2)) { this.translost.set(k2, TICK); this.tlProbeAt.set(k2, TICK); this.routeToProbe(unck(k2)); } this.movedClaim = { id: m.id, k: k2, at: TICK, m }; break; }
-            if (this.coord.pc !== 0 || this.liveElsewhere(m.id, m.ck)) { this.rivalWhy = this.coord.pc !== 0 ? 'deep' : 'live-elsewhere'; return; }
+            if (this.coord.pc !== 0 || this.liveElsewhereSinceReturn(m.id, m.ck)) { this.rivalWhy = this.coord.pc !== 0 ? 'deep' : 'live-elsewhere'; return; }
             // A FRAGMENT OF ONE MEETS THE RING (behavior 14a: a row head
             // back from a dead spot after its row-mate healed into its cell
             // and admitted a newcomer). A Section-1 seat that hears no rook
@@ -3779,7 +3790,7 @@
         case 'CONFIRM': {
           const ch = this.challTo;
           if (!this.hasCoord || this.state !== 3 || ck(this.coord) !== m.ck || m.id == null || m.id === this.id || !(m.id < this.id)) return;
-          if (!ch || ch.id !== m.id || ch.ck !== m.ck || TICK - ch.at > 40 || !this.provenEv(m, m.id) || this.liveElsewhere(m.id, m.ck)) return;
+          if (!ch || ch.id !== m.id || ch.ck !== m.ck || TICK - ch.at > 40 || !this.provenEv(m, m.id) || this.liveElsewhereSinceReturn(m.id, m.ck)) return;   // (the same rule as the rival branch that sent the CHALLENGE)
           this.challTo = null;
           if (this.moving) this.rollbackMove(); else this.requeue();
           return;
