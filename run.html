@@ -9067,13 +9067,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         'GifOS meeting \u2014 who was here',
         'Room: ' + room,
         'Saved: ' + utc(Date.now()) + '   (every time in this file is UTC)',
-        'Page: ' + location.origin + location.pathname,
+        // The link as opened, and the relay session it maps to: the relay
+        // never learns the link, but its host's connection records carry the
+        // session path and each participant's peer id (?peer=) with the
+        // address they connected from.
+        'Meeting link: ' + location.href,
+        'Relay session: ' + (sessId && relayUrl() ? relayUrl().replace(/\/$/, '') + '/s/' + sessId : 'not connected'),
+        'Anyone holding the meeting link can open this meeting. Share this file only with the people investigating.',
         '',
         'HOW TO READ THIS',
         'Verified by the relay: the GifOS relay saw this person\'s device connect from this address at the time given, and signed a statement saying so (listed at the end). Their device cannot fake it or claim someone else\'s.',
         'Seen directly: this device was connected straight to theirs and saw this address and port in use between the first and last times given.',
         'Reported by their device: what their own device said. It is NOT verified and may be false.',
         'Connection to me: "direct" means this device and theirs were connected straight to each other; "through others" means this device reached them only through other participants and never saw their address itself.',
+        'Relay session: the GifOS relay is hosted by Cloudflare. Its connection records, if any are kept, are filed under this session address, and each participant\'s connection to it names their peer id (last column), so the two can be matched.',
         'An address may belong to a VPN, a workplace or a mobile network shared by many customers. To identify a subscriber, an internet provider usually needs the address, the port and the exact time; all three are given where known.',
         '',
         ['Name', 'Connection to me', 'Relay-verified address', 'Relay saw at', 'Seen directly (address)', 'Port', 'Protocol', 'Connection', 'Seen from', 'Seen until', 'In meeting from', 'Last heard', 'Reported by their device', 'Device tag', 'Peer id'].join('\t'),
