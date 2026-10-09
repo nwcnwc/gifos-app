@@ -2650,6 +2650,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // nothing carried it (preset 14a on b13bbf6e: the returning head's
       // pair to the newcomer sat new for 11 s, relay path unused).
       if (span > 2000) { try { relaySendObj({ t: 'who' }); doorAnswerAt = now; } catch (e) {} }   // ...and the list that comes back is the door's knockers (doorAnswerAt: the roster handler answers them once)
+      if (span > 2000) { try { if (meshNode && meshNode.netBack) meshNode.netBack(); } catch (e) {} }   // ...and the door is read again: a password changed in the dark shows at once (mesh-wire R6)
       if (span > WAKE_SUSPECT_MS) wakeProbe(now, 'dark ' + Math.round(span / 1000) + 's');
     }
     try {
@@ -7687,6 +7688,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
         sid: sessId, tok: sessTok, key: roomE2E, identity, tickMs: 500,
+        oldKeys: (prevRoomE2E && prevRoomE2E !== roomE2E) ? [prevRoomE2E] : [],   // a door blob this key opens is behind me, not ahead (mesh-wire R6)
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         sendDC: meshSendDC,
         // Deep-socket drop waits until at least one DataChannel is open (§FWD:
@@ -18987,6 +18989,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       mainAudioSending: (pid) => { const p = peers.get(pid); return !!(p && p.mainA && p.mainA.track); },
       room: () => room,
       roomPw: () => roomPw,
+      pwLockedOut: () => pwBlocked,   // the door asked this page for the room password (it holds none that opens it)
       // (§LOCK's pwState fields were merged into the single pwState above —
       // a second key here shadowed the heal fields off the API entirely.)
       // DEBUG: put a raw object on the relay socket. The client refuses to

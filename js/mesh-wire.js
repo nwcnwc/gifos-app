@@ -177,6 +177,8 @@
     // the OLD key would lock every new-password newcomer out (R6 false
     // "wrong password") until it reloaded. See node.setKey below.
     let roomKey = opts.key;
+    let keySetAt = 0;   // when setKey last changed my key (Date.now ms)
+    const oldKeys = (Array.isArray(opts.oldKeys) ? opts.oldKeys.filter(Boolean) : []).slice(0, 4);   // keys this room used before mine (the app's, then each setKey's; newest first, at most 4): a door blob one of them opens is OLDER than mine (R6 below)
 
     // S4 identity is MANDATORY — there is NO "off". No mesh-identity.js loaded ⇒
     // hard fail (never a silent legacy-id degrade); no legacy client-set peer id
@@ -669,8 +671,17 @@
     async function onGreeters(m) {
       const list = m.list || [];
       const ids = [], sealedFps = [], fa = [];
+      let olderSeen = 0;   // sealed blobs one of my replaced keys opens: their writers are behind me, not ahead
       for (const s of list) {
-        try { const o = await net.open(roomKey, JSON.parse(s)); if (o && o.p && o.p !== peer) { ids.push(o.p); if (o.fa === 1) fa.push(o.p); } else if (o && o.p === peer) sealedFps.push('SELF'); else sealedFps.push('X' + blobFp(s)); /* net.open resolves NULL on wrong key — the sealed-under-a-different-key case */ } catch (e) { sealedFps.push('E' + blobFp(s)); }
+        try {
+          const o = await net.open(roomKey, JSON.parse(s));
+          if (o && o.p && o.p !== peer) { ids.push(o.p); if (o.fa === 1) fa.push(o.p); }
+          else if (o && o.p === peer) sealedFps.push('SELF');
+          else { /* net.open resolves NULL on wrong key — the sealed-under-a-different-key case */
+            sealedFps.push('X' + blobFp(s));
+            for (const k of oldKeys) { try { if (await net.open(k, JSON.parse(s))) { olderSeen++; break; } } catch (e) {} }
+          }
+        } catch (e) { sealedFps.push('E' + blobFp(s)); }
       }
       if (stopped || !seat) return;
       // DEBUG sever (drill lever, mirrors ingest's drop): while a pid is
@@ -733,9 +744,22 @@
         // replies), so the transient post-rotation case that must NOT prompt
         // the setter — a seated member whose neighbours' re-knocks are still
         // in flight — never reaches it.
-        if (sealedSoloRuns >= 4) fireLocked();
+        if (sealedSoloRuns >= 4 && !olderSeen) fireLocked();   // ...never over blobs a key I replaced opens: their writers are behind me (a setter left alone with a stale member)
         if (opts.onFragment) { try { opts.onFragment([], { shrank: true, sealedOnly: true, runs: sealedSoloRuns }); } catch (e) {} }
       } else if (ids.length || !list.length) sealedSoloRuns = 0;
+      // BEHIND THE ROOM'S KEY (2026-10-09: a member who missed a password
+      // change stays out, and is TOLD so). A seated page whose door serves
+      // only blobs that neither my key nor any key this room used before it
+      // can open was away while the password changed. Its channels are sealed
+      // under the old key, so it hears nobody new, yet its view can still
+      // list the room (frames sent before the change arrive after a dark
+      // spell and read as fresh). Without this it sat seated under a "just
+      // you" line until four sealed replies piled up, minutes later; the
+      // password prompt is the answer at the first such reply. The cases the
+      // count above guards are told apart exactly: a setter, or a member that
+      // just took the new key, opens its neighbours' not-yet-re-keyed blobs
+      // with the key it replaced.
+      if (preState === 3 && seat.hasCoord && list.length && !ids.length && !olderSeen && sealedFps.some((f) => f[0] === 'X')) fireLocked();
       if (preState === 3 && ids.length && seat.hasCoord && seat.occ.size <= 1 && (shrankSolo || (env.TICK - (seat.seatedAt || 0)) > 90)) {
         greeterTrace.push({ t: Date.now(), tick: env.TICK, state: preState, post: seat.state,
           listLen: list.length, open: ids.length, founded: !!m.founded, action: 'fragment-rescue', sealed: sealedFps });
@@ -916,6 +940,11 @@
         else if (deepSince < 0) deepSince = env.TICK;
         if (dropDeep && !needsRelay && sock && deepSince >= 0 && env.TICK - deepSince > 20) { try { sock.close(); } catch (e) {} sock = null; }
         if (needsRelay && !sock) makeSock(); // re-arm reachability (a policy-REJECTED socket stays down — see sendRaw)
+        // The door refused my socket for want of the room's password (4003):
+        // a password changed while I was away, the same verdict as a sealed
+        // door (R6), so the same challenge. Not within 15 s of my own key
+        // change: my new proof can still be on its way.
+        if (sock && sock.rejected === 4003 && Date.now() - keySetAt > 15000) fireLocked();
         if (sock && sock.rejected && !rejFired) { rejFired = true; try { const L = (window.__pwLog = window.__pwLog || []); L.push(Date.now() + ' relay-socket REJECTED code=' + sock.rejected + ' — door unreachable'); if (L.length > 64) L.shift(); } catch (e) {} if (opts.onRejected) { try { opts.onRejected(sock.rejected); } catch (e) {} } }
         // Greeter socket health (wire-level, not mesh law — the sim has no
         // sockets). A NAT/middlebox drops a silent websocket without telling
@@ -1050,13 +1079,17 @@
       RELAY_FIRST_CONTACT_SIGNALING(obj) { sendRaw(obj); },
       relaySend(obj) { sendRaw(obj); },   // legacy alias — callers should move to the named form
       relayUp() { return !!(sock && sock.state === 'up'); },
+      // The network came back after a dark spell: read the door again now
+      // (re-register as a door, or ask for the list), so a change made while
+      // I was away — a new room password above all — shows at once (R6).
+      netBack() { if (stopped || !seat) return; if (iAmAGreeter()) { lastRegAt = 0; reregister('net-back'); } else if (seat.state === 3) KNOCK_FOR_THE_GREETER_LIST(seat.genKey || myKey); },   // once per dark return, so not throttled: a register sent into the dark never reached the door
       // Password change re-keyed the room (§LOCK): adopt the NEW key for every
       // wire seal/open, and — if this seat is a Section-1 greeter — re-knock
       // NOW so the registry blob re-seals under it. Without this, newcomers
       // holding the new password can't decrypt any greeter blob (R6 reads as
       // "wrong password") until every greeter's E3 re-knock… which would also
       // have used the stale key, locking them out until a reload.
-      setKey(k) { if (k) { roomKey = k; sealedSoloRuns = 0; /* the counter means "sealed replies under MY CURRENT key" — evidence gathered under the old key must not fire a challenge past a re-key */ try { if (sock && sock.rejected) sock.kick(); } catch (e) {} /* credential change: the ONE sanctioned re-arm of a policy-rejected socket */ try { if (seat && seat.hasCoord && seat.state === 3 && seat.coord.pc === 0) env.knock(peer, seat.genKey || myKey); } catch (e) {} } },
+      setKey(k) { if (k) { if (k !== roomKey) { oldKeys.unshift(roomKey); if (oldKeys.length > 4) oldKeys.length = 4; keySetAt = Date.now(); } roomKey = k; sealedSoloRuns = 0; /* the counter means "sealed replies under MY CURRENT key" — evidence gathered under the old key must not fire a challenge past a re-key */ try { if (sock && sock.rejected) sock.kick(); } catch (e) {} /* credential change: the ONE sanctioned re-arm of a policy-rejected socket */ try { if (seat && seat.hasCoord && seat.state === 3 && seat.coord.pc === 0) env.knock(peer, seat.genKey || myKey); } catch (e) {} } },
       stats() { return { peer, state: seat ? seat.state : 0, coord: (seat && seat.hasCoord) ? { pc: seat.coord.pc, r: seat.coord.r, i: seat.coord.i } : null, stranded: !!(seat && seat.stranded), tick: env.TICK }; },
       // Greeter-list forensics: ring of recent onGreeters outcomes (listLen /
       // open / founded / action). See greeterTrace push in onGreeters.
