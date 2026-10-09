@@ -7391,7 +7391,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return Promise.all(jobs);
     }
-    setInterval(() => { if (peers.size) whoObserve(); }, 15000);
+    setInterval(() => { if (peers.size) { whoObserve(); tellOutdated(); } }, 15000);
+    // TELL AN OUT-OF-DATE PEER WHAT TO DO. A participant whose page sends no
+    // relay statement is running a GifOS older than this meeting needs: its
+    // video and sound reach nobody who verifies, and its own page (frozen
+    // code) cannot know why. Once the relay verifies me, I send each such
+    // peer I am linked to ONE chat line (a shape every GifOS shows) with a
+    // Join → link that reopens this meeting on the current release.
+    const outdatedTold = new Set();
+    function tellOutdated() {
+      if (!(typeof keysTrusted === 'function' && keysTrusted() === true) || !myIpAttV) return;
+      for (const [pid, p] of peers) {
+        if (outdatedTold.has(pid) || !p.connected || !p.dc || p.dc.readyState !== 'open') continue;
+        if ((typeof isEjected === 'function' && isEjected(pid) === true) || (typeof isVerified === 'function' && isVerified(pid) === true)) continue;
+        const e = whoLog.get(pid); if (!e || Date.now() - e.first < 20000) continue; // a newcomer's statement may still be on its way
+        outdatedTold.add(pid);
+        dcSend(p, { k: 'chat', m: { id: uid('upd'), by: 'GifOS', byId: myId, at: Date.now(),
+          text: 'This meeting now needs the current version of GifOS. Your video and sound are not reaching anyone. Tap Join \u2192 to reopen it on the current version.',
+          link: location.href } });
+      }
+    }
     let whoRefresh = () => {};               // set by the Who panel: repaint it if open
     let myDevHash = '';                      // my device id, ROOM-SALTED before it ever reaches the relay
     const hasAdminRoom = () => !!av;
@@ -7970,7 +7989,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // stale host, bad token) keeps its own path.
         onRejected: (code) => {
           if (code === 4011) { setStatus('\u26d4 This room already has you connected from another device. Close it there, or reload here.'); return; }
-          if (code === 4013) { setStatus('\u26d4 This meeting needs the current GifOS. Reload the page to update.'); return; }
+          if (code === 4013 || code === 4010) { setStatus('\u26d4 This meeting needs the current GifOS. Reload the page to update.'); return; } // 4010: the relay saw no key proof
           if (code !== 4004 && code !== 4007) return;
           bannedOut = true;
           for (const pid of Array.from(peers.keys())) dropPeer(pid);
