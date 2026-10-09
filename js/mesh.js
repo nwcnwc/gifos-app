@@ -377,7 +377,7 @@
       // as an AGE (entry field ba, G0b). Gates the gossip tie-break: an
       // ancient claim never wins a tie.
       this.born = new Map();
-      this.healTry = new Map(); this.cousins = new Map(); this.fwdSeen = new Map();   // seekers whose FIND I handed a door-listed-only admitter (serveFind)
+      this.healTry = new Map(); this.healOnly = new Set(); this.cousins = new Map(); this.fwdSeen = new Map();   // seekers whose FIND I handed a door-listed-only admitter (serveFind)
       this.kidful = new Map(); this.childOf = new Map();
       // A three-state: soft sitting-down marks {joiner, assigner, at} by cell key.
       this.sitting = new Map();
@@ -812,11 +812,11 @@
         if (this.occGet(k) !== s.joiner && !this.firstHandLive(k)) {
           if (s.pingAt == null || s.pingAt < 0) { s.pingAt = this.TICK; this.emit(s.joiner, { t: 'SITPING', ck: k, id: s.joiner, from: this.id }); continue; }
           if (this.TICK - s.pingAt < SIT_PING_WAIT) continue;
-          del.push(k); this.healTry.set(k, this.TICK);
+          del.push(k); this.healOnly.delete(k); this.healTry.set(k, this.TICK);
           continue;
         }
         if (this.TICK - s.at >= SIT_TTL) {
-          del.push(k); this.healTry.set(k, this.TICK);   // V4: TTL is also a silence-free — cool before re-admission
+          del.push(k); this.healOnly.delete(k); this.healTry.set(k, this.TICK);   // V4: TTL is also a silence-free — cool before re-admission
           if (this.occGet(k) === s.joiner && !this.firstHandLive(k)) {
             this.occ.delete(k); this.live.delete(k); this.s1seen.delete(k);
             this.kidful.delete(k); this.tlForget(k, 'sit-ttl'); this.healTry.delete(k);
@@ -1866,7 +1866,7 @@
             const below = (t + 1) % C();
             if (this.coord.r === below) {
               const k = ck({ pc: 0, r: t, i: this.coord.i });
-              if (TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45) { this.healTry.set(k, TICK); this.admit({ pc: 0, r: t, i: this.coord.i }, mm); return; }
+              if (TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && this.oneRowRoom())) { this.healOnly.delete(k); this.healTry.set(k, TICK); this.admit({ pc: 0, r: t, i: this.coord.i }, mm); return; }
               continue;
             }
             // Forward toward the admitter row below ONLY over a FIRST-HAND-LIVE
@@ -1947,7 +1947,7 @@
             if (this.softSitting(ck(adm)) && !this.occ.has(ck(adm)) && j > 0) {
               const sit = this.sitting.get(ck({ pc: 0, r: t, i: 0 }));
               if (sit && sit.assigner === this.id) {
-                if (TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45) { this.healTry.set(k, TICK); this.admit(cell, mm); return; }
+                if (TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && this.oneRowRoom())) { this.healOnly.delete(k); this.healTry.set(k, TICK); this.admit(cell, mm); return; }
                 continue;
               }
             }
@@ -1978,9 +1978,11 @@
               // of the row is definitionally lagged (its cells may be promised
               // to admittees still in flight). Past 60 ticks a silent assigner
               // is dead and its vouches died with it.
+              // In a one-row room a heal's stamp paces the heal, not admission: heal() re-arms every 45 ticks
+              // and its FINDLEAF can never fill the seat there, so a shared gate never opened for a newcomer.
               if (this.coord.i === 0 && cell.r === this.coord.r && !this.rowLedger && TICK - this.seatedAt <= 60) { skip.push('L' + t + '.' + j); continue; }
-              if (TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45) {
-                this.healTry.set(k, TICK);
+              if (TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && this.oneRowRoom())) {
+                this.healOnly.delete(k); this.healTry.set(k, TICK);
                 if (this.occIsPhantom(k)) {
                   this.occ.delete(k); this.live.delete(k); this.s1seen.delete(k); this.kidful.delete(k); this.tlForget(k, 'phantom-heal');
                 }
@@ -2101,12 +2103,15 @@
     }
 
     // ---- healing (C3 fixed designation + diversified leaf-sourcing) ----
+    // A room that is one row has nobody below anybody: a heal's FINDLEAF can never promote a seat into
+    // a hole there, so only admitting a newcomer fills it.
+    oneRowRoom() { for (const k of this.occ.keys()) if (k.slice(0, 4) !== '0_0_') return false; return true; }
     heal(hole) {
       const TICK = this.TICK;
       if (!this.hasCoord || this.state !== 3 || TICK - this.healAt < 12) return;
       this.lastChurn = TICK; // Q2 hysteresis: I'm healing — my region is churning
       const hk = ck(hole); if (TICK - (this.healTry.has(hk) ? this.healTry.get(hk) : -999) < 45) return;
-      this.healAt = TICK; this.healTry.set(hk, TICK);
+      this.healAt = TICK; this.healTry.set(hk, TICK); this.healOnly.add(hk);
       const nbrs = []; const ol = topo.ownedLinks(hole);
       for (const olc of ol) { const x = this.occGet(ck(olc)); if (x != null && x !== this.id) nbrs.push({ k: ck(olc), v: x }); }
       let selfNb = false; for (const olc of ol) if (ck(olc) === ck(this.coord)) selfNb = true; if (selfNb) nbrs.push({ k: ck(this.coord), v: this.id });
@@ -2267,7 +2272,7 @@
       this.occ = this.holdOcc || new Map(); this.s1seen = this.holdSeen || new Map(); this.cousins = this.holdCous || new Map();
       this.occ.set(this.oldCk, this.id);
       this.oldNbrIds = []; this.holdOcc = null; this.holdSeen = null; this.holdCous = null;
-      this.healTry.set(newCk, this.TICK); this.healAt = this.TICK; // pace any re-attempt at that hole
+      this.healOnly.delete(newCk); this.healTry.set(newCk, this.TICK); this.healAt = this.TICK; // pace any re-attempt at that hole
       this.lastAck = this.TICK; this.lastPhone = this.TICK - 100;  // fresh grace; re-announce
       this.announce(); this.wake();
     }
@@ -4216,7 +4221,7 @@
           this.healAt = TICK;
         } else if (oc && (ownEarly || (this.occGet(ok) == null && TICK - this.lastAck > confirm)) && TICK - (this.healTry.has(ok) ? this.healTry.get(ok) : -999) > 45) {
           if (ownEarly) { this.occ.delete(ok); this.live.delete(ok); this.s1seen.delete(ok); this.kidful.delete(ok); }
-          this.healTry.set(ok, TICK); this.healAt = TICK; didHeal = true;
+          this.healTry.set(ok, TICK); this.healOnly.add(ok); this.healAt = TICK; didHeal = true;
           const nb = []; for (const [k, v] of this.cousins) nb.push({ k, v });
           if (!nb.length) { for (const olc of topo.ownedLinks(oc)) { const x = this.occGet(ck(olc)); if (x != null && x !== this.id) nb.push({ k: ck(olc), v: x }); } }
           const rc = this.rosterCells(); const ix = this.shuf(Array.from({ length: C() }, (_, k) => k)); let sent = false;
