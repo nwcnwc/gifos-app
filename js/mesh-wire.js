@@ -89,6 +89,7 @@
   //   relayUrl        ws(s)://host:port of the relay (no path)
   //   sid, tok        relay session id + token (net.deriveMeet)
   //   key             room E2E key (net.deriveMeetKey — pw mixed in)
+  //   excluded        (optional) pid => bool: mesh frames and doors naming such a pid are dropped
   //   identity        (S4) a pre-minted per-participant identity {priv,pubB64,peerId};
   //                   peer id = its peerId = H(pubkey). Overrides opts.peer.
   //   peer            LEGACY client-set peer id — S4 stays OFF (structural/compat).
@@ -433,6 +434,13 @@
       // frames whose sender fields name a severed pid — without this, seat
       // liveness rides the wire's own relay fallback beneath the app-level
       // drops and a manufactured partition leaks (the pair never starves).
+      // EXCLUDED peers (opts.excluded(pid), the app's ejected forgers): every
+      // mesh frame from, about or through one is dropped before it can
+      // count as liveness or seat anyone. Then the seat sees the forger as
+      // silent, and ordinary healing frees its cell.
+      if (typeof opts.excluded === 'function') {
+        try { for (const f of [m.id, m.from, m.asker, m.via, m.rvia, m.src]) if (f != null && opts.excluded(String(f))) return; } catch (e) {}
+      }
       try {
         const sv = (typeof window !== 'undefined') && window.__severed;
         if (sv && sv.size) {
@@ -696,6 +704,8 @@
         const sv = (typeof window !== 'undefined') && window.__severed;
         if (sv && sv.size) { const now = Date.now(); for (let i = ids.length - 1; i >= 0; i--) if ((sv.get(ids[i]) || 0) > now) ids.splice(i, 1); }
       } catch (e) {}
+      // ...and an excluded peer (an ejected forger) is never a door.
+      if (typeof opts.excluded === 'function') { try { for (let i = ids.length - 1; i >= 0; i--) if (opts.excluded(String(ids[i]))) ids.splice(i, 1); } catch (e) {} }
       regPendingAt = 0; // the relay answered — the socket is provably alive
       // Capture join state BEFORE recv — GREETERS empty+founded take()s at
       // state===0 and leaves state=3, so a post-recv snapshot would hide the

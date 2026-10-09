@@ -2388,10 +2388,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // encrypted under the room key, so the relay routes opaque peer ids over
       // a roster whose identity fields it cannot read.
       const payload = { kind: 'status', s: myStatus, conns: myConns(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined };
-      // The relay-signed address never changes, so it rides only the
-      // first three beats and then one every 30 s — about 300 bytes, kept off
-      // the other beats.
-      if (myIpAtt && (ipaSends < 3 || Date.now() - ipaSentAt >= 30000)) { payload.ipa = myIpAtt; ipaSends++; ipaSentAt = Date.now(); }
+      // The relay-signed address never changes, so it rides the first three
+      // beats, the next beat after ANYONE new appears (so a newcomer can check
+      // me at once, and a forger is caught by everyone it meets before they
+      // accept anything from it), and one every 30 s: about 300 bytes, kept
+      // off the other beats.
+      if (myIpAtt) {
+        let fresh = false;
+        for (const pid of rosterIds) if (!ipaShownTo.has(pid)) { fresh = true; ipaShownTo.add(pid); }
+        for (const pid of peers.keys()) if (!ipaShownTo.has(pid)) { fresh = true; ipaShownTo.add(pid); }
+        if (ipaShownTo.size > 4096) ipaShownTo.clear();
+        if (fresh || ipaSends < 3 || Date.now() - ipaSentAt >= 30000) { payload.ipa = myIpAtt; ipaSends++; ipaSentAt = Date.now(); }
+      }
       // The mod table's authority is its SIGNATURE now (§9) — an admin's
       // heartbeat rides the same free DC path as everyone else's; receivers
       // verify the proof, not the transport.
@@ -5413,9 +5421,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (alts.length) handoff(peers.get(alts[0]));
       }
     }
+    // EJECTED FOR FORGERY. A peer caught forging its network address (the Who
+    // list's FORGED verdict, whoHeard) is cut off by this page for the rest of
+    // the meeting: no frame, offer, dial or media from it is accepted again,
+    // so nobody here receives anything from a source that cannot be
+    // identified. The relay-attested device tag goes too, so another session
+    // of the same device is refused. Each page decides from what it sees
+    // itself, and every page that hears the forger's status sees the same
+    // forgery. The forger stays on the Who list (and in the download) as
+    // ejected. isSevered carries it, so every path the drill sever already
+    // closes (sendSig, onSignal, onDc, mesh frames) closes for a forger too.
+    const ejected = new Map();      // pid -> { at, why }
+    const ejectedDev = new Set();   // relay-attested device tags of ejected peers
+    const isEjected = (pid) => {
+      if (!pid || !ejected.size) return false;
+      if (ejected.has(pid)) return true;
+      try { return !!devOf[pid] && ejectedDev.has(devOf[pid]); } catch (e) { return false; }
+    };
     // DEBUG sever (see severPair): while a pid is severed, every frame to or
     // from it is dropped — a partition in miniature for the fork drill.
-    const isSevered = (pid) => DEBUG_ON && window.__severed && (window.__severed.get(pid) || 0) > Date.now();
+    const isSevered = (pid) => isEjected(pid) || (DEBUG_ON && window.__severed && (window.__severed.get(pid) || 0) > Date.now());
     const sendSig = (to, msg) => {
       if (isSevered(to)) return;
       // STATUS gossip — the every-few-seconds pulse that is nearly all of a
@@ -5753,6 +5778,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // answering side.
       pc.ondatachannel = (ev) => { try { ev.channel.__pc = pc; } catch (e) {} wireDc(p, ev.channel); };
       pc.ontrack = (ev) => {
+        if (isEjected(p.id)) { try { ev.track.stop(); } catch (e) {} return; } // no media from a forger
         const stream = ev.streams[0];
         if (typeof clog === 'function') clog('trk ' + String(p.id).slice(0, 6) + ' ' + (stream ? String(stream.id).slice(0, 8) : 'NOSTREAM') + ' mid=' + (ev.transceiver && ev.transceiver.mid));
         // ENCODED-PASSTHROUGH TAP, ATTACHED HERE OR NEVER (§9a). A receiver
@@ -5818,6 +5844,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function makePeer(peerId, name, headless) {
       if (peers.has(peerId)) return peers.get(peerId);
+      if (isEjected(peerId)) return null; // never a connection to a forger
       const t = makeTile(peerId, name, false, headless);
       const p = { id: peerId, pc: null, tile: t.tile, video: t.video, label: t.label, avatar: t.avatar, chips: t.chips, cap: t.cap, modbar: t.modbar, voteBtn: t.voteBtn,
         name, headless: !!headless, connected: false, pendingIce: [], absentSince: 0, lastKick: 0, lastHeard: Date.now(), bornAt: Date.now(), incoming: [] };
@@ -5935,6 +5962,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
 
     function sendOffer(peerId, iceRestart) {
+      if (isEjected(peerId)) return; // never dial a forger
       const p = makePeer(peerId, null);
       // ONE OFFER AT A TIME PER PC. A second createOffer→setLocalDescription
       // while the first is still minting on the same pc fails in Chromium
@@ -6482,6 +6510,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { sendSig(pid, { k: 'frag-ping' }); } catch (e) {}
     }
     function ensureLink(pid, name) {
+      if (isEjected(pid)) return; // never link to a forger
       if (!linkTo(pid)) return; // the sweeper retires unwanted links, with grace
       let p = peers.get(pid);
       if (!p) {
@@ -6637,6 +6666,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return false;
     };
     const notTomb = (pid) => {
+      if (isEjected(pid)) return false; // ejected: gone for good, whatever it says
       const g = meshGone.get(pid); if (g === undefined) return true;
       const st = statusOf.get(pid); const p = peers.get(pid);
       if ((st && (st.rx || 0) > g + TOMB_GRACE) || (p && p.connected) || meshHeardSince(pid)) { meshGone.delete(pid); meshGoneTick.delete(pid); return true; }
@@ -7159,6 +7189,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let myIp = '';                           // my own address — the relay tells me privately (whoami); I seal it to peers
     let myIpAtt = null, myIpAttV = null;     // the relay's SIGNED statement of my address (whoami.att) and its verified reading
     let ipaSentAt = 0, ipaSends = 0;         // it rides my status on the first beats, then every 30 s (it never changes)
+    const ipaShownTo = new Set();            // peers present at a beat that carried it
     // THE WHO LOG (the "Who" panel). Everyone
     // this page has heard from in this meeting, KEPT AFTER THEY LEAVE, so the
     // list someone downloads to report abuse still names whoever left first.
@@ -7201,10 +7232,46 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // change.
         const lie = !v.forged && msg.ip && String(msg.ip).slice(0, 64) !== v.ip
           ? 'reports ' + String(msg.ip).slice(0, 64) + ' but the relay saw it connect from ' + v.ip : '';
-        if (v.forged || lie) { if (!e2.forged) e2.forged = { why: v.forged || lie, at: Date.now() }; }
         if (!v.forged) e2.att = v;
+        if (v.forged || lie) { if (!e2.forged) e2.forged = { why: v.forged || lie, at: Date.now() }; ejectForger(pid, e2.forged.why); }
         whoRefresh();
       });
+    }
+    // A forgery was caught: eject the forger from this page for good (see
+    // `ejected`). Its relay-attested device tag is excluded with it; a tag
+    // it merely CLAIMED is not, or a forger could get an innocent device
+    // ejected by naming it.
+    function ejectForger(pid, why) {
+      if (!pid || pid === myId || ejected.has(pid)) return;
+      const e = whoEntry(pid);
+      const name = (e && e.name) || rosterNames[pid] || 'Someone';
+      ejected.set(pid, { at: Date.now(), why });
+      if (e) e.ejected = { at: Date.now(), why };
+      const dv = devOf[pid];
+      if (dv && dv !== myDevHash && devRelay.has(pid)) ejectedDev.add(dv);
+      try { endRelayRolesFor(pid); } catch (err) {}
+      // Their picture and sound stop NOW, not when the connection closes.
+      { const p = peers.get(pid); if (p) { try { releaseAudio(p.video); releaseMeter(pid); if (p.video) { p.video.srcObject = null; p.video.muted = true; } if (p.tile) p.tile.style.display = 'none'; p.stream = null; } catch (err) {} } }
+      // Nothing is accepted from them from this moment (isEjected gates every
+      // path). The connection itself stays open just long enough to read the
+      // address and port it runs over, for the record, then closes.
+      const drop = () => { try { confirmGone(pid, 'forged'); } catch (err) {} try { if (peers.has(pid)) dropPeer(pid); } catch (err) {} };
+      Promise.race([whoObserve(pid), new Promise((r) => setTimeout(r, 1500))]).then(drop, drop);
+      rosterIds = rosterIds.filter((x) => x !== pid);
+      // Any mosaic feed already holding their picture goes too.
+      try {
+        for (const [ak, ann] of [...mosAnn]) {
+          const via = ak.slice(0, ak.indexOf('|')), key = ak.slice(ak.indexOf('|') + 1);
+          if (!mosHasEjected(key, ann.ids)) continue;
+          mosAnn.delete(ak);
+          for (const [rk, c] of [...mosIn]) if (c.via === via && c.streamId === ann.streamId) dropMosIn(rk);
+          for (const [rk, c] of [...mosStandby]) if (c.via === via && c.streamId === ann.streamId) dropStandby(rk);
+        }
+        claimMos();
+      } catch (err) {}
+      setStatus('\u26a0 ' + name + ' was ejected: their device forged its network address.');
+      try { updateStatus(); } catch (err) {}
+      whoRefresh();
     }
     // A departure: stamp what is about to be forgotten elsewhere.
     function whoGone(pid) {
@@ -7228,7 +7295,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const IPA_BAD = { forged: 'presented a relay statement that is not one' };
     function verifyIpAtt(pid, a) {
       if (!a) return Promise.resolve(null);
-      if (typeof a.sp !== 'string' || typeof a.sig !== 'string' || a.sp.length > 512 || a.sig.length > 128) return Promise.resolve(IPA_BAD);
+      if (typeof a.sp !== 'string' || typeof a.sig !== 'string' || a.sp.length > 1024 || a.sig.length > 128) return Promise.resolve(IPA_BAD);
       const ck = pid + '|' + a.sig;
       let pr = ipaChecked.get(ck);
       if (!pr) {
@@ -7252,9 +7319,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // selected candidate pair. A modified client cannot change it; only a VPN
     // or proxy can stand in front of it. A 'host' candidate is a shared local
     // network. An address change (a phone moving networks) starts a new entry.
-    function whoObserve() {
+    function whoObserve(only) {
       const jobs = [];
       for (const [pid, p] of peers) {
+        if (only && pid !== only) continue;
         if (!p || !p.pc || !p.connected || pid === myId || typeof p.pc.getStats !== 'function') continue;
         jobs.push(p.pc.getStats().then((stats) => {
           let pair = null;
@@ -7752,6 +7820,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       meshNode = GifOS.meshWire.createMeshNode({
         relayUrl: relay.replace(/\/$/, ''),
         sid: sessId, tok: sessTok, key: roomE2E, identity, tickMs: 500,
+        excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         sendDC: meshSendDC,
         // Deep-socket drop waits until at least one DataChannel is open (§FWD:
@@ -7783,6 +7852,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // same handlers.
         onGossip: (src, g, ageMs, scoped) => {
           if (!g || g.a !== 1 || !g.msg) return;
+          if (isEjected(src)) return false; // refused AND not forwarded: a forger's gossip stops at this seat
           // RULE 1: a status is heard from my SECTION or over my own link —
           // never off the room-wide flood. Refusing it here also stops it at
           // this seat (the mesh forwards nothing the app refused), so a client
@@ -7975,10 +8045,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The relay's SIGNED statement of that address, when it
         // gives one: it rides my status so peers can show my address as
         // relay-verified, which nobody else can claim for me.
-        if (!m.att) { myIpAtt = null; myIpAttV = null; } // a new address with no statement: stop sending the old one
-        else if (typeof m.att.sp === 'string' && typeof m.att.sig === 'string') {
-          const a = { sp: m.att.sp.slice(0, 512), sig: m.att.sig.slice(0, 128) };
-          myIpAtt = a; ipaSends = 0;
+        // A new address with no usable statement: stop sending the old one,
+        // which names the old address and would read as a lie beside the new.
+        const attOk = !!m.att && typeof m.att.sp === 'string' && typeof m.att.sig === 'string' && m.att.sp.length <= 1024 && m.att.sig.length <= 128;
+        if (!attOk) { myIpAtt = null; myIpAttV = null; }
+        else {
+          const a = { sp: m.att.sp, sig: m.att.sig }; // never cut: a cut statement no longer verifies, and reads as forged
+          myIpAtt = a; ipaSends = 0; ipaShownTo.clear();
           verifyIpAtt(myId, a).then((v) => { if (myIpAtt === a) { myIpAttV = v && !v.forged ? v : null; whoRefresh(); } });
         }
         broadcastStatus(); // push my sealed address out now
@@ -8960,7 +9033,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const on = here.has(pid);
         // direct: a live peer connection of my own to them right now.
         rows.push({ pid, here: on, direct: on && !!(p && p.pc && p.connected), name: (p && p.name) || rosterNames[pid] || e.name || '\u2026',
-          ip: ipsOf[pid] || e.ip || '', att: e.att || null, seen: e.seen || [], forged: whoForgery(e),
+          ip: ipsOf[pid] || e.ip || '', att: e.att || null, seen: e.seen || [], forged: whoForgery(e), ejected: !!(e.ejected || ejected.has(pid)),
           first: e.first || 0, last: on ? now : (e.last || 0), dev: devOf[pid] || e.dev || '' });
       }
       return rows;
@@ -8970,8 +9043,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // (whose addresses I never saw); people who left.
     const WHO_GROUPS = [
       { k: 'me', test: (r) => r.me },
-      { k: 'direct', title: 'Connected directly to you', note: 'Your device and theirs talk straight to each other, so it saw their address itself.', test: (r) => r.here && r.direct },
-      { k: 'indirect', title: 'In the meeting, through others', note: 'You reach them through other people\u2019s devices, so yours never saw their address.', test: (r) => r.here && !r.direct },
+      { k: 'direct', title: 'Connected directly to you', note: 'Your device and theirs talk straight to each other, so it saw their address itself.', test: (r) => r.here && r.direct && !r.ejected },
+      { k: 'indirect', title: 'In the meeting, through others', note: 'You reach them through other people\u2019s devices, so yours never saw their address.', test: (r) => r.here && !r.direct && !r.ejected },
+      { k: 'ejected', title: 'Ejected for forging their address', note: 'Caught forging; this device accepted nothing from them after that, no media and no messages.', test: (r) => r.ejected },
       { k: 'left', title: 'Left the meeting', test: (r) => !r.here },
     ];
     const whoGroupOf = (r) => WHO_GROUPS.find((g) => g.test(r)).k;
@@ -8989,7 +9063,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (sn) out.push('\u2713 ' + seenStr(sn) + ' \u2014 seen directly');
       if (r.ip && (!r.att || r.att.ip !== r.ip)) out.push(r.ip + ' \u2014 ' + (r.att ? (r.forged ? 'claimed by their device, NOT their address' : 'reported by their device, differs from what the relay saw (it may have changed networks)') : 'reported by their device, not verified'));
       if (!out.length) out.push('address unknown');
-      if (!r.here) out.push('left ' + hhmm(r.last));
+      if (r.ejected) out.push('ejected ' + hhmm((ejected.get(r.pid) || {}).at || r.last));
+      else if (!r.here) out.push('left ' + hhmm(r.last));
       return out;
     }
     function showWhoModal() {
@@ -9115,6 +9190,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         'Verified by the relay: the GifOS relay saw this person\'s device connect from this address at the time given, and signed a statement saying so (listed at the end). Their device cannot fake it or claim someone else\'s.',
         'Seen directly: this device was connected straight to theirs and saw this address and port in use between the first and last times given.',
         'Reported by their device: what their own device said. It is NOT verified and may be false.',
+        'Ejected: as soon as a forgery was detected this device cut the person off and accepted nothing more from them: no video, audio, messages or files.',
         'Forgery detected: their device sent something only a forger would: a relay statement that is not genuine or belongs to someone else, or an address different from the one the relay signed for it. The relay-verified and seen-directly addresses still stand.',
         'Connection to me: "direct" means this device and theirs were connected straight to each other; "through others" means this device reached them only through other participants and never saw their address itself.',
         'Relay session: the GifOS relay is hosted by Cloudflare. Its connection records, if any are kept, are filed under this session address, and each participant\'s connection to it names their peer id (last column), so the two can be matched.',
@@ -9123,7 +9199,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         ['Name', 'Connection to me', 'Forgery detected', 'Relay-verified address', 'Relay saw at', 'Seen directly (address)', 'Port', 'Protocol', 'Connection', 'Seen from', 'Seen until', 'In meeting from', 'Last heard', 'Reported by their device', 'Device tag', 'Peer id'].join('\t'),
       ];
       for (const r of rows) {
-        const conn = { me: 'this device', direct: 'direct', indirect: 'through others', left: 'left' }[whoGroupOf(r)];
+        const conn = { me: 'this device', direct: 'direct', indirect: 'through others', left: 'left', ejected: 'EJECTED for forgery at ' + utc((ejected.get(r.pid) || {}).at) }[whoGroupOf(r)];
         const base = (x) => [r.name, conn, r.forged || '', r.att ? r.att.ip : '', r.att ? utc(r.att.ts) : ''].concat(x, [utc(r.first), utc(r.last), r.ip || '', r.dev || '', r.pid || '']).join('\t');
         if (!r.seen.length) lines.push(base(['', '', '', '', '', '']));
         for (const x of r.seen) lines.push(base([x.addr, x.port || '', x.proto, x.type === 'host' ? 'local network' : (x.type || ''), utc(x.first), utc(x.last)]));
@@ -10067,7 +10143,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // not a field on the frame: m is the peer's decrypted JSON, and a field
     // there is the peer's to set.
     function onDc(p, dc, m, admOk) {
-      if (p && p.id && isSevered(p.id)) return; // DEBUG sever — see severPair
+      if (p && p.id && isSevered(p.id)) return; // DEBUG sever — see severPair; and an ejected forger
+      if (m && m.from != null && isEjected(String(m.from))) return; // a forwarded frame FROM a forger (fsig/fhi/fmesh)
       // ANY DataChannel receive is FIRST-HAND transport proof (peer-instance
       // regression report, 2026-07-27): the starve edge keyed on MESH
       // receives alone, so a healthy-but-quiet pair (a 2-person room with a
@@ -10292,6 +10369,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         ref[p.id] = Date.now();
         relayRefusal.set(m.target, ref);
       } else if (m.k === 'relay-stream') {
+        if (isEjected(String(m.target || ''))) return; // a forger's stream, relayed: refused
         relayVia.set(String(m.target || ''), { via: p.id, streamId: m.streamId, stream: null });
         claimRelayStreams();
       } else if (m.k === 'relay-stop') {
@@ -10306,6 +10384,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const prevAnn = mosAnn.get(ak);
         const annNew = !prevAnn || prevAnn.streamId !== m.streamId;
         const annIds = mxIds(m.ids);
+        if (mosHasEjected(m.key, annIds)) return; // a feed carrying a forger's picture: refused
         // STAGE-FACES: the strip's cell order (or count, or grid) changed under
         // the same container. A relay must pass the new order on within one
         // beat, not at the 2s sweep: the re-packed frames are already flowing
@@ -10986,6 +11065,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (relayJobs.has(key)) return;
       const tp = peers.get(target);
       const refuse = () => dcSend(reqP, { k: 'relay-no', target });
+      if (isEjected(target)) { refuse(); return; }
       if (!tp || !tp.connected || !tp.stream || !reqP.connected || relayJobs.size >= MAX_RELAY_JOBS) { refuse(); return; }
       const container = new MediaStream();
       const senders = [];
@@ -12281,6 +12361,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // compositing seat packed it. At most C peer ids, each a short string;
     // anything else is dropped, and a receiver without it falls back to the
     // stage order or to the whole strip.
+    // A mosaic feed carries an ejected forger's picture when its key names
+    // them (stg:<pid>) or its cell list does. A composite cannot be cut apart,
+    // so the whole feed is refused; an honest producer has dropped the forger
+    // too and its next composite comes without them.
+    function mosHasEjected(key, ids) {
+      if (!ejected.size) return false;
+      if (typeof key === 'string' && key.startsWith('stg:') && isEjected(key.slice(4).split('^')[0])) return true;
+      return Array.isArray(ids) && ids.some((x) => isEjected(x));
+    }
     function mxIds(v) {
       if (!Array.isArray(v) || !v.length || v.length > SCALE.C) return undefined;
       for (let i = 0; i < v.length; i++) if (typeof v[i] !== 'string' || !v[i] || v[i].length > 64) return undefined;
