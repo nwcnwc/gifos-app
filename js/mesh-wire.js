@@ -312,6 +312,7 @@
     // and NOTHING else, ever.
     // ─────────────────────────────────────────────────────────────────────────
     function deliver(to, m) {
+      if (typeof opts.excluded === 'function') { try { if (opts.excluded(String(to))) return; } catch (e) {} } // an excluded peer is told nothing either
       try { if (typeof window !== 'undefined') { const t = (window.__mwTx = window.__mwTx || {}); t[m.t] = (t[m.t] || 0) + 1; } } catch (e) {} // DEBUG-TREE: per-type deliver counter
       // THE ENTRY HANDSHAKE PREFERS THE DOOR (behavior battery 14a,
       // 2026-07-26): a knocker definitionally holds a relay socket and
