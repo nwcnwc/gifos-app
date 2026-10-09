@@ -9209,7 +9209,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function whoRows() {
       const now = Date.now();
       const here = new Set(rosterIds);
-      const rows = [{ pid: myId || '', name: myName() + ' (you)', here: true, ip: myIp, att: myIpAttV, seen: [], first: whoStartedAt, last: now, dev: myDevHash || '' }];
+      const rows = [{ pid: myId || '', name: myName() + ' (you)', me: true, here: true, ip: myIp, att: myIpAttV, seen: [], first: whoStartedAt, last: now, dev: myDevHash || '' }];
       const ids = new Set(rosterIds);
       for (const pid of whoLog.keys()) ids.add(pid);
       for (const pid of ids) {
@@ -9217,12 +9217,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const e = whoLog.get(pid) || { seen: [] };
         const p = peers.get(pid);
         const on = here.has(pid);
-        rows.push({ pid, here: on, name: (p && p.name) || rosterNames[pid] || e.name || '\u2026',
+        // direct: a live peer connection of my own to them right now.
+        rows.push({ pid, here: on, direct: on && !!(p && p.pc && p.connected), name: (p && p.name) || rosterNames[pid] || e.name || '\u2026',
           ip: ipsOf[pid] || e.ip || '', att: e.att || null, seen: e.seen || [],
           first: e.first || 0, last: on ? now : (e.last || 0), dev: devOf[pid] || e.dev || '' });
       }
-      return rows.sort((a, b) => (b.here - a.here));
+      return rows;
     }
+    // The panel's groups, in order: me; people my device talks to directly
+    // (whose addresses I saw myself); people I reach only through others
+    // (whose addresses I never saw); people who left.
+    const WHO_GROUPS = [
+      { k: 'me', test: (r) => r.me },
+      { k: 'direct', title: 'Connected directly to you', note: 'Your device and theirs talk straight to each other, so it saw their address itself.', test: (r) => r.here && r.direct },
+      { k: 'indirect', title: 'In the meeting, through others', note: 'You reach them through other people\u2019s devices, so yours never saw their address.', test: (r) => r.here && !r.direct },
+      { k: 'left', title: 'Left the meeting', test: (r) => !r.here },
+    ];
+    const whoGroupOf = (r) => WHO_GROUPS.find((g) => g.test(r)).k;
     const utc = (ms) => (ms ? new Date(ms).toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC') : '');
     const hhmm = (ms) => (ms ? new Date(ms).toISOString().slice(11, 16) + ' UTC' : '');
     // A browser hides a LAN address behind a random '.local' name: that says
@@ -9243,13 +9254,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const opening = whoModal.style.display !== 'flex';
       const list = document.getElementById('who-list');
       list.innerHTML = '';
-      for (const r of whoRows()) {
-        const row = document.createElement('div'); row.className = 'brow';
-        if (!r.here) row.style.opacity = '.65';
-        const nm = document.createElement('span'); nm.style.flex = '1'; nm.textContent = r.name;
-        const ip = document.createElement('span'); ip.style.color = '#889'; ip.style.textAlign = 'right';
-        whoAddrLines(r).forEach((t, i) => { if (i) ip.appendChild(document.createElement('br')); ip.appendChild(document.createTextNode(t)); });
-        row.appendChild(nm); row.appendChild(ip); list.appendChild(row);
+      const rows = whoRows();
+      for (const g of WHO_GROUPS) {
+        const inG = rows.filter((r) => whoGroupOf(r) === g.k);
+        if (!inG.length) continue;
+        if (g.title) {
+          const h = document.createElement('div'); h.className = 'who-h'; h.dataset.group = g.k;
+          h.style.cssText = 'margin-top:.7rem;font-weight:600;font-size:.8rem';
+          h.textContent = g.title + ' (' + inG.length + ')';
+          if (g.note) { const n = document.createElement('div'); n.style.cssText = 'font-weight:400;color:#889'; n.textContent = g.note; h.appendChild(n); }
+          list.appendChild(h);
+        }
+        for (const r of inG) {
+          const row = document.createElement('div'); row.className = 'brow'; row.dataset.group = g.k;
+          if (!r.here) row.style.opacity = '.65';
+          const nm = document.createElement('span'); nm.style.flex = '1'; nm.textContent = r.name;
+          const ip = document.createElement('span'); ip.style.color = '#889'; ip.style.textAlign = 'right';
+          whoAddrLines(r).forEach((t, i) => { if (i) ip.appendChild(document.createElement('br')); ip.appendChild(document.createTextNode(t)); });
+          row.appendChild(nm); row.appendChild(ip); list.appendChild(row);
+        }
       }
       whoModal.style.display = 'flex';
       if (opening) whoObserve().then(() => whoRefresh()); // what my links see right now, not 15 s ago
@@ -9340,12 +9363,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         'Verified by the relay: the GifOS relay saw this person\'s device connect from this address at the time given, and signed a statement saying so (listed at the end). Their device cannot fake it or claim someone else\'s.',
         'Seen directly: this device was connected straight to theirs and saw this address and port in use between the first and last times given.',
         'Reported by their device: what their own device said. It is NOT verified and may be false.',
+        'Connection to me: "direct" means this device and theirs were connected straight to each other; "through others" means this device reached them only through other participants and never saw their address itself.',
         'An address may belong to a VPN, a workplace or a mobile network shared by many customers. To identify a subscriber, an internet provider usually needs the address, the port and the exact time; all three are given where known.',
         '',
-        ['Name', 'Here', 'Relay-verified address', 'Relay saw at', 'Seen directly (address)', 'Port', 'Protocol', 'Connection', 'Seen from', 'Seen until', 'In meeting from', 'Last heard', 'Reported by their device', 'Device tag', 'Peer id'].join('\t'),
+        ['Name', 'Connection to me', 'Relay-verified address', 'Relay saw at', 'Seen directly (address)', 'Port', 'Protocol', 'Connection', 'Seen from', 'Seen until', 'In meeting from', 'Last heard', 'Reported by their device', 'Device tag', 'Peer id'].join('\t'),
       ];
       for (const r of rows) {
-        const base = (x) => [r.name, r.here ? 'yes' : 'left', r.att ? r.att.ip : '', r.att ? utc(r.att.ts) : ''].concat(x, [utc(r.first), utc(r.last), r.ip || '', r.dev || '', r.pid || '']).join('\t');
+        const conn = { me: 'this device', direct: 'direct', indirect: 'through others', left: 'left' }[whoGroupOf(r)];
+        const base = (x) => [r.name, conn, r.att ? r.att.ip : '', r.att ? utc(r.att.ts) : ''].concat(x, [utc(r.first), utc(r.last), r.ip || '', r.dev || '', r.pid || '']).join('\t');
         if (!r.seen.length) lines.push(base(['', '', '', '', '', '']));
         for (const x of r.seen) lines.push(base([x.addr, x.port || '', x.proto, x.type === 'host' ? 'local network' : (x.type || ''), utc(x.first), utc(x.last)]));
       }
