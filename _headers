@@ -1,6 +1,9 @@
 # A published app is what an install checks. The file is good for a minute,
-# so the next publish is the file an install sees.
-/apps/*/*.gif
+# so the next publish is the file an install sees. One asterisk matches the
+# rest of the path, so this covers every app file.
+/apps/*.gif
   Cache-Control: public, max-age=60
+  CDN-Cache-Control: public, max-age=60
 /_goal.gif
   Cache-Control: public, max-age=60
+  CDN-Cache-Control: public, max-age=60
