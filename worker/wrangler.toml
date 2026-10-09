@@ -3,9 +3,9 @@ main = "src/gifs.js"
 compatibility_date = "2026-01-01"
 # Covers, catalogs, and app files are part of the site. A route can only
 # wildcard the end of a path, so the site itself serves those. This worker
-# serves the one app file the site cannot hold as a single file, the goal
-# animation, and www.gifos.app, which only forwards to the apex. A desktop
-# opened on www would be a different computer.
+# serves the one app file the site cannot hold as a single file, and the
+# goal animation. www.gifos.app opens gifos.app, because a desktop opened
+# on www would be a different computer.
 workers_dev = false
 
 [[routes]]
@@ -14,10 +14,6 @@ zone_name = "gifos.app"
 
 [[routes]]
 pattern = "gifos.app/_goal.gif*"
-zone_name = "gifos.app"
-
-[[routes]]
-pattern = "www.gifos.app/*"
 zone_name = "gifos.app"
 
 [[r2_buckets]]

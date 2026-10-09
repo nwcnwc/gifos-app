@@ -260,7 +260,6 @@ jobs:
           WANTED = [
               "gifos.app/_goal.gif*",
               "gifos.app/apps/pdf-tables-ocr/pdf-tables-ocr.gif",
-              "www.gifos.app/*",
           ]
 
           def get(url, method="GET", limit=None):
