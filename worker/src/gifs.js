@@ -16,8 +16,7 @@ export default {
       return Response.redirect(url.toString(), 301);
     }
     const key = gifKey(url.pathname);
-    // The route covers all of /apps/, including covers and app.json.
-    // Anything that is not a GIF is the Pages origin.
+    // A request that is not an app file is the rest of the site.
     if (!key) return fetch(request);
     if (request.method !== "GET" && request.method !== "HEAD") {
       return new Response("method not allowed", {

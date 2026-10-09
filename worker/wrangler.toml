@@ -1,13 +1,15 @@
 name = "gifos-gifs"
 main = "src/gifs.js"
 compatibility_date = "2026-01-01"
-# A wildcard is only allowed at the start of the host or the end of the
-# path, so gifos.app/*.gif is rejected. Other subdomains belong to other
-# workers. www.gifos.app only redirects to the apex.
+# Covers, catalogs, and app files are part of the site. A route can only
+# wildcard the end of a path, so the site itself serves those. This worker
+# serves the one app file the site cannot hold as a single file, the goal
+# animation, and www.gifos.app, which only forwards to the apex. A desktop
+# opened on www would be a different computer.
 workers_dev = false
 
 [[routes]]
-pattern = "gifos.app/apps/*"
+pattern = "gifos.app/apps/pdf-tables-ocr/pdf-tables-ocr.gif"
 zone_name = "gifos.app"
 
 [[routes]]

@@ -36,7 +36,12 @@ APEX = "gifos.app"
 WWW = "www.gifos.app"
 PROJECT = "gifos"
 WORKER = "gifos-gifs"
-ROUTE_PATTERNS = ("gifos.app/apps/*", "gifos.app/_goal.gif*")
+# The site carries covers, catalogs, and every app file it can hold.
+# These are the files it does not.
+ROUTE_PATTERNS = (
+    "gifos.app/apps/pdf-tables-ocr/pdf-tables-ocr.gif",
+    "gifos.app/_goal.gif*",
+)
 GH_A = {
     "185.199.108.153",
     "185.199.109.153",
@@ -51,7 +56,7 @@ GH_AAAA = {
 }
 WWW_CNAME = "nwcnwc.github.io"
 MIN_BUILD = 2560
-GIF_SHA256 = "4942aa92b36a6ded5a0393836389f51dd8fe365788f175c3c896a3198541b501"
+GIF_SHA256 = "07e473339d2f47336be1f2e9704d03bbe1926a316197d227f53e47d0d532b993"
 UA = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
