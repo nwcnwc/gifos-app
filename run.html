@@ -17305,12 +17305,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (ac && typeof ac.close === 'function') { const c = ac; ac = null; c.close(); }
       } catch (e) {}
     }
+    // THE FAREWELL LEAVES BEFORE THE CONNECTIONS CLOSE. A direct goodbye is
+    // sealed first and sent after, and send() only queues bytes on the
+    // channel. Closing every connection in the same pass as the farewell
+    // dropped it: the room kept the old seat for seconds, so a member who
+    // came straight back was seated in a new row. The connections close once
+    // the queued frames have been handed to their channels and every open
+    // channel has drained or closed, or after a short cap.
+    const FAREWELL_DRAIN_MS = 1500;
+    function afterFarewell(done) {
+      let fired = false;
+      const go = () => { if (fired) return; fired = true; try { done(); } catch (e) {} };
+      const cap = setTimeout(go, FAREWELL_DRAIN_MS);
+      const drained = () => {
+        if (fired) return;
+        for (const p of peers.values()) {
+          const dc = p.dc;
+          if (dc && dc.readyState === 'open' && dc.bufferedAmount > 0) { setTimeout(drained, 20); return; }
+        }
+        clearTimeout(cap); go();
+      };
+      txm(() => undefined).then(drained, drained);
+    }
     function leaveMeeting() {
       const flushing = stopLocalCapture();
       sendMeshLeave();
       try { if (typeof stopRoomClocks === 'function') stopRoomClocks(); } catch (e) {}
       try { if (localStream) localStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
-      for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} }
+      afterFarewell(() => { for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } });
       try { releaseAudioContext(); } catch (e) {}
       const lm = document.getElementById('left-modal'); if (lm) lm.style.display = 'flex';
       return flushing;
