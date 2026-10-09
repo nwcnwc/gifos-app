@@ -4152,47 +4152,54 @@
   // like every other icon; the role (Settings → AI models) is assigned only
   // where nothing is assigned yet.
   const storeDefaultsState = { ran: false, results: {} };
+  const withTabLock = (name, fn) => (navigator.locks && navigator.locks.request) ? navigator.locks.request(name, fn) : fn();
   async function seedStoreDefaults() {
     storeDefaultsState.ran = true;
     const inst = GifOS.install; if (!inst || !inst.defaults) return storeDefaultsState;
     for (const d of inst.defaults) {
       const key = nsKey(inst.stampKey(d.slug));
-      let stamp = ''; try { stamp = localStorage.getItem(key) || ''; } catch (e) {}
-      const triedAt = /^tried:(\d+)$/.test(stamp) ? Number(stamp.slice(6)) : 0;
-      if (stamp === 'done' || (triedAt && Date.now() - triedAt < 86400000)) { storeDefaultsState.results[d.slug] = stamp; continue; }
-      try {
-        // Already here (installed by hand, or by a meeting's own seed)? Stamp and move on.
-        const have = (await scanProviders()).find((p) => p.appId === d.slug);
-        let fileId = have ? have.fileId : '', name = have ? have.name : '';
-        if (!have) {
-          if (!navigator.onLine) { storeDefaultsState.results[d.slug] = 'offline'; continue; }
-          const app = await inst.listing(d.slug);
-          const { bytes, manifest } = await inst.fetchApp(app, null, { provider: d.folder === 'sys_providers' });
-          fileId = store.uid('file'); name = (manifest.name || app.name || d.slug) + '.gif';
-          await store.putFile({ id: fileId, name, bytes, kind: 'gif', isApp: true, appId: manifest.appId, mime: 'image/gif' });
-          // The download took its time; the icon itself waits for the user.
-          await quietMoment();
-          await ensureSystemItems();
-          // saveItem keeps `items` authoritative — no load() after it: a
-          // reload here only re-reads what memory already holds.
-          await saveItem({ id: store.uid('item'), kind: 'file', fileId, name, parent: d.folder || null, iconSize: 64 }, { into: d.folder || null });
-          // render() REPLACES every icon element; a finger or mouse mid-drag
-          // would lose its icon. Paint now, or on the pointer's release.
-          whenPointerFree(render);
-        }
-        if (d.role) {
-          const cfg = aiCfgAll();
-          if (!cfg[d.role] || (!cfg[d.role].app && !cfg[d.role].url)) {
-            cfg[d.role] = { app: fileId, appId: d.slug, appName: (name || d.slug).replace(/\.gif$/i, '') };
-            try { root.localStorage.setItem(AI_LS, JSON.stringify(cfg)); } catch (e) {}
+      // ONE TAB AT A TIME. Two Home tabs opened together on a new computer both
+      // read an empty stamp and both installed the app (two copies in
+      // Providers). The lock makes the second tab wait, re-read the stamp the
+      // first one wrote, and skip. Without Web Locks it runs as before.
+      await withTabLock('gifos-default:' + key, async () => {
+        let stamp = ''; try { stamp = localStorage.getItem(key) || ''; } catch (e) {}
+        const triedAt = /^tried:(\d+)$/.test(stamp) ? Number(stamp.slice(6)) : 0;
+        if (stamp === 'done' || (triedAt && Date.now() - triedAt < 86400000)) { storeDefaultsState.results[d.slug] = stamp; return; }
+        try {
+          // Already here (installed by hand, or by a meeting's own seed)? Stamp and move on.
+          const have = (await scanProviders()).find((p) => p.appId === d.slug);
+          let fileId = have ? have.fileId : '', name = have ? have.name : '';
+          if (!have) {
+            if (!navigator.onLine) { storeDefaultsState.results[d.slug] = 'offline'; return; }
+            const app = await inst.listing(d.slug);
+            const { bytes, manifest } = await inst.fetchApp(app, null, { provider: d.folder === 'sys_providers' });
+            fileId = store.uid('file'); name = (manifest.name || app.name || d.slug) + '.gif';
+            await store.putFile({ id: fileId, name, bytes, kind: 'gif', isApp: true, appId: manifest.appId, mime: 'image/gif' });
+            // The download took its time; the icon itself waits for the user.
+            await quietMoment();
+            await ensureSystemItems();
+            // saveItem keeps `items` authoritative — no load() after it: a
+            // reload here only re-reads what memory already holds.
+            await saveItem({ id: store.uid('item'), kind: 'file', fileId, name, parent: d.folder || null, iconSize: 64 }, { into: d.folder || null });
+            // render() REPLACES every icon element; a finger or mouse mid-drag
+            // would lose its icon. Paint now, or on the pointer's release.
+            whenPointerFree(render);
           }
+          if (d.role) {
+            const cfg = aiCfgAll();
+            if (!cfg[d.role] || (!cfg[d.role].app && !cfg[d.role].url)) {
+              cfg[d.role] = { app: fileId, appId: d.slug, appName: (name || d.slug).replace(/\.gif$/i, '') };
+              try { root.localStorage.setItem(AI_LS, JSON.stringify(cfg)); } catch (e) {}
+            }
+          }
+          try { localStorage.setItem(key, 'done'); } catch (e) {}
+          storeDefaultsState.results[d.slug] = have ? 'present' : 'installed';
+        } catch (e) {
+          try { localStorage.setItem(key, 'tried:' + Date.now()); } catch (e2) {}
+          storeDefaultsState.results[d.slug] = 'failed: ' + ((e && e.message) || e);
         }
-        try { localStorage.setItem(key, 'done'); } catch (e) {}
-        storeDefaultsState.results[d.slug] = have ? 'present' : 'installed';
-      } catch (e) {
-        try { localStorage.setItem(key, 'tried:' + Date.now()); } catch (e2) {}
-        storeDefaultsState.results[d.slug] = 'failed: ' + ((e && e.message) || e);
-      }
+      });
     }
     return storeDefaultsState;
   }
