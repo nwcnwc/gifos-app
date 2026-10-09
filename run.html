@@ -3126,10 +3126,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (pending > 1000) d += (t0 <= loopLastBeat ? pending : Math.min(pending, Date.now() - t0));
       return d;
     };
+    // THE HOLDOVER COUNTS ONLY THE BLOCK IT IS WAKING FROM. A pulse that lands
+    // while this page is blocked is not lost: it waits in the queue and is
+    // stamped when the queue drains. So once a block has drained, the silence
+    // it covered is real (no pulse came) or already credited (the late stamp
+    // reads younger than the truth). Subtracting every past block as well
+    // stretched the 60 s backstop by the judge's whole blocked history: on a
+    // slow device the room stayed clear seconds to minutes past a pocketed
+    // phone's holdover. Only the block still draining can inflate the gap a
+    // judgment sees, so the holdover clock pauses for that one alone.
+    const DRAIN_MS = 2000;
+    const holdDebtSince = (t0) => {
+      const now = Date.now();
+      let d = 0;
+      for (const b of loopBlocks) if (b.at > t0 && now - b.at < DRAIN_MS) d += Math.min(b.ms, b.at - t0);
+      const pending = now - loopLastBeat - 250;
+      if (pending > 1000) d += (t0 <= loopLastBeat ? pending : Math.min(pending, now - t0));
+      return d;
+    };
     const stHold = (pid) => {
       const st = statusOf.get(pid);
       if (!st) return false;
-      const age = Date.now() - stSeen(st) - starveDebtSince(stSeen(st));
+      const age = Date.now() - stSeen(st) - holdDebtSince(stSeen(st));
       if (age < 15000) return true;
       if (age >= HOLDOVER_MS) return false;
       const p = peers.get(pid);
@@ -8152,7 +8170,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const [pid, st] of statusOf) {
           if (pid === myId || peers.has(pid) || occLive.has(pid)) continue;
           const seen = stSeen(st);
-          if (now - seen - starveDebtSince(seen) > HOLDOVER_MS) { if (typeof dropStatus === 'function') dropStatus(pid); else statusOf.delete(pid); }
+          if (now - seen - holdDebtSince(seen) > HOLDOVER_MS) { if (typeof dropStatus === 'function') dropStatus(pid); else statusOf.delete(pid); }
         }
       }
       // The link set follows the seat arithmetic — occupancy gossip settling
