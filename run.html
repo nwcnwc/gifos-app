@@ -5284,8 +5284,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Run (or re-run) the probe. Called when the meeting starts and when the
     // browser reports the network came back, since a new network is a new
     // verdict. Under DEBUG a test may fix the verdict (window.__gifosDirectPath)
-    // instead of asking the network, so a drill on a box with no outside
-    // reach is not read as a blocked office.
+    // instead of asking the network, so a page under test on a machine with
+    // no outside reach is not read as a blocked office.
     function startDirectPathProbe() {
       const gen = ++directPathRun;
       const forced = (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && window.__gifosDirectPath) ? String(window.__gifosDirectPath) : '';
@@ -18514,6 +18514,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         pc: p.pc ? p.pc.connectionState : null, ice: p.pc ? p.pc.iceConnectionState : null,
         sig: p.pc ? p.pc.signalingState : null, dc: p.dc ? p.dc.readyState : null,
         connected: !!p.connected, absent: !!p.absentSince,
+        name: rosterNames[p.id] || p.name || null, noRoute: !!p.noRoute, relayed: !!p.relayed, // the tile's reach verdict, by screen name
         // GLARE FORENSICS, read-only. A pair stuck in have-local-offer is
         // ambiguous without these: `armed` says the yield timer is waiting,
         // `stored` says an offer was set aside to answer. Neither firing and
