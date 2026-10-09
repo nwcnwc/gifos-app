@@ -7192,7 +7192,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (msg && msg.name) e.name = String(msg.name).slice(0, 40);
       if (msg && msg.ip) e.ip = String(msg.ip).slice(0, 64);
       if (devOf[pid]) e.dev = devOf[pid];
-      if (msg && msg.ipa) verifyIpAtt(pid, msg.ipa).then((v) => { if (v) { const e2 = whoEntry(pid); if (e2) { e2.att = v; whoRefresh(); } } });
+      // A forgery, once caught, stays on the record: it is the evidence.
+      if (msg && msg.ipa) verifyIpAtt(pid, msg.ipa).then((v) => {
+        const e2 = v && whoEntry(pid); if (!e2) return;
+        // An honest device sends the address the relay told it in the same
+        // frame as the relay's statement of it, so the two always match
+        // there. A different address IN THAT FRAME is a lie, not a network
+        // change.
+        const lie = !v.forged && msg.ip && String(msg.ip).slice(0, 64) !== v.ip
+          ? 'reports ' + String(msg.ip).slice(0, 64) + ' but the relay saw it connect from ' + v.ip : '';
+        if (v.forged || lie) { if (!e2.forged) e2.forged = { why: v.forged || lie, at: Date.now() }; }
+        if (!v.forged) e2.att = v;
+        whoRefresh();
+      });
     }
     // A departure: stamp what is about to be forgotten elsewhere.
     function whoGone(pid) {
@@ -7202,23 +7214,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (devOf[pid]) e.dev = devOf[pid];
       if (ipsOf[pid]) e.ip = ipsOf[pid];
     }
-    // A relay statement {sp, sig} about `pid`'s address. Accepted only when it
-    // names THIS peer, is signed by a key relay-config.js trusts, and that
-    // key's id matches its bytes. One check per distinct signature.
+    // A relay statement {sp, sig} about `pid`'s address. Three verdicts:
+    //   the statement   — it names THIS peer and a key relay-config.js trusts
+    //                     signed it: the relay-verified address;
+    //   { forged: why } — it cannot have come from the relay for this peer:
+    //                     malformed, naming another participant, or a
+    //                     signature that fails under a key we trust;
+    //   null            — it cannot be checked here (a key this page does not
+    //                     list, e.g. another relay's): neither verified nor
+    //                     forged.
+    // One check per distinct signature.
     const ipaChecked = new Map();
+    const IPA_BAD = { forged: 'presented a relay statement that is not one' };
     function verifyIpAtt(pid, a) {
-      if (!a || typeof a.sp !== 'string' || typeof a.sig !== 'string' || a.sp.length > 512 || a.sig.length > 128) return Promise.resolve(null);
+      if (!a) return Promise.resolve(null);
+      if (typeof a.sp !== 'string' || typeof a.sig !== 'string' || a.sp.length > 512 || a.sig.length > 128) return Promise.resolve(IPA_BAD);
       const ck = pid + '|' + a.sig;
       let pr = ipaChecked.get(ck);
       if (!pr) {
         pr = (async () => {
-          let o; try { o = JSON.parse(a.sp); } catch (e) { return null; }
-          if (!o || o.v !== 1 || o.act !== 'ip' || o.peer !== pid || typeof o.ip !== 'string' || !o.ip || typeof o.kid !== 'string') return null;
+          let o; try { o = JSON.parse(a.sp); } catch (e) { return IPA_BAD; }
+          if (!o || o.v !== 1 || o.act !== 'ip' || typeof o.ip !== 'string' || !o.ip || typeof o.kid !== 'string') return IPA_BAD;
           const keys = window.GIFOS_RELAY_ATTEST_KEYS || {};
           const pub = Object.prototype.hasOwnProperty.call(keys, o.kid) ? keys[o.kid] : null;
           if (!pub) return null;
           try { if ((await net.keyId(pub)).slice(0, 16) !== o.kid) return null; } catch (e) { return null; }
-          if (!(await net.edVerify(pub, a.sig, a.sp))) return null;
+          if (!(await net.edVerify(pub, a.sig, a.sp))) return { forged: 'presented a relay statement whose signature does not match' };
+          if (o.peer !== pid) return { forged: 'presented the relay statement of a different participant, as its own' };
           return { ip: o.ip.slice(0, 64), ts: +o.ts || 0, sid: String(o.sid || ''), kid: o.kid, sp: a.sp, sig: a.sig };
         })().catch(() => null);
         if (ipaChecked.size > 4096) ipaChecked.clear();
@@ -7953,10 +7975,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The relay's SIGNED statement of that address, when it
         // gives one: it rides my status so peers can show my address as
         // relay-verified, which nobody else can claim for me.
-        if (m.att && typeof m.att.sp === 'string' && typeof m.att.sig === 'string') {
+        if (!m.att) { myIpAtt = null; myIpAttV = null; } // a new address with no statement: stop sending the old one
+        else if (typeof m.att.sp === 'string' && typeof m.att.sig === 'string') {
           const a = { sp: m.att.sp.slice(0, 512), sig: m.att.sig.slice(0, 128) };
           myIpAtt = a; ipaSends = 0;
-          verifyIpAtt(myId, a).then((v) => { if (myIpAtt === a) { myIpAttV = v; whoRefresh(); } });
+          verifyIpAtt(myId, a).then((v) => { if (myIpAtt === a) { myIpAttV = v && !v.forged ? v : null; whoRefresh(); } });
         }
         broadcastStatus(); // push my sealed address out now
       }
@@ -8914,6 +8937,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // network address, so GifOS makes it VISIBLE — nobody here is anonymous,
     // and a downloadable record deters the worst behavior.
     const whoModal = document.getElementById('who-modal');
+    // Is this participant forging? Decided in whoHeard, once, and kept: their
+    // device presented a relay statement that cannot be genuine (verifyIpAtt),
+    // or sent an address that differs from the relay's statement in the same
+    // frame. (A device that presents no statement cannot be told from an
+    // older or unattested one: that is "not verified", not forged. A later
+    // frame with a new address and no statement may be a phone that changed
+    // networks: shown as differing, not forged.)
+    function whoForgery(e) { return e.forged ? e.forged.why : ''; }
     // Everyone in the room now, then everyone who has left — each with the
     // three kinds of address the Who log keeps (see whoLog).
     function whoRows() {
@@ -8929,7 +8960,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const on = here.has(pid);
         // direct: a live peer connection of my own to them right now.
         rows.push({ pid, here: on, direct: on && !!(p && p.pc && p.connected), name: (p && p.name) || rosterNames[pid] || e.name || '\u2026',
-          ip: ipsOf[pid] || e.ip || '', att: e.att || null, seen: e.seen || [],
+          ip: ipsOf[pid] || e.ip || '', att: e.att || null, seen: e.seen || [], forged: whoForgery(e),
           first: e.first || 0, last: on ? now : (e.last || 0), dev: devOf[pid] || e.dev || '' });
       }
       return rows;
@@ -8952,10 +8983,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       : (x.type === 'host' ? 'local network ' : '') + x.addr + (x.port ? ' port ' + x.port : ''));
     function whoAddrLines(r) {
       const out = [];
+      if (r.forged) out.push('\u26a0 FORGED \u2014 their device ' + r.forged);
       const sn = r.seen[r.seen.length - 1];
       if (r.att) out.push('\u2713 ' + r.att.ip + ' \u2014 verified by the relay');
       if (sn) out.push('\u2713 ' + seenStr(sn) + ' \u2014 seen directly');
-      if (r.ip && (!r.att || r.att.ip !== r.ip)) out.push(r.ip + ' \u2014 ' + (r.att ? 'their device claims this instead' : 'reported by their device, not verified'));
+      if (r.ip && (!r.att || r.att.ip !== r.ip)) out.push(r.ip + ' \u2014 ' + (r.att ? (r.forged ? 'claimed by their device, NOT their address' : 'reported by their device, differs from what the relay saw (it may have changed networks)') : 'reported by their device, not verified'));
       if (!out.length) out.push('address unknown');
       if (!r.here) out.push('left ' + hhmm(r.last));
       return out;
@@ -8980,7 +9012,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (!r.here) row.style.opacity = '.65';
           const nm = document.createElement('span'); nm.style.flex = '1'; nm.textContent = r.name;
           const ip = document.createElement('span'); ip.style.color = '#889'; ip.style.textAlign = 'right';
-          whoAddrLines(r).forEach((t, i) => { if (i) ip.appendChild(document.createElement('br')); ip.appendChild(document.createTextNode(t)); });
+          whoAddrLines(r).forEach((t, i) => {
+            if (i) ip.appendChild(document.createElement('br'));
+            if (r.forged && !i) { const w = document.createElement('b'); w.className = 'who-forged'; w.style.color = '#e5484d'; w.textContent = t; ip.appendChild(w); }
+            else ip.appendChild(document.createTextNode(t));
+          });
           row.appendChild(nm); row.appendChild(ip); list.appendChild(row);
         }
       }
@@ -9079,15 +9115,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         'Verified by the relay: the GifOS relay saw this person\'s device connect from this address at the time given, and signed a statement saying so (listed at the end). Their device cannot fake it or claim someone else\'s.',
         'Seen directly: this device was connected straight to theirs and saw this address and port in use between the first and last times given.',
         'Reported by their device: what their own device said. It is NOT verified and may be false.',
+        'Forgery detected: their device sent something only a forger would: a relay statement that is not genuine or belongs to someone else, or an address different from the one the relay signed for it. The relay-verified and seen-directly addresses still stand.',
         'Connection to me: "direct" means this device and theirs were connected straight to each other; "through others" means this device reached them only through other participants and never saw their address itself.',
         'Relay session: the GifOS relay is hosted by Cloudflare. Its connection records, if any are kept, are filed under this session address, and each participant\'s connection to it names their peer id (last column), so the two can be matched.',
         'An address may belong to a VPN, a workplace or a mobile network shared by many customers. To identify a subscriber, an internet provider usually needs the address, the port and the exact time; all three are given where known.',
         '',
-        ['Name', 'Connection to me', 'Relay-verified address', 'Relay saw at', 'Seen directly (address)', 'Port', 'Protocol', 'Connection', 'Seen from', 'Seen until', 'In meeting from', 'Last heard', 'Reported by their device', 'Device tag', 'Peer id'].join('\t'),
+        ['Name', 'Connection to me', 'Forgery detected', 'Relay-verified address', 'Relay saw at', 'Seen directly (address)', 'Port', 'Protocol', 'Connection', 'Seen from', 'Seen until', 'In meeting from', 'Last heard', 'Reported by their device', 'Device tag', 'Peer id'].join('\t'),
       ];
       for (const r of rows) {
         const conn = { me: 'this device', direct: 'direct', indirect: 'through others', left: 'left' }[whoGroupOf(r)];
-        const base = (x) => [r.name, conn, r.att ? r.att.ip : '', r.att ? utc(r.att.ts) : ''].concat(x, [utc(r.first), utc(r.last), r.ip || '', r.dev || '', r.pid || '']).join('\t');
+        const base = (x) => [r.name, conn, r.forged || '', r.att ? r.att.ip : '', r.att ? utc(r.att.ts) : ''].concat(x, [utc(r.first), utc(r.last), r.ip || '', r.dev || '', r.pid || '']).join('\t');
         if (!r.seen.length) lines.push(base(['', '', '', '', '', '']));
         for (const x of r.seen) lines.push(base([x.addr, x.port || '', x.proto, x.type === 'host' ? 'local network' : (x.type || ''), utc(x.first), utc(x.last)]));
       }
