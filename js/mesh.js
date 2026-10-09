@@ -85,6 +85,8 @@
   // chair — never a twin vouch).
   const FIND_ACK_WAIT = 12, PLACE_REPLAY = 12;
   const DOOR_ROUND_WAIT = 8;
+  const DARK_WAIT = 6;         // a greeter I asked WHOHOME at the door and that has not answered for 6 ticks is dark to me (FIND's dark list)
+  const DARK_ASK_FRESH = 60;   // ...while my latest ask to it is at most 60 ticks old
   const KNOCK_FRESH = 40;      // a FIND from x in the last 40 ticks: x is knocking (serveFind's split-off guard)   // a door round's answers are in after 8 ticks (doorRound; app-paced every few seconds)
   // D5 EARLY-PROBE (healing-laws D5): when MY OWN transport to a neighbour dies
   // (DataChannel close / hard pc failure — a FIRST-HAND observation, never
@@ -532,6 +534,7 @@
     // sealed-relay fallback) and peek is undefined — emit sends directly.
     emit(to, m) {
       if (to == null) return;
+      if (m.t === 'WHOHOME' && !this.hasCoord && m.from === this.id) this.noteDoorAsk(to);   // dark-greeter evidence (darkGreeters)
       // An arbiter's YIELD is preceded by a bare PONG from my cell (`yp`: "I
       // am here", over my own link, never move evidence). The loser often
       // never heard me (I answer a losing PHONE with the YIELD, not a PONG),
@@ -1386,7 +1389,7 @@
       this.forkOpts = new Map(); this.forkPending = 0;
       this.emitRelay(this.myKey); this.wake();
     }
-    askSeat(target) { if (this.askTick === this.TICK) { if (!this.hasCoord) { this.state = 2; this.retryAt = this.TICK; } this.reAsk = true; this.wake(); return; } this.askTick = this.TICK; this.state = 2; this.retryAt = this.TICK; this.findAckAt = -1; (this.triedSilent = this.triedSilent || new Set()).add(target); this.lastAsked = target; this.emit(target, { t: 'FIND', nc: this.id, ttl: 200, spread: (SPREAD && this.noroomSeen >= 1) }); this.wake(); } // ENTRY PACING: one ask per tick (paced-out ⇒ defer the SEND, never the STATE — see join())
+    askSeat(target) { if (this.askTick === this.TICK) { if (!this.hasCoord) { this.state = 2; this.retryAt = this.TICK; } this.reAsk = true; this.wake(); return; } this.askTick = this.TICK; this.state = 2; this.retryAt = this.TICK; this.findAckAt = -1; (this.triedSilent = this.triedSilent || new Set()).add(target); this.lastAsked = target; const fm = { t: 'FIND', nc: this.id, ttl: 200, spread: (SPREAD && this.noroomSeen >= 1) }; const dk = this.darkGreeters(target); if (dk.length) fm.dark = dk; this.emit(target, fm); this.wake(); } // ENTRY PACING: one ask per tick (paced-out ⇒ defer the SEND, never the STATE — see join())
     // ENTRY RESUME (2026-08-04 plane incident; test/tools/seat-flap-repro.js).
     // The dance is three door round trips — knock→GREETERS, WHOHOME→HOME,
     // FIND→PLACE — and a retry used to restart it from the knock, so a socket
@@ -1780,6 +1783,15 @@
       if (k != null && this.backAt >= 0 && !(this.live.get(k) > this.backAt)) return;
       this.emit(mm.nc, { t: 'FINDACK', nc: mm.nc });
     }
+    // DARK GREETERS (the seeker's side of serveFind's split-off guard): the
+    // door can list a greeter whose radio went dark without a close, for as
+    // long as the relay keeps its socket. I ask every listed greeter WHOHOME;
+    // one that stays silent past DARK_WAIT while I keep asking is dark to me,
+    // and my FIND names it, so a lone head does not hold me out on its
+    // account. A greeter seated in a second ring answers the same ask, so it
+    // never appears here and the guard still holds.
+    noteDoorAsk(to) { const A = this.doorAsk || (this.doorAsk = new Map()); const e = A.get(to); if (e && this.TICK - e.last <= DARK_ASK_FRESH) e.last = this.TICK; else { A.delete(to); A.set(to, { first: this.TICK, last: this.TICK }); if (A.size > 64) A.delete(A.keys().next().value); } }
+    darkGreeters(skip) { const out = []; if (!this.doorAsk) return out; for (const [g, e] of this.doorAsk) { if (g !== skip && this.TICK - e.first >= DARK_WAIT && this.TICK - e.last <= DARK_ASK_FRESH) out.push(g); if (out.length >= 8) break; } return out; }
     noteKnock(x) { if (x == null) return; const K = this.knockAt || (this.knockAt = new Map()); K.delete(x); K.set(x, this.TICK); if (K.size > 64) K.delete(K.keys().next().value); }
     knocking(x) { const t = this.knockAt && this.knockAt.get(x); return t !== undefined && this.TICK - t <= KNOCK_FRESH; }
     silentFor(k, n) { const it = this.live.get(k); return it !== undefined && this.TICK - it > n; }
@@ -1805,13 +1817,18 @@
         // race (loneGreet) requeued into this hold — the winner alone at the
         // head cell, hearing no rook peer, refused the loser's FIND for as
         // long as the loser stayed in the pool.
+        // ...and a greeter the SEEKER found dark (its FIND's dark list: it
+        // asked that greeter WHOHOME over the door and heard nothing) is no
+        // live second ring either. The head came back from a long freeze
+        // while its other mate's radio was dark, unclosed, still listed: the
+        // knocking mate was held out until the dark one came back (14 s).
         // ...and a greeter that is itself KNOCKING on me (a FIND from it in the
         // last KNOCK_FRESH ticks) is at the door, not seated in a second ring.
         // The head came back alone (its mates had
         // healed around it and were CONFIRMed back out), and each mate's
         // listing blocked the other's admission: NOROOM 'split-off' to every
         // FIND until the page reloaded itself (84 s, 64 s).
-        if (TICK - this.rookSeenAt > OWNER_SILENT && this.greetersAt !== undefined && TICK - this.greetersAt <= RELAY_TTL && this.lastGreeters.some((g) => g != null && g !== this.id && g !== mm.nc && !this.knocking(g))) { this.noroomWhy = 'split-off'; this.emit(mm.nc, { t: 'NOROOM', nd: 0 }); return; }
+        if (TICK - this.rookSeenAt > OWNER_SILENT && this.greetersAt !== undefined && TICK - this.greetersAt <= RELAY_TTL && this.lastGreeters.some((g) => g != null && g !== this.id && g !== mm.nc && !this.knocking(g) && !(Array.isArray(mm.dark) && mm.dark.includes(g)))) { this.noroomWhy = 'split-off'; this.emit(mm.nc, { t: 'NOROOM', nd: 0 }); return; }
         // H7 ROW-FILL seating (replaces the old column backfill): Section 1
         // fills ROW-MAJOR — row 0 seats 0..C-1, then row 1, ... — so the first
         // C people in a room are ROW-MATES (the media plane's near field is
@@ -3329,6 +3346,7 @@
         case 'HOME': {
           if (this.dr && m.from != null && this.dr.ids.includes(m.from) && !(Array.isArray(m.roster) && m.roster.length)) this.dr.bare.add(m.from);   // a door round's answer (doorRound): at the door like me (a seated answer carries its roster and leaves the round incomplete)
           if (this.triedSilent && m.id != null) this.triedSilent.delete(m.id); // it answered — not silent
+          if (this.doorAsk && m.id != null) this.doorAsk.delete(m.id);         // ...and not dark (darkGreeters)
           // R5 multi-greeter probe: collect samples; cluster later.
           if (this.forkProbe && this.state === 1 && !this.forkPaused) {
             this.lastReach = TICK;
