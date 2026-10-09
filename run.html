@@ -3171,7 +3171,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (hasAdminRoom() && !amAdmin) { setStatus('🛡 Only this room' + String.fromCharCode(39) + 's admins can ' + (field === 'mute' ? 'mute' : 'blur') + ' someone for everyone.'); return; }
       const mine = modTable[target] = modTable[target] || {};
       mine[field] = { on, by: myName(), byId: myId, at: Date.now() };
-      modFlood();
+      // In an admin room the table travels with the admin's signature, and a
+      // guest honours only a table its signature covers. Sign the NEW table
+      // before sending it, or every guest waits for the next heartbeat.
+      const signed = (hasAdminRoom() && amAdmin) ? refreshModSig() : null;
+      if (signed && signed.then) signed.then(modFlood, modFlood); else modFlood();
       refreshAllTiles();
     }
     // EVERY GUEST MEANS EVERY GUEST. The admin's "Blur guests" / "Video off"
@@ -7229,7 +7233,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // fresh signature is minted on the sweeper's beat whenever the table (or
     // the 2-minute freshness bucket) changed — the heartbeat law: events may
     // trigger early, the beat guarantees.
-    let modSigW = null, modSigSrc = '', modWSeen = null, modWSeenTs = 0;
+    let modSigW = null, modSigSrc = '', modSigP = null, modWSeen = null, modWSeenTs = 0;
     function refreshModSig() {
       // WAIT for the S4 identity: `by` (my peer id) is INSIDE the signed
       // statement, and receivers only credit admin PRESENCE from it (admSeen).
@@ -7239,9 +7243,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // after identity arrives re-mints.
       if (!admKeys || !hasAdminRoom() || !myId) return;
       const src = JSON.stringify(modTable) + '|' + myId + '|' + Math.floor(Date.now() / 120000);
-      if (src === modSigSrc) return;
+      if (src === modSigSrc) return modSigP;
       modSigSrc = src;
-      admSigned('mod', { mod: modTable }).then((w) => { modSigW = w; });
+      modSigP = admSigned('mod', { mod: modTable }).then((w) => { modSigW = w; return w; });
+      return modSigP;
     }
     const gossipModW = () => (amAdmin ? modSigW : modWSeen); // non-admins re-gossip the admin's own signed table — the signature travels
     // In an admin room, group moderation is honored ONLY from a verified
