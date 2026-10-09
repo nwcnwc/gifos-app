@@ -13296,22 +13296,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // tore the audio-only stg claim in the gate. The husk-promotion case
         // it targeted (redun hunt hr2) belongs to the SENDER-side container-
         // identity campaign; see known-unfixed.sh FAILOVER-WAKE.)
-        // A PURE FAILBACK (primary alive and flowing, the preferred path woken
-        // beside it) leaves a working picture for a path that has not shown
-        // one yet. The videoWidth fallback is no evidence here: a relayed
-        // video path can carry bytes and hold a decoded size while it never
-        // produces a frame (no keyframe arrives), and swapping onto it turned
-        // a working Stage black. A video standby must decode two frames since
-        // wake before a pure failback moves the claim; a standby with no video
-        // track (an audio-only claim) keeps the old gate, as does any failover
-        // from a dead or dark primary, which has nothing to lose.
-        const pureFailback = !!(priLive && !fb.dark);
-        const stdVideo = !!(std.stream && std.stream.getVideoTracks && std.stream.getVideoTracks().length);
         const flowing = (fb.dark && priLive)
           ? (fb.d0 >= 0 && fb.stdFdec > fb.d0)
-          : (pureFailback && stdVideo)
-            ? (frames(std.el) >= fb.f0 + 2)
-            : (frames(std.el) > fb.f0 || (std.el && std.el.videoWidth > 0 && now - fb.wakeAt > 1500));
+          : (frames(std.el) > fb.f0 || (std.el && std.el.videoWidth > 0 && now - fb.wakeAt > 1500));
         // A dead-or-dark primary swaps the moment the standby flows; a live one
         // (pure failback) additionally waits out the settle window — hysteresis
         // (dark skips it: dark IS a failover, and MOS_SETTLE on lastSwitch
