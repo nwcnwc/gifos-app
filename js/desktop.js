@@ -4063,7 +4063,14 @@
   })();
 
   // ---------- cross-tab live sync ----------
-  function repaintFromStore() { dropRenderCaches(); load().then(render); }
+  // Two tabs on the same origin can be two different screen widths (a phone
+  // window next to a desktop one, or a tab opened before a resize and one
+  // opened after). Each keeps its OWN grid pitch for its whole life, so an
+  // icon another tab just placed lands at that tab's pitch, not this one's.
+  // Reread it into this tab's grid the same way start-up does, or the next
+  // local placement here measures free cells against positions that only
+  // make sense at the other tab's pitch and can double up with them.
+  function repaintFromStore() { dropRenderCaches(); load().then(destackForThisScreen).then(render); }
   // Two tabs on the same origin ARE the same desktop (one IndexedDB); keep the
   // views matched. Every local mutation announces on a BroadcastChannel and
   // other tabs re-render; a visibility refresh catches anything missed.
