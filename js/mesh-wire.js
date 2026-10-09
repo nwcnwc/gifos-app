@@ -258,6 +258,16 @@
         .then(([h, d]) => { rs = String(h || '').slice(0, 24); devTag = String(d || '').slice(0, 16) || net.randHex(8); })
         .catch(() => { devTag = devTag || net.randHex(8); });
     };
+    // ADDRESS ATTESTATION (the relay's signed statement of my address):
+    // my S4 key signs {v:1, act:'ipatt', sid, peer}, proving to the relay that
+    // I hold the key behind my peer id, so its whoami can carry a signed
+    // statement of the address it sees me connect from. Signed once per
+    // identity, before the first connect; a relay that does not attest
+    // ignores the two params.
+    let ipp = '';
+    const ipProofFor = () => (identity && net.edSign
+      ? net.edSign(identity.priv, JSON.stringify({ v: 1, act: 'ipatt', sid: opts.sid, peer: identity.peerId })).then((s) => { ipp = s || ''; }, () => {})
+      : Promise.resolve());
     const makeUrl = () => {
       const extra = opts.urlParams ? String(opts.urlParams() || '') : '';
       return relayBase + '/s/' + opts.sid
@@ -266,6 +276,7 @@
         + '&gk=' + encodeURIComponent(seat.genKey || myKey)
         + (rs ? '&rs=' + rs : '')
         + (/[&?]dev=/.test(extra) ? '' : '&dev=' + encodeURIComponent(devTag || net.randHex(8)))
+        + (ipp && identity ? '&pk=' + encodeURIComponent(identity.pubB64) + '&ipp=' + encodeURIComponent(ipp) : '')
         + extra;
     };
 
@@ -1146,10 +1157,10 @@
       Promise.all([ident.mint(), rsFor()]).then(([id]) => {
         if (stopped) return;
         identity = id; peer = id.peerId; node.peer = peer;
-        build();
+        return ipProofFor().then(() => { if (!stopped) build(); });
       }).catch(() => {});
     } else {
-      rsFor().then(() => { if (!stopped) build(); }, () => { if (!stopped) build(); });
+      Promise.all([rsFor(), ipProofFor()]).then(() => { if (!stopped) build(); }, () => { if (!stopped) build(); });
     }
     return node;
   }
