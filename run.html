@@ -1479,7 +1479,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="name-modal" role="dialog" aria-modal="true" id="who-modal" style="display:none">
     <div class="name-box" style="max-width:480px;text-align:left">
       <h3>Who is on this meeting</h3>
-      <p style="color:#889;font-size:.85rem">Because phones connect straight to each other here, everyone in the meeting can see everyone's internet address — nobody is anonymous. If someone does something seriously wrong, download this list and include it when you report them to law enforcement.</p>
+      <p style="color:#889;font-size:.85rem">Because phones connect straight to each other here, everyone in the meeting can see everyone's internet address — nobody is anonymous. ✓ marks an address the GifOS relay verified or this device saw directly; anything else is only what that person's device reported. People who left stay on the list. If someone does something seriously wrong, download this list and include it when you report them to law enforcement.</p>
       <div id="who-list"></div>
       <div style="display:flex;gap:.5rem;justify-content:center;margin-top:.8rem">
         <button id="who-dl">Download this list</button>
@@ -2388,6 +2388,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // encrypted under the room key, so the relay routes opaque peer ids over
       // a roster whose identity fields it cannot read.
       const payload = { kind: 'status', s: myStatus, conns: myConns(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined };
+      // The relay-signed address never changes, so it rides only the
+      // first three beats and then one every 30 s — about 300 bytes, kept off
+      // the other beats.
+      if (myIpAtt && (ipaSends < 3 || Date.now() - ipaSentAt >= 30000)) { payload.ipa = myIpAtt; ipaSends++; ipaSentAt = Date.now(); }
       // The mod table's authority is its SIGNATURE now (§9) — an admin's
       // heartbeat rides the same free DC path as everyone else's; receivers
       // verify the proof, not the transport.
@@ -6091,6 +6095,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (msg.name && p) { const nm = String(msg.name).slice(0, 40); p.name = nm; p.label.textContent = nm; p.avatar.textContent = nameInitial(nm); }
       if (msg.name) rosterNames[from] = String(msg.name).slice(0, 40);
       if (msg.ip) ipsOf[from] = String(msg.ip).slice(0, 64);
+      whoHeard(from, msg);
       if (p) p.lastHeard = Date.now();
       if (msg.st) { takeStatus(from, msg.st); scheduleRoomReact(); } // coalesced: one pass per window, not per offer/answer
       // Group moderation: signature-verified in admin rooms (§9), open in
@@ -6357,6 +6362,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (!taken) for (const k in devOf) if (k !== from && devOf[k] === dv) { taken = true; break; }
           if (!taken) devOf[from] = dv;
         }
+        whoHeard(from, msg);
         const sp = peers.get(from);
         if (sp) {
           sp.lastHeard = Date.now();
@@ -6566,6 +6572,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let occPrevMyCk = null;       // my own seat then (a move rebuilds occ wholesale)
     function confirmGone(pid, why) {
       if (!pid || pid === myId || meshGone.has(pid)) return;
+      whoGone(pid); // the Who log keeps them, with what is about to be forgotten
       meshGone.set(pid, Date.now());
       { const s = meshSeat(); meshGoneTick.set(pid, s && typeof s.TICK === 'number' ? s.TICK : -1); }
       occVanish.delete(pid);
@@ -7150,6 +7157,101 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let meshBootGen = 0;
     let ipsOf = {};                          // peer -> network address, learned from SEALED gossip (never the relay roster)
     let myIp = '';                           // my own address — the relay tells me privately (whoami); I seal it to peers
+    let myIpAtt = null, myIpAttV = null;     // the relay's SIGNED statement of my address (whoami.att) and its verified reading
+    let ipaSentAt = 0, ipaSends = 0;         // it rides my status on the first beats, then every 30 s (it never changes)
+    // THE WHO LOG (the "Who" panel). Everyone
+    // this page has heard from in this meeting, KEPT AFTER THEY LEAVE, so the
+    // list someone downloads to report abuse still names whoever left first.
+    // Three kinds of address, never mixed up:
+    //   ip   — what the person's own device REPORTED (a modified client can
+    //          claim anything, including an innocent person's address);
+    //   att  — what the RELAY saw them connect from, in a statement it signed
+    //          for their peer id; verified against relay-config.js keys, and
+    //          only ever accepted from that same peer, so it cannot be worn
+    //          by anyone else;
+    //   seen — what THIS phone saw at the far end of a direct connection,
+    //          with port and times (no TURN: a link is direct or absent).
+    // It lives only in this page and is capped.
+    const whoLog = new Map();
+    const WHO_LOG_CAP = 2000;
+    const whoStartedAt = Date.now();
+    function whoEntry(pid) {
+      let e = whoLog.get(pid);
+      if (!e) {
+        if (!pid || pid === myId || whoLog.size >= WHO_LOG_CAP) return null;
+        e = { name: '', ip: '', dev: '', att: null, seen: [], first: Date.now(), last: Date.now() };
+        whoLog.set(pid, e);
+      }
+      return e;
+    }
+    // A status or offer from `pid` was heard: refresh its name, reported
+    // address, device tag and last-heard time, and check any signed address.
+    function whoHeard(pid, msg) {
+      const e = whoEntry(pid); if (!e) return;
+      e.last = Date.now();
+      if (msg && msg.name) e.name = String(msg.name).slice(0, 40);
+      if (msg && msg.ip) e.ip = String(msg.ip).slice(0, 64);
+      if (devOf[pid]) e.dev = devOf[pid];
+      if (msg && msg.ipa) verifyIpAtt(pid, msg.ipa).then((v) => { if (v) { const e2 = whoEntry(pid); if (e2) { e2.att = v; whoRefresh(); } } });
+    }
+    // A departure: stamp what is about to be forgotten elsewhere.
+    function whoGone(pid) {
+      const e = whoLog.get(pid); if (!e) return;
+      e.last = Date.now(); e.left = true;
+      if (rosterNames[pid]) e.name = rosterNames[pid];
+      if (devOf[pid]) e.dev = devOf[pid];
+      if (ipsOf[pid]) e.ip = ipsOf[pid];
+    }
+    // A relay statement {sp, sig} about `pid`'s address. Accepted only when it
+    // names THIS peer, is signed by a key relay-config.js trusts, and that
+    // key's id matches its bytes. One check per distinct signature.
+    const ipaChecked = new Map();
+    function verifyIpAtt(pid, a) {
+      if (!a || typeof a.sp !== 'string' || typeof a.sig !== 'string' || a.sp.length > 512 || a.sig.length > 128) return Promise.resolve(null);
+      const ck = pid + '|' + a.sig;
+      let pr = ipaChecked.get(ck);
+      if (!pr) {
+        pr = (async () => {
+          let o; try { o = JSON.parse(a.sp); } catch (e) { return null; }
+          if (!o || o.v !== 1 || o.act !== 'ip' || o.peer !== pid || typeof o.ip !== 'string' || !o.ip || typeof o.kid !== 'string') return null;
+          const keys = window.GIFOS_RELAY_ATTEST_KEYS || {};
+          const pub = Object.prototype.hasOwnProperty.call(keys, o.kid) ? keys[o.kid] : null;
+          if (!pub) return null;
+          try { if ((await net.keyId(pub)).slice(0, 16) !== o.kid) return null; } catch (e) { return null; }
+          if (!(await net.edVerify(pub, a.sig, a.sp))) return null;
+          return { ip: o.ip.slice(0, 64), ts: +o.ts || 0, sid: String(o.sid || ''), kid: o.kid, sp: a.sp, sig: a.sig };
+        })().catch(() => null);
+        if (ipaChecked.size > 4096) ipaChecked.clear();
+        ipaChecked.set(ck, pr);
+      }
+      return pr;
+    }
+    // What this phone SAW: the far end of each live direct connection's
+    // selected candidate pair. A modified client cannot change it; only a VPN
+    // or proxy can stand in front of it. A 'host' candidate is a shared local
+    // network. An address change (a phone moving networks) starts a new entry.
+    function whoObserve() {
+      const jobs = [];
+      for (const [pid, p] of peers) {
+        if (!p || !p.pc || !p.connected || pid === myId || typeof p.pc.getStats !== 'function') continue;
+        jobs.push(p.pc.getStats().then((stats) => {
+          let pair = null;
+          stats.forEach((r) => { if (r.type === 'transport' && r.selectedCandidatePairId && !pair) pair = stats.get(r.selectedCandidatePairId) || null; });
+          if (!pair) stats.forEach((r) => { if (!pair && r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded' && r.selected !== false) pair = r; });
+          const c = pair && stats.get(pair.remoteCandidateId);
+          const addr = c && (c.address || c.ip);
+          if (!addr) return;
+          const e = whoEntry(pid); if (!e) return;
+          const now = Date.now(), port = c.port | 0;
+          const cur = e.seen[e.seen.length - 1];
+          if (cur && cur.addr === addr && cur.port === port) cur.last = now;
+          else { e.seen.push({ addr: String(addr).slice(0, 64), port, proto: String(c.protocol || ''), type: String(c.candidateType || ''), first: now, last: now }); if (e.seen.length > 8) e.seen.shift(); }
+        }).catch(() => {}));
+      }
+      return Promise.all(jobs);
+    }
+    setInterval(() => { if (peers.size) whoObserve(); }, 15000);
+    let whoRefresh = () => {};               // set by the Who panel: repaint it if open
     let myDevHash = '';                      // my device id, ROOM-SALTED before it ever reaches the relay
     const hasAdminRoom = () => !!av;
     const sha256hex = net.sha256hex;
@@ -7848,6 +7950,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // never stores it or puts it in anyone's roster.
         myIp = String(m.ip || '').slice(0, 64);
         if (myId) ipsOf[myId] = myIp;
+        // The relay's SIGNED statement of that address, when it
+        // gives one: it rides my status so peers can show my address as
+        // relay-verified, which nobody else can claim for me.
+        if (m.att && typeof m.att.sp === 'string' && typeof m.att.sig === 'string') {
+          const a = { sp: m.att.sp.slice(0, 512), sig: m.att.sig.slice(0, 128) };
+          myIpAtt = a; ipaSends = 0;
+          verifyIpAtt(myId, a).then((v) => { if (myIpAtt === a) { myIpAttV = v; whoRefresh(); } });
+        }
         broadcastStatus(); // push my sealed address out now
       }
       else if (m.t === 'roster') {
@@ -8804,26 +8914,57 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // network address, so GifOS makes it VISIBLE — nobody here is anonymous,
     // and a downloadable record deters the worst behavior.
     const whoModal = document.getElementById('who-modal');
+    // Everyone in the room now, then everyone who has left — each with the
+    // three kinds of address the Who log keeps (see whoLog).
     function whoRows() {
-      const rows = [{ pid: myId || '', name: myName() + ' (you)' }];
-      for (const pid of rosterIds) {
-        if (pid === myId) continue;
+      const now = Date.now();
+      const here = new Set(rosterIds);
+      const rows = [{ pid: myId || '', name: myName() + ' (you)', here: true, ip: myIp, att: myIpAttV, seen: [], first: whoStartedAt, last: now, dev: myDevHash || '' }];
+      const ids = new Set(rosterIds);
+      for (const pid of whoLog.keys()) ids.add(pid);
+      for (const pid of ids) {
+        if (!pid || pid === myId) continue;
+        const e = whoLog.get(pid) || { seen: [] };
         const p = peers.get(pid);
-        rows.push({ pid, name: (p && p.name) || rosterNames[pid] || '…' });
+        const on = here.has(pid);
+        rows.push({ pid, here: on, name: (p && p.name) || rosterNames[pid] || e.name || '\u2026',
+          ip: ipsOf[pid] || e.ip || '', att: e.att || null, seen: e.seen || [],
+          first: e.first || 0, last: on ? now : (e.last || 0), dev: devOf[pid] || e.dev || '' });
       }
-      return rows.map((r) => ({ name: r.name, ip: ipsOf[r.pid] || 'address unknown', dev: devOf[r.pid] || '', pid: r.pid }));
+      return rows.sort((a, b) => (b.here - a.here));
+    }
+    const utc = (ms) => (ms ? new Date(ms).toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC') : '');
+    const hhmm = (ms) => (ms ? new Date(ms).toISOString().slice(11, 16) + ' UTC' : '');
+    // A browser hides a LAN address behind a random '.local' name: that says
+    // "same local network" and nothing more.
+    const seenStr = (x) => (/\.local$/i.test(x.addr) ? 'same local network (address hidden by the browser)'
+      : (x.type === 'host' ? 'local network ' : '') + x.addr + (x.port ? ' port ' + x.port : ''));
+    function whoAddrLines(r) {
+      const out = [];
+      const sn = r.seen[r.seen.length - 1];
+      if (r.att) out.push('\u2713 ' + r.att.ip + ' \u2014 verified by the relay');
+      if (sn) out.push('\u2713 ' + seenStr(sn) + ' \u2014 seen directly');
+      if (r.ip && (!r.att || r.att.ip !== r.ip)) out.push(r.ip + ' \u2014 ' + (r.att ? 'their device claims this instead' : 'reported by their device, not verified'));
+      if (!out.length) out.push('address unknown');
+      if (!r.here) out.push('left ' + hhmm(r.last));
+      return out;
     }
     function showWhoModal() {
+      const opening = whoModal.style.display !== 'flex';
       const list = document.getElementById('who-list');
       list.innerHTML = '';
       for (const r of whoRows()) {
         const row = document.createElement('div'); row.className = 'brow';
+        if (!r.here) row.style.opacity = '.65';
         const nm = document.createElement('span'); nm.style.flex = '1'; nm.textContent = r.name;
-        const ip = document.createElement('span'); ip.style.color = '#889'; ip.textContent = r.ip;
+        const ip = document.createElement('span'); ip.style.color = '#889'; ip.style.textAlign = 'right';
+        whoAddrLines(r).forEach((t, i) => { if (i) ip.appendChild(document.createElement('br')); ip.appendChild(document.createTextNode(t)); });
         row.appendChild(nm); row.appendChild(ip); list.appendChild(row);
       }
       whoModal.style.display = 'flex';
+      if (opening) whoObserve().then(() => whoRefresh()); // what my links see right now, not 15 s ago
     }
+    whoRefresh = () => { if (whoModal.style.display === 'flex') showWhoModal(); };
     document.getElementById('who-close').onclick = () => { whoModal.style.display = 'none'; };
     whoModal.onclick = (e) => { if (e.target === whoModal) whoModal.style.display = 'none'; }; // tap the backdrop to dismiss
 
@@ -8890,10 +9031,42 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     applyRoomHelp();
     helpModal.onclick = (e) => { if (e.target === helpModal) helpModal.style.display = 'none'; }; // tap the backdrop to dismiss
-    document.getElementById('who-dl').onclick = () => {
+    // The download is meant to be handed to the police: every time in UTC,
+    // the port wherever one was seen (a provider sharing one address among
+    // many customers needs address, port AND time), and the relay's signed
+    // statements with the keys that check them.
+    document.getElementById('who-dl').onclick = async () => {
+      try { await whoObserve(); } catch (e) {}
       const stamp = new Date().toISOString();
-      const lines = ['GifOS meeting — who is here', 'Room: ' + room, 'Saved: ' + stamp, ''];
-      for (const r of whoRows()) lines.push(r.name + '\t' + r.ip + (r.dev ? '\tdevice ' + r.dev : '') + (r.pid ? '\tpeer ' + r.pid : ''));
+      const rows = whoRows();
+      const keys = window.GIFOS_RELAY_ATTEST_KEYS || {};
+      const lines = [
+        'GifOS meeting \u2014 who was here',
+        'Room: ' + room,
+        'Saved: ' + utc(Date.now()) + '   (every time in this file is UTC)',
+        'Page: ' + location.origin + location.pathname,
+        '',
+        'HOW TO READ THIS',
+        'Verified by the relay: the GifOS relay saw this person\'s device connect from this address at the time given, and signed a statement saying so (listed at the end). Their device cannot fake it or claim someone else\'s.',
+        'Seen directly: this device was connected straight to theirs and saw this address and port in use between the first and last times given.',
+        'Reported by their device: what their own device said. It is NOT verified and may be false.',
+        'An address may belong to a VPN, a workplace or a mobile network shared by many customers. To identify a subscriber, an internet provider usually needs the address, the port and the exact time; all three are given where known.',
+        '',
+        ['Name', 'Here', 'Relay-verified address', 'Relay saw at', 'Seen directly (address)', 'Port', 'Protocol', 'Connection', 'Seen from', 'Seen until', 'In meeting from', 'Last heard', 'Reported by their device', 'Device tag', 'Peer id'].join('\t'),
+      ];
+      for (const r of rows) {
+        const base = (x) => [r.name, r.here ? 'yes' : 'left', r.att ? r.att.ip : '', r.att ? utc(r.att.ts) : ''].concat(x, [utc(r.first), utc(r.last), r.ip || '', r.dev || '', r.pid || '']).join('\t');
+        if (!r.seen.length) lines.push(base(['', '', '', '', '', '']));
+        for (const x of r.seen) lines.push(base([x.addr, x.port || '', x.proto, x.type === 'host' ? 'local network' : (x.type || ''), utc(x.first), utc(x.last)]));
+      }
+      const signed = rows.filter((r) => r.att);
+      if (signed.length) {
+        lines.push('', 'SIGNED RELAY STATEMENTS (Ed25519; the signature covers the statement text exactly as written)');
+        lines.push(['Peer id', 'Statement', 'Signature (base64)'].join('\t'));
+        for (const r of signed) lines.push([r.pid, r.att.sp, r.att.sig].join('\t'));
+        lines.push('', 'RELAY PUBLIC KEYS (key id = first 16 hex of SHA-256 over the raw 32-byte key)');
+        for (const kid of Object.keys(keys)) lines.push(kid + '\t' + keys[kid]);
+      }
       const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/plain' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
