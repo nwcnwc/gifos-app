@@ -66,7 +66,8 @@ jobs:
             --exclude 'NOTICE' \
             --exclude '/apps/pdf-tables-ocr/pdf-tables-ocr.gif' \
             ./ dist/
-          gifs=$(find . -path ./.git -prune -o -name '*.gif' -print | wc -l)
+          # Count the source files, not the site copy just staged beside them.
+          gifs=$(find . \( -path ./.git -o -path ./dist \) -prune -o -name '*.gif' -print | wc -l)
           echo "gif files = $gifs"
           if [ "$gifs" -ne 204 ]; then
             echo "::error::expected 204 GIFs, found $gifs"
