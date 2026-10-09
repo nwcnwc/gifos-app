@@ -63,6 +63,7 @@
   // this settled window — far higher than the deep-tree confirmation (60),
   // because the rook has many paths to exhaust. A wrong ring-heal is the one act
   // that mints a divergent home; a held hole is a recoverable availability dip.
+  const HEAD_HEIR_WAIT = 40;  // ticks a row-mate past column 1 leaves a confirmed-dead head to its own healer (H2 backstop)
   const RING_HOLD = 220;     // test/sim/mesh.cpp RING_HOLD
   const OWNER_SILENT = 40;   // test/sim/mesh.cpp OWNER_SILENT — 5 unanswered 8-tick phone beats arms the ghost-target probe
   const LONE_GREET_AFTER = 16; // test/sim/mesh.cpp LONE_GREET_AFTER — two silent 8-tick beats before a lone Section-1 seat greets the door (loneGreet)
@@ -4219,6 +4220,24 @@
           // Defer to VERTICAL only when down-child OCC present (not stale childOf).
           const defer = this.translost.has(lk) && this.occGet(ck(topo.down(lft))) != null;
           if (!defer && this.ringConfirmDead(lft)) { if (this.occ.has(lk)) { this.occ.delete(lk); this.live.delete(lk); this.s1seen.delete(lk); this.kidful.delete(lk); } this.holeSince.delete(lk); this.heal(lft); }
+          // ...and the HEAD cell itself, when I hold the row's first-hand proof
+          // of its death and my left neighbour is alive. The backstop above
+          // heals only my immediate left; the head's own healer is {0,r,1},
+          // which may have sat down AFTER the head died (a mate admitted in
+          // its place) and never heard the head at all, so its probe-gated
+          // view of the head cell waits out the whole RING_HOLD horizon. The
+          // head stayed empty for ~110 s, and a live row's empty head is held
+          // for its healer, so every newcomer was refused until then. A seat
+          // that lost its own link to the head and whose probe went unanswered
+          // on every path (translostConfirmed, the D5 early verdict) asks the
+          // live row-mates to left-pack into it (heal: FINDLEAF to a live
+          // Section-1 seat; healTry paces it). Only after HEAD_HEIR_WAIT more
+          // ticks: a {0,r,1} that DID hear the head heals it first, and the
+          // left-pack cascade behind it must not be pre-empted.
+          if (this.coord.i >= 2) {
+            const hc = { pc: 0, r: this.coord.r, i: 0 }; const hk = ck(hc);
+            if (this.occGet(hk) == null && this.firstHandLive(lk) && this.occGet(ck(topo.down(hc))) == null && this.TICK - this.translost.get(hk) > EARLY_HOLD + HEAD_HEIR_WAIT && this.translostConfirmed(hk)) this.heal(hc);
+          }
         }
         // W7: keep column links live — re-ping any vacant column-mate
         if (TICK >= this.xlinkAt) { this.xlinkAt = TICK + 150 + (this.rng() * 100 | 0); for (const cm of topo.colMates(this.coord)) if (this.occGet(ck(cm)) == null) this.routeTo(cm, 1); }
