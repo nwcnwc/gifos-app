@@ -75,7 +75,12 @@
   // key) ride the next attempt automatically.
   function steadySocket(makeUrl, sockOpts) {
     const duty = sockOpts && typeof sockOpts.onDuty === 'function' ? sockOpts.onDuty : null;
-    const s = { onmessage: null, onstate: null, onopen: null, state: 'connecting', downSince: Date.now(), rejected: 0 };
+    const s = { onmessage: null, onstate: null, onopen: null, state: 'connecting', downSince: Date.now(), rejected: 0, closes: [] };
+    // s.closes: the last few close codes with their time, newest last, so the
+    // page's connection diagnostics can say WHY a socket went down (a policy
+    // cut, a crowd code, a plain network drop) instead of only that it did.
+    const CLOSES_KEPT = 32;
+    const onClose = sockOpts && typeof sockOpts.onClose === 'function' ? sockOpts.onClose : null;
     let ws = null, closed = false, attempt = 0, timer = null, slow = false, stableTimer = null, bornTimer = null, slowTimer = null;
     const queue = [];
     const STABLE_MS = 5000; // how long a socket must stay open before the backoff resets
@@ -142,6 +147,9 @@
         clearTimeout(stableTimer);
         ws = null;
         const code = ev && ev.code;
+        s.closes.push({ code: code == null ? 0 : code, at: Date.now() });
+        if (s.closes.length > CLOSES_KEPT) s.closes.shift();
+        if (onClose) { try { onClose(code == null ? 0 : code); } catch (e) {} }
         if (FATAL_CLOSES.indexOf(code) >= 0) s.rejected = code;
         else if (SLOW_CLOSES.indexOf(code) >= 0) slow = true;
         setState('down');
