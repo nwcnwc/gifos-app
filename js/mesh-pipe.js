@@ -106,6 +106,30 @@ const tapTs = new Map();  // srcId -> the tap's transformer (the SKR handle)
 const skrLast = new Map();// srcId -> last sendKeyFrameRequest ms (rate limit)
 const pipes = new Map();  // pipeId -> { writer, q, needKey, mime, tmplMime, wrote, dropped, swapErr, kfAsk, lastWriteAt, misreported }
 const QMAX = 40;          // frames of content buffered per pipe; overflow drops to next key (reference chains)
+// THE LAST KEY IS KEPT (2026-10-09). A still picture (a slide, a document)
+// produces no frames once it stops changing, and a WebRTC encoder answers a
+// keyframe request only with its next frame: no frame, no key, ever. So a
+// pipe that needed a key while its source was still starved for good: a
+// viewer attached after the picture settled, a parked copy woken, a route
+// repointed, a consumer that lost its first key. Measured: 27 PLIs at the
+// producer, keyFramesEncoded stuck at 1, wrote 0 on every pipe, no viewer
+// painting through the relay. The tap keeps a copy of the newest keyframe it
+// saw, and such a pipe is SEEDED with it at once, so the viewer paints the
+// current picture immediately. A fresh key is still asked for, and deltas
+// stay held until it lands (needKey), so a moving source never decodes
+// deltas against a stale reference; a still source has nothing further to
+// send until it changes, and its first change answers the ask with a key.
+const lastKey = new Map(); // srcId -> { bytes, mime }: the newest keyframe this tap saw
+function seedKey(srcId, pipeId) {
+  const k = lastKey.get(srcId), p = pipes.get(pipeId);
+  if (!k || !p || p.paused || !p.needKey || p.seeded) return false;
+  p.seeded = true; p.seedN = (p.seedN || 0) + 1;
+  if (!p.mime) p.mime = k.mime;
+  p.q.length = 0;
+  p.q.push({ bytes: k.bytes.slice(0), ts: 0, type: 'key' });
+  postMessage({ op: 'want', pipeId, key: true, q: 1 });
+  return true;
+}
 function pipeFor(id) {
   let p = pipes.get(id);
   if (!p) { p = { writer: null, q: [], needKey: true, mime: null, tmplMime: null, wrote: 0, dropped: 0, swapErr: 0, kfAsk: 0, lastWriteAt: 0, misreported: false }; pipes.set(id, p); }
@@ -169,17 +193,34 @@ function askKey(srcId, pipeId) {
 // silent forever — nva1 sent 105 PLIs into a husk pipe whose upstream was
 // never re-asked. A starving pipe re-asks on a timer until key content lands.
 setInterval(() => {
-  for (const [id, p] of pipes) if (!p.paused && p.needKey && p.srcId) askKey(p.srcId, id);
+  for (const [id, p] of pipes) if (!p.paused && p.needKey && p.srcId) { seedKey(p.srcId, id); askKey(p.srcId, id); }
 }, 2000);
+// A WANT CAN LAND ON NO ENCODER. The template mint is one requestFrame on a
+// captureStream(0) canvas, and a frame requested before the sender's line is
+// negotiated (a pipe is routed, then the offer travels) reaches no encoder:
+// it is simply gone, and a queue whose head is a seeded key, with a still
+// source adding nothing behind it, would wait for a template forever. So a
+// non-empty queue that has not been written for half a second asks again,
+// typed by its head; an extra delta template is dropped free at the idle
+// gate, an extra key template is one tiny resize.
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, p] of pipes) {
+    if (p.paused || !p.q.length || now - (p.lastWriteAt || 0) < 500 || now - (p.reWantAt || 0) < 500) continue;
+    p.reWantAt = now; p.reWant = (p.reWant || 0) + 1;
+    postMessage({ op: 'want', pipeId: id, key: p.q[0].type === 'key', q: p.q.length });
+  }
+}, 250);
 onmessage = (e) => {
   const m = e.data;
   if (m.op === 'route') {
     let s = taps.get(m.srcId); if (!s) { s = new Set(); taps.set(m.srcId, s); } s.add(m.pipeId);
-    const p = pipeFor(m.pipeId); p.srcId = m.srcId;
+    const p = pipeFor(m.pipeId); p.srcId = m.srcId; p.seeded = false;
+    seedKey(m.srcId, m.pipeId); // the last key paints the viewer now; the ask below brings a fresh one
     askKey(m.srcId, m.pipeId); // a fresh pipe is mid-GOP by construction — don't wait for the drop streak
   }
   else if (m.op === 'pause') { const p = pipeFor(m.pipeId); p.paused = true; p.q.length = 0; }
-  else if (m.op === 'unpause') { const p = pipeFor(m.pipeId); p.paused = false; p.needKey = true; p.nkDrop = 0; askKey(p.srcId, m.pipeId); }
+  else if (m.op === 'unpause') { const p = pipeFor(m.pipeId); p.paused = false; p.needKey = true; p.nkDrop = 0; p.seeded = false; seedKey(p.srcId, m.pipeId); askKey(p.srcId, m.pipeId); }
   else if (m.op === 'keykick') {
     // THE CONSUMER'S PLIs, SEEN FROM THE PAGE (frza18). A consumer that
     // missed a pipe's birth key can never recover through the carrier
@@ -190,8 +231,11 @@ onmessage = (e) => {
     // polls the sender's outbound pliCount instead and kicks: force a key
     // ask upstream so key CONTENT arrives, and the page mints the key
     // template to pair with it.
+    // The consumer lost its reference, so deltas are useless to it until a
+    // key: restart the GOP here and re-send the last key at once (a still
+    // source will never mint another one).
     const p = pipes.get(m.pipeId);
-    if (p && !p.paused && p.srcId) { p.kick = (p.kick || 0) + 1; askKey(p.srcId, m.pipeId); }
+    if (p && !p.paused && p.srcId) { p.kick = (p.kick || 0) + 1; p.q.length = 0; p.needKey = true; p.nkDrop = 0; p.seeded = false; seedKey(p.srcId, m.pipeId); askKey(p.srcId, m.pipeId); }
   }
   else if (m.op === 'reroute') {
     // CONTAINER IDENTITY (2026-08-08): a live pipe's SOURCE moved (the
@@ -202,13 +246,14 @@ onmessage = (e) => {
     releaseTap(taps, tapTs, skrLast, m.oldSrcId, m.pipeId);
     let s = taps.get(m.srcId); if (!s) { s = new Set(); taps.set(m.srcId, s); } s.add(m.pipeId);
     const p = pipeFor(m.pipeId);
-    p.srcId = m.srcId; p.q.length = 0; p.needKey = true; p.nkDrop = 0; p.mime = null;
+    p.srcId = m.srcId; p.q.length = 0; p.needKey = true; p.nkDrop = 0; p.mime = null; p.seeded = false;
+    seedKey(m.srcId, m.pipeId);
     askKey(m.srcId, m.pipeId);
   }
   else if (m.op === 'unroute') { releaseTap(taps, tapTs, skrLast, m.srcId, m.pipeId); pipes.delete(m.pipeId); }
   else if (m.op === 'stats') {
     const out = {};
-    for (const [id, p] of pipes) out[id] = { q: p.q.length, wrote: p.wrote, seen: p.seen || 0, tmpl: p.tmpl || 0, primed: p.primed || 0, dropped: p.dropped, swapErr: p.swapErr, kfAsk: p.kfAsk, kdrop: p.kdrop || 0, nkDrop: p.nkDrop || 0, skr: p.skr || 0, paused: !!p.paused, needKey: !!p.needKey, lastWriteAt: p.lastWriteAt, mime: p.mime, tmplMime: p.tmplMime, detached: p.detached || 0, lastBytes: p.lastBytes || 0 };
+    for (const [id, p] of pipes) out[id] = { q: p.q.length, wrote: p.wrote, seen: p.seen || 0, tmpl: p.tmpl || 0, primed: p.primed || 0, dropped: p.dropped, swapErr: p.swapErr, kfAsk: p.kfAsk, kdrop: p.kdrop || 0, nkDrop: p.nkDrop || 0, skr: p.skr || 0, seeded: p.seedN || 0, reWant: p.reWant || 0, paused: !!p.paused, needKey: !!p.needKey, lastWriteAt: p.lastWriteAt, mime: p.mime, tmplMime: p.tmplMime, detached: p.detached || 0, lastBytes: p.lastBytes || 0 };
     postMessage({ op: 'stats', seq: m.seq, stats: out });
   }
 };
@@ -220,20 +265,24 @@ onrtctransform = (e) => {
     // re-ask now that the SKR handle exists (attach-time, not first-frame: a
     // fully starved upstream delivers no frames to hang the re-ask on)
     const rt = taps.get(o.srcId);
-    if (rt) for (const pid of rt) { const rp = pipes.get(pid); if (rp && rp.needKey && !rp.paused) { askKey(o.srcId, pid); break; } }
+    if (rt) for (const pid of rt) { const rp = pipes.get(pid); if (rp && rp.needKey && !rp.paused) { seedKey(o.srcId, pid); askKey(o.srcId, pid); break; } }
   }
   const reader = t.readable.getReader();
   const writer = t.writable.getWriter();
   (async () => {
     for (;;) {
       const { value: frame, done } = await reader.read();
-      if (done) break;
+      if (done) { if (o.role === 'tap') lastKey.delete(o.srcId); break; }
       if (o.role === 'tap') {
         const routed = taps.get(o.srcId);
+        // COPY EARLY: the passthrough write below detaches frame.data. Every
+        // key is copied, routed or not: the last one seeds any pipe that
+        // needs a key while the source is still (seedKey).
+        let bytes = null, ts = 0, mime = null;
+        const isKey = frame.type === 'key';
+        if (isKey || (routed && routed.size)) { try { bytes = frame.data.slice(0); const md = frame.getMetadata(); ts = md.rtpTimestamp; mime = md.mimeType || null; } catch (err) {} }
+        if (isKey && bytes) lastKey.set(o.srcId, { bytes: bytes.slice(0), mime });
         if (routed && routed.size) {
-          // COPY EARLY: the passthrough write below detaches frame.data.
-          let bytes = null, ts = 0, mime = null;
-          try { bytes = frame.data.slice(0); const md = frame.getMetadata(); ts = md.rtpTimestamp; mime = md.mimeType || null; } catch (err) {}
           // ONE OWNER PER BUFFER (the stg freeze, root-caused 2026-08-10).
           // The copy above is made ONCE per content frame, and the swap below
           // hands it straight to the sender's sink — where Chromium DETACHES
@@ -279,9 +328,9 @@ onrtctransform = (e) => {
               // healthy flow, the initial one), so an unanswered ask is a
               // permanent freeze, not a delay.
               p.nkDrop = (p.nkDrop || 0) + 1;
-              if (p.nkDrop === 3 || p.nkDrop % 30 === 0) askKey(o.srcId, pid);
+              if (p.nkDrop === 3 || p.nkDrop % 30 === 0) { seedKey(o.srcId, pid); askKey(o.srcId, pid); }
             }
-            else { if (frame.type === 'key') { p.needKey = false; p.nkDrop = 0; }
+            else { if (frame.type === 'key') { p.needKey = false; p.nkDrop = 0; p.seeded = false; }
               const own = handedOut ? bytes.slice(0) : bytes; handedOut = true;
               p.q.push({ bytes: own, ts, type: frame.type });
               // DEMAND-MINT: one template per queued frame, typed by the head.
