@@ -1,3 +1,5 @@
 # Local probes ( _dev.html and friends ). Never published.
 _*
+# How long a published app file stays good.
+!_headers
 .DS_Store

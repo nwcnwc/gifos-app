@@ -64,7 +64,7 @@ jobs:
             --exclude 'dist' \
             --exclude 'README.md' \
             --exclude 'NOTICE' \
-            --exclude '*.gif' \
+            --exclude '/apps/pdf-tables-ocr/pdf-tables-ocr.gif' \
             ./ dist/
           gifs=$(find . -path ./.git -prune -o -name '*.gif' -print | wc -l)
           echo "gif files = $gifs"
@@ -72,8 +72,15 @@ jobs:
             echo "::error::expected 204 GIFs, found $gifs"
             exit 1
           fi
-          if find dist -type f -name '*.gif' | grep -q .; then
-            echo "::error::a GIF was staged for Pages"
+          # Every app file the site can hold is published with the site.
+          # One file is too large for a single site file, so it is left out.
+          if [ -f dist/apps/pdf-tables-ocr/pdf-tables-ocr.gif ]; then
+            echo "::error::the large app file was staged for the site"
+            exit 1
+          fi
+          staged=$(find dist -type f -name '*.gif' | wc -l)
+          if [ "$staged" -ne 203 ]; then
+            echo "::error::expected 203 app files on the site, found $staged"
             exit 1
           fi
           big=$(find dist -type f -size +25M -print)
@@ -221,8 +228,22 @@ jobs:
             echo "::error::preview build.js did not reach GIFOS_BUILD = ${BUILD}"
             exit 1
           fi
-          code=$(curl -sS -o /dev/null -w '%{http_code}' https://gifos-pq5.pages.dev/apps/2048/2048.gif)
-          if [ "$code" != 404 ]; then
-            echo "::error::GIF on Pages returned $code"
+          gif=0
+          for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
+            code=$(curl -sS -o /tmp/preview.gif -w '%{http_code}' "https://gifos-pq5.pages.dev/apps/2048/2048.gif?d=${GITHUB_SHA}") || code=000
+            magic=$(od -An -tx1 -N4 /tmp/preview.gif 2>/dev/null | tr -d ' \n' || true)
+            if [ "$code" = 200 ] && [ "$magic" = "47494638" ]; then
+              gif=1
+              break
+            fi
+            sleep 3
+          done
+          if [ "$gif" != 1 ]; then
+            echo "::error::the published app file returned $code"
+            exit 1
+          fi
+          big=$(curl -sS -o /dev/null -w '%{http_code}' "https://gifos-pq5.pages.dev/apps/pdf-tables-ocr/pdf-tables-ocr.gif?d=${GITHUB_SHA}")
+          if [ "$big" != 404 ]; then
+            echo "::error::the large app file was published with the site ($big)"
             exit 1
           fi
