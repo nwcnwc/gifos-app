@@ -5224,7 +5224,50 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return msg;
     };
     const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0 }; // test/inspection hook: where heartbeats + signaling + sponsor hops actually travel
-    const rxStats = { offer: 0, answer: 0, ice: 0, status: 0, offerRejected: 0, answerNoPeer: 0, negFail: 0, answerStale: 0 }; // reception mirror: what actually ARRIVED (and what was refused)
+    const rxStats = { offer: 0, answer: 0, ice: 0, status: 0, offerRejected: 0, answerNoPeer: 0, negFail: 0, answerStale: 0, relayAccepted: {}, relayDropped: {} }; // reception mirror: what actually ARRIVED (and what was refused); relayAccepted/relayDropped: sealed relay frames by kind, dispatched vs refused (relayFrameAllowed)
+    // THE RELAY CARRIES NO CONTENT. The relay is a door, not a transport: it
+    // routes sealed first-contact signaling (WebRTC offers, answers, ICE and
+    // the mesh entry handshake), the door verbs, and the sealed room-password
+    // grant — and nothing else, in either direction. No chat, transcripts,
+    // file listings, deletions or app frames ever ride it: content travels
+    // the pairs' DataChannels and the mesh's gossip, where every frame crosses
+    // a link its receiver chose. The relay cannot enforce this itself (every
+    // frame is sealed; it meters bytes, not meaning), so each page enforces it
+    // at both ends: a frame goes OUT over the relay only if this function
+    // allows its kind, and a frame that came IN over the relay is dispatched
+    // only if it does, else counted in rxStats.relayDropped and discarded.
+    // Without this, any member could address a sealed chat frame to every
+    // socketed participant and honest pages would display it, room-wide,
+    // without a single link — the relay's meters bound bytes, not reach.
+    // Returns the label the frame is counted under, or null to refuse. Never
+    // add a content kind here; the list is the rule.
+    const RELAY_SIGNAL_KINDS = new Set(['offer', 'answer', 'ice', 'status', 'mod', 'appstop']); // onSignal's kinds (status/mod/appstop: authority-bearing pulses, verified by signature)
+    const RELAY_ENVELOPE_KINDS = new Set(['fsig', 'fmesh', 'pwinfo', 'frag-ping']); // sponsor-forwarded signaling and mesh control, the password grant, a dial request
+    function relayFrameAllowed(inner) {
+      if (!inner || typeof inner !== 'object') return null;
+      if (inner.kind != null && inner.k != null) return null; // one dispatch per frame: a signaling kind and an app kind on the same frame is nobody's
+      if (inner.kind != null) return RELAY_SIGNAL_KINDS.has(inner.kind) ? 'kind:' + inner.kind : null;
+      if (typeof inner.k !== 'string' || !RELAY_ENVELOPE_KINDS.has(inner.k)) return null;
+      if (inner.k === 'fmesh') {
+        // A forwarded mesh frame is control (HELLO, CLAIM, PHONE, the entry
+        // handshake...) — except gossip, which is the room's carrier for app
+        // payloads. Gossip rides the relay only when its payload is a
+        // signaling pulse; a chat-class payload is content and is refused.
+        const t = inner.m && inner.m.t;
+        if (t === 'GSP' || t === 'GSPS') {
+          const pay = inner.m.m && inner.m.m.msg;
+          return (pay && pay.kind != null && RELAY_SIGNAL_KINDS.has(pay.kind)) ? 'fmesh:' + t + ':' + pay.kind : null;
+        }
+        return 'fmesh';
+      }
+      return inner.k;
+    }
+    function relayFrameLabel(inner) { // the name a refused frame is counted under
+      if (!inner || typeof inner !== 'object') return 'unopenable';
+      if (inner.kind != null) return 'kind:' + String(inner.kind).slice(0, 24);
+      if (inner.k === 'fmesh') { const t = inner.m && inner.m.t; const pay = inner.m && inner.m.m && inner.m.m.msg; return 'fmesh:' + String(t || '?').slice(0, 12) + (pay ? ':' + String(pay.kind != null ? pay.kind : pay.k).slice(0, 24) : ''); }
+      return String(inner.k != null ? inner.k : '?').slice(0, 24);
+    }
     function noteNegFail(kind, from, e) {
       rxStats.negFail++;
       if (typeof clog === 'function') clog('neg-fail ' + kind + ' ' + String(from).slice(0, 6) + ' ' + String(e && e.message || e).slice(0, 160));
@@ -5393,7 +5436,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // one case or the other.
       const gossip = envl.k === 'fmesh' && envl.m && (envl.m.t === 'GSP' || envl.m.t === 'GSPS');
       const self = relaySocketed.has(to) && !relayNoSockRecently(to) && !gossip;
-      if (doors.length || self) {
+      // THE RELAY CARRIES NO CONTENT: the door step seals the envelope onto
+      // the relay, so an envelope the receiving page would refuse from the
+      // relay (relayFrameAllowed: a chat-class gossip payload, a history
+      // frame) never takes it — the receiver would only count and drop it.
+      if ((doors.length || self) && relayFrameAllowed(envl)) {
         if (envl.k === 'fmesh') { // beat-retried control only — fsig (offers/answers/one-shot ICE) is never swallowed
           // One lane PER (target, frame type): PHONE fires before _gspRefan in
           // the same tick, so a single per-target lane would starve GSP (the
@@ -5461,8 +5508,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // the target. Beats a zombie geometric parent.
       const friends = myConns().filter((r) => r !== viaPid && r !== m.to && (connsOf.get(r) || []).includes(m.to)).sort();
       for (const fid of friends) if (handoff(peers.get(fid))) return;
-      // hopRelay only when the target may still answer on the relay.
-      if (m.ttl != null && relaySocketed.has(m.to)) {
+      // hopRelay only when the target may still answer on the relay — and
+      // only for a kind the relay may carry (relayFrameAllowed: no content).
+      if (m.ttl != null && relaySocketed.has(m.to) && relayFrameAllowed(envl)) {
         if (m.id) fwdSeenNote(fwdSeen, m.id);
         txStats.hopRelay++;
         txm(() => net.seal(roomE2E, envl).then((sealed) => net.sendChunked(sealed, (piece) => relaySendObj({ t: 'peer', to: m.to, msg: piece }))));
@@ -6533,13 +6581,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (u) add(s.occ.get(net.topo.ckey(u)));
       return ids;
     }
+    // The history frame is chat, transcript and file listings — content — so
+    // it never rides the relay (THE RELAY CARRIES NO CONTENT: a page refuses
+    // it from there). A channel-less newcomer gets it over the mesh's
+    // DataChannel hops (fhi), or on its first channel opening (wireDc).
     function deliverLateHi(pid, hi) {
-      const relayDown = !relayUp();
-      const notOnRelay = relayRosterScope === 'full' ? !relaySocketed.has(pid) : relayNoSockRecently(pid);
-      const sendRelay = () => { txm(() => net.seal(roomE2E, hi).then((env) => net.sendChunked(env, (piece) => relaySendObj({ t: 'peer', to: pid, msg: piece })))); };
-      if (!relayDown && !notOnRelay) { sendRelay(); return; }
-      if (sponsorSend({ k: 'fhi', from: myId, to: pid, tc: coordKeyOf(pid), id: myId + ':hi:' + (++fwdSeq), ttl: 12, m: hi })) return;
-      if (!relayDown) sendRelay();
+      sponsorSend({ k: 'fhi', from: myId, to: pid, tc: coordKeyOf(pid), id: myId + ':hi:' + (++fwdSeq), ttl: 12, m: hi });
     }
     // A DIAL REQUEST to the id-order initiator of a pair that is not forming:
     // no channel, nothing being negotiated on my side, and nothing heard from
@@ -8050,14 +8097,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       else if (m.t === 'peer' && m.msg) {
         // Sealed app frames that rode the relay because no DataChannel exists
         // for that pair yet (first-contact signaling, greeter WHOHOME replies).
+        // THE RELAY CARRIES NO CONTENT (relayFrameAllowed): only a listed kind
+        // is dispatched. The sender is any member the relay would route for,
+        // so a frame of any other kind — chat, transcript, file listing,
+        // deletion, app frame — is counted and dropped here, never shown and
+        // never handed on.
         const from = m.from;
         const piece = meshDefrag(m.msg, from);
         if (!piece) return;
         const take = (held) => rxm(() => net.open(roomE2E, piece).then((inner) => {
           if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
           if (!inner) return healStaleFrom(from, piece); // §LOCK: with the pair down, a stale member's frames arrive HERE — the relay path heals too
+          const label = relayFrameAllowed(inner);
+          if (!label) { const d = relayFrameLabel(inner); rxStats.relayDropped[d] = (rxStats.relayDropped[d] || 0) + 1; return; }
+          rxStats.relayAccepted[label] = (rxStats.relayAccepted[label] || 0) + 1;
           if (inner.kind) onSignal(from, inner, m.adm);
-          else if (inner.k) onRemote(from, inner);
+          else onRemote(from, inner);
         }));
         take(false);
       }
@@ -9797,23 +9852,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return [];
     }
 
-    // Chat-class fan-out: P0 the pair's DataChannel, P2 a sealed envelope over
-    // the relay's peer routing for anyone we have no channel to — so chat,
-    // transcripts, file METAS and tombstones reach even a fully P2P-blocked
-    // participant. File BODIES never do this (P0/P1 only, by budget policy).
+    // Chat-class fan-out: the pair's DataChannel to every in-reach peer, plus
+    // ONE mesh gossip flood (fanOut) that the room's links carry to everyone
+    // else — dedupe-by-id makes the tree loop-proof. Chat, transcripts, file
+    // METAS and tombstones travel this way and no other: THE RELAY CARRIES NO
+    // CONTENT, so a participant with no link to anyone hears nothing until
+    // its first link opens. File BODIES ride the DataChannels only (P0/P1, by
+    // budget policy).
     function sendAll(msg, opts) { // opts: a gossip scope (captionScope) — chat, files and deletions stay room-wide
-      // Chat-class frames span every directory I can see — my leaf AND the
-      // parent space when I'm uplinked. Delegates re-send what's new on the
-      // other side (forward-on-first-sight in the handlers), and dedupe-by-id
-      // makes the tree loop-proof: a frame crosses each edge at most once
-      // usefully. In-reach pairs ride their DataChannel; everyone else gets
-      // the sealed relay envelope — one gossip broadcast per session where
-      // the relay supports it (fanOut), per-peer envelopes where it doesn't.
       fanOut(msg, (p) => dcSend(p, msg), opts);
     }
-    // Chat-class frames that arrived over the RELAY (no DataChannel for this
-    // pair). Same dispatch as the DC path; anything that needs a channel to
-    // answer (file 'want'/'fc') is skipped by the null-dc guards in onDc.
+    // Frames that arrived without a DataChannel for this pair: mesh gossip,
+    // and the few relay-carried kinds relayFrameAllowed admits. Same dispatch
+    // as the DC path; anything that needs a channel to answer (file
+    // 'want'/'fc') is skipped by the null-dc guards in onDc.
     function onRemote(from, m) {
       const p = peers.get(from);
       onDc(p || { id: from, dc: null }, null, m);
@@ -17215,6 +17267,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       closeInvModal = openModal(invModal, () => { invModal.style.display = 'none'; });
     }
 
+    // The follow-me line an admin leaves behind when moving the meeting. It is
+    // a chat line like any other: the pairs' DataChannels and ONE gossip flood
+    // (sendAll), then a bounded wait for the channels to drain before this
+    // page leaves. THE RELAY CARRIES NO CONTENT — a targeted relay copy for
+    // members without an open channel is exactly what every page refuses from
+    // the relay, so none is sent; a member still forming its pair at this
+    // instant hears the line from the room's gossip replay, not from the door.
+    async function postMoveNotice(newLink) {
+      const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: 'I moved this meeting to a room I run — follow me:', link: newLink };
+      chat.set(m.id, m); sendAll({ k: 'chat', m }); renderChat();
+      await flushOutbound(600); // seals queued, channels drained, never longer than 600 ms
+    }
+
     // An admin room's session id is "<name>.<verifier>" — the verifier is a
     // password fingerprint, so an admin room is ALWAYS a different room from the
     // plain one no matter what it's called. The move (and any stranding) is
@@ -17248,22 +17313,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const newLink = pretty
         ? location.origin + '/meet/' + chosen + '/' + V
         : location.origin + MEET_PATH + '#v=' + chosen + '&av=' + V + (relay ? '&relay=' + encodeURIComponent(relay) : '');
-      if (postToChat && peers.size > 0) {
-        const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: 'I moved this meeting to a room I run — follow me:', link: newLink };
-        chat.set(m.id, m); sendAll({ k: 'chat', m }); renderChat();
-        // RELAY-ENVELOPE COPY: the fan-out above rides DC pairs + gossip, and
-        // this page LEAVES in 600ms — a member whose pair is young/rebuilding
-        // at this exact instant loses the link FOREVER (chat is an event;
-        // nothing re-mints it, and the minter is gone). A member the relay can still reach, and whose channel is not
-        // open, also gets a sealed targeted copy over the relay ({t:'peer'}
-        // → onRemote), which needs no pair at all. The id-dedup absorbs the
-        // double delivery on healthy pairs.
-        try {
-          const env = await net.seal(roomE2E, { k: 'chat', m });
-          for (const pid of relayCopyTargets()) net.sendChunked(env, (piece) => relaySendObj({ t: 'peer', to: pid, msg: piece }));
-        } catch (e) {}
-        await flushOutbound(600); // seals queued, channels drained, never longer than 600 ms
-      }
+      if (postToChat && peers.size > 0) await postMoveNotice(newLink);
       location.replace(MEET_PATH + '#v=' + chosen + '&av=' + V);
       location.reload(); // load the new admin room fresh — I arrive as its admin
     }
@@ -19064,6 +19114,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // SEND orders it knows it cannot issue (a non-admin setpw), so proving
       // the RELAY's own gate needs a path around the client's — this is it.
       relaySend: (o) => { if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' }; relaySendObj(o); return { ok: true }; },
+      // DEBUG: seal an app frame under the room key and hand it to the relay
+      // addressed to one peer — what any member can do with its own socket.
+      // Proves the receiving page's relay allowlist (relayFrameAllowed), which
+      // the client's own senders never exercise.
+      relayPeerSend: (to, frame) => { if (!DEBUG_ON) return Promise.resolve({ err: 'DEBUG=on not in URL' }); return net.seal(roomE2E, frame).then((env) => { net.sendChunked(env, (piece) => relaySendObj({ t: 'peer', to, msg: piece })); return { ok: true }; }); },
       micEnabled: () => !!(localStream && localStream.getAudioTracks()[0] && localStream.getAudioTracks()[0].enabled),
       chatTexts: () => Array.from(chat.values()).sort((a, b) => a.at - b.at).map((m) => m.text),
       chatLinks: () => Array.from(chat.values()).map((m) => m.link).filter(Boolean),

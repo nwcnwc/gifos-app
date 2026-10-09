@@ -507,6 +507,13 @@
       seat.recv(m);
     }
 
+    // The entry handshake, and nothing else, may arrive as a mesh frame over
+    // the relay: a knocker's WHOHOME / FIND / bare HOME (AT_THE_DOOR_ASKING_TO_
+    // BE_LET_IN) and a greeter's HOME / NOROOM / FINDACK / untagged PLACE
+    // (ANSWERING_SOMEONE_AT_THE_DOOR). Everything after the seat is taken —
+    // HELLO, CLAIM, PHONE, gossip — crosses a link.
+    const ENTRY_T = new Set(['WHOHOME', 'FIND', 'HOME', 'NOROOM', 'FINDACK', 'PLACE']);
+    let relayRefused = 0; // mesh frames of any other type that arrived over the relay (dropped)
     function makeSock() {
       sock = net.steadySocket(makeUrl);
       lastRelayRx = Date.now(); // fresh socket starts its idle clock now
@@ -527,6 +534,17 @@
           net.open(roomKey, m.msg).then((o) => {
             if (stopped) return;
             if (o && o.mw === 1 && o.m) {
+              // THE RELAY CARRIES ONLY THE ENTRY HANDSHAKE. The four senders
+              // below put exactly these frames on the relay; a mesh frame of
+              // any other type arriving here was put there by a member's own
+              // socket, around the mesh — a gossip frame would carry chat to
+              // every socketed seat without a link — and is counted and
+              // dropped, never ingested or forwarded (relayRefused).
+              if (!ENTRY_T.has(o.m.t) || (o.m.t === 'PLACE' && o.m.tag)) {
+                relayRefused++;
+                try { if (typeof window !== 'undefined') { const t = (window.__mwRx = window.__mwRx || {}); const k = 'relay-refused:' + String(o.m.t).slice(0, 16); t[k] = (t[k] || 0) + 1; } } catch (e) {} // DEBUG-TREE
+                return;
+              }
               // a THROW inside the seat's recv must be LOUD — the old shape
               // let it fall into the outer catch and masquerade as an
               // unopenable app frame, silently eating entry handshakes
@@ -1090,7 +1108,7 @@
       // "wrong password") until every greeter's E3 re-knock… which would also
       // have used the stale key, locking them out until a reload.
       setKey(k) { if (k) { if (k !== roomKey) { oldKeys.unshift(roomKey); if (oldKeys.length > 4) oldKeys.length = 4; keySetAt = Date.now(); } roomKey = k; sealedSoloRuns = 0; /* the counter means "sealed replies under MY CURRENT key" — evidence gathered under the old key must not fire a challenge past a re-key */ try { if (sock && sock.rejected) sock.kick(); } catch (e) {} /* credential change: the ONE sanctioned re-arm of a policy-rejected socket */ try { if (seat && seat.hasCoord && seat.state === 3 && seat.coord.pc === 0) env.knock(peer, seat.genKey || myKey); } catch (e) {} } },
-      stats() { return { peer, state: seat ? seat.state : 0, coord: (seat && seat.hasCoord) ? { pc: seat.coord.pc, r: seat.coord.r, i: seat.coord.i } : null, stranded: !!(seat && seat.stranded), tick: env.TICK }; },
+      stats() { return { peer, state: seat ? seat.state : 0, coord: (seat && seat.hasCoord) ? { pc: seat.coord.pc, r: seat.coord.r, i: seat.coord.i } : null, stranded: !!(seat && seat.stranded), tick: env.TICK, relayRefused }; },
       // Greeter-list forensics: ring of recent onGreeters outcomes (listLen /
       // open / founded / action). See greeterTrace push in onGreeters.
       greeterTrace() { return greeterTrace.slice(); },
