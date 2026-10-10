@@ -342,9 +342,25 @@ self.addEventListener('fetch', function (e) {
       var cache = await caches.open(CACHE);
       var cached = await cache.match(keyOf(url));
       if (cached) return cached;                   // immutable snapshot wins; no silent refresh
-      var fresh = await raceNetwork(req, cache, 4000, keyOf(url));
-      if (fresh) return fresh;
-      return degrade(req, url, cache);
+      // A page load still gives up after 4 s, so an offline device sees the
+      // "not installed" page instead of a hang. A script or stylesheet waits
+      // for the network: on a slow phone a late file is NOT a missing file,
+      // and degrade()'s empty stand-in would leave the page unstyled with a
+      // dead menu. Only a real network failure (offline) gets the stand-in.
+      if (req.mode === 'navigate') {
+        var fresh = await raceNetwork(req, cache, 4000, keyOf(url));
+        if (fresh) return fresh;
+        return degrade(req, url, cache);
+      }
+      try {
+        var res = await fetch(req);
+        if (res && res.ok && (res.type === 'basic' || res.type === 'default')) {
+          cache.put(keyOf(url), res.clone()).catch(function () {});
+        }
+        return res;
+      } catch (err) {
+        return degrade(req, url, cache);
+      }
     })());
     return;
   }
