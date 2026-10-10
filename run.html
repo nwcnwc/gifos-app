@@ -6407,7 +6407,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function learn(from, msg, p, adm) {
       if (msg.name && p) { const nm = String(msg.name).slice(0, 40); p.name = nm; p.label.textContent = nm; p.avatar.textContent = nameInitial(nm); }
       if (msg.name) rosterNames[from] = String(msg.name).slice(0, 40);
-      if (msg.ip) ipsOf[from] = String(msg.ip).slice(0, 64);
+      // An offer or answer proves nothing about who sent it (it may have come
+      // over the relay, or through another participant), so it never writes
+      // an address onto anyone's record: the Who list shows only addresses
+      // learned on a proven path (whoHeard). The next heartbeat carries it.
       whoHeard(from, msg, false);
       if (p) p.lastHeard = Date.now();
       if (msg.st) { takeStatus(from, msg.st); scheduleRoomReact(); } // coalesced: one pass per window, not per offer/answer
@@ -6662,11 +6665,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // (signature-verified in admin rooms — takeMod, §9)
         takeMod(from, msg);
         // Name AND network address travel the sealed pulse now, not the relay
-        // roster. Record them for EVERY sender — including cross-row peers we
-        // hold no media link to — whose tiles and the "who's here" panel read
-        // straight out of rosterNames / ipsOf.
+        // roster. The name is recorded for EVERY sender — including cross-row
+        // peers we hold no media link to — whose tiles and the "who's here"
+        // panel read straight out of rosterNames. The ADDRESS is evidence
+        // (the Who list can be handed to the police), so it is recorded only
+        // from a frame whose sender is proven: signed gossip, or a channel
+        // that passed its key check. A relay frame or an unauthenticated
+        // channel can carry anyone's id, and a status arriving that way
+        // updates nothing but the name and last-heard time.
         if (msg.name) rosterNames[from] = String(msg.name).slice(0, 40);
-        if (msg.ip) ipsOf[from] = String(msg.ip).slice(0, 64);
+        if (msg.ip && sigProven) ipsOf[from] = String(msg.ip).slice(0, 64);
         // A status may fill a GAP in devOf with its sender's own tag (votes and
         // the fold key on it) — never over a relay-attested tag, and never a
         // tag somebody ELSE already holds: one device, one seat.
@@ -9415,8 +9423,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const p = peers.get(pid);
         const on = here.has(pid);
         // direct: a live peer connection of my own to them right now.
+        // The reported address comes from the Who log alone (whoHeard writes
+        // it only from a proven sender); nothing read off an unproven frame
+        // reaches this list.
         rows.push({ pid, here: on, direct: on && !!(p && p.pc && p.connected), name: (p && p.name) || rosterNames[pid] || e.name || '\u2026',
-          ip: ipsOf[pid] || e.ip || '', att: e.att || null, seen: e.seen || [], forged: whoForgery(e), ejected: !!(e.ejected || ejected.has(pid)),
+          ip: e.ip || '', att: e.att || null, seen: e.seen || [], forged: whoForgery(e), ejected: !!(e.ejected || ejected.has(pid)),
           first: e.first || 0, last: on ? now : (e.last || 0), dev: devOf[pid] || e.dev || '' });
       }
       return rows;
