@@ -104,9 +104,12 @@
   //                   unreachable by anything (§FWD: the late-join deadlock's
   //                   terminal case), so R2's greeting scope reads "joining,
   //                   greeting, or not yet wired".
-  //   sendDC(to, m)   preferred path: deliver control object m to peer `to`
-  //                   over an existing DataChannel; return false if no channel
-  //                   (falls back to a sealed relay {t:'peer'})
+  //   sendDC(to, m)   the path: deliver control object m to peer `to` over
+  //                   an existing DataChannel (or a forward over the mesh's
+  //                   channels); return false if there is no path. Nothing
+  //                   falls back to the relay.
+  //   dial(to)        a knocker has an entry ask for `to` and no channel to
+  //                   it: open one (the app's bootstrap over the relay)
   //   onUpdate(node)  per-tick UI hook
   //   onLocked()      R6: greeters exist but none decrypt — wrong password
   //   onStranded()    R6: meeting is live but unreachable a full TTL
@@ -119,9 +122,10 @@
   //                   on HOME for the pick-one UI
   //   onGossip(src,m,ageMs) room-wide app traffic delivery (exact-once); ageMs = time held by relays
   //   onRelayMsg(m)   every relay frame the wire does not consume — 'whoami',
-  //                   'pw', 'ban', 'votes', 'joined', app-layer sealed 'peer'
-  //                   frames (incl. fragments) — so the app keeps its existing
-  //                   handlers while the wire OWNS the one socket.
+  //                   'pw', 'ban', 'votes', 'joined', and 'peer' frames of the
+  //                   law's shape (boot / ice / name / password, one fixed
+  //                   size; the rest are refused here) — so the app keeps its
+  //                   existing handlers while the wire OWNS the one socket.
   function createMeshNode(opts) {
     const tickMs = opts.tickMs || 500;
     const myKey = net.mintGenesisKey();
@@ -309,24 +313,16 @@
     //
     // If there is no peer path, the honest answer is SILENCE: the peer is not
     // reachable, healing must be allowed to see that, and the link layer must
-    // be fixed rather than bypassed. The relay carries the entry handshake
-    // (knock/greeters, and a channel-less newcomer reaching a greeter — R2)
-    // and NOTHING else, ever.
+    // be fixed rather than bypassed. The relay carries the door verbs
+    // (knock/greeters) and the bootstrap of a pair (run.html, the law) and
+    // NOTHING else, ever: no mesh frame, the entry handshake included.
     // ─────────────────────────────────────────────────────────────────────────
     function deliver(to, m) {
       if (typeof opts.excluded === 'function') { try { if (opts.excluded(String(to))) return; } catch (e) {} } // an excluded peer is told nothing either
       try { if (typeof window !== 'undefined') { const t = (window.__mwTx = window.__mwTx || {}); t[m.t] = (t[m.t] || 0) + 1; } } catch (e) {} // DEBUG-TREE: per-type deliver counter
-      // THE ENTRY HANDSHAKE PREFERS THE DOOR (behavior battery 14a,
-      // 2026-07-26): a knocker definitionally holds a relay socket and
-      // definitionally has no channels — the door is the CORRECT transport
-      // for entry frames by construction. Trying sendDC first handed entry
-      // ANSWERS to the sponsor maze, where a greeter whose only open DC was
-      // a half-open zombie toward a dark third party "handled" its HOME into
-      // the void — the knocker starved at a live door for exactly as long as
-      // the dark member stayed dark (and in production, until a seated
-      // member re-entered and cleared its zombie pairs). Both gates below
-      // are step-decided (never frame-type-decided), so internal frames
-      // still never touch the relay.
+      // THE ENTRY HANDSHAKE CROSSES A CHANNEL TOO. A knocker's ask waits for
+      // the bootstrap channel to its greeter (pendingEntry); a member's answer
+      // takes the channel the knocker opened, or a forward back to it.
       if (AT_THE_DOOR_ASKING_TO_BE_LET_IN(to, m)) return;
       if (ANSWERING_SOMEONE_AT_THE_DOOR(to, m)) return;
       if (opts.sendDC && opts.sendDC(to, m, peer)) return;   // DataChannel, else sponsor-forward through the mesh (peer: the sender, for in-process buses)
@@ -527,13 +523,14 @@
       seat.recv(m);
     }
 
-    // The entry handshake, and nothing else, may arrive as a mesh frame over
-    // the relay: a knocker's WHOHOME / FIND / bare HOME (AT_THE_DOOR_ASKING_TO_
-    // BE_LET_IN) and a greeter's HOME / NOROOM / FINDACK / untagged PLACE
-    // (ANSWERING_SOMEONE_AT_THE_DOOR). Everything after the seat is taken —
-    // HELLO, CLAIM, PHONE, gossip — crosses a link.
-    const ENTRY_T = new Set(['WHOHOME', 'FIND', 'HOME', 'NOROOM', 'FINDACK', 'PLACE']);
-    let relayRefused = 0; // mesh frames of any other type that arrived over the relay (dropped)
+    // THE RELAY CARRIES NO MESH FRAME. The entry handshake (WHOHOME / FIND /
+    // HOME / NOROOM / FINDACK / PLACE) crosses a DataChannel like every other
+    // mesh frame: a knocker first opens one to a greeter (opts.dial, the
+    // bootstrap the relay exists for) and asks over it. A relay frame that is
+    // not of the law's shape (gifos-net.js relayFrameOk: a listed type, one
+    // fixed size) is counted here and dropped before anyone opens it.
+    let relayRefused = 0; // relay frames refused by shape (dropped unopened)
+    let relayUnsent = 0;  // frames a caller tried to put on the relay that are not of the law's shape (never sent)
     // Every close code the relay socket saw in this node's life, newest last
     // (survives the socket being dropped and re-made). stats() reports it so
     // a page can tell a socket the relay CUT from one the network dropped.
@@ -553,30 +550,17 @@
         lastRelayRx = Date.now();
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
         if (m.t === 'greeters') { onGreeters(m); return; }
-        if (m.t === 'peer' && m.msg) {
-          // Mesh control frames ({mw:1}) are consumed here; anything else —
-          // app signaling, fragments, unopenable — is the app's to handle.
-          net.open(roomKey, m.msg).then((o) => {
-            if (stopped) return;
-            if (o && o.mw === 1 && o.m) {
-              // THE RELAY CARRIES ONLY THE ENTRY HANDSHAKE. The four senders
-              // below put exactly these frames on the relay; a mesh frame of
-              // any other type arriving here was put there by a member's own
-              // socket, around the mesh — a gossip frame would carry chat to
-              // every socketed seat without a link — and is counted and
-              // dropped, never ingested or forwarded (relayRefused).
-              if (!ENTRY_T.has(o.m.t) || (o.m.t === 'PLACE' && o.m.tag)) {
-                relayRefused++;
-                try { if (typeof window !== 'undefined') { const t = (window.__mwRx = window.__mwRx || {}); const k = 'relay-refused:' + String(o.m.t).slice(0, 16); t[k] = (t[k] || 0) + 1; } } catch (e) {} // DEBUG-TREE
-                return;
-              }
-              // a THROW inside the seat's recv must be LOUD — the old shape
-              // let it fall into the outer catch and masquerade as an
-              // unopenable app frame, silently eating entry handshakes
-              // (the relay's `from` is the socket's own claim: never the transport's word)
-              try { ingest(o.m, m.from, false); } catch (e) { try { console.error('[mesh] recv threw on', o.m && o.m.t, e); } catch (e2) {} }
-            } else if (opts.onRelayMsg) opts.onRelayMsg(m);
-          }).catch(() => { if (!stopped && opts.onRelayMsg) opts.onRelayMsg(m); });
+        if (m.t === 'peer') {
+          // THE SHAPE GATE: a listed type in the clear and one fixed sealed
+          // size (gifos-net.js relayFrameOk), or the frame is counted and
+          // dropped unopened. What passes is the app's: a bootstrap, a
+          // candidate, a name or a password grant (run.html onRelayPeer).
+          if (!net.relayFrameOk(m)) {
+            relayRefused++;
+            try { if (typeof window !== 'undefined') { const t = (window.__mwRx = window.__mwRx || {}); const k = 'relay-refused:' + String(m.ty == null ? 'untyped' : m.ty).slice(0, 16); t[k] = (t[k] || 0) + 1; } } catch (e) {} // DEBUG-TREE
+            return;
+          }
+          if (opts.onRelayMsg) opts.onRelayMsg(m);
           return;
         }
         // ({t:'nosock'} passes through to the app via onRelayMsg — the wire
@@ -609,8 +593,12 @@
     // seated seat routing internally, so the list quietly re-opened the relay
     // as a transport for anything wearing an entry type name.
     // ═══════════════════════════════════════════════════════════════════════
-    function sendRaw(obj) {   // PRIVATE — the four functions below only
+    function sendRaw(obj) {   // PRIVATE — the functions below only
       if (stopped) return;
+      // THE LAW, OUTBOUND: a member-to-member frame leaves this socket only
+      // in the law's shape (a listed type, one fixed sealed size). Anything
+      // else is counted and never sent, whoever asked.
+      if (obj && obj.t === 'peer' && !net.relayFrameOk(obj)) { relayUnsent++; return; }
       if (!sock) makeSock(); // recreate on demand (deep seats run socketless)
       // A POLICY-REJECTED socket (4000 replaced / banned / voted off) stays
       // DOWN — steadySocket already refuses to reconnect it, but replacing
@@ -672,42 +660,57 @@
       if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift();
     }
 
-    // (3) ASK TO BE LET IN — I am an ENTRANT with no seat and no channels, so
-    // the relay carries my WHOHOME/FIND to the greeter I chose from the list.
-    // This is the ONLY outbound mesh traffic an unseated client may relay, and
-    // it stops the moment I am seated.
+    // (3) ASK TO BE LET IN — I am an ENTRANT with no seat. My WHOHOME / FIND
+    // to the greeter I chose from the list crosses a DataChannel, never the
+    // relay: with no channel to that greeter yet, the frame waits
+    // (pendingEntry, flushed every tick) while the app opens one with the
+    // bootstrap (opts.dial — the one thing the relay carries for a pair).
+    // A bare HOME is the one answer a knocker gives another knocker: "I am
+    // not seated either" (mesh.js doorRound); it waits the same way.
+    const pendingEntry = new Map(); // to|t -> { to, m, at }
+    const dialAt = new Map();       // to -> last dial request (throttle)
+    const ENTRY_WAIT_MS = 20000, DIAL_GAP_MS = 4000;
     function AT_THE_DOOR_ASKING_TO_BE_LET_IN(to, m) {
       if (iAmInsideTheRoom()) return false;             // I am inside — use the mesh
-      if (m.t !== 'WHOHOME' && m.t !== 'FIND' && !(m.t === 'HOME' && !m.roster)) return false;  // entry asks only — and a bare HOME, the one answer a knocker can give another knocker: "I am not seated either" (mesh.js doorRound)
-      net.seal(roomKey, { mw: 1, m }).then((b) => sendRaw({ t: 'peer', to, msg: b })).catch(() => {});
+      if (m.t !== 'WHOHOME' && m.t !== 'FIND' && !(m.t === 'HOME' && !m.roster)) return false;  // entry asks only
+      if (opts.sendDC && opts.sendDC(to, m, peer)) return true;
+      pendingEntry.set(to + '|' + m.t, { to, m, at: Date.now() });
+      askDial(to);
       return true;
     }
+    function askDial(to) {
+      const now = Date.now();
+      if (now - (dialAt.get(to) || 0) < DIAL_GAP_MS) return;
+      dialAt.set(to, now);
+      if (dialAt.size > 256) { for (const [k, at] of dialAt) if (now - at > 60000) dialAt.delete(k); }
+      try { if (typeof window !== 'undefined') { const t = (window.__mwTx = window.__mwTx || {}); t['dial'] = (t['dial'] || 0) + 1; } } catch (e) {} // DEBUG-TREE
+      if (opts.dial) { try { opts.dial(to); } catch (e) {} }
+    }
+    // Every tick: an entry ask whose channel has since opened leaves now; one
+    // still without a path after ENTRY_WAIT_MS is dropped (the seat re-asks).
+    function flushPendingEntry() {
+      if (!pendingEntry.size) return;
+      const now = Date.now();
+      for (const [k, e] of pendingEntry) {
+        if (now - e.at > ENTRY_WAIT_MS) { pendingEntry.delete(k); continue; }
+        if (opts.sendDC && opts.sendDC(e.to, e.m, peer)) pendingEntry.delete(k);
+        else askDial(e.to);
+      }
+    }
 
-    // (4) ANSWER SOMEONE AT THE DOOR — I am a greeter and the target is NOT in
-    // the room's occupancy, i.e. demonstrably still outside. Its introduction
-    // (HOME) or its seat (PLACE / NOROOM) has to reach it somehow, and it has no
-    // channels yet. Strictly bounded: seated targets never qualify, so this can
-    // never become a back channel between members.
+    // (4) ANSWER SOMEONE AT THE DOOR — I am a member and the target is still
+    // outside. Its introduction (HOME) or its seat (PLACE / NOROOM / FINDACK)
+    // crosses the channel the knocker opened to its greeter: mine if it
+    // knocked at me, else a forward over the mesh's channels back to that
+    // greeter (run.html sponsorSend). PLACE is dual-use — Q2 compaction (law
+    // T) re-seats an ALREADY SEATED leaf with tag==1 — and both forms travel
+    // the same way now, so no frame type is told apart here.
     function ANSWERING_SOMEONE_AT_THE_DOOR(to, m) {
       if (!iAmInsideTheRoom()) return false;            // only a member answers the door
-      // These three frames are ENTRY ANSWERS by construction — each exists only
-      // as the reply to someone who is not seated yet, so the step is implied by
-      // the frame rather than needing a separate test on the target.
-      //
-      // Do NOT test "is the target in my occupancy?" here, however obvious it
-      // looks: admit() records the newcomer in occ BEFORE it emits the PLACE
-      // that tells them, so such a test rejects the one frame that does the
-      // seating, and the room stops admitting anyone. Measured: it dropped the
-      // adversary drill to a single seated participant with everyone else alone.
-      //
-      // PLACE is dual-use — Q2 compaction (law T) re-seats an ALREADY SEATED
-      // leaf with tag==1, which is seat-to-seat and never entry, so it is
-      // excluded and must travel the mesh like everything else internal.
       const isEntryAnswer = m.t === 'HOME' || m.t === 'NOROOM' || m.t === 'FINDACK' || (m.t === 'PLACE' && !m.tag);
       if (!isEntryAnswer) return false;
       try { if (typeof window !== 'undefined') { const t = (window.__mwTx = window.__mwTx || {}); t['door:' + m.t] = (t['door:' + m.t] || 0) + 1; } } catch (e) {} // DEBUG-TREE
-      net.seal(roomKey, { mw: 1, m }).then((b) => sendRaw({ t: 'peer', to, msg: b })).catch(() => {});
-      return true;
+      return !!(opts.sendDC && opts.sendDC(to, m, peer));
     }
     function fireLocked() { if (!lockedFired) { lockedFired = true; if (opts.onLocked) opts.onLocked(); } }
 
@@ -970,6 +973,7 @@
           for (let i = 0; i < n && !stopped; i++) { env.TICK++; seat.tick(); }
         } else lastTickAt = 0;
         refreshPreLeave();
+        flushPendingEntry();
         if (seat.stranded && !strandedFired) { strandedFired = true; if (opts.onStranded) opts.onStranded(); }
         // Socket lifecycle: deep-seated ⇒ the relay is done with me; drop after a
         // grace (Section-1 seats and joiners keep theirs — knock traffic). An
@@ -1123,6 +1127,11 @@
       // relay is exactly how the last one crept in.
       RELAY_FIRST_CONTACT_SIGNALING(obj) { sendRaw(obj); },
       relaySend(obj) { sendRaw(obj); },   // legacy alias — callers should move to the named form
+      // A write that skips the law's outbound gate: what a modified page
+      // could do. Only a page running with DEBUG=on exposes it (run.html
+      // relayRawSendUnchecked), to prove the relay refuses such a frame
+      // when its switch is on.
+      RAW_SOCKET_SEND_FOR_TEST(obj) { if (stopped) return { err: 'stopped' }; if (!sock) makeSock(); if (sock.rejected) return { err: 'rejected' }; sock.send(obj); return { ok: true }; },
       relayUp() { return !!(sock && sock.state === 'up'); },
       // The network came back after a dark spell: read the door again now
       // (re-register as a door, or ask for the list), so a change made while
@@ -1135,7 +1144,7 @@
       // "wrong password") until every greeter's E3 re-knock… which would also
       // have used the stale key, locking them out until a reload.
       setKey(k) { if (k) { if (k !== roomKey) { oldKeys.unshift(roomKey); if (oldKeys.length > 4) oldKeys.length = 4; keySetAt = Date.now(); } roomKey = k; sealedSoloRuns = 0; /* the counter means "sealed replies under MY CURRENT key" — evidence gathered under the old key must not fire a challenge past a re-key */ try { if (sock && sock.rejected) sock.kick(); } catch (e) {} /* credential change: the ONE sanctioned re-arm of a policy-rejected socket */ try { if (seat && seat.hasCoord && seat.state === 3 && seat.coord.pc === 0) env.knock(peer, seat.genKey || myKey); } catch (e) {} } },
-      stats() { return { peer, state: seat ? seat.state : 0, coord: (seat && seat.hasCoord) ? { pc: seat.coord.pc, r: seat.coord.r, i: seat.coord.i } : null, stranded: !!(seat && seat.stranded), tick: env.TICK, relayRefused, closes: relayCloses.slice() }; },
+      stats() { return { peer, state: seat ? seat.state : 0, coord: (seat && seat.hasCoord) ? { pc: seat.coord.pc, r: seat.coord.r, i: seat.coord.i } : null, stranded: !!(seat && seat.stranded), tick: env.TICK, relayRefused, relayUnsent, pendingEntry: pendingEntry.size, closes: relayCloses.slice() }; },
       // Greeter-list forensics: ring of recent onGreeters outcomes (listLen /
       // open / founded / action). See greeterTrace push in onGreeters.
       greeterTrace() { return greeterTrace.slice(); },

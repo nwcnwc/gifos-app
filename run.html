@@ -2376,6 +2376,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const myConns = () => Array.from(peers).filter(([, p]) => p.connected).map(([pid]) => pid);
     const mySid = () => (localStream ? localStream.id : null);
     let pulseHalt = false; // test hook: simulates a throttled phone's silent pulse gaps
+    // My status pulse as one frame: what every beat carries, and what a pair
+    // gets the moment its channel opens (wireDc onopen).
+    const statusPayload = () => ({ kind: 'status', s: myStatus, conns: myConns(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined });
     function broadcastStatus(answer) {
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
@@ -2404,7 +2407,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // name AND my own network address (learned privately via whoami) go out
       // encrypted under the room key, so the relay routes opaque peer ids over
       // a roster whose identity fields it cannot read.
-      const payload = { kind: 'status', s: myStatus, conns: myConns(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined };
+      const payload = statusPayload();
       // The relay-signed address never changes, so it rides the first three
       // beats, the next beat after ANYONE new appears (so a newcomer can check
       // me at once, and a forger is caught by everyone it meets before they
@@ -5213,7 +5216,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const reach = typeof reachInfo === 'function' ? reachInfo() : null;
       const reachState = reach ? reach.state : null;
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
-      const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState]
+      const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
         : (n === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry')
         : displayCount() + ' in the meeting · ' + q.label) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
@@ -5393,50 +5396,102 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       f.state = reachStateOf(f);
       return f;
     }
-    const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0 }; // test/inspection hook: where heartbeats + signaling + sponsor hops actually travel
-    const rxStats = { offer: 0, answer: 0, ice: 0, status: 0, offerRejected: 0, answerNoPeer: 0, negFail: 0, answerStale: 0, relayAccepted: {}, relayDropped: {} }; // reception mirror: what actually ARRIVED (and what was refused); relayAccepted/relayDropped: sealed relay frames by kind, dispatched vs refused (relayFrameAllowed)
-    // THE RELAY CARRIES NO CONTENT. The relay is a door, not a transport: it
-    // routes sealed first-contact signaling (WebRTC offers, answers, ICE and
-    // the mesh entry handshake), the door verbs, and the sealed room-password
-    // grant — and nothing else, in either direction. No chat, transcripts,
-    // file listings, deletions or app frames ever ride it: content travels
-    // the pairs' DataChannels and the mesh's gossip, where every frame crosses
-    // a link its receiver chose. The relay cannot enforce this itself (every
-    // frame is sealed; it meters bytes, not meaning), so each page enforces it
-    // at both ends: a frame goes OUT over the relay only if this function
-    // allows its kind, and a frame that came IN over the relay is dispatched
-    // only if it does, else counted in rxStats.relayDropped and discarded.
-    // Without this, any member could address a sealed chat frame to every
-    // socketed participant and honest pages would display it, room-wide,
-    // without a single link — the relay's meters bound bytes, not reach.
+    const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0, relayBoot: 0, relayIce: 0, relayName: 0, relayPassword: 0, relayUnfit: 0 }; // test/inspection hook: where heartbeats + signaling + sponsor hops actually travel; relay*: frames put on the relay by type, relayUnfit: payloads that did not fit the relay's fixed size (never sent)
+    const rxStats = { offer: 0, answer: 0, ice: 0, status: 0, offerRejected: 0, answerNoPeer: 0, negFail: 0, answerStale: 0, relayAccepted: {}, relayDropped: {} }; // reception mirror: what actually ARRIVED (and what was refused); relayAccepted/relayDropped: relay frames by type, dispatched vs refused (relayFrameAllowed)
+    // THE RELAY LAW (gifos-net.js RELAY_TYPES; docs/meet-security.md §RELAY).
+    // The relay carries a fixed list of message types between members, each
+    // with its type in the clear and a sealed payload of ONE fixed size:
+    //   boot      the bootstrap of a pair: a DataChannel-only session
+    //             description reduced to ICE credentials + DTLS fingerprint
+    //   ice       one ICE candidate, or the end-of-candidates mark
+    //   name      the sender's screen name; also the dial request
+    //   password  the signed room-password grant
+    // Everything else is REJECTED: the wire refuses any other frame shape
+    // before it is opened (mesh-wire.js relayFrameOk), and this function
+    // refuses an opened payload whose kind is not the frame's type or whose
+    // fields are not the type's. The media session, the mesh (entry handshake
+    // included), chat, files, status, moderation, app frames: none of it
+    // rides the relay, in either direction. The relay itself enforces the same
+    // list and size when its switch is on (relay/README.md).
     // Returns the label the frame is counted under, or null to refuse. Never
-    // add a content kind here; the list is the rule.
-    const RELAY_SIGNAL_KINDS = new Set(['offer', 'answer', 'ice', 'status', 'mod', 'appstop']); // onSignal's kinds (status/mod/appstop: authority-bearing pulses, verified by signature)
-    const RELAY_ENVELOPE_KINDS = new Set(['fsig', 'fmesh', 'pwinfo', 'frag-ping']); // sponsor-forwarded signaling and mesh control, the password grant, a dial request
-    function relayFrameAllowed(inner) {
-      if (!inner || typeof inner !== 'object') return null;
-      if (inner.kind != null && inner.k != null) return null; // one dispatch per frame: a signaling kind and an app kind on the same frame is nobody's
-      if (inner.kind != null) return RELAY_SIGNAL_KINDS.has(inner.kind) ? 'kind:' + inner.kind : null;
-      if (typeof inner.k !== 'string' || !RELAY_ENVELOPE_KINDS.has(inner.k)) return null;
-      if (inner.k === 'fmesh') {
-        // A forwarded mesh frame is control (HELLO, CLAIM, PHONE, the entry
-        // handshake...) — never GOSSIP (GSP/GSPS), whatever it carries.
-        // Gossip is the room's carrier for chat, transcripts, file listings and
-        // deletions; it does not ride the relay at all, in either direction
-        // (sponsorSend and fwdOnward ask this same function before using it).
-        // A newcomer without a channel still gets status by the direct
-        // kind:'status' frame above.
-        const t = inner.m && inner.m.t;
-        if (t === 'GSP' || t === 'GSPS') return null;
-        return 'fmesh';
-      }
-      return inner.k;
+    // add a type here; the list is the law.
+    const RELAY_TYPES = new Set(net.RELAY_TYPES);
+    const RELAY_NAME_MAX = 40, RELAY_PW_MAX = 64;
+    function relayFrameAllowed(ty, inner) {
+      if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || inner.k !== ty || inner.kind != null) return null;
+      if (ty === 'boot') return net.bootOk(inner) ? ty : null;
+      if (ty === 'ice') return (inner.end === 1 && inner.c == null) || !!net.candOfIce(inner) ? ty : null;
+      if (ty === 'name') return typeof inner.n === 'string' && inner.n.length <= RELAY_NAME_MAX ? ty : null;
+      // password: the grant's fields, each bounded; the signature parts only together
+      if (typeof inner.pw !== 'string' || inner.pw.length > RELAY_PW_MAX || !Number.isInteger(inner.ep) || typeof inner.by !== 'string' || inner.by.length > 64) return null;
+      const signed = inner.sig != null || inner.pub != null || inner.ts != null;
+      if (signed && !(typeof inner.sig === 'string' && inner.sig.length <= 96 && typeof inner.pub === 'string' && inner.pub.length <= 48 && Number.isInteger(inner.ts))) return null;
+      return ty;
     }
-    function relayFrameLabel(inner) { // the name a refused frame is counted under
+    function relayFrameLabel(ty, inner) { // the name a refused frame is counted under
       if (!inner || typeof inner !== 'object') return 'unopenable';
-      if (inner.kind != null) return 'kind:' + String(inner.kind).slice(0, 24);
-      if (inner.k === 'fmesh') { const t = inner.m && inner.m.t; const pay = inner.m && inner.m.m && inner.m.m.msg; return 'fmesh:' + String(t || '?').slice(0, 12) + (pay ? ':' + String(pay.kind != null ? pay.kind : pay.k).slice(0, 24) : ''); }
-      return String(inner.k != null ? inner.k : '?').slice(0, 24);
+      return String(ty).slice(0, 16) + ':' + String(inner.k != null ? inner.k : (inner.kind != null ? 'kind=' + inner.kind : '?')).slice(0, 24);
+    }
+    // relaySendSealed(to, ty, obj, key): seal obj padded to the law's size
+    // and put it on the relay as a `ty` frame. A payload that does not fit is
+    // counted (txStats.relayUnfit) and never sent. Resolves true when sent.
+    const relayTxCount = { boot: 'relayBoot', ice: 'relayIce', name: 'relayName', password: 'relayPassword' };
+    function relaySendSealed(to, ty, obj, key) {
+      if (!RELAY_TYPES.has(ty) || !obj || obj.k !== ty) return Promise.resolve(false);
+      return txm(() => net.sealFixed(key || roomE2E, obj).then((env) => {
+        if (!env) { txStats.relayUnfit++; return false; }
+        txStats[relayTxCount[ty]]++;
+        relaySendObj({ t: 'peer', to, ty, msg: env });
+        return true;
+      }));
+    }
+    // The password grant as the relay carries it: the fields the receiver
+    // needs to rebuild the signed statement (admSigned's exact shape), never
+    // the statement itself. `by` is the grant's author (the admin's peer id),
+    // which any member replaying the grant (§LOCK healing) must carry.
+    function pwFrameOf(grant, byId) {
+      if (!grant || grant.k !== 'pwinfo') return null;
+      const f = { k: 'password', pw: String(grant.pw || ''), ep: grant.ep | 0, by: String(byId || '') };
+      if (grant.w && typeof grant.w === 'object') {
+        let o = null; try { o = JSON.parse(grant.w.sp); } catch (e) { return null; }
+        if (!o || o.act !== 'pwinfo') return null;
+        f.by = String(o.by || ''); f.ts = +o.ts; f.sig = String(grant.w.sig || ''); f.pub = String(grant.w.pub || '');
+      }
+      return f;
+    }
+    function grantOfPwFrame(f) {
+      const g = { k: 'pwinfo', pw: f.pw, by: rosterNames[f.by] || '', ep: f.ep };
+      if (f.sig != null) g.w = { sp: JSON.stringify({ act: 'pwinfo', ts: f.ts, room: roomKey(), by: f.by, pw: f.pw, ep: f.ep }), sig: f.sig, pub: f.pub };
+      return g;
+    }
+    // The people who tried to reach this page over the relay while no
+    // connection with them works (a bootstrap or a name frame): what the
+    // locked-out line names. pid -> { name, at }.
+    const reachTried = new Map();
+    function noteReachTried(pid, name) {
+      if (!pid || pid === myId) return;
+      const cur = reachTried.get(pid) || {};
+      reachTried.set(pid, { name: name || cur.name || '', at: Date.now() });
+      if (reachTried.size > 256) { const now = Date.now(); for (const [k, v] of reachTried) if (now - v.at > 120000) reachTried.delete(k); }
+    }
+    // Who tried to reach me and could not: a recent try, and no working pair
+    // with them now. Names from the name frames (or the roster), ids never.
+    function reachTriedNames() {
+      const now = Date.now(), out = [];
+      for (const [pid, v] of reachTried) {
+        if (now - v.at > 90000) continue;
+        const p = peers.get(pid);
+        if (p && (p.connected || p.relayed)) continue;
+        const nm = v.name || rosterNames[pid] || (p && p.name) || '';
+        if (nm && out.indexOf(nm) < 0) out.push(nm);
+      }
+      return out;
+    }
+    function reachTriedSentence() {
+      const names = reachTriedNames();
+      if (!names.length) return '';
+      const list = names.length === 1 ? names[0] : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+      return ' ' + list + ' tried to reach you but couldn’t.';
     }
     function noteNegFail(kind, from, e) {
       rxStats.negFail++;
@@ -5586,58 +5641,45 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // was the permanent late-join wedge (see doorPeers). fmesh stays single-
       // door — it is beat-retried at high volume and the fan would hose the
       // relay; a lost control beat costs one tick, not the handshake.
-      const doors = doorPeers(to, envl.tc);
-      // A target the relay can reach is its own door too. doorPeers lists only
-      // hops (never the target), so when every hop was dark the frame died
-      // while the relay held the target's socket (Faye back
-      // from 35 s dark, Jun the only other door and still dark; her answer,
-      // offers and HELLOs to Theo all went to Jun for 27 s). The envelope
-      // names its target, which takes it as if a door had handed it on.
-      // ...but never GOSSIP (GSP/GSPS, the mesh's re-fan). A direct copy of
-      // gossip reaches a knocker at the door, which still holds the previous
-      // key generation: the password case, a late joiner refused with a stale
-      // password and then given the new one, adopted the room's FIRST pwinfo
-      // grant (ep 1, the old password, flooded under the open key; her own
-      // epoch was 0) and never read the room again. The gossip copy is the
-      // likely carrier (not traced frame by frame): 2 of 2 red with gossip
-      // copied, 2 of 2 green without. The frames that rescue a lone head after
-      // a dark spell (answer, offers, HELLOs) keep their direct copy. Limiting
-      // the copy to seated targets or to a seated sender was tried and broke
-      // one case or the other.
-      const gossip = envl.k === 'fmesh' && envl.m && (envl.m.t === 'GSP' || envl.m.t === 'GSPS');
-      const self = relaySocketed.has(to) && !relayNoSockRecently(to) && !gossip;
-      // THE RELAY CARRIES NO CONTENT: the door step seals the envelope onto
-      // the relay, so an envelope the receiving page would refuse from the
-      // relay (relayFrameAllowed: a chat-class gossip payload, a history
-      // frame) never takes it — the receiver would only count and drop it.
-      if ((doors.length || self) && relayFrameAllowed(envl)) {
-        if (envl.k === 'fmesh') { // beat-retried control only — fsig (offers/answers/one-shot ICE) is never swallowed
-          // One lane PER (target, frame type): PHONE fires before _gspRefan in
-          // the same tick, so a single per-target lane would starve GSP (the
-          // status gossip that feeds the roster) forever.
-          const lane = to + '|' + ((envl.m && envl.m.t) || '');
-          const now = Date.now(), last = doorLast.get(lane) || 0;
-          if (now - last < 300) return true; // swallowed: the next beat re-mints it
-          doorLast.set(lane, now);
-          if (doorLast.size > 512) { for (const [k, at] of doorLast) if (now - at > 30000) doorLast.delete(k); }
-        }
-        // fsig fans to a few doors (handshake is one-shot; doors[0] alone was
-        // the permanent wedge when the geometric parent had a zombie link).
-        // HELLO/CLAIM are one-shot mesh announces that MUST land for the far
-        // side to learn us and re-open its relay socket (wired() is all-links);
-        // fan them to every door. PHONE and other fmesh stay single-door —
-        // beat-retried at high volume.
-        let nFan = 1;
-        if (envl.k === 'fsig') nFan = 3;
-        else if (envl.k === 'fmesh' && envl.m && (envl.m.t === 'HELLO' || envl.m.t === 'CLAIM')) nFan = Math.min(doors.length, 6); // wide enough to land past one dead-end greeter, never the whole pool per beat
-        const fan = (self ? [to] : []).concat(doors.slice(0, Math.min(nFan, doors.length)));
-        txStats.doorSig += fan.length;
-        for (const d of fan) {
-          txm(() => net.seal(roomE2E, envl).then((sealed) => net.sendChunked(sealed, (piece) => relaySendObj({ t: 'peer', to: d, msg: piece }))));
-        }
-        return true;
+      // 3) the path the target's own frames took to me (fwdCrumb): the
+      // channel that delivered an envelope or an entry ask from the target
+      // can carry the answer back toward it. This is how a member's PLACE /
+      // NOROOM / FINDACK / HOME reaches a knocker: back along the FIND's path
+      // to the greeter that holds the knocker's bootstrap channel.
+      const cp = crumbPeer(to);
+      if (cp) { dcSend(cp, envl); return true; }
+      // 4) one other live channel (lowest id): the frame enters the room's
+      // connected component, which has another chance to land a real last
+      // hop (fwdOnward's dedup and ttl bound the walk). Never the relay: an
+      // envelope is not one of the relay's types, whatever it carries.
+      if (envl.k === 'fmesh') { // beat-retried control only — fsig (offers/answers/one-shot ICE) is never swallowed
+        const lane = to + '|' + ((envl.m && envl.m.t) || '');
+        const now = Date.now(), last = doorLast.get(lane) || 0;
+        if (now - last < 300) return true; // swallowed: the next beat re-mints it
+        doorLast.set(lane, now);
+        if (doorLast.size > 512) { for (const [k, at] of doorLast) if (now - at > 30000) doorLast.delete(k); }
       }
+      const alts = [];
+      for (const [pid, p] of peers) { if (pid !== to && pid !== myId && p.connected && p.dc && p.dc.readyState === 'open') alts.push(pid); }
+      alts.sort();
+      if (alts.length) { txStats.doorSig++; dcSend(peers.get(alts[0]), envl); return true; }
       return false;
+    }
+    // fwdCrumb: pid -> { via, at }: the channel peer that last delivered a
+    // frame FROM pid (an fsig/fmesh/fhi envelope's origin, a FIND's newcomer,
+    // a WHOHOME's seeker). sponsorSend and fwdOnward prefer it for a frame
+    // TO pid, so an answer retraces the ask's path. 60 s, bounded.
+    const fwdCrumb = new Map();
+    function noteCrumb(pid, via) {
+      if (!pid || !via || pid === via || pid === myId) return;
+      fwdCrumb.set(String(pid), { via: String(via), at: Date.now() });
+      if (fwdCrumb.size > 1024) { const now = Date.now(); for (const [k, v] of fwdCrumb) if (now - v.at > 60000) fwdCrumb.delete(k); }
+    }
+    function crumbPeer(pid, notVia) {
+      const c = fwdCrumb.get(String(pid));
+      if (!c || Date.now() - c.at > 60000 || c.via === notVia) return null;
+      const p = peers.get(c.via);
+      return (p && p.connected && p.dc && p.dc.readyState === 'open') ? p : null;
     }
     const meshRxByPid = new Map(); // pid → last mesh-level receive (starve edge; survives peers-object churn)
     const tlFiredPid = new Set();  // pids whose current silence episode already fired the edge
@@ -5648,7 +5690,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // pass it one bounded step onward. Order:
     //   1) direct channel / geometric mesh next hop (nextHopDc)
     //   2) mutual-friend hop (open DC to someone who claims the target)
-    //   3) hopRelay — only if the target may still hold a relay socket
+    //   3) the crumb: the channel the target's own frames came in on
     //   4) LAST RESORT (socketless undeliverable): hand the envelope to ONE
     //      other open-DC peer (deterministic lowest id). Dedup + ttl keep the
     //      walk from flooding; the room's connected component then has another
@@ -5678,14 +5720,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // the target. Beats a zombie geometric parent.
       const friends = myConns().filter((r) => r !== viaPid && r !== m.to && (connsOf.get(r) || []).includes(m.to)).sort();
       for (const fid of friends) if (handoff(peers.get(fid))) return;
-      // hopRelay only when the target may still answer on the relay — and
-      // only for a kind the relay may carry (relayFrameAllowed: no content).
-      if (m.ttl != null && relaySocketed.has(m.to) && relayFrameAllowed(envl)) {
-        if (m.id) fwdSeenNote(fwdSeen, m.id);
-        txStats.hopRelay++;
-        txm(() => net.seal(roomE2E, envl).then((sealed) => net.sendChunked(sealed, (piece) => relaySendObj({ t: 'peer', to: m.to, msg: piece }))));
-        return;
-      }
+      // The crumb: the channel the target's own frames reached me on. Never
+      // the relay — an envelope is not one of its types.
+      const cp = crumbPeer(m.to, viaPid);
+      if (cp && handoff(cp)) return;
       // Last resort: one other live channel (lowest id). Dedup-on-handoff means
       // a greeter that cannot deliver no longer poisons a later ingress on a
       // good path (the multi-door same-id trap). A full fan here caused
@@ -5751,13 +5789,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // mod table — open rooms take anyone's word, admin rooms verify the
       // signed w — and the open pair channel is the one path that stays true
       // while the relay view of a churning peer goes stale.
-      if (msg.kind === 'status' || msg.kind === 'appstop') { // admin heartbeats too — their authority is the signature (§9), not the transport
+      if (msg.kind === 'status' || msg.kind === 'appstop' || msg.kind === 'mod') { // admin heartbeats too — their authority is the signature (§9), not the transport
         const pd = peers.get(to);
         if (pd && pd.dc && pd.dc.readyState === 'open') {
           const m2 = sigSansIce(to, msg);
           if (m2) { txStats.dcStatus++; dcSend(pd, { k: 'sig', msg: m2 }); }
           return;
         }
+        // No channel: a status or a mod table waits for one (wireDc sends
+        // both the moment a channel opens); an appstop takes the sponsor
+        // path over the mesh's channels. None of them is a relay type.
+        if (msg.kind !== 'appstop') return;
+        const m2 = sigSansIce(to, msg);
+        if (m2) { if (sponsorSend({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: myId + ':' + (++fwdSeq), ttl: 12, m: m2 })) txStats.fwdSig++; }
+        return;
       }
       // POST-JOIN SIGNALING ON THE PAIR'S OWN CHANNEL (docs/meet-security.md §FWD):
       // once a pair is connected, its negotiation traffic — renegotiation
@@ -5805,18 +5850,73 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // try the relay; its {t:'nosock'} answer marks the peer for the sponsor path.
       const notOnRelay = relayRosterScope === 'full' ? !relaySocketed.has(to) : relayNoSockRecently(to);
       const targetUnreachable = notOnRelay || !!(peers.get(to) || {}).altPath;
-      if ((relayDown || targetUnreachable) && msg.kind !== 'status') {
+      if (relayDown || targetUnreachable) {
         const m2 = sigSansIce(to, msg);
         if (!m2) return; // a blocked pair sends nothing on either path (fault injection)
         if (sponsorSend({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: myId + ':' + (++fwdSeq), ttl: 12, m: m2 })) { txStats.fwdSig++; return; }
       }
-      // A heartbeat is re-minted every tick — never queue a stale one on a down socket.
-      if (msg.kind === 'status') { if (!relayUp()) return; txStats.relayStatus++; }
       msg = sigSansIce(to, msg);
       if (!msg) return;
-      txm(() => net.seal(roomE2E, msg).then((env) =>
-        net.sendChunked(env, (piece) => relaySendObj({ t: 'peer', to, msg: piece }))));
+      relayBootSend(to, msg);
     };
+    // THE RELAY CARRIES ONLY THE BOOTSTRAP OF A PAIR (gifos-net.js, the law).
+    // An offer or answer goes out as its `boot` reduction — ICE credentials
+    // and DTLS fingerprint of a DataChannel-only description — with the
+    // sender's name beside an offer; a candidate batch goes out one `ice`
+    // frame per candidate, the end mark as its own. A description carrying
+    // media (bootOf returns null) is NEVER sent here: the dial path keeps
+    // the pc media-free until its channel is open (newPcFor / sendOffer),
+    // and media is negotiated over that channel (wireDc onopen).
+    let bootSeq = 0;
+    function relayBootSend(to, msg) {
+      if (msg.kind === 'offer' || msg.kind === 'answer') {
+        const b = net.bootOf(msg.sdp, ++bootSeq);
+        if (!b) { txStats.relayUnfit++; if (typeof clog === 'function') clog('relay: a description with media never leaves (' + msg.kind + ' to ' + String(to).slice(0, 6) + ')'); return; }
+        relaySendSealed(to, 'name', { k: 'name', n: String(myName()).slice(0, RELAY_NAME_MAX) }); // the name beside every bootstrap: both sides can say who tried to reach them
+        relaySendSealed(to, 'boot', b);
+        return;
+      }
+      if (msg.kind === 'ice') {
+        for (const c of iceCandsOf(msg)) { const f = net.iceOf(c); if (f) relaySendSealed(to, 'ice', f); else txStats.relayUnfit++; }
+        if (msg.end) relaySendSealed(to, 'ice', { k: 'ice', end: 1 });
+      }
+    }
+    // relayName(pid): my name to a socketed member — the dial request ("I am
+    // here, dial me": onRelayPeer dials back when it is the initiator and no
+    // pair is live), and the name the locked-out line shows them.
+    function relayName(pid) { return relaySendSealed(pid, 'name', { k: 'name', n: String(myName()).slice(0, RELAY_NAME_MAX) }); }
+    // onRelayPeer(from, ty, f): a relay frame of the law's shape, opened and
+    // checked (relayFrameAllowed). Dispatch by its type.
+    function onRelayPeer(from, ty, f) {
+      if (ty === 'boot') {
+        const desc = net.sdpOfBoot(f);
+        if (!desc) return;
+        const p0 = peers.get(from);
+        if (desc.type === 'offer' && !(p0 && (p0.connected || p0.relayed))) noteReachTried(from, '');
+        onSignal(from, { kind: desc.type, sdp: desc, ib: 1, boot: 1 });
+        return;
+      }
+      if (ty === 'ice') {
+        if (f.end === 1) { onSignal(from, { kind: 'ice', end: true }); return; }
+        const c = net.candOfIce(f);
+        if (c) onSignal(from, { kind: 'ice', candidate: c });
+        return;
+      }
+      if (ty === 'name') {
+        const nm = String(f.n || '').slice(0, RELAY_NAME_MAX);
+        if (nm) rosterNames[from] = nm;
+        const p = peers.get(from);
+        if (p && nm && p.name !== nm) { p.name = nm; if (p.label) p.label.textContent = nm; if (p.avatar) p.avatar.textContent = nameInitial(nm); }
+        if (!(p && (p.connected || p.relayed))) noteReachTried(from, nm);
+        if (typeof updateStatus === 'function') { try { updateStatus(); } catch (e) {} }
+        onDialRequest(p || { id: from, dc: null });
+        return;
+      }
+      if (ty === 'password') {
+        const g = grantOfPwFrame(f);
+        if (g) onRemote(from, g);
+      }
+    }
     // §LOCK GRANT HEALING (shared by the DC and relay receive paths): a frame
     // that opens only under the PREVIOUS key is a present member who missed
     // the rotation's grant flood — the recorded orphan. Reply with the
@@ -5855,11 +5955,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         staleHealAt.set(pid, now);
         if (typeof clog === 'function') clog('grant-heal ' + String(pid).slice(0, 6) + ' (prev-key frame)');
       pwLog('grant-heal→' + String(pid).slice(0, 6) + ' ep=' + pwEpoch);
-        txm(() => net.seal(prevRoomE2E, retainedGrant).then((env) => {
-          const pd = peers.get(pid);
-          if (pd && pd.dc && pd.dc.readyState === 'open') net.sendChunked(env, (piece, str) => { try { pd.dc.send(str); } catch (e) {} });
-          else net.sendChunked(env, (piece) => relaySendObj({ t: 'peer', to: pid, msg: piece }));
-        }));
+        const pd = peers.get(pid);
+        if (pd && pd.dc && pd.dc.readyState === 'open') txm(() => net.seal(prevRoomE2E, retainedGrant).then((env) => net.sendChunked(env, (piece, str) => { try { pd.dc.send(str); } catch (e) {} })));
+        else { const f = pwFrameOf(retainedGrant, myId); if (f) relaySendSealed(pid, 'password', f, prevRoomE2E); }
       });
     }
     // Sealed frame over this pair's DataChannel (chat, files, relay control).
@@ -5993,6 +6091,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { if (s && s.transportLost) s.transportLost(pid); } catch (e) {}
       if (typeof clog === 'function') clog('translost ' + String(pid).slice(0, 6) + ' ' + why);
     }
+    // enableMedia(p): put my camera and mic (or receive-only slots) on this
+    // pair's transport, once, after its channel is open. Returns true when
+    // anything was added (the caller renegotiates over the channel).
+    function enableMedia(p) {
+      if (!p || !p.pc || p.mediaOn) return false;
+      p.mediaOn = true;
+      const pc = p.pc, carryCam = camPeer(p.id) && !p.headless;
+      let added = false;
+      if (localStream && carryCam) {
+        const at = localStream.getAudioTracks()[0];
+        if (at) { p.mainA = pc.addTrack(at, localStream); added = true; }
+        // Send the blur-canvas track when any blur applies — never the raw camera.
+        const vt = sentVideoTrack();
+        if (vt) { p.mainV = pc.addTrack(vt, localStream); added = true; }
+        if (stageIds().includes(myId)) {
+          if (p.mainA) p.mainA.replaceTrack(null).catch(() => {});
+          if (p.mainV) p.mainV.replaceTrack(null).catch(() => {});
+        }
+      } else if (!localStream) { try { pc.addTransceiver('video', { direction: 'recvonly' }); pc.addTransceiver('audio', { direction: 'recvonly' }); added = true; } catch (e) {} }
+      return added;
+    }
     function newPcFor(p) {
       try { p.pc && p.pc.close(); } catch (e) {}
       // A rebuilt transport starts with NO senders: forget every composite role
@@ -6049,19 +6168,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // senders are PARKED at replaceTrack(null) the moment they're made; the
       // room sees and hears a stager through its 'stg:' aux feed alone. The
       // m-lines still negotiate, so stepping down is a pure replaceTrack.)
-      const carryCam = camPeer(p.id) && !p.headless;
       p.mainV = p.mainA = null; // MY main outbound senders (never aux) — refreshOutbound owns their tracks
-      if (localStream && carryCam) {
-        const at = localStream.getAudioTracks()[0];
-        if (at) p.mainA = pc.addTrack(at, localStream);
-        // Send the blur-canvas track when any blur applies — never the raw camera.
-        const vt = sentVideoTrack();
-        if (vt) p.mainV = pc.addTrack(vt, localStream);
-        if (stageIds().includes(myId)) {
-          if (p.mainA) p.mainA.replaceTrack(null).catch(() => {});
-          if (p.mainV) p.mainV.replaceTrack(null).catch(() => {});
-        }
-      } else if (!localStream) { try { pc.addTransceiver('video', { direction: 'recvonly' }); pc.addTransceiver('audio', { direction: 'recvonly' }); } catch (e) {} }
+      // A NEW TRANSPORT CARRIES NO MEDIA YET. Its first negotiation is the
+      // bootstrap: a DataChannel-only description, which is all the relay
+      // carries for a pair (the law, gifos-net.js bootOf). Camera, mic and
+      // the receive slots are added by enableMedia the moment the channel
+      // opens (wireDc onopen), and negotiated over that channel.
+      p.mediaOn = false;
       // chat + pinned files travel on a DataChannel — browser to browser only.
       // THE OFFERER CREATES IT (2026-08-02; moved into sendOffer). It used to
       // be created here for the id-order initiator only, which hard-wired the
@@ -6271,6 +6384,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // flight IS this pair's offer; a restart asked for meanwhile comes
       // round on the next sweep.
       if (p.offering) return;
+      // A DIAL WITH NO LIVE CHANNEL IS A BOOTSTRAP, and the relay carries
+      // only a DataChannel-only description: a transport that already
+      // carries media (its channel opened once and died) is rebuilt first,
+      // media-free, and dials afresh. Nothing is lost: no media flows on a
+      // pair whose channel is dead, and the fresh pair re-adds it on open.
+      const dcLive0 = p.dc && (p.dc.readyState === 'open' || p.dc.readyState === 'connecting');
+      if (!dcLive0 && p.mediaOn) { newPcFor(p); iceRestart = false; }
       // The OFFERER creates the DataChannel (whoever dials — id-initiator,
       // unwired newcomer, or a starved answerer-side rebuild), BEFORE
       // createOffer so the data m-line rides this offer. Idempotent: a
@@ -6579,6 +6699,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // DC past formation age gets a fresh pc to land on.
         if (p.pc && p.connected && !(p.dc && p.dc.readyState === 'open') && !p.meshRxAt && !p.dcRxAt
             && Date.now() - (p.rebuiltAt || p.bornAt) > 5000) newPcFor(p);
+        // A BOOTSTRAP OFFER (over the relay: a DataChannel-only description)
+        // lands on a media-free transport: a pc that already carries media
+        // had a channel that is now dead, and is rebuilt (sendOffer's rule,
+        // on the answering side).
+        if (msg.boot && p.pc && p.mediaOn && !(p.dc && p.dc.readyState === 'open')) newPcFor(p);
         drainPreIce(from, p); // after any rebuild, which clears pendingIce
         // p.connected is LOAD-BEARING in that gate: the wedge signature is
         // connected-WITHOUT-DC. A pair still in ICE 'connecting' receiving an
@@ -6817,7 +6942,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (p.pc && p.pc.signalingState !== 'stable') return;   // an offer is in flight one way or the other
       const now = Date.now(); if (now - (p.dialReqAt || 0) < 5000) return;
       p.dialReqAt = now;
-      try { sendSig(pid, { k: 'frag-ping' }); } catch (e) {}
+      try { relayName(pid); } catch (e) {}
+    }
+    // onDialRequest(p): a member sent me its name over the relay with no live
+    // pair between us — "I am here, dial me". If I am solo too, a room-keyed
+    // member asking to be dialed IS the fork evidence (fragRescue); and a
+    // member whose pair with me is NOT LIVE, solo or not, has no pair with me
+    // at all, so whatever pc I hold toward it faces one it has closed. The
+    // id-order initiator dials; a pair still forming (built under 5 s ago)
+    // is the dial the request asks for, and re-offering would restart it.
+    function onDialRequest(p) {
+      const pLive = p.connected && p.dc && p.dc.readyState === 'open';
+      if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive);
+      const forming = !pLive && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      if ((participantCount() <= 1 || !pLive) && !forming && iInitiate(p.id) && Date.now() - (p.fragDialAt || 0) > 5000) {
+        p.fragDialAt = Date.now();
+        if (!pLive && p.pc) newPcFor(p);
+        makePeer(p.id, null); sendOffer(p.id, false);
+      }
+    }
+    // bootDial(pid): the wire's dial hook — a knocker has an entry ask for a
+    // greeter and no channel to it. Open one: the bootstrap over the relay.
+    function bootDial(pid) {
+      if (!pid || pid === myId || (typeof isEjected === 'function' && isEjected(pid) === true)) return;
+      const p = peers.get(pid);
+      if (p && (p.connected || (p.dc && p.dc.readyState === 'open') || p.offering || (p.pc && p.pc.signalingState !== 'stable'))) return;
+      if (p && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') return; // forming
+      sendOffer(pid, false);
     }
     function ensureLink(pid, name) {
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return; // never link to a forger
@@ -6837,7 +6988,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // the offer rides the sanctioned first-contact signaling path.
         // Perfect negotiation (the glare rollback in onSignal) absorbs the
         // rare double-dial; id order governs everything after first wiring.
-        let anyDc = false; for (const q of peers.values()) if (q.dc && q.dc.readyState === 'open') { anyDc = true; break; }
+        // (A bootstrap channel to a greeter that is not one of my links does
+        // not count: it is the door I came in by, not a wired seat.)
+        let anyDc = false; for (const q of peers.values()) if (q.dc && q.dc.readyState === 'open' && linkTo(q.id)) { anyDc = true; break; }
         if (iInitiate(pid) || !anyDc) { sendOffer(pid, false); p = peers.get(pid); }
         else {
           p = makePeer(pid, name); // their offer is on its way...
@@ -6853,8 +7006,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           askDial(pid, p);
         }
         // Newcomers can't trust gossip for moderation in admin rooms — an
-        // admin hands them the table over the relay's stamped path.
-        if (amAdmin) sendSig(pid, { kind: 'mod', mod: modTable, modw: gossipModW() });
+        // admin hands them the signed table the moment their channel opens
+        // (wireDc onopen); the relay carries no mod table.
         // A newcomer still channel-less after a grace gets ONE hi. The open
         // channel (wireDc) is the primary path. This timer is only the case
         // where the channel never opens, and it waits long enough that a slow
@@ -7433,15 +7586,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // 3/s once those beats are counted too.
     const RELAY_COPY_BURST = 480;
     const RELAY_COPY_GAP_MS = 500;
-    function paceRelayCopies(pids, env) {
+    // paceRelayCopies(pids, grant, key): the password grant as a `password`
+    // frame to each socketed member, sealed per target under `key` (the
+    // generation they still read), paced under the relay's meter.
+    function paceRelayCopies(pids, grant, key) {
       const ids = [];
       for (const pid of pids) if (pid && pid !== myId) ids.push(pid);
+      const f = pwFrameOf(grant, myId);
+      if (!f) return;
       let i = 0;
       const sendSome = (n) => {
         let sent = 0;
         while (sent < n && i < ids.length && !leaving) {
           const pid = ids[i++];
-          net.sendChunked(env, (piece) => relaySendObj({ t: 'peer', to: pid, msg: piece }));
+          relaySendSealed(pid, 'password', f, key);
           sent++;
         }
         if (i < ids.length && !leaving) setTimeout(() => sendSome(1), RELAY_COPY_GAP_MS);
@@ -8158,7 +8316,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       fragPingId = id; fragPingAt = Date.now();
       if (typeof clog === 'function') clog('frag-rescue ' + String(id).slice(0, 6) + (iInitiate(id) ? ' (dialing)' : ' (requesting dial)'));
       if (iInitiate(id)) { makePeer(id, null); sendOffer(id, false); }
-      else sendSig(id, { k: 'frag-ping' });
+      else relayName(id);
       // RETRY while still alone (caught live: one dial fired at the fork's
       // messiest moment — the target mid-requeue — then the door's evidence
       // went unreadable and no second dial ever came; 95s of solitude with a
@@ -8214,6 +8372,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         sendDC: meshSendDC,
+        dial: bootDial, // a knocker's entry ask has no channel to its greeter: open one (the bootstrap over the relay)
         // Deep-socket drop waits until at least one DataChannel is open (§FWD:
         // an unwired deep newcomer must stay relay-reachable or inbound
         // signaling answers die — the late-join deadlock).
@@ -8394,7 +8553,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             for (const id of all) {
               if (!id || id === myId) continue;
               const q = peers.get(id); if (q && q.connected) continue;
-              try { if (iInitiate(id)) { makePeer(id, null); sendOffer(id, false); } else sendSig(id, { k: 'frag-ping' }); dialed++; } catch (e) {}
+              try { if (iInitiate(id)) { makePeer(id, null); sendOffer(id, false); } else relayName(id); dialed++; } catch (e) {}
             }
             if (typeof clog === 'function') clog('frag-dial ' + dialed + ' door id(s) before any reload');
             return;
@@ -8524,13 +8683,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                 if (!wPeers) return;
                 const grant = { k: 'pwinfo', pw: roomPw, by: myName(), w: wPeers, ep };
                 storePwEpoch(ep); retainedGrant = grant;
-                net.deriveMeetKey(room, av, '').then((openKey) => net.seal(openKey, grant)).then((env) => {
+                net.deriveMeetKey(room, av, '').then((openKey) => {
                   // relaySocketed, not gossipIds(): the whole point is reaching
                   // occupants I CANNOT yet read — the app roster is empty of
                   // them by construction; the relay's socket list is not. A
                   // non-greeter holds only the doors ('door' scope), so it PULLS
                   // the full list first and fans on its arrival.
-                  const fan = () => paceRelayCopies(relaySocketed, env);
+                  const fan = () => paceRelayCopies(relaySocketed, grant, openKey);
                   if (relayRosterScope === 'full') fan();
                   else { pendingDoorGrant = fan; relaySendObj({ t: 'who' }); }
                 });
@@ -8554,24 +8713,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (m.to) { relaySocketed.delete(m.to); if (relayNoSock.size > 2048) relayNoSock.clear(); relayNoSock.set(m.to, Date.now()); }
       }
       else if (m.t === 'peer' && m.msg) {
-        // Sealed app frames that rode the relay because no DataChannel exists
-        // for that pair yet (first-contact signaling, greeter WHOHOME replies).
-        // THE RELAY CARRIES NO CONTENT (relayFrameAllowed): only a listed kind
-        // is dispatched. The sender is any member the relay would route for,
-        // so a frame of any other kind — chat, transcript, file listing,
-        // deletion, app frame — is counted and dropped here, never shown and
-        // never handed on.
-        const from = m.from;
-        const piece = meshDefrag(m.msg, from);
-        if (!piece) return;
+        // A relay frame of the law's shape (the wire refused every other
+        // before this: mesh-wire.js relayFrameOk). Open it, check that what
+        // is inside is what the type in the clear says (relayFrameAllowed),
+        // and dispatch by type (onRelayPeer). The sender is any member the
+        // relay would route for, so anything else is counted and dropped
+        // here, never shown and never handed on.
+        const from = m.from, ty = m.ty;
+        const piece = m.msg;
         const take = (held) => rxm(() => net.open(roomE2E, piece).then((inner) => {
           if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
           if (!inner) return healStaleFrom(from, piece); // §LOCK: with the pair down, a stale member's frames arrive HERE — the relay path heals too
-          const label = relayFrameAllowed(inner);
-          if (!label) { const d = relayFrameLabel(inner); rxStats.relayDropped[d] = (rxStats.relayDropped[d] || 0) + 1; return; }
+          const label = relayFrameAllowed(ty, inner);
+          if (!label) { const d = relayFrameLabel(ty, inner); rxStats.relayDropped[d] = (rxStats.relayDropped[d] || 0) + 1; return; }
           rxStats.relayAccepted[label] = (rxStats.relayAccepted[label] || 0) + 1;
-          if (inner.kind) onSignal(from, inner, m.adm);
-          else onRemote(from, inner);
+          onRelayPeer(from, ty, inner);
         }));
         take(false);
       }
@@ -9306,14 +9462,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // down/rebuilding at THIS instant needs the grant more than anyone
           // — grant healing covers them only once their stale beats flow,
           // and a DC-less deep member's beats are occ-gated and may not.
-          // Each relay-reachable member without an open channel also gets a sealed targeted copy over the
-          // relay ({t:'peer'} → onRemote), under the SAME old key as the
-          // flood; the epoch guard absorbs doubles.
+          // Each relay-reachable member without an open channel also gets a
+          // `password` frame over the relay (→ onRelayPeer), under the SAME
+          // old key as the flood; the epoch guard absorbs doubles.
           try {
-            const env = await net.seal(roomE2E, grant);
             // Paced like the door re-grant: one copy per target is one relay
             // frame, and a large room passes the relay's per-socket burst.
-            paceRelayCopies(relayCopyTargets(), env);
+            paceRelayCopies(relayCopyTargets(), grant, roomE2E);
           } catch (e) {}
           storePwEpoch(ep); retainedGrant = grant; // the setter retains its own grant — it heals stale neighbours like anyone else
           // KEY ROTATION (§8): the pwinfo above is sealed under the OLD key —
@@ -10497,6 +10652,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       dc.onopen = () => {
         clearTimeout(p.hiLate); p.hiLate = null;
         dcAuthSend(p, dc);
+        // THE CHANNEL IS OPEN: everything the relay did not carry crosses it
+        // now. My status (name, address, seat, conns) and, as an admin, the
+        // signed mod table; then the media session — camera, mic, receive
+        // slots — added to the bootstrapped transport and negotiated here,
+        // never over the relay (sendSig: a connected pair negotiates on its
+        // own channel).
+        try { dcSend(p, { k: 'sig', msg: statusPayload() }); txStats.dcStatus++; } catch (e) {}
+        if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
+        try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
         dcSend(p, { k: 'hi', chats: Array.from(chat.values()).slice(-500), trs: Array.from(trs.values()).slice(-300), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj() });
         // THE MOMENT A CHANNEL EXISTS is the moment the stage pulls can finally
         // travel. Everything below was silently impossible a millisecond ago:
@@ -10626,30 +10790,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // actually hold a link to (no probing strangers on hearsay).
         if (typeof clog === 'function') clog('tlhint ' + String(m.peer || '?').slice(0, 6) + ' from ' + String(p.id || '?').slice(0, 6) + (peers.has(m.peer) ? '' : ' (no link — ignored)'));
         if (m.peer && m.peer !== myId && peers.has(m.peer)) onTransportDead(m.peer, 'relay-leave-hint');
-      } else if (m.k === 'frag-ping') {
-        // A dial REQUEST from the lower-id half of a suspected 2-person fork
-        // (see fragRescue): if I'm solo too, a room-keyed member asking to be
-        // dialed IS the fork evidence — dial it (I'm the id-order initiator
-        // by construction; the pairing is probe and heal in one). Guarded by
-        // the ordinary pairing paths — a duplicate dial is a no-op offer.
-        // ...and so is a member whose pair with me is NOT LIVE, solo or not:
-        // the sender has no pair with me at all (that is what the request
-        // says), so whatever pc I hold toward it faces one it has closed — a
-        // page back from a 20 s freeze still counting the sender as seated
-        // (chaos seed 8) ignored the request as "not solo" and the two met
-        // only on the 15 s retry. A live pair means the request predates it.
-        // Rebuilt on a fresh pc: an answer may be in flight on the one we hold
-        // (the sender's stale offer, drained at the thaw) and it is the void.
-        const pLive = p.connected && p.dc && p.dc.readyState === 'open';
-        if (typeof clog === 'function') clog('frag-ping from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive);
-        // A pair of mine still forming (built under 5 s ago) is the dial the
-        // request asks for: re-offering on a fresh pc would only restart it.
-        const forming = !pLive && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
-        if ((participantCount() <= 1 || !pLive) && !forming && iInitiate(p.id) && Date.now() - (p.fragDialAt || 0) > 5000) {
-          p.fragDialAt = Date.now();
-          if (!pLive && p.pc) newPcFor(p);
-          makePeer(p.id, null); sendOffer(p.id, false);
-        }
       } else if (m.k === 'fmeta') {
         // Never re-broadcast to the ROOM (see chat) — but handed on, once, over
         // my OWN links: a file's bytes travel link by link (P0/P1 only), so
@@ -10720,7 +10860,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // relay's stamp — a peer can't smuggle authority through its own
         // channel.
         const k2 = m.msg && m.msg.kind;
-        if (k2 === 'status' || k2 === 'offer' || k2 === 'answer' || k2 === 'ice' || k2 === 'appstop') {
+        if (k2 === 'status' || k2 === 'offer' || k2 === 'answer' || k2 === 'ice' || k2 === 'appstop' || k2 === 'mod') {
           sigProven = !!dc && dc.__authBy === p.id; // §DCAUTH: this channel proved who is on it
           try { onSignal(p.id, m.msg); } finally { sigProven = false; }
         }
@@ -10742,6 +10882,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // w in admin rooms; open rooms take anyone's word by design.
         const k3 = m.m && m.m.kind;
         if (!(k3 === 'offer' || k3 === 'answer' || k3 === 'ice' || k3 === 'appstop')) return;
+        noteCrumb(m.from, p && p.id); // the answer retraces this path
         if (m.to === myId) {
           // The same envelope id arrives once per door. Take the first copy.
           // An intermediate hop still records the id only on handoff, so a
@@ -10759,6 +10900,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Channel-less hi (deliverLateHi). Same hops as fsig. Only the named
         // target applies the inner hi. A hop that is not the target passes it on.
         if (!m.m || m.m.k !== 'hi') return;
+        noteCrumb(m.from, p && p.id);
         if (m.to === myId) { onDc({ id: String(m.from || (p && p.id) || ''), dc: null }, null, m.m); return; }
         fwdOnward('fhi', m, p && p.id);
       } else if (m.k === 'ck') {
@@ -10925,11 +11067,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // member can race signaling). onDc is also reached from the relay and
         // from gossip (onRemote: dc === null), where `{k:'mesh'}` is never sent
         // honestly and p.id is only the sender's own claim.
+        // An entry ask names the knocker (FIND: nc, WHOHOME: from); the
+        // channel it came in on is the way back to that knocker (fwdCrumb).
+        if (m.m && (m.m.t === 'FIND' || m.m.t === 'WHOHOME')) noteCrumb(m.m.t === 'FIND' ? m.m.nc : m.m.from, p.id);
         if (meshNode && m.m) meshNode.recvCtl(m.m, p.id, !!dc && dc.__authBy === p.id);
       } else if (m.k === 'fmesh') {
         // Sponsor-forwarded mesh control (mirrors fsig): mine ⇒ hand to the
         // mesh node as if it arrived direct; else pass it onward — direct
         // channel, else one ttl-bounded unicast mesh step (fwdOnward).
+        noteCrumb(m.from, p.id);
+        if (m.m && (m.m.t === 'FIND' || m.m.t === 'WHOHOME')) noteCrumb(m.m.t === 'FIND' ? m.m.nc : m.m.from, p.id);
         if (m.to === myId) { if (meshNode && m.m) meshNode.recvCtl(m.m, m.from); return; } // the envelope's origin is its sender's own claim: never `direct` (any member can write it)
         fwdOnward('fmesh', m, p.id);
       } else if (m.k === 'rkick') {
@@ -19726,7 +19873,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // addressed to one peer — what any member can do with its own socket.
       // Proves the receiving page's relay allowlist (relayFrameAllowed), which
       // the client's own senders never exercise.
-      relayPeerSend: (to, frame) => { if (!DEBUG_ON) return Promise.resolve({ err: 'DEBUG=on not in URL' }); return net.seal(roomE2E, frame).then((env) => { net.sendChunked(env, (piece) => relaySendObj({ t: 'peer', to, msg: piece })); return { ok: true }; }); },
+      // relayPeerSend(to, frame, ty): seal `frame` padded to the law's size
+      // and put it on the relay as a `ty` frame (ty defaults to frame.k).
+      // Resolves {ok:false, unfit:true} when it does not fit the fixed size.
+      relayPeerSend: (to, frame, ty) => { if (!DEBUG_ON) return Promise.resolve({ err: 'DEBUG=on not in URL' }); const t = ty || (frame && frame.k); return net.sealFixed(roomE2E, frame).then((env) => { if (!env) return { ok: false, unfit: true }; relaySendObj({ t: 'peer', to, ty: t, msg: env }); return { ok: true }; }); },
+      // relayRawSend(obj): hand ANY object to the wire's relay send — what a
+      // modified page could try. The wire refuses whatever is not of the
+      // law's shape (stats().relayUnsent); with the relay's switch on, the
+      // relay refuses it too (relayRawSendUnchecked bypasses the wire's gate).
+      relayRawSend: (obj) => { if (!DEBUG_ON || !meshNode) return { err: 'DEBUG=on not in URL' }; meshNode.relaySend(obj); return { ok: true, unsent: meshNode.stats().relayUnsent }; },
+      sealForTest: (frame) => (DEBUG_ON ? net.seal(roomE2E, frame) : Promise.resolve(null)), // the plain (unpadded) seal, for a frame a test hands to the relay levers above
+      relayTx: () => ({ boot: txStats.relayBoot, ice: txStats.relayIce, name: txStats.relayName, password: txStats.relayPassword, unfit: txStats.relayUnfit }), // frames this page put on the relay, by type
+      relayRawSendUnchecked: (obj) => { if (!DEBUG_ON || !meshNode) return { err: 'DEBUG=on not in URL' }; return meshNode.RAW_SOCKET_SEND_FOR_TEST(obj); },
+      // The people this page says tried to reach it and could not (the
+      // locked-out line's names), and the line itself.
+      reachTried: () => reachTriedNames(),
+      meshWireStats: () => { try { return meshNode ? meshNode.stats() : null; } catch (e) { return null; } },
       micEnabled: () => !!(localStream && localStream.getAudioTracks()[0] && localStream.getAudioTracks()[0].enabled),
       chatTexts: () => Array.from(chat.values()).sort((a, b) => a.at - b.at).map((m) => m.text),
       chatLinks: () => Array.from(chat.values()).map((m) => m.link).filter(Boolean),
@@ -19773,7 +19935,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       chatHas: (id) => chat.has(id),
       nameOf: (pid) => rosterNames[pid] || (peers.get(pid) || {}).name || '', // what this seat calls a peer (the sealed pulse teaches it)
       poisonEpochForTest: (n) => { myStatus.pwEp = n; broadcastStatus(); }, // a hostile client's pulse claiming generation n (its own epoch is untouched)
-      sealedCopyForTest: (to, obj) => net.seal(roomE2E, obj).then((env) => { net.sendChunked(env, (piece) => relaySendObj({ t: 'peer', to, msg: piece })); return true; }), // a member's sealed relay copy of any frame to one peer (what a replayed grant looks like on the wire)
+      sealedCopyForTest: (to, obj) => { const f = obj && obj.k === 'pwinfo' ? pwFrameOf(obj, myId) : obj; return relaySendSealed(to, f && f.k === 'password' ? 'password' : (f && f.k), f); }, // a member's relay copy of a grant to one peer (what a replayed grant looks like on the wire)
       heldGrantForTest: () => !!heldGrant,
       floodForTest: (n, kind) => { let k = 0; for (let i = 0; i < (n | 0); i++) { if (meshNode) { meshNode.gossip({ a: 1, msg: kind === 'status' ? { kind: 'status', s: Object.assign({}, myStatus, { at: Date.now() + i }), name: 'flood' } : { k: 'noop', i } }); k++; } } return k; }, // a hostile client's room-wide flood
       gossipStats: () => (meshNode && meshNode.seat ? { dropped: meshNode.seat.gspDropped || 0, refused: meshNode.seat.gspRefused || 0, forged: meshNode.seat.gspForged || 0, inAll: meshNode.seat.gspInAll || 0, roomFlood: txStats.roomFlood || 0 } : null),
