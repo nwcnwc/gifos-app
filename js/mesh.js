@@ -4240,17 +4240,23 @@
           // ticks: a {0,r,1} that DID hear the head heals it first, and the
           // left-pack cascade behind it must not be pre-empted.
           // The proof is either kind of first-hand evidence: a transport loss
-          // confirmed by the probe, or the head's own GOODBYE (byeAt; D2). A
-          // goodbye is the stronger proof and leaves no transport loss to
+          // confirmed by the probe, or, in a ONE-ROW room, the head's own
+          // GOODBYE (byeAt; D2). A goodbye leaves no transport loss to
           // confirm: the head that pressed Leave was heard by its row-mate
           // at column 2 and by nobody at column 1 (admitted after), and the
           // row's empty head refused every newcomer for the RING_HOLD horizon
-          // all the same. The goodbye waits only HEAD_HEIR_WAIT.
+          // all the same. The goodbye waits only HEAD_HEIR_WAIT. Only in a
+          // one-row room: there the held head is the room's only free cell,
+          // so every newcomer is refused until it is healed; a larger room
+          // seats newcomers elsewhere, and in a healing split its goodbyes
+          // are seats yielding a contested cell, where a second healer from
+          // column 2 fought the arbiters (two-ring.js split heal 984 -> 2008
+          // ticks with the goodbye rule unscoped).
           if (this.coord.i >= 2) {
             const hc = { pc: 0, r: this.coord.r, i: 0 }; const hk = ck(hc);
             if (this.occGet(hk) == null && this.firstHandLive(lk) && this.occGet(ck(topo.down(hc))) == null) {
               const lost = this.TICK - this.translost.get(hk) > EARLY_HOLD + HEAD_HEIR_WAIT && this.translostConfirmed(hk);
-              const bye = this.byeAt.has(hk) && this.TICK - this.byeAt.get(hk) > HEAD_HEIR_WAIT;
+              const bye = this.byeAt.has(hk) && this.TICK - this.byeAt.get(hk) > HEAD_HEIR_WAIT && this.oneRowRoom();
               if (lost || bye) this.heal(hc);
             }
           }
