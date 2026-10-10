@@ -656,24 +656,32 @@
   // ---- THE RELAY LAW: a fixed list of message types, one fixed size ----------
   // A member-to-member relay frame is {t:'peer', to, ty, msg}: `ty` is the
   // type in the clear, `msg` is sealed under the room key. The relay carries
-  // exactly these four types and refuses every other:
-  //   boot      a DataChannel-only session description reduced to its ICE
-  //             credentials and DTLS fingerprint (bootOf / sdpOfBoot);
-  //   ice       one ICE candidate (iceOf / candOfIce), or the end mark;
+  // exactly these types and refuses every other:
+  //   boot      the bootstrap of a pair: a DataChannel-only session
+  //             description reduced to its ICE ufrag, ICE password, setup
+  //             role and session version (bootOf / sdpOfBoot)
+  //   fp        the DTLS certificate fingerprint of that description (its
+  //             own frame: with the credentials it does not fit the size)
+  //   ice       one ICE candidate (iceOf / candOfIce), or the end mark
   //   name      the sender's screen name (also the dial request: "I am here,
-  //             dial me");
-  //   password  the signed room-password grant.
-  // Every sealed payload is padded to exactly RELAY_PLAIN_BYTES before it is
-  // sealed (sealFixed), so every frame on the wire has the same length and the
+  //             dial me")
+  //   password  the room-password grant: the password and its epoch
+  //   pwsig     the admin's signature over the grant (admin rooms)
+  //   pwpub     the admin key's public half and the signature's timestamp
+  //   pwby      the admin's peer id, named inside the signed statement
+  // Every sealed payload is padded to exactly RELAY_PLAIN_BYTES — 128 bytes,
+  // what a screen name or a password needs — before it is sealed
+  // (sealFixed), so every frame on the wire has the same length and the
   // relay can check it without opening anything: the ciphertext is
   // RELAY_PLAIN_BYTES + 16 (the AES-GCM tag) bytes, RELAY_CT_B64_LEN base64
-  // characters, with a 12-byte IV (RELAY_IV_B64_LEN). The size is what a
-  // screen name or a signed password grant needs; nothing that does not fit
-  // is sent over the relay. The media session (tracks, codecs, renegotiation,
-  // restarts) never touches the relay: it is negotiated over the pair's own
-  // DataChannel once the bootstrap has opened it (run.html sendSig).
-  const RELAY_TYPES = ['boot', 'ice', 'name', 'password'];
-  const RELAY_PLAIN_BYTES = 384;
+  // characters, with a 12-byte IV (RELAY_IV_B64_LEN). Nothing that does not
+  // fit is sent over the relay; what needs more than one frame (a bootstrap,
+  // a signed grant) is several frames of listed types, each padded. The
+  // media session (tracks, codecs, renegotiation, restarts) never touches
+  // the relay: it is negotiated over the pair's own DataChannel once the
+  // bootstrap has opened it (run.html sendSig).
+  const RELAY_TYPES = ['boot', 'fp', 'ice', 'name', 'password', 'pwsig', 'pwpub', 'pwby'];
+  const RELAY_PLAIN_BYTES = 128;
   const RELAY_IV_B64_LEN = 16;
   const RELAY_CT_B64_LEN = 4 * Math.ceil((RELAY_PLAIN_BYTES + 16) / 3);
   // Is this a relay frame of the law's shape? Checked by every receiving page
@@ -685,46 +693,135 @@
     if (Object.keys(m).length !== 3) return false;
     return m.iv.length === RELAY_IV_B64_LEN && m.ct.length === RELAY_CT_B64_LEN;
   }
+
+  // ---- THE FRAME LAW: every frame a mesh socket may send, its exact field ----
+  // set, and the cap of every field. A frame with any other verb, any field
+  // outside its set, any field over its cap, or any sealed part not of the one
+  // fixed size, is not a relay frame. RELAY_MAX_FRAME_LEN is the length (UTF-16
+  // units of the serialized text) of the largest frame these shapes allow,
+  // computed from them (relayMaxFrameLen), never typed by hand: the relay
+  // checks it before it parses anything, and a page never sends more.
+  const RELAY_ID_RE = /^[A-Za-z0-9_.-]{1,64}$/;          // a peer id (k_ + 40 hex) or a test id
+  const RELAY_DEV_RE = /^[A-Za-z0-9_.-]{1,16}$/;         // a device tag
+  const RELAY_GK_RE = /^[A-Za-z0-9_.-]{1,128}$/;         // a genesis key
+  const RELAY_PROOF_RE = /^[\x21-\x7e]{0,64}$/;          // a password proof (printable, no spaces)
+  const RELAY_SIG_RE = /^[A-Za-z0-9+/]{86}==$/;          // an Ed25519 signature, base64
+  const RELAY_PUB_RE = /^[A-Za-z0-9+/]{43}=$/;           // an Ed25519 public key, base64
+  const RELAY_ORDER = { sp: { str: 400 }, sig: { str: 88, re: RELAY_SIG_RE }, pub: { str: 44, re: RELAY_PUB_RE } }; // a signed admin order {sp, sig, pub}
+  const RELAY_SHAPES = {
+    peer: { to: { str: 64, re: RELAY_ID_RE }, ty: { one: RELAY_TYPES }, msg: { sealed: 1 } },
+    knock: { gk: { str: 128, re: RELAY_GK_RE }, gblob: { sealedText: 1, opt: 1 } },
+    who: {},
+    setpw: { pw: { str: 64, re: RELAY_PROOF_RE }, w: { obj: RELAY_ORDER, opt: 1 } },
+    ban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
+    unban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
+    votekick: { devs: { list: 24, item: { str: 16, re: RELAY_DEV_RE } } },
+    banlist: { devs: { list: 20, item: { obj: { d: { str: 16, re: RELAY_DEV_RE } } } }, w: { obj: RELAY_ORDER } },
+  };
+  function sealedOk(m) {
+    if (!m || typeof m !== 'object' || Array.isArray(m) || m.e !== 1 || typeof m.iv !== 'string' || typeof m.ct !== 'string') return false;
+    if (Object.keys(m).length !== 3) return false;
+    return m.iv.length === RELAY_IV_B64_LEN && m.ct.length === RELAY_CT_B64_LEN;
+  }
+  function objOk(v, shape) {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
+    for (const k of Object.keys(v)) if (!(k in shape)) return false;
+    for (const k in shape) { if (!(k in v)) { if (shape[k].opt) continue; return false; } if (!fieldOk(v[k], shape[k])) return false; }
+    return true;
+  }
+  function fieldOk(v, sp) {
+    if (sp.str != null) return typeof v === 'string' && v.length <= sp.str && (!sp.re || sp.re.test(v));
+    if (sp.one) return typeof v === 'string' && sp.one.indexOf(v) >= 0;
+    if (sp.sealed) return sealedOk(v);
+    if (sp.sealedText) { if (typeof v !== 'string' || v.length > 4 * RELAY_CT_B64_LEN) return false; let o; try { o = JSON.parse(v); } catch (e) { return false; } return sealedOk(o); }
+    if (sp.list) return Array.isArray(v) && v.length <= sp.list && v.every((x) => fieldOk(x, sp.item));
+    if (sp.obj) return objOk(v, sp.obj);
+    return false;
+  }
+  // The exact field set of a frame a mesh socket sends (the relay's inbound
+  // check with the switch on; the wire's outbound check always).
+  function relayVerbOk(m) {
+    if (!m || typeof m !== 'object' || Array.isArray(m) || typeof m.t !== 'string') return false;
+    const shape = RELAY_SHAPES[m.t];
+    if (!shape) return false;
+    const rest = {}; for (const k of Object.keys(m)) if (k !== 't') rest[k] = m[k];
+    return objOk(rest, shape);
+  }
+  // The largest frame the shapes allow, serialized: a free string field at its
+  // cap of quote characters (each escapes to two), a constrained one at its
+  // cap, every list full, every sealed part at the fixed size.
+  function relayMaxFrameLen() {
+    const worst = (sp) => {
+      if (sp.str != null) return sp.re ? 'a'.repeat(sp.str) : '"'.repeat(sp.str);
+      if (sp.one) return sp.one.slice().sort((x, y) => y.length - x.length)[0];
+      if (sp.sealed) return { e: 1, iv: 'a'.repeat(RELAY_IV_B64_LEN), ct: 'a'.repeat(RELAY_CT_B64_LEN) };
+      if (sp.sealedText) return JSON.stringify({ e: 1, iv: 'a'.repeat(RELAY_IV_B64_LEN), ct: 'a'.repeat(RELAY_CT_B64_LEN) });
+      if (sp.list) { const out = []; for (let i = 0; i < sp.list; i++) out.push(worst(sp.item)); return out; }
+      if (sp.obj) { const o = {}; for (const k in sp.obj) o[k] = worst(sp.obj[k]); return o; }
+      return null;
+    };
+    let max = 0;
+    for (const t in RELAY_SHAPES) { const o = { t }; for (const k in RELAY_SHAPES[t]) o[k] = worst(RELAY_SHAPES[t][k]); max = Math.max(max, JSON.stringify(o).length); }
+    return max;
+  }
+  const RELAY_MAX_FRAME_LEN = relayMaxFrameLen();
+
+  // Does obj, padded, fit the fixed size? (The padding field costs 7 bytes.)
+  // (An opened payload still carries its padding field `_`; it is left out
+  // of the measure, as it is of every check.)
+  const sansPad = (obj) => { if (obj && typeof obj === 'object' && '_' in obj) { const o = Object.assign({}, obj); delete o._; return o; } return obj; };
+  const fitsFixed = (obj, bytes) => enc(packJSON(sansPad(obj))).length + 7 <= (bytes || RELAY_PLAIN_BYTES);
   // Seal obj padded to exactly `bytes` of plaintext. Resolves null when the
   // object does not fit: the caller then does not send it over the relay.
   async function sealFixed(key, obj, bytes) {
     const n = bytes || RELAY_PLAIN_BYTES;
     if (!obj || typeof obj !== 'object' || Array.isArray(obj) || '_' in obj) return null;
-    const base = enc(packJSON(obj)).length;
-    const pad = n - base - 7; // ,"_":"" is seven bytes
+    const pad = n - enc(packJSON(obj)).length - 7; // ,"_":"" is seven bytes
     if (pad < 0) return null;
     const padded = Object.assign({}, obj, { _: 'x'.repeat(pad) });
     if (enc(packJSON(padded)).length !== n) return null;
     return seal(key, padded);
   }
+  // A screen name cut to what a name frame can carry (40 characters at most,
+  // fewer when they are wide): the frame always fits.
+  function relayNameFit(name) {
+    let n = String(name || '').slice(0, 40);
+    while (n.length && !fitsFixed({ k: 'name', n })) n = n.slice(0, -1);
+    return n;
+  }
   // ---- the bootstrap: a DataChannel-only session description, compacted ----
   const hexToB64 = (hex) => { let s = ''; for (const h of hex.split(':')) s += String.fromCharCode(parseInt(h, 16)); return btoa(s); };
   const b64ToHex = (b64) => { const s = atob(b64); const out = []; for (let i = 0; i < s.length; i++) out.push(s.charCodeAt(i).toString(16).toUpperCase().padStart(2, '0')); return out.join(':'); };
-  // bootOf(desc, v): {k:'boot', t:'o'|'a', u, w, fp, s, v} for a session
-  // description whose only m-line is the data channel; null for any other
-  // (a description carrying media never rides the relay). v is the session
-  // version the far side writes into its rebuilt o= line.
+  // bootOf(desc, v): { boot: {k:'boot', t:'o'|'a', u, w, s, v}, fp: {k:'fp',
+  // v, fp} } for a session description whose only m-line is the data
+  // channel; null for any other (a description carrying media never rides
+  // the relay). v is the session version: it ties the two frames together
+  // and is written into the rebuilt o= line.
   function bootOf(desc, v) {
     const sdp = String((desc && desc.sdp) || '');
     const ms = sdp.split(/\r?\n/).filter((l) => l.startsWith('m='));
     if (ms.length !== 1 || !ms[0].startsWith('m=application')) return null;
     const u = /\r?\na=ice-ufrag:(\S+)/.exec(sdp), w = /\r?\na=ice-pwd:(\S+)/.exec(sdp), fp = /\r?\na=fingerprint:sha-256 ([0-9A-Fa-f:]{95})/.exec(sdp), s = /\r?\na=setup:(\S+)/.exec(sdp);
     if (!u || !w || !fp || !s) return null;
-    const b = { k: 'boot', t: desc.type === 'offer' ? 'o' : 'a', u: u[1], w: w[1], fp: hexToB64(fp[1]), s: s[1], v: v | 0 };
-    return bootOk(b) ? b : null;
+    const boot = { k: 'boot', t: desc.type === 'offer' ? 'o' : 'a', u: u[1], w: w[1], s: s[1], v: v | 0 };
+    const fpf = { k: 'fp', v: v | 0, fp: hexToB64(fp[1]) };
+    return bootOk(boot) && fpOk(fpf) ? { boot, fp: fpf } : null;
   }
   function bootOk(b) {
-    return !!(b && b.k === 'boot' && (b.t === 'o' || b.t === 'a') && typeof b.u === 'string' && /^[\x21-\x7e]{1,64}$/.test(b.u)
-      && typeof b.w === 'string' && /^[\x21-\x7e]{1,64}$/.test(b.w) && typeof b.fp === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(b.fp)
-      && /^(actpass|active|passive)$/.test(String(b.s)));
+    return !!(b && b.k === 'boot' && (b.t === 'o' || b.t === 'a') && typeof b.u === 'string' && /^[\x21-\x7e]{1,16}$/.test(b.u)
+      && typeof b.w === 'string' && /^[\x21-\x7e]{1,40}$/.test(b.w) && /^(actpass|active|passive)$/.test(String(b.s))
+      && Number.isInteger(b.v) && b.v >= 0 && b.v < 1e9 && fitsFixed(b));
+  }
+  function fpOk(f) {
+    return !!(f && f.k === 'fp' && Number.isInteger(f.v) && f.v >= 0 && f.v < 1e9 && typeof f.fp === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(f.fp));
   }
   // The template both sides share: the rebuilt description is what the
   // sender's browser produced, minus nothing that matters to a data channel.
-  function sdpOfBoot(b) {
-    if (!bootOk(b)) return null;
-    const sdp = ['v=0', 'o=- 1 ' + ((b.v | 0) || 1) + ' IN IP4 127.0.0.1', 's=-', 't=0 0', 'a=group:BUNDLE 0', 'a=msid-semantic: WMS',
+  function sdpOfBoot(b, f) {
+    if (!bootOk(b) || !fpOk(f) || b.v !== f.v) return null;
+    const sdp = ['v=0', 'o=- 1 ' + (b.v || 1) + ' IN IP4 127.0.0.1', 's=-', 't=0 0', 'a=group:BUNDLE 0', 'a=msid-semantic: WMS',
       'm=application 9 UDP/DTLS/SCTP webrtc-datachannel', 'c=IN IP4 0.0.0.0', 'a=ice-ufrag:' + b.u, 'a=ice-pwd:' + b.w, 'a=ice-options:trickle',
-      'a=fingerprint:sha-256 ' + b64ToHex(b.fp), 'a=setup:' + b.s, 'a=mid:0', 'a=sctp-port:5000', 'a=max-message-size:262144', ''].join('\r\n');
+      'a=fingerprint:sha-256 ' + b64ToHex(f.fp), 'a=setup:' + b.s, 'a=mid:0', 'a=sctp-port:5000', 'a=max-message-size:262144', ''].join('\r\n');
     return { type: b.t === 'o' ? 'offer' : 'answer', sdp };
   }
   // One ICE candidate, compact: foundation, component, transport, priority,
@@ -733,16 +830,18 @@
   const ICE_RE = /^candidate:([A-Za-z0-9+/]{1,32}) (\d) (udp|tcp|UDP|TCP) (\d{1,10}) ([A-Za-z0-9.:\-]{1,64}) (\d{1,5}) typ (host|srflx|prflx|relay)(?: raddr \S+ rport \d+)?((?: tcptype (?:active|passive|so))?)/;
   function iceOf(c) {
     const m = ICE_RE.exec(String((c && c.candidate) || ''));
-    return m ? { k: 'ice', c: m[1] + ' ' + m[2] + ' ' + m[3] + ' ' + m[4] + ' ' + m[5] + ' ' + m[6] + ' typ ' + m[7] + m[8] } : null;
+    if (!m) return null;
+    const f = { k: 'ice', c: m[1] + ' ' + m[2] + ' ' + m[3] + ' ' + m[4] + ' ' + m[5] + ' ' + m[6] + ' typ ' + m[7] + m[8] };
+    return fitsFixed(f) ? f : null;
   }
   function candOfIce(f) {
-    if (!f || f.k !== 'ice' || f.end || typeof f.c !== 'string' || !ICE_RE.test('candidate:' + f.c)) return null;
+    if (!f || f.k !== 'ice' || f.end || typeof f.c !== 'string' || !ICE_RE.test('candidate:' + f.c) || !fitsFixed(f)) return null;
     return { candidate: 'candidate:' + f.c, sdpMid: '0', sdpMLineIndex: 0 };
   }
 
   GifOS.net = {
-    RELAY_TYPES, RELAY_PLAIN_BYTES, RELAY_IV_B64_LEN, RELAY_CT_B64_LEN, relayFrameOk, sealFixed,
-    bootOf, bootOk, sdpOfBoot, iceOf, candOfIce,
+    RELAY_TYPES, RELAY_PLAIN_BYTES, RELAY_IV_B64_LEN, RELAY_CT_B64_LEN, RELAY_MAX_FRAME_LEN, RELAY_SHAPES, relayFrameOk, relayVerbOk, fitsFixed, sansPad, sealFixed, relayNameFit,
+    bootOf, bootOk, fpOk, sdpOfBoot, iceOf, candOfIce,
     ICE_SERVERS, hasP2P, holdSessionLock,
     steadySocket,
     FRAG_PART, FRAG_BUDGET, sendChunked, chunk, pumpChannel, makeDefrag,

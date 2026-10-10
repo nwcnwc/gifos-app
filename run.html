@@ -5396,16 +5396,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       f.state = reachStateOf(f);
       return f;
     }
-    const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0, relayBoot: 0, relayIce: 0, relayName: 0, relayPassword: 0, relayUnfit: 0 }; // test/inspection hook: where heartbeats + signaling + sponsor hops actually travel; relay*: frames put on the relay by type, relayUnfit: payloads that did not fit the relay's fixed size (never sent)
+    const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0, relayBoot: 0, relayFp: 0, relayIce: 0, relayName: 0, relayPassword: 0, relayUnfit: 0 }; // test/inspection hook: where heartbeats + signaling + sponsor hops actually travel; relay*: frames put on the relay by type (relayPassword counts every frame of a grant), relayUnfit: payloads that did not fit the relay's fixed size (never sent)
     const rxStats = { offer: 0, answer: 0, ice: 0, status: 0, offerRejected: 0, answerNoPeer: 0, negFail: 0, answerStale: 0, relayAccepted: {}, relayDropped: {} }; // reception mirror: what actually ARRIVED (and what was refused); relayAccepted/relayDropped: relay frames by type, dispatched vs refused (relayFrameAllowed)
     // THE RELAY LAW (gifos-net.js RELAY_TYPES; docs/meet-security.md §RELAY).
     // The relay carries a fixed list of message types between members, each
-    // with its type in the clear and a sealed payload of ONE fixed size:
+    // with its type in the clear and a sealed payload of ONE fixed size, 128
+    // bytes — what a screen name or a password needs:
     //   boot      the bootstrap of a pair: a DataChannel-only session
-    //             description reduced to ICE credentials + DTLS fingerprint
+    //             description reduced to its ICE credentials and setup role
+    //   fp        that description's DTLS certificate fingerprint
     //   ice       one ICE candidate, or the end-of-candidates mark
     //   name      the sender's screen name; also the dial request
-    //   password  the signed room-password grant
+    //   password  the room-password grant: the password and its epoch
+    //   pwsig     the admin's signature over the grant (admin rooms)
+    //   pwpub     the admin key's public half and the signature's timestamp
+    //   pwby      the admin's peer id, named inside the signed statement
     // Everything else is REJECTED: the wire refuses any other frame shape
     // before it is opened (mesh-wire.js relayFrameOk), and this function
     // refuses an opened payload whose kind is not the frame's type or whose
@@ -5417,16 +5422,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // add a type here; the list is the law.
     const RELAY_TYPES = new Set(net.RELAY_TYPES);
     const RELAY_NAME_MAX = 40, RELAY_PW_MAX = 64;
+    const epOk = (ep) => Number.isInteger(ep) && ep >= 0;
+    // The exact field set of each payload (the padding field `_` beside it).
+    const RELAY_PAYLOAD_KEYS = { boot: 'k,t,u,w,s,v', fp: 'k,v,fp', ice: 'k,c,end', name: 'k,n', password: 'k,pw,ep', pwsig: 'k,sig', pwpub: 'k,ep,ts,pub', pwby: 'k,ep,by' };
     function relayFrameAllowed(ty, inner) {
-      if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || inner.k !== ty || inner.kind != null) return null;
+      if (!RELAY_TYPES.has(ty) || !inner || typeof inner !== 'object' || Array.isArray(inner) || inner.k !== ty || !net.fitsFixed(inner)) return null;
+      const keys = RELAY_PAYLOAD_KEYS[ty].split(',');
+      for (const k of Object.keys(inner)) if (k !== '_' && keys.indexOf(k) < 0) return null;
       if (ty === 'boot') return net.bootOk(inner) ? ty : null;
-      if (ty === 'ice') return (inner.end === 1 && inner.c == null) || !!net.candOfIce(inner) ? ty : null;
+      if (ty === 'fp') return net.fpOk(inner) ? ty : null;
+      if (ty === 'ice') return (inner.end === 1 && !('c' in inner)) || (!('end' in inner) && !!net.candOfIce(inner)) ? ty : null;
       if (ty === 'name') return typeof inner.n === 'string' && inner.n.length <= RELAY_NAME_MAX ? ty : null;
-      // password: the grant's fields, each bounded; the signature parts only together
-      if (typeof inner.pw !== 'string' || inner.pw.length > RELAY_PW_MAX || !Number.isInteger(inner.ep) || typeof inner.by !== 'string' || inner.by.length > 64) return null;
-      const signed = inner.sig != null || inner.pub != null || inner.ts != null;
-      if (signed && !(typeof inner.sig === 'string' && inner.sig.length <= 96 && typeof inner.pub === 'string' && inner.pub.length <= 48 && Number.isInteger(inner.ts))) return null;
-      return ty;
+      if (ty === 'password') return typeof inner.pw === 'string' && inner.pw.length <= RELAY_PW_MAX && epOk(inner.ep) ? ty : null;
+      if (ty === 'pwsig') return typeof inner.sig === 'string' && /^[A-Za-z0-9+/]{86}==$/.test(inner.sig) ? ty : null;
+      if (ty === 'pwpub') return epOk(inner.ep) && Number.isInteger(inner.ts) && inner.ts > 0 && typeof inner.pub === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(inner.pub) ? ty : null;
+      if (ty === 'pwby') return epOk(inner.ep) && typeof inner.by === 'string' && /^k_[0-9a-f]{40}$/.test(inner.by) ? ty : null;
+      return null;
     }
     function relayFrameLabel(ty, inner) { // the name a refused frame is counted under
       if (!inner || typeof inner !== 'object') return 'unopenable';
@@ -5435,7 +5446,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // relaySendSealed(to, ty, obj, key): seal obj padded to the law's size
     // and put it on the relay as a `ty` frame. A payload that does not fit is
     // counted (txStats.relayUnfit) and never sent. Resolves true when sent.
-    const relayTxCount = { boot: 'relayBoot', ice: 'relayIce', name: 'relayName', password: 'relayPassword' };
+    const relayTxCount = { boot: 'relayBoot', fp: 'relayFp', ice: 'relayIce', name: 'relayName', password: 'relayPassword', pwsig: 'relayPassword', pwpub: 'relayPassword', pwby: 'relayPassword' };
     function relaySendSealed(to, ty, obj, key) {
       if (!RELAY_TYPES.has(ty) || !obj || obj.k !== ty) return Promise.resolve(false);
       return txm(() => net.sealFixed(key || roomE2E, obj).then((env) => {
@@ -5445,24 +5456,61 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return true;
       }));
     }
-    // The password grant as the relay carries it: the fields the receiver
-    // needs to rebuild the signed statement (admSigned's exact shape), never
-    // the statement itself. `by` is the grant's author (the admin's peer id),
-    // which any member replaying the grant (§LOCK healing) must carry.
-    function pwFrameOf(grant, byId) {
+    // The password grant as the relay carries it: one `password` frame (the
+    // password and its epoch) and, for a signed grant, the fields the
+    // receiver needs to rebuild the admin's exact signed statement
+    // (admSigned's shape) — the signature (pwsig), the admin key's public
+    // half with the statement's timestamp (pwpub) and the admin's peer id
+    // (pwby) — never the statement itself. Each is one fixed-size frame.
+    // Returns the frames in sending order, or null for a grant with no relay
+    // form (a password that does not fit the size takes the channels only).
+    function pwFramesOf(grant) {
       if (!grant || grant.k !== 'pwinfo') return null;
-      const f = { k: 'password', pw: String(grant.pw || ''), ep: grant.ep | 0, by: String(byId || '') };
+      const ep = grant.ep | 0;
+      const out = [{ k: 'password', pw: String(grant.pw || ''), ep }];
       if (grant.w && typeof grant.w === 'object') {
         let o = null; try { o = JSON.parse(grant.w.sp); } catch (e) { return null; }
         if (!o || o.act !== 'pwinfo') return null;
-        f.by = String(o.by || ''); f.ts = +o.ts; f.sig = String(grant.w.sig || ''); f.pub = String(grant.w.pub || '');
+        out.push({ k: 'pwsig', sig: String(grant.w.sig || '') }, { k: 'pwpub', ep, ts: +o.ts, pub: String(grant.w.pub || '') }, { k: 'pwby', ep, by: String(o.by || '') });
       }
-      return f;
+      for (const f of out) if (!net.fitsFixed(f)) return null;
+      return out;
     }
-    function grantOfPwFrame(f) {
-      const g = { k: 'pwinfo', pw: f.pw, by: rosterNames[f.by] || '', ep: f.ep };
-      if (f.sig != null) g.w = { sp: JSON.stringify({ act: 'pwinfo', ts: f.ts, room: roomKey(), by: f.by, pw: f.pw, ep: f.ep }), sig: f.sig, pub: f.pub };
-      return g;
+    // The receiver's half: the frames of one grant from one sender, gathered
+    // by epoch until the grant is whole — the password alone in an open room,
+    // all four parts in an admin room — then the grant is rebuilt. A part
+    // that names another epoch starts the set over; a set older than 30 s is
+    // forgotten. pid -> { ep, pw, sig, ts, pub, by, at }.
+    const pwParts = new Map();
+    function takePwPart(from, ty, f) {
+      const now = Date.now();
+      let s = pwParts.get(from);
+      const ep = ty === 'pwsig' ? (s ? s.ep : null) : f.ep;
+      if (!s || now - s.at > 30000 || (ep != null && s.ep != null && s.ep !== ep)) { s = { ep, at: now }; pwParts.set(from, s); }
+      if (pwParts.size > 256) { for (const [k, v] of pwParts) if (now - v.at > 30000) pwParts.delete(k); }
+      s.at = now; if (ep != null) s.ep = ep;
+      if (ty === 'password') s.pw = f.pw;
+      else if (ty === 'pwsig') s.sig = f.sig;
+      else if (ty === 'pwpub') { s.ts = f.ts; s.pub = f.pub; }
+      else if (ty === 'pwby') s.by = f.by;
+      if (s.pw == null) return null;
+      if (!hasAdminRoom()) { pwParts.delete(from); return { k: 'pwinfo', pw: s.pw, by: rosterNames[from] || '', ep: s.ep }; }
+      if (s.sig == null || s.pub == null || s.ts == null || s.by == null) return null;
+      pwParts.delete(from);
+      return { k: 'pwinfo', pw: s.pw, by: rosterNames[s.by] || '', ep: s.ep, w: { sp: JSON.stringify({ act: 'pwinfo', ts: s.ts, room: roomKey(), by: s.by, pw: s.pw, ep: s.ep }), sig: s.sig, pub: s.pub } };
+    }
+    // The bootstrap's halves (boot + fp), gathered by sender and session
+    // version until both are here. pid -> { v, boot, fp, at }.
+    const bootParts = new Map();
+    function takeBootPart(from, ty, f) {
+      const now = Date.now();
+      let s = bootParts.get(from);
+      if (!s || s.v !== f.v || now - s.at > 30000) { s = { v: f.v, at: now }; bootParts.set(from, s); }
+      if (bootParts.size > 256) { for (const [k, v] of bootParts) if (now - v.at > 30000) bootParts.delete(k); }
+      s.at = now; s[ty] = f;
+      if (!s.boot || !s.fp) return null;
+      bootParts.delete(from);
+      return net.sdpOfBoot(s.boot, s.fp);
     }
     // The people who tried to reach this page over the relay while no
     // connection with them works (a bootstrap or a name frame): what the
@@ -5872,8 +5920,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (msg.kind === 'offer' || msg.kind === 'answer') {
         const b = net.bootOf(msg.sdp, ++bootSeq);
         if (!b) { txStats.relayUnfit++; if (typeof clog === 'function') clog('relay: a description with media never leaves (' + msg.kind + ' to ' + String(to).slice(0, 6) + ')'); return; }
-        relaySendSealed(to, 'name', { k: 'name', n: String(myName()).slice(0, RELAY_NAME_MAX) }); // the name beside every bootstrap: both sides can say who tried to reach them
-        relaySendSealed(to, 'boot', b);
+        relaySendSealed(to, 'name', { k: 'name', n: net.relayNameFit(myName()) }); // the name beside every bootstrap: both sides can say who tried to reach them
+        relaySendSealed(to, 'boot', b.boot);
+        relaySendSealed(to, 'fp', b.fp);
         return;
       }
       if (msg.kind === 'ice') {
@@ -5884,12 +5933,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // relayName(pid): my name to a socketed member — the dial request ("I am
     // here, dial me": onRelayPeer dials back when it is the initiator and no
     // pair is live), and the name the locked-out line shows them.
-    function relayName(pid) { return relaySendSealed(pid, 'name', { k: 'name', n: String(myName()).slice(0, RELAY_NAME_MAX) }); }
+    function relayName(pid) { return relaySendSealed(pid, 'name', { k: 'name', n: net.relayNameFit(myName()) }); }
     // onRelayPeer(from, ty, f): a relay frame of the law's shape, opened and
     // checked (relayFrameAllowed). Dispatch by its type.
     function onRelayPeer(from, ty, f) {
-      if (ty === 'boot') {
-        const desc = net.sdpOfBoot(f);
+      if (ty === 'boot' || ty === 'fp') {
+        const desc = takeBootPart(from, ty, f);
         if (!desc) return;
         const p0 = peers.get(from);
         if (desc.type === 'offer' && !(p0 && (p0.connected || p0.relayed))) noteReachTried(from, '');
@@ -5912,8 +5961,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         onDialRequest(p || { id: from, dc: null });
         return;
       }
-      if (ty === 'password') {
-        const g = grantOfPwFrame(f);
+      if (ty === 'password' || ty === 'pwsig' || ty === 'pwpub' || ty === 'pwby') {
+        const g = takePwPart(from, ty, f);
         if (g) onRemote(from, g);
       }
     }
@@ -5957,7 +6006,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       pwLog('grant-heal→' + String(pid).slice(0, 6) + ' ep=' + pwEpoch);
         const pd = peers.get(pid);
         if (pd && pd.dc && pd.dc.readyState === 'open') txm(() => net.seal(prevRoomE2E, retainedGrant).then((env) => net.sendChunked(env, (piece, str) => { try { pd.dc.send(str); } catch (e) {} })));
-        else { const f = pwFrameOf(retainedGrant, myId); if (f) relaySendSealed(pid, 'password', f, prevRoomE2E); }
+        else { const fs = pwFramesOf(retainedGrant); if (fs) for (const f of fs) relaySendSealed(pid, f.k, f, prevRoomE2E); }
       });
     }
     // Sealed frame over this pair's DataChannel (chat, files, relay control).
@@ -7592,17 +7641,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paceRelayCopies(pids, grant, key) {
       const ids = [];
       for (const pid of pids) if (pid && pid !== myId) ids.push(pid);
-      const f = pwFrameOf(grant, myId);
-      if (!f) return;
+      const fs = pwFramesOf(grant);
+      if (!fs) return;
       let i = 0;
-      const sendSome = (n) => {
+      const sendSome = (n) => { // n: a frame budget — a grant is fs.length frames per target
         let sent = 0;
-        while (sent < n && i < ids.length && !leaving) {
+        while (sent + fs.length <= n && i < ids.length && !leaving) {
           const pid = ids[i++];
-          relaySendSealed(pid, 'password', f, key);
-          sent++;
+          for (const f of fs) relaySendSealed(pid, f.k, f, key);
+          sent += fs.length;
         }
-        if (i < ids.length && !leaving) setTimeout(() => sendSome(1), RELAY_COPY_GAP_MS);
+        if (i < ids.length && !leaving) setTimeout(() => sendSome(fs.length), RELAY_COPY_GAP_MS);
       };
       sendSome(RELAY_COPY_BURST);
     }
@@ -19883,7 +19932,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // relay refuses it too (relayRawSendUnchecked bypasses the wire's gate).
       relayRawSend: (obj) => { if (!DEBUG_ON || !meshNode) return { err: 'DEBUG=on not in URL' }; meshNode.relaySend(obj); return { ok: true, unsent: meshNode.stats().relayUnsent }; },
       sealForTest: (frame) => (DEBUG_ON ? net.seal(roomE2E, frame) : Promise.resolve(null)), // the plain (unpadded) seal, for a frame a test hands to the relay levers above
-      relayTx: () => ({ boot: txStats.relayBoot, ice: txStats.relayIce, name: txStats.relayName, password: txStats.relayPassword, unfit: txStats.relayUnfit }), // frames this page put on the relay, by type
+      relayTx: () => ({ boot: txStats.relayBoot, fp: txStats.relayFp, ice: txStats.relayIce, name: txStats.relayName, password: txStats.relayPassword, unfit: txStats.relayUnfit }), // frames this page put on the relay, by type
       relayRawSendUnchecked: (obj) => { if (!DEBUG_ON || !meshNode) return { err: 'DEBUG=on not in URL' }; return meshNode.RAW_SOCKET_SEND_FOR_TEST(obj); },
       // The people this page says tried to reach it and could not (the
       // locked-out line's names), and the line itself.
@@ -19935,7 +19984,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       chatHas: (id) => chat.has(id),
       nameOf: (pid) => rosterNames[pid] || (peers.get(pid) || {}).name || '', // what this seat calls a peer (the sealed pulse teaches it)
       poisonEpochForTest: (n) => { myStatus.pwEp = n; broadcastStatus(); }, // a hostile client's pulse claiming generation n (its own epoch is untouched)
-      sealedCopyForTest: (to, obj) => { const f = obj && obj.k === 'pwinfo' ? pwFrameOf(obj, myId) : obj; return relaySendSealed(to, f && f.k === 'password' ? 'password' : (f && f.k), f); }, // a member's relay copy of a grant to one peer (what a replayed grant looks like on the wire)
+      sealedCopyForTest: async (to, obj) => { const fs = obj && obj.k === 'pwinfo' ? pwFramesOf(obj) : [obj]; if (!fs) return false; let ok = true; for (const f of fs) ok = (await relaySendSealed(to, f && f.k, f)) && ok; return ok; }, // a member's relay copy of a grant to one peer (what a replayed grant looks like on the wire)
       heldGrantForTest: () => !!heldGrant,
       floodForTest: (n, kind) => { let k = 0; for (let i = 0; i < (n | 0); i++) { if (meshNode) { meshNode.gossip({ a: 1, msg: kind === 'status' ? { kind: 'status', s: Object.assign({}, myStatus, { at: Date.now() + i }), name: 'flood' } : { k: 'noop', i } }); k++; } } return k; }, // a hostile client's room-wide flood
       gossipStats: () => (meshNode && meshNode.seat ? { dropped: meshNode.seat.gspDropped || 0, refused: meshNode.seat.gspRefused || 0, forged: meshNode.seat.gspForged || 0, inAll: meshNode.seat.gspInAll || 0, roomFlood: txStats.roomFlood || 0 } : null),

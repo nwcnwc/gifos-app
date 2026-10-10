@@ -595,10 +595,12 @@
     // ═══════════════════════════════════════════════════════════════════════
     function sendRaw(obj) {   // PRIVATE — the functions below only
       if (stopped) return;
-      // THE LAW, OUTBOUND: a member-to-member frame leaves this socket only
-      // in the law's shape (a listed type, one fixed sealed size). Anything
-      // else is counted and never sent, whoever asked.
-      if (obj && obj.t === 'peer' && !net.relayFrameOk(obj)) { relayUnsent++; return; }
+      // THE LAW, OUTBOUND: a frame leaves this socket only in the law's
+      // shape (gifos-net.js relayVerbOk: a listed verb with its exact field
+      // set and caps; a member frame of a listed type with one fixed sealed
+      // size) and never longer than the largest legal frame. Anything else
+      // is counted and never sent, whoever asked.
+      if (!net.relayVerbOk(obj) || JSON.stringify(obj).length > net.RELAY_MAX_FRAME_LEN) { relayUnsent++; return; }
       if (!sock) makeSock(); // recreate on demand (deep seats run socketless)
       // A POLICY-REJECTED socket (4000 replaced / banned / voted off) stays
       // DOWN — steadySocket already refuses to reconnect it, but replacing
@@ -640,7 +642,7 @@
     function REGISTER_MYSELF_AS_A_GREETER(gk) {
       const k = gk || myKey;
       if (!iAmAGreeter()) { KNOCK_FOR_THE_GREETER_LIST(k); return; }
-      net.seal(roomKey, { p: peer, c: seat.coord, fa: 1 })
+      net.sealFixed(roomKey, { p: peer, c: seat.coord, fa: 1 }) // a greeter's sealed address is one fixed-size sealed part, like every sealed thing on the relay
         .then((b) => { const s = JSON.stringify(b); greeterTrace.push({ t: Date.now(), tick: env.TICK, state: seat.state, post: seat.state, listLen: -1, open: -1, founded: false, action: 'register-blob:' + blobFp(s) }); if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift(); sendRaw({ t: 'knock', gk: k, gblob: s }); })
         .catch(() => sendRaw({ t: 'knock', gk: k }));
     }
