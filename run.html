@@ -2356,11 +2356,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
 
     let connBcastT = null;
+    // A NEWCOMER HEARS ME AT ONCE. A page learns a person's name and seat only
+    // from that person's status beat, and the beat is paced by the device: a
+    // phone in a pocket beats every 12 s, and a loaded one later still. A
+    // member who had just taken a seat waited that long to see such a person
+    // in its list. So the first status heard from an id this page has never
+    // listed is answered with this page's own status, once, a moment later
+    // (coalesced, and never more often than one answer every two seconds, so a
+    // flood of fresh ids cannot make a page beat on every frame). The trigger
+    // sits in takeStatus, the one door every status passes, whether it came
+    // over the pair's channel, by section gossip or by the fold.
+    let newPeerBeatT = null, newPeerBeatAt = 0;
+    const NEW_PEER_BEAT_MS = 400, NEW_PEER_BEAT_GAP_MS = 2000;
+    function scheduleNewPeerBeat() {
+      if (newPeerBeatT) return;
+      const wait = Math.max(NEW_PEER_BEAT_MS, newPeerBeatAt + NEW_PEER_BEAT_GAP_MS - Date.now());
+      newPeerBeatT = setTimeout(() => { newPeerBeatT = null; newPeerBeatAt = Date.now(); try { broadcastStatus(true); } catch (e) {} }, wait);
+    }
     const myConns = () => Array.from(peers).filter(([, p]) => p.connected).map(([pid]) => pid);
     const mySid = () => (localStream ? localStream.id : null);
     let pulseHalt = false; // test hook: simulates a throttled phone's silent pulse gaps
-    function broadcastStatus() {
-      if (pulseHalt) return;
+    function broadcastStatus(answer) {
+      if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
       // My SEAT rides the heartbeat: coord is the tree fact everything else
       // (rows, links, Stage membership order) derives from. The old deck
@@ -6108,6 +6125,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       Object.defineProperty(st, 'raw', { value: raw });
       const scribeBit = !!(cur && cur.scribe) !== !!st.scribe;
       if (typeof noteStatusFlags === 'function') noteStatusFlags(cur, st);
+      if (!cur && from !== myId) scheduleNewPeerBeat(); // the first status from a person I held none for: answer with my own beat, whatever path carried theirs
       statusOf.set(from, st);
       // Proof of life past a departure verdict: the orders confirmGone parked
       // for this peer come back (unparkMod). notTomb lifts the tombstone on
