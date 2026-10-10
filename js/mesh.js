@@ -392,6 +392,10 @@
       // holeSince: when a Section-1 cell I don't hear first-hand first looked
       // like a hole (H1-S1 confirm-window timer, probe-gated ringConfirmDead)
       this.holeSince = new Map();
+      // byeAt: cells whose holder's goodbye I heard (D2: the cell emptied at
+      // once, so no transport loss is recorded for it); cell -> the tick. A
+      // row-mate's first-hand proof of a head's death for the H2 head backstop.
+      this.byeAt = new Map();
       // D5 early-probe state (all keyed by coord ckey):
       //   translost: when MY transport to that coord's occupant died (edge-
       //              triggered — set once per transition, cleared on any answer)
@@ -847,7 +851,7 @@
     // signal that may evict/tie-break: a phantom (a stale gossip echo of a seat
     // that has moved) is NOT first-hand live, so it can never yield a live
     // healer out of a hole. Echo-immune — gossip informs routing, never liveness.
-    liveMark(k) { const v = this.occ.get(k); const pt = this.live.get(k); if (v === undefined) this.heardSince.delete(k); else if (this.liveBy.get(k) !== v || pt === undefined || this.TICK - pt > 60) this.heardSince.set(k, this.TICK); this.live.set(k, this.TICK); this.holeSince.delete(k); this.fhEver.add(k); if (v === undefined) this.liveBy.delete(k); else this.liveBy.set(k, v); }
+    liveMark(k) { const v = this.occ.get(k); const pt = this.live.get(k); if (v === undefined) this.heardSince.delete(k); else if (this.liveBy.get(k) !== v || pt === undefined || this.TICK - pt > 60) this.heardSince.set(k, this.TICK); this.live.set(k, this.TICK); this.holeSince.delete(k); this.byeAt.delete(k); this.fhEver.add(k); if (v === undefined) this.liveBy.delete(k); else this.liveBy.set(k, v); }
     // x is the seat I hear first-hand at k NOW: a live stamp set while x held
     // k, and no unanswered transport loss since. Gossip, hints and PONG rows
     // never set it.
@@ -1185,7 +1189,7 @@
     // dark-era observations fired on resume and a lone survivor CONFIRMED
     // its whole row dead and healed itself into 0/0.0 — a seated self-mint
     // fragment (behavior battery 06c, 2026-07-26).
-    netHold() { this.tlClear(); this.holeSince.clear(); this.lastAck = this.TICK; }
+    netHold() { this.tlClear(); this.holeSince.clear(); this.byeAt.clear(); this.lastAck = this.TICK; }
     // ABSENCE (mesh-wire): n ticks of wall time this seat did not observe — a
     // frozen renderer, a dark spot. The clock held still through it, so every
     // first-hand stamp reads as fresh as the moment before; in wall time it is
@@ -2351,7 +2355,7 @@
     // over-counted a dead seat's vote after a churn (repro-digest G9);
     // clearing every stamp on a requeue slowed a two-ring merge past its
     // bound (two-ring.js seed 2: 2008 ticks, bound 2000).
-    requeue() { if (!this.evil && this.env.bumpEvict) this.env.bumpEvict(); if (this.env.bumpMoves) this.env.bumpMoves(); this.moving = false; this.oldNbrIds = []; this.holdOcc = null; this.holdSeen = null; this.holdCous = null; this.leaseCk = null; this.leaseUntil = -1; if (this.hasCoord) { const seen = new Set(); for (const olc of topo.ownedLinks(this.coord)) { const x = this.occGet(ck(olc)); if (x != null && x !== this.id && !seen.has(x)) { seen.add(x); this.emit(x, { t: 'LEAVE', ck: ck(this.coord), id: this.id }); } } this.leaveOwner(seen); this.live.delete(ck(this.coord)); } this.hasCoord = false; this.occ.clear(); this.s1seen.clear(); this.holeSince.clear(); this.tlClear(); this.authClear(); this.drainAt = 0; this.join(); }
+    requeue() { if (!this.evil && this.env.bumpEvict) this.env.bumpEvict(); if (this.env.bumpMoves) this.env.bumpMoves(); this.moving = false; this.oldNbrIds = []; this.holdOcc = null; this.holdSeen = null; this.holdCous = null; this.leaseCk = null; this.leaseUntil = -1; if (this.hasCoord) { const seen = new Set(); for (const olc of topo.ownedLinks(this.coord)) { const x = this.occGet(ck(olc)); if (x != null && x !== this.id && !seen.has(x)) { seen.add(x); this.emit(x, { t: 'LEAVE', ck: ck(this.coord), id: this.id }); } } this.leaveOwner(seen); this.live.delete(ck(this.coord)); } this.hasCoord = false; this.occ.clear(); this.s1seen.clear(); this.holeSince.clear(); this.byeAt.clear(); this.tlClear(); this.authClear(); this.drainAt = 0; this.join(); }
 
     drainOrReenter() {
       const TICK = this.TICK;
@@ -4052,6 +4056,7 @@
     // or the Section-1 column clique, exactly as the goodbye handler did.
     goodbyeHeal(k) {
       const HEALING = this.env.HEALING;
+      this.byeAt.set(k, this.TICK);
       // H-CHAIN vertical: vacated down-child clears childOf on its owner
       // so LEFT-PACK can devolve (childOf otherwise never expired).
       {
@@ -4234,9 +4239,20 @@
           // Section-1 seat; healTry paces it). Only after HEAD_HEIR_WAIT more
           // ticks: a {0,r,1} that DID hear the head heals it first, and the
           // left-pack cascade behind it must not be pre-empted.
+          // The proof is either kind of first-hand evidence: a transport loss
+          // confirmed by the probe, or the head's own GOODBYE (byeAt; D2). A
+          // goodbye is the stronger proof and leaves no transport loss to
+          // confirm: the head that pressed Leave was heard by its row-mate
+          // at column 2 and by nobody at column 1 (admitted after), and the
+          // row's empty head refused every newcomer for the RING_HOLD horizon
+          // all the same. The goodbye waits only HEAD_HEIR_WAIT.
           if (this.coord.i >= 2) {
             const hc = { pc: 0, r: this.coord.r, i: 0 }; const hk = ck(hc);
-            if (this.occGet(hk) == null && this.firstHandLive(lk) && this.occGet(ck(topo.down(hc))) == null && this.TICK - this.translost.get(hk) > EARLY_HOLD + HEAD_HEIR_WAIT && this.translostConfirmed(hk)) this.heal(hc);
+            if (this.occGet(hk) == null && this.firstHandLive(lk) && this.occGet(ck(topo.down(hc))) == null) {
+              const lost = this.TICK - this.translost.get(hk) > EARLY_HOLD + HEAD_HEIR_WAIT && this.translostConfirmed(hk);
+              const bye = this.byeAt.has(hk) && this.TICK - this.byeAt.get(hk) > HEAD_HEIR_WAIT;
+              if (lost || bye) this.heal(hc);
+            }
           }
         }
         // W7: keep column links live — re-ping any vacant column-mate
