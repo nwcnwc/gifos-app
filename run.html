@@ -3214,7 +3214,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A BURIED TARGET STAYS BURIED: confirmGone deleted their orders with
         // them, and a carrier's older copy of the table must not dig them back
         // up while the tombstone stands (it lifts on proof of life — notTomb).
-        if (target !== '*' && meshGone.has(target)) continue;
+        // But the burial has a CLOCK (meshGone's Date.now()), and an order
+        // SIGNED AFTER it is not the old history coming back — it is the
+        // admin acting on someone who just left (share-arrives-holds-aa8908:
+        // a grant 1s into a scripted leave never reached a bystander, buried
+        // the instant confirmGone fired, ~7s later theirs). Only a field no
+        // newer than the burial stays buried; a fresher one still lands.
+        const goneAt = target !== '*' ? meshGone.get(target) : undefined;
         const mine = modTable[target] = modTable[target] || {};
         // 'chat' lives under the pseudo-target '*' — the one ROOM-WIDE mod
         // field (the admin's chat on/off switch). It rides the same signed
@@ -3223,6 +3229,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const field of ['mute', 'blur', 'cam', 'app', 'share', 'chat', 'cc']) {
           const inc = incoming[target][field];
           if (!inc || typeof inc !== 'object') continue;
+          if (goneAt != null && (+inc.at || 0) <= goneAt) continue;
           // The TARGET cannot lift a restriction the group put on them —
           // every receiver rejects a self-authored "off" independently.
           if (inc.on === false && inc.byId === target) continue;
@@ -3321,18 +3328,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // room-wide flood (G6: on change, never a per-member unicast); a section
     // status still carries the table, so a late joiner learns it from its
     // neighbours.
-    // The relay no longer carries kind:'mod' (§RELAY), so sendSig's per-peer
-    // leg is DC-or-drop: a roster member with no open direct channel to me
-    // (a bystander reached only through mesh hops) got nothing until the next
-    // ~7.5s admin presence beat, late enough to miss the 10s admin-order
-    // bound. fanOut's mesh flood reaches every seat over the link graph
-    // (dedup'd, re-fanned) regardless of room size, so always run it as the
-    // backstop; the direct sendSig leg stays for its low latency to
-    // already-open pairs.
     function modFlood() {
       const m = { kind: 'mod', mod: modTable, modw: gossipModW() };
+      if (roomPastSection()) { fanOut(m); return; }   // a small room keeps today's per-link send (G8)
       for (const pid of gossipIds()) sendSig(pid, m);
-      fanOut(m);
     }
     // An admin can turn a guest's VIDEO off room-wide (stronger than blur): the
     // directive is a per-target mod.cam entry, signature-verified (§SIG) like
