@@ -7459,7 +7459,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // never retried, dropped — a late joiner sat at pc:'new', dc:null forever.
       // Absence is about a peer that has GONE, which only means anything once
       // the mesh has stopped naming it.
-      for (const [pid, p] of peers) if (!ids.has(pid) && !linkTo(pid) && !p.absentSince) p.absentSince = Date.now();
+      // The same holds for the door I knock at while I am still outside
+      // (p.boot, no seat): the relay carries no status, so a greeter is never
+      // in `ids` until a channel to it opens. Marked absent, the door was
+      // dropped at ABSENT_GRACE and redialled fresh, so it never stood the
+      // 15 s that makes it noRoute, and a locked-out page's line never read
+      // 'cannot-reach-room' (reachCounts skips an absent pair). A door is
+      // judged by its transport, not by the roster.
+      const seatedHere = (() => { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3); })();
+      for (const [pid, p] of peers) if (!ids.has(pid) && !linkTo(pid) && !(p.boot && !seatedHere) && !p.absentSince) p.absentSince = Date.now();
       for (const pid of Object.keys(rosterNames)) if (!ids.has(pid)) delete rosterNames[pid];
       reconcileGrid();
       updateStatus();
