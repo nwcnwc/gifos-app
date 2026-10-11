@@ -10912,6 +10912,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const freshChats = [], freshTrs = [];
         (m.chats || []).forEach((c) => { if (takeChat(c, true)) freshChats.push(c); });
         (m.trs || []).forEach((l) => { if (takeTr(l, true)) freshTrs.push(l); });
+        // A follow-me link replayed to me by this 'hi' (my first channel to
+        // its author, or a pair that just healed) is delivery too — ack it
+        // exactly as a live 'chat' frame would (see FOLLOW-ME DELIVERY WAIT).
+        freshChats.forEach((c) => { if (c.ackReq) sendChatAck(c.id, c.byId); });
         if (freshTrs.length) renderTranscript();
         if ((freshChats.length || freshTrs.length) && chatRateOk('hi:' + p.id, 1)) {
           for (const pid of gossipIds()) {
@@ -10935,11 +10939,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (takeChat(m.m)) {
           renderChat();
           if (!chatPanel.classList.contains('open')) { unread++; chatBtn.textContent = 'Chat (' + unread + ')'; }
+          // A frame the sender marked ackReq (today: only the follow-me link)
+          // gets a delivery ack back over the mesh/DC — see FOLLOW-ME DELIVERY
+          // WAIT. Ordinary chat carries none: this is not a read receipt.
+          if (m.m.ackReq) sendChatAck(m.m.id, m.m.byId);
           // NOT gossiped onward. The author's one mesh flood is the room's
           // carrier (dedup'd, re-fanned, replayed to newcomers); every receiver
           // re-broadcasting on first sight made ONE chat line N floods — O(N)
           // frames per node per line, the N×N the mesh exists to prevent.
         }
+      } else if (m.k === 'chatack') {
+        // Delivery ack for an ackReq chat frame (see FOLLOW-ME DELIVERY WAIT).
+        // Addressed by peer id, not re-gossiped — the flood that carried it
+        // already reached every member, admin included.
+        recvChatAck(m);
       } else if (m.k === 'cdel') {
         // A signed admin chat-delete: verify, tomb, repaint, gossip onward on
         // first sight (the tomb is the dedupe). Receiver-enforced like every
@@ -18202,17 +18215,70 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       closeInvModal = openModal(invModal, () => { invModal.style.display = 'none'; });
     }
 
+    // FOLLOW-ME DELIVERY WAIT (Nathan, 11 Oct 2026). The admin's page used to
+    // reload into the new room ~600ms after posting the follow-me link
+    // (flushOutbound then location.reload) — a member whose direct pair was
+    // down at that instant never got the link: THE RELAY CARRIES NO CONTENT,
+    // so there is no targeted copy to fall back to (docs/meet-security.md
+    // §RELAY). Now the admin waits, with a plain on-screen notice, until
+    // every member present at post time has acknowledged the link over the
+    // mesh/DataChannel, or a short cap passes — whichever first. A pair that
+    // heals inside the cap still delivers (the 'hi' a reopened channel sends
+    // replays the chat Map, which holds the link — see onDc's 'hi' handler)
+    // and this wait is what gives it the time to.
+    const FOLLOWME_WAIT_MS = 15000;
+    let followWait = null; // { id, needed: Set<peerId>, acked: Set<peerId> }
+    function sendChatAck(id, toId) {
+      if (!id || !toId || toId === myId) return;
+      sendAll({ k: 'chatack', id, to: toId, from: myId });
+    }
+    function recvChatAck(m) {
+      if (!followWait || !m || m.id !== followWait.id || m.to !== myId || !m.from) return;
+      followWait.acked.add(m.from);
+      if (typeof followWait.onProgress === 'function') followWait.onProgress();
+    }
+    // Resolves once every id in peerIds has acked `id`, or FOLLOWME_WAIT_MS
+    // has passed — never longer. peerIds is a snapshot (the members present
+    // the instant the link was posted); someone who joins mid-wait is not
+    // the admin's problem here, and someone who leaves is simply never
+    // heard from and the cap still ends the wait.
+    function waitForFollowAcks(id, peerIds) {
+      const needed = new Set((peerIds || []).filter((pid) => pid !== myId));
+      if (!needed.size) return Promise.resolve();
+      return new Promise((resolve) => {
+        const acked = new Set();
+        let poll = null, cap = null;
+        const missingNames = () => Array.from(needed).filter((pid) => !acked.has(pid))
+          .map((pid) => { const p = peers.get(pid); return (p && p.name) || 'someone'; });
+        const finish = () => { if (poll) clearInterval(poll); if (cap) clearTimeout(cap); followWait = null; resolve(); };
+        const onProgress = () => { if (acked.size >= needed.size) finish(); else paint(); };
+        const paint = () => {
+          const missing = missingNames();
+          setStatus(missing.length
+            ? 'Waiting for everyone to receive the follow-me link… still waiting for ' + missing.join(', ')
+            : 'Everyone has the follow-me link.', 1200);
+        };
+        followWait = { id, needed, acked, onProgress };
+        paint();
+        poll = setInterval(paint, 1000);
+        cap = setTimeout(finish, FOLLOWME_WAIT_MS);
+      });
+    }
     // The follow-me line an admin leaves behind when moving the meeting. It is
     // a chat line like any other: the pairs' DataChannels and ONE gossip flood
-    // (sendAll), then a bounded wait for the channels to drain before this
-    // page leaves. THE RELAY CARRIES NO CONTENT — a targeted relay copy for
-    // members without an open channel is exactly what every page refuses from
-    // the relay, so none is sent; a member still forming its pair at this
-    // instant hears the line from the room's gossip replay, not from the door.
+    // (sendAll), then a bounded wait for the channels to drain, THEN a bounded
+    // wait for every member present at post time to ack it (waitForFollowAcks)
+    // before this page leaves. THE RELAY CARRIES NO CONTENT — a targeted relay
+    // copy for members without an open channel is exactly what every page
+    // refuses from the relay, so none is sent; a member still forming its pair
+    // at this instant hears the line from the room's gossip replay, not from
+    // the door, and its ack is what this wait is listening for.
     async function postMoveNotice(newLink) {
-      const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: 'I moved this meeting to a room I run — follow me:', link: newLink };
+      const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: 'I moved this meeting to a room I run — follow me:', link: newLink, ackReq: true };
+      const needAck = Array.from(peers.keys());
       chat.set(m.id, m); sendAll({ k: 'chat', m }); renderChat();
       await flushOutbound(600); // seals queued, channels drained, never longer than 600 ms
+      await waitForFollowAcks(m.id, needAck);
     }
 
     // An admin room's session id is "<name>.<verifier>" — the verifier is a
@@ -20082,6 +20148,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       micEnabled: () => !!(localStream && localStream.getAudioTracks()[0] && localStream.getAudioTracks()[0].enabled),
       chatTexts: () => Array.from(chat.values()).sort((a, b) => a.at - b.at).map((m) => m.text),
       chatLinks: () => Array.from(chat.values()).map((m) => m.link).filter(Boolean),
+      // FOLLOW-ME DELIVERY WAIT forensics: the admin's own view of who it is
+      // still waiting on, mid-wait (null once resolved — acked or capped).
+      followWaitState: () => followWait ? { id: followWait.id, needed: Array.from(followWait.needed), acked: Array.from(followWait.acked) } : null,
+      statusText: () => statusEl.textContent,
       addTranscript: (t) => addTranscriptLine(t),
       transcriptTexts: () => Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => l.by + ': ' + l.text),
       transcriptBlocks: () => trBlocks().map((l) => l.by + ': ' + l.text),
