@@ -9095,12 +9095,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // at most 4s of poll plus the handshake, comfortably inside the 10s
         // rejoin bound for everything this ladder already covers (ICE
         // restart through 25s, then the full rebuild beyond it).
+        //
+        // THE REBUILD ITSELF MUST NOT REPEAT FASTER THAN A NEGOTIATION CAN
+        // LAND. Every cadence tick past 25s used to call newPcFor again —
+        // closing whatever pc the LAST tick just built, answer or no answer.
+        // A fresh pc's offer is a real round trip (createOffer, sendSig over
+        // the relay, the far side's answer, ICE, DTLS); on a sever that has
+        // actually ended the far side answers promptly, but a cadence at or
+        // under that round trip's own length tears the pc down again before
+        // the answer can land — self-defeating, and no amount of shortening
+        // the cadence fixes it (confirmed: 8s and 4s measured the identical
+        // ~12.06s past two unrelated severs, 4ab448 and 147e35). Rebuild
+        // ONCE per down episode (p.rebuiltAt > downSince marks it done);
+        // every tick after that nudges the SAME pc with an ICE restart
+        // instead, which never discards an answer already in flight.
         if (!p.absentSince && iInitiate(pid) && !p.connected && (st === 'connecting' || st === 'new')
             && p.downSince && now - p.downSince > 12000 && now - (p.cureAt || 0) > 4000) {
           p.cureAt = now;
           p.lastKick = now + Math.random() * 1500;
           p.altPath = !p.altPath; // §FWD transport rotation — see sendSig
-          if (now - p.downSince > 25000) { newPcFor(p); sendOffer(pid); }
+          if (now - p.downSince > 25000 && (p.rebuiltAt || 0) <= p.downSince) { newPcFor(p); sendOffer(pid); }
           else sendOffer(pid, true);
         }
         // D5 (mesh early-probe): a pc sitting in 'failed' PAST the ICE-restart
