@@ -7054,7 +7054,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function retireBootPairs() {
       const s = meshSeat();
       if (!s || !s.hasCoord || s.state !== 3) return;
-      for (const [pid, q] of Array.from(peers)) if (q.boot && !linkTo(pid)) dropPeer(pid, true);
+      for (const [pid, q] of Array.from(peers)) if (q.boot && !linkTo(pid) && meshKnows(pid)) dropPeer(pid, true); // a knocker still outside keeps its door to me
     }
     function ensureLink(pid, name) {
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return; // never link to a forger
@@ -8950,9 +8950,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // while I am still outside, however it fares (a dead one is what
           // tells a locked-out person so — reachCounts), and retired the
           // moment I am seated with a link of my own open (retireBootPairs).
-          if (p.boot && !seatedNow) { p.unlinkedSince = 0; }
-          else if (p.boot && seatedNow && anyLinkOpen) { dropPeer(pid, meshKnows(pid)); continue; }
-          else if (p.boot && p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed')) { dropPeer(pid, meshKnows(pid)); continue; } // a door (either side of it) that is dead: gone now, never rebuilt
+          // A door is kept while either side is still outside — mine while I
+          // knock, a knocker's (not yet in my occupancy) while it knocks at
+          // me — and retired once both are seated with no link between them.
+          const theyOutside = !meshKnows(pid);
+          if (p.boot && p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed')) { dropPeer(pid, !theyOutside); continue; } // a dead door: gone now, never rebuilt (a knocker redials)
+          else if (p.boot && (!seatedNow || theyOutside)) { p.unlinkedSince = 0; }
+          else if (p.boot && seatedNow && anyLinkOpen) { dropPeer(pid, true); continue; }
           else {
             // Any other pair keeps its grace and its repair: a member back
             // from a dark spell names its neighbours again only once its
