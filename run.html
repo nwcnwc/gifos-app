@@ -3321,10 +3321,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // room-wide flood (G6: on change, never a per-member unicast); a section
     // status still carries the table, so a late joiner learns it from its
     // neighbours.
+    // The relay no longer carries kind:'mod' (§RELAY), so sendSig's per-peer
+    // leg is DC-or-drop: a roster member with no open direct channel to me
+    // (a bystander reached only through mesh hops) got nothing until the next
+    // ~7.5s admin presence beat, late enough to miss the 10s admin-order
+    // bound. fanOut's mesh flood reaches every seat over the link graph
+    // (dedup'd, re-fanned) regardless of room size, so always run it as the
+    // backstop; the direct sendSig leg stays for its low latency to
+    // already-open pairs.
     function modFlood() {
       const m = { kind: 'mod', mod: modTable, modw: gossipModW() };
-      if (roomPastSection()) { fanOut(m); return; }   // a small room keeps today's per-link send (G8)
       for (const pid of gossipIds()) sendSig(pid, m);
+      fanOut(m);
     }
     // An admin can turn a guest's VIDEO off room-wide (stronger than blur): the
     // directive is a per-target mod.cam entry, signature-verified (§SIG) like
