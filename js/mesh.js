@@ -1432,8 +1432,17 @@
       // fire twice). So when the marks exhaust the list, cycle it again —
       // but only RESUME_TRIES consecutive times without a HOME, so a
       // genuinely dead list concedes to a fresh knock, never a livelock.
+      // A LONE DOOR gets a much smaller budget: cycling the SAME single name
+      // six times (up to a minute) teaches nothing a fresh knock couldn't —
+      // there is no second name in the list to average the flap against.
+      // A page whose only other member just vanished (a 2-person fork) sat
+      // this whole minute asking a door that can never answer, before its
+      // next fresh knock could even learn of a fresh greeter — too late for
+      // a room this small to fork and heal. Two tries (the original ask plus
+      // one resume) still survives a single flap; the third concedes fast.
+      const soleDoor = ls.filter((g) => g && g !== this.id).length <= 1;
       if (!pool.length) {
-        if ((this.resumeTries || 0) >= 6) return false; // mirrors seatTries<=6
+        if ((this.resumeTries || 0) >= (soleDoor ? 2 : 6)) return false; // mirrors seatTries<=6
         pool = ls.filter((g) => g && g !== this.id);
         if (!pool.length) return false;
       }
