@@ -3216,9 +3216,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // up while the tombstone stands (it lifts on proof of life — notTomb).
         // But the burial has a CLOCK (meshGone's Date.now()), and an order
         // SIGNED AFTER it is not the old history coming back — it is the
-        // admin acting on someone who just left (share-arrives-holds-aa8908:
-        // a grant 1s into a scripted leave never reached a bystander, buried
-        // the instant confirmGone fired, ~7s later theirs). Only a field no
+        // admin acting on someone who just left (a grant made a moment after
+        // a member left never reached a bystander: it was buried the instant
+        // that bystander confirmed the member gone). Only a field no
         // newer than the burial stays buried; a fresher one still lands.
         const goneAt = target !== '*' ? meshGone.get(target) : undefined;
         const mine = modTable[target] = modTable[target] || {};
@@ -9079,41 +9079,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // perfectly capable. The plain path stays throttled by lastKick (a
         // restart IS that beat's offer); only the ESCALATION reads its own
         // stamp, so it now actually fires at 12s/25s as designed.
-        //
-        // THE RETRY CADENCE ITSELF MUST STAY UNDER THE REJOIN BOUND
-        // (rejoin-bound-holds-4ab448/-147e35, 2026-10-11). The first kick at
-        // 12s is often wasted — it lands while the far side is still
-        // unreachable (a scripted sever, a real dead spot) and nothing marks
-        // WHEN the obstruction actually lifts, so the next kick has to find
-        // it by polling. At an 8s cadence the worst case is 8s of dead poll
-        // plus the handshake itself: a 25s sever's own clock and this one's
-        // beat at 8s apart, and the wasted kick at 20s left the next live one
-        // at 28s — 3s past the sever's end, then the rebuild/negotiation, a
-        // measured 12.06-12.07s past the sever closing on two unrelated
-        // pairs (Quin/Milo, Vik/Zed). A 4s cadence halves that blind spot —
-        // at most 4s of poll plus the handshake, comfortably inside the 10s
-        // rejoin bound for everything this ladder already covers (ICE
-        // restart through 25s, then the full rebuild beyond it).
-        //
-        // THE REBUILD ITSELF MUST NOT REPEAT FASTER THAN A NEGOTIATION CAN
-        // LAND. Every cadence tick past 25s used to call newPcFor again —
-        // closing whatever pc the LAST tick just built, answer or no answer.
-        // A fresh pc's offer is a real round trip (createOffer, sendSig over
-        // the relay, the far side's answer, ICE, DTLS); on a sever that has
-        // actually ended the far side answers promptly, but a cadence at or
-        // under that round trip's own length tears the pc down again before
-        // the answer can land — self-defeating, and no amount of shortening
-        // the cadence fixes it (confirmed: 8s and 4s measured the identical
-        // ~12.06s past two unrelated severs, 4ab448 and 147e35). Rebuild
-        // ONCE per down episode (p.rebuiltAt > downSince marks it done);
-        // every tick after that nudges the SAME pc with an ICE restart
-        // instead, which never discards an answer already in flight.
         if (!p.absentSince && iInitiate(pid) && !p.connected && (st === 'connecting' || st === 'new')
-            && p.downSince && now - p.downSince > 12000 && now - (p.cureAt || 0) > 4000) {
+            && p.downSince && now - p.downSince > 12000 && now - (p.cureAt || 0) > 8000) {
           p.cureAt = now;
           p.lastKick = now + Math.random() * 1500;
           p.altPath = !p.altPath; // §FWD transport rotation — see sendSig
-          if (now - p.downSince > 25000 && (p.rebuiltAt || 0) <= p.downSince) { newPcFor(p); sendOffer(pid); }
+          if (now - p.downSince > 25000) { newPcFor(p); sendOffer(pid); }
           else sendOffer(pid, true);
         }
         // D5 (mesh early-probe): a pc sitting in 'failed' PAST the ICE-restart
