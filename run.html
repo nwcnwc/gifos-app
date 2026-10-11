@@ -2447,7 +2447,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (digestMode()) pushLeaf();
       if (typeof scribeAdvert === 'function') scribeAdvert();
-      updateTile('me');
+      // ONE LAYOUT PER REPAINT PASS. The periodic heartbeat's own-tile
+      // repaint is budgeted (one per beat) and stays immediate. An OFF-CYCLE
+      // beat — scheduleNewPeerBeat's answer to a newcomer, or the one-shot
+      // flush on freshly landing a coord — is not on that budget: forcing
+      // its own layout() here, outside any pass, let a quiet room rack up
+      // more layouts than passes once confinement (af875b5) spread such
+      // answers over more of the room's life instead of bunching them at
+      // join (e2e-status-plane: QUIET ROOM). Folding it into the coalesced
+      // pass keeps it 1-for-1 with passes, same as every other repaint.
+      if (answer) scheduleRoomReact(); else updateTile('me');
     }
     // My OWN room-global facts into the fold (healing-laws G9), and my own
     // first-hand consent — the only place a refusal is born (G3).
@@ -3193,6 +3202,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (age < 15000) return true;
       if (age >= HOLDOVER_MS) return false;
       const p = peers.get(pid);
+      // A DOOR ALONE DOES NOT HOLD A STATUS OPEN. A boot/door pair that is
+      // not also one of my bounded links (linkTo) is the channel a knocker
+      // or greeter came in by, not a vouched-for neighbour — and
+      // retireBootPairs only drops it once I locally learn the far side is
+      // seated, which a door to a distant section may never do (af875b5).
+      // Such a door staying "connected" must not keep a stale direct status
+      // held for the full HOLDOVER_MS: past 15s it falls through to the
+      // fold, same as any other far seat's status would.
+      if (p && p.boot && !linkTo(pid)) return !!st.away;
       return !!st.away || !!(p && p.connected);
     };
     function mergeMod(incoming) {
