@@ -11265,20 +11265,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // and MUST re-offer afterwards, or its rolled-back m-lines are
         // orphaned forever (the browser's negotiationneeded would refire
         // here; our hand-rolled offers need the explicit flag).
-        if (p.makingOffer || p.pc.signalingState === 'have-local-offer') {
-          // IMPOLITE ordinarily just drops their offer (they roll back and
-          // answer mine, then re-offer). But a race this tight — MY OWN
-          // polite rollback+reoffer landing in the same beat as THEIRS —
-          // can catch me still in have-local-offer when theirs arrives.
-          // Dropping it here then strands the pair forever: nothing on
-          // either side ever asks again (measured: share-arrives-holds,
-          // Cleo's reoffer silently lost to this exact race, 2026-10-11).
-          // armGlareYield is the same bounded second chance onSignal's
-          // collision branch already gives a stuck impolite side.
-          if (iInitiate(p.id)) { armGlareYield(p, p.id, m); return; }
-          p.renegAgain = true; // polite rollback: my changes go again after I answer
-        }
-        p.pc.setRemoteDescription(m.sdp)
+        const applyRoffer = (msg) => p.pc.setRemoteDescription(msg.sdp)
           .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
           .then((a) => p.pc.setLocalDescription(a))
           .then(() => {
@@ -11287,6 +11274,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (p.renegAgain || hasPendingTx(p)) { p.renegAgain = false; renegotiate(p); }
           })
           .catch((e) => { if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); });
+        if (p.makingOffer || p.pc.signalingState === 'have-local-offer') {
+          if (iInitiate(p.id)) {
+            // IMPOLITE ordinarily just drops their offer (they roll back and
+            // answer mine, then re-offer). But a race this tight — MY OWN
+            // unrelated offer-answer cycle still settling when THEIRS
+            // arrives — can catch me in have-local-offer. Dropping it here
+            // stranded the pair forever (measured: share-arrives-holds,
+            // Cleo's reoffer lost to this race, 2026-10-11): once my own
+            // cycle reaches stable, armGlareYield's "healed" check would
+            // read that as resolved and discard theirs too — wrongly, since
+            // my cycle and theirs are independent. So apply it directly
+            // once I am idle, rolling back first only if still mid-offer.
+            p.rofferYield = m;
+            if (!p.rofferYieldTimer) {
+              p.rofferYieldTimer = setTimeout(() => {
+                p.rofferYieldTimer = null;
+                const ym = p.rofferYield; p.rofferYield = null;
+                if (!ym || !p.pc || leaving || p.makingOffer) return;
+                if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6));
+                Promise.resolve(p.pc.signalingState === 'have-local-offer' ? p.pc.setLocalDescription({ type: 'rollback' }) : null)
+                  .then(() => applyRoffer(ym));
+              }, GLARE_YIELD_MS);
+            }
+            return;
+          }
+          p.renegAgain = true; // polite rollback: my changes go again after I answer
+        }
+        applyRoffer(m);
       } else if (m.k === 'ranswer') {
         if (p.pc) p.pc.setRemoteDescription(m.sdp)
           .then(() => {
