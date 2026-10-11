@@ -1397,7 +1397,7 @@
       this.forkOpts = new Map(); this.forkPending = 0;
       this.emitRelay(this.myKey); this.wake();
     }
-    askSeat(target) { if (this.askTick === this.TICK) { if (!this.hasCoord) { this.state = 2; this.retryAt = this.TICK; } this.reAsk = true; this.wake(); return; } this.askTick = this.TICK; this.state = 2; this.retryAt = this.TICK; this.findAckAt = -1; (this.triedSilent = this.triedSilent || new Set()).add(target); this.lastAsked = target; const fm = { t: 'FIND', nc: this.id, ttl: 200, spread: (SPREAD && this.noroomSeen >= 1) }; const dk = this.darkGreeters(target); if (dk.length) fm.dark = dk; this.emit(target, fm); this.wake(); } // ENTRY PACING: one ask per tick (paced-out ⇒ defer the SEND, never the STATE — see join())
+    askSeat(target) { this._tr.push({ t: this.TICK, x: 'askSeat target=' + String(target).slice(0,6) }); if (this._tr.length > 120) this._tr.shift(); if (this.askTick === this.TICK) { if (!this.hasCoord) { this.state = 2; this.retryAt = this.TICK; } this.reAsk = true; this.wake(); return; } this.askTick = this.TICK; this.state = 2; this.retryAt = this.TICK; this.findAckAt = -1; (this.triedSilent = this.triedSilent || new Set()).add(target); this.lastAsked = target; const fm = { t: 'FIND', nc: this.id, ttl: 200, spread: (SPREAD && this.noroomSeen >= 1) }; const dk = this.darkGreeters(target); if (dk.length) fm.dark = dk; this.emit(target, fm); this.wake(); } // ENTRY PACING: one ask per tick (paced-out ⇒ defer the SEND, never the STATE — see join())
     // ENTRY RESUME (2026-08-04 plane incident; test/tools/seat-flap-repro.js).
     // The dance is three door round trips — knock→GREETERS, WHOHOME→HOME,
     // FIND→PLACE — and a retry used to restart it from the knock, so a socket
@@ -1595,6 +1595,7 @@
     }
 
     take(c, owner, nbrs, pp) {
+      this._tr.push({ t: this.TICK, x: 'take-call c=' + ck(c) + ' owner=' + owner }); if (this._tr.length > 120) this._tr.shift();
       if (c.i >= C() || c.r >= C()) return;   // sanity: never take a malformed coord
       this.rowLedger = !(c.pc === 0 && c.i === 0 && owner != null);   // V4: an admitted S1 row head waits for its assigner's SITXFER
       // PP: the proof my admitter signed with this PLACE; a healer (no
@@ -3277,6 +3278,7 @@
           if ((this.state === 0 || this.state === 1) && this.joinStart < 0) this.joinStart = TICK; // the strand clock starts at the first list (see the ctor)
           if ((this.state === 0 || this.state === 1) && this.joinStart >= 0 && TICK - this.joinStart > STRAND_TTL && (this.lastReach < 0 || TICK - this.lastReach > STRAND_TTL)) { this.stranded = true; this.strandedAt = TICK; return; }
           this.lastGreeters = m.list; this.greetersAt = TICK; this.findAckers = Array.isArray(m.fa) ? new Set(m.fa) : null; // FINDACK: which doors' builds acknowledge (a mixed-build room keeps the old windows for the rest) // stamped: entry-resume trusts this list only while registry-fresh
+          this._tr.push({ t: TICK, x: 'GREETERS-list state=' + this.state + ' n=' + m.list.length + ' list=' + m.list.map((g) => String(g).slice(0,6)).join(',') }); if (this._tr.length > 120) this._tr.shift();
           if (this.state === 0 && !this.forkPaused) {
             // R5: probe SEVERAL greeters. One greeter → classic path. Many →
             // collect HOMEs; cluster by gkey + roster overlap. Two+ clusters
@@ -3371,6 +3373,7 @@
           return;
         }
         case 'HOME': {
+          this._tr.push({ t: TICK, x: 'HOME state=' + this.state + ' rosterLen=' + (Array.isArray(m.roster) ? m.roster.length : -1) + ' gkey=' + m.gkey }); if (this._tr.length > 120) this._tr.shift();
           if (this.dr && m.from != null && this.dr.ids.includes(m.from) && !(Array.isArray(m.roster) && m.roster.length)) this.dr.bare.add(m.from);   // a door round's answer (doorRound): at the door like me (a seated answer carries its roster and leaves the round incomplete)
           if (this.triedSilent && m.id != null) this.triedSilent.delete(m.id); // it answered — not silent
           if (this.doorAsk && m.id != null) this.doorAsk.delete(m.id);         // ...and not dark (darkGreeters)
@@ -3469,7 +3472,7 @@
         // scattered away from the funnel and deep sections filled row 1 before
         // row 0 (H7 dense-fill broken; sim hchain E + c-sweep, 2026-07-29). A
         // corpse answers NOTHING, so its mark stands — corpse-avoid untouched.
-        case 'NOROOM': if (this.state === 2) { if ((m.nd | 0) >= SPREAD_MINDEPTH) this.noroomSeen++; if (this.triedSilent && m.id != null) this.triedSilent.delete(m.id); if (this.triedSilent && this.lastAsked != null) this.triedSilent.delete(this.lastAsked); this.retryAt = TICK; if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t != null) { this.askSeat(t); return; } } this.seatTries = 0; this.join(); } return;
+        case 'NOROOM': this._tr.push({ t: TICK, x: 'NOROOM state=' + this.state + ' nd=' + m.nd }); if (this._tr.length > 120) this._tr.shift(); if (this.state === 2) { if ((m.nd | 0) >= SPREAD_MINDEPTH) this.noroomSeen++; if (this.triedSilent && m.id != null) this.triedSilent.delete(m.id); if (this.triedSilent && this.lastAsked != null) this.triedSilent.delete(this.lastAsked); this.retryAt = TICK; if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t != null) { this.askSeat(t); return; } } this.seatTries = 0; this.join(); } return;
         case 'HELLO': {
           // A HELLO is FIRST-HAND: its sender (m.id) is speaking on a link it
           // holds to me, claiming coord m.ck — it sets first-hand liveness.
