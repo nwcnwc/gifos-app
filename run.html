@@ -9074,9 +9074,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (p.connected) { p.downSince = 0; if (p.noRoute) { p.noRoute = false; updateTile(pid); } }
         else if (!p.absentSince) {
           if (!p.downSince) p.downSince = now;
-          if (!p.noRoute && !p.relayed && !peerAway(pid) && now - p.downSince > 15000) { p.noRoute = true; updateTile(pid); }
+          // A pair that never once connected is unreachable, not away (see
+          // reachCounts): p.neverUp overrides the away check here exactly as
+          // it does there, or a knocker's door whose greeter's gossip never
+          // arrived (lastHeard stuck at birth) reads "away" at 13s — before
+          // this 15s grace even runs — and noRoute never fires.
+          if (!p.noRoute && !p.relayed && (p.neverUp === true || !peerAway(pid)) && now - p.downSince > 15000) { p.noRoute = true; updateTile(pid); }
         }
-        if (p.noRoute && peerAway(pid)) { p.noRoute = false; updateTile(pid); }
+        if (p.noRoute && p.neverUp !== true && peerAway(pid)) { p.noRoute = false; updateTile(pid); }
       }
       updateStatus(); // the reach line follows the pair verdicts just made (REACH_MSG)
       // Admin presence + the signed mod table re-derive on the beat (§9):
@@ -11261,7 +11266,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // orphaned forever (the browser's negotiationneeded would refire
         // here; our hand-rolled offers need the explicit flag).
         if (p.makingOffer || p.pc.signalingState === 'have-local-offer') {
-          if (iInitiate(p.id)) return;
+          // IMPOLITE ordinarily just drops their offer (they roll back and
+          // answer mine, then re-offer). But a race this tight — MY OWN
+          // polite rollback+reoffer landing in the same beat as THEIRS —
+          // can catch me still in have-local-offer when theirs arrives.
+          // Dropping it here then strands the pair forever: nothing on
+          // either side ever asks again (measured: share-arrives-holds,
+          // Cleo's reoffer silently lost to this exact race, 2026-10-11).
+          // armGlareYield is the same bounded second chance onSignal's
+          // collision branch already gives a stuck impolite side.
+          if (iInitiate(p.id)) { armGlareYield(p, p.id, m); return; }
           p.renegAgain = true; // polite rollback: my changes go again after I answer
         }
         p.pc.setRemoteDescription(m.sdp)
