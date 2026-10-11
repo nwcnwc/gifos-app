@@ -6460,7 +6460,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // restarts ICE on it, as before; a pair with no friend at all (a
       // two-person meeting) rebuilds and bootstraps over the relay.
       const dcLive0 = p.dc && (p.dc.readyState === 'open' || p.dc.readyState === 'connecting');
-      if (!dcLive0 && p.mediaOn && !friendDcOpen(peerId)) { newPcFor(p); iceRestart = false; }
+      const pcDead = !p.pc || p.pc.connectionState === 'closed' || p.pc.signalingState === 'closed'; // a closed transport restarts nothing: rebuilt whatever the friends
+      if (!dcLive0 && (pcDead || (p.mediaOn && !friendDcOpen(peerId)))) { newPcFor(p); iceRestart = false; }
       // The OFFERER creates the DataChannel (whoever dials — id-initiator,
       // unwired newcomer, or a starved answerer-side rebuild), BEFORE
       // createOffer so the data m-line rides this offer. Idempotent: a
