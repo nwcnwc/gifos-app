@@ -413,6 +413,7 @@
       // exactly the deaths that trigger a heal. A ledger changes no mesh
       // decision; it only makes the verdict deliverable.
       this.d5Deaths = []; // [k, pid, tick]
+      this._tr = []; // TEMP DIAGNOSTIC (fork-heal bisect) — remove before ship
       this.retryAt = -1; this.seatTries = 0; this.lastPhone = -99; this.lastAck = 0;
       // ENTRY PACING (law tightened 2026-08-02): at most ONE knock and ONE
       // seat-ask per tick. The sim's bus already tick-paces every round trip,
@@ -1094,6 +1095,7 @@
     // horizon. Edge-triggered per coord — one probe burst per transition, so a
     // flapping link cannot generate probe storms.
     transportLost(pid) {
+      this._tr.push({t:this.TICK,x:'transportLost pid='+String(pid).slice(0,6)+' hasCoord='+this.hasCoord+' state='+this.state}); if(this._tr.length>120)this._tr.shift();
       if (!this.hasCoord || this.state !== 3 || pid == null || pid === this.id) return;
       for (const olc of topo.ownedLinks(this.coord)) {
         const k = ck(olc);
@@ -1378,7 +1380,7 @@
     // ---- entry (R1/R3/R4) ----
     // NEWCOMER knock: present my THROWAWAY key. If I'm first I mint genesis;
     // else I learn the real key via the dance and re-present it once seated.
-    join() {
+    join() { this._tr.push({t:this.TICK,x:'join-call state='+this.state});
       // ENTRY-PACING INVARIANT: a paced-out (same-tick) join defers the SEND,
       // never the STATE. A requeue() whose join() got paced out used to return
       // with hasCoord=false but state still 3 — and tick()'s state-3 branch
@@ -2175,6 +2177,7 @@
     oneRowRoom() { for (const k of this.occ.keys()) if (k.slice(0, 4) !== '0_0_' && this.firstHandLive(k)) return false; return true; }
     heal(hole) {
       const TICK = this.TICK;
+      this._tr.push({t:TICK,x:'heal-call hole='+ck(hole)}); if(this._tr.length>120)this._tr.shift();
       if (!this.hasCoord || this.state !== 3 || TICK - this.healAt < 12) return;
       this.lastChurn = TICK; // Q2 hysteresis: I'm healing — my region is churning
       const hk = ck(hole); if (TICK - (this.healTry.has(hk) ? this.healTry.get(hk) : -999) < 45) return;
@@ -2252,8 +2255,9 @@
       this.promoteInto(hole, nbrs);
     }
     promoteInto(hole, nbrs) {
+      this._tr.push({t:this.TICK,x:'promoteInto hole='+ck(hole)+' me='+(this.hasCoord?ck(this.coord):'-')}); if(this._tr.length>120)this._tr.shift();
       if (!this.hasCoord || ck(this.coord) === ck(hole)) return;
-      if (this.moving) return;                       // T1: one move at a time
+      if (this.moving) { this._tr.push({t:this.TICK,x:'promoteInto-skip:moving'}); return; }
       if (this.coord.pc === 0 && hole.pc !== 0) return;
       // 11a left-pack: scooch LEFT within the row. H-CHAIN S1 column: scooch
       // UP into denser (lower row index) same-column hole only — never DOWN
@@ -2278,8 +2282,9 @@
         // -> FINDLEAF) to the row-mate's neighbour, which heard the occupant
         // two ticks earlier and left-packed onto it (chaos seed 12 #5: a 10 s
         // Theo-Dev sever, Pia moved onto Dev, 26.8 s to rejoin).
-        if (this.heldRightNow(ck(hole))) return;
+        if (this.heldRightNow(ck(hole))) { this._tr.push({t:this.TICK,x:'promoteInto-skip:heldRightNow'}); return; }
       }
+      this._tr.push({t:this.TICK,x:'promoteInto->doMove'});
       this.doMove(hole, null, nbrs);
     }
     // T1 CLAIM-BEFORE-VACATE (dual-hold transit): take the NEW seat FIRST — the
@@ -2292,7 +2297,8 @@
     // the new cell (E2 yield, impostor CONFIRM) ROLLS BACK to the still-held
     // old seat — a mover is never homeless.
     doMove(hole, owner, nbrs, pp) {
-      if (!this.hasCoord || ck(this.coord) === ck(hole) || this.moving) return;
+      this._tr.push({t:this.TICK,x:'doMove-call hole='+ck(hole)+' hasCoord='+this.hasCoord+' moving='+this.moving}); if(this._tr.length>120)this._tr.shift();
+      if (!this.hasCoord || ck(this.coord) === ck(hole) || this.moving) { this._tr.push({t:this.TICK,x:'doMove-skip'}); return; }
       if (this.env.bumpMoves) this.env.bumpMoves();
       this.lastChurn = this.TICK; // Q2 hysteresis: a move is churn
       this.oldCoord = this.coord; this.oldCk = ck(this.coord); this.oldTn = this.tn; this.oldEstAt = this.estAt; this.oldPp = this.pp; this.oldAdmBy = this.admBy;
@@ -2323,6 +2329,7 @@
     // FORWARDING TOMBSTONE: for LEASE_TTL I answer in-flight traffic addressed
     // to the old cell. A redirect, never occupancy.
     confirmMove() {
+      this._tr.push({t:this.TICK,x:'confirmMove coord='+(this.hasCoord?ck(this.coord):'-')}); if(this._tr.length>120)this._tr.shift();
       if (!this.moving) return; this.moving = false;
       for (const x of this.oldNbrIds) this.emit(x, { t: 'LEAVE', ck: this.oldCk, id: this.id, mvd: ck(this.coord) });
       this.oldNbrIds = []; this.holdOcc = null; this.holdSeen = null; this.holdCous = null; this.oldPp = null;
@@ -2332,6 +2339,7 @@
     // the rightful occupant). Un-announce the new cell and go home to the old
     // seat, which was never vacated — nobody ever saw it empty.
     rollbackMove() {
+      this._tr.push({t:this.TICK,x:'rollbackMove'}); if(this._tr.length>120)this._tr.shift();
       if (!this.moving) return; this.moving = false;
       const newCk = ck(this.coord); const seen = new Set();
       for (const olc of topo.ownedLinks(this.coord)) { const x = this.occGet(ck(olc)); if (x != null && x !== this.id && !seen.has(x)) { seen.add(x); this.emit(x, { t: 'LEAVE', ck: newCk, id: this.id }); } }
@@ -2355,7 +2363,7 @@
     // over-counted a dead seat's vote after a churn (repro-digest G9);
     // clearing every stamp on a requeue slowed a two-ring merge past its
     // bound (two-ring.js seed 2: 2008 ticks, bound 2000).
-    requeue() { if (!this.evil && this.env.bumpEvict) this.env.bumpEvict(); if (this.env.bumpMoves) this.env.bumpMoves(); this.moving = false; this.oldNbrIds = []; this.holdOcc = null; this.holdSeen = null; this.holdCous = null; this.leaseCk = null; this.leaseUntil = -1; if (this.hasCoord) { const seen = new Set(); for (const olc of topo.ownedLinks(this.coord)) { const x = this.occGet(ck(olc)); if (x != null && x !== this.id && !seen.has(x)) { seen.add(x); this.emit(x, { t: 'LEAVE', ck: ck(this.coord), id: this.id }); } } this.leaveOwner(seen); this.live.delete(ck(this.coord)); } this.hasCoord = false; this.occ.clear(); this.s1seen.clear(); this.holeSince.clear(); this.byeAt.clear(); this.tlClear(); this.authClear(); this.drainAt = 0; this.join(); }
+    requeue() { this._tr.push({t:this.TICK,x:'requeue hasCoord='+this.hasCoord+' coord='+(this.hasCoord?ck(this.coord):'-')}); if(this._tr.length>120)this._tr.shift(); if (!this.evil && this.env.bumpEvict) this.env.bumpEvict(); if (this.env.bumpMoves) this.env.bumpMoves(); this.moving = false; this.oldNbrIds = []; this.holdOcc = null; this.holdSeen = null; this.holdCous = null; this.leaseCk = null; this.leaseUntil = -1; if (this.hasCoord) { const seen = new Set(); for (const olc of topo.ownedLinks(this.coord)) { const x = this.occGet(ck(olc)); if (x != null && x !== this.id && !seen.has(x)) { seen.add(x); this.emit(x, { t: 'LEAVE', ck: ck(this.coord), id: this.id }); } } this.leaveOwner(seen); this.live.delete(ck(this.coord)); } this.hasCoord = false; this.occ.clear(); this.s1seen.clear(); this.holeSince.clear(); this.byeAt.clear(); this.tlClear(); this.authClear(); this.drainAt = 0; this.join(); }
 
     drainOrReenter() {
       const TICK = this.TICK;
@@ -2380,7 +2388,7 @@
     // reach). The atomic transit (T1-T4) covers moves WITHIN a live
     // neighbourhood; a drain is the opposite case — its whole neighbourhood
     // is confirmed dead, and E1 deliberately dissolves it.
-    reseatViaRoster() { if (this.env.bumpMoves) this.env.bumpMoves(); if (this.hasCoord) { const seen = new Set(); for (const olc of topo.ownedLinks(this.coord)) { const x = this.occGet(ck(olc)); if (x != null && x !== this.id && !seen.has(x)) { seen.add(x); this.emit(x, { t: 'LEAVE', ck: ck(this.coord), id: this.id }); } } this.leaveOwner(seen); this.live.delete(ck(this.coord)); } this.hasCoord = false;
+    reseatViaRoster() { this._tr.push({t:this.TICK,x:'reseatViaRoster hasCoord='+this.hasCoord}); if(this._tr.length>120)this._tr.shift(); if (this.env.bumpMoves) this.env.bumpMoves(); if (this.hasCoord) { const seen = new Set(); for (const olc of topo.ownedLinks(this.coord)) { const x = this.occGet(ck(olc)); if (x != null && x !== this.id && !seen.has(x)) { seen.add(x); this.emit(x, { t: 'LEAVE', ck: ck(this.coord), id: this.id }); } } this.leaveOwner(seen); this.live.delete(ck(this.coord)); } this.hasCoord = false;
  this.occ.clear(); this.s1seen.clear(); this.holeSince.clear(); this.tlClear(); this.authClear(); this.drainAt = 0; this.seatTries = 0; const t = (this.haveRoster && this.roster.length) ? this.pickRoster() : null; if (t != null) this.askSeat(t); else this.join(); }
 
     // ---- routing (rook-aware next hops + Option A strict mesh routing) ----
@@ -3261,7 +3269,7 @@
           // dark spell whose list named a departed mate held every seeker off
           // at the split-off guard (serveFind) for the list's whole TTL
           // the reloaded mate never got a seat).
-          if (!m.list.length) { if (this.state === 0) { this.genKey = this.myKey; this.take({ pc: 0, r: 0, i: 0 }, null, []); } else if (this.state === 3) { this.lastGreeters = []; this.greetersAt = TICK; } return; } // R3 mint / R6 take-over
+          if (!m.list.length) { this._tr.push({t:TICK,x:'GREETERS-empty state='+this.state}); if (this.state === 0) { this.genKey = this.myKey; this.take({ pc: 0, r: 0, i: 0 }, null, []); } else if (this.state === 3) { this.lastGreeters = []; this.greetersAt = TICK; } return; } // R3 mint / R6 take-over
           // R6: greeters exist (meeting alive) but I've REACHED none (no HOME
           // roster came back) for a full TTL ⇒ voted off / unreachable subnet.
           // A seat that keeps reaching greeters but only gets NOROOM is
@@ -3300,7 +3308,7 @@
           // for when you actually need the life-saver. A lone genesis lists no
           // other greeter, so it never trips.
           if (this.state === 3 && this.coord.pc === 0 && TICK - this.rookSeenAt > STRAND_TTL
-              && m.list.some((g) => g != null && g !== this.id)) { this.requeue(); return; }
+              && m.list.some((g) => g != null && g !== this.id)) { this._tr.push({t:TICK,x:'GREETERS-E3SELF-requeue rookSeenAt='+this.rookSeenAt}); this.requeue(); return; }
           this.loneGreet(); // a fragment of one greets the door's seats now, and each beat while it stays alone
           // TWO-RING RECONCILIATION (2026-08-02): the lone-fragment rescue
           // above needs a seat hearing NOBODY — but a churn can rebuild TWO
@@ -4224,7 +4232,9 @@
           const lft = { pc: 0, r: this.coord.r, i: this.coord.i - 1 }; const lk = ck(lft);
           // Defer to VERTICAL only when down-child OCC present (not stale childOf).
           const defer = this.translost.has(lk) && this.occGet(ck(topo.down(lft))) != null;
-          if (!defer && this.ringConfirmDead(lft)) { if (this.occ.has(lk)) { this.occ.delete(lk); this.live.delete(lk); this.s1seen.delete(lk); this.kidful.delete(lk); } this.holeSince.delete(lk); this.heal(lft); }
+          const rcd = !defer && this.ringConfirmDead(lft);
+          this._tr.push({ t: TICK, x: 'H2backstop lk=' + lk + ' defer=' + defer + ' ringConfirmDead=' + rcd }); if (this._tr.length > 120) this._tr.shift();
+          if (rcd) { if (this.occ.has(lk)) { this.occ.delete(lk); this.live.delete(lk); this.s1seen.delete(lk); this.kidful.delete(lk); } this.holeSince.delete(lk); this.heal(lft); }
           // ...and the HEAD cell itself, when I hold the row's first-hand proof
           // of its death and my left neighbour is alive. The backstop above
           // heals only my immediate left; the head's own healer is {0,r,1},

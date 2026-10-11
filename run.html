@@ -19786,6 +19786,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const at = new Map(); const dups = []; for (const [pid, k] of coordOfPeer) { if (at.has(k)) dups.push({ coord: k, a: at.get(k).slice(0, 8), b: String(pid).slice(0, 8) }); else at.set(k, String(pid)); }
         let mos = null; try { mos = window.__gifosVideo.mosaic(); } catch (e) { mos = { err: String(e).slice(0, 60) }; }
         return {
+          trace: s ? (s._tr || []) : [],
           me: { peer: myId, name: myName(), coord: c ? (c.pc + '/' + c.r + '.' + c.i) : null,
             depth: c ? net.topo.pcDepth(c.pc) : null, compactMoves: s ? (s.compactMoves || 0) : 0,   // Q2 observability: my tree depth + how many times I have compacted upward
             state: (meshSeat() || {}).state, links: s ? [...s.linkPeers()].length : 0, occ: s ? s.occ.size : 0 },
