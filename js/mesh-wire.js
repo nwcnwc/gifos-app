@@ -797,7 +797,7 @@
         if (sealedSoloRuns >= 4 && !olderSeen) fireLocked();   // ...never over blobs a key I replaced opens: their writers are behind me (a setter left alone with a stale member)
         if (opts.onFragment) { try { opts.onFragment([], { shrank: true, sealedOnly: true, runs: sealedSoloRuns }); } catch (e) {} }
       } else if (ids.length || !list.length) sealedSoloRuns = 0;
-      // BEHIND THE ROOM'S KEY (2026-10-09: a member who missed a password
+      // BEHIND THE ROOM'S KEY (a member who missed a password
       // change stays out, and is TOLD so). A seated page whose door serves
       // only blobs that neither my key nor any key this room used before it
       // can open was away while the password changed. Its channels are sealed

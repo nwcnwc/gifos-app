@@ -106,14 +106,14 @@ const tapTs = new Map();  // srcId -> the tap's transformer (the SKR handle)
 const skrLast = new Map();// srcId -> last sendKeyFrameRequest ms (rate limit)
 const pipes = new Map();  // pipeId -> { writer, q, needKey, mime, tmplMime, wrote, dropped, swapErr, kfAsk, lastWriteAt, misreported }
 const QMAX = 40;          // frames of content buffered per pipe; overflow drops to next key (reference chains)
-// THE LAST KEY IS KEPT (2026-10-09). A still picture (a slide, a document)
+// THE LAST KEY IS KEPT. A still picture (a slide, a document)
 // produces no frames once it stops changing, and a WebRTC encoder answers a
 // keyframe request only with its next frame: no frame, no key, ever. So a
 // pipe that needed a key while its source was still starved for good: a
 // viewer attached after the picture settled, a parked copy woken, a route
-// repointed, a consumer that lost its first key. Measured: 27 PLIs at the
-// producer, keyFramesEncoded stuck at 1, wrote 0 on every pipe, no viewer
-// painting through the relay. The tap keeps a copy of the newest keyframe it
+// repointed, a consumer that lost its first key. Without this, repeated key
+// requests went unanswered and the viewer never painted through the relay.
+// The tap keeps a copy of the newest keyframe it
 // saw, and such a pipe is SEEDED with it at once, so the viewer paints the
 // current picture immediately. A fresh key is still asked for, and deltas
 // stay held until it lands (needKey), so a moving source never decodes

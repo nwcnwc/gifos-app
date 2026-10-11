@@ -2430,8 +2430,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // beats must NOT keep riding it: retireBootPairs() only drops a door
       // once I know (locally) the far side is seated, which a door to a
       // distant section may never learn, so an unretired door became a
-      // standing direct pipe past the section (e2e-status-plane: 2-3 seats
-      // heard every other seat's fresh status). The mesh gossip flood above
+      // standing direct pipe past the section (a small room saw every other
+      // seat's fresh status this way, not just its own section's). The mesh gossip flood above
       // already carries my beat to my section; a non-link DC pair hears
       // nothing it would not get there (or sooner, in the fold's count).
       fanOut(payload, (p) => { if (!linkTo(p.id)) return; txStats.dcStatus++; dcSend(p, { k: 'sig', msg: payload }); }, scoped ? { scope: 'section', ephemeral: true } : undefined);
@@ -5431,7 +5431,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       f.state = reachStateOf(f);
       return f;
     }
-    const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0, relayBoot: 0, relayFp: 0, relayIce: 0, relayName: 0, relayPassword: 0, relayUnfit: 0 }; // test/inspection hook: where heartbeats + signaling + sponsor hops actually travel; relay*: frames put on the relay by type (relayPassword counts every frame of a grant), relayUnfit: payloads that did not fit the relay's fixed size (never sent)
+    const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0, relayBoot: 0, relayFp: 0, relayIce: 0, relayName: 0, relayPassword: 0, relayUnfit: 0 }; // counters showing where heartbeats + signaling + sponsor hops actually travel; relay*: frames put on the relay by type (relayPassword counts every frame of a grant), relayUnfit: payloads that did not fit the relay's fixed size (never sent)
     const rxStats = { offer: 0, answer: 0, ice: 0, status: 0, offerRejected: 0, answerNoPeer: 0, negFail: 0, answerStale: 0, relayAccepted: {}, relayDropped: {} }; // reception mirror: what actually ARRIVED (and what was refused); relayAccepted/relayDropped: relay frames by type, dispatched vs refused (relayFrameAllowed)
     // THE RELAY LAW (gifos-net.js RELAY_TYPES; docs/meet-security.md §RELAY).
     // The relay carries a fixed list of message types between members, each
@@ -5828,7 +5828,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // identified. Each page decides from what it sees
     // itself, and every page that hears the forger's status sees the same
     // forgery. The forger stays on the Who list (and in the download) as
-    // ejected. isSevered carries it, so every path the drill sever already
+    // ejected. isSevered carries it, so every path a severed connection already
     // closes (sendSig, onSignal, onDc, mesh frames) closes for a forger too.
     const ejected = new Map();      // pid -> { at, why }
     // By peer id (the participant's key) ONLY: a device tag is a string the
@@ -6078,7 +6078,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const p = peers.get(pid);
         if (p && p.dc && p.dc.readyState === 'open') viaDc(p);
       }
-      if (meshNode && !(opts && opts.scope)) txStats.roomFlood = (txStats.roomFlood || 0) + 1; // room-wide floods I ORIGINATED (the N×N tripwire: e2e-status-plane)
+      if (meshNode && !(opts && opts.scope)) txStats.roomFlood = (txStats.roomFlood || 0) + 1; // room-wide floods I ORIGINATED (flags a message sent to everyone instead of its own section)
       if (meshNode) meshNode.gossip({ a: 1, msg }, opts); // opts: { scope: 'section', ephemeral } for the heartbeat — see THE STATUS PLANE
     }
     const myName = () => GifOS.store.identity().name || 'Guest';
@@ -6100,7 +6100,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // stream has arrived (p.incoming) and is not the one on the tile yet. Any
     // other pulse must not touch the tile — claimOwnStream ends in updateTile,
     // and an updateTile outside a repaint pass lays the whole grid out, so a
-    // quiet room was laying out once per peer per beat (e2e-status-plane).
+    // quiet room was laying out once per peer per beat.
     const sidIsNews = (p, sid) => p.ownSid !== sid
       || (!(p.stream && p.stream.id === sid) && (p.incoming || []).some((s) => s.id === sid));
     function claimOwnStream(p) {
@@ -7082,7 +7082,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // network reaches no one keeps every greeter's door alive at once:
       // nine doors every 5 s was 5.4 frames a second, past the production
       // meter (3 a second after a 600-frame burst), and the relay cut the
-      // page for rate about four minutes in (e2e-reach-states, Model 2).
+      // page for rate about four minutes in.
       // Nine doors at 40 s is 0.7 a second. A pair that once connected
       // keeps its five seconds: its rejoin bound is a member's, not a
       // stranger's.
@@ -7445,8 +7445,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // newcomer answer, never reaches the mesh at all. A two-hop neighbour
       // then waited for the next phase-aligned heartbeat (up to SCALE.HB)
       // to hear of the newcomer. One broadcast the moment a coord lands
-      // closes that gap (measured: law 1 of e2e-meet-newcomer-beat, late at
-      // ~4.4 s instead of answering within 3 s).
+      // closes that gap (without it, a newcomer's status arrived at ~4.4 s
+      // instead of within 3 s).
       if (s.hasCoord && s.state === 3 && !seatedBeatSent) { seatedBeatSent = true; try { broadcastStatus(); } catch (e) {} }
       departSweep(s); // D2/D5 event intake FIRST — a freed seat leaves the view this tick
       const ids = new Set();
@@ -11359,9 +11359,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // answer mine, then re-offer). But a race this tight — MY OWN
             // unrelated offer-answer cycle still settling when THEIRS
             // arrives — can catch me in have-local-offer. Dropping it here
-            // stranded the pair forever (measured: share-arrives-holds,
-            // Cleo's reoffer lost to this race, 2026-10-11): once my own
-            // cycle reaches stable, armGlareYield's "healed" check would
+            // stranded the pair forever (a renegotiation could be lost to
+            // this race): once my own cycle reaches stable, armGlareYield's
+            // "healed" check would
             // read that as resolved and discard theirs too — wrongly, since
             // my cycle and theirs are independent. So apply it directly
             // once I am idle, rolling back first only if still mid-offer.
@@ -20040,14 +20040,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       defyCamOffForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; camDefiant = true; t.enabled = true; myStatus.camOff = false; broadcastStatus(); return true; },
       // a camera that comes on by a path that never asked the order (the page itself is honest)
       slipCamOnForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; t.enabled = true; myStatus.camOff = false; return true; },
-      // freeze my outgoing pulses (throttled-phone simulation for the G1 drill)
+      // freeze my outgoing pulses (simulates a phone that has throttled itself)
       haltPulseForTest: (on) => { pulseHalt = !!on; },
-      // backdate the beat clock (renderer-freeze simulation for the resume self-heal drill)
+      // backdate the beat clock (simulates a renderer that froze and then resumed)
       freezeGapForTest: (ms) => { hbLastAt = Date.now() - (ms | 0); },
       stageVoteNeed: () => stageVoteTallies().need,
       devInfo: () => ({ devOf: Object.assign({}, devOf), attested: Array.from(devRelay) }), // which device tags the RELAY vouched for (Ban needs one)
       _unattestForTest: (id) => devRelay.delete(id), // leave devOf[id] as a tag known only by the peer's own word
-      // THE STATUS PLANE, as this seat sees it (e2e-status-plane.js).
+      // THE STATUS PLANE, as this seat sees it.
       statusPlane: () => { const d = roomDig(); return { id: myId, mode: digestMode(), past: roomPastSection(), n: d ? d.n : null, age: d ? d.age : null,
         refuse: d ? d.refuse : null, part: d ? !!d.part : null, handN: d ? d.handN : null, hands: d ? d.hands.map((e) => e.id) : [], stage: d ? d.stage.map((e) => e.id) : [],
         apps: d ? d.apps.map((e) => e.id) : [], votes: d ? d.votes.length : 0, display: displayCount(), consentIds: roomConsentIds().length,
