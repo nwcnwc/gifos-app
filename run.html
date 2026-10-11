@@ -6727,6 +6727,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // the sweeper retires any link the arithmetic ends up not wanting.
         if (!linkTo(from) && meshKnows(from)) { rxStats.offerRejected++; return; }
         const p = makePeer(from, msg.name);
+        if (p && !linkTo(from) && !meshKnows(from)) p.boot = true; // a knocker's door, seen from the greeter: kept while it serves, never rebuilt once the knocker is seated elsewhere
         // A fresh offer onto a LONG-DEAD local pc negotiates into a corpse:
         // the tunnel-return stall (behavior battery 06c, 2026-07-26) — the
         // evicted side's zombie ate the returning offers until the vouch
@@ -8951,8 +8952,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // moment I am seated with a link of my own open (retireBootPairs).
           if (p.boot && !seatedNow) { p.unlinkedSince = 0; }
           else if (p.boot && seatedNow && anyLinkOpen) { dropPeer(pid, meshKnows(pid)); continue; }
-          else if (p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed')) { dropPeer(pid, meshKnows(pid)); continue; } // a pair nobody's arithmetic names, and dead (the far side closed its door): gone now, never rebuilt
+          else if (p.boot && p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed')) { dropPeer(pid, meshKnows(pid)); continue; } // a door (either side of it) that is dead: gone now, never rebuilt
           else {
+            // Any other pair keeps its grace and its repair: a member back
+            // from a dark spell names its neighbours again only once its
+            // view re-converges, and its dead pairs with them must be
+            // rebuilt meanwhile, not dropped.
             if (!p.unlinkedSince) p.unlinkedSince = now;
             if (now - p.unlinkedSince > 15000) { dropPeer(pid, meshKnows(pid)); continue; }
           }
@@ -8962,7 +8967,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A pc that lands in 'closed' can't be ICE-restarted — rebuild the
         // transport into the same peer record (tile + identity survive).
         if (!p.absentSince && st === 'closed') {
-          if (!linkTo(pid)) continue; // a pair the arithmetic does not name is never rebuilt (a retired door, a link given up); its grace runs out above
+          if (p.boot && !linkTo(pid)) continue; // a door the arithmetic does not name is never rebuilt (its grace runs out above); every other pair is
           newPcFor(p);
           if (iInitiate(pid)) { p.lastKick = now + Math.random() * 1500; sendOffer(pid); }
           continue;
