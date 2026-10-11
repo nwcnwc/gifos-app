@@ -2424,7 +2424,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // heartbeat rides the same free DC path as everyone else's; receivers
       // verify the proof, not the transport.
       const scoped = digestMode();
-      fanOut(payload, (p) => { txStats.dcStatus++; dcSend(p, { k: 'sig', msg: payload }); }, scoped ? { scope: 'section', ephemeral: true } : undefined);
+      // THE HEARTBEAT'S DIRECT LEG IS BOUNDED TO MY OWN LINKS. A boot/door pair
+      // (a greeter's or knocker's bootstrap channel) gets this page's status
+      // once, on dc.onopen — enough to show a name at once — but ongoing
+      // beats must NOT keep riding it: retireBootPairs() only drops a door
+      // once I know (locally) the far side is seated, which a door to a
+      // distant section may never learn, so an unretired door became a
+      // standing direct pipe past the section (e2e-status-plane: 2-3 seats
+      // heard every other seat's fresh status). The mesh gossip flood above
+      // already carries my beat to my section; a non-link DC pair hears
+      // nothing it would not get there (or sooner, in the fold's count).
+      fanOut(payload, (p) => { if (!linkTo(p.id)) return; txStats.dcStatus++; dcSend(p, { k: 'sig', msg: payload }); }, scoped ? { scope: 'section', ephemeral: true } : undefined);
       // AN ADMIN IS PRESENT FOR THE WHOLE ROOM. Its status is its section's like
       // anyone's; what the room needs is the SIGNED proof that an admin is here
       // (takeMod credits presence from the signature, whoever carries it). That
