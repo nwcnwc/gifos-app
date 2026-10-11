@@ -8954,7 +8954,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // knock, a knocker's (not yet in my occupancy) while it knocks at
           // me — and retired once both are seated with no link between them.
           const theyOutside = !meshKnows(pid);
-          if (p.boot && p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed')) { dropPeer(pid, !theyOutside); continue; } // a dead door: gone now, never rebuilt (a knocker redials)
+          if (p.boot && p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed')) { dropPeer(pid, !theyOutside || rosterIds.includes(pid)); continue; } // a dead door: gone now, never rebuilt (a knocker redials); a member the roster already holds keeps its status
           else if (p.boot && (!seatedNow || theyOutside)) { p.unlinkedSince = 0; }
           else if (p.boot && seatedNow && anyLinkOpen) { dropPeer(pid, true); continue; }
           else {
