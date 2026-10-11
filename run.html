@@ -5365,7 +5365,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const p of peerList) {
         if (!p || p.absentSince) continue;
         if (p.connected || p.relayed) live++;
-        else if (p.noRoute && !isAway(p.id)) dead++;
+        else if (p.noRoute && (p.neverUp === true || !isAway(p.id))) dead++; // a pair that never once connected is dead, not away: nothing was ever heard to go quiet
       }
       return { live, dead };
     }
@@ -6294,7 +6294,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
-        else if (p.connected) { p.deadSince = 0; p.tlFired = false; }
+        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; }
         updateStatus();
         if (p.connected) { p.altPath = false; p.tlAt = 0; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
@@ -6312,7 +6312,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if ((typeof isEjected === 'function' && isEjected(peerId) === true)) return null; // never a connection to a forger
       const t = makeTile(peerId, name, false, headless);
       const p = { id: peerId, pc: null, tile: t.tile, video: t.video, label: t.label, avatar: t.avatar, chips: t.chips, cap: t.cap, modbar: t.modbar, voteBtn: t.voteBtn,
-        name, headless: !!headless, connected: false, pendingIce: [], absentSince: 0, lastKick: 0, lastHeard: Date.now(), bornAt: Date.now(), incoming: [] };
+        name, headless: !!headless, connected: false, pendingIce: [], absentSince: 0, lastKick: 0, lastHeard: Date.now(), bornAt: Date.now(), incoming: [], neverUp: true }; // neverUp: no transport ever connected — such a pair is dead, never merely away (reachCounts)
       peers.set(peerId, p);
       recSrcDirty = true;
       newPcFor(p);
@@ -19292,7 +19292,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       relayScope: () => relayRosterScope,          // 'full' (a greeter, or an old relay) or 'door' (greeters only)
       relayWho: () => relaySendObj({ t: 'who' }),  // pull the full list (the relay rate-limits it per socket)
       // Per-pair transport forensics (meet.js CLI + e2e): the raw WebRTC state.
-      pairs: () => Array.from(peers.values()).map((p) => ({ id: String(p.id).slice(0, 8),
+      pairs: () => Array.from(peers.values()).map((p) => ({ id: String(p.id).slice(0, 8), boot: !!p.boot, neverUp: p.neverUp === true,
         pc: p.pc ? p.pc.connectionState : null, ice: p.pc ? p.pc.iceConnectionState : null,
         sig: p.pc ? p.pc.signalingState : null, dc: p.dc ? p.dc.readyState : null,
         connected: !!p.connected, absent: !!p.absentSince,
