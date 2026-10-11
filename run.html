@@ -2755,6 +2755,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const rosterSet = new Set(rosterIds);
         { const ms = meshSeat(); if (ms) for (const v of ms.occ.values()) if (v && v !== myId) occNamed.add(v); }
         for (const [pid, p] of peers) {
+          // A JUDGMENT IN THE DARK IS NO JUDGMENT — wakeProbe's own law
+          // ("nothing we send leaves and nothing comes back"), missing
+          // here. While OUR radio is off, 12s of nothing received proves
+          // nothing about any peer; it is OUR deafness, not their death.
+          // Unguarded, this sweep read its own radio-dropout as every
+          // peer dying at once and closed all of them for real (newPcFor),
+          // forcing a full re-knock with glare once the radio returned —
+          // the pairs it tore down were fine the whole time and would have
+          // answered wakeProbe's wping in one round trip the instant the
+          // radio came back, same as a healthy pair always does.
+          if (darkSince(nowHb)) break;
           const why = (w) => { sv.why[w] = (sv.why[w] || 0) + 1; };
           // eligible: ICE-connected, OR previously heard at mesh level, OR a
           // pair OBJECT older than 12s that never connected at all — a
@@ -2900,6 +2911,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // small enough that everyone should.
         if (participantCount() <= 6) {
           for (const pid of rosterIds) {
+            if (darkSince(nowHb)) break; // same law as the sweep above
             if (pid === myId || peers.has(pid)) continue;
             const heard = meshRxByPid.get(pid) || 0;
             if (!pidFirstSeen.has(pid)) pidFirstSeen.set(pid, nowHb);
