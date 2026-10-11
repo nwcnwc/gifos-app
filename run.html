@@ -9072,8 +9072,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // perfectly capable. The plain path stays throttled by lastKick (a
         // restart IS that beat's offer); only the ESCALATION reads its own
         // stamp, so it now actually fires at 12s/25s as designed.
+        //
+        // THE RETRY CADENCE ITSELF MUST STAY UNDER THE REJOIN BOUND
+        // (rejoin-bound-holds-4ab448/-147e35, 2026-10-11). The first kick at
+        // 12s is often wasted — it lands while the far side is still
+        // unreachable (a scripted sever, a real dead spot) and nothing marks
+        // WHEN the obstruction actually lifts, so the next kick has to find
+        // it by polling. At an 8s cadence the worst case is 8s of dead poll
+        // plus the handshake itself: a 25s sever's own clock and this one's
+        // beat at 8s apart, and the wasted kick at 20s left the next live one
+        // at 28s — 3s past the sever's end, then the rebuild/negotiation, a
+        // measured 12.06-12.07s past the sever closing on two unrelated
+        // pairs (Quin/Milo, Vik/Zed). A 4s cadence halves that blind spot —
+        // at most 4s of poll plus the handshake, comfortably inside the 10s
+        // rejoin bound for everything this ladder already covers (ICE
+        // restart through 25s, then the full rebuild beyond it).
         if (!p.absentSince && iInitiate(pid) && !p.connected && (st === 'connecting' || st === 'new')
-            && p.downSince && now - p.downSince > 12000 && now - (p.cureAt || 0) > 8000) {
+            && p.downSince && now - p.downSince > 12000 && now - (p.cureAt || 0) > 4000) {
           p.cureAt = now;
           p.lastKick = now + Math.random() * 1500;
           p.altPath = !p.altPath; // §FWD transport rotation — see sendSig
