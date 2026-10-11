@@ -690,14 +690,21 @@
     }
     // Every tick: an entry ask whose channel has since opened leaves now; one
     // still without a path after ENTRY_WAIT_MS is dropped (the seat re-asks).
+    let entryKnockAt = 0;
     function flushPendingEntry() {
       if (!pendingEntry.size) return;
       const now = Date.now();
+      let gaveUp = false;
       for (const [k, e] of pendingEntry) {
-        if (now - e.at > ENTRY_WAIT_MS) { pendingEntry.delete(k); continue; }
+        if (now - e.at > ENTRY_WAIT_MS) { pendingEntry.delete(k); gaveUp = true; continue; }
         if (opts.sendDC && opts.sendDC(e.to, e.m, peer)) pendingEntry.delete(k);
         else askDial(e.to);
       }
+      // A greeter no channel could reach in ENTRY_WAIT_MS may be one my
+      // network cannot reach at all; the door may hold others by now (a seat
+      // taken since my knock). Knock again for a fresh list, at most once per
+      // ENTRY_WAIT_MS, while I am still outside.
+      if (gaveUp && !iAmInsideTheRoom() && now - entryKnockAt > ENTRY_WAIT_MS) { entryKnockAt = now; KNOCK_FOR_THE_GREETER_LIST((seat && seat.genKey) || myKey); }
     }
 
     // (4) ANSWER SOMEONE AT THE DOOR — I am a member and the target is still
