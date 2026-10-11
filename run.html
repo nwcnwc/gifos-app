@@ -5898,10 +5898,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // try the relay; its {t:'nosock'} answer marks the peer for the sponsor path.
       const notOnRelay = relayRosterScope === 'full' ? !relaySocketed.has(to) : relayNoSockRecently(to);
       const targetUnreachable = notOnRelay || !!(peers.get(to) || {}).altPath;
-      if (relayDown || targetUnreachable) {
+      // A description carrying media never fits the relay (the law): it goes
+      // by the sponsor path or not at all — the pair's channel is down, so a
+      // friend's channel carries the restart; with no path the beat retries.
+      const mediaDesc = (msg.kind === 'offer' || msg.kind === 'answer') && !net.bootOf(msg.sdp, 0);
+      if (relayDown || targetUnreachable || mediaDesc) {
         const m2 = sigSansIce(to, msg);
         if (!m2) return; // a blocked pair sends nothing on either path (fault injection)
         if (sponsorSend({ k: 'fsig', from: myId, to, tc: coordKeyOf(to), id: myId + ':' + (++fwdSeq), ttl: 12, m: m2 })) { txStats.fwdSig++; return; }
+        if (mediaDesc) { txStats.relayUnfit++; return; } // no friend's channel either: the sweeper's next attempt rebuilds and bootstraps (sendOffer)
       }
       msg = sigSansIce(to, msg);
       if (!msg) return;
@@ -6427,6 +6432,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, stale ? 0 : GLARE_YIELD_MS);
     }
 
+    // Is any OTHER pair's channel open — a friend a sponsored frame can start from?
+    function friendDcOpen(except) {
+      for (const [pid, q] of peers) if (pid !== except && q.connected && q.dc && q.dc.readyState === 'open') return true;
+      return false;
+    }
     function sendOffer(peerId, iceRestart) {
       if ((typeof isEjected === 'function' && isEjected(peerId) === true)) return; // never dial a forger
       const p = makePeer(peerId, null);
@@ -6444,8 +6454,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // carries media (its channel opened once and died) is rebuilt first,
       // media-free, and dials afresh. Nothing is lost: no media flows on a
       // pair whose channel is dead, and the fresh pair re-adds it on open.
+      // ...unless a friend's channel can carry the restart: a description
+      // with media still travels the sponsor path (fsig over the mesh's
+      // channels — sendSig), so a pair with friends keeps its transport and
+      // restarts ICE on it, as before; a pair with no friend at all (a
+      // two-person meeting) rebuilds and bootstraps over the relay.
       const dcLive0 = p.dc && (p.dc.readyState === 'open' || p.dc.readyState === 'connecting');
-      if (!dcLive0 && p.mediaOn) { newPcFor(p); iceRestart = false; }
+      if (!dcLive0 && p.mediaOn && !friendDcOpen(peerId)) { newPcFor(p); iceRestart = false; }
       // The OFFERER creates the DataChannel (whoever dials — id-initiator,
       // unwired newcomer, or a starved answerer-side rebuild), BEFORE
       // createOffer so the data m-line rides this offer. Idempotent: a
