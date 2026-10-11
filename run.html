@@ -5217,8 +5217,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const reachState = reach ? reach.state : null;
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
       const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
-        : (n === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry')
-        : displayCount() + ' in the meeting · ' + q.label) + partial + link + savedLock + extra;
+        : (n === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry' + reachTriedSentence())
+        : displayCount() + ' in the meeting · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
       // of the reach states that replace the line. Tests and styling read
@@ -6315,7 +6315,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return p;
     }
 
-    function dropPeer(peerId) {
+    // dropPeer(peerId, stillHere): retire the pair. A departed member's
+    // status goes with it (a stale status must not haunt the room's
+    // consensus); a member still in the room whose pair is merely no longer
+    // wanted (a bootstrap channel to a greeter, a link the arithmetic gave up)
+    // keeps the status everyone holds of them — forgetting it made the next
+    // beat read as a newcomer's first.
+    function dropPeer(peerId, stillHere) {
       const p = peers.get(peerId);
       if (!p) return;
       clearTimeout(p.hiLate);
@@ -6325,7 +6331,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       peers.delete(peerId);
       recSrcDirty = true;
       releaseMeter(peerId);
-      if (typeof dropStatus === 'function') dropStatus(peerId); else statusOf.delete(peerId); // a stale status must not haunt the room's consensus
+      if (!stillHere) { if (typeof dropStatus === 'function') dropStatus(peerId); else statusOf.delete(peerId); }
       forgetConns(peerId);
       if (typeof sgaForgetWaiter === 'function') sgaForgetWaiter(peerId); // a departed asker is no reason to keep chasing
       if (typeof reconcileApp === 'function') reconcileApp(); // a departing host ends the shared app
@@ -7018,6 +7024,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (p && (p.connected || (p.dc && p.dc.readyState === 'open') || p.offering || (p.pc && p.pc.signalingState !== 'stable'))) return;
       if (p && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') return; // forming
       sendOffer(pid, false);
+      const q = peers.get(pid); if (q) q.boot = true; // the door I came in by: retired the moment a seat's own link opens (wireDc onopen), unless the arithmetic names it
+    }
+    // The bootstrap channel to a greeter has done its work once I am seated
+    // and a link the arithmetic names is open: a seat holds its bounded
+    // neighbourhood and nothing else. A greeter that IS a neighbour keeps
+    // its pair; the member stays in the room, so its status stays too.
+    function retireBootPairs() {
+      const s = meshSeat();
+      if (!s || !s.hasCoord || s.state !== 3) return;
+      for (const [pid, q] of Array.from(peers)) if (q.boot && !linkTo(pid)) dropPeer(pid, true);
     }
     function ensureLink(pid, name) {
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return; // never link to a forger
@@ -8904,7 +8920,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // after a needless drop is pure lost time.
         if (!linkTo(pid)) {
           if (!p.unlinkedSince) p.unlinkedSince = now;
-          if (now - p.unlinkedSince > 15000) { dropPeer(pid); continue; }
+          if (now - p.unlinkedSince > 15000) { dropPeer(pid, meshKnows(pid)); continue; }
         } else { p.unlinkedSince = 0; p.absentSince = 0; } // a mesh-named neighbour is never absent
         const st = p.pc.connectionState;
         if (p.absentSince && !p.connected && now - p.absentSince > ABSENT_GRACE) { dropPeer(pid); continue; }
@@ -10710,6 +10726,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { dcSend(p, { k: 'sig', msg: statusPayload() }); txStats.dcStatus++; } catch (e) {}
         if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
         try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
+        try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
         dcSend(p, { k: 'hi', chats: Array.from(chat.values()).slice(-500), trs: Array.from(trs.values()).slice(-300), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj() });
         // THE MOMENT A CHANNEL EXISTS is the moment the stage pulls can finally
         // travel. Everything below was silently impossible a millisecond ago:
