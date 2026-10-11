@@ -7021,10 +7021,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function bootDial(pid) {
       if (!pid || pid === myId || (typeof isEjected === 'function' && isEjected(pid) === true)) return;
       const p = peers.get(pid);
-      if (p && (p.connected || (p.dc && p.dc.readyState === 'open') || p.offering || (p.pc && p.pc.signalingState !== 'stable'))) return;
-      if (p && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') return; // forming
+      if (p && (p.connected || (p.dc && p.dc.readyState === 'open') || p.offering)) return; // reachable already, or an offer is minting
+      if (p && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') return; // forming: its five seconds
+      // A stale transport — an offer never answered, a pair dead since a
+      // dark spell — is rebuilt: the door needs a fresh bootstrap, not a
+      // renegotiation of a corpse.
+      if (p && p.pc) newPcFor(p);
       sendOffer(pid, false);
-      const q = peers.get(pid); if (q) q.boot = true; // the door I came in by: retired the moment a seat's own link opens (wireDc onopen), unless the arithmetic names it
+      const q = peers.get(pid); if (q) q.boot = true; // the door I came in by: retired once a seat's own link is open (retireBootPairs), unless the arithmetic names it
     }
     // The bootstrap channel to a greeter has done its work once I am seated
     // and a link the arithmetic names is open: a seat holds its bounded
@@ -8786,6 +8790,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // here, never shown and never handed on.
         const from = m.from, ty = m.ty;
         const piece = m.msg;
+        // A frame from X over the relay is proof X holds a socket right now:
+        // my next bootstrap to X takes the relay, whatever an earlier
+        // {t:'nosock'} said (a seat that just asked to be dialled is on it).
+        if (from) { relaySocketed.add(from); relayNoSock.delete(from); }
         const take = (held) => rxm(() => net.open(roomE2E, piece).then((inner) => {
           if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
           if (!inner) return healStaleFrom(from, piece); // §LOCK: with the pair down, a stale member's frames arrive HERE — the relay path heals too
@@ -8914,13 +8922,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (pid === myId || (devOf[pid] && devOf[pid] === myDevHash)) continue;
         if (linkTo(pid) && !peers.has(pid)) ensureLink(pid, rosterNames[pid] || null);
       }
+      const seatedNow = (() => { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3); })();
+      let anyLinkOpen = false; for (const [qid, q] of peers) if (q.dc && q.dc.readyState === 'open' && linkTo(qid)) { anyLinkOpen = true; break; }
       for (const [pid, p] of Array.from(peers)) {
         // A link the arithmetic no longer wants gets a 15s grace: the seat
         // map flaps while gossip settles, and an ICE rebuild two seconds
         // after a needless drop is pure lost time.
         if (!linkTo(pid)) {
-          if (!p.unlinkedSince) p.unlinkedSince = now;
-          if (now - p.unlinkedSince > 15000) { dropPeer(pid, meshKnows(pid)); continue; }
+          // The bootstrap channel to a greeter (p.boot) is the door: kept
+          // while I am still outside, however it fares (a dead one is what
+          // tells a locked-out person so — reachCounts), and retired the
+          // moment I am seated with a link of my own open (retireBootPairs).
+          if (p.boot && !seatedNow) { p.unlinkedSince = 0; }
+          else if (p.boot && seatedNow && anyLinkOpen) { dropPeer(pid, meshKnows(pid)); continue; }
+          else {
+            if (!p.unlinkedSince) p.unlinkedSince = now;
+            if (now - p.unlinkedSince > 15000) { dropPeer(pid, meshKnows(pid)); continue; }
+          }
         } else { p.unlinkedSince = 0; p.absentSince = 0; } // a mesh-named neighbour is never absent
         const st = p.pc.connectionState;
         if (p.absentSince && !p.connected && now - p.absentSince > ABSENT_GRACE) { dropPeer(pid); continue; }
