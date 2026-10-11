@@ -7409,9 +7409,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // maintained by the healing laws) plus fresh status gossip. Replaces the
     // relay-roster reconcile — the relay's roster is the greeter pool, not
     // the room. Runs on the mesh node's onUpdate (each 500ms tick).
+    let seatedBeatSent = false;
     function renderFromOcc() {
       const s = meshSeat();
       if (!s) return;
+      // FRESHLY SEATED, ONE FLUSH. Before hasCoord is true, gossip() has no
+      // section to speak to and drops the frame silently (sc === null) — so
+      // a status authored in that window, including scheduleNewPeerBeat's
+      // newcomer answer, never reaches the mesh at all. A two-hop neighbour
+      // then waited for the next phase-aligned heartbeat (up to SCALE.HB)
+      // to hear of the newcomer. One broadcast the moment a coord lands
+      // closes that gap (measured: law 1 of e2e-meet-newcomer-beat, late at
+      // ~4.4 s instead of answering within 3 s).
+      if (s.hasCoord && s.state === 3 && !seatedBeatSent) { seatedBeatSent = true; try { broadcastStatus(); } catch (e) {} }
       departSweep(s); // D2/D5 event intake FIRST — a freed seat leaves the view this tick
       const ids = new Set();
       // An occ id is a PARTICIPANT only with a liveness signal: a fresh status
