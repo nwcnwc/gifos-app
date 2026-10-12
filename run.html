@@ -6130,7 +6130,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const own = (p.incoming || []).find((s) => s.id === p.ownSid);
       if (own && p.stream !== own) {
         p.stream = own;
-        if (!p.relayed) { p.video.srcObject = own; meterFor(p.id, own); }
+        if (!p.relayed) { playTileVideo(p.video, own); meterFor(p.id, own); }
+      } else if (own && !p.relayed && p.video && p.video.srcObject === own && (p.video.paused || p.video.readyState === 0)) {
+        // The stream was bound while its video track was still muted (no RTP
+        // yet). A bare srcObject does not start decoding later — the element
+        // stays paused at readyState 0 and videoWidth never leaves 0.
+        playTileVideo(p.video, own);
       }
       updateTile(p.id);
     }
@@ -6210,7 +6215,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (p.mainA) p.mainA.replaceTrack(null).catch(() => {});
           if (p.mainV) p.mainV.replaceTrack(null).catch(() => {});
         }
-      } else if (!localStream) { try { pc.addTransceiver('video', { direction: 'recvonly' }); pc.addTransceiver('audio', { direction: 'recvonly' }); added = true; } catch (e) {} }
+      } else if (!localStream) {
+        // Same audio-then-video order as addTrack above. The opposite order
+        // made a glare rollback unable to adopt the other side's offer: the
+        // m-lines no longer matched, the answer was swallowed, and the pair
+        // sat with a camera transceiver that never negotiated.
+        try { pc.addTransceiver('audio', { direction: 'recvonly' }); pc.addTransceiver('video', { direction: 'recvonly' }); added = true; } catch (e) {}
+      }
       return added;
     }
     function newPcFor(p) {
@@ -6251,6 +6262,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // one: its rollback would target a connection that never offered.
       try { if (p.glareTimer) clearTimeout(p.glareTimer); } catch (e) {}
       p.glareTimer = null; p.glareOffer = null;
+      // A renegotiation yield armed against the old pc must not answer on the
+      // new one: its offer describes m-lines the fresh pc never had.
+      try { if (p.rofferYieldTimer) clearTimeout(p.rofferYieldTimer); } catch (e) {}
+      p.rofferYieldTimer = null; p.rofferYield = null; p.kickVideo = false;
       p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
       p.offering = null; // an offer still minting belongs to the closed pc (sendOffer drops it)
       p.offerFp = ''; // no remote offer has landed on this pc yet (onSignal's new-pc rule)
@@ -6306,6 +6321,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             GifOS.meshPipe.tapReceiver(ev.receiver, 'rx:' + ev.track.id);
           }
         } catch (e) {}
+        if (ev.track && ev.track.kind === 'video') {
+          ev.track.addEventListener('unmute', () => {
+            const own = (p.incoming || []).find((s) => s.id === p.ownSid);
+            if (own && p.video) playTileVideo(p.video, own);
+          });
+        }
         if (!stream) return;
         p.incoming = p.incoming || [];
         if (!p.incoming.includes(stream)) {
@@ -11362,21 +11383,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           .then(() => {
             dcSend(p, { k: 'ranswer', sdp: p.pc.localDescription });
             if (typeof clog === 'function') clog('ranswer→' + String(p.id).slice(0, 6));
-            if (p.renegAgain || hasPendingTx(p)) { p.renegAgain = false; renegotiate(p); }
+            afterNeg(p);
           })
-          .catch((e) => { if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); });
+          .catch((e) => { if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); maybeRebuildNeg(p, e); });
         if (p.makingOffer || p.pc.signalingState === 'have-local-offer') {
           if (iInitiate(p.id)) {
             // IMPOLITE ordinarily just drops their offer (they roll back and
             // answer mine, then re-offer). But a race this tight — MY OWN
             // unrelated offer-answer cycle still settling when THEIRS
             // arrives — can catch me in have-local-offer. Dropping it here
-            // stranded the pair forever (a renegotiation could be lost to
-            // this race): once my own cycle reaches stable, armGlareYield's
-            // "healed" check would
-            // read that as resolved and discard theirs too — wrongly, since
-            // my cycle and theirs are independent. So apply it directly
-            // once I am idle, rolling back first only if still mid-offer.
+            // stranded the pair forever: once my own cycle reaches stable,
+            // treating that as "their offer is stale" discards an independent
+            // renegotiation. So answer it once I am idle.
+            // setRemoteDescription(offer) rolls my offer back when I am still
+            // in have-local-offer. An explicit rollback first leaves the old
+            // m-line order in place and the answer throws, and the camera
+            // transceiver then never negotiates.
             p.rofferYield = m;
             if (!p.rofferYieldTimer) {
               p.rofferYieldTimer = setTimeout(() => {
@@ -11384,20 +11406,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                 const ym = p.rofferYield; p.rofferYield = null;
                 if (!ym || !p.pc || leaving || p.makingOffer) return;
                 if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6));
-                Promise.resolve(p.pc.signalingState === 'have-local-offer' ? p.pc.setLocalDescription({ type: 'rollback' }) : null)
-                  .then(() => applyRoffer(ym));
+                p.kickVideo = true;
+                applyRoffer(ym);
               }, GLARE_YIELD_MS);
             }
             return;
           }
           p.renegAgain = true; // polite rollback: my changes go again after I answer
+          p.kickVideo = true; // that rollback stops the video encoder; reseat once stable
         }
         applyRoffer(m);
       } else if (m.k === 'ranswer') {
         if (p.pc) p.pc.setRemoteDescription(m.sdp)
           .then(() => {
             if (typeof clog === 'function') clog('ranswer←' + String(p.id).slice(0, 6));
-            if (p.renegAgain || hasPendingTx(p)) { p.renegAgain = false; renegotiate(p); }
+            afterNeg(p);
           })
           .catch((e) => { if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); });
       }
@@ -11834,6 +11857,49 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         dcSend(viaP, { k: 'relay-stop', target });
       }
     }
+    // Picture-only. Sound is the companion Audio (busVolume); the element has
+    // to be muted BEFORE play or a late claim (no user gesture left) stays
+    // paused and videoWidth never moves.
+    function playTileVideo(video, stream) {
+      if (!video || !stream) return;
+      try { video.muted = true; } catch (e) {}
+      if (video.srcObject !== stream) video.srcObject = stream;
+      const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
+    }
+    // A glare rollback can leave the main video sender negotiated sendrecv,
+    // track still attached, and emitting nothing. Seating the live camera
+    // again (drop, then the same track) restarts the encoder. Never touches
+    // a parked, staged, or cam-off sender — those are supposed to be quiet.
+    function kickMainVideo(p) {
+      if (!p || !p.mainV || p.remoteParkMain || myStatus.camOff || stageIds().includes(myId) || !camPeer(p.id)) return;
+      let vt = null; try { vt = sentVideoTrack(); } catch (e) {}
+      if (!vt || vt.readyState !== 'live') return;
+      const sender = p.mainV;
+      const seat = () => sender.replaceTrack(vt).catch(() => {});
+      if (sender.track !== vt) { seat(); return; }
+      sender.replaceTrack(null).then(seat).catch(() => {});
+    }
+    function afterNeg(p) {
+      if (!p) return;
+      if (p.renegAgain || hasPendingTx(p)) { p.renegAgain = false; renegotiate(p); return; }
+      if (p.kickVideo) { p.kickVideo = false; kickMainVideo(p); }
+    }
+    // createOffer/setRemoteDescription failed because a rollback left the
+    // m-line order unmatchable. Retrying on this pc throws the same error
+    // forever; a fresh pc accepts the next offer cleanly. Once per pair per
+    // 20s so a repeating glare cannot rebuild in a loop.
+    function maybeRebuildNeg(p, e) {
+      if (!p || !p.pc || leaving || !p.id) return;
+      if (e && e.name === 'GlareRace') return;
+      // Only the m-line-order failure. A plain InvalidAccessError is also how
+      // a lost glare race dies, and rebuilding on that tears down a healthy pair.
+      const msg = String((e && e.message) || '');
+      if (!/m-line|order of/i.test(msg)) return;
+      const now = Date.now();
+      if (p.rebuildNegAt && now - p.rebuildNegAt < 20000) return;
+      p.rebuildNegAt = now;
+      try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
+    }
     // PERFECT NEGOTIATION over the DataChannel: EITHER side may re-offer (a
     // fold sender must be able to open its own m-lines — an answer can never
     // introduce them, so "only one side offers" starves whichever fold lives
@@ -11856,7 +11922,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       p.pc.createOffer()
         .then((o) => { if (p.pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return p.pc.setLocalDescription(o); })
         .then(() => { dcSend(p, { k: 'roffer', sdp: p.pc.localDescription }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); })
-        .catch((e) => { if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; })
+        .catch((e) => { if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
         .finally(() => { p.makingOffer = false; });
     }
     function startRelayJob(reqP, target) {
@@ -15634,6 +15700,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!el.srcObject) { if (el._aud) el._aud.srcObject = null; el.volume = vol; return; }
       if (!el._aud) { el._aud = new Audio(); el._aud.autoplay = true; }
       el.muted = true; // the <video> is picture-only, always — sound lives in the companion
+      // Muting is what makes a late srcObject legal to play. The element is
+      // often still paused from the unmuted autoplay attempt at claim time,
+      // and a paused picture reports videoWidth 0 even after frames arrive.
+      if (el.paused || el.readyState === 0) { const pr = el.play(); if (pr && pr.catch) pr.catch(() => {}); }
       if (el._aud.srcObject !== el.srcObject) {
         el._aud.srcObject = el.srcObject;
         let pr = null; try { pr = el._aud.play(); } catch (e) { audioBlocked(el._aud, e); }
