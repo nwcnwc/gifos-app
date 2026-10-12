@@ -76,9 +76,11 @@ jobs:
             echo "::error::the large app file was staged for the site"
             exit 1
           fi
-          staged=$(find dist -type f -name '*.gif' | wc -l)
-          if [ "$staged" -ne 203 ]; then
-            echo "::error::expected 203 app files on the site, found $staged"
+          # The site copy holds every catalog GIF except that one.
+          grep -vx 'apps/pdf-tables-ocr/pdf-tables-ocr.gif' /tmp/site-gifs.txt | sort > /tmp/site-gifs-staged.txt
+          (cd dist && find . -type f -name '*.gif' | sed 's|^\./||' | sort) > /tmp/dist-gifs.txt
+          if ! diff -u /tmp/site-gifs-staged.txt /tmp/dist-gifs.txt; then
+            echo "::error::the site copy's GIFs do not match the store catalog"
             exit 1
           fi
           big=$(find dist -type f -size +25M -print)
