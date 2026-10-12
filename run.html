@@ -11386,6 +11386,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             afterNeg(p);
           })
           .catch((e) => { if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); maybeRebuildNeg(p, e); });
+        const armRofferYield = () => {
+          if (p.rofferYieldTimer || !p.rofferYield) return;
+          // The first wait is the glare yield. A later one is only because
+          // our own offer was still being minted when the timer fired —
+          // dropping theirs there lost the renegotiation, and the timer
+          // does not come back on its own.
+          const wait = p.rofferYieldN ? 250 : GLARE_YIELD_MS;
+          p.rofferYieldTimer = setTimeout(() => {
+            p.rofferYieldTimer = null;
+            const ym = p.rofferYield;
+            if (!ym || !p.pc || leaving) { p.rofferYield = null; return; }
+            if (p.makingOffer) {
+              p.rofferYieldN = (p.rofferYieldN || 0) + 1;
+              if (p.rofferYieldN > 8) { p.rofferYield = null; return; }
+              armRofferYield();
+              return;
+            }
+            p.rofferYield = null; p.rofferYieldN = 0;
+            if (p.pc.signalingState === 'closed') return;
+            if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6));
+            p.kickVideo = true;
+            applyRoffer(ym);
+          }, wait);
+        };
         if (p.makingOffer || p.pc.signalingState === 'have-local-offer') {
           if (iInitiate(p.id)) {
             // IMPOLITE ordinarily just drops their offer (they roll back and
@@ -11400,16 +11424,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // m-line order in place and the answer throws, and the camera
             // transceiver then never negotiates.
             p.rofferYield = m;
-            if (!p.rofferYieldTimer) {
-              p.rofferYieldTimer = setTimeout(() => {
-                p.rofferYieldTimer = null;
-                const ym = p.rofferYield; p.rofferYield = null;
-                if (!ym || !p.pc || leaving || p.makingOffer) return;
-                if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6));
-                p.kickVideo = true;
-                applyRoffer(ym);
-              }, GLARE_YIELD_MS);
-            }
+            if (!p.rofferYieldTimer) { p.rofferYieldN = 0; armRofferYield(); }
             return;
           }
           p.renegAgain = true; // polite rollback: my changes go again after I answer
@@ -11422,7 +11437,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (typeof clog === 'function') clog('ranswer←' + String(p.id).slice(0, 6));
             afterNeg(p);
           })
-          .catch((e) => { if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); });
+          .catch((e) => { if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); maybeRebuildNeg(p, e); });
       }
     }
     // A peer's lines are bounded two ways: per sender per window (a script
@@ -11884,19 +11899,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (p.renegAgain || hasPendingTx(p)) { p.renegAgain = false; renegotiate(p); return; }
       if (p.kickVideo) { p.kickVideo = false; kickMainVideo(p); }
     }
-    // createOffer/setRemoteDescription failed because a rollback left the
-    // m-line order unmatchable. Retrying on this pc throws the same error
-    // forever; a fresh pc accepts the next offer cleanly. Once per pair per
-    // 20s so a repeating glare cannot rebuild in a loop.
+    // createOffer/setRemoteDescription failed in a way this pc will repeat
+    // forever: the m-line order cannot be matched, or Chrome refused the
+    // offer because a mid already in use would have to change RTP extension
+    // ids (audio offered where video sits, or the reverse). The channel can
+    // still look open. createOffer then throws the same error on every
+    // later try. A fresh pc accepts the next offer.
+    // A door is in no roster, so the channel watchdog and the mesh starve
+    // sweep never rebuild it. Any failed apply on a transport that is
+    // already down is rebuilt here too — a lost glare race on a live pair
+    // is not, or a healthy channel would be torn down.
+    function negPoisoned(e) {
+      const msg = String((e && e.message) || '');
+      return /m-line|order of|extension ID reassignment/i.test(msg);
+    }
     function maybeRebuildNeg(p, e) {
       if (!p || !p.pc || leaving || !p.id) return;
       if (e && e.name === 'GlareRace') return;
-      // Only the m-line-order failure. A plain InvalidAccessError is also how
-      // a lost glare race dies, and rebuilding on that tears down a healthy pair.
-      const msg = String((e && e.message) || '');
-      if (!/m-line|order of/i.test(msg)) return;
+      if (!negPoisoned(e) && !noLiveTransport(p)) return;
       const now = Date.now();
-      if (p.rebuildNegAt && now - p.rebuildNegAt < 20000) return;
+      if (p.rebuildNegAt && now - p.rebuildNegAt < 8000) return;
       p.rebuildNegAt = now;
       try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
     }
