@@ -85,21 +85,6 @@
   // on a still-seeking SITPONG, and to a re-ask that reaches it (the SAME
   // chair — never a twin vouch).
   const FIND_ACK_WAIT = 12, PLACE_REPLAY = 12;
-  // AN ACKNOWLEDGED FIND THAT NEVER ANSWERS (test/sim/mesh.cpp ACK_REASK —
-  // MUST match). A FINDACK says the first hop handed my FIND on; it says
-  // nothing about the hops after it. When the hand-off itself is swallowed
-  // (the admitter cannot hear the seeker: chaos sever, a link that died
-  // between the greeter and the head) nothing is in flight, no PLACE will
-  // ever come, and the seeker sat out the whole 60-tick window at the door:
-  // 30 s of "Just you" after a 25 s partition had already lifted. Now a
-  // seeker whose acknowledged FIND is still unanswered after ACK_REASK ticks
-  // re-asks the SAME greeter with the ask marked `again`, and every hop that
-  // handed that seeker's FIND on re-hands a marked re-ask to the SAME target
-  // (handOn / handed) — the chain is re-driven, never raced: a merely slow
-  // chain meets its own duplicate at the admitter, which replays the one
-  // chair it already vouches. After ACK_REASKS re-drives (the old window's
-  // length) the seeker re-picks as before.
-  const ACK_REASK = 16, ACK_REASKS = 4;
   const DOOR_ROUND_WAIT = 8;
   const DARK_WAIT = 6;         // a greeter I asked WHOHOME at the door and that has not answered for 6 ticks is dark to me (FIND's dark list)
   const DARK_ASK_FRESH = 60;   // ...while my latest ask to it is at most 60 ticks old
@@ -477,8 +462,6 @@
       this.roster = []; this.haveRoster = false; this.lastGreeters = [];
       this.findAckAt = -1;       // FINDACK: the tick lastAsked acknowledged my outstanding FIND (-1 = not yet)
       this.findAckers = null;    // FINDACK: door ids whose build sends FINDACK (from the greeter list); null = every greeter does (the sim and harness fabrics)
-      this.ackReasks = 0;        // ACK_REASK: re-drives of the current ask's chain (a fresh pick resets it)
-      this.handed = new Map();   // ACK_REASK: seeker id -> { to, cell, deep, at }: where I handed its FIND, so a marked re-ask follows the same chain
       this.findNc = null;        // 03c: seeker of the serveFind scan in progress (knock-is-evidence phantom scope)
       this.noroomSeen = 0;       // T7: NOROOMs told to my face since I last entered the search (sim mesh.cpp noroomSeen) — only an EXPLICIT NOROOM counts, never a timeout
       // V7 THE DEEP-ROW LEDGER (sim mesh.cpp rowLedgerAt, 2026-09-17): the tick I
@@ -1412,7 +1395,7 @@
       this.forkOpts = new Map(); this.forkPending = 0;
       this.emitRelay(this.myKey); this.wake();
     }
-    askSeat(target, again) { if (this.askTick === this.TICK) { if (!this.hasCoord) { this.state = 2; this.retryAt = this.TICK; } this.reAsk = true; this.wake(); return; } this.askTick = this.TICK; this.state = 2; this.retryAt = this.TICK; this.findAckAt = -1; if (!again) this.ackReasks = 0; (this.triedSilent = this.triedSilent || new Set()).add(target); this.lastAsked = target; const fm = { t: 'FIND', nc: this.id, ttl: 200, spread: (SPREAD && this.noroomSeen >= 1) }; if (again) fm.again = 1; const dk = this.darkGreeters(target); if (dk.length) fm.dark = dk; this.emit(target, fm); this.wake(); } // ENTRY PACING: one ask per tick (paced-out ⇒ defer the SEND, never the STATE — see join())
+    askSeat(target) { if (this.askTick === this.TICK) { if (!this.hasCoord) { this.state = 2; this.retryAt = this.TICK; } this.reAsk = true; this.wake(); return; } this.askTick = this.TICK; this.state = 2; this.retryAt = this.TICK; this.findAckAt = -1; (this.triedSilent = this.triedSilent || new Set()).add(target); this.lastAsked = target; const fm = { t: 'FIND', nc: this.id, ttl: 200, spread: (SPREAD && this.noroomSeen >= 1) }; const dk = this.darkGreeters(target); if (dk.length) fm.dark = dk; this.emit(target, fm); this.wake(); } // ENTRY PACING: one ask per tick (paced-out ⇒ defer the SEND, never the STATE — see join())
     // ENTRY RESUME (2026-08-04 plane incident; test/tools/seat-flap-repro.js).
     // The dance is three door round trips — knock→GREETERS, WHOHOME→HOME,
     // FIND→PLACE — and a retry used to restart it from the knock, so a socket
@@ -1827,24 +1810,10 @@
     noteKnock(x) { if (x == null) return; const K = this.knockAt || (this.knockAt = new Map()); K.delete(x); K.set(x, this.TICK); if (K.size > 64) K.delete(K.keys().next().value); }
     knocking(x) { const t = this.knockAt && this.knockAt.get(x); return t !== undefined && this.TICK - t <= KNOCK_FRESH; }
     silentFor(k, n) { const it = this.live.get(k); return it !== undefined && this.TICK - it > n; }
-    // ACK_REASK: hand a seeker's FIND on and remember where, so its marked
-    // re-ask (askSeat again) re-drives this same chain. `deep` is the
-    // findAck flavour of the hop (a descend hand-off acknowledges without the
-    // silent-admitter check).
-    handOn(mm, to, cell, deep) {
-      if (this.handed.size >= 64) this.handed.delete(this.handed.keys().next().value);
-      this.handed.set(mm.nc, { to, cell, deep: !!deep, at: this.TICK });
-      const f = { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }; if (mm.again) f.again = 1;
-      this.emit(to, f); this.findAck(mm, cell, !!deep);
-    }
     serveFind(mm) {
       const TICK = this.TICK;
       if (!this.hasCoord || mm.ttl <= 0) { this.noroomWhy = 'unseated'; this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
       for (const s of this.sitting.values()) if (s.joiner === mm.nc && s.assigner === this.id && s.pl && TICK - s.at <= SIT_TTL) { this.emit(mm.nc, Object.assign({}, s.pl)); return; } // FINDACK: a re-ask reaching the admitter that already vouches this seeker gets the SAME chair again (its PLACE was lost) — never a twin vouch
-      // ACK_REASK: a marked re-ask follows the chain I already put it on while
-      // that hand-off is fresh and its target still holds the cell I handed
-      // to; a target that died or moved falls through to a new scan.
-      if (mm.again) { const h = this.handed.get(mm.nc); if (h && TICK - h.at <= KNOCK_FRESH && h.to !== this.id && this.occGet(h.cell) === h.to) { this.handOn(mm, h.to, h.cell, h.deep); return; } }
       if (this.coord.pc === 0) {
         const skip = [];   // forensics: why each Section-1 cell was passed over (noroomWhy, the test trace's NOROOM row)
         // A SPLIT-OFF SEAT ADMITS NOBODY INTO SECTION 1 (sim twin). A healer
@@ -1987,7 +1956,7 @@
             // through to the bottom-up cascade, so two whole home rows on the
             // far side of a split still resurrect (repro-partition seed 11).
             if (aid != null && aid !== this.id && !fh) { const t = this.fwdSeen.get(mm.nc); if (t !== undefined && TICK - t <= 240) aid = null; else { if (this.fwdSeen.size >= 64) this.fwdSeen.delete(this.fwdSeen.keys().next().value); this.fwdSeen.set(mm.nc, TICK); } }
-            if (aid != null && aid !== this.id) { this.handOn(mm, aid, this.occGet(ac) === aid ? ac : ah, false); return; }
+            if (aid != null && aid !== this.id) { this.emit(aid, { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }); this.findAck(mm, this.occGet(ac) === aid ? ac : ah); return; }
             // The whole admitter row below is dead too. "Resolve bottom-up"
             // DEADLOCKED here when EVERY row below was dead or empty (s1all
             // recovery: fresh greeters in rows 0-1, rows 2-4 dead, one stale
@@ -2097,7 +2066,7 @@
                 this.occ.delete(ek); this.live.delete(ek); this.liveBy.delete(ek); this.s1seen.delete(ek); this.kidful.delete(ek); this.tlForget(ek, 'echo-bounce');
                 this.serveFind(mm); return;
               }
-              this.handOn(mm, this.occGet(ck(adm)), ck(adm), false); return;
+              this.emit(this.occGet(ck(adm)), { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }); this.findAck(mm, ck(adm)); return;
             }
           }
         }
@@ -2146,7 +2115,7 @@
           // compete in pass 0. First contact is untouched; a partitioned seeker
           // never gets here (it fails silent, not loud); the hop is still
           // strictly DOWNWARD, so no cycle is possible.
-          if (pass === 0 ? (this.firstHandLive(rk) || (mm.spread && this.admitterReachable(rk))) : this.admitterReachable(rk)) { this.handOn(mm, x, rk, true); return; }
+          if (pass === 0 ? (this.firstHandLive(rk) || (mm.spread && this.admitterReachable(rk))) : this.admitterReachable(rk)) { this.emit(x, { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }); this.findAck(mm, rk, true); return; }
         }
       this.noroomWhy = 'deep'; this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 });
     }
@@ -4193,11 +4162,7 @@
         // silence past FIND_ACK_WAIT is a lost FIND or a lost direct PLACE
         // (nothing in flight to race); a greeter whose build does not
         // acknowledge keeps the windows above.
-        // ACK_REASK: an acknowledged ask still unanswered re-drives its own
-        // chain (same greeter, marked `again`) every ACK_REASK ticks, ACK_REASKS
-        // times; only then does it re-pick, as the 60-tick window did.
-        else if (this.state === 2 && this.findAckAt >= 0 && TICK - this.findAckAt > ACK_REASK && this.ackReasks < ACK_REASKS && this.lastAsked != null) { this.ackReasks++; this.askSeat(this.lastAsked, true); }
-        else if (this.state === 2 && (this.findAckAt >= 0 ? TICK - this.findAckAt > ACK_REASK : TICK - this.retryAt > ((!this.findAckers || this.findAckers.has(this.lastAsked)) ? FIND_ACK_WAIT : (this.seatTries === 0 && this.roster.filter((e) => e.v !== this.id).length === 1) ? 12 : 60))) { if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t != null) this.askSeat(t); else if (!this.resumeAsk()) this.join(); } else { this.seatTries = 0; if (!this.resumeAsk()) this.join(); } } // ENTRY RESUME on roster exhaustion too: a fresh WHOHOME beats a fresh knock
+        else if (this.state === 2 && TICK - this.retryAt > ((this.findAckAt < 0 && (!this.findAckers || this.findAckers.has(this.lastAsked))) ? FIND_ACK_WAIT : (this.seatTries === 0 && this.roster.filter((e) => e.v !== this.id).length === 1) ? 12 : 60)) { if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t != null) this.askSeat(t); else if (!this.resumeAsk()) this.join(); } else { this.seatTries = 0; if (!this.resumeAsk()) this.join(); } } // ENTRY RESUME on roster exhaustion too: a fresh WHOHOME beats a fresh knock
         this.wake(); return;
       }
       if (this.evil) this.attack();
