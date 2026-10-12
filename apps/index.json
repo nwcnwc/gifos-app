@@ -6167,16 +6167,8 @@
       "version": "1.0.0",
       "tagline": "Open a PDF and hear it read aloud. The file stays on this device.",
       "author": {
-        "name": "Mozilla",
-        "url": "https://github.com/mozilla/pdf.js"
-      },
-      "porter": {
         "name": "GifOS",
         "url": "https://gifos.app"
-      },
-      "basedOn": {
-        "name": "PDF.js",
-        "blessed": false
       },
       "minBuild": 947,
       "offline": true,
@@ -6199,7 +6191,7 @@
         42
       ],
       "cover": "/apps/pdf-read-aloud/cover.jpg",
-      "bytes": 833057,
+      "bytes": 832900,
       "download": 0,
       "provides": null,
       "signature": {
@@ -6207,7 +6199,7 @@
         "id": "gifos.app",
         "ts": "2026-10-12"
       },
-      "sha256": "6534992e194872baa242e2c653768d8073680b7509930d21b97fa0daa4713ec2"
+      "sha256": "bef545bede41d28dc272017105105395f83ece6fbec052cf0df48d18009ddc6b"
     },
     {
       "slug": "pdf-reader",
