@@ -1460,7 +1460,7 @@ function scoreTable(g){ const sc=g.scores||{}; if(!Object.keys(sc).length) retur
   const ks=g.ids.slice().sort(function(a,b){return (sc[b]||0)-(sc[a]||0);});
   return '<div class="card"><h2>Wins</h2><table>'+ks.map(function(k,i){return '<tr><td>'+IRL.esc(g.names[g.ids.indexOf(k)])+'</td><td><b>'+(sc[k]||0)+'</b></td></tr>';}).join('')+'</table></div>'; }
 
-let dayInt=null;
+let dayInt=null, tmSel=[], tmRound=0;
 function render(){
   clearInterval(dayInt);
   const g=IRL.g;
@@ -1473,6 +1473,10 @@ function render(){
   const i=myIdx(g), role=i>=0?g.deal[i]:null, n=g.ids.length;
   if(g.phase==='night'){
     const done=acts(g).length, mine=i>=0?actOf(g,i):true;
+    // Two taps, and a neighbour's action redraws the screen between them.
+    // The selection has to outlive that redraw or the second tap starts over
+    // and dawn never comes.
+    if(tmRound!==g.round||mine){ tmRound=g.round; tmSel=[]; }
     let html='<div class="card center"><h2>Night falls — total silence</h2><div class="muted">Do your night action below. Nobody talks until dawn.</div></div>'
       +'<div class="role"><div class="muted" style="color:#888">Hold to peek — your secret role</div><div class="r" id="r">·····</div></div>';
     if(i<0){ html+='<div class="card center"><div class="muted">You\\'re watching this one.</div></div>'; }
@@ -1510,13 +1514,16 @@ function render(){
     M.querySelectorAll('[data-player]').forEach(function(el){ el.onclick=function(){ submit({player:+el.dataset.player}); }; });
     M.querySelectorAll('[data-c]').forEach(function(el){ el.onclick=function(){ submit({center:[+el.dataset.c[0],+el.dataset.c[1]]}); }; });
     M.querySelectorAll('[data-rob]').forEach(function(el){ el.onclick=function(){ submit({target:+el.dataset.rob}); }; });
-    let tmSel=[];
-    M.querySelectorAll('[data-tm]').forEach(function(el){ el.onclick=function(){
-      el.classList.toggle('sel');
+    M.querySelectorAll('[data-tm]').forEach(function(el){
       const j=+el.dataset.tm;
-      if(tmSel.indexOf(j)>=0) tmSel=tmSel.filter(function(x){return x!==j;}); else tmSel.push(j);
-      if(tmSel.length===2) submit({a:tmSel[0],b:tmSel[1]});
-    }; });
+      if(tmSel.indexOf(j)>=0) el.classList.add('sel');
+      el.onclick=function(){
+        const k=+el.dataset.tm;
+        if(tmSel.indexOf(k)>=0) tmSel=tmSel.filter(function(x){return x!==k;}); else tmSel.push(k);
+        el.classList.toggle('sel');
+        if(tmSel.length===2){ const pair=tmSel.slice(); tmSel=[]; submit({a:pair[0],b:pair[1]}); }
+      };
+    });
     const dawn=document.getElementById('dawn');
     if(dawn) dawn.onclick=function(){ IRL.save(Object.assign({},g,{phase:'day',dayEnds:Date.now()+5*60000})); };
     if(allIn&&IRL.coordinator(g)) IRL.save(Object.assign({},g,{phase:'day',dayEnds:Date.now()+5*60000}));
