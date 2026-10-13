@@ -2619,8 +2619,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // WAKE_PROBE_MS (preset 14a: the head's pair to its mate sat new for
       // the 1.5 s, on a 10 s budget). A pc built since the return (the peer's
       // offer landed) is left to form, as below.
+      // A CLOSED channel is that same corpse while ICE still says connected.
+      // The channel can never reopen, and the dark sweep does not run, so
+      // nothing else rebuilds it until the silent pass. That 1.5 s is enough
+      // for glare to hold the new offer past the settle, which then marks the
+      // live peer wake-dead. An open channel is still only asked. A channel
+      // still 'connecting' is formation and is left alone.
       if (/^dark/.test(why)) for (const [pid, p] of peers) {
-        if (p.wakeAt !== at || !p.pc || p.wakeAsked || p.connected || (p.dc && p.dc.readyState === 'open')) continue;
+        if (p.wakeAt !== at || !p.pc || p.wakeAsked) continue;
+        const dcDead = p.dc && (p.dc.readyState === 'closed' || p.dc.readyState === 'closing');
+        if (!dcDead && p.connected) continue;
         if (Math.max(p.rebuiltAt || 0, p.bornAt || 0) >= at) continue;
         rebuild(pid, p, 'dark');
       }
