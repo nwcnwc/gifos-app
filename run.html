@@ -6274,8 +6274,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // new one: its offer describes m-lines the fresh pc never had.
       try { if (p.rofferYieldTimer) clearTimeout(p.rofferYieldTimer); } catch (e) {}
       p.rofferYieldTimer = null; p.rofferYield = null; p.kickVideo = false;
-      try { if (p.rebuildNegTimer) clearTimeout(p.rebuildNegTimer); } catch (e) {}
-      p.rebuildNegTimer = null;
       p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
       p.offering = null; // an offer still minting belongs to the closed pc (sendOffer drops it)
       p.offerFp = ''; // no remote offer has landed on this pc yet (onSignal's new-pc rule)
@@ -11899,38 +11897,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function afterNeg(p) {
       if (!p) return;
-      try { if (p.rebuildNegTimer) clearTimeout(p.rebuildNegTimer); } catch (e) {}
-      p.rebuildNegTimer = null;
       if (p.renegAgain || hasPendingTx(p)) { p.renegAgain = false; renegotiate(p); return; }
       if (p.kickVideo) { p.kickVideo = false; kickMainVideo(p); }
     }
     // createOffer/setRemoteDescription failed because a rollback left the
     // m-line order unmatchable. Retrying on this pc throws the same error.
-    // A fresh pc accepts the next offer, but tearing the pair down at the
-    // first mismatch drops a seat that would have come back on its own (the
-    // other side was only quiet). Wait, and rebuild only if the camera
-    // transceiver is still unnegotiated. One rebuild per pair per 20s.
+    // A fresh pc accepts the next offer. An OPEN channel is the seat:
+    // rebuilding it drops a person who is only quiet. A channel that is still
+    // connecting is not a seat yet, and leaving it wedged means the join
+    // never finishes. One rebuild per pair per 20s.
     function maybeRebuildNeg(p, e) {
       if (!p || !p.pc || leaving || !p.id) return;
       if (e && e.name === 'GlareRace') return;
-      // A live channel is the seat. Rebuilding it to chase a media mismatch
-      // drops the person out of the room for a whole new handshake.
-      if (p.dc && (p.dc.readyState === 'open' || p.dc.readyState === 'connecting')) return;
+      if (p.dc && p.dc.readyState === 'open') return;
       // Only the m-line-order failure. A plain InvalidAccessError is also how
       // a lost glare race dies, and rebuilding on that tears down a healthy pair.
       const msg = String((e && e.message) || '');
       if (!/m-line|order of/i.test(msg)) return;
-      if (p.rebuildNegTimer) return;
-      p.rebuildNegTimer = setTimeout(() => {
-        p.rebuildNegTimer = null;
-        if (!p.pc || leaving) return;
-        if (p.dc && (p.dc.readyState === 'open' || p.dc.readyState === 'connecting')) return;
-        if (p.pc.signalingState === 'stable' && !hasPendingTx(p)) return;
-        const now = Date.now();
-        if (p.rebuildNegAt && now - p.rebuildNegAt < 20000) return;
-        p.rebuildNegAt = now;
-        try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
-      }, 15000);
+      const now = Date.now();
+      if (p.rebuildNegAt && now - p.rebuildNegAt < 20000) return;
+      p.rebuildNegAt = now;
+      try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
     }
     // PERFECT NEGOTIATION over the DataChannel: EITHER side may re-offer (a
     // fold sender must be able to open its own m-lines — an answer can never
