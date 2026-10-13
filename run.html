@@ -6886,7 +6886,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
           .then((ans) => p.pc.setLocalDescription(ans))
           .then(() => sendSig(from, { kind: 'answer', sdp: p.pc.localDescription, ib: 1, name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() }))
-          .catch((e) => { noteNegFail('accept', from, e); maybeRebuildNeg(p, e); });
+          .catch((e) => { noteNegFail('accept', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(p, e); });
         // A COLLISION is my own offer applied (have-local-offer) or, on a pair
         // with no live transport, still being minted (p.offering — see
         // sendOffer; the pc reads 'stable' until it lands).
@@ -6953,7 +6953,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!p.pc || p.pc.signalingState !== 'have-local-offer') { rxStats.answerStale++; return; }
         p.pc.setRemoteDescription(msg.sdp)
           .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
-          .catch((e) => { noteNegFail('answer', from, e); maybeRebuildNeg(peers.get(from), e); });
+          .catch((e) => { noteNegFail('answer', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(peers.get(from), e); });
       } else if (msg.kind === 'ice') {
         const cands = iceCandsOf(msg);
         const p = peers.get(from);
@@ -11437,7 +11437,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                 // offer; applying this one would poison the current pc.
                 if (fxWait) {
                   if (typeof clog === 'function') clog('roffer-hold-rebuild ' + String(p.id).slice(0, 6));
-                  try { newPcFor(p); sendOffer(p.id, false); scheduleNegRedial(p); } catch (e2) {}
+                  try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
                 }
                 return;
               }
@@ -11488,12 +11488,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           })
           .catch((e) => {
             if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140));
-            if (p.pc && p.pc.signalingState === 'have-local-offer') {
-              p.rofferYield = null;
-              if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
-              try { newPcFor(p); sendOffer(p.id, false); scheduleNegRedial(p); } catch (e2) {}
-              return;
-            }
             maybeRebuildNeg(p, e);
           });
       }
@@ -11968,43 +11962,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // already been the seat stays up, so a quiet person is not dropped.
     // An extension-id collision is different: every later offer on that pc
     // throws the same error, even while the channel still looks open.
-    // A transport that is already down is rebuilt too. A door is in no
-    // roster, so nothing else redials it; if the replacement never leaves
-    // 'new', one later offer tries again. A live pair whose error is
-    // neither of those is left alone. One rebuild per pair per 20s.
-    function scheduleNegRedial(p) {
-      const stamp = p.rebuiltAt;
-      setTimeout(() => {
-        if (leaving || !p || !p.pc || p.rebuiltAt !== stamp) return;
-        const dc = p.dc && p.dc.readyState;
-        if (dc === 'open' || dc === 'connecting') return;
-        const st = p.pc.connectionState;
-        if (st === 'connected' || st === 'connecting') return;
-        // An offer is out and the pc is still waiting on it. Do not close it.
-        if (st === 'new' && (p.offering || (p.pc.localDescription && p.pc.signalingState !== 'closed'))) return;
-        try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
-      }, 8000);
-    }
+    // Anything else (a lost glare race, a transport that is merely down)
+    // is left alone: rebuilding it dropped the people who had just sat down.
+    // One rebuild per pair per 20s.
     function maybeRebuildNeg(p, e) {
       if (!p || !p.pc || leaving || !p.id) return;
       if (e && e.name === 'GlareRace') return;
       const msg = String((e && e.message) || '');
-      const extPoison = /extension ID reassignment|ERROR_CONTENT/i.test(msg);
+      // Only an m-line-order failure, or an extension-id collision that every
+      // later offer on this pc will throw. A plain InvalidAccessError is also
+      // how a lost glare race dies, and rebuilding on that tears the pair down.
+      // An open channel that has already been the seat stays up, except for
+      // the extension-id collision, which never heals on the same pc.
+      const extPoison = /extension ID reassignment/i.test(msg);
       const mline = /m-line|order of/i.test(msg);
-      const dcOpen = !!(p.dc && p.dc.readyState === 'open');
-      const down = noLiveTransport(p);
-      // A plain InvalidAccessError on a live pair is how a lost glare race
-      // dies. Rebuilding that tears the pair down. A dead transport has
-      // nothing left to lose.
-      if (!extPoison && !mline && !down) return;
-      if (dcOpen && !extPoison) {
-        const age = p.rebuiltAt ? (Date.now() - p.rebuiltAt) : 0;
-        if (!mline || age > 15000) return;
-      }
+      if (!extPoison && !mline) return;
+      const age = p.rebuiltAt ? (Date.now() - p.rebuiltAt) : 0;
+      if (!extPoison && p.dc && p.dc.readyState === 'open' && age > 15000) return;
       const now = Date.now();
       if (p.rebuildNegAt && now - p.rebuildNegAt < 20000) return;
       p.rebuildNegAt = now;
-      try { newPcFor(p); sendOffer(p.id, false); scheduleNegRedial(p); } catch (e2) {}
+      try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
     }
     // PERFECT NEGOTIATION over the DataChannel: EITHER side may re-offer (a
     // fold sender must be able to open its own m-lines — an answer can never
