@@ -6124,7 +6124,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (!p.ownSid) { updateTile(p.id); return; } // wait for gossip to prove identity
       if ((typeof mediaOk === 'function' && mediaOk(p.id) === false)) { // held until the relay's statement of them checks out
-        if (p.stream) { if (p.video.srcObject === p.stream) p.video.srcObject = null; p.stream = null; try { releaseMeter(p.id); } catch (e) {} }
+        // Any picture, not only the stream this claim attached. A track that
+        // unmutes later can seat a stream on the element without going through
+        // p.stream, and the hold would then leave it playing under the label.
+        if (p.video) {
+          if (p.video.srcObject) p.video.srcObject = null;
+          try { p.video.pause(); } catch (e) {}
+          try { releaseAudio(p.video); } catch (e) {}
+        }
+        if (p.stream) { p.stream = null; try { releaseMeter(p.id); } catch (e) {} }
         updateTile(p.id); return;
       }
       const own = (p.incoming || []).find((s) => s.id === p.ownSid);
@@ -6266,6 +6274,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // new one: its offer describes m-lines the fresh pc never had.
       try { if (p.rofferYieldTimer) clearTimeout(p.rofferYieldTimer); } catch (e) {}
       p.rofferYieldTimer = null; p.rofferYield = null; p.kickVideo = false;
+      try { if (p.rebuildNegTimer) clearTimeout(p.rebuildNegTimer); } catch (e) {}
+      p.rebuildNegTimer = null;
       p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
       p.offering = null; // an offer still minting belongs to the closed pc (sendOffer drops it)
       p.offerFp = ''; // no remote offer has landed on this pc yet (onSignal's new-pc rule)
@@ -6323,8 +6333,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } catch (e) {}
         if (ev.track && ev.track.kind === 'video') {
           ev.track.addEventListener('unmute', () => {
-            const own = (p.incoming || []).find((s) => s.id === p.ownSid);
-            if (own && p.video) playTileVideo(p.video, own);
+            // Replay only a stream the claim already accepted. Unmute is not
+            // a second claim: an unverified person's track must stay off the tile.
+            if (typeof mediaOk === 'function' && mediaOk(p.id) === false) return;
+            if (!p.stream || p.relayed || p.stream.id !== p.ownSid || !p.video || p.video.srcObject !== p.stream) return;
+            playTileVideo(p.video, p.stream);
           });
         }
         if (!stream) return;
@@ -11862,6 +11875,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // paused and videoWidth never moves.
     function playTileVideo(video, stream) {
       if (!video || !stream) return;
+      // The verification hold wins over a late play. The tile's peer is who
+      // the element was built for; a self-view has no such hold.
+      const tile = video.closest && video.closest('[data-peer]');
+      const pid = tile && tile.dataset && tile.dataset.peer;
+      if (pid && pid !== myId && typeof mediaOk === 'function' && mediaOk(pid) === false) return;
       try { video.muted = true; } catch (e) {}
       if (video.srcObject !== stream) video.srcObject = stream;
       const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
@@ -11881,24 +11899,38 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function afterNeg(p) {
       if (!p) return;
+      try { if (p.rebuildNegTimer) clearTimeout(p.rebuildNegTimer); } catch (e) {}
+      p.rebuildNegTimer = null;
       if (p.renegAgain || hasPendingTx(p)) { p.renegAgain = false; renegotiate(p); return; }
       if (p.kickVideo) { p.kickVideo = false; kickMainVideo(p); }
     }
     // createOffer/setRemoteDescription failed because a rollback left the
-    // m-line order unmatchable. Retrying on this pc throws the same error
-    // forever; a fresh pc accepts the next offer cleanly. Once per pair per
-    // 20s so a repeating glare cannot rebuild in a loop.
+    // m-line order unmatchable. Retrying on this pc throws the same error.
+    // A fresh pc accepts the next offer, but tearing the pair down at the
+    // first mismatch drops a seat that would have come back on its own (the
+    // other side was only quiet). Wait, and rebuild only if the camera
+    // transceiver is still unnegotiated. One rebuild per pair per 20s.
     function maybeRebuildNeg(p, e) {
       if (!p || !p.pc || leaving || !p.id) return;
       if (e && e.name === 'GlareRace') return;
+      // A live channel is the seat. Rebuilding it to chase a media mismatch
+      // drops the person out of the room for a whole new handshake.
+      if (p.dc && (p.dc.readyState === 'open' || p.dc.readyState === 'connecting')) return;
       // Only the m-line-order failure. A plain InvalidAccessError is also how
       // a lost glare race dies, and rebuilding on that tears down a healthy pair.
       const msg = String((e && e.message) || '');
       if (!/m-line|order of/i.test(msg)) return;
-      const now = Date.now();
-      if (p.rebuildNegAt && now - p.rebuildNegAt < 20000) return;
-      p.rebuildNegAt = now;
-      try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
+      if (p.rebuildNegTimer) return;
+      p.rebuildNegTimer = setTimeout(() => {
+        p.rebuildNegTimer = null;
+        if (!p.pc || leaving) return;
+        if (p.dc && (p.dc.readyState === 'open' || p.dc.readyState === 'connecting')) return;
+        if (p.pc.signalingState === 'stable' && !hasPendingTx(p)) return;
+        const now = Date.now();
+        if (p.rebuildNegAt && now - p.rebuildNegAt < 20000) return;
+        p.rebuildNegAt = now;
+        try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
+      }, 15000);
     }
     // PERFECT NEGOTIATION over the DataChannel: EITHER side may re-offer (a
     // fold sender must be able to open its own m-lines — an answer can never
@@ -15703,7 +15735,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Muting is what makes a late srcObject legal to play. The element is
       // often still paused from the unmuted autoplay attempt at claim time,
       // and a paused picture reports videoWidth 0 even after frames arrive.
-      if (el.paused || el.readyState === 0) { const pr = el.play(); if (pr && pr.catch) pr.catch(() => {}); }
+      // A held person stays paused: playing here would show a picture the
+      // claim is required to keep off the tile.
+      const heldTile = el.closest && el.closest('[data-peer]');
+      const heldPid = heldTile && heldTile.dataset && heldTile.dataset.peer;
+      const held = heldPid && heldPid !== myId && typeof mediaOk === 'function' && mediaOk(heldPid) === false;
+      if (!held && (el.paused || el.readyState === 0)) { const pr = el.play(); if (pr && pr.catch) pr.catch(() => {}); }
       if (el._aud.srcObject !== el.srcObject) {
         el._aud.srcObject = el.srcObject;
         let pr = null; try { pr = el._aud.play(); } catch (e) { audioBlocked(el._aud, e); }
