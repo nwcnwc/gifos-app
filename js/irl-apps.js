@@ -1465,6 +1465,10 @@ let dayInt=null;
 // so the first tap has to outlive that pass or the second tap starts over.
 let tmSel=[];
 let tmRound=-1;
+// Dawn is the owner's write. The id-order coordinator is whoever sorts
+// first, and their save has to cross back before anyone else sees day.
+// The owner already holds every action that landed.
+let iAmOwner=false;
 function render(){
   clearInterval(dayInt);
   const g=IRL.g;
@@ -1523,7 +1527,7 @@ function render(){
     }; });
     const dawn=document.getElementById('dawn');
     if(dawn) dawn.onclick=function(){ IRL.save(Object.assign({},g,{phase:'day',dayEnds:Date.now()+5*60000})); };
-    if(allIn&&IRL.coordinator(g)) IRL.save(Object.assign({},g,{phase:'day',dayEnds:Date.now()+5*60000}));
+    if(allIn&&(IRL.coordinator(g)||iAmOwner)) IRL.save(Object.assign({},g,{phase:'day',dayEnds:Date.now()+5*60000}));
   } else if(g.phase==='day'){
     const votes=IRL.docs('v',g.round);
     const mine=votes.find(function(v){return v.id==='v'+g.round+'_'+IRL.me.id;});
@@ -1549,7 +1553,7 @@ function render(){
     tick(); dayInt=setInterval(tick,500);
     const rv=document.getElementById('rev');
     if(rv) rv.onclick=function(){ IRL.save(Object.assign({},g,{phase:'reveal'})); };
-    if(votes.length>=n&&IRL.coordinator(g)) IRL.save(Object.assign({},g,{phase:'reveal'}));
+    if(votes.length>=n&&(IRL.coordinator(g)||iAmOwner)) IRL.save(Object.assign({},g,{phase:'reveal'}));
   } else if(g.phase==='reveal'){
     const fr=finalRoles(g), votes=IRL.docs('v',g.round);
     const tally={}; votes.forEach(function(v){ tally[v.t]=(tally[v.t]||0)+1; });
@@ -1583,7 +1587,10 @@ function render(){
   }
 }
 IRL.onchange=render;
-IRL.init().then(render); render();
+IRL.init().then(function(){
+  render();
+  if(window.gifos&&gifos.info) gifos.info().then(function(inf){ iAmOwner=!!(inf&&inf.owner); render(); });
+}); render();
 </script>`;
 
   const FAKEFACTS_HELP = `# Fake Facts
