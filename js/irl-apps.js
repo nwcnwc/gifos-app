@@ -1461,6 +1461,10 @@ function scoreTable(g){ const sc=g.scores||{}; if(!Object.keys(sc).length) retur
   return '<div class="card"><h2>Wins</h2><table>'+ks.map(function(k,i){return '<tr><td>'+IRL.esc(g.names[g.ids.indexOf(k)])+'</td><td><b>'+(sc[k]||0)+'</b></td></tr>';}).join('')+'</table></div>'; }
 
 let dayInt=null;
+// A two-tap swap. render() replaces the card whenever another phone writes,
+// so the first tap has to outlive that pass or the second tap starts over.
+let tmSel=[];
+let tmRound=-1;
 function render(){
   clearInterval(dayInt);
   const g=IRL.g;
@@ -1492,7 +1496,8 @@ function render(){
       html+='<div class="card"><h2>Steal someone\\'s role</h2>'+g.names.map(function(nm,j){ return j===i?'':'<button class="pick" data-rob="'+j+'">'+IRL.esc(nm)+'</button>'; }).join('')+'</div>';
     }
     else if(role==='Troublemaker'){
-      html+='<div class="card"><h2>Swap two OTHER players (tap two)</h2><div id="tm">'+g.names.map(function(nm,j){ return j===i?'':'<button class="pick" data-tm="'+j+'">'+IRL.esc(nm)+'</button>'; }).join('')+'</div></div>';
+      if(tmRound!==g.round){ tmSel=[]; tmRound=g.round; }
+      html+='<div class="card"><h2>Swap two OTHER players (tap two)</h2><div id="tm">'+g.names.map(function(nm,j){ return j===i?'':'<button class="pick'+(tmSel.indexOf(j)>=0?' sel':'')+'" data-tm="'+j+'">'+IRL.esc(nm)+'</button>'; }).join('')+'</div></div>';
     }
     else { // Villager, Hunter, Insomniac
       html+='<div class="card center"><div class="muted">'+(role==='Insomniac'?'You\\'ll check your card at dawn.':'Nothing to do tonight.')+'</div><button class="btn" id="sleep">😴 Sleep</button></div>';
@@ -1510,12 +1515,11 @@ function render(){
     M.querySelectorAll('[data-player]').forEach(function(el){ el.onclick=function(){ submit({player:+el.dataset.player}); }; });
     M.querySelectorAll('[data-c]').forEach(function(el){ el.onclick=function(){ submit({center:[+el.dataset.c[0],+el.dataset.c[1]]}); }; });
     M.querySelectorAll('[data-rob]').forEach(function(el){ el.onclick=function(){ submit({target:+el.dataset.rob}); }; });
-    let tmSel=[];
     M.querySelectorAll('[data-tm]').forEach(function(el){ el.onclick=function(){
-      el.classList.toggle('sel');
       const j=+el.dataset.tm;
-      if(tmSel.indexOf(j)>=0) tmSel=tmSel.filter(function(x){return x!==j;}); else tmSel.push(j);
-      if(tmSel.length===2) submit({a:tmSel[0],b:tmSel[1]});
+      if(tmSel.indexOf(j)>=0){ tmSel=tmSel.filter(function(x){return x!==j;}); el.classList.remove('sel'); }
+      else { tmSel.push(j); el.classList.add('sel'); }
+      if(tmSel.length===2){ const a=tmSel[0], b=tmSel[1]; tmSel=[]; submit({a:a,b:b}); }
     }; });
     const dawn=document.getElementById('dawn');
     if(dawn) dawn.onclick=function(){ IRL.save(Object.assign({},g,{phase:'day',dayEnds:Date.now()+5*60000})); };
