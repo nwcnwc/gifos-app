@@ -2873,6 +2873,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // guard, and perfect negotiation absorbs a rare double-rebuild
           if (nowHb - basePid - asleep < 12000) { why('fresh'); continue; }
           if (nowHb - (p.meshKickAt || 0) < 30000) { why('throttled'); continue; }
+          // A paused radio or a frozen tab goes quiet while the data channel
+          // is still open. That silence is not a death: closing the pair
+          // forces a full re-knock when they return, and the channel would
+          // have answered on its own. Do not spend the kick throttle on it.
+          if (dcOpen) continue;
           sv.kicked++;
           p.meshKickAt = nowHb;
           // D5's missing edge (behavior battery 14a, 2026-07-26): a starving
@@ -2895,7 +2900,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // fix is untouched — heardPid>0 pairs (once-established) keep the
           // full edge too.
           const formingAlive = !heardPid && nowHb - (p.lastHeard || 0) < 12000;
-          if (!tlFiredPid.has(pid) && !formingAlive) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
+          if (!tlFiredPid.has(pid) && !formingAlive && !dcOpen) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
           if (typeof clog === 'function') clog('mesh-starve rebuild ' + String(pid).slice(0, 6));
           newPcFor(p);
           sendOffer(pid, false);
