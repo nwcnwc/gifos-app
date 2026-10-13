@@ -6886,7 +6886,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
           .then((ans) => p.pc.setLocalDescription(ans))
           .then(() => sendSig(from, { kind: 'answer', sdp: p.pc.localDescription, ib: 1, name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() }))
-          .catch((e) => { noteNegFail('accept', from, e); });
+          .catch((e) => { noteNegFail('accept', from, e); maybeRebuildNeg(p, e); });
         // A COLLISION is my own offer applied (have-local-offer) or, on a pair
         // with no live transport, still being minted (p.offering — see
         // sendOffer; the pc reads 'stable' until it lands).
@@ -6953,7 +6953,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!p.pc || p.pc.signalingState !== 'have-local-offer') { rxStats.answerStale++; return; }
         p.pc.setRemoteDescription(msg.sdp)
           .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
-          .catch((e) => { noteNegFail('answer', from, e); });
+          .catch((e) => { noteNegFail('answer', from, e); maybeRebuildNeg(peers.get(from), e); });
       } else if (msg.kind === 'ice') {
         const cands = iceCandsOf(msg);
         const p = peers.get(from);
@@ -11409,9 +11409,50 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (typeof clog === 'function') clog('ranswer→' + String(p.id).slice(0, 6));
             afterNeg(p);
           })
-          .catch((e) => { if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); maybeRebuildNeg(p, e); });
+          .catch((e) => { if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140)); maybeRebuildNeg(p, e); });
+        // Firefox offers carry o=mozilla and a different m-line order.
+        // Chromium's setRemoteDescription of that offer, while our own offer
+        // is still local, throws InvalidAccessError and does not roll back.
+        // The pc is then poisoned: their answer to OUR offer dies with
+        // OperationError and the pair stays in have-local-offer with the
+        // channel open. Hold a Firefox offer until that answer lands.
+        const fxOffer = (msg) => /o=mozilla/i.test(String((msg && msg.sdp && msg.sdp.sdp) || '').slice(0, 80));
+        // The first wait is the glare yield. A later one is only because our
+        // own offer was still being minted, or a Firefox offer is waiting on
+        // the answer to ours. Dropping the stash there lost the renegotiation,
+        // and the timer does not come back on its own.
+        const armRofferYield = () => {
+          if (p.rofferYieldTimer || !p.rofferYield) return;
+          const wait = p.rofferYieldN ? 250 : GLARE_YIELD_MS;
+          p.rofferYieldTimer = setTimeout(() => {
+            p.rofferYieldTimer = null;
+            const ym = p.rofferYield;
+            if (!ym || !p.pc || leaving) { p.rofferYield = null; return; }
+            const fxWait = fxOffer(ym) && p.pc.signalingState === 'have-local-offer';
+            if (p.makingOffer || fxWait) {
+              p.rofferYieldN = (p.rofferYieldN || 0) + 1;
+              if (p.rofferYieldN > 8) {
+                p.rofferYield = null;
+                // Their answer never came. A fresh pc can take the next
+                // offer; applying this one would poison the current pc.
+                if (fxWait) {
+                  if (typeof clog === 'function') clog('roffer-hold-rebuild ' + String(p.id).slice(0, 6));
+                  try { newPcFor(p); sendOffer(p.id, false); scheduleNegRedial(p); } catch (e2) {}
+                }
+                return;
+              }
+              armRofferYield();
+              return;
+            }
+            p.rofferYield = null; p.rofferYieldN = 0;
+            if (p.pc.signalingState === 'closed') return;
+            if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6));
+            p.kickVideo = true;
+            applyRoffer(ym);
+          }, wait);
+        };
         if (p.makingOffer || p.pc.signalingState === 'have-local-offer') {
-          if (iInitiate(p.id)) {
+          if (iInitiate(p.id) || fxOffer(m)) {
             // IMPOLITE ordinarily just drops their offer (they roll back and
             // answer mine, then re-offer). But a race this tight — MY OWN
             // unrelated offer-answer cycle still settling when THEIRS
@@ -11423,17 +11464,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // in have-local-offer. An explicit rollback first leaves the old
             // m-line order in place and the answer throws, and the camera
             // transceiver then never negotiates.
+            // A Firefox offer is held even on the polite side: applying it
+            // now is the call that poisons the answer to our own offer.
             p.rofferYield = m;
-            if (!p.rofferYieldTimer) {
-              p.rofferYieldTimer = setTimeout(() => {
-                p.rofferYieldTimer = null;
-                const ym = p.rofferYield; p.rofferYield = null;
-                if (!ym || !p.pc || leaving || p.makingOffer) return;
-                if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6));
-                p.kickVideo = true;
-                applyRoffer(ym);
-              }, GLARE_YIELD_MS);
-            }
+            if (!p.rofferYieldTimer) { p.rofferYieldN = 0; armRofferYield(); }
+            if (fxOffer(m) && typeof clog === 'function') clog('roffer-hold ' + String(p.id).slice(0, 6) + ' fx');
             return;
           }
           p.renegAgain = true; // polite rollback: my changes go again after I answer
@@ -11443,10 +11478,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (m.k === 'ranswer') {
         if (p.pc) p.pc.setRemoteDescription(m.sdp)
           .then(() => {
+            // Their answer completed our offer. The held Firefox offer is
+            // the one we refused to apply; drop it so the timer cannot
+            // rebuild a pair that just became stable.
+            p.rofferYield = null; p.rofferYieldN = 0;
+            if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
             if (typeof clog === 'function') clog('ranswer←' + String(p.id).slice(0, 6));
             afterNeg(p);
           })
-          .catch((e) => { if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); });
+          .catch((e) => {
+            if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140));
+            if (p.pc && p.pc.signalingState === 'have-local-offer') {
+              p.rofferYield = null;
+              if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
+              try { newPcFor(p); sendOffer(p.id, false); scheduleNegRedial(p); } catch (e2) {}
+              return;
+            }
+            maybeRebuildNeg(p, e);
+          });
       }
     }
     // A peer's lines are bounded two ways: per sender per window (a script
@@ -11913,25 +11962,49 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (p.renegAgain || hasPendingTx(p)) { p.renegAgain = false; renegotiate(p); return; }
       if (p.kickVideo) { p.kickVideo = false; kickMainVideo(p); }
     }
-    // createOffer/setRemoteDescription failed because a rollback left the
-    // m-line order unmatchable. Retrying on this pc throws the same error.
-    // A fresh pc accepts the next offer. An open channel that has already
-    // been the seat for a while stays up: rebuilding it drops a person who
-    // is only quiet. A channel that just opened can still be wedged by a
-    // late answer whose m-lines do not match. One rebuild per pair per 20s.
+    // createOffer/setRemoteDescription failed in a way this pc will repeat.
+    // An m-line order mismatch on a channel that just opened wedges the
+    // join: a fresh pc accepts the next offer. An open channel that has
+    // already been the seat stays up, so a quiet person is not dropped.
+    // An extension-id collision is different: every later offer on that pc
+    // throws the same error, even while the channel still looks open.
+    // A transport that is already down is rebuilt too. A door is in no
+    // roster, so nothing else redials it; if the replacement never leaves
+    // 'new', one later offer tries again. A live pair whose error is
+    // neither of those is left alone. One rebuild per pair per 20s.
+    function scheduleNegRedial(p) {
+      const stamp = p.rebuiltAt;
+      setTimeout(() => {
+        if (leaving || !p || !p.pc || p.rebuiltAt !== stamp) return;
+        const dc = p.dc && p.dc.readyState;
+        if (dc === 'open' || dc === 'connecting') return;
+        const st = p.pc.connectionState;
+        if (st === 'connected' || st === 'connecting') return;
+        // An offer is out and the pc is still waiting on it. Do not close it.
+        if (st === 'new' && (p.offering || (p.pc.localDescription && p.pc.signalingState !== 'closed'))) return;
+        try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
+      }, 8000);
+    }
     function maybeRebuildNeg(p, e) {
       if (!p || !p.pc || leaving || !p.id) return;
       if (e && e.name === 'GlareRace') return;
-      // Only the m-line-order failure. A plain InvalidAccessError is also how
-      // a lost glare race dies, and rebuilding on that tears down a healthy pair.
       const msg = String((e && e.message) || '');
-      if (!/m-line|order of/i.test(msg)) return;
-      const age = p.rebuiltAt ? (Date.now() - p.rebuiltAt) : 0;
-      if (p.dc && p.dc.readyState === 'open' && age > 15000) return;
+      const extPoison = /extension ID reassignment|ERROR_CONTENT/i.test(msg);
+      const mline = /m-line|order of/i.test(msg);
+      const dcOpen = !!(p.dc && p.dc.readyState === 'open');
+      const down = noLiveTransport(p);
+      // A plain InvalidAccessError on a live pair is how a lost glare race
+      // dies. Rebuilding that tears the pair down. A dead transport has
+      // nothing left to lose.
+      if (!extPoison && !mline && !down) return;
+      if (dcOpen && !extPoison) {
+        const age = p.rebuiltAt ? (Date.now() - p.rebuiltAt) : 0;
+        if (!mline || age > 15000) return;
+      }
       const now = Date.now();
       if (p.rebuildNegAt && now - p.rebuildNegAt < 20000) return;
       p.rebuildNegAt = now;
-      try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
+      try { newPcFor(p); sendOffer(p.id, false); scheduleNegRedial(p); } catch (e2) {}
     }
     // PERFECT NEGOTIATION over the DataChannel: EITHER side may re-offer (a
     // fold sender must be able to open its own m-lines — an answer can never
