@@ -11902,18 +11902,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // createOffer/setRemoteDescription failed because a rollback left the
     // m-line order unmatchable. Retrying on this pc throws the same error.
-    // A fresh pc accepts the next offer. An OPEN channel is the seat:
-    // rebuilding it drops a person who is only quiet. A channel that is still
-    // connecting is not a seat yet, and leaving it wedged means the join
-    // never finishes. One rebuild per pair per 20s.
+    // A fresh pc accepts the next offer. An open channel that has already
+    // been the seat for a while stays up: rebuilding it drops a person who
+    // is only quiet. A channel that just opened can still be wedged by a
+    // late answer whose m-lines do not match. One rebuild per pair per 20s.
     function maybeRebuildNeg(p, e) {
       if (!p || !p.pc || leaving || !p.id) return;
       if (e && e.name === 'GlareRace') return;
-      if (p.dc && p.dc.readyState === 'open') return;
       // Only the m-line-order failure. A plain InvalidAccessError is also how
       // a lost glare race dies, and rebuilding on that tears down a healthy pair.
       const msg = String((e && e.message) || '');
       if (!/m-line|order of/i.test(msg)) return;
+      const age = p.rebuiltAt ? (Date.now() - p.rebuiltAt) : 0;
+      if (p.dc && p.dc.readyState === 'open' && age > 15000) return;
       const now = Date.now();
       if (p.rebuildNegAt && now - p.rebuildNegAt < 20000) return;
       p.rebuildNegAt = now;
