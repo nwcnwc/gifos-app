@@ -12594,14 +12594,136 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!onStage.has(k2.slice(4).split('^')[0])) continue;
         want2.set(k2, f2.stream);
       }
-      for (const [k2, sid] of [...stageEar.sids]) { const st2 = want2.get(k2); if (!st2 || st2.id !== sid) { stageEar.fold.remove(k2); stageEar.sids.delete(k2); } }
+      if (!stageEar.bound) stageEar.bound = new Map();
+      for (const [k2, sid] of [...stageEar.sids]) { const st2 = want2.get(k2); if (!st2 || st2.id !== sid) { stageEar.fold.remove(k2); stageEar.sids.delete(k2); stageEar.bound.delete(k2); if (stageEar.watch) stageEar.watch.delete(k2); } }
       for (const [k2, st2] of want2) {
-        if (!stageEar.sids.has(k2)) { stageEar.fold.add(k2, st2, 1); stageEar.sids.set(k2, st2.id); }
+        // Same announced id, new MediaStream object: a video m-line leaving
+        // (camera idle-stop) renegotiates, and the receiver follows the new
+        // object. The ear must follow too. The id did not change, so the
+        // check above keeps the source that is bound to the ended track.
+        const swapped = stageEar.sids.has(k2) && stageEar.bound.get(k2) !== st2;
+        if (!stageEar.sids.has(k2) || swapped) {
+          if (swapped) { stageEar.fold.remove(k2); stageEar.sids.delete(k2); if (stageEar.watch) stageEar.watch.delete(k2); }
+          stageEar.fold.add(k2, st2, 1); stageEar.sids.set(k2, st2.id); stageEar.bound.set(k2, st2); if (typeof armStageEar === 'function') armStageEar(k2);
+        }
         const gm = modOf(k2.slice(4).split('^')[0]).mute;
         if (stageEar.fold.setGain) stageEar.fold.setGain(k2, (gm && gm.on) ? 0 : 1); // a cached older fold lacks it: held at 1, as before
       }
       stageEar.el.volume = mix.stage;
       stageEar.el.muted = !(mix.stage > 0); // iOS ignores volume; 0 must be `muted`
+    }
+    // A stage source built while the sender was muted latches that silence.
+    // The track often never fires `unmute` (silence frames, not a mute edge),
+    // so a fresh source is the only way to hear the samples. Probe the raw
+    // track with a NEW node: one born during silence stays quiet, one born
+    // after the samples does not. Rebuild the fold only while the wire is
+    // loud and the fold is still quiet, then leave a loud fold alone.
+    let stageEarWatchT = 0;
+    function stageEarLiveTrack(stream) {
+      const ts = stream && stream.getAudioTracks ? stream.getAudioTracks() : [];
+      let held = null;
+      for (let i = 0; i < ts.length; i++) {
+        const t = ts[i];
+        if (!t || t.readyState === 'ended') continue;
+        if (!t.muted) return t;
+        if (!held) held = t;
+      }
+      return held;
+    }
+    function stageEarRawPeak(track, ms) {
+      return new Promise((resolve) => {
+        let src = null;
+        try {
+          if (ac && ac.state !== 'running') { try { ac.resume(); } catch (e) {} }
+          const an = ac.createAnalyser(); an.fftSize = 1024;
+          src = ac.createMediaStreamSource(new MediaStream([track]));
+          src.connect(an);
+          const buf = new Float32Array(an.fftSize);
+          let peak = 0; const t0 = Date.now();
+          const step = () => {
+            try {
+              an.getFloatTimeDomainData(buf);
+              for (let i = 0; i < buf.length; i++) { const a = Math.abs(buf[i]); if (a > peak) peak = a; }
+            } catch (e) {}
+            if (Date.now() - t0 < ms) { setTimeout(step, 40); return; }
+            try { src.disconnect(); } catch (e) {}
+            resolve(peak);
+          };
+          step();
+        } catch (e) { try { if (src) src.disconnect(); } catch (e2) {} resolve(0); }
+      });
+    }
+    // A fresh node each sample. A long-lived one born while the fold was
+    // still silent would keep reading 0 after the fold recovered, and the
+    // watch would reseat a good ear back into silence.
+    function stageEarFoldPeak(ms) {
+      return new Promise((resolve) => {
+        let src = null;
+        try {
+          if (!stageEar || !stageEar.el.srcObject || !ac) return resolve(0);
+          const an = ac.createAnalyser(); an.fftSize = 2048;
+          src = ac.createMediaStreamSource(stageEar.el.srcObject);
+          src.connect(an);
+          const buf = new Float32Array(an.fftSize);
+          let peak = 0; const t0 = Date.now();
+          const step = () => {
+            try {
+              an.getFloatTimeDomainData(buf);
+              for (let i = 0; i < buf.length; i++) { const a = Math.abs(buf[i]); if (a > peak) peak = a; }
+            } catch (e) {}
+            if (Date.now() - t0 < ms) { setTimeout(step, 40); return; }
+            try { src.disconnect(); } catch (e) {}
+            resolve(peak);
+          };
+          step();
+        } catch (e) { try { if (src) src.disconnect(); } catch (e2) {} resolve(0); }
+      });
+    }
+    function scheduleStageEarWatch() {
+      if (stageEarWatchT) return;
+      const tick = async () => {
+        stageEarWatchT = 0;
+        if (!stageEar || !stageEar.watch || !stageEar.watch.size || !ac) return;
+        let delay = 2000;
+        try {
+          for (const k2 of [...stageEar.watch.keys()]) {
+            if (!stageEar.sids.has(k2)) { stageEar.watch.delete(k2); continue; }
+            const f = mosIn.get(k2);
+            const sid = stageEar.sids.get(k2);
+            if (!f || !f.stream || f.stream.id !== sid) { delay = 700; continue; }
+            const owner = k2.slice(4).split('^')[0];
+            let gm = null; try { gm = modOf(owner).mute; } catch (e) { gm = null; }
+            if (gm && gm.on) continue; // moderator mute is gain 0; the ear is supposed to be quiet
+            const t = stageEarLiveTrack(f.stream);
+            if (!t) continue;
+            const w = stageEar.watch.get(k2);
+            if (w.trackId !== t.id) { w.trackId = t.id; w.tries = 0; w.settleUntil = 0; }
+            if (w.settleUntil && Date.now() < w.settleUntil) continue;
+            const raw = await stageEarRawPeak(t, 180);
+            if (raw > 0.02) {
+              const fold = await stageEarFoldPeak(180);
+              if (fold > 0.02) { w.tries = 0; w.settleUntil = Date.now() + 2500; }
+              else if (w.tries < 12) {
+                let ok = false;
+                try { ok = !!(stageEar.fold.rebind && stageEar.fold.rebind(k2, t)); } catch (e) { ok = false; }
+                if (!ok) {
+                  try { stageEar.fold.remove(k2); stageEar.fold.add(k2, f.stream, 1); } catch (e) {}
+                }
+                w.tries++;
+                delay = 500;
+              }
+            } else { w.tries = 0; delay = Math.min(delay, 1000); }
+          }
+        } catch (e) { delay = 700; }
+        if (stageEar && stageEar.watch && stageEar.watch.size) stageEarWatchT = setTimeout(tick, delay);
+      };
+      stageEarWatchT = setTimeout(tick, 400);
+    }
+    function armStageEar(k2) {
+      if (!stageEar) return;
+      if (!stageEar.watch) stageEar.watch = new Map();
+      if (!stageEar.watch.has(k2)) stageEar.watch.set(k2, { tries: 0, settleUntil: 0 });
+      scheduleStageEarWatch();
     }
     // My own outbound feed as a STABLE MediaStream (what I broadcast — the
     // blurred/raw video plus my mic). While staged this aux feed is the ONLY
@@ -18457,7 +18579,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       syncSpeech(); // CC pauses while muted, resumes on unmute
       broadcastStatus();
       updateMediaSession();
+      // shipMos treats an enabled-flip as the same track set and does not
+      // replaceTrack. A stage sender born on a disabled mic keeps sending
+      // silence until it is seated again. Same kick as a camera that is
+      // attached and emitting nothing (kickMainVideo), audio side.
+      if (track.enabled) kickStageMic(track);
     };
+    function kickStageMic(track) {
+      if (!track || track.kind !== 'audio' || track.readyState !== 'live' || !track.enabled) return;
+      for (const sd of stageSenders) {
+        if (!sd || sd.track !== track) continue;
+        const seat = () => sd.replaceTrack(track).catch(() => {});
+        sd.replaceTrack(null).then(seat).catch(() => {});
+      }
+    }
     camBtn.onclick = () => {
       if (document.body.classList.contains('app-room')) { setStatus('Video is not available in an app room yet — start a meeting and run the app from there.'); return; }
       if (!localStream) return lateMedia('cam');
