@@ -847,8 +847,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     font: bold 1.5rem system-ui; }
   .stgvotes button .nm { font-size: .72rem; background: rgba(10,10,15,.75); padding: .1rem .45rem; border-radius: .35rem; }
   .stgvotes button.voted .x { box-shadow: 0 0 0 4px #fff, 0 0 20px rgba(255,255,255,.55); }
-  /* Bottom-anchored so it never covers the controls bar or the tiles' targets. */
-  #votebanner { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 40;
+  /* Sits above the control bar (104px tall, 14px off the bottom) so a vote
+     in progress never covers Camera or the other bar buttons. */
+  #votebanner { position: fixed; bottom: 128px; left: 50%; transform: translateX(-50%); z-index: 40;
     display: flex; gap: .8rem; align-items: center; max-width: min(40rem, 94vw);
     background: rgba(10,10,15,.92); border: 1px solid var(--accent, #7b5cff);
     border-radius: .7rem; padding: .5rem .9rem; font-size: .85rem; color: #e0e0f0; }
