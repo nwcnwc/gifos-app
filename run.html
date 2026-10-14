@@ -7214,32 +7214,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       p.dialReqAt = now;
       try { relayName(pid); } catch (e) {}
     }
-    // An offer that never started ICE was not answered. A partition ate it:
-    // both sides still hold have-local-offer, and nothing is listening for
-    // the partition to end. The sweeper repeats that offer every 6s plus up
-    // to 1.5s of desync, on a 2s beat, so the first copy through lands as
-    // late as ~8s after the path comes back. Chaos
-    // throttled-phone-reload-while-door-dark seed 32 #2: Hana and Ana sat
-    // ice=new/have-local-offer across a 45s sever, and the offer that got
-    // through was 5.0s after it ended (bound 4.2s; the other run of the
-    // same script landed at 4.0s). The initiator repeats it from this tick,
-    // about once a second, once the offer is a second old and nothing has
-    // come back on this pc. A handshake that has left 'new', or any frame
-    // since the rebuild, is a live attempt and keeps the 6s clock.
-    function echoUnanswered(pid, p) {
-      if (!iInitiate(pid) || !p || !p.pc || p.connected || p.offering) return;
-      if (p.dc && p.dc.readyState === 'open') return;
-      if (p.pc.connectionState !== 'new' || p.pc.signalingState !== 'have-local-offer') return;
-      if (p.pc.iceConnectionState && p.pc.iceConnectionState !== 'new') return;
-      if (isSevered(pid)) return; // dropped on the floor; the tick after the sever ends sends it
-      const now = Date.now();
-      const born = Math.max(p.rebuiltAt || 0, p.bornAt || 0);
-      if (now - born < 1000) return;
-      if ((p.lastHeard || 0) >= born) return;
-      if (now - (p.offerEchoAt || 0) < 1000) return;
-      p.offerEchoAt = now;
-      sendOffer(pid, false);
-    }
     // onDialRequest(p): a member sent me its name over the relay with no live
     // pair between us — "I am here, dial me". If I am solo too, a room-keyed
     // member asking to be dialed IS the fork evidence (fragRescue); and a
@@ -7686,7 +7660,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // initiator may not know the mesh names us neighbours (a seat back
         // from a dead spot learned the ring's newcomer from HOME; preset 14a
         // on 3065c883: the pair sat new/- for 8 s), so ask it to dial.
-        if (peers.has(v)) { if (linkTo(v)) { const pv = peers.get(v); askDial(v, pv); echoUnanswered(v, pv); } continue; }
+        // Do not repeat an unanswered offer from this sweep. That echo
+        // (b4b5e2a, merged again at bb8b3db) left throttled-phone ep3 at
+        // 15.9s. A confirmed loss is already probed every 2 ticks.
+        if (peers.has(v)) { if (linkTo(v)) askDial(v, peers.get(v)); continue; }
         if (linkTo(v)) ensureLink(v, rosterNames[v] || null);
       }
       for (const [pid] of statusOf) if (pid !== myId && stHold(pid) && notTomb(pid)) ids.add(pid);
