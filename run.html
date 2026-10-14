@@ -6596,15 +6596,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const noLiveTransport = (p) => !p.connected && !(p.dc && p.dc.readyState === 'open');
     // A STALE OFFER YIELDS AT ONCE. An offer of ours that has stood
     // unanswered past GLARE_YIELD_MS on a pair with no live transport went
-    // somewhere nobody answers (made while the peer was dark: chaos seed 9 #1,
-    // Yara's dark-return rebuild offered into Wren's dark spell); the polite
-    // peer's offer is its live attempt. Waiting GLARE_YIELD_MS more, with a
-    // rebuild in between cancelling the yield (newPcFor), left Wren's offer
-    // unanswered for 16 s (18.7 s to rejoin).
+    // somewhere nobody answers. So did one we placed after the channel had
+    // already been quiet for a full yield: the peer was dark, the offer
+    // could not be answered, and the offer just stored is them coming back.
+    // Waiting another yield on top of that held the return. A young
+    // bootstrap glare (no channel yet) still waits, so the other side can
+    // answer.
     function armGlareYield(p, from, msg) {
       p.glareOffer = msg;
       if (p.glareTimer) return;                       // already waiting
-      const stale = noLiveTransport(p) && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) > GLARE_YIELD_MS;
+      const built = Math.max(p.rebuiltAt || 0, p.bornAt || 0);
+      const intoDark = (p.dcRxAt || 0) > 0 && built - p.dcRxAt > GLARE_YIELD_MS;
+      const stale = noLiveTransport(p) && (Date.now() - built > GLARE_YIELD_MS || intoDark);
       p.glareTimer = setTimeout(() => {
         p.glareTimer = null;
         const m = p.glareOffer; p.glareOffer = null;
