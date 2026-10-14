@@ -1874,9 +1874,17 @@
       if (!this.hasCoord || mm.ttl <= 0) { this.noroomWhy = 'unseated'; this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
       for (const s of this.sitting.values()) if (s.joiner === mm.nc && s.assigner === this.id && s.pl && TICK - s.at <= SIT_TTL) { this.emit(mm.nc, Object.assign({}, s.pl)); return; } // FINDACK: a re-ask reaching the admitter that already vouches this seeker gets the SAME chair again (its PLACE was lost) — never a twin vouch
       // A marked re-ask follows the chain already taken while that hand-off is
-      // fresh and its target still holds the cell. No record, or a target that
-      // moved: drop it. A new scan here is how one person was seated twice.
-      if (mm.again) { const h = this.handed.get(mm.nc); if (h && TICK - h.at <= KNOCK_FRESH && h.to !== this.id && this.occGet(h.cell) === h.to) this.handOn(mm, h.to, h.cell, h.deep); return; }
+      // fresh and its target still holds the cell. No record: drop it. A new
+      // scan while that target can still place the seeker seated one person
+      // twice. A target that has left the cell is different: the old chain
+      // can never answer, and the seeker keeps marking the re-ask, so nobody
+      // looks for a free seat again.
+      if (mm.again) {
+        const h = this.handed.get(mm.nc);
+        const fresh = h && TICK - h.at <= KNOCK_FRESH && h.to !== this.id;
+        if (fresh && this.occGet(h.cell) === h.to) { this.handOn(mm, h.to, h.cell, h.deep); return; }
+        if (!(fresh && this.occGet(h.cell) !== h.to)) return;
+      }
       if (this.coord.pc === 0) {
         const skip = [];   // forensics: why each Section-1 cell was passed over (noroomWhy, the test trace's NOROOM row)
         // A SPLIT-OFF SEAT ADMITS NOBODY INTO SECTION 1 (sim twin). A healer
