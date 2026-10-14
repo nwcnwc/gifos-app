@@ -2686,6 +2686,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               if (ours) { p.fragDialAt = 0; try { pc.close(); } catch (e) {} onTransportDead(pid, 'unanswered'); return; }
               rebuild(pid, p, 'unanswered'); return;
             }
+            // No check has gone out yet. Waiting for the settle to say so
+            // starts the mesh confirm only after that window, and the confirm
+            // itself is as long again: a seat that left during the dark is
+            // still the occupant past a short return. Tell the mesh now. The
+            // offer stays up, so a live seat's answer clears the probe.
+            if (ours && v === 'soon') onTransportDead(pid, 'unanswered');
             if (v === 'soon' && again) setTimeout(() => hushOne(pid, p, pc, false, ours), 1000);
           });
         };
