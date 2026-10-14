@@ -8954,6 +8954,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
         sendDC: meshSendDC,
+        // Entry asks are delivered only on a channel to the greeter they name.
+        // meshSendDC also returns true for a dump onto some other peer; the
+        // wire must not treat that as the door (mesh-wire entryDelivered).
+        dcOpen: (to) => { const p = peers.get(to); return !!(p && p.dc && p.dc.readyState === 'open'); },
         dial: bootDial, // a knocker's entry ask has no channel to its greeter: open one (the bootstrap over the relay)
         // Deep-socket drop waits until at least one DataChannel is open (§FWD:
         // an unwired deep newcomer must stay relay-reachable or inbound
