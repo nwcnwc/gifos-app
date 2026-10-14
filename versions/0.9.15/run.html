@@ -4938,7 +4938,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // neighbours — net ≤ C+2. Full mesh is the ROW, never the section. Every
       // face beyond your row arrives COMPOSITED over these same links: your
       // section via the cross-link flow (Channel Se), the far room via the
-      // Stadium fractal — never a direct link. This is what keeps a device's
+      // Stadium mosaic — never a direct link. This is what keeps a device's
       // cost constant as the room grows to millions.
       const s = meshSeat();
       // PRE-SEAT: link NOBODY. The join dance rides the relay/greeter path and
@@ -6297,7 +6297,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // rebuild); one that STOPPED being a mate gets its video parked.
       const rmSig = rowMates().sort().join(',');
       if (rmSig !== lastRmSig) { lastRmSig = rmSig; refreshOutbound(); }
-      reconcileMosaic(); // the fractal mosaic follows the same occ (3b)
+      reconcileMosaic(); // the nested mosaic follows the same occ (3b)
       applyBuses();    // bus membership follows the same arithmetic
       paintStage();    // remote grants/roster moves can change my stage rights
       paintShare();    // …and SOMEONE ELSE starting a share is a room fact only gossip carries
@@ -8359,7 +8359,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // mesh. Everything past the row arrives COMPOSITED, never as direct links:
     // the Section band travels one hop over each cross-link and is self-
     // composited into the C\u00d7C block; the Stage is a composited \u2264C strip; the
-    // Stadium is the fractal (product up \u2192 S1 exchange \u2192 fan down). reconcile-
+    // Stadium is the nested mosaic (product up \u2192 S1 exchange \u2192 fan down). reconcile-
     // Mosaic (below) wires all four channels; the compOf store holds the feed
     // tiles those composites produce.
     const stadiumEl = document.getElementById('stadium');
@@ -8383,7 +8383,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (hasPendingTx(p)) renegotiate(p);
     }
 
-    // ================== THE FRACTAL MOSAIC (3b, docs/media-plane.md) =========
+    // ================== THE NESTED MOSAIC (3b, docs/media-plane.md) =========
     // The Stadium channel, distributed: every ROW HEAD composites its PRODUCT
     // — its row's camera band (H) + the up-to-C sub-products its row's
     // down-links deliver (stacked V) — and ships it up. Section 1 is the 5×5
@@ -11018,7 +11018,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Three buses, grouped by link CLASS (receiver-side volume only):
     //   Stage       — the stage strip / per-stager feeds, verbatim everywhere
     //   My row      — my direct row-mate links, the people I converse with
-    //   The stadium — the composited far room (the 'sd' fractal + row views):
+    //   The stadium — the composited far room (the 'sd' mosaic + row views):
     //                 the roar of everyone beyond my row
     // A one-row room has no stadium sources, so that fader simply doesn't show.
     // Audio playout is SPLIT from the video tiles. Mobile browsers PAUSE hidden
@@ -11054,7 +11054,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const bus = stg.has(pid) ? null : mates.has(pid) ? 'row' : null;
         busVolume(p.video, bus ? mix[bus] : 0);
       }
-      // feed tiles (the fractal mosaics): stage strip is Stage; stadium tiles
+      // feed tiles (the nested mosaics): stage strip is Stage; stadium tiles
       // are The stadium.
       for (const el of stagefeedEl.querySelectorAll('.rowtile video')) busVolume(el, mix.stage);
       for (const el of stadiumEl.querySelectorAll('.rowtile')) {

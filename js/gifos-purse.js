@@ -33,9 +33,11 @@
   const PERM = 'pay.perm:';  // pay.perm:<appId>           -> permission
   // pay.agent:<offer id> -> an agent checkout link still waiting to be paid
   // (gifos-pay-broker.js). It holds the claim that reads the receipt, so it
-  // is as private as the rest.
+  // is as private as the rest. pay.paypal:<order id> is the same kind of
+  // claim for a PayPal checkout that outlived its sheet.
   const AGENT = 'pay.agent:';
-  const PREFIXES = [ENT, LED, PERM, AGENT];
+  const PAYPAL = 'pay.paypal:';
+  const PREFIXES = [ENT, LED, PERM, AGENT, PAYPAL];
 
   const big = (v) => BigInt(v || 0);
 

@@ -10,7 +10,7 @@
  * seat's camera or its down-link's sub-mosaic) — and sends ONE band up its
  * up-link; the head one level up stacks C bands VERTICALLY into the full
  * frame. Row-layout horizontal, band-stack vertical — the H/V alternation of
- * the fractal, by construction. Section-1 heads finish redundantly in
+ * the nested mosaic, by construction. Section-1 heads finish redundantly in
  * parallel over cross-links (no election) and the full Stadium flows back
  * down every down-link. The Stage strip is the same band engine with the ≤C
  * chosen stagers as cells. Frame budget is CONSTANT per hop (SCALE.COMP_W ×
@@ -29,7 +29,7 @@
   // A BAND: 1×C horizontal strip, cell i at [i*W/C, 0, W/C, H].
   // A FRAME: C bands stacked, band r at [0, r*H/C, W, H/C].
   // Cells keep the slot even when empty (space is by tree POSITION, not
-  // population — the fractal-space property, accepted by design).
+  // population — the nested-space property, accepted by design).
   function bandRects(C, W, H) {
     const out = []; const cw = W / C;
     for (let i = 0; i < C; i++) out.push({ x: Math.round(i * cw), y: 0, w: Math.round((i + 1) * cw) - Math.round(i * cw), h: H });
@@ -185,7 +185,7 @@
   }
 
   // ---- the STADIUM packing (docs/media-plane.md, Channel Sd) ------------------
-  // Every person is an EQUAL-SIZE SQUARE (never a fractal cell): the whole room
+  // Every person is an EQUAL-SIZE SQUARE (never a nested cell): the whole room
   // is one flat gapless grid. It grows DOWNWARD (for vertical scroll), ~STAD_COLS
   // columns wide in the readable range: square-ish near 25 (5×5), a tall ~1:4
   // rectangle by STAD_CAP (~5×20). Past STAD_CAP the FOOTPRINT caps — the grid
