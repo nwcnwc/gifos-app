@@ -1,0 +1,523 @@
+{
+  "viewport": {
+    "w": 1280,
+    "h": 800
+  },
+  "modal": {
+    "w": 560,
+    "h": 688,
+    "top": 56,
+    "left": 360,
+    "scrollH": 9947
+  },
+  "smallTargets": [
+    {
+      "name": "Your name",
+      "tag": "input",
+      "w": 507,
+      "h": 42
+    },
+    {
+      "name": "Background color",
+      "tag": "input",
+      "w": 51,
+      "h": 35
+    },
+    {
+      "name": "Use a picture…",
+      "tag": "button",
+      "w": 118,
+      "h": 31
+    },
+    {
+      "name": "Reset",
+      "tag": "button",
+      "w": 62,
+      "h": 31
+    },
+    {
+      "name": "A−",
+      "tag": "button",
+      "w": 42,
+      "h": 32
+    },
+    {
+      "name": "A+",
+      "tag": "button",
+      "w": 42,
+      "h": 32
+    },
+    {
+      "name": "Reset",
+      "tag": "button",
+      "w": 62,
+      "h": 32
+    },
+    {
+      "name": "AI models",
+      "tag": "summary",
+      "w": 507,
+      "h": 29
+    },
+    {
+      "name": "Test",
+      "tag": "button",
+      "w": 70,
+      "h": 32
+    },
+    {
+      "name": "Your own endpoint (URL + key)",
+      "tag": "select",
+      "w": 486,
+      "h": 37
+    },
+    {
+      "name": "Base URL — e.g. https://api.openai.com/v1",
+      "tag": "input",
+      "w": 486,
+      "h": 42
+    },
+    {
+      "name": "API key",
+      "tag": "input",
+      "w": 170,
+      "h": 42
+    },
+    {
+      "name": "Show password",
+      "tag": "button",
+      "w": 22,
+      "h": 22
+    },
+    {
+      "name": "Model — gpt-4o",
+      "tag": "input",
+      "w": 309,
+      "h": 42
+    },
+    {
+      "name": "Test",
+      "tag": "button",
+      "w": 70,
+      "h": 32
+    },
+    {
+      "name": "Your own endpoint (URL + key)",
+      "tag": "select",
+      "w": 486,
+      "h": 37
+    },
+    {
+      "name": "Base URL — e.g. https://api.openai.com/v1",
+      "tag": "input",
+      "w": 486,
+      "h": 42
+    },
+    {
+      "name": "API key",
+      "tag": "input",
+      "w": 170,
+      "h": 42
+    },
+    {
+      "name": "Show password",
+      "tag": "button",
+      "w": 22,
+      "h": 22
+    },
+    {
+      "name": "Model — gpt-4o-mini",
+      "tag": "input",
+      "w": 309,
+      "h": 42
+    },
+    {
+      "name": "Test",
+      "tag": "button",
+      "w": 70,
+      "h": 32
+    },
+    {
+      "name": "Your own endpoint (URL + key)",
+      "tag": "select",
+      "w": 486,
+      "h": 37
+    },
+    {
+      "name": "Base URL — e.g. https://api.openai.com/v1",
+      "tag": "input",
+      "w": 486,
+      "h": 42
+    },
+    {
+      "name": "API key",
+      "tag": "input",
+      "w": 170,
+      "h": 42
+    },
+    {
+      "name": "Show password",
+      "tag": "button",
+      "w": 22,
+      "h": 22
+    },
+    {
+      "name": "Model — tts-1",
+      "tag": "input",
+      "w": 309,
+      "h": 42
+    },
+    {
+      "name": "Test",
+      "tag": "button",
+      "w": 70,
+      "h": 32
+    },
+    {
+      "name": "Your own endpoint (URL + key)",
+      "tag": "select",
+      "w": 486,
+      "h": 37
+    },
+    {
+      "name": "Base URL — e.g. https://api.openai.com/v1",
+      "tag": "input",
+      "w": 486,
+      "h": 42
+    },
+    {
+      "name": "API key",
+      "tag": "input",
+      "w": 170,
+      "h": 42
+    },
+    {
+      "name": "Show password",
+      "tag": "button",
+      "w": 22,
+      "h": 22
+    },
+    {
+      "name": "Model — whisper-1",
+      "tag": "input",
+      "w": 309,
+      "h": 42
+    },
+    {
+      "name": "Test",
+      "tag": "button",
+      "w": 70,
+      "h": 32
+    },
+    {
+      "name": "Your own endpoint (URL + key)",
+      "tag": "select",
+      "w": 486,
+      "h": 37
+    },
+    {
+      "name": "Base URL — e.g. https://api.openai.com/v1",
+      "tag": "input",
+      "w": 486,
+      "h": 42
+    },
+    {
+      "name": "API key",
+      "tag": "input",
+      "w": 170,
+      "h": 42
+    },
+    {
+      "name": "Show password",
+      "tag": "button",
+      "w": 22,
+      "h": 22
+    },
+    {
+      "name": "Model — gpt-image-1",
+      "tag": "input",
+      "w": 309,
+      "h": 42
+    },
+    {
+      "name": "Test",
+      "tag": "button",
+      "w": 70,
+      "h": 32
+    },
+    {
+      "name": "Your own endpoint (URL + key)",
+      "tag": "select",
+      "w": 486,
+      "h": 37
+    },
+    {
+      "name": "Base URL — e.g. https://api.openai.com/v1",
+      "tag": "input",
+      "w": 486,
+      "h": 42
+    },
+    {
+      "name": "API key",
+      "tag": "input",
+      "w": 170,
+      "h": 42
+    },
+    {
+      "name": "Show password",
+      "tag": "button",
+      "w": 22,
+      "h": 22
+    },
+    {
+      "name": "Model — provider model",
+      "tag": "input",
+      "w": 309,
+      "h": 42
+    },
+    {
+      "name": "Test",
+      "tag": "button",
+      "w": 70,
+      "h": 32
+    },
+    {
+      "name": "Your own endpoint (URL + key)",
+      "tag": "select",
+      "w": 486,
+      "h": 37
+    },
+    {
+      "name": "Base URL — e.g. https://api.openai.com/v1",
+      "tag": "input",
+      "w": 486,
+      "h": 42
+    },
+    {
+      "name": "API key",
+      "tag": "input",
+      "w": 170,
+      "h": 42
+    },
+    {
+      "name": "Show password",
+      "tag": "button",
+      "w": 22,
+      "h": 22
+    },
+    {
+      "name": "Model — provider model",
+      "tag": "input",
+      "w": 309,
+      "h": 42
+    },
+    {
+      "name": "Third-party APIs",
+      "tag": "summary",
+      "w": 507,
+      "h": 29
+    },
+    {
+      "name": "＋ Add a third-party API",
+      "tag": "button",
+      "w": 507,
+      "h": 39
+    },
+    {
+      "name": "Payments",
+      "tag": "summary",
+      "w": 507,
+      "h": 29
+    },
+    {
+      "name": "Advanced settings",
+      "tag": "summary",
+      "w": 507,
+      "h": 29
+    },
+    {
+      "name": "Protect this Home Screen now",
+      "tag": "button",
+      "w": 507,
+      "h": 35
+    },
+    {
+      "name": "Re-pull",
+      "tag": "button",
+      "w": 86,
+      "h": 32
+    },
+    {
+      "name": "Use latest",
+      "tag": "button",
+      "w": 102,
+      "h": 32
+    },
+    {
+      "name": "Roll back",
+      "tag": "button",
+      "w": 98,
+      "h": 32
+    },
+    {
+      "name": "Roll back",
+      "tag": "button",
+      "w": 98,
+      "h": 32
+    },
+    {
+      "name": "Roll back",
+      "tag": "button",
+      "w": 98,
+      "h": 32
+    },
+    {
+      "name": "Roll back",
+      "tag": "button",
+      "w": 98,
+      "h": 32
+    },
+    {
+      "name": "Roll back",
+      "tag": "button",
+      "w": 98,
+      "h": 32
+    },
+    {
+      "name": "Roll back",
+      "tag": "button",
+      "w": 98,
+      "h": 32
+    },
+    {
+      "name": "Roll back",
+      "tag": "button",
+      "w": 98,
+      "h": 32
+    },
+    {
+      "name": "Roll back",
+      "tag": "button",
+      "w": 98,
+      "h": 32
+    },
+    {
+      "name": "Roll back",
+      "tag": "button",
+      "w": 98,
+      "h": 32
+    },
+    {
+      "name": "wss://relay.gifos.app",
+      "tag": "input",
+      "w": 507,
+      "h": 42
+    },
+    {
+      "name": "Test connection",
+      "tag": "button",
+      "w": 507,
+      "h": 35
+    },
+    {
+      "name": "Repaint & measure",
+      "tag": "button",
+      "w": 507,
+      "h": 35
+    },
+    {
+      "name": "Erase this computer",
+      "tag": "summary",
+      "w": 507,
+      "h": 29
+    },
+    {
+      "name": "Erase this computer…",
+      "tag": "button",
+      "w": 507,
+      "h": 35
+    },
+    {
+      "name": "Save",
+      "tag": "button",
+      "w": 507,
+      "h": 33
+    },
+    {
+      "name": "Close",
+      "tag": "button",
+      "w": 507,
+      "h": 33
+    }
+  ],
+  "lowContrast": [],
+  "help": [
+    {
+      "text": "Friends see this name when you play or work together.",
+      "fontPx": 14.4,
+      "contrast": 5.07
+    },
+    {
+      "text": "Pick a color or use your own picture.",
+      "fontPx": 14.4,
+      "contrast": 5.07
+    },
+    {
+      "text": "Make GifOS’s own text bigger or smaller everywhere — icon labels, app headers, menus, this window. (Inside an app, use that app’s own contro",
+      "fontPx": 14.4,
+      "contrast": 5.07
+    },
+    {
+      "text": "Wire up your own OpenAI-compatible endpoints — or assign a Provider app from your Providers folder, which answers on this device with no key",
+      "fontPx": 14.4,
+      "contrast": 5.07
+    },
+    {
+      "text": "Beyond OpenAI-shaped models, wire up any keyed API — Deepgram, a trading API, whatever. Give it a short name, its base URL, how it authentic",
+      "fontPx": 14.4,
+      "contrast": 5.07
+    },
+    {
+      "text": "Everything any app has charged on this computer, and what each one is allowed to ask for. Every payment here was approved by you on a GifOS ",
+      "fontPx": 14.4,
+      "contrast": 5.07
+    },
+    {
+      "text": "No app has charged anything yet.",
+      "fontPx": 14.4,
+      "contrast": 5.07
+    },
+    {
+      "text": "Your desktop lives entirely in this browser. Using 17.1 MB of about 6.5 GB. Not yet protected. GifOS asks automatically; browsers grant it o",
+      "fontPx": 14.4,
+      "contrast": 5.07
+    }
+  ],
+  "summaries": [
+    "AI models",
+    "Third-party APIs",
+    "Payments",
+    "Advanced settings",
+    "▸ Edge build build 0 RUNNING Re-pull",
+    "▸ v0.9.21 LATEST build 2567 2026-10-08 Use latest",
+    "▸ v0.9.20 build 2564 2026-10-08 Roll back",
+    "▸ v0.9.19 build 2558 2026-10-07 Roll back",
+    "▸ v0.9.18 build 2509 2026-10-06 Roll back",
+    "▸ v0.9.17 build 2491 2026-10-05 Roll back",
+    "▸ v0.9.16 build 2349 2026-09-30 Roll back",
+    "▸ v0.9.15 build 2268 2026-09-04 Roll back",
+    "▸ v0.9.14 build 2256 2026-09-02 Roll back",
+    "▸ v0.9.13 build 1814 2026-08-25 Roll back",
+    "▸ v0.9.12 build 1669 2026-08-24 Roll back",
+    "Erase this computer"
+  ],
+  "h4": [
+    "Your name",
+    "Background",
+    "Text size",
+    "Storage",
+    "Version",
+    "Connection service",
+    "Performance"
+  ]
+}

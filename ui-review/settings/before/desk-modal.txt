@@ -1,0 +1,262 @@
+Settings
+Your name
+
+Friends see this name when you play or work together.
+
+Background
+
+Pick a color or use your own picture.
+
+Use a picture…
+Reset
+Text size
+
+Make GifOS’s own text bigger or smaller everywhere — icon labels, app headers, menus, this window. (Inside an app, use that app’s own controls if it has them.)
+
+A−
+100%
+A+
+Reset
+AI models
+
+Wire up your own OpenAI-compatible endpoints — or assign a Provider app from your Providers folder, which answers on this device with no key at all. Any app that asks for the ai ability uses whatever you pick here; with an endpoint it never sees your keys (they stay in this browser and aren’t included in a shared computer backup; the endpoint must allow browser/CORS requests — Test tells you).
+
+Smartest text LLM
+Test
+Your own endpoint (URL + key)
+Cheapest text LLM
+Test
+Your own endpoint (URL + key)
+Text → speech
+Test
+Your own endpoint (URL + key)
+Speech → text
+Test
+Your own endpoint (URL + key)
+Text → image
+Test
+Your own endpoint (URL + key)
+Image → video
+Test
+Your own endpoint (URL + key)
+Text → video
+Test
+Your own endpoint (URL + key)
+Third-party APIs
+
+Beyond OpenAI-shaped models, wire up any keyed API — Deepgram, a trading API, whatever. Give it a short name, its base URL, how it authenticates, and your key, then hit Test & save. GifOS tries the call directly first. Deepgram needs no proxy at all — GifOS speaks its WebSocket protocol natively, so your key goes straight to Deepgram. For other sites that block browser calls (most brokerages), it retries through a stateless CORS proxy (https://cors-proxy.gifos.app) and remembers that. Honesty note: requests routed that way pass through that proxy in flight — it stores and logs nothing, but if you’d rather nothing of yours transit GifOS infrastructure, put your own proxy URL under Advanced (the one-file Worker is in the repo, cors-proxy/). It only saves if a test succeeds. Your key travels only toward that API’s own host (directly or via the proxy you chose), not to the app, and stays out of a shared backup.
+
+＋ Add a third-party API
+Payments
+
+Everything any app has charged on this computer, and what each one is allowed to ask for. Every payment here was approved by you on a GifOS payment screen naming the app’s verified author — apps never see your card, wallet, or balance, and what you bought is recorded here (not inside the app), so sharing an app’s GIF never shares a purchase. Payments are final; “forgetting” a purchase only clears it from this computer. The ceiling is the most one charge from that app may ask for.
+
+No app has charged anything yet.
+
+Advanced settings
+Storage
+
+Your desktop lives entirely in this browser. Using 17.1 MB of about 6.5 GB.
+Not yet protected. GifOS asks automatically; browsers grant it once a site is used a bit. You can also keep a backup GIF (GifOS menu → Back up Home Screen).
+
+Protect this Home Screen now
+Version
+▸
+Edge build
+build 0
+RUNNING
+Re-pull
+
+The unreleased build at the site root, ahead of every release. It carries a build number that bumps on every change; you can jump to the latest, but edge builds aren’t archived — you can’t pin or roll back to a specific one.
+
+▸
+v0.9.21
+LATEST
+build 2567
+2026-10-08
+Use latest
+Admins choose who can share a screen
+NEW
+In a meeting you run, Allow screen share on the meeting bar lets every guest share their screen. You can also allow or stop one person from their tile.
+FIXED
+Guests in a meeting with an admin could not share their screen even when the admin wanted them to. The admin can now allow it directly.
+Turning screen sharing off stops a share that is already going.
+▸
+v0.9.20
+build 2564
+2026-10-08
+Roll back
+Broadcast opens again, and people who drop out of a meeting get back in fast
+FIXED
+The Broadcast app on the Home Screen opens again. It used to reload itself over and over and never start.
+If everyone in a small meeting lost their seat at once, nobody could get back in. The meeting now restarts itself.
+Someone who reloaded while the meeting's host was offline could be left outside for good. They now get back in.
+After someone's device froze and came back, the meeting could keep two hosts for minutes. It now settles in seconds.
+Joining or rejoining while someone was offline could take 15 to 30 seconds. It now takes a few seconds.
+A reloaded page goes straight back into the meeting it was in.
+While you wait to get back in, the meeting no longer says "Just you"; it says it is getting you back in.
+▸
+v0.9.19
+build 2558
+2026-10-07
+Roll back
+Meetings keep their picture on slow devices, and people who drop out come back fast
+FIXED
+On a slow computer or phone, your blurred camera could stop sending for many seconds, so everyone saw your picture freeze. It now keeps sending.
+Someone who lost their connection or went offline for a while now rejoins the meeting within seconds, even if the room rearranged while they were away.
+Orca saves your grid again; it used to save an empty file.
+Pixelit keeps a photo you opened after you close and reopen the file.
+In Slots, a friend's spin now shows who pulled.
+In Spider, choosing a new number of suits before a new game now deals that many suits.
+In the JSON editor, Compact now works in Code mode.
+In the LRC maker, the Stamp button keeps its own look.
+A booted computer image no longer shows every folder twice.
+Turning down the camera at the start of a meeting no longer leaves a hidden error behind.
+▸
+v0.9.18
+build 2509
+2026-10-06
+Roll back
+Meetings recover cleanly, and your name shows from the start
+NEW
+When a newer GifOS release is out, the Home Screen, meetings and the sign page show one shared update bar.
+A meeting link always opens the current release, so people on different versions still meet.
+FIXED
+Your own tile now shows the name you choose, at the door or later in Settings. A fresh or private browser used to stay "Guest" on your own screen.
+When someone in the front row lost their connection and came back, two people could claim the same seat and the room took minutes to sort it out. It now settles in seconds, even on a busy phone whose timers run slow.
+Settings → Version no longer offers "Use latest" for a release it could not check while offline.
+The screen-name prompt says what the name is for.
+▸
+v0.9.17
+build 2491
+2026-10-05
+Roll back
+Meetings you can trust at any size
+NEW
+Offline Captions: a speech-to-text app that writes live captions on your own device, with no server. It installs in one tap and becomes the meeting's second captions engine.
+Bible Study 0.9.0 joins the store, with all 139 translations and Listen.
+An office, campus or phone carrier where many people share one internet address can now hold a meeting of any size. The relay no longer caps people per address.
+Admin "Blur guests" and "Video off" now reach every guest in the room, including people who join later, not just the ones linked to the admin.
+FIXED
+Security: a room member could forge messages that kicked another person out of their seat or kept a departed person's seat alive. Every such message is now proven to come from its real sender.
+Everyone joins every meeting muted, camera off and fully blurred again. A build briefly remembered your last blur level between meetings.
+Below the first 25 seats, people saw a shared screen but not the other presenters on Stage. Every seat now sees the same Stage.
+A lost join request cost up to 30 seconds in a room with several greeters; now it costs a few seconds.
+Big rooms heal and seat correctly after many people leave and rejoin at once; no more duplicate seats.
+A presenter's phone no longer runs up to nine video encoders for backup copies nobody is watching.
+Captions and goodbyes no longer flood the whole room, and a relay seat in a background tab keeps its video moving.
+Dragging an icon on the Home Screen could be lost if the screen refreshed its badges mid-drag.
+▸
+v0.9.16
+build 2349
+2026-09-30
+Roll back
+Meetings that scale: nothing a phone pays grows with the room
+NEW
+Big meetings: your phone now hears only its own section of up to 25 people. What the whole room needs — the count, raised hands, who is on Stage, votes, the shared app — arrives as a small summary folded up and down the tree. A room of a thousand costs each phone the same as a room of twenty.
+Clear video needs everyone, at any size: one person staying blurred keeps the whole room blurred, and the room clears again when they agree.
+Every room-wide message is signed by the person who sent it. Nobody can speak in someone else's name, and a phone passes on only what it has verified.
+A flood guard: each phone takes only so many new messages a second from any one neighbour, and from any one sender. A misbehaving client can slow a meeting, never drown it.
+Ban only works on a device the room's door vouched for, so a ban can never land on the wrong person.
+Apps can pay you: tip jars and paid features through PayPal, a connected wallet, a wallet transfer or an AI agent, with the price signed by the app's author.
+Yoinks joins the store.
+FIXED
+A phone whose clock ran a minute slow was never counted as present, never allowed on Stage, and kept everyone who could hear it blurred. Presence is now judged by when a message arrived, not by the sender's clock.
+One chat line, caption or file notice used to be re-broadcast by every phone that received it — a thousand floods for one line in a big room. Now the sender's is the only one.
+Joining a busy room could put a newcomer's seat claim behind a ghost's, or reject a real one as stale, depending on how long each phone's page had been open. Seat claims now carry their age instead of a clock reading.
+The relay sends newcomers only the room's greeters instead of the whole member list, so a large room can be joined at all; a burst of people joining at once no longer hits a cap.
+A relay socket now has to stay open before its reconnect backoff resets, so a flapping connection no longer hammers the relay.
+Ping Pong is no longer one of the default games: it never played well enough. Your other games and your own copies are untouched.
+▸
+v0.9.15
+build 2268
+2026-09-04
+Roll back
+The Stage no longer freezes on a struggling computer, and the App Store opens at once
+NEW
+The App Store opens as fast as its catalog loads: it no longer reads every installed app off the disk (and hashes it) before drawing the first card. Which apps are yours, and which have an update, is read from the file index.
+FIXED
+Meetings: when the person on Stage is on an overloaded computer their picture could freeze for everyone for 15–20 seconds at a time. Their encoder now sends a smaller picture while it is struggling instead of turning every frame into an expensive keyframe, and the keyframe nudge no longer flips the picture between sizes. Measured across four machines with the Stage computer deliberately overloaded: two freezes in six runs before, none in six after.
+A pinned build that has been retired bounces you to the current one once and says so — unchanged, and exercised now that releases 0.9.0–0.9.11 are retired.
+Releases 0.9.0 through 0.9.11 are retired; the three most recent releases stay available to pin. Your files, apps and settings are untouched by any of this.
+▸
+v0.9.14
+build 2256
+2026-09-02
+Roll back
+A security audit closed a critical sandbox hole — and forty-five new apps landed
+NEW
+Forty-five new app ports, including JupyterLite (a real Python notebook, offline), Monaco Code, SQL Playground, ffmpeg.wasm Studio, Webamp, Monkeytype, TIC-80, shapez.io, RegExr, SVG-Edit, Blockly Games, Learn Git Branching, Hydra, alphaTab, EPUB Reader, OpenJSCAD, CascadeStudio, DigitalJS, jsnes, Carbon, OTP Auth, Hanzi Writer, Trianglify, RAWGraphs, Background Removal, Smartcrop, Primitive, Matter Sandbox and Parable of the Polygons.
+Bible study: export and import everything you have made as ONE stamped GIF, an Include Apocrypha toggle (off by default), and a study panel and search that dock beside the text on a wide screen instead of covering it.
+Payments: receipts are bound to the claim that earned them and invoices to the payer, and there is now an agent rail (HTTP 402 with Stripe Shared Payment Tokens) for software that pays on your behalf.
+Four apps — beepbox, Blockly Games, JupyterLite and SVG-Edit — no longer use the browser prompt() the sandbox answers with null, so their dialogs work: SVG-Edit’s five dialogs, beepbox’s clipboard fallback and Blockly’s variable prompt all ask properly now.
+FIXED
+CRITICAL: a sandboxed app could navigate its own frame to any URL and keep its bridge to the desktop, with no CSP and no shim. The parent now pins frame-src to about:, an unload beacon freezes the bridge and re-mounts the app, and nested frames are swept (a srcdoc child had its own RTCPeerConnection). Every build before this one is affected, including pinned snapshots.
+Meetings: names no longer cross the relay wire, a device tag is required to join, chat is bounded, and replayed joins are refused inside a fixed window.
+Offline: the service worker now keys one cache entry per file, so an offline boot brings up the newest build this device actually ran instead of the one it was installed with.
+This release is a flag day for meetings: the derivation scheme is gifos-net-4, so clients from before and after it land in different relay sessions. The Workers must be deployed with it.
+Link secrets are now 16 characters, room passwords are stretched with PBKDF2, signed orders carry monotonic timestamps, and an owned link’s verifier commits to the owner’s key.
+▸
+v0.9.13
+build 1814
+2026-08-25
+Roll back
+Every game and tool on the Home Screen got a play-test on a phone — and a dozen new ports
+NEW
+New apps: Worldview (NASA satellite layers, a timeline, compare two days — with a Blue Marble that works offline), The House (a playable assembled house that makes sound), Sandspiel (a falling-sand world in the file), Bingo (a real hall — every phone speaks, fireworks on a verified win), plus Piano Trainer, Vintage Poker, fend, My Mind, JSON Editor, JSON Crack, Hexahedral, Blackjack, Server Survival and Backdooms as unofficial ports.
+Over sixty existing apps were play-tested on a phone and fixed one by one: thumb pads and D-pads where a finger needs them, boards that fit the screen, empty states that say what to do, best scores and drafts kept in the file, and Invite that actually seats your friends (Ludo, Tanks, Aim, Coil, Crossword, Solitaire, Spider, Slots, Duck Hunt, Pac-Man, Queens, Memory, Tiny Yurts, Metronome, Tuner, QR, and more).
+Share from a store card asks which link you mean: open the app in one tap, or the store listing. A ?run= link on a GitHub page opens the GIF — a blob link is rewritten to the raw file.
+An app invite link is reused by default, so a day-old invite still works — and you can retire it and mint a fresh one. An empty app room explains itself instead of showing a blank page.
+Opening an app is never a blank pane: the app's own animation and name show from the first second, the wait belongs to the app, and a light app fades in over the dark stage.
+Help → About has a Report a problem link that pre-fills the GitHub issue with where you clicked it. Every page carries a static list of links for AI agents (llms.txt first).
+The 0.8.x releases are retired. A computer still pinned to one is moved to the current release once, keeps everything, and is told why.
+FIXED
+Turning Talk on in an app room showed a row of blank camera boxes under the app. The room is audio-only, so they are gone — the app keeps the whole screen.
+The launch splash could swallow the first tap on a fast phone: the app was already running under it. It stops taking taps the moment the app appears.
+A computer pinned to a retired build looped between the loader and a 404 forever, with its desktop unreachable. It now bounces home once.
+Worldview: closing the layer browser left a blurred, unclickable map; the tablet bottom bar pushed its own controls off the screen; offline warnings had gone quiet.
+The app-update popup's link was unreadable on some pages; the store card's action button sat in the wrong place.
+Catch the Cat: two fingers zoom the board and one finger is still a tap.
+▸
+v0.9.12
+build 1669
+2026-08-24
+Roll back
+The Home Screen games and tools are finished apps now — Ping Pong first
+NEW
+Ping Pong is table tennis: a real table, real paddles, spin you can see, first to 11. Slide to move — the paddle hits for you. Play the computer, or Invite a friend to the far end.
+Chess can play the computer (Easy / Medium / Hard) on the device. Castling, en passant, and promotion work. Minesweeper has Easy through Expert, a first click that never dies, and flags.
+Tic-Tac-Toe and Connect Four look like the real things, keep a series score, and Invite sits you in a seat.
+Paint is a sketch pad with brush, fill, undo, and the picture saved in the icon. Notes is a notebook you can actually edit. The calculator traces a value when you point at a curve.
+Stopwatch has hundredths and laps and keeps running if you close it. Chat and Guestbook empty rooms tell you to Invite. Fortune says so when it cannot reach the slip, instead of inventing one.
+IRL party games: Fake Facts scores the real players, and Catch the Spy / The Dial / Odd Word Out work over Invite, not only pass-the-phone.
+Help ends with Credits: who made the app, who brought it to GifOS, what it is based on, the license — sealed inside the signed app itself, so the credit travels with every copy.
+App rooms can Talk: the host flips Talk on the app bar and everyone gets their own mic. Audio only for now — for video, start a meeting and run the app from there.
+The App Store installs, updates, and opens from the card — one button that says what you can do next — and a Works offline pill marks apps that never touch the network.
+FIXED
+Ping Pong used to be a brown gym with dots for paddles and a ball you had to tap. It now rallies.
+Fake Facts (and Same Brain) printed “? fooled: ?” and never scored — they were reading the player id wrong.
+Catch the Spy, The Dial, and Odd Word Out were private to one phone, so an Invite never synced.
+Tilt could not use the accelerometer inside the app frame.
+An app room had no way to start a call at all: everything was there, nothing opened the door.
+The update bar's link was unreadable on dark app pages.
+Connection service
+
+The little service that introduces people to each other when you share an invite. Leave this blank unless you run your own (the default is wss://relay.gifos.app). A change applies to apps you open afterwards.
+
+Test connection
+
+Performance
+
+How the last repaint of your Home Screen went. Reused icons are reused as-is (fast); rebuilt ones changed. Mostly useful for spotting a slow, oversized desktop.
+
+14 icons in view · 14 reused, 0 rebuilt · cache holds 0 files, 13 images.
+
+Repaint & measure
+Erase this computer
+
+This wipes the whole computer stored in this browser — every app, file, folder, wallpaper and all app state — then reinstalls a fresh one on the same version channel you’re already using (edge, the live release, or a pinned snapshot). There is no undo and no server copy. Back up first (menu → “Back up Home Screen”) if you might want it back.
+
+Erase this computer…
+Save
+Close

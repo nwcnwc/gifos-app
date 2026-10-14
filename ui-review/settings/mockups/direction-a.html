@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings proposal A — stacked pages</title>
+<link rel="stylesheet" href="settings.css">
+</head>
+<body>
+<div class="stage">
+  <div class="sheet" id="sheet">
+    <header class="bar">
+      <button class="textbtn" id="back" hidden type="button">Back</button>
+      <h1 id="title">Settings</h1>
+      <button class="textbtn" id="done" type="button">Done</button>
+    </header>
+    <div class="view" id="view"></div>
+  </div>
+</div>
+<script>
+const screens = {
+  root: {
+    title: 'Settings',
+    html: `
+      <div class="group-label">You</div>
+      <div class="card">
+        <button class="row" data-go="you" type="button"><span class="t"><b>Your name</b><span>Friends see this when you play together</span></span><span class="status">Alex</span><span class="chev">›</span></button>
+      </div>
+      <div class="group-label">Look</div>
+      <div class="card">
+        <button class="row" data-go="look" type="button"><span class="t"><b>Background and text</b><span>Color, picture, and text size</span></span><span class="chev">›</span></button>
+      </div>
+      <div class="group-label">For apps</div>
+      <div class="card">
+        <button class="row" data-go="ai" type="button"><span class="t"><b>AI</b><span>Not set up</span></span><span class="chev">›</span></button>
+        <button class="row" data-go="accounts" type="button"><span class="t"><b>Connected accounts</b><span>Keys for other services</span></span><span class="status">None</span><span class="chev">›</span></button>
+        <button class="row" data-go="payments" type="button"><span class="t"><b>Payments</b><span>Nothing charged on this computer</span></span><span class="chev">›</span></button>
+      </div>
+      <div class="group-label">This computer</div>
+      <div class="card">
+        <button class="row" data-go="system" type="button"><span class="t"><b>System</b><span>Storage, updates, invite connection</span></span><span class="chev">›</span></button>
+      </div>`
+  },
+  you: {
+    title: 'Your name',
+    html: `
+      <p class="lead">Friends see this name when you play or work together. It stays on this computer.</p>
+      <div class="field"><label for="name">Name</label><input id="name" maxlength="40" value="Alex"></div>`
+  },
+  look: {
+    title: 'Background and text',
+    html: `
+      <p class="lead">Changes apply as you make them, on every GifOS page in this browser.</p>
+      <div class="group-label">Background</div>
+      <div class="card" style="padding:14px">
+        <div class="field"><label for="color">Color</label>
+          <div class="swatch-row"><div class="swatch" id="swatch"></div><input id="color" type="text" value="#1d1d1f" aria-describedby="colorhelp"></div>
+        </div>
+        <p class="note" id="colorhelp">Or use your own picture.</p>
+        <button class="btn block" type="button">Use a picture</button>
+        <button class="btn block quiet" type="button" style="margin-top:8px">Reset background</button>
+      </div>
+      <div class="group-label">Text size</div>
+      <div class="card" style="padding:14px">
+        <div class="stepper">
+          <button type="button" id="smaller" aria-label="Smaller text">A−</button>
+          <span class="val" id="pct">100%</span>
+          <button type="button" id="bigger" aria-label="Bigger text">A+</button>
+          <button type="button" id="resetsize">Reset</button>
+        </div>
+        <p class="note">This changes GifOS’s own text. An app’s text follows that app.</p>
+      </div>`
+  },
+  ai: {
+    title: 'AI',
+    html: `
+      <p class="lead">Apps that ask for AI use what you pick here. A key stays in this browser. A Provider app in your Providers folder can answer on this device with no key.</p>
+      <div class="card">
+        <button class="row" data-go="ai-one" type="button"><span class="t"><b>Smartest text</b><span>Not set up</span></span><span class="chev">›</span></button>
+        <button class="row" type="button"><span class="t"><b>Cheapest text</b><span>Not set up</span></span><span class="chev">›</span></button>
+        <button class="row" type="button"><span class="t"><b>Text to speech</b><span>Not set up</span></span><span class="chev">›</span></button>
+        <button class="row" type="button"><span class="t"><b>Speech to text</b><span>Not set up</span></span><span class="chev">›</span></button>
+        <button class="row" type="button"><span class="t"><b>Text to image</b><span>Not set up</span></span><span class="chev">›</span></button>
+        <button class="row" type="button"><span class="t"><b>Image to video</b><span>Not set up</span></span><span class="chev">›</span></button>
+        <button class="row" type="button"><span class="t"><b>Text to video</b><span>Not set up</span></span><span class="chev">›</span></button>
+      </div>`
+  },
+  'ai-one': {
+    title: 'Smartest text',
+    html: `
+      <p class="lead">Your own address and key, or a Provider app on this computer.</p>
+      <div class="field"><label for="src">Source</label>
+        <select id="src"><option>Your own address and key</option><option>A Provider app on this computer</option></select>
+      </div>
+      <div class="field"><label for="url">Address</label><input id="url" placeholder="https://api.example.com/v1" inputmode="url"></div>
+      <div class="field"><label for="key">Key</label><input id="key" type="password" autocomplete="off"></div>
+      <div class="field"><label for="model">Model</label><input id="model" placeholder="gpt-4o"></div>
+      <button class="btn primary" type="button">Test</button>
+      <p class="note" id="ai-status" aria-live="polite"></p>`
+  },
+  accounts: {
+    title: 'Connected accounts',
+    html: `
+      <p class="lead">A short name, the service’s address, and your key. GifOS sends the key only to that service. It is saved after a test succeeds.</p>
+      <div class="card" style="padding:14px">
+        <div class="field"><label for="an">Name</label><input id="an" placeholder="deepgram"></div>
+        <div class="field"><label for="au">Address</label><input id="au" placeholder="https://api.deepgram.com" inputmode="url"></div>
+        <div class="field"><label for="atype">How the key is sent</label>
+          <select id="atype"><option>Bearer token</option><option>Token header</option><option>Basic</option><option>Custom header</option><option>Query parameter</option></select>
+        </div>
+        <div class="field"><label for="akey">Key</label><input id="akey" type="password" autocomplete="off"></div>
+        <button class="btn primary" type="button">Test and save</button>
+      </div>
+      <p class="note">A custom proxy stays off this page. Most accounts never need one.</p>`
+  },
+  payments: {
+    title: 'Payments',
+    html: `
+      <p class="lead">Charges you approved on this computer. Apps never see your card or wallet. Forgetting a purchase here does not refund it.</p>
+      <div class="card"><div class="row"><span class="t"><b>Nothing charged yet</b><span>When an app charges you, it shows up here with a per-charge limit.</span></span></div></div>`
+  },
+  system: {
+    title: 'System',
+    html: `
+      <div class="card">
+        <button class="row" data-go="storage" type="button"><span class="t"><b>Storage</b><span>Using 3.9 MB of about 6.4 GB</span></span><span class="chev">›</span></button>
+        <button class="row" data-go="updates" type="button"><span class="t"><b>Updates</b><span>Edge build, running</span></span><span class="chev">›</span></button>
+        <button class="row" data-go="connection" type="button"><span class="t"><b>Invite connection</b><span>Standard GifOS connection</span></span><span class="chev">›</span></button>
+      </div>
+      <div class="gap"></div>
+      <div class="card">
+        <button class="row danger" data-go="erase" type="button"><span class="t"><b>Erase this computer</b><span>Wipes apps and files in this browser</span></span><span class="chev">›</span></button>
+      </div>
+`
+  },
+  storage: {
+    title: 'Storage',
+    html: `
+      <p class="lead">Your Home Screen lives in this browser. Using <b>3.9 MB</b> of about 6.4 GB. It is not protected from the browser clearing unused sites yet.</p>
+      <button class="btn primary" type="button">Protect this Home Screen</button>
+      <p class="note">You can also keep a backup GIF from the GifOS menu, Back up Home Screen.</p>`
+  },
+  updates: {
+    title: 'Updates',
+    html: `
+      <p class="lead">You are on the unreleased edge build. Nothing changes until you choose.</p>
+      <div class="card">
+        <div class="vrow"><span class="t"><b>Edge build</b> <span class="pill run">Running</span><span>This checkout. Released builds are below.</span></span><button class="linkish" type="button">Re-pull</button></div>
+        <div class="vrow"><span class="t"><b>v0.9.21</b> <span class="pill live">Latest</span><span>8 Oct 2026</span></span><button class="linkish" type="button">Switch</button></div>
+        <button class="row" id="earlier" type="button"><span class="t"><b>Earlier versions</b><span>10 older releases, folded away</span></span><span class="chev" id="earlier-chev">›</span></button>
+      </div>
+      <div class="card" id="old" hidden style="margin-top:10px">
+        <div class="vrow"><span class="t"><b>v0.9.20</b><span>8 Oct 2026</span></span><button class="linkish danger" type="button">Roll back</button></div>
+        <div class="vrow"><span class="t"><b>v0.9.19</b><span>7 Oct 2026</span></span><button class="linkish danger" type="button">Roll back</button></div>
+      </div>
+`
+  },
+  connection: {
+    title: 'Invite connection',
+    html: `
+      <p class="lead">This is how invite links find each other. Leave it on the standard connection unless you run your own.</p>
+      <div class="card"><div class="row"><span class="t"><b>Standard GifOS connection</b><span>wss://relay.gifos.app</span></span></div></div>
+      <div class="gap"></div>
+      <div class="field"><label for="relay">Your own connection</label><input id="relay" placeholder="Leave blank to keep the standard one" inputmode="url"></div>
+      <button class="btn primary" type="button" id="testconn">Test connection</button>
+      <p class="note" id="conn-status" aria-live="polite">Blank uses the standard connection. Test checks that.</p>`
+  },
+  erase: {
+    title: 'Erase this computer',
+    html: `
+      <div class="callout">This wipes <b>every app, file, folder, and wallpaper</b> stored in this browser. There is no undo and no server copy. You stay on the <b>same version</b> you are using now.</div>
+      <div class="gap"></div>
+      <button class="btn block" type="button">Back up first</button>
+      <div class="gap"></div>
+      <button class="btn danger" type="button">Erase without backup</button>
+`
+  }
+};
+
+let stack = ['root'];
+const view = document.getElementById('view');
+const title = document.getElementById('title');
+const back = document.getElementById('back');
+const done = document.getElementById('done');
+
+function paint() {
+  const id = stack[stack.length - 1];
+  const s = screens[id];
+  title.textContent = s.title;
+  view.innerHTML = s.html;
+  back.hidden = stack.length === 1;
+  done.hidden = stack.length !== 1;
+  view.scrollTop = 0;
+  wire();
+}
+function wire() {
+  view.querySelectorAll('[data-go]').forEach((b) => {
+    b.addEventListener('click', () => { stack.push(b.getAttribute('data-go')); paint(); });
+  });
+  const earlier = document.getElementById('earlier');
+  if (earlier) earlier.addEventListener('click', () => {
+    const old = document.getElementById('old');
+    const open = old.hasAttribute('hidden');
+    if (open) old.removeAttribute('hidden'); else old.setAttribute('hidden', '');
+    document.getElementById('earlier-chev').textContent = open ? '⌄' : '›';
+  });
+  const smaller = document.getElementById('smaller');
+  const bigger = document.getElementById('bigger');
+  const pct = document.getElementById('pct');
+  let scale = 100;
+  const show = () => { pct.textContent = scale + '%'; };
+  if (smaller) smaller.addEventListener('click', () => { scale = Math.max(70, scale - 10); show(); });
+  if (bigger) bigger.addEventListener('click', () => { scale = Math.min(160, scale + 10); show(); });
+  const reset = document.getElementById('resetsize');
+  if (reset) reset.addEventListener('click', () => { scale = 100; show(); });
+  const test = document.getElementById('testconn');
+  if (test) test.addEventListener('click', () => {
+    const own = (document.getElementById('relay').value || '').trim();
+    document.getElementById('conn-status').textContent = own
+      ? 'Would test ' + own + '.'
+      : 'Would test the standard connection, wss://relay.gifos.app.';
+  });
+}
+back.addEventListener('click', () => { if (stack.length > 1) { stack.pop(); paint(); } });
+done.addEventListener('click', () => { /* proposal only */ });
+paint();
+
+// Deep link for screenshots: #system #erase #updates #look #ai
+function goHash() {
+  const id = (location.hash || '').replace('#', '');
+  if (screens[id] && id !== 'root') { stack = ['root', id]; paint(); }
+}
+window.addEventListener('hashchange', goHash);
+goHash();
+</script>
+</body>
+</html>

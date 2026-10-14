@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings proposal B — two panes</title>
+<link rel="stylesheet" href="settings.css">
+</head>
+<body>
+<div class="stage">
+  <div class="sheet wide" id="sheet">
+    <header class="bar">
+      <button class="textbtn" id="back" hidden type="button">Back</button>
+      <h1>Settings</h1>
+      <button class="textbtn" id="done" type="button">Done</button>
+    </header>
+    <div class="panes">
+      <nav class="nav" id="nav" aria-label="Settings sections">
+        <button class="navrow on" data-pane="you" type="button">Your name <span class="status">Alex</span></button>
+        <button class="navrow" data-pane="look" type="button">Background and text</button>
+        <button class="navrow" data-pane="ai" type="button">AI <span class="status">Off</span></button>
+        <button class="navrow" data-pane="accounts" type="button">Connected accounts</button>
+        <button class="navrow" data-pane="payments" type="button">Payments</button>
+        <button class="navrow" data-pane="system" type="button">System</button>
+      </nav>
+      <div class="detail" id="detail"></div>
+    </div>
+  </div>
+</div>
+<script>
+const panes = {
+  you: `
+    <h2>Your name</h2>
+    <p class="lead">Friends see this name when you play or work together.</p>
+    <div class="field"><label for="name">Name</label><input id="name" maxlength="40" value="Alex"></div>`,
+  look: `
+    <h2>Background and text</h2>
+    <p class="lead">Applies as you change it, on every GifOS page in this browser.</p>
+    <div class="group-label">Background</div>
+    <div class="card" style="padding:14px">
+      <div class="field"><label for="color">Color</label>
+        <div class="swatch-row"><div class="swatch"></div><input id="color" value="#1d1d1f"></div>
+      </div>
+      <button class="btn block" type="button">Use a picture</button>
+    </div>
+    <div class="group-label">Text size</div>
+    <div class="card" style="padding:14px">
+      <div class="stepper">
+        <button type="button" aria-label="Smaller text">A−</button>
+        <span class="val">100%</span>
+        <button type="button" aria-label="Bigger text">A+</button>
+        <button type="button">Reset</button>
+      </div>
+    </div>`,
+  ai: `
+    <h2>AI</h2>
+    <p class="lead">One line of status per ability. Open one only when you are ready to paste a key. Keys stay in this browser.</p>
+    <div class="card">
+      <div class="row"><span class="t"><b>Smartest text</b><span>Not set up</span></span><span class="chev">›</span></div>
+      <div class="row"><span class="t"><b>Cheapest text</b><span>Not set up</span></span><span class="chev">›</span></div>
+      <div class="row"><span class="t"><b>Text to speech</b><span>Not set up</span></span><span class="chev">›</span></div>
+      <div class="row"><span class="t"><b>Speech to text</b><span>Not set up</span></span><span class="chev">›</span></div>
+      <div class="row"><span class="t"><b>Text to image</b><span>Not set up</span></span><span class="chev">›</span></div>
+      <div class="row"><span class="t"><b>Image to video</b><span>Not set up</span></span><span class="chev">›</span></div>
+      <div class="row"><span class="t"><b>Text to video</b><span>Not set up</span></span><span class="chev">›</span></div>
+    </div>`,
+  accounts: `
+    <h2>Connected accounts</h2>
+    <p class="lead">Was called Third-party APIs. Same job, fewer words: a name, an address, how the key is sent, then test.</p>
+    <div class="card"><div class="row"><span class="t"><b>No accounts yet</b><span>Add one when an app asks for it.</span></span></div></div>
+    <div class="gap"></div>
+    <button class="btn primary" type="button">Add an account</button>`,
+  payments: `
+    <h2>Payments</h2>
+    <p class="lead">Charges you already approved. Nothing has been charged on this computer.</p>
+    <div class="card"><div class="row"><span class="t"><b>No payments</b><span>A per-charge limit will show here after the first one.</span></span></div></div>`,
+  system: `
+    <h2>System</h2>
+    <p class="lead">Storage, updates, and the invite connection.</p>
+    <div class="card">
+      <div class="row"><span class="t"><b>Storage</b><span>Using 3.9 MB of about 6.4 GB · not protected yet</span></span></div>
+      <div class="row"><span class="t"><b>Updates</b><span>Edge build, running · v0.9.21 is the latest release</span></span></div>
+      <div class="row"><span class="t"><b>Invite connection</b><span>Standard GifOS connection. A blank field means that, and Test checks it.</span></span></div>
+    </div>
+    <div class="gap"></div>
+    <div class="card">
+      <div class="vrow"><span class="t"><b>Edge build</b> <span class="pill run">Running</span></span><button class="linkish" type="button">Re-pull</button></div>
+      <div class="vrow"><span class="t"><b>v0.9.21</b> <span class="pill live">Latest</span><span>8 Oct 2026</span></span><button class="linkish" type="button">Switch</button></div>
+      <div class="row"><span class="t"><b>Earlier versions</b><span>10 older releases</span></span></div>
+    </div>
+    <div class="gap"></div>
+    <div class="card">
+      <button class="row danger" data-pane="erase" type="button"><span class="t"><b>Erase this computer</b><span>Wipes apps and files in this browser</span></span></button>
+    </div>`,
+  erase: `
+    <h2>Erase this computer</h2>
+    <div class="callout">This wipes every app, file, folder, and wallpaper in this browser. No undo, no server copy. You stay on the <b>same version</b> you are using now — not “the latest”.</div>
+    <div class="gap"></div>
+    <button class="btn block" type="button">Back up first</button>
+    <div class="gap"></div>
+    <button class="btn danger" type="button">Erase without backup</button>`
+};
+
+const sheet = document.getElementById('sheet');
+const detail = document.getElementById('detail');
+const back = document.getElementById('back');
+const navButtons = [...document.querySelectorAll('.navrow')];
+
+function show(id) {
+  detail.innerHTML = panes[id] || panes.you;
+  navButtons.forEach((b) => b.classList.toggle('on', b.getAttribute('data-pane') === id));
+  const narrow = window.matchMedia('(max-width: 700px)').matches;
+  sheet.classList.toggle('show-detail', narrow);
+  back.hidden = !narrow;
+}
+navButtons.forEach((b) => b.addEventListener('click', () => show(b.getAttribute('data-pane'))));
+detail.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pane]');
+  if (b) show(b.getAttribute('data-pane'));
+});
+back.addEventListener('click', () => {
+  sheet.classList.remove('show-detail');
+  back.hidden = true;
+});
+function fromHash() {
+  const id = (location.hash || '#you').replace('#', '');
+  if (id === 'list') {
+    sheet.classList.remove('show-detail');
+    back.hidden = true;
+    return;
+  }
+  if (panes[id]) show(id);
+}
+window.addEventListener('hashchange', fromHash);
+fromHash();
+</script>
+</body>
+</html>
