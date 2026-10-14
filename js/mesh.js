@@ -3467,7 +3467,7 @@
           // answered again. The hand-off that ack promised has not seated us,
           // and the room can hear us. Re-drive the SAME greeter. This is not a
           // timer: a merely slow chain is left alone until the door speaks.
-          else if (this.state === 2 && this.findAckAt >= 0 && this.lastAsked != null && rosterOk(m.roster) && TICK - this.findAckAt >= FIND_ACK_WAIT && this.ackReasks < 4 && (this.ackReaskAt < 0 || TICK - this.ackReaskAt >= FIND_ACK_WAIT)) { this.ackReasks++; this.ackReaskAt = TICK; this.askSeat(this.lastAsked, true); }
+          else if (this.state === 2 && this.findAckAt >= 0 && this.lastAsked != null && rosterOk(m.roster) && TICK - this.findAckAt >= FIND_ACK_WAIT && (this.ackReaskAt < 0 || TICK - this.ackReaskAt >= FIND_ACK_WAIT)) { this.ackReasks++; this.ackReaskAt = TICK; this.askSeat(this.lastAsked, true); }
           else if (this.state === 3 && rosterOk(m.roster)) {
             this.roster = m.roster; this.haveRoster = true;
             // The home ring as a greeter sees it, as HINTS (never liveness,
