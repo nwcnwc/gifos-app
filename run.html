@@ -2545,7 +2545,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // freeze, never veto one. A forward clock step costs one reload.
       return (wallDelta > 150000 || monoDelta > 150000) && peerCount > 0;
     }
-    let hbTick = 0, hbLastAt = Date.now(), hbLastMono = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0, frozeGap = 0;
+    let hbTick = 0, hbLastAt = Date.now(), hbLastMono = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0, frozeGap = 0, beatTypical = 0, beatLong = false;
     // THE WAKE PROBE (chaos round 1: every "back, but over 10 s" and both
     // "never came back" freeze seeds). A page that was AWAY — renderer frozen
     // (Android tab freeze, SIGSTOP), suspended, or dark (no coverage) — for
@@ -2782,7 +2782,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // suspended, blocked — for longer than every peer's receive-silence
       // threshold, and each of them has judged that silence (see wakeProbe).
       // The dark return (radio) arrives through the 'online' edge below.
-      if (beatGap > WAKE_SUSPECT_MS && !frozeGap) wakeProbe(nowBeat, 'beat gap ' + Math.round(beatGap / 1000) + 's');
+      // A clock that always beats past that threshold is not away. Its
+      // steady gap is the baseline; only a gap well past THAT is a nap.
+      // The first gap only sets the baseline. Folding a nap into it would
+      // hide the next one.
+      let nap = false;
+      if (!beatTypical) {
+        if (beatGap > 400 && beatGap < 60000) beatTypical = beatGap;
+      } else if (beatGap > WAKE_SUSPECT_MS && beatGap > beatTypical * 1.8) {
+        // One gap past the cadence is a nap. The next one, just as long,
+        // is the cadence itself (a slowed clock), not a nap every beat.
+        if (beatLong) { beatTypical = beatGap; beatLong = false; }
+        else { nap = true; beatLong = true; }
+      } else {
+        beatLong = false;
+        if (beatGap > 400 && beatGap < 30000) beatTypical = beatTypical * 0.75 + beatGap * 0.25;
+      }
+      if (nap && !frozeGap) wakeProbe(nowBeat, 'beat gap ' + Math.round(beatGap / 1000) + 's');
       netDarkBeat(nowBeat);
       doorRoundBeat(nowBeat);
       // A hidden tab beats at a third of the pace (12s — still inside every 15s
