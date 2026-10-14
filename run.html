@@ -1004,9 +1004,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #chatform button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   .tile .cap { position: absolute; left: 50%; transform: translateX(-50%); bottom: 2.1rem; max-width: 92%;
                background: rgba(10,10,15,.82); border: 1px solid var(--border, #2a2a3f); border-radius: .45rem;
-               padding: .18rem .55rem; font-size: .78rem; z-index: 3; pointer-events: none;
+               padding: .35rem .7rem; font-size: 1.25rem; line-height: 1.35; color: #fff; z-index: 3; pointer-events: none;
                opacity: 0; transition: opacity .25s; }
   .tile .cap.show { opacity: 1; }
+  /* A share that died in a freeze reload. One tap, high contrast, wraps on a phone. */
+  #reshare-back { display: none; position: fixed; left: 50%; bottom: 4.6rem; transform: translateX(-50%);
+                  z-index: 80; max-width: 92vw; width: max-content; box-sizing: border-box;
+                  background: #fff; color: #14141c; border-radius: .6rem; padding: .75rem .9rem;
+                  gap: .65rem; align-items: center; flex-wrap: wrap; justify-content: center;
+                  box-shadow: 0 8px 28px rgba(0,0,0,.45); }
+  #reshare-back.show { display: flex; }
+  #reshare-back p { margin: 0; font-size: 1rem; line-height: 1.35; color: #14141c; }
+  #reshare-go { font-size: 1rem; line-height: 1.2; padding: .5rem .85rem; border-radius: .45rem; border: 0;
+                background: #2436d6; color: #fff; cursor: pointer; }
   #recbtn.on { border-color: #ff5c5c; color: #ff9c9c; }
   #ccbtn.on { border-color: #5cff7b; color: #9cffb4; }
   .trline { font-size: .82rem; padding: .15rem 0; overflow-wrap: anywhere; }
@@ -1545,6 +1555,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button id="share-cancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Cancel</button>
       </div>
     </div>
+  </div>
+
+  <div id="reshare-back" role="status">
+    <p>Your screen share stopped when you came back.</p>
+    <button type="button" id="reshare-go">Share again</button>
   </div>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="app-modal" style="display:none">
@@ -10965,6 +10980,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // granted, instant to switch on) but disabled until you choose to
             // be seen/heard.
             for (const tr of localStream.getTracks()) tr.enabled = false;
+            // A freeze reload stashed the live mic/camera/share. Put them back
+            // before the first status goes out, so peers never see a quiet rejoin.
+            try { if (typeof applyRecoverMedia === 'function') applyRecoverMedia(); } catch (e) {}
             maybeShowFlip();
             const n = meTile.tile.querySelector('.note'); if (n) n.remove();
             meTile.video.style.display = '';
@@ -10983,6 +11001,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // boot gUM is silent by design — view-only join — which made the
             // per-launch no-video flake unattributable from the outside.)
             try { window.__gumBootErr = (e && e.name ? e.name + ': ' : '') + String(e && e.message || e); } catch (e2) {}
+            // No camera still gets the one-tap re-share, if a share was up.
+            try { if (typeof applyRecoverMedia === 'function') applyRecoverMedia(); } catch (e3) {}
             tileNote(meTile, gumRefused(e)
               ? 'View-only: no camera/mic permission. You still see and hear everyone \u2014 tap the mic or camera button above to ask again.'
               : 'View-only: no camera or microphone found (' + ((e && e.name) || 'error') + '). You still see and hear everyone \u2014 tap the mic or camera button above to try again.');
@@ -16176,6 +16196,79 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A broadcast viewer has no share button until an admin allows them.
       document.body.classList.toggle('share-granted', mayShareScreen(myId));
     }
+    // A freeze reloads the tab. Mic, camera and share cannot ride that
+    // navigation unless we write them down first and put them back after boot.
+    let shareRecoverMode = false;
+    let recoverShareTimer = 0;
+    const RECOVER_MEDIA_KEY = 'gifos_recover_media';
+    const RECOVER_MEDIA_TTL = 120000;
+    function stashRecoverMedia() {
+      try {
+        sessionStorage.setItem(RECOVER_MEDIA_KEY, JSON.stringify({
+          v: 1,
+          muted: !(myStatus && myStatus.muted === false),
+          camOff: !(myStatus && myStatus.camOff === false),
+          sharing: !!(myStatus && myStatus.scr),
+          at: Date.now(),
+        }));
+      } catch (e) {}
+    }
+    function takeRecoverMedia() {
+      let raw = null;
+      try {
+        raw = sessionStorage.getItem(RECOVER_MEDIA_KEY);
+        sessionStorage.removeItem(RECOVER_MEDIA_KEY);
+      } catch (e) { return null; }
+      if (!raw) return null;
+      let o = null;
+      try { o = JSON.parse(raw); } catch (e) { return null; }
+      if (!o || o.v !== 1 || typeof o.at !== 'number') return null;
+      if (Date.now() - o.at > RECOVER_MEDIA_TTL) return null;
+      return o;
+    }
+    function showResharePrompt() {
+      shareRecoverMode = false;
+      const back = document.getElementById('reshare-back');
+      if (back && back.classList) back.classList.add('show');
+      setStatus('Your screen share stopped when you came back.');
+    }
+    function hideResharePrompt() {
+      const back = document.getElementById('reshare-back');
+      if (back && back.classList) back.classList.remove('show');
+    }
+    function recoverScreenShare() {
+      if (typeof mayShareScreen === 'function' && !mayShareScreen(myId)) return;
+      if (typeof forcedCamOff === 'function' && forcedCamOff('me')) return;
+      shareRecoverMode = true;
+      if (typeof canScreenShare === 'function' && !canScreenShare()) { showResharePrompt(); return; }
+      if (recoverShareTimer) clearTimeout(recoverShareTimer);
+      // If the browser never answers the capture ask, the prompt still appears.
+      recoverShareTimer = setTimeout(() => {
+        recoverShareTimer = 0;
+        if (shareRecoverMode && !(myStatus && myStatus.scr)) showResharePrompt();
+      }, 1200);
+      startScreenShare();
+    }
+    function applyRecoverMedia() {
+      const o = takeRecoverMedia();
+      if (!o) return;
+      if (localStream) {
+        const mic = localStream.getAudioTracks()[0];
+        if (mic) {
+          const allow = o.muted === false && !(typeof amGloballyMuted === 'function' && amGloballyMuted());
+          mic.enabled = !!allow;
+          myStatus.muted = !mic.enabled;
+        }
+        const cam = localStream.getVideoTracks()[0];
+        if (cam) {
+          const allowCam = o.camOff === false && !(typeof forcedCamOff === 'function' && forcedCamOff('me'));
+          cam.enabled = !!allowCam;
+          myStatus.camOff = !cam.enabled;
+        }
+      }
+      try { paintControls(); } catch (e) {}
+      if (o.sharing) { try { recoverScreenShare(); } catch (e) {} }
+    }
     function startScreenShare() {
       if (myStatus.scr) return;
       // No browser NAMES here (browser support is data — site/browser-support.json
@@ -16188,14 +16281,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // screen grant are different orders.
       if (!mayShareScreen(myId)) { setStatus('🛡 Only this room’s admins — or people they allow — can share a screen here.'); return; }
       if (!myStatus.stg && stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' people) — someone has to step down first.'); return; }
-      setStatus('Choose what to share…');
+      setStatus(shareRecoverMode ? 'Bringing your screen share back…' : 'Choose what to share…');
       navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: false })
         .then((s) => {
           const vt = s.getVideoTracks()[0];
-          if (!vt) { try { s.getTracks().forEach((t) => t.stop()); } catch (e) {} return; }
+          if (!vt) { try { s.getTracks().forEach((t) => t.stop()); } catch (e) {} shareRecoverMode = false; return; }
           // The grant can be revoked while the browser's picker is open.
           if (!mayShareScreen('me') || forcedCamOff('me')) {
             try { s.getTracks().forEach((t) => t.stop()); } catch (e) {}
+            shareRecoverMode = false;
             setStatus('🛡 Screen sharing was turned off before it started.');
             return;
           }
@@ -16210,6 +16304,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // unchanged region costs almost nothing. The frame rate we asked for
           // is 15 and a slide does not move, so there is nothing to lose.
           try { vt.contentHint = 'text'; } catch (e) {}
+          shareRecoverMode = false;
+          if (typeof hideResharePrompt === 'function') hideResharePrompt();
           screenStream = s;
           myStatus.scr = Date.now();
           // THE BROWSER'S OWN "Stop sharing" BAR IS THE MOST-USED STOP BUTTON
@@ -16230,6 +16326,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           setStatus('🖥 Sharing your screen with the meeting. Sound from the shared tab does not travel — talk over it.');
         })
         .catch((err) => {
+          if (shareRecoverMode) {
+            if (typeof showResharePrompt === 'function') showResharePrompt();
+            else shareRecoverMode = false;
+            return;
+          }
           const denied = err && (err.name === 'NotAllowedError' || err.name === 'AbortError');
           setStatus(denied ? 'Screen share cancelled — nothing was shared.'
             : 'Couldn’t share the screen (' + ((err && err.name) || 'error') + ').');
@@ -16321,6 +16422,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!modal) return;
       document.getElementById('share-cancel').onclick = () => { closeShareSheet(); };
       document.getElementById('share-go').onclick = () => { closeShareSheet(); startScreenShare(); };
+      const again = document.getElementById('reshare-go');
+      if (again) again.onclick = () => {
+        shareRecoverMode = false;
+        if (recoverShareTimer) { clearTimeout(recoverShareTimer); recoverShareTimer = 0; }
+        hideResharePrompt();
+        startScreenShare();
+      };
       document.getElementById('share-runapp').onclick = () => {
         closeShareSheet();
         const want = (typeof findSharedApp === 'function') ? findSharedApp() : null;
@@ -17852,6 +17960,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function resumeReload() {
       const REC_SAVE_MAX_MS = 20000;
+      // Stash before the reload, then drop the share so peers are not left
+      // on a dead tile. The fallback timer must still reload on this turn.
+      function reloadNow() {
+        try { if (typeof stashRecoverMedia === 'function') stashRecoverMedia(); } catch (e) {}
+        try {
+          if (typeof stopScreenShare === 'function' && typeof myStatus !== 'undefined' && myStatus && myStatus.scr) stopScreenShare('rejoining');
+        } catch (e2) {}
+        location.reload();
+      }
       try {
         const recording = !!(recRec && recRec.state !== 'inactive');
         const plan = recResumePlan(recording, recReloadAfterStop);
@@ -17865,13 +17982,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // onstop reloads after the file is finished. If onstop or the
             // sink's finish never settles, the latch above would make every
             // later freeze wait forever, so the page still reloads by itself.
-            setTimeout(() => location.reload(), REC_SAVE_MAX_MS);
+            setTimeout(() => reloadNow(), REC_SAVE_MAX_MS);
             recRec.stop();
             return;
           } catch (e3) { recReloadAfterStop = false; }
         }
       } catch (e) {}
-      location.reload();
+      reloadNow();
     }
     // One dialog behaviour for the sheets that had none: focus moves in,
     // Escape and the backdrop close, focus returns to whatever opened it.
@@ -18673,7 +18790,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // The camera goes on only when a video track was actually taken:
           // the audio-only fallback lands the mic (quiet) and says why.
           const gotCam = !!localStream.getVideoTracks()[0];
-          myStatus.muted = kind !== 'mic' || !!refused;
+          // A camera tap while the person is already talking must not mark that
+          // live mic muted. Quiet join still holds when this tap brought the mic:
+          // that new audio track was left disabled above.
+          const micTr = localStream && localStream.getAudioTracks()[0];
+          if (kind === 'mic') myStatus.muted = !!refused || !(micTr && micTr.enabled);
+          else myStatus.muted = micTr ? !micTr.enabled : true;
           myStatus.camOff = kind !== 'cam' || !gotCam || !!refused;
           attachLocalTracks();
           paintControls();
