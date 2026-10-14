@@ -2581,6 +2581,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the peer had closed 20 s earlier (chaos seed 8: the probe skipped the
     // one pair it was for; 27 s to rejoin). A wpong can only follow our wping.
     const WAKE_SUSPECT_MS = 12000, WAKE_PROBE_MS = 1500, WAKE_SETTLE_MS = 6000;
+    // Checks against a pc the peer has already closed are sent and never
+    // answered. A live peer answers even on a slow path. 'dead' is that
+    // corpse, 'live' has an answer, 'soon' has not sent a check yet.
+    function iceCheckVerdict(pc) {
+      if (!pc || typeof pc.getStats !== 'function') return Promise.resolve('soon');
+      return pc.getStats().then((rep) => {
+        let sent = 0, got = 0, live = false;
+        rep.forEach((s) => {
+          if (!s || s.type !== 'candidate-pair') return;
+          if (s.state === 'succeeded' || s.nominated || (s.responsesReceived || 0) > 0) live = true;
+          sent += s.requestsSent || 0;
+          got += s.responsesReceived || 0;
+        });
+        if (live || got > 0) return 'live';
+        if (sent > 0) return 'dead';
+        return 'soon';
+      }).catch(() => 'soon');
+    }
     let wakeLastAt = 0, netDarkAt = 0, netDarkEndAt = 0;
     // A PROBE IN THE DARK IS NO PROBE. With the radio off nothing we send
     // leaves and nothing comes back, so an unanswered wping says nothing
@@ -2635,14 +2653,32 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setTimeout(() => {
         if (leaving || bannedOut) return;
         if (darkSince(at)) { for (const p of peers.values()) if (p.wakeAt === at) p.wakeAt = 0; return; }
+        const hush = [];
         for (const [pid, p] of peers) {
           if (p.wakeAt !== at || !p.pc) continue;
           if (p.wakePongAt > at) { p.wakeAt = 0; continue; }                   // it answered: the pair survived
           if (!p.wakeAsked && p.connected && p.dc && p.dc.readyState === 'open') { p.wakeAt = 0; continue; } // not asked (no channel at the wake) and open now: it formed since — alive
           const built = Math.max(p.rebuiltAt || 0, p.bornAt || 0), st = p.pc.connectionState;
-          if (built >= at || (built > at - 5000 && (st === 'connecting' || st === 'connected'))) continue; // (re)built at the wake — judged at WAKE_SETTLE_MS
+          // (re)built at the wake — judged at WAKE_SETTLE_MS, unless the
+          // channel we asked was replaced by an offer whose checks draw no
+          // answer. That offer drained from a pc the peer has closed; the
+          // settle would wait the whole window on a negotiation that cannot
+          // finish. A check that has been answered is left to form.
+          if (built >= at || (built > at - 5000 && (st === 'connecting' || st === 'connected'))) {
+            if (p.wakeAsked && st === 'connecting' && p.wakeBuiltAt !== at && !(p.dc && p.dc.readyState === 'open')) hush.push([pid, p, p.pc]);
+            continue;
+          }
           rebuild(pid, p, 'silent');
         }
+        const hushOne = (pid, p, pc, again) => {
+          iceCheckVerdict(pc).then((v) => {
+            if (p.wakeAt !== at || p.pc !== pc || darkSince(at)) return;
+            if (p.connected && p.dc && p.dc.readyState === 'open') return;
+            if (v === 'dead') { rebuild(pid, p, 'unanswered'); return; }
+            if (v === 'soon' && again) setTimeout(() => hushOne(pid, p, pc, false), 1000);
+          });
+        };
+        for (const [pid, p, pc] of hush) hushOne(pid, p, pc, true);
       }, WAKE_PROBE_MS);
       setTimeout(() => {
         if (leaving || bannedOut) return;
