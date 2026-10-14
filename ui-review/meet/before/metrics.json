@@ -1,0 +1,4944 @@
+[
+  {
+    "tag": "desk-prejoin",
+    "vw": 1280,
+    "vh": 800,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 47,
+    "feed": {
+      "w": 1280,
+      "h": 753,
+      "tileArea": 0,
+      "feedArea": 963840,
+      "fill": 0
+    },
+    "tiles": [],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 46,
+        "h": 29,
+        "x": 109,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "You are muted — tap to speak"
+      },
+      {
+        "sel": "#cam",
+        "w": 46,
+        "h": 29,
+        "x": 164,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera off — tap to turn on"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 66,
+        "h": 28,
+        "x": 456,
+        "y": 9,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 31,
+        "h": 30,
+        "x": 14,
+        "y": 8,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Show meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 57,
+        "h": 24,
+        "x": 388,
+        "y": 11,
+        "display": "block",
+        "fontSize": "11.84px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 440,
+        "h": 67,
+        "x": 420,
+        "y": 251,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meeting\nOpen room · anyone with ",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 440,
+        "h": 67,
+        "x": 420,
+        "y": 251,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meeting\nOpen room · anyone with ",
+        "title": null
+      },
+      null,
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "11.84px",
+        "opacity": "1",
+        "ratio": 1
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      null,
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Just you — send the invite; the link has no expiry · reconnecting to the room…",
+    "oldbrowser": false
+  },
+  {
+    "tag": "desk-joining-veil",
+    "vw": 1280,
+    "vh": 800,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 47,
+    "feed": {
+      "w": 1280,
+      "h": 753,
+      "tileArea": 898704,
+      "feedArea": 963840,
+      "fill": 93
+    },
+    "tiles": [
+      {
+        "cls": "tile me cam-off",
+        "w": 1264,
+        "h": 711,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 46,
+        "h": 29,
+        "x": 109,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "You are muted — tap to speak"
+      },
+      {
+        "sel": "#cam",
+        "w": 46,
+        "h": 29,
+        "x": 164,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera off — tap to turn on"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 66,
+        "h": 28,
+        "x": 456,
+        "y": 9,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 31,
+        "h": 30,
+        "x": 14,
+        "y": 8,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Show meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 57,
+        "h": 24,
+        "x": 388,
+        "y": 11,
+        "display": "block",
+        "fontSize": "11.84px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "none",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "11.84px",
+        "opacity": "1",
+        "ratio": 1
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      {
+        "sel": "#joinveil h3",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgba(10, 10, 15, 0.82)",
+        "fontSize": "18.72px",
+        "opacity": "1",
+        "ratio": 1.17
+      },
+      {
+        "sel": "#joinveil p",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgba(10, 10, 15, 0.82)",
+        "fontSize": "14.08px",
+        "opacity": "1",
+        "ratio": 3.89
+      },
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Just you — send the invite; the link has no expiry · reconnecting to the room…",
+    "oldbrowser": false
+  },
+  {
+    "tag": "desk-call-1-default",
+    "vw": 1280,
+    "vh": 800,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 47,
+    "feed": {
+      "w": 1280,
+      "h": 753,
+      "tileArea": 898704,
+      "feedArea": 963840,
+      "fill": 93
+    },
+    "tiles": [
+      {
+        "cls": "tile me cam-off",
+        "w": 1264,
+        "h": 711,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 46,
+        "h": 29,
+        "x": 109,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "You are muted — tap to speak"
+      },
+      {
+        "sel": "#cam",
+        "w": 46,
+        "h": 29,
+        "x": 164,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera off — tap to turn on"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 66,
+        "h": 28,
+        "x": 456,
+        "y": 9,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 31,
+        "h": 30,
+        "x": 14,
+        "y": 8,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Show meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 57,
+        "h": 24,
+        "x": 388,
+        "y": 11,
+        "display": "block",
+        "fontSize": "11.84px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "none",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "11.84px",
+        "opacity": "1",
+        "ratio": 1
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Just you — send the invite; the link has no expiry · reconnecting to the room…",
+    "oldbrowser": false
+  },
+  {
+    "tag": "desk-bar-open",
+    "vw": 1280,
+    "vh": 800,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 85,
+    "feed": {
+      "w": 1280,
+      "h": 715,
+      "tileArea": 898704,
+      "feedArea": 915480,
+      "fill": 98
+    },
+    "tiles": [
+      {
+        "cls": "tile me cam-off",
+        "w": 1264,
+        "h": 711,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 46,
+        "h": 29,
+        "x": 109,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "You are muted — tap to speak"
+      },
+      {
+        "sel": "#cam",
+        "w": 46,
+        "h": 29,
+        "x": 164,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera off — tap to turn on"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 66,
+        "h": 28,
+        "x": 456,
+        "y": 9,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 61,
+        "h": 28,
+        "x": 293,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 31,
+        "h": 30,
+        "x": 14,
+        "y": 8,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Hide meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 107,
+        "h": 28,
+        "x": 14,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 58,
+        "h": 28,
+        "x": 364,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 61,
+        "h": 28,
+        "x": 1115,
+        "y": 9,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 57,
+        "h": 24,
+        "x": 388,
+        "y": 11,
+        "display": "block",
+        "fontSize": "11.84px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "none",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "11.84px",
+        "opacity": "1",
+        "ratio": 1
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Just you — send the invite; the link has no expiry · reconnecting to the room…",
+    "oldbrowser": false
+  },
+  {
+    "tag": "desk-call-1",
+    "vw": 1280,
+    "vh": 800,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 85,
+    "feed": {
+      "w": 1280,
+      "h": 715,
+      "tileArea": 898704,
+      "feedArea": 915480,
+      "fill": 98
+    },
+    "tiles": [
+      {
+        "cls": "tile me",
+        "w": 1264,
+        "h": 711,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 46,
+        "h": 29,
+        "x": 109,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "Your mic is on — tap to mute"
+      },
+      {
+        "sel": "#cam",
+        "w": 46,
+        "h": 29,
+        "x": 164,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera on — tap to turn off"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 66,
+        "h": 28,
+        "x": 456,
+        "y": 9,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 61,
+        "h": 28,
+        "x": 453,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 31,
+        "h": 30,
+        "x": 14,
+        "y": 8,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Hide meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 107,
+        "h": 28,
+        "x": 174,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 58,
+        "h": 28,
+        "x": 524,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 61,
+        "h": 28,
+        "x": 14,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 57,
+        "h": 24,
+        "x": 388,
+        "y": 11,
+        "display": "block",
+        "fontSize": "11.84px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 26,
+        "h": 21,
+        "x": 1239,
+        "y": 776,
+        "display": "block",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "11.84px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Faces stay blurred until this room has a password. Anyone here can set one with the Password button.",
+    "oldbrowser": false
+  },
+  {
+    "tag": "desk-call-2",
+    "vw": 1280,
+    "vh": 800,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 85,
+    "feed": {
+      "w": 1280,
+      "h": 715,
+      "tileArea": 443682,
+      "feedArea": 915480,
+      "fill": 48
+    },
+    "tiles": [
+      {
+        "cls": "tile me",
+        "w": 628,
+        "h": 353,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 628,
+        "h": 353,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 46,
+        "h": 29,
+        "x": 109,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "Your mic is on — tap to mute"
+      },
+      {
+        "sel": "#cam",
+        "w": 46,
+        "h": 29,
+        "x": 164,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera on — tap to turn off"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 66,
+        "h": 28,
+        "x": 456,
+        "y": 9,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 61,
+        "h": 28,
+        "x": 453,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 31,
+        "h": 30,
+        "x": 14,
+        "y": 8,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Hide meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 107,
+        "h": 28,
+        "x": 174,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 58,
+        "h": 28,
+        "x": 524,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 61,
+        "h": 28,
+        "x": 14,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 57,
+        "h": 24,
+        "x": 388,
+        "y": 11,
+        "display": "block",
+        "fontSize": "11.84px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 26,
+        "h": 21,
+        "x": 603,
+        "y": 418,
+        "display": "block",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "11.84px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Faces stay blurred until this room has a password. Anyone here can set one with the Password button.",
+    "oldbrowser": false
+  },
+  {
+    "tag": "desk-call-3",
+    "vw": 1280,
+    "vh": 800,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 85,
+    "feed": {
+      "w": 1280,
+      "h": 715,
+      "tileArea": 292032,
+      "feedArea": 915480,
+      "fill": 32
+    },
+    "tiles": [
+      {
+        "cls": "tile me",
+        "w": 416,
+        "h": 234,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 416,
+        "h": 234,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 416,
+        "h": 234,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 46,
+        "h": 29,
+        "x": 109,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "Your mic is on — tap to mute"
+      },
+      {
+        "sel": "#cam",
+        "w": 46,
+        "h": 29,
+        "x": 164,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera on — tap to turn off"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 66,
+        "h": 28,
+        "x": 456,
+        "y": 9,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 61,
+        "h": 28,
+        "x": 453,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 31,
+        "h": 30,
+        "x": 14,
+        "y": 8,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Hide meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 107,
+        "h": 28,
+        "x": 174,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 58,
+        "h": 28,
+        "x": 524,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 61,
+        "h": 28,
+        "x": 14,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 57,
+        "h": 24,
+        "x": 388,
+        "y": 11,
+        "display": "block",
+        "fontSize": "11.84px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 26,
+        "h": 21,
+        "x": 391,
+        "y": 299,
+        "display": "block",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "11.84px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Faces stay blurred until this room has a password. Anyone here can set one with the Password button.",
+    "oldbrowser": false
+  },
+  {
+    "tag": "desk-call-4",
+    "vw": 1280,
+    "vh": 800,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 85,
+    "feed": {
+      "w": 1280,
+      "h": 715,
+      "tileArea": 216225,
+      "feedArea": 915480,
+      "fill": 24
+    },
+    "tiles": [
+      {
+        "cls": "tile me",
+        "w": 310,
+        "h": 174,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 310,
+        "h": 174,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 310,
+        "h": 174,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 310,
+        "h": 174,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 46,
+        "h": 29,
+        "x": 109,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "Your mic is on — tap to mute"
+      },
+      {
+        "sel": "#cam",
+        "w": 46,
+        "h": 29,
+        "x": 164,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera on — tap to turn off"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 66,
+        "h": 28,
+        "x": 456,
+        "y": 9,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 61,
+        "h": 28,
+        "x": 453,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 31,
+        "h": 30,
+        "x": 14,
+        "y": 8,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Hide meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 107,
+        "h": 28,
+        "x": 174,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 58,
+        "h": 28,
+        "x": 524,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 61,
+        "h": 28,
+        "x": 14,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 57,
+        "h": 24,
+        "x": 388,
+        "y": 11,
+        "display": "block",
+        "fontSize": "11.84px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 26,
+        "h": 21,
+        "x": 285,
+        "y": 239,
+        "display": "block",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "11.84px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Faces stay blurred until this room has a password. Anyone here can set one with the Password button.",
+    "oldbrowser": false
+  },
+  {
+    "tag": "desk-call-6",
+    "vw": 1280,
+    "vh": 800,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 85,
+    "feed": {
+      "w": 1280,
+      "h": 715,
+      "tileArea": 204894,
+      "feedArea": 915480,
+      "fill": 22
+    },
+    "tiles": [
+      {
+        "cls": "tile me",
+        "w": 246,
+        "h": 139,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 246,
+        "h": 139,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 246,
+        "h": 139,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 246,
+        "h": 139,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 246,
+        "h": 139,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 246,
+        "h": 139,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 46,
+        "h": 29,
+        "x": 109,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "Your mic is on — tap to mute"
+      },
+      {
+        "sel": "#cam",
+        "w": 46,
+        "h": 29,
+        "x": 164,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera on — tap to turn off"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 66,
+        "h": 28,
+        "x": 456,
+        "y": 9,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 61,
+        "h": 28,
+        "x": 453,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 31,
+        "h": 30,
+        "x": 14,
+        "y": 8,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Hide meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 107,
+        "h": 28,
+        "x": 174,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 58,
+        "h": 28,
+        "x": 524,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 61,
+        "h": 28,
+        "x": 14,
+        "y": 48,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 57,
+        "h": 24,
+        "x": 388,
+        "y": 11,
+        "display": "block",
+        "fontSize": "11.84px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 26,
+        "h": 21,
+        "x": 221,
+        "y": 203,
+        "display": "block",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "11.84px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Faces stay blurred until this room has a password. Anyone here can set one with the Password button.",
+    "oldbrowser": false
+  },
+  {
+    "tag": "desk-screenshare",
+    "vw": 1280,
+    "vh": 800,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 47,
+    "feed": {
+      "w": 1280,
+      "h": 753,
+      "tileArea": 900864,
+      "feedArea": 963840,
+      "fill": 93
+    },
+    "tiles": [
+      {
+        "cls": "rowtile stagetile",
+        "w": 1264,
+        "h": 630,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile me",
+        "w": 176,
+        "h": 99,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 176,
+        "h": 99,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 176,
+        "h": 99,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 176,
+        "h": 99,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 176,
+        "h": 99,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 176,
+        "h": 99,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 46,
+        "h": 29,
+        "x": 109,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "Your mic is on — tap to mute"
+      },
+      {
+        "sel": "#cam",
+        "w": 46,
+        "h": 29,
+        "x": 164,
+        "y": 9,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera on — tap to turn off"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 66,
+        "h": 28,
+        "x": 456,
+        "y": 9,
+        "display": "block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 31,
+        "h": 30,
+        "x": 14,
+        "y": 8,
+        "display": "flex",
+        "fontSize": "12.8px",
+        "aria": "Show meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Stop sharing",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "12.8px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 57,
+        "h": 24,
+        "x": 388,
+        "y": 11,
+        "display": "block",
+        "fontSize": "11.84px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 26,
+        "h": 21,
+        "x": 151,
+        "y": 764,
+        "display": "block",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "11.84px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Faces stay blurred until this room has a password. Anyone here can set one with the Password button.",
+    "oldbrowser": false
+  },
+  {
+    "tag": "phone-prejoin",
+    "vw": 412,
+    "vh": 915,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 59,
+    "feed": {
+      "w": 412,
+      "h": 856,
+      "tileArea": 0,
+      "feedArea": 352511,
+      "fill": 0
+    },
+    "tiles": [],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 32,
+        "h": 25,
+        "x": 86,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "You are muted — tap to speak"
+      },
+      {
+        "sel": "#cam",
+        "w": 32,
+        "h": 25,
+        "x": 122,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera off — tap to turn on"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 49,
+        "h": 23,
+        "x": 320,
+        "y": 6,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 26,
+        "h": 26,
+        "x": 8,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Show meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 49,
+        "h": 21,
+        "x": 265,
+        "y": 7,
+        "display": "block",
+        "fontSize": "10.88px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 380,
+        "h": 67,
+        "x": 16,
+        "y": 301,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meeting\nOpen room · anyone with ",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 380,
+        "h": 67,
+        "x": 16,
+        "y": 301,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meeting\nOpen room · anyone with ",
+        "title": null
+      },
+      null,
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "10.88px",
+        "opacity": "1",
+        "ratio": 1
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      null,
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Just you — send the invite; the link has no expiry · reconnecting to the room…",
+    "oldbrowser": false
+  },
+  {
+    "tag": "phone-joining-veil",
+    "vw": 412,
+    "vh": 915,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 59,
+    "feed": {
+      "w": 412,
+      "h": 856,
+      "tileArea": 88209,
+      "feedArea": 352511,
+      "fill": 25
+    },
+    "tiles": [
+      {
+        "cls": "tile me cam-off",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 32,
+        "h": 25,
+        "x": 86,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "You are muted — tap to speak"
+      },
+      {
+        "sel": "#cam",
+        "w": 32,
+        "h": 25,
+        "x": 122,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera off — tap to turn on"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 49,
+        "h": 23,
+        "x": 320,
+        "y": 6,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 26,
+        "h": 26,
+        "x": 8,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Show meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 49,
+        "h": 21,
+        "x": 265,
+        "y": 7,
+        "display": "block",
+        "fontSize": "10.88px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "none",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "10.88px",
+        "opacity": "1",
+        "ratio": 1
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      {
+        "sel": "#joinveil h3",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgba(10, 10, 15, 0.82)",
+        "fontSize": "18.72px",
+        "opacity": "1",
+        "ratio": 1.17
+      },
+      {
+        "sel": "#joinveil p",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgba(10, 10, 15, 0.82)",
+        "fontSize": "14.08px",
+        "opacity": "1",
+        "ratio": 3.89
+      },
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Just you — send the invite; the link has no expiry · reconnecting to the room…",
+    "oldbrowser": false
+  },
+  {
+    "tag": "phone-call-1-default",
+    "vw": 412,
+    "vh": 915,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 59,
+    "feed": {
+      "w": 412,
+      "h": 856,
+      "tileArea": 88209,
+      "feedArea": 352511,
+      "fill": 25
+    },
+    "tiles": [
+      {
+        "cls": "tile me cam-off",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 32,
+        "h": 25,
+        "x": 86,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "You are muted — tap to speak"
+      },
+      {
+        "sel": "#cam",
+        "w": 32,
+        "h": 25,
+        "x": 122,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera off — tap to turn on"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 49,
+        "h": 23,
+        "x": 320,
+        "y": 6,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 26,
+        "h": 26,
+        "x": 8,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Show meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 49,
+        "h": 21,
+        "x": 265,
+        "y": 7,
+        "display": "block",
+        "fontSize": "10.88px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "none",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "10.88px",
+        "opacity": "1",
+        "ratio": 1
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Just you — send the invite; the link has no expiry · reconnecting to the room…",
+    "oldbrowser": false
+  },
+  {
+    "tag": "phone-bar-open",
+    "vw": 412,
+    "vh": 915,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 115,
+    "feed": {
+      "w": 412,
+      "h": 800,
+      "tileArea": 88209,
+      "feedArea": 329658,
+      "fill": 27
+    },
+    "tiles": [
+      {
+        "cls": "tile me cam-off",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 32,
+        "h": 25,
+        "x": 86,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "You are muted — tap to speak"
+      },
+      {
+        "sel": "#cam",
+        "w": 32,
+        "h": 25,
+        "x": 122,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera off — tap to turn on"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 49,
+        "h": 23,
+        "x": 320,
+        "y": 6,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 46,
+        "h": 23,
+        "x": 8,
+        "y": 86,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 26,
+        "h": 26,
+        "x": 8,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Hide meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 87,
+        "h": 23,
+        "x": 171,
+        "y": 58,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 42,
+        "h": 23,
+        "x": 58,
+        "y": 86,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 46,
+        "h": 23,
+        "x": 54,
+        "y": 58,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 49,
+        "h": 21,
+        "x": 265,
+        "y": 7,
+        "display": "block",
+        "fontSize": "10.88px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "none",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "10.88px",
+        "opacity": "1",
+        "ratio": 1
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Just you — send the invite; the link has no expiry · reconnecting to the room…",
+    "oldbrowser": false
+  },
+  {
+    "tag": "phone-call-1",
+    "vw": 412,
+    "vh": 915,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 115,
+    "feed": {
+      "w": 412,
+      "h": 800,
+      "tileArea": 88209,
+      "feedArea": 329658,
+      "fill": 27
+    },
+    "tiles": [
+      {
+        "cls": "tile me",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 32,
+        "h": 25,
+        "x": 86,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "Your mic is on — tap to mute"
+      },
+      {
+        "sel": "#cam",
+        "w": 32,
+        "h": 25,
+        "x": 122,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera on — tap to turn off"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 49,
+        "h": 23,
+        "x": 320,
+        "y": 6,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 46,
+        "h": 23,
+        "x": 8,
+        "y": 86,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 26,
+        "h": 26,
+        "x": 8,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Hide meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 87,
+        "h": 23,
+        "x": 171,
+        "y": 58,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 42,
+        "h": 23,
+        "x": 58,
+        "y": 86,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 46,
+        "h": 23,
+        "x": 54,
+        "y": 58,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 49,
+        "h": 21,
+        "x": 265,
+        "y": 7,
+        "display": "block",
+        "fontSize": "10.88px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 26,
+        "h": 21,
+        "x": 371,
+        "y": 317,
+        "display": "block",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "10.88px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Faces stay blurred until this room has a password. Anyone here can set one with the Password button.",
+    "oldbrowser": false
+  },
+  {
+    "tag": "phone-call-2",
+    "vw": 412,
+    "vh": 915,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 115,
+    "feed": {
+      "w": 412,
+      "h": 800,
+      "tileArea": 176418,
+      "feedArea": 329658,
+      "fill": 54
+    },
+    "tiles": [
+      {
+        "cls": "tile me",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 32,
+        "h": 25,
+        "x": 86,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "Your mic is on — tap to mute"
+      },
+      {
+        "sel": "#cam",
+        "w": 32,
+        "h": 25,
+        "x": 122,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera on — tap to turn off"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 49,
+        "h": 23,
+        "x": 320,
+        "y": 6,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 46,
+        "h": 23,
+        "x": 8,
+        "y": 86,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 26,
+        "h": 26,
+        "x": 8,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Hide meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 87,
+        "h": 23,
+        "x": 171,
+        "y": 58,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 42,
+        "h": 23,
+        "x": 58,
+        "y": 86,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 46,
+        "h": 23,
+        "x": 54,
+        "y": 58,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 49,
+        "h": 21,
+        "x": 265,
+        "y": 7,
+        "display": "block",
+        "fontSize": "10.88px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 26,
+        "h": 21,
+        "x": 371,
+        "y": 317,
+        "display": "block",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "10.88px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Faces stay blurred until this room has a password. Anyone here can set one with the Password button.",
+    "oldbrowser": false
+  },
+  {
+    "tag": "phone-call-3",
+    "vw": 412,
+    "vh": 915,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 115,
+    "feed": {
+      "w": 412,
+      "h": 800,
+      "tileArea": 264627,
+      "feedArea": 329658,
+      "fill": 80
+    },
+    "tiles": [
+      {
+        "cls": "tile me",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 32,
+        "h": 25,
+        "x": 86,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "Your mic is on — tap to mute"
+      },
+      {
+        "sel": "#cam",
+        "w": 32,
+        "h": 25,
+        "x": 122,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera on — tap to turn off"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 49,
+        "h": 23,
+        "x": 320,
+        "y": 6,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 46,
+        "h": 23,
+        "x": 8,
+        "y": 86,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 26,
+        "h": 26,
+        "x": 8,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Hide meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 87,
+        "h": 23,
+        "x": 171,
+        "y": 58,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 42,
+        "h": 23,
+        "x": 58,
+        "y": 86,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 46,
+        "h": 23,
+        "x": 54,
+        "y": 58,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 49,
+        "h": 21,
+        "x": 265,
+        "y": 7,
+        "display": "block",
+        "fontSize": "10.88px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 26,
+        "h": 21,
+        "x": 371,
+        "y": 317,
+        "display": "block",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "10.88px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Faces stay blurred until this room has a password. Anyone here can set one with the Password button.",
+    "oldbrowser": false
+  },
+  {
+    "tag": "phone-call-4",
+    "vw": 412,
+    "vh": 915,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 115,
+    "feed": {
+      "w": 412,
+      "h": 800,
+      "tileArea": 352836,
+      "feedArea": 329658,
+      "fill": 107
+    },
+    "tiles": [
+      {
+        "cls": "tile me",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 32,
+        "h": 25,
+        "x": 86,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "Your mic is on — tap to mute"
+      },
+      {
+        "sel": "#cam",
+        "w": 32,
+        "h": 25,
+        "x": 122,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera on — tap to turn off"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 49,
+        "h": 23,
+        "x": 320,
+        "y": 6,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 46,
+        "h": 23,
+        "x": 8,
+        "y": 86,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 26,
+        "h": 26,
+        "x": 8,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Hide meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 87,
+        "h": 23,
+        "x": 171,
+        "y": 58,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 42,
+        "h": 23,
+        "x": 58,
+        "y": 86,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 46,
+        "h": 23,
+        "x": 54,
+        "y": 58,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 49,
+        "h": 21,
+        "x": 265,
+        "y": 7,
+        "display": "block",
+        "fontSize": "10.88px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 26,
+        "h": 21,
+        "x": 371,
+        "y": 317,
+        "display": "block",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "10.88px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Faces stay blurred until this room has a password. Anyone here can set one with the Password button.",
+    "oldbrowser": false
+  },
+  {
+    "tag": "phone-call-6",
+    "vw": 412,
+    "vh": 915,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 115,
+    "feed": {
+      "w": 412,
+      "h": 800,
+      "tileArea": 529254,
+      "feedArea": 329658,
+      "fill": 161
+    },
+    "tiles": [
+      {
+        "cls": "tile me",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 396,
+        "h": 223,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 32,
+        "h": 25,
+        "x": 86,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "Your mic is on — tap to mute"
+      },
+      {
+        "sel": "#cam",
+        "w": 32,
+        "h": 25,
+        "x": 122,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera on — tap to turn off"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 49,
+        "h": 23,
+        "x": 320,
+        "y": 6,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 46,
+        "h": 23,
+        "x": 8,
+        "y": 86,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 26,
+        "h": 26,
+        "x": 8,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Hide meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 87,
+        "h": 23,
+        "x": 171,
+        "y": 58,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Share screen",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 42,
+        "h": 23,
+        "x": 58,
+        "y": 86,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 46,
+        "h": 23,
+        "x": 54,
+        "y": 58,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 49,
+        "h": 21,
+        "x": 265,
+        "y": 7,
+        "display": "block",
+        "fontSize": "10.88px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 26,
+        "h": 21,
+        "x": 371,
+        "y": 317,
+        "display": "block",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "10.88px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Faces stay blurred until this room has a password. Anyone here can set one with the Password button.",
+    "oldbrowser": false
+  },
+  {
+    "tag": "phone-screenshare",
+    "vw": 412,
+    "vh": 915,
+    "bg": "rgb(232, 236, 241)",
+    "accent": "#0071e3",
+    "text": "#1d1d1f",
+    "barH": 59,
+    "feed": {
+      "w": 412,
+      "h": 856,
+      "tileArea": 394657,
+      "feedArea": 352511,
+      "fill": 112
+    },
+    "tiles": [
+      {
+        "cls": "rowtile stagetile",
+        "w": 396,
+        "h": 733,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile me",
+        "w": 176,
+        "h": 99,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 176,
+        "h": 99,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 176,
+        "h": 99,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 176,
+        "h": 99,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 176,
+        "h": 99,
+        "videoFit": "contain"
+      },
+      {
+        "cls": "tile fake",
+        "w": 176,
+        "h": 99,
+        "videoFit": "contain"
+      }
+    ],
+    "buttons": [
+      {
+        "sel": "#mic",
+        "w": 32,
+        "h": 25,
+        "x": 86,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Microphone",
+        "text": "",
+        "title": "Your mic is on — tap to mute"
+      },
+      {
+        "sel": "#cam",
+        "w": 32,
+        "h": 25,
+        "x": 122,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Camera",
+        "text": "",
+        "title": "Camera on — tap to turn off"
+      },
+      {
+        "sel": "#leavebtn",
+        "w": 49,
+        "h": 23,
+        "x": 320,
+        "y": 6,
+        "display": "block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Leave",
+        "title": "Leave this meeting — your seat closes at once and your camera and mic stop"
+      },
+      {
+        "sel": "#hand",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Hand",
+        "title": "Raise your hand — raised hands float to the top"
+      },
+      {
+        "sel": "#bartoggle",
+        "w": 26,
+        "h": 26,
+        "x": 8,
+        "y": 5,
+        "display": "flex",
+        "fontSize": "11.52px",
+        "aria": "Show meeting controls",
+        "text": "",
+        "title": "Show meeting controls"
+      },
+      {
+        "sel": "#sharebtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Stop sharing",
+        "title": "Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)"
+      },
+      {
+        "sel": "#chatbtn",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Chat",
+        "title": "Chat and share files — stays between the people on this meeting, not on a server"
+      },
+      {
+        "sel": "#invite",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "11.52px",
+        "aria": null,
+        "text": "Invite",
+        "title": "Friends join you live with one link"
+      },
+      {
+        "sel": "#blur-none",
+        "w": 49,
+        "h": 21,
+        "x": 265,
+        "y": 7,
+        "display": "block",
+        "fontSize": "10.88px",
+        "aria": null,
+        "text": "No blur",
+        "title": null
+      },
+      {
+        "sel": "#lob-open",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".lob-primary",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "block",
+        "fontSize": "16px",
+        "aria": null,
+        "text": "Start a meetingOpen room · anyone with t",
+        "title": null
+      },
+      {
+        "sel": ".maxbtn",
+        "w": 26,
+        "h": 21,
+        "x": 151,
+        "y": 879,
+        "display": "block",
+        "fontSize": "12px",
+        "aria": "Full screen",
+        "text": "⛶",
+        "title": "Full screen"
+      },
+      {
+        "sel": "#copy",
+        "w": 0,
+        "h": 0,
+        "x": 0,
+        "y": 0,
+        "display": "inline-block",
+        "fontSize": "13.3333px",
+        "aria": null,
+        "text": "Copy",
+        "title": null
+      }
+    ],
+    "colors": [
+      {
+        "sel": ".bar .status",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12.8px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".blurlbl",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "12px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".segwrap .seg",
+        "color": "rgb(110, 110, 115)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "10.88px",
+        "opacity": "1",
+        "ratio": 5.07
+      },
+      {
+        "sel": ".lob-hist-h",
+        "color": "rgb(29, 29, 31)",
+        "bg": "rgb(232, 236, 241)",
+        "fontSize": "12.48px",
+        "opacity": "0.55",
+        "ratio": 14.18
+      },
+      null,
+      null,
+      {
+        "sel": ".tile .avatar",
+        "color": "rgb(58, 58, 85)",
+        "bg": "rgb(255, 255, 255)",
+        "fontSize": "48px",
+        "opacity": "1",
+        "ratio": 10.96
+      },
+      {
+        "sel": ".lob-primary small",
+        "color": "rgb(255, 255, 255)",
+        "bg": "rgb(0, 113, 227)",
+        "fontSize": "12.48px",
+        "opacity": "0.78",
+        "ratio": 4.7
+      }
+    ],
+    "gum": null,
+    "noCam": null,
+    "status": "Faces stay blurred until this room has a password. Anyone here can set one with the Password button.",
+    "oldbrowser": false
+  }
+]

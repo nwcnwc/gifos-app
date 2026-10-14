@@ -1,0 +1,80 @@
+/* Direction B — Night Stadium. Ink, violet-pink wordmark, stage + rail. */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color: #f6f2fb; background: #100818; overflow: hidden; }
+button { font: inherit; color: inherit; }
+.mark { font-weight: 800; letter-spacing: -0.04em; background: linear-gradient(120deg, #9b7bff, #ff7ab8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+.cell, .pip, .preview, .slide, .thumb { background-size: cover; background-position: center 20%; }
+.stage { position: absolute; inset: 0 0 96px 0; display: grid; gap: 0; background: #100818; }
+.cell { position: relative; min-width: 0; min-height: 0; background-color: #1a1024; }
+.cell.live { box-shadow: inset 0 0 0 3px #c43b86; }
+.nm { position: absolute; left: 10px; bottom: 10px; color: #fff; font-size: 15px; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,.8); background: rgba(10,6,16,.55); padding: 4px 10px; border-radius: 8px; }
+.pip { position: absolute; z-index: 4; }
+.pip.bubble { width: 96px; height: 96px; right: 14px; bottom: 112px; border-radius: 50%; background-color: #222; box-shadow: 0 0 0 3px #100818, 0 0 0 6px #7b5cff; }
+body.desk .pip.bubble { width: 112px; height: 112px; right: 24px; bottom: 120px; }
+body.scene-react .pip.bubble, body.scene-more .pip.bubble { bottom: 210px; }
+body.phone .stadium .cell:not(:first-child) { background-position: center 46%; }
+.topchip { position: absolute; z-index: 5; top: 12px; left: 12px; display: flex; align-items: center; gap: 8px; }
+.topchip .mark { font-size: 18px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
+.topchip .room { color: #f6f2fb; font-size: 14px; font-weight: 650; background: rgba(10,6,16,.55); padding: 4px 8px; border-radius: 8px; }
+.stagetag { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #fff; background: #5a32d6; border-radius: 999px; padding: 4px 8px; }
+.dock { position: absolute; z-index: 6; left: 0; right: 0; bottom: 0; height: 96px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; background: #1a1024; border-top: 1px solid #3a2858; }
+.cluster { display: flex; gap: 10px; }
+body.phone .dock { justify-content: center; }
+body.phone .cluster { gap: 12px; }
+.deskonly { display: none; font-size: 22px; padding-left: 8px; }
+body.desk .deskonly { display: inline; }
+body.desk .dock { padding: 0 22px; }
+.round { width: 60px; height: 60px; border-radius: 18px; border: 0; background: #2a1b3e; color: #f6f2fb; display: grid; place-items: center; }
+.round.on { background: #5a32d6; color: #fff; }
+.round .cap { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.leave { min-width: 128px; height: 64px; border: 0; border-radius: 18px; background: #b61622; color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 18px; font-weight: 800; padding: 0 16px; }
+body.phone .leave { min-width: 112px; }
+body.scene-1 .stage, body.scene-2 .stage { grid-template: 1fr / 1fr; }
+/* 3 and 4: stage hero + portrait rail. Phone rail is a top strip; desk rail is a right column. */
+body.phone.scene-3 .stage { grid-template: 168px 1fr / 1fr; }
+body.phone.scene-3 .cell:first-child { grid-column: 1 / -1; grid-row: 2; }
+body.phone.scene-4 .stage { grid-template: 150px 1fr / 1fr 1fr; }
+body.phone.scene-4 .cell:first-child { grid-column: 1 / -1; grid-row: 2; }
+body.phone.scene-6 .stage { grid-template: 132px 1fr / repeat(4, 1fr); }
+body.phone.scene-6 .cell:first-child { grid-column: 1 / -1; grid-row: 2; }
+body.desk.scene-3 .stage { grid-template: 1fr / 1fr 240px; }
+body.desk.scene-4 .stage { grid-template: 1fr 1fr / 1fr 220px; }
+body.desk.scene-4 .cell:first-child { grid-row: 1 / span 2; }
+body.desk.scene-6 .stage { grid-template: repeat(4, 1fr) / 1fr 180px; }
+body.desk.scene-6 .cell:first-child { grid-row: 1 / span 4; }
+body.scene-share .stage { display: grid; }
+body.phone.scene-share .stage { grid-template: 120px 1fr / 1fr; }
+body.phone.scene-share .slide { grid-row: 2; }
+body.desk.scene-share .stage { grid-template: 1fr / 1fr 200px; }
+.slide { position: relative; min-height: 0; background-color: #f6f4ef; background-size: contain; background-repeat: no-repeat; background-position: center; }
+.film { display: flex; min-height: 0; }
+body.desk .film { flex-direction: column; }
+.thumb { flex: 1; min-width: 0; min-height: 0; background-color: #221628; }
+.tray { position: absolute; z-index: 5; left: 0; right: 0; bottom: 96px; display: flex; gap: 8px; justify-content: center; padding: 10px 12px; background: #241430; border-top: 1px solid #3a2858; }
+.rbtn { width: 72px; height: 72px; border: 0; border-radius: 18px; background: #3a2458; color: #f6f2fb; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; font-weight: 700; }
+.rbtn.on { background: #5a32d6; }
+.sheet { position: absolute; z-index: 5; left: 8px; right: 8px; bottom: 104px; background: #1c1028; border: 1px solid #3a2858; border-radius: 20px; padding: 8px 10px 12px; }
+body.desk .sheet { left: 50%; right: auto; width: 760px; transform: translateX(-50%); }
+.sheet h2 { margin: 2px 0 8px; text-align: center; font-size: 15px; color: #f6f2fb; }
+.grab { width: 40px; height: 4px; border-radius: 4px; background: #5a4678; margin: 4px auto 6px; }
+.mgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+body.phone .mgrid { grid-template-columns: repeat(3, 1fr); }
+.mbtn { height: 76px; border: 0; border-radius: 14px; background: #2a1b3e; color: #f6f2fb; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 13px; font-weight: 700; }
+.mbtn svg { width: 24px; height: 24px; }
+body.scene-prejoin { background: #100818; display: grid; }
+body.phone.scene-prejoin { grid-template-rows: 1.35fr .9fr; }
+body.desk.scene-prejoin { grid-template-columns: 1.2fr .8fr; }
+.preview { position: relative; margin: 16px 16px 0; border-radius: 28px; min-height: 0; background-color: #1a1024; box-shadow: 0 0 0 3px #5a32d6, 0 0 0 6px #c43b86; }
+body.desk .preview { margin: 20px; }
+.pvtools { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 8px; }
+.door { padding: 14px 18px 18px; display: flex; flex-direction: column; justify-content: center; }
+.door h1 { margin: 2px 0 6px; font-size: 30px; letter-spacing: -0.03em; }
+.mark.big { margin: 0; font-size: 18px; }
+.who, .quiet { margin: 0 0 6px; color: #efe8f8; font-size: 15px; }
+.quiet { color: #ddd4ee; margin-bottom: 12px; }
+.link { background: none; border: 0; color: #ffb0d4; font-weight: 800; min-height: 48px; padding: 8px; }
+.go, .alt { min-height: 56px; border-radius: 16px; font-size: 18px; font-weight: 800; }
+.go { border: 0; color: #fff; background: linear-gradient(120deg, #4c2ed4, #c43b86); }
+.alt { margin-top: 8px; background: transparent; color: #f6f2fb; border: 1.5px solid #b9a6d4; }
+body.scene-1 .stagetag { display: none; }
