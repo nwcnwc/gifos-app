@@ -11410,49 +11410,41 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             afterNeg(p);
           })
           .catch((e) => { if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140)); maybeRebuildNeg(p, e); });
-        // Firefox offers carry o=mozilla and a different m-line order.
-        // Chromium's setRemoteDescription of that offer, while our own offer
-        // is still local, throws InvalidAccessError and does not roll back.
-        // The pc is then poisoned: their answer to OUR offer dies with
-        // OperationError and the pair stays in have-local-offer with the
-        // channel open. Hold a Firefox offer until that answer lands.
+        // Firefox offers carry o=mozilla. Applying one while our own offer is
+        // still local throws and does not roll back, and the answer to our
+        // offer then dies on the poisoned pc. Hold that offer. Every other
+        // glare yield is unchanged: cancelling it, or rebuilding when the
+        // answer failed, dropped people who had just sat down.
         const fxOffer = (msg) => /o=mozilla/i.test(String((msg && msg.sdp && msg.sdp.sdp) || '').slice(0, 80));
-        // The first wait is the glare yield. A later one is only because our
-        // own offer was still being minted, or a Firefox offer is waiting on
-        // the answer to ours. Dropping the stash there lost the renegotiation,
-        // and the timer does not come back on its own.
-        const armRofferYield = () => {
-          if (p.rofferYieldTimer || !p.rofferYield) return;
-          const wait = p.rofferYieldN ? 250 : GLARE_YIELD_MS;
-          p.rofferYieldTimer = setTimeout(() => {
-            p.rofferYieldTimer = null;
-            const ym = p.rofferYield;
-            if (!ym || !p.pc || leaving) { p.rofferYield = null; return; }
-            const fxWait = fxOffer(ym) && p.pc.signalingState === 'have-local-offer';
-            if (p.makingOffer || fxWait) {
-              p.rofferYieldN = (p.rofferYieldN || 0) + 1;
-              if (p.rofferYieldN > 8) {
-                p.rofferYield = null;
-                // Their answer never came. A fresh pc can take the next
-                // offer; applying this one would poison the current pc.
-                if (fxWait) {
-                  if (typeof clog === 'function') clog('roffer-hold-rebuild ' + String(p.id).slice(0, 6));
-                  try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
-                }
-                return;
-              }
-              armRofferYield();
-              return;
-            }
-            p.rofferYield = null; p.rofferYieldN = 0;
-            if (p.pc.signalingState === 'closed') return;
-            if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6));
-            p.kickVideo = true;
-            applyRoffer(ym);
-          }, wait);
-        };
         if (p.makingOffer || p.pc.signalingState === 'have-local-offer') {
-          if (iInitiate(p.id) || fxOffer(m)) {
+          if (fxOffer(m)) {
+            p.rofferYield = m;
+            if (!p.rofferYieldTimer) {
+              let n = 0;
+              const armFx = () => {
+                p.rofferYieldTimer = setTimeout(() => {
+                  p.rofferYieldTimer = null;
+                  const ym = p.rofferYield;
+                  if (!ym || !p.pc || leaving) { p.rofferYield = null; return; }
+                  if (p.makingOffer || p.pc.signalingState === 'have-local-offer') {
+                    n += 1;
+                    if (n > 8) { p.rofferYield = null; return; }
+                    armFx();
+                    return;
+                  }
+                  p.rofferYield = null;
+                  if (p.pc.signalingState === 'closed') return;
+                  if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6) + ' fx');
+                  p.kickVideo = true;
+                  applyRoffer(ym);
+                }, n ? 250 : GLARE_YIELD_MS);
+              };
+              armFx();
+            }
+            if (typeof clog === 'function') clog('roffer-hold ' + String(p.id).slice(0, 6) + ' fx');
+            return;
+          }
+          if (iInitiate(p.id)) {
             // IMPOLITE ordinarily just drops their offer (they roll back and
             // answer mine, then re-offer). But a race this tight — MY OWN
             // unrelated offer-answer cycle still settling when THEIRS
@@ -11464,11 +11456,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // in have-local-offer. An explicit rollback first leaves the old
             // m-line order in place and the answer throws, and the camera
             // transceiver then never negotiates.
-            // A Firefox offer is held even on the polite side: applying it
-            // now is the call that poisons the answer to our own offer.
             p.rofferYield = m;
-            if (!p.rofferYieldTimer) { p.rofferYieldN = 0; armRofferYield(); }
-            if (fxOffer(m) && typeof clog === 'function') clog('roffer-hold ' + String(p.id).slice(0, 6) + ' fx');
+            if (!p.rofferYieldTimer) {
+              p.rofferYieldTimer = setTimeout(() => {
+                p.rofferYieldTimer = null;
+                const ym = p.rofferYield; p.rofferYield = null;
+                if (!ym || !p.pc || leaving || p.makingOffer) return;
+                if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6));
+                p.kickVideo = true;
+                applyRoffer(ym);
+              }, GLARE_YIELD_MS);
+            }
             return;
           }
           p.renegAgain = true; // polite rollback: my changes go again after I answer
@@ -11478,18 +11476,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (m.k === 'ranswer') {
         if (p.pc) p.pc.setRemoteDescription(m.sdp)
           .then(() => {
-            // Their answer completed our offer. The held Firefox offer is
-            // the one we refused to apply; drop it so the timer cannot
-            // rebuild a pair that just became stable.
-            p.rofferYield = null; p.rofferYieldN = 0;
-            if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
+            // A held Firefox offer must not be applied after our own offer
+            // was answered. Any other yield still belongs to that timer.
+            if (p.rofferYield && /o=mozilla/i.test(String((p.rofferYield.sdp && p.rofferYield.sdp.sdp) || '').slice(0, 80))) {
+              p.rofferYield = null;
+              if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
+            }
             if (typeof clog === 'function') clog('ranswer←' + String(p.id).slice(0, 6));
             afterNeg(p);
           })
-          .catch((e) => {
-            if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140));
-            maybeRebuildNeg(p, e);
-          });
+          .catch((e) => { if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140)); });
       }
     }
     // A peer's lines are bounded two ways: per sender per window (a script
