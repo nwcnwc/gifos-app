@@ -747,6 +747,12 @@
     // stayed off its own cell 12-18 s on a slowed clock). Its next beat from
     // a cell it really holds restores the rule at once.
     returnBurst(k) { const t = this.live.get(k); return this.backAt >= 0 && t !== undefined && t >= this.backAt && t <= this.backAt + 1; }
+    // Tenure is a longer drain than the two ticks liveElsewhere ignores.
+    // mesh-wire ages stamps, then runs one tick; a second queued clock fire
+    // lands at backAt+2, and a signed HELLO verifies a tick or two after
+    // that. A stamp through backAt+4 was still in the queue when the clock
+    // stopped. It is not where anyone sits now.
+    drainStamp(it) { return this.backAt >= 0 && it !== undefined && it <= this.backAt + 4; }
     liveElsewhereSinceReturn(x, k) { for (const [k2, v2] of this.occ) if (v2 === x && k2 !== k && this.firstHandLive(k2) && !this.returnBurst(k2)) return true; return false; }
     // An UNPROVEN claim (signed, but over the relay or a sponsor: nothing
     // proves the claimant is on a link to me — a newcomer whose channels are
@@ -909,14 +915,14 @@
     // within `win` ticks (liveBy — a live stamp is the CELL's, and gossip, a
     // hint, a PONG row or a goodbye's `mvd` can rewrite occ under it), with no
     // transport loss pending.
-    holdsCell(k, win) {
-      const v = this.occGet(k); if (v == null || this.translost.has(k) || this.liveBy.get(k) !== v) return false;
-      // A stamp that arrived only in the thaw burst is the frame a mate sent
-      // from a cell it has since left. It is not a hold: yielding on it
-      // evicts whoever sits there now.
-      if (this.returnBurst(k)) return false;
-      const it = this.live.get(k); return it !== undefined && this.TICK - it <= win;
-    }
+    // The thaw burst (returnBurst: backAt and the tick after it) is not a hold.
+    // Neither is the rest of the drain. A 25 s freeze ages stamps by ~50
+    // ticks — still inside `win` — and a corpse's PONG re-stamps them on the
+    // way back. A second clock fire lands at backAt+2, and a signed HELLO
+    // verifies a tick or two later. Yielding on any of that evicts the people
+    // who have been sitting the whole time. drainStamp is that hearing,
+    // through backAt+4.
+    holdsCell(k, win) { const v = this.occGet(k); if (v == null || this.translost.has(k) || this.liveBy.get(k) !== v) return false; const it = this.live.get(k); return it !== undefined && this.TICK - it <= win && !this.drainStamp(it); }
     // rawClaim: x claims k while I hear k's incumbent there first-hand and have
     // for TENURE ticks, and no link ever proved x at k (not a revival). Law
     // S2: "a raw claim is rejected"; S5: a fill is accepted only by a
@@ -2832,6 +2838,7 @@
       // Y1). Lower id wins only between a FRESH incumbent and a claimant, or a
       // revival; a TENURED incumbent beats any raw claim (law S2).
       const held = prev != null && prev !== m.id && this.holdsCell(kk, 40);
+      const prevAt = this.live.get(kk);   // before this beat re-stamps kk: a drain stamp is not a reason to YIELD prev
       if (held && this.ppPending(kk, m.id)) return;   // its proof is still being checked: this beat decides nothing
       if (held && (m.id > prev || this.rawClaim(kk, m.id, 40))) { this.emit(m.id, { t: 'YIELD', ck: kk, id: this.id }); return; }
       // A seat is in ONE place: a phoner I hear first-hand at another cell
@@ -2927,7 +2934,11 @@
       }
       this.emit(m.id, pong);
       if (prev !== m.id) this._gspReplay(m.id); // NEW occupant learned ⇒ hand over the recent gossip backlog
-      if (prev != null && prev !== m.id) this.emit(prev, { t: 'YIELD', ck: kk, id: this.id });
+      // A frame drained on the return names whoever the queue still had.
+      // Their stamp is the drain (prevAt); YIELDing them evicts the seat
+      // that has been sitting the whole freeze. Any other beat still tells
+      // the previous occupant to leave.
+      if (prev != null && prev !== m.id && !this.drainStamp(prevAt)) this.emit(prev, { t: 'YIELD', ck: kk, id: this.id });
     }
     phoneHome() {
       let tc = null; if (this.hasCoord) { if (this.coord.i !== 0) tc = { pc: this.coord.pc, r: this.coord.r, i: 0 }; else tc = this.ownerCoord(); }
