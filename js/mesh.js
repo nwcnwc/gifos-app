@@ -1158,7 +1158,18 @@
       // costs it nothing; a dead one's tail can never span two.
       if ((lv !== undefined && lv > at) || (pa !== undefined && pa > at)) { this.tlForget(k, 'evidence lv=' + lv + ' pa=' + pa + ' at=' + at); return false; }
       const pAt = this.tlProbeAt.get(k);
-      if (pAt === undefined || this.TICK - pAt >= 6) { this.tlProbeAt.set(k, this.TICK); this.routeToProbe(unck(k)); }
+      // While the confirm window is still open, a lost first probe is
+      // retried every 6 ticks. Once the window has elapsed the observation
+      // stands, and the same 6-tick beat is what notices the path coming
+      // back: up to 3s, and a throttled answerer adds its own tick.
+      // Chaos throttled-phone-reload-while-door-dark seed 32 #2: Hana's
+      // translost on Ana's cell stood through a 45s sever (ringDead
+      // 0_0_2 every tick, tl=96, healTry still inside its 45-tick pace)
+      // and the HELLOs that cleared it arrived on the next probe, 4.0s
+      // and 5.0s after the sever ended, around a 4.2s bound. After the
+      // window, probe every 2 ticks. The confirm itself is unchanged.
+      const gap = this.TICK - at > EARLY_HOLD ? 2 : 6;
+      if (pAt === undefined || this.TICK - pAt >= gap) { this.tlProbeAt.set(k, this.TICK); this.routeToProbe(unck(k)); }
       return this.TICK - at > EARLY_HOLD;
     }
     tlForget(k, why) { if (this.translost.has(k)) { this.tlLog.push([k, this.TICK, why || '?']); if (this.tlLog.length > 24) this.tlLog.shift(); } this.translost.delete(k); this.tlProbeAt.delete(k); this.probeAck.delete(k); }
