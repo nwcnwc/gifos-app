@@ -8940,7 +8940,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A DOOR BACK FROM DARK answers the sockets still knocking at it (mesh.js
         // answerDoor): once per dark return, on the full list
         // the return pulled; a member's socket is skipped by the seat.
-        if (doorAnswerAt && Date.now() - doorAnswerAt < 15000 && relayRosterScope === 'full') { doorAnswerAt = 0; try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor(Array.from(relaySocketed).filter((id) => id !== myId)); } catch (e) {} }
+        if (doorAnswerAt && Date.now() - doorAnswerAt < 15000 && relayRosterScope === 'full') {
+          doorAnswerAt = 0;
+          try {
+            const ids = Array.from(relaySocketed).filter((id) => id !== myId);
+            const s = meshSeat();
+            if (s && s.answerDoor) s.answerDoor(ids);
+            // The one HOME above is easy to lose: the knocker's WHOHOME during
+            // the dark never arrived, and nothing retries it. Open the door
+            // channel now, or the next ask is a whole retry later.
+            // Chaos reload-while-head-dark seed 24 on 03d38e0 (drk-rwhd5 r1,
+            // nvidia): Ivo tx HOME to k_dcc2 on the return tick and her next
+            // WHOHOME landed 7s later. Rejoin 12.6s, past the 10s limit.
+            const members = new Set();
+            try { if (s && s.occ) for (const v of s.occ.values()) if (v) members.add(v); } catch (e) {}
+            let n = 0;
+            for (const id of ids) { if (n >= 8) break; if (members.has(id)) continue; n++; try { bootDial(id); } catch (e) {} }
+          } catch (e) {}
+        }
         if (doorRoundPending && relayRosterScope === 'full') { doorRoundPending = false; try { const s = meshSeat(); if (s && s.doorRound) s.doorRound(Array.from(relaySocketed).filter((id) => id !== myId)); } catch (e) {} }   // the door round's list (doorRoundBeat)
         if (relayRosterScope === 'full' && pendingDoorGrant) { const g = pendingDoorGrant; pendingDoorGrant = null; g(); }
         roomBan = m.ban || []; // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
