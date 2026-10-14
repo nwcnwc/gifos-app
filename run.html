@@ -2649,6 +2649,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!dcDead && p.connected) continue;
         if (Math.max(p.rebuiltAt || 0, p.bornAt || 0) >= at) continue;
         rebuild(pid, p, 'dark');
+        // The channel just torn down was already dead. Tell the mesh on the
+        // return tick, after netHold (reportDarkDeaths, from onUpdate): its
+        // confirm probe still waits EARLY_HOLD, so a live peer that answers
+        // keeps the seat. Waiting WAKE_SETTLE_MS to say so left the old id
+        // in the row for the settle plus that probe. Chaos
+        // reload-while-head-dark: Ivo back from 70 s dark held Lena's old id
+        // at 0/0.0, NOROOM'd her new id (s1:R0.0 R0.1) until wake-dead at 6 s
+        // and gone-d5 at 12.4 s, over the 10 s bound.
+        p.darkDead = at;
       }
       setTimeout(() => {
         if (leaving || bannedOut) return;
@@ -6290,6 +6299,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { if (s && s.transportLost) s.transportLost(pid); } catch (e) {}
       if (typeof clog === 'function') clog('translost ' + String(pid).slice(0, 6) + ' ' + why);
     }
+    // A dark-return rebuild marks the pair (p.darkDead). The mark is handed
+    // to the mesh from onUpdate, which runs after that tick's netEdge: netHold
+    // has already dropped dark-era observations, and absence has aged the
+    // row. Reporting from the online handler itself was wiped by that netHold,
+    // and the death waited out WAKE_SETTLE_MS.
+    function reportDarkDeaths() {
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      for (const [pid, p] of peers) {
+        if (!p.darkDead) continue;
+        p.darkDead = 0;
+        if (p.connected && p.dc && p.dc.readyState === 'open') continue;
+        onTransportDead(pid, 'dark');
+      }
+    }
     // enableMedia(p): put my camera and mic (or receive-only slots) on this
     // pair's transport, once, after its channel is open. Returns true when
     // anything was added (the caller renegotiates over the channel).
@@ -8862,7 +8885,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             return { stage: stg, stadium: [...stad] };
           } catch (e) { return { stage: [], stadium: [] }; }
         },
-        onUpdate: () => { renderFromOcc(); saveTreeMem(); },
+        onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} },
         onRelayMsg: onRelayFrame,
         prevTree: readTreeMem(),
       });
