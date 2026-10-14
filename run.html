@@ -9,7 +9,7 @@
      allowed; anything else sees a link to open the page itself. Parser-
      blocking and ES5 on purpose: it runs before any chrome paints.
      Guarded by test/unit/frame-guard.js. -->
-<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin;if(!ok&&window.location.origin==='null')ok=window.top.location.origin===window.parent.location.origin;}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
 <!-- The ONLY frames this page ever holds are srcdoc app mounts. A sandboxed
      frame may still navigate ITSELF, and the replacement document would keep
      the runtime's bridge with none of the app CSP (site/js/runtime.js,
@@ -1957,13 +1957,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
 
     const params = new URLSearchParams(location.hash.slice(1));
+    // A session document is srcdoc (the host page's frame-src is about: only).
+    // The hash cannot carry mb=1, so the host stamps the flag before boot.
+    if (window.__gifosMb === '1' && params.get('mb') !== '1') params.set('mb', '1');
     // The real file we're served from (/run.html at load — a pretty /meet/<room>
     // link 404-routes here; the legacy meet.html shim is DELETED, no-shims flag
     // day 2026-08-05). We
     // keep this because on prod we rewrite the address bar to the pretty path, so
     // location.pathname stops being a reliable base for building runtime URLs;
     // MEET_PATH always is.
-    const MEET_PATH = location.pathname;
+    // about:srcdoc (a meeting session) has no path of its own. Links and the
+    // address it would show are still the meeting page.
+    const MEET_PATH = location.protocol === 'about:' ? '/run.html' : location.pathname;
+    // about:srcdoc's location.origin is the string "null" even when the
+    // document is same-origin with the page that framed it.
+    const pageOrigin = () => {
+      if (location.origin && location.origin !== 'null') return location.origin;
+      try { if (window.parent && window.parent !== window && window.parent.location && window.parent.location.origin) return window.parent.location.origin; } catch (e) {}
+      return '';
+    };
     // ---- ONE RUNTIME: the entry mints the room's TRAITS (docs/one-runtime.md).
     // The link is the promise — which component is pinned is decided HERE, at
     // entry, and is immutable for the page's life:
@@ -10508,9 +10520,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // itself (js/build-badge.js), where that fact belongs.
       const canonical = pretty ? prettyPath
         : MEET_PATH + '#v=' + room + avPart + (custom ? '&relay=' + encodeURIComponent(relay) : '');
-      if (location.pathname + location.hash !== canonical) history.replaceState(null, '', canonical);
-      shareUrl.value = pretty ? location.origin + prettyPath
-        : location.origin + MEET_PATH + '#v=' + room + avPart + (relay ? '&relay=' + encodeURIComponent(relay) : '');
+      // A srcdoc session cannot always retarget its address. The mesh does
+      // not depend on that; a thrown replaceState must not skip the knock.
+      try { if (location.pathname + location.hash !== canonical) history.replaceState(null, '', canonical); } catch (e) {}
+      shareUrl.value = pretty ? pageOrigin() + prettyPath
+        : pageOrigin() + MEET_PATH + '#v=' + room + avPart + (relay ? '&relay=' + encodeURIComponent(relay) : '');
       if (!params.get('v')) share.classList.add('show'); // fresh room → surface the link
       else recordMeetingInvite(room, shareUrl.value); // joined someone's link → log it in the desktop's Invites
       recordMeetHistory(room, shareUrl.value, av); // lobby's "Recent" — every room, created OR joined, in ITS OWN surface's list
@@ -10647,7 +10661,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!s) return null;
       let room = '', av = '', relay = '', bc = false;
       if (/[:/#?]/.test(s)) {
-        let u = null; try { u = new URL(s, location.origin); } catch (e) { u = null; }
+        // about:srcdoc reports origin "null". An absolute link must still parse;
+        // passing that string as the base makes the URL constructor throw.
+        let u = null;
+        try {
+          const base = location.origin && location.origin !== 'null' ? location.origin : undefined;
+          u = base ? new URL(s, base) : new URL(s);
+        } catch (e) { u = null; }
         if (u) {
           const pm = u.pathname.match(/\/(?:meet|join|cast)\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64}))?/i);
           if (pm) { room = pm[1]; av = (pm[2] || '').toLowerCase(); bc = /^\/cast\//i.test(u.pathname); }
@@ -20343,7 +20363,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
           if (msg && msg.link) {
             try {
-              const u = new URL(msg.link, location.origin);
+              const base = location.origin && location.origin !== 'null' ? location.origin : undefined;
+              const u = base ? new URL(msg.link, base) : new URL(msg.link);
               const hp = new URLSearchParams((u.hash || '').replace(/^#/, ''));
               const rel = hp.get('relay') || u.searchParams.get('relay');
               if (rel) localStorage.setItem('gifos_relay', rel);

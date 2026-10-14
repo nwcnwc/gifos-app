@@ -3,8 +3,9 @@
  *
  * A store app cannot hold a meeting: its frame has no WebRTC, no network and
  * no workers. The host page (this origin) already knows how. Each session is
- * one ordinary run.html document in a same-origin iframe (#mb=1). The app
- * drives them through gifos.meet. The sandbox is unchanged.
+ * one ordinary run.html document in a same-origin iframe. The host page's
+ * frame-src is about: only, so the session is srcdoc, not a navigation, and
+ * the app sandbox is unchanged. The document stamps window.__gifosMb.
  *
  * The iframe stays a couple of pixels in the viewport so the browser does not
  * freeze its timers, and it is not sandboxed. A session frame does not start
@@ -22,8 +23,19 @@
     try { appWin.postMessage({ ns: 'gifos', type: 'meet-event', event: event }, '*'); } catch (e) {}
   }
 
-  function frameSrc() {
-    return 'run.html#mb=1';
+  var sessionDoc = null;
+  function sessionHtml() {
+    if (sessionDoc) return sessionDoc;
+    sessionDoc = fetch('run.html', { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('Could not load the meeting page.');
+      return r.text();
+    }).then(function (html) {
+      var mark = '<head>';
+      var at = html.indexOf(mark);
+      if (at < 0) throw new Error('Meeting page has no head.');
+      return html.slice(0, at) + '<head><script>window.__gifosMb="1";</script>' + html.slice(at + mark.length);
+    });
+    return sessionDoc;
   }
 
   function drop(id) {
@@ -93,8 +105,13 @@
         }
       };
       root.addEventListener('message', sess.onMsg);
-      iframe.src = frameSrc();
       root.document.body.appendChild(iframe);
+      sessionHtml().then(function (html) {
+        if (!sessions.has(id)) return;
+        iframe.srcdoc = html;
+      }, function (err) {
+        if (!sess.joined) { drop(id); reject(err); }
+      });
     });
   }
 
