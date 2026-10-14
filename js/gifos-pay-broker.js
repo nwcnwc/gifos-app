@@ -23,9 +23,11 @@
  *           Until the Base Account connection lands, no adapter is present in
  *           production and the rail says so instead of pretending.
  *
- * TEST RAILS ONLY. The Worker speaks PayPal sandbox; the chain is Base
- * Sepolia, pinned in gifos-charge.js/gifos-x402.js. Nothing here can reach a
- * mainnet asset.
+ * PayPal's mode comes from POST /rails, the call this file already makes
+ * while building the sheet. GET /health reports the same string; an app
+ * does not fetch it. mode "LIVE" is the only value labeled as real money.
+ * Anything else, including a worker that omits mode, is shown as sandbox.
+ * The chain rail stays Base Sepolia, pinned in gifos-charge.js.
  *
  * Attaches to `GifOS.payBroker`.
  */
@@ -149,7 +151,10 @@
   // Which of the author's allowed rails the Worker can process right now
   // (provider configured, registry, onboarding, PayPal's partner approval).
   // The sheet draws only those, so nobody picks a rail that refuses them
-  // after the click. Returns { accepted: {rail: true}, why: {rail: reason} }.
+  // after the click. mode is the worker's PayPal mode from this same
+  // response. Only the exact string LIVE is live; a missing or other value
+  // stays sandbox so an older worker is not labeled as real money.
+  // Returns { accepted: {rail: true}, why: {rail: reason}, mode }.
   async function railsNow(proof) {
     let r;
     try {
@@ -165,7 +170,7 @@
       const s = body.rails[rail];
       if (s && s.ok === true) accepted[rail] = true; else why[rail] = (s && s.why) || 'unavailable';
     }
-    return { accepted, why };
+    return { accepted, why, mode: body && body.mode === 'LIVE' ? 'LIVE' : 'test' };
   }
 
   // ---- receipt ↔ request binding -----------------------------------------------
@@ -265,6 +270,25 @@
   // is touched. Decline is a button, not an error.
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
+  // The line under the amount. PayPal's mode is the worker's. USDC on this
+  // sheet is still the chain gifos-charge.js pinned. A gifos.app signer is
+  // paid the whole PayPal amount; a third-party PayPal order keeps 3%.
+  function sheetNote(sheetData) {
+    const rails = (sheetData && sheetData.rails) || {};
+    const live = sheetData && sheetData.mode === 'LIVE';
+    const gifos = sheetData && sheetData.payingToType === 'domain' && String(sheetData.payingTo || '').toLowerCase() === 'gifos.app';
+    const parts = [];
+    if (rails.paypal && live) {
+      parts.push(gifos
+        ? 'PayPal charges real money. The whole PayPal amount goes to GifOS.'
+        : 'PayPal charges real money. GifOS keeps 3% of a PayPal payment; the author gets the rest.');
+    } else if (rails.paypal) {
+      parts.push('PayPal is in sandbox. A PayPal payment here does not move real money.');
+    }
+    if (rails.x402 || rails.transfer) parts.push('USDC on this sheet is on ' + (sheetData.chain || 'a test network') + ', a test network.');
+    return parts.join(' ');
+  }
+
   function showSheet(sheetData) {
     const doc = root.document;
     if (!doc || !doc.body) return Promise.reject(new Error('no display to ask the human on — payments need a visible page'));
@@ -291,10 +315,10 @@
           (sheetData.editable ? '<div style="margin:.5rem 0 0"><input id="gp-amt" type="number" min="0.01" step="0.01" value="' + esc((Number(BigInt(sheetData.amount) / 10000n) / 100).toFixed(2)) + '" style="width:100%;box-sizing:border-box;background:#14141f;border:1px solid #2a2a3f;border-radius:.4rem;color:#e8e8f4;padding:.45rem .6rem;font:inherit"><div style="color:#9a9ab5;font-size:.78rem;margin-top:.25rem">You choose the amount — this is a tip.</div></div>' : '') +
           '<div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:.45rem"><span style="color:#9a9ab5">Paying</span><span><b>' + esc(sheetData.payingTo) + '</b> <span style="color:#7ddb91">✓ verified</span></span></div>' +
           (sheetData.unlocks ? '<div style="display:flex;justify-content:space-between;gap:.6rem;margin-top:.45rem"><span style="color:#9a9ab5">Unlocks</span><span>' + esc(sheetData.sku) + ' (on this computer)</span></div>' : '') +
-          '<div style="color:#9a9ab5;font-size:.78rem;margin-top:.55rem">Test rails — no real money moves. GifOS keeps 3%; the author gets the rest.</div>' +
+          (sheetNote(sheetData) ? '<div style="color:#9a9ab5;font-size:.78rem;margin-top:.55rem">' + esc(sheetNote(sheetData)) + '</div>' : '') +
         '</div>' +
         '<div id="gp-buttons" style="display:flex;flex-direction:column;gap:.5rem">' +
-          (canPaypal ? '<button id="gp-paypal" style="padding:.6rem 1rem;border-radius:.5rem;border:none;background:#ffc439;color:#111;cursor:pointer;font:inherit;font-weight:600">Pay with PayPal (sandbox)</button>' : '') +
+          (canPaypal ? '<button id="gp-paypal" style="padding:.6rem 1rem;border-radius:.5rem;border:none;background:#ffc439;color:#111;cursor:pointer;font:inherit;font-weight:600">' + (sheetData.mode === 'LIVE' ? 'Pay with PayPal' : 'Pay with PayPal (sandbox)') + '</button>' : '') +
           (canX402 ? '<button id="gp-x402" ' + (walletReady ? '' : 'disabled ') + 'style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:' + (walletReady ? '#1652f0' : '#20203255') + ';color:' + (walletReady ? '#fff' : '#9a9ab5') + ';cursor:' + (walletReady ? 'pointer' : 'default') + ';font:inherit">Pay with USDC — connected wallet' + (walletReady ? '' : ' (none yet)') + '</button>' : '') +
           (sheetData.rails.transfer ? '<button id="gp-transfer" style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:#1d1d2c;color:#e8e8f4;cursor:pointer;font:inherit">Send USDC from any wallet (RockWallet, …)</button>' : '') +
           (sheetData.rails.fednow ? '<button id="gp-fednow" style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:#1d1d2c;color:#e8e8f4;cursor:pointer;font:inherit">Pay from your bank (FedNow)</button>' : '') +
@@ -757,6 +781,7 @@
     const proof = await proofFor(appBytes);
     const now = await railsNow(proof);
     const sheetData = GifOS.charge.sheet(elig, request, appName || manifest.name, now.accepted);
+    sheetData.mode = now.mode;
     const r = sheetData.rails;
     if (!r.paypal && !r.x402 && !r.transfer && !r.fednow && !r.mpp) {
       const reasons = elig.rails.map((k) => now.why[k]).filter(Boolean);
@@ -784,6 +809,9 @@
     // APP gets back is the pure-module shape — it never sees the Worker's raw
     // signed object, which names the payee account.
     const out = GifOS.charge.receipt(sheetData, receipt.tx || receipt.orderId || null, receipt.at || Date.now(), choice.rail);
+    // The app learns the worker's PayPal mode from the OS result. It does
+    // not call /health. Only the exact string LIVE means real PayPal money.
+    out.mode = sheetData.mode === 'LIVE' ? 'LIVE' : 'test';
     // (An agent payment another tab already wrote down is not written twice.)
     if (paid.recorded) return out;
     if (request.sku && txSpentOn(out.tx, scope, request.sku)) throw new Error('that payment already bought something else on this computer — one payment, one purchase');
