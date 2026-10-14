@@ -2796,18 +2796,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The first gap only sets the baseline. Folding a nap into it would
       // hide the next one.
       let nap = false;
-      if (!beatTypical) {
+      // The baseline lives in the enclosing scope. A missing binding (a lift
+      // of this arrow) is the same as "not set yet", not a throw.
+      if (typeof beatTypical === 'undefined' || !beatTypical) {
         if (beatGap > 400 && beatGap < 60000) beatTypical = beatGap;
       } else if (beatGap > WAKE_SUSPECT_MS && beatGap > beatTypical * 1.8) {
         // One gap past the cadence is a nap. The next one, just as long,
         // is the cadence itself (a slowed clock), not a nap every beat.
-        if (beatLong) { beatTypical = beatGap; beatLong = false; }
+        if (typeof beatLong !== 'undefined' && beatLong) { beatTypical = beatGap; beatLong = false; }
         else { nap = true; beatLong = true; }
       } else {
         beatLong = false;
         if (beatGap > 400 && beatGap < 30000) beatTypical = beatTypical * 0.75 + beatGap * 0.25;
       }
-      if (nap && !frozeGap) wakeProbe(nowBeat, 'beat gap ' + Math.round(beatGap / 1000) + 's');
+      // The first slow gap is still not a nap when the loop stayed awake:
+      // a loaded phone's worker simply delivers one beat in several, and the
+      // sentinel has nothing to count. A real freeze stops the sentinel, and
+      // that sleep is the debt. A probe here rebuilt the pair and, one settle
+      // later, declared the frozen mate dead — both then held the head.
+      if (nap && !frozeGap && typeof starveDebtSince === 'function' && starveDebtSince(nowBeat - beatGap) > WAKE_SUSPECT_MS) wakeProbe(nowBeat, 'beat gap ' + Math.round(beatGap / 1000) + 's');
       netDarkBeat(nowBeat);
       doorRoundBeat(nowBeat);
       // A hidden tab beats at a third of the pace (12s — still inside every 15s
