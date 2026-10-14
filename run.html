@@ -955,6 +955,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .chips span { background: rgba(10,10,15,.78); border: 1px solid rgba(255,255,255,.14); border-radius: .4rem;
                       padding: .12rem .45rem; font-size: .68rem; color: #eceef8; }
   .tile .chips span.warn { border-color: #b0742a; color: #ffd23c; }
+  .tile .chips span.botbadge { border-color: #5ca0ff; color: #d7e8ff; }
+  body.meet-session #lobby { display: none !important; }
   .tile .modbar { position: absolute; right: .4rem; top: .4rem; display: none; flex-direction: column;
                   gap: .3rem; z-index: 4; }
   .tile:hover .modbar, .tile.menu .modbar, .tile:focus-within .modbar { display: flex; }
@@ -1855,6 +1857,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/mesh-pipe.js"></script>
   <script src="js/relay-config.js"></script>
   <script src="js/runtime.js"></script>
+  <script src="js/meet-host.js"></script>
   <script src="js/camera-studio.js"></script>
   <script src="js/gifos-perms.js"></script>
   <script>
@@ -4212,6 +4215,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           : '<span class="warn">🖥 sharing their screen</span>');
       }
       if (st.hand) chips.push('<span class="warn">✋ hand raised</span>');
+      if (st.bot) chips.push('<span class="botbadge">🤖 bot</span>');
       if (st.rec) chips.push('<span class="warn">⏺ recording this meeting</span>');
       if (st.scribe) chips.push('<span>✍ writing everyone down</span>');
       if (st.cc) chips.push('<span>📝 transcribing</span>');
@@ -4491,7 +4495,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const st = (id === 'me' ? myStatus : statusOf.get(id)) || {};
         const gm = modOf(id).mute && modOf(id).mute.on;
         let speaking = false;
-        if (!st.muted && !gm) {
+        // A bot stays muted (its sent track is silent) but its ear still
+        // hears the local mic, so captions can run without the bot speaking.
+        const botEar = id === 'me' && st.bot && window.__gifosBotEar;
+        if ((!st.muted && !gm) || botEar) {
           meterAnyLive = true; // a live mic exists ⇒ keep the fast beat
           m.an.getByteTimeDomainData(m.data);
           let dev = 0;
@@ -6389,7 +6396,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (meshNode && !(opts && opts.scope)) txStats.roomFlood = (txStats.roomFlood || 0) + 1; // room-wide floods I ORIGINATED (flags a message sent to everyone instead of its own section)
       if (meshNode) meshNode.gossip({ a: 1, msg }, opts); // opts: { scope: 'section', ephemeral } for the heartbeat — see THE STATUS PLANE
     }
-    const myName = () => GifOS.store.identity().name || 'Guest';
+    const myName = () => window.__gifosMeetName || GifOS.store.identity().name || 'Guest';
 
     // Exactly ONE side initiates each pairing, chosen by peer-id order — the
     // same rule no matter who joined, rejoined, or reloaded first. No glare.
@@ -10864,6 +10871,44 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // view-only join a denied camera lands in; a viewer the host later
           // calls up gets media through lateMedia (a user gesture), exactly
           // like any view-only guest tapping the mic button.
+          if (params.get('bot') === '1') {
+            // A bot has no camera and does not speak. The sent track stays
+            // disabled. A local clone (the ear) feeds the meter and Whisper
+            // so captions still hear synthetic speech on this machine.
+            myStatus.bot = true;
+            myStatus.camOff = true;
+            myStatus.muted = true;
+            const mdB = navigator.mediaDevices;
+            const gumB = (mdB && mdB.getUserMedia)
+              ? mdB.getUserMedia({ audio: true, video: false })
+              : Promise.reject(new Error('no media devices'));
+            bootGumPending = gumB.finally(() => { bootGumPending = null; });
+            bootGumPending.catch(() => {});
+            gumB.then((stream) => {
+              localStream = stream;
+              let ear = null;
+              try { ear = stream.clone(); } catch (e) { ear = null; }
+              for (const tr of stream.getTracks()) tr.enabled = false;
+              if (ear) for (const tr of ear.getAudioTracks()) tr.enabled = true;
+              window.__gifosBotEar = ear;
+              const n = meTile.tile.querySelector('.note'); if (n) n.remove();
+              meTile.video.style.display = 'none';
+              meterFor('me', ear || stream);
+              try { ensureAc(); if (ac && ac.resume) ac.resume(); } catch (e) {}
+              updateTile('me');
+              attachLocalTracks();
+              refreshOutbound();
+              broadcastStatus();
+            }, () => {
+              localStream = null;
+              myStatus.bot = true;
+              myStatus.camOff = true;
+              myStatus.muted = true;
+              updateTile('me');
+              broadcastStatus();
+            });
+            return;
+          }
           if (BROADCAST && !bcHostStored()) {
             localStream = null;
             tileNote(meTile, 'You\u2019re watching this broadcast.'); // the grid is hidden in the skin; this only shows to a stripped-URL client
@@ -11169,7 +11214,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const P = window.GifOSPreflight;
       if (P && typeof P.whenSupported === 'function') P.whenSupported(f); else f();
     };
-    if (ROOM.solo) bootSoloApp();
+    function bootMeetSession() {
+      // A session frame waits for its parent. The lobby would open a camera
+      // preview, and a hash with no room would too. Neither may run here.
+      document.body.classList.add('meet-session');
+      window.__gifosMeetBoot = true;
+    }
+    if (params.get('mb') === '1') bootMeetSession();
+    else if (ROOM.solo) bootSoloApp();
     else if (ROOM.kind === 'app') preflighted(bootAppRoom);
     else if (!params.get('v') && !params.get('app')) showLobby();
     else preflighted(bootIntoRoom);
@@ -11448,6 +11500,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (m.k === 'chat') {
         if (takeChat(m.m)) {
           renderChat();
+          if (m.m && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
           if (!chatPanel.classList.contains('open')) { unread++; chatBtn.textContent = 'Chat (' + unread + ')'; }
           // A frame the sender marked ackReq (today: only the follow-me link)
           // gets a delivery ack back over the mesh/DC — see FOLLOW-ME DELIVERY
@@ -11458,6 +11511,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // re-broadcasting on first sight made ONE chat line N floods — O(N)
           // frames per node per line, the N×N the mesh exists to prevent.
         }
+      } else if (m.k === 'bx' && window.GifOS && GifOS.meetSession && typeof window.__gifosMeetEmit === 'function') {
+        GifOS.meetSession.takeXfer(m, window.__gifosMeetEmit);
       } else if (m.k === 'chatack') {
         // Delivery ack for an ackReq chat frame (see FOLLOW-ME DELIVERY WAIT).
         // Addressed by peer id, not re-gossiped — the flood that carried it
@@ -16763,6 +16818,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       sendAll({ k: 'tr', m }, captionScope(m.byId));
       renderTranscript();
       showCaption(m.byId, m.text);
+      if (typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: m.by, text: m.text, at: m.at, scribeBy: m.scribeBy || '' } });
     }
     // THE LANGUAGE IS A CHOICE, NOT A GUESS. The engine listens for ONE
     // language and cannot detect it; navigator.language was the silent
@@ -16938,6 +16994,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } catch (e) { src = null; stageSid = null; }
       }
       if (!src) src = wspSource(id);
+      if (!src && id === 'me' && window.__gifosBotEar && window.__gifosBotEar.getAudioTracks && window.__gifosBotEar.getAudioTracks()[0]) {
+        try { src = ac.createMediaStreamSource(new MediaStream([window.__gifosBotEar.getAudioTracks()[0]])); own = true; } catch (e) { src = null; }
+      }
       if (!src && id === 'me' && localStream && localStream.getAudioTracks()[0]) {
         try { src = ac.createMediaStreamSource(new MediaStream([localStream.getAudioTracks()[0]])); own = true; } catch (e) { return false; }
       }
@@ -17079,7 +17138,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function scribeOn() { return !!myStatus.scribe && ccEngine() === 'whisper' && whisperReady(); }
     function wspSync() {
       const want = new Set();
-      if (!wspPaused && myStatus.cc && !myStatus.muted && ccEngine() === 'whisper' && (!ccSourceId || !ccSourceWritesMe()) && whisperReady()) want.add('me');
+      if (!wspPaused && myStatus.cc && ccEngine() === 'whisper' && whisperReady() && (!ccSourceId || !ccSourceWritesMe()) && (myStatus.bot ? !!window.__gifosBotEar : !myStatus.muted)) want.add('me');
       if (!wspPaused && scribeOn()) {
         const stagers = (typeof stageIds === 'function') ? stageIds() : [];
         const stageSet = new Set(stagers);
@@ -17409,7 +17468,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return !!(p && p.connected);
     }
     function syncSpeech() { // CC follows the mic: muted people aren't transcribed
-      const want = myStatus.cc && !myStatus.muted;
+      const want = myStatus.cc && (!myStatus.muted || !!(myStatus.bot && window.__gifosBotEar));
       ccSrcDirect = ccSourceWritesMe();
       if (ccSrcDirect) { // the chosen scribe hears me directly: no engine of my own
         if (speechRunning()) stopSpeech();
@@ -17510,7 +17569,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // along; "match my mix" scales each bus's audio by your own fader.
     let recRec = null, recTimer = null, recDraw = null, recStart = 0, recSrcs = new Map(), recDest = null, recSink = null;
     let recMode = null, recRestart = null, recMatchMix = true, recQuality = 'std', recType = 'video/webm'; // recType = the container MediaRecorder writes; recMode = scope; recRestart = opts after a stop
-    let recStarting = false, recReloadAfterStop = false;
+    let recStarting = false, recReloadAfterStop = false, recIndWatch = null;
     const recBtn = document.getElementById('recbtn');
     const REC_QUALITY = { low: { w: 1280, h: 720, v: 1000000 }, std: { w: 1920, h: 1080, v: 3000000 }, high: { w: 1920, h: 1080, v: 6000000 } };
     // Every source I can record, grouped by BUS. Direct peers + me are live
@@ -17559,7 +17618,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         },
       };
     }
+    function recordingIndicatorsOk() {
+      try { updateTile('me'); } catch (e) {}
+      const tile = meTile && meTile.tile;
+      const chips = tile && tile.querySelector('.chips');
+      const text = chips ? (chips.textContent || '') : '';
+      if (text.indexOf('recording this meeting') < 0) return false;
+      if (myStatus.bot && text.indexOf('bot') < 0) return false;
+      if ((myStatus.cc || myStatus.scribe) && text.indexOf('transcribing') < 0 && text.indexOf('writing everyone down') < 0) return false;
+      return true;
+    }
     async function recOpenSink(name) {
+      if (params.get('mb') === '1') {
+        const chunks = [];
+        return {
+          kind: 'ram',
+          write(blob) { chunks.push(blob); return Promise.resolve(); },
+          finish() {
+            const blob = new Blob(chunks, { type: String(recType || 'video/webm').split(';')[0] });
+            chunks.length = 0;
+            return blob.arrayBuffer().then((bytes) => {
+              window.__gifosRecHeld = { bytes: bytes, mime: blob.type, name: name };
+              return { href: URL.createObjectURL(blob), name: name, held: true };
+            });
+          },
+          abort() { chunks.length = 0; return Promise.resolve(); },
+        };
+      }
       if (typeof window.showSaveFilePicker === 'function') {
         try {
           const handle = await window.showSaveFilePicker({
@@ -17602,6 +17687,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return 'gifos-meeting-' + room + '-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + (String(recType).indexOf('mp4') >= 0 ? '.mp4' : '.webm');
     }
     function recDeliver(saved) {
+      if (saved && saved.held) return 'held';
       if (saved && saved.href) {
         const a = document.createElement('a');
         a.href = saved.href;
@@ -17927,6 +18013,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return;
         }
         recSink = opened;
+        // The chip is the consent. Paint it and refuse to construct a
+        // MediaRecorder unless that paint is actually in the tile. A bot
+        // also needs its badge, and an already-on caption needs its chip.
+        myStatus.rec = true;
+        try { updateTile('me'); broadcastStatus(); } catch (e) {}
+        if (!recordingIndicatorsOk()) {
+          myStatus.rec = false;
+          try { updateTile('me'); broadcastStatus(); } catch (e) {}
+          setStatus('Recording stays off until the recording indicator is on screen.');
+          return;
+        }
         if (scope === 'app') {
           videoTrack = disp.getVideoTracks()[0];
           if (videoTrack) videoTrack.onended = () => { if (recRec && recRec.state !== 'inactive') { try { recRec.stop(); } catch (e) {} } };
@@ -17990,6 +18087,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           try { if (sink) saved = await sink.finish(); } catch (e) { saved = null; }
           let how = '';
           try { how = recDeliver(saved); } catch (e) { how = ''; }
+          if (typeof window.__gifosRecStopped === 'function') {
+            const cb = window.__gifosRecStopped;
+            window.__gifosRecStopped = null;
+            try { cb(how); } catch (e) {}
+          }
           const replaced = recStarting || (recRec && recRec.state !== 'inactive');
           if (!replaced) {
             recBtn.classList.remove('on');
@@ -18017,6 +18119,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         recBtn.textContent = 'Stop 0:00';
         myStatus.rec = true;
         broadcastStatus();
+        if (recIndWatch) clearInterval(recIndWatch);
+        recIndWatch = setInterval(() => {
+          if (!recRec || recRec.state === 'inactive') { clearInterval(recIndWatch); recIndWatch = null; return; }
+          if (!recordingIndicatorsOk()) { try { recRec.stop(); } catch (e) {} }
+        }, 1000);
       } finally {
         if (!armed) {
           // Nothing is recording: release everything this attempt took — the
@@ -18031,6 +18138,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           recSrcs = new Map();
           if (made && recRec === made) { try { made.onstop = null; made.ondataavailable = null; } catch (e) {} recRec = null; }
           recDest = null; recMode = null;
+          if (myStatus.rec) {
+            myStatus.rec = false;
+            try { updateTile('me'); broadcastStatus(); } catch (e) {}
+          }
         }
         recStarting = false;
       }
@@ -18325,6 +18436,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return null;
     }
     function lateMedia(kind) {
+      if (myStatus.bot) { setStatus('A bot does not use a camera or speak.'); return; }
       if (lateRefusal(kind)) { setStatus(lateRefusal(kind)); return; }
       if (lateAsk) { setStatus('Still asking for the camera and microphone\u2026'); return; }
       // THE BOOT ASK IS THE ONLY ASK (knock-first, 2026-08-05): the knock no
@@ -20072,9 +20184,148 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, 200);
     })();
 
+    // Session frame (#mb=1): the parent meet-host drives this document.
+    // Ordinary meetings never take this branch.
+    if (params.get('mb') === '1' && window.GifOS && GifOS.meetSession) {
+      window.__gifosMeetEmit = (ev) => { try { GifOS.meetSession.emit(ev); } catch (e) {} };
+      let meetJoined = false;
+      const peopleSig = { last: '' };
+      GifOS.meetSession.install({
+        join(msg) {
+          if (meetJoined) return Promise.reject(new Error('This session is already in a meeting.'));
+          const parsed = parseMeetInput((msg && (msg.link || msg.room)) || '');
+          if (!parsed) return Promise.reject(new Error('That is not a meeting link.'));
+          const rk = parsed.room + (parsed.av ? '.' + parsed.av : '');
+          if (msg && msg.password) {
+            try {
+              localStorage.setItem('gifos_vpw_' + rk, String(msg.password));
+              localStorage.setItem('gifos_vpwat_' + rk, String(Date.now()));
+            } catch (e) {}
+          }
+          if (msg && msg.link) {
+            try {
+              const u = new URL(msg.link, location.origin);
+              const hp = new URLSearchParams((u.hash || '').replace(/^#/, ''));
+              const rel = hp.get('relay') || u.searchParams.get('relay');
+              if (rel) localStorage.setItem('gifos_relay', rel);
+            } catch (e) {}
+          }
+          params.set('v', parsed.room);
+          if (parsed.av) params.set('av', parsed.av); else params.delete('av');
+          params.set('mb', '1');
+          if (msg && msg.bot) {
+            params.set('bot', '1');
+            myStatus.bot = true;
+            myStatus.camOff = true;
+            myStatus.muted = true;
+          } else params.delete('bot');
+          if (msg && msg.name) window.__gifosMeetName = String(msg.name).slice(0, 40);
+          return new Promise((resolve, reject) => {
+            preflighted(() => {
+              let p;
+              try { p = bootIntoRoom(); } catch (e) { reject(e); return; }
+              const done = () => {
+                meetJoined = true;
+                const linkEl = document.getElementById('share-url');
+                resolve({ room: room, link: linkEl ? linkEl.value : '' });
+              };
+              if (p && typeof p.then === 'function') p.then(done, reject);
+              else done();
+            });
+          });
+        },
+        leave() {
+          try {
+            if (window.__gifosBotEar) window.__gifosBotEar.getTracks().forEach((t) => { try { t.stop(); } catch (e) {} });
+          } catch (e) {}
+          try { leaveMeeting(); } catch (e) {}
+          meetJoined = false;
+          return { ok: true };
+        },
+        startRecording() {
+          return Promise.resolve(startRec({ scope: 'all', quality: 'low', matchMix: true })).then(() => (
+            { ok: !!(recRec && recRec.state !== 'inactive'), rec: !!myStatus.rec }
+          ));
+        },
+        stopRecording() {
+          return new Promise((resolve) => {
+            if (!recRec || recRec.state === 'inactive') { resolve({ ok: true }); return; }
+            const timer = setTimeout(() => resolve({ ok: true, timeout: true }), 20000);
+            window.__gifosRecStopped = () => { clearTimeout(timer); resolve({ ok: true, held: !!window.__gifosRecHeld }); };
+            try { recRec.stop(); } catch (e) { clearTimeout(timer); resolve({ ok: false, error: String(e && e.message || e) }); }
+          });
+        },
+        getRecording() {
+          const held = window.__gifosRecHeld;
+          if (!held || !held.bytes) return { bytes: new ArrayBuffer(0), mime: '', name: '' };
+          return { bytes: held.bytes, mime: held.mime || '', name: held.name || '' };
+        },
+        sendChat(msg) {
+          const text = String((msg && msg.text) || '').slice(0, 2000);
+          if (!text) return { ok: false };
+          const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: text };
+          chat.set(m.id, m);
+          sendAll({ k: 'chat', m });
+          try { renderChat(); } catch (e) {}
+          return { ok: true, id: m.id };
+        },
+        transcribe(msg) {
+          const on = !!(msg && msg.on);
+          myStatus.cc = on;
+          myStatus.scribe = on;
+          try { if (on) localStorage.setItem('gifos_cc_engine', 'whisper'); else localStorage.removeItem('gifos_cc_engine'); } catch (e) {}
+          const cc = document.getElementById('ccbtn');
+          if (cc) cc.classList.toggle('on', on);
+          try { updateTile('me'); broadcastStatus(); syncSpeech(); } catch (e) {}
+          const chips = meTile && meTile.tile && meTile.tile.querySelector('.chips');
+          const text = chips ? chips.textContent || '' : '';
+          if (on && text.indexOf('transcribing') < 0 && text.indexOf('writing everyone down') < 0) {
+            myStatus.cc = false;
+            myStatus.scribe = false;
+            try { syncSpeech(); updateTile('me'); broadcastStatus(); } catch (e) {}
+            return { ok: false, error: 'Transcribing stays off until its indicator is on screen.' };
+          }
+          return { ok: true, cc: !!myStatus.cc, scribe: !!myStatus.scribe };
+        },
+        sendXfer(msg) {
+          const x = (msg && msg.xfer) || {};
+          const raw = x.bytes;
+          const bytes = !raw ? new Uint8Array(0) : (raw instanceof Uint8Array ? raw : new Uint8Array(raw));
+          const CHUNK = 8000;
+          const n = Math.max(1, Math.ceil(bytes.length / CHUNK) || 1);
+          const id = x.id || uid('bx');
+          const open = [];
+          for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open') open.push(p);
+          if (!open.length) return Promise.reject(new Error('No data channel yet.'));
+          for (let i = 0; i < n; i++) {
+            const slice = bytes.subarray(i * CHUNK, Math.min(bytes.length, (i + 1) * CHUNK));
+            let bin = '';
+            for (let j = 0; j < slice.length; j++) bin += String.fromCharCode(slice[j]);
+            const frame = { k: 'bx', id: id, i: i, n: n, name: x.name || 'download', mime: x.mime || 'application/octet-stream', b64: btoa(bin) };
+            for (const p of open) { try { dcSend(p, frame); } catch (e) {} }
+          }
+          return { id: id, n: n, peers: open.length };
+        }
+      });
+      setInterval(() => {
+        try { if (ac && ac.state !== 'running' && ac.resume) ac.resume(); } catch (e) {}
+        if (!meetJoined || typeof window.__gifosMeetEmit !== 'function') return;
+        const people = [{ id: myId, name: myName(), bot: !!myStatus.bot, me: true }];
+        for (const [pid, p] of peers) {
+          const st = statusOf.get(pid);
+          people.push({ id: pid, name: (p && p.name) || '', bot: !!(st && st.bot) });
+        }
+        const sig = JSON.stringify(people);
+        if (sig === peopleSig.last) return;
+        peopleSig.last = sig;
+        window.__gifosMeetEmit({ type: 'participants', people: people });
+      }, 1500);
+    }
+
     // Test hook: lets the e2e suite observe mesh + quality state.
     window.__gifosVideo = {
       participants: participantCount,
+      bot: () => !!myStatus.bot,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
       statusPeekForTest: (id) => { const st = statusOf.get(id); return st ? { stg: st.stg || 0, ageMs: Date.now() - (st.at || 0), rxAgeMs: Date.now() - (st.rx || 0) } : null; },

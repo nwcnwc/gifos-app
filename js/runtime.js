@@ -234,6 +234,14 @@
           else refresh(d.collection);
         }
         if(d.type==='back'){ backCbs.forEach(function(cb){ try { cb(); } catch(e){} }); }
+        if(d.type==='meet-event' && d.event){
+          var ev = d.event, list = [];
+          if (ev.type === 'transcript') list = meetSubs.tr;
+          else if (ev.type === 'participants') list = meetSubs.pe;
+          else if (ev.type === 'chat') list = meetSubs.ch;
+          else if (ev.type === 'xfer') list = meetSubs.xf;
+          for (var mi = 0; mi < list.length; mi++) { try { list[mi](ev); } catch (err) {} }
+        }
         // Provider service plumbing (docs/providers.md): when this app is
         // mounted as a hidden provider service, the runtime forwards brokered
         // AI calls here as provider-request; the handler registered via
@@ -270,6 +278,7 @@
         }
       });
       var provHandlers = null;
+      var meetSubs = { tr: [], pe: [], ch: [], xf: [] };
       // Android Chrome only lets the container's Back trap "stick" once the page
       // has real user activation, and the user touches the APP, not the frame
       // around it — those gestures never reach the parent. Ping the container on
@@ -571,7 +580,44 @@
         // receipt is restored to. Anchor saves / room identity / a server
         // account to it and a shared receipt becomes a shared IDENTITY — the
         // buyer's own — rather than a free copy. null until purchased.
-        license: function(sku){ return rpc({type:'license', sku:sku}); }
+        license: function(sku){ return rpc({type:'license', sku:sku}); },
+        // Meetings (capabilities.meet). The app never touches WebRTC: the host
+        // page runs each meeting and this object is only messages. passwordOrLink
+        // is a room password, or a pasted invite when it contains : / or #.
+        // opts.bot defaults to true (no camera, bot badge). opts.control marks
+        // the one meeting whose chat may carry remote commands (capabilities.remote).
+        meet: {
+          join: function(room, passwordOrLink, name, opts){
+            opts = opts || {};
+            var link = opts.link ? String(opts.link) : '';
+            var password = opts.password ? String(opts.password) : '';
+            var second = passwordOrLink == null ? '' : String(passwordOrLink);
+            if (!link && !password && second) {
+              if (/[:\/#]/.test(second)) link = second;
+              else password = second;
+            }
+            var roomArg = room == null ? '' : String(room);
+            if (!link && roomArg && /[:\/#]/.test(roomArg)) { link = roomArg; roomArg = ''; }
+            return rpc({ type:'meet', op:'join', room: roomArg, link: link, password: password,
+              name: name == null ? '' : String(name), bot: opts.bot !== false, control: !!opts.control });
+          },
+          leave: function(id){ return rpc({ type:'meet', op:'leave', meetingId: id }); },
+          startRecording: function(id){ return rpc({ type:'meet', op:'startRecording', meetingId: id }); },
+          stopRecording: function(id){ return rpc({ type:'meet', op:'stopRecording', meetingId: id }); },
+          getRecording: function(id){ return rpc({ type:'meet', op:'getRecording', meetingId: id }); },
+          sendChat: function(id, text){ return rpc({ type:'meet', op:'sendChat', meetingId: id, text: text == null ? '' : String(text) }); },
+          transcribe: function(id, on){ return rpc({ type:'meet', op:'transcribe', meetingId: id, on: !!on }); },
+          sendXfer: function(id, file){
+            file = file || {};
+            return rpc({ type:'meet', op:'sendXfer', meetingId: id, xferId: file.id || '', name: file.name || '', mime: file.mime || '', bytes: file.bytes || null });
+          },
+          list: function(){ return rpc({ type:'meet', op:'list' }); },
+          setControl: function(id){ return rpc({ type:'meet', op:'setControl', meetingId: id }); },
+          onTranscriptLine: function(cb){ if (typeof cb === 'function') meetSubs.tr.push(cb); },
+          onParticipants: function(cb){ if (typeof cb === 'function') meetSubs.pe.push(cb); },
+          onChat: function(cb){ if (typeof cb === 'function') meetSubs.ch.push(cb); },
+          onXfer: function(cb){ if (typeof cb === 'function') meetSubs.xf.push(cb); }
+        }
       };
     })();`;
   }
@@ -3288,6 +3334,7 @@
     const teardown = () => {
       if (torn) return; torn = true; live = 0;
       root.removeEventListener('message', handler);
+      try { if (root.GifOS && root.GifOS.meetHost) { root.GifOS.meetHost.clearApp(); root.GifOS.meetHost.leaveAll(); } } catch (e) {}
       try { iframe.srcdoc = LEFT_FRAME_HTML; } catch (e) {}
     };
     const remount = () => {
@@ -3435,6 +3482,42 @@
       else if (d.type === 'license') {
         (GifOS.payBroker ? GifOS.payBroker.license(manifest, d.sku, originalBytes) : Promise.reject(new Error('Payments are not available on this computer.')))
           .then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
+      }
+      else if (d.type === 'meet') {
+        const host = root.GifOS && root.GifOS.meetHost;
+        const meetNo = !hasCap(manifest, 'meet') || capDisabled(manifest, 'meet');
+        if (!host) reply({ ok: false, error: 'Meetings are not available on this page.' });
+        else if (meetNo) reply({ ok: false, error: capDisabled(manifest, 'meet') ? CAP_OFF_MSG('Meet') : 'This app did not declare the Meet ability.' });
+        else {
+          const op = String(d.op || '');
+          const remoteNo = !hasCap(manifest, 'remote') || capDisabled(manifest, 'remote');
+          host.setRemoteAllowed(!remoteNo);
+          host.onApp(iframe.contentWindow);
+          if (!host._capWatch) {
+            host._capWatch = setInterval(() => {
+              try {
+                host.setRemoteAllowed(hasCap(manifest, 'remote') && !capDisabled(manifest, 'remote'));
+                if (!hasCap(manifest, 'meet') || capDisabled(manifest, 'meet')) host.leaveAll();
+              } catch (e) {}
+            }, 1000);
+          }
+          if (op === 'setControl' && remoteNo) {
+            reply({ ok: false, error: capDisabled(manifest, 'remote') ? CAP_OFF_MSG('Remote') : 'This app did not declare the Remote ability.' });
+          } else {
+            const done = (p) => Promise.resolve(p).then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
+            if (op === 'join') done(host.join({ room: d.room, link: d.link, password: d.password, name: d.name, bot: d.bot !== false, control: !!d.control && !remoteNo }));
+            else if (op === 'leave') done(host.leave(d.meetingId));
+            else if (op === 'startRecording') done(host.startRecording(d.meetingId));
+            else if (op === 'stopRecording') done(host.stopRecording(d.meetingId));
+            else if (op === 'getRecording') done(host.getRecording(d.meetingId));
+            else if (op === 'sendChat') done(host.sendChat(d.meetingId, d.text));
+            else if (op === 'transcribe') done(host.setTranscribe(d.meetingId, !!d.on));
+            else if (op === 'sendXfer') done(host.sendXfer(d.meetingId, { id: d.xferId, name: d.name, mime: d.mime, bytes: d.bytes }));
+            else if (op === 'list') reply({ ok: true, result: host.list() });
+            else if (op === 'setControl') { host.setControl(d.meetingId); reply({ ok: true, result: true }); }
+            else reply({ ok: false, error: 'Unknown meet op.' });
+          }
+        }
       }
       else if (d.type === 'storage') {
         const est = root.navigator && root.navigator.storage && root.navigator.storage.estimate;

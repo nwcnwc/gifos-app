@@ -57,6 +57,7 @@
     db: 'Saves data in the icon', multiplayer: 'Multiplayer', microphone: 'Microphone',
     camera: 'Camera', wasm: 'Runs WebAssembly', gpu: 'Uses the GPU', ai: 'AI', api: 'Third-party API', network: 'Network',
     links: 'Opens web links', assets: 'Downloads extra files',
+    meet: 'Joins meetings', remote: 'Remote control',
   };
   function capList(caps) {
     const out = [];
