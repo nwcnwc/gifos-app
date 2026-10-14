@@ -672,10 +672,22 @@
     const pendingEntry = new Map(); // to|t -> { to, m, at }
     const dialAt = new Map();       // to -> last dial request (throttle)
     const ENTRY_WAIT_MS = 20000, DIAL_GAP_MS = 4000;
+    // Delivery is a channel to the greeter I asked, not to someone else.
+    // sendDC also returns true when it dumps the frame on any other open
+    // channel (run.html sponsorSend's last resort). That is not this ask
+    // arriving: pendingEntry never arms, dial never runs, and a knocker who
+    // already holds a channel to another knocker stays at the door for the
+    // whole meeting. When the app can say whether the channel to `to` is
+    // open, trust sendDC only then. No dcOpen (the in-process tests): sendDC
+    // itself is the channel, same as before.
+    function entryDelivered(to, m) {
+      if (typeof opts.dcOpen === 'function' && !opts.dcOpen(to)) return false;
+      return !!(opts.sendDC && opts.sendDC(to, m, peer));
+    }
     function AT_THE_DOOR_ASKING_TO_BE_LET_IN(to, m) {
       if (iAmInsideTheRoom()) return false;             // I am inside — use the mesh
       if (m.t !== 'WHOHOME' && m.t !== 'FIND' && !(m.t === 'HOME' && !m.roster)) return false;  // entry asks only
-      if (opts.sendDC && opts.sendDC(to, m, peer)) return true;
+      if (entryDelivered(to, m)) return true;
       pendingEntry.set(to + '|' + m.t, { to, m, at: Date.now() });
       askDial(to);
       return true;
@@ -695,7 +707,7 @@
       const now = Date.now();
       for (const [k, e] of pendingEntry) {
         if (now - e.at > ENTRY_WAIT_MS) { pendingEntry.delete(k); continue; }
-        if (opts.sendDC && opts.sendDC(e.to, e.m, peer)) pendingEntry.delete(k);
+        if (entryDelivered(e.to, e.m)) pendingEntry.delete(k);
         else askDial(e.to);
       }
     }

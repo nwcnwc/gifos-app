@@ -908,15 +908,45 @@
       waiting.delete(key);
       try { w.stream.removeEventListener('addtrack', w.fn); } catch (e) {}
     }
+    // A source node built against a muted or silent track stays silent after
+    // the samples start. Bind a fresh node for the same track and gain.
+    // An ended track left behind by a renegotiation is not a source: the
+    // live one (the track still in the container) is.
+    function liveAudioTrack(stream) {
+      const ts = stream && stream.getAudioTracks ? stream.getAudioTracks() : [];
+      let held = null;
+      for (let i = 0; i < ts.length; i++) {
+        const t = ts[i];
+        if (!t || t.readyState === 'ended') continue;
+        if (!t.muted) return t;
+        if (!held) held = t;
+      }
+      return held;
+    }
+    function bindSource(rec) {
+      const src = ac.createMediaStreamSource(new MediaStream([rec.track]));
+      src.connect(rec.gain);
+      return src;
+    }
     function attach(key, stream, gain) {
       if (srcs.has(key)) return true;
-      const t = stream.getAudioTracks()[0];
+      const t = liveAudioTrack(stream);
       if (!t) return false;
       try {
-        const src = ac.createMediaStreamSource(new MediaStream([t]));
         const g = ac.createGain(); g.gain.value = gain == null ? 1 : gain;
-        src.connect(g); g.connect(dest);
-        srcs.set(key, { src, gain: g });
+        g.connect(dest);
+        const rec = { src: null, gain: g, track: t, onUnmute: null };
+        rec.src = bindSource(rec);
+        srcs.set(key, rec);
+        // `unmute` is the honest edge when the browser raises it. Silence
+        // frames never do — the caller reseats those from a later sample.
+        rec.onUnmute = () => {
+          const cur = srcs.get(key);
+          if (!cur || cur.track !== t) return;
+          try { if (cur.src) cur.src.disconnect(); } catch (e) {}
+          try { cur.src = bindSource(cur); } catch (e) {}
+        };
+        try { t.addEventListener('unmute', rec.onUnmute); } catch (e) {}
         return true;
       } catch (e) { return false; }
     }
@@ -944,8 +974,33 @@
         dropWait(key);
         const s = srcs.get(key);
         if (!s) return;
-        try { s.src.disconnect(); s.gain.disconnect(); } catch (e) {}
+        if (s.onUnmute && s.track) { try { s.track.removeEventListener('unmute', s.onUnmute); } catch (e) {} }
+        try { if (s.src) s.src.disconnect(); s.gain.disconnect(); } catch (e) {}
         srcs.delete(key);
+      },
+      // Replace the source node. The gain stays, so a moderator mute holds.
+      // Unknown key is a no-op. Pass the stream's current live track when a
+      // renegotiation swapped the object under the same container id — the
+      // node stored at attach is then bound to a track that has ended.
+      // The new node is built before the old one is dropped, so a failed
+      // bind leaves the ear as it was.
+      rebind(key, track) {
+        const s = srcs.get(key);
+        if (!s) return false;
+        const t = track || s.track;
+        if (!t || t.readyState === 'ended') return false;
+        const prev = s.track;
+        s.track = t;
+        let next = null;
+        try { next = bindSource(s); }
+        catch (e) { s.track = prev; return false; }
+        try { if (s.src) s.src.disconnect(); } catch (e) {}
+        s.src = next;
+        if (t !== prev && s.onUnmute) {
+          if (prev) { try { prev.removeEventListener('unmute', s.onUnmute); } catch (e) {} }
+          try { t.addEventListener('unmute', s.onUnmute); } catch (e) {}
+        }
+        return true;
       },
       // Drive a folded source's gain in place. 0 silences it and the node stays.
       // An unknown key is a no-op.
