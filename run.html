@@ -6493,7 +6493,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
-        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; }
+        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; restoreDoorTile(p); }
         updateStatus();
         if (p.connected) { p.altPath = false; p.tlAt = 0; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
@@ -6506,10 +6506,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       return pc;
     }
+    // A door that never connected and has already left the grid. The redial
+    // keeps trying (the channel may still come up), but the next peer record
+    // must not put that name back on the wall. Cleared when a channel opens.
+    const doorOffGrid = new Set();
+    function parkUnreachableTile(p) {
+      if (!p || p.neverUp !== true) return;
+      doorOffGrid.add(p.id);
+      if (p.tile && p.tile.parentNode) p.tile.remove();
+    }
+    function restoreDoorTile(p) {
+      if (!p || !doorOffGrid.has(p.id)) return;
+      doorOffGrid.delete(p.id);
+      if (p.headless || !p.tile || p.tile.parentNode) return;
+      grid.appendChild(p.tile);
+    }
     function makePeer(peerId, name, headless) {
       if (peers.has(peerId)) return peers.get(peerId);
       if ((typeof isEjected === 'function' && isEjected(peerId) === true)) return null; // never a connection to a forger
       const t = makeTile(peerId, name, false, headless);
+      if (!headless && doorOffGrid.has(peerId) && t.tile.parentNode) t.tile.remove(); // grace already took this name off the grid
       const p = { id: peerId, pc: null, tile: t.tile, video: t.video, label: t.label, avatar: t.avatar, chips: t.chips, cap: t.cap, modbar: t.modbar, voteBtn: t.voteBtn,
         name, headless: !!headless, connected: false, pendingIce: [], absentSince: 0, lastKick: 0, lastHeard: Date.now(), bornAt: Date.now(), incoming: [], neverUp: true }; // neverUp: no transport ever connected — such a pair is dead, never merely away (reachCounts)
       peers.set(peerId, p);
@@ -6531,6 +6547,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       clearTimeout(p.hiLate);
       try { if (p.doorRetry) clearTimeout(p.doorRetry); } catch (e) {}
       p.doorRetry = 0;
+      if (p.boot && p.neverUp === true) doorOffGrid.add(p.id); // the next redial of this door stays off the grid until a channel opens
       try { p.pc.close(); } catch (e) {}
       releaseAudio(p.video);
       p.tile.remove();
@@ -9346,7 +9363,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // media path for a while → say so on the tile instead of silent black.
         // A peer who merely STEPPED AWAY (phone locked, other app) is not a
         // firewall problem — their tile says away, never 'firewall'.
-        if (p.connected) { p.downSince = 0; if (p.noRoute) { p.noRoute = false; updateTile(pid); } }
+        if (p.connected) { p.downSince = 0; restoreDoorTile(p); if (p.noRoute) { p.noRoute = false; updateTile(pid); } }
         else if (!p.absentSince) {
           if (!p.downSince) p.downSince = now;
           // A pair that never once connected is unreachable, not away (see
@@ -9354,7 +9371,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // it does there, or a knocker's door whose greeter's gossip never
           // arrived (lastHeard stuck at birth) reads "away" at 13s — before
           // this 15s grace even runs — and noRoute never fires.
-          if (!p.noRoute && !p.relayed && (p.neverUp === true || !peerAway(pid)) && now - p.downSince > 15000) { p.noRoute = true; updateTile(pid); }
+          if (!p.noRoute && !p.relayed && (p.neverUp === true || !peerAway(pid)) && now - p.downSince > 15000) {
+            p.noRoute = true;
+            // The grace is over. Take a door that never connected off the
+            // grid. The four-second retry keeps going (a member who does
+            // get through still needs it) but it must not mint a new face.
+            if (p.neverUp === true) parkUnreachableTile(p);
+            updateTile(pid);
+          }
         }
         if (p.noRoute && p.neverUp !== true && peerAway(pid)) { p.noRoute = false; updateTile(pid); }
       }
