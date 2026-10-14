@@ -1083,9 +1083,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     max-height: calc(100vh - 2rem); max-height: calc(100dvh - 2rem); overflow-y: auto; }
   .name-box h3 { margin-bottom: .5rem; }
   .name-box p { color: var(--muted, #8888aa); font-size: .85rem; margin-bottom: 1rem; }
-  .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem;
+  .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem; min-height: 48px;
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
-  .name-box button { padding: .5rem 1.4rem; border-radius: .5rem; border: 1px solid var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; }
+  .name-box button { padding: .5rem 1.4rem; min-height: 48px; border-radius: .5rem; border: 1px solid var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; }
   /* Help: a longer, scrollable panel — same modal chrome, room to breathe. */
   .help-box { width: 92vw; }
   .help-scroll { max-height: 70vh; overflow-y: auto; padding-right: .4rem; }
@@ -1144,13 +1144,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .lob-row { display: flex; justify-content: flex-end; gap: .5rem; }
   .lob-row button { padding: .45rem .9rem; }
   .lob-ghost { background: var(--surface, #1c1c2b); border: 1px solid var(--border, #2a2a3f); color: var(--text, #e0e0f0); }
-  .lob-err { color: #ff8a8a; font-size: .82rem; margin-top: .35rem; min-height: 1em; }
+  .lob-err { color: #9f1239; font-size: .82rem; margin-top: .35rem; min-height: 1em; }
   /* The two-password minting labels: the ADMIN password (never shared) vs the
      GUEST password (the one you do share) must be impossible to confuse. */
   .lob-pwlab { display: block; font-size: .82rem; margin: .2rem 0 .3rem; color: var(--text, #e0e0f0); }
   .lob-pwlab small { display: block; font-weight: 400; color: var(--muted, #8888aa); font-size: .74rem; line-height: 1.35; margin: .12rem 0 .1rem; }
   .lob-sep { border-top: 1px solid var(--border, #2a2a3f); margin: 1rem 0 .7rem; }
-  .lob-hist-h { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; opacity: .55; margin-bottom: .4rem; }
+  .lob-hist-h { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; opacity: 1; color: #1d1d1f; font-weight: 700; margin-bottom: .4rem; }
   .lob-item { display: flex; align-items: center; gap: .6rem; padding: .5rem .55rem; border-radius: .5rem; cursor: pointer; }
   .lob-item:hover { background: var(--surface, #1c1c2b); }
   .lob-item .li-main { flex: 1; min-width: 0; }
@@ -1180,20 +1180,165 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .tile video, .rowtile video, .fsthumb video, .tile .avatar {
       position: absolute; top: 0; right: 0; bottom: 0; left: 0; height: 100%; }
   }
+
+  /* Clear Stage: the call is a dark stage, the dock sits on the bottom,
+     and you float once someone else is here. Gallery rules skip screen
+     share, a shared app, and a broadcast so those layouts keep their strip. */
+  body { background: #0c0e12; }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, .seg:focus-visible {
+    outline: 3px solid #0064c8; outline-offset: 2px;
+  }
+  .topchip { position: fixed; z-index: 6; top: 14px; left: 14px; display: flex; align-items: center; gap: 8px;
+    max-width: min(28rem, calc(100% - 120px)); background: rgba(12,14,18,.92); color: #f4f7fb;
+    border-radius: 999px; padding: 6px 12px 6px 14px; }
+  .topchip .title { font-weight: 800; font-size: 16px; letter-spacing: -0.04em; text-decoration: none; cursor: pointer;
+    background: linear-gradient(135deg, #0071e3, #5856d6); -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent; }
+  .topchip .status { color: #e7ebf2; font-size: 13px; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
+    min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topchip .status.alert { color: #ffd23c; font-weight: 600; }
+  .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
+  body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
+  body.app-room #reactbtn, body.app-room #reacttray { display: none !important; }
+  #gifos-build-float { top: 14px !important; right: 14px !important; bottom: auto !important; left: auto !important;
+    opacity: 1 !important; color: #e7ebf2 !important; background: rgba(12,14,18,.92); padding: 4px 10px;
+    border-radius: 999px; z-index: 6 !important; text-shadow: none !important; }
+  .bar { position: fixed; z-index: 32; left: 50%; bottom: 14px; transform: translateX(-50%);
+    display: flex; align-items: center; flex-wrap: nowrap; gap: 10px; height: 84px; width: auto;
+    max-width: calc(100% - 16px); padding: 0 14px 0 16px; margin: 0;
+    background: rgba(255,255,255,.94); border: 0; border-radius: 28px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.28); overflow: visible; }
+  .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+    width: 56px; height: 56px; min-width: 56px; min-height: 56px; padding: 0; border: 0; border-radius: 50%;
+    background: #e8ecf1; color: #1d1d1f; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  }
+  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
+  .bar #mic.iconbtn, .bar #cam.iconbtn { color: #1d1d1f; border-color: transparent; }
+  .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { color: #9f1239; border-color: transparent; background: #e8ecf1; }
+  .bar #reactbtn.on, .bar #bartoggle[aria-expanded="true"] { background: #0064c8; color: #fff; }
+  .bar:not(.collapsed) .bartoggle svg { transform: none; }
+  .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; margin-left: 6px; padding: 0;
+    border: 0; border-radius: 20px; background: #b61622; color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+  .bar .barmore { display: none; }
+  .bar:not(.collapsed) .barmore { display: grid; position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
+    width: min(720px, calc(100vw - 24px)); grid-template-columns: repeat(4, 1fr); gap: 8px;
+    background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23; }
+  .bar:not(.collapsed) .barmore > button { min-height: 56px; height: auto; padding: 8px 6px; border: 0; border-radius: 16px;
+    background: #e8ecf1; color: #1d1d1f; font-size: 13px; font-weight: 650; white-space: normal; }
+  .bar:not(.collapsed) .barmore .blurctl { grid-column: 1 / -1; display: flex; align-items: center; min-height: 48px; gap: 8px; }
+  .bar:not(.collapsed) .barmore .blurlbl { display: inline; color: #3a3a3f; font-size: 14px; }
+  .bar:not(.collapsed) .barmore .seg { min-height: 48px; min-width: 48px; color: #1d1d1f; background: #fff; }
+  .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 96px; transform: translateX(-50%);
+    display: flex; gap: 8px; background: rgba(255,255,255,.96); border-radius: 20px; padding: 10px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.25); }
+  .reacttray[hidden] { display: none !important; }
+  .reacttray button { min-width: 64px; min-height: 64px; border: 0; border-radius: 16px; background: #e8ecf1; color: #1d1d1f;
+    font-size: 13px; font-weight: 650; padding: 6px; }
+  .reacttray button.on { background: #0064c8; color: #fff; }
+  .tile .reactburst { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 5;
+    background: #fff; color: #1d1d1f; font-weight: 800; font-size: 18px; padding: 8px 14px; border-radius: 999px;
+    pointer-events: none; opacity: 0; }
+  .tile .reactburst.show { animation: reactpop 1.6s ease forwards; }
+  @keyframes reactpop { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
+  #leave-ask .name-box { background: #fff; color: #1d1d1f; }
+  #leave-ask .name-box h3, #leave-ask .name-box p { color: #1d1d1f; }
+  #leave-ask #leave-cancel { min-height: 48px; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
+  #leave-ask #leave-go { min-height: 48px; margin-left: 8px; background: #b61622; color: #fff; border: 0; }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
+    background: #0c0e12; display: flex; flex-direction: column; padding: 8px 8px 108px; box-sizing: border-box; }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid {
+    flex: 1 1 auto; min-height: 0; height: auto; padding: 0; gap: 6px; align-content: stretch;
+    grid-auto-rows: minmax(0, 1fr); }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile {
+    aspect-ratio: auto; height: 100%; min-height: 0; border-radius: 16px; border: 0; background: #1a1d24; }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile video { object-fit: cover; }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="0"],
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="1"] {
+    grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr); }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="2"] {
+    grid-template-columns: 1.45fr .7fr; grid-template-rows: minmax(0, 1fr); }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="3"] {
+    grid-template-columns: 1.45fr .7fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="3"] > .tile.lead {
+    grid-row: 1 / span 2; }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="4"] {
+    grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="5"] {
+    grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="5"] > .tile.span-bottom {
+    grid-column: 1 / -1; }
+  body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
+    position: fixed; z-index: 4; width: 168px; height: 126px; right: 28px; bottom: 124px; left: auto; top: auto;
+    border-radius: 16px; border: 2px solid #fff; aspect-ratio: auto; box-shadow: 0 12px 28px rgba(0,0,0,.45); }
+  @media (max-width: 700px) {
+    body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
+      width: 112px; height: 150px; right: 14px; bottom: 118px; border-radius: 18px; }
+    body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="3"]) .tile.me {
+      left: 12px; right: auto; width: 84px; height: 112px; }
+    body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="5"]) .tile.me {
+      width: 86px; height: 114px; }
+    .bar:not(.collapsed) .barmore { grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px); }
+  }
+  body.screen-on #feed { padding-bottom: 108px; box-sizing: border-box; background: #0c0e12; }
+  body.screen-on #grid { flex: 0 0 120px; height: 120px; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; }
+  body.screen-on #grid .tile { height: 104px; flex: 0 0 auto; width: auto; aspect-ratio: 16 / 9; }
+  @media (max-width: 700px) {
+    body.screen-on #grid { flex-basis: 92px; height: 92px; }
+    body.screen-on #grid .tile { height: 76px; }
+  }
+  body.has-app #feed { margin-bottom: 108px; }
+  body.broadcast #feed { padding-bottom: 108px; box-sizing: border-box; }
+  #joinveil { background: transparent; pointer-events: none; align-items: flex-start; justify-content: center; padding-top: 72px; z-index: 18; }
+  #joinveil .jv-box { pointer-events: auto; background: #fff; color: #1d1d1f; border-radius: 16px; padding: 1.1rem 1.3rem;
+    box-shadow: 0 12px 32px rgba(0,0,0,.28); }
+  #joinveil h3 { color: #1d1d1f; }
+  #joinveil p { color: #3a3a3f; }
+  #lobby { background: #e8ecf1; }
+  #lobby.show { display: grid; padding: 0; overflow: hidden; align-items: stretch; justify-content: stretch; }
+  .lob-preview { position: relative; min-height: 180px; background: #1a1d24; overflow: hidden; }
+  .lob-preview video { width: 100%; height: 100%; object-fit: cover; display: block; background: #1a1d24; }
+  .lob-pv-name { position: absolute; left: 16px; bottom: 16px; background: rgba(8,10,14,.78); color: #f4f7fb;
+    font-size: 15px; font-weight: 650; padding: 5px 12px; border-radius: 999px; }
+  .lob-quiet { color: #3a3a3f; font-size: 14px; line-height: 1.35; margin: 0 0 14px; text-align: center; }
+  .lobby-card { background: #fff; color: #1d1d1f; }
+  .lobby-card h1 { color: #1d1d1f; }
+  #lobby.show .lob-primary, #lobby.show .lob-action, #lob-admin-go, #lob-join-go, .lob-row button {
+    min-height: 48px; border-radius: 16px; }
+  #lobby.show .lob-primary, #lob-admin-go { background: #0064c8; border-color: transparent; color: #fff; font-weight: 700; text-align: center; }
+  #lobby.show .lob-action { background: #fff; border: 1.5px solid #8d93a0; color: #1d1d1f; text-align: center; }
+  .lob-expand input { min-height: 48px; color: #1d1d1f; background: #fff; }
+  #lob-rename { min-height: 48px; padding: 8px 12px; color: #0064c8; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; }
+  .lob-star, #lobby button.row-del { min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
+  .lob-item .li-sub { opacity: 1; color: #3a3a3f; }
+  @media (max-width: 700px) {
+    #lobby.show { grid-template-rows: minmax(140px, 1.15fr) minmax(0, 1fr); }
+    #lobby .lobby-card { max-width: none; margin: -18px 0 0; border-radius: 22px 22px 0 0; padding: 16px 16px 18px; overflow: auto; position: relative; }
+    .lob-pv-name { bottom: 28px; }
+  }
+  @media (min-width: 701px) {
+    #lobby.show { grid-template-columns: 1.35fr .8fr; }
+    #lobby .lob-preview { margin: 16px; border-radius: 20px; }
+    #lobby .lobby-card { max-width: none; margin: 16px 16px 16px 0; border-radius: 20px; padding: 28px 32px; overflow: auto; }
+  }
 </style>
 <script src="js/gifos-themes.js"></script>
 </head>
 <body>
   <div id="lobby">
+    <div class="lob-preview" id="lob-preview">
+      <video id="lob-preview-vid" autoplay muted playsinline></video>
+      <span class="lob-pv-name" id="lob-preview-name">You</span>
+    </div>
     <div class="lobby-card">
       <h1>Meeting</h1>
+      <p class="lob-quiet">You join muted. The camera stays however you set it here.</p>
       <button id="lob-open" class="lob-primary">Start a meeting<small>Open room · anyone with the link can join</small></button>
       <button id="lob-admin-btn" class="lob-action">Start a room you run<small>You're the admin: set a password, mute/blur, ban a troublemaker</small></button>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <input id="lob-admin-name" maxlength="40" placeholder="Room name (anything you like)" autocomplete="off">
         <label class="lob-pwlab">🔑 <b id="lob-admin-pass-head">Admin password</b> — yours alone — <b>do not share it</b><small id="lob-admin-pass-note">This is what puts you in charge of the room. Guests don’t need it. Anyone you give it to can run the room too.</small></label>
         <input id="lob-admin-pass" type="password" maxlength="64" placeholder="Admin password (keep to yourself)" autocomplete="new-password">
-        <label class="lob-pwlab">🎟 <b id="lob-guest-pass-head">Guest password</b> — the one you <b>do</b> share<small id="lob-guest-pass-note">Optional, but faces stay fully blurred (Max) until you set one. The Blur slider softens it. Guests type it to get in. It is not part of the link — send it to them yourself. The Password button changes it later.</small></label>
+        <label class="lob-pwlab">🎟 <b id="lob-guest-pass-head">Guest password</b> — the one you <b>do</b> share<small id="lob-guest-pass-note">Optional. Faces stay blurred until you set one, and it is not part of the link.</small></label>
         <input id="lob-guest-pass" type="password" maxlength="64" placeholder="Guest password (optional — share with guests)" autocomplete="new-password">
         <div class="lob-row"><button id="lob-admin-cancel" class="lob-ghost">Cancel</button><button id="lob-admin-go">Create &amp; enter</button></div>
         <div id="lob-admin-err" class="lob-err"></div>
@@ -1211,21 +1356,40 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div class="lob-namebar">You'll join as <b id="lob-name">…</b> · <button id="lob-rename" class="lob-link">change</button></div>
     </div>
   </div>
-  <div class="bar collapsed">
-    <button id="bartoggle" class="bartoggle" aria-expanded="false" aria-label="Show meeting controls" title="Show meeting controls">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-    </button>
+  <div class="topchip">
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
-    <button id="mic" class="iconbtn off" aria-label="Microphone" title="Your mic">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
-        <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
-    </button>
+    <span class="status" id="status">Joining…</span>
+  </div>
+  <div class="admcount" id="admcount" style="display:none"></div>
+  <div class="bar collapsed" role="toolbar" aria-label="Call controls">
     <button id="cam" class="iconbtn off" aria-label="Camera" title="Your camera">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="2" y="6" width="13" height="12" rx="2"/><path d="M15 10.5 22 7v10l-7-3.5"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
     </button>
+    <button id="mic" class="iconbtn off" aria-label="Microphone" title="Your mic">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
+        <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
+    </button>
+    <button id="reactbtn" type="button" class="iconbtn" aria-label="Reactions" aria-expanded="false" aria-pressed="false" title="Reactions">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>
+    </button>
+    <button id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button id="leavebtn" type="button" aria-label="Hang up" title="Leave this meeting — your seat closes at once and your camera and mic stop">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(135 12 12)"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 3.1 2 2 0 0 1 4.1 1h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 8.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.7 2.1z"/></g></svg>
+    </button>
+    <div class="barmore" id="barmore">
+    <span class="blurctl" title="How much your own video is blurred to everyone else">
+      <span class="blurlbl">Blur</span>
+      <span id="blurseg" class="segwrap" role="group" aria-label="Blur level">
+        <button class="seg" id="blur-max" data-blur="2">Max</button>
+        <button class="seg" id="blur-min" data-blur="1">Min</button>
+        <button class="seg" id="blur-none" data-blur="0">No blur</button>
+      </span>
+    </span>
     <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
@@ -1235,22 +1399,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
     </button>
-    <span class="blurctl" title="How much your own video is blurred to everyone else">
-      <span class="blurlbl">Blur</span>
-      <span id="blurseg" class="segwrap" role="group" aria-label="Blur level">
-        <button class="seg" id="blur-max" data-blur="2">Max</button>
-        <button class="seg" id="blur-min" data-blur="1">Min</button>
-        <button class="seg" id="blur-none" data-blur="0">No blur</button>
-      </span>
-    </span>
-    <button id="leavebtn" class="off" title="Leave this meeting — your seat closes at once and your camera and mic stop">Leave</button>
-    <!-- The status line and the host-absence countdown are information, not
-         controls: a refusal, a ban, "reconnecting…", "Just you — send the
-         invite" and "this room closes in 4:59" must be readable while the
-         controls are folded away (collapsed is the default). -->
-    <span class="status" id="status">Joining…</span>
-    <div class="admcount" id="admcount" style="display:none"></div>
-    <div class="barmore" id="barmore">
     <button type="button" id="whobtn" title="Who is on this meeting — names and internet addresses">Who</button>
     <button id="invite" title="Friends join you live with one link">Invite</button>
     <button id="appbtn" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
@@ -1269,6 +1417,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="setbtn" title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
     <button id="trbtn" title="The meeting's live transcript" style="display:none">Transcript</button>
     <button id="helpbtn" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
+    </div>
+    <div id="reacttray" class="reacttray" hidden role="group" aria-label="Reactions">
+      <button type="button" id="react-hand">Hand</button>
+      <button type="button" data-burst="Clap">Clap</button>
+      <button type="button" data-burst="Yes">Yes</button>
+      <button type="button" data-burst="No">No</button>
+      <button type="button" data-burst="Laugh">Laugh</button>
     </div>
   </div>
   <div class="share" id="share">
@@ -1642,6 +1797,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <p>Your camera and microphone are off and your seat is closed. The same link brings you back.</p>
       <button id="left-rejoin">Rejoin</button>
       <button id="left-close" style="margin-left:.5rem;background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+    </div>
+  </div>
+  <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
+    <div class="name-box">
+      <h3 id="leave-ask-title">Leave this meeting?</h3>
+      <p>Your camera and microphone stop, and your seat closes.</p>
+      <button id="leave-cancel" type="button">Stay</button>
+      <button id="leave-go" type="button">Leave</button>
     </div>
   </div>
 
@@ -4138,6 +4301,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       if (meTile) apply('me', meTile);
       for (const [pid, p] of peers) apply(pid, p);
+      // Once someone else is here, you leave the grid and float. The count
+      // is the other people, so one other person fills the stage.
+      const remoteTiles = [];
+      for (const [, p] of peers) if (p && p.tile) remoteTiles.push(p.tile);
+      remoteTiles.sort((a, b) => (parseFloat(a.style.order) || 0) - (parseFloat(b.style.order) || 0));
+      const nRemote = peers.size;
+      document.body.classList.toggle('has-peers', nRemote > 0);
+      if (grid) grid.setAttribute('data-remotes', String(nRemote));
+      remoteTiles.forEach((t, i) => {
+        t.classList.toggle('lead', nRemote === 3 && i === 0);
+        t.classList.toggle('span-bottom', nRemote === 5 && i === remoteTiles.length - 1);
+      });
     }
 
     // ---- who's talking: per-stream audio meters → glowing tile border --------
@@ -9702,7 +9877,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       b.type = 'button';
       if (inp.id) b.id = 'pweye-' + inp.id;
       b.title = 'Show password'; b.setAttribute('aria-label', 'Show password');
-      b.style.cssText = 'position:absolute;right:.3rem;top:50%;transform:translateY(-50%);background:none;border:none;padding:.2rem;margin:0;color:var(--muted,#8888aa);cursor:pointer;line-height:0';
+      b.style.cssText = 'position:absolute;right:0;top:0;width:48px;height:48px;min-width:48px;min-height:48px;background:none;border:none;padding:0;margin:0;color:#3a3a3f;cursor:pointer;line-height:0;display:inline-flex;align-items:center;justify-content:center';
+      inp.style.minHeight = '48px';
+      inp.style.paddingRight = '52px';
       b.innerHTML = PWEYE_SVG;
       b.onclick = () => {
         const show = inp.type === 'password';
@@ -10312,11 +10489,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function lobRow(e, marked) {
       return '<div class="lob-item" data-url="' + esc(e.url) + '">' +
-        '<button class="lob-star" data-star="' + esc(e.url) + '" title="' + (marked ? 'Remove bookmark' : 'Save as bookmark') + '">' + (marked ? '★' : '☆') + '</button>' +
+        '<button type="button" class="lob-star" data-star="' + esc(e.url) + '" aria-label="Save" title="' + (marked ? 'Saved' : 'Save') + '">' + (marked ? '★' : '☆') + '</button>' +
         '<div class="li-main"><span class="li-name">' + esc(e.name || SURFACE_NAME) +
           (e.av ? '<span class="li-badge">admin</span>' : '') + '</span>' +
           '<span class="li-sub">' + agoLabel(e.ts) + '</span></div>' +
-        '<button class="row-del" data-del="' + esc(e.url) + '" title="Remove from this list">' + DEL_ICON + '</button>' +
+        '<button type="button" class="row-del" data-del="' + esc(e.url) + '" title="Remove" aria-label="Remove">' + DEL_ICON + '</button>' +
       '</div>';
     }
     function renderLobbyList() {
@@ -10365,6 +10542,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (!room || !/^[a-z0-9-]{1,64}$/i.test(room)) return null;
       if (av && !/^[a-f0-9]{16,64}$/.test(av)) av = '';
+      // A bare word ("hello") is not a meeting id. Links and id.verifier
+      // still parse above. Open-room codes are 16 characters, and a named
+      // room or the lobby's bare-id check is longer than five letters.
+      if (!/[:/#?]/.test(s) && !av && /^[A-Za-z]{1,5}$/.test(room)) return null;
       // NEVER normalise the room id. It is the whole capability: the relay
       // session, token and end-to-end key are all DERIVED from this exact string
       // ("derive, don't send", gifos-net.js). joinRoom() reads it from the link
@@ -10374,7 +10555,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // people never saw each other. Only `av` is case-folded: it is a hex digest.
       return { room, av, relay, bc: bc && !!av }; // bc is only meaningful on an admin room
     }
+    function stopLobbyPreview() {
+      const vid = document.getElementById('lob-preview-vid');
+      if (!vid || !vid.srcObject) return;
+      try { vid.srcObject.getTracks().forEach((t) => t.stop()); } catch (e) {}
+      vid.srcObject = null;
+    }
+    function startLobbyPreview() {
+      const vid = document.getElementById('lob-preview-vid');
+      const name = document.getElementById('lob-preview-name');
+      if (name) name.textContent = myName();
+      if (!vid || vid.srcObject) return;
+      const md = navigator.mediaDevices;
+      if (!md || !md.getUserMedia) return;
+      md.getUserMedia({ video: true, audio: false }).then((stream) => {
+        const lob = document.getElementById('lobby');
+        if (!lob || !lob.classList.contains('show')) {
+          try { stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+          return;
+        }
+        vid.srcObject = stream;
+      }).catch(() => {});
+    }
     function enterMeeting(hashOrUrl) {
+      stopLobbyPreview();
       // Accept a '#…' hash (minted here) or a full URL (a saved entry). A
       // hash-only change never re-runs boot on its own, so it needs an explicit
       // reload — but ONLY then: reloading while navigating to a DIFFERENT path
@@ -10410,7 +10614,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.getElementById('lob-admin-cancel').onclick = () => { document.getElementById('lob-admin').style.display = 'none'; };
       document.getElementById('lob-admin-go').onclick = async () => {
         const err = document.getElementById('lob-admin-err');
-        const chosen = slugRoom(document.getElementById('lob-admin-name').value, '');
+        const rawName = document.getElementById('lob-admin-name').value || '';
+        // slugRoom turns a blank into "room", so the empty check has to
+        // happen on what was typed. A name with no letter or digit is blank.
+        if (!/[A-Za-z0-9]/.test(rawName)) { err.textContent = 'Give your room a name.'; return; }
+        const chosen = slugRoom(rawName, '');
         const pass = (document.getElementById('lob-admin-pass').value || '').trim();
         if (!chosen) { err.textContent = 'Give your room a name.'; return; }
         if (!pass) { err.textContent = 'Set an admin password — it’s the key to your room.'; return; }
@@ -10474,7 +10682,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('lob-admin-pass').placeholder = 'Host password (keep to yourself)';
         document.getElementById('lob-admin-pass-note').textContent = 'This is what puts you in charge of the broadcast. Viewers don’t need it. Anyone you give it to can run your broadcast too.';
         document.getElementById('lob-guest-pass').placeholder = 'Viewer password (optional — share with viewers)';
-        document.getElementById('lob-guest-pass-note').textContent = 'Optional, but the picture stays fully blurred (Max) until you set one. The Blur slider softens it. Viewers type it to watch. It is not part of the link — send it to your audience yourself. The Password button changes it later.';
+        document.getElementById('lob-guest-pass-note').textContent = 'Optional. The picture stays blurred until you set one, and it is not part of the link.';
         document.getElementById('lob-join-btn').innerHTML = 'Watch a broadcast<small>Paste a broadcast link someone shared</small>';
         document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch will show up here.';
       }
@@ -10482,6 +10690,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       renderLobbyList();
       wireLobby();
       document.getElementById('lobby').classList.add('show');
+      startLobbyPreview();
     }
 
     // ---- boot ------------------------------------------------------------------
@@ -15446,6 +15655,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintHand() {
       handBtn.classList.toggle('off', !!myStatus.hand);
       handBtn.textContent = myStatus.hand ? 'Lower hand' : 'Hand';
+      const rh = document.getElementById('react-hand');
+      if (rh) {
+        rh.textContent = myStatus.hand ? 'Lower hand' : 'Hand';
+        rh.classList.toggle('on', !!myStatus.hand);
+        rh.setAttribute('aria-pressed', myStatus.hand ? 'true' : 'false');
+      }
     }
     handBtn.onclick = () => {
       myStatus.hand = myStatus.hand ? null : Date.now();
@@ -17792,7 +18007,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       function apply(collapsed) {
         bar.classList.toggle('collapsed', collapsed);
         toggle.setAttribute('aria-expanded', String(!collapsed));
-        toggle.title = collapsed ? 'Show meeting controls' : 'Hide meeting controls';
+        toggle.setAttribute('aria-label', collapsed ? 'More' : 'Hide meeting controls');
+        toggle.title = collapsed ? 'More' : 'Hide meeting controls';
       }
       toggle.onclick = function () {
         const next = !bar.classList.contains('collapsed'); apply(next);
@@ -17808,12 +18024,55 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Transcript, Share screen) moves it as well. Where ResizeObserver is
       // missing the variable stays unset and everything behaves exactly as it
       // did before — the fallback is the old bug, not a broken layout.
+      // The dock sits at the bottom, so a panel that used to clear a top bar
+      // starts at the top of the page instead.
       const setBarH = () => {
-        try { document.documentElement.style.setProperty('--barh', Math.round(bar.getBoundingClientRect().height) + 'px'); } catch (e) {}
+        try { document.documentElement.style.setProperty('--barh', '0px'); } catch (e) {}
       };
       if (window.ResizeObserver) { try { new ResizeObserver(setBarH).observe(bar); } catch (e) {} }
       window.addEventListener('resize', setBarH);
       setBarH();
+    })();
+
+    (function () {
+      const btn = document.getElementById('reactbtn');
+      const tray = document.getElementById('reacttray');
+      if (!btn || !tray) return;
+      const shut = () => {
+        tray.setAttribute('hidden', '');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-pressed', 'false');
+        btn.classList.remove('on');
+      };
+      btn.onclick = () => {
+        if (tray.hasAttribute('hidden')) {
+          tray.removeAttribute('hidden');
+          btn.setAttribute('aria-expanded', 'true');
+          btn.setAttribute('aria-pressed', 'true');
+          btn.classList.add('on');
+        } else shut();
+      };
+      tray.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        if (b.id === 'react-hand') {
+          const hand = document.getElementById('hand');
+          if (hand) hand.click();
+          return;
+        }
+        const label = b.getAttribute('data-burst');
+        if (!label) return;
+        const tile = document.querySelector('.tile.me');
+        if (!tile) return;
+        let burst = tile.querySelector('.reactburst');
+        if (!burst) { burst = document.createElement('div'); burst.className = 'reactburst'; tile.appendChild(burst); }
+        burst.textContent = label;
+        // Restart the fade. The stylesheet owns the 1.6s, so a second tap
+        // starts the burst again without a timer in this script.
+        burst.classList.remove('show');
+        void burst.offsetWidth;
+        burst.classList.add('show');
+      });
     })();
 
     function amGloballyMuted() { const m = modOf('me').mute; return !!(m && m.on); }
@@ -17824,7 +18083,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function armMeetDialogs() {
       const modals = document.querySelectorAll('.name-modal');
       for (const el of modals) {
-        el.setAttribute('role', 'dialog');
+        if (el.getAttribute('role') !== 'alertdialog') el.setAttribute('role', 'dialog');
         el.setAttribute('aria-modal', 'true');
         const h = el.querySelector('h2, h3, h4');
         if (h) {
@@ -18357,7 +18616,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function syncModalFocus() {
       const top = topNameModal();
       if (top && top !== modalTracked) {
-        top.setAttribute('role', 'dialog');
+        if (top.getAttribute('role') !== 'alertdialog') top.setAttribute('role', 'dialog');
         top.setAttribute('aria-modal', 'true');
         modalOpener = modalOutside;
         modalTracked = top;
@@ -18393,10 +18652,51 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (b) { e.preventDefault(); b.click(); queueMicrotask(syncModalFocus); }
           return;
         }
+        const tray = document.getElementById('reacttray');
+        if (tray && !tray.hasAttribute('hidden')) {
+          e.preventDefault();
+          tray.setAttribute('hidden', '');
+          const rb = document.getElementById('reactbtn');
+          if (rb) { rb.setAttribute('aria-expanded', 'false'); rb.setAttribute('aria-pressed', 'false'); rb.classList.remove('on'); try { rb.focus(); } catch (err) {} }
+          return;
+        }
+        const barEl = document.querySelector('.bar');
+        if (barEl && !barEl.classList.contains('collapsed')) {
+          const toggle = document.getElementById('bartoggle');
+          if (toggle) { e.preventDefault(); toggle.click(); }
+          return;
+        }
         if (voteMode) setVoteMode(null);
         return;
       }
-      if (!top) return;
+      if (!top) {
+        if (e.key !== 'Tab') return;
+        const barEl = document.querySelector('.bar');
+        const tray = document.getElementById('reacttray');
+        if (!barEl) return;
+        const trayOpen = !!(tray && !tray.hasAttribute('hidden'));
+        const sheetOpen = !barEl.classList.contains('collapsed');
+        if (!trayOpen && !sheetOpen) return;
+        const nodes = [];
+        for (const n of barEl.querySelectorAll('button, a[href], input, select, textarea')) {
+          if (n.disabled) continue;
+          if (n.style && n.style.display === 'none') continue;
+          if (!sheetOpen && n.closest && n.closest('#barmore')) continue;
+          if (!trayOpen && n.closest && n.closest('#reacttray')) continue;
+          let hide = false, p = n.parentElement;
+          while (p) {
+            if ((p.hasAttribute && p.hasAttribute('hidden')) || (p.style && p.style.display === 'none')) { hide = true; break; }
+            p = p.parentElement;
+          }
+          if (!hide) nodes.push(n);
+        }
+        if (nodes.length < 2) return;
+        const first = nodes[0], last = nodes[nodes.length - 1];
+        const inside = barEl.contains(document.activeElement);
+        if (e.shiftKey && (document.activeElement === first || !inside)) { e.preventDefault(); try { last.focus(); } catch (err) {} }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); try { first.focus(); } catch (err) {} }
+        return;
+      }
       const nodes = modalFocusables(top);
       if (!nodes.length) return;
       const first = nodes[0], last = nodes[nodes.length - 1];
@@ -18407,7 +18707,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     });
     for (const el of document.querySelectorAll('.name-modal')) {
-      el.setAttribute('role', 'dialog');
+      if (el.getAttribute('role') !== 'alertdialog') el.setAttribute('role', 'dialog');
       el.setAttribute('aria-modal', 'true');
     }
     paintControls();
@@ -18747,7 +19047,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return flushing;
     }
     const leaveBtn = document.getElementById('leavebtn');
-    if (leaveBtn) leaveBtn.onclick = leaveMeeting;
+    const leaveAsk = document.getElementById('leave-ask');
+    // The button asks first. leaveMeeting() itself stays immediate so a
+    // hang-up from the OS and the test hook still leave at once.
+    if (leaveBtn) leaveBtn.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'flex'; };
+    const leaveCancel = document.getElementById('leave-cancel');
+    if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; };
+    const leaveGo = document.getElementById('leave-go');
+    if (leaveGo) leaveGo.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; leaveMeeting(); };
     const leftRejoin = document.getElementById('left-rejoin'); if (leftRejoin) leftRejoin.onclick = () => location.reload();
     const leftClose = document.getElementById('left-close'); if (leftClose) leftClose.onclick = () => { location.href = homeHref(); };
 
