@@ -862,7 +862,21 @@
     // signal that may evict/tie-break: a phantom (a stale gossip echo of a seat
     // that has moved) is NOT first-hand live, so it can never yield a live
     // healer out of a hole. Echo-immune — gossip informs routing, never liveness.
-    liveMark(k) { const v = this.occ.get(k); const pt = this.live.get(k); if (v === undefined) this.heardSince.delete(k); else if (this.liveBy.get(k) !== v || pt === undefined || this.TICK - pt > 60) this.heardSince.set(k, this.TICK); this.live.set(k, this.TICK); this.holeSince.delete(k); this.byeAt.delete(k); this.fhEver.add(k); if (v === undefined) this.liveBy.delete(k); else this.liveBy.set(k, v); }
+    liveMark(k) { const v = this.occ.get(k); const pt = this.live.get(k); if (v === undefined) this.heardSince.delete(k); else if (this.liveBy.get(k) !== v || pt === undefined || this.TICK - pt > 60) this.heardSince.set(k, this.TICK); this.live.set(k, this.TICK); this.holeSince.delete(k); this.byeAt.delete(k); this.fhEver.add(k); if (v === undefined) this.liveBy.delete(k); else this.liveBy.set(k, v); if (v !== undefined && v !== this.id) this.dropTwinHint(v, k); }
+    // Hearing id at `keep` is where id sits. Another Section-1 cell that only
+    // a hint named id at, and that no link proved, is the cell it left. The
+    // roster map keeps whichever cell was written last, so the hint hid the
+    // real seat until the head's RING_HOLD heal finally emptied it (chaos
+    // 4ab448: Yara shown 138s after a 10s hide). A cell I still hear, a
+    // link-proven stay (its LEAVE carries the pairing), and a standing D5
+    // observation are not hints.
+    dropTwinHint(id, keep) {
+      for (const [k2, v2] of Array.from(this.occ)) {
+        if (k2 === keep || v2 !== id || !isS1key(k2)) continue;
+        if (this.firstHandLive(k2) || this.translost.has(k2) || this.linkedBy.get(k2) === id) continue;
+        this.occ.delete(k2); this.live.delete(k2); this.liveBy.delete(k2); this.pongBy.delete(k2); this.s1seen.delete(k2); this.kidful.delete(k2); this.tlForget(k2, 'twin-hint');
+      }
+    }
     // x is the seat I hear first-hand at k NOW: a live stamp set while x held
     // k, and no unanswered transport loss since. Gossip, hints and PONG rows
     // never set it.
