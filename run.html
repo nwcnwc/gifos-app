@@ -2665,20 +2665,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // settle would wait the whole window on a negotiation that cannot
           // finish. A check that has been answered is left to form.
           if (built >= at || (built > at - 5000 && (st === 'connecting' || st === 'connected'))) {
-            if (p.wakeAsked && st === 'connecting' && p.wakeBuiltAt !== at && !(p.dc && p.dc.readyState === 'open')) hush.push([pid, p, p.pc]);
+            const openDc = p.dc && p.dc.readyState === 'open';
+            // Theirs: the channel we asked was replaced by an offer. Ours: we
+            // rebuilt at the return, toward an id that may already be gone.
+            const theirs = p.wakeAsked && st === 'connecting' && p.wakeBuiltAt !== at && !openDc;
+            const ours = p.wakeBuiltAt === at && !openDc && (st === 'connecting' || st === 'new');
+            if (theirs || ours) hush.push([pid, p, p.pc, ours]);
             continue;
           }
           rebuild(pid, p, 'silent');
         }
-        const hushOne = (pid, p, pc, again) => {
+        const hushOne = (pid, p, pc, again, ours) => {
           iceCheckVerdict(pc).then((v) => {
             if (p.wakeAt !== at || p.pc !== pc || darkSince(at)) return;
             if (p.connected && p.dc && p.dc.readyState === 'open') return;
-            if (v === 'dead') { rebuild(pid, p, 'unanswered'); return; }
-            if (v === 'soon' && again) setTimeout(() => hushOne(pid, p, pc, false), 1000);
+            if (v === 'dead') {
+              // Our own rebuild drew no answer: that id is not there. Closing
+              // it lets the next dial-request build a pair to whoever is.
+              // Rebuilding again would offer the same corpse for the settle.
+              if (ours) { p.fragDialAt = 0; try { pc.close(); } catch (e) {} onTransportDead(pid, 'unanswered'); return; }
+              rebuild(pid, p, 'unanswered'); return;
+            }
+            if (v === 'soon' && again) setTimeout(() => hushOne(pid, p, pc, false, ours), 1000);
           });
         };
-        for (const [pid, p, pc] of hush) hushOne(pid, p, pc, true);
+        for (const [pid, p, pc, ours] of hush) hushOne(pid, p, pc, true, ours);
       }, WAKE_PROBE_MS);
       setTimeout(() => {
         if (leaving || bannedOut) return;
