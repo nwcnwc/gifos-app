@@ -7246,23 +7246,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!pid || pid === myId || (typeof isEjected === 'function' && isEjected(pid) === true)) return;
       const p = peers.get(pid);
       if (p && (p.connected || (p.dc && p.dc.readyState === 'open') || p.offering)) return; // reachable already, or an offer is minting
-      // A door that has never once connected is redialled at a growing
-      // interval: 5 s, then 10, 20, 40, and 40 from then on (DOOR_REDIAL_CAP),
-      // until it connects (dialWait clears with neverUp). Every redial is a
-      // fresh bootstrap over the relay (three frames), and a page whose
-      // network reaches no one keeps every greeter's door alive at once:
-      // nine doors every 5 s was 5.4 frames a second, past the production
-      // meter (3 a second after a 600-frame burst), and the relay cut the
-      // page for rate about four minutes in.
-      // Nine doors at 40 s is 0.7 a second. A pair that once connected
-      // keeps its five seconds: its rejoin bound is a member's, not a
-      // stranger's.
-      const wait = (p && p.neverUp === true) ? (p.dialWait || 5000) : 5000;
+      // While four or more doors have never once connected, each is
+      // redialled at a growing interval: 5 s, then 10, 20, 40, and 40 from
+      // then on (DOOR_REDIAL_CAP), until it connects (dialWait clears with
+      // neverUp). Fewer than that keep five seconds, the same as a pair
+      // that has connected before. Every redial is a fresh bootstrap over
+      // the relay (three frames), and a page whose network reaches no one
+      // keeps every greeter's door alive at once: nine doors every 5 s was
+      // 5.4 frames a second, past the production meter (3 a second after a
+      // 600-frame burst), and the relay cut the page for rate about four
+      // minutes in.
+      // Nine doors at 40 s is 0.7 a second. Four unanswered doors at five
+      // seconds are 2.4 frames a second, under that meter, so the growing
+      // wait starts only at four. One door left on the long wait held a
+      // member's return past the point the room could see them.
+      let neverDoors = 0;
+      for (const q of peers.values()) if (q.neverUp === true) neverDoors++;
+      const manyDoors = neverDoors >= 4;
+      const wait = (p && p.neverUp === true && manyDoors) ? (p.dialWait || 5000) : 5000;
       if (p && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < wait && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') return; // forming: its turn is not yet
       // A stale transport — an offer never answered, a pair dead since a
       // dark spell — is rebuilt: the door needs a fresh bootstrap, not a
       // renegotiation of a corpse.
-      if (p && p.pc) { newPcFor(p); if (p.neverUp === true) p.dialWait = Math.min(DOOR_REDIAL_CAP, (p.dialWait || 5000) * 2); }
+      if (p && p.pc) { newPcFor(p); if (p.neverUp === true && manyDoors) p.dialWait = Math.min(DOOR_REDIAL_CAP, (p.dialWait || 5000) * 2); }
       sendOffer(pid, false);
       const q = peers.get(pid); if (q) q.boot = true; // the door I came in by: retired once a seat's own link is open (retireBootPairs), unless the arithmetic names it
     }
