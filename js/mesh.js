@@ -1228,6 +1228,18 @@
       // row's YIELD until another neighbour came back.
       if (this.nbrAt !== -1) { this.nbrAt -= n; if (this.nbrAt === -1) this.nbrAt = -2; }
       this.backAt = this.TICK;   // the return: only hearing newer than this refreshes rookSeenAt (tick)
+      // Say where I sit, once, to every neighbour I still name. A mate that
+      // healed into my cell while I was gone only says so on its next HELLO,
+      // and that beat is several seconds out on a slowed clock: the contest
+      // and the re-seat then miss the time a person will wait to be back.
+      // The same HELLO already goes out on that beat; this one starts the
+      // contest on the return tick. It installs nobody.
+      if (this.hasCoord && this.state === 3) {
+        for (const olc of topo.ownedLinks(this.coord)) {
+          const x = this.occGet(ck(olc));
+          if (x != null && x !== this.id) this.emit(x, { t: 'HELLO', ck: ck(this.coord), id: this.id });
+        }
+      }
       // ...and the head's own admit pace (healTry, 45 ticks per chair): an
       // attempt made just before a freeze still read as fresh after it, and
       // the chair stayed shut for the rest of the pace in wall time beyond
