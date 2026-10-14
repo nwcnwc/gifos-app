@@ -462,6 +462,10 @@
       this.roster = []; this.haveRoster = false; this.lastGreeters = [];
       this.findAckAt = -1;       // FINDACK: the tick lastAsked acknowledged my outstanding FIND (-1 = not yet)
       this.findAckers = null;    // FINDACK: door ids whose build sends FINDACK (from the greeter list); null = every greeter does (the sim and harness fabrics)
+      this.ackReasks = 0;        // re-drives of the current acknowledged ask (a fresh pick resets it)
+      this.ackReaskAt = -1;
+      this.reAskAgain = false;   // the paced re-send is the same ask, not a new pick
+      this.handed = new Map();   // seeker id -> { to, cell, deep, at }: where I handed its FIND, so a marked re-ask follows the same chain
       this.findNc = null;        // 03c: seeker of the serveFind scan in progress (knock-is-evidence phantom scope)
       this.noroomSeen = 0;       // T7: NOROOMs told to my face since I last entered the search (sim mesh.cpp noroomSeen) — only an EXPLICIT NOROOM counts, never a timeout
       // V7 THE DEEP-ROW LEDGER (sim mesh.cpp rowLedgerAt, 2026-09-17): the tick I
@@ -1407,7 +1411,18 @@
       this.forkOpts = new Map(); this.forkPending = 0;
       this.emitRelay(this.myKey); this.wake();
     }
-    askSeat(target) { if (this.askTick === this.TICK) { if (!this.hasCoord) { this.state = 2; this.retryAt = this.TICK; } this.reAsk = true; this.wake(); return; } this.askTick = this.TICK; this.state = 2; this.retryAt = this.TICK; this.findAckAt = -1; (this.triedSilent = this.triedSilent || new Set()).add(target); this.lastAsked = target; const fm = { t: 'FIND', nc: this.id, ttl: 200, spread: (SPREAD && this.noroomSeen >= 1) }; const dk = this.darkGreeters(target); if (dk.length) fm.dark = dk; this.emit(target, fm); this.wake(); } // ENTRY PACING: one ask per tick (paced-out ⇒ defer the SEND, never the STATE — see join())
+    askSeat(target, again) {
+      // ENTRY PACING: one ask per tick. A paced-out send is deferred, never the
+      // state. A marked re-ask remembers that it is the same ask.
+      if (this.askTick === this.TICK) { if (!this.hasCoord) { this.state = 2; this.retryAt = this.TICK; } this.reAsk = true; if (again) this.reAskAgain = true; this.wake(); return; }
+      this.askTick = this.TICK; this.state = 2; this.retryAt = this.TICK;
+      if (!again) { this.findAckAt = -1; this.ackReasks = 0; this.reAskAgain = false; }
+      (this.triedSilent = this.triedSilent || new Set()).add(target); this.lastAsked = target;
+      const fm = { t: 'FIND', nc: this.id, ttl: 200, spread: (SPREAD && this.noroomSeen >= 1) };
+      if (again) fm.again = 1;
+      const dk = this.darkGreeters(target); if (dk.length) fm.dark = dk;
+      this.emit(target, fm); this.wake();
+    }
     // ENTRY RESUME (2026-08-04 plane incident; test/tools/seat-flap-repro.js).
     // The dance is three door round trips — knock→GREETERS, WHOHOME→HOME,
     // FIND→PLACE — and a retry used to restart it from the knock, so a socket
@@ -1822,10 +1837,22 @@
     noteKnock(x) { if (x == null) return; const K = this.knockAt || (this.knockAt = new Map()); K.delete(x); K.set(x, this.TICK); if (K.size > 64) K.delete(K.keys().next().value); }
     knocking(x) { const t = this.knockAt && this.knockAt.get(x); return t !== undefined && this.TICK - t <= KNOCK_FRESH; }
     silentFor(k, n) { const it = this.live.get(k); return it !== undefined && this.TICK - it > n; }
+    // Remember where a seeker's FIND was handed, and send it on. A marked
+    // re-ask follows this record. It never starts a second scan.
+    handOn(mm, to, cell, deep) {
+      if (this.handed.size >= 64) this.handed.delete(this.handed.keys().next().value);
+      this.handed.set(mm.nc, { to, cell, deep: !!deep, at: this.TICK });
+      const f = { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }; if (mm.again) f.again = 1;
+      this.emit(to, f); this.findAck(mm, cell, !!deep);
+    }
     serveFind(mm) {
       const TICK = this.TICK;
       if (!this.hasCoord || mm.ttl <= 0) { this.noroomWhy = 'unseated'; this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
       for (const s of this.sitting.values()) if (s.joiner === mm.nc && s.assigner === this.id && s.pl && TICK - s.at <= SIT_TTL) { this.emit(mm.nc, Object.assign({}, s.pl)); return; } // FINDACK: a re-ask reaching the admitter that already vouches this seeker gets the SAME chair again (its PLACE was lost) — never a twin vouch
+      // A marked re-ask follows the chain already taken while that hand-off is
+      // fresh and its target still holds the cell. No record, or a target that
+      // moved: drop it. A new scan here is how one person was seated twice.
+      if (mm.again) { const h = this.handed.get(mm.nc); if (h && TICK - h.at <= KNOCK_FRESH && h.to !== this.id && this.occGet(h.cell) === h.to) this.handOn(mm, h.to, h.cell, h.deep); return; }
       if (this.coord.pc === 0) {
         const skip = [];   // forensics: why each Section-1 cell was passed over (noroomWhy, the test trace's NOROOM row)
         // A SPLIT-OFF SEAT ADMITS NOBODY INTO SECTION 1 (sim twin). A healer
@@ -1968,7 +1995,7 @@
             // through to the bottom-up cascade, so two whole home rows on the
             // far side of a split still resurrect (repro-partition seed 11).
             if (aid != null && aid !== this.id && !fh) { const t = this.fwdSeen.get(mm.nc); if (t !== undefined && TICK - t <= 240) aid = null; else { if (this.fwdSeen.size >= 64) this.fwdSeen.delete(this.fwdSeen.keys().next().value); this.fwdSeen.set(mm.nc, TICK); } }
-            if (aid != null && aid !== this.id) { this.emit(aid, { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }); this.findAck(mm, this.occGet(ac) === aid ? ac : ah); return; }
+            if (aid != null && aid !== this.id) { this.handOn(mm, aid, this.occGet(ac) === aid ? ac : ah, false); return; }
             // The whole admitter row below is dead too. "Resolve bottom-up"
             // DEADLOCKED here when EVERY row below was dead or empty (s1all
             // recovery: fresh greeters in rows 0-1, rows 2-4 dead, one stale
@@ -2078,7 +2105,7 @@
                 this.occ.delete(ek); this.live.delete(ek); this.liveBy.delete(ek); this.s1seen.delete(ek); this.kidful.delete(ek); this.tlForget(ek, 'echo-bounce');
                 this.serveFind(mm); return;
               }
-              this.emit(this.occGet(ck(adm)), { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }); this.findAck(mm, ck(adm)); return;
+              this.handOn(mm, this.occGet(ck(adm)), ck(adm), false); return;
             }
           }
         }
@@ -2127,7 +2154,7 @@
           // compete in pass 0. First contact is untouched; a partitioned seeker
           // never gets here (it fails silent, not loud); the hop is still
           // strictly DOWNWARD, so no cycle is possible.
-          if (pass === 0 ? (this.firstHandLive(rk) || (mm.spread && this.admitterReachable(rk))) : this.admitterReachable(rk)) { this.emit(x, { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }); this.findAck(mm, rk, true); return; }
+          if (pass === 0 ? (this.firstHandLive(rk) || (mm.spread && this.admitterReachable(rk))) : this.admitterReachable(rk)) { this.handOn(mm, x, rk, true); return; }
         }
       this.noroomWhy = 'deep'; this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 });
     }
@@ -3429,6 +3456,11 @@
           if (this.state === 3 && TICK - this.rosterAskAt > 120) return;
           if (m.gkey != null) this.genKey = m.gkey; // learn this meeting's genesis key (the dance)
           if (this.state === 1) { if (!rosterOk(m.roster)) { this.retryAt = TICK - 10; return; } this.roster = m.roster; this.haveRoster = true; this.lastReach = TICK; this.seatTries = 0; this.resumeTries = 0; const t = this.pickRoster(); if (t != null) this.askSeat(t); else this.retryAt = TICK - 10; } // reached a greeter: note it for R6; a landed HOME re-arms the resume budget
+          // An acknowledged ask is still unanswered, and a seated door just
+          // answered again. The hand-off that ack promised has not seated us,
+          // and the room can hear us. Re-drive the SAME greeter. This is not a
+          // timer: a merely slow chain is left alone until the door speaks.
+          else if (this.state === 2 && this.findAckAt >= 0 && this.lastAsked != null && rosterOk(m.roster) && TICK - this.findAckAt >= FIND_ACK_WAIT && this.ackReasks < 4 && (this.ackReaskAt < 0 || TICK - this.ackReaskAt >= FIND_ACK_WAIT)) { this.ackReasks++; this.ackReaskAt = TICK; this.askSeat(this.lastAsked, true); }
           else if (this.state === 3 && rosterOk(m.roster)) {
             this.roster = m.roster; this.haveRoster = true;
             // The home ring as a greeter sees it, as HINTS (never liveness,
@@ -4157,6 +4189,7 @@
         if (this.forkPaused) { this.wake(); return; } // waiting on human pick-one
         if (this.reAsk || this.reJoin) { // ENTRY PACING: fire the ask/knock deferred from a same-tick repeat (after the fork gate — a join() here must never wipe a pending pick-one)
           const a = this.reAsk; this.reAsk = false; this.reJoin = false;
+          if (a && this.reAskAgain && this.lastAsked != null) { this.reAskAgain = false; this.askSeat(this.lastAsked, true); this.wake(); return; }
           if (a && this.haveRoster && this.roster.length) { const t = this.pickRoster(); if (t != null) { this.askSeat(t); this.wake(); return; } }
           this.join(); this.wake(); return;
         }
