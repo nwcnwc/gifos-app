@@ -576,6 +576,8 @@ button.row-del svg { display: block; pointer-events: none; }
   background: #fff5f5; border: 1px solid #c41e3a; color: #1d1d1f;
   border-radius: 12px; padding: 14px; line-height: 1.45; margin-top: 12px;
 }
+.settings-sheet #set-backup { margin-top: 18px; }
+.settings-sheet #set-erase { margin-top: 10px; }
 .settings-sheet .add-help { color: #3a3a3f; }
 .settings-sheet :focus-visible { outline: 3px solid #0071e3; outline-offset: 2px; }
 .settings-sheet input, .settings-sheet select, .settings-sheet .bg-row button, .settings-sheet .ts-row button {

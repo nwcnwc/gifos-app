@@ -3490,8 +3490,7 @@
           '<p class="add-help" id="set-relay-status" aria-live="polite"></p>' +
         '</section>' +
         '<section data-page="erase" hidden>' +
-          '<div class="set-callout">This wipes <b>every app, file, folder, and wallpaper</b> stored in this browser. There is no undo and no server copy. You stay on the <b>same version channel</b> you are using now (edge, the live release, or a pinned snapshot).</div>' +
-          '<p class="add-help">Back up first (GifOS menu → Back up Home Screen) if you might want this computer back.</p>' +
+          '<button type="button" class="widebtn" id="set-backup">Back up first</button>' +
           '<button type="button" class="widebtn danger" id="set-erase">Erase this computer…</button>' +
         '</section>' +
       '</div>';
@@ -3627,6 +3626,8 @@
     };
     const eraseBtn = box.querySelector('#set-erase');
     if (eraseBtn) eraseBtn.onclick = () => { eraseBtn.focus(); resetFlow(); };
+    const backupBtn = box.querySelector('#set-backup');
+    if (backupBtn) backupBtn.onclick = () => { backupDesktop().catch(() => {}); };
     const persistBtn = box.querySelector('#set-persist');
     if (persistBtn) persistBtn.onclick = async () => {
       const ok = navigator.storage && navigator.storage.persist ? await navigator.storage.persist() : false;
