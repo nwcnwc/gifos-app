@@ -2410,6 +2410,12 @@
       if (m.t === 'PONG') return m.yp !== 1 && this.linkIs(m, m.id != null ? m.id : m.lk);   // my new phone answered (an arbiter's hearing PONG is no acceptance)
       if (m.t === 'PHONE') return this.linkIs(m, m.id) && m.tock === ck(this.coord);    // a call TO my new cell
       if (m.t === 'HELLO' || (m.t === 'CLAIM' && this.verifyFill(m))) {
+        // A neighbour of the seat being left already announces on its own
+        // beat. That frame is not acceptance of the new cell; counting it
+        // vacated the old seat before the same neighbour could refuse the
+        // claim and roll it back.
+        const who = m.id != null ? m.id : m.lk;
+        if (who != null && this.oldNbrIds.includes(who)) return false;
         for (const olc of topo.ownedLinks(this.coord)) if (ck(olc) === m.ck) return true;
       }
       return false;
