@@ -1378,7 +1378,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
     </button>
-    <button id="leavebtn" type="button" aria-label="Hang up" title="Leave this meeting — your seat closes at once and your camera and mic stop">
+    <button id="leavebtn" type="button" aria-label="Hang up" title="Leave the meeting. Your camera and microphone stop.">
       <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(135 12 12)"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 3.1 2 2 0 0 1 4.1 1h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 8.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.7 2.1z"/></g></svg>
     </button>
     <div class="barmore" id="barmore">
@@ -1507,7 +1507,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         </div>
       </div>
       <div style="display:flex;justify-content:center;margin-top:.9rem">
-        <button id="set-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Done</button>
+        <button id="set-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
       </div>
     </div>
   </div>
@@ -1520,7 +1520,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <h3>Share your screen</h3>
       <div id="share-appnote" class="share-note"></div>
       <div id="share-denied" class="share-note" style="display:none;border-left-color:#ffd23c;background:rgba(255,210,60,.08)"><b>🛡 Only this room’s admins — or people they allow — can share a screen.</b> Ask an admin to allow you: <b>Allow screen share</b> on your tile, or <b>Allow screen share</b> for the whole room. Then open this sheet again.</div>
-      <p style="font-size:.86rem">A screen share is for what an app can’t be: <b>a deck on your disk, a tool that isn’t GifOS, a window from somewhere else</b>. It takes a seat on the stage, so the whole room sees it — and everyone can see that it’s you sharing.</p>
+      <p style="font-size:.86rem">A screen share is for what an app can’t be: <b>a deck on your disk, a tool that isn’t GifOS, a window from somewhere else</b>. It shows on the stage, so the whole room sees it — and everyone can see that it’s you sharing.</p>
       <p style="font-size:.8rem;color:var(--muted,#8888aa)">Your camera pauses while you share, and comes back when you stop. Sound from the shared tab doesn’t travel — talk over it.</p>
       <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-top:.9rem">
         <button id="share-go">Choose what to share…</button>
@@ -1657,7 +1657,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <p>Picture a stadium. You don't meet a million faces; you meet the few around you,
         and the rest is a living backdrop.</p>
         <ul class="help-list">
-          <li><b>Seat</b> — one person.</li>
           <li><b>Stage</b> — the front. Whoever steps up here is seen and heard first
           by <i>everyone</i> in the whole stadium (the reader, a speaker, a shared app).</li>
           <li><b>Row</b> — the handful of people right next to you. This is your real
@@ -1794,15 +1793,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="name-modal" role="dialog" aria-modal="true" id="left-modal" style="display:none">
     <div class="closed-box">
       <h3>You left the meeting</h3>
-      <p>Your camera and microphone are off and your seat is closed. The same link brings you back.</p>
+      <p>Your camera and microphone are off. The same link brings you back.</p>
       <button id="left-rejoin">Rejoin</button>
       <button id="left-close" style="margin-left:.5rem;background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
     </div>
   </div>
   <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
     <div class="name-box">
-      <h3 id="leave-ask-title">Leave this meeting?</h3>
-      <p>Your camera and microphone stop, and your seat closes.</p>
+      <h3 id="leave-ask-title">Leave the meeting?</h3>
       <button id="leave-cancel" type="button">Stay</button>
       <button id="leave-go" type="button">Leave</button>
     </div>
@@ -7754,7 +7752,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const left = Math.max(0, Math.ceil((210000 - waited) / 1000)); // reap bound, not a promise on screen
         const secs = Math.max(1, Math.ceil(waited / 1000));
         if (!veilCeilLogged) { veilCeilLogged = true; try { console.debug('seat ceiling 210s'); } catch (e) {} }
-        if (left > 0) veilSay('Finding you a seat\u2026', 'Still joining (' + secs + ' s).');
+        if (left > 0) veilSay('Joining the meeting\u2026', 'Still joining (' + secs + ' s).');
         else veilSay('This is taking longer than it ever should.', 'Check your connection, or close this tab and reopen the link. A fresh start usually clears it.');
       } else if (waited > 20000) {
         veilSay('Still trying to reach the meeting\u2026', 'Nobody is answering the door of this meeting yet. It may be your internet connection. We keep knocking, and you will be in the moment it answers.');
@@ -9017,7 +9015,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // window, so a device whose clock is wrong is never seated and, after
         // the TTL, was told the NETWORK refused it. The wire reports the signed
         // delta from a verified member's frame while I am still joining.
-        onClockSkew: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s, so the meeting cannot seat you. Set the clock, then reload.'); },
+        onClockSkew: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s, so you cannot join. Set the clock, then reload.'); },
         // FRAGMENT SELF-RESCUE: the wire proved the door knows members my
         // solo room view doesn't. Same clean lever as the freeze self-heal \u2014
         // a full re-entry \u2014 throttled, and only while the app agrees we look
@@ -15739,7 +15737,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (stageIds().length >= SCALE.C) {
         if (handCallNoted !== at) {
           handCallNoted = at;
-          setStatus('Called to the stage — a seat will open when someone steps down.');
+          setStatus('Called to the stage — a place will open when someone steps down.');
         }
         return;
       }
@@ -15777,7 +15775,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (Date.now() - stgLostSince < 2 * SCALE.HB) return;
       stgLostSince = 0;
       setStage(false);
-      setStatus(canStage(myId) ? 'The stage was full (' + SCALE.C + ' seats) — your step-up did not take.'
+      setStatus(canStage(myId) ? 'The stage was full (' + SCALE.C + ' people) — your step-up did not take.'
         : 'The stage is admin-granted here — your step-up did not take.');
     }
     let stgFlips = 0; // every step-up/down (test hook: a vote storm shows as a rising count)
@@ -15806,7 +15804,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (!canStage(myId)) { setStatus('Only room admins — and people they allow — can take the stage here.'); return; }
-      if (stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' seats).'); return; }
+      if (stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' people).'); return; }
       setStage(true);
     };
 
@@ -15910,7 +15908,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Already being on stage does not waive this. The stage grant and the
       // screen grant are different orders.
       if (!mayShareScreen(myId)) { setStatus('🛡 Only this room’s admins — or people they allow — can share a screen here.'); return; }
-      if (!myStatus.stg && stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' seats) — someone has to step down first.'); return; }
+      if (!myStatus.stg && stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' people) — someone has to step down first.'); return; }
       setStatus('Choose what to share…');
       navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: false })
         .then((s) => {
@@ -16554,7 +16552,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (roomSingOn()) { setStatus(singLeaderName() + ' is leading; wait for the song to end.'); return; }
       if (!stageIds().includes(myId)) {
         if (!canStage(myId)) { setStatus('Only room admins — and people they allow — can lead a song here.'); return; }
-        if (stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' seats).'); return; }
+        if (stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' people).'); return; }
         myStatus.sing = Date.now();
         singSteppedUp = true; // we stepped up FOR the song — step back down with it
         setStage(true);       // broadcasts
