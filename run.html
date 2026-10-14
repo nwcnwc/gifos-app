@@ -6524,6 +6524,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function makePeer(peerId, name, headless) {
       if (peers.has(peerId)) return peers.get(peerId);
       if ((typeof isEjected === 'function' && isEjected(peerId) === true)) return null; // never a connection to a forger
+      // The name frame is what the status line quotes. It often lands before
+      // this record exists, and a later redial was the first time the tile
+      // learned it. Use the name already heard, so the face and the line
+      // agree from the start.
+      if (!name && rosterNames[peerId]) name = rosterNames[peerId];
       const t = makeTile(peerId, name, false, headless);
       if (!headless && doorOffGrid.has(peerId) && t.tile.parentNode) t.tile.remove(); // grace already took this name off the grid
       const p = { id: peerId, pc: null, tile: t.tile, video: t.video, label: t.label, avatar: t.avatar, chips: t.chips, cap: t.cap, modbar: t.modbar, voteBtn: t.voteBtn,
