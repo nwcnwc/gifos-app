@@ -4509,7 +4509,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let speaking = false;
         // A bot stays muted (its sent track is silent) but its ear still
         // hears the local mic, so captions can run without the bot speaking.
-        const botEar = id === 'me' && st.bot && window.__gifosBotEar;
+        const botEar = id === 'me' && st.bot && typeof window !== 'undefined' && window.__gifosBotEar;
         if ((!st.muted && !gm) || botEar) {
           meterAnyLive = true; // a live mic exists ⇒ keep the fast beat
           m.an.getByteTimeDomainData(m.data);
@@ -6408,7 +6408,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (meshNode && !(opts && opts.scope)) txStats.roomFlood = (txStats.roomFlood || 0) + 1; // room-wide floods I ORIGINATED (flags a message sent to everyone instead of its own section)
       if (meshNode) meshNode.gossip({ a: 1, msg }, opts); // opts: { scope: 'section', ephemeral } for the heartbeat — see THE STATUS PLANE
     }
-    const myName = () => window.__gifosMeetName || GifOS.store.identity().name || 'Guest';
+    const myName = () => (typeof window !== 'undefined' && window.__gifosMeetName) || GifOS.store.identity().name || 'Guest';
 
     // Exactly ONE side initiates each pairing, chosen by peer-id order — the
     // same rule no matter who joined, rejoined, or reloaded first. No glare.
@@ -11524,7 +11524,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (m.k === 'chat') {
         if (takeChat(m.m)) {
           renderChat();
-          if (m.m && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
+          if (m.m && typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
           if (!chatPanel.classList.contains('open')) { unread++; chatBtn.textContent = 'Chat (' + unread + ')'; }
           // A frame the sender marked ackReq (today: only the follow-me link)
           // gets a delivery ack back over the mesh/DC — see FOLLOW-ME DELIVERY
@@ -11535,7 +11535,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // re-broadcasting on first sight made ONE chat line N floods — O(N)
           // frames per node per line, the N×N the mesh exists to prevent.
         }
-      } else if (m.k === 'bx' && window.GifOS && GifOS.meetSession && typeof window.__gifosMeetEmit === 'function') {
+      } else if (m.k === 'bx' && typeof window !== 'undefined' && window.GifOS && GifOS.meetSession && typeof window.__gifosMeetEmit === 'function') {
         GifOS.meetSession.takeXfer(m, window.__gifosMeetEmit);
       } else if (m.k === 'chatack') {
         // Delivery ack for an ackReq chat frame (see FOLLOW-ME DELIVERY WAIT).
@@ -16964,7 +16964,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       sendAll({ k: 'tr', m }, captionScope(m.byId));
       renderTranscript();
       showCaption(m.byId, m.text);
-      if (typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: m.by, text: m.text, at: m.at, scribeBy: m.scribeBy || '' } });
+      if (typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: m.by, text: m.text, at: m.at, scribeBy: m.scribeBy || '' } });
     }
     // THE LANGUAGE IS A CHOICE, NOT A GUESS. The engine listens for ONE
     // language and cannot detect it; navigator.language was the silent
@@ -17140,7 +17140,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } catch (e) { src = null; stageSid = null; }
       }
       if (!src) src = wspSource(id);
-      if (!src && id === 'me' && window.__gifosBotEar && window.__gifosBotEar.getAudioTracks && window.__gifosBotEar.getAudioTracks()[0]) {
+      if (!src && id === 'me' && typeof window !== 'undefined' && window.__gifosBotEar && window.__gifosBotEar.getAudioTracks && window.__gifosBotEar.getAudioTracks()[0]) {
         try { src = ac.createMediaStreamSource(new MediaStream([window.__gifosBotEar.getAudioTracks()[0]])); own = true; } catch (e) { src = null; }
       }
       if (!src && id === 'me' && localStream && localStream.getAudioTracks()[0]) {
@@ -17284,7 +17284,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function scribeOn() { return !!myStatus.scribe && ccEngine() === 'whisper' && whisperReady(); }
     function wspSync() {
       const want = new Set();
-      if (!wspPaused && myStatus.cc && ccEngine() === 'whisper' && whisperReady() && (!ccSourceId || !ccSourceWritesMe()) && (myStatus.bot ? !!window.__gifosBotEar : !myStatus.muted)) want.add('me');
+      if (!wspPaused && myStatus.cc && ccEngine() === 'whisper' && whisperReady() && (!ccSourceId || !ccSourceWritesMe()) && (myStatus.bot ? (typeof window !== 'undefined' && !!window.__gifosBotEar) : !myStatus.muted)) want.add('me');
       if (!wspPaused && scribeOn()) {
         const stagers = (typeof stageIds === 'function') ? stageIds() : [];
         const stageSet = new Set(stagers);
@@ -17614,7 +17614,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return !!(p && p.connected);
     }
     function syncSpeech() { // CC follows the mic: muted people aren't transcribed
-      const want = myStatus.cc && (!myStatus.muted || !!(myStatus.bot && window.__gifosBotEar));
+      const want = myStatus.cc && (!myStatus.muted || !!(myStatus.bot && typeof window !== 'undefined' && window.__gifosBotEar));
       ccSrcDirect = ccSourceWritesMe();
       if (ccSrcDirect) { // the chosen scribe hears me directly: no engine of my own
         if (speechRunning()) stopSpeech();
@@ -17775,7 +17775,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return true;
     }
     async function recOpenSink(name) {
-      if (params.get('mb') === '1') {
+      // A bot session is the meeting page itself, stamped before boot. It keeps
+      // the bytes on the page. A normal meeting has no stamp and opens the picker.
+      if (window.__gifosMb === '1') {
         const chunks = [];
         return {
           kind: 'ram',
@@ -18233,7 +18235,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           try { if (sink) saved = await sink.finish(); } catch (e) { saved = null; }
           let how = '';
           try { how = recDeliver(saved); } catch (e) { how = ''; }
-          if (typeof window.__gifosRecStopped === 'function') {
+          if (typeof window !== 'undefined' && typeof window.__gifosRecStopped === 'function') {
             const cb = window.__gifosRecStopped;
             window.__gifosRecStopped = null;
             try { cb(how); } catch (e) {}
