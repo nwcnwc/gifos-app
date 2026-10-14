@@ -197,9 +197,20 @@
         pending[id] = { res: res, rej: rej, part: typeof onPart === 'function' ? onPart : null };
         parent.postMessage(Object.assign({ ns:'gifos', id:id }, msg), '*');
       }); }
+      // Several getAlls can be in flight: every put asks for a fresh paint.
+      // A slower answer from an earlier put used to land last and paint over
+      // the newer rows. The last write of a round (dawn) then stuck on the
+      // previous screen, because nothing else was left to ask for a paint.
+      var dbWave = {};
       function refresh(collection){
-        (subs[collection]||[]).forEach(function(cb){
-          rpc({ type:'db', op:'getAll', collection:collection }).then(cb);
+        var list = subs[collection]||[];
+        if (!list.length) return;
+        var wave = (dbWave[collection] = (dbWave[collection]||0) + 1);
+        list.forEach(function(cb){
+          rpc({ type:'db', op:'getAll', collection:collection }).then(function(rows){
+            if (wave !== dbWave[collection]) return;
+            cb(rows);
+          });
         });
       }
       window.addEventListener('message', function(e){
@@ -382,7 +393,11 @@
           // "make visible" (opt a private item in) or to flip who may write.
           setVisibility: function(id, level){ return rpc({type:'db',op:'setVisibility',collection:collection,key:id,value:level}); },
           subscribe: function(cb){ (subs[collection]=subs[collection]||[]).push(cb);
-            rpc({type:'db',op:'getAll',collection:collection}).then(cb); }
+            var wave = (dbWave[collection] = (dbWave[collection]||0) + 1);
+            rpc({type:'db',op:'getAll',collection:collection}).then(function(rows){
+              if (wave !== dbWave[collection]) return;
+              cb(rows);
+            }); }
         }; },
         // The bridge hands back the RAW BYTES and the decode happens here, so the
         // response behaves like a real one: .text()/.json() for APIs, and
