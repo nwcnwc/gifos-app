@@ -6529,6 +6529,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const p = peers.get(peerId);
       if (!p) return;
       clearTimeout(p.hiLate);
+      try { if (p.doorRetry) clearTimeout(p.doorRetry); } catch (e) {}
+      p.doorRetry = 0;
       try { p.pc.close(); } catch (e) {}
       releaseAudio(p.video);
       p.tile.remove();
@@ -7242,10 +7244,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // bootDial(pid): the wire's dial hook — a knocker has an entry ask for a
     // greeter and no channel to it. Open one: the bootstrap over the relay.
     const DOOR_REDIAL_CAP = 40000; // the longest wait between redials of a door that never connected (bootDial)
+    function clearDoorRetry(p) {
+      if (p && p.doorRetry) { clearTimeout(p.doorRetry); p.doorRetry = 0; }
+    }
+    // The wire only keeps the entry ask for twenty seconds. After that the
+    // seat asks again when it next has something to say, and that ask was
+    // eight seconds out — long enough to miss a member who had just come
+    // back. One unanswered door keeps its own four-second retry until the
+    // channel is up. Four or more do not: their stretch stays with the gate
+    // below, which is what keeps a silent page under the relay's rate.
+    function armDoorRetry(pid, p) {
+      if (!p || p.doorRetry || p.neverUp !== true) return;
+      p.doorRetry = setTimeout(() => { p.doorRetry = 0; bootDial(pid); }, 4000);
+    }
     function bootDial(pid) {
-      if (!pid || pid === myId || (typeof isEjected === 'function' && isEjected(pid) === true)) return;
+      if (!pid || pid === myId || (typeof isEjected === 'function' && isEjected(pid) === true)) {
+        if (pid) clearDoorRetry(peers.get(pid));
+        return;
+      }
       const p = peers.get(pid);
-      if (p && (p.connected || (p.dc && p.dc.readyState === 'open') || p.offering)) return; // reachable already, or an offer is minting
+      if (p && (p.connected || (p.dc && p.dc.readyState === 'open') || p.offering)) {
+        if (p.connected || (p.dc && p.dc.readyState === 'open')) clearDoorRetry(p); // reachable already, or an offer is minting
+        return;
+      }
       // While four or more doors have never once connected, each is
       // redialled at a growing interval: 5 s, then 10, 20, 40, and 40 from
       // then on (DOOR_REDIAL_CAP), until it connects (dialWait clears with
@@ -7265,16 +7286,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let neverDoors = 0;
       for (const q of peers.values()) if (q.neverUp === true) neverDoors++;
       const manyDoors = neverDoors >= 4;
+      if (manyDoors) clearDoorRetry(p); // the stretch above owns the pace once several doors are unanswered
       // Under the wire's four-second ask, so that ask is the redial.
       const fewDoorWait = 3500;
       const wait = (p && p.neverUp === true) ? (manyDoors ? (p.dialWait || 5000) : fewDoorWait) : 5000;
-      if (p && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < wait && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') return; // forming: its turn is not yet
+      if (p && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < wait && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') {
+        if (!manyDoors) armDoorRetry(pid, p); // forming: its turn is not yet, but the four-second retry stays armed
+        return;
+      }
       // A stale transport — an offer never answered, a pair dead since a
       // dark spell — is rebuilt: the door needs a fresh bootstrap, not a
       // renegotiation of a corpse.
       if (p && p.pc) { newPcFor(p); if (p.neverUp === true && manyDoors) p.dialWait = Math.min(DOOR_REDIAL_CAP, (p.dialWait || 5000) * 2); }
       sendOffer(pid, false);
-      const q = peers.get(pid); if (q) q.boot = true; // the door I came in by: retired once a seat's own link is open (retireBootPairs), unless the arithmetic names it
+      const q = peers.get(pid); if (q) { q.boot = true; if (!manyDoors) armDoorRetry(pid, q); } // the door I came in by: retired once a seat's own link is open (retireBootPairs), unless the arithmetic names it
     }
     // The bootstrap channel to a greeter has done its work once I am seated
     // and a link the arithmetic names is open: a seat holds its bounded
