@@ -6512,6 +6512,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const doorOffGrid = new Set();
     function parkUnreachableTile(p) {
       if (!p || p.neverUp !== true) return;
+      // A neighbour stays on the grid: the direct door can be dead and a
+      // friend still carries their picture. Only a person with no seat,
+      // the one the line already named, comes off the wall.
+      if (linkTo(p.id)) return;
       doorOffGrid.add(p.id);
       if (p.tile && p.tile.parentNode) p.tile.remove();
     }
@@ -6552,7 +6556,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       clearTimeout(p.hiLate);
       try { if (p.doorRetry) clearTimeout(p.doorRetry); } catch (e) {}
       p.doorRetry = 0;
-      if (p.boot && p.neverUp === true) doorOffGrid.add(p.id); // the next redial of this door stays off the grid until a channel opens
+      if (p.boot && p.neverUp === true && !linkTo(peerId)) doorOffGrid.add(p.id); // a seatless door stays off the grid; a neighbour can still be relayed
       try { p.pc.close(); } catch (e) {}
       releaseAudio(p.video);
       p.tile.remove();
