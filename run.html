@@ -9620,7 +9620,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The banner repaints ONLY when the derived line actually changed — the
     // 2s beat costs one string compare, never idle DOM churn.
     let handqHtml = '';
+    // A seat past this section never hears a rename on a direct pulse. The
+    // fold already carries the current name (the hand queue shows it). Paint
+    // that name onto the tile too. A fresh status of our own wins; a steady
+    // name is left alone.
+    function paintFoldedName(pid, nm) {
+      const cached = rosterNames[pid] || (peers.get(pid) || {}).name || '';
+      const name = foldName(nm, cached);
+      if (!name || name === cached) return;
+      rosterNames[pid] = name;
+      const p = peers.get(pid);
+      if (!p) return;
+      p.name = name;
+      if (p.label) p.label.textContent = name;
+      if (p.avatar) p.avatar.textContent = nameInitial(name);
+    }
+    function learnFoldedNames() {
+      const dg = digLists();
+      if (!dg) return;
+      const teach = (e) => { if (e && e.id && e.nm && e.id !== myId && !stHold(e.id)) paintFoldedName(e.id, e.nm); };
+      for (const e of dg.hands || []) teach(e);
+      for (const e of dg.stage || []) teach(e);
+    }
     function renderHandq() {
+      learnFoldedNames();
       const q = handQueue();
       handqEl.classList.toggle('on', q.length > 0);
       const stageFull = amAdmin && stageIds().length >= SCALE.C;
