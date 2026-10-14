@@ -2088,6 +2088,30 @@
                 if (this.cellReserved(ck(d)) && !this.occIsPhantom(ck(d))) { adm = d; break; }
               }
             }
+            // A radio-dark head keeps its channel, so it stays first-hand
+            // live for the whole 60-tick window and the FIND is handed
+            // into a mesh that is not ticking. The head's right-hand, in
+            // a one-row room, seats the free chair once the head has
+            // missed two beats. A later PLACE from the head finds the
+            // seeker already seated and is ignored.
+            // Chaos throttled-phone-reload-while-door-dark seed 32 #3
+            // (drk-tprd3 r1, 04:09:54Z): Ana's bye freed 0/0.2, Ivo
+            // forwarded FIND to Hana (tick 327) and Hana was dark until
+            // 04:10:04Z. PLACE landed at 04:10:11Z, 15.9s, bound 4.2s.
+            // The same reload was 1.8s when Ivo already held the head
+            // (drk-tprd r1, tree 50d9793).
+            if (j > 0 && this.oneRowRoom() && this.coord.i === 1 && this.coord.pc === adm.pc && this.coord.r === adm.r && adm.i === 0 && adm.pc === 0) {
+              const hk = ck(adm);
+              const ago = this.live.has(hk) ? TICK - this.live.get(hk) : 999;
+              if (ago > 16) {
+                if (TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && this.oneRowRoom())) {
+                  this.healOnly.delete(k); this.healTry.set(k, TICK);
+                  if (this.occIsPhantom(k)) { this.occ.delete(k); this.live.delete(k); this.s1seen.delete(k); this.kidful.delete(k); this.tlForget(k, 'phantom-standin'); }
+                  this.admit(cell, mm); return;
+                }
+                continue; // quiet head, chair cooling — don't hand the FIND into the dark
+              }
+            }
             if (ck(this.coord) === ck(adm)) {            // I am the designated (or devolved) admitter
               // V4 LEDGER GATE: as a vouched-in head I may not admit into MY
               // OWN row before my assigner's SITXFER arrives — my empty view
@@ -4025,7 +4049,7 @@
           const oc = ownerCoordOf(m.coord);
           if (m.owner != null && oc && m.oCk === ck(oc) && this.occGet(m.oCk) !== m.owner) { this.setOcc(m.oCk, m.owner); this.noteS1(m.oCk); }
           // ...and never MY OWN cell under another id: a listing is not a challenge (a mate that left-packed into a freed cell got its head's beat-old row, listing the leaver there, and held the leaver at its own seat — forged-frames X7). A genuine rival is settled by the arbiter's YIELD, never by a row list.
-          if (Array.isArray(m.row)) for (const e of m.row.slice(0, C())) { const c = e && cellKeyOk(e.k); if (!c || c.pc !== m.coord.pc || c.r !== m.coord.r || e.v == null) continue; if (e.k === ck(this.coord) && e.v !== this.id) continue; if (this.occGet(e.k) !== e.v) { if (this.liveElsewhere(e.v, e.k)) continue; this.setOcc(e.k, e.v); } this.noteS1(e.k); if (e.age != null) this.childOf.set(e.k, e.age); }   // ...nor a seat I hear FIRST-HAND at another cell: a listing never moves a live neighbour (one place; behavior 14a: a returning head's stale row listed the real head one cell over)
+          if (Array.isArray(m.row)) for (const e of m.row.slice(0, C())) { const c = e && cellKeyOk(e.k); if (!c || c.pc !== m.coord.pc || c.r !== m.coord.r || e.v == null) continue; if (e.k === ck(this.coord) && e.v !== this.id) continue; if (this.occGet(e.k) !== e.v) { if (this.liveElsewhere(e.v, e.k)) continue; if (this.occGet(e.k) != null && this.firstHandLive(e.k)) continue; this.setOcc(e.k, e.v); } this.noteS1(e.k); if (e.age != null) this.childOf.set(e.k, e.age); }   // ...nor a seat I hear FIRST-HAND here or at another cell: a listing never moves a live neighbour (one place; behavior 14a: a returning head's stale row listed the real head one cell over). The same listing, after a dark spell, put a departed id back in a chair the row had already filled (chaos seed 32 #3, drk-tprd3: Ivo's 0/0.2 became k_083f again on Hana's wake).
           if (Array.isArray(m.nbrs)) for (const kv of m.nbrs.slice(0, 4 * C())) { if (!kv || !cellKeyOk(kv.k) || kv.v == null) continue; if (!this.cousins.has(kv.k) && this.cousins.size >= 4 * C()) continue; this.cousins.set(kv.k, kv.v); } // W: learn the heirs at my future owned-links for relay-free promote-up
           // MY HEAD'S ROW IS THE ROW (deep rows). The head's PONG lists its
           // first-hand row; a row cell I hold that it does not list, and that I
