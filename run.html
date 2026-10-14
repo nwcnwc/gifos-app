@@ -11571,6 +11571,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                 p.rofferYieldTimer = null;
                 const ym = p.rofferYield; p.rofferYield = null;
                 if (!ym || !p.pc || leaving || p.makingOffer) return;
+                // The bootstrap offer was already answered: applying the twin
+                // restarts ICE before the channel opens.
+                const carried = p.connected || (p.dc && p.dc.readyState === 'open');
+                if (!carried && p.pc.signalingState === 'stable') return;
                 if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6));
                 p.kickVideo = true;
                 applyRoffer(ym);
@@ -11586,10 +11590,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (p.pc) p.pc.setRemoteDescription(m.sdp)
           .then(() => {
             // A held Firefox offer must not be applied after our own offer
-            // was answered. Any other yield still belongs to that timer.
-            if (p.rofferYield && /o=mozilla/i.test(String((p.rofferYield.sdp && p.rofferYield.sdp.sdp) || '').slice(0, 80))) {
-              p.rofferYield = null;
-              if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
+            // was answered. A bootstrap twin is the same: the answer means
+            // our offer won, and applying theirs restarts the pair before
+            // the channel opens. A renegotiation on a live channel still
+            // belongs to its timer.
+            if (p.rofferYield) {
+              const ym = p.rofferYield;
+              const fx = /o=mozilla/i.test(String((ym.sdp && ym.sdp.sdp) || '').slice(0, 80));
+              const carried = p.connected || (p.dc && p.dc.readyState === 'open');
+              if (fx || !carried) {
+                p.rofferYield = null;
+                if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
+              }
             }
             if (typeof clog === 'function') clog('ranswer←' + String(p.id).slice(0, 6));
             afterNeg(p);
