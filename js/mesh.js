@@ -909,7 +909,14 @@
     // within `win` ticks (liveBy — a live stamp is the CELL's, and gossip, a
     // hint, a PONG row or a goodbye's `mvd` can rewrite occ under it), with no
     // transport loss pending.
-    holdsCell(k, win) { const v = this.occGet(k); if (v == null || this.translost.has(k) || this.liveBy.get(k) !== v) return false; const it = this.live.get(k); return it !== undefined && this.TICK - it <= win; }
+    holdsCell(k, win) {
+      const v = this.occGet(k); if (v == null || this.translost.has(k) || this.liveBy.get(k) !== v) return false;
+      // A stamp that arrived only in the thaw burst is the frame a mate sent
+      // from a cell it has since left. It is not a hold: yielding on it
+      // evicts whoever sits there now.
+      if (this.returnBurst(k)) return false;
+      const it = this.live.get(k); return it !== undefined && this.TICK - it <= win;
+    }
     // rawClaim: x claims k while I hear k's incumbent there first-hand and have
     // for TENURE ticks, and no link ever proved x at k (not a revival). Law
     // S2: "a raw claim is rejected"; S5: a fill is accepted only by a
