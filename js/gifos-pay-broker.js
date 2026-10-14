@@ -29,6 +29,13 @@
  * Anything else, including a worker that omits mode, is shown as sandbox.
  * The chain rail stays Base Sepolia, pinned in gifos-charge.js.
  *
+ * A PayPal order is remembered (pay.paypal:<id>, never exported) before the
+ * approval window is opened. Closing that window or hiding the wait is not
+ * a decline. DECLINED_BY_USER is only "No thanks" before an order exists.
+ * The page keeps polling /receipt until PayPal reports a terminal status,
+ * including after this sheet is gone. A verified receipt that fails the
+ * OS check is kept, and the banner says the money was taken.
+ *
  * Attaches to `GifOS.payBroker`.
  */
 (function (root) {
@@ -380,7 +387,7 @@
 
   // A second, minimal modal for the in-flight state (the first closed when a
   // rail was chosen so its promise could resolve; this one owns the wait).
-  function showBusy(msg) {
+  function showBusy(msg, buttonLabel) {
     const doc = root.document;
     const old = doc.getElementById('gifos-pay-busy'); if (old) old.remove();
     const bg = doc.createElement('div'); bg.id = 'gifos-pay-busy';
@@ -388,7 +395,7 @@
     const box = doc.createElement('div');
     box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:22rem;width:100%;padding:1.1rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
     box.innerHTML = '<p id="gpb-msg" style="margin:0">' + esc(msg) + '</p>' +
-      '<div style="text-align:right;margin-top:.8rem"><button id="gpb-cancel" style="padding:.4rem 1rem;border-radius:.4rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Cancel</button></div>';
+      '<div style="text-align:right;margin-top:.8rem"><button id="gpb-cancel" style="padding:.4rem 1rem;border-radius:.4rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">' + esc(buttonLabel || 'Cancel') + '</button></div>';
     bg.appendChild(box); doc.body.appendChild(bg);
     let cancelled = false;
     box.querySelector('#gpb-cancel').onclick = () => { cancelled = true; };
@@ -402,9 +409,134 @@
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // ---- the PayPal rail -------------------------------------------------------
-  async function payWithPaypal(manifest, sheetData, amount, win, proof) {
+  // What the human may be told. DECLINED_BY_USER is not in this list: that
+  // name means the person pressed No thanks before any PayPal order existed.
+  const PAYPAL_UNCONFIRMED = 'GifOS has not confirmed this PayPal payment yet. If PayPal shows a charge, it was paid. Do not pay again. This computer will keep checking.';
+  const PAYPAL_UNFILED = 'PayPal took the money. This computer refused to file the receipt. Do not pay again.';
+  const PAYPAL_NOT_CHARGED = 'PayPal closed this checkout without charging.';
+  const PAYPAL_STOPPED = 'GifOS stopped checking a PayPal checkout from this computer. If PayPal shows a charge, it was paid. Do not pay again until you have checked.';
+  const PAYPAL_WENT_THROUGH = 'This PayPal payment went through.';
+  const PAYPAL_KEY = 'pay.paypal:';
+  const PAYPAL_KEEP_MS = 6 * 60 * 60 * 1000;
+  const PAYPAL_POLL_MS = 2000;
+  // Order ids whose sheet is still inside payWithPaypal. Resume skips them
+  // so it does not file the same receipt the open call is about to return.
+  const paypalLive = new Set();
+  let paypalTimer = null;
+
+  function paypalBanner(text) {
+    const doc = root.document;
+    if (!doc || !doc.body) return;
+    let el = doc.getElementById('gifos-pay-banner');
+    if (!text) { if (el) el.remove(); return; }
+    if (!el) {
+      el = doc.createElement('div');
+      el.id = 'gifos-pay-banner';
+      el.setAttribute('role', 'status');
+      el.setAttribute('style', 'position:fixed;left:0;right:0;bottom:0;z-index:80;background:#1a1a12;color:#f3e7c2;border-top:1px solid #6b5a2a;padding:.75rem 1rem;font:15px/1.45 system-ui,-apple-system,sans-serif;');
+      doc.body.appendChild(el);
+    }
+    el.textContent = text;
+  }
+
+  // The claim that reads /receipt lives only here. The PayPal order holds a
+  // hash of it, and an order id alone must not be able to capture or read it.
+  function rememberPaypal(co, manifest, sheetData, amount, appName) {
+    const rec = {
+      id: co.id,
+      claim: co.claim,
+      amount: String(amount),
+      sku: sheetData.sku || null,
+      appId: manifest.appId,
+      appName: appName || manifest.name || manifest.appId,
+      reason: sheetData.reason || '',
+      payingTo: sheetData.payingTo,
+      payingToType: sheetData.payingToType,
+      at: Date.now(),
+    };
+    store.set(PAYPAL_KEY + co.id, rec);
+    return rec;
+  }
+
+  async function paypalStatus(rec) {
+    let rr;
+    try {
+      rr = await fetch(workerBase() + '/receipt/' + encodeURIComponent(rec.id) + '?claim=' + encodeURIComponent(rec.claim || '') + whoQuery(rec));
+    } catch (e) { return { status: 'UNKNOWN' }; }
+    if (!rr || !rr.ok) return { status: 'UNKNOWN' };
+    let body = null;
+    try { body = await rr.json(); } catch (e) { return { status: 'UNKNOWN' }; }
+    const st = body && body.status;
+    if (st === 'COMPLETED' && body.receiptJson && body.sig) {
+      let receipt;
+      try { receipt = await verifyReceipt(body.receiptJson, body.sig); }
+      catch (e) { return { status: 'UNFILED', why: 'the receipt signature did not verify', receiptJson: body.receiptJson, sig: body.sig }; }
+      try { bindReceipt(receipt, { appId: rec.appId }, { sku: rec.sku, payingTo: rec.payingTo, payingToType: rec.payingToType }, rec.amount, 'paypal'); }
+      catch (e) { return { status: 'UNFILED', why: e.message, receipt, receiptJson: body.receiptJson, sig: body.sig }; }
+      return { status: 'COMPLETED', paid: { receipt, receiptJson: body.receiptJson, sig: body.sig } };
+    }
+    if (st === 'VOIDED' || st === 'CANCELLED') return { status: 'VOID' };
+    return { status: 'PENDING' };
+  }
+
+  async function filePaypal(rec, paid) {
+    const r = paid.receipt, p = purse();
+    const tx = r.tx || r.orderId || null, at = r.at || Date.now();
+    const scope = entScope(r.payeeId, rec.appId);
+    if (recordOnce(scope, { amount: String(rec.amount), rail: 'paypal', sku: rec.sku || null, reason: rec.reason, payeeId: r.payeeId, tx, at }) && rec.sku) {
+      p.grant(scope, rec.sku, { tx, amount: String(rec.amount), rail: 'paypal', at, payeeId: r.payeeId });
+    }
+    try { await mintReceiptFile(paid, { sku: rec.sku }, { payingTo: rec.payingTo }, rec.appName); } catch (e) { try { console.warn('receipt file not minted:', e); } catch (e2) {} }
+  }
+
+  function keepPaypal(rec, extra) {
+    store.set(PAYPAL_KEY + rec.id, Object.assign({}, rec, extra || {}));
+  }
+
+  // Rank: a payment we refused to file outranks one we have not heard about,
+  // which outranks one we already filed. The banner says the most serious
+  // open fact, not the most recent one.
+  async function resumePaypalOrders() {
+    const keys = store.keys().filter((k) => k.indexOf(PAYPAL_KEY) === 0);
+    if (!keys.length) { paypalBanner(''); return 0; }
+    let waiting = 0, rank = 0, banner = '';
+    const note = (n, text) => { if (n >= rank) { rank = n; banner = text; } };
+    for (const k of keys) {
+      const rec = store.get(k);
+      if (!rec || !rec.id || !rec.claim) { store.del(k); continue; }
+      if (paypalLive.has(rec.id)) { waiting++; note(3, PAYPAL_UNCONFIRMED); continue; }
+      if (rec.unfiled) { note(5, PAYPAL_UNFILED); continue; }
+      if (Date.now() - Number(rec.at || 0) > PAYPAL_KEEP_MS) { note(4, PAYPAL_STOPPED); continue; }
+      let st;
+      try { st = await paypalStatus(rec); } catch (e) { st = { status: 'UNKNOWN' }; }
+      if (store.get(k) === undefined) continue;
+      if (st.status === 'COMPLETED') {
+        store.del(k);
+        await filePaypal(rec, st.paid);
+        note(2, PAYPAL_WENT_THROUGH);
+      } else if (st.status === 'UNFILED') {
+        keepPaypal(rec, { unfiled: true, receiptJson: st.receiptJson, sig: st.sig, why: st.why });
+        note(5, PAYPAL_UNFILED);
+      } else if (st.status === 'VOID') {
+        store.del(k);
+        note(1, PAYPAL_NOT_CHARGED);
+      } else {
+        waiting++;
+        note(3, PAYPAL_UNCONFIRMED);
+      }
+    }
+    paypalBanner(banner);
+    if (waiting && !paypalTimer && typeof setTimeout === 'function') {
+      paypalTimer = setTimeout(() => { paypalTimer = null; resumePaypalOrders().catch(() => {}); }, PAYPAL_POLL_MS);
+    }
+    return waiting;
+  }
+
+  async function payWithPaypal(manifest, sheetData, amount, win, proof, appName) {
     const base = workerBase();
-    const busyUi = showBusy('Starting the PayPal checkout…');
+    const busyUi = showBusy('Starting the PayPal checkout…', 'Hide');
+    let rec = null;
+    let keepWindow = false;
     try {
       const r = await fetch(base + '/checkout', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -416,39 +548,46 @@
         }),
       });
       if (!r.ok) throw new Error('checkout failed (HTTP ' + r.status + '): ' + (await r.text()).slice(0, 200));
-      const co = await r.json(); // { id, approveUrl }
-      if (!co.id || !co.approveUrl) throw new Error('checkout answered without an order');
+      const co = await r.json(); // { id, approveUrl, claim }
+      if (!co.id || !co.approveUrl || !co.claim) throw new Error('checkout answered without an order');
       // The popup is an about:blank window of THIS origin: only an https
       // URL may ever be assigned to it (a javascript: URL would run here).
       if (!/^https:\/\//i.test(String(co.approveUrl)) && !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//i.test(String(co.approveUrl))) throw new Error('checkout answered with an unusable approval link');
+      // Remember the claim BEFORE the window leaves our origin. From here on
+      // a closed window is not information: the receipt is.
+      rec = rememberPaypal(co, manifest, sheetData, amount, appName);
+      paypalLive.add(rec.id);
       if (win && !win.closed) win.location = co.approveUrl;
-      busyUi.say('Finish the payment in the PayPal window…');
-      // Poll for the signed receipt. PayPal may land the capture moments after
-      // the window closes, so a closed window narrows the patience rather than
-      // aborting: the receipt, not the window, is the truth.
-      const deadline = Date.now() + 5 * 60 * 1000;
-      let closedAt = 0;
-      while (Date.now() < deadline) {
-        if (busyUi.cancelled()) throw new Error(GifOS.charge.DECLINED);
-        if (win && win.closed && !closedAt) closedAt = Date.now();
-        if (closedAt && Date.now() - closedAt > 15000) throw new Error(GifOS.charge.DECLINED);
-        // The claim came back with the checkout and only to this page: the
-        // Worker signs a receipt for an order only to the claim it was minted with.
-        const rr = await fetch(base + '/receipt/' + encodeURIComponent(co.id) + '?claim=' + encodeURIComponent(co.claim || '') + whoQuery(sheetData)).catch(() => null);
-        if (rr && rr.ok) {
-          const body = await rr.json(); // { status, receiptJson, sig }
-          if (body.status === 'COMPLETED' && body.receiptJson && body.sig) {
-            const receipt = await verifyReceipt(body.receiptJson, body.sig);
-            bindReceipt(receipt, manifest, sheetData, amount, 'paypal');
-            return { receipt, receiptJson: body.receiptJson, sig: body.sig };
-          }
+      busyUi.say('Finish the payment in the PayPal window. Closing that window does not cancel a payment PayPal has accepted.');
+      const busyUntil = Date.now() + 5 * 60 * 1000;
+      while (Date.now() < busyUntil) {
+        const st = await paypalStatus(rec);
+        if (st.status === 'COMPLETED') {
+          store.del(PAYPAL_KEY + rec.id);
+          return st.paid;
         }
+        if (st.status === 'UNFILED') {
+          keepPaypal(rec, { unfiled: true, receiptJson: st.receiptJson, sig: st.sig, why: st.why });
+          paypalBanner(PAYPAL_UNFILED);
+          throw new Error(PAYPAL_UNFILED + (st.why ? ' ' + st.why : ''));
+        }
+        if (st.status === 'VOID') {
+          store.del(PAYPAL_KEY + rec.id);
+          throw new Error(PAYPAL_NOT_CHARGED);
+        }
+        // Hide stops the wait on this screen. It does not void the order,
+        // and it is not a decline. The record keeps being polled.
+        if (busyUi.cancelled()) { keepWindow = true; break; }
         await sleep(1500);
       }
-      throw new Error('the payment was not completed in time');
+      keepWindow = true;
+      paypalBanner(PAYPAL_UNCONFIRMED);
+      throw new Error(PAYPAL_UNCONFIRMED);
     } finally {
+      if (rec) paypalLive.delete(rec.id);
       busyUi.close();
-      if (win && !win.closed) { try { win.close(); } catch (e) {} }
+      if (!keepWindow && win && !win.closed) { try { win.close(); } catch (e) {} }
+      if (rec && store.get(PAYPAL_KEY + rec.id) !== undefined) resumePaypalOrders().catch(() => {});
     }
   }
 
@@ -770,6 +909,7 @@
     // An agent link paid after its sheet closed is recorded BEFORE this ask,
     // so "already purchased" is answered from what was really paid.
     try { await resumeAgentOffers(); } catch (e) {}
+    try { await resumePaypalOrders(); } catch (e) {}
     const p = purse();
     const request = GifOS.charge.validateRequest(req, {
       maxAmount: maxAmountFor(scope),
@@ -798,7 +938,7 @@
     if (choice.amount > cap) throw new Error('that amount is over this app’s ceiling (' + fmtUsd(cap) + ')');
     sheetData.amount = String(choice.amount);
 
-    const paid = choice.rail === 'paypal' ? await payWithPaypal(manifest, sheetData, choice.amount, choice.win, proof)
+    const paid = choice.rail === 'paypal' ? await payWithPaypal(manifest, sheetData, choice.amount, choice.win, proof, appName || manifest.name)
       : choice.rail === 'x402' ? await payWithX402(manifest, sheetData, choice.amount, proof)
       : choice.rail === 'transfer' ? await payWithTransfer(manifest, sheetData, choice.amount, proof)
       : choice.rail === 'mpp' ? await payWithAgent(manifest, sheetData, choice.amount, proof, appName || manifest.name)
@@ -920,10 +1060,13 @@
   try { for (const k of store.keys()) if (/^pay\.ent:[^/:]+:/.test(k)) store.del(k); } catch (e) {}
 
   // At boot: record anything an agent paid while this page was closed.
-  if (root.document && typeof setTimeout === 'function') setTimeout(() => { resumeAgentOffers().catch(() => {}); }, 1500);
+  if (root.document && typeof setTimeout === 'function') setTimeout(() => {
+    resumeAgentOffers().catch(() => {});
+    resumePaypalOrders().catch(() => {});
+  }, 1500);
 
   GifOS.payBroker = {
-    charge, entitled, license, ingestReceiptFiles, resumeAgentOffers,
+    charge, entitled, license, ingestReceiptFiles, resumeAgentOffers, resumePaypalOrders,
     PENDING_KEY,
     // The Settings surface reads and writes through these — the panel owns no
     // storage of its own.
