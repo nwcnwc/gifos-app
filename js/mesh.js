@@ -466,6 +466,7 @@
       this.ackReaskAt = -1;
       this.reAskAgain = false;   // the paced re-send is the same ask, not a new pick
       this.handed = new Map();   // seeker id -> { to, cell, deep, at }: where I handed its FIND, so a marked re-ask follows the same chain
+      this.vouchDead = new Map();   // seeker id -> tick I freed my own vouch (the PLACE never confirmed). A marked re-ask may scan again.
       this.findNc = null;        // 03c: seeker of the serveFind scan in progress (knock-is-evidence phantom scope)
       this.noroomSeen = 0;       // T7: NOROOMs told to my face since I last entered the search (sim mesh.cpp noroomSeen) — only an EXPLICIT NOROOM counts, never a timeout
       // V7 THE DEEP-ROW LEDGER (sim mesh.cpp rowLedgerAt, 2026-09-17): the tick I
@@ -842,11 +843,11 @@
         if (this.occGet(k) !== s.joiner && !this.firstHandLive(k)) {
           if (s.pingAt == null || s.pingAt < 0) { s.pingAt = this.TICK; this.emit(s.joiner, { t: 'SITPING', ck: k, id: s.joiner, from: this.id }); continue; }
           if (this.TICK - s.pingAt < SIT_PING_WAIT) continue;
-          del.push(k); this.healOnly.delete(k); this.healTry.set(k, this.TICK);
+          del.push(k); this.healOnly.delete(k); this.healTry.set(k, this.TICK); this.noteVouchDead(s.joiner);
           continue;
         }
         if (this.TICK - s.at >= SIT_TTL) {
-          del.push(k); this.healOnly.delete(k); this.healTry.set(k, this.TICK);   // V4: TTL is also a silence-free — cool before re-admission
+          del.push(k); this.healOnly.delete(k); this.healTry.set(k, this.TICK); this.noteVouchDead(s.joiner);   // V4: TTL is also a silence-free — cool before re-admission
           if (this.occGet(k) === s.joiner && !this.firstHandLive(k)) {
             this.occ.delete(k); this.live.delete(k); this.s1seen.delete(k);
             this.kidful.delete(k); this.tlForget(k, 'sit-ttl'); this.healTry.delete(k);
@@ -1863,6 +1864,11 @@
     silentFor(k, n) { const it = this.live.get(k); return it !== undefined && this.TICK - it > n; }
     // Remember where a seeker's FIND was handed, and send it on. A marked
     // re-ask follows this record. It never starts a second scan.
+    noteVouchDead(nc) {
+      if (nc == null) return;
+      this.vouchDead.delete(nc); this.vouchDead.set(nc, this.TICK);
+      if (this.vouchDead.size > 64) this.vouchDead.delete(this.vouchDead.keys().next().value);
+    }
     handOn(mm, to, cell, deep) {
       if (this.handed.size >= 64) this.handed.delete(this.handed.keys().next().value);
       this.handed.set(mm.nc, { to, cell, deep: !!deep, at: this.TICK });
@@ -1874,16 +1880,23 @@
       if (!this.hasCoord || mm.ttl <= 0) { this.noroomWhy = 'unseated'; this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
       for (const s of this.sitting.values()) if (s.joiner === mm.nc && s.assigner === this.id && s.pl && TICK - s.at <= SIT_TTL) { this.emit(mm.nc, Object.assign({}, s.pl)); return; } // FINDACK: a re-ask reaching the admitter that already vouches this seeker gets the SAME chair again (its PLACE was lost) — never a twin vouch
       // A marked re-ask follows the chain already taken while that hand-off is
-      // fresh and its target still holds the cell. No record: drop it. A new
-      // scan while that target can still place the seeker seated one person
-      // twice. A target that has left the cell is different: the old chain
-      // can never answer, and the seeker keeps marking the re-ask, so nobody
-      // looks for a free seat again.
+      // fresh and its target still holds the cell. A stale record still drops:
+      // an intermediate whose note aged out must not start a second scan while
+      // the admitter's vouch can be alive (that scan seated one person twice).
+      // No record at all, and this seat's own vouch for the seeker just died:
+      // the PLACE never confirmed (a severed channel ate it, SITPING freed the
+      // chair) and the seeker keeps marking the re-ask, so scan again. Dropping
+      // that re-ask left both ends of the sever unseated for the rest of the
+      // run (chaos a007f8: Gil and Theo never came back). A target
+      // that has left the cell is the same dead chain: fall through.
       if (mm.again) {
         const h = this.handed.get(mm.nc);
         const fresh = h && TICK - h.at <= KNOCK_FRESH && h.to !== this.id;
         if (fresh && this.occGet(h.cell) === h.to) { this.handOn(mm, h.to, h.cell, h.deep); return; }
-        if (!(fresh && this.occGet(h.cell) !== h.to)) return;
+        const left = !!(fresh && this.occGet(h.cell) !== h.to);
+        const died = this.vouchDead.get(mm.nc);
+        const mineDied = !h && died !== undefined && TICK - died <= SIT_TTL;
+        if (!left && !mineDied) return;
       }
       if (this.coord.pc === 0) {
         const skip = [];   // forensics: why each Section-1 cell was passed over (noroomWhy, the test trace's NOROOM row)
