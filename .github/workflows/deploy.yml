@@ -66,22 +66,21 @@ jobs:
             --exclude 'NOTICE' \
             --exclude '/apps/pdf-tables-ocr/pdf-tables-ocr.gif' \
             ./ dist/
-          # Count the source files, not the site copy just staged beside them.
-          gifs=$(find . \( -path ./.git -o -path ./dist \) -prune -o -name '*.gif' -print | wc -l)
-          echo "gif files = $gifs"
-          if [ "$gifs" -ne 204 ]; then
-            echo "::error::expected 204 GIFs, found $gifs"
-            exit 1
-          fi
+          # The source GIFs must match the store catalog exactly: every listed
+          # app's GIF present, nothing unlisted (.github/scripts/site-gifs.py).
+          python3 .github/scripts/site-gifs.py > /tmp/site-gifs.txt
+          echo "gif files = $(wc -l < /tmp/site-gifs.txt)"
           # Every app file the site can hold is published with the site.
           # One file is too large for a single site file, so it is left out.
           if [ -f dist/apps/pdf-tables-ocr/pdf-tables-ocr.gif ]; then
             echo "::error::the large app file was staged for the site"
             exit 1
           fi
-          staged=$(find dist -type f -name '*.gif' | wc -l)
-          if [ "$staged" -ne 203 ]; then
-            echo "::error::expected 203 app files on the site, found $staged"
+          # The site copy holds every catalog GIF except that one.
+          grep -vx 'apps/pdf-tables-ocr/pdf-tables-ocr.gif' /tmp/site-gifs.txt | sort > /tmp/site-gifs-staged.txt
+          (cd dist && find . -type f -name '*.gif' | sed 's|^\./||' | sort) > /tmp/dist-gifs.txt
+          if ! diff -u /tmp/site-gifs-staged.txt /tmp/dist-gifs.txt; then
+            echo "::error::the site copy's GIFs do not match the store catalog"
             exit 1
           fi
           big=$(find dist -type f -size +25M -print)
@@ -178,8 +177,10 @@ jobs:
                   else:
                       uploads.append((key, path))
           print(f"r2 objects {len(stored)}, unchanged {same}, upload {len(uploads)}", flush=True)
-          if same + len(uploads) != 204:
-              raise SystemExit(f"expected 204 GIFs, found {same + len(uploads)}")
+          import subprocess
+          expected = subprocess.run(["python3", ".github/scripts/site-gifs.py"], check=True, capture_output=True, text=True).stdout.split()
+          if same + len(uploads) != len(expected):
+              raise SystemExit(f"expected {len(expected)} GIFs from the catalog, found {same + len(uploads)}")
 
           def put(item):
               key, path = item
