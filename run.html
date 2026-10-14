@@ -2970,7 +2970,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // is still open. That silence is not a death: closing the pair
           // forces a full re-knock when they return, and the channel would
           // have answered on its own. Do not spend the kick throttle on it.
-          if (dcOpen) continue;
+          // That holds only once the channel has carried a byte. onDc stamps
+          // dcRxAt on any receive: a healthy pair's statuses ride the DC
+          // every <=12s, and a zombie receives nothing. An open channel that
+          // has never carried a byte is that zombie, not a paused radio.
+          const carried = (p.dcRxAt || 0) > 0;
+          if (dcOpen && carried) continue;
           sv.kicked++;
           p.meshKickAt = nowHb;
           // D5's missing edge (behavior battery 14a, 2026-07-26): a starving
@@ -2993,7 +2998,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // fix is untouched — heardPid>0 pairs (once-established) keep the
           // full edge too.
           const formingAlive = !heardPid && nowHb - (p.lastHeard || 0) < 12000;
-          if (!tlFiredPid.has(pid) && !formingAlive && !dcOpen) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
+          if (!tlFiredPid.has(pid) && !formingAlive && (!dcOpen || !carried)) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
           if (typeof clog === 'function') clog('mesh-starve rebuild ' + String(pid).slice(0, 6));
           newPcFor(p);
           sendOffer(pid, false);
@@ -4023,7 +4028,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The chip and the sharer list are one verdict (fresh status, else the
       // folded stage bit). A list that already names the sharer must not wait
       // for a later status beat to say so on the tile.
-      if ((isMe ? st.scr : sharingScreen(id)) && (isMe || !(typeof shareBlocked === 'function' && shareBlocked(id)))) {
+      // typeof, same as the checks above: the chip is omitted when this
+      // binding is not in scope, and a lifted call must not abort the repaint.
+      if ((isMe ? st.scr : (typeof sharingScreen === 'function' && sharingScreen(id))) && (isMe || !(typeof shareBlocked === 'function' && shareBlocked(id)))) {
         chips.push(isMe
           ? '<span class="warn stopshare" role="button" tabindex="0" title="Stop sharing your screen">🖥 you are sharing your screen — tap to stop</span>'
           : '<span class="warn">🖥 sharing their screen</span>');
