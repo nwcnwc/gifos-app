@@ -3416,8 +3416,9 @@
         '<div class="set-head-start"><button type="button" class="set-textbtn" id="set-back" hidden>Back</button></div>' +
         '<h3 id="set-title">Settings</h3>' +
         '<div class="set-head-end"><span id="set-save-note" class="set-save-note" aria-live="polite"></span>' +
-          '<button type="button" class="set-textbtn" id="set-save">Save</button>' +
-          '<button type="button" class="set-textbtn" id="set-close">Done</button></div>' +
+          '<button type="button" class="set-textbtn" id="set-cancel" hidden>Cancel</button>' +
+          '<button type="button" class="set-textbtn" id="set-save" hidden>Save</button>' +
+          '<button type="button" class="set-textbtn" id="set-close">Close</button></div>' +
       '</header>' +
       '<div class="set-body">' +
         '<section data-page="root">' +
@@ -3502,6 +3503,36 @@
       erase: 'Erase this computer',
     };
     let stack = ['root'];
+    // One save model on every page. Name, the invite connection, and AI wait
+    // for Save. Look, payments, and connected accounts still apply on their
+    // own controls (a tested account is the only way an account is stored).
+    const readDeferred = () => ({
+      name: (box.querySelector('#set-name') || {}).value || '',
+      relay: (box.querySelector('#set-relay') || {}).value || '',
+      ai: AI_TYPES.map((t) => {
+        const sel = box.querySelector('.ai-src[data-ai="' + t.key + '"]');
+        const fields = {};
+        box.querySelectorAll('.ai-f[data-ai="' + t.key + '"]').forEach((i) => { fields[i.getAttribute('data-f')] = i.value; });
+        return { src: sel ? sel.value : '', fields };
+      }),
+    });
+    let savedSnap = '';
+    const snapNow = () => { savedSnap = JSON.stringify(readDeferred()); };
+    const isDirty = () => JSON.stringify(readDeferred()) !== savedSnap;
+    const paintNameStatus = () => {
+      const nameEl = box.querySelector('#set-name');
+      const ns = box.querySelector('#set-status-name');
+      if (nameEl && ns) ns.textContent = nameEl.value.trim() || 'Not set';
+    };
+    const paintActions = () => {
+      const dirty = isDirty();
+      const saveBtn = box.querySelector('#set-save');
+      const cancelBtn = box.querySelector('#set-cancel');
+      const closeBtn = box.querySelector('#set-close');
+      if (saveBtn) saveBtn.hidden = !dirty;
+      if (cancelBtn) cancelBtn.hidden = !dirty;
+      if (closeBtn) closeBtn.hidden = dirty;
+    };
     const showPage = (id) => {
       box.querySelectorAll('[data-page]').forEach((s) => { s.hidden = s.getAttribute('data-page') !== id; });
       box.dataset.page = id;
@@ -3509,16 +3540,8 @@
       if (title) title.textContent = TITLES[id] || 'Settings';
       const backBtn = box.querySelector('#set-back');
       if (backBtn) backBtn.hidden = id === 'root';
-      const onErase = id === 'erase';
-      const saveBtn = box.querySelector('#set-save');
-      const doneBtn = box.querySelector('#set-close');
-      if (saveBtn) saveBtn.hidden = onErase;
-      if (doneBtn) doneBtn.hidden = id !== 'root';
-      if (id === 'root') {
-        const nameEl = box.querySelector('#set-name');
-        const ns = box.querySelector('#set-status-name');
-        if (nameEl && ns) ns.textContent = nameEl.value.trim() || 'Not set';
-      }
+      if (id === 'root') paintNameStatus();
+      paintActions();
       const body = box.querySelector('.set-body');
       if (body) body.scrollTop = 0;
     };
@@ -3544,6 +3567,18 @@
     wireAiSection(box);
     wireApiSection(box);
     wirePaySection(box);
+    snapNow();
+    const markDirty = (e) => {
+      const t = e.target;
+      if (!t || !t.matches) return;
+      if (t.matches('#set-name, #set-relay, .ai-f, .ai-src')) {
+        const note = box.querySelector('#set-save-note');
+        if (note && note.textContent === 'Saved') note.textContent = '';
+        paintActions();
+      }
+    };
+    box.addEventListener('input', markDirty);
+    box.addEventListener('change', markDirty);
 
     const vc = box.querySelector('#set-version');
     // What's new opens the Updates page. #set-advanced stays a details.adv so the
@@ -3603,8 +3638,9 @@
         persistBtn.disabled = false;
       }
     };
-    // Save writes every deferred setting and stays on the page. Done writes the
-    // same set and closes. Accounts still save only through Test & save.
+    // Save writes the deferred fields and stays. Cancel puts them back.
+    // Close is only there when nothing is waiting, and it does not write.
+    // Accounts still save only through Test & save.
     const saveAll = () => {
       const relayEl = box.querySelector('#set-relay');
       const nameEl = box.querySelector('#set-name');
@@ -3612,22 +3648,50 @@
       try { if (v) localStorage.setItem('gifos_relay', v); else localStorage.removeItem('gifos_relay'); } catch (e) {}
       if (nameEl) store.setName(nameEl.value);
       if (box._saveAi) box._saveAi();
+      snapNow();
+      paintNameStatus();
       const note = box.querySelector('#set-save-note');
       if (note) note.textContent = 'Saved';
+      paintActions();
     };
-    const finish = () => { saveAll(); dlg.close(); };
+    const revertDeferred = () => {
+      let snap; try { snap = JSON.parse(savedSnap); } catch (e) { return; }
+      const nameEl = box.querySelector('#set-name');
+      const relayEl = box.querySelector('#set-relay');
+      if (nameEl) nameEl.value = snap.name || '';
+      if (relayEl) relayEl.value = snap.relay || '';
+      (snap.ai || []).forEach((row, i) => {
+        const t = AI_TYPES[i];
+        if (!t || !row) return;
+        const sel = box.querySelector('.ai-src[data-ai="' + t.key + '"]');
+        if (sel) { sel.value = row.src || ''; if (sel.onchange) sel.onchange(); }
+        box.querySelectorAll('.ai-f[data-ai="' + t.key + '"]').forEach((inp) => {
+          const f = inp.getAttribute('data-f');
+          if (row.fields && Object.prototype.hasOwnProperty.call(row.fields, f)) inp.value = row.fields[f];
+        });
+      });
+      paintNameStatus();
+      const note = box.querySelector('#set-save-note');
+      if (note) note.textContent = '';
+      paintActions();
+    };
     box.querySelector('#set-save').onclick = () => saveAll();
-    box.querySelector('#set-close').onclick = () => finish();
+    box.querySelector('#set-cancel').onclick = () => revertDeferred();
+    box.querySelector('#set-close').onclick = () => { if (!isDirty()) dlg.close(); };
     box.querySelector('#set-back').onclick = () => back();
     const dlg = armDialog(bg, box, {
       label: 'Settings',
       initial: opts.focus === 'version' ? '#set-back' : '#set-go-you',
-      onEscape: () => { if (box.dataset.page === 'erase') back(); else finish(); },
+      onEscape: () => {
+        if (box.dataset.page === 'erase') back();
+        else if (isDirty()) revertDeferred();
+        else dlg.close();
+      },
     });
     bg.addEventListener('click', (e) => {
       if (e.target !== bg) return;
       if (window.matchMedia('(max-width: 700px)').matches) return;
-      finish();
+      if (!isDirty()) dlg.close();
     });
     showPage('root');
     if (opts.focus === 'version') revealVersion();
