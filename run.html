@@ -6295,7 +6295,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (leaving || bannedOut || !peers.has(pid)) return;
           if (starveDebtSince(Date.now() - 20000) > 2000) { setTimeout(recheck, 5000); return; }
           const pr = peers.get(pid);
-          if (pr && pr.connected) return;  // the pair healed: the death was our nap's echo
+          // The relay watched this socket close. The local channel stays
+          // connected until ICE gives up, so treating that as healing dropped
+          // the report and the seat was still held. A peer that only closed
+          // its relay socket answers the probe and keeps the seat.
+          const relaySaw = why.indexOf('relay-leave') !== -1;
+          if (pr && pr.connected && !relaySaw) return;
           if (pr) pr.tlAt = 0;             // let the real fire through the throttle
           onTransportDead(pid, why + '-awake');
         };
