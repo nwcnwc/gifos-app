@@ -1191,10 +1191,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip { position: fixed; z-index: 6; top: 14px; left: 14px; display: flex; align-items: center; gap: 8px;
     max-width: min(28rem, calc(100% - 120px)); background: rgba(12,14,18,.92); color: #f4f7fb;
     border-radius: 999px; padding: 6px 12px 6px 14px; }
-  .topchip .title { font-weight: 800; font-size: 16px; letter-spacing: -0.04em; text-decoration: none; cursor: pointer;
+  .topchip .title { font-weight: 800; font-size: 26px; letter-spacing: -0.04em; text-decoration: none; cursor: pointer;
     background: linear-gradient(135deg, #0071e3, #5856d6); -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent; color: transparent; }
-  .topchip .status { color: #e7ebf2; font-size: 13px; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
+  .topchip .status { color: #e7ebf2; font-size: 20px; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
     min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
   .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
@@ -1204,36 +1204,36 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     opacity: 1 !important; color: #e7ebf2 !important; background: rgba(12,14,18,.92); padding: 4px 10px;
     border-radius: 999px; z-index: 6 !important; text-shadow: none !important; }
   .bar { position: fixed; z-index: 32; left: 50%; bottom: 14px; transform: translateX(-50%);
-    display: flex; align-items: center; flex-wrap: nowrap; gap: 10px; height: 84px; width: auto;
-    max-width: calc(100% - 16px); padding: 0 14px 0 16px; margin: 0;
-    background: rgba(255,255,255,.94); border: 0; border-radius: 28px;
+    display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; height: 104px; width: auto;
+    max-width: calc(100% - 16px); padding: 0 16px 0 18px; margin: 0;
+    background: rgba(255,255,255,.94); border: 0; border-radius: 32px;
     box-shadow: 0 10px 30px rgba(0,0,0,.28); overflow: visible; }
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
-    width: 56px; height: 56px; min-width: 56px; min-height: 56px; padding: 0; border: 0; border-radius: 50%;
+    width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
     background: #e8ecf1; color: #1d1d1f; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
   }
-  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
+  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 34px; height: 34px; }
   .bar #mic.iconbtn, .bar #cam.iconbtn { color: #1d1d1f; border-color: transparent; }
   .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { color: #9f1239; border-color: transparent; background: #e8ecf1; }
   .bar #reactbtn.on, .bar #bartoggle[aria-expanded="true"] { background: #0064c8; color: #fff; }
   .bar:not(.collapsed) .bartoggle svg { transform: none; }
-  .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; margin-left: 6px; padding: 0;
-    border: 0; border-radius: 20px; background: #b61622; color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+  .bar #leavebtn { width: 72px; height: 72px; min-width: 72px; min-height: 72px; margin-left: 6px; padding: 0;
+    border: 0; border-radius: 22px; background: #b61622; color: #fff; display: inline-flex; align-items: center; justify-content: center; }
   .bar .barmore { display: none; }
-  .bar:not(.collapsed) .barmore { display: grid; position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%);
+  .bar:not(.collapsed) .barmore { display: grid; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
     width: min(720px, calc(100vw - 24px)); grid-template-columns: repeat(4, 1fr); gap: 8px;
     background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23; }
-  .bar:not(.collapsed) .barmore > button { min-height: 56px; height: auto; padding: 8px 6px; border: 0; border-radius: 16px;
-    background: #e8ecf1; color: #1d1d1f; font-size: 13px; font-weight: 650; white-space: normal; }
+  .bar:not(.collapsed) .barmore > button { min-height: 64px; height: auto; padding: 8px 6px; border: 0; border-radius: 16px;
+    background: #e8ecf1; color: #1d1d1f; font-size: 18px; font-weight: 650; white-space: normal; }
   .bar:not(.collapsed) .barmore .blurctl { grid-column: 1 / -1; display: flex; align-items: center; min-height: 48px; gap: 8px; }
   .bar:not(.collapsed) .barmore .blurlbl { display: inline; color: #3a3a3f; font-size: 14px; }
   .bar:not(.collapsed) .barmore .seg { min-height: 48px; min-width: 48px; color: #1d1d1f; background: #fff; }
-  .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 96px; transform: translateX(-50%);
+  .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 122px; transform: translateX(-50%);
     display: flex; gap: 8px; background: rgba(255,255,255,.96); border-radius: 20px; padding: 10px;
     box-shadow: 0 10px 28px rgba(0,0,0,.25); }
   .reacttray[hidden] { display: none !important; }
-  .reacttray button { min-width: 64px; min-height: 64px; border: 0; border-radius: 16px; background: #e8ecf1; color: #1d1d1f;
-    font-size: 13px; font-weight: 650; padding: 6px; }
+  .reacttray button { min-width: 68px; min-height: 68px; border: 0; border-radius: 16px; background: #e8ecf1; color: #1d1d1f;
+    font-size: 18px; font-weight: 650; padding: 6px; }
   .reacttray button.on { background: #0064c8; color: #fff; }
   .tile .reactburst { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 5;
     background: #fff; color: #1d1d1f; font-weight: 800; font-size: 18px; padding: 8px 14px; border-radius: 999px;
@@ -1241,11 +1241,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .reactburst.show { animation: reactpop 1.6s ease forwards; }
   @keyframes reactpop { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
   #leave-ask .name-box { background: #fff; color: #1d1d1f; }
-  #leave-ask .name-box h3, #leave-ask .name-box p { color: #1d1d1f; }
-  #leave-ask #leave-cancel { min-height: 48px; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
-  #leave-ask #leave-go { min-height: 48px; margin-left: 8px; background: #b61622; color: #fff; border: 0; }
+  #leave-ask .name-box h3 { color: #1d1d1f; font-size: 1.7rem; margin-bottom: 1rem; }
+  #leave-ask #leave-cancel { min-height: 64px; min-width: 96px; font-size: 1.2rem; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
+  #leave-ask #leave-go { min-height: 64px; min-width: 96px; font-size: 1.2rem; margin-left: 8px; background: #b61622; color: #fff; border: 0; }
   body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
-    background: #0c0e12; display: flex; flex-direction: column; padding: 8px 8px 108px; box-sizing: border-box; }
+    background: #0c0e12; display: flex; flex-direction: column; padding: 8px 8px 132px; box-sizing: border-box; }
   body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid {
     flex: 1 1 auto; min-height: 0; height: auto; padding: 0; gap: 6px; align-content: stretch;
     grid-auto-rows: minmax(0, 1fr); }
@@ -1268,25 +1268,40 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="5"] > .tile.span-bottom {
     grid-column: 1 / -1; }
   body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
-    position: fixed; z-index: 4; width: 168px; height: 126px; right: 28px; bottom: 124px; left: auto; top: auto;
+    position: fixed; z-index: 4; width: 294px; height: 221px; right: 28px; bottom: 140px; left: auto; top: auto;
     border-radius: 16px; border: 2px solid #fff; aspect-ratio: auto; box-shadow: 0 12px 28px rgba(0,0,0,.45); }
+  .tile .name { font-size: 1.15rem; padding: .28rem .75rem; }
+  .tile .chips span { font-size: .95rem; }
   @media (max-width: 700px) {
+    .topchip .title { font-size: 20px; }
+    .topchip .status { font-size: 17px; }
+    .bar { height: 88px; gap: 8px; padding: 0 10px; }
+    .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+      width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
+    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
+    .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
+    .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px); }
+    .bar:not(.collapsed) .barmore > button { min-height: 56px; font-size: 16px; }
+    .reacttray { bottom: 102px; }
+    .reacttray button { min-width: 56px; min-height: 56px; font-size: 16px; }
+    #leave-ask .name-box h3 { font-size: 1.35rem; }
+    #leave-ask #leave-cancel, #leave-ask #leave-go { min-height: 56px; font-size: 1.05rem; }
+    .tile .name { font-size: 1rem; }
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
-      width: 112px; height: 150px; right: 14px; bottom: 118px; border-radius: 18px; }
+      width: 180px; height: 240px; right: 14px; bottom: 118px; border-radius: 18px; }
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="3"]) .tile.me {
-      left: 12px; right: auto; width: 84px; height: 112px; }
+      left: 12px; right: auto; width: 134px; height: 179px; }
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="5"]) .tile.me {
-      width: 86px; height: 114px; }
-    .bar:not(.collapsed) .barmore { grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px); }
+      width: 138px; height: 182px; }
   }
-  body.screen-on #feed { padding-bottom: 108px; box-sizing: border-box; background: #0c0e12; }
+  body.screen-on #feed { padding-bottom: 132px; box-sizing: border-box; background: #0c0e12; }
   body.screen-on #grid { flex: 0 0 120px; height: 120px; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; }
   body.screen-on #grid .tile { height: 104px; flex: 0 0 auto; width: auto; aspect-ratio: 16 / 9; }
   @media (max-width: 700px) {
     body.screen-on #grid { flex-basis: 92px; height: 92px; }
     body.screen-on #grid .tile { height: 76px; }
   }
-  body.has-app #feed { margin-bottom: 108px; }
+  body.has-app #feed { margin-bottom: 132px; }
   body.broadcast #feed { padding-bottom: 108px; box-sizing: border-box; }
   #joinveil { background: transparent; pointer-events: none; align-items: flex-start; justify-content: center; padding-top: 72px; z-index: 18; }
   #joinveil .jv-box { pointer-events: auto; background: #fff; color: #1d1d1f; border-radius: 16px; padding: 1.1rem 1.3rem;
