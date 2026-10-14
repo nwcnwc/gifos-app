@@ -7249,21 +7249,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // While four or more doors have never once connected, each is
       // redialled at a growing interval: 5 s, then 10, 20, 40, and 40 from
       // then on (DOOR_REDIAL_CAP), until it connects (dialWait clears with
-      // neverUp). Fewer than that keep five seconds, the same as a pair
-      // that has connected before. Every redial is a fresh bootstrap over
-      // the relay (three frames), and a page whose network reaches no one
-      // keeps every greeter's door alive at once: nine doors every 5 s was
-      // 5.4 frames a second, past the production meter (3 a second after a
-      // 600-frame burst), and the relay cut the page for rate about four
-      // minutes in.
+      // neverUp). The wire asks again four seconds after the last ask. A
+      // five-second gate skips that ask, so the next offer goes out eight
+      // seconds on. Fewer than four unanswered doors take the ask itself.
+      // A pair that has connected before keeps its five seconds. Every
+      // redial is a fresh bootstrap over the relay (three frames), and a
+      // page whose network reaches no one keeps every greeter's door alive
+      // at once: nine doors every 5 s was 5.4 frames a second, past the
+      // production meter (3 a second after a 600-frame burst), and the
+      // relay cut the page for rate about four minutes in.
       // Nine doors at 40 s is 0.7 a second. Four unanswered doors at five
       // seconds are 2.4 frames a second, under that meter, so the growing
-      // wait starts only at four. One door left on the long wait held a
-      // member's return past the point the room could see them.
+      // wait starts only at four. One door left on the eight-second gap
+      // held a member's return past the point the room could see them.
       let neverDoors = 0;
       for (const q of peers.values()) if (q.neverUp === true) neverDoors++;
       const manyDoors = neverDoors >= 4;
-      const wait = (p && p.neverUp === true && manyDoors) ? (p.dialWait || 5000) : 5000;
+      // Under the wire's four-second ask, so that ask is the redial.
+      const fewDoorWait = 3500;
+      const wait = (p && p.neverUp === true) ? (manyDoors ? (p.dialWait || 5000) : fewDoorWait) : 5000;
       if (p && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < wait && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') return; // forming: its turn is not yet
       // A stale transport — an offer never answered, a pair dead since a
       // dark spell — is rebuilt: the door needs a fresh bootstrap, not a
