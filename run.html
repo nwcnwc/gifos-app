@@ -4246,12 +4246,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { ac = newMeetAudioContext(); } catch (e) { return null; }
         if (!ac) return null;
         // A phone call or a route change suspends the context after the ear
-        // exists. Resume when it comes back and the tab is visible. 'interrupted'
-        // is the Safari name for the same state.
+        // exists. Resume when it comes back, hidden or not: the stage ear is
+        // this context, and a phone in a pocket must keep hearing the stage
+        // (audio never parks). 'interrupted' is the Safari name for the same state.
         if (ac && !ac._gifosWatch) {
           ac._gifosWatch = true;
           ac.onstatechange = () => {
-            if (ac && (ac.state === 'suspended' || ac.state === 'interrupted') && !document.hidden) ac.resume().catch(() => {});
+            if (ac && (ac.state === 'suspended' || ac.state === 'interrupted')) ac.resume().catch(() => {});
           };
         }
       }
@@ -9439,6 +9440,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (rmSig !== lastRmSig) { lastRmSig = rmSig; refreshOutbound(); }
       reconcileMosaic(); // the nested mosaic follows the same occ (3b)
       applyBuses();    // bus membership follows the same arithmetic
+      keepAudioAlive(); // the watchdog: the worker beats while hidden, so a pocketed phone's context and companions come back within 2s
       paintStage();    // remote grants/roster moves can change my stage rights
       paintShare();    // …and SOMEONE ELSE starting a share is a room fact only gossip carries
       reactHandCall(); // admin room: a fresh grant while my hand is up = called onto the Stage
@@ -16236,6 +16238,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (pr && pr.then) pr.then(() => { if (typeof audioUnblocked === 'function') audioUnblocked(stageEar.el); }).catch((e) => audioBlocked(stageEar.el, e));
       }
     }
+    // AUDIO NEVER PARKS. Any wake (tab shown or hidden, bfcache restore,
+    // focus, Page Lifecycle resume) and the 2s worker beat resume a context
+    // the OS suspended and restart a companion it paused. Never creates the
+    // context: one that does not exist yet has nothing to play.
+    function keepAudioAlive() {
+      if (ac && (ac.state === 'suspended' || ac.state === 'interrupted')) ac.resume().catch(() => {});
+      kickPausedAudio();
+    }
 
     function busVolume(el, vol) {
       if (!el.srcObject) { if (el._aud) el._aud.srcObject = null; el.volume = vol; return; }
@@ -19029,6 +19039,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     window.addEventListener('pagehide', sendMeshLeave);
     // bfcache resume after a pagehide: we already gave up our seat — rejoin fresh.
     window.addEventListener('pageshow', (e) => { if (e.persisted && leftMesh) location.reload(); });
+    // Audio never parks: every wake re-checks playout now, not on the next beat.
+    document.addEventListener('visibilitychange', keepAudioAlive);
+    document.addEventListener('resume', keepAudioAlive);
+    window.addEventListener('pageshow', keepAudioAlive);
+    window.addEventListener('focus', keepAudioAlive);
     // THE LEAVE BUTTON (2026-10-02). A meeting had no way out but the tab's
     // close box; "how do I sign off?" went round the room. Leaving is the same
     // instant goodbye an unload sends, done on purpose: share and captions
@@ -20780,6 +20795,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       powTier: () => ({ batt: battTier, drain: drainTier, mobile: IS_MOBILE ? 2 : 0, idle: idleNow ? 3 : 0, rung: lastQ && { label: lastQ.label, fps: lastQ.fps, kbps: lastQ.kbps }, tune: tuneCfg() }),
       pokeForTest: () => poke(),
       idleForTest: (ms) => { lastActive = Date.now() - (ms | 0); },
+      // TEST: what this page is PLAYING, read without
+      // resuming anything — the context state, the stage ear, every companion,
+      // the inbound audio bytes summed over every pair, and closed pairs.
+      audioPlayoutForTest: async () => {
+        const comps = [];
+        for (const v of document.querySelectorAll('.tile video, .rowtile video')) {
+          if (v._aud) comps.push({ paused: v._aud.paused, muted: v._aud.muted, src: !!v._aud.srcObject });
+        }
+        let inBytes = 0, closed = 0;
+        for (const [, p] of peers) {
+          if (!p.pc) continue;
+          if (p.pc.connectionState === 'closed') { closed++; continue; }
+          try { (await p.pc.getStats()).forEach((r) => { if (r.type === 'inbound-rtp' && r.kind === 'audio') inBytes += r.bytesReceived || 0; }); } catch (e) {}
+        }
+        return { ac: ac ? ac.state : null, hidden: document.hidden,
+          ear: stageEar ? { paused: stageEar.el.paused, src: !!stageEar.el.srcObject } : null,
+          comps, inBytes, closed };
+      },
+      // TEST: what the OS does to a pocketed phone — suspend the context, pause every companion.
+      suspendAudioForTest: async () => {
+        for (const v of document.querySelectorAll('.tile video, .rowtile video')) { if (v._aud) try { v._aud.pause(); } catch (e) {} }
+        if (stageEar) try { stageEar.el.pause(); } catch (e) {}
+        if (ac) await ac.suspend();
+        return ac ? ac.state : null;
+      },
       camTrackLive: () => !!(localStream && localStream.getVideoTracks()[0] && localStream.getVideoTracks()[0].readyState === 'live'),
       // hidden-viewer dormancy forensics: mains I parked at the far side's
       // request / parks I asked for / is my main video toward pid carrying
