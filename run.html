@@ -2413,6 +2413,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const meshSeat = () => (meshNode ? meshNode.seat : null);
     const meshCoord = () => { const s = meshSeat(); return s && s.hasCoord ? s.coord : null; };
     const meshOccAt = (c) => { const s = meshSeat(); if (!s) return null; return s.occGet(net.topo.ckey(c)); };
+    // ── NETWORK-AWARE SEATING (js/mesh.js NetRoom) ──────────────────────────
+    // People on networks that cannot all reach each other are joined with the
+    // fewest relayed links: one BRIDGE per pair of groups, each with a hot
+    // STANDBY; every other link between groups is DARK (carries nothing).
+    // mesh.js decides; this block only installs the room view and reads the
+    // verdict for the relay-pool code. Nothing is installed by default, so a
+    // meeting seats exactly as before until netSeatingInstall(view) runs.
+    //   netSeatingInstall(view)  build a GifOS.mesh.NetRoom over `view` (the
+    //                            reachability tests and the pool state; the
+    //                            contract is in mesh.js) or remove it (null)
+    //   netLinks()               [{ peer, bridge, standby, dark, turnClient }]
+    //                            for my links and my bridge/standby partners
+    //   netLinkInfo(pid)         the same record for one peer, or null
+    //   netBeatTarget()          the heir I beat every 100 ms while I end a bridge, or null
+    //   netBeatFrom(pid)         a beat from bridge end pid arrived; netPulse() on a 100 ms clock
+    let netRoom = null;
+    function netSeatingKeep() { const s = meshSeat(); if (s && s.env && s.env.NET !== (netRoom || undefined)) s.env.NET = netRoom || undefined; }   // a rebuilt seat keeps the room
+    function netSeatingInstall(view) { netRoom = view ? new GifOS.mesh.NetRoom(view) : null; netSeatingKeep(); return netRoom; }
+    function netLinks() { try { const s = meshSeat(); return s && netRoom ? s.netLinks() : []; } catch (e) { return []; } }
+    function netLinkInfo(pid) { try { const s = meshSeat(); return s && netRoom && pid != null ? netRoom.linkInfo(s.id, pid) : null; } catch (e) { return null; } }
+    function netBeatTarget() { try { const s = meshSeat(); return s && netRoom ? netRoom.heirFor(s.id) : null; } catch (e) { return null; } }
+    function netBeatFrom(pid) { if (netRoom && pid != null) netRoom.beat(pid, Date.now()); }
+    function netPulse() { if (netRoom) netRoom.pulse(Date.now()); }
+    // ── end NETWORK-AWARE SEATING ───────────────────────────────────────────
     function myRowIds() {
       const c = meshCoord();
       if (!c) return myId ? [myId] : [];
@@ -9202,7 +9226,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             return { stage: stg, stadium: [...stad] };
           } catch (e) { return { stage: [], stadium: [] }; }
         },
-        onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} },
+        onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { netSeatingKeep(); } catch (e) {} },
         onRelayMsg: onRelayFrame,
         prevTree: readTreeMem(),
       });
