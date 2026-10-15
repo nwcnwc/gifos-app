@@ -3196,21 +3196,32 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // frozen feed must never be baked into a recording). Old clients ignore
     // the 'vis' frame — opportunistic savings, no flag day.
     const visParkSent = new Map(); // pid -> last park bool actually sent
+    // BEGIN-VIS-SHOW
+    // Coming back to the page must be delivered even when this phone already
+    // believes it sent "show me". A single lost frame leaves the mate's
+    // camera parked, and a delta will not send the same bit again. A few
+    // repeats after the page is shown cover that loss. While hidden the
+    // message stays a delta, so a pocket does not chat every beat.
+    let visShowLeft = 0;
+    function noteVisShown() { visShowLeft = 4; visParkSent.clear(); }
     function sendVisPark() {
       for (const k of [...visParkSent.keys()]) if (!peers.has(k)) visParkSent.delete(k);
       const recording = !!(typeof recRec !== 'undefined' && recRec && recRec.state !== 'inactive');
       const hidden = document.hidden && !recording;
+      const force = !hidden && visShowLeft > 0;
+      if (force) visShowLeft--;
       let floatPid = null;
       if (hidden) { const v = pipSource(); for (const [pid, p] of peers) if (p.video === v) { floatPid = pid; break; } }
       for (const [pid, p] of peers) {
         const park = hidden && pid !== floatPid;
-        if (visParkSent.get(pid) === park) continue;
+        if (!force && visParkSent.get(pid) === park) continue;
         if (p.dc && p.dc.readyState === 'open') { dcSend(p, { k: 'vis', park }); visParkSent.set(pid, park); }
         else visParkSent.delete(pid); // never mark unsent state as delivered
       }
     }
+    // END-VIS-SHOW
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) enterPip(); else exitPip();
+      if (document.hidden) enterPip(); else { exitPip(); noteVisShown(); }
       sendVisPark();
     });
     // The floated element can die mid-background (a stage strip teardown pulls
@@ -9426,6 +9437,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // lost. And a tile can be bound to a stream whose picture never started.
         recoverLostOffer(p, now);
         if (p.video && p.stream && !p.relayed && p.ownSid && p.stream.id === p.ownSid) reseatStuckPicture(p.video, p.stream);
+        if (p.mainV && !p.remoteParkMain) reseatMainSender(p);
         if (p.noRoute && p.neverUp !== true && peerAway(pid)) { p.noRoute = false; updateTile(pid); }
       }
       updateStatus(); // the reach line follows the pair verdicts just made (REACH_MSG)
@@ -12225,8 +12237,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (video._picReseatAt && now - video._picReseatAt < 2000) return false;
       video._picReseatAt = now;
       try { video.muted = true; } catch (e) {}
-      try { video.srcObject = null; video.srcObject = stream; } catch (e) { return false; }
-      const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
+      // Same-turn null-then-assign is coalesced: the element never sees a
+      // change and stays at readyState 0. Drop now, bind the same stream on
+      // the next turn. The companion is a different element and is not touched.
+      try { video.srcObject = null; } catch (e) { return false; }
+      const token = stream;
+      setTimeout(() => {
+        if (video.srcObject) return;
+        try { video.srcObject = token; } catch (e) { return; }
+        const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
+      }, 0);
       return true;
     }
     function playTileVideo(video, stream) {
@@ -12268,6 +12288,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return true;
     }
     // END-LOST-OFFER
+    // BEGIN-MAIN-SENDER
+    // An unpark that landed while the camera track was missing leaves the
+    // main video sender empty with remoteParkMain already false. Nothing else
+    // calls refreshOutbound, so the mate's tile stays black. Seat the live
+    // camera. A mate who is still hidden (remoteParkMain) stays parked.
+    function reseatMainSender(p) {
+      if (!p || !p.mainV || p.remoteParkMain || p.mainV.track) return false;
+      if (myStatus.camOff || stageIds().includes(myId) || !camPeer(p.id)) return false;
+      let vt = null;
+      try { vt = sentVideoTrack(); } catch (e) {}
+      if (!vt || vt.readyState !== 'live') return false;
+      p.mainV.replaceTrack(vt).catch(() => {});
+      return true;
+    }
+    // END-MAIN-SENDER
     // A glare rollback can leave the main video sender negotiated sendrecv,
     // track still attached, and emitting nothing. Seating the live camera
     // again (drop, then the same track) restarts the encoder. Never touches
