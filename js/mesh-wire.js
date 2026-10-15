@@ -537,7 +537,13 @@
     const relayCloses = [];
     const RELAY_CLOSES_KEPT = 64;
     function makeSock() {
-      sock = net.steadySocket(makeUrl, { onClose: (code) => { relayCloses.push({ code, at: Date.now() }); if (relayCloses.length > RELAY_CLOSES_KEPT) relayCloses.shift(); } });
+      // onDuty: a live meeting must stay reachable while the page is hidden
+      // (a phone in a pocket), so a dropped relay retries on the short cap,
+      // not the patient one a background tab gets. Off once the node stops.
+      sock = net.steadySocket(makeUrl, {
+        onClose: (code) => { relayCloses.push({ code, at: Date.now() }); if (relayCloses.length > RELAY_CLOSES_KEPT) relayCloses.shift(); },
+        onDuty: () => !stopped,
+      });
       lastRelayRx = Date.now(); // fresh socket starts its idle clock now
       // EVERY (re)connect: if I am a seated Section-1 greeter, my pool entry
       // died with the old socket — restore it NOW, not at the next E3 tick.
