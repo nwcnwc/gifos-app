@@ -6756,6 +6756,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         .then(() => {
           settled();
           if (p.pc !== pc) return; // rebuilt while minting: this offer belongs to a closed pc
+          p.offerSentAt = Date.now(); p.offerSentPc = pc;
           sendSig(peerId, { kind: 'offer', sdp: pc.localDescription, ib: 1, name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() });
         })
         .catch((e) => { settled(); if (p.pc === pc) noteNegFail('offer', peerId, e); });
@@ -7286,14 +7287,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // at all, so whatever pc I hold toward it faces one it has closed. The
     // id-order initiator dials; a pair still forming (built under 5 s ago)
     // is the dial the request asks for, and re-offering would restart it.
-    // Not so an offer still unanswered while this peer's silence has fired the
-    // transport-death edge (tlFiredPid, cleared by its next mesh frame): that
-    // offer went into the dark, and the request is the peer back with no
-    // pair. Waiting it out held a returning head off its newcomer until the
-    // 6 s re-offer.
+    // Not so an offer still unanswered when the request comes: a peer that
+    // had it would be answering, not asking, and the relay carries both in
+    // well under a second. An offer sent a second or more before the request,
+    // or while this peer's silence had fired the transport-death edge
+    // (tlFiredPid, cleared by its next mesh frame), went into the dark; the
+    // request is the peer back with no pair. Waiting it out held a returning
+    // member off a newcomer until the next re-offer, seconds later.
+    const LOST_OFFER_MS = 1000;
     function onDialRequest(p) {
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
-      const darkOffer = tlFiredPid.has(p.id) && p.pc && p.pc.signalingState === 'have-local-offer';
+      const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer');
+      const darkOffer = unanswered && (tlFiredPid.has(p.id) || (p.offerSentPc === p.pc && Date.now() - (p.offerSentAt || 0) >= LOST_OFFER_MS));
       const forming = !pLive && p.pc && !darkOffer && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
