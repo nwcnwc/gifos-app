@@ -290,6 +290,13 @@
     return out;
   }
   const escHtml = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // People write here. payments@<domain> is the PayPal payee and is not a contact address.
+  // Static HTML repeats this same address; this constant is the one the payment UI uses.
+  const SUPPORT_EMAIL = 'support@gifos.app';
+  function paymentSupportText() { return 'Questions about this payment? ' + SUPPORT_EMAIL; }
+  function paymentSupportHtml() {
+    return 'Questions about this payment? <a href="mailto:' + escHtml(SUPPORT_EMAIL) + '">' + escHtml(SUPPORT_EMAIL) + '</a>';
+  }
   const PAID_BY = {
     paypal: 'by PayPal',
     x402: 'in USDC (Base Sepolia)',
@@ -316,6 +323,7 @@
       row('When', receipt.at ? new Date(receipt.at).toLocaleString() : '') +
       row('Transaction', String(receipt.tx || '')) +
       '<p class="foot">This file IS the proof: it carries a receipt signed by gifos.app, and opening it on any GifOS computer verifies the signature and registers the purchase there. Sharing it shares your license — the app treats whoever holds this receipt as the same buyer (same saves, same identity). Keep it with your backups.</p>' +
+      '<p class="foot" id="gifos-pay-support">' + paymentSupportHtml() + '</p>' +
       '</main></body></html>';
   }
   // receipt: the PARSED receipt; receiptJson/sig: the Worker's signed strings,
@@ -341,5 +349,6 @@
     CHAIN, CHAIN_NAME, DECLINED, PAID_BY,
     RAILS, railsAllowed, pricesOf, priceFor,
     payeeOf, paypalPayeeOf, eligibility, validateRequest, sheet, receipt, receiptFile,
+    SUPPORT_EMAIL, paymentSupportText, paymentSupportHtml,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

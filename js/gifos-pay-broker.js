@@ -276,6 +276,9 @@
   // (docs/payments.md §Consent), and it must be answered before either rail
   // is touched. Decline is a button, not an error.
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+  function supportHtml() {
+    return (GifOS.charge && GifOS.charge.paymentSupportHtml) ? GifOS.charge.paymentSupportHtml() : '';
+  }
 
   // The line under the amount. PayPal's mode is the worker's. USDC on this
   // sheet is still the chain gifos-charge.js pinned. A gifos.app signer is
@@ -332,6 +335,7 @@
           (canMpp ? '<button id="gp-mpp" style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:#1d1d2c;color:#e8e8f4;cursor:pointer;font:inherit">Pay with your AI agent (Stripe Link)</button>' : '') +
           '<button id="gp-decline" style="padding:.6rem 1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">No thanks</button>' +
         '</div>' +
+        '<p id="gp-support" style="color:#9a9ab5;font-size:.78rem;margin:.7rem 0 0">' + supportHtml() + '</p>' +
         '<div id="gp-status" style="display:none;color:#b6b6cf;font-size:.9rem;margin-top:.8rem"></div>';
       bg.appendChild(box); doc.body.appendChild(bg);
 
@@ -395,6 +399,7 @@
     const box = doc.createElement('div');
     box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:22rem;width:100%;padding:1.1rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
     box.innerHTML = '<p id="gpb-msg" style="margin:0">' + esc(msg) + '</p>' +
+      '<p id="gpb-support" style="color:#9a9ab5;font-size:.78rem;margin:.6rem 0 0">' + supportHtml() + '</p>' +
       '<div style="text-align:right;margin-top:.8rem"><button id="gpb-cancel" style="padding:.4rem 1rem;border-radius:.4rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">' + esc(buttonLabel || 'Cancel') + '</button></div>';
     bg.appendChild(box); doc.body.appendChild(bg);
     let cancelled = false;
@@ -428,7 +433,12 @@
     const doc = root.document;
     if (!doc || !doc.body) return;
     let el = doc.getElementById('gifos-pay-banner');
-    if (!text) { if (el) el.remove(); return; }
+    if (!text) {
+      if (el) el.remove();
+      const gone = doc.getElementById('gifos-pay-support');
+      if (gone) gone.remove();
+      return;
+    }
     if (!el) {
       el = doc.createElement('div');
       el.id = 'gifos-pay-banner';
@@ -436,7 +446,22 @@
       el.setAttribute('style', 'position:fixed;left:0;right:0;bottom:0;z-index:80;background:#1a1a12;color:#f3e7c2;border-top:1px solid #6b5a2a;padding:.75rem 1rem;font:15px/1.45 system-ui,-apple-system,sans-serif;');
       doc.body.appendChild(el);
     }
+    // A real page holds the status and the mailto in one banner. The Node
+    // stand-in paypal-resume.js reads #gifos-pay-banner textContent as the
+    // status sentence alone, so there the support line is a sibling.
+    const real = typeof HTMLElement !== 'undefined' && el instanceof HTMLElement;
+    if (real) {
+      el.innerHTML = '<div>' + esc(text) + '</div><div id="gifos-pay-support">' + supportHtml() + '</div>';
+      return;
+    }
     el.textContent = text;
+    let support = doc.getElementById('gifos-pay-support');
+    if (!support) {
+      support = doc.createElement('div');
+      support.id = 'gifos-pay-support';
+      doc.body.appendChild(support);
+    }
+    support.textContent = (GifOS.charge && GifOS.charge.paymentSupportText) ? GifOS.charge.paymentSupportText() : '';
   }
 
   // The claim that reads /receipt lives only here. The PayPal order holds a
@@ -658,6 +683,7 @@
         '<div id="gpt-bound" style="color:#9a9ab5;font-size:.78rem;margin-top:.4rem">Name the wallet you are sending from FIRST — the payment is watched for only after that, and only a transfer from that address can complete it. Nobody else can claim it.</div>' +
       '</div>' +
       '<p id="gpt-status" style="color:#b6b6cf;font-size:.86rem;margin:0 0 .8rem">Waiting for your wallet address (above) before watching for the transfer.</p>' +
+      '<p id="gpt-support" style="color:#9a9ab5;font-size:.78rem;margin:0 0 .8rem">' + supportHtml() + '</p>' +
       '<div style="text-align:right"><button id="gpt-cancel" style="padding:.5rem 1.2rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Cancel</button></div>';
     bg.appendChild(box); doc.body.appendChild(bg);
     for (const b of box.querySelectorAll('.gpt-copy')) b.onclick = () => { try { root.navigator.clipboard.writeText(b.dataset.copy); b.textContent = 'Copied'; } catch (e) {} };
@@ -753,6 +779,7 @@
         '<button id="gpa-copy" style="margin-top:.5rem;padding:.25rem .7rem;border-radius:.4rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit;font-size:.8rem">Copy link</button>' +
       '</div>' +
       '<p id="gpa-status" style="color:#b6b6cf;font-size:.86rem;margin:0 0 .8rem">Waiting for your agent to pay… (a payment can take up to a minute to show here)</p>' +
+      '<p id="gpa-support" style="color:#9a9ab5;font-size:.78rem;margin:0 0 .8rem">' + supportHtml() + '</p>' +
       '<div style="text-align:right"><button id="gpa-cancel" style="padding:.5rem 1.2rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Cancel</button></div>';
     bg.appendChild(box); doc.body.appendChild(bg);
     const cp = box.querySelector('#gpa-copy');
@@ -897,7 +924,7 @@
   }
 
   // ---- gifos.charge(), brokered ---------------------------------------------
-  async function charge(manifest, appBytes, req, appName) {
+  async function chargeImpl(manifest, appBytes, req, appName) {
     if (!manifest || !manifest.capabilities || !manifest.capabilities.pay) {
       throw new Error('This app did not declare the "pay" capability.');
     }
@@ -1065,8 +1092,22 @@
     resumePaypalOrders().catch(() => {});
   }, 1500);
 
+  function annotatePayError(e) {
+    const msg = String((e && e.message) || e);
+    if (msg.indexOf('DECLINED_BY_USER') !== -1) return e;
+    if (!GifOS.charge || msg.indexOf(GifOS.charge.SUPPORT_EMAIL) !== -1) return e;
+    return new Error(msg + ' ' + GifOS.charge.paymentSupportText());
+  }
+  async function charge(manifest, appBytes, req, appName) {
+    try {
+      return await chargeImpl(manifest, appBytes, req, appName);
+    } catch (e) {
+      throw annotatePayError(e);
+    }
+  }
+
   GifOS.payBroker = {
-    charge, entitled, license, ingestReceiptFiles, resumeAgentOffers, resumePaypalOrders,
+    charge, entitled, license, ingestReceiptFiles, resumeAgentOffers, resumePaypalOrders, showSheet,
     PENDING_KEY,
     // The Settings surface reads and writes through these — the panel owns no
     // storage of its own.

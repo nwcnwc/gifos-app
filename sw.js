@@ -41,7 +41,7 @@
  */
 'use strict';
 
-var SHELL_VERSION = 'v14'; // v14: gifos-update.js joins the shell (the update bar, shared by the desktop, run.html and sign.html)
+var SHELL_VERSION = 'v15'; // v15: gifos-charge.js joins the shell so Settings can name the payment support address offline
 var CACHE = 'gifos-shell-' + SHELL_VERSION;
 
 // ONE CACHE KEY PER FILE. pages.yml stamps `?v=<sha>` onto every local css/js
@@ -65,7 +65,7 @@ function keyOf(url) { return url.pathname; }
 var CORE = [
   '/', '/index.html', '/boot.html', '/run.html', '/sign.html', '/about.html', '/store.html', '/404.html',
   '/css/desktop.css',
-  '/js/gifos-gif.js', '/js/gifos-help.js', '/js/gifos-sign.js', '/js/gifos-ed.js', '/js/gifos-lock.js', '/js/gifos-zip.js', '/js/gifos-icons.js',
+  '/js/gifos-gif.js', '/js/gifos-help.js', '/js/gifos-charge.js', '/js/gifos-sign.js', '/js/gifos-ed.js', '/js/gifos-lock.js', '/js/gifos-zip.js', '/js/gifos-icons.js',
   '/js/gifos-themes.js', '/js/gifos-store.js', '/js/gifos-install.js', '/js/gifos-fullscreen.js', '/js/irl-apps.js', '/js/sample-apps.js', '/js/store.js', '/js/pay.js', '/js/gifos-cash.js',
   '/js/desktop.js', '/js/runtime.js', '/js/meet-host.js', '/js/camera-studio.js', '/js/relay-config.js', '/js/sw-register.js', '/js/build.js', '/js/build-badge.js', '/js/gifos-update.js',
   '/themes/theme.js', '/themes/icons.js', '/themes/eggs.js',
