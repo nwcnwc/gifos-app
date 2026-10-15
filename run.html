@@ -6193,6 +6193,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // Sealed frame over this pair's DataChannel (chat, files, relay control).
     const dcSend = (p, msg) => {
+      if (p && p.wireHold) return p.wireHold.then(() => dcSend(p, msg)); // DEBUG lever, see renegotiate
       if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
       const dc = p.dc;
       return txm(() => net.seal(roomE2E, msg).then((env) =>
@@ -12375,7 +12376,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       preferHwVideo(p.pc); // renegotiations add fresh m-lines (folds, stg, relay jobs) — they must inherit the preference
       p.pc.createOffer()
         .then((o) => { if (p.pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return p.pc.setLocalDescription(o); })
-        .then(() => { dcSend(p, { k: 'roffer', sdp: p.pc.localDescription }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); })
+        .then(() => {
+          const send = () => { dcSend(p, { k: 'roffer', sdp: p.pc.localDescription }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); };
+          // DEBUG lever (e2e-glare-first-offer): hold the wire to this peer
+          // (this offer and everything after it, in order). When both ends
+          // offer within the hold of each other, as they do the moment a
+          // link's channel opens, each offer lands while the other is still
+          // out: the offers cross (forced glare at link birth).
+          const hold = DEBUG_ON ? +window.__offerHoldMs || 0 : 0;
+          if (hold > 0 && !p.wireHold) p.wireHold = new Promise((r) => setTimeout(() => { p.wireHold = null; r(); }, hold));
+          send();
+        })
         .catch((e) => { if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
         .finally(() => { p.makingOffer = false; });
     }
@@ -20970,6 +20981,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       visParkAsked: () => Array.from(visParkSent.entries()).filter(([, v]) => v).map(([id]) => id),
       mainSending: (pid) => { const p = peers.get(pid); return !!(p && p.mainV && p.mainV.track); },
       mainAudioSending: (pid) => { const p = peers.get(pid); return !!(p && p.mainA && p.mainA.track); },
+      dcOpenForTest: (pid) => { const p = peers.get(pid); return !!(p && p.dc && p.dc.readyState === 'open'); },
       // Every audio m-line on the link to pid, both directions: which track
       // each sender carries and each receiver holds, whether that receiver
       // track is the one in the tile's stream, and the RTP counters per mid.
