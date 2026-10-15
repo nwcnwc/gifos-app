@@ -7587,12 +7587,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // transport event the mesh's D5 confirm needs, so the SEAT heals
       // through the ordinary law path too. A pocketed-but-alive phone (G1)
       // keeps beating and is never eligible.
+      // SILENCE IS EVIDENCE ONLY WHERE A BEAT IS OWED. A heartbeat's direct
+      // leg rides my own links and nothing else, so a pair the tree does not
+      // name as my link hears nothing after its first status, by design: the
+      // door a member came in by, kept open because my view never learns
+      // their seat in another section. Reading that quiet as death
+      // tombstoned a live member on both sides of the door at once, and the
+      // tombstone then refused the very link a promotion needed, splitting
+      // the room. A quiet door is left open and unjudged: when a deep seat's
+      // parent dies, the door is the one channel its new parent can still
+      // signal it over. A pair that only just became a link is judged from
+      // that moment, not from the quiet it kept while it was a door.
       const REAP_MS = 195000; // vouch cap + pulse slack
-      for (const [pid, p] of peers) {
+      for (const [pid, p] of Array.from(peers)) {
+        const owed = linkTo(pid);
+        if (!owed) p.owedAt = 0; else if (!p.owedAt) p.owedAt = nowMs;
         if (rosterIds.includes(pid)) continue;
         const st = statusOf.get(pid);
         const heard = Math.max(p.lastHeard || 0, (st && st.rx) || 0);
-        if (heard && nowMs - heard > REAP_MS) confirmGone(pid, 'vouch-reap');
+        if (!heard || nowMs - heard <= REAP_MS) continue;
+        if (owed && nowMs - p.owedAt > REAP_MS) confirmGone(pid, 'vouch-reap');
       }
     }
     // ---- JOINING MUST LOOK LIKE JOINING (Fix 2, 2026-07-26) -----------------
@@ -20667,7 +20681,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           me: { peer: myId, name: myName(), coord: c ? (c.pc + '/' + c.r + '.' + c.i) : null,
             depth: c ? net.topo.pcDepth(c.pc) : null, compactMoves: s ? (s.compactMoves || 0) : 0,   // Q2 observability: my tree depth + how many times I have compacted upward
             state: (meshSeat() || {}).state, links: s ? [...s.linkPeers()].length : 0, occ: s ? s.occ.size : 0 },
-          participants: participantCount(), inMeeting: rosterIds.length + 1,
+          // The ROOM as this page counts it, the number its status line shows.
+          // Past one section that is the fold's n (G2: a label, never a gate);
+          // localCount is the section-local working count decisions read.
+          participants: displayCount(), localCount: participantCount(), inMeeting: rosterIds.length + 1,
           rows: (() => { if (!c) return []; const g = []; for (let r = 0; r < SCALE.C; r++) { const row = []; for (let i = 0; i < SCALE.C; i++) { const pid = meshOccAt({ pc: c.pc, r, i }); row.push(pid ? String(pid).slice(0, 8) : null); } g.push(row); } return g; })(), // real C×C section grid
           // rowsFh: the same grid FILTERED to first-hand-live seats (the seat's
           // own `live` map, direct-contact evidence only, 60-tick freshness —
