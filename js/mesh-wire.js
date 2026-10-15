@@ -537,9 +537,10 @@
     const relayCloses = [];
     const RELAY_CLOSES_KEPT = 64;
     function makeSock() {
-      // onDuty: a live meeting must stay reachable while the page is hidden
-      // (a phone in a pocket), so a dropped relay retries on the short cap,
-      // not the patient one a background tab gets. Off once the node stops.
+      // A live meeting has to stay reachable while the page is hidden, so a
+      // dropped relay retries on the short cap. The patient cap is for a
+      // hidden page that is not in a call. This socket exists only for the
+      // call and stays on duty until the node stops.
       sock = net.steadySocket(makeUrl, {
         onClose: (code) => { relayCloses.push({ code, at: Date.now() }); if (relayCloses.length > RELAY_CLOSES_KEPT) relayCloses.shift(); },
         onDuty: () => !stopped,
