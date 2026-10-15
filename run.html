@@ -7818,7 +7818,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (manyDoors) clearDoorRetry(p); // the stretch above owns the pace once several doors are unanswered
       // Under the wire's four-second ask, so that ask is the redial.
       const fewDoorWait = 3500;
-      const wait = (p && p.neverUp === true) ? (manyDoors ? (p.dialWait || 5000) : fewDoorWait) : 5000;
+      // A door dialled through the free audio pool gets longer: the TURN
+      // allocation comes first, and every rebuild is a new session.
+      const wait = (p && p.turnAnchor) ? 10000 : (p && p.neverUp === true) ? (manyDoors ? (p.dialWait || 5000) : fewDoorWait) : 5000;
       if (p && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < wait && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') {
         if (!manyDoors) armDoorRetry(pid, p); // forming: its turn is not yet, but the four-second retry stays armed
         return;
