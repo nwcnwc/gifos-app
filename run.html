@@ -9419,8 +9419,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             rx.getStats().then((st) => {
               let fd = 0; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
               const t = Date.now(), prev = p.sinkProbe;
-              p.sinkProbe = { fd, at: t };
-              if (!prev || p.pc !== pc0 || t - prev.at < 4000 || fd - prev.fd < 3) return;
+              if (!prev || prev.pc !== pc0) { p.sinkProbe = { fd, at: t, pc: pc0 }; return; } // the baseline holds until 4s have passed
+              if (p.pc !== pc0 || t - prev.at < 4000) return;
+              p.sinkProbe = { fd, at: t, pc: pc0 };
+              if (fd - prev.fd < 3) return;
               if (p.video.readyState !== 0 || p.video.paused || p.video.srcObject !== p.stream || document.hidden) return;
               p.sinkRebuiltAt = t; p.sinkProbe = null;
               if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown: rebuild');
