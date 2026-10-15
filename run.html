@@ -2554,11 +2554,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } catch (e) { hbFallback = setInterval(fn, ms); return null; }
     }
     function frozeThisBeat(wallDelta, monoDelta, peerCount) {
-      // The wall gap decides. Chrome's performance.now() stands still while
-      // an Android or macOS device is suspended, so a woken phone shows a
-      // wall gap and no monotonic gap: the monotonic reading may confirm a
-      // freeze, never veto one. A forward clock step costs one reload.
-      return (wallDelta > 150000 || monoDelta > 150000) && peerCount > 0;
+      // The monotonic gap decides. A frozen renderer (tab freeze, a stopped
+      // process) gaps performance.now(), and its world is stale, so reload.
+      // A sleeping phone stops that clock with the device: it wakes with a
+      // wall gap and a normal monotonic beat, still alive, peers still
+      // listed. Reloading it would drop its audio, so it is not a freeze.
+      // The wake probe heals pairs in place. A forward wall-clock step is
+      // the same shape and is not a freeze. wallDelta stays in the signature
+      // so every caller still reports both clocks.
+      void wallDelta;
+      return monoDelta > 150000 && peerCount > 0;
     }
     let hbTick = 0, hbLastAt = Date.now(), hbLastMono = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0, frozeGap = 0, beatTypical = 0, beatLong = false;
     // THE WAKE PROBE (chaos round 1: every "back, but over 10 s" and both
@@ -20729,8 +20734,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       slipCamOnForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; t.enabled = true; myStatus.camOff = false; return true; },
       // freeze my outgoing pulses (simulates a phone that has throttled itself)
       haltPulseForTest: (on) => { pulseHalt = !!on; },
-      // backdate the beat clock (simulates a renderer that froze and then resumed)
-      freezeGapForTest: (ms) => { hbLastAt = Date.now() - (ms | 0); },
+      // backdate both beat clocks (a renderer that froze and then resumed).
+      // A sleeping phone gaps the wall clock only; this hook is the real freeze.
+      freezeGapForTest: (ms) => {
+        const gap = ms | 0;
+        hbLastAt = Date.now() - gap;
+        const mono = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
+        hbLastMono = mono - gap;
+      },
       stageVoteNeed: () => stageVoteTallies().need,
       devInfo: () => ({ devOf: Object.assign({}, devOf), attested: Array.from(devRelay) }), // which device tags the RELAY vouched for (Ban needs one)
       _unattestForTest: (id) => devRelay.delete(id), // leave devOf[id] as a tag known only by the peer's own word
