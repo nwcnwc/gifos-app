@@ -16732,7 +16732,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const [tid, si] of stgTracks) if (si.via === pid) stgOn[tid] = Math.max(0, Math.round(stageT - stgIncurred(si) - GRID.JB_BASE));
         const stgSig = JSON.stringify(stgOn);
         const was = prevGrid.get(pid);
-        if (was && was.set && was.bus === bus && was.jbt === jbt && was.stgSig === stgSig) { gridApplied.set(pid, was); continue; }
+        // The skipped link still reports THIS tick's stage target: a link
+        // that carries no stage track keeps its bus and jbt when my stage
+        // path changes, and used to report the old target from then on.
+        if (was && was.set && was.bus === bus && was.jbt === jbt && was.stgSig === stgSig) { was.stageT = stageT; gridApplied.set(pid, was); continue; }
         let set = false;
         try {
           for (const r of p.pc.getReceivers()) {
