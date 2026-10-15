@@ -9380,6 +9380,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           p.altPath = !p.altPath; // §FWD transport rotation — a rotting relay path must not eat every retry
           sendOffer(pid, st !== 'new' && st !== 'connecting');
         }
+        // A RENEGOTIATION LOST IN THE DARK. roffer/ranswer ride the channel
+        // once, unacked: one sent while the far radio is out is simply gone,
+        // and this pc sits in have-local-offer on a pair that is otherwise
+        // connected, which nothing above ever revisits. The offer's media
+        // then never runs (06c: Ju's camera never reached Aki after her
+        // tunnels). Unanswered past two glare yields: take it back, offer
+        // again. A late answer to the old offer lands on 'stable' and fails
+        // harmlessly (ranswer-FAIL).
+        {
+          const lsd = p.pc.signalingState === 'have-local-offer' && p.pc.localDescription;
+          if (lsd && p.connected && p.dc && p.dc.readyState === 'open' && !p.makingOffer && !p.glareTimer && !p.rofferYieldTimer) {
+            if (p.staleOfferSdp !== lsd.sdp) { p.staleOfferSdp = lsd.sdp; p.staleOfferAt = now; }
+            else if (now - p.staleOfferAt > 2 * GLARE_YIELD_MS + 2000) {
+              p.staleOfferSdp = null;
+              if (typeof clog === 'function') clog('offer-stale ' + String(pid).slice(0, 6) + ' ' + Math.round((now - p.staleOfferAt) / 1000) + 's: re-offer');
+              p.kickVideo = true; // a rollback stops the video encoder; reseat once the new answer lands
+              Promise.resolve(p.pc.setLocalDescription({ type: 'rollback' })).then(() => renegotiate(p)).catch(() => {});
+            }
+          } else p.staleOfferSdp = null;
+        }
         // Direct route recovered → drop any friend-relay for this peer.
         if (p.connected && relayVia.has(pid)) stopRelayFor(pid, true);
         // Our relayer for this peer vanished → fall back and re-elect.
