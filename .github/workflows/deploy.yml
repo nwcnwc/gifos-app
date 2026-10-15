@@ -4,8 +4,9 @@
 name: Deploy
 
 on:
-  push:
-    branches: [main]
+  # Manual-only CI (Nathan, 2026-10-14): no push/pull_request/schedule triggers.
+  # Run with: gh workflow run deploy.yml
+  workflow_dispatch:
 
 permissions:
   contents: read
