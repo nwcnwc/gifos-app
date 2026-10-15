@@ -1899,6 +1899,20 @@
       this.handed.set(mm.nc, { to, cell, deep: !!deep, at: this.TICK });
       const f = { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }; if (mm.again) f.again = 1;
       this.emit(to, f); this.findAck(mm, cell, !!deep);
+      if (!deep) this.quietHeadAlso(f, to, cell);
+    }
+    // In a one-row room the head's right-hand seats the free chair once the
+    // head has missed two beats (serveFind). A FIND handed to that quiet head
+    // is lost while its radio is off, so a mate further along the row hands
+    // it to the right-hand too. If the head was only slow, its later PLACE
+    // finds the seeker already seated and is ignored.
+    quietHeadAlso(f, to, k) {
+      if (!this.hasCoord || this.coord.pc !== 0 || this.coord.i < 2 || !this.oneRowRoom()) return;
+      const hk = ck({ pc: 0, r: this.coord.r, i: 0 });
+      if (k !== hk || !this.silentFor(hk, LONE_GREET_AFTER)) return;
+      const rk = ck({ pc: 0, r: this.coord.r, i: 1 }); const x = this.occGet(rk);
+      if (x == null || x === to || x === this.id || !this.firstHandLive(rk) || this.darkMate(rk)) return;
+      this.emit(x, Object.assign({}, f));
     }
     serveFind(mm) {
       const TICK = this.TICK;
