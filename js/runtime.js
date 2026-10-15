@@ -1912,6 +1912,15 @@
       const armIdle = () => { if (idleT) clearTimeout(idleT); idleT = setTimeout(() => { if (pending.size) { armIdle(); return; } root.removeEventListener('message', handler); try { iframe.remove(); } catch (e) {} providerServices.delete(fileId); provArchives.delete(fileId); }, PROVIDER_IDLE_MS); };
       armIdle();
       const service = {
+        // Unload on request (GifOS.providers.stop): the frame goes, and with it
+        // whatever the engine was computing; every waiting call is refused.
+        stop: () => {
+          if (idleT) clearTimeout(idleT);
+          root.removeEventListener('message', handler);
+          try { iframe.remove(); } catch (e) {}
+          if (providerServices.get(fileId) === p) providerServices.delete(fileId);
+          for (const [id, pend] of pending) { pending.delete(id); clearTimeout(pend.timer); try { pend.rej(new Error('PROVIDER_STOPPED: ' + label + ' was unloaded.')); } catch (e) {} }
+        },
         call: (role, req, onNote, onDelta) => new Promise((res, rej) => {
           armIdle();
           const w = iframe.contentWindow;
@@ -1943,8 +1952,16 @@
   }
   // `emit` is the asking app's onDelta, or null. It reaches the provider's
   // ctx.delta and comes back out fragment by fragment.
+  // A stop() bumps the provider's epoch; a call that began before it is
+  // refused at its next step, even while its model is still downloading.
+  const providerEpochs = new Map(); // fileId -> number
   function providerCall(c, role, req, emit) {
     const cfgName = c.appName || 'Your provider app';
+    const epoch = providerEpochs.get(c.app) || 0;
+    const live = (v) => {
+      if ((providerEpochs.get(c.app) || 0) !== epoch) throw new Error('PROVIDER_STOPPED: ' + cfgName + ' was unloaded.');
+      return v;
+    };
     return providerArchive(c.app).then((arc) => {
       if (!arc || !arc.files) {
         showSystemSetup({ kind: 'provider', name: cfgName, role, problem: 'missing' });
@@ -1998,7 +2015,9 @@
                 : null)
             : Promise.resolve();
           return prep
+            .then(live)
             .then(() => { if (cold) busyNote('Starting ' + name + '…', null); return providerService(c.app, arc.files, m); })
+            .then(live)
             .then((svc) => svc.call(role, req, (note, frac) => busyNote(note, frac), emit || null))
             .then(
               (out) => { recordTiming(c.app, cold, Date.now() - t0); busyEnd(); return out; },
@@ -2083,6 +2102,17 @@
       const c = aiConfig()[role];
       if (!c || !c.app) return Promise.reject(new Error('NOT_CONFIGURED:ai:' + role));
       return providerCall(c, role, Object.assign({ op: role, role }, req || {}), null);
+    },
+    // Unload the provider assigned to a role, now: its frame and the work in
+    // it go, its waiting calls are refused (PROVIDER_STOPPED), and the next
+    // call mounts it afresh. The way a page hands the processor back.
+    stop: (role) => {
+      const c = aiConfig()[role];
+      if (!c || !c.app) return false;
+      providerEpochs.set(c.app, (providerEpochs.get(c.app) || 0) + 1);
+      const svc = providerServices.get(c.app);
+      if (svc) svc.then((s) => s.stop(), () => {});
+      return true;
     },
   };
   // gifos.assets(path) — hand an app the bytes for a hash-pinned path
