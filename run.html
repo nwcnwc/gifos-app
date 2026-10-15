@@ -9587,6 +9587,55 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           p.altPath = !p.altPath; // §FWD transport rotation — a rotting relay path must not eat every retry
           sendOffer(pid, st !== 'new' && st !== 'connecting');
         }
+        // A RENEGOTIATION LOST IN THE DARK. roffer/ranswer ride the channel
+        // once, unacked: one sent while the far radio is out is simply gone,
+        // and this pc sits in have-local-offer on a pair that is otherwise
+        // connected, which nothing above ever revisits. The offer's media
+        // then never runs (06c: Ju's camera never reached Aki after her
+        // tunnels). Unanswered past two glare yields: take it back, offer
+        // again. A late answer to the old offer lands on 'stable' and fails
+        // harmlessly (ranswer-FAIL).
+        {
+          const lsd = p.pc.signalingState === 'have-local-offer' && p.pc.localDescription;
+          if (lsd && p.connected && p.dc && p.dc.readyState === 'open' && !p.makingOffer && !p.glareTimer && !p.rofferYieldTimer) {
+            if (p.staleOfferSdp !== lsd.sdp) { p.staleOfferSdp = lsd.sdp; p.staleOfferAt = now; }
+            else if (now - p.staleOfferAt > 2 * GLARE_YIELD_MS + 2000) {
+              p.staleOfferSdp = null;
+              if (typeof clog === 'function') clog('offer-stale ' + String(pid).slice(0, 6) + ' ' + Math.round((now - p.staleOfferAt) / 1000) + 's: re-offer');
+              p.kickVideo = true; // a rollback stops the video encoder; reseat once the new answer lands
+              Promise.resolve(p.pc.setLocalDescription({ type: 'rollback' })).then(() => renegotiate(p)).catch(() => {});
+            }
+          } else p.staleOfferSdp = null;
+        }
+        // A DEAD SINK. After a rollback on a pair already carrying media,
+        // Chromium can leave the receiver decoding while its track hands no
+        // frame to anything: the tile stays at readyState 0, and a fresh
+        // element or a track reader on that track reads nothing either
+        // (measured, 06c: framesDecoded climbing, 0 frames out for 60s+).
+        // Nothing on this pc revives that track. Two samples 4s apart with
+        // frames decoded and none shown: rebuild the pair; the far side
+        // takes a new fingerprint as a new pc (the NEW-PC RULE).
+        if (p.connected && !document.hidden && p.stream && !p.relayed && p.video && p.video.srcObject === p.stream
+            && !p.video.paused && p.video.readyState === 0 && mediaOk(pid) !== false && now - (p.sinkRebuiltAt || 0) > 30000) {
+          const vtr = p.stream.getVideoTracks()[0];
+          const rx = vtr && vtr.readyState === 'live' && p.pc.getReceivers().find((r) => r.track === vtr);
+          if (rx) {
+            const pc0 = p.pc;
+            rx.getStats().then((st) => {
+              let fd = 0; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
+              const t = Date.now(), prev = p.sinkProbe;
+              if (!prev || prev.pc !== pc0) { p.sinkProbe = { fd, at: t, pc: pc0 }; return; } // the baseline holds until 4s have passed
+              if (p.pc !== pc0 || t - prev.at < 4000) return;
+              p.sinkProbe = { fd, at: t, pc: pc0 };
+              if (fd - prev.fd < 3) return;
+              if (p.video.readyState !== 0 || p.video.paused || p.video.srcObject !== p.stream || document.hidden) return;
+              p.sinkRebuiltAt = t; p.sinkProbe = null;
+              if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown: rebuild');
+              newPcFor(p);
+              sendOffer(pid, false);
+            }).catch(() => {});
+          }
+        } else p.sinkProbe = null;
         // Direct route recovered → drop any friend-relay for this peer.
         if (p.connected && relayVia.has(pid)) stopRelayFor(pid, true);
         // Our relayer for this peer vanished → fall back and re-elect.
