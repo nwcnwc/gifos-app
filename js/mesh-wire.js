@@ -695,6 +695,13 @@
       if (iAmInsideTheRoom()) return false;             // I am inside — use the mesh
       if (m.t !== 'WHOHOME' && m.t !== 'FIND' && !(m.t === 'HOME' && !m.roster)) return false;  // entry asks only
       if (entryDelivered(to, m)) return true;
+      // No channel to that greeter yet: still hand the ask to the channels I
+      // hold, once. A member on the far end forwards it and the answer comes
+      // back the same way, so a greeter I may never reach directly (a pair
+      // that cannot connect) still answers at once instead of being waited
+      // out as dark. The ask also waits and dials below, for when the
+      // channel I hold leads only to another knocker.
+      if (typeof opts.dcOpen === 'function' && opts.sendDC) { try { opts.sendDC(to, m, peer); } catch (e) {} }
       pendingEntry.set(to + '|' + m.t, { to, m, at: Date.now() });
       askDial(to);
       return true;
