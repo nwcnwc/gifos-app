@@ -4530,10 +4530,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const st = (id === 'me' ? myStatus : statusOf.get(id)) || {};
         const gm = modOf(id).mute && modOf(id).mute.on;
         let speaking = false;
-        // A bot stays muted (its sent track is silent) but its ear still
-        // hears the local mic, so captions can run without the bot speaking.
-        const botEar = id === 'me' && st.bot && typeof window !== 'undefined' && window.__gifosBotEar;
-        if ((!st.muted && !gm) || botEar) {
+        if (!st.muted && !gm) {
           meterAnyLive = true; // a live mic exists ⇒ keep the fast beat
           m.an.getByteTimeDomainData(m.data);
           let dev = 0;
@@ -10920,8 +10917,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // like any view-only guest tapping the mic button.
           if (params.get('bot') === '1') {
             // A bot has no camera and does not speak. The sent track stays
-            // disabled. A local clone (the ear) feeds the meter and Whisper
-            // so captions still hear synthetic speech on this machine.
+            // disabled, and nothing from this computer's microphone is
+            // written down: the bot's transcript is the other people (scribe).
             myStatus.bot = true;
             myStatus.camOff = true;
             myStatus.muted = true;
@@ -10933,14 +10930,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             bootGumPending.catch(() => {});
             gumB.then((stream) => {
               localStream = stream;
-              let ear = null;
-              try { ear = stream.clone(); } catch (e) { ear = null; }
               for (const tr of stream.getTracks()) tr.enabled = false;
-              if (ear) for (const tr of ear.getAudioTracks()) tr.enabled = true;
-              window.__gifosBotEar = ear;
               const n = meTile.tile.querySelector('.note'); if (n) n.remove();
               meTile.video.style.display = 'none';
-              meterFor('me', ear || stream);
+              meterFor('me', stream);
               try { ensureAc(); if (ac && ac.resume) ac.resume(); } catch (e) {}
               updateTile('me');
               attachLocalTracks();
@@ -17292,9 +17285,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } catch (e) { src = null; stageSid = null; }
       }
       if (!src) src = wspSource(id);
-      if (!src && id === 'me' && typeof window !== 'undefined' && window.__gifosBotEar && window.__gifosBotEar.getAudioTracks && window.__gifosBotEar.getAudioTracks()[0]) {
-        try { src = ac.createMediaStreamSource(new MediaStream([window.__gifosBotEar.getAudioTracks()[0]])); own = true; } catch (e) { src = null; }
-      }
       if (!src && id === 'me' && localStream && localStream.getAudioTracks()[0]) {
         try { src = ac.createMediaStreamSource(new MediaStream([localStream.getAudioTracks()[0]])); own = true; } catch (e) { return false; }
       }
@@ -17436,7 +17426,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function scribeOn() { return !!myStatus.scribe && ccEngine() === 'whisper' && whisperReady(); }
     function wspSync() {
       const want = new Set();
-      if (!wspPaused && myStatus.cc && ccEngine() === 'whisper' && whisperReady() && (!ccSourceId || !ccSourceWritesMe()) && (myStatus.bot ? (typeof window !== 'undefined' && !!window.__gifosBotEar) : !myStatus.muted)) want.add('me');
+      if (!wspPaused && myStatus.cc && ccEngine() === 'whisper' && whisperReady() && (!ccSourceId || !ccSourceWritesMe()) && !myStatus.muted) want.add('me');
       if (!wspPaused && scribeOn()) {
         const stagers = (typeof stageIds === 'function') ? stageIds() : [];
         const stageSet = new Set(stagers);
@@ -17766,7 +17756,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return !!(p && p.connected);
     }
     function syncSpeech() { // CC follows the mic: muted people aren't transcribed
-      const want = myStatus.cc && (!myStatus.muted || !!(myStatus.bot && typeof window !== 'undefined' && window.__gifosBotEar));
+      const want = myStatus.cc && !myStatus.muted;
       ccSrcDirect = ccSourceWritesMe();
       if (ccSrcDirect) { // the chosen scribe hears me directly: no engine of my own
         if (speechRunning()) stopSpeech();
@@ -20570,9 +20560,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           });
         },
         leave() {
-          try {
-            if (window.__gifosBotEar) window.__gifosBotEar.getTracks().forEach((t) => { try { t.stop(); } catch (e) {} });
-          } catch (e) {}
           try { leaveMeeting(); } catch (e) {}
           meetJoined = false;
           return { ok: true };
