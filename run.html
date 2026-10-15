@@ -21557,6 +21557,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         };
       },
       vaMeterNow: () => { vaMeterTick(Date.now(), true); return true; },
+      // Transport bytes on one pair's selected path, both directions (debug).
+      wireBytes: async (name) => {
+        for (const p of peers.values()) {
+          if ((rosterNames[p.id] || p.name) !== name || !p.pc) continue;
+          let sent = 0, recv = 0;
+          try { (await p.pc.getStats()).forEach((x) => { if (x.type === 'transport') { sent += x.bytesSent || 0; recv += x.bytesReceived || 0; } }); } catch (e) { return null; }
+          return { sent, recv };
+        }
+        return null;
+      },
       turnState: () => ({
         probe: directPath, cred: turnCred ? turnCred.state() : 'idle', reach: turnReach(), heard: turnHeard(),
         anchor: turnAnchorId != null ? (rosterNames[turnAnchorId] || (peers.get(turnAnchorId) || {}).name || String(turnAnchorId).slice(0, 8)) : null,
