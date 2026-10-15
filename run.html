@@ -20537,6 +20537,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // correctly reads as a death; this manufactures the far nastier shape
       // where every health signal still says connected and only the lane that
       // carries app state is gone. e2e-dc-reopen.js is the guard.
+      // DEBUG: rebuild the pair to pid now, the way the dead-sink watchdog
+      // does (a fresh pc, re-offered). e2e-sixth-rebuild.
+      rebuildPairForTest: (pid) => {
+        if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
+        const p = peers.get(pid); if (!p) return { err: 'no such peer' };
+        newPcFor(p); sendOffer(pid, false);
+        return { ok: true };
+      },
       killDcForTest: (pid) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
         const p = peers.get(pid); if (!p) return { err: 'no such peer' };
