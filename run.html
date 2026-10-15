@@ -17437,7 +17437,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           : 'Using ' + (rosterNames[ccSourceId] || 'their') + '’s captions — ' + (ccSourceWritesMe() ? 'your device is no longer transcribing.' : 'your own device still writes you down.'), 6000);
       };
     }
-    setInterval(() => { if (ccSourceId && ccSourceWritesMe() !== ccSrcDirect) syncSpeech(); if (wspCaps.size || scribeOn() || ccSourceId) wspSync(); if (ccMix.dest) ccMixSync(); if (scribeSeen.size || ccSourceId || anyScribeStatus || scribeOffers.size) scribeWatch(); }, 2000);
+    setInterval(() => { if (ccSourceId && ccSourceWritesMe() !== ccSrcDirect) syncSpeech(); if (wspCaps.size || scribeOn() || ccSourceId) wspSync(); if (ccMix.dest) ccMixSync(); if (!ccOthers) ccFillOptOut = false; if (ccFilling() !== ccFillOn) syncSpeech(); if (scribeSeen.size || ccSourceId || anyScribeStatus || scribeOffers.size) scribeWatch(); }, 2000);
     // ONE TAP TO INSTALL. The provider is a signed 13 MB GIF on this very site:
     // GifOS.providers.install downloads, checks the catalog hash and the
     // gifos.app signature, files it into the Providers folder and we assign it
@@ -17602,24 +17602,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // ---- ONE WRITER PER VOICE ------------------------------------------------
     // Every captioning device could write down every voice it hears, and two
     // engines cut and word the same sentence differently, so text matching
-    // alone leaves copies. Each captioning device publishes the voices it is
+    // alone leaves copies. Each writing device publishes the voices it is
     // writing down (status ccv, peer ids). A voice is left to its own device
-    // when that device writes itself, else to the captioning device with the
-    // lowest id that hears it; everyone else stops writing it. A writer that
-    // leaves, or stops hearing the voice, drops it from its list, and the next
-    // device in line takes it on the following tick.
+    // when that device captions itself, else to the writer with the lowest id
+    // that hears it; everyone else stops writing it. A writer that leaves, or
+    // stops hearing the voice, drops it from its list, and the next device in
+    // line takes it on the following tick.
+    //   A device FILLING IN (ccFilling: CC is on elsewhere in my section, not
+    // here) also yields every voice a captioning device writes, its own
+    // included: it writes only what no captioning device hears.
     function ccWrittenElsewhere(pid) {
-      const st = statusOf.get(pid);
-      if (st && Array.isArray(st.ccv) && st.ccv.indexOf(pid) >= 0) return true;
+      const filling = !myStatus.cc;
       for (const [w, ws] of statusOf) {
-        if (w === myId || w === pid || !ws || !Array.isArray(ws.ccv) || ws.ccv.indexOf(pid) < 0) continue;
-        if (String(w) < String(myId)) return true;
+        if (w === myId || !ws || !Array.isArray(ws.ccv) || ws.ccv.indexOf(pid) < 0) continue;
+        if (ws.cc && (filling || w === pid)) return true;
+        if (w !== pid && String(w) < String(myId)) return true;
       }
       return false;
     }
+    // CC ON ANYWHERE IN MY SECTION COVERS ME TOO. A captioning device hears
+    // its own row first-hand; a voice in another row reaches it only inside
+    // that row's mix, with no name on it. So while some device in my section
+    // captions, this one writes down the voices it alone hears directly (its
+    // own included) — the gaps, never a voice a captioning device writes.
+    // Lines stay in the section (captionScope), so this never runs for a
+    // captioning device past it. Tapping CC on and off again opts out until
+    // the section's captions stop.
+    var ccFillOptOut = false, ccFillSaid = false, ccFillOn = false;
+    function ccFilling() { return !myStatus.cc && !ccFillOptOut && !speechGaveUp && ccOthers > 0; }
     function ccvPublish() {
       const ids = new Set();
-      if (myStatus.cc) {
+      if (myStatus.cc || ccFilling()) {
         for (const id of ccMix.ins.keys()) ids.add(id === 'me' ? myId : id);
         for (const id of wspCaps.keys()) ids.add(id === 'me' ? myId : id);
         if (speech && !speech.input && !myStatus.muted) ids.add(myId);
@@ -17652,7 +17665,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function ccMixVoices() { // id ('me' | pid) -> a source node in ac
       const out = new Map();
       const meM = meters.get('me');
-      if (!myStatus.muted && meM && meM.src) out.set('me', { node: meM.src });
+      if (!myStatus.muted && meM && meM.src && (myStatus.cc || !ccWrittenElsewhere(myId))) out.set('me', { node: meM.src });
       const stagers = (typeof stageIds === 'function') ? stageIds() : [];
       for (const pid of stagers) {
         if (pid === myId) continue;
@@ -17778,12 +17791,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         };
         speech.onend = () => {
-          if (!(myStatus.cc && speech === rec && (rec.input || !myStatus.muted))) return;
+          if (!((myStatus.cc || ccFilling()) && speech === rec && (rec.input || !myStatus.muted))) return;
           if (speechFails > 0) {
             const wait = speechRetryDelay(speechFails);
             speechRetry = setTimeout(() => {
               speechRetry = null;
-              if (myStatus.cc && speech === rec && (rec.input || !myStatus.muted)) { try { go(); } catch (err) {} }
+              if ((myStatus.cc || ccFilling()) && speech === rec && (rec.input || !myStatus.muted)) { try { go(); } catch (err) {} }
             }, wait);
             return;
           }
@@ -17864,7 +17877,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // track, or the provider stalled): the browser engine carries on.
       }
       wspStop('me'); wspSync();
-      if (!myStatus.cc) { if (speechRunning()) stopSpeech(); ccvPublish(); return; }
+      const filling = ccFilling();
+      ccFillOn = filling;
+      if (!myStatus.cc && !filling) { if (speechRunning()) stopSpeech(); ccvPublish(); return; }
+      if (filling && !ccFillSaid) { ccFillSaid = true; setStatus('Captions are on in this meeting — this device also writes down the voices only it hears. Tap CC twice to opt out.', 8000); }
       if (ccTrackInput()) {
         if (speechRunning() && !speech.input) stopSpeech(); // a raw-microphone engine hands over to the room ear
         const input = ccMixStart();
@@ -17874,13 +17890,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return;
         }
       }
-      if (mine && !speechRunning()) startSpeech();
-      if (!mine && speechRunning()) stopSpeech();
+      // No track input: this engine hears my own microphone only.
+      const meToo = !myStatus.muted && (myStatus.cc || !ccWrittenElsewhere(myId));
+      if (meToo && !speechRunning()) startSpeech();
+      if (!meToo && speechRunning()) stopSpeech();
       ccvPublish();
     }
     document.getElementById('ccbtn').onclick = () => {
       myStatus.cc = !myStatus.cc;
       if (myStatus.cc) { speechGaveUp = false; wspPaused = false; wspQ.stalls = 0; } // turning CC on retries both engines
+      else if (ccOthers > 0) ccFillOptOut = true; // CC off while others caption: this device stops filling in too
       ccByOrder = false;
       if (!myStatus.cc && ccAllInfo()) ccOptOutAt = Date.now(); // opting out of a room-wide order holds until the next order
       document.getElementById('ccbtn').classList.toggle('on', myStatus.cc);
