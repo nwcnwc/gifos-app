@@ -2554,15 +2554,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } catch (e) { hbFallback = setInterval(fn, ms); return null; }
     }
     function frozeThisBeat(wallDelta, monoDelta, peerCount) {
-      // The monotonic gap decides. A frozen renderer (tab freeze, a stopped
-      // process) gaps performance.now(), and its world is stale, so reload.
-      // A sleeping phone stops that clock with the device: it wakes with a
-      // wall gap and a normal monotonic beat, still alive, peers still
-      // listed. Reloading it would drop its audio, so it is not a freeze.
-      // The wake probe heals pairs in place. A forward wall-clock step is
-      // the same shape and is not a freeze. wallDelta stays in the signature
-      // so every caller still reports both clocks.
-      void wallDelta;
+      // The monotonic gap decides. A frozen renderer (tab freeze, SIGSTOP)
+      // stops this page while the device runs on, so both clocks gap. A
+      // sleeping device stops performance.now() too: a woken phone shows a
+      // wall gap and no monotonic gap. That page is alive with its audio
+      // and peers, so it is not a freeze and must not reload; the wake
+      // probe heals its pairs in place. A wall clock step is not a freeze.
       return monoDelta > 150000 && peerCount > 0;
     }
     let hbTick = 0, hbLastAt = Date.now(), hbLastMono = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0, frozeGap = 0, beatTypical = 0, beatLong = false;
@@ -11731,6 +11728,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           p.renegAgain = true; // polite rollback: my changes go again after I answer
           p.kickVideo = true; // that rollback stops the video encoder; reseat once stable
         }
+        // A NEWER OFFER SUPERSEDES ONE I HELD. They rolled the held one back
+        // to send this, so it describes a state they no longer have. Applying
+        // it later on the yield timer answered an offer they had dropped, so
+        // they refused the answer and my pc kept the stale description. Their
+        // camera then never reached me.
+        if (p.rofferYield) {
+          p.rofferYield = null;
+          if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
+          if (typeof clog === 'function') clog('roffer-held-drop ' + String(p.id).slice(0, 6));
+        }
         applyRoffer(m);
       } else if (m.k === 'ranswer') {
         if (p.pc) p.pc.setRemoteDescription(m.sdp)
@@ -20740,14 +20747,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       slipCamOnForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; t.enabled = true; myStatus.camOff = false; return true; },
       // freeze my outgoing pulses (simulates a phone that has throttled itself)
       haltPulseForTest: (on) => { pulseHalt = !!on; },
-      // backdate both beat clocks (a renderer that froze and then resumed).
-      // A sleeping phone gaps the wall clock only; this hook is the real freeze.
-      freezeGapForTest: (ms) => {
-        const gap = ms | 0;
-        hbLastAt = Date.now() - gap;
-        const mono = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0;
-        hbLastMono = mono - gap;
-      },
+      // backdate the beat clock (simulates a renderer that froze and then resumed)
+      // A thaw gaps both clocks. Pass mono for another shape: a device
+      // sleep is a wall gap with a near-zero monotonic gap.
+      freezeGapForTest: (ms, mono) => { hbLastAt = Date.now() - (ms | 0); hbLastMono -= (mono === undefined ? ms : mono) | 0; },
       stageVoteNeed: () => stageVoteTallies().need,
       devInfo: () => ({ devOf: Object.assign({}, devOf), attested: Array.from(devRelay) }), // which device tags the RELAY vouched for (Ban needs one)
       _unattestForTest: (id) => devRelay.delete(id), // leave devOf[id] as a tag known only by the peer's own word
