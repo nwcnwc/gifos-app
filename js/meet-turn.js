@@ -26,6 +26,8 @@
   'use strict';
 
   const ICE_URL = 'https://turn.gifos.app/v1/ice';
+  const DEFAULT_WORKER = 'https://turn.gifos.app';
+  const WORKER_KEY = 'gifos_turn_worker'; // localStorage override: a self-hosted or local credential service
   const POOL = 'free';
   const FETCH_TIMEOUT_MS = 3000;      // a credential answer slower than this is no answer
   const RETRY_BASE_MS = 2000;         // first retry after about 2 s, doubling
@@ -156,9 +158,28 @@
     return { iceServers: servers, ttl, renewAfter };
   }
 
+  // workerBase(store) → the credential service's base URL: the override in
+  // localStorage (WORKER_KEY) when one is set, else the GifOS service.
+  function workerBase(store) {
+    try {
+      const st = store || root.localStorage;
+      const v = String((st && st.getItem(WORKER_KEY)) || '').trim();
+      if (v) return v.replace(/\/+$/, '');
+    } catch (e) {}
+    return DEFAULT_WORKER;
+  }
+
   // createCredentials(o) → the credential client.
   // o = { ask(body) → Promise<json>, room, now(), setTimer(fn, ms) → handle,
-  //       clearTimer(handle), random(), onChange(kind) }
+  //       clearTimer(handle), random(), onChange(kind),
+  //       pool, extra(), halts(reason) }
+  // pool    the pool asked for ('free' when absent).
+  // extra   () → more fields for every ask (the paid pool's receipt, room
+  //         ticket and bridge), read at each ask so a re-signed ticket rides
+  //         the next renewal; null means "nothing to ask with": no grant.
+  // halts   (reason) → true when an "unavailable" answer with that reason
+  //         means asking again cannot help. The client then stops asking;
+  //         a grant in hand still runs to its expiry.
   // onChange kinds: 'ok' (first grant, or a grant after losing one), 'renewed'
   // (a fresh grant replaced a live one: restart the TURN pairs on it),
   // 'expired' (the grant ran out with no renewal: TURN pairs fall back).
@@ -173,11 +194,13 @@
     let started = false, stopped = false, inFlight = false;
     let grant = null;          // { iceServers, issuedAt, renewAt, expiresAt }
     let everHad = false, failures = 0, answered = false;
+    let halted = false, refusal = null;
+    const pool = o.pool || POOL;
     let tNext = null, tExpire = null;
     function clearNext() { if (tNext != null) { clearTimer(tNext); tNext = null; } }
     function schedule(ms) { clearNext(); tNext = setTimer(() => { tNext = null; ask(); }, Math.max(0, ms)); }
     function ask() {
-      if (stopped || inFlight) return;
+      if (stopped || inFlight || halted) return;
       inFlight = true;
       const renew = !!grant;
       let settled = false, tOut = null;
@@ -188,8 +211,14 @@
         if (stopped) return;
         answered = true;
         const g = parseIce(body);
-        if (!g) { failures++; schedule(retryDelayMs(failures, random())); return; }
-        failures = 0;
+        if (!g) {
+          refusal = body && typeof body === 'object' && body.unavailable ? String(body.unavailable).slice(0, 40) : null;
+          failures++;
+          if (refusal && o.halts && o.halts(refusal)) { halted = true; clearNext(); return; }
+          schedule(retryDelayMs(failures, random()));
+          return;
+        }
+        failures = 0; refusal = null;
         const t = now();
         const had = !!grant;
         grant = { iceServers: g.iceServers, issuedAt: t, renewAt: t + g.renewAfter * 1000, expiresAt: t + g.ttl * 1000 };
@@ -207,8 +236,10 @@
       };
       tOut = setTimer(() => { tOut = null; done(null); }, FETCH_TIMEOUT_MS);
       let p;
-      try { p = Promise.resolve(o.ask(Object.assign({ room: String(o.room), pool: POOL }, renew ? { renew: true } : {}))); }
-      catch (e) { p = Promise.resolve(null); }
+      try {
+        const more = o.extra ? o.extra() : {};
+        p = more == null ? Promise.resolve(null) : Promise.resolve(o.ask(Object.assign({ room: String(o.room), pool }, renew ? { renew: true } : {}, more)));
+      } catch (e) { p = Promise.resolve(null); }
       p.then((b) => done(b), () => done(null));
     }
     return {
@@ -222,6 +253,8 @@
         return answered ? 'down' : 'pending';
       },
       grant() { return grant ? Object.assign({}, grant) : null; },
+      refusal() { return refusal; },  // the last "unavailable" reason, cleared by a grant
+      halted() { return halted; },    // stopped asking after a refusal that asking again cannot help
     };
   }
 
@@ -230,14 +263,14 @@
   // is JSON sent as plain text, which makes it a simple cross-origin request:
   // no preflight, so one round trip instead of two.
   function askIce(fetchFn, url) {
-    return (body) => fetchFn(url || ICE_URL, {
+    return (body) => fetchFn(url || workerBase() + '/v1/ice', {
       method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(body),
       credentials: 'omit', cache: 'no-store', mode: 'cors',
     }).then((r) => r.json()).catch(() => null);
   }
 
   const api = {
-    ICE_URL, POOL, FETCH_TIMEOUT_MS, RETRY_MAX_MS, P0_MS, P1_MS, MAX_SERVED,
+    ICE_URL, DEFAULT_WORKER, WORKER_KEY, workerBase, POOL, FETCH_TIMEOUT_MS, RETRY_MAX_MS, P0_MS, P1_MS, MAX_SERVED,
     reachable, pairStage, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, mayServe,
     retryDelayMs, parseIce, createCredentials, askIce,
   };
