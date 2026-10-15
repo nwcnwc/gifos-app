@@ -18030,11 +18030,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const anyCc = myStatus.cc || trs.size > 0 || ccOthers > 0;
       document.getElementById('trbtn').style.display = anyCc ? '' : 'none';
     }
+    // Every meeting download (transcript, recording) is filed as
+    // <YYYY_MM_DD>_<Room>_gifos_<Kind>.<ext>: the LOCAL date the meeting (or
+    // recording) started, then the room's name. Only the name is passed in —
+    // the admin verifier and the password never reach a file name. The name is
+    // cut to [A-Za-z0-9._-] so it saves on every filesystem; with nothing left
+    // the file is <YYYY_MM_DD>_gifos_<Kind>.<ext>.
+    function meetDownloadName(kind, roomName, date, ext) {
+      let d = new Date(date || Date.now());
+      if (isNaN(d.getTime())) d = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const day = d.getFullYear() + '_' + pad(d.getMonth() + 1) + '_' + pad(d.getDate());
+      let name = String(roomName || '');
+      try { name = decodeURIComponent(name); } catch (e) {}
+      name = name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Za-z0-9._-]/g, '_').replace(/_+/g, '_').replace(/^[._-]+|[._-]+$/g, '')
+        .slice(0, 80).replace(/[._-]+$/, '');
+      const dot = String(ext || 'txt').replace(/^\.+/, '').replace(/[^A-Za-z0-9]/g, '').toLowerCase() || 'txt';
+      return day + (name ? '_' + name : '') + '_gifos_' + kind + '.' + dot;
+    }
     document.getElementById('trdl').onclick = () => {
-      const lines = trBlocks().map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.scribeBy ? ' (written down by ' + l.scribeBy + ')' : '') + ': ' + l.text);
+      const blocks = trBlocks();
+      const lines = blocks.map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.scribeBy ? ' (written down by ' + l.scribeBy + ')' : '') + ': ' + l.text);
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }));
-      a.download = 'gifos-meeting-transcript.txt';
+      a.download = meetDownloadName('Transcript', room, blocks.length ? blocks[0].at : 0, 'txt');
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     };
@@ -18170,7 +18190,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
     }
     function recFileName() {
-      return 'gifos-meeting-' + room + '-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + (String(recType).indexOf('mp4') >= 0 ? '.mp4' : '.webm');
+      return meetDownloadName('Recording', room, Date.now(), String(recType).indexOf('mp4') >= 0 ? 'mp4' : 'webm');
     }
     function recDeliver(saved) {
       if (saved && saved.held) return 'held';
