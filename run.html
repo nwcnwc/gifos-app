@@ -16322,8 +16322,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // BEGIN-AUDIO-KEEPALIVE
     // A hidden or pocketed page still has to hear. These listeners are not
     // the freeze-reload visibility handler: that one reloads, this one only
-    // restarts sound. A 3s sweep covers a pause that no event announces.
-    // Sits after applyBuses so the refusal block stays a block with no timer.
+    // restarts sound. A light 3s watchdog covers a pause that no event
+    // announces, so a paused voice never waits for a tap or a volume change.
     function keepMeetingAudio() {
       try {
         if (typeof ac !== 'undefined' && ac && typeof ensureAc === 'function') ensureAc();
