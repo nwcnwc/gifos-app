@@ -3363,7 +3363,9 @@
     const lead = rows
       ? 'Charges you approved on this computer. Apps never see your card, wallet, or balance. Forgetting a purchase only clears it from this computer and does not refund it. The ceiling is the most one charge from that app may ask for.'
       : 'Nothing charged on this computer. Apps never see your card, wallet, or balance.';
-    return '<div id="set-pay"><p class="add-help">' + lead + '</p>' + (rows || '') + '</div>';
+    const support = (typeof GifOS !== 'undefined' && GifOS.charge && typeof GifOS.charge.paymentSupportHtml === 'function')
+      ? '<p class="add-help" id="pay-support">' + GifOS.charge.paymentSupportHtml() + '</p>' : '';
+    return '<div id="set-pay"><p class="add-help">' + lead + '</p>' + support + (rows || '') + '</div>';
   }
   function wirePaySection(box) {
     for (const inp of box.querySelectorAll('.pay-cap')) {
