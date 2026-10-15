@@ -4207,7 +4207,14 @@
         const triedAt = /^tried:(\d+)$/.test(stamp) ? Number(stamp.slice(6)) : 0;
         if (stamp === 'done' || (triedAt && Date.now() - triedAt < 86400000)) { storeDefaultsState.results[d.slug] = stamp; return; }
         try {
-          // Already here (installed by hand, or by a meeting's own seed)? Stamp and move on.
+          // The stamp alone cannot decide: the browser copies a localStorage
+          // write to other tabs LATER, so the tab that takes the lock next can
+          // still read it empty — and its item list waits on a debounced
+          // repaint. The database is shared and current: reread it under the
+          // lock, so an app the other tab just filed is seen here.
+          await load();
+          // Already here (installed by hand, by a meeting's own seed, or by
+          // another tab a moment ago)? Stamp and move on.
           const have = (await scanProviders()).find((p) => p.appId === d.slug);
           let fileId = have ? have.fileId : '', name = have ? have.name : '';
           if (!have) {
