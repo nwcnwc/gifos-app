@@ -2962,12 +2962,14 @@
   // (docs/providers.md). This is the Settings picker's option list; the
   // runtime broker re-checks all of it at serve time, so the picker is UX,
   // not the enforcement.
-  async function scanProviders() {
+  // `list` defaults to the in-memory items; the store-default seed passes the
+  // database's own rows so it can decide without reloading `items`.
+  async function scanProviders(list) {
     const out = [];
     try {
       const files = await store.allFiles();
       const fileById = {}; for (const f of files) fileById[f.id] = f;
-      for (const it of items) {
+      for (const it of (list || items)) {
         if ((it.parent || null) !== 'sys_providers' || it.kind !== 'file' || !it.fileId) continue;
         const f = fileById[it.fileId];
         if (!f || !f.isApp || f.kind !== 'gif' || !f.bytes) continue;
@@ -4530,12 +4532,12 @@
           // The stamp alone cannot decide: the browser copies a localStorage
           // write to other tabs LATER, so the tab that takes the lock next can
           // still read it empty — and its item list waits on a debounced
-          // repaint. The database is shared and current: reread it under the
-          // lock, so an app the other tab just filed is seen here.
-          await load();
+          // repaint. The database is shared and current: read its rows under
+          // the lock, so an app the other tab just filed is seen here. Read,
+          // not load(): a reload could land mid-drag (the up-hole race).
           // Already here (installed by hand, by a meeting's own seed, or by
           // another tab a moment ago)? Stamp and move on.
-          const have = (await scanProviders()).find((p) => p.appId === d.slug);
+          const have = (await scanProviders(await store.allItems())).find((p) => p.appId === d.slug);
           let fileId = have ? have.fileId : '', name = have ? have.name : '';
           if (!have) {
             if (!navigator.onLine) { storeDefaultsState.results[d.slug] = 'offline'; return; }
