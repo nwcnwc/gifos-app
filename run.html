@@ -6131,28 +6131,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }).then((r) => r.json()).catch(() => null);
     }
     // ---- the order, peer to peer
+    // vaWhy: the last reasons an order was not kept (debug view only).
+    const vaWhy = [];
+    const vaNo = (why) => { vaWhy.push({ at: Date.now(), why }); if (vaWhy.length > 12) vaWhy.shift(); return false; };
     async function vaTake(w, from) {
-      if (!w || typeof w.sig !== 'string' || typeof w.sp !== 'string' || w.sp.length > 8192 || !hasAdminRoom()) return false;
+      if (!w || typeof w.sig !== 'string' || typeof w.sp !== 'string' || w.sp.length > 8192 || !hasAdminRoom()) return vaNo('shape');
       if ((vaOrder && vaOrder.sig === w.sig) || vaChecking.has(w.sig)) return false;
       vaChecking.add(w.sig);
       if (vaChecking.size > 64) vaChecking.delete(vaChecking.values().next().value);
       // The order: signed by this room's admin key (any act older than a
       // ticket's life is refused; a replay grants nothing the ticket's end does not).
       const o = await admVerify(w, 'va', (VA.TICKET_S + 3600) * 1000);
-      if (!o || !o.receipt || !o.ticket) return false;
+      if (!o || !o.receipt || !o.ticket) return vaNo('admin-signature');
       // The receipt: the payment service's signature over its exact bytes.
       const br = GifOS.payBroker;
       let r = null;
       try { r = await br.verifyReceipt(String(o.receipt.receiptJson), String(o.receipt.sig)); }
-      catch (e) { if (!/does not verify/.test(String(e && e.message))) vaChecking.delete(w.sig); return false; } // a key that did not load may load next time
+      catch (e) { if (!/does not verify/.test(String(e && e.message))) vaChecking.delete(w.sig); return vaNo('receipt: ' + String(e && e.message).slice(0, 60)); } // a key that did not load may load next time
       const ns = vaNowS();
-      if (!VA.checkReceipt(r, ns) || w.pub !== r.buyerKey) return false; // only the key that bought it presents it
+      if (!VA.checkReceipt(r, ns) || w.pub !== r.buyerKey) return vaNo('receipt-fields'); // only the key that bought it presents it
       // The ticket: signed by that same key, for this room, for this receipt.
       const tk = o.ticket;
-      if (!tk || typeof tk.sp !== 'string' || tk.sp.length > 400 || typeof tk.sig !== 'string') return false;
-      if (!(await net.edVerify(tk.pub, tk.sig, tk.sp))) return false;
-      let t = null; try { t = JSON.parse(tk.sp); } catch (e) { return false; }
-      if (!VA.checkTicket(t, tk.pub, r, sessId, ns)) return false;
+      if (!tk || typeof tk.sp !== 'string' || tk.sp.length > 400 || typeof tk.sig !== 'string') return vaNo('ticket-shape');
+      if (!(await net.edVerify(tk.pub, tk.sig, tk.sp))) return vaNo('ticket-signature');
+      let t = null; try { t = JSON.parse(tk.sp); } catch (e) { return vaNo('ticket-json'); }
+      if (!VA.checkTicket(t, tk.pub, r, sessId, ns)) return vaNo('ticket-fields room=' + String(t && t.room).slice(0, 12) + ' sess=' + String(sessId).slice(0, 12));
       const cand = { w, sig: w.sig, ts: +o.ts || 0, end: t.end, r, t,
         receipt: { receiptJson: String(o.receipt.receiptJson), sig: String(o.receipt.sig) }, ticket: { sp: tk.sp, sig: tk.sig, pub: tk.pub } };
       if (VA.better(vaOrder, cand) !== cand) return false;
@@ -21524,7 +21527,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           room: vaRoom(), order: vaOrder ? { state: vaOrderState(), end: vaOrder.end, ticketRoom: vaOrder.t.room, tx: vaOrder.r.tx } : null,
           mine: !!vaMine(), mineLive: !!vaMineLive(), panel: !!(row && row.style.display !== 'none'), meterAsks: vaMeterAsks,
           meter: vaMeter ? Object.assign({}, vaMeter.a) : null, view: v, waiting: (document.getElementById('status') || {}).dataset ? document.getElementById('status').dataset.va || '' : '',
-          onBridge: !!myStatus.vb, seen: vaSeen(),
+          onBridge: !!myStatus.vb, seen: vaSeen(), why: vaWhy.slice(),
           pairs: [...peers.values()].map((p) => { const e = vaPaid.get(p.id); return { name: rosterNames[p.id] || p.name || null, turnPaid: !!p.turnPaid, turnAudio: !!p.turnAudio, farPaid: !!p.vaFarPaid, cred: e ? e.cred.state() : null, refusal: e ? e.cred.refusal() : null, halted: e ? e.cred.halted() : false, bridge: e ? e.bridge : null,
             turnMine: !!p.turnMine, serve: !!p.turnServe, cam: camPeer(p.id), mainV: p.mainV ? (p.mainV.track ? p.mainV.track.kind : 'parked') : null, park: !!p.remoteParkMain,
             tx: (() => { try { return p.pc.getTransceivers().map((t) => (t.mid || '?') + ':' + (t.sender && t.sender.track ? t.sender.track.kind : '-') + ':' + t.direction + ':' + (t.currentDirection || '?')); } catch (x) { return null; } })() }; }),
@@ -21553,7 +21556,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               const byId = new Map(); rep.forEach((x) => byId.set(x.id, x));
               rep.forEach((x) => {
                 if (x.type === 'inbound-rtp') rec.inbound.push({ kind: x.kind, mid: x.mid, packets: x.packetsReceived || 0, bytes: x.bytesReceived || 0, energy: x.totalAudioEnergy || 0, frames: x.framesDecoded || 0 });
-                else if (x.type === 'outbound-rtp') rec.outbound.push({ kind: x.kind, mid: x.mid, packets: x.packetsSent || 0, bytes: x.bytesSent || 0 });
+                else if (x.type === 'outbound-rtp') rec.outbound.push({ kind: x.kind, mid: x.mid, packets: x.packetsSent || 0, bytes: x.bytesSent || 0, frames: x.framesEncoded || 0, h: x.frameHeight || 0, limit: x.qualityLimitationReason || null });
                 else if (x.type === 'transport' && x.selectedCandidatePairId) {
                   const cp = byId.get(x.selectedCandidatePairId);
                   if (cp) { rec.local = (byId.get(cp.localCandidateId) || {}).candidateType || null; rec.remote = (byId.get(cp.remoteCandidateId) || {}).candidateType || null; }
