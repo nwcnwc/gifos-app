@@ -4758,11 +4758,11 @@
         255
       ],
       "cover": "/apps/meeting-bot/cover.jpg",
-      "bytes": 20997,
+      "bytes": 21413,
       "download": 0,
       "provides": null,
       "signature": null,
-      "sha256": "641a8303851bd500b66b1c39cb6c404ca1419666912f147814dba50760c46ec1"
+      "sha256": "93afea080fbb9615635163990218da4288bc591db1a2556854d72e855bc360c1"
     },
     {
       "slug": "memory",
