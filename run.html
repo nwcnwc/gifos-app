@@ -11722,6 +11722,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           p.renegAgain = true; // polite rollback: my changes go again after I answer
           p.kickVideo = true; // that rollback stops the video encoder; reseat once stable
         }
+        // A NEWER OFFER SUPERSEDES ONE I HELD. They rolled the held one back
+        // to send this, so it describes a state they no longer have. Applying
+        // it later on the yield timer answered an offer they had dropped, so
+        // they refused the answer and my pc kept the stale description. Their
+        // camera then never reached me.
+        if (p.rofferYield) {
+          p.rofferYield = null;
+          if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
+          if (typeof clog === 'function') clog('roffer-held-drop ' + String(p.id).slice(0, 6));
+        }
         applyRoffer(m);
       } else if (m.k === 'ranswer') {
         if (p.pc) p.pc.setRemoteDescription(m.sdp)
