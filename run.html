@@ -9422,6 +9422,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             updateTile(pid);
           }
         }
+        // A connected pair can still be sitting on an offer whose answer was
+        // lost. And a tile can be bound to a stream whose picture never started.
+        recoverLostOffer(p, now);
+        if (p.video && p.stream && !p.relayed && p.ownSid && p.stream.id === p.ownSid) reseatStuckPicture(p.video, p.stream);
         if (p.noRoute && p.neverUp !== true && peerAway(pid)) { p.noRoute = false; updateTile(pid); }
       }
       updateStatus(); // the reach line follows the pair verdicts just made (REACH_MSG)
@@ -12197,6 +12201,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Picture-only. Sound is the companion Audio (busVolume); the element has
     // to be muted BEFORE play or a late claim (no user gesture left) stays
     // paused and videoWidth never moves.
+    // BEGIN-PICTURE-HEAL
+    // A stream bound while its video track was muted never starts decoding,
+    // and play() on an element that is already playing does not recover it.
+    // Dropping and reseating the same stream does. The companion is a
+    // different element, so the voice keeps playing. A track that is still
+    // muted is left alone: reseating it would bind the same stuck way.
+    // One reseat per quiet window, so a sweep cannot blank the tile on
+    // every beat while the element is catching up.
+    function reseatStuckPicture(video, stream) {
+      if (!video || !stream || video.srcObject !== stream) return false;
+      if (video.readyState !== 0 || video.videoWidth > 0) return false;
+      const tile = video.closest && video.closest('[data-peer]');
+      const pid = tile && tile.dataset && tile.dataset.peer;
+      if (pid && pid !== myId && typeof mediaOk === 'function' && mediaOk(pid) === false) return false;
+      let live = false;
+      try {
+        const tracks = stream.getVideoTracks ? stream.getVideoTracks() : [];
+        live = tracks.some((t) => t && t.readyState === 'live' && !t.muted);
+      } catch (e) {}
+      if (!live) return false;
+      const now = Date.now();
+      if (video._picReseatAt && now - video._picReseatAt < 2000) return false;
+      video._picReseatAt = now;
+      try { video.muted = true; } catch (e) {}
+      try { video.srcObject = null; video.srcObject = stream; } catch (e) { return false; }
+      const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
+      return true;
+    }
     function playTileVideo(video, stream) {
       if (!video || !stream) return;
       // The verification hold wins over a late play. The tile's peer is who
@@ -12205,9 +12237,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pid = tile && tile.dataset && tile.dataset.peer;
       if (pid && pid !== myId && typeof mediaOk === 'function' && mediaOk(pid) === false) return;
       try { video.muted = true; } catch (e) {}
-      if (video.srcObject !== stream) video.srcObject = stream;
+      const already = video.srcObject === stream;
+      if (!already) video.srcObject = stream;
       const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
+      // Already bound and still at readyState 0: play() above changed nothing.
+      if (already) reseatStuckPicture(video, stream);
     }
+    // END-PICTURE-HEAL
+    // BEGIN-LOST-OFFER
+    // An offer and its answer ride the DataChannel once, with no ack. An
+    // answer sent while the far radio is down is gone, and this side stays in
+    // have-local-offer on a pair that is otherwise connected. Nothing else
+    // revisits that offer, so the media it carried never starts. Past two
+    // glare yields, take it back and offer again. A late answer to the old
+    // offer lands on stable and fails harmlessly. kickVideo reseats the
+    // camera after the new answer, because a rollback stops the encoder.
+    function recoverLostOffer(p, now) {
+      if (!p || !p.pc) return false;
+      const lsd = p.pc.signalingState === 'have-local-offer' && p.pc.localDescription;
+      if (!(lsd && p.connected && p.dc && p.dc.readyState === 'open' && !p.makingOffer && !p.glareTimer && !p.rofferYieldTimer)) {
+        p.staleOfferSdp = null;
+        return false;
+      }
+      if (p.staleOfferSdp !== lsd.sdp) { p.staleOfferSdp = lsd.sdp; p.staleOfferAt = now; return false; }
+      if (now - p.staleOfferAt <= 2 * GLARE_YIELD_MS + 2000) return false;
+      p.staleOfferSdp = null;
+      p.kickVideo = true;
+      const pc = p.pc;
+      Promise.resolve(pc.setLocalDescription({ type: 'rollback' })).then(() => renegotiate(p)).catch(() => {});
+      return true;
+    }
+    // END-LOST-OFFER
     // A glare rollback can leave the main video sender negotiated sendrecv,
     // track still attached, and emitting nothing. Seating the live camera
     // again (drop, then the same track) restarts the encoder. Never touches
