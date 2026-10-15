@@ -12307,10 +12307,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (sender.track !== vt) { seat(); return; }
       sender.replaceTrack(null).then(seat).catch(() => {});
     }
+    // The same rollback silences the main AUDIO sender the same way: the mic
+    // stays attached and enabled, the link stays sendrecv, and no packet
+    // leaves, so a person in my row stops hearing me while still seeing me.
+    // Seat the mic again the same way. A staged sender is parked on purpose
+    // and stays parked; mute is the track's enabled flag, so it carries over.
+    function kickMainAudio(p) {
+      if (!p || !p.mainA || stageIds().includes(myId)) return;
+      const at = localStream && localStream.getAudioTracks()[0];
+      if (!at || at.readyState !== 'live') return;
+      const sender = p.mainA;
+      const seat = () => sender.replaceTrack(at).catch(() => {});
+      if (sender.track !== at) { seat(); return; }
+      sender.replaceTrack(null).then(seat).catch(() => {});
+    }
     function afterNeg(p) {
       if (!p) return;
       if (p.renegAgain || hasPendingTx(p)) { p.renegAgain = false; renegotiate(p); return; }
-      if (p.kickVideo) { p.kickVideo = false; kickMainVideo(p); }
+      if (p.kickVideo) { p.kickVideo = false; kickMainVideo(p); kickMainAudio(p); }
     }
     // createOffer/setRemoteDescription failed in a way this pc will repeat.
     // An m-line order mismatch on a channel that just opened wedges the
@@ -20956,6 +20970,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       visParkAsked: () => Array.from(visParkSent.entries()).filter(([, v]) => v).map(([id]) => id),
       mainSending: (pid) => { const p = peers.get(pid); return !!(p && p.mainV && p.mainV.track); },
       mainAudioSending: (pid) => { const p = peers.get(pid); return !!(p && p.mainA && p.mainA.track); },
+      // Every audio m-line on the link to pid, both directions: which track
+      // each sender carries and each receiver holds, whether that receiver
+      // track is the one in the tile's stream, and the RTP counters per mid.
+      audioLinesForTest: async (pid) => {
+        const p = peers.get(pid);
+        if (!p || !p.pc) return null;
+        const tr = (t) => t ? { id: String(t.id).slice(0, 8), rs: t.readyState, en: t.enabled, mu: t.muted } : null;
+        const tile = p.video && p.video.srcObject;
+        const tileA = tile ? tile.getAudioTracks().map((t) => String(t.id).slice(0, 8)) : null;
+        const local = localStream && localStream.getAudioTracks()[0];
+        const rtp = new Map();
+        try { (await p.pc.getStats()).forEach((s) => { if ((s.type === 'outbound-rtp' || s.type === 'inbound-rtp') && s.kind === 'audio' && s.mid != null) rtp.set(s.type[0] + String(s.mid), s.type === 'outbound-rtp' ? { pk: s.packetsSent, by: s.bytesSent } : { pk: s.packetsReceived, by: s.bytesReceived, lvl: s.audioLevel }); }); } catch (e) {}
+        const lines = [];
+        for (const t of p.pc.getTransceivers()) {
+          const k = (t.receiver && t.receiver.track && t.receiver.track.kind) || (t.sender && t.sender.track && t.sender.track.kind);
+          if (k !== 'audio') continue;
+          lines.push({ mid: t.mid, dir: t.direction, cur: t.currentDirection, stopped: !!t.stopped,
+            send: tr(t.sender && t.sender.track), mainA: t.sender === p.mainA, sendIsMic: !!(t.sender && t.sender.track && t.sender.track === local),
+            recv: tr(t.receiver && t.receiver.track), inTile: !!(tileA && t.receiver && t.receiver.track && tileA.includes(String(t.receiver.track.id).slice(0, 8))),
+            out: rtp.get('o' + t.mid) || null, in: rtp.get('i' + t.mid) || null });
+        }
+        return { conn: p.pc.connectionState, sig: p.pc.signalingState, tileSid: tile ? String(tile.id).slice(0, 8) : null, tileA, mainA: !!p.mainA, mainATrack: tr(p.mainA && p.mainA.track), lines };
+      },
       room: () => room,
       roomPw: () => roomPw,
       pwLockedOut: () => pwBlocked,   // the door asked this page for the room password (it holds none that opens it)
