@@ -17646,7 +17646,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const day = d.getFullYear() + '_' + pad(d.getMonth() + 1) + '_' + pad(d.getDate());
       let name = String(roomName || '');
       try { name = decodeURIComponent(name); } catch (e) {}
-      name = name.normalize('NFKD').replace(/[̀-ͯ]/g, '')
+      name = name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
         .replace(/[^A-Za-z0-9._-]/g, '_').replace(/_+/g, '_').replace(/^[._-]+|[._-]+$/g, '')
         .slice(0, 80).replace(/[._-]+$/, '');
       const dot = String(ext || 'txt').replace(/^\.+/, '').replace(/[^A-Za-z0-9]/g, '').toLowerCase() || 'txt';
