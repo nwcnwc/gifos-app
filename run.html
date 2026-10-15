@@ -5952,7 +5952,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       } else if (kind === 'expired') {
         if (turnAnchorId != null) dropTurnAnchor(Date.now(), 0);
-        for (const p of peers.values()) if (p.turnMine) newPcFor(p);
+        for (const p of peers.values()) if (p.turnMine && !vaServersFor(p)) newPcFor(p); // a pair on paid credentials does not use the free grant
       }
       updateStatus();
     }
@@ -21518,7 +21518,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           mine: !!vaMine(), mineLive: !!vaMineLive(), panel: !!(row && row.style.display !== 'none'), meterAsks: vaMeterAsks,
           meter: vaMeter ? Object.assign({}, vaMeter.a) : null, view: v, waiting: (document.getElementById('status') || {}).dataset ? document.getElementById('status').dataset.va || '' : '',
           onBridge: !!myStatus.vb, seen: vaSeen(),
-          pairs: [...peers.values()].map((p) => { const e = vaPaid.get(p.id); return { name: rosterNames[p.id] || p.name || null, turnPaid: !!p.turnPaid, turnAudio: !!p.turnAudio, farPaid: !!p.vaFarPaid, cred: e ? e.cred.state() : null, refusal: e ? e.cred.refusal() : null, halted: e ? e.cred.halted() : false, bridge: e ? e.bridge : null }; }),
+          pairs: [...peers.values()].map((p) => { const e = vaPaid.get(p.id); return { name: rosterNames[p.id] || p.name || null, turnPaid: !!p.turnPaid, turnAudio: !!p.turnAudio, farPaid: !!p.vaFarPaid, cred: e ? e.cred.state() : null, refusal: e ? e.cred.refusal() : null, halted: e ? e.cred.halted() : false, bridge: e ? e.bridge : null,
+            turnMine: !!p.turnMine, serve: !!p.turnServe, cam: camPeer(p.id), mainV: p.mainV ? (p.mainV.track ? p.mainV.track.kind : 'parked') : null, park: !!p.remoteParkMain,
+            tx: (() => { try { return p.pc.getTransceivers().map((t) => (t.mid || '?') + ':' + (t.sender && t.sender.track ? t.sender.track.kind : '-') + ':' + t.direction + ':' + (t.currentDirection || '?')); } catch (x) { return null; } })() }; }),
         };
       },
       vaMeterNow: () => { vaMeterTick(Date.now(), true); return true; },
