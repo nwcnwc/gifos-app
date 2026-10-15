@@ -1083,6 +1083,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: rgba(111,123,212,.10); border-radius: .45rem; padding: .55rem .7rem;
     font-size: .84rem; line-height: 1.4; margin: .2rem 0 .7rem; }
   .share-note.running { border-left-color: #37d67a; background: rgba(55,214,122,.10); }
+  #ccwsp-off { position: fixed; left: .6rem; bottom: .6rem; z-index: 90; max-width: calc(100vw - 1.2rem); padding: .45rem .8rem; border-radius: 999px;
+    border: 1px solid #ffd23c; background: rgba(20,20,32,.92); color: #fff; font: inherit; font-size: .85rem; cursor: pointer; touch-action: manipulation; }
   #callbanner { display: none; align-items: center; gap: .6rem; padding: .4rem .9rem;
     background: var(--surface, #14141f); border-bottom: 1px solid var(--border, #2a2a3f); font-size: .85rem; }
   #callbanner button { padding: .25rem .7rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f);
@@ -1287,6 +1289,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="copy">Copy</button>
   </div>
   <div id="callbanner"><span id="callbanner-txt"></span><button id="callbanner-join">Join the call</button></div>
+  <button id="ccwsp-off" type="button" style="display:none" title="Stop Whisper on this device and write captions with the browser">Whisper captions · <b>Switch to browser captions</b></button>
   <div id="apppane">
     <div id="appbar">
       <a class="brand" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
@@ -1339,6 +1342,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <div id="ccengine-row" style="margin-top:.6rem">
           <label class="rec-opt"><input type="radio" name="ccengine" value="browser"><span><b>Browser captions</b><small>Instant. One fixed language, picked above; two-word lines without punctuation on some devices. Your browser may send your voice to its maker's speech service (Chrome: Google).</small></span></label>
           <label class="rec-opt"><input type="radio" name="ccengine" value="whisper"><span><b>Whisper on this device</b><small>Any language, found by itself. Real sentences with punctuation. Your own names and words. Can write everything in English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Nothing leaves the device.</small></span></label>
+          <div id="ccwhisper-weak" class="set-help" style="display:none;margin:.2rem 0 0 1.6rem"></div>
           <div id="ccwhisper" style="display:none;margin:.2rem 0 0 1.6rem">
             <div id="ccwhisper-state" class="set-help" style="margin-bottom:.4rem"></div>
             <label class="rec-opt inline"><input type="checkbox" id="cctranslate"><span>Write everything in English</span></label>
@@ -16979,7 +16983,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const CC_ENGINE_KEY = 'gifos_cc_engine', CC_TRANSLATE_KEY = 'gifos_cc_translate', CC_WORDS_KEY = 'gifos_cc_words';
     const lsGet = (k) => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
     const lsSet = (k, v) => { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {} };
-    const ccEngine = () => (lsGet(CC_ENGINE_KEY) === 'whisper' ? 'whisper' : 'browser');
+    // WHO MAY RUN WHISPER. Whisper runs on the processor that also encodes the
+    // call and answers its heartbeats. On a phone, or a computer with few cores
+    // or little memory, it starves the meeting and drains the battery, so such
+    // a device is not offered Whisper: it runs only after an explicit "use it
+    // anyway" on this browser. A choice stored before that does not count.
+    const CC_WHISPER_ANYWAY_KEY = 'gifos_cc_whisper_anyway';
+    function whisperWeakWhy(nav) {
+      nav = nav || {};
+      if (mobileDevice(nav)) return 'phone';
+      const cores = Number(nav.hardwareConcurrency) || 0, mem = Number(nav.deviceMemory) || 0;
+      if (cores && cores < 4) return 'cores';
+      if (mem && mem < 4) return 'memory';
+      return '';
+    }
+    const WSP_WEAK = whisperWeakWhy(navigator);
+    const whisperAllowed = () => !WSP_WEAK || lsGet(CC_WHISPER_ANYWAY_KEY) === '1';
+    const ccEngine = () => (lsGet(CC_ENGINE_KEY) === 'whisper' && whisperAllowed() ? 'whisper' : 'browser');
     const WHISPER_APP_ID = 'offline-stt-whisper';
     const whisperReady = () => !!(window.GifOS && GifOS.providers && GifOS.providers.assigned('stt'));
     const WSP_PRE_MS = 400, WSP_GAP_MS = 700, WSP_MAX_S = 15, WSP_MIN_S = 0.4, WSP_BACKLOG = 3, WSP_SCRIBE_MAX = 8;
@@ -17195,8 +17215,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (wspPaused) return;
       wspPaused = true;
       try { stopWhisper(); } catch (e) {}
+      wspRelease();
       try { syncSpeech(); } catch (e) {}
       setStatus('Whisper captions stalled — browser captions are on.', 10000);
+    }
+    // Unload the speech-to-text provider: a clip it is still working on, or a
+    // model it is still loading, stops now instead of finishing for nobody.
+    function wspRelease() {
+      try { if (window.GifOS && GifOS.providers && typeof GifOS.providers.stop === 'function') GifOS.providers.stop('stt'); } catch (e) {}
+    }
+    // THE WAY BACK. One tap, from the meeting itself or from the guard below:
+    // browser captions take over at once, Whisper stops listening and its
+    // provider is unloaded. The choice is saved, so the next meeting starts
+    // with browser captions too.
+    function wspToBrowser(say) {
+      lsSet(CC_ENGINE_KEY, '');
+      speechGaveUp = false;
+      try { stopWhisper(); } catch (e) {}
+      wspRelease();
+      if (myStatus.scribe) { myStatus.scribe = false; try { broadcastStatus(); } catch (e) {} }
+      try { paintCcState(); } catch (e) {}
+      try { syncSpeech(); } catch (e) {}
+      if (say) setStatus(say, 10000);
     }
     function wspDrain() {
       if (wspQ.busy || !wspQ.items.length) return;
@@ -17206,15 +17246,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pcm = wspPcm16k(job.chunks, job.rate);
       const lang = ccLang();
       const req = { bytes: pcm.buffer, mime: 'audio/pcm;rate=16000;bits=32', language: lang === 'auto' ? 'auto' : lang,
-        task: lsGet(CC_TRANSLATE_KEY) === '1' ? 'translate' : 'transcribe', prompt: lsGet(CC_WORDS_KEY).slice(0, 400), model: IS_MOBILE ? 'tiny' : 'base' };
+        task: lsGet(CC_TRANSLATE_KEY) === '1' ? 'translate' : 'transcribe', prompt: lsGet(CC_WORDS_KEY).slice(0, 400), model: WSP_WEAK ? 'tiny' : 'base' };
       wspQ.sent++;
       let settled = false;
+      const t0 = Date.now();
       const finish = () => {
         if (settled) return;
         settled = true;
         if (timer) clearTimeout(timer);
-        wspQ.busy = false;
-        wspDrain();
+        // A device that runs Whisper only by override rests as long as the clip
+        // took before the next one, so inference holds at most half its processor.
+        const rest = WSP_WEAK ? Math.min(10000, Date.now() - t0) : 0;
+        if (rest < 50) { wspQ.busy = false; wspDrain(); return; }
+        setTimeout(() => { wspQ.busy = false; wspDrain(); }, rest);
       };
       const clipMs = pcm.length / 16; // 16 kHz samples → milliseconds
       // Until the provider first answers, a call can carry the one-time model
@@ -17240,6 +17284,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }).catch((e) => {
         if (settled) return;
         const msg = (e && e.message) || String(e);
+        if (/PROVIDER_STOPPED/.test(msg)) return; // unloaded on purpose (wspRelease)
         if (/NOT_CONFIGURED|PROVIDER_MISSING|PROVIDER_NOT_IN_FOLDER/.test(msg)) { wspProviderGone(); return; }
         setStatus('Whisper captions failed: ' + msg.slice(0, 160), 10000);
       }).then(() => finish());
@@ -17439,6 +17484,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const on = ccEngine() === 'whisper';
       for (const r of radios) r.checked = (r.value === 'whisper') === on;
       box.style.display = on ? '' : 'none';
+      // A weak device: the Whisper row is not selectable; a plain warning and
+      // an explicit "use it anyway" stand in for it.
+      const allowed = whisperAllowed();
+      for (const r of radios) if (r.value === 'whisper') r.disabled = !allowed;
+      const weak = document.getElementById('ccwhisper-weak');
+      if (weak) {
+        if (allowed) { weak.style.display = 'none'; weak.innerHTML = ''; }
+        else {
+          weak.style.display = '';
+          weak.innerHTML = '<span style="color:#ffd23c">⚠ Not offered on ' + (WSP_WEAK === 'phone' ? 'a phone' : WSP_WEAK === 'cores' ? 'a device with this few processor cores' : 'a device with this little memory')
+            + '.</span> Whisper runs on the processor: it slows the call for you and everyone you talk to, and it drains the battery. Browser captions stay instant. '
+            + '<button id="ccwhisper-anyway" class="seg" style="border:1px solid #ffd23c;border-radius:.4rem">Use Whisper anyway</button>';
+          document.getElementById('ccwhisper-anyway').onclick = () => {
+            lsSet(CC_WHISPER_ANYWAY_KEY, '1');
+            lsSet(CC_ENGINE_KEY, 'whisper');
+            wspPaused = false; wspQ.stalls = 0;
+            setStatus('Whisper is on by your choice. If the call gets slow, tap “Switch to browser captions” at the bottom of the screen.', 12000);
+            paintCcState();
+            syncSpeech();
+          };
+        }
+      }
       const sc = document.getElementById('ccscribe'); if (sc) sc.checked = !!myStatus.scribe;
       const scRow = document.getElementById('ccscribe-row');
       if (!on) return;
@@ -17456,12 +17523,41 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       armWhisperRescan();
     }
     function whisperSeedBlocked() {
-      // A phone, a data-saver flag, or a cellular link does not fetch the 13 MB app on its own.
-      if (IS_MOBILE) return true;
+      // A phone or a weak computer, a data-saver flag, or a cellular link does not fetch the 13 MB app on its own.
+      if (IS_MOBILE || WSP_WEAK) return true;
       const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
       if (c && (c.saveData || c.type === 'cellular' || c.type === 'wimax')) return true;
       return false;
     }
+    // The one-tap chip on the meeting surface, outside every menu, for as long
+    // as Whisper is chosen, loading or working.
+    function paintWspChip() {
+      const chip = document.getElementById('ccwsp-off'); if (!chip) return;
+      const on = (myStatus.cc && ccEngine() === 'whisper' && !wspPaused) || wspCaps.size > 0;
+      const want = on ? '' : 'none';
+      if (chip.style.display !== want) chip.style.display = want;
+    }
+    // THE MEETING COMES FIRST. A 250 ms tick that lands more than a second late
+    // means the page missed its heartbeats and media work; on a phone the
+    // provider runs on this very thread. Two such stalls within 30 s while
+    // Whisper is working, and it stands down for browser captions. The same
+    // tick keeps the chip in step with the engine.
+    const WSP_TICK_MS = 250, WSP_STARVE_MS = 1000, WSP_STARVE_N = 2, WSP_STARVE_WIN = 30000;
+    let wspTickAt = 0, wspStarved = [];
+    setInterval(() => {
+      paintWspChip();
+      const now = Date.now();
+      const late = wspTickAt ? now - wspTickAt - WSP_TICK_MS : 0;
+      // A hidden tab's timers are throttled on purpose; that is not a stall.
+      if (document.visibilityState !== 'visible' || !(wspCaps.size || wspQ.busy)) { wspTickAt = document.visibilityState === 'visible' ? now : 0; wspStarved.length = 0; return; }
+      wspTickAt = now;
+      if (late < WSP_STARVE_MS) return;
+      wspStarved = wspStarved.filter((t) => now - t < WSP_STARVE_WIN);
+      wspStarved.push(now);
+      if (wspStarved.length < WSP_STARVE_N) return;
+      wspStarved.length = 0;
+      wspToBrowser('Whisper was slowing this device and the call down — browser captions are on. Settings → Captions to try it again.');
+    }, WSP_TICK_MS);
     (function wireCcEngine() {
       const radios = Array.from(document.querySelectorAll('input[name="ccengine"]')); if (!radios.length) return;
       const tr = document.getElementById('cctranslate'), words = document.getElementById('ccwords'), scribe = document.getElementById('ccscribe');
@@ -17476,6 +17572,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       for (const r of radios) r.onchange = () => {
         if (!r.checked) return;
+        if (r.value === 'whisper' && !whisperAllowed()) { paintCcState(); return; } // only the explicit override turns it on here
         lsSet(CC_ENGINE_KEY, r.value === 'whisper' ? 'whisper' : '');
         if (r.value !== 'whisper') speechGaveUp = false;
         if (r.value === 'whisper') { wspPaused = false; wspQ.stalls = 0; } // a deliberate re-pick retries a stalled Whisper
@@ -17486,6 +17583,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       paintCcState();
       document.getElementById('setbtn').addEventListener('click', () => { paintCcState(); paintCcSource(); });
+      document.getElementById('ccwsp-off').onclick = () => { wspToBrowser('Browser captions are on. Whisper is off on this device.'); paintWspChip(); };
       // The quiet seed: 20 s into a meeting, on an unmetered computer, once. Idle, so it
       // does not compete with the call. A phone or a cellular link never starts it.
       setTimeout(() => {
@@ -17743,6 +17841,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return !!(p && p.connected);
     }
     function syncSpeech() { // CC writes down my voice while I am unmuted, and every voice this device hears
+      paintWspChip(); // the way back shows the moment Whisper is chosen; the 250 ms tick keeps it in step
       const mine = myStatus.cc && !myStatus.muted;
       ccSrcDirect = ccSourceWritesMe();
       if (ccSrcDirect) { // the chosen scribe hears me directly: no engine of my own
