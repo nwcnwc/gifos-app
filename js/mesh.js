@@ -67,6 +67,7 @@
   const RING_HOLD = 220;     // test/sim/mesh.cpp RING_HOLD
   const OWNER_SILENT = 40;   // test/sim/mesh.cpp OWNER_SILENT — 5 unanswered 8-tick phone beats arms the ghost-target probe
   const LONE_GREET_AFTER = 16; // test/sim/mesh.cpp LONE_GREET_AFTER — two silent 8-tick beats before a lone Section-1 seat greets the door (loneGreet)
+  const HELLO_BACK = 20;     // test/sim/mesh.cpp HELLO_BACK — ticks between my HELLOs answering one unheard greeter (HELLO branch)
   // A three-state occupancy: soft sitting-down TTL + assigner recheck (loss wedge).
   const SIT_TTL = 90, SIT_RECHECK = 25;
   // V4 probe window: free a silent vouch only after a SITPING went unanswered
@@ -358,6 +359,7 @@
       this.heardSince = new Map(); this.linkedSince = new Map(); this.wasAt = new Map();
       this.rival = null;   // the last link-proven seat that claimed my cell (loneAsk)
       this.movedClaim = null;   // a seat held elsewhere that claimed my cell: its old cell under a D5 probe until confirmed or answered
+      this.helloBack = new Map();   // id -> tick: my last HELLO answering an unproven greeting from a seat I list but do not hear (HELLO branch)
       this.waitClaim = new Map();   // cell -> { id, at }: a lower-id unproven claim on a cell a live incumbent holds, installed as a hint if the incumbent's goodbye frees it (HELLO branch)
       this.carrySince = new Map();   // a neighbour's goodbye named where it went (mvd): the pairing's linkedSince travels to that cell when its link proves it there (bounded, 60 ticks)
       this.estAt = 0; this.nbrAt = -1; this.oldEstAt = 0; this.pnSeq = 0; this.xrOk = new Map();
@@ -3730,6 +3732,16 @@
             // head freed it on Dev's LEAVE and re-placed Dev into it — 31 s).
             if (prev != null && prev !== m.id && prevFresh) { if (m.id > prev) this.emit(m.id, { t: 'YIELD', ck: m.ck, id: this.id }); else { const w = this.waitClaim; if (w.size >= 32) w.delete(w.keys().next().value); w.set(m.ck, { id: m.id, at: TICK }); } return; }
             if (prev !== m.id && this.hintClaim(m.ck, m.id)) { if (this.hasCoord) this.emit(m.id, { t: 'HELLO', ck: ck(this.coord), id: this.id }); this._gspReplay(m.id); }
+            // ...and a seat I already list at that cell but do not hear
+            // first-hand is answered too: it greets the members it learned
+            // from the door, and one that sat down while it was gone is known
+            // to it only by this answer. Unanswered, it learned my seat only
+            // at my next beat or my transport-loss probe, and could not dial
+            // me before. Paced per sender (HELLO_BACK ticks).
+            else if (prev === m.id && this.hasCoord && this.state === 3 && !this.holdsCell(m.ck, 60)) {
+              const hb = this.helloBack, at = hb.get(m.id);
+              if (at === undefined || TICK - at > HELLO_BACK) { if (hb.size >= 32) hb.delete(hb.keys().next().value); hb.set(m.id, TICK); this.emit(m.id, { t: 'HELLO', ck: ck(this.coord), id: this.id }); }
+            }
             { const sit = this.sitting.get(m.ck); if (sit && sit.joiner === m.id) this.clearSoft(m.ck); }
             return;
           }
