@@ -9265,7 +9265,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // detection), over the same pairs the sweep walks.
     function frozenTileTick(pid, p) {
       if (!p || !p.pc) return;
-      p.freezeTick = { at: Date.now(), skip: frozenTileSkip(pid, p), statsAt: p.freezeTick ? p.freezeTick.statsAt : 0 };
+      const ft0 = p.freezeTick;
+      p.freezeTick = { at: Date.now(), skip: frozenTileSkip(pid, p), statsAt: ft0 ? ft0.statsAt : 0, hist: ft0 ? ft0.hist : [] };
+      p.freezeTick.hist.push(Math.round(p.freezeTick.at / 100) % 1000 + ':' + (p.freezeTick.skip || '-')); if (p.freezeTick.hist.length > 12) p.freezeTick.hist.shift();
       // A FROZEN TILE. A row-mate's tile that HAD a picture (readyState
       // past 0, so not the sweep's dead sink) stops decoding while the pair
       // is up, the far camera is on and their voice keeps playing. The
@@ -9293,7 +9295,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           rx.getStats().then((st) => {
             let fd = -1; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
             if (p.freezeTick) p.freezeTick.statsAt = Date.now();
-            if (fd < 0 || p.pc !== pc0) return;
+            // No inbound video entry at all is no frames, not no evidence: a
+            // renegotiation can move the far sender to a stream that has not
+            // carried one packet yet (it is parked), and the receiver then
+            // reports nothing for it.
+            if (fd < 0) fd = 0;
+            if (p.pc !== pc0) return;
             const t = Date.now(), fz = p.freezeProbe, judged = !frozenTileSkip(pid, p);
             // THE SINK, AFTER A PICTURE. The sweep's dead sink, on a tile that
             // had already painted: frames decode, the element presents none
@@ -21039,7 +21046,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       camTrackLive: () => !!(localStream && localStream.getVideoTracks()[0] && localStream.getVideoTracks()[0].readyState === 'live'),
       // hidden-viewer dormancy forensics: mains I parked at the far side's
       // request / parks I asked for / is my main video toward pid carrying
-      frozenTile: (pid) => { const p = peers.get(pid); return p ? { skip: frozenTileSkip(pid, p), probe: p.freezeProbe ? { fd: p.freezeProbe.fd, ageMs: Date.now() - p.freezeProbe.at, seen: !!p.freezeProbe.seenAt, asks: !!p.freezeProbe.firstAsk } : null, rs: p.video ? p.video.readyState : null, tick: p.freezeTick ? { ago: Date.now() - p.freezeTick.at, skip: p.freezeTick.skip, statsAgo: p.freezeTick.statsAt ? Date.now() - p.freezeTick.statsAt : null } : null } : null; },
+      frozenTile: (pid) => { const p = peers.get(pid); return p ? { skip: frozenTileSkip(pid, p), probe: p.freezeProbe ? { fd: p.freezeProbe.fd, ageMs: Date.now() - p.freezeProbe.at, seen: !!p.freezeProbe.seenAt, asks: !!p.freezeProbe.firstAsk } : null, rs: p.video ? p.video.readyState : null, tick: p.freezeTick ? { hist: p.freezeTick.hist.join(' '), ago: Date.now() - p.freezeTick.at, skip: p.freezeTick.skip, statsAgo: p.freezeTick.statsAt ? Date.now() - p.freezeTick.statsAt : null } : null } : null; },
       visParked: () => Array.from(peers.entries()).filter(([, p]) => p.remoteParkMain).map(([id]) => id),
       visParkAsked: () => Array.from(visParkSent.entries()).filter(([, v]) => v).map(([id]) => id),
       mainSending: (pid) => { const p = peers.get(pid); return !!(p && p.mainV && p.mainV.track); },
