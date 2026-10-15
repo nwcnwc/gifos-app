@@ -3196,32 +3196,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // frozen feed must never be baked into a recording). Old clients ignore
     // the 'vis' frame — opportunistic savings, no flag day.
     const visParkSent = new Map(); // pid -> last park bool actually sent
-    // BEGIN-VIS-SHOW
-    // Coming back to the page must be delivered even when this phone already
-    // believes it sent "show me". A single lost frame leaves the mate's
-    // camera parked, and a delta will not send the same bit again. A few
-    // repeats after the page is shown cover that loss. While hidden the
-    // message stays a delta, so a pocket does not chat every beat.
-    let visShowLeft = 0;
-    function noteVisShown() { visShowLeft = 4; visParkSent.clear(); }
     function sendVisPark() {
       for (const k of [...visParkSent.keys()]) if (!peers.has(k)) visParkSent.delete(k);
       const recording = !!(typeof recRec !== 'undefined' && recRec && recRec.state !== 'inactive');
       const hidden = document.hidden && !recording;
-      const force = !hidden && visShowLeft > 0;
-      if (force) visShowLeft--;
       let floatPid = null;
       if (hidden) { const v = pipSource(); for (const [pid, p] of peers) if (p.video === v) { floatPid = pid; break; } }
       for (const [pid, p] of peers) {
         const park = hidden && pid !== floatPid;
-        if (!force && visParkSent.get(pid) === park) continue;
+        if (visParkSent.get(pid) === park) continue;
         if (p.dc && p.dc.readyState === 'open') { dcSend(p, { k: 'vis', park }); visParkSent.set(pid, park); }
         else visParkSent.delete(pid); // never mark unsent state as delivered
       }
     }
-    // END-VIS-SHOW
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) enterPip(); else { exitPip(); noteVisShown(); }
+      if (document.hidden) enterPip(); else exitPip();
       sendVisPark();
     });
     // The floated element can die mid-background (a stage strip teardown pulls
@@ -9433,11 +9422,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             updateTile(pid);
           }
         }
-        // A connected pair can still be sitting on an offer whose answer was
-        // lost. And a tile can be bound to a stream whose picture never started.
-        recoverLostOffer(p, now);
-        if (p.video && p.stream && !p.relayed && p.ownSid && p.stream.id === p.ownSid) reseatStuckPicture(p.video, p.stream);
-        if (p.mainV && !p.remoteParkMain) reseatMainSender(p);
         if (p.noRoute && p.neverUp !== true && peerAway(pid)) { p.noRoute = false; updateTile(pid); }
       }
       updateStatus(); // the reach line follows the pair verdicts just made (REACH_MSG)
@@ -12213,42 +12197,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Picture-only. Sound is the companion Audio (busVolume); the element has
     // to be muted BEFORE play or a late claim (no user gesture left) stays
     // paused and videoWidth never moves.
-    // BEGIN-PICTURE-HEAL
-    // A stream bound while its video track was muted never starts decoding,
-    // and play() on an element that is already playing does not recover it.
-    // Dropping and reseating the same stream does. The companion is a
-    // different element, so the voice keeps playing. A track that is still
-    // muted is left alone: reseating it would bind the same stuck way.
-    // One reseat per quiet window, so a sweep cannot blank the tile on
-    // every beat while the element is catching up.
-    function reseatStuckPicture(video, stream) {
-      if (!video || !stream || video.srcObject !== stream) return false;
-      if (video.readyState !== 0 || video.videoWidth > 0) return false;
-      const tile = video.closest && video.closest('[data-peer]');
-      const pid = tile && tile.dataset && tile.dataset.peer;
-      if (pid && pid !== myId && typeof mediaOk === 'function' && mediaOk(pid) === false) return false;
-      let live = false;
-      try {
-        const tracks = stream.getVideoTracks ? stream.getVideoTracks() : [];
-        live = tracks.some((t) => t && t.readyState === 'live' && !t.muted);
-      } catch (e) {}
-      if (!live) return false;
-      const now = Date.now();
-      if (video._picReseatAt && now - video._picReseatAt < 2000) return false;
-      video._picReseatAt = now;
-      try { video.muted = true; } catch (e) {}
-      // Same-turn null-then-assign is coalesced: the element never sees a
-      // change and stays at readyState 0. Drop now, bind the same stream on
-      // the next turn. The companion is a different element and is not touched.
-      try { video.srcObject = null; } catch (e) { return false; }
-      const token = stream;
-      setTimeout(() => {
-        if (video.srcObject) return;
-        try { video.srcObject = token; } catch (e) { return; }
-        const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
-      }, 0);
-      return true;
-    }
     function playTileVideo(video, stream) {
       if (!video || !stream) return;
       // The verification hold wins over a late play. The tile's peer is who
@@ -12257,52 +12205,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pid = tile && tile.dataset && tile.dataset.peer;
       if (pid && pid !== myId && typeof mediaOk === 'function' && mediaOk(pid) === false) return;
       try { video.muted = true; } catch (e) {}
-      const already = video.srcObject === stream;
-      if (!already) video.srcObject = stream;
+      if (video.srcObject !== stream) video.srcObject = stream;
       const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
-      // Already bound and still at readyState 0: play() above changed nothing.
-      if (already) reseatStuckPicture(video, stream);
     }
-    // END-PICTURE-HEAL
-    // BEGIN-LOST-OFFER
-    // An offer and its answer ride the DataChannel once, with no ack. An
-    // answer sent while the far radio is down is gone, and this side stays in
-    // have-local-offer on a pair that is otherwise connected. Nothing else
-    // revisits that offer, so the media it carried never starts. Past two
-    // glare yields, take it back and offer again. A late answer to the old
-    // offer lands on stable and fails harmlessly. kickVideo reseats the
-    // camera after the new answer, because a rollback stops the encoder.
-    function recoverLostOffer(p, now) {
-      if (!p || !p.pc) return false;
-      const lsd = p.pc.signalingState === 'have-local-offer' && p.pc.localDescription;
-      if (!(lsd && p.connected && p.dc && p.dc.readyState === 'open' && !p.makingOffer && !p.glareTimer && !p.rofferYieldTimer)) {
-        p.staleOfferSdp = null;
-        return false;
-      }
-      if (p.staleOfferSdp !== lsd.sdp) { p.staleOfferSdp = lsd.sdp; p.staleOfferAt = now; return false; }
-      if (now - p.staleOfferAt <= 2 * GLARE_YIELD_MS + 2000) return false;
-      p.staleOfferSdp = null;
-      p.kickVideo = true;
-      const pc = p.pc;
-      Promise.resolve(pc.setLocalDescription({ type: 'rollback' })).then(() => renegotiate(p)).catch(() => {});
-      return true;
-    }
-    // END-LOST-OFFER
-    // BEGIN-MAIN-SENDER
-    // An unpark that landed while the camera track was missing leaves the
-    // main video sender empty with remoteParkMain already false. Nothing else
-    // calls refreshOutbound, so the mate's tile stays black. Seat the live
-    // camera. A mate who is still hidden (remoteParkMain) stays parked.
-    function reseatMainSender(p) {
-      if (!p || !p.mainV || p.remoteParkMain || p.mainV.track) return false;
-      if (myStatus.camOff || stageIds().includes(myId) || !camPeer(p.id)) return false;
-      let vt = null;
-      try { vt = sentVideoTrack(); } catch (e) {}
-      if (!vt || vt.readyState !== 'live') return false;
-      p.mainV.replaceTrack(vt).catch(() => {});
-      return true;
-    }
-    // END-MAIN-SENDER
     // A glare rollback can leave the main video sender negotiated sendrecv,
     // track still attached, and emitting nothing. Seating the live camera
     // again (drop, then the same track) restarts the encoder. Never touches
