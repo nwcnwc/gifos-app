@@ -11745,7 +11745,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           .then(() => {
             dcSend(p, { k: 'ranswer', sdp: p.pc.localDescription });
             if (typeof clog === 'function') clog('ranswer→' + String(p.id).slice(0, 6));
-            afterNeg(p);
+            afterNeg(p, true);
           })
           .catch((e) => { if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140)); maybeRebuildNeg(p, e); });
         // Firefox offers carry o=mozilla. Applying one while our own offer is
@@ -12321,9 +12321,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (sender.track !== at) { seat(); return; }
       sender.replaceTrack(null).then(seat).catch(() => {});
     }
-    function afterNeg(p) {
+    // THE POLITE SIDE LETS THE OTHER END GO FIRST. Right after I answer, the
+    // pair's initiator often has its next offer already on the wire (a new
+    // row brings several jobs at once). Offering my own changes in the same
+    // instant crosses it, and as the polite side I roll mine back. A rollback
+    // on a link that is already carrying sound can leave the other person's
+    // mic track muted for good in Chromium (decoding, playing silence), and
+    // nothing on that link revives it. So after answering, the polite side
+    // waits a moment before its own offer; an offer arriving meanwhile is
+    // simply answered.
+    const POLITE_SETTLE_MS = 700;
+    function afterNeg(p, answered) {
       if (!p) return;
-      if (p.renegAgain || hasPendingTx(p)) { p.renegAgain = false; renegotiate(p); return; }
+      if (p.renegAgain || hasPendingTx(p)) {
+        if (answered && !iInitiate(p.id)) {
+          p.renegAgain = true;
+          clearTimeout(p.politeT);
+          p.politeT = setTimeout(() => {
+            p.politeT = null;
+            if (!p.pc || leaving || p.pc.signalingState !== 'stable') return;
+            afterNeg(p);
+          }, POLITE_SETTLE_MS);
+          return;
+        }
+        p.renegAgain = false; renegotiate(p); return;
+      }
       if (p.kickVideo) { p.kickVideo = false; kickMainVideo(p); kickMainAudio(p); }
     }
     // createOffer/setRemoteDescription failed in a way this pc will repeat.
