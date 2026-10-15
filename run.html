@@ -10706,6 +10706,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // A freeze reload stashed the live mic/camera/share. Put them back
             // before the first status goes out, so peers never see a quiet rejoin.
             try { if (typeof applyRecoverMedia === 'function') applyRecoverMedia(); } catch (e) {}
+            // A reload leaves remote companions and the stage ear paused.
+            // Start them again on this boot, before the first paint, so the
+            // call is audible without a tap or a volume write.
+            try { if (typeof keepMeetingAudio === 'function') keepMeetingAudio(); } catch (e) {}
             maybeShowFlip();
             const n = meTile.tile.querySelector('.note'); if (n) n.remove();
             meTile.video.style.display = '';
@@ -10725,7 +10729,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // per-launch no-video flake unattributable from the outside.)
             try { window.__gumBootErr = (e && e.name ? e.name + ': ' : '') + String(e && e.message || e); } catch (e2) {}
             // No camera still gets the one-tap re-share, if a share was up.
+            // The same boot still restarts paused inbound audio.
             try { if (typeof applyRecoverMedia === 'function') applyRecoverMedia(); } catch (e3) {}
+            try { if (typeof keepMeetingAudio === 'function') keepMeetingAudio(); } catch (e4) {}
             tileNote(meTile, gumRefused(e)
               ? 'View-only: no camera/mic permission. You still see and hear everyone \u2014 tap the mic or camera button above to ask again.'
               : 'View-only: no camera or microphone found (' + ((e && e.name) || 'error') + '). You still see and hear everyone \u2014 tap the mic or camera button above to try again.');
