@@ -41,13 +41,32 @@ window.GIFOS_VERSION = 'edge';
     // into the hash it builds (/meet/<room>?edge -> /run.html#v=<room>&edge),
     // so a channel flag must be honored from either place.
     function has(k) { return !!(q && q.has(k)) || new RegExp('[#&]' + k + '(&|=|$)').test(hash); }
+    // A LINK NEVER ATTACHES ANYONE. Everybody runs the latest release; the edge
+    // build and older releases are for testers, chosen only in Settings →
+    // Updates → Advanced / testing, behind a confirm. So ?edge stores nothing
+    // here: it rides along in the address, and the Home Screen may at most open
+    // that confirm. ?stable / ?unpin / ?latest still go back to latest.
     var cleared = false;
     try {
-      if (has('edge')) { localStorage.setItem('gifos_channel', 'edge'); localStorage.removeItem('gifos_pin'); }
-      if (has('stable') || has('unpin') || has('latest')) { localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin'); cleared = true; }
+      if (has('stable') || has('unpin') || has('latest')) { localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_pin_until'); cleared = true; }
     } catch (e) {}
-    var pin = null, chan = null, cur = null;
-    try { pin = localStorage.getItem('gifos_pin'); chan = localStorage.getItem('gifos_channel'); cur = localStorage.getItem('gifos_current'); } catch (e) {}
+    var pin = null, chan = null, cur = null, until = null;
+    try { pin = localStorage.getItem('gifos_pin'); chan = localStorage.getItem('gifos_channel'); cur = localStorage.getItem('gifos_current'); until = localStorage.getItem('gifos_pin_until'); } catch (e) {}
+    // The confirm records gifos_pin_until (ms; '0' = no expiry). Past it, the
+    // choice ends and the visitor is back on latest. A choice with no record
+    // predates the confirm (a stray ?edge link could have made it), so on
+    // gifos.app it is reset to latest (RESET_UNCONFIRMED). Either way the Home
+    // Screen says so once (gifos_pin_ended).
+    var RESET_UNCONFIRMED = true;
+    if (pin || chan === 'edge') {
+      var ended = '';
+      if (until !== null && until !== '0' && !(Number(until) > Date.now())) ended = 'expired';
+      else if (until === null && RESET_UNCONFIRMED && /(^|\.)gifos\.app$/.test(location.hostname)) ended = 'reset';
+      if (ended) {
+        try { localStorage.setItem('gifos_pin_ended', ended + ':' + (pin || 'edge')); localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin_until'); } catch (e) {}
+        pin = null; chan = null;
+      }
+    }
     var stay = cleared ? { clear: true } : null;
     // A PRETTY router path (/meet/<room>, /join/<code>[/…]) is NOT a
     // file — Pages 404s it and 404.html routes it to a real page. If we ever run at
