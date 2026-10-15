@@ -1951,7 +1951,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let vaSigning = null, vaForceSign = false;     // the admin's launch in progress; sign again now (a top-up)
     let vaMeter = null, vaMeterAt = 0, vaMeterBusy = false, vaUsedAtStart = null, vaMeterAsks = 0;
     let vaTerms = null, vaTermsAt = 0, vaTermsBusy = false;
-    let vaBuying = false, vaResumed = false, vaNudged = '', vaTopupRetry = false, vaResentAt = 0;
+    let vaBuying = false, vaResumed = false, vaNudged = '', vaTopupRetry = false, vaResentAt = 0, vaPairSaidAt = 0;
     // Quality ladder: live links → per-link video constraints. adapt() passes
     // n = 1 + peers.size, the direct links, bounded by the row, not the room.
     // Upload cost grows with those links, so both resolution and each link's
@@ -6259,6 +6259,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (vaOrder && now - vaResentAt > 30000) {
         vaResentAt = now;
         for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'va', w: vaOrder.w });
+      }
+      // The paid end says its pair state again every 10 s. The far end loses
+      // it whenever it rebuilds its transport, and one lost message must not
+      // leave a paid pair voice only at that end.
+      if (now - vaPairSaidAt > 10000) {
+        vaPairSaidAt = now;
+        for (const p of peers.values()) if (p.turnMine && p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'va-pair', paid: p.turnPaid ? 1 : 0 });
       }
       // My status says when I am on a paid crossing: the admin's meter counts people.
       const vb = [...peers.values()].some((p) => p.turnMine && p.turnPaid && p.connected);
@@ -12481,6 +12488,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (m.k === 'va-pair') {
         // The far end of this pair dials it through a paid server (or stopped).
         p.vaFarPaid = m.paid === 1;
+        p.vaPairHeard = (p.vaPairHeard || 0) + 1; // debug view: how many times the far end said it
         vaSwitchIfChanged(p.id, p);
       } else if (m.k === 'relay-req') {
         startRelayJob(p, String(m.target || ''));
@@ -21531,7 +21539,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           pairs: [...peers.values()].map((p) => { const e = vaPaid.get(p.id); return { name: rosterNames[p.id] || p.name || null, turnPaid: !!p.turnPaid, turnAudio: !!p.turnAudio, farPaid: !!p.vaFarPaid, cred: e ? e.cred.state() : null, refusal: e ? e.cred.refusal() : null, halted: e ? e.cred.halted() : false, bridge: e ? e.bridge : null,
             turnMine: !!p.turnMine, serve: !!p.turnServe, cam: camPeer(p.id), mainV: p.mainV ? (p.mainV.track ? p.mainV.track.kind : 'parked') : null, park: !!p.remoteParkMain,
             mainA: p.mainA ? (p.mainA.track ? (turnMixSenders.has(p.mainA) ? 'mix' : 'mic') + ':' + p.mainA.track.readyState + ':' + (p.mainA.track.enabled ? 'on' : 'off') + ':' + (p.mainA.track.muted ? 'muted' : 'live') : 'parked') : null,
-            mix: turnMixes.has(p.id), ac: ac ? ac.state : null, mixHeld: !!(p.mainA && p.mainA.track && p.mainA.track === turnMixTrack(p.id)),
+            heardPair: p.vaPairHeard || 0, mix: turnMixes.has(p.id), ac: ac ? ac.state : null, mixHeld: !!(p.mainA && p.mainA.track && p.mainA.track === turnMixTrack(p.id)),
             tx: (() => { try { return p.pc.getTransceivers().map((t) => (t.mid || '?') + ':' + (t.sender && t.sender.track ? t.sender.track.kind : '-') + ':' + t.direction + ':' + (t.currentDirection || '?')); } catch (x) { return null; } })() }; }),
         };
       },
