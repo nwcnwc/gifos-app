@@ -201,15 +201,25 @@
       // A slower answer from an earlier put used to land last and paint over
       // the newer rows. The last write of a round (dawn) then stuck on the
       // previous screen, because nothing else was left to ask for a paint.
+      // So every ask is numbered, and a subscriber is never handed an answer
+      // OLDER than one it has already been shown.
+      // The test is against what was SHOWN, not against the newest ASK: in a
+      // busy shared room the changes arrive faster than one answer can come
+      // back, and "only the newest ask may paint" then drops every answer,
+      // so the subscriber stops hearing the collection at all.
       var dbWave = {};
+      function paintIf(sub, wave, rows){
+        if (wave <= sub.shown) return;
+        sub.shown = wave;
+        sub.cb(rows);
+      }
       function refresh(collection){
         var list = subs[collection]||[];
         if (!list.length) return;
         var wave = (dbWave[collection] = (dbWave[collection]||0) + 1);
-        list.forEach(function(cb){
+        list.forEach(function(sub){
           rpc({ type:'db', op:'getAll', collection:collection }).then(function(rows){
-            if (wave !== dbWave[collection]) return;
-            cb(rows);
+            paintIf(sub, wave, rows);
           });
         });
       }
@@ -401,11 +411,11 @@
           // Owner-only — the host runs it; on a guest it is refused. Use it to
           // "make visible" (opt a private item in) or to flip who may write.
           setVisibility: function(id, level){ return rpc({type:'db',op:'setVisibility',collection:collection,key:id,value:level}); },
-          subscribe: function(cb){ (subs[collection]=subs[collection]||[]).push(cb);
+          subscribe: function(cb){ var sub = { cb: cb, shown: 0 };
+            (subs[collection]=subs[collection]||[]).push(sub);
             var wave = (dbWave[collection] = (dbWave[collection]||0) + 1);
             rpc({type:'db',op:'getAll',collection:collection}).then(function(rows){
-              if (wave !== dbWave[collection]) return;
-              cb(rows);
+              paintIf(sub, wave, rows);
             }); }
         }; },
         // The bridge hands back the RAW BYTES and the decode happens here, so the
