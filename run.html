@@ -21531,7 +21531,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           pairs: [...peers.values()].map((p) => { const e = vaPaid.get(p.id); return { name: rosterNames[p.id] || p.name || null, turnPaid: !!p.turnPaid, turnAudio: !!p.turnAudio, farPaid: !!p.vaFarPaid, cred: e ? e.cred.state() : null, refusal: e ? e.cred.refusal() : null, halted: e ? e.cred.halted() : false, bridge: e ? e.bridge : null,
             turnMine: !!p.turnMine, serve: !!p.turnServe, cam: camPeer(p.id), mainV: p.mainV ? (p.mainV.track ? p.mainV.track.kind : 'parked') : null, park: !!p.remoteParkMain,
             mainA: p.mainA ? (p.mainA.track ? (turnMixSenders.has(p.mainA) ? 'mix' : 'mic') + ':' + p.mainA.track.readyState + ':' + (p.mainA.track.enabled ? 'on' : 'off') + ':' + (p.mainA.track.muted ? 'muted' : 'live') : 'parked') : null,
-            mix: turnMixes.has(p.id), ac: ac ? ac.state : null,
+            mix: turnMixes.has(p.id), ac: ac ? ac.state : null, mixHeld: !!(p.mainA && p.mainA.track && p.mainA.track === turnMixTrack(p.id)),
             tx: (() => { try { return p.pc.getTransceivers().map((t) => (t.mid || '?') + ':' + (t.sender && t.sender.track ? t.sender.track.kind : '-') + ':' + t.direction + ':' + (t.currentDirection || '?')); } catch (x) { return null; } })() }; }),
         };
       },
