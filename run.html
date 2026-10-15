@@ -7293,9 +7293,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // 6 s re-offer.
     function onDialRequest(p) {
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
-      if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive);
       const darkOffer = tlFiredPid.has(p.id) && p.pc && p.pc.signalingState === 'have-local-offer';
       const forming = !pLive && p.pc && !darkOffer && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
+        + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
+        + ' age=' + Math.round((Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
       if ((participantCount() <= 1 || !pLive) && !forming && iInitiate(p.id) && Date.now() - (p.fragDialAt || 0) > 5000) {
         p.fragDialAt = Date.now();
         if (!pLive && p.pc) newPcFor(p);
