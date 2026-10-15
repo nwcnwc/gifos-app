@@ -9400,6 +9400,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             }
           } else p.staleOfferSdp = null;
         }
+        // A DEAD SINK. After a rollback on a pair already carrying media,
+        // Chromium can leave the receiver decoding while its track hands no
+        // frame to anything: the tile stays at readyState 0, and a fresh
+        // element or a track reader on that track reads nothing either
+        // (measured, 06c: framesDecoded climbing, 0 frames out for 60s+).
+        // Nothing on this pc revives that track. Two samples 4s apart with
+        // frames decoded and none shown: rebuild the pair; the far side
+        // takes a new fingerprint as a new pc (the NEW-PC RULE).
+        if (p.connected && !document.hidden && p.stream && !p.relayed && p.video && p.video.srcObject === p.stream
+            && !p.video.paused && p.video.readyState === 0 && mediaOk(pid) !== false && now - (p.sinkRebuiltAt || 0) > 30000) {
+          const vtr = p.stream.getVideoTracks()[0];
+          const rx = vtr && vtr.readyState === 'live' && p.pc.getReceivers().find((r) => r.track === vtr);
+          if (rx) {
+            const pc0 = p.pc;
+            rx.getStats().then((st) => {
+              let fd = 0; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
+              const t = Date.now(), prev = p.sinkProbe;
+              p.sinkProbe = { fd, at: t };
+              if (!prev || p.pc !== pc0 || t - prev.at < 4000 || fd - prev.fd < 3) return;
+              if (p.video.readyState !== 0 || p.video.paused || p.video.srcObject !== p.stream || document.hidden) return;
+              p.sinkRebuiltAt = t; p.sinkProbe = null;
+              if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown: rebuild');
+              newPcFor(p);
+              sendOffer(pid, false);
+            }).catch(() => {});
+          }
+        } else p.sinkProbe = null;
         // Direct route recovered → drop any friend-relay for this peer.
         if (p.connected && relayVia.has(pid)) stopRelayFor(pid, true);
         // Our relayer for this peer vanished → fall back and re-elect.
