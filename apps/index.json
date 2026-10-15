@@ -4729,6 +4729,42 @@
       "sha256": "c756d54d25ade85d9bdfa2aabc9b44e392fcd9b51c966a04d39402683b77a230"
     },
     {
+      "slug": "meeting-bot",
+      "appId": "meeting-bot",
+      "name": "Meeting Bot",
+      "shortName": "Meet Bot",
+      "version": "0.9.23",
+      "tagline": "A meeting bot you drive from another device.",
+      "author": {
+        "name": "GifOS",
+        "url": "https://gifos.app"
+      },
+      "minBuild": 2723,
+      "offline": true,
+      "releaseDate": "2026-10-14",
+      "updated": "2026-10-14",
+      "categories": [
+        "Utilities"
+      ],
+      "tags": [
+        "meeting",
+        "bot",
+        "transcript",
+        "recording"
+      ],
+      "accent": [
+        92,
+        160,
+        255
+      ],
+      "cover": "/apps/meeting-bot/cover.jpg",
+      "bytes": 20997,
+      "download": 0,
+      "provides": null,
+      "signature": null,
+      "sha256": "641a8303851bd500b66b1c39cb6c404ca1419666912f147814dba50760c46ec1"
+    },
+    {
       "slug": "memory",
       "appId": "memory",
       "name": "Memory",
