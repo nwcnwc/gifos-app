@@ -2554,11 +2554,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } catch (e) { hbFallback = setInterval(fn, ms); return null; }
     }
     function frozeThisBeat(wallDelta, monoDelta, peerCount) {
-      // The wall gap decides. Chrome's performance.now() stands still while
-      // an Android or macOS device is suspended, so a woken phone shows a
-      // wall gap and no monotonic gap: the monotonic reading may confirm a
-      // freeze, never veto one. A forward clock step costs one reload.
-      return (wallDelta > 150000 || monoDelta > 150000) && peerCount > 0;
+      // The monotonic gap decides. A frozen renderer (tab freeze, SIGSTOP)
+      // stops this page while the device runs on, so both clocks gap. A
+      // sleeping device stops performance.now() too: a woken phone shows a
+      // wall gap and no monotonic gap. That page is alive with its audio
+      // and peers, so it is not a freeze and must not reload; the wake
+      // probe heals its pairs in place. A wall clock step is not a freeze.
+      return monoDelta > 150000 && peerCount > 0;
     }
     let hbTick = 0, hbLastAt = Date.now(), hbLastMono = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0, frozeGap = 0, beatTypical = 0, beatLong = false;
     // THE WAKE PROBE (chaos round 1: every "back, but over 10 s" and both
@@ -20740,7 +20742,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // freeze my outgoing pulses (simulates a phone that has throttled itself)
       haltPulseForTest: (on) => { pulseHalt = !!on; },
       // backdate the beat clock (simulates a renderer that froze and then resumed)
-      freezeGapForTest: (ms) => { hbLastAt = Date.now() - (ms | 0); },
+      // A thaw gaps both clocks. Pass mono for another shape: a device
+      // sleep is a wall gap with a near-zero monotonic gap.
+      freezeGapForTest: (ms, mono) => { hbLastAt = Date.now() - (ms | 0); hbLastMono -= (mono === undefined ? ms : mono) | 0; },
       stageVoteNeed: () => stageVoteTallies().need,
       devInfo: () => ({ devOf: Object.assign({}, devOf), attested: Array.from(devRelay) }), // which device tags the RELAY vouched for (Ban needs one)
       _unattestForTest: (id) => devRelay.delete(id), // leave devOf[id] as a tag known only by the peer's own word
