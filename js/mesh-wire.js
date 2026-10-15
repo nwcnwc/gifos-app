@@ -695,16 +695,21 @@
       if (iAmInsideTheRoom()) return false;             // I am inside — use the mesh
       if (m.t !== 'WHOHOME' && m.t !== 'FIND' && !(m.t === 'HOME' && !m.roster)) return false;  // entry asks only
       if (entryDelivered(to, m)) return true;
-      // No channel to that greeter yet: still hand the ask to the channels I
-      // hold, once. A member on the far end forwards it and the answer comes
-      // back the same way, so a greeter I may never reach directly (a pair
-      // that cannot connect) still answers at once instead of being waited
-      // out as dark. The ask also waits and dials below, for when the
-      // channel I hold leads only to another knocker.
-      if (typeof opts.dcOpen === 'function' && opts.sendDC) { try { opts.sendDC(to, m, peer); } catch (e) {} }
-      pendingEntry.set(to + '|' + m.t, { to, m, at: Date.now() });
+      const e = { to, m, at: Date.now(), handed: false };
+      handOnce(e);
+      pendingEntry.set(to + '|' + m.t, e);
       askDial(to);
       return true;
+    }
+    // No channel to that greeter yet: still hand the ask, once, to a channel
+    // I hold (sendDC's forward). A member on the far end forwards it and the
+    // answer comes back the same way, so a greeter I may never reach directly
+    // (a pair that cannot connect) still answers at once instead of being
+    // waited out as dark. The ask stays pending and keeps dialing, for when
+    // the channel I hold leads only to another knocker.
+    function handOnce(e) {
+      if (e.handed || typeof opts.dcOpen !== 'function' || !opts.sendDC) return;
+      try { e.handed = !!opts.sendDC(e.to, e.m, peer); } catch (x) {}
     }
     function askDial(to) {
       const now = Date.now();
@@ -722,7 +727,7 @@
       for (const [k, e] of pendingEntry) {
         if (now - e.at > ENTRY_WAIT_MS) { pendingEntry.delete(k); continue; }
         if (entryDelivered(e.to, e.m)) pendingEntry.delete(k);
-        else askDial(e.to);
+        else { handOnce(e); askDial(e.to); }
       }
     }
 
