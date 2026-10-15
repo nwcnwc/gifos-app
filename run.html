@@ -15366,6 +15366,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const p = peers.get(pid);
         if (p && p.dc && p.dc.readyState === 'open') { dcSend(p, m); sent++; }
       }
+      // A frame I ORIGINATED that no structural neighbour could take goes to
+      // every open channel instead (the same widening as sgaAskTargets). A
+      // joiner has open channels before it has a seat, and the app mounts in
+      // that gap: its first write found no target, was queued, and the queue
+      // flushes only when a channel opens. The last joiner has no channel left
+      // to open, so its write never reached the owner (e2e-irl's 4th chip).
+      if (!sent && fromPid == null) {
+        for (const [pid, p] of peers) {
+          if (pid !== myId && p && p.dc && p.dc.readyState === 'open') { dcSend(p, m); sent++; }
+        }
+      }
       // Only frames I ORIGINATED are worth holding (fromPid == null). A relayed
       // frame that finds no onward peer is just the edge of the fan.
       if (!sent && fromPid == null) {
