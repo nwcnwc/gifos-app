@@ -1947,7 +1947,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const VA = GifOS.meetVA;
     let vaOrder = null;            // the best checked launch order this page holds
     const vaPaid = new Map();      // peer id -> { bridge, cred, orderSig }: paid credentials for a pair this page dials through a server
-    const vaChecking = new Set();  // order signatures being checked or already refused
+    const vaChecking = new Map();  // order signature -> { at, stage, done }: being checked, or refused for good
     let vaSigning = null, vaForceSign = false;     // the admin's launch in progress; sign again now (a top-up)
     let vaMeter = null, vaMeterAt = 0, vaMeterBusy = false, vaUsedAtStart = null, vaMeterAsks = 0;
     let vaTerms = null, vaTermsAt = 0, vaTermsBusy = false;
@@ -6136,18 +6136,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const vaNo = (why) => { vaWhy.push({ at: Date.now(), why }); if (vaWhy.length > 12) vaWhy.shift(); return false; };
     async function vaTake(w, from) {
       if (!w || typeof w.sig !== 'string' || typeof w.sp !== 'string' || w.sp.length > 8192 || !hasAdminRoom()) return vaNo('shape');
-      if ((vaOrder && vaOrder.sig === w.sig) || vaChecking.has(w.sig)) return false;
-      vaChecking.add(w.sig);
-      if (vaChecking.size > 64) vaChecking.delete(vaChecking.values().next().value);
+      if (vaOrder && vaOrder.sig === w.sig) return false;
+      // One check per order at a time. A check still pending after 15 s is
+      // stuck (a network fetch that never answered): let this copy try again.
+      const pend = vaChecking.get(w.sig);
+      if (pend && (pend.done || Date.now() - pend.at < 15000)) return pend.done ? false : vaNo('pending: ' + pend.stage);
+      const job = { at: Date.now(), stage: 'admin', done: false };
+      vaChecking.set(w.sig, job);
+      if (vaChecking.size > 64) vaChecking.delete(vaChecking.keys().next().value);
+      // A finished check is final for this order, kept or refused; only a
+      // key that did not load (vaCheck removes the entry) is tried again.
+      try { return await vaCheck(w, from, job); }
+      finally { if (vaChecking.get(w.sig) === job) job.done = true; }
+    }
+    async function vaCheck(w, from, job) {
       // The order: signed by this room's admin key (any act older than a
       // ticket's life is refused; a replay grants nothing the ticket's end does not).
       const o = await admVerify(w, 'va', (VA.TICKET_S + 3600) * 1000);
+      job.stage = 'receipt';
       if (!o || !o.receipt || !o.ticket) return vaNo('admin-signature');
       // The receipt: the payment service's signature over its exact bytes.
       const br = GifOS.payBroker;
       let r = null;
       try { r = await br.verifyReceipt(String(o.receipt.receiptJson), String(o.receipt.sig)); }
       catch (e) { if (!/does not verify/.test(String(e && e.message))) vaChecking.delete(w.sig); return vaNo('receipt: ' + String(e && e.message).slice(0, 60)); } // a key that did not load may load next time
+      job.stage = 'ticket';
       const ns = vaNowS();
       if (!VA.checkReceipt(r, ns) || w.pub !== r.buyerKey) return vaNo('receipt-fields'); // only the key that bought it presents it
       // The ticket: signed by that same key, for this room, for this receipt.
@@ -21539,7 +21552,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           pairs: [...peers.values()].map((p) => { const e = vaPaid.get(p.id); return { name: rosterNames[p.id] || p.name || null, turnPaid: !!p.turnPaid, turnAudio: !!p.turnAudio, farPaid: !!p.vaFarPaid, cred: e ? e.cred.state() : null, refusal: e ? e.cred.refusal() : null, halted: e ? e.cred.halted() : false, bridge: e ? e.bridge : null,
             turnMine: !!p.turnMine, serve: !!p.turnServe, cam: camPeer(p.id), mainV: p.mainV ? (p.mainV.track ? p.mainV.track.kind : 'parked') : null, park: !!p.remoteParkMain,
             mainA: p.mainA ? (p.mainA.track ? (turnMixSenders.has(p.mainA) ? 'mix' : 'mic') + ':' + p.mainA.track.readyState + ':' + (p.mainA.track.enabled ? 'on' : 'off') + ':' + (p.mainA.track.muted ? 'muted' : 'live') : 'parked') : null,
-            heardPair: p.vaPairHeard || 0, mix: turnMixes.has(p.id), ac: ac ? ac.state : null, mixHeld: !!(p.mainA && p.mainA.track && p.mainA.track === turnMixTrack(p.id)),
+            heardPair: p.vaPairHeard || 0, mix: turnMixes.has(p.id), ac: ac ? ac.state + '@' + ac.currentTime.toFixed(1) : null, mixHeld: !!(p.mainA && p.mainA.track && p.mainA.track === turnMixTrack(p.id)),
             tx: (() => { try { return p.pc.getTransceivers().map((t) => (t.mid || '?') + ':' + (t.sender && t.sender.track ? t.sender.track.kind : '-') + ':' + t.direction + ':' + (t.currentDirection || '?')); } catch (x) { return null; } })() }; }),
         };
       },
