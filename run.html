@@ -12469,6 +12469,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const subWant = new Map();    // from + '|' + key + '|' + sid -> 'w'|'i' (last demand sent — debounce)
     const mosJobs = new Map();  // key + '>' + to -> { senders, trackList, active, sig, to, key, meta } (outbound ships)
     let prodPack = null, sdPack = null, stripPack = null; // GAPLESS packers (approach A)
+    // MY VOICE IN MY OWN CELL. A head's composites (its row's product, the
+    // down-mixes for its children) fold each cell's audio from the cell's
+    // stream. My self-view is picture-only (refreshOutbound gives it the sent
+    // video track alone), so folding it carried no voice: every seat beyond
+    // my row saw me and never heard me — and a head alone on its row shipped
+    // a silent band. The fold gets the mic track the main senders carry, so
+    // mute (track.enabled) and a mic re-grab (a new track) reach it the same
+    // way. Cached by track identity: a fresh stream id would re-fold every
+    // sweep.
+    let selfFoldSt = null;
+    function selfFoldStream() {
+      const at = (localStream && localStream.getAudioTracks()[0]) || null;
+      const vs = meTile && meTile.video ? meTile.video.srcObject : null;
+      if (!at || at.readyState === 'ended') { selfFoldSt = null; return vs || localStream; }
+      if (!selfFoldSt || selfFoldSt.getAudioTracks()[0] !== at) selfFoldSt = new MediaStream([at]);
+      return selfFoldSt;
+    }
     let dbgRowFaces = []; // test observability: {i, pid8} the head drew this sweep (stale-seat dup guard)
     let mosBeyondAt = 0; // last time beyondRow was RAW-true (teardown hysteresis)
     let sdEmptyAt = 0;   // since when a head's sdPack has been EMPTY (blank-tile grace)
@@ -14659,7 +14676,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // directly-linked peer. Stream carries the audio the fold sums; el is the
       // drawImage source (a <video> or a nested composite's <canvas>).
       const srcFor = (pid, feedKey) => {
-        if (pid === myId) return { el: meTile.video, stream: meTile.video.srcObject || localStream };
+        if (pid === myId) return { el: meTile.video, stream: selfFoldStream() };
         const f = feedKey ? mosIn.get(feedKey) : null;
         if (f) return { el: f.el, stream: f.stream };
         const p = peers.get(pid);
