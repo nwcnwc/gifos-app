@@ -3,8 +3,8 @@
 name: Publish reviews
 
 on:
-  schedule:
-    - cron: '17 * * * *'
+  # Manual-only CI (Nathan, 2026-10-14): no push/pull_request/schedule triggers.
+  # Run with: gh workflow run reviews-publish.yml
   workflow_dispatch:
 
 permissions:
