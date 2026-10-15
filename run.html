@@ -11994,16 +11994,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // challenge having actually fired — an ordinary rotation must not
         // churn every member's socket.
         const wasBlocked = pwBlocked;
+        // A SEATED page keeps its node. The challenge also fires for a seated
+        // member who missed the change (mesh-wire: behind the room's key), and
+        // a new node closes the old relay socket first: the relay announces
+        // the departure, the room probes the seat while its pairs rebuild and
+        // takes it, and the member knocks again into a new cell the room
+        // learns slowly (30-54 s after a radio return). The new key on the
+        // node I have is the whole answer; setKey re-knocks the door.
+        const ms = meshSeat();
+        const restart = wasBlocked && !(ms && ms.state === 3 && ms.hasCoord);
         // Adopt the new password's KEY too (§8) — this sealed frame arrived
         // under the old key; from here on the room speaks the new one.
-        const rk = rekeyRoom(wasBlocked); // wasBlocked ⇒ startMesh() below replaces this node
+        const rk = rekeyRoom(restart); // restart ⇒ startMesh() below replaces this node
         net.meetPwProof(room, av, roomPw).then(async (pr) => {
           pwProof = pr;
           if (wasBlocked) {
             await rk;
             pwBlocked = false;
             if (pwModal.dataset.mode === 'join') pwModal.style.display = 'none';
-            startMesh(); // same re-entry as typing it — state intact
+            if (restart) startMesh(); // same re-entry as typing it — state intact
+            else if (meshNode && meshNode.setKey) meshNode.setKey(roomE2E); // the proof is ready now: a socket the door refused re-arms with it
           }
         }).catch((err) => pwChainFailed(err, wasBlocked));
         const purged = cleared ? purgeAllFiles(false) : 0; // password gone → shared files go with it
