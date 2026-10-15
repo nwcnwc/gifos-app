@@ -16850,6 +16850,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const n = trNorm(m.text);
       const same = trSameVoice(m, n, trSrc(m));
       if (same) {
+        if (clog) clog('cc same-voice', String(m.byId).slice(0, 6), 'by', trSrc(m).slice(0, 6), m.at, 'held', trSrc(same).slice(0, 6), same.at);
         if ((m.at || 0) + 300 >= (same.at || 0)) { trDrops++; return true; }
         trs.delete(same.id); // a late-arriving earlier line replaces the copy
       }
@@ -17529,6 +17530,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const prev = myStatus.ccv || [];
       if (next.length === prev.length && next.every((x, i) => x === prev[i])) return;
       if (next.length) myStatus.ccv = next; else delete myStatus.ccv;
+      if (clog) clog('cc writes', next.map((x) => String(x).slice(0, 6)).join(','));
       broadcastStatus();
     }
     // ---- THE ROOM EAR: one browser engine hears every voice ------------------
@@ -17547,7 +17549,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       return !!(SR && SR.prototype && 'processLocally' in SR.prototype);
     }
-    const ccMix = { dest: null, ins: new Map(), talk: new Map(), tick: null, at: 0 };
+    const ccMix = { dest: null, ins: new Map(), talk: new Map(), tick: null, at: 0, last: null, lastAt: 0 };
     const CC_TALK_RMS = 5 / 128; // the talking ring's threshold (meter loop), on float samples
     function ccMixVoices() { // id ('me' | pid) -> a source node in ac
       const out = new Map();
@@ -17572,6 +17574,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function ccMixDrop(id) {
       const i = ccMix.ins.get(id); if (!i) return;
       ccMix.ins.delete(id); ccMix.talk.delete(id);
+      if (ccMix.last === id) ccMix.last = null;
       try { i.node.disconnect(i.an); } catch (e) {}
       try { i.node.disconnect(i.g); } catch (e) {}
       try { i.g.disconnect(); } catch (e) {}
@@ -17619,15 +17622,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!ccMix.dest) return;
       for (const id of Array.from(ccMix.ins.keys())) ccMixDrop(id);
       clearInterval(ccMix.tick); ccMix.tick = null;
-      ccMix.dest = null; ccMix.talk.clear();
+      ccMix.dest = null; ccMix.talk.clear(); ccMix.last = null;
       ccvPublish();
     }
     // Who said the line the engine just finished: the voice that talked most
-    // since the previous line. null: nobody talked (noise, or a voice now gone).
+    // since the previous line. An engine also hands over one long utterance
+    // as several finals in a burst; a final with no talk of its own within
+    // 2 s of the previous one continues that speaker. null: nobody talked
+    // (noise, or a voice now gone).
+    const CC_BURST_MS = 2000;
     function ccMixSpeaker() {
       let best = null, ms = 0;
       for (const [id, t] of ccMix.talk) if (t > ms) { ms = t; best = id; }
+      const now = Date.now();
+      if (!best && ccMix.last && now - ccMix.lastAt < CC_BURST_MS) best = ccMix.last;
+      if (clog) clog('cc line by', String(best).slice(0, 6), Array.from(ccMix.talk).map(([id, t]) => String(id).slice(0, 6) + ':' + t).join(' '));
       ccMix.talk.clear();
+      if (best) { ccMix.last = best; ccMix.lastAt = now; }
       return best;
     }
     let speech = null, speechFails = 0, speechRetry = null, speechGaveUp = false;
@@ -21173,6 +21184,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       transcriptTexts: () => Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => l.by + ': ' + l.text),
       transcriptBlocks: () => trBlocks().map((l) => l.by + ': ' + l.text),
       transcriptDrops: () => trDrops,
+      captionsForTest: () => ({ writes: myStatus.ccv || [], mix: Array.from(ccMix.ins.keys()), drops: trDrops,
+        lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ by: l.by, byId: l.byId, scribe: l.scribe || null, at: l.at, text: l.text })) }),
       whisperForTest: () => ({ engine: ccEngine(), live: !!wsp, ready: whisperReady(), queue: wspQ.items.length, sent: wspQ.sent, dropped: wspQ.dropped, rate: wsp ? wsp.rate : 0, captures: Array.from(wspCaps.keys()), scribe: scribeOn(), source: ccSourceId, scribes: ccScribes().map((x) => x.id) }),
       whisperFeedForTest: (f32, rate, forId) => { const w = wspCaps.get(forId || 'me'); if (!w) return false; wspEnqueue(w, [Float32Array.from(f32)], Date.now(), rate || 16000, true); return true; },
       scribeForTest: (on) => { myStatus.scribe = !!on; if (on && !myStatus.cc) { myStatus.cc = true; document.getElementById('ccbtn').classList.add('on'); } broadcastStatus(); syncSpeech(); },
