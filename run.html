@@ -9483,14 +9483,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // channel that cannot deliver (a phone back from the background on a
         // radio still waking) leaves the far main parked for good; a far
         // rollback can do the same to its encoder. Neither full screen nor
-        // a stage step-down touches either. No frame decoded for 4s, 2s of
+        // a stage step-down touches either. No frame decoded for 3s, 2s of
         // it watchable: re-assert the lift and ask the far side to re-seat
         // its camera (vkick), again every 3s; 8s after the first ask with
         // still nothing, rebuild the pair (the NEW-PC RULE resets the park).
         // The evidence survives a spell hidden or on stage (the far main is
         // meant to be parked then, so nothing is judged), and a stale park
         // is caught 2s after the tile is watchable again. A busy phone can
-        // decode nothing for a second or two; 4s it does not.
+        // decode nothing for a second or two; a wrong ask costs one re-seat,
+        // and only 8s more of nothing rebuilds the pair.
         {
           const skip = frozenTileSkip(pid, p);
           const keep = skip === 'hidden' || skip === 'staged';
@@ -9502,10 +9503,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               let fd = -1; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
               if (fd < 0 || p.pc !== pc0) return;
               const t = Date.now(), fz = p.freezeProbe, judged = !frozenTileSkip(pid, p);
+              // THE SINK, AFTER A PICTURE. The dead sink above, on a tile that
+              // had already painted: frames decode, the element presents none
+              // (its frame count and clock stand still at readyState 4), and
+              // nothing on this pc revives it. 3s of that on a tile in view:
+              // rebuild the pair, once per 30s like the dead sink.
+              {
+                const v = p.video, q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : null, r = v.getBoundingClientRect();
+                const inView = r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
+                const pv = q ? q.totalVideoFrames : -1, sp = p.paintProbe;
+                if (!judged || !inView || pv < 0) p.paintProbe = null;
+                else if (!sp || sp.pc !== pc0 || sp.track !== vtr || pv !== sp.pv || v.currentTime !== sp.ct) p.paintProbe = { pc: pc0, track: vtr, pv, ct: v.currentTime, fd, at: t };
+                else if (t - sp.at >= 3000 && fd - sp.fd >= 3 && t - (p.sinkRebuiltAt || 0) > 30000) {
+                  p.sinkRebuiltAt = t; p.paintProbe = null; p.freezeProbe = null;
+                  if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' painted tile: decoded ' + (fd - sp.fd) + ' in ' + Math.round((t - sp.at) / 1000) + 's, none shown: rebuild');
+                  newPcFor(p);
+                  sendOffer(pid, false);
+                  return;
+                }
+              }
               if (!fz || fz.pc !== pc0 || fz.track !== vtr || fd !== fz.fd) { p.freezeProbe = { fd, at: t, pc: pc0, track: vtr, seenAt: judged ? t : 0, askAt: 0, firstAsk: 0 }; return; }
               if (!judged) { fz.seenAt = 0; fz.askAt = 0; fz.firstAsk = 0; return; }
               if (!fz.seenAt) { fz.seenAt = t; return; }
-              if (t - fz.at < 4000 || t - fz.seenAt < 1800) return;
+              if (t - fz.at < 3000 || t - fz.seenAt < 1800) return;
               if (fz.firstAsk && t - fz.firstAsk >= 8000) {
                 if (t - (p.sinkRebuiltAt || 0) < 30000) return;
                 p.sinkRebuiltAt = t; p.freezeProbe = null;
@@ -9522,7 +9542,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               dcSend(p, { k: 'vkick' });
             }).catch(() => {});
           }
-          else p.freezeProbe = null;
+          else { p.freezeProbe = null; p.paintProbe = null; }
         }
         // Direct route recovered → drop any friend-relay for this peer.
         if (p.connected && relayVia.has(pid)) stopRelayFor(pid, true);
