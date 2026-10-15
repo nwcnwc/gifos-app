@@ -9244,6 +9244,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The sweeper heals what it can and buries what's really gone:
     //  - absent + link down past grace → tile removed
     //  - present + link down → the initiator side re-offers with an ICE restart
+    // Why the frozen-tile check is NOT watching this pair ('' = watching):
+    // only a visible row-mate tile that has painted, whose camera is meant
+    // to be on and reaching me directly, can be judged frozen.
+    function frozenTileSkip(pid, p) {
+      const fst = statusOf.get(pid);
+      const vtr = p.stream && p.stream.getVideoTracks()[0];
+      if (!p.connected || p.relayed) return 'link';
+      if (document.hidden) return 'hidden';
+      if (!vtr || vtr.readyState !== 'live') return 'track';
+      if (!p.video || p.video.srcObject !== p.stream || p.video.paused || p.video.readyState === 0) return 'element';
+      if (!p.dc || p.dc.readyState !== 'open') return 'dc';
+      if (!camPeer(pid) || mediaOk(pid) === false) return 'mate';
+      if (!fst || fst.camOff || fst.scr || forcedCamOff(pid)) return 'cam';
+      if (peerAway(pid)) return 'away';
+      if (stageIds().includes(pid)) return 'staged';
+      return '';
+    }
     let lastRmSig = ''; // row-mate set signature — refreshOutbound on change (became/stopped-being a mate)
     // THE SWEEP RIDES A WORKER CLOCK (2026-10-03). It was a page setInterval,
     // which Chrome throttles to once a minute after five minutes hidden; the
@@ -9458,6 +9475,55 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             }).catch(() => {});
           }
         } else p.sinkProbe = null;
+        // A FROZEN TILE. A row-mate's tile that HAD a picture (readyState
+        // past 0, so not the dead sink above) stops decoding while the pair
+        // is up, the far camera is on and their voice keeps playing. The
+        // usual cause is a sender that went quiet toward us and does not
+        // know it: a park lift ({k:'vis'}) is unacked, so one sent into a
+        // channel that cannot deliver (a phone back from the background on a
+        // radio still waking) leaves the far main parked for good; a far
+        // rollback can do the same to its encoder. Neither full screen nor
+        // a stage step-down touches either. No frame decoded for 4s, 2s of
+        // it watchable: re-assert the lift and ask the far side to re-seat
+        // its camera (vkick), again every 3s; 8s after the first ask with
+        // still nothing, rebuild the pair (the NEW-PC RULE resets the park).
+        // The evidence survives a spell hidden or on stage (the far main is
+        // meant to be parked then, so nothing is judged), and a stale park
+        // is caught 2s after the tile is watchable again. A busy phone can
+        // decode nothing for a second or two; 4s it does not.
+        {
+          const skip = frozenTileSkip(pid, p);
+          const keep = skip === 'hidden' || skip === 'staged';
+          const vtr = p.stream && p.stream.getVideoTracks()[0];
+          const rx = (!skip || keep) && vtr && p.pc.getReceivers().find((r) => r.track === vtr);
+          if (rx) {
+            const pc0 = p.pc;
+            rx.getStats().then((st) => {
+              let fd = -1; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
+              if (fd < 0 || p.pc !== pc0) return;
+              const t = Date.now(), fz = p.freezeProbe, judged = !frozenTileSkip(pid, p);
+              if (!fz || fz.pc !== pc0 || fz.track !== vtr || fd !== fz.fd) { p.freezeProbe = { fd, at: t, pc: pc0, track: vtr, seenAt: judged ? t : 0, askAt: 0, firstAsk: 0 }; return; }
+              if (!judged) { fz.seenAt = 0; fz.askAt = 0; fz.firstAsk = 0; return; }
+              if (!fz.seenAt) { fz.seenAt = t; return; }
+              if (t - fz.at < 4000 || t - fz.seenAt < 1800) return;
+              if (fz.firstAsk && t - fz.firstAsk >= 8000) {
+                if (t - (p.sinkRebuiltAt || 0) < 30000) return;
+                p.sinkRebuiltAt = t; p.freezeProbe = null;
+                if (typeof clog === 'function') clog('frozen-tile ' + String(pid).slice(0, 6) + ' no frame in ' + Math.round((t - fz.at) / 1000) + 's after re-seat asks: rebuild');
+                newPcFor(p);
+                sendOffer(pid, false);
+                return;
+              }
+              if (t - fz.askAt < 3000) return;
+              fz.askAt = t; if (!fz.firstAsk) fz.firstAsk = t;
+              if (typeof clog === 'function') clog('frozen-tile ' + String(pid).slice(0, 6) + ' no frame in ' + Math.round((t - fz.at) / 1000) + 's: vkick');
+              visParkSent.set(pid, false);
+              dcSend(p, { k: 'vis', park: false });
+              dcSend(p, { k: 'vkick' });
+            }).catch(() => {});
+          }
+          else p.freezeProbe = null;
+        }
         // Direct route recovered → drop any friend-relay for this peer.
         if (p.connected && relayVia.has(pid)) stopRelayFor(pid, true);
         // Our relayer for this peer vanished → fall back and re-elect.
@@ -11597,6 +11663,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // never send this — pure opportunistic watts.
         p.remoteParkMain = !!m.park;
         refreshOutbound();
+      } else if (m.k === 'vkick') {
+        // The far side sees my main video frozen on its tile (its frozen-tile
+        // check). Re-seat the camera on that sender: a fresh encoder start
+        // with a keyframe. kickMainVideo leaves parked, staged and cam-off
+        // senders alone. One per 2s per pair.
+        const t = Date.now();
+        if (t - (p.vkickAt || 0) >= 2000) { p.vkickAt = t; kickMainVideo(p); }
       } else if (m.k === 'sga' && typeof m.sid === 'string') {
         // Stage data lane (§11): app-state frame — dedup, deliver, re-fan.
         sgaRecv(p.id, m);
@@ -20935,6 +21008,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       camTrackLive: () => !!(localStream && localStream.getVideoTracks()[0] && localStream.getVideoTracks()[0].readyState === 'live'),
       // hidden-viewer dormancy forensics: mains I parked at the far side's
       // request / parks I asked for / is my main video toward pid carrying
+      frozenTile: (pid) => { const p = peers.get(pid); return p ? { skip: frozenTileSkip(pid, p), probe: p.freezeProbe ? { fd: p.freezeProbe.fd, ageMs: Date.now() - p.freezeProbe.at, seen: !!p.freezeProbe.seenAt, asks: !!p.freezeProbe.firstAsk } : null, rs: p.video ? p.video.readyState : null } : null; },
       visParked: () => Array.from(peers.entries()).filter(([, p]) => p.remoteParkMain).map(([id]) => id),
       visParkAsked: () => Array.from(visParkSent.entries()).filter(([, v]) => v).map(([id]) => id),
       mainSending: (pid) => { const p = peers.get(pid); return !!(p && p.mainV && p.mainV.track); },
