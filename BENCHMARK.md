@@ -12,8 +12,8 @@ Out of scope for this branch, so they are not scored as wins or losses here: the
 - FaceTime and church volunteer panels: primary targets are at least 44px. The dock grip, chat close, Send, and Fit are 44px on an iPhone 15 as well as a narrow phone. Fit's label grows at 200%.
 - iOS: the notch and home indicator are cleared. `viewport-fit=cover` is set and the dock, chip, and Fit use `env(safe-area-inset-*)`.
 - Meet, Teams, YouTube name the control Captions. Ours does too, and at 200% text that label is 32px.
-- Zoom and church tools: a host admits from a waiting-room list, and the other host controls say what they do. Ours does too: Waiting room, Room password, Vote on someone, and Step on stage. In landscape those controls still sit down the More sheet.
-- StreamYard, Restream, YouTube Live: a producer sees a labeled live/record state that cannot be covered by another bar. Record and Captions scroll inside More.
+- Zoom and church tools: a host admits from a waiting-room list, and the other host controls say what they do. Ours does too. In landscape, Invite, Room password, Waiting room, and Chat are on the first screen of More.
+- StreamYard, Restream, YouTube Live: a producer sees a labeled live/record state that cannot be covered by another bar. Record and Captions still live inside More.
 
 What we already do that they do not: one link, no account, join muted, camera choice stays in the lobby, blur until there is a reason to be clear, the meeting is the peers rather than a server in the middle. That is the personal and church advantage. The phone chrome around it is in better shape, and we still do not lead.
 
@@ -50,8 +50,8 @@ Family and friends. Warm, few steps, a texted link.
 | Open a texted link and pick a name | 8 | The join step opens with the GifOS name and picture, and says how you will appear. Continue is the only blue button. |
 | See everyone and hang up on a small phone | 7 | Four faces end above the dock on iPhone 15, SE, and 360px. Hang up fits. |
 | Send a chat line | 7 | The field is above the dock, 44px, and lifts when the keyboard band is set. |
-| Turn the phone sideways | 6 | Invite and Room password scroll into the More sheet. They are not on the first screen. |
-| **Audience** | **8** | The link, the name step, hang up, landscape More, chat, the lobby, the home indicator, and a 44px Fit control are in good shape. FaceTime still feels quieter; we do not lead yet. |
+| Turn the phone sideways | 8 | Invite, Room password, Waiting room, and Chat are on the first screen of More. You do not scroll to find them. |
+| **Audience** | **8** | The link, the name step, hang up, the first screen of landscape More, chat, the lobby, the home indicator, and a 44px Fit control are in good shape. FaceTime still feels quieter; we do not lead yet. |
 
 ## Cycle
 
@@ -69,3 +69,4 @@ Family and friends. Warm, few steps, a texted link.
 12. Drag grip is 44px. `test/mobile/grip-target.js` failed (`22x48` on iPhone 15 and Pixel 7), then passed. Hang up stays on screen. Corporate trust 6→7. Church tap targets 7→8. Audience scores stay 7 / 8 / 8. Nobody leads yet. Still open: a waiting-room admit list.
 13. Waiting-room admit list. `test/mobile/wait-list.js` failed (no Waiting room button), then passed. Default off, so a dark return still answers the door. When it is on, the host sees names above the dock and Admit calls the existing door answer. Corporate host 7→8, corporate audience 7→8. Church host 6→8. Audience scores are 8 / 8 / 8. Nobody leads yet. More's host labels are still short.
 14. Host words. `test/mobile/host-words.js` failed (`Password`, `Vote`, `Stage`), then passed, including at 200% text. The controls say Room password, Vote on someone, and Step on stage (Step off stage once you are up). The phone sheet is two columns so the phrases fit. Corporate host 8→9. Church host 8→9. Audience scores stay 8 / 8 / 8. Nobody leads yet. Still open: in landscape, Invite and Room password are below the first screen of More.
+15. Landscape first screen. `test/mobile/landscape-first.js` failed (Invite and Room password below the sheet on an SE), then passed. Those two, plus Waiting room and Chat, are the first four controls. Personal sideways 6→8. Audience scores stay 8 / 8 / 8. Nobody leads yet. Still open: Record and Captions live inside More, so a producer does not see a live/record state on the call itself.

@@ -125,11 +125,19 @@ Repro: `test/mobile/host-words.js`. It failed (`Password`, `Vote`, `Stage`, and 
 
 Before: `qa/mobile/shots/before-host-words-iphone-15.png`. After: `qa/mobile/shots/after-host-words-iphone-15.png`.
 
+### 15. Landscape More hid Invite and Room password
+
+On an SE held sideways the sheet is 160px tall. Blur took the first row, then People and Float, so Invite ended at y=236 while the sheet ended at y=204. Room password, Waiting room, and Chat were further down. An iPhone 15 showed Invite and still cut off Room password. A 740px-wide landscape phone uses four columns and still clipped Room password by a few pixels.
+
+Repro: `test/mobile/landscape-first.js`. It failed with those bottoms, then passed. Invite, Room password, Waiting room, and Chat are the first four controls, so they sit on the first screen with no scroll on an SE, an iPhone 15, and a 360×740 phone in landscape. Blur, People, and Record follow, and the sheet still scrolls to them.
+
+Before: `qa/mobile/shots/before-landscape-first-se.png`. After: `qa/mobile/shots/after-landscape-first-se.png`.
+
 ## Open
 
 The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
 
-In landscape, Invite and Room password still sit down the More sheet. A host has to scroll to them.
+Record and Captions are still inside More. A producer on StreamYard sees a live/record state that another bar cannot cover.
 
 ## Personas (what was actually tried)
 
