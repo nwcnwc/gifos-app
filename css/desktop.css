@@ -660,14 +660,18 @@ button.row-del { min-width: 48px; min-height: 48px; display: inline-flex; align-
 .pin-confirm .pin-go-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(255,255,255,.28); pointer-events: none; }
 .pin-confirm .pin-go-t { position: relative; }
 
-/* The Home Screen banner while on edge or an older release. It is in the page
-   flow above the menubar; #desktop is moved down by its height. */
-.pin-bar { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem .7rem; padding: .4rem 1rem;
-  background: linear-gradient(135deg, rgba(245,158,11,.30), rgba(239,68,68,.22)); border-bottom: 1px solid #d97706;
-  font-size: .82rem; color: var(--text); position: relative; z-index: 6; }
-.pin-bar .pin-msg { flex: 1 1 14rem; min-width: 0; }
-.pin-bar .pin-left { color: var(--muted); white-space: nowrap; }
-.pin-bar button { padding: .25rem .8rem; border-radius: .4rem; border: 1px solid #b45309; background: #b45309;
-  color: #fff; cursor: pointer; font-size: .78rem; font-weight: 600; white-space: nowrap; }
-.pin-bar .dismiss { background: none; border: 0; color: var(--muted); padding: .25rem .5rem; }
-#desktop { top: calc(2.5rem + var(--pinbar-h, 0px)); }
+/* Pinned to edge or an older release: a chip in the header, never a banner
+   and never dismissible. The short label is only for a narrow header. */
+.pin-head { display: inline-flex; align-items: center; gap: .3rem; min-width: 0; flex: 0 1 auto; }
+.pin-head-t { font-size: .72rem; font-weight: 700; white-space: nowrap; color: #9a3412; }
+.menubar .pin-head button { padding: .12rem .5rem; font-size: .72rem; line-height: 1.2;
+  white-space: nowrap; border-color: #b45309; background: #b45309; color: #fff; font-weight: 600; }
+.pin-head .pin-back-narrow { display: none; }
+@media (max-width: 700px) {
+  .menubar:has(#pin-head) { gap: .25rem; padding: 0 .35rem; }
+  .menubar:has(#pin-head) .crumbs { display: none; }
+  .menubar:has(#pin-head) #history-btn,
+  .menubar:has(#pin-head) #add-btn { padding: .12rem .35rem; font-size: .68rem; }
+  .pin-head .pin-back-wide { display: none; }
+  .pin-head .pin-back-narrow { display: inline; }
+}

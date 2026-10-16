@@ -52,16 +52,15 @@
   // WHO RUNS WHAT. Everybody should run the latest release. The edge build and
   // older releases are for people testing GifOS before a release, so they sit
   // in a collapsed "Advanced / testing" section of Settings → Updates, every
-  // switch needs a confirm that states the risks, and while one is in effect a
-  // banner on the Home Screen offers "Return to latest". A link never switches
-  // anyone (see the channel loader). Each choice below is one constant.
+  // switch needs a confirm that states the risks, and while one is in effect the
+  // header says so and offers "Back to current release". A pin does not expire.
+  // A link never switches anyone (see the channel loader). Each choice below is one constant.
   const PIN_CONFIRM = 'type';          // confirm by: 'type' (type EDGE or the version), 'checkbox', or 'hold' (press and hold)
   const PIN_OLDER_PICKER = 'list';     // older releases: 'list' (pick one) or 'type' (type the exact version)
-  const PIN_EXPIRE_DAYS = 30;          // a switch ends after N days and goes back to latest; 0 = never
-  const PIN_EDGE_BANNER = 'always';    // the edge banner: 'always', or 'session' (can be hidden until the tab closes)
+  const PIN_EXPIRE_DAYS = 0;           // pins never expire; the loader does not treat gifos_pin_until as a deadline
   const PIN_LINK_OPENS_CONFIRM = true; // ?edge opens the edge confirm (never switches by itself); false ignores it
   const PIN_HOLD_MS = 2000;            // 'hold' confirm: how long to hold
-  const PIN_BANNER_SINCE = '0.9.23';   // older releases than this have no banner of their own
+  const PIN_BANNER_SINCE = '0.9.23';   // older releases than this have no header indicator of their own
   // What this computer is switched to: EDGE, a pinned version, or null (latest).
   const attachedTo = () => {
     try { return localStorage.getItem('gifos_pin') || (localStorage.getItem('gifos_channel') === EDGE ? EDGE : null); } catch (e) { return null; }
@@ -2727,7 +2726,7 @@
     let d = U.decide({ version: VERSION, edge: runningEdge(), pinned: pinnedVersion(), latest: latestVersion, changelog });
     // The pin banner already says "pinned, latest is vX" and offers the way
     // back; the update bar only adds to it for a critical release.
-    if (d && d.pinned && !d.critical.length && document.getElementById('pin-bar')) d = null;
+    if (d && d.pinned && !d.critical.length && document.getElementById('pin-head')) d = null;
     U.paint(updateBar, d, d && {
       label: d.critical.length ? 'See what changed' : 'What’s new',
       run: () => showSettings({ focus: 'version' }),
@@ -2893,7 +2892,7 @@
     availableVersions = Array.isArray(info.versions) && info.versions.length ? info.versions : [VERSION];
     // Release notes are best-effort: the Version panel still works without them.
     if (got.changelog) changelog = got.changelog;
-    paintPinBar();
+    paintPinHead();
     applyUpdateBar();
     return true;
   }
@@ -3738,12 +3737,12 @@
 
   // ----- the three version moves, all channel-aware (see the root loader) -----
   // Edge and older releases are reached only through confirmPin() below. Each
-  // switch records gifos_pin_until — the loader's proof that it was confirmed,
-  // and when it ends (PIN_EXPIRE_DAYS; '0' = never).
+  // switch records gifos_pin_until — the loader's proof that it was confirmed.
+  // It is not a deadline: a pin never expires (PIN_EXPIRE_DAYS is 0).
   // gifos_reseed tells the build we're switching TO to re-bake its default apps on
   // first load (see reseedDefaultsIfNeeded) — set on every build move so the new
   // build's default apps actually land instead of the ones baked at seed time.
-  const pinUntil = () => String(PIN_EXPIRE_DAYS > 0 ? Date.now() + PIN_EXPIRE_DAYS * 864e5 : 0);
+  const pinUntil = () => '0';
   // PIN to an immutable /versions/<v>/ snapshot (an older release, for testing).
   // Clears the edge channel so the loader honours the pin.
   function pinTo(v) {
@@ -3788,8 +3787,8 @@
       'It is <b>older</b> than the latest release and misses its fixes, including security fixes.',
       'Apps and files made with newer releases may not work on it. Meetings still run on the latest release.',
       noBanner
-        ? 'v' + escapeHtml(v) + ' was made before the “Return to latest” banner. To come back, choose “Use latest” in its Settings, or visit <b>gifos.app/?latest</b>.'
-        : 'A banner on your Home Screen will offer “Return to latest” the whole time.',
+        ? 'v' + escapeHtml(v) + ' was made before the header shows a pin. To come back, choose “Use latest” in its Settings, or visit <b>gifos.app/?latest</b>.'
+        : 'The header will say you are pinned, with <b>Back to current release</b> right there.',
     ];
     if (PIN_EXPIRE_DAYS > 0) risks.push('After ' + PIN_EXPIRE_DAYS + ' days this computer goes back to the latest release on its own.');
     const step = PIN_CONFIRM === 'checkbox'
@@ -3852,42 +3851,32 @@
     if (w) w.addEventListener('keydown', (e) => { if (e.key === 'Enter' && ok()) commit(); });
   }
 
-  // THE BANNER: whenever this computer is on the edge build or pinned to an
-  // older release, the Home Screen says so, with a one-tap way back. It sits
-  // above the menubar and pushes the icons down (--pinbar-h), never over them.
-  let pinBarSizer = null;
-  function paintPinBar() {
+  // THE HEADER INDICATOR: while this computer is on edge or an older release,
+  // the menubar itself says "Pinned: edge" or "Pinned: v0.9.x" and offers
+  // "Back to current release". It is never dismissible, and it does not add a
+  // second row. Narrow headers show a shorter label; the button's name stays.
+  function paintPinHead() {
     const to = attachedTo();
-    let bar = document.getElementById('pin-bar');
-    let hidden = false;
-    try { hidden = to === EDGE && PIN_EDGE_BANNER === 'session' && sessionStorage.getItem('gifos_pin_bar_hidden') === '1'; } catch (e) {}
-    if (!to || hidden) {
-      if (bar) bar.remove();
-      document.body.style.removeProperty('--pinbar-h');
-      return;
+    const old = document.getElementById('pin-bar');
+    if (old) old.remove();
+    document.body.style.removeProperty('--pinbar-h');
+    let el = document.getElementById('pin-head');
+    if (!to) { if (el) el.remove(); return; }
+    const menu = document.querySelector('.menubar');
+    if (!menu) return;
+    if (!el) {
+      el = document.createElement('span');
+      el.id = 'pin-head'; el.className = 'pin-head'; el.setAttribute('role', 'status');
+      const crumbs = document.getElementById('crumbs');
+      menu.insertBefore(el, crumbs && crumbs.nextSibling ? crumbs.nextSibling : menu.firstChild);
     }
-    if (!bar) {
-      bar = document.createElement('div');
-      bar.id = 'pin-bar'; bar.className = 'pin-bar'; bar.setAttribute('role', 'status');
-      const mb = document.querySelector('.menubar');
-      document.body.insertBefore(bar, (updateBar && updateBar.parentNode === document.body) ? updateBar : mb);
-    }
-    let until = 0; try { until = Number(localStorage.getItem('gifos_pin_until')) || 0; } catch (e) {}
-    const left = until ? Math.max(1, Math.ceil((until - Date.now()) / 864e5)) : 0;
-    const latest = versionChecked && latestVersion !== EDGE ? ' Latest is v' + escapeHtml(latestVersion) + '.' : '';
-    const what = to === EDGE
-      ? 'This computer is on the <b>edge build</b>: unreleased, for testing.'
-      : 'This computer is pinned to <b>v' + escapeHtml(to) + '</b>, an older release.' + latest;
-    bar.innerHTML =
-      '<span class="pin-msg">' + what + (left ? ' <span class="pin-left">Back to latest in ' + left + (left === 1 ? ' day' : ' days') + '.</span>' : '') + '</span>' +
-      '<button type="button" id="pin-return">Return to latest</button>' +
-      (to === EDGE && PIN_EDGE_BANNER === 'session' ? '<button type="button" class="dismiss" id="pin-hide" title="Hide until this tab closes" aria-label="Hide">✕</button>' : '');
-    bar.querySelector('#pin-return').onclick = () => useRelease();
-    const hide = bar.querySelector('#pin-hide');
-    if (hide) hide.onclick = () => { try { sessionStorage.setItem('gifos_pin_bar_hidden', '1'); } catch (e) {} paintPinBar(); };
-    const size = () => { if (document.body.contains(bar)) document.body.style.setProperty('--pinbar-h', bar.offsetHeight + 'px'); };
-    size();
-    if (!pinBarSizer && typeof ResizeObserver === 'function') { pinBarSizer = new ResizeObserver(size); pinBarSizer.observe(bar); }
+    const label = to === EDGE ? 'Pinned: edge' : 'Pinned: v' + to;
+    el.innerHTML =
+      '<span class="pin-head-t">' + escapeHtml(label) + '</span>' +
+      '<button type="button" id="pin-back" aria-label="Back to current release">' +
+        '<span class="pin-back-wide">Back to current release</span>' +
+        '<span class="pin-back-narrow">Use latest</span></button>';
+    el.querySelector('#pin-back').onclick = () => useRelease();
   }
 
   // gifos_pin_ended — the loader ended a switch (its time ran out, or it was
@@ -4803,7 +4792,7 @@
 
   // ---------- boot ----------
   requestPersistence();
-  paintPinBar();
+  paintPinHead();
   load().then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(notePinEnded).then(handleRunParam).then(handlePlaceParam).then(handleEdgeLink).then(checkForUpdate).then(reclaimOrphanAssets).then(backfillOrnaments);
 
   GifOS.desktop = { render, load, backfillOrnaments, get stats() { return renderStats; },
