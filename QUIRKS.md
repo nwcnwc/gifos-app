@@ -133,11 +133,19 @@ Repro: `test/mobile/landscape-first.js`. It failed with those bottoms, then pass
 
 Before: `qa/mobile/shots/before-landscape-first-se.png`. After: `qa/mobile/shots/after-landscape-first-se.png`.
 
+### 16. Record and Captions lived only inside More
+
+A producer could not see that the call was live, or that someone was recording, without opening More. The tile chip said "recording this meeting" in small type on the face. StreamYard, Restream, and YouTube keep a live and record state on the call itself.
+
+Repro: `test/mobile/call-state.js`. It failed (`no live/record state on the call`) on an iPhone 15, an SE, and a 360px phone at 200% text, then passed. Live, Record, and Captions sit above the dock. Live is red with white type. Record stays quiet until it is on, then it says Recording in the same red. Captions turns blue, so it is not the same mark as Live. Each is at least 44px, the words fit at 32px type, and they do not cover the header or the dock. Tapping Captions turns captions on. Tapping Record opens the record sheet. The faces still end above that row. The More buttons are still there.
+
+Before: `qa/mobile/shots/before-call-state-iphone-15.png`. After: `qa/mobile/shots/after-call-state-iphone-15.png`.
+
 ## Open
 
 The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
 
-Record and Captions are still inside More. A producer on StreamYard sees a live/record state that another bar cannot cover.
+In landscape the lobby still asks you to scroll to Join. The first action is on screen. Join is the one that sits lower in the card.
 
 ## Personas (what was actually tried)
 

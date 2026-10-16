@@ -13,7 +13,7 @@ Out of scope for this branch, so they are not scored as wins or losses here: the
 - iOS: the notch and home indicator are cleared. `viewport-fit=cover` is set and the dock, chip, and Fit use `env(safe-area-inset-*)`.
 - Meet, Teams, YouTube name the control Captions. Ours does too, and at 200% text that label is 32px.
 - Zoom and church tools: a host admits from a waiting-room list, and the other host controls say what they do. Ours does too. In landscape, Invite, Room password, Waiting room, and Chat are on the first screen of More.
-- StreamYard, Restream, YouTube Live: a producer sees a labeled live/record state that cannot be covered by another bar. Record and Captions still live inside More.
+- StreamYard, Restream, YouTube Live: a producer sees Live, and Record and Captions, on the call. Ours does too, above the dock. The record sheet still asks what to capture before it starts.
 
 What we already do that they do not: one link, no account, join muted, camera choice stays in the lobby, blur until there is a reason to be clear, the meeting is the peers rather than a server in the middle. That is the personal and church advantage. The phone chrome around it is in better shape, and we still do not lead.
 
@@ -24,10 +24,10 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 | Job | Score | Note |
 | --- | --- | --- |
 | End the call, mute, camera, on a 360px phone | 8 | Hang up, mute, camera, and Fit fit and are at least 44px. |
-| Host: password, record, captions, stage, in landscape | 9 | The controls say Room password, Vote on someone, and Step on stage, and they scroll into view. Waiting room admits from a list. |
+| Host: password, record, captions, stage, in landscape | 9 | Live, Record, and Captions are on the call. Room password, Vote on someone, and Step on stage stay in More and scroll into view. Waiting room admits from a list. |
 | Chat or check names without losing the controls | 7 | The field taps, sits above the dock, and lifts for a keyboard band. Close and Send are 44px. |
-| Looks trustworthy (nothing cut off, type scales) | 7 | The header says "4 in call". Faces end above the dock. The grip is 44×44 on an iPhone 15. |
-| **Audience** | **8** | Hang up, landscape host tools, captions, chat, the home indicator, the header count, and a waiting-room admit list are in good shape. Chat and the header trust row are still the soft spots. |
+| Looks trustworthy (nothing cut off, type scales) | 8 | The header says "4 in call". Live is on the call, and Recording is a separate red state. Faces end above the dock. |
+| **Audience** | **8** | Hang up, landscape host tools, the live state, captions, chat, the home indicator, the header count, and a waiting-room admit list are in good shape. Chat is still the soft spot. |
 
 ## Church
 
@@ -37,8 +37,8 @@ A volunteer and an older member, a service or a small group, often a phone held 
 | --- | --- | --- |
 | Start or join from the lobby on an SE | 7 | Join is on screen in portrait. In landscape the first action is on screen and Join scrolls into the card. |
 | Tap targets for someone who misses small controls | 8 | Dock grip, chat close, Send, and Fit are 44px, including on an iPhone 15. Fit grows with the text size. |
-| Captions a member can find, at 200% text | 7 | The control says Captions and grows to 32px at 200% text. |
-| Host runs the room from the phone they already hold | 9 | Room password, Vote on someone, Step on stage, record, captions, and a waiting-room list are named in plain words, including landscape. |
+| Captions a member can find, at 200% text | 8 | Captions is on the call, says Captions, and the label is 32px at 200% text. |
+| Host runs the room from the phone they already hold | 9 | Live, Record, and Captions are on the call. Room password, Vote on someone, Step on stage, and a waiting-room list are named in plain words. |
 | **Audience** | **8** | Join, Captions, the dock, Fit, landscape More, and a waiting-room list work on a phone. A volunteer panel is still calmer. |
 
 ## Personal
@@ -70,3 +70,4 @@ Family and friends. Warm, few steps, a texted link.
 13. Waiting-room admit list. `test/mobile/wait-list.js` failed (no Waiting room button), then passed. Default off, so a dark return still answers the door. When it is on, the host sees names above the dock and Admit calls the existing door answer. Corporate host 7→8, corporate audience 7→8. Church host 6→8. Audience scores are 8 / 8 / 8. Nobody leads yet. More's host labels are still short.
 14. Host words. `test/mobile/host-words.js` failed (`Password`, `Vote`, `Stage`), then passed, including at 200% text. The controls say Room password, Vote on someone, and Step on stage (Step off stage once you are up). The phone sheet is two columns so the phrases fit. Corporate host 8→9. Church host 8→9. Audience scores stay 8 / 8 / 8. Nobody leads yet. Still open: in landscape, Invite and Room password are below the first screen of More.
 15. Landscape first screen. `test/mobile/landscape-first.js` failed (Invite and Room password below the sheet on an SE), then passed. Those two, plus Waiting room and Chat, are the first four controls. Personal sideways 6→8. Audience scores stay 8 / 8 / 8. Nobody leads yet. Still open: Record and Captions live inside More, so a producer does not see a live/record state on the call itself.
+16. Live and record state on the call. `test/mobile/call-state.js` failed (no state on the call), then passed, including at 200% text. Live, Record, and Captions sit above the dock. Recording is red. Captions on is blue. Corporate trust 7→8. Church captions 7→8. Audience scores stay 8 / 8 / 8. Nobody leads yet. Still open: in landscape the lobby still makes you scroll to Join.
