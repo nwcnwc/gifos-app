@@ -393,13 +393,11 @@ Before: `qa/mobile/shots/before-header-full-pixel-7.png`. After: `qa/mobile/shot
 
 Guest 3106 showing stepped away is the away chip: the peer has been away for 25 seconds (screen off or another app). The mark in this build is "⏾ stepped away".
 
-### 48. Captions and "transcribing" were two things
+### 48. Captions are personal. The meeting is always transcribed.
 
-`myStatus.cc` is this device writing captions. The tile chip used a different word, "📝 transcribing" (`ccLiveLabel` in `run.html`). `#ccbtn` and `#call-cc` lit only when this phone's own `cc` flag was on (`paintCallState` copied the More button's class). A bot calling `transcribe({on:true})` sets `cc` and `scribe`, so its tile said "transcribing" while everyone else's Captions button stayed off. The spoken line is separate: `showCaption` puts the words on the shared `#livecap` bar and on the speaker's tile.
+Each browser writes its own voice while it is unmuted (`ownVoiceWanted` in `run.html`). That does not depend on CC. CC (`ccView`) only shows or hides captions on this screen, and it is not gossiped. Tiles do not say who is transcribing. Transcript is in More from the start, and Download transcript is on that panel. The same rule is in the shared meeting page, so desktop uses it too.
 
-Captions are one room state now. The chip says Captions, on the tile of whoever is writing. Both Captions buttons are on when anyone here has `cc`. Tapping yours starts writing when nobody else is. Tapping while someone else is already writing leaves the button on and does not start a second writer. Transcript stays in More and opens for anyone once the room is captioning.
-
-Repro: `test/mobile/captions-room.js`. It failed (on-call Captions off, bot tile "📝 transcribing", Transcript hidden), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/captions-room.js`.
+Repro: `test/mobile/captions-room.js`. It failed (CC on because a bot had `cc`, bot tile "📝 Captions", a line shown with CC off), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/captions-room.js`. Selected CC stays blue with white text (`test/mobile/cc-on.js`).
 
 Before: `qa/mobile/shots/before-captions-room-pixel-7.png`. After: `qa/mobile/shots/after-captions-room-pixel-7.png`.
 

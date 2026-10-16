@@ -1,2 +1,2 @@
-FAIL on-call Captions is off; More Captions is off while the room is being written down; Captions on fill rgb(255, 255, 255) / rgb(29, 29, 31); bot still says transcribing ("B bot notes 📝 transcribing 🤖 bot Blur for all"); bot tile has no Captions chip ("B bot notes 📝 transcribing 🤖 bot Blur for all"); Transcript is hidden
-{"mine":false,"callOn":false,"callPressed":"false","callText":"Captions","btnOn":false,"btnBg":"rgb(255, 255, 255)","btnColor":"rgb(29, 29, 31)","me":"N Nathan (you)","bot":"B bot notes 📝 transcribing 🤖 bot Blur for all","trShown":false}
+FAIL Captions is on because someone else is writing; captions view is not off (null); bot tile has a transcription chip ("B bot notes 📝 Captions 🤖 bot Blur for all"); a transcript line showed captions while CC is off
+{"trShown":true,"callOn":true,"mine":false,"view":null,"me":"N Nathan (you)","bot":"B bot notes 📝 Captions 🤖 bot Blur for all","bar":true}
