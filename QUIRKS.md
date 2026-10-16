@@ -10,15 +10,28 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Open
 
-### Q9. First-visit name and avatar are a Guest number and a letter
+### Q9b. The join step does not show how you will appear
 
-A first visit is stored as `Guest` plus four digits so the room can connect, and the camera-off tile is that letter on a flat color. The lobby preview says “You” until a name exists. Settings can change both later. This is on the list after the phone-layout gaps. Not the next fix.
+The name step says “Pick a screen name”. It does not say “This is how you’ll appear in the meeting”, and there is no face-plus-name preview you can correct before Continue. The system picture is on the step now (Q9). The preview is next.
+
+### Q11. Join actions are the same color and sit together
+
+`Not now` and `Continue` both use the accent fill. There is no gap rule between them, so they read as one control. A primary and a secondary need different fills and at least 8px between them. Both targets are already 48px tall.
 
 ### Q10. Compact dock buttons sit 4px apart
 
 Below 380px the dock gap is 4px so Leave still fits. Larger phones use 8px or 12px. The targets are 44px. The tighter gap is a polish item, after the phone-layout gaps. Not the next fix.
 
 ## Fixed
+
+### Q9. The join step ignored the GifOS name and picture
+
+A stored `gifos_name` skipped the step, so the field never showed it. With no name, the field was empty while a `Guest` number was stored in the background. The system picture was not on the step. The step now opens with the GifOS display name in the field and the GifOS picture above it. A first visit with no name still gets a guest seed so the room can connect. `test/mobile/appear-prefill.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-name-step.png`.
+After: `test/mobile/screenshots/after/iphone-se-name-prefill.png`.
+
+Design: the picture and the name are finally the same identity as Settings. The step still fails hierarchy. `Not now` and `Continue` are the same purple, with no gap, and the heading still says “Pick a screen name” instead of showing how you will look. Contrast of the muted sentence on the dark card is the old theme, not the light meeting.
 
 ### Q1. Hang up is off the screen on a 320px and 360px phone
 

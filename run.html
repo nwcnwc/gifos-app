@@ -1166,6 +1166,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .name-box p { color: var(--muted, #8888aa); font-size: .85rem; margin-bottom: 1rem; }
   .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem; min-height: 48px;
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
+  #nm-avatar { width: 72px; height: 72px; object-fit: cover; border-radius: 50%; display: block; margin: 0 auto .8rem; }
+  #nm-avatar[hidden] { display: none; }
   .name-box button { padding: .5rem 1.4rem; min-height: 48px; border-radius: .5rem; border: 1px solid var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; }
   /* Help: a longer, scrollable panel — same modal chrome, room to breathe. */
   .help-box { width: 92vw; }
@@ -2320,24 +2322,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const ABSENT_GRACE = 12000; // BACKSTOP ONLY: roster-absent AND link-down this long → tile drops. Announced (D2) and probe-confirmed (D5) departures remove the tile event-driven, within a beat (see departSweep/confirmGone).
 
     // ---- screen name (same identity the rest of GifOS uses) ----------------
-    // The knock does not wait on this picker. A stored name resolves at once.
-    // A first visit is seeded with Guest NNNN so joinRoom can run, and the
-    // picker stays up. Continue replaces that name and gossips it the same
-    // way Settings → Change does. Not now keeps the seed.
+    // The knock does not wait on this picker. A stored GifOS name is the
+    // field's default, and the system picture is the face on the step.
+    // A first visit with no name is seeded with Guest NNNN so joinRoom can
+    // run. Continue writes an edit the same way Settings does. Not now
+    // keeps whatever was already stored.
     function ensureName() {
       const me = GifOS.store.identity();
-      if (me.name) return Promise.resolve(me);
-      const seed = 'Guest ' + (1000 + Math.floor(Math.random() * 9000));
-      GifOS.store.setName(seed);
+      const systemName = (me.name || '').trim();
+      let seed = systemName;
+      if (!seed) {
+        seed = 'Guest ' + (1000 + Math.floor(Math.random() * 9000));
+        GifOS.store.setName(seed);
+      }
       const bg = document.createElement('div'); bg.className = 'name-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
       bg.innerHTML = '<div class="name-box"><h3>Pick a screen name</h3>' +
         '<p>The name people see on your tile. You can change it later under Settings.</p>' +
+        '<img id="nm-avatar" alt="" hidden>' +
         '<input id="nm" name="nickname" maxlength="40" placeholder="Your name" autocomplete="nickname">' +
         '<button id="nmcancel" type="button">Not now</button>' +
         '<button id="nmok">Continue</button></div>';
       document.body.appendChild(bg);
-      const input = bg.querySelector('#nm'); input.focus();
+      const input = bg.querySelector('#nm');
+      if (systemName) input.value = systemName;
+      const img = bg.querySelector('#nm-avatar');
+      if (me.avatar && me.avatar.url) {
+        img.src = me.avatar.url;
+        img.alt = (systemName || 'Your picture');
+        img.hidden = false;
+      }
+      input.focus();
       const done = (keep) => {
         let v = keep ? seed : input.value.trim();
         if (!v) v = seed;
