@@ -158,6 +158,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** German and Spanish cover the Who title, the explanation, the group headings, the address lines, and Download. They cover the Share title, the app note, the two explanations, Choose, and Cancel. They cover Vote’s three choices and the line that appears while you are tapping faces. English stays in the markup. The file you download for the police stays English. Password, Invite, and Run app are still English.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit, and the earlier locale test and the English share demo still pass. Screenshots: `test/desktop/shots/sheets-before-who-1280.png`, `test/desktop/shots/sheets-before-share-1280.png`, `test/desktop/shots/sheets-before-vote-1280.png`, `test/desktop/shots/sheets-after-who-de-1280.png`, `test/desktop/shots/sheets-after-share-de-1280.png`, `test/desktop/shots/sheets-after-vote-de-1280.png`.
 
+### Who, Share, and Vote still spoke English after you used them
+
+- **Who hits it:** a German or Spanish device, hovering Who, Share, or Vote, or reading the line after a share starts or a vote lands.
+- **What you saw:** the sheets were already in that language. The button tips still said “Who is on this meeting”, “Show the whole room”, and “Vote someone onto the stage”. The line after sharing or voting was English.
+- **Repro:** `test/desktop/sheets-locale.spec.js` now requires the German and Spanish tips.
+- **Fix:** those tips follow the device. So do “you are sharing”, “screen share stopped”, “vote recorded”, and “vote withdrawn”. The file you download for the police stays English. The Password and Invite sheets stay English.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the English share demo still passes. Screenshot: `test/desktop/shots/sheets-tips-de-1280.png`.
+
 ### A phone that kills the camera said nothing
 
 - **Who hits it:** someone on a phone whose system takes the camera while the call is in the background, then comes back.
@@ -222,4 +230,4 @@ Who, Share, and Vote follow a German or Spanish device. The password sheet, the 
 
 ### Not yet walked end to end
 
-Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. The stage says whose screen it is, at 16px. The path is still More, then the sheet, then the picker. A broadcast says off air and on air, and the booth has an order of service. During Song the booth has Program and Preview. Those words stay on this computer. They are not on the outgoing picture. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, and Vote follow German and Spanish. Password, Invite, and Run app stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back. A camera that stays live and sends black still waits on the watchdog.
+Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. The stage says whose screen it is, at 16px. The path is still More, then the sheet, then the picker. A broadcast says off air and on air, and the booth has an order of service. During Song the booth has Program and Preview. Those words stay on this computer. They are not on the outgoing picture. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, and Vote follow German and Spanish, including the tips and the line after you share or vote. The Password and Invite sheets stay English. The Who download for the police stays English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back. A camera that stays live and sends black still waits on the watchdog.

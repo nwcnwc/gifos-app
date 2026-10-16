@@ -1794,7 +1794,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <section class="moregroup">
       <h4 data-t="people">People</h4>
       <div class="morerow">
-        <button type="button" id="whobtn" data-t="who" title="Who is on this meeting — names and internet addresses">Who</button>
+        <button type="button" id="whobtn" data-t="who" data-ti="whoTip" title="Who is on this meeting — names and internet addresses">Who</button>
         <button id="hand" data-t="hand" title="Raise your hand — raised hands float to the top">Hand</button>
         <button id="chatbtn" data-t="chat" type="button" aria-keyshortcuts="Alt+C" title="Chat and share files — stays between the people on this meeting, not on a server">Chat</button>
         <button id="invite" data-t="invite" title="Friends join you live with one link">Invite</button>
@@ -1821,7 +1821,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <section class="moregroup">
       <h4 data-t="room">Room</h4>
       <div class="morerow">
-        <button id="votebtn" data-t="vote" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
+        <button id="votebtn" data-t="vote" data-ti="voteTip" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
         <button id="pwbtn" data-t="password" title="Lock this room with a password">Password</button>
         <button id="stagebtn" data-t="stage" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
         <button id="recbtn" data-t="record" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
@@ -2545,6 +2545,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         shareDenied: 'Nur die Leitung dieses Raums — oder wen sie erlaubt — kann einen Bildschirm teilen. Bitten Sie die Leitung, es zu erlauben, an Ihrem Feld oder für den ganzen Raum, und öffnen Sie dies dann erneut.',
         shareBody: 'Ein Bildschirm ist für das, was keine App sein kann: eine Präsentation auf Ihrem Rechner, ein Werkzeug, das nicht GifOS ist, ein Fenster von woanders. Es liegt auf der Bühne, der ganze Raum sieht es, und alle sehen, dass Sie teilen.',
         shareSound: 'Ihre Kamera pausiert, während Sie teilen, und kommt zurück, wenn Sie aufhören. Ton aus dem geteilten Tab kommt nicht mit — sprechen Sie darüber.',
+        shareLive: '🖥 Ihr Bildschirm ist in der Besprechung. Ton aus dem geteilten Tab kommt nicht mit — sprechen Sie darüber.',
+        shareStopped: 'Bildschirmteilen beendet.',
+        shareStoppedWhy: 'Bildschirmteilen beendet — {why}.',
+        shareEndedByBrowser: 'der Browser hat das Teilen beendet',
+        shareCancelled: 'Bildschirmteilen abgebrochen — nichts wurde geteilt.',
+        shareFailed: 'Der Bildschirm ließ sich nicht teilen ({err}).',
+        shareNoCapture: '🖥 Dieser Browser kann keinen Bildschirm aufnehmen. Die meisten Telefone können das nicht. Ein Computer kann es. Ein Dokument vom Telefon öffnen Sie mit App starten.',
+        whoTip: 'Wer in dieser Besprechung ist — Namen und Internetadressen',
+        shareTip: 'Zeigen Sie dem Raum ein Fenster, einen Tab oder den Schreibtisch. Eine GifOS-App starten Sie mit App starten.',
+        shareTipOn: 'Sie teilen Ihren Bildschirm — tippen Sie zum Beenden',
+        voteTip: 'Jemanden auf die Bühne, von der Bühne oder aus dem Raum wählen — die Mehrheit entscheidet',
+        voteRecorded: 'Stimme gezählt — sie folgt dieser Person in Räume, die Sie teilen.',
+        voteWithdrawn: 'Stimme zurückgenommen.',
         shareAppNote: '<b>🧩 Eine GifOS-App? Nutzen Sie „App starten“.</b> Eine angeheftete App läuft auf jedem Gerät über einen kleinen Datenstrom — scharf, anklickbar, auf dem Telefon lesbar. Ein Bildschirm ist ein <i>Video Ihres Fensters</i>: nur in eine Richtung.',
         shareRunning: ' läuft schon in dieser Besprechung.</b> Alle hier führen sie auf dem eigenen Gerät. Sie müssen den Bildschirm nicht teilen.',
         whoTitle: 'Wer in dieser Besprechung ist',
@@ -2688,6 +2701,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         shareDenied: 'Solo los anfitriones de esta sala — o quien ellos permitan — pueden compartir pantalla. Pide que te lo permitan, en tu recuadro o para toda la sala, y abre esto otra vez.',
         shareBody: 'Compartir pantalla es para lo que una app no puede ser: una presentación en tu disco, una herramienta que no es GifOS, una ventana de otro sitio. Se ve en el escenario, toda la sala la ve, y todos ven que eres tú.',
         shareSound: 'Tu cámara se pausa mientras compartes y vuelve cuando paras. El sonido de la pestaña no viaja — habla por encima.',
+        shareLive: '🖥 Estás compartiendo tu pantalla. El sonido de la pestaña no viaja — habla por encima.',
+        shareStopped: 'Dejaste de compartir.',
+        shareStoppedWhy: 'Dejaste de compartir — {why}.',
+        shareEndedByBrowser: 'el navegador terminó de compartir',
+        shareCancelled: 'Compartir se canceló — no se compartió nada.',
+        shareFailed: 'No se pudo compartir la pantalla ({err}).',
+        shareNoCapture: '🖥 Este navegador no puede capturar la pantalla. Casi ningún teléfono puede. Una computadora sí. Para mostrar un documento desde el teléfono, ábrelo con Abrir app.',
+        whoTip: 'Quién está en esta reunión — nombres y direcciones de internet',
+        shareTip: 'Muestra al grupo una ventana, una pestaña o el escritorio. Para una app de GifOS, usa Abrir app.',
+        shareTipOn: 'Estás compartiendo tu pantalla — toca para parar',
+        voteTip: 'Vota a alguien al escenario, fuera del escenario o fuera de la sala — decide la mayoría',
+        voteRecorded: 'Voto contado — sigue a esta persona en las salas que compartes.',
+        voteWithdrawn: 'Voto retirado.',
         shareAppNote: '<b>🧩 ¿Una app de GifOS? Usa “Abrir app”.</b> Una app fijada corre en el dispositivo de cada quien, nítida y se puede tocar. Compartir pantalla es un <i>video de tu ventana</i>: de un solo lado.',
         shareRunning: ' ya está en esta reunión.</b> Todos la usan en su propio dispositivo. No hace falta compartir pantalla.',
         whoTitle: 'Quién está en esta reunión',
@@ -18626,8 +18652,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       shareBtn.classList.toggle('on', on);
       shareBtn.textContent = on ? uiText('stopShare', 'Stop sharing') : uiText('shareScreen', 'Share screen');
       shareBtn.title = on
-        ? 'You are sharing your screen with the meeting — tap to stop'
-        : 'Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)';
+        ? uiText('shareTipOn', 'You are sharing your screen with the meeting — tap to stop')
+        : uiText('shareTip', 'Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)');
       // FEATURE DETECTION, NEVER A UA CHECK (the preflight's rule). A phone
       // browser without getDisplayMedia used to HIDE the button, and the
       // first customer meeting read that as "there is no share button at
@@ -18756,7 +18782,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // and it does not tell the page anything except this event. Without
           // it the room keeps a frozen last frame of a share that ended, the
           // sharer's camera never comes back, and the only cure is a reload.
-          vt.onended = () => stopScreenShare('the browser ended the share');
+          vt.onended = () => stopScreenShare(uiText('shareEndedByBrowser', 'the browser ended the share'));
           // A share is a broadcast, so it takes a Stage seat — the tier whose
           // whole job is "what the room is looking at". Someone already up
           // there keeps their seat and simply changes what they broadcast.
@@ -18768,7 +18794,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           showLocalScreen();   // the slide, now — the mosaic sweep can be seconds later
           if (!screenSteppedUp) broadcastStatus(); // setStage already told the room
           refreshAllTiles();
-          setStatus('🖥 Sharing your screen with the meeting. Sound from the shared tab does not travel — talk over it.');
+          setStatus(uiText('shareLive', '🖥 Sharing your screen with the meeting. Sound from the shared tab does not travel — talk over it.'));
         })
         .catch((err) => {
           if (shareRecoverMode) {
@@ -18777,8 +18803,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             return;
           }
           const denied = err && (err.name === 'NotAllowedError' || err.name === 'AbortError');
-          setStatus(denied ? 'Screen share cancelled — nothing was shared.'
-            : 'Couldn’t share the screen (' + ((err && err.name) || 'error') + ').');
+          setStatus(denied ? uiText('shareCancelled', 'Screen share cancelled — nothing was shared.')
+            : uiText('shareFailed', 'Couldn’t share the screen ({err}).').replace('{err}', (err && err.name) || 'error'));
         });
     }
     function stopScreenShare(why) {
@@ -18796,7 +18822,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!steppedDown) broadcastStatus(); // setStage already told the room
       refreshAllTiles();
       if (!screenSharers().length) paintStageStrip(null);
-      setStatus(why ? 'Screen share stopped — ' + why + '.' : 'Screen share stopped.');
+      setStatus(why
+        ? uiText('shareStoppedWhy', 'Screen share stopped — {why}.').replace('{why}', why)
+        : uiText('shareStopped', 'Screen share stopped.'));
     }
     // The stage element is a second <video>. Headless camera failure hides
     // the self tile (tileNote), and refreshOutbound never puts that display
@@ -18815,7 +18843,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     if (shareBtn) shareBtn.onclick = () => {
       if (myStatus.scr) { stopScreenShare(); return; }
       if (!canScreenShare()) {
-        setStatus('🖥 This browser has no screen-capture support, so it cannot share a screen. Most phone browsers cannot; a computer browser can. To show a document from a phone, open it as an app with Run app.', 15000);
+        setStatus(uiText('shareNoCapture', '🖥 This browser has no screen-capture support, so it cannot share a screen. Most phone browsers cannot; a computer browser can. To show a document from a phone, open it as an app with Run app.'), 15000);
         return;
       }
       openShareSheet();
@@ -22056,7 +22084,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (on) myVoteoffs.add(dev); else myVoteoffs.delete(dev);
       saveVoteoffs(myVoteoffs);
       syncVotes();
-      setStatus(on ? 'Vote recorded — it follows this person into every room you share.' : 'Vote withdrawn.');
+      setStatus(on ? uiText('voteRecorded', 'Vote recorded — it follows this person into every room you share.') : uiText('voteWithdrawn', 'Vote withdrawn.'));
     }
     // ---- vote MODE: pick what you're voting on, then tap the targets ---------
     let voteMode = null; // null | 'up' | 'down' | 'kick'

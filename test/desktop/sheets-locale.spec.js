@@ -44,6 +44,7 @@ test.describe('German sheets', () => {
     await expect(who.locator('#who-close')).toHaveText('Schließen');
     await expect(who).not.toContainText('Who is on this meeting');
     await expect(who).not.toContainText('Download this list');
+    await expect(page.locator('#whobtn')).toHaveAttribute('title', 'Wer in dieser Besprechung ist — Namen und Internetadressen');
     const wg = await sheetFit(page, '#who-modal');
     expect(wg.lang).toBe('de');
     expect(wg.font).toBeGreaterThanOrEqual(16);
@@ -61,6 +62,7 @@ test.describe('German sheets', () => {
     await expect(share.locator('#share-cancel')).toHaveText('Abbrechen');
     await expect(share).not.toContainText('Share your screen');
     await expect(share).not.toContainText('Choose what to share');
+    await expect(page.locator('#sharebtn')).toHaveAttribute('title', /App starten/);
     const sg = await sheetFit(page, '#share-modal');
     expect(sg.font).toBeGreaterThanOrEqual(16);
     expect(sg.titleClip).toBe(false);
@@ -76,6 +78,7 @@ test.describe('German sheets', () => {
     await expect(vote.locator('[data-vm="kick"]')).toContainText('Aus dem Raum wählen');
     await expect(vote).not.toContainText('Place a vote');
     await expect(vote).not.toContainText('Vote onto stage');
+    await expect(page.locator('#votebtn')).toHaveAttribute('title', 'Jemanden auf die Bühne, von der Bühne oder aus dem Raum wählen — die Mehrheit entscheidet');
     const vg = await sheetFit(page, '#vote-modal');
     expect(vg.font).toBeGreaterThanOrEqual(16);
     expect(vg.boxOnScreen).toBe(true);
@@ -100,6 +103,7 @@ test.describe('Spanish sheets', () => {
     await expect(who.locator('#who-dl')).toHaveText('Descargar esta lista');
     await expect(who.locator('#who-close')).toHaveText('Cerrar');
     await expect(who).not.toContainText('Who is on this meeting');
+    await expect(page.locator('#whobtn')).toHaveAttribute('title', 'Quién está en esta reunión — nombres y direcciones de internet');
     await page.click('#who-close');
 
     await openMore(page, '#sharebtn');
@@ -109,6 +113,7 @@ test.describe('Spanish sheets', () => {
     await expect(share.locator('#share-go')).toHaveText('Elegir qué compartir…');
     await expect(share.locator('#share-cancel')).toHaveText('Cancelar');
     await expect(share).not.toContainText('Share your screen');
+    await expect(page.locator('#sharebtn')).toHaveAttribute('title', /Abrir app/);
     await page.click('#share-cancel');
 
     await openMore(page, '#votebtn');
@@ -117,6 +122,7 @@ test.describe('Spanish sheets', () => {
     await expect(vote).toContainText('Un voto cada uno');
     await expect(vote.locator('[data-vm="up"]')).toContainText('Votar al escenario');
     await expect(vote).not.toContainText('Place a vote');
+    await expect(page.locator('#votebtn')).toHaveAttribute('title', /decide la mayoría/);
     await vote.locator('[data-vm="up"]').click();
     await expect(page.locator('#votebanner-text')).toContainText('AL escenario');
     await expect(page.locator('#vote-done')).toHaveText('Listo');
