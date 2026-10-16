@@ -1025,6 +1025,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                          background: rgba(10,10,15,.85); color: #eceef8; cursor: pointer; font-size: .85rem;
                          white-space: nowrap; }
   .tile .modbar button:hover { border-color: var(--accent2, #ff5caa); }
+  /* Broadcast hides the gallery, so the host's guest tools live on the stage. */
+  #stagemod { display: none; }
+  body.broadcast #feed { position: relative; }
+  body.broadcast #stagemod.on { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    position: absolute; z-index: 7; left: 12px; top: 12px; right: 12px; max-width: calc(100% - 24px); }
+  body.broadcast.admroom.notadmin #stagemod { display: none !important; }
+  #stagemod .stagekicker { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #ffd0d4; }
+  #stagemod .stagecard { display: flex; align-items: center; gap: 8px; max-width: 100%;
+    background: rgba(12,14,18,.92); color: #f4f7fb; border-radius: 14px; padding: 8px 10px; }
+  #stagemod .stagecard:focus-visible { outline: 3px solid #8ec8ff; outline-offset: 3px; }
+  #stagemod .stagename { font-weight: 700; max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #stagemod .modbar { display: flex; flex-direction: row; gap: 6px; position: static; }
+  #stagemod .modbar button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.2);
+    background: rgba(255,255,255,.12); color: #fff; cursor: pointer; font-size: .85rem; white-space: nowrap; }
+  #stagemod .modbar button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   .tile.noroute { opacity: .8; border-style: dashed; }
   /* live audio → glowing border (never while muted) */
   .tile.speaking { border-color: #5cff7b; box-shadow: 0 0 0 2px #5cff7b, 0 0 18px rgba(92,255,123,.4); }
@@ -1684,6 +1699,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div id="handq"></div>
   <div id="feed">
     <div id="stagefeed"></div>
+    <div id="stagemod" hidden aria-label="On stage"></div>
     <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-name"></div></div>
     <div id="grid"></div>
     <div id="stadium"></div>
@@ -4032,6 +4048,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       finally { passMemo = null; }
       layout();
       if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn(); if (typeof updateCamAllBtn === 'function') updateCamAllBtn(); if (typeof updateShareAllBtn === 'function') updateShareAllBtn();
+      try { paintStageMod(); } catch (e) {}
     }
     // ============================ THE BLUR RULE ==============================
     // ONE rule, computed identically on every device from shared state, drives
@@ -4505,6 +4522,115 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (pid === myId) return myName() || '\u2026';
       return rosterNames[pid] || (peers.get(pid) || {}).name || '\u2026';
     }
+    const MODBAR_HTML = '<button data-mod="mute" aria-label="Mute for everyone">Mute</button><button data-mod="blur" aria-label="Blur for everyone">Blur</button>'
+      + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage">Apps</button>'
+      + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share">Share</button>'
+      + '<button class="banbtn" data-adm="ban" title="Ban this person&#39;s device from the room" aria-label="Ban this device">Ban</button>';
+    // A BAN NAMES A DEVICE, so the tag must be one the RELAY attested
+    // (roster / peer-join). A tag a peer merely asserts in its own
+    // status may be somebody else's: banning the impostor would ban
+    // the victim. Unattested ⇒ ask the door once, and say so.
+    function wireModbar(modbar, id) {
+      modbar.addEventListener('click', (e) => {
+        const t = e.target && e.target.closest ? e.target.closest('button') : e.target;
+        if (!t || !modbar.contains(t)) return;
+        if (t.dataset.adm === 'ban') {
+          e.stopPropagation();
+          const dev = devRelay.has(id) ? devOf[id] : '';
+          if (window.__banDebug) console.error('[banclick]', id, dev, amAdmin, relayUp());
+          if (!amAdmin) return;
+          if (!dev) { relaySendObj({ t: 'who' }); setStatus('🛡 The door has not vouched for this person' + String.fromCharCode(39) + 's device yet — try Ban again in a moment.'); return; }
+          rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
+          admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); }); // no name, no by: the relay carries a device tag and the order's author id
+          return;
+        }
+        const f = t.dataset.mod;
+        if (!f) return;
+        e.stopPropagation();
+        const cur = modOf(id)[f];
+        setMod(id, f, !(cur && cur.on));
+        try { paintStageMod(); } catch (err) {}
+      });
+    }
+    function paintModbarButtons(modbar, id) {
+      if (!modbar || !modbar.children || modbar.children.length < 2) return;
+      let mod;
+      try { mod = modOf(id); } catch (e) { return; }
+      const gMute = mod.mute && mod.mute.on, gBlur = mod.blur && mod.blur.on;
+      const appOn = !!(mod.app && mod.app.on);
+      modbar.children[0].textContent = gMute ? 'Unmute' : 'Mute';
+      modbar.children[0].setAttribute('aria-label', gMute ? 'Unmute for everyone' : 'Mute for everyone');
+      modbar.children[1].textContent = gBlur ? 'Unblur' : 'Blur';
+      modbar.children[1].setAttribute('aria-label', gBlur ? 'Unblur for everyone' : 'Blur for everyone');
+      if (modbar.children[2]) {
+        modbar.children[2].textContent = appOn ? 'Revoke' : 'Apps';
+        modbar.children[2].setAttribute('aria-label', appOn ? 'Revoke apps & stage' : 'Allow apps & stage');
+      }
+      for (const b of modbar.children) {
+        if (!b.getAttribute || b.getAttribute('data-mod') !== 'share') continue;
+        const shareOn = !!(mod.share && mod.share.on);
+        b.textContent = shareOn ? 'Stop' : 'Share';
+        b.setAttribute('aria-label', shareOn ? 'Revoke screen share' : 'Allow screen share');
+      }
+    }
+    // Guests the stage strip should name even before the mesh has a seat
+    // (a host rehearsal, and the desktop test). Real stage seats come from stageIds().
+    const stageModExtra = new Set();
+    function stageModList() {
+      const ids = [], seen = new Set();
+      const push = (id) => {
+        if (!id || id === myId || id === 'me' || seen.has(id)) return;
+        seen.add(id); ids.push(id);
+      };
+      try { (stageIds() || []).forEach(push); } catch (e) {}
+      stageModExtra.forEach(push);
+      return ids;
+    }
+    function paintStageMod() {
+      const el = document.getElementById('stagemod');
+      if (!el) return;
+      const broadcast = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const host = broadcast && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin'));
+      const blocked = document.body.classList.contains('admroom') && document.body.classList.contains('notadmin');
+      const ids = (!broadcast || !host || blocked) ? [] : stageModList();
+      if (!ids.length) { el.classList.remove('on'); el.hidden = true; return; }
+      el.hidden = false;
+      el.classList.add('on');
+      if (!el.querySelector('.stagekicker')) {
+        const k = document.createElement('span');
+        k.className = 'stagekicker';
+        k.textContent = 'On stage';
+        el.appendChild(k);
+      }
+      const keep = new Set(ids);
+      for (const card of el.querySelectorAll('.stagecard')) if (!keep.has(card.dataset.peer)) card.remove();
+      for (const id of ids) {
+        let card = null;
+        for (const c of el.querySelectorAll('.stagecard')) if (c.dataset.peer === id) card = c;
+        if (!card) {
+          card = document.createElement('div');
+          card.className = 'stagecard';
+          card.dataset.peer = id;
+          card.tabIndex = 0;
+          card.setAttribute('role', 'group');
+          const name = document.createElement('span');
+          name.className = 'stagename';
+          const bar = document.createElement('div');
+          bar.className = 'modbar';
+          bar.innerHTML = MODBAR_HTML;
+          wireModbar(bar, id);
+          card.appendChild(name);
+          card.appendChild(bar);
+          el.appendChild(card);
+        }
+        const nm = rosterNames[id] || (peers.get(id) || {}).name || 'Guest';
+        const nameEl = card.querySelector('.stagename');
+        if (nameEl && nameEl.textContent !== nm) nameEl.textContent = nm;
+        const aria = nm + '. Guest controls.';
+        if (card.getAttribute('aria-label') !== aria) card.setAttribute('aria-label', aria);
+        paintModbarButtons(card.querySelector('.modbar'), id);
+      }
+    }
     function makeTile(id, name, isMe, headless) {
       const tile = document.createElement('div');
       tile.className = 'tile' + (isMe ? ' me' : '');
@@ -4554,31 +4680,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         tile.appendChild(voteBtn);
         modbar = document.createElement('div');
         modbar.className = 'modbar';
-        modbar.innerHTML = '<button data-mod="mute" aria-label="Mute for everyone">Mute</button><button data-mod="blur" aria-label="Blur for everyone">Blur</button>'
-          + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage">Apps</button>'
-          + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share">Share</button>'
-          + '<button class="banbtn" data-adm="ban" title="Ban this person&#39;s device from the room" aria-label="Ban this device">Ban</button>';
-        modbar.addEventListener('click', (e) => {
-          if (e.target.dataset.adm === 'ban') {
-            e.stopPropagation();
-            // A BAN NAMES A DEVICE, so the tag must be one the RELAY attested
-            // (roster / peer-join). A tag a peer merely asserts in its own
-            // status may be somebody else's: banning the impostor would ban
-            // the victim. Unattested ⇒ ask the door once, and say so.
-            const dev = devRelay.has(id) ? devOf[id] : '';
-            if (window.__banDebug) console.error('[banclick]', id, dev, amAdmin, relayUp());
-            if (!amAdmin) return;
-            if (!dev) { relaySendObj({ t: 'who' }); setStatus('🛡 The door has not vouched for this person' + String.fromCharCode(39) + 's device yet — try Ban again in a moment.'); return; }
-            rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
-            admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); }); // no name, no by: the relay carries a device tag and the order's author id
-            return;
-          }
-          const f = e.target.dataset.mod;
-          if (!f) return;
-          e.stopPropagation();
-          const cur = modOf(id)[f];
-          setMod(id, f, !(cur && cur.on));
-        });
+        modbar.innerHTML = MODBAR_HTML;
+        wireModbar(modbar, id);
         tile.appendChild(modbar);
         tile.addEventListener('click', () => tile.classList.toggle('menu')); // tap = menu on phones
       }
@@ -4797,24 +4900,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // never silences the meeting by pausing it.
         t.video._gmute = !!gMute;
         if (t.video._aud) t.video._aud.muted = !!gMute;
-        if (t.modbar) {
-          const muteLabel = gMute ? 'Unmute for everyone' : 'Mute for everyone';
-          const blurLabel = gBlur ? 'Unblur for everyone' : 'Blur for everyone';
-          const appOn = !!(mod.app && mod.app.on);
-          const appLabel = appOn ? 'Revoke apps & stage' : 'Allow apps & stage';
-          t.modbar.children[0].textContent = gMute ? 'Unmute' : 'Mute';
-          t.modbar.children[0].setAttribute('aria-label', muteLabel);
-          t.modbar.children[1].textContent = gBlur ? 'Unblur' : 'Blur';
-          t.modbar.children[1].setAttribute('aria-label', blurLabel);
-          t.modbar.children[2].textContent = appOn ? 'Revoke' : 'Apps';
-          t.modbar.children[2].setAttribute('aria-label', appLabel);
-          for (const b of t.modbar.children) {
-            if (!b.getAttribute || b.getAttribute('data-mod') !== 'share') continue;
-            const shareOn = !!(mod.share && mod.share.on);
-            b.textContent = shareOn ? 'Stop' : 'Share';
-            b.setAttribute('aria-label', shareOn ? 'Revoke screen share' : 'Allow screen share');
-          }
-        }
+        if (t.modbar) paintModbarButtons(t.modbar, id);
       } else if (gMute && localStream && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) {
         // the group muted ME: cut the source too, not just everyone's speakers
         const a = localStream.getAudioTracks()[0];
@@ -23392,6 +23478,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // exact raise stamp — lets tests force a same-millisecond tie and assert the id tie-break
       raiseHandAtForTest: (t) => { myStatus.hand = +t || Date.now(); paintHand(); broadcastStatus(); layout(); },
       guestTileForTest: (name) => { const made = makeTile('qa-guest', name || 'Jordan Lee', false, false); return made.tile.dataset.peer; },
+      stageGuestForTest: (name) => {
+        const id = 'qa-guest';
+        const nm = name || 'Jordan Lee';
+        rosterNames[id] = nm;
+        stageModExtra.add(id);
+        paintStageMod();
+        return id;
+      },
       ensureNameForTest: () => ensureName(),
       // a GUEST's forged grant, injected past setMod's local guard — every
       // receiver must refuse it (§SIG: only the SIGNED table is ever merged)

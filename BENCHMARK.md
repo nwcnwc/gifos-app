@@ -73,3 +73,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q9 | 3.7 (Zoom 4.9) | 4.2 (StreamYard 4.0) | 3.6 (FaceTime 4.8) | Plain lobby: Start a call, or Go live with the viewer password tucked away. Church average leads. |
 | After Q13 | 3.7 (Zoom 4.9) | 4.2 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Appearance preview prefills the GifOS name and picture. Join is blue; Not now is an outline. |
 | After Q14 | 3.7 (Zoom 4.9) | 4.2 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Arrow keys nudge the dock, and a double click centers it. Keyboard stays 4: Zoom’s shortcut set is still the reference. |
+| After Q15 | 3.7 (Zoom 4.9) | 4.2 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Host mute, blur, and ban sit on the broadcast stage. Scores stay: no row was “tools hidden in the gallery”. |

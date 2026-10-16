@@ -56,7 +56,11 @@ The dock now has `#fsbtn`, labeled Full, with the accessible name “Full screen
 
 A guest tile is now in the tab order (`tabindex="0"`, named “Jordan Lee. Guest controls.”). Focusing it shows Mute, Blur, and, for a host, Apps, Share, and Ban. Tab reaches Mute and then Ban. The words fit the buttons; the longer phrase stays on the accessible name (“Mute for everyone”). Before: `test/e2e/artifacts/modbar-keyboard-before.png`. After: `test/e2e/artifacts/modbar-keyboard-after.png`.
 
-A broadcast still hides the gallery, so this bar is the meeting surface. It is not painted on the stage.
+A broadcast hides the gallery, so this bar is the meeting surface. The same tools are painted on the broadcast stage (Q15).
+
+### Q15. Guest tools were missing from the broadcast stage
+
+A broadcast hides the gallery, so Mute, Blur, and Ban had nothing to sit on. The host now sees them on the stage: “On stage”, the guest’s name, and the same words. Tab reaches Mute, and Mute becomes Unmute. A viewer does not get the strip. The tools stay inside the picture area and clear of the dock at 1280 and 900. After: `test/e2e/artifacts/stage-mod-after.png`.
 
 ### Q14. The dock grip promised arrow keys and ignored them
 
@@ -72,7 +76,7 @@ Joining now shows “This is how you'll appear” with the GifOS display name fi
 
 ## Open
 
-A broadcast still hides the gallery, so the keyboard moderation bar is not on the stage.
+StreamYard is still ahead on three church rows: telling a volunteer they are on air (the Live pill is small), telling a service apart from a small group once the room is open, and chat (it still lives in More, with no prayer-request path).
 
 ## How a session was opened without a relay
 

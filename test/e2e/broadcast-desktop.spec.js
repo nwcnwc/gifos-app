@@ -435,6 +435,77 @@ test('arrow keys nudge the dock and a double click puts it back', async ({ page 
   expect(edge.x).toBeGreaterThanOrEqual(0);
 });
 
+test('a broadcast host moderates guests on the stage', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.hash.indexOf('who=view') === -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const [w, h] of [[1280, 720], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=stage' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast.meet-session #onair.live');
+    const id = await page.evaluate(() => window.__gifosVideo.stageGuestForTest('Jordan Lee'));
+    expect(id).toBe('qa-guest');
+    const strip = page.locator('#stagemod');
+    await expect(strip).toBeVisible();
+    await expect(strip).toHaveClass(/on/);
+    const gridDisplay = await page.locator('#grid').evaluate((el) => getComputedStyle(el).display);
+    expect(gridDisplay).toBe('none');
+    const card = page.locator('#stagemod .stagecard[data-peer="qa-guest"]');
+    await expect(card).toHaveAttribute('aria-label', /Jordan Lee/);
+    const mute = card.locator('[data-mod="mute"]');
+    await expect(mute).toBeVisible();
+    await expect(mute).toHaveText('Mute');
+    const fits = await mute.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1);
+    expect(fits).toBe(true);
+    const place = await page.evaluate(() => {
+      const card = document.querySelector('#stagemod .stagecard');
+      const feed = document.getElementById('feed');
+      const dock = document.querySelector('.bar');
+      const c = card.getBoundingClientRect();
+      const f = feed.getBoundingClientRect();
+      const d = dock.getBoundingClientRect();
+      const overlap = !(c.right < d.left || d.right < c.left || c.bottom < d.top || d.bottom < c.top);
+      return {
+        x: c.x, y: c.y, r: c.right, b: c.bottom,
+        inFeed: c.top >= f.top - 1 && c.left >= f.left - 1 && c.right <= f.right + 1,
+        overlap, vw: innerWidth, vh: innerHeight,
+      };
+    });
+    expect(place.inFeed, JSON.stringify(place)).toBe(true);
+    expect(place.overlap, JSON.stringify(place)).toBe(false);
+    expect(place.x).toBeGreaterThanOrEqual(-1);
+    expect(place.r).toBeLessThanOrEqual(w + 1);
+    expect(place.b).toBeLessThanOrEqual(h + 1);
+    await card.focus();
+    for (let i = 0; i < 4; i++) {
+      if (await mute.evaluate((el) => el === document.activeElement)) break;
+      await page.keyboard.press('Tab');
+    }
+    await expect(mute).toBeFocused();
+    await mute.click();
+    await expect(mute).toHaveText('Unmute');
+  }
+  await page.evaluate(() => document.body.classList.add('amadmin', 'admroom'));
+  const card = page.locator('#stagemod .stagecard[data-peer="qa-guest"]');
+  await card.focus();
+  const ban = card.locator('[data-adm="ban"]');
+  await expect(ban).toBeVisible();
+  await expect(ban).toHaveText('Ban');
+  for (let i = 0; i < 8; i++) {
+    if (await ban.evaluate((el) => el === document.activeElement)) break;
+    await page.keyboard.press('Tab');
+  }
+  await expect(ban).toBeFocused();
+  await page.goto(SESSION + '&who=view', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.broadcast #onair.watch');
+  await page.evaluate(() => window.__gifosVideo.stageGuestForTest('Jordan Lee'));
+  await expect(page.locator('#stagemod')).toBeHidden();
+});
+
 test('chat composer stays clear of the dock after a live resize to 900px', async ({ page }) => {
   await openChat(page, 1920, 1080);
   await page.setViewportSize({ width: 1280, height: 720 });
