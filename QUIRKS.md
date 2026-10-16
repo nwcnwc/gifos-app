@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q53. A host alone was told to send the invite
+
+The chip said “Just you — send the invite; the link has no expiry.” On a phone that sentence is a blue Invite button. It opens the share sheet, or copies the viewer link when the phone has no share sheet. The viewer password is not in the link or the words. The button goes away once someone joins. A viewer does not get it. Wide screens keep the sentence: `.topchip[data-invite="1"]` and `__gifosVideo.shareInvite` are there for the desktop Broadcast agent. `test/mobile/header-invite.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-host-alone.png`. After: `test/mobile/screenshots/after/iphone-se-host-invite.png`.
+
+Design: the same blue Invite Meet uses when you are alone. Church stays at 4.
+
 ### Q52. The join sheet said “This is how you’ll appear” twice
 
 The title and the line under it were the same sentence. The title stays. The repeat is gone on a meeting and on a town hall host. A broadcast viewer keeps that line, and it now says “Only seen if you raise your hand and are promoted to the stage.” A broadcast host still skips the sheet. A town hall viewer still skips it. `test/mobile/appear-preview.spec.mjs`, `test/mobile/viewer-join.spec.mjs`, `test/mobile/town-hall-join.spec.mjs`.

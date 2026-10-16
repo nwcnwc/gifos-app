@@ -1361,6 +1361,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip .status { color: #e7ebf2; font-size: 1.25rem; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
     min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
+  /* A broadcast host alone on a phone gets Invite instead of "send the invite".
+     Wide screens leave the button hidden. .topchip[data-invite="1"] and
+     __gifosVideo.shareInvite are the hook for the Broadcast desktop agent. */
+  #hdrinvite {
+    display: none; flex: 0 0 auto; box-sizing: border-box;
+    min-width: 44px; min-height: 44px; height: 44px; margin: 0 0 0 4px; padding: 0 14px;
+    border: 0; border-radius: 999px; background: #0064c8; color: #fff; cursor: pointer;
+    font: 700 1rem/1 system-ui, sans-serif; white-space: nowrap;
+    align-items: center; justify-content: center;
+  }
+  #hdrinvite[hidden] { display: none !important; }
+  @media (max-width: 700px), (max-height: 500px) {
+    body.broadcast .topchip[data-invite="1"] { padding-top: 0; padding-bottom: 0; padding-right: 0; min-height: 44px; }
+    body.broadcast .topchip[data-invite="1"] #hdrinvite:not([hidden]) { display: inline-flex; }
+  }
   .fitbtn { position: fixed; z-index: 6; top: calc(14px + 2.75rem + var(--inset-top, 0px)); right: calc(14px + var(--inset-right, 0px)); min-width: 2.75rem; min-height: 2.75rem;
     border: 0; border-radius: 999px; padding: 0.35rem 0.75rem; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 1rem/1.2 system-ui, sans-serif; }
@@ -1849,6 +1864,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <span id="livebadge" data-state="off" aria-label="You are off air"><i class="livedot" aria-hidden="true"></i><span id="livebadge-txt">OFF AIR</span></span>
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
     <span class="status" id="status">Joining…</span>
+    <button type="button" id="hdrinvite" hidden title="Share the viewer link">Invite</button>
   </div>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
   <div class="admcount" id="admcount" style="display:none"></div>
@@ -2546,6 +2562,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // pill briefly so the ambient counter (updateStatus) can't eat them the
     // moment any gossip arrives.
     let statusHoldUntil = 0;
+    let statusDetail = '';
     // A message that STOPS someone (🛡 a refusal, 📷 an admin's video-off) is
     // the one message that must be read: it holds 12s and wears the warn
     // colour. Ordinary notices keep the 4s beat. An explicit hold wins.
@@ -2554,9 +2571,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const setStatus = (m, hold) => {
       const blocking = /^(🛡|📷)/.test(String(m));
       statusEl.textContent = m;
+      statusDetail = String(m);
       if (statusEl.title !== String(m)) statusEl.title = String(m);
       statusEl.classList.toggle('alert', blocking || !!hold);
       statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
+      const holdChip = statusEl.closest('.topchip');
+      if (holdChip) delete holdChip.dataset.invite;
+      const holdInvite = document.getElementById('hdrinvite');
+      if (holdInvite) holdInvite.hidden = true;
       if (typeof paintLiveBadge === 'function') paintLiveBadge();
     };
     const uid = (p) => p + '_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
@@ -6578,6 +6600,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // of the reach states that replace the line. Tests and styling read
       // this, never the sentence.
       const statusKind = reachState && reachState !== 'partial' ? reachState : n === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
+      // A broadcast host who is the only person here gets Invite on a phone.
+      // The chip names the room. data-invite="1" is set at every width so the
+      // Broadcast desktop agent can show the same button. The viewer password
+      // is never part of this.
+      const hostHere = typeof BROADCAST !== 'undefined' && BROADCAST && typeof bcHostStored === 'function' && bcHostStored();
+      const hostAlone = !!(hostHere && statusKind === 'alone');
+      let phoneAlone = false;
+      try { phoneAlone = hostAlone && window.matchMedia('(max-width: 700px), (max-height: 500px)').matches; } catch (e) {}
+      const chip = statusEl.closest('.topchip');
+      if (chip) {
+        if (hostAlone) chip.dataset.invite = '1';
+        else delete chip.dataset.invite;
+      }
+      const hdrInvite = document.getElementById('hdrinvite');
+      if (hdrInvite) hdrInvite.hidden = !phoneAlone;
+      const roomLabel = String(params.get('v') || '').replace(/\s+/g, ' ').trim();
+      statusDetail = statusText;
+      const shown = phoneAlone ? (roomLabel || 'Invite') : statusText;
       if (statusEl.dataset) {
         if (statusEl.dataset.kind !== statusKind) statusEl.dataset.kind = statusKind;
         const dr = reachState || '', du = reachState === 'partial' ? String(reach.dead) : '';
@@ -6585,12 +6625,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
       }
       if (reachState && reachState !== 'partial') statusEl.classList.add('alert');
-      if (statusEl.textContent !== statusText) {
-        statusEl.textContent = statusText;
-        statusEl.title = statusText;
-      }
+      if (statusEl.textContent !== shown) statusEl.textContent = shown;
+      if (statusEl.title !== shown) statusEl.title = shown;
       paintLiveBadge();
     }
+    try {
+      const hdrMq = window.matchMedia('(max-width: 700px), (max-height: 500px)');
+      if (hdrMq.addEventListener) hdrMq.addEventListener('change', () => { try { updateStatus(); } catch (e) {} });
+    } catch (e) {}
 
     // Broadcast glance state. The status sentence still carries the detail.
     // The badge is the one word a volunteer, a late viewer, or someone on a
@@ -6599,7 +6641,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const b = document.getElementById('livebadge');
       if (!b) return;
       if (!document.body.classList.contains('broadcast')) { b.dataset.state = ''; return; }
-      const text = statusEl.textContent || '';
+      const text = statusDetail || statusEl.textContent || '';
       const kind = (statusEl.dataset && statusEl.dataset.kind) || '';
       const reachDown = !!(statusEl.dataset && statusEl.dataset.reach && statusEl.dataset.reach !== 'partial');
       // A viewer who is still arriving, or who is alone because the service
@@ -21890,6 +21932,81 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       location.reload(); // load the new admin room fresh — I arrive as its admin
     }
 
+    // The viewer link only. A password, if the room has one, stays out of the
+    // link and out of the words next to it. A phone with a share sheet gets
+    // that sheet. Otherwise the link is copied. The Broadcast desktop agent
+    // calls the same function (also __gifosVideo.shareInvite).
+    function viewerShareUrl() {
+      let raw = (shareUrl && shareUrl.value) || '';
+      if (!raw && typeof room === 'string' && room) {
+        const avBit = (params.get('av') || '').toLowerCase();
+        raw = location.origin + location.pathname + '#v=' + encodeURIComponent(room) + (avBit ? '&av=' + avBit : '') + (BROADCAST ? '&bc=1' : '') + (BROADCAST && params.has('st') ? '&st=1' : '');
+      }
+      if (!raw) return '';
+      const dropKeys = ['pw', 'password', 'guest', 'vpw', 'guestpw', 'pass'];
+      const drop = (sp) => { dropKeys.forEach((k) => sp.delete(k)); };
+      try {
+        const u = new URL(raw, location.origin);
+        drop(u.searchParams);
+        if (u.hash) {
+          const p = new URLSearchParams(u.hash.replace(/^#/, ''));
+          drop(p);
+          u.hash = p.toString();
+        }
+        raw = u.toString();
+      } catch (e) {}
+      const secrets = [];
+      try {
+        if (typeof roomPw === 'string' && roomPw) secrets.push(roomPw);
+        const stored = localStorage.getItem('gifos_vpw_' + (params.get('v') || '') + '.' + ((params.get('av') || '').toLowerCase()));
+        if (stored) secrets.push(stored);
+      } catch (e) {}
+      secrets.forEach((s) => {
+        if (!s) return;
+        raw = raw.split(encodeURIComponent(s)).join('').split(s).join('');
+      });
+      return raw;
+    }
+    function shareMeetingLink(btn) {
+      const url = viewerShareUrl();
+      if (!url) return;
+      const isApp = document.body.classList.contains('app-room');
+      const payload = {
+        title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : 'Join my GifOS meeting',
+        text: 'Tap this link and you’re in:',
+        url: url,
+      };
+      const markCopied = () => {
+        if (!btn) return;
+        const prev = btn.getAttribute('data-label') || 'Invite';
+        btn.textContent = 'Copied';
+        setTimeout(() => { if (btn.textContent === 'Copied') btn.textContent = prev; }, 1600);
+      };
+      const copy = () => {
+        try {
+          if (shareUrl) {
+            const prev = shareUrl.value;
+            shareUrl.value = url;
+            shareUrl.focus();
+            shareUrl.select();
+            document.execCommand('copy');
+            shareUrl.value = prev;
+          }
+        } catch (e) {}
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).catch(() => {});
+        markCopied();
+      };
+      if (typeof navigator.share === 'function') {
+        navigator.share(payload).catch((err) => {
+          if (err && err.name === 'AbortError') return;
+          copy();
+        });
+        return;
+      }
+      copy();
+    }
+    const hdrInviteBtn = document.getElementById('hdrinvite');
+    if (hdrInviteBtn) hdrInviteBtn.onclick = () => shareMeetingLink(hdrInviteBtn);
     document.getElementById('invite').onclick = () => {
       share.classList.add('show'); // keep the top copy row visible/copyable behind the sheet
       showInviteModal();
@@ -23145,6 +23262,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Test hook: lets the e2e suite observe mesh + quality state.
     window.__gifosVideo = {
       participants: participantCount,
+      shareInvite: () => shareMeetingLink(document.getElementById('hdrinvite')),
+      markJoinedForTest: (id) => {
+        const pid = String(id || 'peer').slice(0, 80);
+        if (pid && !rosterIds.includes(pid)) rosterIds.push(pid);
+        try { updateStatus(); } catch (e) {}
+        return participantCount();
+      },
       bot: () => !!myStatus.bot,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
