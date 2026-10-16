@@ -12,6 +12,15 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q25. Starting a broadcast took a tap before the service had a name
+
+The lobby opened on Start broadcasting, and the name was a second screen. A broadcast now opens on Service name and Go live. Watch a broadcast is the outline button under it. The host key is still minted and stored, and Change host key reveals it. A meeting still starts from its own buttons and still shows the host key. `test/mobile/create-one-password.spec.mjs`.
+
+Before: `test/mobile/screenshots/after/iphone-se-service-name.png`.
+After: `test/mobile/screenshots/after/iphone-se-service-first.png`.
+
+Design: the preview, one label, one field, then Go live. Change host key and Add a viewer password are blue text. Watch is an outline, with air under Go live. Warm copy stays at 4. A church desk still goes on with no host key at all.
+
 ### Q24. Chat stayed small at a 200% root font
 
 The log and the composer were `0.85rem`, and the sender’s name was `0.7rem`. They are now `1rem` and `0.875rem`. A 32px root paints the message and the field at 32px and the name at 28px. Send stays 44px or taller, and the composer sits 24px above the dock on iPhone SE. A reaction word, the blur chip, and the stadium label follow the same root size. `test/mobile/chat-scale.spec.mjs`.

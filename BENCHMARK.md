@@ -9,7 +9,7 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 - **Zoom / Meet / Teams.** The hang-up, mute, and camera controls stay inside the screen on a 320px phone. Chat is a sheet or a column that does not sit under the call dock.
 - **FaceTime.** One primary action, huge targets, no password essay, the preview is the screen.
 - **StreamYard / YouTube Live.** The state is a banner now (Q14). They still win the program monitor and the screen a viewer gets when the broadcast has ended.
-- **Church desks.** A volunteer names the service and goes on. This path now does that after Start broadcasting, and the host key stays behind Change (Q22). A desk still has no key and no second screen.
+- **Church desks.** A volunteer names the service and goes on. This path now opens on the service name and Go live (Q25). The host key stays behind Change. A desk still has no key.
 
 ## Scorecard
 
@@ -26,8 +26,8 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 
 Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast state is a full-width banner above the status sentence (Q14). Create & enter stays in the card while the room fields scroll (Q4). More scrolls inside a short landscape screen (Q3). The chip and the dock clear a notch and a home indicator (Q7). The status line and the chip title grow with the root text size (Q6, Q13). Flip sits on the phone dock (Q5b). Create asks for one host password (Q12). The dock gap is at least 8px (Q10). Continue is the only filled join action (Q11).
 
-Corporate, church, and personal are 4.0. None lead. A 5 would mean that audience would switch. Warm copy for church is 4: a broadcast asks for a service name and Go live, and the host key stays behind Change (Q22). It is not a 5. You still open that form from Start broadcasting, and a church desk still goes on with no host key. Landscape is 4: a rotated meeting is the face until you tap, then Hang up comes back above the chin (Q23). It is not a 5. Meet still puts a thinner bar on the picture and does not give a band back to a title chip. Large type is 4: chat, the composer, and the lobby sentence grow with the root font (Q21, Q24). FaceTime still wins that dimension. The dock stays a fixed size.
+Corporate, church, and personal are 4.0. None lead. A 5 would mean that audience would switch. Warm copy for church is 4: the first screen is the service name and Go live, and the host key stays behind Change (Q25). It is not a 5. A church desk still goes on with no host key. Landscape is 4: a rotated meeting is the face until you tap, then Hang up comes back above the chin (Q23). It is not a 5. Meet still puts a thinner bar on the picture and does not give a band back to a title chip. Large type is 4: chat, the composer, and the lobby sentence grow with the root font (Q21, Q24). FaceTime still wins that dimension. The dock stays a fixed size.
 
 ## Next gap
 
-None of these are a 5. Meet still wins once the controls are up on a rotated call. FaceTime still wins large type, because the dock does not grow with the text. A church desk still opens on the service, with no host key and no second screen.
+None of these are a 5. Meet still wins once the controls are up on a rotated call, because the title chip takes a band back from the picture. FaceTime still wins large type, because the dock does not grow with the text. A church desk still has no host key.

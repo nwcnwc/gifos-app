@@ -44,15 +44,29 @@ test('Continue is the only filled join action', async ({ page }) => {
   expect(farEnough(rgb(g.secondaryBg), rgb(g.primaryBg))).toBe(true);
 });
 
-test('Create is primary and Cancel sits apart from it', async ({ page }) => {
+test('Go live is the first action, and Watch sits apart from it', async ({ page }) => {
   await page.goto('/run.html#bc=1', { waitUntil: 'domcontentloaded' });
   await page.locator('#lobby.show').waitFor();
-  await page.locator('#lob-admin-btn').click();
   await page.locator('#lob-admin-go').waitFor({ state: 'visible' });
-  const g = await pair(page, '#lob-admin-cancel', '#lob-admin-go');
+  await expect(page.locator('#lob-admin-btn')).toBeHidden();
+  const g = await page.evaluate(() => {
+    const go = document.getElementById('lob-admin-go').getBoundingClientRect();
+    const watch = document.getElementById('lob-join-btn').getBoundingClientRect();
+    return {
+      gap: watch.top - go.bottom,
+      goH: go.height,
+      watchH: watch.height,
+      goBg: getComputedStyle(document.getElementById('lob-admin-go')).backgroundColor,
+      watchBg: getComputedStyle(document.getElementById('lob-join-btn')).backgroundColor,
+      goBottom: go.bottom,
+      watchBottom: watch.bottom,
+      vh: innerHeight,
+    };
+  });
   expect(g.gap).toBeGreaterThanOrEqual(8);
-  expect(g.gap).toBeLessThanOrEqual(16);
-  expect(g.secondaryH).toBeGreaterThanOrEqual(44);
-  expect(g.primaryH).toBeGreaterThanOrEqual(44);
-  expect(farEnough(rgb(g.secondaryBg), rgb(g.primaryBg))).toBe(true);
+  expect(g.goH).toBeGreaterThanOrEqual(44);
+  expect(g.watchH).toBeGreaterThanOrEqual(44);
+  expect(g.goBottom).toBeLessThanOrEqual(g.vh + 0.5);
+  expect(g.watchBottom).toBeLessThanOrEqual(g.vh + 0.5);
+  expect(farEnough(rgb(g.goBg), rgb(g.watchBg))).toBe(true);
 });

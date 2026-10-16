@@ -3,7 +3,6 @@ import { test, expect } from '@playwright/test';
 async function openCreate(page) {
   await page.goto('/run.html#bc=1', { waitUntil: 'domcontentloaded' });
   await page.locator('#lobby.show').waitFor();
-  await page.locator('#lob-admin-btn').click();
   await page.locator('#lob-admin-go').waitFor({ state: 'visible' });
 }
 

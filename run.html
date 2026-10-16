@@ -1655,6 +1655,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      under the name instead of pinning it to the bottom of a tall card. */
   #lobby.form-open .lob-form-body { flex: 0 1 auto; min-height: 0; overflow: auto; }
   #lobby.form-open #lob-admin .lob-row { flex: 0 0 auto; margin-top: 12px; }
+  /* A broadcast opens on the service. Go live is the only filled action.
+     Watch stays under it. Cancel is not a step. */
+  #lobby.form-open.service-ready #lob-admin { flex: 0 1 auto; }
+  #lobby.form-open.service-ready #lob-join-btn { display: block !important; margin-top: 12px; flex: 0 0 auto; }
+  #lobby.service-ready #lob-admin-cancel { display: none !important; }
+  #lobby.service-ready #lob-admin .lob-row { justify-content: stretch; }
+  #lobby.service-ready #lob-admin-go { flex: 1 1 auto; width: 100%; }
+  #lobby.service-ready #lob-admin-err:empty { min-height: 0; margin: 0; }
+  @media (max-height: 420px) {
+    #lobby.form-open.service-ready.show { grid-template-rows: 40px minmax(0, 1fr); }
+    #lobby.form-open.service-ready .lob-preview { max-height: 40px; }
+    #lobby.form-open.service-ready .lobby-card { padding: 8px 12px; }
+    #lobby.form-open.service-ready .lob-form-body { flex-shrink: 0; }
+  }
   @media (min-width: 701px) {
     #lobby.form-open.show { grid-template-columns: 1.35fr .8fr; grid-template-rows: minmax(0, 1fr); }
   }
@@ -12071,8 +12085,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' : ''));
         } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = goLabel; }
       };
-      document.getElementById('lob-join-btn').onclick = () => { toggle('lob-join'); document.getElementById('lob-admin').style.display = 'none'; const i = document.getElementById('lob-join-in'); if (document.getElementById('lob-join').style.display !== 'none') i.focus(); };
-      document.getElementById('lob-join-cancel').onclick = () => { document.getElementById('lob-join').style.display = 'none'; };
+      document.getElementById('lob-join-btn').onclick = () => {
+        toggle('lob-join');
+        const joinOpen = document.getElementById('lob-join').style.display !== 'none';
+        document.getElementById('lob-admin').style.display = joinOpen ? 'none' : (BC_INTENT ? '' : 'none');
+        document.getElementById('lobby').classList.toggle('form-open', BC_INTENT && !joinOpen);
+        const i = document.getElementById('lob-join-in');
+        if (joinOpen) i.focus();
+      };
+      document.getElementById('lob-join-cancel').onclick = () => {
+        document.getElementById('lob-join').style.display = 'none';
+        if (BC_INTENT) {
+          document.getElementById('lob-admin').style.display = '';
+          document.getElementById('lobby').classList.add('form-open', 'service-ready');
+        }
+      };
       const doJoin = () => {
         const err = document.getElementById('lob-join-err');
         const p = parseMeetInput(document.getElementById('lob-join-in').value);
@@ -12115,7 +12142,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.querySelector('#lobby h1').textContent = 'Broadcast';
         document.querySelector('#lobby .lob-quiet').textContent = 'Your picture is the preview.';
         document.getElementById('lob-open').style.display = 'none';
-        document.getElementById('lob-admin-btn').innerHTML = 'Start broadcasting<small>Name the service. Viewers use the link.</small>';
+        document.getElementById('lob-admin-btn').style.display = 'none';
         document.getElementById('lob-admin-name-lab').hidden = false;
         document.getElementById('lob-admin-name').placeholder = 'Sunday morning';
         document.getElementById('lob-admin-go').textContent = 'Go live';
@@ -12128,12 +12155,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('lob-guest-reveal').textContent = 'Add a viewer password';
         document.getElementById('lob-guest-pass').placeholder = 'Viewer password';
         document.getElementById('lob-guest-pass-note').textContent = 'Optional. Share this, not your host key. It is not part of the link.';
-        document.getElementById('lob-join-btn').innerHTML = 'Watch a broadcast<small>Paste a broadcast link someone shared</small>';
+        document.getElementById('lob-join-btn').textContent = 'Watch a broadcast';
         document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch will show up here.';
       }
       document.getElementById('lob-name').textContent = myName();
       renderLobbyList();
       wireLobby();
+      if (BC_INTENT) {
+        document.getElementById('lob-admin').style.display = '';
+        document.getElementById('lobby').classList.add('form-open', 'service-ready');
+        const key = document.getElementById('lob-admin-pass');
+        if (key && !key.value) key.value = mintHostKey();
+      }
       document.getElementById('lobby').classList.add('show');
       startLobbyPreview();
     }

@@ -3,12 +3,12 @@ import { test, expect } from '@playwright/test';
 async function openCreate(page) {
   await page.goto('/run.html#bc=1', { waitUntil: 'domcontentloaded' });
   await page.locator('#lobby.show').waitFor();
-  await page.locator('#lob-admin-btn').click();
   await page.locator('#lob-admin-go').waitFor({ state: 'visible' });
 }
 
 test('broadcast create is a service name and Go live', async ({ page }) => {
   await openCreate(page);
+  await expect(page.locator('#lob-admin-btn')).toBeHidden();
   await expect(page.locator('#lob-admin-name-lab')).toHaveText('Service name');
   await expect(page.locator('#lob-admin-name')).toHaveAttribute('placeholder', 'Sunday morning');
   await expect(page.locator('#lob-admin-go')).toHaveText('Go live');
