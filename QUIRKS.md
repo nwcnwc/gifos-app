@@ -146,6 +146,10 @@ What this desktop branch already matches: a service hides `#grid` and `#stadium`
 
 What does not match, and is left alone here because the role-controls work is building it: a Watching viewer in this frame still has Unmute, Video, Hand, and Stage, because those hide only after `notadmin`, and this frame never joins. Service help still says ban lives on each tile, and a service does not draw those tiles. `#stagemod` is a host card row, not the raised-hands list. The join step does not yet say a viewer’s name and picture stay off until they are promoted. Shots: `test/e2e/artifacts/broadcast-stage-flag.png`, `small-group-grid-flag.png`.
 
+### Q33. A live service said Just you
+
+Alone on a service, the chip used the small-group sentence. A host now reads **You are live. Send the link.** A viewer reads **You are watching this service.** A small group still reads **Just you. Send the invite.** The line fits beside Fit at 1280, 1920, and 900, and after a resize from 1920 to 900. Before: `test/e2e/artifacts/service-alone-before.png`. After: `test/e2e/artifacts/service-alone-after.png`.
+
 ## Open
 
 A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The dock tucks on a small group, and the room bar, the mute line, the status chip, and Fit stay. The lobby stays at 4: one button, and the other ways in are still on the first screen. Labeled controls stay at 4. Zoom’s bar is still the reference. A Watching viewer’s dock, the raised-hands list, promote and demote, and the viewer join sentence belong to the role-controls work (Q32).

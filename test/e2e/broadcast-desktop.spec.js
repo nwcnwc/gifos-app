@@ -944,6 +944,56 @@ test('the status line fits beside Fit', async ({ page }) => {
   expect(resized.hit, JSON.stringify(resized)).toBe(false);
 });
 
+test('a service alone says you are live or you are watching', async ({ page }) => {
+  async function readStatus() {
+    return page.evaluate(() => {
+      const st = document.getElementById('status');
+      const chip = document.querySelector('.topchip').getBoundingClientRect();
+      const fit = document.getElementById('fitbtn').getBoundingClientRect();
+      const ix = Math.max(0, Math.min(chip.right, fit.right) - Math.max(chip.left, fit.left));
+      const iy = Math.max(0, Math.min(chip.bottom, fit.bottom) - Math.max(chip.top, fit.top));
+      return {
+        text: st.textContent,
+        clip: st.scrollWidth > st.clientWidth + 1,
+        hit: ix > 0 && iy > 0,
+        on: chip.left >= -1 && chip.right <= innerWidth + 1 && fit.right <= innerWidth + 1,
+      };
+    });
+  }
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('view=1') === -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=live' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('You are live') !== -1);
+    const host = await readStatus();
+    expect(host.text).toContain('You are live. Send the link.');
+    expect(host.text).not.toContain('Just you');
+    expect(host.clip, JSON.stringify(host)).toBe(false);
+    expect(host.hit, JSON.stringify(host)).toBe(false);
+    expect(host.on, JSON.stringify(host)).toBe(true);
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.setViewportSize({ width: 900, height: 720 });
+  const resized = await readStatus();
+  expect(resized.text).toContain('You are live. Send the link.');
+  expect(resized.clip, JSON.stringify(resized)).toBe(false);
+  expect(resized.hit, JSON.stringify(resized)).toBe(false);
+  await page.goto('/run.html?desk=liveview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('watching') !== -1);
+  const viewer = await readStatus();
+  expect(viewer.text).toContain('You are watching this service.');
+  expect(viewer.text).not.toContain('Just you');
+  expect(viewer.text).not.toContain('You are live');
+  expect(viewer.clip, JSON.stringify(viewer)).toBe(false);
+  expect(viewer.hit, JSON.stringify(viewer)).toBe(false);
+});
+
 test('microphone and camera off are a line you cannot miss', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
