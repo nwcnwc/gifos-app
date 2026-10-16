@@ -7,7 +7,7 @@ test('the lobby sentence and preview name grow with the root text size', async (
   const box = await page.evaluate(() => {
     const quiet = document.querySelector('.lob-quiet');
     const name = document.getElementById('lob-preview-name');
-    const go = document.getElementById('lob-open').getBoundingClientRect();
+    const go = document.getElementById('lob-admin-btn').getBoundingClientRect();
     const card = document.querySelector('.lobby-card').getBoundingClientRect();
     return {
       quiet: parseFloat(getComputedStyle(quiet).fontSize),

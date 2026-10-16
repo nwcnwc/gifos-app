@@ -1705,8 +1705,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div class="lobby-card">
       <h1>Meeting</h1>
       <p class="lob-quiet">You join muted.</p>
-      <button id="lob-open" class="lob-primary">Start a meeting<small>Open room · anyone with the link can join</small></button>
-      <button id="lob-admin-btn" class="lob-action">Start a room you run<small>You're the admin: set a password, mute/blur, ban a troublemaker</small></button>
+      <button id="lob-admin-btn" class="lob-primary">Start a town hall<small>You host. People with the link can join.</small></button>
+      <button id="lob-open" class="lob-action">Start an open meeting<small>Anyone with the link can join</small></button>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <div class="lob-form-body">
           <label class="lob-namelab" id="lob-admin-name-lab" for="lob-admin-name" hidden>Service name</label>
@@ -12070,6 +12070,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (open && BC_INTENT) {
           document.getElementById('lob-key-block').hidden = true;
           document.getElementById('lob-key-reveal').hidden = false;
+        }
+        if (open && !BC_INTENT) {
+          document.querySelector('#lobby h1').textContent = 'Town hall';
+          document.querySelector('#lobby .lob-quiet').textContent = 'You host. People with the link can join.';
+          n.placeholder = 'Town hall';
         }
         if (open) n.focus();
       };

@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q37. A meeting lobby led with an open room
+
+The filled button was Start a meeting, an open room with no host. Start a room you run talked about a password and banning someone. The filled button is now Start a town hall. It opens the host form: Town hall, Your host key, Generate, and Create & enter. Start an open meeting stays underneath, unfilled. `test/mobile/create-one-password.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-town-hall.png`.
+
+Design: one blue town hall, then an outline open meeting, then Join a link. The host key stays on the form, the way a meeting room you run is built. Corporate stays at 4. A town hall still asks the host for a key, and people who join still land in a meeting.
+
 ### Q36. A church viewer was asked to appear in the meeting
 
 Opening a service link showed “This is how you’ll appear in the meeting” and Preview camera. A viewer stays off camera. The step now says “Watching the service” and “You stay off camera. A name shows only if you chat.” Preview camera is gone. Clear and Save stay. Stop watching replaces Hang up. A host who holds the room’s key still gets the appearance step and Preview camera. `test/mobile/viewer-join.spec.mjs`.

@@ -53,10 +53,23 @@ test('broadcast create is a service name and Go live', async ({ page }) => {
   expect(next).not.toBe(first);
 });
 
-test('a meeting still shows the host key up front', async ({ page }) => {
+test('a meeting lobby leads with a town hall and still shows the host key', async ({ page }) => {
   await page.goto('/run.html', { waitUntil: 'domcontentloaded' });
   await page.locator('#lobby.show').waitFor();
+  await expect(page.locator('#lob-admin-btn')).toContainText('Start a town hall');
+  const places = await page.evaluate(() => {
+    const hall = document.getElementById('lob-admin-btn').getBoundingClientRect();
+    const open = document.getElementById('lob-open').getBoundingClientRect();
+    return {
+      hallFirst: hall.top < open.top,
+      hallBg: getComputedStyle(document.getElementById('lob-admin-btn')).backgroundColor,
+      openBg: getComputedStyle(document.getElementById('lob-open')).backgroundColor,
+    };
+  });
+  expect(places.hallFirst).toBe(true);
+  expect(places.hallBg).not.toBe(places.openBg);
   await page.locator('#lob-admin-btn').click();
+  await expect(page.locator('#lobby h1')).toHaveText('Town hall');
   await page.locator('#lob-admin-go').waitFor({ state: 'visible' });
   await expect(page.locator('#lob-admin-name-lab')).toBeHidden();
   await expect(page.locator('#lob-key-block')).toBeVisible();
