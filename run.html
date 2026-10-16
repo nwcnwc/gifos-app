@@ -963,10 +963,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                 padding: .15rem .55rem; border-radius: .4rem; font-size: .75rem; z-index: 2; }
   .tile .note { color: var(--muted, #8888aa); font-size: .8rem; padding: 1rem; text-align: center; }
   .tile.me { border-color: #5ca0ff; }
+  /* The avatar rides the video track. A camera-off seat paints the letter
+     into that <video> (see paintAvatarCanvas), so the blur classes below
+     cover it the same way they cover a camera. This element only holds the
+     initial for the painter; it is never the picture. */
   .tile .avatar { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: none; align-items: center; justify-content: center;
                   font-size: 3rem; font-weight: 800; color: #3a3a55; background: var(--surface, #14141f); }
-  .tile.cam-off .avatar { display: flex; }
-  .tile.cam-off > video { visibility: hidden; }
   .tile .chips { position: absolute; top: .4rem; left: .4rem; display: flex; flex-direction: column;
                  gap: .25rem; align-items: flex-start; z-index: 3; pointer-events: none; }
   .tile .chips span { background: rgba(10,10,15,.78); border: 1px solid rgba(255,255,255,.14); border-radius: .4rem;
@@ -4180,8 +4182,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       t.video.classList.remove('blur1', 'blur2');
       // The ME tile already SHOWS the pre-blurred outbound pixels (WYSIWYG), so
       // a CSS blur on top would double it; receiver-side CSS blur is for the
-      // remote tiles only.
+      // remote tiles only. A camera-off avatar is those pixels: baked for me,
+      // and this same class for everyone else.
       if (bl && !isMe) t.video.classList.add('blur' + bl);
+      syncAvatarFeed(id, t, isMe, st, gCam);
       if (t.voteBtn) {
         const mine = voteMode === 'kick' ? (dv && myVoteoffs.has(dv))
           : voteMode === 'up' ? (dv && myStageVotes.up.has(dv))
@@ -4731,6 +4735,144 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       paint();
       return pipe.track;
     }
+    // CAMERA-OFF AVATAR. The letter is a frame of the video track, not a
+    // layer on top of the tile. Blur for all and a blur on one person already
+    // add .blur1 / .blur2 to the <video>; once the avatar is that video, those
+    // rules cover it. My own outbound bakes the same radii the camera pipe
+    // uses (11 / 26), because the me tile shows the pixels that leave and a
+    // receiver who strips the CSS class must still see a blur.
+    const AVATAR_W = 640, AVATAR_H = 360;
+    let avatarPipe = null, avatarSharp = null;
+    function paintAvatarCanvas(canvas, name, level) {
+      const w = AVATAR_W, h = AVATAR_H, lvl = level | 0;
+      if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+      const mark = nameInitial(name);
+      const drawSharp = (c) => {
+        const x = c.getContext('2d');
+        x.setTransform(1, 0, 0, 1, 0, 0);
+        x.filter = 'none';
+        x.fillStyle = '#14141f';
+        x.fillRect(0, 0, w, h);
+        x.fillStyle = '#3a3a55';
+        x.font = '800 168px system-ui, sans-serif';
+        x.textAlign = 'center';
+        x.textBaseline = 'middle';
+        x.fillText(mark, w / 2, h / 2);
+      };
+      if (lvl <= 0) { drawSharp(canvas); return; }
+      if (!avatarSharp) avatarSharp = document.createElement('canvas');
+      avatarSharp.width = w; avatarSharp.height = h;
+      drawSharp(avatarSharp);
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.filter = 'none';
+      ctx.clearRect(0, 0, w, h);
+      // One blur() leaves a readable rim on a high-contrast letter. Max
+      // blur on a camera destroys that rim; the avatar is baked the same
+      // way, ping-ponged so a pass never reads the canvas it is clearing.
+      const px = lvl >= 2 ? 26 : 11;
+      const passes = lvl >= 2 ? 2 : 1;
+      const bufs = [document.createElement('canvas'), document.createElement('canvas')];
+      let src = avatarSharp;
+      for (let i = 0; i < passes; i++) {
+        const dest = i === passes - 1 ? canvas : bufs[i];
+        dest.width = w; dest.height = h;
+        const dx = dest.getContext('2d');
+        blurDraw(dx, src, 0, 0, w, h, px, lvl);
+        src = dest;
+      }
+    }
+    function stopAvatarPipe() {
+      if (!avatarPipe) return;
+      try { avatarPipe.track.stop(); } catch (e) {}
+      avatarPipe = null;
+    }
+    function avatarOutboundTrack(name, level) {
+      const lvl = level | 0;
+      const key = nameInitial(name) + '|' + lvl;
+      if (avatarPipe && avatarPipe.key === key && avatarPipe.track && avatarPipe.track.readyState === 'live') {
+        if (avatarPipe.track.requestFrame) { try { avatarPipe.track.requestFrame(); } catch (e) {} }
+        return avatarPipe.track;
+      }
+      stopAvatarPipe();
+      const canvas = document.createElement('canvas');
+      paintAvatarCanvas(canvas, name, lvl);
+      const stream = canvas.captureStream(0);
+      const track = stream.getVideoTracks()[0];
+      avatarPipe = { key, canvas, stream, track, level: lvl };
+      if (track && track.requestFrame) { try { track.requestFrame(); } catch (e) {} }
+      return track;
+    }
+    function showAvatarTrack(video, stream, track) {
+      if (!video || !track) return;
+      const cur = video.srcObject && video.srcObject.getVideoTracks()[0];
+      if (cur !== track) {
+        video.srcObject = stream;
+        const pr = video.play();
+        if (pr && pr.catch) pr.catch(() => {});
+      }
+      if (track.requestFrame) {
+        try { track.requestFrame(); } catch (e) {}
+        requestAnimationFrame(() => { try { if (track.readyState === 'live') track.requestFrame(); } catch (e) {} });
+      }
+    }
+    function remoteWireTrack(t) {
+      const real = t && t.stream;
+      const tr = real && real.getVideoTracks && real.getVideoTracks()[0];
+      if (!tr || tr.readyState !== 'live' || !tr.enabled || tr.muted) return null;
+      return tr;
+    }
+    function clearPeerAvatar(t) {
+      if (!t) return;
+      if (t._avPipe) { try { t._avPipe.track.stop(); } catch (e) {} t._avPipe = null; }
+      t._avatarRiding = false;
+    }
+    function mountPeerAvatar(t, name) {
+      const key = nameInitial(name);
+      if (!t._avPipe || t._avPipe.key !== key || !t._avPipe.track || t._avPipe.track.readyState !== 'live') {
+        if (t._avPipe) { try { t._avPipe.track.stop(); } catch (e) {} }
+        const canvas = document.createElement('canvas');
+        paintAvatarCanvas(canvas, name, 0);
+        const stream = canvas.captureStream(0);
+        const track = stream.getVideoTracks()[0];
+        t._avPipe = { key, canvas, stream, track };
+      }
+      t._avatarRiding = true;
+      showAvatarTrack(t.video, t._avPipe.stream, t._avPipe.track);
+    }
+    // A dark seat's picture is the avatar track. My outbound bakes blur. A
+    // remote seat shows the track they sent when it is a live picture, and
+    // otherwise paints the avatar locally so the receiver blur class has
+    // pixels to cover. An admin video-off or a blocked share does not show
+    // the wire picture; the avatar still rides the video, under the blur.
+    function syncAvatarFeed(id, t, isMe, st, gCam) {
+      if (!t || !t.video) return;
+      const blockedShare = !isMe && typeof shareBlocked === 'function' && !!shareBlocked(id);
+      const dark = !!(seatDark(st) || gCam || blockedShare);
+      if (isMe) {
+        let vt = null;
+        try { vt = sentVideoTrack(); } catch (e) {}
+        if (dark && !vt) vt = avatarOutboundTrack(myName(), blurLevelFor('me') | 0);
+        if (vt) showAvatarTrack(t.video, (vt === (avatarPipe && avatarPipe.track) ? avatarPipe.stream : new MediaStream([vt])), vt);
+        return;
+      }
+      if (!dark) {
+        clearPeerAvatar(t);
+        const tr = t.stream && t.stream.getVideoTracks && t.stream.getVideoTracks()[0];
+        if (tr && t.video.srcObject !== t.stream) {
+          t.video.srcObject = t.stream;
+          const pr = t.video.play(); if (pr && pr.catch) pr.catch(() => {});
+        }
+        return;
+      }
+      const wire = (!gCam && !blockedShare) ? remoteWireTrack(t) : null;
+      if (wire) {
+        clearPeerAvatar(t);
+        showAvatarTrack(t.video, t.stream, wire);
+        return;
+      }
+      mountPeerAvatar(t, displayName(id));
+    }
     // The video track to actually SEND: the strongest blur that applies to me
     // — my own setting, a group-blur targeted at me, or the room's guest blur
     // — is baked into the broadcast pixels at the source. "Blurred" is never
@@ -4738,6 +4880,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function sentVideoTrack() {
       // A broadcast viewer has no outbound video, even if a track was armed
       // by a bypass. Stage guests and hosts publish as a meeting does.
+      // Their local tile can still show the avatar; that still is not sent.
       if (BROADCAST && !bcMayPublishAv()) { try { stopBlurPipe(); } catch (e) {} return null; }
       // A SCREEN SHARE IS A SOURCE SWAP, NOT A SECOND CHANNEL (roadmap §4g).
       // This one function decides what video leaves this device, and every
@@ -4768,12 +4911,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // sharer, and an admin's video-off still stops it outright
         // (stopScreenShare below), so the moderation ladder is not bypassed.
         stopBlurPipe();
+        stopAvatarPipe();
         return scr;
       }
       const cam = localStream && localStream.getVideoTracks()[0];
-      if (!cam) return null;
+      const camOn = !!(cam && cam.readyState === 'live' && cam.enabled && !myStatus.camOff);
+      if (!camOn) {
+        // Camera off: the avatar is the video. A disabled camera track is not
+        // the picture, and it is not what leaves.
+        stopBlurPipe();
+        return avatarOutboundTrack(myName(), blurLevelFor('me') | 0);
+      }
+      stopAvatarPipe();
       const lvl = blurLevelFor('me');
-      if (lvl > 0 && !myStatus.camOff) return startBlurPipe(lvl) || cam;
+      if (lvl > 0) return startBlurPipe(lvl) || cam;
       stopBlurPipe();
       return cam;
     }
@@ -22035,7 +22186,46 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // remote tiles carry the receiver-side CSS blur class.
       blurClassOf: (id) => { if (id === 'me') return blurLevelFor('me'); const t = peers.get(id); if (!t) return null; return t.video.classList.contains('blur2') ? 2 : t.video.classList.contains('blur1') ? 1 : 0; },
       // what this browser actually SENDS: 'blurred' (canvas) vs 'raw' (camera)
-      outboundKind: () => (blurPipe && blurLevelFor('me') > 0 && !myStatus.camOff ? 'blurred' : 'raw'),
+      outboundKind: () => {
+        if (!myStatus.camOff && blurPipe && blurLevelFor('me') > 0) return 'blurred';
+        if (myStatus.camOff && avatarPipe && (blurLevelFor('me') | 0) > 0 && !(BROADCAST && !bcMayPublishAv())) return 'blurred';
+        if (myStatus.camOff) return 'avatar';
+        return 'raw';
+      },
+      // A camera-off seat with no transport, so the gate can watch per-tile
+      // blur and blur-all land on the avatar's video. The tile is the real
+      // one (makeTile + updateTile); nothing here is a second painter.
+      avatarSeatForTest: (opts) => {
+        opts = opts || {};
+        const id = String(opts.id || 'avatar_seat');
+        const name = String(opts.name || 'Ada').slice(0, 40);
+        let p = peers.get(id);
+        if (!p) {
+          const tile = makeTile(id, name, false);
+          p = { id, pc: null, tile: tile.tile, video: tile.video, label: tile.label, avatar: tile.avatar, chips: tile.chips, cap: tile.cap, modbar: tile.modbar, voteBtn: tile.voteBtn,
+            name, headless: false, connected: true, pendingIce: [], absentSince: 0, lastKick: 0, lastHeard: Date.now(), bornAt: Date.now(), incoming: [], neverUp: false, stream: null };
+          peers.set(id, p);
+        }
+        p.name = name;
+        if (p.label) p.label.textContent = name;
+        if (p.avatar) p.avatar.textContent = nameInitial(name);
+        rosterNames[id] = name;
+        statusOf.set(id, { muted: true, camOff: opts.camOff !== false, blur: opts.blur == null ? 0 : (opts.blur | 0), at: Date.now(), rx: Date.now(), scr: 0 });
+        if (opts.useWire) {
+          const canvas = document.createElement('canvas');
+          paintAvatarCanvas(canvas, name, 0);
+          const stream = canvas.captureStream(0);
+          const track = stream.getVideoTracks()[0];
+          if (track && track.requestFrame) { try { track.requestFrame(); } catch (e) {} }
+          p.stream = stream;
+          p._wireHold = { canvas, stream, track };
+        }
+        if (opts.perTileBlur) setMod(id, 'blur', true);
+        if (opts.blurAll) setMod('*', 'blur', true);
+        updateTile(id);
+        const mod = modOf(id);
+        return { id, blur: blurLevelFor(id), blocked: !!(mod.blur && mod.blur.on) };
+      },
       // read-only blur-pipe forensics (e2e-pipe-freeze): how often the canvas
       // that IS the outbound camera was painted, by which driver, at what cost
       blurPipeForTest: () => (blurPipe ? { painted: blurPipe.painted || 0, rvfcN: blurPipe.rvfcN || 0, metroN: blurPipe.metroN || 0,

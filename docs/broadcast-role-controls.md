@@ -54,7 +54,7 @@ A viewer may raise a hand, which asks the host to promote them. Chat stays avail
 
 The audience grid stays off in a broadcast, because viewers have no camera. Host moderation is on Who, and the hand queue still promotes the person who asked.
 
-The gate is `test/browser/e2e-broadcast-roles.js`. It checks the dock, the More cluster, Settings, and the phone and landscape layouts, and it checks that a click does not publish.
+The gate is `test/browser/e2e-broadcast-roles.js`. It checks the dock, the More cluster, Settings, and the phone and landscape layouts, and it checks that a click does not publish. The same command then runs `test/browser/e2e-avatar-feed.js`: with the camera off, the avatar is a frame of the video, and blur for all and a per-person blur cover that frame.
 
 ## Evidence from the desktop QA branch
 

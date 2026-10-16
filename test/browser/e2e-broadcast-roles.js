@@ -7,10 +7,13 @@
  * controls. Hosts keep publish controls and moderate from Who.
  *
  * Gate: NODE_PATH=/tmp/bc-pw/node_modules node test/browser/e2e-broadcast-roles.js
+ * That command also runs test/browser/e2e-avatar-feed.js (the avatar rides
+ * the video track, and blur covers it).
  */
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+const { spawnSync } = require('child_process');
 const { chromium } = require('playwright-core');
 
 const ROOT = path.join(__dirname, '..', '..');
@@ -270,4 +273,10 @@ function fail(list, msg) { list.push(msg); }
     process.exit(1);
   }
   console.log('PASS broadcast roles');
+  const avatar = spawnSync(process.execPath, [path.join(__dirname, 'e2e-avatar-feed.js')], {
+    stdio: 'inherit',
+    env: process.env,
+    cwd: ROOT,
+  });
+  if (avatar.status) process.exit(avatar.status || 1);
 })().catch((err) => { console.error(err); process.exit(1); });

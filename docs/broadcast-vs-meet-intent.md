@@ -72,6 +72,14 @@ What a called-up person can do beyond camera and microphone is only partly writt
 
 The skin is not a security boundary. A client that strips `#bc=1` lands in the meeting UI of the same room. Signed authority, admin-only stage entry, and receiver-side moderation are the admin room's rules. (`run.html` broadcast flag comment.)
 
+### Avatar rides the video
+
+Nathan's rule for Meet and for Broadcast: a person's avatar rides their video feed. When the camera is off, the page paints that avatar into the video track. Blur for all, and a blur on one person, then blur the avatar the same way they blur a camera, because the avatar is the picture in that track.
+
+The shared page is `run.html`. The blur classes (`.blur1`, `.blur2`, and the same filter on a fullscreen tile) sit on the `<video>`. `paintAvatarCanvas` paints the initial into a video track and the overlay stays undisplayed. The me tile shows that track with the blur baked in, which is the same rule as a camera: the preview is the pixels that leave. Everyone else's tile keeps the receiver blur class on the video. A broadcast viewer publishes nothing. The still can sit on their own tile, and `sentVideoTrack` stays empty for that seat.
+
+The gate is `test/browser/e2e-avatar-feed.js`. It is part of the broadcast role gate (`test/browser/e2e-broadcast-roles.js` runs it after the role checks). It failed while the letter was an overlay, then passed once the letter was a frame of the video.
+
 ## How someone moves on and off the stage, and who decides
 
 **Meet, open room.** You decide. Stage means "step up to be seen and heard first by the whole room," and you step down yourself. (`run.html` Help.) Seats are capped. A room majority can vote someone onto the stage, off it, or out of the room, because there is no admin to ban. (`run.html` `applyAdminUi`.) Tapping Song steps that person onto the stage as the song leader. (`run.html` Help, "Singing together".)
