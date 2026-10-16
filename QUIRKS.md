@@ -18,7 +18,7 @@ The link from Start a town hall opened as a meeting: “in the meeting,” and a
 
 After: `test/mobile/screenshots/after/iphone-se-town-hall-join.png`.
 
-Design: the same room, named for what they joined. Corporate stays at 4. The host still has a key.
+Design: the same room, named for what they joined. Corporate stays at 4. They still pass an appearance step.
 
 ### Q42. A church viewer still stopped to give a name
 
@@ -26,7 +26,7 @@ Opening a service showed Watching the service, a name, and Save. The name is alr
 
 After: `test/mobile/screenshots/after/iphone-se-viewer-straight.png`.
 
-Design: the service is the screen. Church stays at 4. A desk still mints a host key.
+Design: the service is the screen. Church stays at 4. A quiet service still reads RECONNECTING.
 
 ### Q41. Go live left the camera off
 
@@ -34,7 +34,7 @@ A stream host landed off air and had to tap the camera. Go live now turns the ca
 
 After: `test/mobile/screenshots/after/iphone-se-stream-live.png`.
 
-Design: the stage is the camera, Copy sits on the dock. Personal stays at 4. The host key is still minted, and the first screen is still a form FaceTime does not have.
+Design: the stage is the camera, Copy sits on the dock. Personal stays at 4. The first screen is still a form. FaceTime is the preview.
 
 ### Q40. The friend link was a later hunt
 
