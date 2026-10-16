@@ -267,6 +267,14 @@ Repro: `test/mobile/caption-on-tile.js`. The line is anchored to the bottom of t
 
 Before: `qa/mobile/shots/before-caption-tile-iphone-se-200.png`. After: `qa/mobile/shots/after-caption-tile-iphone-se-200.png`.
 
+### 33. Start recording sat below the fold
+
+On an iPhone SE, Start recording ended at y=758 on a 568px screen. Sideways it ended at 603 on a 320px screen. At 200% text it ended at 1865. The button was the same color as Cancel, at 13px.
+
+Repro: `test/mobile/record-start.js`. The sheet says what will be recorded, in one sentence. Start recording is the blue button and stays on screen. Cancel is the outline. The other choices scroll above those buttons. On a phone the essays under the choices are hidden.
+
+Before: `qa/mobile/shots/before-record-start-iphone-se.png`. After: `qa/mobile/shots/after-record-start-iphone-se.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.

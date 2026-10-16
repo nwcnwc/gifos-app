@@ -13,7 +13,7 @@ Out of scope for this branch, so they are not scored as wins or losses here: the
 - iOS: the notch and home indicator are cleared. `viewport-fit=cover` is set and the dock, chip, and Fit use `env(safe-area-inset-*)`.
 - Meet, Teams, YouTube name the control Captions. Ours does too, and at 200% text that label is 32px.
 - Zoom and church tools: a host admits from a waiting-room list, and the other host controls say what they do. Ours does too. In landscape, Invite, Room password, Waiting room, and Chat are on the first screen of More.
-- StreamYard, Restream, YouTube Live: a producer sees Live, and Record and Captions, on the call. Ours does too, above the dock, until the call is quiet. The record sheet still asks what to capture before it starts.
+- StreamYard, Restream, YouTube Live: a producer sees Live, and Record and Captions, on the call. Ours does too, above the dock, until the call is quiet. Record opens with the choice already made, and Start recording stays on screen.
 - FaceTime tucks the call controls until you tap. On a phone, Live, Record, Captions, and the dock do too. Fit and the name chip stay.
 - A purpose-built church volunteer page still has a bigger live control than More. On a phone, More's first screen is now four actions, and Invite is the blue one.
 
@@ -26,7 +26,7 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 | Job | Score | Note |
 | --- | --- | --- |
 | End the call, mute, camera, on a 360px phone | 9 | Hang up, mute, camera, and Fit fit and are at least 44px. On a phone they tuck when the call is quiet and come back on a tap. |
-| Host: password, record, captions, stage, in landscape | 9 | Live, Record, and Captions are on the call. Room password, Vote on someone, and Step on stage stay in More and scroll into view. Waiting room admits from a list. |
+| Host: password, record, captions, stage, in landscape | 10 | Live, Record, and Captions are on the call. Record says what it will capture, and Start recording stays on screen, including at 200% text. Room password, Vote on someone, and Step on stage stay in More. Waiting room admits from a list. |
 | Chat or check names without losing the controls | 9 | The count and the latest line sit on the call. Emoji inserts into the field. Theirs is a light bubble, mine is blue, and both names are 1rem. |
 | Looks trustworthy (nothing cut off, type scales) | 9 | The header says "4 in call". Live is on the call, and Recording is a separate red state. When the call is quiet the faces use the space the dock was holding. |
 | **Audience** | **9** | Hang up, landscape host tools, the live state, captions, chat, the home indicator, the header count, and a waiting-room admit list are in good shape. The quiet call tucks the dock. We do not lead yet. |
@@ -89,3 +89,4 @@ Family and friends. Warm, few steps, a texted link.
 30. Sideways tiles. `test/mobile/sideways-tiles.js` failed (SE 141×46 aspect 3.07, iPhone 15 bottom pair 130×60 aspect 2.19), then passed. Fit shares the header row on a short landscape phone, and a tile that would have been a strip stays within a portrait-phone shape. Desktop packing is unchanged. Personal sideways 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 31. Lobby at 200% text. `test/mobile/lobby-large-text.js` failed (Join bottom 986 on a 568px SE, and all three actions bottom 539 on a sideways SE), then passed. A phone shows the action title only, with tighter padding, so Start and Join stay on screen and Start stays the only blue button. Church lobby 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet. Captions are still the low church row.
 32. Caption on the face. `test/mobile/caption-on-tile.js` failed (a line was 618px tall on a 236px face and started above the screen at 200% text), then passed. The line stays in the lower part of the tile, at 1.25rem, including at 200%. Church captions 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.
+33. Record start. `test/mobile/record-start.js` failed (Start bottom 758 on a 568px SE, and 1865 at 200% text), then passed. The sheet states the capture in one sentence, Start is the blue button, and Cancel is the outline. Both stay on screen in portrait, sideways, and at 200% text. Corporate host 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.

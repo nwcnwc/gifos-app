@@ -657,6 +657,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      later in the sheet) so radios/checkboxes stay small and native, not full-width. */
   .name-box .rec-opt input { width: 16px; min-width: 16px; height: 16px; flex: none; padding: 0; margin: .18rem 0 0; border: none; background: none; }
   .name-box .rec-opt.inline input { margin: 0; }
+  /* Record: the choice is a sentence, Start stays on screen, and the
+     other capture options scroll behind it. Start is the only blue button. */
+  .name-box.rec-box {
+    display: flex; flex-direction: column; text-align: left; overflow: hidden;
+    width: min(440px, calc(100vw - 24px)); max-width: none;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    padding: 16px 16px 12px; border: 0; border-radius: 20px;
+    background: #fff; color: #1d1d1f;
+  }
+  .name-box.rec-box h3 { color: #1d1d1f; font-size: 1.25rem; line-height: 1.2; margin: 0 0 6px; }
+  .name-box.rec-box p { margin: 0 0 8px; }
+  .name-box.rec-box .rec-note { color: #3a3a3f; font-size: 1rem; line-height: 1.3; }
+  .name-box.rec-box #rec-now { color: #1d1d1f; font-size: 1rem; font-weight: 700; line-height: 1.3; }
+  .name-box.rec-box .rec-scroll { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+  .name-box.rec-box .rec-sec > b { color: #1d1d1f; font-size: 1rem; }
+  .name-box.rec-box .rec-opt { font-size: 1rem; min-height: 44px; color: #1d1d1f; }
+  .name-box.rec-box .rec-opt small { color: #3a3a3f; }
+  .name-box.rec-box #rec-err { color: #b61622; font-size: 1rem; }
+  .name-box.rec-box .rec-actions { display: flex; gap: 12px; flex: 0 0 auto; padding-top: 12px; }
+  .name-box.rec-box .rec-actions button { flex: 1 1 0; font-size: 1rem; line-height: 1.2; min-height: 44px; padding: 8px 12px; }
+  @media (max-width: 700px) {
+    .name-box.rec-box .rec-opt small,
+    .name-box.rec-box .rec-scroll > p { display: none; }
+    .name-box.rec-box .rec-actions { flex-direction: column; }
+  }
   #stagefeed .rowtile { width: 100%; }
   .rowtile video { width: 100%; height: 100%; object-fit: cover; background: #000; }
   /* Stage feeds are verbatim cameras: show the FULL broadcast frame, exactly
@@ -20711,9 +20736,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const opt = (val, name, ttl, sub) => '<label class="rec-opt"><input type="radio" name="' + name + '" value="' + val + '"' + (val === scopeDefault ? ' checked' : '') + '> <span><b>' + ttl + '</b><small>' + sub + '</small></span></label>';
       const qDef = recDefaultQuality(IS_MOBILE);
       const qRadio = (val, label) => '<label class="rec-opt inline"><input type="radio" name="rec-q" value="' + val + '"' + (qDef === val ? ' checked' : '') + '> ' + label + '</label>';
-      bg.innerHTML = '<div class="name-box" style="max-width:470px;text-align:left">' +
+      const scopeLine = (v) => v === 'stage' ? 'This records the stage.'
+        : v === 'row' ? 'This records you and the people with you.'
+        : v === 'app' ? 'This records the shared app as well.'
+        : 'This records everyone you can see.';
+      bg.innerHTML = '<div class="name-box rec-box">' +
         '<h3>Record this meeting</h3>' +
-        '<p style="color:#889;font-size:.85rem">Saved to YOUR device only — everyone sees the ⏺ while you record. Blur and mute are baked in.</p>' +
+        '<p class="rec-note">Saved on this device only.</p>' +
+        '<p id="rec-now">' + scopeLine(scopeDefault) + '</p>' +
+        '<div class="rec-scroll">' +
         '<div class="rec-sec"><b>What to capture</b>' +
         opt('stage', 'rec-scope', 'The stage', stageSub) +
         opt('row', 'rec-scope', 'Stage + my row', 'The stage plus the people right around you.') +
@@ -20724,13 +20755,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         qRadio('low', 'Low · 720p') +
         qRadio('std', 'Standard · 1080p') +
         qRadio('high', 'High · 1080p') +
-        (IS_MOBILE ? '<p style="color:#889;font-size:.8rem;margin:.2rem 0 0">On a phone, 720p is the default. 1080p is drawn on the processor and fills memory fast.</p>' : '') +
+        (IS_MOBILE ? '<p>On a phone, 720p is the default. 1080p is drawn on the processor and fills memory fast.</p>' : '') +
         '</div>' +
         '<label class="rec-opt inline" style="margin-top:.3rem"><input type="checkbox" id="rec-matchmix" checked> Match my sound mix (record what I hear)</label>' +
-        '<p id="rec-err" hidden style="color:#ff8a8a;font-size:.9rem;margin:.6rem 0 0"></p>' +
-        '<div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.9rem">' +
-        '<button id="ro-cancel" class="lob-ghost">Cancel</button><button id="ro-start">Start recording</button></div></div>';
+        '</div>' +
+        '<p id="rec-err" hidden></p>' +
+        '<div class="rec-actions">' +
+        '<button id="ro-start" class="appear-primary" type="button">Start recording</button>' +
+        '<button id="ro-cancel" class="appear-secondary" type="button">Cancel</button></div></div>';
       document.body.appendChild(bg);
+      const paintScope = () => {
+        const picked = bg.querySelector('input[name=rec-scope]:checked');
+        const line = bg.querySelector('#rec-now');
+        if (line && picked) line.textContent = scopeLine(picked.value);
+      };
+      bg.querySelectorAll('input[name=rec-scope]').forEach((el) => { el.addEventListener('change', paintScope); });
       const close = openModal(bg, () => { if (bg.parentNode) bg.remove(); });
       bg.querySelector('#ro-cancel').onclick = () => close();
       bg.querySelector('#ro-start').onclick = async () => {
