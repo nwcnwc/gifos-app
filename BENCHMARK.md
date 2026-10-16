@@ -26,8 +26,8 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 
 Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast state is a full-width banner above the status sentence (Q14). Create & enter stays in the card while the room fields scroll (Q4). More scrolls inside a short landscape screen (Q3). The chip and the dock clear a notch and a home indicator (Q7). The status line and the chip title grow with the root text size (Q6, Q13). Flip sits on the phone dock (Q5b). Create asks for one host password (Q12). The dock gap is at least 8px (Q10). Continue is the only filled join action (Q11).
 
-Corporate, church, and personal are 4.0. None lead. A 5 would mean that audience would switch. Warm copy for church is 4: the host step says “Your host key,” the key is readable, and Generate fills it (Q19). It is not a 5. A church desk still names the service and goes on. Large type is 4. FaceTime still wins that dimension. Landscape stays at 4: Meet is still the meeting a corporate user would rotate into.
+Corporate, church, and personal are 4.0. None lead. A 5 would mean that audience would switch. Warm copy for church is 4: the host step says “Your host key,” the key is readable, and Generate fills it (Q19). It is not a 5. A church desk still names the service and goes on. Landscape is 4: a rotated meeting keeps the face above a 56px dock (Q20). Meet still wins a rotated call. Large type is 4. FaceTime still wins that dimension.
 
 ## Next gap
 
-A rotated meeting still spends the short side on the chip, Fit, and the dock. Meet keeps the other person large when the phone turns.
+The lobby’s quiet line is still 14px and the preview name is still 15px when the root font is 32px. The in-call chip, Fit, More, and reactions already grow.
