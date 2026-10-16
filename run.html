@@ -1278,6 +1278,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #who-list { max-height: 55vh; max-height: 55dvh; }
   #adm-banned, #who-list { overflow-y: auto; text-align: left; font-size: .8rem; }
   #adm-banned .brow, #who-list .brow { display: flex; align-items: center; gap: .5rem; padding: .25rem 0; border-bottom: 1px solid var(--surface, #1c1c2b); }
+  /* People is a name list, the same job as Zoom, Meet, Teams, and FaceTime.
+     Addresses stay in the download, not on the sheet. */
+  #who-modal .name-box { background: #fff; color: #1d1d1f; border: 0; border-radius: 20px;
+    width: min(420px, calc(100vw - 24px)); }
+  #who-modal h3 { color: #1d1d1f; font-size: 1.35rem; }
+  #who-modal .who-lead { color: #3a3a3f; font-size: 1rem; margin: 0 0 8px; }
+  #who-list .who-h { margin-top: 10px; font-weight: 700; font-size: 0.85rem; color: #3a3a3f; }
+  #who-list .brow { min-height: 44px; padding: 8px 0; border-bottom: 1px solid #e4e7ee; font-size: 1rem; }
+  #who-list .who-name { flex: 1; min-width: 0; font-size: 1rem; font-weight: 650; color: #1d1d1f; }
+  #who-list .who-state { font-size: 1rem; color: #3a3a3f; text-align: right; }
+  #who-modal #who-dl, #who-modal #who-close {
+    background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; min-height: 44px; min-width: 44px; }
   #adm-banned .brow button { padding: .15rem .5rem; font-size: .72rem; border-radius: .35rem;
                              border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   /* ---- the front-door lobby (cold open only) ---- */
@@ -2284,12 +2296,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="who-modal" style="display:none">
     <div class="name-box" style="max-width:480px;text-align:left">
-      <h3>Who is on this meeting</h3>
-      <p style="color:#889;font-size:.85rem">There is no server in the middle storing this meeting. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone's internet address — nobody is anonymous. ✓ marks an address the GifOS relay verified or this device saw directly; anything else is only what that person's device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.</p>
+      <h3>People</h3>
+      <p class="who-lead">Everyone on this call.</p>
       <div id="who-list"></div>
       <div style="display:flex;gap:.5rem;justify-content:center;margin-top:.8rem">
         <button id="who-dl">Download this list</button>
-        <button id="who-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+        <button id="who-close">Close</button>
       </div>
     </div>
   </div>
@@ -11992,25 +12004,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       else if (!r.here) out.push('left ' + hhmm(r.last));
       return out;
     }
+    function whoFaceState(r) {
+      if (r.ejected) return 'Removed';
+      if (!r.here) return 'Left';
+      const st = r.me ? myStatus : (statusOf.get(r.pid) || {});
+      const bits = [];
+      if (st.muted) bits.push('Muted');
+      if (st.camOff && !st.scr) bits.push('Camera off');
+      return bits.join(', ');
+    }
     function showWhoModal() {
       const opening = whoModal.style.display !== 'flex';
       const list = document.getElementById('who-list');
       list.innerHTML = '';
       const rows = whoRows();
-      for (const g of WHO_GROUPS) {
-        const inG = rows.filter((r) => whoGroupOf(r) === g.k);
-        if (!inG.length) continue;
-        if (g.title) {
-          const h = document.createElement('div'); h.className = 'who-h'; h.dataset.group = g.k;
-          h.style.cssText = 'margin-top:.7rem;font-weight:600;font-size:.8rem';
-          h.textContent = g.title + ' (' + inG.length + ')';
-          if (g.note) { const n = document.createElement('div'); n.style.cssText = 'font-weight:400;color:#889'; n.textContent = g.note; h.appendChild(n); }
+      const paintWho = (inG, title) => {
+        if (!inG.length) return;
+        if (title) {
+          const h = document.createElement('div'); h.className = 'who-h';
+          h.textContent = title;
           list.appendChild(h);
         }
         for (const r of inG) {
-          const row = document.createElement('div'); row.className = 'brow'; row.dataset.group = g.k;
+          const row = document.createElement('div'); row.className = 'brow';
           if (!r.here) row.style.opacity = '.65';
-          const nm = document.createElement('span'); nm.style.flex = '1'; nm.textContent = r.name;
+          const nm = document.createElement('span'); nm.className = 'who-name'; nm.textContent = r.name;
           const whoAv = r.me ? (GifOS.store.identity().avatar) : ((peers.get(r.pid) && peers.get(r.pid).avatarUrl) ? { url: peers.get(r.pid).avatarUrl, hash: peers.get(r.pid).avatarHash } : null);
           if (whoAv && whoAv.url) {
             const img = document.createElement('img');
@@ -12018,15 +12036,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (whoAv.hash) img.setAttribute('data-hash', whoAv.hash);
             nm.appendChild(img);
           }
-          const ip = document.createElement('span'); ip.style.color = '#889'; ip.style.textAlign = 'right';
-          whoAddrLines(r).forEach((t, i) => {
-            if (i) ip.appendChild(document.createElement('br'));
-            if (r.forged && !i) { const w = document.createElement('b'); w.className = 'who-forged'; w.style.color = '#e5484d'; w.textContent = t; ip.appendChild(w); }
-            else ip.appendChild(document.createTextNode(t));
-          });
-          row.appendChild(nm); row.appendChild(ip); list.appendChild(row);
+          const state = document.createElement('span'); state.className = 'who-state';
+          state.textContent = whoFaceState(r);
+          row.appendChild(nm); row.appendChild(state); list.appendChild(row);
         }
-      }
+      };
+      paintWho(rows.filter((r) => r.here && !r.ejected), '');
+      paintWho(rows.filter((r) => r.ejected), 'Removed');
+      paintWho(rows.filter((r) => !r.here && !r.ejected), 'Left');
       whoModal.style.display = 'flex';
       if (opening) whoObserve().then(() => whoRefresh()); // what my links see right now, not 15 s ago
     }

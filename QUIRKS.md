@@ -411,6 +411,16 @@ Repro: `test/mobile/live-meet.js`. It failed (`Broadcast did not open` on the fi
 
 Before: `qa/mobile/shots/before-live-meet-iphone-se.png`. After: `qa/mobile/shots/after-live-meet-iphone-se.png`.
 
+### 50. People opened on internet addresses
+
+Zoom, Meet, Teams, and FaceTime open a list of names. Ours opened "Who is on this meeting" and led with a paragraph about internet addresses, then "address unknown" beside each name at 12.8px.
+
+The sheet is People. Each row is the name, plus Muted or Camera off. The address file stays on Download.
+
+Repro: `test/mobile/people-list.js`. It failed (`title "Who is on this meeting"`, Ruth 12.8px, `Ruth address unknown`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/people-list.js`.
+
+Before: `qa/mobile/shots/before-people-list-iphone-se.png`. After: `qa/mobile/shots/after-people-list-iphone-se.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.
