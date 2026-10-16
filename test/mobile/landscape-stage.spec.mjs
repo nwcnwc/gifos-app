@@ -21,6 +21,7 @@ test('a rotated meeting is the face until you tap', async ({ page }) => {
   const away = await page.evaluate(() => {
     const me = document.querySelector('.tile.me').getBoundingClientRect();
     const bar = document.querySelector('.bar').getBoundingClientRect();
+    const chip = document.querySelector('.topchip').getBoundingClientRect();
     const two = GifOS.meetLayout.layoutFor({
       w: innerWidth,
       h: innerHeight,
@@ -28,24 +29,34 @@ test('a rotated meeting is the face until you tap', async ({ page }) => {
       tiles: [{ id: 'ada' }, { id: 'me', me: true }],
     });
     const ada = (two.rects || []).find((r) => r.id === 'ada');
+    const chipStyle = getComputedStyle(document.querySelector('.topchip'));
     return {
       klass: document.body.classList.contains('chrome-away'),
       meTop: me.top,
       meBottom: me.bottom,
       meH: me.height,
+      meW: me.width,
       barTop: bar.top,
+      chipBottom: chip.bottom,
+      chipOpacity: parseFloat(chipStyle.opacity),
       ada,
       vh: innerHeight,
+      vw: innerWidth,
     };
   });
   expect(away.klass).toBe(true);
-  expect(away.meTop).toBeLessThanOrEqual(8);
+  expect(away.chipOpacity).toBeGreaterThan(0.9);
+  expect(away.chipBottom).toBeGreaterThanOrEqual(36);
+  expect(away.meTop).toBeGreaterThanOrEqual(away.chipBottom - 1);
   expect(away.meBottom).toBeGreaterThanOrEqual(away.vh - 2);
-  expect(away.meH).toBeGreaterThanOrEqual(away.vh * 0.75);
+  expect(away.meH).toBeGreaterThanOrEqual(away.vh * 0.55);
+  expect(Math.min(away.meW, away.meH)).toBeGreaterThanOrEqual(120);
   expect(away.barTop).toBeGreaterThanOrEqual(away.vh - 1);
   expect(away.ada).toBeTruthy();
-  expect(away.ada.h).toBeGreaterThanOrEqual(away.vh * 0.7);
-  expect(away.ada.y + away.ada.h).toBeGreaterThanOrEqual(away.vh - 8);
+  expect(away.ada.y).toBeGreaterThanOrEqual(48);
+  expect(away.ada.h).toBeGreaterThanOrEqual(away.vh * 0.45);
+  expect(Math.min(away.ada.w, away.ada.h)).toBeGreaterThanOrEqual(120);
+  expect(away.ada.y + away.ada.h).toBeLessThanOrEqual(away.vh + 1);
 
   await page.locator('.tile.me').click({ position: { x: 24, y: 36 } });
   await page.waitForFunction(() => !document.body.classList.contains('chrome-away'));
@@ -73,8 +84,10 @@ test('a rotated meeting is the face until you tap', async ({ page }) => {
   const again = await page.evaluate(() => {
     const me = document.querySelector('.tile.me').getBoundingClientRect();
     const bar = document.querySelector('.bar').getBoundingClientRect();
-    return { bottom: me.bottom, barTop: bar.top, vh: innerHeight };
+    const chip = document.querySelector('.topchip').getBoundingClientRect();
+    return { top: me.top, bottom: me.bottom, barTop: bar.top, chipBottom: chip.bottom, vh: innerHeight };
   });
+  expect(again.top).toBeGreaterThanOrEqual(again.chipBottom - 1);
   expect(again.bottom).toBeGreaterThanOrEqual(again.vh - 2);
   expect(again.barTop).toBeGreaterThanOrEqual(again.vh - 1);
 });

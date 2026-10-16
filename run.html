@@ -1475,18 +1475,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="5"]) .tile.me {
       width: 138px; height: 182px; }
   }
-  /* A rotated phone puts the controls away until a tap. The face keeps the
-     band the dock was reserving. A broadcast keeps its state banner. */
+  /* A rotated phone puts the dock away until a tap. The title chip keeps
+     its band. The face takes the band the dock was reserving. */
   body.chrome-away .bar {
     transform: translate(-50%, calc(100% + 24px));
     pointer-events: none;
   }
-  body.chrome-away .topchip,
   body.chrome-away .fitbtn,
   body.chrome-away .admcount { opacity: 0; pointer-events: none; }
-  body.chrome-away.broadcast .topchip { opacity: 1; background: transparent; pointer-events: none; }
-  body.chrome-away.broadcast .topchip .title,
-  body.chrome-away.broadcast .topchip .status { opacity: 0; }
   /* A rotated phone is short. The dock drops to the control size so the face keeps the stage. */
   @media (max-height: 420px) {
     .bar { height: 56px; }
@@ -5131,21 +5127,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let top, bottom;
         syncMeetChrome();
         if (short) {
-          if (document.body.classList.contains('chrome-away')) {
-            let banner = 0;
-            if (document.body.classList.contains('broadcast')) {
-              const badge = document.getElementById('livebadge');
-              if (badge && getComputedStyle(badge).display !== 'none') banner = badge.getBoundingClientRect().bottom;
-            }
-            top = Math.max(0, Math.ceil(banner));
-            bottom = 0;
-          } else {
-            const chip = document.querySelector('.topchip');
-            const shown = chip && getComputedStyle(chip).display !== 'none' && getComputedStyle(chip).opacity !== '0';
-            const chipBottom = shown ? chip.getBoundingClientRect().bottom : 14;
-            top = Math.max(48, Math.ceil(chipBottom + 6));
-            bottom = 72;
+          const chip = document.querySelector('.topchip');
+          const shown = chip && getComputedStyle(chip).display !== 'none' && parseFloat(getComputedStyle(chip).opacity) > 0.5;
+          let chipBottom = shown ? chip.getBoundingClientRect().bottom : 14;
+          if (document.body.classList.contains('broadcast')) {
+            const badge = document.getElementById('livebadge');
+            if (badge && getComputedStyle(badge).display !== 'none') chipBottom = Math.max(chipBottom, badge.getBoundingClientRect().bottom);
           }
+          top = Math.max(48, Math.ceil(chipBottom + 6));
+          bottom = document.body.classList.contains('chrome-away') ? 0 : 72;
         }
         let holdMs = 2500;
         try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}

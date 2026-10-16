@@ -12,6 +12,15 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q26. A rotated meeting gave the title's band to the picture
+
+With the controls away, the face started at y=0 and the title chip was invisible. The chip now keeps its band. On an iPhone SE landscape it sits at y=14 to y=53, and the face runs from y=59 to y=320. The dock stays off the screen (top 330) until a tap, then Hang up comes back above the chin. A second face in that box stays at least 120px on its short side. `test/mobile/landscape-stage.spec.mjs`.
+
+Before: `test/mobile/screenshots/after/iphone-se-landscape-face.png`.
+After: `test/mobile/screenshots/after/iphone-se-landscape-chip.png`.
+
+Design: the title is a dark pill in its own band, and the picture is everything under it. The dock is gone until you tap. Landscape stays at 4. Meet still lays a thinner bar on the picture when the controls are up.
+
 ### Q25. Starting a broadcast took a tap before the service had a name
 
 The lobby opened on Start broadcasting, and the name was a second screen. A broadcast now opens on Service name and Go live. Watch a broadcast is the outline button under it. The host key is still minted and stored, and Change host key reveals it. A meeting still starts from its own buttons and still shows the host key. `test/mobile/create-one-password.spec.mjs`.
