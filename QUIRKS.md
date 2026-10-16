@@ -24,19 +24,19 @@ The top chip now carries `#onair`. A host (stored admin key, or signed-in admin)
 
 Both are in `test/e2e/broadcast-desktop.spec.js` and passed on Chromium, Firefox, and WebKit.
 
+### Q5. Primary dock controls are icon-only
+
+Mic, camera, reactions, and More now carry a visible word inside the button (`Unmute` / `Mute` / `Video` / `React` / `More`). Off is filled red `#b61622` with white text; on is filled green. The word stays inside the 68px circle at 1280, 1920, and 900, and the dock stays inside the window after a resize from 1920 to 900. Screenshots: `test/e2e/artifacts/dock-labels-1280.png`, `test/e2e/artifacts/dock-labels-900.png`.
+
+### Q6. No mute / camera keyboard shortcuts
+
+`M` toggles the mic and `V` toggles the camera, except while focus is in a text field. The chat test types `m` into the composer and the mic stays on Unmute. The buttons’ titles name the shortcut.
+
 ## Open
 
 ### Q4. More sheet can leave the viewport
 
 `#barmore` is `overflow: visible` and anchored `bottom: 122px` with no `max-height`. At 1280×500 the sheet’s top is **−2px** (chrome clipped, buttons still inside). Shorter live-resizes clip controls with no way to scroll to them. Escape does close the sheet (handled). Not the worst item at 720px tall, but it fails the resize pass.
-
-### Q5. Primary dock controls are icon-only
-
-Mic, camera, reactions, and More are circles with an accessible name and no visible word. Zoom, Meet, and Teams label Mute and Video on desktop. A volunteer or an older member has to hover (the `title`) to learn the control. The off state is a dark-red glyph on a light-gray circle, not the filled red mute button those apps use, so “you are muted” is easy to miss.
-
-### Q6. No mute / camera keyboard shortcuts
-
-The key handler covers Escape and modal Tab. There is no M / V (or any other) shortcut for mic and camera. Meet and Zoom both have one. A keyboard-only producer cannot mute without tabbing to the dock.
 
 ### Q7. Reactions and More occupy the same slot
 

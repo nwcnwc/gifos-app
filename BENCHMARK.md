@@ -15,15 +15,15 @@ GifOS does **not** lead any audience yet. The gap column is what this branch is 
 | | Zoom | Meet | Teams | GifOS now |
 | --- | --- | --- | --- | --- |
 | Lobby says what will happen | 5 | 4 | 4 | 3 |
-| Mute / camera state is obvious | 5 | 5 | 4 | 2 |
-| Controls labeled, not hover-only | 5 | 4 | 4 | 2 |
+| Mute / camera state is obvious | 5 | 5 | 4 | 4 |
+| Controls labeled, not hover-only | 5 | 4 | 4 | 4 |
 | Layout holds at 1280, 1920, 900, resize | 5 | 4 | 4 | 3 |
 | Chat usable while the dock is up | 5 | 5 | 4 | 3 |
-| Keyboard path (shortcuts, Escape, focus) | 4 | 4 | 4 | 3 |
+| Keyboard path (shortcuts, Escape, focus) | 4 | 4 | 4 | 4 |
 | Trust: live, recording, who is here | 5 | 4 | 5 | 3 |
-| **Audience score** | **4.9** | **4.3** | **4.1** | **2.7** |
+| **Audience score** | **4.9** | **4.3** | **4.1** | **3.4** |
 
-Zoom leads. Live/Watching is in the chip (Q3). The biggest remaining gap is icon-only mute (Q5).
+Zoom still leads. Mute is a filled red **Unmute** and M/V work outside text fields (Q5, Q6). Layout on a short window (Q4) and invite-still-in-More are the next corporate gaps.
 
 ## Church
 
@@ -31,13 +31,13 @@ Zoom leads. Live/Watching is in the chip (Q3). The biggest remaining gap is icon
 | --- | --- | --- | --- | --- |
 | A volunteer knows if they are on air | 5 | 5 | 5 | 4 |
 | Language a non-technical host understands | 4 | 4 | 3 | 3 |
-| Large, obvious controls | 4 | 3 | 4 | 4 |
+| Large, obvious controls | 4 | 3 | 4 | 5 |
 | Service (broadcast) vs small group (meeting) | 5 | 4 | 4 | 4 |
 | Chat / prayer requests don’t fight the controls | 4 | 4 | 3 | 3 |
 | Join without an account or an install | 2 | 3 | 2 | 5 |
-| **Audience score** | **4.0** | **3.8** | **3.5** | **3.8** |
+| **Audience score** | **4.0** | **3.8** | **3.5** | **4.0** |
 
-StreamYard still leads, by a thin margin. GifOS now says Live or Watching and calls the room a broadcast. Church tools still win a dedicated service desk (scenes, lower thirds).
+Tied with StreamYard. The lead rule wants a strict lead. StreamYard still wins scenes and a producer preview. GifOS wins no-account join and now has a readable on-air dock.
 
 ## Personal
 
@@ -63,3 +63,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | Baseline | 2.3 (Zoom 4.9) | 2.7 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | Q1–Q10 open |
 | After Q1 | 2.6 (Zoom 4.9) | 2.8 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | Composer clears the dock at 900 and after resize |
 | After Q2–Q3 | 2.7 (Zoom 4.9) | 3.8 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | Broadcast words, Live for the host, Watching for a viewer |
+| After Q5–Q6 | 3.4 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | Labeled red/green mic and camera, M and V outside text fields |

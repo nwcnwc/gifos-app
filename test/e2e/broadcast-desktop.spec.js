@@ -40,6 +40,58 @@ function clearOfDock(box) {
   return box.ix === 0 || box.iy === 0;
 }
 
+async function bootSession(page, width, height) {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  await page.setViewportSize({ width, height });
+  await page.goto(SESSION);
+  await page.waitForSelector('body.broadcast.meet-session #mic .docklab');
+}
+
+test('mute and camera are labeled and the off state is filled red', async ({ page }) => {
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await bootSession(page, w, h);
+    const mic = page.locator('#mic');
+    await expect(mic.locator('.docklab')).toHaveText('Unmute');
+    await expect(mic).toHaveAttribute('aria-label', 'Unmute');
+    await expect(page.locator('#cam .docklab')).toHaveText('Video');
+    await expect(page.locator('#reactbtn .docklab')).toHaveText('React');
+    await expect(page.locator('#bartoggle .docklab')).toHaveText('More');
+    const colors = await mic.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { bg: s.backgroundColor, fg: s.color };
+    });
+    expect(colors.bg, JSON.stringify(colors)).toBe('rgb(182, 22, 34)');
+    expect(colors.fg).toBe('rgb(255, 255, 255)');
+    const btn = await mic.boundingBox();
+    const lab = await mic.locator('.docklab').boundingBox();
+    expect(lab.x).toBeGreaterThanOrEqual(btn.x - 1);
+    expect(lab.x + lab.width).toBeLessThanOrEqual(btn.x + btn.width + 1);
+    expect(lab.y + lab.height).toBeLessThanOrEqual(btn.y + btn.height + 1);
+    const bar = await page.locator('.bar').boundingBox();
+    expect(bar.x).toBeGreaterThanOrEqual(-1);
+    expect(bar.x + bar.width).toBeLessThanOrEqual(w + 1);
+    expect(bar.y + bar.height).toBeLessThanOrEqual(h + 1);
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.setViewportSize({ width: 900, height: 720 });
+  const bar = await page.locator('.bar').boundingBox();
+  expect(bar.x).toBeGreaterThanOrEqual(-1);
+  expect(bar.x + bar.width).toBeLessThanOrEqual(901);
+});
+
+test('the M key does not unmute while a chat message is being typed', async ({ page }) => {
+  await bootSession(page, 1280, 720);
+  await page.locator('#bartoggle').click();
+  await page.locator('#chatbtn').click();
+  await page.locator('#chat-in').click();
+  await page.keyboard.type('m');
+  await expect(page.locator('#chat-in')).toHaveValue('m');
+  await expect(page.locator('#mic .docklab')).toHaveText('Unmute');
+});
+
 test('chat composer stays clear of the dock at 900px', async ({ page }) => {
   await openChat(page, 900, 720);
   const hit = await composerOverlap(page);
