@@ -252,6 +252,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** Clear is the outline and blanks the name and the picture, then closes. Save is the solid blue button and keeps what is on the screen. German says Leeren and Speichern. Spanish says Limpiar and Guardar. The lobby’s own Join button is unchanged.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit, and the locale tests still pass. Screenshots: `test/desktop/shots/join-before-1280.png`, `test/desktop/shots/join-after-1280.png`.
 
+### Share still needed the pointer
+
+- **Who hits it:** someone presenting in a corporate call, who already uses Alt+A and Alt+V and expects the same for the screen.
+- **What you saw:** Share screen was one dock button. The shortcut list had mic, camera, chat, and leave. Nothing started a share from the keyboard.
+- **Repro:** `test/desktop/shortcuts.spec.js` failed before the fix (`#sharebtn` had no `aria-keyshortcuts`).
+- **Fix:** Alt+S clicks Share screen. The same key stops a share that is already up. The shortcut list names it, in German and Spanish too. It stays quiet while you are typing, and it does nothing when the button is hidden. Hand and view still need the pointer.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/share-key-before-1280.png`, `test/desktop/shots/share-key-after-1280.png`.
+
 ### Password and Invite stayed English
 
 - **Who hits it:** a German or Spanish device, opening Password or Invite.
@@ -292,4 +300,4 @@ Password and Invite follow a German or Spanish device. Run app does not. The Who
 
 ### Not yet walked end to end
 
-Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. Share screen is one button on the dock, and one click opens the picker. The stage says whose screen it is, at 16px, and that line follows German and Spanish. A broadcast says off air and on air, and the booth has an order of service. During Song the booth has Program and Preview. On a short window that card stays under Off air. Those words stay on this computer. They are not on the outgoing picture. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, Vote, Password, and Invite follow German and Spanish, including the tips and the line after you share or vote. Run app stays English. The Who download for the police stays English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back, including when the page never goes to the background. A camera that stays live and sends no frames says so on the first quiet sample. A camera that is still painting black frames waits on the watchdog.
+Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. Share screen is one button on the dock, Alt+S does the same thing, and one click opens the picker. The stage says whose screen it is, at 16px, and that line follows German and Spanish. A broadcast says off air and on air, and the booth has an order of service. During Song the booth has Program and Preview. On a short window that card stays under Off air. Those words stay on this computer. They are not on the outgoing picture. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, Vote, Password, and Invite follow German and Spanish, including the tips and the line after you share or vote. Run app stays English. The Who download for the police stays English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back, including when the page never goes to the background. A camera that stays live and sends no frames says so on the first quiet sample. A camera that is still painting black frames waits on the watchdog.

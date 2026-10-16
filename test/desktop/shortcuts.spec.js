@@ -24,20 +24,33 @@ async function hits(page, id) {
 
 test('alt shortcuts run the dock and skip the keys while typing', async ({ page }) => {
   await boot(page);
-  for (const [id, chord] of [['mic', 'Alt+A'], ['cam', 'Alt+V'], ['chatbtn', 'Alt+C'], ['leavebtn', 'Alt+Q']]) {
+  for (const [id, chord] of [['mic', 'Alt+A'], ['cam', 'Alt+V'], ['sharebtn', 'Alt+S'], ['chatbtn', 'Alt+C'], ['leavebtn', 'Alt+Q']]) {
     expect(await page.getAttribute('#' + id, 'aria-keyshortcuts'), id).toBe(chord);
   }
+  await page.evaluate(() => {
+    const el = document.getElementById('sharebtn');
+    el.dataset.hits = '0';
+    const prev = el.onclick;
+    el.onclick = function (ev) {
+      el.dataset.hits = String((+el.dataset.hits || 0) + 1);
+      if (prev) return prev.call(this, ev);
+    };
+  });
   await page.keyboard.press('Alt+a');
   await page.keyboard.press('Alt+v');
+  await page.keyboard.press('Alt+s');
   expect(await hits(page, 'mic')).toBe('1');
   expect(await hits(page, 'cam')).toBe('1');
+  expect(await hits(page, 'sharebtn')).toBe('1');
 
   await page.keyboard.press('Alt+c');
   await expect(page.locator('#chatpanel.open')).toBeVisible();
   await page.locator('#chat-in').focus();
   await page.keyboard.press('Alt+a');
+  await page.keyboard.press('Alt+s');
   await page.keyboard.press('?');
   expect(await hits(page, 'mic')).toBe('1');
+  expect(await hits(page, 'sharebtn')).toBe('1');
   await expect(page.locator('#chat-in')).toHaveValue('?');
   await expect(page.locator('#shortcutsheet')).toBeHidden();
 
@@ -57,7 +70,8 @@ test('alt shortcuts run the dock and skip the keys while typing', async ({ page 
   });
   expect(read.onScreen).toBe(true);
   expect(read.font).toBeGreaterThanOrEqual(16);
-  for (const chord of ['Alt+A', 'Alt+V', 'Alt+C', 'Alt+Q']) expect(read.text).toContain(chord);
+  for (const chord of ['Alt+A', 'Alt+V', 'Alt+S', 'Alt+C', 'Alt+Q']) expect(read.text).toContain(chord);
+  expect(read.text).toContain('Share or stop sharing');
 
   await page.keyboard.press('Escape');
   await expect(sheet).toBeHidden();
@@ -69,4 +83,17 @@ test('alt shortcuts run the dock and skip the keys while typing', async ({ page 
   await page.keyboard.press('Alt+q');
   await expect(page.locator('#leave-ask')).toBeVisible();
   await expect(page.locator('#left-modal')).toBeHidden();
+});
+
+test.describe('German shortcuts', () => {
+  test.use({ locale: 'de-DE' });
+  test('the share key is named in German', async ({ page }) => {
+    await boot(page);
+    await page.keyboard.press('?');
+    const sheet = page.locator('#shortcutsheet');
+    await expect(sheet).toBeVisible();
+    await expect(sheet).toContainText('Alt+S');
+    await expect(sheet).toContainText('Bildschirm teilen oder beenden');
+    await expect(sheet).not.toContainText('Share or stop sharing');
+  });
 });
