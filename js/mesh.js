@@ -203,12 +203,17 @@
   };
   // G4 fidelity key over the list fields (sim: digListHash): an echo must reproduce what I sent.
   const digListKey = (d) => JSON.stringify([d.handN || 0, d.awayN || 0, d.hands || [], d.stage || [], d.apps || [], d.votes || []]);
-  // The fidelity key does not change when only the stamp and the age do. A settled
-  // fold keeps one object, so the stringify happens once per content, not once per beat.
+  // Hidden on the object (a symbol is not enumerated, so it never rides a
+  // JSON frame) and computed once per content. defineProperty on every
+  // republish was the settled-room tax inside pubDig.
+  const DIG_LK = Symbol('lk');
+  const DIG_H = Symbol('h');
   const listKeyOf = (d) => {
     if (d._lk) return d._lk;
+    const hit = d[DIG_LK];
+    if (hit) return hit;
     const lk = digListKey(d);
-    Object.defineProperty(d, '_lk', { value: lk, enumerable: false });
+    d[DIG_LK] = lk;
     return lk;
   };
   // G4 monotonicity for a list: each entry I authored is in the published fold, or the fold is FULL of K entries that all outrank it.
@@ -321,11 +326,14 @@
   const GSP_SRC_RATE = 2, GSP_SRC_BURST = 80;   // one author, on one link: 4 a second, and the 64-message backlog in one go
   const digHash = (d) => {
     if (d._h) return d._h;
+    const hit = d[DIG_H];
+    if (hit) return hit;
     const t = JSON.stringify([d.n, d.refuse, d.part ? 1 : 0, d.freeC || 0, d.dmin === undefined ? 99 : d.dmin, listKeyOf(d)]);
     let a = 2166136261 >>> 0, b = 0x9e3779b9 >>> 0;
     for (let i = 0; i < t.length; i++) { const c = t.charCodeAt(i); a = Math.imul(a ^ c, 16777619); b = Math.imul(b ^ c, 2246822519); }
-    Object.defineProperty(d, '_h', { value: (a >>> 0).toString(36) + (b >>> 0).toString(36), enumerable: false });
-    return d._h;
+    const h = (a >>> 0).toString(36) + (b >>> 0).toString(36);
+    d[DIG_H] = h;
+    return h;
   };
   const leCopy = (e) => { const c = Object.assign({}, e); if (e.a) c.a = Object.assign({}, e.a); return c; };
   const digCopy = (d) => ({ n: d.n, refuse: d.refuse, freeC: d.freeC, at: d.at, by: d.by, dmin: d.dmin, part: d.part, handN: d.handN || 0, awayN: d.awayN || 0,
@@ -383,6 +391,7 @@
       this.state = 0;            // 0 join, 1 ask, 2 search, 3 seated
       this.hasCoord = false; this.coord = { pc: 0, r: 0, i: 0 };
       this.occ = new Map(); this.live = new Map(); this.s1seen = new Map();
+      this.bindOcc(this.occ);
       // liveBy: WHO I last heard first-hand at a cell (liveMark's id). A
       // cell's `live` stamp outlasts an occupancy change (gossip, a hint, a
       // PONG row can rewrite occ under it), so a question about a SEAT's
@@ -681,6 +690,21 @@
     wake() { if (this.env.wake) this.env.wake(this.id); }
 
     // ---- occupancy helpers ----
+    // occBy: id -> the cells that name it. liveElsewhere and the gossip
+    // "one place" scan used to walk every cell; a seat is in one or two.
+    // get stays the native Map method. set/delete/clear keep the index.
+    bindOcc(map) {
+      const by = new Map();
+      const s1 = new Set();
+      const drop = (id, k) => { const s = by.get(id); if (!s) return; s.delete(k); if (!s.size) by.delete(id); };
+      const add = (id, k) => { if (id == null) return; let s = by.get(id); if (!s) by.set(id, s = new Set()); s.add(k); };
+      for (const [k, v] of map) { add(v, k); if (isS1key(k)) s1.add(k); }
+      const origSet = map.set.bind(map), origDel = map.delete.bind(map), origClr = map.clear.bind(map);
+      map.set = (k, v) => { const prev = map.get(k); if (prev !== undefined && prev !== v) drop(prev, k); origSet(k, v); add(v, k); if (isS1key(k)) s1.add(k); return map; };
+      map.delete = (k) => { const prev = map.get(k); if (prev !== undefined) drop(prev, k); if (isS1key(k)) s1.delete(k); return origDel(k); };
+      map.clear = () => { by.clear(); s1.clear(); return origClr(); };
+      this.occ = map; this.occBy = by; this.s1keys = s1;
+    }
     occGet(k) { const v = this.occ.get(k); return v === undefined ? null : v; }
     // a seat can be in exactly ONE place: never store MYSELF at a coord I do not
     // hold (stale self-claims circulating back made invisible zombies)
@@ -712,7 +736,7 @@
       //  (2) moved-elsewhere: x is first-hand-live at a DIFFERENT cell, so
       //      the entry at k is its pre-move/pre-requeue echo. First-hand
       //      only — gossip never evicts (E2).
-      for (const [k2, v2] of this.occ) if (v2 === x && k2 !== k && this.firstHandLive(k2)) return true;
+      const elseAt = this.occBy.get(x); if (elseAt) for (const k2 of elseAt) if (k2 !== k && this.firstHandLive(k2)) return true;
       const st = this.env.peek ? this.env.peek(x) : null;
       if (!st) return false; // unknown: keep reserved
       if (!st.alive) return false; // dead without LEAVE: ring-hold reserved
@@ -806,7 +830,7 @@
       // R3 in docs/meet-security.md). A stale listing (a deep row-mate's old
       // cell nobody refreshes) is not evidence: it refused a real head's
       // YIELD for 80+ ticks and left a duplicate standing (repro-compaction).
-      for (const [k2, v2] of this.occ) if (v2 === x && !this.isArbCell(k2) && (this.firstHandLive(k2) || this.s1Fresh(k2))) return null;
+      { const elseAt = this.occBy.get(x); if (elseAt) for (const k2 of elseAt) if (!this.isArbCell(k2) && (this.firstHandLive(k2) || this.s1Fresh(k2))) return null; }
       const at = (k) => this.occGet(k) === x && this.heardAt(k, x) && this.linkedBy.get(k) === x;
       if (this.coord.pc === 0) { for (const olc of topo.ownedLinks(this.coord)) { const k = ck(olc); if (olc.pc === 0 && at(k)) return k; } return null; }
       const tc = this.coord.i !== 0 ? { pc: this.coord.pc, r: this.coord.r, i: 0 } : this.ownerCoord();
@@ -837,7 +861,7 @@
     // I hear some Section-1 rook peer first-hand (an arbiter exists for me).
     hearRook() { if (!this.hasCoord || this.coord.pc !== 0) return false; for (const olc of topo.ownedLinks(this.coord)) { const k = ck(olc); if (olc.pc === 0 && this.heardAt(k, this.occGet(k))) return true; } return false; }
     // x is first-hand live at a cell other than k: a seat is in ONE place.
-    liveElsewhere(x, k) { for (const [k2, v2] of this.occ) if (v2 === x && k2 !== k && this.firstHandLive(k2)) return true; return false; }
+    liveElsewhere(x, k) { const at = this.occBy.get(x); if (at) for (const k2 of at) if (k2 !== k && this.firstHandLive(k2)) return true; return false; }
     // ...not counting hearing stamped only by the burst that lands as I come
     // back from a dark spell or a freeze (backAt): the frames my mates sent
     // while I was away are all delivered on the return tick, after absence()
@@ -854,7 +878,7 @@
     // that. A stamp through backAt+4 was still in the queue when the clock
     // stopped. It is not where anyone sits now.
     drainStamp(it) { return this.backAt >= 0 && it !== undefined && it <= this.backAt + 4; }
-    liveElsewhereSinceReturn(x, k) { for (const [k2, v2] of this.occ) if (v2 === x && k2 !== k && this.firstHandLive(k2) && !this.returnBurst(k2)) return true; return false; }
+    liveElsewhereSinceReturn(x, k) { const at = this.occBy.get(x); if (at) for (const k2 of at) if (k2 !== k && this.firstHandLive(k2) && !this.returnBurst(k2)) return true; return false; }
     // An UNPROVEN claim (signed, but over the relay or a sponsor: nothing
     // proves the claimant is on a link to me — a newcomer whose channels are
     // still opening, or anyone). It may teach a FREE cell, as a hint (no
@@ -875,7 +899,7 @@
       const cur = this.occ.get(k);
       if (cur !== undefined && (cur === id || !(this.translost.has(k) || (this.liveBy.get(k) === cur && !this.firstHandLive(k) && this.beatsMe(k))))) return false;
       if (this.liveElsewhere(id, k)) return false;
-      for (const [k2, v2] of Array.from(this.occ)) if (v2 === id && k2 !== k && !this.firstHandLive(k2)) this.occ.delete(k2);
+      { const at = this.occBy.get(id); if (at) for (const k2 of Array.from(at)) if (k2 !== k && !this.firstHandLive(k2)) this.occ.delete(k2); }
       this.setOcc(k, id); this.noteS1(k);
       return true;
     }
@@ -971,8 +995,9 @@
     // link-proven stay (its LEAVE carries the pairing), and a standing D5
     // observation are not hints.
     dropTwinHint(id, keep) {
-      for (const [k2, v2] of this.occ) {
-        if (k2 === keep || v2 !== id || !isS1key(k2)) continue;
+      const twins = this.occBy.get(id);
+      if (twins) for (const k2 of Array.from(twins)) {
+        if (k2 === keep || !isS1key(k2)) continue;
         if (this.firstHandLive(k2) || this.translost.has(k2) || this.linkedBy.get(k2) === id) continue;
         this.occ.delete(k2); this.live.delete(k2); this.liveBy.delete(k2); this.pongBy.delete(k2); this.s1seen.delete(k2); this.kidful.delete(k2); this.tlForget(k2, 'twin-hint');
       }
@@ -2595,7 +2620,7 @@
       const newCk = ck(this.coord); const seen = new Set();
       for (const olc of topo.ownedLinks(this.coord)) { const x = this.occGet(ck(olc)); if (x != null && x !== this.id && !seen.has(x)) { seen.add(x); this.emit(x, { t: 'LEAVE', ck: newCk, id: this.id }); } }
       this.coord = this.oldCoord; this.tn = this.oldTn; this.estAt = this.oldEstAt; this.nbrAt = this.TICK; this.pp = this.oldPp; this.oldPp = null; this.admBy = this.oldAdmBy; this.oldAdmBy = null;
-      this.occ = this.holdOcc || new Map(); this.s1seen = this.holdSeen || new Map(); this.cousins = this.holdCous || new Map();
+      this.bindOcc(this.holdOcc || new Map()); this.s1seen = this.holdSeen || new Map(); this.cousins = this.holdCous || new Map();
       this.occ.set(this.oldCk, this.id);
       this.oldNbrIds = []; this.holdOcc = null; this.holdSeen = null; this.holdCous = null;
       this.healOnly.delete(newCk); this.healTry.set(newCk, this.TICK); this.healAt = this.TICK; // pace any re-attempt at that hole
@@ -2774,8 +2799,9 @@
       // The fidelity key is content-only. A lie mutates the copy, so it must
       // not inherit the source key; an honest republish is the same content.
       if (!this.lie) {
-        Object.defineProperty(o, '_lk', { value: listKeyOf(d), enumerable: false });
-        if (d._h) Object.defineProperty(o, '_h', { value: d._h, enumerable: false });
+        o[DIG_LK] = listKeyOf(d);
+        const h = d._h || d[DIG_H];
+        if (h) o[DIG_H] = h;
       }
       // The adversary knob (tests only). Mode 1 SUPPRESSES — refusals and the
       // partial flag stripped: the ONE dangerous direction (G4.2) and the only
@@ -3156,7 +3182,10 @@
       // suppression I did not commit — one beat of lag; measured in the sim).
       // A liar that strips its fold strips the echo too (`lie 1` models it) —
       // exactly what check (1) catches, since the peer holds the original.
-      if (this.digOn()) {
+      // A Section-1 phoner never reads dgRoot/dgPub/dgEcho (that block is
+      // deep-only). Building them on every rook heartbeat was a full fold
+      // copy the receiver discarded.
+      if (this.digOn() && m.coord.pc !== 0) {
         // nobody echoes the room fold: its author is dead weight on every PONG, so the stub drops it too
         const rootHit = this.stubReady(m.id, 'root', this.rootDig, true);
         if (rootHit) pong.dgRoot = rootHit;
@@ -3299,7 +3328,7 @@
     s1Sync() {
       const TICK = this.TICK;
       const ent = [{ k: ck(this.coord), v: this.id, age: 0, ch: this.occGet(ck(topo.down(this.coord))), ba: this.born.has(ck(this.coord)) ? Math.max(0, this.LT() - this.born.get(ck(this.coord))) : 0 }]; // carry MY heir, and my claim's AGE (C5 + G0b: no tick crosses a link)
-      for (const [k, v] of this.occ) { if (isS1key(k) && v !== this.id) { const it = this.s1seen.get(k); if (it !== undefined && TICK - it < 120) ent.push({ k, v, age: TICK - it, ch: this.childOf.has(k) ? this.childOf.get(k) : null, ba: this.born.has(k) ? Math.max(0, this.LT() - this.born.get(k)) : -1 }); } }
+      for (const k of this.s1keys) { const v = this.occ.get(k); if (v != null && v !== this.id) { const it = this.s1seen.get(k); if (it !== undefined && TICK - it < 120) ent.push({ k, v, age: TICK - it, ch: this.childOf.has(k) ? this.childOf.get(k) : null, ba: this.born.has(k) ? Math.max(0, this.LT() - this.born.get(k)) : -1 }); } }
       // W7: sync over the whole rook neighbourhood — every live row-mate AND
       // column-mate (heads included) — keeping the full C^2 home roster
       // consistent across the richly-meshed section.
@@ -3328,17 +3357,31 @@
       }
       const wholeOf = (e) => e.whole || (e.whole = e.mine ? this.pubDig(e.src) : digPack(this.wireShare(e.src)));
       const stubOf = (e) => e.sb || (e.sb = this.stubBody(e.src, false));
-      // Per target: whole entries where the content changed, stubs where it did not.
+      // One stub table for every rook target that already holds the content.
+      // A target that needs a whole entry gets its own array. The shared
+      // array is not mutated after emit (the bus delivers it within this period).
+      let shared = null;
+      const stubDigs = () => {
+        if (shared) return shared;
+        shared = new Array(entries.length);
+        for (let i = 0; i < entries.length; i++) shared[i] = { k: entries[i].k, d: stubOf(entries[i]) };
+        return shared;
+      };
       for (const t of tg) {
         const msg = { t: 'S1SYNC', ent };
         if (entries) {
-          const digs = new Array(entries.length);
-          for (let i = 0; i < entries.length; i++) {
-            const e = entries[i];
-            if (!this.lie && this.stubHolds(t, 's1:' + e.k, e.src)) digs[i] = { k: e.k, d: stubOf(e) };
-            else digs[i] = { k: e.k, d: this.lie ? wholeOf(e) : this.stubFor(t, 's1:' + e.k, e.src, wholeOf(e)) };
+          let allStub = !this.lie;
+          if (allStub) for (let i = 0; i < entries.length; i++) if (!this.stubHolds(t, 's1:' + entries[i].k, entries[i].src)) { allStub = false; break; }
+          if (allStub) msg.digs = stubDigs();
+          else {
+            const digs = new Array(entries.length);
+            for (let i = 0; i < entries.length; i++) {
+              const e = entries[i];
+              if (!this.lie && this.stubHolds(t, 's1:' + e.k, e.src)) digs[i] = { k: e.k, d: stubOf(e) };
+              else digs[i] = { k: e.k, d: this.lie ? wholeOf(e) : this.stubFor(t, 's1:' + e.k, e.src, wholeOf(e)) };
+            }
+            msg.digs = digs;
           }
-          msg.digs = digs;
         }
         this._dw(t, msg); this.emit(t, msg);
       }
@@ -4174,7 +4217,7 @@
             // seat every arbiter also listed at its real cell, no healer's leaf
             // could land, and a reunited split ended two home seats short
             // (two-ring seed 1, 23/25 for 4,000 ticks).
-            if (took) for (const [k2, v2] of this.occ) { if (k2 === kk || v2 !== eid || !isS1key(k2) || this.firstHandLive(k2) || this.translost.has(k2)) continue; const s2 = this.s1seen.has(k2) ? this.s1seen.get(k2) : -999; if (s2 < seen) { this.occ.delete(k2); this.s1seen.delete(k2); this.kidful.delete(k2); this.tlForget(k2, 'moved-by-gossip'); } }
+            if (took) { const twins = this.occBy.get(eid); if (twins) for (const k2 of Array.from(twins)) { if (k2 === kk || !isS1key(k2) || this.firstHandLive(k2) || this.translost.has(k2)) continue; const s2 = this.s1seen.has(k2) ? this.s1seen.get(k2) : -999; if (s2 < seen) { this.occ.delete(k2); this.s1seen.delete(k2); this.kidful.delete(k2); this.tlForget(k2, 'moved-by-gossip'); } } }
           }
           return;
         }
