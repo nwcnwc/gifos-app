@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q27. The dock stayed one size when the text grew
+
+On a phone the controls were a fixed 44px or 56px row. They now follow the root text size, from 44px up to 64px, and Hang up from 44px up to 72px. At a 32px root on iPhone SE the row no longer fits, so the dock wraps: camera, flip, mic, and reactions on the first row at 64px, More and Hang up on the second at 64px and 72px. The bar is 312px wide and 156px tall, starting at y=398. The face stays 316×504. The dock covers less than half of that tile. Gaps on a row stay at least 8px. A short landscape keeps a single 56px row of 44px controls so a rotated face is not a strip. `test/mobile/dock-scale.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-dock-scale.png`.
+
+Design: two rows of round controls, 8px apart, Hang up still the only red. The picture stays a stage under the chip. Large type stays at 4. The controls stop at 64px, and a short landscape does not grow. FaceTime still wins that dimension.
+
 ### Q26. A rotated meeting gave the title's band to the picture
 
 With the controls away, the face started at y=0 and the title chip was invisible. The chip now keeps its band. On an iPhone SE landscape it sits at y=14 to y=53, and the face runs from y=59 to y=320. The dock stays off the screen (top 330) until a tap, then Hang up comes back above the chin. A second face in that box stays at least 120px on its short side. `test/mobile/landscape-stage.spec.mjs`.

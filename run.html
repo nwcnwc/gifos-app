@@ -1442,28 +1442,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .topchip .title { font-size: 1.25rem; }
     .topchip .status { font-size: 1.0625rem; }
     body.broadcast #livebadge { font-size: 1.25rem; }
-    .bar { height: 88px; gap: 8px; padding: 0 10px; }
+    .bar { height: auto; min-height: 0; width: max-content; gap: 8px; padding: 6px 4px; flex-wrap: wrap; justify-content: center;
+      max-width: calc(100vw - 8px - var(--inset-left, 0px) - var(--inset-right, 0px)); }
     .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
-      width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
-    .bar #cam svg, .bar #flipcam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
-    /* Flip joins the dock on a phone. Five 56px controls plus Leave do not fit,
-       so the grip steps aside and the targets stay at 44px. */
+      width: clamp(44px, 2.75rem, 64px); height: clamp(44px, 2.75rem, 64px); min-width: 44px; min-height: 44px; }
+    .bar #cam svg, .bar #flipcam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg {
+      width: clamp(22px, 1.375rem, 32px); height: clamp(22px, 1.375rem, 32px); }
+    /* Flip joins the dock on a phone. The grip steps aside. Targets follow the
+       root text size and wrap onto a second row when a larger size no longer fits. */
     body.has-flip .bar #bargrip { display: none; }
-    body.has-flip .bar { gap: 12px; }
+    body.has-flip .bar { gap: 0.5rem; }
     body.has-flip .bar #cam, body.has-flip .bar #flipcam, body.has-flip .bar #mic,
     body.has-flip .bar #reactbtn, body.has-flip .bar #bartoggle {
-      width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
-    body.has-flip .bar #cam svg, body.has-flip .bar #flipcam svg, body.has-flip .bar #mic svg,
-    body.has-flip .bar #reactbtn svg, body.has-flip .bar #bartoggle svg, body.has-flip .bar #leavebtn svg {
-      width: 22px; height: 22px; }
+      width: clamp(44px, 2.75rem, 64px); height: clamp(44px, 2.75rem, 64px); min-width: 44px; min-height: 44px; }
     body.has-flip .bar #leavebtn {
-      width: 48px; height: 48px; min-width: 48px; min-height: 48px; margin-left: 0; }
+      width: clamp(44px, 3rem, 72px); height: clamp(44px, 3rem, 72px); min-width: 44px; min-height: 44px; margin-left: 0; }
     .bar #bargrip { height: 40px; width: 18px; }
-    .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
-    .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px);
-      max-height: calc(100dvh - 14px - 102px - 8px - var(--kb, 0px) - var(--inset-top, 0px) - var(--inset-bottom, 0px)); }
+    .bar #leavebtn { width: clamp(44px, 3rem, 72px); height: clamp(44px, 3rem, 72px); min-width: 44px; min-height: 44px; }
+    .bar:not(.collapsed) .barmore { bottom: calc(100% + 8px); grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px);
+      max-height: calc(100dvh - 100% - 24px - var(--kb, 0px) - var(--inset-top, 0px) - var(--inset-bottom, 0px)); }
     .bar:not(.collapsed) .barmore > button { min-height: 56px; font-size: 1rem; }
-    .reacttray { bottom: 102px; }
+    .reacttray { bottom: calc(100% + 8px); }
     .reacttray button { min-width: 56px; min-height: 56px; font-size: 1rem; }
     #leave-ask .name-box h3 { font-size: 1.35rem; }
     #leave-ask #leave-cancel, #leave-ask #leave-go { min-height: 56px; font-size: 1.05rem; }
@@ -1485,7 +1484,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.chrome-away .admcount { opacity: 0; pointer-events: none; }
   /* A rotated phone is short. The dock drops to the control size so the face keeps the stage. */
   @media (max-height: 420px) {
-    .bar { height: 56px; }
+    .bar { height: 56px; min-height: 0; flex-wrap: nowrap; }
     .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
       width: 44px; height: 44px; min-width: 44px; min-height: 44px;
     }
@@ -1504,24 +1503,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      x=374, past the right edge, so hang-up was a sliver. Shrink the dock and
      keep every primary control at least 44px inside the screen. */
   @media (max-width: 380px) {
-    .bar { gap: 8px; height: 72px; padding: 0 8px; max-width: calc(100vw - 12px - var(--inset-left, 0px) - var(--inset-right, 0px)); }
+    .bar { gap: 8px; padding: 6px 2px; }
     .bar #bargrip { width: 16px; height: 36px; }
-    .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
-      width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
-    .bar #cam svg, .bar #flipcam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg {
-      width: 22px; height: 22px; }
-    .bar #leavebtn {
-      width: 48px; height: 48px; min-width: 48px; min-height: 48px; margin-left: 0; }
-    /* Flip plus five neighbors cannot keep a 12px gap and a 48px Leave on a
-       320px screen. 8px is the floor, Leave stays a 44px target, and the dock
-       uses the width the screen actually has. */
-    body.has-flip .bar {
-      gap: 8px; padding: 0 4px;
-      max-width: calc(100vw - 4px - var(--inset-left, 0px) - var(--inset-right, 0px));
-    }
-    body.has-flip .bar #leavebtn {
-      width: 44px; height: 44px; min-width: 44px; min-height: 44px; margin-left: 0;
-    }
+    body.has-flip .bar { gap: 8px; padding: 6px 2px; }
   }
   /* Comfy: every face on screen, tiles touch, the dock floats over them.
      The long :not chain is what the older gallery rule uses; matching it
