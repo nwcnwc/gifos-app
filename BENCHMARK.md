@@ -17,13 +17,13 @@ GifOS does **not** lead any audience yet. The gap column is what this branch is 
 | Lobby says what will happen | 5 | 4 | 4 | 3 |
 | Mute / camera state is obvious | 5 | 5 | 4 | 2 |
 | Controls labeled, not hover-only | 5 | 4 | 4 | 2 |
-| Layout holds at 1280, 1920, 900, resize | 5 | 4 | 4 | 2 |
-| Chat usable while the dock is up | 5 | 5 | 4 | 2 |
+| Layout holds at 1280, 1920, 900, resize | 5 | 4 | 4 | 3 |
+| Chat usable while the dock is up | 5 | 5 | 4 | 3 |
 | Keyboard path (shortcuts, Escape, focus) | 4 | 4 | 4 | 3 |
 | Trust: live, recording, who is here | 5 | 4 | 5 | 2 |
-| **Audience score** | **4.9** | **4.3** | **4.1** | **2.3** |
+| **Audience score** | **4.9** | **4.3** | **4.1** | **2.6** |
 
-Zoom leads. The biggest GifOS gaps are the covered chat composer (Q1), icon-only mute (Q5), and no on-air trust mark (Q3).
+Zoom leads. The chat composer now clears the dock (Q1). The biggest remaining gaps are icon-only mute (Q5) and no on-air trust mark (Q3).
 
 ## Church
 
@@ -33,9 +33,9 @@ Zoom leads. The biggest GifOS gaps are the covered chat composer (Q1), icon-only
 | Language a non-technical host understands | 4 | 4 | 3 | 2 |
 | Large, obvious controls | 4 | 3 | 4 | 4 |
 | Service (broadcast) vs small group (meeting) | 5 | 4 | 4 | 2 |
-| Chat / prayer requests don’t fight the controls | 4 | 4 | 3 | 2 |
+| Chat / prayer requests don’t fight the controls | 4 | 4 | 3 | 3 |
 | Join without an account or an install | 2 | 3 | 2 | 5 |
-| **Audience score** | **4.0** | **3.8** | **3.5** | **2.7** |
+| **Audience score** | **4.0** | **3.8** | **3.5** | **2.8** |
 
 StreamYard leads. GifOS already wins “open the link, no account”. It loses the service: the room still says Meeting (Q2), nothing says Live (Q3), and the chat field hides under the dock on a narrow desktop (Q1).
 
@@ -61,3 +61,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | When | Corporate | Church | Personal | Note |
 | --- | --- | --- | --- | --- |
 | Baseline | 2.3 (Zoom 4.9) | 2.7 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | Q1–Q10 open |
+| After Q1 | 2.6 (Zoom 4.9) | 2.8 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | Composer clears the dock at 900 and after resize |

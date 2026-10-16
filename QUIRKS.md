@@ -8,19 +8,13 @@ Geometry below is from `getBoundingClientRect` in Chromium unless a browser is n
 
 ## Fixed
 
-None yet.
+### Q1. Chat composer slides under the control dock at 900px
+
+The chat panel now keeps a band clear of the dock (`padding-bottom: 128px`, `112px` when the dock is the shorter phone size). At 900×720 the composer ends at y=592 and the dock starts at y=602, so attach, the message field, and send are all clear. The same holds after a live resize from 1920×1080 to 900×720.
+
+Permanent repro: `test/e2e/broadcast-desktop.spec.js` (“chat composer stays clear…”). Passed on Chromium, Firefox, and WebKit. Before: `test/e2e/artifacts/chat-900-before.png`. After: `test/e2e/artifacts/chat-900-after.png`.
 
 ## Open
-
-### Q1. Chat composer slides under the control dock at 900px — worst
-
-Moderator persona. Broadcast session (`#mb=1&v=…&av=…&bc=1`), More → Chat, viewport 900×720.
-
-The floating dock (`.bar`, 104px tall, 14px off the bottom) overlaps `#chatform` by **122×37px**. `#cattach` is covered **41×28px**. `#chat-in` is covered **65×28px**. Send is clear of the dock horizontally.
-
-Same overlap after a live resize from 1920×1080 down to 900×720. The panel is `bottom: 0` while the dock was moved to the bottom and `--barh` is hardcoded to `0px`, so nothing lifts the composer.
-
-Reproduced in the layout probe on Chromium. Firefox and WebKit share the same CSS. Screenshot: `test/e2e/artifacts/chat-900-before.png`.
 
 ### Q2. A broadcast still talks like a meeting
 
