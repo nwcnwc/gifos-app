@@ -28,7 +28,7 @@ async function boot(browser, device) {
   const page = await context.newPage();
   await page.goto(BASE + '/run.html#v=header-count', { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForSelector('#status', { timeout: 15000 });
-  const skip = page.locator('#nmcancel');
+  const skip = page.locator('#nmok');
   if (await skip.count()) await skip.tap().catch(() => {});
   await page.waitForTimeout(200);
   return { context, page };

@@ -19,7 +19,7 @@ async function boot(browser, device, insets) {
   await client.send('Emulation.setSafeAreaInsetsOverride', { insets: insets });
   await page.goto(BASE + '/run.html#v=safe-area', { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForSelector('#leavebtn', { timeout: 15000 });
-  const skip = page.locator('#nmcancel');
+  const skip = page.locator('#nmok');
   if (await skip.count()) await skip.tap().catch(() => {});
   await page.waitForTimeout(200);
   return { context, page };

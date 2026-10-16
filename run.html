@@ -2541,8 +2541,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // ---- screen name (same identity the rest of GifOS uses) ----------------
     // The knock does not wait on this picker. A stored name resolves at once.
     // A first visit is seeded with Guest NNNN so joinRoom can run, and the
-    // picker stays up. Continue replaces that name and gossips it the same
-    // way Settings → Change does. Not now keeps the seed.
+    // picker stays up. Save keeps the name and picture on the screen and
+    // gossips that name the same way Settings → Change does. Clear blanks
+    // both, then closes.
     function paintAppearFace(img, letterEl, name) {
       let url = '';
       try { const a = GifOS.store.identity().avatar; url = (a && a.url) || ''; } catch (e) {}
@@ -2607,19 +2608,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const dlg = appearDialog({
         note: 'People in the meeting see this name and picture.',
         inputId: 'nm', imgId: 'nm-avatar', letterId: 'nm-letter', fileId: 'nm-file',
-        cancelId: 'nmcancel', okId: 'nmok', cancelLabel: 'Not now', okLabel: 'Continue', value: seed,
+        cancelId: 'nmcancel', okId: 'nmok', cancelLabel: 'Clear', okLabel: 'Save', value: seed,
       });
-      const done = (keep) => {
-        if (!keep) {
-          const v = dlg.input.value.trim() || seed;
-          if (v !== (GifOS.store.identity().name || '')) GifOS.store.setName(v);
-          try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}
-        }
+      const finish = () => {
         dlg.bg.remove();
+        try { refreshAllTiles(); broadcastStatus(); pushLeaf(); paintLobbyAppear(); } catch (e) {}
       };
-      dlg.bg.querySelector('#nmok').onclick = () => done(false);
-      dlg.bg.querySelector('#nmcancel').onclick = () => done(true);
-      dlg.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(false); });
+      const save = () => {
+        const v = dlg.input.value.trim();
+        if (v !== (GifOS.store.identity().name || '')) GifOS.store.setName(v);
+        finish();
+      };
+      const clear = () => {
+        dlg.input.value = '';
+        GifOS.store.setName('');
+        try { GifOS.store.setAvatar(null); } catch (e) {}
+        finish();
+      };
+      dlg.bg.querySelector('#nmok').onclick = save;
+      dlg.bg.querySelector('#nmcancel').onclick = clear;
+      dlg.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
       return Promise.resolve(GifOS.store.identity());
     }
 

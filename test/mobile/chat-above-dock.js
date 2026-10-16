@@ -22,7 +22,7 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
   const page = await context.newPage();
   await page.goto(BASE + '/run.html#v=chat-above-dock', { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForSelector('#bartoggle', { timeout: 15000 });
-  const skip = page.locator('#nmcancel');
+  const skip = page.locator('#nmok');
   if (await skip.count()) await skip.tap().catch(() => {});
   await page.locator('#bartoggle').tap();
   await page.locator('#chatbtn').tap();

@@ -235,6 +235,14 @@ Repro: `test/mobile/blur-tile.js`. It passes on an iPhone 15, an SE, and a 1280Ã
 
 Before: `qa/mobile/shots/before-blur-tile-iphone-15.png`, `qa/mobile/shots/before-blur-tile-desktop.png`. After: `qa/mobile/shots/after-blur-tile-iphone-15.png`, `qa/mobile/shots/after-blur-tile-desktop.png`.
 
+### 29. The join step said Not now and Continue
+
+Not now closed the step and kept the name. Continue was the word for keeping it. Neither said what happened to the picture.
+
+Repro: `test/mobile/appear-preview.js`. The buttons say Clear and Save. Save is the solid blue one and Clear is the outline. Save leaves the stored name and picture. Clear removes both and closes the step.
+
+Before: `qa/mobile/shots/before-join-clear-iphone-se.png`. After: `qa/mobile/shots/after-join-save-iphone-se.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.

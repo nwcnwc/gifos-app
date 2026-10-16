@@ -49,7 +49,7 @@ function overlaps(a, b) {
     const page = await context.newPage();
     await page.goto(BASE + '/run.html#v=fit-' + phone.name, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForSelector('#fitbtn', { timeout: 15000 });
-    const skip = page.locator('#nmcancel');
+    const skip = page.locator('#nmok');
     if (await skip.count()) await skip.tap().catch(() => {});
     await page.waitForTimeout(200);
     const info = await page.evaluate(() => {

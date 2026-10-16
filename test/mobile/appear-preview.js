@@ -1,7 +1,7 @@
 /*
- * The join and lobby name step opens with the GifOS name and picture,
- * shows how you will appear, and keeps one primary button apart from
- * a different secondary.
+ * The join and lobby name step opens with the GifOS name and picture.
+ * Save keeps that name and picture. Clear blanks both. Save is the
+ * solid button and Clear is the outline.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/appear-preview.js
  */
@@ -116,19 +116,46 @@ async function boot(browser, device, url, identity) {
     if (info.value !== 'Grandma Ruth') bad.push('name field "' + info.value + '"');
     if (!info.kicker) bad.push('no appearance heading');
     if (!info.avatar) bad.push('system picture is not in the preview');
-    if (info.ok.w < 44 || info.ok.h < 44) bad.push('Continue is small');
-    if (info.cancel.w < 44 || info.cancel.h < 44) bad.push('Not now is small');
-    if (info.ok.bg === info.cancel.bg) bad.push('Continue and Not now are the same color');
+    const labels = await page.evaluate(() => ({
+      ok: document.getElementById('nmok').textContent.trim(),
+      cancel: document.getElementById('nmcancel').textContent.trim(),
+    }));
+    if (labels.ok !== 'Save') bad.push('primary says "' + labels.ok + '"');
+    if (labels.cancel !== 'Clear') bad.push('secondary says "' + labels.cancel + '"');
+    if (info.ok.w < 44 || info.ok.h < 44) bad.push('Save is small');
+    if (info.cancel.w < 44 || info.cancel.h < 44) bad.push('Clear is small');
+    if (info.ok.bg === info.cancel.bg) bad.push('Save and Clear are the same color');
+    if (info.ok.bg !== 'rgb(0, 100, 200)') bad.push('Save is not the solid blue button');
     const space = gap(info.cancel, info.ok);
     if (space < 12) bad.push('buttons are ' + Math.round(space) + 'px apart');
     if (info.ok.right > info.vw + 1 || info.cancel.left < -1 || info.ok.bottom > info.vh + 1) bad.push('buttons leave the screen');
-    await page.screenshot({ path: path.join(SHOTS, 'after-appear-name.png') });
+    await page.screenshot({ path: path.join(SHOTS, 'after-join-save-iphone-se.png') });
     if (bad.length) failures.push('known: ' + bad.join('; ') + ' ' + JSON.stringify(info));
-    await page.locator('#nmcancel').tap();
-    const kept = await page.evaluate(() => localStorage.getItem('gifos_name'));
-    if (kept !== 'Grandma Ruth') failures.push('Not now changed the system name to ' + kept);
+    await page.locator('#nmok').tap();
+    const kept = await page.evaluate(() => ({
+      name: localStorage.getItem('gifos_name'),
+      avatar: localStorage.getItem('gifos_avatar'),
+    }));
+    if (kept.name !== 'Grandma Ruth') failures.push('Save changed the name to ' + kept.name);
+    if (!kept.avatar || kept.avatar.indexOf(HASH) < 0) failures.push('Save dropped the picture');
     await context.close();
     }
+  }
+
+  {
+    const { context, page } = await boot(browser, phone, '/run.html#v=appear-clear', { name: 'Grandma Ruth', avatar: avatar });
+    await page.waitForSelector('#nmcancel', { timeout: 15000 });
+    await page.locator('#nmcancel').tap();
+    await page.waitForTimeout(100);
+    const cleared = await page.evaluate(() => ({
+      name: localStorage.getItem('gifos_name'),
+      avatar: localStorage.getItem('gifos_avatar'),
+      open: !!document.getElementById('nm'),
+    }));
+    if (cleared.name) failures.push('Clear left the name "' + cleared.name + '"');
+    if (cleared.avatar) failures.push('Clear left the picture');
+    if (cleared.open) failures.push('Clear left the join step open');
+    await context.close();
   }
 
   {

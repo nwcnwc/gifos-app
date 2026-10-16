@@ -32,7 +32,7 @@ function overlaps(a, b) {
   const page = await context.newPage();
   await page.goto(BASE + '/run.html#v=call-calm', { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForSelector('#leavebtn', { timeout: 15000 });
-  const skip = page.locator('#nmcancel');
+  const skip = page.locator('#nmok');
   if (await skip.count()) await skip.tap().catch(() => {});
   await page.evaluate((people) => window.__gifosVideo.presentPeers(people), PEOPLE);
   await page.waitForTimeout(400);

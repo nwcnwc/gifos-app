@@ -49,7 +49,7 @@ Family and friends. Warm, few steps, a texted link.
 
 | Job | Score | Note |
 | --- | --- | --- |
-| Open a texted link and pick a name | 8 | The join step opens with the GifOS name and picture, and says how you will appear. Continue is the only blue button. |
+| Open a texted link and pick a name | 9 | The join step opens with the GifOS name and picture. Save keeps them and is the solid blue button. Clear blanks both and is the outline. |
 | See everyone and hang up on a small phone | 10 | Four faces are two rows of two, near a portrait-phone shape, and Fit no longer sits on a face. Live, Record, Captions, and the dock tuck when the call is quiet. A tap brings Hang up back. |
 | Send a chat line | 9 | The latest line and the count sit on the call. Emoji inserts into the field. Theirs is a light bubble and mine is blue, at 1rem. |
 | Turn the phone sideways | 8 | Invite, Room password, Waiting room, and Chat are on the first screen of More. You do not scroll to find them. |
@@ -85,3 +85,4 @@ Family and friends. Warm, few steps, a texted link.
 26. Idle chrome. `test/mobile/chrome-idle.js` failed (`chrome stays up when idle`), then passed on an iPhone 15 and an SE. Live, Record, Captions, and the dock tuck, the faces grow into that band, and a tap brings them back at 44px. More holds them up. Corporate end-call 8→9, corporate trust 8→9, corporate audience 8→9. Personal see-everyone 9→10, personal audience 8→9. Church stays 8. Nobody leads yet. A volunteer panel is still calmer. Fit and the name chip stay on screen.
 27. Calmer More. `test/mobile/more-calm.js` failed (`13 buttons on the first screen`, sheet top 44), then passed on an iPhone 15 and an SE. The first screen is Invite, Room password, Waiting room, and Chat. Invite is blue. The name stays clear. Church host 9→10, church audience 8→9. Audience scores are 9 / 9 / 9. Nobody leads yet.
 28. Blur for all. The per-tile control was 83×32 and flush with the corner. It is now a 64px square, 12px in from the corner, on a phone and on the desktop. `test/mobile/blur-tile.js` passes. Church tap targets 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.
+29. Join Clear and Save. The step said Not now and Continue. Clear blanks the name and the picture. Save keeps both and stays the solid button. `test/mobile/appear-preview.js` passes. Personal name row 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.

@@ -26,7 +26,7 @@ const CASES = [
     const page = await context.newPage();
     await page.goto(BASE + '/run.html#v=blur-tile-' + phone.name, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForSelector('#leavebtn', { timeout: 15000 });
-    const skip = page.locator('#nmcancel');
+    const skip = page.locator('#nmok');
     if (await skip.count()) {
       if (phone.tap) await skip.tap().catch(() => {});
       else await skip.click().catch(() => {});

@@ -61,7 +61,7 @@ async function check(page) {
     const page = await context.newPage();
     await page.goto(BASE + '/run.html#v=dock-fits-' + phone.name, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForSelector('#leavebtn', { timeout: 15000 });
-    const skip = page.locator('#nmcancel');
+    const skip = page.locator('#nmok');
     if (await skip.count()) await skip.tap().catch(() => {});
     await page.waitForTimeout(200);
     const rows = await check(page);
