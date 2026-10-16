@@ -47,13 +47,13 @@ Repro: `test/mobile/lobby-join-visible.js`. It failed (`lob-join-btn` bottom 661
 
 Before: the cold lobby was not shot in the first pass. After: `qa/mobile/shots/after-lobby-iphone-se.png`, `qa/mobile/shots/after-lobby-iphone-se-land.png`.
 
-## Open
-
 ### 5. 200% text size does not enlarge the controls
 
-`gifos_ui_scale=2` sets the root to 32px. More-sheet labels stay `font-size: 16px` (`#ccbtn` measured 16px). The sheet can scroll now, but the labels do not grow with the text setting. A low-vision member gets bigger body type and the same small CC / Record / Password labels.
+`gifos_ui_scale=2` sets the root to 32px. More-sheet labels stayed `font-size: 16px` (`#ccbtn` measured 16px on both an SE and a 360px phone).
 
-Shot: `qa/mobile/shots/before-lowvision-more.png`.
+Repro: `test/mobile/text-scale-controls.js`. It failed (`ccbtn font 16px` and the same for Password, Record, Help, Stage), then passed. Those labels, the blur segments, and the Blur caption are `1rem`, so at 200% they are 32px. The sheet still scrolls them on screen, and Hang up stays on screen. The word on the captions control is still CC.
+
+Before: `qa/mobile/shots/before-lowvision-more.png`. After: `qa/mobile/shots/after-text-scale-more.png`.
 
 ### 6. No safe-area insets
 

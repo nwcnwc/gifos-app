@@ -39,7 +39,7 @@ A volunteer and an older member, a service or a small group, often a phone held 
 | --- | --- | --- |
 | Start or join from the lobby on an SE | 7 | Join is on screen in portrait. In landscape the first action is on screen and Join scrolls into the card. |
 | Tap targets for someone who misses small controls | 5 | Dock grip, chat close, and Send are 44px. Fit is still 32px tall. |
-| Captions a member can find, at 200% text | 3 | Labeled CC. Label stays 16px when the root is 32px. |
+| Captions a member can find, at 200% text | 5 | The label grows to 32px at 200% text. It still says CC. |
 | Host runs the room from the phone they already hold | 6 | Password, record, captions, and stage scroll into reach in landscape. Labels are still terse. |
 | **Audience** | **6** | Dock, landscape More, and the lobby Join action work on an SE. Still behind a church stream panel: captions say CC, and 200% text does not enlarge them. |
 
@@ -60,4 +60,5 @@ Family and friends. Warm, few steps, a texted link.
 1. Dock fit on a narrow phone. `test/mobile/dock-fits.js` failed, then passed. Corporate 3→4, church 3→4, personal 4→5.
 2. Landscape More sheet scrolls. `test/mobile/more-sheet-fits.js` failed, then passed. Corporate 4→5, church 4→5.
 3. Chat composer clears the dock and a keyboard band. `test/mobile/chat-above-dock.js` failed, then passed. Corporate 5→6, personal 5→6. Church stayed 5 until the lobby fix.
-4. Lobby Join is on screen on an SE. `test/mobile/lobby-join-visible.js` failed, then passed. Church 5→6. Corporate stays 6, personal stays 6. Nobody leads yet. Next: 200% text leaves the More labels at 16px.
+4. Lobby Join is on screen on an SE. `test/mobile/lobby-join-visible.js` failed, then passed. Church 5→6. Corporate stays 6, personal stays 6.
+5. More labels follow 200% text size. `test/mobile/text-scale-controls.js` failed, then passed. Captions row 3→5. Audience scores stay 6. Nobody leads yet. Next: the captions control still says CC, Fit is 32px tall, and the dock ignores the home indicator.

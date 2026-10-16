@@ -1502,6 +1502,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #chatpanel.open { top: 0; bottom: calc(var(--dockh, 108px) + var(--kb, 0px)); }
   #chat-in { min-height: 44px; }
   #chatclose, #cattach, #chatform button[type=submit] { min-width: 44px; min-height: 44px; }
+  /* More labels were 16px even when Settings text size was 200% (root 32px). */
+  .bar:not(.collapsed) .barmore > button,
+  .bar:not(.collapsed) .barmore .seg,
+  .bar:not(.collapsed) .barmore .blurlbl { font-size: 1rem; }
   /* The preview was taking more than half of a short phone, so Join a link
      sat below the fold (SE portrait bottom 661 on a 568px screen, and in
      landscape the first action was already off screen). */
