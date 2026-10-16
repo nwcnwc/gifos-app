@@ -6549,15 +6549,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!b) return;
       if (!document.body.classList.contains('broadcast')) { b.dataset.state = ''; return; }
       const text = statusEl.textContent || '';
-      const down = /reconnecting|Joining the broadcast|Connection trouble|Could not join|Getting you back/i.test(text)
-        || !!(statusEl.dataset && statusEl.dataset.reach && statusEl.dataset.reach !== 'partial');
+      const kind = (statusEl.dataset && statusEl.dataset.kind) || '';
+      const reachDown = !!(statusEl.dataset && statusEl.dataset.reach && statusEl.dataset.reach !== 'partial');
+      // A viewer who is still arriving, or who is alone because the service
+      // has not started, is off air. RECONNECTING is a link that dropped, a
+      // door they are knocking on again, or a network that cannot get through.
+      const joining = /Joining the broadcast/i.test(text);
+      const alone = kind === 'alone';
+      const linkDown = /reconnecting|Joining the broadcast|Connection trouble|Could not join|Getting you back/i.test(text) || reachDown;
       const host = typeof bcHostStored === 'function' && bcHostStored();
       const picture = myStatus && !myStatus.camOff;
       let state, label, aria;
-      if (host && picture && down) { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
+      if (host && picture && linkDown) { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
       else if (host && picture) { state = 'live'; label = 'LIVE'; aria = 'You are live'; }
       else if (host) { state = 'off'; label = 'OFF AIR'; aria = 'You are off air'; }
-      else if (down) { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
+      else if (joining || alone) { state = 'off'; label = 'OFF AIR'; aria = 'The broadcast is off air'; }
+      else if (linkDown || kind === 'door') { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
       else { state = 'watching'; label = 'WATCHING'; aria = 'You are watching'; }
       b.dataset.state = state;
       const t = document.getElementById('livebadge-txt');

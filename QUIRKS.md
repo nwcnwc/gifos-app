@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q45. A quiet service read RECONNECTING
+
+A viewer opening a service that had not started, or that this phone had not reached, saw an amber RECONNECTING banner. Nothing had dropped. The banner now says OFF AIR, the same word a host sees before the picture is up. RECONNECTING stays for a link that dropped, a door they are knocking on again, or a network that cannot get through. A host who is already sending a picture still reads RECONNECTING while the room is out. `test/mobile/live-badge.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-viewer-offair.png`.
+
+Design: one grey banner, OFF AIR, until the service is there. Church stays at 4. The desk they start from is a stream named Friday night.
+
 ### Q44. A stream on a phone was a form with a strip of camera
 
 The camera sat in a 72px strip and the white sheet was the screen. On a phone the picture is now the top of the screen, 292px tall on an iPhone SE. Stream and “Friends watch with the link.” sit on the picture. The sheet under it is the name, Go live, and Watch. Change host key and Add a viewer password share the row under Watch. The host key is still minted. Opening it brings Generate onto the screen. A short landscape keeps the strip so Go live stays on the screen. `test/mobile/create-one-password.spec.mjs`.
@@ -34,7 +42,7 @@ Opening a service showed Watching the service, a name, and Save. The name is alr
 
 After: `test/mobile/screenshots/after/iphone-se-viewer-straight.png`.
 
-Design: the service is the screen. Church stays at 4. A quiet service still reads RECONNECTING.
+Design: the service is the screen. Church stays at 4. A quiet service reads OFF AIR. The desk they start from is a stream named Friday night.
 
 ### Q41. Go live left the camera off
 

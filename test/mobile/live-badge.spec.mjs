@@ -4,12 +4,13 @@ const AV = '0123456789abcdef0123456789abcdef';
 const ROOM = 'sundaymorning';
 const viewer = `/run.html#v=${ROOM}&av=${AV}&bc=1`;
 
-test('a broadcast viewer sees RECONNECTING until the room is reached', async ({ page }) => {
+test('a broadcast viewer reads OFF AIR until the room is reached', async ({ page }) => {
   await page.goto(viewer, { waitUntil: 'domcontentloaded' });
   const badge = page.locator('#livebadge');
   await expect(badge).toBeVisible();
-  await expect(badge).toHaveAttribute('data-state', 'reconnecting');
-  await expect(page.locator('#livebadge-txt')).toHaveText('RECONNECTING');
+  await expect(badge).toHaveAttribute('data-state', 'off');
+  await expect(page.locator('#livebadge-txt')).toHaveText('OFF AIR');
+  await expect(badge).toHaveAttribute('aria-label', 'The broadcast is off air');
   const box = await badge.evaluate((el) => {
     const r = el.getBoundingClientRect();
     return { left: r.left, right: r.right, top: r.top, height: r.height, vw: innerWidth };
