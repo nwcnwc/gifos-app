@@ -402,9 +402,10 @@
     var pm = pathname.match(/^\/(?:join|meet|cast)\/([a-zA-Z0-9-]{1,64})(?:\/([a-fA-F0-9]{16,64})(?:\/([a-zA-Z0-9]{1,64}))?)?\/?$/);
     var here;
     if (pm) {
+      var extra = search ? '&' + search.replace(/^\?/, '') : '';
       here = /^\/(?:meet|cast)\//.test(pathname)
-        ? '/run.html#v=' + pm[1] + (pm[2] ? '&av=' + pm[2].toLowerCase() : '') + (/^\/cast\//.test(pathname) ? '&bc=1' : '')
-        : '/run.html#' + (pm[2] && pm[3] ? 's=' + pm[1] + '.' + pm[2].toLowerCase() + '&k=' + pm[3] : 'j=' + pm[1]);
+        ? '/run.html#v=' + pm[1] + (pm[2] ? '&av=' + pm[2].toLowerCase() : '') + (/^\/cast\//.test(pathname) ? '&bc=1' : '') + extra
+        : '/run.html#' + (pm[2] && pm[3] ? 's=' + pm[1] + '.' + pm[2].toLowerCase() + '&k=' + pm[3] : 'j=' + pm[1]) + extra;
     } else {
       // Carry the page + invite hash across (snapshots ship run.html too —
       // flag day above) AND THE QUERY. The query used to be dropped here,
@@ -2439,6 +2440,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     })();
     const BROADCAST = BC_INTENT && !!params.get('v') && /^[a-f0-9]{16,64}$/.test((params.get('av') || '').toLowerCase());
     if (BROADCAST) document.body.classList.add('broadcast');
+    // A town hall is a skin on the same admin room, the way a broadcast is.
+    // th rides the link (?th=1 on a pretty /meet path, &th=1 in the hash).
+    // It does not change who can be a viewer, on stage, or the host.
+    const TOWNHALL = !BROADCAST && params.has('th');
+    if (TOWNHALL) document.body.classList.add('townhall');
     // The HOST is whoever holds this room's stored admin key — known before
     // any network exists, which is what lets the boot skip the viewer's
     // camera ask entirely (below) while the host boots like a meeting.
@@ -2518,7 +2524,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const bg = document.createElement('div'); bg.className = 'name-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
       bg.innerHTML = '<div class="name-box appear-box"><h3>This is how you’ll appear</h3>' +
-        '<p id="nm-lead">This is how you’ll appear in the meeting.</p>' +
+        '<p id="nm-lead">This is how you’ll appear in the ' + (TOWNHALL ? 'town hall' : 'meeting') + '.</p>' +
         '<div class="appear-preview">' +
           '<div class="appear-face"><video id="nm-cam" autoplay muted playsinline hidden></video>' +
           '<img id="nm-avatar" alt="" hidden><span id="nm-letter" aria-hidden="true"></span></div>' +
@@ -6474,7 +6480,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
       const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
         : (n === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry' + reachTriedSentence())
-        : displayCount() + ' in the meeting · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
+        : displayCount() + ' in the ' + (TOWNHALL ? 'town hall' : 'meeting') + ' · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
       // of the reach states that replace the line. Tests and styling read
@@ -11847,12 +11853,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (av && admKey) pwFromStore = false;
       const relay = relayUrl();
       const custom = relay && relay !== window.GIFOS_RELAY;
-      const avPart = (av ? '&av=' + av : '') + (BROADCAST ? '&bc=1' : '');
+      const avPart = (av ? '&av=' + av : '') + (BROADCAST ? '&bc=1' : '') + (TOWNHALL ? '&th=1' : '');
       const pretty = /(^|\.)gifos\.app$/.test(location.hostname) && !custom;
       // A broadcast's pretty form is /cast/<room>/<V> — same 404-router
       // machinery as /meet, but the path itself carries the skin so the
       // shared link opens as a broadcast for every viewer.
       const prettyPath = (BROADCAST ? '/cast/' : '/meet/') + room + (av ? '/' + av : '');
+      const prettyTown = TOWNHALL ? '?th=1' : '';
       // A RELEASE/pinned computer runs from /versions/<x.y.z>/, but prettyPath is
       // rooted at the domain. Rewriting the address bar to it MOVED THE DOCUMENT
       // BASE off the snapshot — document.baseURI became /meet/<room>, so every
@@ -11880,12 +11887,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // from no matter what the address bar says, so the URL can stay the short
       // link people actually share. Which build you are on is shown in the page
       // itself (js/build-badge.js), where that fact belongs.
-      const canonical = pretty ? prettyPath
+      const canonical = pretty ? prettyPath + prettyTown
         : MEET_PATH + '#v=' + room + avPart + (custom ? '&relay=' + encodeURIComponent(relay) : '');
       // A srcdoc session cannot always retarget its address. The mesh does
       // not depend on that; a thrown replaceState must not skip the knock.
-      try { if (location.pathname + location.hash !== canonical) history.replaceState(null, '', canonical); } catch (e) {}
-      shareUrl.value = pretty ? pageOrigin() + prettyPath
+      try { if (location.pathname + location.search + location.hash !== canonical) history.replaceState(null, '', canonical); } catch (e) {}
+      shareUrl.value = pretty ? pageOrigin() + prettyPath + prettyTown
         : pageOrigin() + MEET_PATH + '#v=' + room + avPart + (relay ? '&relay=' + encodeURIComponent(relay) : '');
       try { paintStreamLink(); } catch (e) {}
       if (!params.get('v')) share.classList.add('show'); // fresh room → surface the link
@@ -12022,7 +12029,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function parseMeetInput(s) {
       s = (s || '').trim();
       if (!s) return null;
-      let room = '', av = '', relay = '', bc = false;
+      let room = '', av = '', relay = '', bc = false, th = false;
       if (/[:/#?]/.test(s)) {
         // about:srcdoc reports origin "null". An absolute link must still parse;
         // passing that string as the base makes the URL constructor throw.
@@ -12039,6 +12046,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (hp.get('av')) av = (hp.get('av') || '').toLowerCase();
           if (hp.get('relay')) relay = hp.get('relay');
           if (hp.get('bc')) bc = true;
+          if (u.searchParams.has('th') || hp.has('th')) th = true;
         }
       }
       if (!room) {
@@ -12058,7 +12066,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // different rooms depending on whether you opened the link or pasted it —
       // /meet/BibleReading and biblereading are different meetings, and the two
       // people never saw each other. Only `av` is case-folded: it is a hex digest.
-      return { room, av, relay, bc: bc && !!av }; // bc is only meaningful on an admin room
+      return { room, av, relay, bc: bc && !!av, th: th && !!av && !bc }; // bc and th are skins on an admin room
     }
     function stopLobbyPreview() {
       const vid = document.getElementById('lob-preview-vid');
@@ -12193,7 +12201,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // guest, the guest password is the one you send them).
           const guest = (document.getElementById('lob-guest-pass').value || '').trim();
           if (guest) { try { localStorage.setItem('gifos_vpw_' + chosen + '.' + V, guest); localStorage.setItem('gifos_vpwat_' + chosen + '.' + V, String(Date.now())); } catch (e) {} } // stamp the store's clock (§LOCK expiry)
-          enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' : ''));
+          enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' : '&th=1'));
         } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = goLabel; }
       };
       document.getElementById('lob-join-btn').onclick = () => {
@@ -12215,7 +12223,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const err = document.getElementById('lob-join-err');
         const p = parseMeetInput(document.getElementById('lob-join-in').value);
         if (!p) { err.textContent = 'Couldn’t read that — paste a meeting link or its id.'; return; }
-        enterMeeting('#v=' + p.room + (p.av ? '&av=' + p.av : '') + (p.bc ? '&bc=1' : '') + (p.relay ? '&relay=' + encodeURIComponent(p.relay) : ''));
+        enterMeeting('#v=' + p.room + (p.av ? '&av=' + p.av : '') + (p.bc ? '&bc=1' : '') + (p.th ? '&th=1' : '') + (p.relay ? '&relay=' + encodeURIComponent(p.relay) : ''));
       };
       document.getElementById('lob-join-go').onclick = doJoin;
       document.getElementById('lob-join-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
@@ -12316,6 +12324,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           updateTile('me');
           joinRoom();
           updateStatus();
+          if (TOWNHALL) {
+            document.title = 'Town hall — GifOS';
+            const leave = document.getElementById('leavebtn');
+            if (leave) {
+              leave.title = 'Leave the town hall. Your camera and microphone stop.';
+              leave.setAttribute('aria-label', 'Leave the town hall');
+            }
+          }
           if (BROADCAST) {
             document.title = 'Broadcast — GifOS';
             const hint = document.querySelector('.share .hint');
@@ -21541,7 +21557,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const isApp = document.body.classList.contains('app-room');
       // Say which thing you are sharing — a broadcast is not a meeting.
       document.querySelector('#inv-modal h3').textContent =
-        isApp ? 'Share this app' : BROADCAST ? 'Share this broadcast' : 'Share this meeting';
+        isApp ? 'Share this app' : BROADCAST ? 'Share this broadcast' : TOWNHALL ? 'Share this town hall' : 'Share this meeting';
       if (isApp) {
         body.innerHTML =
           '<p style="color:#aab">Anyone with this link joins you <b>live inside this app</b>, and the link has no expiry.</p>' +

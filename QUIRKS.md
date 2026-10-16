@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q43. A town hall joiner landed in a meeting
+
+The link from Start a town hall opened as a meeting: “in the meeting,” and a meeting title. The link now carries `th=1` (`?th=1` on a pretty `/meet` path, `&th=1` in the hash). A joiner lands in the town hall. The title is Town hall. The first sentence is “This is how you’ll appear in the town hall.” Leave says Leave the town hall. The shared link keeps the flag. A meeting without the flag still says meeting. The camera, the stage, and the host key are unchanged. `test/mobile/town-hall-join.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-town-hall-join.png`.
+
+Design: the same room, named for what they joined. Corporate stays at 4. The host still has a key.
+
 ### Q42. A church viewer still stopped to give a name
 
 Opening a service showed Watching the service, a name, and Save. The name is already seeded for the knock, and Settings still holds it, so that step is gone. A viewer lands on the service. Stop watching stays the leave control. The camera stays off. A meeting still gets the appearance step. `test/mobile/viewer-join.spec.mjs`.
