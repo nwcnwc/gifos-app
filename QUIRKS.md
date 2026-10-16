@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q30. A 200% text size still capped the dock at 64px
+
+The phone controls followed the root size only up to 64px, and Hang up up to 72px. They now follow `2.75rem` up to 88px, and Hang up follows `3rem` up to 96px. At a 32px root on iPhone SE the dock is two rows: camera, flip, and mic at y=356, 88px; reactions, More, and Hang up at y=452, with Hang up 96px. The bar is 312×204, from y=350. The face stays 316×504. The dock covers 218px of that tile, under half. Gaps on a row are 8px. A short landscape stays a 44px row inside a 48px pill. `test/mobile/dock-scale.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-dock-88.png`.
+
+Design: the controls are the large type, two rows, 8px apart, Hang up still the only red. The picture stays a stage under the chip. Large type stays at 4. A short landscape does not grow, and FaceTime still wins that dimension.
+
 ### Q29. The dock on a rotated picture was a solid white slab
 
 The 48px pill was `rgba(255,255,255,.94)`, so the strip hid the picture it sat on. It is now `rgba(255,255,255,.58)` with a 16px blur. The face is still y=59 to y=320 on an iPhone SE landscape, and the pill is still y=258 to y=306. The round controls stay solid, so a chin behind a button is still covered. `test/mobile/landscape-stage.spec.mjs`.

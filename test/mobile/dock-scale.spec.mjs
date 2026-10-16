@@ -49,13 +49,13 @@ test('the dock grows with the root text size without thinning the face', async (
     };
   }, IDS);
   expect(box.controls.find((c) => c.id === 'cam').height).toBeGreaterThan(before + 8);
-  expect(box.controls.find((c) => c.id === 'cam').height).toBeGreaterThanOrEqual(60);
-  expect(box.controls.find((c) => c.id === 'leavebtn').height).toBeGreaterThanOrEqual(60);
+  expect(box.controls.find((c) => c.id === 'cam').height).toBeGreaterThanOrEqual(84);
+  expect(box.controls.find((c) => c.id === 'leavebtn').height).toBeGreaterThanOrEqual(90);
   for (const control of box.controls) {
     expect(control.left, control.id).toBeGreaterThanOrEqual(-0.5);
     expect(control.right, control.id).toBeLessThanOrEqual(box.vw + 0.5);
     expect(control.bottom, control.id).toBeLessThanOrEqual(box.vh + 0.5);
-    expect(control.height, control.id).toBeGreaterThanOrEqual(60);
+    expect(control.height, control.id).toBeGreaterThanOrEqual(84);
   }
   expect(box.gaps.length).toBeGreaterThan(0);
   for (const gap of box.gaps) expect(gap).toBeGreaterThanOrEqual(8);
