@@ -854,3 +854,51 @@ test('microphone and camera off are a line you cannot miss', async ({ page }) =>
   await page.waitForSelector('#onair.watch');
   await expect(page.locator('#avstate')).toBeHidden();
 });
+
+test('a recording is a card everyone has to see', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.hash.indexOf('bc=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=recnote' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.group');
+    await page.evaluate(() => window.__gifosRoomTrust.setRecording(true));
+    const card = page.locator('#rec-notice .appear-box');
+    await expect(card).toBeVisible();
+    await expect(page.locator('#rec-notice-title')).toHaveText('You are recording this small group');
+    await expect(page.locator('#airrec')).toHaveText('Recording');
+    const lay = await page.evaluate(() => {
+      const box = document.querySelector('#rec-notice .appear-box').getBoundingClientRect();
+      const ok = document.getElementById('rec-notice-ok').getBoundingClientRect();
+      const s = getComputedStyle(document.getElementById('rec-notice-ok'));
+      return {
+        bg: s.backgroundColor,
+        in: box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight && ok.right <= innerWidth && ok.bottom <= innerHeight,
+      };
+    });
+    expect(lay.bg).toBe('rgb(0, 100, 200)');
+    expect(lay.in, JSON.stringify(lay)).toBe(true);
+    await page.locator('#rec-notice-ok').click();
+    await expect(page.locator('#rec-notice')).toHaveCount(0);
+    await expect(page.locator('#airrec')).toHaveText('Recording');
+  }
+  await page.evaluate(() => window.__gifosRoomTrust.setRecording(false));
+  await page.evaluate(() => window.__gifosRoomTrust.setPeerRecording('Jordan Lee', true));
+  await expect(page.locator('#rec-notice-title')).toHaveText('Jordan Lee is recording this small group');
+  await page.locator('#rec-notice-ok').click();
+  await page.locator('#airrec').click();
+  await expect(page.locator('#rec-options h3')).toHaveText('Record this small group');
+  await expect(page.locator('#rec-options p').first()).toContainText('this small group is being recorded');
+  await expect(page.locator('#ro-start')).toHaveClass(/appear-primary/);
+  await expect(page.locator('#ro-cancel')).toHaveClass(/appear-secondary/);
+  await page.locator('#ro-cancel').click();
+  await page.goto('/run.html?desk=recnotesvc#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airkind');
+  await page.evaluate(() => window.__gifosRoomTrust.setRecording(true));
+  await expect(page.locator('#rec-notice-title')).toHaveText('You are recording this service');
+});

@@ -2367,6 +2367,49 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         who.title = 'Who is here';
         who.setAttribute('aria-label', 'Who is here, ' + n);
       }
+      maybeShowRecNotice();
+    }
+    function recRoomWord() {
+      return (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'service' : 'small group';
+    }
+    function recNoticeTitle() {
+      let subject = '';
+      try {
+        if (typeof myStatus !== 'undefined' && myStatus && myStatus.rec) subject = 'You are';
+        else if (typeof statusOf !== 'undefined' && statusOf && statusOf.forEach) {
+          statusOf.forEach((st) => { if (!subject && st && st.rec && st.name) subject = st.name + ' is'; });
+        }
+      } catch (e) {}
+      const kind = recRoomWord();
+      return subject ? (subject + ' recording this ' + kind) : ('This ' + kind + ' is being recorded');
+    }
+    function maybeShowRecNotice() {
+      const on = someoneRecording();
+      const existing = document.getElementById('rec-notice');
+      if (!on) {
+        try { sessionStorage.removeItem('gifos_rec_seen'); } catch (e) {}
+        if (existing) existing.remove();
+        return;
+      }
+      let seen = false;
+      try { seen = sessionStorage.getItem('gifos_rec_seen') === '1'; } catch (e) {}
+      if (seen) { if (existing) existing.remove(); return; }
+      if (existing) return;
+      const bg = document.createElement('div');
+      bg.id = 'rec-notice';
+      bg.className = 'name-modal';
+      bg.setAttribute('role', 'dialog');
+      bg.setAttribute('aria-modal', 'true');
+      bg.setAttribute('aria-labelledby', 'rec-notice-title');
+      bg.innerHTML = '<div class="name-box appear-box"><h3 id="rec-notice-title"></h3>' +
+        '<p>Saved on a device in this room. The bar keeps saying Recording until it stops.</p>' +
+        '<button id="rec-notice-ok" type="button" class="appear-primary">OK</button></div>';
+      bg.querySelector('#rec-notice-title').textContent = recNoticeTitle();
+      bg.querySelector('#rec-notice-ok').onclick = () => {
+        try { sessionStorage.setItem('gifos_rec_seen', '1'); } catch (e) {}
+        bg.remove();
+      };
+      document.body.appendChild(bg);
     }
     function paintAirKind(cls, text) {
       const air = document.getElementById('airbar');
@@ -2615,6 +2658,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     window.__gifosRoomTrust = {
       setRecording(on) {
         myStatus.rec = !!on;
+        try { paintRoomTrust(); } catch (e) {}
+      },
+      setPeerRecording(name, on) {
+        try {
+          if (on) statusOf.set('qa-rec', { rec: true, name: name || '' });
+          else statusOf.delete('qa-rec');
+        } catch (e) {}
         try { paintRoomTrust(); } catch (e) {}
       },
     };
@@ -20550,7 +20600,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const qRadio = (val, label) => '<label class="rec-opt inline"><input type="radio" name="rec-q" value="' + val + '"' + (qDef === val ? ' checked' : '') + '> ' + label + '</label>';
       bg.innerHTML = '<div class="name-box" style="max-width:470px;text-align:left">' +
         '<h3>Record this ' + (BROADCAST ? 'service' : 'small group') + '</h3>' +
-        '<p style="color:#889;font-size:.85rem">Saved to YOUR device only — everyone sees the ⏺ while you record. Blur and mute are baked in.</p>' +
+        '<p>Saved on this device only. Everyone here will see that this ' + (BROADCAST ? 'service' : 'small group') + ' is being recorded.</p>' +
         '<div class="rec-sec"><b>What to capture</b>' +
         opt('stage', 'rec-scope', 'The stage', stageSub) +
         opt('row', 'rec-scope', 'Stage + my row', 'The stage plus the people right around you.') +
@@ -20566,7 +20616,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         '<label class="rec-opt inline" style="margin-top:.3rem"><input type="checkbox" id="rec-matchmix" checked> Match my sound mix (record what I hear)</label>' +
         '<p id="rec-err" hidden style="color:#ff8a8a;font-size:.9rem;margin:.6rem 0 0"></p>' +
         '<div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.9rem">' +
-        '<button id="ro-cancel" class="lob-ghost">Cancel</button><button id="ro-start">Start recording</button></div></div>';
+        '<button id="ro-cancel" type="button" class="appear-secondary">Cancel</button><button id="ro-start" type="button" class="appear-primary">Start recording</button></div></div>';
       document.body.appendChild(bg);
       const close = openModal(bg, () => { if (bg.parentNode) bg.remove(); });
       bg.querySelector('#ro-cancel').onclick = () => close();

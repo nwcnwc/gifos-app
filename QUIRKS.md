@@ -98,9 +98,13 @@ The dock button says **Leave**. The question is Stay (outline) and Leave (red), 
 
 A full-width line under the room bar says **Microphone off** and **Camera off** while those are off. White on `#3a1014`. It sits under the room bar, clears the dock, and fits 1280, 1920, and 900. It hides when the microphone and camera are on. Someone only watching a service does not see it. After: `test/e2e/artifacts/av-off-after.png`, `av-on-after.png`.
 
+### Q22. A recording started without a card you had to read
+
+Starting a recording, or seeing someone else start one, opens a white card. The title is **You are recording this small group**, **You are recording this service**, **Jordan Lee is recording this small group**, or **This small group is being recorded** when the name is missing. The body says it is saved on a device in this room and that the bar keeps saying Recording. OK is blue `#0064c8`. The card fits 1280, 1920, and 900. OK dismisses the card and leaves the bar on Recording. The record sheet says the same thing: Cancel is an outline, Start recording is blue. After: `test/e2e/artifacts/rec-notice-after.png`.
+
 ## Open
 
-Corporate trust is still short of Zoom and Teams: a recording shows on the bar, and nothing stops it until the other people have seen that it is on. FaceTime is still ahead on how little chrome a personal call shows. The lobby, the labeled controls, the layout, and chat are the other corporate rows still at 4.
+A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The lobby, the labeled controls, the layout, and chat are the other corporate rows still at 4.
 
 ## How a session was opened without a relay
 
