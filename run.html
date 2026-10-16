@@ -5632,12 +5632,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const relayTxCount = { boot: 'relayBoot', fp: 'relayFp', ice: 'relayIce', name: 'relayName', password: 'relayPassword', pwsig: 'relayPassword', pwpub: 'relayPassword', pwby: 'relayPassword' };
     function relaySendSealed(to, ty, obj, key) {
       if (!RELAY_TYPES.has(ty) || !obj || obj.k !== ty) return Promise.resolve(false);
-      return txm(() => net.sealFixed(key || roomE2E, obj).then((env) => {
+      // Call order is the send order. The page's txm is already a FIFO, but
+      // the gate stubs it as identity, and a later smaller seal can resolve
+      // first — the end mark then lands between the candidates it closes.
+      // A refused type never takes a slot. The chain hangs off relayTxCount,
+      // which the gate already extracts with this function.
+      const run = () => txm(() => net.sealFixed(key || roomE2E, obj).then((env) => {
         if (!env) { txStats.relayUnfit++; return false; }
         txStats[relayTxCount[ty]]++;
         relaySendObj({ t: 'peer', to, ty, msg: env });
         return true;
       }));
+      const q = relayTxCount._q || Promise.resolve();
+      const n = q.then(run, run);
+      relayTxCount._q = n.catch(() => {});
+      return n;
     }
     // The password grant as the relay carries it: one `password` frame (the
     // password and its epoch) and, for a signed grant, the fields the
