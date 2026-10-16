@@ -1338,3 +1338,66 @@ test('share screen is on the small-group dock', async ({ page }) => {
   await expect(tucked).toBeVisible();
   await expect(tucked).toHaveText('Share screen');
 });
+
+test('a host steps on and off the stage from the dock', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('view=1') === -1 && location.hash.indexOf('bc=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=step' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.live');
+    const step = page.locator('.bar > #stagebtn');
+    await expect(step).toBeVisible();
+    await expect(step.locator('.docklab')).toHaveText('Step on');
+    await expect(step).toHaveAttribute('aria-label', 'Step on the stage');
+    const lay = await page.evaluate(() => {
+      const btn = document.querySelector('.bar > #stagebtn');
+      const lab = btn.querySelector('.docklab');
+      const bar = document.querySelector('.bar').getBoundingClientRect();
+      const r = btn.getBoundingClientRect();
+      const lr = lab.getBoundingClientRect();
+      return {
+        inMore: !!btn.closest('#barmore'),
+        clip: lab.scrollWidth <= lab.clientWidth + 1,
+        inBtn: lr.left >= r.left - 1 && lr.right <= r.right + 1 && lr.bottom <= r.bottom + 1,
+        barIn: bar.left >= -1 && bar.right <= innerWidth + 1 && bar.bottom <= innerHeight + 1,
+      };
+    });
+    expect(lay.inMore, JSON.stringify(lay)).toBe(false);
+    expect(lay.clip, JSON.stringify(lay)).toBe(true);
+    expect(lay.inBtn, JSON.stringify(lay)).toBe(true);
+    expect(lay.barIn, JSON.stringify(lay)).toBe(true);
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.setViewportSize({ width: 900, height: 720 });
+  const step = page.locator('.bar > #stagebtn');
+  await expect(step.locator('.docklab')).toHaveText('Step on');
+  const resized = await page.evaluate(() => document.querySelector('.bar').getBoundingClientRect().right <= innerWidth + 1);
+  expect(resized).toBe(true);
+  await step.click();
+  await expect(step.locator('.docklab')).toHaveText('Step off');
+  await expect(step).toHaveAttribute('aria-label', 'Step off the stage');
+  const steppedOn = await step.evaluate((el) => el.classList.contains('on'));
+  expect(steppedOn).toBe(true);
+  const onAir = await page.evaluate(() => getComputedStyle(document.querySelector('.bar > #stagebtn')).backgroundColor);
+  expect(onAir).toBe('rgb(182, 22, 34)');
+  await step.click();
+  await expect(step.locator('.docklab')).toHaveText('Step on');
+  const steppedOff = await step.evaluate((el) => el.classList.contains('on'));
+  expect(steppedOff).toBe(false);
+  await page.goto('/run.html?desk=stepview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  await expect(page.locator('.bar > #stagebtn')).toHaveCount(0);
+  await page.locator('#bartoggle').click();
+  await expect(page.locator('#barmore #stagebtn')).toHaveText('Stage');
+  await page.goto('/run.html?desk=stepmeet#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await expect(page.locator('.bar > #stagebtn')).toHaveCount(0);
+  await page.locator('#bartoggle').click();
+  await expect(page.locator('#barmore #stagebtn')).toHaveText('Stage');
+});

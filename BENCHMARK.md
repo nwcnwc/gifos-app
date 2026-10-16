@@ -37,7 +37,7 @@ Zoom still leads. The status line says “Just you. Send the invite.” and fits
 | Join without an account or an install | 2 | 3 | 2 | 5 |
 | **Audience score** | **4.0** | **3.8** | **3.5** | **4.7** |
 
-GifOS leads this audience. The average is 4.7 against StreamYard 4.0. An open service says “Service · You are live” or “Service · You are watching”. An open small group says “Small group”, on a different color, with no menu (Q18). That row is even with StreamYard at 5. Language and chat stay tied at 4. Arithmetic: (5+4+5+5+4+5)/6 = 4.7.
+GifOS leads this audience. The average is 4.7 against StreamYard 4.0. An open service says “Service · You are live” or “Service · You are watching”. An open small group says “Small group”, on a different color, with no menu (Q18). That row is even with StreamYard at 5. The host steps on and off from the dock (Q36). Language and chat stay tied at 4. Arithmetic: (5+4+5+5+4+5)/6 = 4.7.
 
 ## Personal
 
@@ -94,3 +94,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q33 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A host alone on a service reads You are live. A viewer reads You are watching. A small group still reads Just you. Scores unchanged. |
 | After Q34 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Share is on the small-group dock. A service keeps it in More. Labeled controls stay 4. Zoom still leads. |
 | After Q35 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Fit leaves with the dock on a quiet small group. The room bar and the status chip stay. Warm chrome stays 4. FaceTime still leads. |
+| After Q36 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A host steps on and off from the dock. A viewer and a small group keep Stage in More. Scores unchanged. |

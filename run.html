@@ -1409,6 +1409,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     font-size: 11px; font-weight: 700; line-height: 1; }
   .bar > #sharebtn svg { width: 28px; height: 28px; }
   .bar > #sharebtn.on { background: #b3402f; color: #fff; }
+  .bar > #stagebtn { width: auto; min-width: 68px; height: 68px; min-height: 68px; padding: 0 12px; border: 0; border-radius: 50%;
+    background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
+    font-size: 11px; font-weight: 700; line-height: 1; }
+  .bar > #stagebtn .docklab { max-width: none; }
+  .bar > #stagebtn svg { width: 28px; height: 28px; }
+  .bar > #stagebtn.on { background: #b61622; color: #fff; }
   .bar #reactbtn.on, .bar #bartoggle[aria-expanded="true"] { background: #0064c8; color: #fff; }
   .bar:not(.collapsed) .bartoggle svg { transform: none; }
   .bar #leavebtn { width: 72px; height: 72px; min-width: 72px; min-height: 72px; margin-left: 6px; padding: 0;
@@ -1495,6 +1501,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
     .bar > #sharebtn { width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
     .bar > #sharebtn svg { width: 26px; height: 26px; }
+    .bar > #stagebtn { height: 56px; min-height: 56px; padding: 0 8px; }
+    .bar > #stagebtn svg { width: 22px; height: 22px; }
     .bar #fsbtn { width: auto; min-width: 56px; padding: 0 6px; }
     .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #chatbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
     .bar #bargrip { height: 40px; width: 18px; }
@@ -2527,6 +2535,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const moreSheet = document.getElementById('barmore');
       if (shareOnDock && moreSheet && shareOnDock.parentElement !== moreSheet) moreSheet.appendChild(shareOnDock);
       const host = bcHostStored() || document.body.classList.contains('amadmin');
+      if (host && bar) {
+        const stage = document.getElementById('stagebtn');
+        const anchor = document.getElementById('reactbtn');
+        if (stage && anchor && stage.parentElement !== bar) bar.insertBefore(stage, anchor);
+        if (stage && !stage.querySelector('.docklab')) {
+          stage.classList.add('iconbtn');
+          stage.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="2.4"/><path d="M8.2 13.2c.5-1.5 1.9-2.4 3.8-2.4s3.3.9 3.8 2.4"/><path d="M4 17.5h16"/></svg><span class="docklab">Step on</span>';
+          stage.setAttribute('aria-label', 'Step on the stage');
+        }
+      }
       if (pill) {
         pill.hidden = false;
         pill.className = host ? 'live' : 'watch';
@@ -12292,7 +12310,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               setTimeout(() => {
                 if (!bcStageWant) return;
                 bcStageWant = false;
-                if (!myStatus.stg) setStatus('Could not step onto the Stage — tap Stage.');
+                if (!myStatus.stg) setStatus('Could not step onto the stage — tap Step on.');
               }, 30000);
             }
           }
@@ -17723,10 +17741,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // enforcement lives in every receiver's stageIds() filter.
     const stageBtn = document.getElementById('stagebtn');
     function paintStage() {
-      const on = !!myStatus.stg && stageIds().includes(myId);
+      const claimed = !!myStatus.stg;
+      const seated = claimed && stageIds().includes(myId);
+      const on = (typeof BROADCAST !== 'undefined' && BROADCAST) ? claimed : seated;
       stageBtn.classList.toggle('on', on);
-      stageBtn.textContent = on ? 'Step down' : 'Stage';
-      stageBtn.style.display = (!hasAdminRoom() || amAdmin || (modOf(myId).app && modOf(myId).app.on) || myStatus.stg) ? '' : 'none';
+      const docked = stageBtn.parentElement && stageBtn.parentElement.classList.contains('bar');
+      const lab = stageBtn.querySelector('.docklab');
+      if (docked && lab) {
+        lab.textContent = on ? 'Step off' : 'Step on';
+        stageBtn.setAttribute('aria-label', on ? 'Step off the stage' : 'Step on the stage');
+        stageBtn.title = on ? 'Step off the stage. The room stops seeing you.' : 'Step onto the stage. The room sees and hears you.';
+      } else {
+        stageBtn.textContent = on ? 'Step down' : 'Stage';
+      }
+      const hostHere = (typeof BROADCAST !== 'undefined' && BROADCAST) && ((typeof bcHostStored === 'function' && bcHostStored()) || amAdmin);
+      stageBtn.style.display = (!hasAdminRoom() || amAdmin || hostHere || (modOf(myId).app && modOf(myId).app.on) || myStatus.stg) ? '' : 'none';
       // The broadcast skin hides a viewer's mic/cam buttons — until the host
       // grants them the stage, when the controls they now need grow back.
       document.body.classList.toggle('stage-granted', canStage(myId));
