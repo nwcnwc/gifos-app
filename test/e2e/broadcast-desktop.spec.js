@@ -1128,3 +1128,63 @@ test('sharing a personal call is the link and a blue Copy', async ({ page }) => 
   await page.locator('#invite').click();
   await expect(page.locator('#inv-modal')).toContainText('The host password stays with you.');
 });
+
+test('captions and record stay readable when they are on', async ({ page }) => {
+  async function readOn() {
+    return page.evaluate(() => {
+      const cc = document.getElementById('ccbtn');
+      const rec = document.getElementById('recbtn');
+      const sheet = document.getElementById('barmore').getBoundingClientRect();
+      const look = (el) => {
+        const s = getComputedStyle(el);
+        const r = el.getBoundingClientRect();
+        return {
+          text: (el.textContent || '').trim(),
+          bg: s.backgroundColor,
+          fg: s.color,
+          clip: el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1,
+          in: r.left >= sheet.left - 1 && r.right <= sheet.right + 1 && r.top >= sheet.top - 1 && r.bottom <= sheet.bottom + 1,
+          onScreen: r.left >= -1 && r.right <= innerWidth + 1 && r.bottom <= innerHeight,
+        };
+      };
+      return { cc: look(cc), rec: look(rec), pressed: cc.getAttribute('aria-pressed') };
+    });
+  }
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=cap' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast.meet-session #mic .docklab');
+    await page.locator('#bartoggle').click();
+    await expect(page.locator('#barmore')).toBeVisible();
+    await expect(page.locator('#ccbtn')).toHaveText('Captions');
+    const off = await readOn();
+    expect(off.cc.fg).toBe('rgb(29, 29, 31)');
+    expect(off.cc.clip, JSON.stringify(off.cc)).toBe(true);
+    expect(off.cc.in, JSON.stringify(off.cc)).toBe(true);
+    await page.locator('#ccbtn').click();
+    await expect(page.locator('#ccbtn')).toHaveClass(/on/);
+    await page.evaluate(() => document.getElementById('recbtn').classList.add('on'));
+    const on = await readOn();
+    expect(on.cc.text).toBe('Captions');
+    expect(on.cc.bg).toBe('rgb(0, 100, 200)');
+    expect(on.cc.fg).toBe('rgb(255, 255, 255)');
+    expect(on.rec.bg).toBe('rgb(0, 100, 200)');
+    expect(on.rec.fg).toBe('rgb(255, 255, 255)');
+    expect(on.pressed).toBe('true');
+    expect(on.cc.clip, JSON.stringify(on.cc)).toBe(true);
+    expect(on.cc.in, JSON.stringify(on.cc)).toBe(true);
+    expect(on.cc.onScreen, JSON.stringify(on.cc)).toBe(true);
+    expect(on.rec.clip, JSON.stringify(on.rec)).toBe(true);
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.setViewportSize({ width: 900, height: 720 });
+  const resized = await readOn();
+  expect(resized.cc.text).toBe('Captions');
+  expect(resized.cc.fg).toBe('rgb(255, 255, 255)');
+  expect(resized.cc.clip, JSON.stringify(resized.cc)).toBe(true);
+  expect(resized.cc.onScreen, JSON.stringify(resized.cc)).toBe(true);
+});
