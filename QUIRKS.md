@@ -173,6 +173,12 @@ Repro: `test/mobile/chat-emoji.js`. It failed (`no emoji control`), then passed 
 
 Before: `qa/mobile/shots/before-chat-emoji-iphone-15.png`. After: `qa/mobile/shots/after-chat-emoji-iphone-15.png`.
 
+### 21. Send slid off the screen beside Emoji
+
+The field refuses to shrink below its placeholder, so adding the emoji button pushed Send to x=382 on an SE (the screen is 320) and to x=435 on an iPhone 15.
+
+Repro: `test/mobile/chat-above-dock.js` now requires Send on screen. It failed (`send off screen (right 382)`), then passed. The field may shrink. Send stays inside the screen.
+
 ## Open
 
 The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.

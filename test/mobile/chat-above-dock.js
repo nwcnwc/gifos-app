@@ -42,6 +42,7 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
       inputBottom: input.bottom, inputTop: input.top, inputH: input.height,
       barTop: bar.top, vh: window.innerHeight,
       sendH: send.height, sendW: send.width,
+      sendLeft: send.left, sendRight: send.right, vw: window.innerWidth,
       closeH: close.height, closeW: close.width,
       attachH: attach.height, attachW: attach.width,
       moreOpen: !document.querySelector('.bar').classList.contains('collapsed'),
@@ -49,6 +50,7 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
   });
   if (tapped && geo.inputBottom > geo.barTop + 1) bad.push('field bottom ' + Math.round(geo.inputBottom) + ' under dock top ' + Math.round(geo.barTop));
   if (geo.sendH < 44 || geo.sendW < 44) bad.push('send ' + Math.round(geo.sendW) + 'x' + Math.round(geo.sendH));
+  if (geo.sendRight > geo.vw + 1 || geo.sendLeft < -1) bad.push('send off screen (right ' + Math.round(geo.sendRight) + ')');
   if (geo.closeH < 44 || geo.closeW < 44) bad.push('close ' + Math.round(geo.closeW) + 'x' + Math.round(geo.closeH));
   if (geo.attachH < 44 || geo.attachW < 44) bad.push('attach ' + Math.round(geo.attachW) + 'x' + Math.round(geo.attachH));
   if (geo.moreOpen) bad.push('More sheet still covers chat');
