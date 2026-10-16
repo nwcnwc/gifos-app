@@ -101,3 +101,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q40 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A promoted viewer steps off from a red dock button. Scores unchanged. |
 | After Q41 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A viewer on stage with the camera off is told so. The room bar still says You are watching. Scores unchanged. |
 | After Q42 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A person on stage reads Service · You are on stage. A host stays You are live. Stepping off returns to You are watching. Scores unchanged. |
+| After Q43 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | The top line and the badge say On stage, and return to Watching after they step off. Scores unchanged. |

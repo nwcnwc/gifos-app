@@ -1638,6 +1638,19 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
     expect(air.full, JSON.stringify(air)).toBe(true);
     expect(air.inside, JSON.stringify(air)).toBe(true);
     await expect(page.locator('#bc-stage-line')).toHaveText('You are on stage. Your camera is off.');
+    await expect(page.locator('#status')).toContainText('You are on stage.');
+    await expect(page.locator('#status')).not.toContainText('watching');
+    await expect(page.locator('#onair')).toHaveText('On stage');
+    await expect(page.locator('#onair')).toHaveClass(/live/);
+    const chip = await page.evaluate(() => {
+      const status = document.getElementById('status').getBoundingClientRect();
+      const fit = document.getElementById('fitbtn').getBoundingClientRect();
+      const pill = document.getElementById('onair').getBoundingClientRect();
+      const overlap = (a, b) => !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+      return { statusFit: overlap(status, fit), pillStatus: overlap(pill, status) };
+    });
+    expect(chip.statusFit, JSON.stringify(chip)).toBe(false);
+    expect(chip.pillStatus, JSON.stringify(chip)).toBe(false);
     const plateShown = await page.locator('#bc-stage').evaluate((el) => getComputedStyle(el).display !== 'none');
     expect(plateShown).toBe(true);
     expect(lay.clip, JSON.stringify(lay)).toBe(true);
@@ -1657,4 +1670,6 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
   await expect(page.locator('#bc-stage-line')).toHaveText('The stage is clear.');
   await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
   await expect(page.locator('#airbar')).toHaveClass(/watch/);
+  await expect(page.locator('#status')).toContainText('You are watching this service.');
+  await expect(page.locator('#onair')).toHaveText('Watching');
 });

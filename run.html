@@ -2495,6 +2495,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (host) paintAirKind('live', 'Service · You are live');
       else if (onStage) paintAirKind('live', 'Service · You are on stage');
       else paintAirKind('watch', 'Service · You are watching');
+      const pill = document.getElementById('onair');
+      if (pill) {
+        pill.hidden = false;
+        pill.className = (host || onStage) ? 'live' : 'watch';
+        pill.textContent = host ? 'Live' : (onStage ? 'On stage' : 'Watching');
+      }
+      if (typeof updateStatus === 'function') updateStatus();
     }
     function paintBroadcastChrome() {
       const pill = document.getElementById('onair');
@@ -6602,7 +6609,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const reachState = reach ? reach.state : null;
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
       const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
-        : (n === 1 ? (atDoor ? 'Getting you back into the ' + (BROADCAST ? 'service' : 'small group') + ' — waiting for the others to answer…' : (BROADCAST ? ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin') ? 'You are live. Send the link.' : 'You are watching this service.') : 'Just you. Send the invite.') + reachTriedSentence())
+        : (n === 1 ? (atDoor ? 'Getting you back into the ' + (BROADCAST ? 'service' : 'small group') + ' — waiting for the others to answer…' : (BROADCAST ? ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin') ? 'You are live. Send the link.' : ((typeof myStatus !== 'undefined' && myStatus.stg) ? 'You are on stage.' : 'You are watching this service.')) : 'Just you. Send the invite.') + reachTriedSentence())
         : displayCount() + ' in this ' + (BROADCAST ? 'service' : 'small group') + ' · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
