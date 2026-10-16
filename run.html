@@ -1364,9 +1364,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
   body.app-room #reactbtn, body.app-room #reacttray { display: none !important; }
-  #gifos-build-float { top: 14px !important; right: 14px !important; bottom: auto !important; left: auto !important;
-    opacity: 1 !important; color: #e7ebf2 !important; background: rgba(12,14,18,.92); padding: 4px 10px;
-    border-radius: 999px; z-index: 6 !important; text-shadow: none !important; }
+  /* The build name used to be a solid chip in the corner, beside Fit, and
+     Fit hung down onto the top face. Fit shares the header row. The build
+     name is a faint line under that row, not a second button. */
+  #gifos-build-float { top: calc(58px + env(safe-area-inset-top, 0px)) !important; left: calc(14px + env(safe-area-inset-left, 0px)) !important;
+    right: auto !important; bottom: auto !important;
+    opacity: 0.55 !important; color: #c5cad3 !important; background: transparent !important; padding: 0 !important;
+    border-radius: 0 !important; font-size: 11px !important; line-height: 1.2 !important;
+    z-index: 6 !important; text-shadow: none !important; pointer-events: none !important; }
   .bar { position: fixed; z-index: 32; left: 50%; bottom: 14px; transform: translateX(-50%);
     display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; height: 104px; width: auto;
     max-width: calc(100% - 16px); padding: 0 16px 0 18px; margin: 0;

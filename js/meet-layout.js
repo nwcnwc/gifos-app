@@ -165,9 +165,9 @@
   function viewBox(vw, vh, opts) {
     opts = opts || {};
     const phone = opts.phone != null ? !!opts.phone : vw < 600;
-    // 64 clears the header pill (it sits at y=14 and is about 40px tall) so
-    // the top row's chips are not drawn underneath it. The mode pill is taller.
-    const top = opts.top != null ? opts.top : (phone && opts.pill ? 92 : 64);
+    // 120 clears the header and Fit, including when Fit grows at 200% text.
+    // Fit sits under the chip and used to hang onto the top-right face.
+    const top = opts.top != null ? opts.top : (phone && opts.pill ? 140 : 120);
     const bottom = Math.max(0, +opts.bottom || 0);
     const pad = phone ? 2 : 4;
     return {

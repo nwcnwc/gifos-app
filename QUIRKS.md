@@ -203,9 +203,17 @@ Repro: `test/mobile/see-everyone.js`. It failed (`David is 195x88`, `3 rows`), t
 
 Before: `qa/mobile/shots/before-see-everyone-iphone-15.png`. After: `qa/mobile/shots/after-see-everyone-iphone-15.png`.
 
+### 25. Fit sat on a face, and the build tag looked like a button
+
+Fit was at y=58–102 while the top-right tile started at y=64, so it covered the corner of that face. The build name was a solid dark pill in the same corner.
+
+Repro: `test/mobile/call-calm.js`. It failed (`Fit covers a face`, `build tag looks like a button`), then passed. Faces start below Fit. The build name is a faint line under the header, with no fill. Fit still clears the header and stays 44px.
+
+Before: `qa/mobile/shots/before-call-calm-iphone-15.png`. After: `qa/mobile/shots/after-call-calm-iphone-15.png`.
+
 ## Open
 
-The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture.
 
 ## Personas (what was actually tried)
 
