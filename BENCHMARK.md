@@ -38,7 +38,7 @@ A volunteer and an older member, a service or a small group, often a phone held 
 | Job | Score | Note |
 | --- | --- | --- |
 | Start or join from the lobby on an SE | 8 | Join is on screen in portrait and in landscape. Start is the only blue button. |
-| Tap targets for someone who misses small controls | 8 | Dock grip, chat close, Send, and Fit are 44px, including on an iPhone 15. Fit grows with the text size. |
+| Tap targets for someone who misses small controls | 9 | Dock grip, chat close, Send, and Fit are 44px, including on an iPhone 15. Blur for all is a 64px square, inset from the tile corner, on a phone and on the desktop. |
 | Captions a member can find, at 200% text | 8 | Captions is on the call, says Captions, and the label is 32px at 200% text. |
 | Host runs the room from the phone they already hold | 10 | Live, Record, and Captions are on the call. The phone sheet opens on Invite, Room password, Waiting room, and Chat. Invite is the blue one. Vote on someone and Step on stage scroll. |
 | **Audience** | **9** | Join, Captions, the dock, Fit, landscape More, and a waiting-room list work on a phone. More no longer covers the faces with a wall of buttons. We do not lead yet. |
@@ -84,3 +84,4 @@ Family and friends. Warm, few steps, a texted link.
 25. Quieter chrome. `test/mobile/call-calm.js` failed (Fit covered a face, and the build tag was a solid chip), then passed. Faces start below Fit. The build name is faint and has no fill. Personal see-everyone 8→9. Audience scores stay 8 / 8 / 8. Nobody leads yet. FaceTime still hides more of its chrome.
 26. Idle chrome. `test/mobile/chrome-idle.js` failed (`chrome stays up when idle`), then passed on an iPhone 15 and an SE. Live, Record, Captions, and the dock tuck, the faces grow into that band, and a tap brings them back at 44px. More holds them up. Corporate end-call 8→9, corporate trust 8→9, corporate audience 8→9. Personal see-everyone 9→10, personal audience 8→9. Church stays 8. Nobody leads yet. A volunteer panel is still calmer. Fit and the name chip stay on screen.
 27. Calmer More. `test/mobile/more-calm.js` failed (`13 buttons on the first screen`, sheet top 44), then passed on an iPhone 15 and an SE. The first screen is Invite, Room password, Waiting room, and Chat. Invite is blue. The name stays clear. Church host 9→10, church audience 8→9. Audience scores are 9 / 9 / 9. Nobody leads yet.
+28. Blur for all. The per-tile control was 83×32 and flush with the corner. It is now a 64px square, 12px in from the corner, on a phone and on the desktop. `test/mobile/blur-tile.js` passes. Church tap targets 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.

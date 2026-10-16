@@ -227,6 +227,14 @@ Repro: `test/mobile/more-calm.js`. It failed (`13 buttons on the first screen`, 
 
 Before: `qa/mobile/shots/before-more-calm-iphone-15.png`. After: `qa/mobile/shots/after-more-calm-iphone-15.png`.
 
+### 28. Blur for all is a small tab on the tile corner
+
+On a phone and on the desktop the per-tile control was 83×32, flush with the top-right corner (`top: 0; right: 0`). A tap meant for the video hit it.
+
+Repro: `test/mobile/blur-tile.js`. It passes on an iPhone 15, an SE, and a 1280×800 desktop. The button is a 64px square, 12px in from the corner, over the video. The name, full screen, and the tile menu stay at least 12px away. The label is still "Blur for all".
+
+Before: `qa/mobile/shots/before-blur-tile-iphone-15.png`, `qa/mobile/shots/before-blur-tile-desktop.png`. After: `qa/mobile/shots/after-blur-tile-iphone-15.png`, `qa/mobile/shots/after-blur-tile-desktop.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.
