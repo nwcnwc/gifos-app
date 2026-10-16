@@ -17,7 +17,7 @@ Repro: `test/mobile/dock-fits.js`. It failed with `leavebtn off screen (right 37
 
 Before: `qa/mobile/shots/before-grandparent-call.png`. After: `qa/mobile/shots/after-dock-iphone-se.png`, `qa/mobile/shots/after-dock-android-360.png`.
 
-Fit is still 59×32. That stays open.
+Fit was 59×32 then. It is 44px now (quirk 8).
 
 ### 2. Landscape More sheet hangs off the top and does not scroll
 
@@ -69,9 +69,17 @@ Repro: `test/mobile/safe-area.js`. It failed on the meta, the chip, the dock, an
 
 After: `qa/mobile/shots/after-safe-area-iphone-15.png`.
 
+### 8. Fit is a 32px target
+
+`#fitbtn` was `min-height: 32px` and `font: 700 14px`. On an SE and a 360px phone it measured 59×32, and at 200% text the label stayed 14px. Tapping it switches the label to Scroll, which is wider, so both words have to clear the name chip.
+
+Repro: `test/mobile/fit-target.js`. It failed (`Fit is 59x32`, and `Fit font 14px at 200%`), then passed. The control is at least 44×44, `font-size: 1rem`, on screen, and it does not cover the name chip or the dock in either word. At 200% the label is 32px.
+
+Before: `qa/mobile/shots/before-fit-iphone-se.png`. After: `qa/mobile/shots/after-fit-iphone-se.png`.
+
 ## Open
 
-Fit is still 32px tall. There is still no waiting-room admit list for a host.
+There is still no waiting-room admit list for a host.
 
 ## Personas (what was actually tried)
 
