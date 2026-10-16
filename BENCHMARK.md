@@ -35,7 +35,7 @@ A volunteer and an older member, a service or a small group, often a phone held 
 
 | Job | Score | Note |
 | --- | --- | --- |
-| Start or join from the lobby on an SE | 7 | Join is on screen in portrait. In landscape the first action is on screen and Join scrolls into the card. |
+| Start or join from the lobby on an SE | 8 | Join is on screen in portrait and in landscape. Start is the only blue button. |
 | Tap targets for someone who misses small controls | 8 | Dock grip, chat close, Send, and Fit are 44px, including on an iPhone 15. Fit grows with the text size. |
 | Captions a member can find, at 200% text | 8 | Captions is on the call, says Captions, and the label is 32px at 200% text. |
 | Host runs the room from the phone they already hold | 9 | Live, Record, and Captions are on the call. Room password, Vote on someone, Step on stage, and a waiting-room list are named in plain words. |
@@ -71,3 +71,4 @@ Family and friends. Warm, few steps, a texted link.
 14. Host words. `test/mobile/host-words.js` failed (`Password`, `Vote`, `Stage`), then passed, including at 200% text. The controls say Room password, Vote on someone, and Step on stage (Step off stage once you are up). The phone sheet is two columns so the phrases fit. Corporate host 8→9. Church host 8→9. Audience scores stay 8 / 8 / 8. Nobody leads yet. Still open: in landscape, Invite and Room password are below the first screen of More.
 15. Landscape first screen. `test/mobile/landscape-first.js` failed (Invite and Room password below the sheet on an SE), then passed. Those two, plus Waiting room and Chat, are the first four controls. Personal sideways 6→8. Audience scores stay 8 / 8 / 8. Nobody leads yet. Still open: Record and Captions live inside More, so a producer does not see a live/record state on the call itself.
 16. Live and record state on the call. `test/mobile/call-state.js` failed (no state on the call), then passed, including at 200% text. Live, Record, and Captions sit above the dock. Recording is red. Captions on is blue. Corporate trust 7→8. Church captions 7→8. Audience scores stay 8 / 8 / 8. Nobody leads yet. Still open: in landscape the lobby still makes you scroll to Join.
+17. Landscape lobby Join. `test/mobile/lobby-join-visible.js` failed (`bottom 378` on an SE), then passed. The three actions share one row, and Join is on screen. Church lobby 7→8. Audience scores stay 8 / 8 / 8. Nobody leads yet.

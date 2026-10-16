@@ -1,7 +1,6 @@
 /*
- * Cold lobby: Join a link is on screen on a small phone.
- * Landscape may scroll the card, but the first action is visible immediately
- * and Join can be scrolled into the card.
+ * Cold lobby: Join a link is on screen on a small phone, including
+ * when the phone is held sideways. Scrolling is not required.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/lobby-join-visible.js
  */
@@ -20,7 +19,7 @@ function land(device) {
 
 const PHONES = [
   { name: 'iphone-se', device: devices['iPhone SE'], mustSee: ['lob-open', 'lob-admin-btn', 'lob-join-btn'] },
-  { name: 'iphone-se-land', device: land(devices['iPhone SE']), mustSee: ['lob-open'], scrollTo: ['lob-join-btn'] },
+  { name: 'iphone-se-land', device: land(devices['iPhone SE']), mustSee: ['lob-open', 'lob-admin-btn', 'lob-join-btn'] },
   {
     name: 'android-360',
     device: {

@@ -141,11 +141,17 @@ Repro: `test/mobile/call-state.js`. It failed (`no live/record state on the call
 
 Before: `qa/mobile/shots/before-call-state-iphone-15.png`. After: `qa/mobile/shots/after-call-state-iphone-15.png`.
 
+### 17. Landscape lobby hid Join
+
+On an SE held sideways the card is 320px tall. Start a meeting and Start a room you run fit. Join a link started at y=311 and ended at y=378, so almost the whole button was below the screen. You could scroll to it. A grandparent who turned the phone did not see the thing the text told them to tap.
+
+Repro: `test/mobile/lobby-join-visible.js`. It failed (`lob-join-btn off screen (bottom 378)`), then passed. In that short landscape the three actions sit in one row. Start stays the only blue button. Join is on screen, at least 44px, and the explanation under each label still fits. Portrait is unchanged.
+
+Before: `qa/mobile/shots/before-lobby-join-land.png`. After: `qa/mobile/shots/after-lobby-iphone-se-land.png`.
+
 ## Open
 
 The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
-
-In landscape the lobby still asks you to scroll to Join. The first action is on screen. Join is the one that sits lower in the card.
 
 ## Personas (what was actually tried)
 
