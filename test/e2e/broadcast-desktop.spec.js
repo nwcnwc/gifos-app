@@ -308,6 +308,66 @@ test('the dock has a full-screen button', async ({ page }) => {
   await expect(page.locator('body')).not.toHaveClass(/fsopen/);
 });
 
+test('full screen on a service shows the stage', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  async function readFs() {
+    return page.evaluate(() => {
+      const view = document.getElementById('fsview');
+      const name = document.getElementById('fsname');
+      const close = document.getElementById('fsclose').getBoundingClientRect();
+      const strip = document.getElementById('fsstrip');
+      const nm = name.querySelector('.fsnm');
+      return {
+        on: view.classList.contains('on'),
+        follow: (strip.innerText || '').indexOf('Follow speaker') !== -1,
+        stripShown: getComputedStyle(strip).display !== 'none',
+        line: nm ? nm.textContent : '',
+        nameOn: name.classList.contains('on'),
+        title: document.getElementById('fsbtn').title,
+        closeIn: close.top >= -1 && close.left >= -1 && close.right <= innerWidth + 1 && close.bottom <= innerHeight + 1,
+      };
+    });
+  }
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=fsstage' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast #onair.watch');
+    await page.locator('#fsbtn').click();
+    await expect(page.locator('#fsview')).toHaveClass(/on/);
+    const clear = await readFs();
+    expect(clear.follow, JSON.stringify(clear)).toBe(false);
+    expect(clear.stripShown, JSON.stringify(clear)).toBe(false);
+    expect(clear.line).toBe('The stage is clear.');
+    expect(clear.nameOn).toBe(true);
+    expect(clear.title).toBe('Watch the stage full screen.');
+    expect(clear.closeIn, JSON.stringify(clear)).toBe(true);
+    await page.locator('#fsclose').click();
+    await expect(page.locator('body')).not.toHaveClass(/fsopen/);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/run.html?desk=fsstagehost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#onair.live');
+  await page.evaluate(() => window.__gifosVideo.setStageForTest(true));
+  await page.locator('#fsbtn').click();
+  const onStage = await readFs();
+  expect(onStage.line).toBe('You are on stage. Your camera is off.');
+  expect(onStage.follow).toBe(false);
+  await page.locator('#fsclose').click();
+  await page.goto('/run.html?desk=fssg#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.locator('#fsbtn').click();
+  const group = await readFs();
+  expect(group.follow, JSON.stringify(group)).toBe(true);
+  expect(group.stripShown).toBe(true);
+  expect(group.title).toContain('speaking');
+});
+
 test('guest moderation tools are in the keyboard tab order', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');

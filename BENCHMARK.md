@@ -105,3 +105,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q44 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A service hides Fit. A small group still switches Fit and Scroll. Warm chrome stays 4. Scores unchanged. |
 | After Q45 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Service chat keeps its title on one line. The privacy line sits under it. Chat stays 4. Scores unchanged. |
 | After Q46 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Service help says Raise hand and Step off. Language stays 4. Scores unchanged. |
+| After Q47 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Full screen on a service shows the stage. A small group still follows the speaker. Scores unchanged. |

@@ -927,6 +927,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #fsname .fsnm { font-size: 1.35rem; background: rgba(10,10,15,.72); color: #eceef8;
     padding: .3rem .9rem; border-radius: .45rem; max-width: min(28rem, 86vw);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* A service is one stage. Full screen shows that picture, not a speaker strip. */
+  body.broadcast #fsstrip { display: none !important; }
+  body.broadcast #fsname .fsinitial { display: none; }
+  body.broadcast #fsname .fsnm { font: 700 28px/1.3 system-ui, sans-serif; background: none;
+    white-space: normal; text-align: center; max-width: 36rem; }
   #fsstrip { position: absolute; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; gap: .5rem;
     padding: .55rem; overflow-y: auto; overflow-x: hidden; z-index: 2;
     background: linear-gradient(to left, rgba(0,0,0,.55), transparent); }
@@ -2567,6 +2572,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (inv) inv.textContent = 'Share this service';
       const inviteBtn = document.getElementById('invite');
       if (inviteBtn) inviteBtn.title = 'Invite someone to this service — one link';
+      const fsDockBtn = document.getElementById('fsbtn');
+      if (fsDockBtn) fsDockBtn.title = 'Watch the stage full screen.';
       const files = document.querySelector('#cfiles h4');
       if (files) files.textContent = 'Files pinned to this service';
       if (bar) bar.setAttribute('aria-label', 'Service controls');
@@ -4636,6 +4643,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (v.classList.contains('stageface')) continue;
         if (pipReady(v)) out.push({ key: 'stage:' + ((v.closest('.rowtile') || {}).dataset || {}).row, label: 'On stage', v });
       }
+      if (typeof BROADCAST !== 'undefined' && BROADCAST) return out;
       for (const [pid, p] of peers) {
         if (!p.connected) continue;
         // Every connected peer is listed. A dark one (camera off, admin
@@ -4673,6 +4681,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (letter) letter.textContent = ch ? ch.toUpperCase() : '\u2022';
         if (nm) nm.textContent = text;
       };
+      const broadcastFs = typeof BROADCAST !== 'undefined' && BROADCAST;
       if (main) {
         if (fsSel !== 'auto') fsSel = main.key; // a pin re-anchors; auto stays auto
         if (main.dark) {
@@ -4688,7 +4697,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           showName(false);
         }
         fsmain.dataset.key = main.key;
-      } else { fsmain.srcObject = null; fsmain.dataset.key = ''; fsmain.classList.remove('dark'); fsBlurClass(fsmain, 0); showName(false); }
+      } else {
+        fsmain.srcObject = null; fsmain.dataset.key = ''; fsmain.classList.remove('dark'); fsBlurClass(fsmain, 0);
+        if (broadcastFs) {
+          const lineEl = document.getElementById('bc-stage-line');
+          showName(true, (lineEl && lineEl.textContent) || 'The stage is clear.');
+          const letter = fsname.querySelector('.fsinitial');
+          if (letter) letter.textContent = '';
+        } else showName(false);
+      }
       // Thumbs are kept BY KEY: a refresh moves and updates a playing thumb
       // and never tears one down while its feed stays. The big feed is not
       // also a thumb (one live sink per feed), and every thumb is a keyboard
@@ -4703,16 +4720,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         el.onkeydown = (e) => { if (e.key !== 'Enter' && e.key !== ' ') return; e.preventDefault(); act(); };
       };
       let auto = have.get('auto');
-      if (!auto) {
+      if (!broadcastFs && !auto) {
         auto = document.createElement('div');
         auto.className = 'fsthumb fsauto'; auto.dataset.key = 'auto';
         auto.innerHTML = '<span class="fsautoglyph">🗣</span><span class="fslbl">Follow speaker</span>';
         asButton(auto, 'Follow speaker', () => { fsSel = 'auto'; fsAutoPid = null; fsRefresh(); });
       }
-      const keep = new Set(['auto']);
+      const keep = new Set(broadcastFs ? [] : ['auto']);
       const place = (th, pos) => { if (fsstrip.children[pos] !== th) fsstrip.insertBefore(th, fsstrip.children[pos] || null); };
-      place(auto, 0);
-      let pos = 1;
+      let pos = 0;
+      if (!broadcastFs && auto) { place(auto, 0); pos = 1; }
       for (const s of thumbs) {
         keep.add(s.key);
         let th = have.get(s.key);
