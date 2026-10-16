@@ -187,6 +187,14 @@ Repro: `test/mobile/chat-bubbles.js`. It failed on the font, the name contrast, 
 
 Before: `qa/mobile/shots/before-chat-bubbles-iphone-15.png`. After: `qa/mobile/shots/after-chat-bubbles-iphone-15.png`.
 
+### 23. The keyboard was added on top of the dock
+
+`--kb` came from the visible viewport, and the sheet inset was the dock plus that band. On a sideways SE the two together left almost no sheet, and focusing the field scrolled Close off the top. The field type was still .85rem.
+
+Repro: `test/mobile/chat-keyboard.js`. It failed (inset 0, field under the keyboard line, Close off screen in landscape), then passed. The sheet ends at the larger of the dock and the keyboard. Landscape hides the file list so the field and Close stay on screen. The field is 1rem.
+
+Before: `qa/mobile/shots/before-chat-keyboard-land.png`. After: `qa/mobile/shots/after-chat-keyboard-land.png`.
+
 ## Open
 
 The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.

@@ -1062,7 +1062,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cfile small { color: #667; }
   .cfile button { padding: .1rem .45rem; border-radius: .35rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; font-size: .72rem; }
   #chatform { display: flex; gap: .4rem; padding: .5rem .6rem; border-top: 1px solid var(--border, #2a2a3f); }
-  #chatform input[type=text] { flex: 1; min-width: 0; padding: .4rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; font-size: .85rem; }
+  #chatform input[type=text] { flex: 1; min-width: 0; padding: .4rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; font-size: 1rem; }
   #chatform button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   .tile .cap { position: absolute; left: 50%; transform: translateX(-50%); bottom: 2.1rem; max-width: 92%;
                background: rgba(10,10,15,.82); border: 1px solid var(--border, #2a2a3f); border-radius: .45rem;
@@ -1639,8 +1639,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* Chat used to run under the dock (z-index 30 vs 32), so the field could
      not be tapped. End the panel at the dock, and again above the keyboard. */
   /* The live row is also z-index 31 and shares this band. The open sheet
-     has to paint over it or Live steals the tap on the message field. */
-  #chatpanel.open { top: 0; bottom: calc(var(--dockh, 108px) + var(--kb, 0px)); z-index: 31; }
+     has to paint over it or Live steals the tap on the message field.
+     The keyboard covers the dock, so the inset is the larger of the two,
+     not the sum. A sum pushed the field off the top of a sideways phone. */
+  #chatpanel.open {
+    top: 0; z-index: 31; overflow: clip; min-height: 0;
+    bottom: max(var(--dockh, 108px), var(--kb, 0px));
+  }
+  #chatlog, #cfiles { min-height: 0; }
+  #chathead, #chatform, #emojirow { flex-shrink: 0; }
+  @media (max-width: 700px) {
+    #chathead small { display: none; }
+  }
+  /* Sideways, the keyboard leaves about 120px. Files and the extra
+     header padding were pushing Close off the top when the field focused. */
+  @media (max-height: 430px) {
+    #cfiles { display: none; }
+    #chathead, #chatform { padding: 4px 8px; }
+    #chatlog { padding: 4px; }
+  }
   #chat-in { min-height: 44px; }
   #chatclose, #cattach, #cemoji, #chatform button[type=submit] { min-width: 44px; min-height: 44px; }
   /* Emoji stays in the sheet, above the field, so a phone without an
@@ -20770,6 +20787,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           document.documentElement.style.setProperty('--kb', kb + 'px');
         } catch (e) {}
       };
+      window.__gifosKb = { sync: syncKb };
       if (window.ResizeObserver) { try { new ResizeObserver(setBarH).observe(bar); } catch (e) {} }
       window.addEventListener('resize', () => { setBarH(); syncKb(); try { paintCallState(); } catch (e) {} });
       if (window.visualViewport) {
