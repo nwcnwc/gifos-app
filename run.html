@@ -18270,9 +18270,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // plane's scope, which holds the row — unless the speaker is on the
     // Stage, whose ≤C voices reach the whole room and so do their lines.
     function captionScope(byId) { return stageIds().includes(byId) ? undefined : { scope: 'section' }; }
+    // Lines the bot played. A caption of that voice is not written down again.
+    const botSpokenLines = [];
+    function rememberBotSpoken(text) {
+      const t = String(text || '').trim();
+      if (!t) return;
+      botSpokenLines.push(t);
+      if (botSpokenLines.length > 20) botSpokenLines.splice(0, botSpokenLines.length - 20);
+    }
     function addTranscriptLine(text, at, forId) { // forId: a scribe writing down THAT person
       text = String(text || '').trim();
       if (!text) return;
+      // The bot's own microphone is never written down, and neither is a line
+      // that repeats something the bot just played. Another person's line stays.
+      if (window.GifOS && GifOS.meetHost && typeof GifOS.meetHost.suppressBotLine === 'function'
+          && GifOS.meetHost.suppressBotLine(!!myStatus.bot, text, forId, myId, botSpokenLines)) return;
       const m = { id: uid('t'), byId: myId, by: myName(), at: at || Date.now(), text: text.slice(0, 400) };
       if (forId && forId !== myId) { m.byId = forId; m.by = String(rosterNames[forId] || (peers.get(forId) || {}).name || '…').slice(0, 40); m.scribe = myId; m.scribeBy = myName(); }
       if (!keepOwnTranscript(m)) return; // I only HEARD this — another device already wrote it down
@@ -22230,14 +22242,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, 200);
     })();
 
+    function roomPeople() {
+      const meRow = { id: myId, name: myName(), bot: !!myStatus.bot, me: true };
+      const people = [meRow];
+      for (const [pid, p] of peers) {
+        const st = statusOf.get(pid);
+        people.push({ id: pid, name: (p && p.name) || '', bot: !!(st && st.bot), me: false });
+      }
+      return people;
+    }
+    function roomControls() {
+      return { hand: !!myStatus.hand, mic: !myStatus.muted, camera: !myStatus.camOff, people: roomPeople() };
+    }
+
     // Session frame (#mb=1): the parent meet-host drives this document.
     // Ordinary meetings never take this branch.
     if (params.get('mb') === '1' && window.GifOS && GifOS.meetSession) {
       window.__gifosMeetEmit = (ev) => { try { GifOS.meetSession.emit(ev); } catch (e) {} };
       let meetJoined = false;
       const peopleSig = { last: '' };
-      // The bot speaks with audio the app already made. This does not open the
-      // computer's microphone. The mic button still owns unmute for that.
+      // The bot speaks with audio the app already made. This page only plays
+      // those bytes. It does not call a model or a speech stand-in.
       let botSpeechAudio = null;
       let botSpeechUrl = '';
       function stopBotSpeech() {
@@ -22272,6 +22297,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } catch (e) {}
         myStatus.muted = false;
         try { paintControls(); broadcastStatus(); } catch (e) {}
+        rememberBotSpoken(msg && msg.text);
         const said = { spoken: true, text: (msg && msg.text) || '' };
         const go = () => audio.play().then(() => said);
         return go().catch(() => ctx.resume().then(go));
@@ -22401,6 +22427,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return { id: id, n: n, peers: open.length };
         },
         raiseHand(msg) {
+          if (!meetJoined) return Promise.reject(new Error('This meeting cannot raise a hand.'));
           const on = !!(msg && msg.on);
           if (window.__gifosVideo && typeof window.__gifosVideo.raiseHand === 'function') window.__gifosVideo.raiseHand(on);
           else {
@@ -22410,18 +22437,90 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return { hand: !!myStatus.hand };
         },
         setMic(msg) {
+          if (!meetJoined) return Promise.reject(new Error('This meeting cannot change the microphone.'));
           const on = !!(msg && msg.on);
-          const btn = document.getElementById('mic');
-          if (btn && on === !!myStatus.muted) btn.click();
-          return { mic: !myStatus.muted };
+          if (on && typeof amGloballyMuted === 'function' && amGloballyMuted()) {
+            return Promise.reject(new Error('This meeting cannot open the microphone.'));
+          }
+          const apply = (track) => {
+            if (track) track.enabled = !!on;
+            myStatus.muted = !on;
+            try { paintControls(); broadcastStatus(); updateMediaSession(); if (typeof syncSpeech === 'function') syncSpeech(); } catch (e) {}
+            if (on && track && typeof kickStageMic === 'function') { try { kickStageMic(track); } catch (e) {} }
+            return { mic: !myStatus.muted };
+          };
+          const live = localStream && localStream.getAudioTracks().find((t) => t.readyState === 'live');
+          if (live || !on) return apply(live || (localStream && localStream.getAudioTracks()[0]));
+          const md = navigator.mediaDevices;
+          if (!md || !md.getUserMedia) return Promise.reject(new Error('This meeting cannot open the microphone.'));
+          return md.getUserMedia({ audio: true, video: false }).then((stream) => {
+            const tr = stream.getAudioTracks()[0];
+            if (!tr) throw new Error('This meeting cannot open the microphone.');
+            if (!localStream) localStream = new MediaStream();
+            const old = localStream.getAudioTracks()[0];
+            if (old && old !== tr) { try { localStream.removeTrack(old); } catch (e) {} }
+            if (!localStream.getAudioTracks().some((t) => t === tr)) localStream.addTrack(tr);
+            try { meterFor('me', localStream); attachLocalTracks(); } catch (e) {}
+            return apply(tr);
+          }).catch((e) => {
+            if (e && /cannot open the microphone/.test(String(e.message || e))) throw e;
+            throw new Error('This meeting cannot open the microphone.');
+          });
         },
         setCamera(msg) {
+          if (!meetJoined) return Promise.reject(new Error('This meeting cannot show a camera.'));
           const on = !!(msg && msg.on);
-          const track = localStream && localStream.getVideoTracks()[0];
-          if (!track) return { camera: false };
-          const btn = document.getElementById('cam');
-          if (btn && on === !!myStatus.camOff) btn.click();
-          return { camera: !myStatus.camOff };
+          if (!on) {
+            myStatus.camOff = true;
+            const vt = localStream && localStream.getVideoTracks()[0];
+            if (vt) vt.enabled = false;
+            try { paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession(); } catch (e) {}
+            return { camera: false };
+          }
+          if (typeof forcedCamOff === 'function' && forcedCamOff('me')) {
+            return Promise.reject(new Error('This meeting cannot show a camera.'));
+          }
+          const held = localStream && localStream.getVideoTracks()[0];
+          if (held && held.readyState === 'live') {
+            held.enabled = true;
+            myStatus.camOff = false;
+            try {
+              if (meTile && meTile.video) { meTile.video.style.display = ''; if (localStream) meTile.video.srcObject = localStream; }
+              paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession();
+            } catch (e) {}
+            return { camera: true };
+          }
+          const md = navigator.mediaDevices;
+          if (!md || !md.getUserMedia) return Promise.reject(new Error('This meeting cannot show a camera.'));
+          return md.getUserMedia({ video: (typeof camVideoConstraints === 'function' ? camVideoConstraints() : true), audio: false }).then((stream) => {
+            const tr = stream.getVideoTracks()[0];
+            if (!tr) throw new Error('This meeting cannot show a camera.');
+            if (!localStream) localStream = new MediaStream();
+            const old = localStream.getVideoTracks()[0];
+            if (old && old !== tr) { try { old.stop(); } catch (e) {} try { localStream.removeTrack(old); } catch (e) {} }
+            if (!localStream.getVideoTracks().some((t) => t === tr)) localStream.addTrack(tr);
+            tr.enabled = true;
+            myStatus.camOff = false;
+            try { attachLocalTracks(); } catch (e) {}
+            try {
+              if (meTile && meTile.video) { meTile.video.style.display = ''; meTile.video.srcObject = localStream; const pr = meTile.video.play(); if (pr && pr.catch) pr.catch(() => {}); }
+              const n = meTile && meTile.tile && meTile.tile.querySelector('.note');
+              if (n) n.remove();
+              paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession();
+            } catch (e) {}
+            return { camera: !myStatus.camOff };
+          }).catch((e) => {
+            if (e && /cannot show a camera/.test(String(e.message || e))) throw e;
+            throw new Error('This meeting cannot show a camera.');
+          });
+        },
+        meetingState() {
+          if (!meetJoined) return Promise.reject(new Error('No such meeting.'));
+          return roomControls();
+        },
+        snapshot() {
+          if (!meetJoined) return Promise.reject(new Error('No such meeting.'));
+          return roomControls();
         },
         speak(msg) { return playBotSpeech(msg); },
         stopSpeaking() { return stopBotSpeech(); },

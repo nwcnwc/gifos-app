@@ -126,7 +126,7 @@
       var iframe = root.document.createElement('iframe');
       iframe.setAttribute('data-gifos-meet', id);
       iframe.setAttribute('title', 'Meeting session');
-      iframe.setAttribute('allow', 'microphone; autoplay');
+      iframe.setAttribute('allow', 'microphone; camera; autoplay');
       var x = (seq % 8) * 3;
       iframe.style.cssText = 'position:fixed;left:' + x + 'px;bottom:0;width:2px;height:2px;border:0;opacity:0.02;pointer-events:none;z-index:1';
       var sess = {
@@ -208,6 +208,23 @@
   var xferDone = new Set();
   var xferBags = new Map();
 
+  function normLine(t) {
+    return String(t || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  }
+  // A bot's own microphone is never a transcript line. A line that repeats
+  // one of the last things the bot spoke is the same voice, whoever it was
+  // attributed to. The host still forwards a transcript the session already
+  // emitted: the app made that audio and may want the line.
+  function suppressBotLine(bot, text, forId, myId, recent) {
+    if (!bot) return false;
+    if (!forId || forId === myId) return true;
+    var n = normLine(text);
+    if (!n) return false;
+    var list = recent || [];
+    for (var i = 0; i < list.length; i++) if (normLine(list[i]) === n) return true;
+    return false;
+  }
+
   root.GifOS = root.GifOS || {};
   root.GifOS.meetHost = {
     join: join,
@@ -242,6 +259,9 @@
     },
     stopSpeaking: function (id) { return call(id, 'stopSpeaking'); },
     watch: function (id, on) { return setWatch(id, !!on); },
+    meetingState: function (id) { return call(id, 'meetingState', {}); },
+    snapshot: function (id) { return call(id, 'snapshot', {}); },
+    suppressBotLine: suppressBotLine,
     onApp: function (win) { appWin = win || null; },
     clearApp: function () { appWin = null; },
     leaveAll: function () {

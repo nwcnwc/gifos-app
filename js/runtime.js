@@ -661,6 +661,8 @@
           },
           stopSpeaking: function(id){ return rpc({ type:'meet', op:'stopSpeaking', meetingId: id }); },
           watch: function(id, on){ return rpc({ type:'meet', op:'watch', meetingId: id, on: !!on }); },
+          meetingState: function(id){ return rpc({ type:'meet', op:'meetingState', meetingId: id }); },
+          snapshot: function(id){ return rpc({ type:'meet', op:'snapshot', meetingId: id }); },
           onTranscriptLine: function(cb){ if (typeof cb === 'function') meetSubs.tr.push(cb); },
           onParticipants: function(cb){ if (typeof cb === 'function') meetSubs.pe.push(cb); },
           onChat: function(cb){ if (typeof cb === 'function') meetSubs.ch.push(cb); },
@@ -3658,6 +3660,8 @@
             else if (op === 'speak') done(host.speak(d.meetingId, { bytes: d.bytes, mime: d.mime, text: d.text }));
             else if (op === 'stopSpeaking') done(host.stopSpeaking(d.meetingId));
             else if (op === 'watch') done(host.watch(d.meetingId, !!d.on));
+            else if (op === 'meetingState') done(host.meetingState(d.meetingId));
+            else if (op === 'snapshot') done(host.snapshot(d.meetingId));
             else reply({ ok: false, error: 'Unknown meet op.' });
           }
         }
