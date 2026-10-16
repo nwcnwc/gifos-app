@@ -516,8 +516,9 @@
 
   // Auto is sticky: a manual pick wins until the person chooses Auto again.
   // A gesture lock (pinch in progress, or the 2s after) holds the mode.
-  // Share/app, once the first frame has settled, goes to stage+gallery,
-  // or stage-only when a phone is landscape. Otherwise gallery.
+  // Share/app, once the first frame has settled, goes to stage+gallery
+  // (the other people stay in a strip). Only a manual stageOnly hides them.
+  // Otherwise gallery.
   function autoResolve(s) {
     s = s || {};
     const manual = s.manual || 'auto';
