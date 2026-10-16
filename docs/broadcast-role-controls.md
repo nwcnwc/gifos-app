@@ -6,8 +6,8 @@ Meet roles are the open-room participant, the guest in a room an admin runs, and
 
 | Control | Where it lives | Meet participant | Meet guest | Meet admin | Broadcast viewer | Broadcast stage guest | Broadcast host |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Microphone | Dock | Yes | Yes | Yes | No | Yes | Yes |
-| Camera | Dock | Yes | Yes | Yes | No | Yes | Yes |
+| Microphone | Dock | Yes | Yes | Yes | No. A WATCHING viewer on `cursor/qa-broadcast-desktop` still sees Unmute | Yes | Yes |
+| Camera | Dock | Yes | Yes | Yes | No. A WATCHING viewer on `cursor/qa-broadcast-desktop` still sees Video | Yes | Yes |
 | Switch camera | Dock, when the device has two cameras | Yes | Yes | Yes | No | Yes | Yes |
 | Blur of your own camera | Dock | Yes | Yes | Yes | No | Yes | Yes |
 | Float the meeting (picture in picture) | Dock, when the browser offers it | Yes | Yes | Yes | Yes | Yes | Yes |
@@ -55,6 +55,14 @@ A viewer may raise a hand, which asks the host to promote them. Chat stays avail
 The audience grid stays off in a broadcast, because viewers have no camera. Host moderation is on Who, and the hand queue still promotes the person who asked.
 
 The gate is `test/browser/e2e-broadcast-roles.js`. It checks the dock, the More cluster, Settings, and the phone and landscape layouts, and it checks that a click does not publish.
+
+## Evidence from the desktop QA branch
+
+On `cursor/qa-broadcast-desktop` at `a5b2611`, a viewer in the WATCHING state still sees the Meet-style Video and Unmute buttons on the dock. No control has been changed for this finding.
+
+The viewer session is `/run.html?desk=chat#mb=1&v=sunday&av=0123456789abcdef&bc=1` with a display name and no host key. `test/e2e/broadcast-desktop.spec.js` (“a broadcast viewer is Watching, including at 900px”) expects `#onair` to say Watching and `#airkind` to say “Service · You are watching”. The same URL, through `bootSession`, is what “mute and camera are labeled and the off state is filled red” measures: `#mic .docklab` is Unmute, `#cam .docklab` is Video, and both buttons have a layout box at 1280, 1920, and 900. The shots show the same pair under the Watching pill and under the “Service · You are watching” bar: `test/e2e/artifacts/onair-watching-900.png`, `test/e2e/artifacts/service-bar-watch-after.png`, and `test/e2e/artifacts/dock-labels-900.png`.
+
+The hide rule on that branch is still `body.broadcast.notadmin:not(.stage-granted)` for `#mic` and `#cam`. Watching is painted earlier, from the absence of a stored host key, inside `paintBroadcastChrome`. That paint does not add `notadmin`. The session frame (`#mb=1`) stops in `bootMeetSession` and never reaches `applyAdminUi`, which is the only place `notadmin` is set. So the WATCHING viewer in this pass keeps the labeled dock buttons.
 
 ## What was wrong
 
