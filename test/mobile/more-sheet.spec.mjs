@@ -51,3 +51,24 @@ test('More sheet stays inside the screen in landscape', async ({ page }) => {
   expect(row.bottom).toBeLessThanOrEqual(row.vh + 0.5);
   expect(row.top).toBeGreaterThanOrEqual(row.sheetTop - 1);
 });
+
+test('More labels grow with the root text size', async ({ page }) => {
+  await openMore(page, false);
+  await page.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
+  const box = await page.evaluate(() => {
+    const btn = document.getElementById('invite');
+    const blur = document.querySelector('.blurlbl');
+    const sheet = document.getElementById('barmore').getBoundingClientRect();
+    return {
+      font: parseFloat(getComputedStyle(btn).fontSize),
+      blur: parseFloat(getComputedStyle(blur).fontSize),
+      top: sheet.top,
+      bottom: sheet.bottom,
+      vh: innerHeight,
+    };
+  });
+  expect(box.font).toBeGreaterThanOrEqual(32);
+  expect(box.blur).toBeGreaterThanOrEqual(28);
+  expect(box.top).toBeGreaterThanOrEqual(0);
+  expect(box.bottom).toBeLessThanOrEqual(box.vh + 0.5);
+});
