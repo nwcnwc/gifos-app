@@ -6,11 +6,18 @@ async function openCreate(page) {
   await page.locator('#lob-admin-go').waitFor({ state: 'visible' });
 }
 
-test('broadcast create is a service name and Go live', async ({ page }) => {
+test('a stream to friends opens on a name and Go live', async ({ page }) => {
   await openCreate(page);
+  await expect(page).toHaveTitle('Stream — GifOS');
   await expect(page.locator('#lob-admin-btn')).toBeHidden();
-  await expect(page.locator('#lob-admin-name-lab')).toHaveText('Service name');
-  await expect(page.locator('#lob-admin-name')).toHaveAttribute('placeholder', 'Sunday morning');
+  await expect(page.locator('#lobby h1')).toHaveText('Stream');
+  const quiet = page.locator('.lob-quiet');
+  await expect(quiet).toBeVisible();
+  await expect(quiet).toHaveText('Friends watch with the link.');
+  await expect(page.locator('#lob-admin-name-lab')).toHaveText('Name');
+  await expect(page.locator('#lob-admin-name')).toHaveAttribute('placeholder', 'Friday night');
+  await expect(page.locator('#lob-join-btn')).toHaveText('Watch a stream');
+  await expect(page.locator('#lob-empty')).toHaveText('Streams you start or watch will show up here.');
   await expect(page.locator('#lob-admin-go')).toHaveText('Go live');
   await expect(page.locator('#lob-key-block')).toBeHidden();
   await expect(page.locator('#lob-guest-pass')).toBeHidden();
@@ -22,6 +29,8 @@ test('broadcast create is a service name and Go live', async ({ page }) => {
   const revealBox = await reveal.boundingBox();
   expect(revealBox.height).toBeGreaterThanOrEqual(44);
   const nameBox = await page.locator('#lob-admin-name').boundingBox();
+  const quietBox = await quiet.boundingBox();
+  expect(quietBox.y + quietBox.height).toBeLessThanOrEqual(nameBox.y + 1);
   const goBefore = await page.locator('#lob-admin-go').boundingBox();
   const watchBox = await page.locator('#lob-join-btn').boundingBox();
   const vh = page.viewportSize().height;
@@ -77,6 +86,13 @@ test('a meeting lobby leads with a town hall and still shows the host key', asyn
   await expect(page.locator('#lob-admin-go')).toHaveText('Create & enter');
   const first = await page.locator('#lob-admin-pass').inputValue();
   expect(first).toMatch(/^[a-z]+-[a-z]+-[a-z]+-\d{2}$/);
+});
+
+test('an empty stream name asks to name it first', async ({ page }) => {
+  await openCreate(page);
+  await page.locator('#lob-admin-go').click();
+  await expect(page.locator('#lob-admin-err')).toHaveText('Name it first.');
+  await expect(page.locator('#lobby.show')).toBeVisible();
 });
 
 test('a viewer password stays optional and off the first step', async ({ page }) => {

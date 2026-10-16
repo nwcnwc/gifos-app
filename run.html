@@ -1658,6 +1658,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.service-ready #lob-admin .lob-row { justify-content: stretch; }
   #lobby.service-ready #lob-admin-go { flex: 1 1 auto; width: 100%; }
   #lobby.service-ready #lob-admin-err:empty { min-height: 0; margin: 0; }
+  /* The stream sentence sits under the title. A short landscape hides it
+     with the title so Go live stays on the screen. */
+  #lobby.form-open.service-ready .lob-quiet { display: block !important; margin: 0 0 0.5rem; }
   /* A desk names the service and goes live. The host key is still minted.
      Change host key opens the same readable key and Generate, under Watch. */
   #lobby.form-open.service-ready #lob-admin,
@@ -1678,6 +1681,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.service-ready #lob-empty,
   #lobby.service-ready .lob-namebar { order: 20; }
   @media (max-height: 420px) {
+    #lobby.form-open.service-ready .lob-quiet { display: none !important; }
     #lobby.form-open.service-ready.show { grid-template-rows: 40px minmax(0, 1fr); }
     #lobby.form-open.service-ready .lob-preview { max-height: 40px; }
     #lobby.form-open.service-ready .lobby-card { padding: 8px 12px; }
@@ -12100,7 +12104,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const rawName = document.getElementById('lob-admin-name').value || '';
         // slugRoom turns a blank into "room", so the empty check has to
         // happen on what was typed. A name with no letter or digit is blank.
-        const nameErr = BC_INTENT ? 'Name the service.' : 'Give your room a name.';
+        const nameErr = BC_INTENT ? 'Name it first.' : 'Give your room a name.';
         if (!/[A-Za-z0-9]/.test(rawName)) { err.textContent = nameErr; return; }
         const chosen = slugRoom(rawName, '');
         let pass = (document.getElementById('lob-admin-pass').value || '').trim();
@@ -12177,17 +12181,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       });
     }
     function showLobby() {
-      document.title = (BC_INTENT ? 'Broadcast' : 'Meeting') + ' — GifOS';
+      document.title = (BC_INTENT ? 'Stream' : 'Meeting') + ' — GifOS';
       // The Broadcast app opens THIS page with #bc=1 and no room: same lobby,
       // reworded — no open rooms (a broadcast without a host is nothing), and
       // creating one mints the same admin room with &bc=1 riding the link.
       if (BC_INTENT) {
-        document.querySelector('#lobby h1').textContent = 'Broadcast';
-        document.querySelector('#lobby .lob-quiet').textContent = 'Your picture is the preview.';
+        document.querySelector('#lobby h1').textContent = 'Stream';
+        document.querySelector('#lobby .lob-quiet').textContent = 'Friends watch with the link.';
         document.getElementById('lob-open').style.display = 'none';
         document.getElementById('lob-admin-btn').style.display = 'none';
         document.getElementById('lob-admin-name-lab').hidden = false;
-        document.getElementById('lob-admin-name').placeholder = 'Sunday morning';
+        document.getElementById('lob-admin-name-lab').textContent = 'Name';
+        document.getElementById('lob-admin-name').placeholder = 'Friday night';
         document.getElementById('lob-admin-go').textContent = 'Go live';
         document.getElementById('lob-key-block').hidden = true;
         document.getElementById('lob-key-reveal').hidden = false;
@@ -12198,8 +12203,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('lob-guest-reveal').textContent = 'Add a viewer password';
         document.getElementById('lob-guest-pass').placeholder = 'Viewer password';
         document.getElementById('lob-guest-pass-note').textContent = 'Optional. Share this, not your host key. It is not part of the link.';
-        document.getElementById('lob-join-btn').textContent = 'Watch a broadcast';
-        document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch will show up here.';
+        document.getElementById('lob-join-btn').textContent = 'Watch a stream';
+        document.getElementById('lob-empty').textContent = 'Streams you start or watch will show up here.';
       }
       document.getElementById('lob-name').textContent = myName();
       renderLobbyList();

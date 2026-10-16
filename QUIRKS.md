@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q38. A stream to friends opened as a church service
+
+`#bc=1` said Broadcast, Service name, Sunday morning, and Watch a broadcast. It now says Stream, “Friends watch with the link.”, Name, and Friday night. Go live stays the blue button. Watch a stream is the outline under it. An empty name says “Name it first.” Change host key and Add a viewer password stay under Watch, and the key is still minted. A short landscape hides the sentence with the title so Go live stays on the screen. `test/mobile/create-one-password.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-stream-friends.png`.
+
+Design: Stream, one sentence, the name, the blue Go live, then the outline Watch. Personal stays at 4. FaceTime is still one tap, and this still mints a host key.
+
 ### Q37. A meeting lobby led with an open room
 
 The filled button was Start a meeting, an open room with no host. Start a room you run talked about a password and banning someone. The filled button is now Start a town hall. It opens the host form: Town hall, Your host key, Generate, and Create & enter. Start an open meeting stays underneath, unfilled. `test/mobile/create-one-password.spec.mjs`.
