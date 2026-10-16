@@ -1808,7 +1808,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button type="button" id="whobtn" data-t="who" data-ti="whoTip" title="Who is on this meeting — names and internet addresses">Who</button>
         <button id="hand" data-t="hand" title="Raise your hand — raised hands float to the top">Hand</button>
         <button id="chatbtn" data-t="chat" type="button" aria-keyshortcuts="Alt+C" title="Chat and share files — stays between the people on this meeting, not on a server">Chat</button>
-        <button id="invite" data-t="invite" title="Friends join you live with one link">Invite</button>
+        <button id="invite" data-t="invite" data-ti="invTip" title="Friends join you live with one link">Invite</button>
         <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
@@ -1832,7 +1832,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <h4 data-t="room">Room</h4>
       <div class="morerow">
         <button id="votebtn" data-t="vote" data-ti="voteTip" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
-        <button id="pwbtn" data-t="password" title="Lock this room with a password">Password</button>
+        <button id="pwbtn" data-t="password" data-ti="pwTip" title="Lock this room with a password">Password</button>
         <button id="stagebtn" data-t="stage" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
         <button id="recbtn" data-t="record" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
         <button id="ccbtn" title="Live captions: your device writes down everyone it hears in this meeting and shares the lines with the meeting's transcript">CC</button>
@@ -2573,6 +2573,35 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         shareTheirsChip: 'teilt den Bildschirm',
         reshareNote: 'Ihr Bildschirmteilen endete, als Sie zurückkamen.',
         reshareGo: 'Noch einmal teilen',
+        pwTitle: 'Raum-Passwort',
+        pwTitleLocked: 'Dieser Raum ist gesperrt',
+        pwHint: 'Jeder in der Besprechung kann es setzen oder ändern. Es gilt sofort für alle hier, und wer neu kommt, muss es eingeben. Leer lassen hebt die Sperre auf.',
+        pwHintAdmin: 'Nur die Leitung kann es setzen oder ändern. Es gilt sofort für alle hier, und wer neu kommt, muss es eingeben. Leer lassen hebt die Sperre auf.',
+        pwHintLocked: 'Geben Sie das Passwort ein, um beizutreten.',
+        pwNew: 'Neues Passwort', pwWord: 'Passwort',
+        pwSave: 'Speichern', pwClose: 'Schließen', pwLeave: 'Verlassen',
+        pwShow: 'Passwort zeigen', pwHide: 'Passwort verbergen',
+        pwTrying: 'Passwort wird geprüft…',
+        pwTip: 'Diesen Raum mit einem Passwort sperren',
+        pwTipAdmin: 'Das Passwort dieses Raums setzt die Leitung',
+        invTip: 'Freunde kommen mit einem Link live dazu',
+        invTitle: 'Diese Besprechung teilen', invTitleApp: 'Diese App teilen', invTitleBc: 'Diese Sendung teilen',
+        invOpen: 'Jeder mit diesem Link kann beitreten, und der Link läuft nicht ab. <b>Niemand leitet</b> — jeder hier kann jeden stummschalten oder weichzeichnen.',
+        invApp: 'Jeder mit diesem Link ist <b>live in dieser App</b> dabei, und der Link läuft nicht ab.',
+        invAdmin: '<b>Sie leiten diesen Raum.</b> Der Link ist sicher zum Weitergeben — er lässt Menschen beitreten, er lässt sie den Raum nicht leiten. Dafür ist Ihr Admin-Passwort. Behalten Sie es für sich.',
+        invCopy: 'Kopieren', invCopied: 'Kopiert ✓', invShare: 'Teilen…', invClose: 'Schließen', invDone: 'Fertig',
+        invWant: 'Möchten Sie einen Raum, den <b>Sie</b> leiten — Passwort, Stumm und Weichzeichnen für alle, und jemanden ausschließen können?',
+        invMk: 'Einen Raum anlegen, den Sie leiten →',
+        invWarn: 'Das legt einen <b>neuen, eigenen Raum</b> an, den Sie leiten — <b>nennen Sie ihn, wie Sie wollen</b>. ',
+        invWarnHere: 'Die {n} Personen hier wechseln nicht von selbst. Lassen Sie das Häkchen, dann liegt der neue Link im Chat und sie können folgen.',
+        invWarnSolo: 'Sie wechseln jetzt dorthin.',
+        invRoomPh: 'Raumname (wie Sie wollen)',
+        invAdminLab: '🔑 <b>Admin-Passwort</b> — nur für Sie — <b>nicht weitergeben</b><small>Damit leiten Sie den Raum. Gäste brauchen es nicht. Wer es bekommt, kann den Raum auch leiten.</small>',
+        invAdminPh: 'Admin-Passwort (für Sie allein)',
+        invGuestLab: '🎟 <b>Gast-Passwort</b> — das, das Sie <b>weitergeben</b><small>Optional. Gesichter bleiben ganz weich, bis Sie eines setzen. Gäste geben es ein. Es steht nicht im Link — schicken Sie es selbst.</small>',
+        invGuestPh: 'Gast-Passwort (optional — an Gäste geben)',
+        invFollow: 'Den neuen Link in den Chat dieses Raums legen, damit die {n} Personen hier mitkommen können.',
+        invBack: 'Zurück', invGo: 'Anlegen und wechseln',
         voteTip: 'Jemanden auf die Bühne, von der Bühne oder aus dem Raum wählen — die Mehrheit entscheidet',
         voteRecorded: 'Stimme gezählt — sie folgt dieser Person in Räume, die Sie teilen.',
         voteWithdrawn: 'Stimme zurückgenommen.',
@@ -2738,6 +2767,35 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         shareTheirsChip: 'comparte su pantalla',
         reshareNote: 'Dejaste de compartir al volver.',
         reshareGo: 'Compartir otra vez',
+        pwTitle: 'Contraseña de la sala',
+        pwTitleLocked: 'Esta sala está cerrada',
+        pwHint: 'Cualquiera en la reunión puede ponerla o cambiarla. Llega al instante a todos aquí, y quien entre después tiene que escribirla. Déjala vacía para quitar el candado.',
+        pwHintAdmin: 'Solo el anfitrión puede ponerla o cambiarla. Llega al instante a todos aquí, y quien entre después tiene que escribirla. Déjala vacía para quitar el candado.',
+        pwHintLocked: 'Escribe la contraseña para entrar.',
+        pwNew: 'Contraseña nueva', pwWord: 'Contraseña',
+        pwSave: 'Guardar', pwClose: 'Cerrar', pwLeave: 'Salir',
+        pwShow: 'Mostrar contraseña', pwHide: 'Ocultar contraseña',
+        pwTrying: 'Probando la contraseña…',
+        pwTip: 'Cierra esta sala con una contraseña',
+        pwTipAdmin: 'La contraseña de esta sala la pone el anfitrión',
+        invTip: 'Tus amigos entran en vivo con un enlace',
+        invTitle: 'Compartir esta reunión', invTitleApp: 'Compartir esta app', invTitleBc: 'Compartir esta transmisión',
+        invOpen: 'Cualquiera con este enlace puede entrar, y el enlace no caduca. <b>Nadie manda</b> — cualquiera aquí puede silenciar o difuminar a los demás.',
+        invApp: 'Cualquiera con este enlace entra <b>en vivo en esta app</b>, y el enlace no caduca.',
+        invAdmin: '<b>Tú diriges esta sala.</b> El enlace se puede enviar a cualquiera — deja entrar, no deja dirigir. Eso lo hace tu contraseña de anfitrión. Guárdala.',
+        invCopy: 'Copiar', invCopied: 'Copiado ✓', invShare: 'Compartir…', invClose: 'Cerrar', invDone: 'Listo',
+        invWant: '¿Quieres una sala que <b>tú</b> diriges — contraseña, silenciar y difuminar a todos, y poder echar a alguien?',
+        invMk: 'Crear una sala que tú diriges →',
+        invWarn: 'Esto crea una <b>sala nueva, aparte</b>, que tú diriges — <b>ponle el nombre que quieras</b>. ',
+        invWarnHere: 'Las {n} personas de aquí no se mueven solas. Deja la casilla marcada para dejar el enlace nuevo en el chat y que puedan seguirte.',
+        invWarnSolo: 'Pasas ahora.',
+        invRoomPh: 'Nombre de la sala (el que quieras)',
+        invAdminLab: '🔑 <b>Contraseña de anfitrión</b> — solo tuya — <b>no la compartas</b><small>Con esto diriges la sala. Los invitados no la necesitan. Quien la tenga también puede dirigir.</small>',
+        invAdminPh: 'Contraseña de anfitrión (solo tuya)',
+        invGuestLab: '🎟 <b>Contraseña de invitados</b> — la que <b>sí</b> compartes<small>Opcional. Las caras siguen muy difuminadas hasta que pongas una. Los invitados la escriben para entrar. No va en el enlace — envíasela tú.</small>',
+        invGuestPh: 'Contraseña de invitados (opcional — compártela)',
+        invFollow: 'Publica el enlace nuevo en el chat, para que las {n} personas de aquí puedan seguirte.',
+        invBack: 'Atrás', invGo: 'Crear y cambiar',
         voteTip: 'Vota a alguien al escenario, fuera del escenario o fuera de la sala — decide la mayoría',
         voteRecorded: 'Voto contado — sigue a esta persona en las salas que compartes.',
         voteWithdrawn: 'Voto retirado.',
@@ -10766,7 +10824,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         : 'This room has an admin — enter the admin password to get admin controls';
       const pwb = document.getElementById('pwbtn');
       pwb.disabled = hasAdmin && !amAdmin;
-      pwb.title = (hasAdmin && !amAdmin) ? 'This room\'s password is managed by its admin' : 'Lock this room with a password';
+      pwb.title = (hasAdmin && !amAdmin)
+        ? uiText('pwTipAdmin', 'This room\'s password is managed by its admin')
+        : uiText('pwTip', 'Lock this room with a password');
       // Vote-off only exists where there is no admin to ban bad actors.
       document.body.classList.toggle('canvote', !hasAdmin);
       renderBanned();
@@ -12227,7 +12287,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const b = document.createElement('button');
       b.type = 'button';
       if (inp.id) b.id = 'pweye-' + inp.id;
-      b.title = 'Show password'; b.setAttribute('aria-label', 'Show password');
+      b.title = uiText('pwShow', 'Show password'); b.setAttribute('aria-label', b.title);
       b.style.cssText = 'position:absolute;right:0;top:0;width:48px;height:48px;min-width:48px;min-height:48px;background:none;border:none;padding:0;margin:0;color:#3a3a3f;cursor:pointer;line-height:0;display:inline-flex;align-items:center;justify-content:center';
       inp.style.minHeight = '48px';
       inp.style.paddingRight = '52px';
@@ -12236,7 +12296,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const show = inp.type === 'password';
         inp.type = show ? 'text' : 'password';
         b.querySelector('.slash').style.display = show ? '' : 'none';
-        b.title = show ? 'Hide password' : 'Show password';
+        b.title = show ? uiText('pwHide', 'Hide password') : uiText('pwShow', 'Show password');
         b.setAttribute('aria-label', b.title);
       };
       wrap.appendChild(b);
@@ -12245,7 +12305,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!inp) return;
       inp.type = 'password';
       const b = inp.id && document.getElementById('pweye-' + inp.id);
-      if (b) { b.querySelector('.slash').style.display = 'none'; b.title = 'Show password'; b.setAttribute('aria-label', 'Show password'); }
+      if (b) { b.querySelector('.slash').style.display = 'none'; b.title = uiText('pwShow', 'Show password'); b.setAttribute('aria-label', b.title); }
     }
     for (const i of document.querySelectorAll('input[type=password]')) pwEye(i);
     document.addEventListener('focusin', (e) => {
@@ -12256,22 +12316,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // ---- room password UI: one modal, two moods -------------------------------
     const pwModal = document.getElementById('pw-modal');
     function showPwModal(locked) {
-      document.getElementById('pw-title').textContent = locked ? 'This room is locked' : 'Room password';
+      document.getElementById('pw-title').textContent = locked ? uiText('pwTitleLocked', 'This room is locked') : uiText('pwTitle', 'Room password');
       document.getElementById('pw-hint').textContent = locked
-        ? 'Enter the room password to join the meeting.'
+        ? uiText('pwHintLocked', 'Enter the room password to join the meeting.')
         : hasAdminRoom()
-          ? 'Only the admin can set or change it. It reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.'
-          : 'Anyone in the meeting can set or change it. It reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.';
+          ? uiText('pwHintAdmin', 'Only the admin can set or change it. It reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.')
+          : uiText('pwHint', 'Anyone in the meeting can set or change it. It reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.');
       document.getElementById('pw-cur-row').style.display = locked ? 'none' : 'flex';
       document.getElementById('pw-cur').value = roomPw;
       pwEyeHide(document.getElementById('pw-cur')); // every open starts hidden — the eye reveals on demand
       pwEyeHide(document.getElementById('pw-new'));
       const inp = document.getElementById('pw-new');
-      inp.value = ''; inp.placeholder = locked ? 'Password' : 'New password';
-      document.getElementById('pw-save').textContent = locked ? 'Join' : 'Save';
+      inp.value = ''; inp.placeholder = locked ? uiText('pwWord', 'Password') : uiText('pwNew', 'New password');
+      document.getElementById('pw-save').textContent = locked ? uiText('join', 'Join') : uiText('pwSave', 'Save');
       const cancel = document.getElementById('pw-cancel');
       cancel.style.display = '';
-      cancel.textContent = locked ? 'Leave' : 'Close';
+      cancel.textContent = locked ? uiText('pwLeave', 'Leave') : uiText('pwClose', 'Close');
       pwModal.dataset.mode = locked ? 'join' : 'manage';
       pwModal.style.display = 'flex';
       inp.focus();
@@ -12294,7 +12354,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         pwBlocked = false;
         if (pwEpoch === 0) grantHoldUntil = Date.now() + PW_GRANT_HOLD_MS; // typed at the door: grants wait for the room's generation (heldGrant)
         pwModal.style.display = 'none';
-        setStatus('Trying the password…');
+        setStatus(uiText('pwTrying', 'Trying the password…'));
         // The relay only ever sees the PROOF of this password, never the text —
         // and the key I read the room with now contains it (§8): a wrong
         // password doesn't just bounce at the courtesy gate, it can't decrypt.
@@ -22401,11 +22461,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let closeInvModal = () => { invModal.style.display = 'none'; };
     const surfaceBtn = 'background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)';
     function armCopiedLabel(btn, later) {
-      btn.textContent = 'Copied ✓';
-      later(() => { if (btn.textContent === 'Copied ✓') btn.textContent = 'Copy'; }, 2000);
+      const copied = uiText('invCopied', 'Copied ✓');
+      const copy = uiText('invCopy', 'Copy');
+      btn.textContent = copied;
+      later(() => { if (btn.textContent === copied) btn.textContent = copy; }, 2000);
     }
     function linkRowHtml() {
-      return '<div style="display:flex;gap:.5rem;margin:.6rem 0"><input id="inv-url" readonly value="' + esc(shareUrl.value) + '" style="flex:1;min-width:0"><button id="inv-copy">Copy</button><button id="inv-share" style="display:none">Share…</button></div>';
+      return '<div style="display:flex;gap:.5rem;margin:.6rem 0"><input id="inv-url" readonly value="' + esc(shareUrl.value) + '" style="flex:1;min-width:0"><button id="inv-copy">' + esc(uiText('invCopy', 'Copy')) + '</button><button id="inv-share" style="display:none">' + esc(uiText('invShare', 'Share…')) + '</button></div>';
     }
     function showInviteModal() {
       const body = document.getElementById('inv-body');
@@ -22417,12 +22479,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const isApp = document.body.classList.contains('app-room');
       // Say which thing you are sharing — a broadcast is not a meeting.
       document.querySelector('#inv-modal h3').textContent =
-        isApp ? 'Share this app' : BROADCAST ? 'Share this broadcast' : 'Share this meeting';
+        isApp ? uiText('invTitleApp', 'Share this app') : BROADCAST ? uiText('invTitleBc', 'Share this broadcast') : uiText('invTitle', 'Share this meeting');
+      const warnTail = others
+        ? uiText('invWarnHere', 'The {n} people here won\'t move automatically, so leave the box ticked to drop the new link into this room\'s chat and they can follow you over.').replace('{n}', String(others))
+        : uiText('invWarnSolo', 'You\'ll switch to it now.');
       if (isApp) {
         body.innerHTML =
-          '<p style="color:#aab">Anyone with this link joins you <b>live inside this app</b>, and the link has no expiry.</p>' +
+          '<p style="color:#aab">' + uiText('invApp', 'Anyone with this link joins you <b>live inside this app</b>, and the link has no expiry.') + '</p>' +
           linkRowHtml() +
-          '<div style="display:flex;justify-content:flex-end;margin-top:.9rem"><button id="inv-done" style="' + surfaceBtn + '">Close</button></div>';
+          '<div style="display:flex;justify-content:flex-end;margin-top:.9rem"><button id="inv-done" style="' + surfaceBtn + '">' + esc(uiText('invClose', 'Close')) + '</button></div>';
       } else if (hasAdminRoom()) {
         body.innerHTML =
           // The old line here said the admin password "is never in the link". A
@@ -22430,28 +22495,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // this a room you run), so the sentence was both untrue and more detail
           // than anyone wants. What a person actually needs to know: the link lets
           // people IN, it does not hand them the room.
-          '<p style="color:#aab"><b>You run this room.</b> The link is safe to send to anyone — it lets people join, it does not let them run the room. Your admin password is what does that, so keep it to yourself.</p>' +
+          '<p style="color:#aab">' + uiText('invAdmin', '<b>You run this room.</b> The link is safe to send to anyone — it lets people join, it does not let them run the room. Your admin password is what does that, so keep it to yourself.') + '</p>' +
           linkRowHtml() +
-          '<div style="display:flex;justify-content:flex-end;margin-top:.4rem"><button id="inv-done">Done</button></div>';
+          '<div style="display:flex;justify-content:flex-end;margin-top:.4rem"><button id="inv-done">' + esc(uiText('invDone', 'Done')) + '</button></div>';
       } else {
         body.innerHTML =
-          '<p style="color:#aab">Anyone with this link can join, and the link carries no expiry. <b>No one is in charge</b> — anyone here can mute or blur anyone.</p>' +
+          '<p style="color:#aab">' + uiText('invOpen', 'Anyone with this link can join, and the link carries no expiry. <b>No one is in charge</b> — anyone here can mute or blur anyone.') + '</p>' +
           linkRowHtml() +
           '<div style="border-top:1px solid var(--border,#2a2a3f);margin:.9rem 0 .7rem"></div>' +
-          '<div id="inv-adm-collapsed"><p style="color:#aab;margin-bottom:.5rem">Want a room <b>you</b> run — a password, global mute/blur, and the power to ban a troublemaker?</p>' +
-            '<button id="inv-mkadm" style="' + surfaceBtn + '">Create a room you control →</button></div>' +
+          '<div id="inv-adm-collapsed"><p style="color:#aab;margin-bottom:.5rem">' + uiText('invWant', 'Want a room <b>you</b> run — a password, global mute/blur, and the power to ban a troublemaker?') + '</p>' +
+            '<button id="inv-mkadm" style="' + surfaceBtn + '">' + esc(uiText('invMk', 'Create a room you control →')) + '</button></div>' +
           '<div id="inv-adm-open" style="display:none">' +
-            '<div style="background:rgba(255,180,60,.12);border:1px solid rgba(255,180,60,.4);border-radius:.5rem;padding:.6rem .7rem;font-size:.85rem;margin-bottom:.7rem">This makes a <b>new, separate room</b> that you run — so <b>name it anything you like</b>. ' +
-              (others ? 'The ' + others + ' ' + ppl + ' here won\'t move automatically, so leave the box ticked to drop the new link into this room\'s chat and they can follow you over.' : 'You\'ll switch to it now.') + '</div>' +
-            '<input id="inv-adm-room" maxlength="40" placeholder="Room name (anything you like)" autocomplete="off" value="' + esc(room) + '" style="width:100%;box-sizing:border-box;margin-bottom:.5rem">' +
-            '<label class="lob-pwlab">🔑 <b>Admin password</b> — yours alone — <b>do not share it</b><small>This is what puts you in charge of the room. Guests don’t need it. Anyone you give it to can run the room too.</small></label>' +
-            '<input id="inv-adm-pass" type="password" maxlength="64" placeholder="Admin password (keep to yourself)" autocomplete="new-password" style="width:100%;box-sizing:border-box;margin-bottom:.6rem">' +
-            '<label class="lob-pwlab">🎟 <b>Guest password</b> — the one you <b>do</b> share<small>Optional, but faces stay fully blurred (Max) until you set one. The Blur slider softens it. Guests type it to get in. It is not part of the link — send it to them yourself.</small></label>' +
-            '<input id="inv-adm-guest" type="password" maxlength="64" placeholder="Guest password (optional — share with guests)" autocomplete="new-password" style="width:100%;box-sizing:border-box;margin-bottom:.6rem">' +
-            (others ? '<label style="display:flex;gap:.5rem;align-items:flex-start;cursor:pointer;margin-bottom:.7rem;font-size:.9rem"><input type="checkbox" id="inv-adm-post" checked style="margin-top:.2rem"><span>Post the new link to this room\'s chat so the ' + others + ' ' + ppl + ' here can follow me over.</span></label>' : '') +
-            '<div style="display:flex;gap:.5rem;justify-content:flex-end"><button id="inv-adm-back" style="' + surfaceBtn + '">Back</button><button id="inv-adm-go">Create &amp; switch</button></div>' +
+            '<div style="background:rgba(255,180,60,.12);border:1px solid rgba(255,180,60,.4);border-radius:.5rem;padding:.6rem .7rem;font-size:.85rem;margin-bottom:.7rem">' + uiText('invWarn', 'This makes a <b>new, separate room</b> that you run — so <b>name it anything you like</b>. ') + warnTail + '</div>' +
+            '<input id="inv-adm-room" maxlength="40" placeholder="' + esc(uiText('invRoomPh', 'Room name (anything you like)')) + '" autocomplete="off" value="' + esc(room) + '" style="width:100%;box-sizing:border-box;margin-bottom:.5rem">' +
+            '<label class="lob-pwlab">' + uiText('invAdminLab', '🔑 <b>Admin password</b> — yours alone — <b>do not share it</b><small>This is what puts you in charge of the room. Guests don’t need it. Anyone you give it to can run the room too.</small>') + '</label>' +
+            '<input id="inv-adm-pass" type="password" maxlength="64" placeholder="' + esc(uiText('invAdminPh', 'Admin password (keep to yourself)')) + '" autocomplete="new-password" style="width:100%;box-sizing:border-box;margin-bottom:.6rem">' +
+            '<label class="lob-pwlab">' + uiText('invGuestLab', '🎟 <b>Guest password</b> — the one you <b>do</b> share<small>Optional, but faces stay fully blurred (Max) until you set one. The Blur slider softens it. Guests type it to get in. It is not part of the link — send it to them yourself.</small>') + '</label>' +
+            '<input id="inv-adm-guest" type="password" maxlength="64" placeholder="' + esc(uiText('invGuestPh', 'Guest password (optional — share with guests)')) + '" autocomplete="new-password" style="width:100%;box-sizing:border-box;margin-bottom:.6rem">' +
+            (others ? '<label style="display:flex;gap:.5rem;align-items:flex-start;cursor:pointer;margin-bottom:.7rem;font-size:.9rem"><input type="checkbox" id="inv-adm-post" checked style="margin-top:.2rem"><span>' + esc(uiText('invFollow', 'Post the new link to this room\'s chat so the {n} people here can follow me over.').replace('{n}', String(others))) + '</span></label>' : '') +
+            '<div style="display:flex;gap:.5rem;justify-content:flex-end"><button id="inv-adm-back" style="' + surfaceBtn + '">' + esc(uiText('invBack', 'Back')) + '</button><button id="inv-adm-go">' + esc(uiText('invGo', 'Create & switch')) + '</button></div>' +
           '</div>' +
-          '<div style="display:flex;justify-content:flex-end;margin-top:.9rem"><button id="inv-done" style="' + surfaceBtn + '">Close</button></div>';
+          '<div style="display:flex;justify-content:flex-end;margin-top:.9rem"><button id="inv-done" style="' + surfaceBtn + '">' + esc(uiText('invClose', 'Close')) + '</button></div>';
       }
       const copyBtn = document.getElementById('inv-copy');
       const shareInviteBtn = document.getElementById('inv-share');
