@@ -89,6 +89,9 @@ test.describe('German sheets', () => {
     await expect(page.locator('#votebanner-text')).toContainText('AUF die Bühne');
     await expect(page.locator('#votebanner-text')).not.toContainText('ONTO');
     await expect(page.locator('#vote-done')).toHaveText('Fertig');
+    await expect(page.locator('#reshare-back p')).toHaveText('Ihr Bildschirmteilen endete, als Sie zurückkamen.');
+    await expect(page.locator('#reshare-go')).toHaveText('Noch einmal teilen');
+    await expect(page.locator('#reshare-back')).not.toContainText('Share again');
   });
 });
 
@@ -126,5 +129,8 @@ test.describe('Spanish sheets', () => {
     await vote.locator('[data-vm="up"]').click();
     await expect(page.locator('#votebanner-text')).toContainText('AL escenario');
     await expect(page.locator('#vote-done')).toHaveText('Listo');
+    await expect(page.locator('#reshare-back p')).toHaveText('Dejaste de compartir al volver.');
+    await expect(page.locator('#reshare-go')).toHaveText('Compartir otra vez');
+    await expect(page.locator('#reshare-back')).not.toContainText('Your screen share stopped');
   });
 });

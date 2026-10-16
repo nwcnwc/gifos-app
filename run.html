@@ -1972,8 +1972,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
 
   <div id="reshare-back" role="status">
-    <p>Your screen share stopped when you came back.</p>
-    <button type="button" id="reshare-go">Share again</button>
+    <p data-t="reshareNote">Your screen share stopped when you came back.</p>
+    <button type="button" id="reshare-go" data-t="reshareGo">Share again</button>
   </div>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="app-modal" style="display:none">
@@ -2559,6 +2559,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         whoTip: 'Wer in dieser Besprechung ist — Namen und Internetadressen',
         shareTip: 'Zeigen Sie dem Raum ein Fenster, einen Tab oder den Schreibtisch. Eine GifOS-App starten Sie mit App starten.',
         shareTipOn: 'Sie teilen Ihren Bildschirm — tippen Sie zum Beenden',
+        shareMineStage: 'Ihr Bildschirm — auf der Bühne',
+        shareTheirStage: 'Bildschirm von {names} — auf der Bühne',
+        shareBothStage: 'Ihr Bildschirm und der von {names} — auf der Bühne',
+        nameJoin: ' und ', aGuest: 'einem Gast',
+        stageLabel: 'Auf der Bühne', onStageChip: 'auf der Bühne',
+        shareTheirsChip: 'teilt den Bildschirm',
+        reshareNote: 'Ihr Bildschirmteilen endete, als Sie zurückkamen.',
+        reshareGo: 'Noch einmal teilen',
         voteTip: 'Jemanden auf die Bühne, von der Bühne oder aus dem Raum wählen — die Mehrheit entscheidet',
         voteRecorded: 'Stimme gezählt — sie folgt dieser Person in Räume, die Sie teilen.',
         voteWithdrawn: 'Stimme zurückgenommen.',
@@ -2716,6 +2724,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         whoTip: 'Quién está en esta reunión — nombres y direcciones de internet',
         shareTip: 'Muestra al grupo una ventana, una pestaña o el escritorio. Para una app de GifOS, usa Abrir app.',
         shareTipOn: 'Estás compartiendo tu pantalla — toca para parar',
+        shareMineStage: 'Tu pantalla — en el escenario',
+        shareTheirStage: 'Pantalla de {names} — en el escenario',
+        shareBothStage: 'Tu pantalla y la de {names} — en el escenario',
+        nameJoin: ' y ', aGuest: 'un invitado',
+        stageLabel: 'En el escenario', onStageChip: 'en el escenario',
+        shareTheirsChip: 'comparte su pantalla',
+        reshareNote: 'Dejaste de compartir al volver.',
+        reshareGo: 'Compartir otra vez',
         voteTip: 'Vota a alguien al escenario, fuera del escenario o fuera de la sala — decide la mayoría',
         voteRecorded: 'Voto contado — sigue a esta persona en las salas que compartes.',
         voteWithdrawn: 'Voto retirado.',
@@ -5304,7 +5320,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (!isMe && t.relayed) chips.push('<span>📡 via ' + esc(displayName(t.relayed)) + '</span>');
       else if (!isMe && t.noRoute && !peerAway(id)) chips.push('<span class="warn">🚧 can’t connect straight to them — something on this network blocks video (common at work)</span>');
-      if (stageIds().includes(isMe ? myId : id)) chips.push('<span>🎙 on stage</span>');
+      if (stageIds().includes(isMe ? myId : id)) chips.push('<span>🎙 ' + esc(uiText('onStageChip', 'on stage')) + '</span>');
       // WHAT IS ON SCREEN, AND WHOSE. A screen share is the one feed where the
       // pixels do not say who they came from or that they are not a face — so
       // the tile does, on every device, from the same gossiped bit.
@@ -5326,7 +5342,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if ((isMe ? st.scr : (typeof sharingScreen === 'function' && sharingScreen(id))) && (isMe || !(typeof shareBlocked === 'function' && shareBlocked(id)))) {
         chips.push(isMe
           ? '<span class="warn stopshare" role="button" tabindex="0" title="Stop sharing your screen">🖥 ' + esc(uiText('stopShare', 'Stop sharing')) + '</span>'
-          : '<span class="warn">🖥 sharing their screen</span>');
+          : '<span class="warn">🖥 ' + esc(uiText('shareTheirsChip', 'sharing their screen')) + '</span>');
       }
       if (st.hand) chips.push('<span class="warn">✋ hand raised</span>');
       if (st.lv) chips.push('<span>leaving…</span>');
@@ -17194,7 +17210,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!el) {
         el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sgs';
         const v = document.createElement('video'); v.muted = true; v.autoplay = true; v.setAttribute('playsinline', '');
-        const lb = document.createElement('div'); lb.className = 'rlabel'; lb.textContent = 'On stage';
+        const lb = document.createElement('div'); lb.className = 'rlabel'; lb.textContent = uiText('stageLabel', 'On stage');
         el.appendChild(v); el.appendChild(lb); stagefeedEl.appendChild(el); trackAspect(el, v);
       }
       const v = el.querySelector('video');
@@ -17207,9 +17223,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const shr = screenSharers();
       const lbEl = el.querySelector('.rlabel');
       if (lbEl) {
+        const guest = uiText('aGuest', 'A guest');
+        const join = uiText('nameJoin', ' & ');
+        const others = shr.filter((id) => id !== myId).map((id) => rosterNames[id] || (peers.get(id) || {}).name || guest);
+        const mine = shr.indexOf(myId) !== -1;
         lbEl.textContent = shr.length
-          ? '🖥 ' + shr.map((id) => (id === myId ? 'Your' : ((rosterNames[id] || (peers.get(id) || {}).name || 'A guest') + '’s'))).join(' & ') + ' screen — on stage'
-          : 'On stage';
+          ? '🖥 ' + (mine && !others.length
+            ? uiText('shareMineStage', 'Your screen — on stage')
+            : !mine
+              ? uiText('shareTheirStage', '{names}’s screen — on stage').replace('{names}', others.join(join))
+              : uiText('shareBothStage', 'Your screen & {names}’s — on stage').replace('{names}', others.join(join)))
+          : uiText('stageLabel', 'On stage');
         lbEl.classList.toggle('sharelabel', shr.length > 0);
       }
       // STOP ON THE SLIDE. The More row also says Stop sharing, and the
@@ -18709,7 +18733,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       shareRecoverMode = false;
       const back = document.getElementById('reshare-back');
       if (back && back.classList) back.classList.add('show');
-      setStatus('Your screen share stopped when you came back.');
+      setStatus(uiText('reshareNote', 'Your screen share stopped when you came back.'));
     }
     function hideResharePrompt() {
       const back = document.getElementById('reshare-back');

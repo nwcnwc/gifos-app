@@ -157,3 +157,38 @@ test('the menu steps aside once the slide is up, and the thumbnail can stop it',
   await expect(page.locator('#stagefeed video')).toHaveCount(0);
   await expect(page.locator('body')).not.toHaveClass(/screen-on/);
 });
+
+test.describe('the stage line follows the device', () => {
+  test.use({ locale: 'de-DE' });
+  test('a German device names the slide in German', async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
+    await boot(page);
+    await page.click('#bartoggle');
+    await page.click('#sharebtn');
+    await armSlide(page);
+    await page.click('#share-go');
+    await expect.poll(async () => page.evaluate(() => {
+      const v = document.querySelector('#stagefeed video');
+      return v ? v.videoWidth : 0;
+    })).toBeGreaterThanOrEqual(640);
+    const line = await page.evaluate(() => {
+      const el = document.querySelector('#stagefeed .rlabel');
+      const chip = document.querySelector('#grid .tile.me .stopshare');
+      const stageChip = [...document.querySelectorAll('#grid .tile.me .chips span')].map((n) => n.textContent.trim());
+      return {
+        label: el ? el.textContent.trim() : '',
+        font: el ? parseFloat(getComputedStyle(el).fontSize) : 0,
+        clip: el ? el.scrollWidth > el.clientWidth + 1 : true,
+        chip: chip ? chip.textContent.trim() : '',
+        stageChip,
+      };
+    });
+    expect(line.label).toBe('🖥 Ihr Bildschirm — auf der Bühne');
+    expect(line.label).not.toContain('Your screen');
+    expect(line.font).toBeGreaterThanOrEqual(16);
+    expect(line.clip).toBe(false);
+    expect(line.chip).toBe('🖥 Beenden');
+    expect(line.stageChip.some((t) => t.indexOf('auf der Bühne') >= 0)).toBe(true);
+    expect(line.stageChip.some((t) => t === '🎙 on stage')).toBe(false);
+  });
+});
