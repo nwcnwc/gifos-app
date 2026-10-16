@@ -372,11 +372,11 @@
     } catch (e) {}
     var pin = null, chan = null, cur = null, until = null;
     try { pin = localStorage.getItem('gifos_pin'); chan = localStorage.getItem('gifos_channel'); cur = localStorage.getItem('gifos_current'); until = localStorage.getItem('gifos_pin_until'); } catch (e) {}
-    // gifos_pin_until is the confirm's receipt, not a clock. '0' or any
-    // timestamp — including one months old — means this computer chose the
-    // pin on purpose, and the pin stays. A choice with no record predates
-    // the confirm (a stray ?edge link could have made it), so on gifos.app
-    // it is reset once (RESET_UNCONFIRMED). The Home Screen says so once.
+    // gifos_pin_until is only the confirm's receipt. Any stored value means
+    // this computer chose the pin on purpose, and the pin stays. The value
+    // is never an end. A choice with no record predates the confirm (a stray
+    // ?edge link could have made it), so on gifos.app it is reset once
+    // (RESET_UNCONFIRMED). The Home Screen says so once.
     var RESET_UNCONFIRMED = true;
     if ((pin || chan === 'edge') && until === null && RESET_UNCONFIRMED && /(^|\.)gifos\.app$/.test(location.hostname)) {
       try { localStorage.setItem('gifos_pin_ended', 'reset:' + (pin || 'edge')); localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin_until'); } catch (e) {}
@@ -1014,7 +1014,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile > .blurbox.on { display: block; }
   .tile > .botbadge { position: absolute; right: 8px; bottom: 8px; z-index: 4; pointer-events: none;
     background: rgba(10,10,15,.82); color: #d7e8ff; border: 1px solid #5ca0ff; border-radius: 999px;
-    padding: 2px 8px; font-size: 12px; font-weight: 700; }
+    padding: 2px 8px; font-size: 12px; font-weight: 700;
+    display: inline-flex; align-items: center; gap: 4px; }
+  /* The four-point sparkle is the AI mark: transcript and the note bot only. */
+  .ai-spark { width: 1em; height: 1em; flex: 0 0 auto; display: block; }
+  #trbtn .ai-spark, #trtab .ai-spark, #paneltitle .ai-spark { width: 18px; height: 18px; }
+  #trbtn { align-items: center; justify-content: center; gap: 6px; width: 100%; box-sizing: border-box; }
+  #paneltitle { display: inline-flex; align-items: center; gap: .28rem; }
+  #trtab { display: inline-flex; align-items: center; gap: .28rem; }
   body.meet-session #lobby { display: none !important; }
   .tile .modbar { position: absolute; right: .4rem; top: .4rem; display: none; flex-direction: column;
                   gap: .3rem; z-index: 4; }
@@ -1532,6 +1539,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
     </button>
+    <!-- Smiley, on purpose. The sparkle (AI_SPARK_SVG) is only for AI: the transcript and the note bot. -->
     <button id="reactbtn" type="button" class="iconbtn" aria-label="Reactions" aria-expanded="false" aria-pressed="false" title="Reactions">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1.1 1.4 2.4 2 4 2s2.9-.6 4-2"/><circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none"/></svg>
     </button>
@@ -1577,7 +1585,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="ccbtn" title="Live captions: your device writes down everyone it hears in this meeting and shares the lines with the meeting's transcript">CC</button>
     <button id="stagebtn" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
     <button id="setbtn" title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
-    <button id="trbtn" title="The meeting's live transcript" style="display:none">Transcript</button>
+    <button id="trbtn" title="The meeting's live transcript" style="display:none"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
     <button id="helpbtn" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
     </div>
     <div id="reacttray" class="reacttray" hidden role="group" aria-label="Reactions">
@@ -1726,7 +1734,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
   <div id="chatpanel">
     <div id="chathead"><span id="paneltitle">Meeting chat</span> <small style="color:#667;font-weight:400">· private to this meeting, gone when everyone leaves</small>
-      <button id="trtab" style="margin-left:auto">Transcript</button>
+      <button id="trtab" style="margin-left:auto"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
       <button id="chatmod" style="display:none" title="Silence the chat for everyone but you">Turn chat off</button>
       <button id="chatclose">✕</button></div>
     <div id="chatlog"></div>
@@ -4439,6 +4447,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin) return false;
       return true;
     }
+    // The four-point sparkle. Reactions use a smiley. This mark is only for
+    // AI: the transcript controls and the note bot's tile badge.
+    const AI_SPARK_SVG = '<svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>';
     function paintTileChrome(t, id, isMe, st) {
       if (!t || !t.tile || typeof t.tile.querySelector !== 'function') return;
       if (typeof document === 'undefined' || !document || typeof document.createElement !== 'function') return;
@@ -4446,7 +4457,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (st && st.bot) {
         let mark = tile.querySelector(':scope > .botbadge');
         if (!mark) { mark = document.createElement('span'); mark.className = 'botbadge'; tile.appendChild(mark); }
-        if (mark.textContent !== '\uD83E\uDD16 bot') mark.textContent = '\uD83E\uDD16 bot';
+        if (mark.getAttribute('data-mark') !== 'note') {
+          mark.setAttribute('data-mark', 'note');
+          mark.title = 'Note bot';
+          mark.innerHTML = AI_SPARK_SVG + 'bot';
+        }
       } else {
         const mark = tile.querySelector(':scope > .botbadge');
         if (mark && mark.remove) mark.remove();
@@ -19411,8 +19426,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const w = document.getElementById('trwrap'), c = document.getElementById('chatlog');
       w.classList.toggle('show', showTr);
       c.style.display = showTr ? 'none' : '';
-      document.getElementById('paneltitle').textContent = showTr ? 'Transcript' : 'Meeting chat';
-      document.getElementById('trtab').textContent = showTr ? 'Chat' : 'Transcript';
+      document.getElementById('paneltitle').innerHTML = showTr ? (AI_SPARK_SVG + 'Transcript') : 'Meeting chat';
+      document.getElementById('trtab').innerHTML = showTr ? 'Chat' : (AI_SPARK_SVG + 'Transcript');
       if (showTr) renderTranscript(); else renderChat();
     }
     document.getElementById('trtab').onclick = () => {
@@ -19426,7 +19441,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     };
     function refreshTrBtn() {
       const anyCc = myStatus.cc || trs.size > 0 || ccOthers > 0;
-      document.getElementById('trbtn').style.display = anyCc ? '' : 'none';
+      document.getElementById('trbtn').style.display = anyCc ? 'inline-flex' : 'none';
     }
     // Every meeting download (transcript, recording) is filed as
     // <YYYY_MM_DD>_<Room>_gifos_<Kind>.<ext>: the LOCAL date the meeting (or

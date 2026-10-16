@@ -99,11 +99,11 @@ window.GIFOS_VERSION = 'edge';
     } catch (e) {}
     var pin = null, chan = null, cur = null, until = null;
     try { pin = localStorage.getItem('gifos_pin'); chan = localStorage.getItem('gifos_channel'); cur = localStorage.getItem('gifos_current'); until = localStorage.getItem('gifos_pin_until'); } catch (e) {}
-    // gifos_pin_until is the confirm's receipt, not a clock. '0' or any
-    // timestamp — including one months old — means this computer chose the
-    // pin on purpose, and the pin stays. A choice with no record predates
-    // the confirm (a stray ?edge link could have made it), so on gifos.app
-    // it is reset once (RESET_UNCONFIRMED). The Home Screen says so once.
+    // gifos_pin_until is only the confirm's receipt. Any stored value means
+    // this computer chose the pin on purpose, and the pin stays. The value
+    // is never an end. A choice with no record predates the confirm (a stray
+    // ?edge link could have made it), so on gifos.app it is reset once
+    // (RESET_UNCONFIRMED). The Home Screen says so once.
     var RESET_UNCONFIRMED = true;
     if ((pin || chan === 'edge') && until === null && RESET_UNCONFIRMED && /(^|\.)gifos\.app$/.test(location.hostname)) {
       try { localStorage.setItem('gifos_pin_ended', 'reset:' + (pin || 'edge')); localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin_until'); } catch (e) {}
