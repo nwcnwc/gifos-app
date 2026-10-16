@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. A host can mute, hold, rename, and spotlight from the roster. A shared slide fills the stage, with Stop sharing on the slide. A church broadcast has an order of service for the booth. Settings follow German and Spanish. Coming back from another tab says you are still in the call. Who, Share, and Vote do not follow the language.
+We do **not** lead any audience yet. A host can mute, hold, rename, and spotlight from the roster. A shared slide fills the stage, with Stop sharing on the slide. A church broadcast has an order of service for the booth. Settings, Who, Share, and Vote follow German and Spanish. Coming back from another tab says you are still in the call. Password, Invite, and Run app do not follow the language.
 
 ## Who we are measured against
 
@@ -52,9 +52,9 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 | Warmth | 7 | The join card is a person, not a form. The in-call line still says “a password unlocks clear video” |
 | Effort to get in | 8 | One link. You confirm your name and picture, then you are in. A return in the same tab does not ask again |
 | Staying in the call (resize, tab away) | 6 | A friend who steps away shows Away on their tile. Coming back says Still in the call. A phone that kills the camera was not walked |
-| Locale | 8 | Lobby, help, shortcuts, join, dock, More, the count, chat, and Settings follow German and Spanish. Who, Share, and Vote stay English |
-| **Audience** | **7.3** | Does not lead |
+| Locale | 8.5 | Lobby, help, shortcuts, join, dock, More, the count, chat, Settings, Who, Share, and Vote follow German and Spanish. Password, Invite, and Run app stay English |
+| **Audience** | **7.4** | Does not lead |
 
 ## This cycle
 
-The host roster holds a new arrival until Admit, renames them on the tile, and spotlights them to the front (see QUIRKS.md). Large-room host 8 → 8.5. Corporate audience 7.2 → 7.3. The lobby is not sealed, so this is not a 9. Church stays 7.0. Personal stays 7.3. Still behind Zoom and Meet (~8), a church desk (~8), and FaceTime (~9). We do not lead. Next gap: Who, Share, and Vote stay English.
+Who, Share, and Vote follow a German or Spanish device (see QUIRKS.md). Locale 8 → 8.5. Personal audience 7.3 → 7.4. Password, Invite, and Run app are still English, so this is not a 9. Corporate stays 7.3. Church stays 7.0. Still behind Zoom and Meet (~8), a church desk (~8), and FaceTime (~9). We do not lead. Next gap: a phone that kills the camera has not been walked.

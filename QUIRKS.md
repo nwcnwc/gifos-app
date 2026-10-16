@@ -142,6 +142,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** Waiting room is a switch on the roster. Someone who arrives after it is on comes off the wall and sits under Waiting, with Admit. Rename edits their name on the tile. Spotlight marks them on stage and puts that tile first. A guest in an admin room does not see these. The person waiting is off the wall; this is not yet a sealed lobby that cuts every audio path.
 - **Proof:** the test passes on Chromium and Firefox, and the roster mute tests still pass on all three browsers. Screenshots: `test/desktop/shots/host-roster-before-1280.png`, `test/desktop/shots/host-roster-after-wait-1280.png`, `test/desktop/shots/host-roster-after-spot-1280.png`.
 
+### Who, Share, and Vote stayed English
+
+- **Who hits it:** a German or Spanish device, opening Who, Share, or Vote.
+- **What you saw:** the dock and Settings were already in that language. These three sheets still said “Who is on this meeting”, “Share your screen”, and “Place a vote”.
+- **Repro:** `test/desktop/sheets-locale.spec.js` failed before the fix (a `de-DE` Who sheet said “Who is on this meeting”).
+- **Fix:** German and Spanish cover the Who title, the explanation, the group headings, the address lines, and Download. They cover the Share title, the app note, the two explanations, Choose, and Cancel. They cover Vote’s three choices and the line that appears while you are tapping faces. English stays in the markup. The file you download for the police stays English. Password, Invite, and Run app are still English.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the earlier locale test and the English share demo still pass. Screenshots: `test/desktop/shots/sheets-before-who-1280.png`, `test/desktop/shots/sheets-before-share-1280.png`, `test/desktop/shots/sheets-before-vote-1280.png`, `test/desktop/shots/sheets-after-who-de-1280.png`, `test/desktop/shots/sheets-after-share-de-1280.png`, `test/desktop/shots/sheets-after-vote-de-1280.png`.
+
 ### More was one unlabeled wall
 
 - **Who hits it:** a volunteer opening More and hunting for Chat or Vote.
@@ -164,9 +172,9 @@ With no saved confirmation for this session, joining shows how you will appear: 
 
 Who, Invite, Hand, and Chat sit under People. Vote, Password, Stage, Record, CC, and Settings sit under Room. Run app is under Share. Keys and Help are under Help. Host tools stay hidden until there is a host. “Turn video off” matches the other labels. The list is still long.
 
-### Who, Share, and Vote are still English
+### Password, Invite, and Run app are still English
 
-The lobby, the meeting help, the broadcast help, the shortcut list, and Settings follow a German or Spanish device. Who, Share, and Vote do not.
+Who, Share, and Vote follow a German or Spanish device. The password sheet, the invite sheet, and Run app do not. The Who download for the police stays English.
 
 ### Status line is easy to lose
 
@@ -174,4 +182,4 @@ The lobby, the meeting help, the broadcast help, the shortcut list, and Settings
 
 ### Not yet walked end to end
 
-Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. The path is still More, then the sheet, then the picker. A broadcast says off air and on air, and the booth has an order of service. There are still no lyrics and no program versus preview. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, and Vote stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that kills the camera was not walked.
+Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. The path is still More, then the sheet, then the picker. A broadcast says off air and on air, and the booth has an order of service. There are still no lyrics and no program versus preview. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, and Vote follow German and Spanish. Password, Invite, and Run app stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that kills the camera was not walked.

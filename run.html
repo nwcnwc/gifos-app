@@ -884,6 +884,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      --muted: on themes with a colored surface (blue!), fixed gray muted text
      lands at near-zero contrast and the popup is illegible. */
   .voteopt small { display: block; color: var(--text, #e0e0f0); opacity: .72; font-size: .78rem; margin-top: .15rem; }
+  #who-modal .who-lead, #share-modal .share-body, #vote-modal .vote-lead { font-size: 16px; line-height: 1.4; color: #1d1d1f; }
+  #vote-modal .voteopt { font-size: 16px; }
+  #vote-modal .voteopt small { font-size: 15px; opacity: .85; }
   /* FULLSCREEN VIEW: one feed big + every other live feed as floating thumbs
      (right edge in landscape, bottom edge in portrait) — tap a thumb to swap
      it into the big view. Standard call UX. */
@@ -1907,15 +1910,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        the last moment to say so before a picker opens. -->
   <div class="name-modal" role="dialog" aria-modal="true" id="share-modal" style="display:none">
     <div class="name-box" style="max-width:430px;text-align:left">
-      <h3>Share your screen</h3>
+      <h3 data-t="shareTitle">Share your screen</h3>
       <div id="share-appnote" class="share-note"></div>
-      <div id="share-denied" class="share-note" style="display:none;border-left-color:#ffd23c;background:rgba(255,210,60,.08)"><b>🛡 Only this room’s admins — or people they allow — can share a screen.</b> Ask an admin to allow you: <b>Allow screen share</b> on your tile, or <b>Allow screen share</b> for the whole room. Then open this sheet again.</div>
-      <p style="font-size:.86rem">A screen share is for what an app can’t be: <b>a deck on your disk, a tool that isn’t GifOS, a window from somewhere else</b>. It shows on the stage, so the whole room sees it — and everyone can see that it’s you sharing.</p>
-      <p style="font-size:.8rem;color:var(--muted,#8888aa)">Your camera pauses while you share, and comes back when you stop. Sound from the shared tab doesn’t travel — talk over it.</p>
+      <div id="share-denied" class="share-note" data-t="shareDenied" style="display:none;border-left-color:#ffd23c;background:rgba(255,210,60,.08)">Only this room’s admins — or people they allow — can share a screen. Ask an admin to allow you, on your tile or for the whole room, then open this again.</div>
+      <p class="share-body" data-t="shareBody">A screen share is for what an app can’t be: a deck on your disk, a tool that isn’t GifOS, a window from somewhere else. It shows on the stage, so the whole room sees it — and everyone can see that it’s you sharing.</p>
+      <p class="share-body" data-t="shareSound">Your camera pauses while you share, and comes back when you stop. Sound from the shared tab doesn’t travel — talk over it.</p>
       <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-top:.9rem">
-        <button id="share-go">Choose what to share…</button>
-        <button id="share-runapp" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Run app instead</button>
-        <button id="share-cancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Cancel</button>
+        <button id="share-go" data-t="shareGo">Choose what to share…</button>
+        <button id="share-runapp" data-t="runApp" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Run app instead</button>
+        <button id="share-cancel" data-t="shareCancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Cancel</button>
       </div>
     </div>
   </div>
@@ -1985,15 +1988,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        room withdraws your stage votes automatically. -->
   <div class="name-modal" role="dialog" aria-modal="true" id="vote-modal" style="display:none">
     <div class="name-box" style="max-width:24rem;text-align:left">
-      <h3>Place a vote</h3>
-      <p style="font-size:.85rem;opacity:.8;margin:.2rem 0 .8rem">One vote each, while you are in the room. A majority acts.</p>
-      <button class="voteopt up" data-vm="up"><span class="vic" aria-hidden="true"></span>Vote onto stage<small>A green dot marks who you can send up. A majority puts them on stage.</small></button>
-      <button class="voteopt down" data-vm="down"><span class="vic" aria-hidden="true"></span>Vote off stage<small>An amber dot marks who you can send down. A majority takes them off.</small></button>
-      <button class="voteopt danger" data-vm="kick"><span class="vic" aria-hidden="true"></span>Vote out of room<small>A red outline marks who you can remove. Your vote follows them into rooms you share.</small></button>
-      <div style="display:flex;justify-content:flex-end;margin-top:.3rem"><button id="vote-cancel">Cancel</button></div>
+      <h3 data-t="voteTitle">Place a vote</h3>
+      <p class="vote-lead" data-t="voteLead">One vote each, while you are in the room. A majority acts.</p>
+      <button class="voteopt up" data-vm="up"><span class="vic" aria-hidden="true"></span><span data-t="voteUp">Vote onto stage</span><small data-t="voteUpNote">A green dot marks who you can send up. A majority puts them on stage.</small></button>
+      <button class="voteopt down" data-vm="down"><span class="vic" aria-hidden="true"></span><span data-t="voteDown">Vote off stage</span><small data-t="voteDownNote">An amber dot marks who you can send down. A majority takes them off.</small></button>
+      <button class="voteopt danger" data-vm="kick"><span class="vic" aria-hidden="true"></span><span data-t="voteKick">Vote out of room</span><small data-t="voteKickNote">A red outline marks who you can remove. Your vote follows them into rooms you share.</small></button>
+      <div style="display:flex;justify-content:flex-end;margin-top:.3rem"><button id="vote-cancel" data-t="shareCancel">Cancel</button></div>
     </div>
   </div>
-  <div id="votebanner" style="display:none"><span id="votebanner-text"></span><button id="vote-done">Done</button></div>
+  <div id="votebanner" style="display:none"><span id="votebanner-text"></span><button id="vote-done" data-t="voteDone">Done</button></div>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="pw-modal" style="display:none">
     <div class="name-box">
@@ -2028,12 +2031,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="who-modal" style="display:none">
     <div class="name-box" style="max-width:480px;text-align:left">
-      <h3>Who is on this meeting</h3>
-      <p style="color:#889;font-size:.85rem">There is no server in the middle storing this meeting. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone's internet address — nobody is anonymous. ✓ marks an address the GifOS relay verified or this device saw directly; anything else is only what that person's device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.</p>
+      <h3 data-t="whoTitle">Who is on this meeting</h3>
+      <p class="who-lead" data-t="whoLead">There is no server in the middle storing this meeting. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone's internet address — nobody is anonymous. ✓ marks an address the GifOS relay verified or this device saw directly; anything else is only what that person's device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.</p>
       <div id="who-list"></div>
       <div style="display:flex;gap:.5rem;justify-content:center;margin-top:.8rem">
-        <button id="who-dl">Download this list</button>
-        <button id="who-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+        <button id="who-dl" data-t="whoDl">Download this list</button>
+        <button id="who-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
       </div>
     </div>
   </div>
@@ -2493,6 +2496,41 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         admit: 'Herein', nobodyWaiting: 'Niemand wartet', rename: 'Umbenennen', saveName: 'Sichern',
         spotlight: 'Hervorheben', inView: 'Im Blick',
         waitSelf: 'Die Leitung lässt Sie gleich hinein', waitSelfNote: 'Sie sehen die Besprechung, sobald Sie hereingelassen werden.',
+        shareTitle: 'Bildschirm teilen', shareGo: 'Auswählen, was geteilt wird…', shareCancel: 'Abbrechen',
+        shareDenied: 'Nur die Leitung dieses Raums — oder wen sie erlaubt — kann einen Bildschirm teilen. Bitten Sie die Leitung, es zu erlauben, an Ihrem Feld oder für den ganzen Raum, und öffnen Sie dies dann erneut.',
+        shareBody: 'Ein Bildschirm ist für das, was keine App sein kann: eine Präsentation auf Ihrem Rechner, ein Werkzeug, das nicht GifOS ist, ein Fenster von woanders. Es liegt auf der Bühne, der ganze Raum sieht es, und alle sehen, dass Sie teilen.',
+        shareSound: 'Ihre Kamera pausiert, während Sie teilen, und kommt zurück, wenn Sie aufhören. Ton aus dem geteilten Tab kommt nicht mit — sprechen Sie darüber.',
+        shareAppNote: '<b>🧩 Eine GifOS-App? Nutzen Sie „App starten“.</b> Eine angeheftete App läuft auf jedem Gerät über einen kleinen Datenstrom — scharf, anklickbar, auf dem Telefon lesbar. Ein Bildschirm ist ein <i>Video Ihres Fensters</i>: nur in eine Richtung.',
+        shareRunning: ' läuft schon in dieser Besprechung.</b> Alle hier führen sie auf dem eigenen Gerät. Sie müssen den Bildschirm nicht teilen.',
+        whoTitle: 'Wer in dieser Besprechung ist',
+        whoLead: 'Kein Server in der Mitte speichert diese Besprechung. Die Telefone und Computer der Menschen darin sind die Server: sie verbinden sich direkt. Deshalb sieht hier jeder die Internetadresse der anderen — niemand ist anonym. ✓ markiert eine Adresse, die das GifOS-Relay geprüft hat oder die dieses Gerät direkt gesehen hat. Alles andere hat nur das Gerät der Person gemeldet. Wer gegangen ist, bleibt auf der Liste. Um etwas Illegales zu melden, laden Sie diese Liste herunter und legen Sie sie bei.',
+        whoDl: 'Diese Liste laden',
+        whoDirect: 'Direkt mit Ihnen verbunden',
+        whoDirectNote: 'Ihr Gerät und ihres sprechen direkt miteinander, deshalb hat es die Adresse selbst gesehen.',
+        whoIndirect: 'In der Besprechung, über andere',
+        whoIndirectNote: 'Sie erreichen sie über die Geräte anderer, deshalb hat Ihres die Adresse nie gesehen.',
+        whoEjected: 'Ausgeschlossen, Adresse gefälscht',
+        whoEjectedNote: 'Beim Fälschen erwischt. Dieses Gerät hat danach nichts mehr angenommen, kein Bild und keine Nachricht.',
+        whoLeftGroup: 'Haben die Besprechung verlassen',
+        whoSameNet: 'gleiches lokales Netz (Adresse vom Browser verborgen)',
+        whoLocal: 'lokales Netz ', whoPort: 'Port', whoVerified: 'vom Relay geprüft', whoSeen: 'direkt gesehen',
+        whoForged: 'GEFÄLSCHT — ihr Gerät ',
+        whoClaimed: 'vom Gerät behauptet, NICHT ihre Adresse',
+        whoDiffers: 'vom Gerät gemeldet, weicht ab von dem, was das Relay sah (das Netz kann sich geändert haben)',
+        whoReported: 'vom Gerät gemeldet, nicht geprüft',
+        whoUnknown: 'Adresse unbekannt', whoGone: 'ausgeschlossen', whoLeftAt: 'gegangen',
+        voteTitle: 'Abstimmen',
+        voteLead: 'Eine Stimme pro Person, solange Sie im Raum sind. Die Mehrheit gilt.',
+        voteUp: 'Auf die Bühne wählen',
+        voteUpNote: 'Ein grüner Punkt zeigt, wen Sie hinaufschicken können. Die Mehrheit setzt sie auf die Bühne.',
+        voteDown: 'Von der Bühne wählen',
+        voteDownNote: 'Ein gelber Punkt zeigt, wen Sie herunterholen können. Die Mehrheit nimmt sie herunter.',
+        voteKick: 'Aus dem Raum wählen',
+        voteKickNote: 'Ein roter Rand zeigt, wen Sie entfernen können. Ihre Stimme folgt ihnen in Räume, die Sie teilen.',
+        voteDone: 'Fertig',
+        voteBannerUp: 'Tippen Sie den grünen Punkt, um jemanden AUF die Bühne zu wählen — bei {n} Stimmen ist es so. Nochmal tippen nimmt die Stimme zurück.',
+        voteBannerDown: 'Tippen Sie das ✕, um jemanden von der Bühne zu wählen — bei {n} Stimmen steigt die Person ab. Nochmal tippen nimmt die Stimme zurück.',
+        voteBannerKick: 'Tippen Sie das ✕, um jemanden AUS dem Raum zu wählen — die Mehrheit entfernt die Person. Nochmal tippen nimmt die Stimme zurück.',
         goLive: 'Kamera an, dann sind Sie live. Der Raum sieht Sie noch nicht.',
         waitLive: 'Die Sendung hat noch nicht begonnen.',
         orderOfService: 'Ablauf', rdNow: 'Jetzt', rdNext: 'Weiter', rdDone: 'Fertig',
@@ -2597,6 +2635,41 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         admit: 'Admitir', nobodyWaiting: 'Nadie espera', rename: 'Renombrar', saveName: 'Guardar',
         spotlight: 'Destacar', inView: 'En vista',
         waitSelf: 'El anfitrión te dejará entrar', waitSelfNote: 'Verás la reunión cuando te admitan.',
+        shareTitle: 'Compartir pantalla', shareGo: 'Elegir qué compartir…', shareCancel: 'Cancelar',
+        shareDenied: 'Solo los anfitriones de esta sala — o quien ellos permitan — pueden compartir pantalla. Pide que te lo permitan, en tu recuadro o para toda la sala, y abre esto otra vez.',
+        shareBody: 'Compartir pantalla es para lo que una app no puede ser: una presentación en tu disco, una herramienta que no es GifOS, una ventana de otro sitio. Se ve en el escenario, toda la sala la ve, y todos ven que eres tú.',
+        shareSound: 'Tu cámara se pausa mientras compartes y vuelve cuando paras. El sonido de la pestaña no viaja — habla por encima.',
+        shareAppNote: '<b>🧩 ¿Una app de GifOS? Usa “Abrir app”.</b> Una app fijada corre en el dispositivo de cada quien, nítida y se puede tocar. Compartir pantalla es un <i>video de tu ventana</i>: de un solo lado.',
+        shareRunning: ' ya está en esta reunión.</b> Todos la usan en su propio dispositivo. No hace falta compartir pantalla.',
+        whoTitle: 'Quién está en esta reunión',
+        whoLead: 'No hay un servidor en medio que guarde esta reunión. Los teléfonos y las computadoras de quienes están son los servidores: se conectan directo. Por eso todos ven la dirección de internet de los demás — nadie es anónimo. ✓ marca una dirección que el relay de GifOS verificó o que este dispositivo vio directo. Lo demás es solo lo que dijo el dispositivo de esa persona. Quien se fue sigue en la lista. Para denunciar algo ilegal, descarga esta lista y adjúntala.',
+        whoDl: 'Descargar esta lista',
+        whoDirect: 'Conectados directo contigo',
+        whoDirectNote: 'Tu dispositivo y el suyo hablan directo, así que vio la dirección.',
+        whoIndirect: 'En la reunión, a través de otros',
+        whoIndirectNote: 'Los alcanzas por los dispositivos de otras personas, así que el tuyo nunca vio su dirección.',
+        whoEjected: 'Expulsados por falsificar su dirección',
+        whoEjectedNote: 'Pillados falsificando. Este dispositivo no aceptó nada más de ellos: ni video ni mensajes.',
+        whoLeftGroup: 'Salieron de la reunión',
+        whoSameNet: 'misma red local (el navegador oculta la dirección)',
+        whoLocal: 'red local ', whoPort: 'puerto', whoVerified: 'verificado por el relay', whoSeen: 'visto directo',
+        whoForged: 'FALSIFICADO — su dispositivo ',
+        whoClaimed: 'lo dijo su dispositivo, NO es su dirección',
+        whoDiffers: 'lo dijo su dispositivo y no coincide con lo que vio el relay (pudo cambiar de red)',
+        whoReported: 'lo dijo su dispositivo, sin verificar',
+        whoUnknown: 'dirección desconocida', whoGone: 'expulsado', whoLeftAt: 'salió',
+        voteTitle: 'Votar',
+        voteLead: 'Un voto cada uno, mientras estés en la sala. La mayoría decide.',
+        voteUp: 'Votar al escenario',
+        voteUpNote: 'Un punto verde marca a quién puedes subir. La mayoría lo pone en el escenario.',
+        voteDown: 'Bajar del escenario',
+        voteDownNote: 'Un punto ámbar marca a quién puedes bajar. La mayoría lo baja.',
+        voteKick: 'Sacar de la sala',
+        voteKickNote: 'Un borde rojo marca a quién puedes quitar. Tu voto lo sigue a las salas que compartes.',
+        voteDone: 'Listo',
+        voteBannerUp: 'Toca el punto verde para votar a alguien AL escenario — con {n} votos sube. Toca otra vez para retirar el voto.',
+        voteBannerDown: 'Toca la ✕ para votar que alguien BAJE del escenario — con {n} votos baja. Toca otra vez para retirar el voto.',
+        voteBannerKick: 'Toca la ✕ para votar que alguien SALGA de la sala — la mayoría lo quita. Toca otra vez para retirar el voto.',
         goLive: 'Enciende la cámara para salir al aire. La sala aún no te ve.',
         waitLive: 'La transmisión aún no empieza.',
         orderOfService: 'Programa', rdNow: 'Ahora', rdNext: 'Siguiente', rdDone: 'Listo',
@@ -12206,28 +12279,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // (whose addresses I never saw); people who left.
     const WHO_GROUPS = [
       { k: 'me', test: (r) => r.me },
-      { k: 'direct', title: 'Connected directly to you', note: 'Your device and theirs talk straight to each other, so it saw their address itself.', test: (r) => r.here && r.direct && !r.ejected },
-      { k: 'indirect', title: 'In the meeting, through others', note: 'You reach them through other people\u2019s devices, so yours never saw their address.', test: (r) => r.here && !r.direct && !r.ejected },
-      { k: 'ejected', title: 'Ejected for forging their address', note: 'Caught forging; this device accepted nothing from them after that, no media and no messages.', test: (r) => r.ejected },
-      { k: 'left', title: 'Left the meeting', test: (r) => !r.here },
+      { k: 'direct', titleKey: 'whoDirect', title: 'Connected directly to you', noteKey: 'whoDirectNote', note: 'Your device and theirs talk straight to each other, so it saw their address itself.', test: (r) => r.here && r.direct && !r.ejected },
+      { k: 'indirect', titleKey: 'whoIndirect', title: 'In the meeting, through others', noteKey: 'whoIndirectNote', note: 'You reach them through other people\u2019s devices, so yours never saw their address.', test: (r) => r.here && !r.direct && !r.ejected },
+      { k: 'ejected', titleKey: 'whoEjected', title: 'Ejected for forging their address', noteKey: 'whoEjectedNote', note: 'Caught forging; this device accepted nothing from them after that, no media and no messages.', test: (r) => r.ejected },
+      { k: 'left', titleKey: 'whoLeftGroup', title: 'Left the meeting', test: (r) => !r.here },
     ];
     const whoGroupOf = (r) => WHO_GROUPS.find((g) => g.test(r)).k;
     const utc = (ms) => (ms ? new Date(ms).toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC') : '');
     const hhmm = (ms) => (ms ? new Date(ms).toISOString().slice(11, 16) + ' UTC' : '');
     // A browser hides a LAN address behind a random '.local' name: that says
     // "same local network" and nothing more.
-    const seenStr = (x) => (/\.local$/i.test(x.addr) ? 'same local network (address hidden by the browser)'
-      : (x.type === 'host' ? 'local network ' : '') + x.addr + (x.port ? ' port ' + x.port : ''));
+    const seenStr = (x) => (/\.local$/i.test(x.addr) ? uiText('whoSameNet', 'same local network (address hidden by the browser)')
+      : (x.type === 'host' ? uiText('whoLocal', 'local network ') : '') + x.addr + (x.port ? ' ' + uiText('whoPort', 'port') + ' ' + x.port : ''));
     function whoAddrLines(r) {
       const out = [];
-      if (r.forged) out.push('\u26a0 FORGED \u2014 their device ' + r.forged);
+      if (r.forged) out.push('\u26a0 ' + uiText('whoForged', 'FORGED \u2014 their device ') + r.forged);
       const sn = r.seen[r.seen.length - 1];
-      if (r.att) out.push('\u2713 ' + r.att.ip + ' \u2014 verified by the relay');
-      if (sn) out.push('\u2713 ' + seenStr(sn) + ' \u2014 seen directly');
-      if (r.ip && (!r.att || r.att.ip !== r.ip)) out.push(r.ip + ' \u2014 ' + (r.att ? (r.forged ? 'claimed by their device, NOT their address' : 'reported by their device, differs from what the relay saw (it may have changed networks)') : 'reported by their device, not verified'));
-      if (!out.length) out.push('address unknown');
-      if (r.ejected) out.push('ejected ' + hhmm((ejected.get(r.pid) || {}).at || r.last));
-      else if (!r.here) out.push('left ' + hhmm(r.last));
+      if (r.att) out.push('\u2713 ' + r.att.ip + ' \u2014 ' + uiText('whoVerified', 'verified by the relay'));
+      if (sn) out.push('\u2713 ' + seenStr(sn) + ' \u2014 ' + uiText('whoSeen', 'seen directly'));
+      if (r.ip && (!r.att || r.att.ip !== r.ip)) out.push(r.ip + ' \u2014 ' + (r.att ? (r.forged ? uiText('whoClaimed', 'claimed by their device, NOT their address') : uiText('whoDiffers', 'reported by their device, differs from what the relay saw (it may have changed networks)')) : uiText('whoReported', 'reported by their device, not verified')));
+      if (!out.length) out.push(uiText('whoUnknown', 'address unknown'));
+      if (r.ejected) out.push(uiText('whoGone', 'ejected') + ' ' + hhmm((ejected.get(r.pid) || {}).at || r.last));
+      else if (!r.here) out.push(uiText('whoLeftAt', 'left') + ' ' + hhmm(r.last));
       return out;
     }
     function showWhoModal() {
@@ -12240,9 +12313,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!inG.length) continue;
         if (g.title) {
           const h = document.createElement('div'); h.className = 'who-h'; h.dataset.group = g.k;
-          h.style.cssText = 'margin-top:.7rem;font-weight:600;font-size:.8rem';
-          h.textContent = g.title + ' (' + inG.length + ')';
-          if (g.note) { const n = document.createElement('div'); n.style.cssText = 'font-weight:400;color:#889'; n.textContent = g.note; h.appendChild(n); }
+          h.style.cssText = 'margin-top:.7rem;font-weight:700;font-size:16px;line-height:1.3';
+          h.textContent = uiText(g.titleKey, g.title) + ' (' + inG.length + ')';
+          if (g.note) { const n = document.createElement('div'); n.style.cssText = 'font-weight:500;font-size:15px;line-height:1.35;color:#3a3a3f'; n.textContent = uiText(g.noteKey, g.note); h.appendChild(n); }
           list.appendChild(h);
         }
         for (const r of inG) {
@@ -18631,16 +18704,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const runnable = (typeof canIRunApp === 'function') ? canIRunApp() : false;
       note.className = running ? 'share-note running' : 'share-note';
       note.innerHTML = running
-        ? '<b>🧩 ' + esc(running.name || 'An app') + ' is already running in this meeting.</b> '
-          + 'Everyone here runs it on their own device and stays in sync — you do <b>not</b> need to share '
-          + 'your screen to show it, and a video of your window would be blurrier and unclickable for them.'
-        : '<b>🧩 Sharing a GifOS app? Use “Run app” instead.</b> '
-          + 'A pinned app runs on everyone’s own device off a small shared data stream — crisp, interactive, '
-          + 'readable on a phone. A screen share is a <i>video of your window</i>: one-way, one resolution, and '
-          + 'paid for in pixels at every hop.';
+        ? '<b>🧩 ' + esc(running.name || uiText('anApp', 'An app')) + uiText('shareRunning', ' is already running in this meeting.</b> Everyone here runs it on their own device and stays in sync — you do <b>not</b> need to share your screen to show it.')
+        : uiText('shareAppNote', '<b>🧩 Sharing a GifOS app? Use “Run app” instead.</b> A pinned app runs on everyone’s own device off a small shared data stream — crisp, interactive, readable on a phone. A screen share is a <i>video of your window</i>: one-way, one resolution, and paid for in pixels at every hop.');
       const go = document.getElementById('share-runapp');
       go.style.display = (runnable && !ROOM.appPinned) ? '' : 'none';
-      go.textContent = running ? 'Show me the app' : 'Run app instead';
+      go.textContent = running ? uiText('showApp', 'Show me the app') : uiText('runApp', 'Run app instead');
       // THE REFUSAL LIVES IN THE SHEET. A guest who may not share used to get
       // the picker button, then a 4s grey line in the bar — which she missed,
       // twice, while the sheet had already closed. The sheet itself now says
@@ -21873,10 +21941,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       b.style.display = m ? 'flex' : 'none';
       if (m) {
         const need = stageVoteTallies().need;
-        document.getElementById('votebanner-text').textContent =
-          m === 'up' ? 'Tap the green dot to vote someone ONTO the stage — at ' + need + ' votes they take it. Tap again to withdraw.'
-          : m === 'down' ? 'Tap the ✕ on a stage panel to vote them OFF — at ' + need + ' votes they step down. Tap again to withdraw.'
-          : 'Tap the ✕ to vote someone OUT of the room — a majority removes them. Tap again to withdraw.';
+        const bannerKey = m === 'up' ? 'voteBannerUp' : m === 'down' ? 'voteBannerDown' : 'voteBannerKick';
+        const bannerEn = m === 'up'
+          ? 'Tap the green dot to vote someone ONTO the stage — at {n} votes they take it. Tap again to withdraw.'
+          : m === 'down'
+            ? 'Tap the ✕ on a stage panel to vote them OFF — at {n} votes they step down. Tap again to withdraw.'
+            : 'Tap the ✕ to vote someone OUT of the room — a majority removes them. Tap again to withdraw.';
+        document.getElementById('votebanner-text').textContent = uiText(bannerKey, bannerEn).replace('{n}', String(need));
       }
       refreshAllTiles();
       paintStageVoteTargets();
