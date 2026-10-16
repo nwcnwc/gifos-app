@@ -23,9 +23,9 @@ Broadcast lobby (`#bc=1`), Start broadcasting expanded. The create button’s to
 
 Before: `test/mobile/screenshots/before/iphone-se-portrait-lobby-form.png`.
 
-### Q5. No LIVE / OFF AIR / WATCHING signal
+### Q5b. Flip camera stays hidden until two cameras are enumerated
 
-A broadcast viewer (`body.broadcast.admroom.notadmin`) shows the status “Joining the broadcast…”. A meeting that never reaches the room says “Just you — send the invite; the link has no expiry”. There is no on-air badge. Camera and mic are `display: none` for a broadcast viewer, which is intended, and easy to misread as “the app forgot the camera” when the status line is also vague. Flip camera stays `display: none` until `enumerateDevices` reports two cameras, so a phone host does not get a flip control up front.
+`#flipcam` is `display: none` until `enumerateDevices` reports more than one video input. A phone host does not get a flip control up front, including mid-service when they rotate the handset. Camera and mic stay hidden for a broadcast viewer, which is intended.
 
 Before: `test/mobile/screenshots/before/iphone-se-portrait-host.png`.
 
@@ -62,3 +62,10 @@ After: `test/mobile/screenshots/after/iphone-se-meeting-chat.png`.
 ### Q8. Chat header spent a third of a short screen
 
 `#chathead` wrapped the title, the privacy sentence, Transcript, and close into about 110px on iPhone SE. On a phone the sentence is now clipped for sighted layout and kept for screen readers, and Transcript / close are 44px. That was required for Q2: the tall header pushed Send under the dock once the keyboard opened.
+
+### Q5. No LIVE / OFF AIR / WATCHING signal
+
+A broadcast had only the status sentence. A viewer sat on “Joining the broadcast…”. A host with the camera off had no off-air mark. The chip now shows RECONNECTING while the room is not reached, OFF AIR for a host who is not sending a picture, LIVE once that picture is on, and WATCHING for a viewer who is in. Meetings do not wear it. `test/mobile/live-badge.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-portrait-host.png`.
+After: `test/mobile/screenshots/after/iphone-se-broadcast-reconnecting.png` and `test/mobile/screenshots/after/iphone-se-broadcast-offair.png`.

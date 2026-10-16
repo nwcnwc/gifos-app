@@ -18,14 +18,14 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 | First screen tells you what to do | 3 | 2 | 3 | FaceTime, Meet |
 | Hang up, mic, and camera stay on screen | 4 | 4 | 4 | Zoom, Meet |
 | Chat can be read and sent on a phone | 4 | 4 | 4 | Meet, Teams |
-| Live, off air, watching, reconnecting | 3 | 1 | 3 | YouTube Live, StreamYard |
+| Live, off air, watching, reconnecting | 3 | 3 | 3 | YouTube Live, StreamYard |
 | Large type and 44px targets | 3 | 2 | 3 | FaceTime |
 | Landscape, rotation, notch | 2 | 2 | 2 | Meet |
 | Warm, short, trustworthy copy | 3 | 2 | 3 | FaceTime |
-| **Audience average** | **3.1** | **2.4** | **3.1** | |
+| **Audience average** | **3.1** | **2.7** | **3.1** | |
 
-Hang up stays on screen (Q1). The chat field and Send sit above the dock, including when a keyboard covers the bottom half of an iPhone SE (Q2). Corporate and personal are 3.1. Church is 2.4. None lead. YouTube Live and StreamYard still win the church score because a broadcast never says LIVE or OFF AIR (Q5), and the create action is still below the fold (Q4).
+Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast now says RECONNECTING, OFF AIR, LIVE, or WATCHING (Q5). Corporate and personal are 3.1. Church is 2.7. None lead. Meet and Zoom still win the phone meeting on landscape More (Q3), the below-the-fold create step (Q4), large type (Q6), and the notch (Q7). StreamYard still wins a church service on flip-camera and a create button that is on screen.
 
 ## Next gap
 
-Q5. A broadcast viewer’s status is “Joining the broadcast…”, and a host who is not sending a picture has no OFF AIR mark. Church and streaming tools win this in one glance.
+Q4. “Create & enter” is below the fold on every phone once Start broadcasting is expanded. A volunteer can scroll the card, and nothing tells them to.

@@ -1272,6 +1272,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip { position: fixed; z-index: 6; top: 14px; left: 14px; display: flex; align-items: center; gap: 8px;
     max-width: min(28rem, calc(100% - 120px)); background: rgba(12,14,18,.92); color: #f4f7fb;
     border-radius: 999px; padding: 6px 12px 6px 14px; }
+  #livebadge { display: none; align-items: center; gap: 6px; flex: 0 0 auto; font-size: .8125rem; font-weight: 800;
+    letter-spacing: .04em; line-height: 1; padding: 5px 8px; border-radius: 999px; }
+  body.broadcast #livebadge { display: inline-flex; }
+  #livebadge .livedot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  #livebadge[data-state="live"] { background: #b61622; color: #fff; }
+  #livebadge[data-state="off"] { background: #3a3a3f; color: #fff; }
+  #livebadge[data-state="watching"] { background: #0b6b3a; color: #fff; }
+  #livebadge[data-state="reconnecting"] { background: #8a5a00; color: #fff; }
   .topchip .title { font-weight: 800; font-size: 26px; letter-spacing: -0.04em; text-decoration: none; cursor: pointer;
     background: linear-gradient(135deg, #0071e3, #5856d6); -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent; color: transparent; }
@@ -1534,6 +1542,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     </div>
   </div>
   <div class="topchip">
+    <span id="livebadge" data-state="off" aria-label="You are off air"><i class="livedot" aria-hidden="true"></i><span id="livebadge-txt">OFF AIR</span></span>
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
     <span class="status" id="status">Joining…</span>
   </div>
@@ -2235,6 +2244,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (statusEl.title !== String(m)) statusEl.title = String(m);
       statusEl.classList.toggle('alert', blocking || !!hold);
       statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
+      if (typeof paintLiveBadge === 'function') paintLiveBadge();
     };
     const uid = (p) => p + '_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
     // The one standard row-delete glyph (see button.row-del in the styles).
@@ -6085,6 +6095,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         statusEl.textContent = statusText;
         statusEl.title = statusText;
       }
+      paintLiveBadge();
+    }
+
+    // Broadcast glance state. The status sentence still carries the detail.
+    // The badge is the one word a volunteer, a late viewer, or someone on a
+    // bad link can read without parsing that sentence.
+    function paintLiveBadge() {
+      const b = document.getElementById('livebadge');
+      if (!b) return;
+      if (!document.body.classList.contains('broadcast')) { b.dataset.state = ''; return; }
+      const text = statusEl.textContent || '';
+      const down = /reconnecting|Joining the broadcast|Connection trouble|Could not join|Getting you back/i.test(text)
+        || !!(statusEl.dataset && statusEl.dataset.reach && statusEl.dataset.reach !== 'partial');
+      const host = typeof bcHostStored === 'function' && bcHostStored();
+      const picture = myStatus && !myStatus.camOff;
+      let state, label, aria;
+      if (host && picture && down) { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
+      else if (host && picture) { state = 'live'; label = 'LIVE'; aria = 'You are live'; }
+      else if (host) { state = 'off'; label = 'OFF AIR'; aria = 'You are off air'; }
+      else if (down) { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
+      else { state = 'watching'; label = 'WATCHING'; aria = 'You are watching'; }
+      b.dataset.state = state;
+      const t = document.getElementById('livebadge-txt');
+      if (t && t.textContent !== label) t.textContent = label;
+      if (b.getAttribute('aria-label') !== aria) b.setAttribute('aria-label', aria);
     }
 
     // ---- mesh plumbing ---------------------------------------------------------
@@ -20341,6 +20376,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         seg.setAttribute('aria-pressed', segOn ? 'true' : 'false');
       }
       paintShare();
+      if (typeof paintLiveBadge === 'function') paintLiveBadge();
     }
 
     // A tap on a dead mic/cam button is the ONE moment we can ask again: a
