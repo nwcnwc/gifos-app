@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q24. Chat stayed small at a 200% root font
+
+The log and the composer were `0.85rem`, and the sender’s name was `0.7rem`. They are now `1rem` and `0.875rem`. A 32px root paints the message and the field at 32px and the name at 28px. Send stays 44px or taller, and the composer sits 24px above the dock on iPhone SE. A reaction word, the blur chip, and the stadium label follow the same root size. `test/mobile/chat-scale.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-chat-scale.png`.
+
+Design: the message is the large text, the name is a smaller blue line on the dark bubble, and Send is the same size as the field. The dock stays a fixed row under the sheet. Large type is still not a 5. FaceTime still wins that dimension. The call controls do not grow with the text.
+
 ### Q23. A rotated meeting kept the dock on the picture
 
 A landscape iPhone SE is 568×320. The face used to stop above a 56px dock, so the call was a band between the chip and the controls. The controls now leave until you tap the picture. The face runs from y=0 to y=320, and the dock sits at y=330, off the screen. A tap brings a 56px dock back, Hang up is hittable, and the face ends above it (y=59 to y=248, dock top 250). A few seconds later the controls leave and the face takes the screen again. More and Reactions hold the dock while they are open. `test/mobile/landscape-stage.spec.mjs`.
