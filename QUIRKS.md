@@ -138,9 +138,17 @@ Start a call is the button. Host this call and Join a link are text links in `#0
 
 The More button says **Captions**. On is blue `#0064c8` with white text, and Record uses that same on state. The word fits at 1280, 1920, and 900, and after a resize from 1920 to 900. Before: `test/e2e/artifacts/captions-before.png`, `captions-on-before.png`. After: `test/e2e/artifacts/captions-after.png`.
 
+### Q32. Broadcast is the stage. A small group is the call.
+
+Nathan’s Broadcast design: only the stage shows. No row, no stadium, no other tiles. The host steps on when the host key is adopted, and can step off. Raised hands are an admin list the host promotes from. A viewer’s name and picture are seen only if they raise a hand and are promoted. The host key stays.
+
+What this desktop branch already matches: a service hides `#grid` and `#stadium`. Comfy layout does not run on a broadcast. A small group keeps the grid. That grid is the many-to-many call, and it is not the Broadcast product. The service lobby still asks for the host password, and adopting that key calls `tryBroadcastStage`.
+
+What does not match, and is left alone here because the role-controls work is building it: a Watching viewer in this frame still has Unmute, Video, Hand, and Stage, because those hide only after `notadmin`, and this frame never joins. Service help still says ban lives on each tile, and a service does not draw those tiles. `#stagemod` is a host card row, not the raised-hands list. The join step does not yet say a viewer’s name and picture stay off until they are promoted. Shots: `test/e2e/artifacts/broadcast-stage-flag.png`, `small-group-grid-flag.png`.
+
 ## Open
 
-A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The dock tucks on a small group, and the room bar, the mute line, the status chip, and Fit stay. The lobby stays at 4: one button, and the other ways in are still on the first screen. Labeled controls stay at 4. Zoom’s bar is still the reference.
+A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The dock tucks on a small group, and the room bar, the mute line, the status chip, and Fit stay. The lobby stays at 4: one button, and the other ways in are still on the first screen. Labeled controls stay at 4. Zoom’s bar is still the reference. A Watching viewer’s dock, the raised-hands list, promote and demote, and the viewer join sentence belong to the role-controls work (Q32).
 
 ## How a session was opened without a relay
 

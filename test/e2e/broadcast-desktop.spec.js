@@ -1188,3 +1188,43 @@ test('captions and record stay readable when they are on', async ({ page }) => {
   expect(resized.cc.clip, JSON.stringify(resized.cc)).toBe(true);
   expect(resized.cc.onScreen, JSON.stringify(resized.cc)).toBe(true);
 });
+
+test('a service hides the row and the stadium, and a small group keeps the grid', async ({ page }) => {
+  async function surfaces() {
+    return page.evaluate(() => {
+      const box = (id) => {
+        const el = document.getElementById(id);
+        const s = getComputedStyle(el);
+        return { display: s.display };
+      };
+      return {
+        grid: box('grid'),
+        stadium: box('stadium'),
+        tiles: document.querySelectorAll('.tile').length,
+        rows: document.querySelectorAll('.rowtile').length,
+        broadcast: document.body.classList.contains('broadcast'),
+      };
+    });
+  }
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=surf' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast');
+    await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+    const svc = await surfaces();
+    expect(svc.broadcast).toBe(true);
+    expect(svc.grid.display).toBe('none');
+    expect(svc.stadium.display).toBe('none');
+    expect(svc.tiles).toBe(0);
+    expect(svc.rows).toBe(0);
+    await page.goto('/run.html?desk=surfg' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.group');
+    const group = await surfaces();
+    expect(group.broadcast).toBe(false);
+    expect(group.grid.display).toBe('grid');
+  }
+});
