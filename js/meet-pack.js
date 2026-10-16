@@ -22,7 +22,7 @@ let T = TUNE;
 function setTune(t) { T = t || TUNE; }
 const CROP_KEEP_MIN = 0.6; // kept for API compat; live threshold is T.KMIN
 const TIE = 0.01;                            // scores within 1% are a tie
-const PORTRAIT_SPLIT = 1.15;                 // box W/H >= this -> stage left + side rail, else stage top + strip
+const PORTRAIT_SPLIT = 1.15;                 // wide desktop: stage left + side rail. A phone always uses a bottom strip.
 
 const CROP_FREE = 0.8;                       // cover-crop that keeps >=80% on the cropped axis costs nothing (faces are centred)
 // Smallest keep that still holds a default face (s=0.3, grown 1.8x) — the packer and
@@ -152,59 +152,89 @@ class Order {
   sort(ids) { return ids.slice().sort((a, b) => (this.rank.get(a) ?? Infinity) - (this.rank.get(b) ?? Infinity) || (a < b ? -1 : 1)); }
 }
 
+// Smallest strip left beside a stage. Phone and portrait use a bottom strip;
+// a wide desktop uses a side rail. The 42% cap keeps the stage the larger part.
+function stripFloor(box, phone, side) {
+  const along = Math.max(1, side ? box.w : box.h);
+  const minPx = side ? (phone ? 96 : 140) : (phone ? 88 : 112);
+  const frac = side ? (phone ? 0.22 : 0.18) : (phone ? 0.22 : 0.16);
+  return Math.min(Math.max(minPx, along * frac), along * 0.42);
+}
+function splitBoxes(box, side, f) {
+  const sb = side ? { x: box.x, y: box.y, w: box.w * f, h: box.h } : { x: box.x, y: box.y, w: box.w, h: box.h * f };
+  const gb = side ? { x: box.x + sb.w, y: box.y, w: box.w - sb.w, h: box.h } : { x: box.x, y: box.y + sb.h, w: box.w, h: box.h - sb.h };
+  return { sb: sb, gb: gb };
+}
+
 // ---------- Full view ----------
 // people: [{id, aspect, me?, row?}]  (row = mesh row, only drives quality)
 // stage:  [{id, aspect, share?}] up to 5 (people ids or 'share:<id>')
 // opts: {W, H, phone?, mode:'auto'|'gallery'|'stageOnly', order:Order,
-//        myRow, selfView:'tile'|'inset'|'hidden', page, prevRows}
+//        myRow, selfView:'tile'|'inset'|'hidden', stageSelf, page, prevRows}
+// Self is never auto-staged. Pass stageSelf only when the viewer put their
+// own tile on the stage. Stage only is the only mode that hides the gallery.
 function layout(people, stage, opts) {
   const W = opts.W, H = opts.H;
   const phone = opts.phone != null ? opts.phone : Math.min(W, H) < 600;
   const pad = phone ? 2 : 4;
   // The app passes viewBox (header already inset). Design tests omit box and use W/H.
   const box = opts.box || { x: pad, y: pad, w: W - 2 * pad, h: H - 2 * pad };
-  const minSide = phone ? MIN_SIDE.phone : MIN_SIDE.other;
   const order = opts.order;
-  stage = (stage || []).slice(0, 5);
-  const stageIds = new Set(stage.map(s => s.id));
-  const selfView = opts.selfView || 'tile';
-  // Gallery = everyone not on stage. Self is a tile unless inset/hidden; self is never auto-staged.
   const me = people.find(p => p.me);
+  const stageSelf = !!opts.stageSelf;
+  let stageList = (stage || []).slice(0, 5);
+  if (me && !stageSelf) stageList = stageList.filter(s => s.id !== me.id);
+  const stageIds = new Set(stageList.map(s => s.id));
+  const selfView = opts.selfView || 'tile';
+  // Gallery = everyone not on stage. Self is a tile unless inset/hidden.
+  // inset is not a fixed picture: meet-layout draws that adjustable float.
   let gallery = people.filter(p => !stageIds.has(p.id) && !(p.me && selfView !== 'tile'));
   const byId = new Map(people.map(p => [p.id, p]));
   gallery = order.sort(gallery.map(p => p.id)).map(id => byId.get(id));
-  if (me && selfView === 'tile') { gallery = [me, ...gallery.filter(p => p !== me)]; }
+  if (me && selfView === 'tile' && !stageIds.has(me.id)) { gallery = [me, ...gallery.filter(p => p !== me)]; }
   const out = { W, H, box, tiles: [], regions: {}, overflow: 0 };
   const quality = id => { const p = byId.get(id); return p && opts.myRow != null && p.row === opts.myRow ? 'hi' : 'lo'; };
 
   let galBox = box, stageBox = null;
   const mode = opts.mode || 'auto';
-  if (stage.length) {
-    const side = box.w / box.h >= PORTRAIT_SPLIT;
+  if (stageList.length) {
+    // A phone keeps a bottom strip even when the window is wide. A side rail
+    // on a short phone is a sliver of foreheads and reads as covered.
+    const side = !phone && box.w / box.h >= PORTRAIT_SPLIT;
     if (mode === 'stageOnly' || !gallery.length) stageBox = box, galBox = null;
     else {
-      // split fraction f: same scorer. Stage tiles weigh 4x (share 8x); the
-      // gallery must keep minSide or it pages. Search 50..85%.
-      const sA = stage.map(s => s.aspect), gA = gallery.map(p => p.aspect);
+      // split fraction f: stage weighs 4x (share 8x). The gallery strip cannot
+      // shrink past stripFloor, so the other people stay visible.
+      const gA = gallery.map(p => p.aspect);
+      const floor = stripFloor(box, phone, side);
+      const along = Math.max(1, side ? box.w : box.h);
+      const limit = 1 - floor / along;
+      const maxI = Math.max(35, Math.min(85, Math.round(limit * 100)));
       let best = null;
-      for (let i = 35; i <= 85; i++) {
+      for (let i = 35; i <= maxI; i++) {
         const f = i / 100;
-        const sb = side ? { x: box.x, y: box.y, w: box.w * f, h: box.h } : { x: box.x, y: box.y, w: box.w, h: box.h * f };
-        const gb = side ? { x: box.x + sb.w, y: box.y, w: box.w - sb.w, h: box.h } : { x: box.x, y: box.y + sb.h, w: box.w, h: box.h - sb.h };
-        const st = stageScore(sb, stage);
-        const g = chooseRows(gb, gA);
-        // stage weighs 4x (8x with a share); everyone stays in the rail, but a
-        // rail whose tiles fall under the Fit floor is penalised
-        const sv = stageViol(sb, stage), bad = Math.max(sv, g.viol);
-        const val = st * (stage.some(s => s.share) ? 8 : 4) + g.score - (g.minShort < (phone ? FIT_FLOOR.phone : FIT_FLOOR.other) ? 1e15 : 0) - (bad > 1 ? 1e18 * bad : 0);
-        if (!best || val > best.val * (1 + 1e-9)) best = { val, sb, gb };
+        const parts = splitBoxes(box, side, f);
+        const strip = side ? parts.gb.w : parts.gb.h;
+        if (strip + 0.5 < floor) continue;
+        const g = chooseRows(parts.gb, gA);
+        if (!g) continue;
+        const st = stageScore(parts.sb, stageList);
+        const sv = stageViol(parts.sb, stageList), bad = Math.max(sv, g.viol);
+        const val = st * (stageList.some(s => s.share) ? 8 : 4) + g.score - (g.minShort < (phone ? FIT_FLOOR.phone : FIT_FLOOR.other) ? 1e15 : 0) - (bad > 1 ? 1e18 * bad : 0);
+        if (!best || val > best.val * (1 + 1e-9)) best = { val: val, sb: parts.sb, gb: parts.gb };
+      }
+      if (!best) {
+        const f = Math.max(0.35, Math.min(0.85, limit));
+        const parts = splitBoxes(box, side, f);
+        best = { val: 0, sb: parts.sb, gb: parts.gb };
       }
       stageBox = best.sb; galBox = best.gb;
+      out.strip = { edge: side ? 'side' : 'bottom', floor: floor, size: side ? galBox.w : galBox.h };
     }
     out.regions.stage = stageBox;
-    for (const t of placeStage(stageBox, stage)) out.tiles.push({ ...t, region: 'stage', quality: 'hi' });
+    for (const t of placeStage(stageBox, stageList)) out.tiles.push({ ...t, region: 'stage', quality: 'hi' });
   }
-  if (mode === 'stageOnly' && stage.length) { out.overflow = gallery.length; return out; }
+  if (mode === 'stageOnly' && stageList.length) { out.overflow = gallery.length; return out; }
   if (galBox && gallery.length) {
     out.regions.gallery = galBox;
     const g = twoTier(galBox, gallery, me, opts, phone);
@@ -397,6 +427,6 @@ function viewWindow(crop, z) {
   return { x: crop.x + (z.x - 0.5 / z.s) * crop.w, y: crop.y + (z.y - 0.5 / z.s) * crop.h, w, h, keep: crop.keep };
 }
 
-return { TUNE_REV2, ASPECT_MIN, ASPECT_MAX, candidates, cellsFor, setTune, TUNE, TUNE_V1, smoothFace, cropFor, FACE_DEFAULT, ZoomStore, canZoom, viewWindow, ZOOM, twoTier, SCROLL_MIN, FIT_FLOOR, TIER_RATIO, fitArea, rowCounts, chooseRows, packRegion, capacity, Order, layout, MIN_SIDE, CROP_KEEP_MIN };
+return { TUNE_REV2, ASPECT_MIN, ASPECT_MAX, candidates, cellsFor, setTune, TUNE, TUNE_V1, smoothFace, cropFor, FACE_DEFAULT, ZoomStore, canZoom, viewWindow, ZOOM, twoTier, SCROLL_MIN, FIT_FLOOR, TIER_RATIO, fitArea, rowCounts, chooseRows, packRegion, capacity, Order, layout, MIN_SIDE, CROP_KEEP_MIN, stripFloor, PORTRAIT_SPLIT };
 
 });

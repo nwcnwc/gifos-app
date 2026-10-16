@@ -27,7 +27,27 @@
     s.right = 'auto';
     s.bottom = 'auto';
     s.margin = '0';
+    s.display = '';
     el.dataset.comfy = '1';
+    if (el.classList) el.classList.remove('comfy-off');
+  }
+
+  function parkEl(el) {
+    if (!el || !el.classList) return;
+    el.classList.add('comfy-off');
+  }
+
+  function markSelf(el, spec) {
+    if (!el || !el.dataset) return;
+    const arrangement = (spec && spec.arrangement) || 'tile';
+    el.dataset.self = arrangement;
+    if (arrangement === 'float') {
+      el.tabIndex = 0;
+      el.dataset.selfFocus = '1';
+    } else if (el.dataset.selfFocus) {
+      el.removeAttribute('tabindex');
+      delete el.dataset.selfFocus;
+    }
   }
 
   function clearEl(el) {
@@ -41,12 +61,20 @@
     s.right = '';
     s.bottom = '';
     s.margin = '';
-    if (el.dataset) delete el.dataset.comfy;
+    if (el.classList) el.classList.remove('comfy-off');
+    if (el.dataset) {
+      delete el.dataset.comfy;
+      delete el.dataset.self;
+      if (el.dataset.selfFocus) {
+        el.removeAttribute('tabindex');
+        delete el.dataset.selfFocus;
+      }
+    }
   }
 
   function clearRoot(feed) {
     if (!feed || !feed.querySelectorAll) return;
-    const placed = feed.querySelectorAll('[data-comfy]');
+    const placed = feed.querySelectorAll('[data-comfy], .comfy-off');
     for (let i = 0; i < placed.length; i++) clearEl(placed[i]);
     const faces = feed.querySelector('#stadfaces');
     if (faces) faces.remove();
@@ -335,10 +363,14 @@
       box: box,
       phone: !!opts.phone,
       swapSelf: !!opts.swapSelf,
+      self: opts.self != null ? opts.self : (opts.selfView || 'tile'),
       gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit',
     });
     const byId = {};
-    for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
+    for (let i = 0; i < tiles.length; i++) {
+      byId[tiles[i].id] = tiles[i];
+      if (tiles[i].me || tiles[i].id === 'me') markSelf(tiles[i].el, lay.self);
+    }
     const used = [];
     let crowdEl = feed.querySelector('#stadcrowd');
     if (lay.crowd) {
@@ -364,6 +396,9 @@
       placeEl(t.el, r);
       t.el.dataset.fit = r.fit || 'cover';
       used.push(t.el);
+    }
+    for (let i = 0; i < tiles.length; i++) {
+      if (tiles[i].el && used.indexOf(tiles[i].el) < 0) parkEl(tiles[i].el);
     }
     placeBand(feed, lay.band);
     // Absolute tiles do not grow scrollHeight. A 1px spacer does, so Scroll
@@ -552,9 +587,131 @@
     return { apply: applyPos, restore: restore, reset: reset };
   }
 
+  function pressSeg(el, on) {
+    if (!el) return;
+    el.classList.toggle('sel', !!on);
+    el.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+
+  // Size, corner, edge, hide, and "show me on stage". Float tiles drag.
+  function installSelf(opts) {
+    opts = opts || {};
+    const ML = GifOS.meetLayout;
+    if (!ML || typeof ML.normalizeSelf !== 'function') return null;
+    const store = opts.store || root.localStorage;
+    const phoneNow = opts.phone || function () { return (root.innerWidth || 0) < 600; };
+    let spec = ML.normalizeSelf(opts.spec || ML.loadSelf(store, phoneNow()));
+    const doc = root.document;
+    function paint() {
+      if (!doc || !doc.querySelectorAll) return;
+      const arrs = doc.querySelectorAll('[data-self-arr]');
+      for (let i = 0; i < arrs.length; i++) pressSeg(arrs[i], arrs[i].getAttribute('data-self-arr') === spec.arrangement);
+      const sizes = doc.querySelectorAll('[data-self-size]');
+      for (let i = 0; i < sizes.length; i++) pressSeg(sizes[i], sizes[i].getAttribute('data-self-size') === spec.size);
+      const anchors = doc.querySelectorAll('[data-self-anchor]');
+      for (let i = 0; i < anchors.length; i++) pressSeg(anchors[i], spec.arrangement === 'float' && spec.anchor === anchors[i].getAttribute('data-self-anchor'));
+      const edgeNow = ML.selfEdge(spec, phoneNow(), { w: root.innerWidth || 0, h: root.innerHeight || 0 });
+      const edges = doc.querySelectorAll('[data-self-edge]');
+      for (let i = 0; i < edges.length; i++) {
+        const name = edges[i].getAttribute('data-self-edge');
+        pressSeg(edges[i], spec.arrangement === 'strip' && (spec.edge === name || (spec.edge === 'auto' && edgeNow === name)));
+      }
+      const stageBtn = doc.getElementById('selfstage');
+      pressSeg(stageBtn, !!spec.onStage);
+      const sizeRow = doc.getElementById('selfsize');
+      const cornerRow = doc.getElementById('selfcorner');
+      const edgeRow = doc.getElementById('selfedge');
+      const showSize = spec.arrangement === 'float' || spec.arrangement === 'strip';
+      if (sizeRow) sizeRow.hidden = !showSize;
+      if (cornerRow) cornerRow.hidden = spec.arrangement !== 'float';
+      if (edgeRow) edgeRow.hidden = spec.arrangement !== 'strip';
+      const cornerLbl = doc.getElementById('selfcorner-lbl');
+      if (cornerLbl) cornerLbl.textContent = spec.anchor === 'free' ? 'Dragged' : 'Corner';
+      const edgeLbl = doc.getElementById('selfedge-lbl');
+      if (edgeLbl) edgeLbl.textContent = spec.edge === 'auto' ? ('Place · ' + edgeNow) : 'Place';
+    }
+    function publish(next) {
+      spec = ML.normalizeSelf(next);
+      root.__meetSelf = spec;
+      root.__meetSwapSelf = !!spec.onStage;
+      ML.saveSelf(store, phoneNow(), spec);
+      paint();
+      const relayout = opts.relayout || root.__meetRelayout;
+      if (typeof relayout === 'function') { try { relayout(); } catch (e) {} }
+    }
+    root.__meetSelf = spec;
+    root.__meetSwapSelf = !!spec.onStage;
+    if (doc && doc.addEventListener) {
+      doc.addEventListener('click', function (e) {
+        const t = e.target && e.target.closest ? e.target : null;
+        if (!t || !t.closest) return;
+        const arr = t.closest('[data-self-arr]');
+        if (arr) { publish(Object.assign({}, spec, { arrangement: arr.getAttribute('data-self-arr') })); return; }
+        const size = t.closest('[data-self-size]');
+        if (size) { publish(Object.assign({}, spec, { size: size.getAttribute('data-self-size') })); return; }
+        const anchor = t.closest('[data-self-anchor]');
+        if (anchor) { publish(Object.assign({}, spec, { arrangement: 'float', anchor: anchor.getAttribute('data-self-anchor'), x: null, y: null })); return; }
+        const edge = t.closest('[data-self-edge]');
+        if (edge) { publish(Object.assign({}, spec, { arrangement: 'strip', edge: edge.getAttribute('data-self-edge') })); return; }
+        if (t.closest('#selfstage')) publish(Object.assign({}, spec, { onStage: !spec.onStage }));
+      });
+      let drag = null;
+      doc.addEventListener('pointerdown', function (e) {
+        if (!e.target || !e.target.closest) return;
+        const tile = e.target.closest('.tile.me');
+        if (!tile || tile.dataset.self !== 'float') return;
+        if (e.target.closest('button, a, input, .modbar')) return;
+        if (e.button != null && e.button !== 0) return;
+        const r = tile.getBoundingClientRect();
+        drag = { id: e.pointerId, x: e.clientX, y: e.clientY, left: r.left, top: r.top, tile: tile, moved: false };
+        try { tile.setPointerCapture(e.pointerId); } catch (err) {}
+      });
+      doc.addEventListener('pointermove', function (e) {
+        if (!drag || e.pointerId !== drag.id) return;
+        const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+        if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+        if (!drag.moved) return;
+        drag.tile.style.left = (drag.left + dx) + 'px';
+        drag.tile.style.top = (drag.top + dy) + 'px';
+      });
+      function endDrag(e) {
+        if (!drag || (e && e.pointerId != null && e.pointerId !== drag.id)) return;
+        const moved = drag.moved;
+        const tile = drag.tile;
+        drag = null;
+        if (!moved) return;
+        const r = tile.getBoundingClientRect();
+        publish(Object.assign({}, spec, { arrangement: 'float', anchor: 'free', x: r.left, y: r.top }));
+      }
+      doc.addEventListener('pointerup', endDrag);
+      doc.addEventListener('pointercancel', endDrag);
+      doc.addEventListener('dblclick', function (e) {
+        if (!e.target || !e.target.closest) return;
+        const tile = e.target.closest('.tile.me');
+        if (!tile || tile.dataset.self !== 'float') return;
+        e.preventDefault();
+        publish(Object.assign({}, spec, { arrangement: 'float', anchor: 'br', x: null, y: null }));
+      });
+      doc.addEventListener('keydown', function (e) {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        const tile = doc.querySelector('.tile.me[data-self="float"]');
+        if (!tile || doc.activeElement !== tile) return;
+        e.preventDefault();
+        const r = tile.getBoundingClientRect();
+        const aspect = r.height > 0 ? r.width / r.height : (phoneNow() ? 3 / 4 : 16 / 9);
+        const box = ML.viewBox(root.innerWidth || 1, root.innerHeight || 1, { phone: phoneNow() });
+        publish(ML.nudgeSelf(spec, e.key, 16, box, phoneNow(), aspect));
+      });
+    }
+    paint();
+    return { get: function () { return spec; }, set: publish };
+  }
+
   const api = {
     comfyAllowed: comfyAllowed,
     placeEl: placeEl,
+    parkEl: parkEl,
+    markSelf: markSelf,
     clearEl: clearEl,
     clearRoot: clearRoot,
     shadeFor: shadeFor,
@@ -566,6 +723,7 @@
     paintAvatar: paintAvatar,
     apply: apply,
     installBar: installBar,
+    installSelf: installSelf,
     applyCrop: applyCrop,
   };
   GifOS.meetViews = api;
@@ -577,5 +735,6 @@
     if (bar && grip) {
       try { installBar({ bar: bar, grip: grip, store: root.localStorage }); } catch (e) {}
     }
+    try { installSelf({ store: root.localStorage }); } catch (e) {}
   }
 })(typeof window !== 'undefined' ? window : globalThis);
