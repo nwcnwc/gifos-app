@@ -211,9 +211,17 @@ Repro: `test/mobile/call-calm.js`. It failed (`Fit covers a face`, `build tag lo
 
 Before: `qa/mobile/shots/before-call-calm-iphone-15.png`. After: `qa/mobile/shots/after-call-calm-iphone-15.png`.
 
+### 26. Live, Record, Captions, and the dock stay on the call
+
+On an iPhone 15 the dock and the Live row stayed up for the whole call, covering the bottom of the faces. FaceTime tucks those controls until you tap.
+
+Repro: `test/mobile/chrome-idle.js`. It failed (`chrome stays up when idle`), then passed on an iPhone 15 and an SE. The controls start on screen. After the quiet moment, Hang up does not take a tap, the faces grow into that band, and a tap brings Live, Record, Captions, and Hang up back at 44px. More, chat, the reaction tray, the waiting list, and a dialog hold the controls up. This is separate from the camera idle timer.
+
+Before: `qa/mobile/shots/before-chrome-idle-iphone-15.png`. After: `qa/mobile/shots/after-chrome-idle-iphone-15.png`, `qa/mobile/shots/after-chrome-back-iphone-15.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.
 
 ## Personas (what was actually tried)
 
@@ -224,4 +232,4 @@ The build name is a faint line under the header. A green round "A" in Nathan's s
 - Host, iPhone SE landscape. More opened, Password tapped with `force: true` because the button is off screen. Password sheet shot saved.
 - Chat, iPhone SE. Opened from More. Composer tap blocked by the dock.
 
-Four faces are real peer records (`__gifosVideo.presentPeers`), not cloned tiles. On a phone the packer now refuses a wide squash; desktop packing is unchanged.
+Four faces are real peer records (`__gifosVideo.presentPeers`), not cloned tiles. On a phone the packer now refuses a wide squash; desktop packing is unchanged. On a phone the dock and the Live row tuck when the call is quiet, and a tap brings them back.

@@ -13,7 +13,9 @@ Out of scope for this branch, so they are not scored as wins or losses here: the
 - iOS: the notch and home indicator are cleared. `viewport-fit=cover` is set and the dock, chip, and Fit use `env(safe-area-inset-*)`.
 - Meet, Teams, YouTube name the control Captions. Ours does too, and at 200% text that label is 32px.
 - Zoom and church tools: a host admits from a waiting-room list, and the other host controls say what they do. Ours does too. In landscape, Invite, Room password, Waiting room, and Chat are on the first screen of More.
-- StreamYard, Restream, YouTube Live: a producer sees Live, and Record and Captions, on the call. Ours does too, above the dock. The record sheet still asks what to capture before it starts.
+- StreamYard, Restream, YouTube Live: a producer sees Live, and Record and Captions, on the call. Ours does too, above the dock, until the call is quiet. The record sheet still asks what to capture before it starts.
+- FaceTime tucks the call controls until you tap. On a phone, Live, Record, Captions, and the dock do too. Fit and the name chip stay.
+- A church volunteer panel is still calmer than More.
 
 What we already do that they do not: one link, no account, join muted, camera choice stays in the lobby, blur until there is a reason to be clear, the meeting is the peers rather than a server in the middle. That is the personal and church advantage. The phone chrome around it is in better shape, and we still do not lead.
 
@@ -23,11 +25,11 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 
 | Job | Score | Note |
 | --- | --- | --- |
-| End the call, mute, camera, on a 360px phone | 8 | Hang up, mute, camera, and Fit fit and are at least 44px. |
+| End the call, mute, camera, on a 360px phone | 9 | Hang up, mute, camera, and Fit fit and are at least 44px. On a phone they tuck when the call is quiet and come back on a tap. |
 | Host: password, record, captions, stage, in landscape | 9 | Live, Record, and Captions are on the call. Room password, Vote on someone, and Step on stage stay in More and scroll into view. Waiting room admits from a list. |
 | Chat or check names without losing the controls | 9 | The count and the latest line sit on the call. Emoji inserts into the field. Theirs is a light bubble, mine is blue, and both names are 1rem. |
-| Looks trustworthy (nothing cut off, type scales) | 8 | The header says "4 in call". Live is on the call, and Recording is a separate red state. Faces end above the dock. |
-| **Audience** | **8** | Hang up, landscape host tools, the live state, captions, chat, the home indicator, the header count, and a waiting-room admit list are in good shape. We do not lead yet. |
+| Looks trustworthy (nothing cut off, type scales) | 9 | The header says "4 in call". Live is on the call, and Recording is a separate red state. When the call is quiet the faces use the space the dock was holding. |
+| **Audience** | **9** | Hang up, landscape host tools, the live state, captions, chat, the home indicator, the header count, and a waiting-room admit list are in good shape. The quiet call tucks the dock. We do not lead yet. |
 
 ## Church
 
@@ -48,10 +50,10 @@ Family and friends. Warm, few steps, a texted link.
 | Job | Score | Note |
 | --- | --- | --- |
 | Open a texted link and pick a name | 8 | The join step opens with the GifOS name and picture, and says how you will appear. Continue is the only blue button. |
-| See everyone and hang up on a small phone | 9 | Four faces are two rows of two, near a portrait-phone shape, and Fit no longer sits on a face. Hang up fits. Live and the dock are still on screen, so it is not as quiet as FaceTime. |
+| See everyone and hang up on a small phone | 10 | Four faces are two rows of two, near a portrait-phone shape, and Fit no longer sits on a face. Live, Record, Captions, and the dock tuck when the call is quiet. A tap brings Hang up back. |
 | Send a chat line | 9 | The latest line and the count sit on the call. Emoji inserts into the field. Theirs is a light bubble and mine is blue, at 1rem. |
 | Turn the phone sideways | 8 | Invite, Room password, Waiting room, and Chat are on the first screen of More. You do not scroll to find them. |
-| **Audience** | **8** | The link, the name step, hang up, the grid, chat, the lobby, and Fit are in good shape. FaceTime still hides more of its chrome. We do not lead yet. |
+| **Audience** | **9** | The link, the name step, hang up, the grid, chat, the lobby, and Fit are in good shape. The dock tucks the way a phone call does. Fit and the name chip stay. We do not lead yet. |
 
 ## Cycle
 
@@ -80,3 +82,4 @@ Family and friends. Warm, few steps, a texted link.
 23. Keyboard. `test/mobile/chat-keyboard.js` failed (the inset ignored the visible viewport, and in landscape Close scrolled off), then passed, including at 200% text. The sheet uses the larger of the dock and the keyboard. The field is 1rem. Audience scores stay 8 / 8 / 8. Nobody leads yet. Still open: the call is busier than FaceTime, so "see everyone" stays 7.
 24. Portrait tiles. `test/mobile/see-everyone.js` failed (bottom row 88px and 73px, three rows), then passed. Four people are two rows of two. A phone tile is no longer a wide strip. Personal see-everyone 7→8. Audience scores stay 8 / 8 / 8. Nobody leads yet. The corner still carries a solid build chip.
 25. Quieter chrome. `test/mobile/call-calm.js` failed (Fit covered a face, and the build tag was a solid chip), then passed. Faces start below Fit. The build name is faint and has no fill. Personal see-everyone 8→9. Audience scores stay 8 / 8 / 8. Nobody leads yet. FaceTime still hides more of its chrome.
+26. Idle chrome. `test/mobile/chrome-idle.js` failed (`chrome stays up when idle`), then passed on an iPhone 15 and an SE. Live, Record, Captions, and the dock tuck, the faces grow into that band, and a tap brings them back at 44px. More holds them up. Corporate end-call 8→9, corporate trust 8→9, corporate audience 8→9. Personal see-everyone 9→10, personal audience 8→9. Church stays 8. Nobody leads yet. A volunteer panel is still calmer. Fit and the name chip stay on screen.

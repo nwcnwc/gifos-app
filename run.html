@@ -1699,6 +1699,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (min-width: 381px) {
     .bar { max-width: calc(100% - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
   }
+  /* A quiet call tucks Live, Record, Captions, and the dock, the way a
+     phone call does. A tap brings the same controls back. Header and Fit stay.
+     The slide uses !important so a dragged dock (inline transform:none) still goes. */
+  .bar, #callstate { transition: opacity .22s ease, transform .22s ease; }
+  body.chrome-away .bar {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  body.chrome-away .bar:not([data-barfree="1"]) {
+    transform: translateX(-50%) translateY(calc(100% + 28px)) !important;
+  }
+  body.chrome-away .bar[data-barfree="1"] {
+    transform: translateY(calc(100% + 28px)) !important;
+  }
+  body.chrome-away #callstate {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(16px);
+  }
   /* The preview was taking more than half of a short phone, so Join a link
      sat below the fold (SE portrait bottom 661 on a 568px screen, and in
      landscape the first action was already off screen). */
@@ -5191,12 +5211,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}
         let bottom = 0;
         try {
-          const bar = document.querySelector('.bar');
-          if (bar) bottom = Math.max(0, window.innerHeight - bar.getBoundingClientRect().top);
-          const state = document.getElementById('callstate');
-          if (state && !state.hidden && state.getClientRects().length) {
-            const sr = state.getBoundingClientRect();
-            if (sr.height > 2) bottom = Math.max(bottom, window.innerHeight - sr.top);
+          // Tucked chrome is off the call. Measuring the sliding dock would
+          // keep the empty band, so a quiet call uses only the home indicator.
+          const away = document.body.classList.contains('chrome-away');
+          if (!away) {
+            const bar = document.querySelector('.bar');
+            if (bar) bottom = Math.max(0, window.innerHeight - bar.getBoundingClientRect().top);
+            const state = document.getElementById('callstate');
+            if (state && !state.hidden && state.getClientRects().length) {
+              const sr = state.getBoundingClientRect();
+              const vis = getComputedStyle(state).visibility;
+              if (sr.height > 2 && vis !== 'hidden') bottom = Math.max(bottom, window.innerHeight - sr.top);
+            }
+          } else {
+            const probe = document.getElementById('gifos-safe-b');
+            if (probe) bottom = probe.offsetHeight || 0;
           }
           const note = document.getElementById('chatnote');
           if (note && !note.hidden && note.getClientRects().length) {
@@ -20711,8 +20740,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const lob = document.getElementById('lobby');
       if (!row || !rec || !cc) return;
       const inCall = !(lob && lob.classList.contains('show'));
+      const away = document.body.classList.contains('chrome-away');
       row.hidden = !inCall;
-      const stateH = (inCall && row.offsetHeight) ? row.offsetHeight : 0;
+      const stateH = (!away && inCall && row.offsetHeight) ? row.offsetHeight : 0;
       document.documentElement.style.setProperty('--stateh', stateH + 'px');
       if (!inCall) return;
       const recOn = recBtn.classList.contains('on') || (recBtn.textContent || '').indexOf('Stop') === 0;
@@ -20771,11 +20801,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The dock sits at the bottom, so a panel that used to clear a top bar
       // starts at the top of the page instead.
       let lastDock = -1;
+      let dockShown = -1;
+      function safeBottomPx() {
+        let probe = document.getElementById('gifos-safe-b');
+        if (!probe) {
+          probe = document.createElement('div');
+          probe.id = 'gifos-safe-b';
+          probe.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);pointer-events:none;visibility:hidden';
+          document.body.appendChild(probe);
+        }
+        return probe.offsetHeight || 0;
+      }
       const setBarH = () => {
         try {
           document.documentElement.style.setProperty('--barh', '0px');
-          const r = bar.getBoundingClientRect();
-          const dock = Math.max(0, Math.round(window.innerHeight - r.top));
+          const away = document.body.classList.contains('chrome-away');
+          let dock;
+          if (away) {
+            dock = safeBottomPx();
+          } else {
+            const r = bar.getBoundingClientRect();
+            const measured = Math.max(0, Math.round(window.innerHeight - r.top));
+            // While the dock slides back, the rect is short. Keep the last full height.
+            if (dockShown < 0 || measured >= dockShown - 2) dockShown = measured;
+            dock = dockShown;
+          }
           document.documentElement.style.setProperty('--dockh', dock + 'px');
           if (dock !== lastDock) {
             lastDock = dock;
@@ -20801,6 +20851,107 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       setBarH();
       syncKb();
+
+      // FaceTime-style quiet. The power idle (IDLE_MS) is the camera, not the
+      // controls. This one only tucks Live, Record, Captions, and the dock on
+      // a phone, and a tap brings them back. More, chat, a tray, a waiting
+      // list, or a dialog holds them up.
+      const CHROME_IDLE_MS = 6000;
+      let chromeTimer = 0;
+      let swallowClick = false;
+      function phoneCall() {
+        return window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
+      }
+      function callOpen() {
+        const lob = document.getElementById('lobby');
+        return !(lob && lob.classList.contains('show'));
+      }
+      function chromeHeld() {
+        if (!callOpen() || !phoneCall()) return true;
+        if (bar && !bar.classList.contains('collapsed')) return true;
+        const chat = document.getElementById('chatpanel');
+        if (chat && chat.classList.contains('open')) return true;
+        const tray = document.getElementById('reacttray');
+        if (tray && !tray.hasAttribute('hidden')) return true;
+        const wait = document.getElementById('waitlist');
+        if (wait && !wait.hasAttribute('hidden') && wait.getClientRects().length) return true;
+        const modals = document.querySelectorAll('.name-modal');
+        for (let i = 0; i < modals.length; i++) {
+          if (modals[i].style.display === 'none') continue;
+          const cs = getComputedStyle(modals[i]);
+          if (cs.display !== 'none' && cs.visibility !== 'hidden') return true;
+        }
+        return false;
+      }
+      function showChrome() {
+        const was = document.body.classList.contains('chrome-away');
+        document.body.classList.remove('chrome-away');
+        if (was) {
+          try { paintCallState(); } catch (e) {}
+          setBarH();
+        }
+        armChrome();
+      }
+      function hideChrome() {
+        if (chromeTimer) clearTimeout(chromeTimer);
+        chromeTimer = 0;
+        if (chromeHeld() || document.body.classList.contains('chrome-away')) return;
+        document.body.classList.add('chrome-away');
+        try { paintCallState(); } catch (e) {}
+        setBarH();
+      }
+      function armChrome() {
+        if (chromeTimer) clearTimeout(chromeTimer);
+        chromeTimer = 0;
+        if (chromeHeld() || document.body.classList.contains('chrome-away')) return;
+        chromeTimer = setTimeout(hideChrome, CHROME_IDLE_MS);
+      }
+      function syncChrome() {
+        if (chromeHeld()) {
+          if (chromeTimer) clearTimeout(chromeTimer);
+          chromeTimer = 0;
+          if (document.body.classList.contains('chrome-away')) showChrome();
+          return;
+        }
+        if (!document.body.classList.contains('chrome-away')) armChrome();
+      }
+      document.addEventListener('pointerdown', (e) => {
+        if (!callOpen() || !phoneCall()) return;
+        if (!document.body.classList.contains('chrome-away')) return;
+        const t = e.target;
+        if (t && t.closest && t.closest('.fitbtn, .topchip, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist')) {
+          showChrome();
+          return;
+        }
+        swallowClick = true;
+        showChrome();
+        try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
+      }, true);
+      document.addEventListener('click', (e) => {
+        if (!swallowClick) return;
+        swallowClick = false;
+        try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
+      }, true);
+      document.addEventListener('click', () => { try { syncChrome(); } catch (e) {} });
+      document.addEventListener('keydown', () => {
+        if (document.body.classList.contains('chrome-away')) showChrome();
+        else syncChrome();
+      });
+      bar.addEventListener('transitionend', (e) => {
+        if (e.propertyName !== 'transform' && e.propertyName !== 'opacity') return;
+        if (!document.body.classList.contains('chrome-away')) setBarH();
+      });
+      const watchChrome = (el, filter) => {
+        if (!el || !window.MutationObserver) return;
+        new MutationObserver(() => { try { syncChrome(); } catch (e) {} }).observe(el, { attributes: true, attributeFilter: filter });
+      };
+      watchChrome(document.getElementById('lobby'), ['class']);
+      watchChrome(bar, ['class']);
+      watchChrome(document.getElementById('chatpanel'), ['class']);
+      watchChrome(document.getElementById('reacttray'), ['hidden']);
+      watchChrome(document.getElementById('waitlist'), ['hidden']);
+      window.__gifosChrome = { ms: CHROME_IDLE_MS, idle: hideChrome, show: showChrome, safeBottom: safeBottomPx };
+      syncChrome();
     })();
 
     (function () {
