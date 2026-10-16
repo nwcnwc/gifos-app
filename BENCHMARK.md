@@ -8,7 +8,7 @@ Out of scope for this branch, so they are not scored as wins or losses here: the
 
 ## Where they still beat us
 
-- Zoom, Meet, Teams, FaceTime: the hang-up control is always on screen. Ours leaves the screen at 320px and 360px.
+- Zoom, Meet, Teams, FaceTime: hang-up was off screen at 320px and 360px. That row now fits. The landscape More sheet now scrolls. They still beat us on chat, which sits under the dock.
 - Meet and Teams: the overflow menu scrolls inside the screen in landscape. Ours draws Password above the top edge and does not scroll.
 - iMessage, Meet, Teams: the composer stays above the keyboard and above the call controls. Ours is underneath the dock, and a tap never lands.
 - FaceTime and church volunteer panels: primary targets are at least 44px. Our move-grip is 22px wide and Fit is 32px tall. Chat's close control is 23px.
@@ -26,10 +26,10 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 | Job | Score | Note |
 | --- | --- | --- |
 | End the call, mute, camera, on a 360px phone | 7 | Hang up, mute, and camera fit and are at least 44px. Fit is still 32px tall. |
-| Host: password, record, captions, stage, in landscape | 3 | Password is off the top of the SE landscape sheet. |
+| Host: password, record, captions, stage, in landscape | 6 | Those controls scroll into view on SE, iPhone 15, Pixel 7, and 360px landscape. The captions control still says CC. |
 | Chat or check names without losing the controls | 2 | Composer is under the dock. |
 | Looks trustworthy (nothing cut off, type scales) | 4 | Fine on iPhone 15 and Pixel 7 portrait. Fails the small phone. |
-| **Audience** | **4** | Hang up is on screen. Still behind Zoom, Meet, and Teams: landscape host tools and chat. |
+| **Audience** | **5** | Hang up is on screen and landscape host tools scroll. Still behind Zoom, Meet, and Teams on chat and on the word Captions. |
 
 ## Church
 
@@ -40,8 +40,8 @@ A volunteer and an older member, a service or a small group, often a phone held 
 | Start or join from the lobby on an SE | 3 | Join is below the fold in portrait. Every action is below the fold in landscape. |
 | Tap targets for someone who misses small controls | 4 | Dock grip is 44px. Fit is still 32px tall. Chat close is still 23px. |
 | Captions a member can find, at 200% text | 3 | Labeled CC. Label stays 16px when the root is 32px. |
-| Host runs the room from the phone they already hold | 4 | The tools are in More, and More fails in landscape. |
-| **Audience** | **4** | The dock is tappable on a small phone. Still behind a church stream panel: Join, captions, landscape More. |
+| Host runs the room from the phone they already hold | 6 | Password, record, captions, and stage scroll into reach in landscape. Labels are still terse. |
+| **Audience** | **5** | Dock and landscape More are usable. Still behind a church stream panel: Join is below the fold, captions say CC. |
 
 ## Personal
 
@@ -52,9 +52,10 @@ Family and friends. Warm, few steps, a texted link.
 | Open a texted link and pick a name | 7 | The name dialog shows, the field is 48px, Continue works. |
 | See everyone and hang up on a small phone | 6 | Faces paint. Hang up fits on SE and 360px. |
 | Send a chat line | 2 | The field is under the dock. |
-| Turn the phone sideways | 3 | More sheet loses Invite and Password. |
-| **Audience** | **5** | The link, the name step, and hang up are in good shape. Chat and landscape More are still behind FaceTime. |
+| Turn the phone sideways | 6 | Invite and Password scroll into the More sheet. Chat is still under the dock. |
+| **Audience** | **5** | The link, the name step, hang up, and landscape More are in good shape. Chat is still behind FaceTime. |
 
 ## Cycle
 
-1. Dock fit on a narrow phone. `test/mobile/dock-fits.js` failed, then passed. Corporate 3→4, church 3→4, personal 4→5. Nobody leads yet. Next: the landscape More sheet, which still hides Password.
+1. Dock fit on a narrow phone. `test/mobile/dock-fits.js` failed, then passed. Corporate 3→4, church 3→4, personal 4→5.
+2. Landscape More sheet scrolls. `test/mobile/more-sheet-fits.js` failed, then passed. Corporate 4→5, church 4→5. Personal stays 5 because chat is still blocked. Nobody leads yet. Next: the chat composer under the dock.

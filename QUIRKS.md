@@ -19,13 +19,15 @@ Before: `qa/mobile/shots/before-grandparent-call.png`. After: `qa/mobile/shots/a
 
 Fit is still 59×32. That stays open.
 
-## Open
-
 ### 2. Landscape More sheet hangs off the top and does not scroll
 
-iPhone SE landscape (568×320). The sheet is `bottom: 102px`, about 398px tall, `overflow-y: visible`. Its top is at y=-194. Blur, Who, Float, Invite, Run app, Share screen, and Password are entirely above the screen. Vote and below are visible. A host turning the phone sideways cannot set a password or invite. There is no scroll.
+iPhone SE landscape (568×320). The sheet was `bottom: 102px`, about 398px tall, `overflow-y: visible`. Its top was at y=-194. Blur, Who, Float, Invite, Run app, Share screen, and Password were entirely above the screen. Same failure on iPhone 15, Pixel 7, and 360px landscape: Invite sat above the screen.
 
-Shot: `qa/mobile/shots/before-host-more-land.png`.
+Repro: `test/mobile/more-sheet-fits.js`. It failed (`sheet top -194`, `overflow-y visible`, Password and Invite not reachable), then passed. The sheet is capped with `max-height: calc(100dvh - 160px)` and `overflow-y: auto`, so those controls scroll into the screen. Wide landscape uses a taller dock offset, which is why 160px rather than the narrow-phone gap.
+
+Before: `qa/mobile/shots/before-host-more-land.png`. After: `qa/mobile/shots/after-more-iphone-se-land.png` (scrolled to Password).
+
+## Open
 
 ### 3. Chat composer sits under the dock
 
@@ -45,7 +47,7 @@ A first-time grandparent who opens the app instead of a room link cannot see Joi
 
 ### 5. 200% text size does not enlarge the controls
 
-`gifos_ui_scale=2` sets the root to 32px. More-sheet labels stay `font-size: 16px` (`#ccbtn` measured 16px). The sheet does not grow and does not scroll. A low-vision member gets bigger body type and the same small CC / Record / Password labels.
+`gifos_ui_scale=2` sets the root to 32px. More-sheet labels stay `font-size: 16px` (`#ccbtn` measured 16px). The sheet can scroll now, but the labels do not grow with the text setting. A low-vision member gets bigger body type and the same small CC / Record / Password labels.
 
 Shot: `qa/mobile/shots/before-lowvision-more.png`.
 

@@ -1488,6 +1488,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar #leavebtn { width: 52px; height: 52px; min-width: 52px; min-height: 52px; margin-left: 2px; }
     .bar #leavebtn svg { width: 26px; height: 26px; }
   }
+  /* The More sheet is anchored above the dock and used to grow upward with
+     overflow visible. In landscape its top sat above the screen (SE: y=-194)
+     and Password could not be scrolled to. Cap it and scroll inside. */
+  .bar:not(.collapsed) .barmore {
+    max-height: calc(100dvh - 160px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    pointer-events: auto;
+  }
 </style>
 <script src="js/gifos-themes.js"></script>
 </head>
