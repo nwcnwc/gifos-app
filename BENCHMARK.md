@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. A host can mute, hold, rename, and spotlight from the roster. A shared slide fills the stage, with Stop sharing on the slide. A church broadcast has an order of service for the booth. Settings, Who, Share, and Vote follow German and Spanish. Coming back from another tab says you are still in the call. Password, Invite, and Run app do not follow the language.
+We do **not** lead any audience yet. A host can mute, hold, rename, and spotlight from the roster. A shared slide fills the stage, with Stop sharing on the slide. A church broadcast has an order of service, and during Song the booth can read the current line and the next one. Those words stay on this computer. Settings, Who, Share, and Vote follow German and Spanish. Coming back from another tab says you are still in the call. Password, Invite, and Run app do not follow the language.
 
 ## Who we are measured against
 
@@ -14,7 +14,7 @@ We do **not** lead any audience yet. A host can mute, hold, rename, and spotligh
 | FaceTime | Almost no chrome, names you already know, a call that feels like a room rather than a product |
 | StreamYard / Restream | Scenes, lower thirds, branding, one “go live” a volunteer can teach in a minute |
 | YouTube Live | Stream health, public chat at scale, a clear on-air state |
-| Church streaming (ProPresenter, Resi, a typical “live service” desk) | Lyrics, a confidence view for the person running the booth, multi-camera, an archive of the sermon |
+| Church streaming (ProPresenter, Resi, a typical “live service” desk) | Lyrics on the picture the room sees, multi-camera, an archive of the sermon |
 
 GifOS already beats them on a few things those products do not offer: no account, one link, peer-to-peer media, blur by default, and a quiet join. That is the trust row. It is not the whole call.
 
@@ -40,8 +40,8 @@ Simple for volunteers and older members. Services and small groups. Best of the 
 | Volunteer simplicity | 7 | Join is one blue button. More is People, Share, Room, and Help, not one wall. The list is still long |
 | Readability for older eyes | 6 | Mic, Camera, More/Hide, and Leave say so in the button. Reactions is still an icon. Chat’s privacy line wraps |
 | Small group (conversation, singing) | 8 | One link, blur, unison. Voting someone up no longer hides the faces under the More sheet |
-| Service / broadcast | 7 | The booth has an order of service, Off air, and On air. No lyrics, and no program versus preview. The list is on this computer, not the other booth |
-| **Audience** | **7.0** | Does not lead |
+| Service / broadcast | 7.5 | The booth has an order of service, Off air, and On air. During Song, Program is the line to read now and Preview is the next line. The words stay on this computer. They are not on the outgoing picture, and the other booth does not see them, so this is not an 8 |
+| **Audience** | **7.1** | Does not lead |
 
 ## Personal
 
@@ -57,4 +57,4 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 
 ## This cycle
 
-A phone that ends the camera says so on your tile and brings it back (see QUIRKS.md). Staying 6 → 7. Personal audience 7.4 → 7.6. A camera that stays live and sends black still waits on the watchdog, so this is not an 8. Corporate stays 7.3. Church stays 7.0. Still behind Zoom and Meet (~8), a church desk (~8), and FaceTime (~9). We do not lead. Next gap: a church service still has no lyrics, and no program versus preview.
+During Song the booth reads the current line large and the next line smaller (see QUIRKS.md). Service 7 → 7.5. Church audience 7.0 → 7.1. The words are on this computer only, not on the outgoing picture and not on the other booth, so service is not an 8 and we do not lead a church desk (~8). Corporate stays 7.3. Personal stays 7.6. Still behind Zoom and Meet (~8) and FaceTime (~9). We do not lead.

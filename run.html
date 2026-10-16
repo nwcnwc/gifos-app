@@ -1424,6 +1424,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #rundown-next { min-height: 44px; border: 0; border-radius: 12px; background: #0064c8; color: #fff;
     font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
   #rundown-next.secondary { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
+  /* Lyrics for the booth, only while the order of service is on Song.
+     Program is the line to read now. Preview is the next line, smaller,
+     so a volunteer does not sing ahead. This computer only: nothing here
+     is drawn onto the outgoing picture, and a viewer does not see it. */
+  #lyrics { display: none; position: fixed; z-index: 24; left: 290px; right: 14px; bottom: 128px;
+    flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px 18px 14px; box-sizing: border-box;
+    background: #fff; color: #1d1d1f; border-radius: 20px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.28); }
+  #lyrics.open { display: flex; }
+  #lyrics .ly-k { margin: 0; font: 700 13px/1 system-ui, sans-serif; letter-spacing: .04em;
+    text-transform: uppercase; color: #0064c8; }
+  #lyrics .ly-k.preview { color: #5c6370; margin-top: 8px; }
+  #lyrics .ly-program { margin: 0; font: 700 32px/1.2 system-ui, sans-serif; max-width: 100%; }
+  #lyrics .ly-preview { margin: 0; min-height: 1.3em; font: 600 18px/1.3 system-ui, sans-serif; color: #3a3a3f; max-width: 100%; }
+  #lyrics-next { margin-top: 8px; min-height: 44px; border: 0; border-radius: 12px; background: #0064c8; color: #fff;
+    font: 700 16px/1 system-ui, sans-serif; cursor: pointer; padding: 0 16px; }
+  #lyrics-next.secondary { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
   @media (max-width: 1000px) {
     body.broadcast.rundown #onair[data-state="off"] {
       left: 290px; transform: none; width: min(400px, calc(100vw - 306px));
@@ -1716,6 +1733,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <ol id="rundown-list"></ol>
     <p id="rundown-end"></p>
     <button type="button" id="rundown-next">Next</button>
+  </aside>
+  <aside id="lyrics" aria-label="Lyrics">
+    <p class="ly-k" id="lyrics-program-k">Program</p>
+    <p class="ly-program" id="lyrics-program" aria-live="polite"></p>
+    <p class="ly-k preview" id="lyrics-preview-k">Preview</p>
+    <p class="ly-preview" id="lyrics-preview"></p>
+    <button type="button" id="lyrics-next">Next line</button>
   </aside>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
   <div class="admcount" id="admcount" style="display:none"></div>
@@ -2547,6 +2571,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         rdEnded: 'Zu Ende', rdAgain: 'Von vorn',
         rdWelcome: 'Begrüßung', rdSong: 'Lied', rdPrayer: 'Gebet', rdScripture: 'Schrift',
         rdMessage: 'Predigt', rdClosing: 'Segen',
+        lyProgram: 'Programm', lyPreview: 'Vorschau', lyNext: 'Nächste Zeile',
         setTitle: 'Einstellungen', setVideo: 'Videoqualität',
         setVideoHelp: 'Was Ihre eigene Kamera aufnimmt und sendet. Automatisch passt sich der Größe des Raums und Ihrem Akku an. Eine feste Wahl bleibt stehen.',
         setAuto: 'Automatisch', setName: 'Ihr Name',
@@ -2688,6 +2713,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         rdEnded: 'Terminó', rdAgain: 'Otra vez',
         rdWelcome: 'Bienvenida', rdSong: 'Canción', rdPrayer: 'Oración', rdScripture: 'Lectura',
         rdMessage: 'Mensaje', rdClosing: 'Cierre',
+        lyProgram: 'Programa', lyPreview: 'Vista previa', lyNext: 'Siguiente línea',
         setTitle: 'Ajustes', setVideo: 'Calidad de video',
         setVideoHelp: 'Lo que graba y envía tu propia cámara. Automático se adapta al tamaño de la sala y a tu batería. Una elección fija se queda.',
         setAuto: 'Automático', setName: 'Tu nombre',
@@ -6854,10 +6880,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function paintRundown() {
       const el = document.getElementById('rundown');
-      if (!el) return;
+      if (!el) {
+        try { paintLyrics(); } catch (e) {}
+        return;
+      }
       const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored()));
       el.classList.toggle('open', !!host);
       document.body.classList.toggle('rundown', !!host);
+      try { paintLyrics(); } catch (e) {}
       if (!host) return;
       const at = rundownAt();
       const ended = at >= RUNDOWN_STEPS.length;
@@ -6896,8 +6926,63 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const rundownNext = document.getElementById('rundown-next');
     if (rundownNext) rundownNext.onclick = () => {
       const at = rundownAt();
-      setRundownAt(at >= RUNDOWN_STEPS.length ? 0 : at + 1);
+      const next = at >= RUNDOWN_STEPS.length ? 0 : at + 1;
+      if (next === 0) setLyricAt(0);
+      setRundownAt(next);
       paintRundown();
+    };
+    // The hymn the booth reads during Song. The words stay as written.
+    // Only the Program / Preview labels follow the device language.
+    // The index lives in this tab. It is not sent to the room, and it is
+    // not painted onto the camera.
+    const LYRIC_LINES = [
+      'Amazing grace, how sweet the sound',
+      'That saved a wretch like me',
+      'I once was lost, but now am found',
+      'Was blind, but now I see.',
+    ];
+    function lyricStoreKey() { return 'gifos_lyric_' + (params.get('v') || ''); }
+    function lyricAt() {
+      let n = 0;
+      try { n = parseInt(sessionStorage.getItem(lyricStoreKey()) || '0', 10); } catch (e) {}
+      if (!isFinite(n) || n < 0) n = 0;
+      if (n >= LYRIC_LINES.length) n = LYRIC_LINES.length - 1;
+      return n;
+    }
+    function setLyricAt(n) {
+      try { sessionStorage.setItem(lyricStoreKey(), String(n)); } catch (e) {}
+    }
+    function paintLyrics() {
+      const el = document.getElementById('lyrics');
+      if (!el) return;
+      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored()));
+      const song = !!(host && rundownAt() === 1);
+      el.classList.toggle('open', song);
+      document.body.classList.toggle('lyrics', song);
+      if (!song) return;
+      const at = lyricAt();
+      const last = at >= LYRIC_LINES.length - 1;
+      const progK = document.getElementById('lyrics-program-k');
+      const prog = document.getElementById('lyrics-program');
+      const prevK = document.getElementById('lyrics-preview-k');
+      const prev = document.getElementById('lyrics-preview');
+      const btn = document.getElementById('lyrics-next');
+      if (progK) progK.textContent = uiText('lyProgram', 'Program');
+      if (prog && prog.textContent !== LYRIC_LINES[at]) prog.textContent = LYRIC_LINES[at];
+      if (prevK) prevK.textContent = uiText('lyPreview', 'Preview');
+      const nxt = last ? '' : (LYRIC_LINES[at + 1] || '');
+      if (prev && prev.textContent !== nxt) prev.textContent = nxt;
+      if (btn) {
+        btn.classList.toggle('secondary', last);
+        const label = last ? uiText('rdAgain', 'Start over') : uiText('lyNext', 'Next line');
+        if (btn.textContent !== label) btn.textContent = label;
+      }
+    }
+    const lyricsNext = document.getElementById('lyrics-next');
+    if (lyricsNext) lyricsNext.onclick = () => {
+      const at = lyricAt();
+      setLyricAt(at >= LYRIC_LINES.length - 1 ? 0 : at + 1);
+      paintLyrics();
     };
     const pageArrived = Date.now();
     function mayHost() {
