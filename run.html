@@ -1639,7 +1639,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      has to paint over it or Live steals the tap on the message field. */
   #chatpanel.open { top: 0; bottom: calc(var(--dockh, 108px) + var(--kb, 0px)); z-index: 31; }
   #chat-in { min-height: 44px; }
-  #chatclose, #cattach, #chatform button[type=submit] { min-width: 44px; min-height: 44px; }
+  #chatclose, #cattach, #cemoji, #chatform button[type=submit] { min-width: 44px; min-height: 44px; }
+  /* Emoji stays in the sheet, above the field, so a phone without an
+     emoji keyboard can still drop one in. The row scrolls sideways. */
+  #emojirow { display: flex; gap: 6px; overflow-x: auto; padding: 8px 8px 0; }
+  #emojirow[hidden] { display: none !important; }
+  #emojirow button {
+    flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 0 6px;
+    border: 0; border-radius: 12px; background: #e8ecf1; color: #1d1d1f;
+    font-size: 1.25rem; line-height: 1; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  #cemoji { width: 44px; padding: 0; font-size: 1.25rem; line-height: 1; }
   /* More labels were 16px even when Settings text size was 200% (root 32px). */
   .bar:not(.collapsed) .barmore > button,
   .bar:not(.collapsed) .barmore .seg,
@@ -1957,9 +1968,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div id="trfoot"><button id="trdl">Download transcript</button></div>
     </div>
     <div id="cfiles"><h4>Files pinned to this meeting</h4><div id="cfilelist"><small style="color:#667">No files yet — attach one below.</small></div></div>
+    <div id="emojirow" hidden role="group" aria-label="Emoji">
+      <button type="button" data-emoji="😀">😀</button>
+      <button type="button" data-emoji="😂">😂</button>
+      <button type="button" data-emoji="❤️">❤️</button>
+      <button type="button" data-emoji="👍">👍</button>
+      <button type="button" data-emoji="🙏">🙏</button>
+      <button type="button" data-emoji="🎉">🎉</button>
+      <button type="button" data-emoji="😢">😢</button>
+      <button type="button" data-emoji="👋">👋</button>
+      <button type="button" data-emoji="✅">✅</button>
+      <button type="button" data-emoji="🔥">🔥</button>
+    </div>
     <form id="chatform">
       <button type="button" id="cattach" title="Pin a file to the meeting">📎</button>
       <input type="file" id="cfile-in" multiple style="display:none">
+      <button type="button" id="cemoji" aria-label="Emoji" aria-expanded="false" title="Emoji">😊</button>
       <input type="text" id="chat-in" placeholder="Message everyone…" autocomplete="off" maxlength="2000">
       <button type="submit">Send</button>
     </form>
@@ -13689,6 +13713,42 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else emit(null);
       }
     });
+    (function () {
+      const row = document.getElementById('emojirow');
+      const btn = document.getElementById('cemoji');
+      const inp = document.getElementById('chat-in');
+      if (!row || !btn || !inp) return;
+      let caret = { start: 0, end: 0 };
+      const remember = () => {
+        caret = {
+          start: inp.selectionStart == null ? inp.value.length : inp.selectionStart,
+          end: inp.selectionEnd == null ? inp.value.length : inp.selectionEnd,
+        };
+      };
+      inp.addEventListener('input', remember);
+      inp.addEventListener('keyup', remember);
+      inp.addEventListener('mouseup', remember);
+      inp.addEventListener('select', remember);
+      inp.addEventListener('focusout', remember);
+      btn.onclick = () => {
+        const open = row.hidden;
+        row.hidden = !open;
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      };
+      row.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b || inp.disabled) return;
+        const emoji = b.getAttribute('data-emoji');
+        if (!emoji) return;
+        const start = Math.max(0, Math.min(caret.start, inp.value.length));
+        const end = Math.max(start, Math.min(caret.end, inp.value.length));
+        inp.value = inp.value.slice(0, start) + emoji + inp.value.slice(end);
+        const pos = start + emoji.length;
+        caret = { start: pos, end: pos };
+        inp.focus();
+        try { inp.setSelectionRange(pos, pos); } catch (err) {}
+      });
+    })();
     document.getElementById('chatform').addEventListener('submit', (e) => {
       e.preventDefault();
       if (chatOffInfo() && !amAdmin) { setStatus('The host has turned chat off.'); return; }

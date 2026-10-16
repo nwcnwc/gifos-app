@@ -165,6 +165,14 @@ Repro: `test/mobile/chat-preview.js`. It failed (`no message preview`), then pas
 
 Before: `qa/mobile/shots/before-chat-preview-iphone-15.png`. After: `qa/mobile/shots/after-chat-preview-iphone-15.png`.
 
+### 20. No emoji control on the phone composer
+
+The field had attach and Send. A phone in this test has no system emoji keyboard, so there was no way to drop in a 👍 or a 🙏.
+
+Repro: `test/mobile/chat-emoji.js`. It failed (`no emoji control`), then passed on an iPhone 15, an SE, and a 360px phone at 200% text. Emoji opens a row of 44px characters above the field. Tapping 👍 writes it into the field and does not send. The row stays above the dock.
+
+Before: `qa/mobile/shots/before-chat-emoji-iphone-15.png`. After: `qa/mobile/shots/after-chat-emoji-iphone-15.png`.
+
 ## Open
 
 The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
