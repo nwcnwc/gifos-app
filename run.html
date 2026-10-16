@@ -1886,7 +1886,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="copy">Copy</button>
   </div>
   <div id="bc-link" role="region" aria-label="Stream link">
-    <p>Friends watch with this link.</p>
+    <p>People watch with this link.</p>
     <input id="bc-link-url" readonly aria-label="Stream link">
     <button type="button" id="bc-link-copy">Copy</button>
   </div>
@@ -12221,9 +12221,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let rawName = document.getElementById('lob-admin-name').value || '';
         // slugRoom turns a blank into "room", so the empty check has to
         // happen on what was typed. A name with no letter or digit is blank.
-        // A stream is one tap: a blank name is Friday night, still editable.
+        // A service is one tap: a blank name is Sunday morning, still editable.
+        // A stream to friends uses Friday night the same way.
         if (BC_INTENT && !/[A-Za-z0-9]/.test(rawName)) {
-          rawName = 'Friday night';
+          rawName = params.has('st') ? 'Friday night' : 'Sunday morning';
           document.getElementById('lob-admin-name').value = rawName;
         }
         const nameErr = 'Give your room a name.';
@@ -12251,7 +12252,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // guest, the guest password is the one you send them).
           const guest = (document.getElementById('lob-guest-pass').value || '').trim();
           if (guest) { try { localStorage.setItem('gifos_vpw_' + chosen + '.' + V, guest); localStorage.setItem('gifos_vpwat_' + chosen + '.' + V, String(Date.now())); } catch (e) {} } // stamp the store's clock (§LOCK expiry)
-          enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' : '&th=1'));
+          enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' : '&th=1') + (BC_INTENT && params.has('st') ? '&st=1' : ''));
         } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = goLabel; }
       };
       document.getElementById('lob-join-btn').onclick = () => {
@@ -12304,20 +12305,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       });
     }
     function showLobby() {
-      document.title = (BC_INTENT ? 'Stream' : 'Meeting') + ' — GifOS';
-      // The Broadcast app opens THIS page with #bc=1 and no room: same lobby,
-      // reworded — no open rooms (a broadcast without a host is nothing), and
-      // creating one mints the same admin room with &bc=1 riding the link.
+      const streamLobby = BC_INTENT && params.has('st');
+      document.title = (streamLobby ? 'Stream' : (BC_INTENT ? 'Service' : 'Meeting')) + ' — GifOS';
+      // The Broadcast app opens THIS page with #bc=1 and no room: a service
+      // desk. #bc=1&st=1 is a stream to friends. Both mint the same admin
+      // room, with &bc=1 riding the link. A stream also keeps &st=1.
       if (BC_INTENT) {
-        document.querySelector('#lobby h1').textContent = 'Stream';
-        document.querySelector('#lobby .lob-quiet').textContent = 'Friends watch with the link.';
+        document.querySelector('#lobby h1').textContent = streamLobby ? 'Stream' : 'Service';
+        document.querySelector('#lobby .lob-quiet').textContent = streamLobby ? 'Friends watch with the link.' : 'People watch with the link.';
         document.getElementById('lob-open').style.display = 'none';
         document.getElementById('lob-admin-btn').style.display = 'none';
         document.getElementById('lob-admin-name-lab').hidden = false;
-        document.getElementById('lob-admin-name-lab').textContent = 'Name';
-        const streamName = document.getElementById('lob-admin-name');
-        streamName.placeholder = 'Friday night';
-        if (!streamName.value) streamName.value = 'Friday night';
+        document.getElementById('lob-admin-name-lab').textContent = streamLobby ? 'Name' : 'Service name';
+        const deskName = document.getElementById('lob-admin-name');
+        const readyName = streamLobby ? 'Friday night' : 'Sunday morning';
+        deskName.placeholder = readyName;
+        if (!deskName.value) deskName.value = readyName;
         document.getElementById('lob-admin-go').textContent = 'Go live';
         document.getElementById('lob-key-block').hidden = true;
         document.getElementById('lob-key-reveal').hidden = false;
@@ -12328,8 +12331,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('lob-guest-reveal').textContent = 'Add a viewer password';
         document.getElementById('lob-guest-pass').placeholder = 'Viewer password';
         document.getElementById('lob-guest-pass-note').textContent = 'Optional. Share this, not your host key. It is not part of the link.';
-        document.getElementById('lob-join-btn').textContent = 'Watch a stream';
-        document.getElementById('lob-empty').textContent = 'Streams you start or watch will show up here.';
+        document.getElementById('lob-join-btn').textContent = streamLobby ? 'Watch a stream' : 'Watch a service';
+        document.getElementById('lob-empty').textContent = streamLobby ? 'Streams you start or watch will show up here.' : 'Services you start or watch will show up here.';
+        if (streamLobby) document.getElementById('lobby').classList.add('stream-ready');
       }
       document.getElementById('lob-name').textContent = myName();
       renderLobbyList();

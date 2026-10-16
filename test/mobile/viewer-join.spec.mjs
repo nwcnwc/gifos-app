@@ -24,7 +24,7 @@ test('a broadcast host lands on the stream without another sheet', async ({ page
   await expect(page.locator('#leavebtn')).toBeVisible();
   const link = page.locator('#bc-link');
   await expect(link).toBeVisible();
-  await expect(link.locator('p')).toHaveText('Friends watch with this link.');
+  await expect(link.locator('p')).toHaveText('People watch with this link.');
   const url = await page.locator('#bc-link-url').inputValue();
   expect(url).toContain('sundayservice');
   expect(url).toContain('bc=1');

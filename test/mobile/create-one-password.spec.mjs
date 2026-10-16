@@ -6,19 +6,19 @@ async function openCreate(page) {
   await page.locator('#lob-admin-go').waitFor({ state: 'visible' });
 }
 
-test('a stream to friends opens on a name and Go live', async ({ page }) => {
+test('a church desk opens on a service name and Go live', async ({ page }) => {
   await openCreate(page);
-  await expect(page).toHaveTitle('Stream — GifOS');
+  await expect(page).toHaveTitle('Service — GifOS');
   await expect(page.locator('#lob-admin-btn')).toBeHidden();
-  await expect(page.locator('#lobby h1')).toHaveText('Stream');
+  await expect(page.locator('#lobby h1')).toHaveText('Service');
   const quiet = page.locator('.lob-quiet');
   await expect(quiet).toBeVisible();
-  await expect(quiet).toHaveText('Friends watch with the link.');
-  await expect(page.locator('#lob-admin-name-lab')).toHaveText('Name');
-  await expect(page.locator('#lob-admin-name')).toHaveAttribute('placeholder', 'Friday night');
-  await expect(page.locator('#lob-admin-name')).toHaveValue('Friday night');
-  await expect(page.locator('#lob-join-btn')).toHaveText('Watch a stream');
-  await expect(page.locator('#lob-empty')).toHaveText('Streams you start or watch will show up here.');
+  await expect(quiet).toHaveText('People watch with the link.');
+  await expect(page.locator('#lob-admin-name-lab')).toHaveText('Service name');
+  await expect(page.locator('#lob-admin-name')).toHaveAttribute('placeholder', 'Sunday morning');
+  await expect(page.locator('#lob-admin-name')).toHaveValue('Sunday morning');
+  await expect(page.locator('#lob-join-btn')).toHaveText('Watch a service');
+  await expect(page.locator('#lob-empty')).toHaveText('Services you start or watch will show up here.');
   await expect(page.locator('#lob-admin-go')).toHaveText('Go live');
   await expect(page.locator('#lob-key-block')).toBeHidden();
   await expect(page.locator('#lob-guest-pass')).toBeHidden();
@@ -102,12 +102,12 @@ test('a meeting lobby leads with a town hall and still shows the host key', asyn
   expect(first).toMatch(/^[a-z]+-[a-z]+-[a-z]+-\d{2}$/);
 });
 
-test('a blank stream name still goes live as Friday night', async ({ page }) => {
+test('a blank service name still goes live as Sunday morning', async ({ page }) => {
   await openCreate(page);
   await page.locator('#lob-admin-name').fill('');
   await page.locator('#lob-admin-go').click();
   await expect(page.locator('#lob-admin-err')).toHaveText('');
-  await expect(page.locator('#lob-admin-name')).toHaveValue('Friday night');
+  await expect(page.locator('#lob-admin-name')).toHaveValue('Sunday morning');
   await expect(page.locator('#lob-admin-go')).toHaveText('Creating…');
   await expect(page.locator('#lob-admin-go')).toBeDisabled();
 });

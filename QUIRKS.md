@@ -12,13 +12,21 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q46. A church desk opened as a stream named Friday night
+
+`#bc=1` said Stream, “Friends watch with the link.”, and Friday night. It now says Service, “People watch with the link.”, Service name, and Sunday morning. Go live stays the blue button. Watch a service is the outline under it. A blank name uses Sunday morning. The host key is still minted. The link on the stage says “People watch with this link.” `test/mobile/create-one-password.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-service-desk.png`.
+
+Design: the picture, the service name, the blue Go live. Church stays at 4. Go live still sits in a sheet under the picture.
+
 ### Q45. A quiet service read RECONNECTING
 
 A viewer opening a service that had not started, or that this phone had not reached, saw an amber RECONNECTING banner. Nothing had dropped. The banner now says OFF AIR, the same word a host sees before the picture is up. RECONNECTING stays for a link that dropped, a door they are knocking on again, or a network that cannot get through. A host who is already sending a picture still reads RECONNECTING while the room is out. `test/mobile/live-badge.spec.mjs`.
 
 After: `test/mobile/screenshots/after/iphone-se-viewer-offair.png`.
 
-Design: one grey banner, OFF AIR, until the service is there. Church stays at 4. The desk they start from is a stream named Friday night.
+Design: one grey banner, OFF AIR, until the service is there. Church stays at 4. The desk opens as a service.
 
 ### Q44. A stream on a phone was a form with a strip of camera
 
