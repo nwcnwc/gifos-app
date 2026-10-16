@@ -25,9 +25,9 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 | --- | --- | --- |
 | End the call, mute, camera, on a 360px phone | 8 | Hang up, mute, camera, and Fit fit and are at least 44px. |
 | Host: password, record, captions, stage, in landscape | 9 | Live, Record, and Captions are on the call. Room password, Vote on someone, and Step on stage stay in More and scroll into view. Waiting room admits from a list. |
-| Chat or check names without losing the controls | 8 | A closed chat shows who wrote, the latest line, and the unread count. Emoji inserts into the field. Inside the thread the bubbles are still small and dark. |
+| Chat or check names without losing the controls | 9 | The count and the latest line sit on the call. Emoji inserts into the field. Theirs is a light bubble, mine is blue, and both names are 1rem. |
 | Looks trustworthy (nothing cut off, type scales) | 8 | The header says "4 in call". Live is on the call, and Recording is a separate red state. Faces end above the dock. |
-| **Audience** | **8** | Hang up, landscape host tools, the live state, captions, the chat banner, the home indicator, the header count, and a waiting-room admit list are in good shape. The thread itself is still small type on a dark bubble. |
+| **Audience** | **8** | Hang up, landscape host tools, the live state, captions, chat, the home indicator, the header count, and a waiting-room admit list are in good shape. We do not lead yet. |
 
 ## Church
 
@@ -49,9 +49,9 @@ Family and friends. Warm, few steps, a texted link.
 | --- | --- | --- |
 | Open a texted link and pick a name | 8 | The join step opens with the GifOS name and picture, and says how you will appear. Continue is the only blue button. |
 | See everyone and hang up on a small phone | 7 | Four faces end above the dock on iPhone 15, SE, and 360px. Hang up fits. |
-| Send a chat line | 8 | The latest line and the count sit on the call. Emoji inserts into the field. The thread itself is still small type on a dark bubble. |
+| Send a chat line | 9 | The latest line and the count sit on the call. Emoji inserts into the field. Theirs is a light bubble and mine is blue, at 1rem. |
 | Turn the phone sideways | 8 | Invite, Room password, Waiting room, and Chat are on the first screen of More. You do not scroll to find them. |
-| **Audience** | **8** | The link, the name step, hang up, the first screen of landscape More, the chat banner, the lobby, the home indicator, and a 44px Fit control are in good shape. The thread is still small type, and FaceTime still feels quieter. We do not lead yet. |
+| **Audience** | **8** | The link, the name step, hang up, the first screen of landscape More, chat, the lobby, the home indicator, and a 44px Fit control are in good shape. FaceTime still feels quieter. We do not lead yet. |
 
 ## Cycle
 
@@ -75,3 +75,5 @@ Family and friends. Warm, few steps, a texted link.
 18. Unread badge on the call. `test/mobile/chat-badge.js` failed (no count with More closed), then passed, including at 200% text. The count sits above Live. Opening chat clears it. The chat sheet also paints over the live row so the field can be tapped. Chat stays 7: there is still no preview, no emoji, and the bubbles are small and dark. Audience scores stay 8 / 8 / 8. Nobody leads yet.
 19. Message preview. `test/mobile/chat-preview.js` failed (no preview), then passed, including at 200% text. The latest line sits beside the count. Faces end above it. Corporate chat 7→8. Personal send-a-line 7→8. Audience scores stay 8 / 8 / 8. Nobody leads yet. Still open: emoji, and bubbles that are small and dark.
 20. Emoji. `test/mobile/chat-emoji.js` failed (no emoji control), then passed, including at 200% text. The row is 44px targets above the field, and a tap inserts the character without sending. Scores stay 8 / 8 / 8. Nobody leads yet. Still open: the bubbles are small and dark.
+21. Send stayed on screen. `test/mobile/chat-above-dock.js` failed (`send off screen (right 382)`), then passed. The field shrinks so the emoji button does not push Send past the edge.
+22. Readable bubbles. `test/mobile/chat-bubbles.js` failed (13.6px body, name contrast 2.61, mine and theirs the same color), then passed, including at 200% text. Theirs is light, mine is blue, the name is 1rem, and a long line wraps inside the bubble. Corporate chat 8→9. Personal send-a-line 8→9. Audience scores stay 8 / 8 / 8. Nobody leads yet.

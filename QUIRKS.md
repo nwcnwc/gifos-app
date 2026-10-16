@@ -179,6 +179,14 @@ The field refuses to shrink below its placeholder, so adding the emoji button pu
 
 Repro: `test/mobile/chat-above-dock.js` now requires Send on screen. It failed (`send off screen (right 382)`), then passed. The field may shrink. Send stays inside the screen.
 
+### 22. Chat bubbles were small, dark, and the same color
+
+Body type was .85rem (13.6px). The name was .7rem in #7b9cff, contrast 2.61 on the bubble. Mine and theirs both used the surface color, so your line did not read as yours. A long line used 94% of the sheet.
+
+Repro: `test/mobile/chat-bubbles.js`. It failed on the font, the name contrast, the shared color, and the long bubble width, then passed on an iPhone 15, an SE, and a 360px phone at 200% text. Theirs is a light bubble with dark type. Mine is blue with white type. The name is 1rem. A long line wraps inside 78% of the sheet.
+
+Before: `qa/mobile/shots/before-chat-bubbles-iphone-15.png`. After: `qa/mobile/shots/after-chat-bubbles-iphone-15.png`.
+
 ## Open
 
 The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.

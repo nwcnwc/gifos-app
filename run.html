@@ -1048,10 +1048,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #chatpanel.open { display: flex; }
   #chathead { display: flex; align-items: center; gap: .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
   #chathead button { margin-left: auto; padding: .2rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
-  #chatlog { flex: 1; overflow-y: auto; padding: .6rem; display: flex; flex-direction: column; gap: .35rem; font-size: .85rem; }
-  .cmsg { background: var(--surface, #14141f); border: 1px solid #22223a; border-radius: .5rem; padding: .3rem .55rem; max-width: 94%; align-self: flex-start; overflow-wrap: anywhere; }
-  .cmsg.mine { align-self: flex-end; background: var(--surface, #17222e); border-color: var(--accent, #223448); }
-  .cmsg b { color: #7b9cff; font-size: .7rem; display: block; }
+  #chatlog { flex: 1; overflow-y: auto; padding: .6rem; display: flex; flex-direction: column; gap: 8px; font-size: 1rem; }
+  /* Theirs is a light bubble with dark type. Mine is the blue one with
+     white type. The name is the same size as the line, so 200% text
+     stays readable. Neither bubble runs to the edge of the sheet. */
+  .cmsg { background: #e8ecf1; color: #1d1d1f; border: 0; border-radius: 16px; padding: 10px 12px; max-width: 78%; align-self: flex-start; overflow-wrap: anywhere; font-size: 1rem; line-height: 1.35; }
+  .cmsg.mine { align-self: flex-end; background: #0064c8; color: #fff; }
+  .cmsg b { color: inherit; font-size: 1rem; font-weight: 700; display: block; margin: 0 0 2px; }
   #cfiles { border-top: 1px solid var(--border, #2a2a3f); padding: .45rem .7rem; max-height: 34%; overflow-y: auto; }
   #cfiles h4 { font-size: .72rem; color: var(--muted, #8888aa); margin-bottom: .3rem; }
   .cfile { display: flex; align-items: center; gap: .45rem; font-size: .78rem; padding: .18rem 0; }
@@ -13625,7 +13628,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const ms = Array.from(chat.values()).sort((a, b) => a.at - b.at).slice(-200); // the newest 200 are the log; older lines stay in the map for delete/history
       let html = ms.map((m) => {
         const body = m.link
-          ? esc(m.text) + ' <a href="' + esc(m.link) + '" style="color:#8ab4ff;font-weight:600">Join →</a>'
+          ? esc(m.text) + ' <a href="' + esc(m.link) + '" style="color:inherit;font-weight:700;text-decoration:underline">Join →</a>'
           : esc(m.text);
         // The signed-in admin moderates line by line: the standard row-delete
         // glyph mints a signed 'cdel' (see the #chatlog click delegate).
