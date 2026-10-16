@@ -46,6 +46,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** a remote tile is a tab stop. Focusing it shows the same moderation bar hover already showed, including Mute, and Tab reaches that button. The gallery geometry is unchanged.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/tile-keys-before-1280.png` (bar hidden), `test/desktop/shots/tile-keys-after-1280.png` (bar open from the keyboard).
 
+### Header said Just you while four people were on screen
+
+- **Who hits it:** anyone in a room whose faces are up before each call has connected, and anyone reading the header on a laptop.
+- **What you saw:** five tiles, and the pill said “Just you — send the invite…”. When the count was right, “5 in the meeting” shared one line with the quality and the password note, and the line ended in an ellipsis.
+- **Repro:** `test/desktop/people-count.spec.js` failed before the fix (no `#statuscount`; the line was “Just you” with five tiles).
+- **Fix:** the label counts every face on the wall, and it will not go below the mesh count. “5 in the meeting” is its own phrase and does not shrink. The quality and password notes follow it and may ellipsize.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/people-count-before-1280.png`, `test/desktop/shots/people-count-after-1280.png`.
+
 ## Open
 
 ### WebKit crashes if a gallery tile plays a canvas captureStream
@@ -66,7 +74,7 @@ Captions already follow the device language. The lobby, dock, and chat do not. A
 
 ### Status line is easy to lose
 
-“Just you — send the invite…” and “5 in the meeting · 360p · a password unlocks clear video” live in a pill that ellipsizes. A host scanning a large room does not get a dedicated people count that stays put.
+“5 in the meeting” used to be one ellipsized sentence, and four faces whose calls had not connected yet still read “Just you”. The count is now its own uncut phrase and includes every face on the wall. The quality and password notes may still trail off. There is still no roster list.
 
 ### Not yet walked end to end
 

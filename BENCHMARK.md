@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. Chat clears the dock, the primary controls have words, mute, camera, chat, and leave have shortcuts, a vote no longer covers the faces, and a host can tab to Mute on a tile. Locale, the people count, and the More wall are still open.
+We do **not** lead any audience yet. The header now counts the people on screen, and that count is not cut off. The join step, the More wall, and English-only chrome are still open.
 
 ## Who we are measured against
 
@@ -28,8 +28,8 @@ Polished, efficient, trustworthy. Best of the field today: Zoom and Meet, about 
 | Visual polish | 7 | Dock is calm and the primary controls are labeled. Chat no longer slides under it |
 | Efficiency (keyboard, few clicks) | 6 | Alt+A / V / C / Q, and Tab reaches Mute on a tile. Share, hand, and view still need the pointer. Chat is still two clicks with the mouse |
 | Presenting | 5 | Share exists. Not yet walked as a client demo |
-| Large-room host | 5 | A host can tab to a person and mute them. The count is still a status sentence that ellipsizes |
-| **Audience** | **6.4** | Does not lead |
+| Large-room host | 6 | The header counts the faces on the wall and that phrase is not ellipsized. There is still no roster |
+| **Audience** | **6.6** | Does not lead |
 
 ## Church
 
@@ -57,4 +57,4 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 
 ## This cycle
 
-A remote tile is a tab stop, so keyboard focus opens the same moderation bar hover already showed (see QUIRKS.md). Corporate efficiency 5 → 6, large-room host 4 → 5, audience 6.0 → 6.4. That is still behind Zoom and Meet: twenty people is a long tab, share and hand have no chord, and the people count still ellipsizes. Church and personal stay put. We do not lead. Next gap: the chrome is English only, which is the lowest cell on the card (locale 3).
+The header counts faces on the wall, so four people no longer read as “Just you”, and “5 in the meeting” cannot be ellipsized (see QUIRKS.md). Corporate large-room host 5 → 6, audience 6.4 → 6.6. That is still behind Teams’ roster. Church and personal stay put. We do not lead. Next gap: the screen-name step does not prefill the GifOS name and avatar, and its two buttons are the same color.

@@ -1274,13 +1274,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     outline: 3px solid #0064c8; outline-offset: 2px;
   }
   .topchip { position: fixed; z-index: 6; top: 14px; left: 14px; display: flex; align-items: center; gap: 8px;
-    max-width: min(28rem, calc(100% - 120px)); background: rgba(12,14,18,.92); color: #f4f7fb;
+    width: max-content; max-width: calc(100vw - 140px); background: rgba(12,14,18,.92); color: #f4f7fb;
     border-radius: 999px; padding: 6px 12px 6px 14px; }
   .topchip .title { font-weight: 800; font-size: 26px; letter-spacing: -0.04em; text-decoration: none; cursor: pointer;
     background: linear-gradient(135deg, #0071e3, #5856d6); -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent; color: transparent; }
-  .topchip .status { color: #e7ebf2; font-size: 20px; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
-    min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    -webkit-text-fill-color: transparent; color: transparent; flex: 0 0 auto; }
+  .topchip .status { color: #e7ebf2; font-size: 20px; margin: 0; flex: 1 1 auto; min-width: 0;
+    min-height: 1.3em; display: flex; align-items: baseline; overflow: hidden; white-space: nowrap; }
+  .topchip #statuscount { flex: 0 0 auto; white-space: nowrap; }
+  .topchip #statusrest { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
   .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
     border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
@@ -1542,7 +1544,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <div class="topchip">
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
-    <span class="status" id="status">Joining…</span>
+    <span class="status" id="status"><span id="statuscount">Joining…</span><span id="statusrest"></span></span>
   </div>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
   <div class="admcount" id="admcount" style="display:none"></div>
@@ -2256,7 +2258,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // (a long refusal on a phone), written only when it changes.
     const setStatus = (m, hold) => {
       const blocking = /^(🛡|📷)/.test(String(m));
-      statusEl.textContent = m;
+      const countEl = document.getElementById('statuscount');
+      const restEl = document.getElementById('statusrest');
+      if (countEl && restEl) { countEl.textContent = ''; restEl.textContent = m; }
+      else statusEl.textContent = m;
       if (statusEl.title !== String(m)) statusEl.title = String(m);
       statusEl.classList.toggle('alert', blocking || !!hold);
       statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
@@ -6057,14 +6062,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (bannedOut) return;                      // the ban notice is permanent
       if (Date.now() < statusHoldUntil) return;   // an explicit message is showing
       statusEl.classList.remove('alert');
-      const n = participantCount();
+      // Faces on the wall are people, even before their transport has vouched.
+      // participantCount() stays the ladder's input; the label may only go up.
+      let seen = 1;
+      for (const p of peers.values()) {
+        if (!p || p.headless || !p.tile || !p.tile.isConnected || p.tile.style.display === 'none') continue;
+        seen++;
+      }
+      const linked = participantCount();
+      const n = Math.max(linked, seen, displayCount());
       // THE LABEL MUST NAME WHAT WE ACTUALLY SEND (2026-07-29, Nathan: "it says
       // 480p, I unplugged, it still says 480p"). rung(n) is only the HEADCOUNT
       // baseline; adapt() then pushes it down by the power tier (a phone is
       // never at the baseline — floor 2 — and a losing charger or a parked
       // phone cuts further). Reporting the baseline meant the status lied by
       // up to three rungs and never moved when the battery state did.
-      const q = lastQ || rung(n);
+      const q = lastQ || rung(linked);
       const link = (relayUp() || (meshSeat() && meshSeat().state === 3 && meshCoord() && meshCoord().pc !== 0)) ? '' : ' · reconnecting to the room…';
       let extra = '';
       if (n > 1) {
@@ -6101,9 +6114,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const reach = typeof reachInfo === 'function' ? reachInfo() : null;
       const reachState = reach ? reach.state : null;
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
-      const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
-        : (n === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry' + reachTriedSentence())
-        : displayCount() + ' in the meeting · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
+      const tail = partial + link + savedLock + extra;
+      let countText = '';
+      let restText = '';
+      if (reachState && reachState !== 'partial') {
+        restText = REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence()) + tail;
+      } else if (n === 1) {
+        countText = atDoor ? 'Getting you back in' : 'Just you';
+        restText = (atDoor ? ' — waiting for the others to answer…' : ' — send the invite; the link has no expiry' + reachTriedSentence()) + tail;
+      } else {
+        countText = n + ' in the meeting';
+        restText = ' · ' + q.label + reachTriedSentence() + tail;
+      }
+      const statusText = countText + restText;
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
       // of the reach states that replace the line. Tests and styling read
@@ -6116,10 +6139,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
       }
       if (reachState && reachState !== 'partial') statusEl.classList.add('alert');
-      if (statusEl.textContent !== statusText) {
+      const countEl = document.getElementById('statuscount');
+      const restEl = document.getElementById('statusrest');
+      if (countEl && restEl) {
+        if (countEl.textContent !== countText) countEl.textContent = countText;
+        if (restEl.textContent !== restText) restEl.textContent = restText;
+      } else if (statusEl.textContent !== statusText) {
         statusEl.textContent = statusText;
-        statusEl.title = statusText;
       }
+      if (statusEl.title !== statusText) statusEl.title = statusText;
     }
 
     // ---- mesh plumbing ---------------------------------------------------------
