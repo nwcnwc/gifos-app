@@ -1389,6 +1389,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     font-size: 11px; font-weight: 700; line-height: 1; letter-spacing: 0;
   }
   .bar .docklab { display: block; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
+  .bar #fsbtn { width: auto; min-width: 68px; padding: 0 8px; }
+  .bar #fsbtn .docklab { max-width: none; }
   .bar #reactbtn .dockface { font-size: 26px; line-height: 1; pointer-events: none; }
   /* Off is a filled red button, on is filled green — the same read as Zoom
      and Meet, not a small slash on a gray circle. */
@@ -1475,6 +1477,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar { height: 88px; gap: 8px; padding: 0 10px; }
     .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #fsbtn, .bar #chatbtn, .bar #bartoggle {
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
+    .bar #fsbtn { width: auto; min-width: 56px; padding: 0 6px; }
     .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #chatbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
     .bar #bargrip { height: 40px; width: 18px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
@@ -1669,7 +1672,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     </button>
     <button id="fsbtn" type="button" class="iconbtn" aria-label="Full screen" title="Watch full screen. Follows whoever is speaking.">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
-      <span class="docklab">Full</span>
+      <span class="docklab">Full screen</span>
     </button>
     <button id="chatbtn" type="button" class="iconbtn" aria-label="Chat" title="Chat and share files — stays between the people on this meeting, not on a server">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>

@@ -106,9 +106,13 @@ Starting a recording, or seeing someone else start one, opens a white card. The 
 
 Invite is a dock button. The sheet is now a white card. A small group says **Share this small group** and **Send this link. Anyone who opens it joins you.** Copy is blue `#0064c8`. Close is an outline. The gap between the link and Copy is 12px. **A room you run** is a text link; the host password stays hidden until that tap. A service says **Share this service** and that people who open the link are watching. A host also sees that the host password stays with them. The card fits 1280, 1920, and 900, including after a live resize to 900, and the password step still fits. Before: `test/e2e/artifacts/invite-sheet-before.png`. After: `test/e2e/artifacts/invite-sheet-after.png`.
 
+### Q24. The full-screen control said Full
+
+The dock button now says **Full screen**. The word fits inside the button at 1280, 1920, and 900, and after a live resize from 1920 to 900. The dock stays inside the window. Before: `test/e2e/artifacts/dock-full-before.png`. After: `test/e2e/artifacts/dock-full-after.png`.
+
 ## Open
 
-A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows, and on leaving without a confirm step. The lobby, the labeled controls, the layout, and chat are the corporate rows still at 4. The full-screen dock label still reads Full.
+A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows, and on leaving without a confirm step. The lobby, the labeled controls, the layout, and chat are the corporate rows still at 4. Labeled controls stay at 4: the words are complete, and Zoom’s bar is still the reference.
 
 ## How a session was opened without a relay
 

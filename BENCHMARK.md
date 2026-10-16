@@ -23,7 +23,7 @@ GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (4.1, Z
 | Trust: live, recording, who is here | 5 | 4 | 5 | 4 |
 | **Audience score** | **4.9** | **4.3** | **4.1** | **4.1** |
 
-Zoom still leads. A full-width line says Microphone off and Camera off, and it leaves when those are on (Q21). That row matches Zoom and Meet. A card names who is recording, and the bar stays Recording (Q22). Trust stays at 4, even with Meet: there is no waiting room, and the card does not hold the recording until the other people have answered. Zoom and Teams stay at 5. Arithmetic: (5+4+4+4+4+4+4)/7 = 4.1. A tie with Teams is not a lead.
+Zoom still leads. A full-width line says Microphone off and Camera off, and it leaves when those are on (Q21). That row matches Zoom and Meet. The full-screen control says Full screen (Q24). Labeled controls stay at 4: the words are complete, and Zoom’s bar is still the reference. A card names who is recording, and the bar stays Recording (Q22). Trust stays at 4, even with Meet: there is no waiting room, and the card does not hold the recording until the other people have answered. Zoom and Teams stay at 5. Arithmetic: (5+4+4+4+4+4+4)/7 = 4.1. A tie with Teams is not a lead.
 
 ## Church
 
@@ -82,3 +82,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q21 | 4.1 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.0 (FaceTime 4.8) | Microphone off and Camera off are a full-width line. Mute 4 → 5. Corporate ties Teams. Not a lead. |
 | After Q22 | 4.1 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.0 (FaceTime 4.8) | A recording card names who is recording. Trust stays 4. Scores unchanged. |
 | After Q23 | 4.1 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.2 (FaceTime 4.8) | Invite is the link and a blue Copy. Personal invite 4 → 5. Ahead of Meet. FaceTime still leads. |
+| After Q24 | 4.1 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.2 (FaceTime 4.8) | The dock says Full screen. Labeled controls stay 4. Scores unchanged. |

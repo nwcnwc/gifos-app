@@ -275,7 +275,9 @@ test('the dock has a full-screen button', async ({ page }) => {
     const fs = page.locator('#fsbtn');
     await expect(fs).toBeVisible();
     await expect(fs).toHaveAttribute('aria-label', 'Full screen');
-    await expect(fs.locator('.docklab')).toHaveText('Full');
+    await expect(fs.locator('.docklab')).toHaveText('Full screen');
+    const clip = await fs.locator('.docklab').evaluate((el) => el.scrollWidth <= el.clientWidth + 1);
+    expect(clip).toBe(true);
     const nested = await fs.evaluate((el) => !!el.closest('#barmore'));
     expect(nested).toBe(false);
     const bar = await page.locator('.bar').boundingBox();
@@ -289,7 +291,16 @@ test('the dock has a full-screen button', async ({ page }) => {
     expect(bar.x).toBeGreaterThanOrEqual(-1);
     expect(bar.x + bar.width).toBeLessThanOrEqual(w + 1);
   }
-  await bootSession(page, 1280, 720);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.setViewportSize({ width: 900, height: 720 });
+  const resized = await page.evaluate(() => {
+    const lab = document.querySelector('#fsbtn .docklab');
+    const bar = document.querySelector('.bar').getBoundingClientRect();
+    return { text: lab.textContent, clip: lab.scrollWidth <= lab.clientWidth + 1, barIn: bar.left >= -1 && bar.right <= innerWidth + 1 };
+  });
+  expect(resized.text).toBe('Full screen');
+  expect(resized.clip).toBe(true);
+  expect(resized.barIn).toBe(true);
   await page.locator('#fsbtn').click();
   await expect(page.locator('body')).toHaveClass(/fsopen/);
   await expect(page.locator('#fsview')).toHaveClass(/on/);
