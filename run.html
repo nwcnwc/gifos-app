@@ -21906,9 +21906,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     const leaveBtn = document.getElementById('leavebtn');
     const leaveAsk = document.getElementById('leave-ask');
-    // The button asks first. leaveMeeting() itself stays immediate so a
-    // hang-up from the OS and the test hook still leave at once.
-    if (leaveBtn) leaveBtn.onclick = () => { try { holdLeaveAsk(); } catch (e) {} if (leaveAsk) leaveAsk.style.display = 'flex'; };
+    // A small group leaves on the red button. leaveMeeting() is already
+    // immediate, which is what a hang-up and the test hook use. A service
+    // still asks: you are live, and Stay puts the microphone back.
+    if (leaveBtn) leaveBtn.onclick = () => {
+      if (typeof BROADCAST !== 'undefined' && BROADCAST) {
+        try { holdLeaveAsk(); } catch (e) {}
+        if (leaveAsk) leaveAsk.style.display = 'flex';
+        return;
+      }
+      leaveMeeting();
+    };
     const leaveCancel = document.getElementById('leave-cancel');
     if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; try { releaseLeaveAsk(); } catch (e) {} };
     const leaveGo = document.getElementById('leave-go');

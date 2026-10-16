@@ -760,28 +760,7 @@ test('leaving and rejoining a personal call is obvious', async ({ page }) => {
   }
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.locator('#leavebtn').click();
-  await expect(page.locator('#leave-ask')).toBeVisible();
-  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the small group?');
-  const ask = await page.evaluate(() => {
-    const stay = document.getElementById('leave-cancel').getBoundingClientRect();
-    const go = document.getElementById('leave-go').getBoundingClientRect();
-    const ss = getComputedStyle(document.getElementById('leave-cancel'));
-    const gs = getComputedStyle(document.getElementById('leave-go'));
-    return {
-      gap: Math.round(go.left - stay.right),
-      stayBg: ss.backgroundColor, goBg: gs.backgroundColor,
-      on: stay.right <= innerWidth && go.right <= innerWidth && stay.bottom <= innerHeight,
-    };
-  });
-  expect(ask.gap).toBeGreaterThanOrEqual(8);
-  expect(ask.stayBg).not.toBe(ask.goBg);
-  expect(ask.goBg).toBe('rgb(182, 22, 34)');
-  expect(ask.on).toBe(true);
-  await page.locator('#leave-cancel').click();
   await expect(page.locator('#leave-ask')).toBeHidden();
-  await expect(page.locator('#left-modal')).toBeHidden();
-  await page.locator('#leavebtn').click();
-  await page.locator('#leave-go').click();
   await expect(page.locator('#left-modal')).toBeVisible();
   await expect(page.locator('#left-title')).toHaveText('You left the small group');
   await expect(page.locator('#left-note')).toContainText('Rejoin');
@@ -810,7 +789,15 @@ test('leaving and rejoining a personal call is obvious', async ({ page }) => {
   await page.goto('/run.html?desk=leavesvc#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airkind');
   await page.locator('#leavebtn').click();
+  await expect(page.locator('#leave-ask')).toBeVisible();
   await expect(page.locator('#leave-ask-title')).toHaveText('Leave the service?');
+  const ask = await page.evaluate(() => {
+    const go = getComputedStyle(document.getElementById('leave-go'));
+    const stay = getComputedStyle(document.getElementById('leave-cancel'));
+    return { go: go.backgroundColor, stay: stay.backgroundColor };
+  });
+  expect(ask.go).toBe('rgb(182, 22, 34)');
+  expect(ask.stay).not.toBe(ask.go);
   await page.locator('#leave-go').click();
   await expect(page.locator('#left-title')).toHaveText('You left the service');
 });

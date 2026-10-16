@@ -118,9 +118,13 @@ Send is blue `#0064c8`, 44px tall, white text. The message field is white with a
 
 A cold open now says **Small group**. Go live says **Service**. The blue button is still Start a call or Go live, and the quiet line still says you come in muted, or that people watch with the link. The card fits 1280, 1920, and 900. After: `test/e2e/artifacts/lobby-words-after.png`, `lobby-service-after.png`.
 
+### Q27. A small group asked before you could leave
+
+Leave on a small group goes straight to **You left the small group**. Rejoin is still blue. Close is still the outline. The confirm stays on a service, because you are live: Stay is the outline and Leave is red. After: `test/e2e/artifacts/leave-onetap-after.png`.
+
 ## Open
 
-A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows, and on leaving without a confirm step. The lobby stays at 4: it names the room, and it is still three doors rather than one join. Labeled controls and layout stay at 4. The status line in the top chip still clips.
+A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The lobby stays at 4: it names the room, and it is still three doors rather than one join. Labeled controls and layout stay at 4. The status line in the top chip still clips.
 
 ## How a session was opened without a relay
 
