@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q34. A rotated strip was still a tall band
+
+The frosted pill was 48px with 22px marks. It is now 36px, and the marks are 18px. The targets stay 44px, so a thumb still lands, and they sit a little proud of the strip. Hang up stays the solid red control. On an iPhone SE landscape the pill is y=270 to y=306 and the face is y=59 to y=320, 560×261. A 32px root grows the strip to 48px and the marks to 24px. `test/mobile/landscape-stage.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-landscape-thin.png`.
+
+Design: a thin frosted line, small marks, and one red Hang up. Landscape stays at 4. Meet’s strip is still a little thinner. The face stays a stage.
+
 ### Q33. A short landscape dock ignored a larger text size
 
 At a 32px root the portrait dock grows to 88px, and the rotated dock stayed 44px inside a 48px pill. It now follows the root size up to 56px controls and a 64px pill. On an iPhone SE landscape the controls are 56px, the glyphs are 28px, and the pill runs y=242 to y=306. The face stays y=87 to y=320, 560×233. The pill covers 78px of that tile, under half. A 16px root still paints the 44px glyphs in a 48px pill. `test/mobile/dock-scale.spec.mjs`.

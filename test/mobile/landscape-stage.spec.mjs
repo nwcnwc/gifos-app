@@ -72,6 +72,7 @@ test('a rotated meeting is the face until you tap', async ({ page }) => {
     const cam = document.getElementById('cam');
     const camBg = getComputedStyle(cam).backgroundColor;
     const camAlpha = camBg === 'transparent' ? 0 : (camBg.startsWith('rgba') ? parseFloat(camBg.split(',')[3]) : 1);
+    const glyph = document.querySelector('#cam svg').getBoundingClientRect();
     const leaveBg = getComputedStyle(leave).backgroundColor;
     return {
       meBottom: me.bottom,
@@ -82,16 +83,20 @@ test('a rotated meeting is the face until you tap', async ({ page }) => {
       barAlpha: alpha,
       camAlpha,
       camH: cam.getBoundingClientRect().height,
+      glyph: glyph.width,
       leaveBg,
       leaveH: r.height,
       hit: !!(hit && (hit.id === 'leavebtn' || leave.contains(hit))),
       vh: innerHeight,
     };
   });
-  expect(shown.barH).toBeLessThanOrEqual(48);
+  expect(shown.barH).toBeLessThanOrEqual(40);
+  expect(shown.barH).toBeGreaterThanOrEqual(32);
   expect(shown.barAlpha).toBeLessThan(0.75);
   expect(shown.camAlpha).toBeLessThan(0.05);
   expect(shown.camH).toBeGreaterThanOrEqual(44);
+  expect(shown.glyph).toBeLessThanOrEqual(20);
+  expect(shown.glyph).toBeGreaterThanOrEqual(16);
   expect(shown.leaveBg.replace(/\s/g, '')).toBe('rgb(182,22,34)');
   expect(shown.meBottom).toBeGreaterThanOrEqual(shown.vh - 2);
   expect(shown.meH).toBeGreaterThanOrEqual(shown.vh * 0.55);

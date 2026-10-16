@@ -86,11 +86,12 @@ test('a short landscape dock grows with the text and stays a thin row', async ({
       barTop: bar.top, vh: innerHeight, vw: innerWidth,
     };
   });
-  expect(box.camH).toBeGreaterThanOrEqual(52);
-  expect(box.camH).toBeLessThanOrEqual(56.5);
-  expect(box.glyph).toBeGreaterThanOrEqual(26);
-  expect(box.barH).toBeGreaterThanOrEqual(60);
-  expect(box.barH).toBeLessThanOrEqual(64.5);
+  expect(box.camH).toBeGreaterThanOrEqual(44);
+  expect(box.camH).toBeLessThanOrEqual(48.5);
+  expect(box.glyph).toBeGreaterThanOrEqual(22);
+  expect(box.glyph).toBeLessThanOrEqual(24.5);
+  expect(box.barH).toBeGreaterThanOrEqual(46);
+  expect(box.barH).toBeLessThanOrEqual(48.5);
   expect(box.barRight).toBeLessThanOrEqual(box.vw + 0.5);
   expect(box.leaveRight).toBeLessThanOrEqual(box.vw + 0.5);
   expect(box.meBottom).toBeGreaterThanOrEqual(box.vh - 2);
