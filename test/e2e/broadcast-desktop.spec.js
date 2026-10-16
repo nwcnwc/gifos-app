@@ -1401,3 +1401,82 @@ test('a host steps on and off the stage from the dock', async ({ page }) => {
   await page.locator('#bartoggle').click();
   await expect(page.locator('#barmore #stagebtn')).toHaveText('Stage');
 });
+
+test('a service picture fills the stage and a clear stage says so', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('view=1') === -1 && location.hash.indexOf('bc=1') !== -1 && location.hash.indexOf('v=sunday') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  async function place() {
+    return page.evaluate(() => {
+      const plate = document.getElementById('bc-stage');
+      const line = document.getElementById('bc-stage-line');
+      const air = document.getElementById('airbar').getBoundingClientRect();
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const pr = plate.getBoundingClientRect();
+      const shown = getComputedStyle(plate).display !== 'none';
+      const tile = document.querySelector('#stagefeed .rowtile');
+      const tr = tile ? tile.getBoundingClientRect() : null;
+      return {
+        text: line.textContent,
+        shown,
+        plateTop: pr.top,
+        plateBottom: pr.bottom,
+        airBottom: air.bottom,
+        dockTop: dock.top,
+        tile: tr && { top: tr.top, bottom: tr.bottom, left: tr.left, right: tr.right, w: tr.width, h: tr.height },
+        vw: innerWidth,
+        vh: innerHeight,
+      };
+    });
+  }
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=pic' + w + '&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.watch');
+    const empty = await place();
+    expect(empty.text).toBe('The stage is clear.');
+    expect(empty.shown).toBe(true);
+    expect(empty.plateTop).toBeGreaterThanOrEqual(empty.airBottom - 1);
+    expect(empty.plateBottom).toBeLessThanOrEqual(empty.dockTop + 1);
+    await page.evaluate(() => {
+      const feed = document.getElementById('stagefeed');
+      const el = document.createElement('div');
+      el.className = 'rowtile';
+      el.dataset.row = 'sgs';
+      const v = document.createElement('video');
+      el.appendChild(v);
+      feed.appendChild(el);
+    });
+    await page.waitForFunction(() => getComputedStyle(document.getElementById('bc-stage')).display === 'none');
+    const full = await place();
+    expect(full.shown).toBe(false);
+    expect(full.tile.top).toBeGreaterThanOrEqual(full.airBottom - 1);
+    expect(full.tile.bottom).toBeLessThanOrEqual(full.dockTop + 1);
+    expect(full.tile.left).toBeGreaterThanOrEqual(-1);
+    expect(full.tile.right).toBeLessThanOrEqual(w + 1);
+    expect(full.tile.h).toBeGreaterThan(200);
+    expect(full.tile.w).toBeGreaterThan(w * 0.8);
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.setViewportSize({ width: 900, height: 720 });
+  const resized = await place();
+  expect(resized.shown).toBe(false);
+  expect(resized.tile.bottom).toBeLessThanOrEqual(resized.dockTop + 1);
+  expect(resized.tile.right).toBeLessThanOrEqual(901);
+  await page.goto('/run.html?desk=pichost#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.live');
+  await expect(page.locator('#bc-stage-line')).toHaveText('The stage is clear.');
+  await page.locator('.bar > #stagebtn').click();
+  await expect(page.locator('#bc-stage-line')).toHaveText('You are on stage. Your camera is off.');
+  const hostPlate = await place();
+  expect(hostPlate.shown).toBe(true);
+  expect(hostPlate.plateBottom).toBeLessThanOrEqual(hostPlate.dockTop + 1);
+  await page.goto('/run.html?desk=picmeet#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  const meet = await page.locator('#bc-stage').evaluate((el) => getComputedStyle(el).display);
+  expect(meet).toBe('none');
+});
