@@ -10,15 +10,20 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Open
 
-### Q11. Join actions are the same color and sit together
-
-`Not now` and `Continue` both use the accent fill. There is no gap rule between them, so they read as one control. A primary and a secondary need different fills and at least 8px between them. Both targets are already 48px tall.
-
 ### Q10. Compact dock buttons sit 4px apart
 
 Below 380px the dock gap is 4px so Leave still fits. Larger phones use 8px or 12px. The targets are 44px. The tighter gap is a polish item, after the phone-layout gaps. Not the next fix.
 
 ## Fixed
+
+### Q11. Join actions were the same color and touched
+
+`Not now` and `Continue` were both the accent fill, and the gap between them measured 0. Continue is now the only filled button (`#0064c8`). Not now is an outline on the white card. The row gap is 12px, and both targets are at least 44px. Cancel beside Create uses the same outline, with a 12px gap. `test/mobile/action-buttons.spec.mjs`.
+
+Before: `test/mobile/screenshots/after/iphone-se-appear-preview.png` (the preview, still with the paired purple actions).
+After: `test/mobile/screenshots/after/iphone-se-join-actions.png`.
+
+Design: one primary, one secondary, 12px of air, and the card matches the light meeting. What still fails a design pass is the host form: two long password essays before Create, so the first screen a volunteer sees after this step is still denser than the action. The 320px dock is still a 4px gap (Q10).
 
 ### Q9b. The join step now says how you will appear
 
