@@ -1336,9 +1336,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip .status { color: #e7ebf2; font-size: 1.25rem; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
     min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
-  .fitbtn { position: fixed; z-index: 6; top: calc(14px + 2.75rem + var(--inset-top, 0px)); right: calc(14px + var(--inset-right, 0px)); min-width: 32px; min-height: 32px;
-    border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
-    background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 14px/1.2 system-ui, sans-serif; }
+  .fitbtn { position: fixed; z-index: 6; top: calc(14px + 2.75rem + var(--inset-top, 0px)); right: calc(14px + var(--inset-right, 0px)); min-width: 2.75rem; min-height: 2.75rem;
+    border: 0; border-radius: 999px; padding: 0.35rem 0.75rem; cursor: pointer;
+    background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 1rem/1.2 system-ui, sans-serif; }
   body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: calc(14px + 2.75rem + var(--inset-top, 0px)); left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px)); }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
@@ -1464,6 +1464,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       left: 12px; right: auto; width: 134px; height: 179px; }
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="5"]) .tile.me {
       width: 138px; height: 182px; }
+  }
+  /* A rotated 320px phone at a 32px root cannot stack an 88px banner, the chip, and an 88px Fit above the dock. */
+  @media (max-height: 380px) {
+    .fitbtn { min-width: 44px; min-height: 44px; line-height: 1; padding: 6px 10px; }
+    body.broadcast { --banner-h: 44px; }
+    body.broadcast #livebadge { font-size: 1rem; line-height: 1; }
   }
   /* 320px and 360px phones cannot hold the 56px dock. Leave used to paint at
      x=374, past the right edge, so hang-up was a sliver. Shrink the dock and

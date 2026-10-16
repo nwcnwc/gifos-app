@@ -76,3 +76,35 @@ test('the broadcast state is a banner above the status sentence', async ({ page 
   expect(box.fitTop).toBeGreaterThanOrEqual(box.chipBottom - 1);
   expect(box.chipBottom).toBeLessThanOrEqual(box.vh);
 });
+
+test('a large root font on a short landscape broadcast keeps Fit above the dock', async ({ page }) => {
+  const vp = page.viewportSize();
+  await page.setViewportSize({ width: Math.max(vp.width, vp.height), height: Math.min(vp.width, vp.height) });
+  await page.addInitScript(({ room, av }) => {
+    localStorage.setItem('gifos_vadm_' + room + '.' + av, 'test-admin-key');
+  }, { room: ROOM, av: AV });
+  await page.goto(viewer, { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
+  const box = await page.evaluate(() => {
+    const fit = document.getElementById('fitbtn').getBoundingClientRect();
+    const bar = document.querySelector('.bar').getBoundingClientRect();
+    const chip = document.querySelector('.topchip').getBoundingClientRect();
+    const badge = document.getElementById('livebadge').getBoundingClientRect();
+    return {
+      fitTop: fit.top,
+      fitBottom: fit.bottom,
+      fitHeight: fit.height,
+      barTop: bar.top,
+      chipBottom: chip.bottom,
+      badgeTop: badge.top,
+      badgeHeight: badge.height,
+      vh: innerHeight,
+    };
+  });
+  expect(box.badgeTop).toBeGreaterThanOrEqual(0);
+  expect(box.badgeHeight).toBeGreaterThanOrEqual(44);
+  expect(box.fitTop).toBeGreaterThanOrEqual(box.chipBottom - 1);
+  expect(box.fitHeight).toBeGreaterThanOrEqual(44);
+  expect(box.fitBottom).toBeLessThanOrEqual(box.barTop + 1);
+  expect(box.fitBottom).toBeLessThanOrEqual(box.vh);
+});
