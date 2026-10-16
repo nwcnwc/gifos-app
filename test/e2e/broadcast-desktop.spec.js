@@ -326,6 +326,50 @@ test('guest moderation tools are in the keyboard tab order', async ({ page }) =>
   await expect(ban).toHaveText('Ban');
 });
 
+test('a family call and a church broadcast start from a plain lobby', async ({ page }) => {
+  async function cardFits(width, height) {
+    const card = await page.locator('.lobby-card').boundingBox();
+    expect(card.x).toBeGreaterThanOrEqual(-1);
+    expect(card.y).toBeGreaterThanOrEqual(-1);
+    expect(card.x + card.width).toBeLessThanOrEqual(width + 1);
+    expect(card.y + card.height).toBeLessThanOrEqual(height + 1);
+  }
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=family' + w);
+    await page.waitForSelector('#lobby.show');
+    await expect(page.locator('#lob-open')).toHaveText(/Start a call/);
+    await expect(page.locator('#lobby')).not.toContainText(/troublemaker|open room|admin/i);
+    await expect(page.locator('#lob-guest-pass')).toBeHidden();
+    const colors = await page.evaluate(() => {
+      const primary = getComputedStyle(document.getElementById('lob-open'));
+      const secondary = getComputedStyle(document.getElementById('lob-admin-btn'));
+      return { p: primary.backgroundColor, s: secondary.backgroundColor };
+    });
+    expect(colors.p).toBe('rgb(0, 100, 200)');
+    expect(colors.s).not.toBe(colors.p);
+    await cardFits(w, h);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/run.html?desk=church#bc=1');
+  await page.waitForSelector('#lobby.show h1');
+  await expect(page.locator('#lobby h1')).toHaveText('Broadcast');
+  await expect(page.locator('#lob-admin-btn')).toBeVisible();
+  await expect(page.locator('#lob-admin-btn')).toHaveText(/Go live/);
+  await expect(page.locator('#lob-open')).toBeHidden();
+  await expect(page.locator('#lob-guest-pass')).toBeHidden();
+  const liveBg = await page.locator('#lob-admin-btn').evaluate((el) => getComputedStyle(el).backgroundColor);
+  const watchBg = await page.locator('#lob-join-btn').evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(liveBg).toBe('rgb(0, 100, 200)');
+  expect(watchBg).not.toBe(liveBg);
+  await page.locator('#lob-admin-btn').click();
+  await expect(page.locator('#lob-admin-pass')).toBeVisible();
+  await expect(page.locator('#lob-guest-pass')).toBeHidden();
+  await page.locator('#lob-guest-more').click();
+  await expect(page.locator('#lob-guest-pass')).toBeVisible();
+  await cardFits(1280, 720);
+});
+
 test('chat composer stays clear of the dock after a live resize to 900px', async ({ page }) => {
   await openChat(page, 1920, 1080);
   await page.setViewportSize({ width: 1280, height: 720 });

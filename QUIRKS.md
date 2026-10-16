@@ -58,13 +58,15 @@ A guest tile is now in the tab order (`tabindex="0"`, named “Jordan Lee. Guest
 
 A broadcast still hides the gallery, so this bar is the meeting surface. It is not painted on the stage.
 
+### Q9. Lobby copy was one voice, and the password essay came first
+
+A meeting lobby’s blue button is **Start a call** (“Anyone with the link can join”). **Host this call** is an outline button. The guest password stays hidden until “Add a password for guests”. A broadcast lobby’s blue button is **Go live**; the viewer password stays hidden until “Add a password for viewers”. The card stays inside 1280, 1920, and 900. The words “troublemaker”, “open room”, and “admin” are gone from the lobby. Before: `test/e2e/artifacts/lobby-simple-before.png`, `lobby-family-before.png`. After: `lobby-family-after.png`, `lobby-simple-after.png`, `lobby-golive-after.png`.
+
 ## Open
 
-### Q9. Lobby copy is one voice for three audiences
+### Q13. The screen-name step skips a saved name and has no preview
 
-Broadcast lobby (1280 and 1920, card on screen; pixels confirm a white card on the right at 1920): “Start broadcasting” is clear. The second step is still “Host password — yours alone — do not share it” plus an optional viewer password. That is correct for a locked corporate webinar and heavy for a family hangout or a volunteer starting a Sunday stream. Screenshots: `test/e2e/artifacts/lobby-broadcast-1280.png`, `test/e2e/artifacts/lobby-broadcast-1920.png`.
-
-Password-label contrast on the white card measured **16.8:1** (head) and **5.1:1** (note). Not a contrast bug.
+`ensureName()` returns immediately when a GifOS name is already stored. When it does show, the field is empty, there is no avatar, and Continue and Not now share the same blue fill. Nathan’s note: prefill the system display name and avatar, show “This is how you'll appear”, and let the person change it before joining, with one primary button and a distinct secondary.
 
 ## How a session was opened without a relay
 
