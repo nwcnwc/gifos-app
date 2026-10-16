@@ -3,16 +3,14 @@ import { test, expect } from '@playwright/test';
 const AV = '0123456789abcdef0123456789abcdef';
 const VIEW = '/run.html#v=sundayservice&av=' + AV + '&bc=1';
 
-test('a church viewer is told they are watching, not appearing on camera', async ({ page }) => {
+test('a church viewer goes straight to the service', async ({ page }) => {
   await page.goto(VIEW, { waitUntil: 'domcontentloaded' });
-  await page.locator('#nm-lead').waitFor({ state: 'visible' });
-  await expect(page.locator('#nm-lead')).toHaveText('You stay off camera. A name shows only if you chat.');
-  await expect(page.locator('.appear-box h3')).toHaveText('Watching the service');
-  await expect(page.locator('#nm-cam-btn')).toBeHidden();
-  await expect(page.locator('#nmcancel')).toHaveText('Clear');
-  await expect(page.locator('#nmok')).toHaveText('Save');
+  await page.locator('body.broadcast.notadmin').waitFor();
+  await expect(page.locator('.appear-box')).toHaveCount(0);
   await expect(page.locator('#leavebtn')).toHaveAttribute('aria-label', 'Stop watching');
   await expect(page.locator('#bc-link')).toBeHidden();
+  await expect(page.locator('#cam')).toBeHidden();
+  await expect(page.locator('#livebadge')).toBeVisible();
 });
 
 test('a broadcast host lands on the stream without another sheet', async ({ page }) => {

@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q42. A church viewer still stopped to give a name
+
+Opening a service showed Watching the service, a name, and Save. The name is already seeded for the knock, and Settings still holds it, so that step is gone. A viewer lands on the service. Stop watching stays the leave control. The camera stays off. A meeting still gets the appearance step. `test/mobile/viewer-join.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-viewer-straight.png`.
+
+Design: the service is the screen. Church stays at 4. A desk still mints a host key.
+
 ### Q41. Go live left the camera off
 
 A stream host landed off air and had to tap the camera. Go live now turns the camera on. The mic stays quiet. A reload that already chose keeps that choice. A meeting still joins with the camera off. The friend link becomes a row above the dock, y=422 to y=486 on an iPhone SE, so the picture stays the stage. Blur stays on the video. There is no separate picture laid over it. `test/mobile/viewer-join.spec.mjs`.
