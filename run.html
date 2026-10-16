@@ -11637,7 +11637,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // down, and a deeper seat would crop them with the old order.
         const stripReorder = m.key === 'sgs' && !!prevAnn && !annNew
           && ((prevAnn.ids || []).join(',') !== (annIds || []).join(',') || prevAnn.n !== m.n || prevAnn.cols !== m.cols);
-        mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), ids: annIds, at: Date.now() });
+        mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, at: Date.now() });
         if (annNew || stripReorder) schedReconcile(); else schedClaim();
       } else if (m.k === 'mx-end' && typeof m.key === 'string') {
         mosAnn.delete(p.id + '|' + m.key);
@@ -14038,7 +14038,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the row+column fabric, two link-disjoint paths. Structural relay slots
     // (sub/x1/x2) keep the plain single sticky claim.
     const isRedun = (rk) => rk === 'sdm' || rk === 'sdx' || rk === 'sdn' || rk === 'sgs' || rk.indexOf('stg:') === 0 || rk.indexOf('sdrow:') === 0;
-    const annMeta = (ann) => ({ col: ann.col, row: ann.row, n: ann.n, cols: ann.cols, mt: ann.mt, h: ann.h, ids: ann.ids, ao: ann.ao, sb: ann.sb });
+    const annMeta = (ann) => ({ col: ann.col, row: ann.row, n: ann.n, cols: ann.cols, mt: ann.mt, h: ann.h, ids: ann.ids, ao: ann.ao, sb: ann.sb, vp: ann.vp });
     // The strip's CELL ORDER (STAGE-FACES): who sits in cell 0..n-1, as the
     // compositing seat packed it. At most C peer ids, each a short string;
     // anything else is dropped, and a receiver without it falls back to the
@@ -14069,6 +14069,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // ~10 s into a stationary stage (e2e-stage-onerow, 4 Oct 2026). One rank
     // per holder, whichever of its two paths it holds: no second hop of churn.
     const stgHop = (f) => ((f && f.meta && typeof f.meta.h === 'number') ? f.meta.h : 998) + 1 + ((f && f.meta && f.meta.sb === 1) ? 1 : 0);
+    // A RELAYED STAGE FEED NAMES THE SEATS IT CAME THROUGH (vp). The Section 1
+    // flood re-ships every held stg feed to every row and column mate,
+    // including the one it came from, so two or three mates can end up taking
+    // the feed from each other — a ring with no seat still fed by the stager.
+    // A ring keeps re-sending whatever it held when it closed: the stager's
+    // voice from before they muted, played to the whole room while their tile
+    // says muted. So each relay announces the path its copy took (its own
+    // claim's path plus itself), and a seat never takes a copy whose path
+    // already holds it: that copy depends on this seat. Bounded: the last
+    // STG_VP_MAX seats, short ids; a longer loop still escapes on the hop
+    // count. A copy with no path (an older client) is judged as before.
+    const STG_VP_MAX = 12;
+    const vpId = (pid) => String(pid || '').slice(0, 10);
+    const stgPath = (f) => ((f && f.meta && Array.isArray(f.meta.vp)) ? f.meta.vp : []).concat(vpId(myId)).slice(-STG_VP_MAX);
+    const stgLoopsBack = (key, ann) => typeof key === 'string' && key.indexOf('stg:') === 0 && !!ann && Array.isArray(ann.vp) && ann.vp.indexOf(vpId(myId)) >= 0;
+    const mxPath = (v) => (Array.isArray(v) && v.length <= STG_VP_MAX && v.every((x) => typeof x === 'string' && x.length <= 10)) ? v.slice() : undefined;
     // Send a want/idle demand to a redundant feed's announcer, debounced so the
     // message only rides the DC on a state flip — but RE-ASSERTED every few
     // seconds even without one: a demand that raced a closed DC or a transport
@@ -14139,6 +14155,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // object identity names ONE pipe. A rebuilt transport simply misses the
     // lookup and skips — the rebuilt pipe re-baselines when it flows again.
     let dogBusy = false;
+    async function sampleStandby(rk, fb) {
+      if (fb.dark || fb.wakeAt) {
+        const std = mosStandby.get(rk);
+        const s = std ? await pipeBytes(std) : -1;
+        if (s !== -1 && s.d >= 0) {
+          // First post-wake sample IS the baseline; a sample BELOW the
+          // baseline means the standby's receiver was renegotiated and its
+          // counters restarted — re-baseline, or the advance test can
+          // never pass and the dark swap wedges (seen live: d0=16, fdec=13).
+          if (fb.d0 === -1 || s.d < fb.d0) { fb.d0 = s.d; fb.b0 = s.b; }
+          fb.stdFdec = s.d; fb.stdB = s.b;
+        }
+      } else if (fb.d0 !== -1 || fb.stdFdec !== -1) { fb.d0 = -1; fb.stdFdec = -1; fb.stdB = -1; }
+    }
     async function mosWatchdog() {
       if (dogBusy) return; // single flight — stats are async, the loop must not stack
       dogBusy = true;
@@ -14164,7 +14194,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // for audio (inbound AUDIO bytes here, and the same in claimRedun's
           // `flowing` test, which today counts decoded video frames) is the
           // follow-up that would restore it.
-          if (pri.stream && !pri.stream.getVideoTracks().length) continue;
+          // The STANDBY is still sampled during a wake or failback: that
+          // sample is the flow evidence claimRedun's swap waits for, and
+          // without it a voice-only slot could never leave its primary — not
+          // even for the stager's own copy when the primary is a relay ring
+          // that no longer reaches the stager (its muted voice kept playing).
+          if (pri.stream && !pri.stream.getVideoTracks().length) { await sampleStandby(rk, fb); continue; }
           const bytes = await pipeBytes(pri);
           // Forensics ring (frza17: a husk claim's standby was never woken and
           // no theory survived — record what each sample actually SAW). Widened
@@ -14282,18 +14317,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // the strict "demonstrably FLOWS" evidence a dark-initiated swap
           // requires. v1's re-park break lived here: the videoWidth>0 swap
           // fallback read a camOff standby's STALE last frame as flowing.
-          if (fb.dark || fb.wakeAt) {
-            const std = mosStandby.get(rk);
-            const s = std ? await pipeBytes(std) : -1;
-            if (s !== -1 && s.d >= 0) {
-              // First post-wake sample IS the baseline; a sample BELOW the
-              // baseline means the standby's receiver was renegotiated and its
-              // counters restarted — re-baseline, or the advance test can
-              // never pass and the dark swap wedges (seen live: d0=16, fdec=13).
-              if (fb.d0 === -1 || s.d < fb.d0) { fb.d0 = s.d; fb.b0 = s.b; }
-              fb.stdFdec = s.d; fb.stdB = s.b;
-            }
-          } else if (fb.d0 !== -1 || fb.stdFdec !== -1) { fb.d0 = -1; fb.stdFdec = -1; fb.stdB = -1; }
+          await sampleStandby(rk, fb);
         }
         // ADAPTIVE CADENCE (2026-07-30 power work). This loop was a flat
         // 300ms getStats() sweep, forever, on every device — 3.3 wakeups/sec
@@ -14322,13 +14346,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       dogT = setTimeout(mosWatchdog, dogEvery);
     }
     let dogEvery = 300;
-    // One pipe's inbound video counters, by receiver-track OBJECT identity.
-    // Returns -1 when the pipe has no video receiver (audio-only, forming, or
-    // a rebuilt transport whose receivers no longer carry this track).
+    // One pipe's inbound counters, by receiver-track OBJECT identity: video
+    // (bytes, framesDecoded) for a feed that has video, audio (bytes,
+    // packetsReceived) for a voice-only feed. Returns -1 when the pipe has no
+    // receiver for that track (forming, or a rebuilt transport whose
+    // receivers no longer carry it).
     async function pipeBytes(ent) {
       try {
         const p = peers.get(ent.via); if (!p || !p.pc || !ent.stream) return -1;
-        const vt = ent.stream.getVideoTracks()[0]; if (!vt) return -1;
+        const vt = ent.stream.getVideoTracks()[0];
+        if (!vt) return pipeAudioBytes(p, ent.stream.getAudioTracks()[0]);
         const rcv = p.pc.getReceivers().find((r) => r.track === vt); if (!rcv) return -1;
         const rep = await rcv.getStats();
         // A receiver with NO inbound-rtp row yet has received NOTHING — that
@@ -14340,6 +14367,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // standby that was never woken).
         let out = { b: 0, d: 0 };
         rep.forEach((s) => { if (s.type === 'inbound-rtp' && s.kind === 'video') out = { b: s.bytesReceived || 0, d: s.framesDecoded || 0 }; });
+        return out;
+      } catch (e) { return -1; }
+    }
+    // A voice-only feed's pipe: packets received stand in for decoded frames.
+    // A muted stager still sends (silence frames), so a live voice pipe always
+    // advances.
+    async function pipeAudioBytes(p, at) {
+      try {
+        if (!at) return -1;
+        const rcv = p.pc.getReceivers().find((r) => r.track === at); if (!rcv) return -1;
+        const rep = await rcv.getStats();
+        let out = { b: 0, d: 0 };
+        rep.forEach((s) => { if (s.type === 'inbound-rtp' && s.kind === 'audio') out = { b: s.bytesReceived || 0, d: s.packetsReceived || 0 }; });
         return out;
       } catch (e) { return -1; }
     }
@@ -14508,7 +14548,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const a of arr) {
         const p = peers.get(a.from);
         const st = (p && p.incoming) ? p.incoming.find((s) => s.id === a.ann.streamId && s.id !== p.ownSid) : null;
-        cand.push({ from: a.from, key: a.key, sid: a.ann.streamId, ann: a.ann, st, live: !!st });
+        cand.push({ from: a.from, key: a.key, sid: a.ann.streamId, ann: a.ann, st, live: !!st && !stgLoopsBack(rk, a.ann) });
       }
       const inCand = (e) => e && cand.some((x) => x.from === e.via && x.sid === e.streamId && x.live);
       const mkEnt = (pick) => ({ via: pick.from, key: pick.key, streamId: pick.sid, stream: pick.st, el: mosVideo(pick.st), meta: annMeta(pick.ann), deadAt: 0 });
@@ -14586,7 +14626,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // tore the audio-only stg claim in the gate. The husk-promotion case
         // it targeted (redun hunt hr2) belongs to the SENDER-side container-
         // identity campaign; see known-unfixed.sh FAILOVER-WAKE.)
-        const flowing = (fb.dark && priLive)
+        // A VOICE-ONLY standby has no frames to count: its evidence is the
+        // audio packets the watchdog sampled since the wake. Without it a
+        // camera-off stager's slot never swapped at all — a primary that had
+        // become a relay ring (members re-flooding the feed to each other,
+        // none still fed by the stager) stayed claimed for good, and the
+        // ring kept replaying the stager's voice after they muted.
+        const voiceOnly = !!(std.stream && !std.stream.getVideoTracks().length);
+        const flowing = (voiceOnly || (fb.dark && priLive))
           ? (fb.d0 >= 0 && fb.stdFdec > fb.d0)
           : (frames(std.el) > fb.f0 || (std.el && std.el.videoWidth > 0 && now - fb.wakeAt > 1500));
         // A dead-or-dark primary swaps the moment the standby flows; a live one
@@ -15338,10 +15385,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // ao: the held copy is an audio-only down copy (stgDownMeta). It came
         // from above and has no face, so it goes down only; up or across it
         // would become a Section 1 standby that fails over to no picture.
-        const relayStg = (key, stream, via, h, ao) => {
+        const relayStg = (key, stream, via, h, ao, vp) => {
           const owner = key.indexOf('stg:') === 0 ? key.slice(4).split('^')[0] : null;
           const skip = (t) => !t || t === via || (owner && t === owner);
-          const hm = { h }; // hop count from the producer — claims prefer min-h (see prefCand)
+          const hm = vp ? { h, vp } : { h }; // hop count from the producer — claims prefer min-h (see prefCand); vp: the seats this copy came through
           if (!ao && upTgt && !skip(upTgt)) { const jk = shipMos(key, upTgt, stream, hm, key); if (jk) wanted.add(jk); }
           if (!ao && xUpPid && xUpPid !== upTgt && !skip(xUpPid)) { const jk = shipMos(key + '^x', xUpPid, stream, hm, key); if (jk) wanted.add(jk); }
           // and DOWN: the strip is video-only — the per-stager feeds must
@@ -15353,7 +15400,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         };
         if (amStager) { const st = mySelfStream(); if (st) relayStg('stg:' + myId, st, null, 0); }
-        for (const k of heldStg) { const f = mosIn.get(k); relayStg(k, f.stream, f.via, stgHop(f), !!(f.meta && f.meta.ao)); }
+        for (const k of heldStg) { const f = mosIn.get(k); relayStg(k, f.stream, f.via, stgHop(f), !!(f.meta && f.meta.ao), stgPath(f)); }
         if (iAmHead) for (const k of heldStg) { // my row folds at its ears too
           const f = mosIn.get(k);
           const owner = k.slice(4).split('^')[0];
@@ -15362,7 +15409,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (!mate || mate === f.via || mate === owner) continue; // never back to the sender, never to the stager itself
             const earSt = stgDownShip(k, f.stream, sharingScreen(owner), stgAudioMemo);
             if (!earSt) continue;
-            const jm = shipMos(k, mate, earSt, stgDownMeta({ h: stgHop(f) }, earSt, f.stream), k); if (jm) wanted.add(jm);
+            const jm = shipMos(k, mate, earSt, stgDownMeta({ h: stgHop(f), vp: stgPath(f) }, earSt, f.stream), k); if (jm) wanted.add(jm);
           }
         }
       } else {
@@ -15383,11 +15430,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Skipping it silently deleted the stage lane's redundancy, and
         // redun-drill caught it as "no receiver holding a relayed stg primary
         // + standby".
-        const floodOne = (key, stream, via, h) => {
+        const floodOne = (key, stream, via, h, vp) => {
           if (!stream || flooded.has(stream.id)) return; flooded.add(stream.id);
           const owner = key.indexOf('stg:') === 0 ? key.slice(4).split('^')[0] : null;
           const skip = (t) => !t || (owner && t === owner);
-          const hm = { h }; // hop count from the producer — claims prefer min-h (see prefCand)
+          const hm = vp ? { h, vp } : { h }; // hop count from the producer — claims prefer min-h (see prefCand); vp: the seats this copy came through
           // My OWN feed: two neighbours watch it directly, the rest get an
           // sb:1 copy they keep parked (STG-DIRECT).
           const direct = owner === myId ? stgDirectSet(T.rowMates(c).map((m) => occPid(m)), T.colMates(c).map((m) => occPid(m)),
@@ -15401,7 +15448,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         };
         if (amStager) { const st = mySelfStream(); if (st) floodOne('stg:' + myId, st, null, 0); }
-        for (const k of heldStg) { const hf = mosIn.get(k); floodOne(k, hf.stream, hf.via, stgHop(hf)); }
+        for (const k of heldStg) { const hf = mosIn.get(k); floodOne(k, hf.stream, hf.via, stgHop(hf), stgPath(hf)); }
         // composite the strip in stage order; fan 'sgs' down my subtree
         const selfSt = soloSelf ? selfStageStream() : null;
         if (!stagers.length) { paintStageStrip(null); }
@@ -16936,7 +16983,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const [tid, si] of stgTracks) if (si.via === pid) stgOn[tid] = Math.max(0, Math.round(stageT - stgIncurred(si) - GRID.JB_BASE));
         const stgSig = JSON.stringify(stgOn);
         const was = prevGrid.get(pid);
-        if (was && was.set && was.bus === bus && was.jbt === jbt && was.stgSig === stgSig) { gridApplied.set(pid, was); continue; }
+        // The skipped link still reports THIS tick's stage target: a link
+        // that carries no stage track keeps its bus and jbt when my stage
+        // path changes, and used to report the old target from then on.
+        if (was && was.set && was.bus === bus && was.jbt === jbt && was.stgSig === stgSig) { was.stageT = stageT; gridApplied.set(pid, was); continue; }
         let set = false;
         try {
           for (const r of p.pc.getReceivers()) {
@@ -21397,7 +21447,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const want = String(v && v.streamId).slice(0, 8);
           return { key, from: from.slice(0, 8), want,
             peer: !!p, conn: !!(p && p.connected), own: String(p && p.ownSid).slice(0, 8),
-            incoming: inc,
+            incoming: inc, h: v ? v.h : undefined, sb: v ? v.sb : undefined, vp: v ? v.vp : undefined, at: v ? v.at : undefined,
             live: !!(p && p.incoming && p.incoming.find((s) => s.id === (v && v.streamId) && s.id !== p.ownSid)) };
         }),
         standbyVia: [...mosStandby.entries()].map(([rk, c]) => ({ rk, via: c.via, sid: c.streamId })),
