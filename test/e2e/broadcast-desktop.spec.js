@@ -209,6 +209,38 @@ test('invite is one tap on the dock, not inside More', async ({ page }) => {
   await expect(page.locator('#inv-modal h3')).toHaveText('Share this broadcast');
 });
 
+test('reactions are emoji under a smiley, and the sparkle stays off this control', async ({ page }) => {
+  await bootSession(page, 1280, 720);
+  const btn = page.locator('#reactbtn');
+  await expect(btn.locator('.dockface')).toHaveText('😊');
+  await expect(btn.locator('.docklab')).toHaveText('React');
+  const glyph = await btn.innerText();
+  expect(glyph).not.toMatch(/[✨✦✧⭐]/);
+  await expect(btn.locator('svg')).toHaveCount(0);
+  const lab = await btn.locator('.docklab').boundingBox();
+  const box = await btn.boundingBox();
+  expect(lab.y + lab.height).toBeLessThanOrEqual(box.y + box.height + 1);
+  await btn.click();
+  const tray = page.locator('#reacttray');
+  await expect(tray).toBeVisible();
+  const rows = await tray.locator('button').evaluateAll((els) => els.map((el) => ({
+    text: (el.textContent || '').trim(),
+    aria: el.getAttribute('aria-label') || '',
+    burst: el.getAttribute('data-burst') || '',
+  })));
+  expect(rows.map((r) => r.text)).toEqual(['✋', '👏', '👍', '👎', '😂']);
+  expect(rows.map((r) => r.aria)).toEqual(['Raise hand', 'Clap', 'Yes', 'No', 'Laugh']);
+  expect(rows.map((r) => r.burst).filter(Boolean)).toEqual(['👏', '👍', '👎', '😂']);
+  expect(rows.map((r) => r.text).join('')).not.toMatch(/[✨✦✧⭐]/);
+  await page.evaluate(() => {
+    const tile = document.createElement('div');
+    tile.className = 'tile me';
+    document.getElementById('grid').appendChild(tile);
+  });
+  await tray.locator('button[aria-label="Clap"]').click();
+  await expect(page.locator('.tile.me .reactburst')).toHaveText('👏');
+});
+
 test('chat composer stays clear of the dock after a live resize to 900px', async ({ page }) => {
   await openChat(page, 1920, 1080);
   await page.setViewportSize({ width: 1280, height: 720 });

@@ -1308,6 +1308,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     font-size: 11px; font-weight: 700; line-height: 1; letter-spacing: 0;
   }
   .bar .docklab { display: block; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
+  .bar #reactbtn .dockface { font-size: 26px; line-height: 1; pointer-events: none; }
   /* Off is a filled red button, on is filled green — the same read as Zoom
      and Meet, not a small slash on a gray circle. */
   .bar #mic.iconbtn:not(.off), .bar #cam.iconbtn:not(.off) { background: #146c36; color: #fff; }
@@ -1340,10 +1341,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     box-shadow: 0 10px 28px rgba(0,0,0,.25); }
   .reacttray[hidden] { display: none !important; }
   .reacttray button { min-width: 68px; min-height: 68px; border: 0; border-radius: 16px; background: #e8ecf1; color: #1d1d1f;
-    font-size: 18px; font-weight: 650; padding: 6px; }
+    font-size: 30px; font-weight: 650; padding: 6px; line-height: 1; }
   .reacttray button.on { background: #0064c8; color: #fff; }
   .tile .reactburst { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 5;
-    background: #fff; color: #1d1d1f; font-weight: 800; font-size: 18px; padding: 8px 14px; border-radius: 999px;
+    background: #fff; color: #1d1d1f; font-weight: 800; font-size: 32px; line-height: 1; padding: 8px 12px; border-radius: 999px;
     pointer-events: none; opacity: 0; }
   .tile .reactburst.show { animation: reactpop 1.6s ease forwards; }
   @keyframes reactpop { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
@@ -1393,7 +1394,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #chatpanel { padding-bottom: 112px; } /* dock is 88px tall under 700px */
     .bar:not(.collapsed) .barmore > button { min-height: 56px; font-size: 16px; }
     .reacttray { bottom: 102px; }
-    .reacttray button { min-width: 56px; min-height: 56px; font-size: 16px; }
+    .reacttray button { min-width: 56px; min-height: 56px; font-size: 26px; }
+    .bar #reactbtn .dockface { font-size: 22px; }
     #leave-ask .name-box h3 { font-size: 1.35rem; }
     #leave-ask #leave-cancel, #leave-ask #leave-go { min-height: 56px; font-size: 1.05rem; }
     .tile .name { font-size: 1rem; }
@@ -1559,7 +1561,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span class="docklab">Unmute</span>
     </button>
     <button id="reactbtn" type="button" class="iconbtn" aria-label="Reactions" aria-expanded="false" aria-pressed="false" title="Reactions">
-      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1.1 1.4 2.4 2 4 2s2.9-.6 4-2"/><circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none"/></svg>
+      <span class="dockface" aria-hidden="true">😊</span>
       <span class="docklab">React</span>
     </button>
     <button id="invite" type="button" class="iconbtn" aria-label="Invite" title="Friends join you live with one link">
@@ -1612,11 +1614,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="helpbtn" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
     </div>
     <div id="reacttray" class="reacttray" hidden role="group" aria-label="Reactions">
-      <button type="button" id="react-hand">Hand</button>
-      <button type="button" data-burst="Clap">Clap</button>
-      <button type="button" data-burst="Yes">Yes</button>
-      <button type="button" data-burst="No">No</button>
-      <button type="button" data-burst="Laugh">Laugh</button>
+      <button type="button" id="react-hand" aria-label="Raise hand">✋</button>
+      <button type="button" data-burst="👏" aria-label="Clap">👏</button>
+      <button type="button" data-burst="👍" aria-label="Yes">👍</button>
+      <button type="button" data-burst="👎" aria-label="No">👎</button>
+      <button type="button" data-burst="😂" aria-label="Laugh">😂</button>
     </div>
   </div>
   <div class="share" id="share">
@@ -17178,7 +17180,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       handBtn.textContent = myStatus.hand ? 'Lower hand' : 'Hand';
       const rh = document.getElementById('react-hand');
       if (rh) {
-        rh.textContent = myStatus.hand ? 'Lower hand' : 'Hand';
+        rh.textContent = '✋';
+        rh.setAttribute('aria-label', myStatus.hand ? 'Lower hand' : 'Raise hand');
         rh.classList.toggle('on', !!myStatus.hand);
         rh.setAttribute('aria-pressed', myStatus.hand ? 'true' : 'false');
       }
