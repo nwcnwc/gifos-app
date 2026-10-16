@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q32. A rotated dock painted solid discs on the picture
+
+The frosted pill still carried grey circles, so each control hid a 44px patch of the face. On a short landscape those circles are gone. Camera, flip, mic, reactions, and More are 22px glyphs on the translucent pill, with the 44px target kept. Hang up stays the solid red control. The face is still y=59 to y=320 on an iPhone SE landscape. `test/mobile/landscape-stage.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-landscape-glyphs.png`.
+
+Design: the picture reads through the strip, and the only filled control is Hang up. Landscape stays at 4. The glyphs still sit in a 48px pill. Meet’s marks are smaller and its strip is thinner, so more of the face stays clear.
+
 ### Q31. Not now and Continue did not say how you join
 
 The join step is the same screen for a meeting and a broadcast. The outline button said Not now and the blue button said Continue. They now say Clear and Save. Clear empties the name field and the picture in the form and leaves the step open. Save closes it and keeps whatever the form is showing. Clearing and then saving joins with no stored name and no picture. Saving without clearing keeps Ada Lovelace and the picture. Save stays the only filled button (`#0064c8`). Clear stays the outline, 12px away, both at least 44px. `test/mobile/action-buttons.spec.mjs`.

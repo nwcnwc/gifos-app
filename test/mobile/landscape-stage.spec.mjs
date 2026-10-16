@@ -69,6 +69,10 @@ test('a rotated meeting is the face until you tap', async ({ page }) => {
     const hit = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
     const bg = getComputedStyle(barEl).backgroundColor;
     const alpha = bg.startsWith('rgba') ? parseFloat(bg.split(',')[3]) : 1;
+    const cam = document.getElementById('cam');
+    const camBg = getComputedStyle(cam).backgroundColor;
+    const camAlpha = camBg === 'transparent' ? 0 : (camBg.startsWith('rgba') ? parseFloat(camBg.split(',')[3]) : 1);
+    const leaveBg = getComputedStyle(leave).backgroundColor;
     return {
       meBottom: me.bottom,
       meH: me.height,
@@ -76,6 +80,9 @@ test('a rotated meeting is the face until you tap', async ({ page }) => {
       barTop: bar.top,
       barH: bar.height,
       barAlpha: alpha,
+      camAlpha,
+      camH: cam.getBoundingClientRect().height,
+      leaveBg,
       leaveH: r.height,
       hit: !!(hit && (hit.id === 'leavebtn' || leave.contains(hit))),
       vh: innerHeight,
@@ -83,6 +90,9 @@ test('a rotated meeting is the face until you tap', async ({ page }) => {
   });
   expect(shown.barH).toBeLessThanOrEqual(48);
   expect(shown.barAlpha).toBeLessThan(0.75);
+  expect(shown.camAlpha).toBeLessThan(0.05);
+  expect(shown.camH).toBeGreaterThanOrEqual(44);
+  expect(shown.leaveBg.replace(/\s/g, '')).toBe('rgb(182,22,34)');
   expect(shown.meBottom).toBeGreaterThanOrEqual(shown.vh - 2);
   expect(shown.meH).toBeGreaterThanOrEqual(shown.vh * 0.55);
   expect(Math.min(shown.meW, shown.meH)).toBeGreaterThanOrEqual(120);
