@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q29. The dock on a rotated picture was a solid white slab
+
+The 48px pill was `rgba(255,255,255,.94)`, so the strip hid the picture it sat on. It is now `rgba(255,255,255,.58)` with a 16px blur. The face is still y=59 to y=320 on an iPhone SE landscape, and the pill is still y=258 to y=306. The round controls stay solid, so a chin behind a button is still covered. `test/mobile/landscape-stage.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-landscape-glass.png`.
+
+Design: the gaps in the pill show the picture, and Hang up stays a solid red. Landscape stays at 4. The controls are still solid discs. Meet draws smaller glyphs on its strip, so more of the face stays readable.
+
 ### Q28. A rotated call still gave up a band when the controls came back
 
 A tap used to lift the face so a 56px dock could sit under it. The face now stays put, from just under the title chip to the bottom of the phone. On an iPhone SE landscape the chip is y=14 to y=53 and the face is y=59 to y=320, 560×261. The dock is a 48px pill, y=258 to y=306, laid on that picture. Camera and Hang up stay 44px. A 32px root does not grow this row. The short side of the face stays well above 120px. `test/mobile/landscape-stage.spec.mjs`.

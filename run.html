@@ -1485,7 +1485,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.chrome-away .admcount { opacity: 0; pointer-events: none; }
   /* A rotated phone is short. The dock is a thin pill on the picture. */
   @media (max-height: 420px) {
-    .bar { height: 48px; min-height: 0; flex-wrap: nowrap; }
+    .bar { height: 48px; min-height: 0; flex-wrap: nowrap;
+      background: rgba(255,255,255,.58); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 8px 22px rgba(0,0,0,.22); }
     .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle,
     body.has-flip .bar #cam, body.has-flip .bar #flipcam, body.has-flip .bar #mic,
     body.has-flip .bar #reactbtn, body.has-flip .bar #bartoggle {

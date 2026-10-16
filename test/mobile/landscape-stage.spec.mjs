@@ -62,22 +62,27 @@ test('a rotated meeting is the face until you tap', async ({ page }) => {
   await page.waitForFunction(() => !document.body.classList.contains('chrome-away'));
   const shown = await page.evaluate(() => {
     const me = document.querySelector('.tile.me').getBoundingClientRect();
-    const bar = document.querySelector('.bar').getBoundingClientRect();
+    const barEl = document.querySelector('.bar');
+    const bar = barEl.getBoundingClientRect();
     const leave = document.getElementById('leavebtn');
     const r = leave.getBoundingClientRect();
     const hit = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
+    const bg = getComputedStyle(barEl).backgroundColor;
+    const alpha = bg.startsWith('rgba') ? parseFloat(bg.split(',')[3]) : 1;
     return {
       meBottom: me.bottom,
       meH: me.height,
       meW: me.width,
       barTop: bar.top,
       barH: bar.height,
+      barAlpha: alpha,
       leaveH: r.height,
       hit: !!(hit && (hit.id === 'leavebtn' || leave.contains(hit))),
       vh: innerHeight,
     };
   });
   expect(shown.barH).toBeLessThanOrEqual(48);
+  expect(shown.barAlpha).toBeLessThan(0.75);
   expect(shown.meBottom).toBeGreaterThanOrEqual(shown.vh - 2);
   expect(shown.meH).toBeGreaterThanOrEqual(shown.vh * 0.55);
   expect(Math.min(shown.meW, shown.meH)).toBeGreaterThanOrEqual(120);
