@@ -58,6 +58,83 @@
     if (src && src.classList) src.classList.remove('stad-src');
   }
 
+  // Dark enough that white (#fff) initials clear WCAG AA (4.5:1) on both
+  // stops. The index is a hash of the stable id, so one person keeps one
+  // color across reloads and devices.
+  const SHADES = [
+    ['#3b4d78', '#243252'],
+    ['#4c3d72', '#2e2448'],
+    ['#2c5a46', '#1a382c'],
+    ['#6b4532', '#3e281c'],
+    ['#2c4e5c', '#1a323c'],
+    ['#6a3848', '#3e222c'],
+    ['#4a4a30', '#2e2e1c'],
+    ['#3a4564', '#242c42'],
+    ['#523a5c', '#322438'],
+    ['#345248', '#1e322c'],
+    ['#5c4036', '#38261e'],
+    ['#32485e', '#1e2e3c'],
+  ];
+  function shadeIndex(id) {
+    const s = String(id || '');
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0) % SHADES.length;
+  }
+  function sharesEdge(a, b) {
+    const eps = 1.5;
+    const ax2 = a.x + a.w, ay2 = a.y + a.h, bx2 = b.x + b.w, by2 = b.y + b.h;
+    const vert = Math.abs(ax2 - b.x) <= eps || Math.abs(bx2 - a.x) <= eps;
+    const horiz = Math.abs(ay2 - b.y) <= eps || Math.abs(by2 - a.y) <= eps;
+    const yOverlap = Math.min(ay2, by2) - Math.max(a.y, b.y) > eps;
+    const xOverlap = Math.min(ax2, bx2) - Math.max(a.x, b.x) > eps;
+    return (vert && yOverlap) || (horiz && xOverlap);
+  }
+  // Reading order, then bump only a tile that would match a neighbor already
+  // placed. The same people in the same seats keep the same colors.
+  let shadePlan = null;
+  function assignShades(items) {
+    const list = (items || []).map((it, n) => ({
+      id: String(it.id || ''), x: +it.x || 0, y: +it.y || 0, w: +it.w || 0, h: +it.h || 0, n: n,
+    }));
+    list.sort((p, q) => (p.y - q.y) || (p.x - q.x) || (p.n - q.n));
+    const assigned = new Array(list.length);
+    for (let i = 0; i < list.length; i++) {
+      let k = shadeIndex(list[i].id);
+      const neighbors = [];
+      for (let j = 0; j < i; j++) if (sharesEdge(list[i], list[j])) neighbors.push(assigned[j]);
+      let guard = 0;
+      while (neighbors.indexOf(k) >= 0 && guard < SHADES.length) { k = (k + 1) % SHADES.length; guard++; }
+      assigned[i] = k;
+    }
+    const out = {};
+    for (let i = 0; i < list.length; i++) {
+      const k = assigned[i];
+      out[list[i].id] = { a: SHADES[k][0], b: SHADES[k][1], i: k };
+    }
+    return out;
+  }
+  function planShades(items) {
+    shadePlan = assignShades(items);
+    return shadePlan;
+  }
+  function shadeFor(id) {
+    const key = String(id || '');
+    if (shadePlan && shadePlan[key]) return shadePlan[key];
+    const i = shadeIndex(key);
+    return { a: SHADES[i][0], b: SHADES[i][1], i: i };
+  }
+  function paintShade(el, id) {
+    const s = shadeFor(id);
+    if (!el || !el.style || !el.style.setProperty) return s;
+    el.style.setProperty('--tile-shade', s.a);
+    el.style.setProperty('--tile-shade-2', s.b);
+    return s;
+  }
+
   function avatarUrl(st, peer) {
     const cands = [];
     st = st || {};
@@ -81,16 +158,25 @@
 
   function paintAvatar(el, url, initials) {
     if (!el) return;
+    const grad = 'linear-gradient(160deg, var(--tile-shade, #3b4d78), var(--tile-shade-2, #243252))';
+    if (initials) el.dataset.initials = initials;
     if (url) {
       const safe = String(url).replace(/["\\\n\r]/g, '');
-      el.style.backgroundImage = 'url("' + safe + '")';
-      el.style.backgroundSize = 'cover';
-      el.style.backgroundPosition = 'center 40%';
+      // The photo sits in the middle. The shade stays visible around it.
+      el.style.backgroundImage = 'url("' + safe + '"), ' + grad;
+      el.style.backgroundSize = 'auto 46%, cover';
+      el.style.backgroundRepeat = 'no-repeat, no-repeat';
+      el.style.backgroundPosition = 'center, center';
       el.classList.add('has-img');
+      el.textContent = '';
     } else {
-      el.style.backgroundImage = '';
+      el.style.backgroundImage = grad;
+      el.style.backgroundSize = 'cover';
+      el.style.backgroundRepeat = 'no-repeat';
+      el.style.backgroundPosition = 'center';
       el.classList.remove('has-img');
-      if (initials) el.textContent = initials;
+      const ch = initials || (el.dataset && el.dataset.initials) || '';
+      if (ch) el.textContent = ch;
     }
   }
 
@@ -246,6 +332,7 @@
       tiles: tiles,
       box: box,
       phone: !!opts.phone,
+      swapSelf: !!opts.swapSelf,
     });
     const byId = {};
     for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
@@ -275,6 +362,21 @@
       used.push(t.el);
     }
     placeBand(feed, lay.band);
+    const shadeItems = [];
+    for (let i = 0; i < lay.rects.length; i++) {
+      const r = lay.rects[i];
+      if (!r || r.id === 'crowd') continue;
+      const t = byId[r.id];
+      if (!t) continue;
+      let sid = String(t.id || r.id);
+      if (t.me || sid === 'me') sid = opts.selfId || 'me';
+      else if (sid.indexOf('stad:') === 0) sid = sid.slice(5);
+      shadeItems.push({ id: sid, x: r.x, y: r.y, w: r.w, h: r.h, el: t.el });
+    }
+    planShades(shadeItems);
+    for (let i = 0; i < shadeItems.length; i++) {
+      if (shadeItems[i].el) paintShade(shadeItems[i].el, shadeItems[i].id);
+    }
 
     const video = opts.video || null;
     const vw = video && video.videoWidth || 0;
@@ -307,11 +409,18 @@
         const sc = (bw > 0 ? bw : 100) / 100;
         applyCrop(v, { x: cell.x * sc, y: cell.y * sc, w: cell.w * sc, h: cell.h * sc });
         v.style.visibility = 'visible';
+        el.classList.remove('cam-off');
         if (av) av.style.display = 'none';
       } else if (v) {
         v.style.visibility = 'hidden';
         applyCrop(v, null);
-        if (av) { av.style.display = 'flex'; }
+        el.classList.add('cam-off');
+        paintShade(el, faces[j].id);
+        if (av) {
+          av.style.display = 'flex';
+          paintShade(av, faces[j].id);
+          paintAvatar(av, faces[j].avatar || '', faces[j].initials);
+        }
       }
     }
     if (holding && typeof opts.onSettle === 'function') {
@@ -427,6 +536,11 @@
     placeEl: placeEl,
     clearEl: clearEl,
     clearRoot: clearRoot,
+    shadeFor: shadeFor,
+    shadeIndex: shadeIndex,
+    assignShades: assignShades,
+    planShades: planShades,
+    paintShade: paintShade,
     avatarUrl: avatarUrl,
     paintAvatar: paintAvatar,
     apply: apply,

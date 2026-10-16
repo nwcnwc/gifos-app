@@ -87,8 +87,10 @@
   function orderTiles(tiles) {
     const indexed = (tiles || []).map((t, i) => ({ t: t, i: i }));
     indexed.sort((a, b) => {
-      const ra = a.t.me ? 0 : a.t.stage ? 1 : a.t.hand ? 2 : 3;
-      const rb = b.t.me ? 0 : b.t.stage ? 1 : b.t.hand ? 2 : 3;
+      // A bot is never "you", never a stager, and never the focused speaker.
+      const rank = (t) => t.bot ? 4 : t.me ? 0 : t.stage ? 1 : t.hand ? 2 : 3;
+      const ra = rank(a.t);
+      const rb = rank(b.t);
       if (ra !== rb) return ra - rb;
       const oa = ra === 1 ? (a.t.stageOrd || 0) : ra === 2 ? (a.t.handOrd || 0) : (a.t.ord || 0);
       const ob = rb === 1 ? (b.t.stageOrd || 0) : rb === 2 ? (b.t.handOrd || 0) : (b.t.ord || 0);
@@ -156,7 +158,9 @@
   function viewBox(vw, vh, opts) {
     opts = opts || {};
     const phone = opts.phone != null ? !!opts.phone : vw < 600;
-    const top = opts.top != null ? opts.top : (phone && opts.pill ? 92 : 52);
+    // 64 clears the header pill (it sits at y=14 and is about 40px tall) so
+    // the top row's chips are not drawn underneath it. The mode pill is taller.
+    const top = opts.top != null ? opts.top : (phone && opts.pill ? 92 : 64);
     const pad = phone ? 2 : 4;
     return {
       x: pad,
@@ -175,12 +179,29 @@
     const mode = modeIn === 'auto' ? 'gallery' : modeIn;
     const aMain = phone ? 3 / 4 : 16 / 10;
     const aSide = 4 / 3;
-    const tiles = orderTiles(opts.tiles || []);
+    const ordered = orderTiles(opts.tiles || []);
+    const bots = ordered.filter((t) => t.bot);
+    // Your own picture is a gallery tile on your screen unless you swapped
+    // yourself onto the stage. A bot is never the stage and never the speaker.
+    const tiles = ordered.filter((t) => !t.bot);
+    function withBots(g) {
+      if (!g || !bots.length) return g;
+      const bw = phone ? 72 : 96;
+      const bh = 72;
+      const extra = bots.map((b, i) => ({
+        id: b.id, tier: 'bot',
+        x: box.x + Math.max(0, box.w - bw),
+        y: Math.max(box.y, box.y + box.h - bh - i * bh),
+        w: Math.min(bw, box.w), h: Math.min(bh, box.h),
+      }));
+      g.rects = (g.rects || []).concat(extra);
+      return g;
+    }
     if (mode === 'gallery') {
       const g = galleryIn(tiles, box, aMain, phone);
       g.mode = 'gallery';
       g.box = box;
-      return g;
+      return withBots(g);
     }
     if (mode === 'stageGallery' || mode === 'stageOnly') {
       let stageBox, side;
@@ -193,7 +214,10 @@
         stageBox = { x: box.x, y: box.y, w: sw, h: box.h };
         side = { x: box.x + sw, y: box.y, w: Math.max(0, box.w - sw), h: box.h };
       }
-      const stageTiles = tiles.filter((t) => t.tier === 'stage');
+      // stage:true and tier 'stage' are the same fact. Your own picture stays
+      // off this rect unless you swapped. Bots never reach this list.
+      const onStage = (t) => (t.tier === 'stage' || !!t.stage) && (opts.swapSelf || !t.me);
+      const stageTiles = tiles.filter(onStage);
       const stageId = (stageTiles[0] && stageTiles[0].id) || 'stage';
       const rects = [{ id: stageId, tier: 'stage', x: stageBox.x, y: stageBox.y, w: stageBox.w, h: stageBox.h }];
       if (mode === 'stageOnly') {
@@ -209,18 +233,19 @@
           floats.forEach((p, i) => rects.push({ id: p.id, tier: 'float', x: placed[i].x, y: placed[i].y, w: placed[i].w, h: placed[i].h }));
         }
         const others = tiles.filter((t) => t.tier !== 'stage' && floats.indexOf(t) < 0).length;
-        return {
+        return withBots({
           mode: mode, rects: rects, crowd: false, box: box, tier: null,
           band: others > 0 ? { text: '+' + others + ' more · tap to show', x: side.x + 4, y: side.y + 4 } : null,
           stage: stageBox,
-        };
+        });
       }
-      const rest = tiles.filter((t) => t.tier !== 'stage');
+      const rest = tiles.filter((t) => !onStage(t));
       const g = galleryIn(rest, side.h > 0 && side.w > 0 ? side : box, aSide, phone);
-      return { mode: mode, rects: rects.concat(g.rects), crowd: g.crowd, band: g.band, tier: g.tier, box: box, stage: stageBox };
+      return withBots({ mode: mode, rects: rects.concat(g.rects), crowd: g.crowd, band: g.band, tier: g.tier, box: box, stage: stageBox });
     }
     if (mode === 'speaker') {
-      const speaker = tiles.filter((t) => t.speaker)[0] || tiles.filter((t) => t.tier !== 'stad')[0] || tiles[0];
+      const pick = tiles.filter((t) => opts.swapSelf || !t.me);
+      const speaker = pick.filter((t) => t.speaker)[0] || pick.filter((t) => t.tier !== 'stad')[0] || pick[0];
       const fh = phone ? box.h * 0.62 : Math.max(1, box.h - 150);
       const rects = [];
       if (speaker) rects.push({ id: speaker.id, tier: 'stage', x: box.x, y: box.y, w: box.w, h: Math.min(fh, box.h) });
@@ -229,12 +254,12 @@
       if (others.length && stripH > 0) {
         rects.push.apply(rects, emit(others, place(others.length, box.x, box.y + fh, box.w, stripH, aMain), 'row'));
       }
-      return { mode: mode, rects: rects, crowd: false, band: null, tier: null, box: box };
+      return withBots({ mode: mode, rects: rects, crowd: false, band: null, tier: null, box: box });
     }
     const g = galleryIn(tiles, box, aMain, phone);
     g.mode = 'gallery';
     g.box = box;
-    return g;
+    return withBots(g);
   }
 
   // Slice a stadium composite into per-face crops. cellCrop refuses a frame
