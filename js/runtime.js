@@ -3133,7 +3133,14 @@
       };
       ws.onclose = (ev) => {
         if (done) return;
-        if (opened && finals.length) return finish(); // closed after answering — tolerate a missing Metadata
+        // Closed after answering. Metadata is the end-of-stream marker and can
+        // already be queued behind this close; finishing in this turn publishes
+        // an empty request id. One turn lets that frame land and finish the
+        // call. If it never comes, finish without it.
+        if (opened && finals.length) {
+          setTimeout(() => { if (!done) finish(); }, 0);
+          return;
+        }
         if (root.navigator && root.navigator.onLine === false) {
           return fail(new Error('OFFLINE: you are offline — the entry is set up; it will work when the connection returns.'));
         }
