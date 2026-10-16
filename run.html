@@ -1167,6 +1167,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem; min-height: 48px;
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
   .name-box button { padding: .5rem 1.4rem; min-height: 48px; border-radius: .5rem; border: 1px solid var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; }
+  .appear-box { background: #fff; color: #1d1d1f; max-width: 400px; }
+  .appear-box h3 { color: #1d1d1f; font-size: 1.35rem; }
+  .appear-box p { color: #3a3a3f; }
+  .appear-face { width: 96px; height: 96px; margin: 0 auto 14px; border-radius: 50%; background: #1a1d24; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 700; overflow: hidden; }
+  .appear-face img, .lob-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .appear-file { display: inline-flex; align-items: center; justify-content: center; margin: 0 0 14px; color: #0064c8; font-weight: 700; cursor: pointer; }
+  .appear-actions { display: flex; gap: 12px; justify-content: flex-end; }
+  .name-box button.appear-primary { background: #0064c8; color: #fff; border: 0; min-width: 112px; }
+  .name-box button.appear-secondary { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; min-width: 112px; }
+  .lob-appear { margin-top: 16px; text-align: left; }
+  .lob-appear-k { font-size: 13px; font-weight: 700; color: #3a3a3f; margin-bottom: 8px; }
+  .lob-appear-row { display: flex; align-items: center; gap: 12px; }
+  .lob-face { width: 64px; height: 64px; flex: none; border-radius: 50%; border: 0; padding: 0; background: #1a1d24; color: #fff;
+    font-size: 26px; font-weight: 700; overflow: hidden; cursor: pointer; }
+  #lob-name-in { flex: 1; min-height: 48px; border-radius: 12px; border: 1.5px solid #8d93a0; padding: 0 12px; font: inherit; color: #1d1d1f; background: #fff; }
   /* Help: a longer, scrollable panel — same modal chrome, room to breathe. */
   .help-box { width: 92vw; }
   .help-scroll { max-height: 70vh; overflow-y: auto; padding-right: .4rem; }
@@ -1540,7 +1556,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div class="lob-hist-h">Recent &amp; saved</div>
       <div id="lob-list"></div>
       <div id="lob-empty" class="lob-empty">Calls you start or join show up here.</div>
-      <div class="lob-namebar">You'll join as <b id="lob-name">…</b> · <button id="lob-rename" class="lob-link">change</button></div>
+      <div class="lob-appear">
+        <div class="lob-appear-k">This is how you'll appear</div>
+        <div class="lob-appear-row">
+          <button type="button" id="lob-face" class="lob-face" aria-label="Change your picture"></button>
+          <input id="lob-name-in" maxlength="40" autocomplete="nickname" aria-label="Your name" placeholder="Your name">
+        </div>
+        <input id="lob-face-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden>
+        <b id="lob-name" hidden>…</b>
+      </div>
     </div>
   </div>
   <div class="topchip">
@@ -2323,38 +2347,80 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const avInboxes = new Map(); // peer id -> avatar chunk inbox (gifos-avatar.js)
     const ABSENT_GRACE = 12000; // BACKSTOP ONLY: roster-absent AND link-down this long → tile drops. Announced (D2) and probe-confirmed (D5) departures remove the tile event-driven, within a beat (see departSweep/confirmGone).
 
-    // ---- screen name (same identity the rest of GifOS uses) ----------------
-    // The knock does not wait on this picker. A stored name resolves at once.
-    // A first visit is seeded with Guest NNNN so joinRoom can run, and the
-    // picker stays up. Continue replaces that name and gossips it the same
-    // way Settings → Change does. Not now keeps the seed.
+    // The knock waits for this preview. A stored GifOS name and picture are
+    // filled in, and the person can change both before they join. Not now
+    // keeps what was already stored.
+    function paintAppearFace(el, name, avatar) {
+      if (!el) return;
+      el.textContent = '';
+      if (avatar && avatar.url) {
+        const img = document.createElement('img');
+        img.alt = '';
+        img.src = avatar.url;
+        el.appendChild(img);
+        return;
+      }
+      const ch = Array.from(String(name || ''))[0];
+      el.textContent = ch ? ch.toUpperCase() : '\u2022';
+    }
+    function applyAvatarFile(file) {
+      if (!file || !window.GifOS || !GifOS.avatar) return Promise.resolve(null);
+      return GifOS.avatar.prepareFile(file).then(async (res) => {
+        if (!res || !res.ok) return null;
+        let mime = res.mime, b64 = res.b64, hash = res.hash;
+        if (!b64 && res.bytes) {
+          b64 = GifOS.avatar.toB64(res.bytes);
+          hash = await GifOS.avatar.hashBytes(res.bytes);
+        }
+        if (!b64 || !hash) return null;
+        return GifOS.store.setAvatar({ mime: mime, hash: hash, b64: b64 });
+      }).catch(() => null);
+    }
     function ensureName() {
-      const me = GifOS.store.identity();
-      if (me.name) return Promise.resolve(me);
-      const seed = 'Guest ' + (1000 + Math.floor(Math.random() * 9000));
-      GifOS.store.setName(seed);
+      let seen = false;
+      try { seen = sessionStorage.getItem('gifos_appear_ok') === '1'; } catch (e) {}
+      const me0 = GifOS.store.identity();
+      if (seen && me0.name) return Promise.resolve(me0);
+      let seed = me0.name;
+      if (!seed) {
+        seed = 'Guest ' + (1000 + Math.floor(Math.random() * 9000));
+        GifOS.store.setName(seed);
+      }
       const bg = document.createElement('div'); bg.className = 'name-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
-      bg.innerHTML = '<div class="name-box"><h3>Pick a screen name</h3>' +
-        '<p>The name people see on your tile. You can change it later under Settings.</p>' +
-        '<input id="nm" name="nickname" maxlength="40" placeholder="Your name" autocomplete="nickname">' +
-        '<button id="nmcancel" type="button">Not now</button>' +
-        '<button id="nmok">Continue</button></div>';
+      bg.setAttribute('aria-labelledby', 'appear-title');
+      bg.innerHTML = '<div class="name-box appear-box"><h3 id="appear-title">This is how you\'ll appear</h3>' +
+        '<div class="appear-face" id="appear-face"></div>' +
+        '<input id="nm" name="nickname" maxlength="40" autocomplete="nickname" aria-label="Your name">' +
+        '<label class="appear-file">Change picture<input id="appear-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden></label>' +
+        '<div class="appear-actions"><button id="nmcancel" type="button" class="appear-secondary">Not now</button>' +
+        '<button id="nmok" type="button" class="appear-primary">Join</button></div></div>';
       document.body.appendChild(bg);
-      const input = bg.querySelector('#nm'); input.focus();
-      const done = (keep) => {
-        let v = keep ? seed : input.value.trim();
-        if (!v) v = seed;
-        const changed = v !== seed;
-        if (changed) GifOS.store.setName(v);
-        bg.remove();
-        if (!changed) return;
-        try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}
-      };
-      bg.querySelector('#nmok').onclick = () => done(false);
-      bg.querySelector('#nmcancel').onclick = () => done(true);
-      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(false); });
-      return Promise.resolve(GifOS.store.identity());
+      const input = bg.querySelector('#nm');
+      input.value = seed;
+      const face = bg.querySelector('#appear-face');
+      const paint = () => paintAppearFace(face, input.value.trim() || seed, GifOS.store.identity().avatar);
+      paint();
+      input.addEventListener('input', paint);
+      bg.querySelector('#appear-file').addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        applyAvatarFile(file).then(() => paint());
+      });
+      input.focus();
+      return new Promise((resolve) => {
+        const done = (keep) => {
+          let v = keep ? seed : (input.value.trim() || seed);
+          if (!v) v = seed;
+          if (v !== GifOS.store.identity().name) GifOS.store.setName(v);
+          try { sessionStorage.setItem('gifos_appear_ok', '1'); } catch (e) {}
+          bg.remove();
+          try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}
+          resolve(GifOS.store.identity());
+        };
+        bg.querySelector('#nmok').onclick = () => done(false);
+        bg.querySelector('#nmcancel').onclick = () => done(true);
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(false); });
+      });
     }
 
     // ---- everyone's live status + room moderation ------------------------------
@@ -11689,6 +11755,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function enterMeeting(hashOrUrl) {
       stopLobbyPreview();
+      try {
+        const typed = document.getElementById('lob-name-in');
+        if (typed && typed.value.trim()) GifOS.store.setName(typed.value.trim());
+        if (document.getElementById('lobby').classList.contains('show')) sessionStorage.setItem('gifos_appear_ok', '1');
+      } catch (e) {}
       // Accept a '#…' hash (minted here) or a full URL (a saved entry). A
       // hash-only change never re-runs boot on its own, so it needs an explicit
       // reload — but ONLY then: reloading while navigating to a DIFFERENT path
@@ -11711,7 +11782,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         '<input id="nm2" maxlength="40" autocomplete="off"><button id="nm2cancel" type="button">Cancel</button><button id="nm2ok">Save</button></div>';
       document.body.appendChild(bg);
       const input = bg.querySelector('#nm2'); input.value = cur; input.focus();
-      const done = () => { const v = input.value.trim(); if (v) GifOS.store.setName(v); bg.remove(); const ln = document.getElementById('lob-name'); if (ln) ln.textContent = myName(); if (after) after(); };
+      const done = () => { const v = input.value.trim(); if (v) GifOS.store.setName(v); bg.remove(); if (typeof paintLobbyAppear === 'function') paintLobbyAppear(); if (after) after(); };
       bg.querySelector('#nm2ok').onclick = done;
       bg.querySelector('#nm2cancel').onclick = () => bg.remove();
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(); });
@@ -11752,6 +11823,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = go.dataset.label || 'Start'; }
       };
       document.getElementById('lob-join-btn').onclick = () => { toggle('lob-join'); document.getElementById('lob-admin').style.display = 'none'; const i = document.getElementById('lob-join-in'); if (document.getElementById('lob-join').style.display !== 'none') i.focus(); };
+      const nameIn = document.getElementById('lob-name-in');
+      if (nameIn) nameIn.addEventListener('change', () => {
+        const v = nameIn.value.trim();
+        if (v) GifOS.store.setName(v);
+        paintLobbyAppear();
+      });
+      const faceBtn = document.getElementById('lob-face');
+      const faceFile = document.getElementById('lob-face-file');
+      if (faceBtn && faceFile) {
+        faceBtn.onclick = () => faceFile.click();
+        faceFile.addEventListener('change', () => {
+          const file = faceFile.files && faceFile.files[0];
+          applyAvatarFile(file).then(() => paintLobbyAppear());
+        });
+      }
       const guestMore = document.getElementById('lob-guest-more');
       if (guestMore) guestMore.onclick = () => {
         const extra = document.getElementById('lob-guest-extra');
@@ -11771,7 +11857,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.getElementById('lob-join-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
       document.getElementById('lob-admin-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-guest-pass').focus(); });
       document.getElementById('lob-guest-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-admin-go').click(); });
-      document.getElementById('lob-rename').onclick = renameFlow;
       document.getElementById('lob-list').addEventListener('click', (e) => {
         const star = e.target.closest('[data-star]');
         if (star) { e.stopPropagation(); toggleBookmark(star.getAttribute('data-star')); return; }
@@ -11787,6 +11872,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const item = e.target.closest('.lob-item');
         if (item) enterMeeting(item.getAttribute('data-url'));
       });
+    }
+    function paintLobbyAppear() {
+      const me = GifOS.store.identity();
+      const input = document.getElementById('lob-name-in');
+      if (input && document.activeElement !== input) input.value = me.name || '';
+      paintAppearFace(document.getElementById('lob-face'), input ? input.value : me.name, me.avatar);
+      const legacy = document.getElementById('lob-name');
+      if (legacy) legacy.textContent = me.name || '…';
     }
     function showLobby() {
       document.title = (BC_INTENT ? 'Broadcast' : 'Meeting') + ' — GifOS';
@@ -11813,7 +11906,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('lob-join-btn').innerHTML = 'Watch<small>Paste a link someone sent you</small>';
         document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch show up here.';
       }
-      document.getElementById('lob-name').textContent = myName();
+      paintLobbyAppear();
       renderLobbyList();
       wireLobby();
       document.getElementById('lobby').classList.add('show');
@@ -23242,6 +23335,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // exact raise stamp — lets tests force a same-millisecond tie and assert the id tie-break
       raiseHandAtForTest: (t) => { myStatus.hand = +t || Date.now(); paintHand(); broadcastStatus(); layout(); },
       guestTileForTest: (name) => { const made = makeTile('qa-guest', name || 'Jordan Lee', false, false); return made.tile.dataset.peer; },
+      ensureNameForTest: () => ensureName(),
       // a GUEST's forged grant, injected past setMod's local guard — every
       // receiver must refuse it (§SIG: only the SIGNED table is ever merged)
       forgeModForTest: (target, field) => {

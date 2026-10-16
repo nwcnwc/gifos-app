@@ -62,11 +62,13 @@ A broadcast still hides the gallery, so this bar is the meeting surface. It is n
 
 A meeting lobby’s blue button is **Start a call** (“Anyone with the link can join”). **Host this call** is an outline button. The guest password stays hidden until “Add a password for guests”. A broadcast lobby’s blue button is **Go live**; the viewer password stays hidden until “Add a password for viewers”. The card stays inside 1280, 1920, and 900. The words “troublemaker”, “open room”, and “admin” are gone from the lobby. Before: `test/e2e/artifacts/lobby-simple-before.png`, `lobby-family-before.png`. After: `lobby-family-after.png`, `lobby-simple-after.png`, `lobby-golive-after.png`.
 
+### Q13. The screen-name step skipped a saved name
+
+Joining now shows “This is how you'll appear” with the GifOS display name filled in and the saved picture in the circle. The person can edit the name and choose another picture before Join. Join is blue `#0064c8`. Not now is a white button with a gray outline, and the two do not touch (gap at least 8px). The lobby shows the same preview, so a call started from there does not ask twice. A direct link still asks. Before: the old lobby line “You'll join as …” in `lobby-family-after.png` from the previous round. After: `test/e2e/artifacts/appear-lobby-after.png`, `appear-dialog-after.png`.
+
 ## Open
 
-### Q13. The screen-name step skips a saved name and has no preview
-
-`ensureName()` returns immediately when a GifOS name is already stored. When it does show, the field is empty, there is no avatar, and Continue and Not now share the same blue fill. Nathan’s note: prefill the system display name and avatar, show “This is how you'll appear”, and let the person change it before joining, with one primary button and a distinct secondary.
+The dock grip’s title still says arrow keys nudge it, and nothing handles that. A broadcast still hides the gallery, so the keyboard moderation bar is not on the stage.
 
 ## How a session was opened without a relay
 

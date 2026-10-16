@@ -370,6 +370,48 @@ test('a family call and a church broadcast start from a plain lobby', async ({ p
   await cardFits(1280, 720);
 });
 
+test('the screen-name step prefills your GifOS name and picture', async ({ page }) => {
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const hash = 'ab'.repeat(32);
+  await page.addInitScript((avatar) => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_avatar', JSON.stringify(avatar));
+  }, { mime: 'image/png', hash, b64: png });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/run.html?desk=appear', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#lobby.show');
+  await expect(page.locator('.lob-appear-k')).toHaveText("This is how you'll appear");
+  await expect(page.locator('#lob-name-in')).toHaveValue('Avery Chen');
+  await expect(page.locator('#lob-face img')).toBeVisible();
+  await page.goto(SESSION, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.meet-session');
+  await page.evaluate(() => { window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); return null; });
+  const dialog = page.locator('.appear-box');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('h3')).toHaveText("This is how you'll appear");
+  await expect(page.locator('#nm')).toHaveValue('Avery Chen');
+  await expect(page.locator('#appear-face img')).toHaveAttribute('src', new RegExp(png.slice(0, 24)));
+  const colors = await page.evaluate(() => {
+    const primary = getComputedStyle(document.getElementById('nmok'));
+    const secondary = getComputedStyle(document.getElementById('nmcancel'));
+    const a = document.getElementById('nmok').getBoundingClientRect();
+    const b = document.getElementById('nmcancel').getBoundingClientRect();
+    const gap = Math.round(Math.max(a.left, b.left) - Math.min(a.right, b.right));
+    const overlap = !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+    return { p: primary.backgroundColor, s: secondary.backgroundColor, gap, overlap };
+  });
+  expect(colors.p).toBe('rgb(0, 100, 200)');
+  expect(colors.s).not.toBe(colors.p);
+  expect(colors.overlap).toBe(false);
+  expect(colors.gap).toBeGreaterThanOrEqual(8);
+  await page.locator('#nm').fill('Jordan Lee');
+  await page.locator('#nmok').click();
+  await expect(dialog).toBeHidden();
+  await page.evaluate(() => window.__gifosNameP.then(() => null));
+  const saved = await page.evaluate(() => localStorage.getItem('gifos_name'));
+  expect(saved).toBe('Jordan Lee');
+});
+
 test('chat composer stays clear of the dock after a live resize to 900px', async ({ page }) => {
   await openChat(page, 1920, 1080);
   await page.setViewportSize({ width: 1280, height: 720 });

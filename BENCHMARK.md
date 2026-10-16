@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 against the desktop chrome in `run.html` (Meeting, and Broadcast via `#bc=1`). Scores are 1–5 for the **desktop UI** a person actually sees. 5 means that product is the reference for the row. This is not a score for media quality, scale, or mobile.
 
-GifOS leads **church** (4.2, StreamYard 4.0). It does not lead corporate (3.7, Zoom 4.9) or personal (3.6, FaceTime 4.8). A tie is not a lead. Church still loses individual rows to StreamYard; the lead is the audience average.
+GifOS leads **church** (4.2, StreamYard 4.0). It does not lead corporate (3.7, Zoom 4.9) or personal (3.8, FaceTime 4.8 and Meet 4.0). A tie is not a lead. Church still loses individual rows to StreamYard; the lead is the audience average.
 
 ## Who we are scoring against
 
@@ -43,14 +43,14 @@ GifOS leads this audience. The average is 4.2 against StreamYard 4.0. Rows still
 
 | | FaceTime | Meet | GifOS now |
 | --- | --- | --- | --- |
-| Warm, little chrome | 5 | 3 | 3 |
+| Warm, little chrome | 5 | 3 | 4 |
 | Start or join in one obvious step | 5 | 4 | 4 |
 | Invite is in the primary controls | 5 | 5 | 4 |
 | Reactions feel human | 4 | 4 | 4 |
 | Leave / rejoin is understandable | 5 | 4 | 3 |
-| **Audience score** | **4.8** | **4.0** | **3.6** |
+| **Audience score** | **4.8** | **4.0** | **3.8** |
 
-FaceTime leads. Start a call is the blue lobby button (Q9). Invite is one tap (Q11). Reactions are emoji (Q12). Arithmetic: (3+4+4+4+3)/5 = 3.6.
+FaceTime leads. The join step shows your GifOS name and picture under “This is how you'll appear”, and Join is blue beside an outline Not now (Q13). Arithmetic: (4+4+4+4+3)/5 = 3.8.
 
 ## Lead rule
 
@@ -71,3 +71,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q10 | 3.6 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 3.4 (FaceTime 4.8) | Full screen is a labeled dock button. No scorecard row is “watch full screen”, so the audience scores stay. |
 | After Q8 | 3.6 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 3.4 (FaceTime 4.8) | Guest Mute and Ban are in the tab order. Keyboard stays 4: the dock grip still advertises arrow keys it does not handle. |
 | After Q9 | 3.7 (Zoom 4.9) | 4.2 (StreamYard 4.0) | 3.6 (FaceTime 4.8) | Plain lobby: Start a call, or Go live with the viewer password tucked away. Church average leads. |
+| After Q13 | 3.7 (Zoom 4.9) | 4.2 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Appearance preview prefills the GifOS name and picture. Join is blue; Not now is an outline. |
