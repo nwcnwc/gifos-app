@@ -18192,6 +18192,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!s || s.src === src) { trSeen.set(n, { at: m.at || 0, src, id: m.id }); trimMap(trSeen, CHAT_MAX); }
       return false;
     }
+    // A remote caption arrives only through takeTr (k:'tr'). The device that
+    // heard the voice writes it in addTranscriptLine and emits there. Everyone
+    // else, including a Meet Bot that does not caption that voice, hears it
+    // only here. A 'hi' replay is history, not a new line.
+    function emitLiveTranscript(line) {
+      if (!line) return;
+      // The bot's own voice is not news. Another person's line still is,
+      // which is the whole reason a bot listens to takeTr.
+      if (myStatus.bot && (!line.byId || line.byId === myId)) return;
+      if (typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: line.by, text: line.text, at: line.at, scribeBy: line.scribeBy || '' } });
+    }
     function takeTr(m, backfill) { // backfill: a 'hi' replay — see takeChat
       if (!m || !m.id || trs.has(m.id)) return false;
       const writer = String(m.scribe || m.byId);
@@ -18207,6 +18218,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (trEcho(line) === true) return false;
       trs.set(m.id, line);
       trimMap(trs, CHAT_MAX);
+      if (!backfill) emitLiveTranscript(line);
       return true;
     }
     // Consecutive lines from one person, close together, read as one
