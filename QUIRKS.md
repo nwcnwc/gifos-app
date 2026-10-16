@@ -78,6 +78,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** the count is a button. It opens a white list of every face the header counts, with search, Hand, and Muted. Names wrap. The list scrolls and stops above the dock. Close puts it away.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/roster-before-1280.png`, `test/desktop/shots/roster-after-1280.png`, `test/desktop/shots/roster-after-900.png`.
 
+### The roster could not mute anyone
+
+- **Who hits it:** a host in a large room who needs to mute one person for everyone.
+- **What you saw:** Avery Chen’s row said “Muted” for their own mic, and there was no button. Mute for everyone lived on the tile, which is easy to miss once twenty faces are up.
+- **Repro:** `test/desktop/roster-mute.spec.js` failed before the fix (Avery’s row had no `.mutebtn`).
+- **Fix:** every other person has Mute on their row. It is the same room-wide mute as the tile. Mute is white. Unmute is the blue one, and the row says “For everyone” instead of their own “Muted”. Your own row has no button. In an admin room a guest sees no buttons. An open room can still mute, which is the rule the tiles already used.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the twenty-person roster still passes. Screenshots: `test/desktop/shots/roster-mute-before-1280.png`, `test/desktop/shots/roster-mute-after-1280.png`, `test/desktop/shots/roster-mute-after-on-1280.png`.
+
 ### A broadcast never said whether you were on air
 
 - **Who hits it:** the person running a church service, standing at the booth.
@@ -126,4 +134,4 @@ The lobby, the meeting help, the broadcast help, and the shortcut list follow a 
 
 ### Not yet walked end to end
 
-Screen-share for the consultant, tab-hide/return, and the settings body in German and Spanish. Gallery packing, self-view placement, and the reactions icon are not in this pass. A broadcast says off air and on air; it still has no rundown and no lyrics. The roster lists the room; it does not mute from the list.
+Screen-share for the consultant, tab-hide/return, and the settings body in German and Spanish. Gallery packing, self-view placement, and the reactions icon are not in this pass. A broadcast says off air and on air; it still has no rundown and no lyrics. The roster can mute someone for everyone. Waiting room, rename, and spotlight are still missing.

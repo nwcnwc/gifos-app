@@ -1310,6 +1310,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border-top: 1px solid #e8ecf1; font: 600 16px/1.3 system-ui, sans-serif; }
   .roster-row .nm { flex: 1; min-width: 0; white-space: normal; }
   .roster-row .flags { flex: 0 0 auto; color: #3a3a3f; font-weight: 650; font-size: 14px; }
+  .roster-row .mutebtn { flex: 0 0 auto; min-height: 40px; min-width: 76px; border-radius: 12px;
+    border: 1.5px solid #8d93a0; background: #fff; color: #1d1d1f; font: 700 15px/1 system-ui, sans-serif;
+    padding: 0 10px; cursor: pointer; }
+  .roster-row .mutebtn.on { background: #0064c8; border-color: transparent; color: #fff; }
   .topchip #statusrest { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
   /* Broadcast confidence lamp. Off air is a card the booth can read.
@@ -2402,6 +2406,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         unlockClear: 'Passwort für klares Video',
         onAir: 'Auf Sendung', offAir: 'Nicht live', watching: 'Live',
         rosterPeople: 'Personen', you: 'Sie', muted: 'Stumm', rosterClose: 'Schließen', rosterFind: 'Name suchen',
+        muteForAll: 'Stumm', unmuteForAll: 'Ton an', forEveryone: 'Für alle',
         goLive: 'Kamera an, dann sind Sie live. Der Raum sieht Sie noch nicht.',
         waitLive: 'Die Sendung hat noch nicht begonnen.',
         sendInvite: 'Link schicken, er läuft nicht ab',
@@ -2458,6 +2463,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         unlockClear: 'contraseña para video nítido',
         onAir: 'Al aire', offAir: 'Fuera del aire', watching: 'En vivo',
         rosterPeople: 'personas', you: 'tú', muted: 'En silencio', rosterClose: 'Cerrar', rosterFind: 'Buscar un nombre',
+        muteForAll: 'Silenciar', unmuteForAll: 'Activar', forEveryone: 'Para todos',
         goLive: 'Enciende la cámara para salir al aire. La sala aún no te ve.',
         waitLive: 'La transmisión aún no empieza.',
         sendInvite: 'envía el enlace; no caduca',
@@ -6522,7 +6528,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const st = statusOf.get(p.id) || {};
         let onStage = false;
         try { onStage = stageIds().includes(p.id); } catch (e2) {}
-        push({ id: p.id, name: p.name || rosterNames[p.id] || 'Guest', me: false, muted: !!st.muted, hand: !!st.hand, stage: onStage });
+        let roomMute = false;
+        try { const m = modOf(p.id).mute; roomMute = !!(m && m.on); } catch (e3) {}
+        push({ id: p.id, name: p.name || rosterNames[p.id] || 'Guest', me: false, muted: !!st.muted, hand: !!st.hand, stage: onStage, roomMute: roomMute });
       }
       rows.sort((a, b) => {
         if (a.me !== b.me) return a.me ? -1 : 1;
@@ -6559,12 +6567,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const flags = [];
         if (r.stage) flags.push(uiText('onAir', 'On air'));
         if (r.hand) flags.push(uiText('hand', 'Hand'));
-        if (r.muted) flags.push(uiText('muted', 'Muted'));
+        if (r.roomMute) flags.push(uiText('forEveryone', 'For everyone'));
+        else if (r.muted) flags.push(uiText('muted', 'Muted'));
         if (flags.length) {
           const f = document.createElement('span');
           f.className = 'flags';
           f.textContent = flags.join(' · ');
           row.appendChild(f);
+        }
+        const mayMute = !r.me && !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
+        if (mayMute) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'mutebtn' + (r.roomMute ? ' on' : '');
+          b.textContent = r.roomMute ? uiText('unmuteForAll', 'Unmute') : uiText('muteForAll', 'Mute');
+          b.setAttribute('aria-label', (r.roomMute ? uiText('unmuteForAll', 'Unmute') : uiText('muteForAll', 'Mute')) + ' ' + r.name);
+          b.onclick = () => {
+            let on = false;
+            try { const cur = modOf(r.id).mute; on = !(cur && cur.on); } catch (e) { on = true; }
+            setMod(r.id, 'mute', on);
+            paintRoster();
+          };
+          row.appendChild(b);
         }
         list.appendChild(row);
       }

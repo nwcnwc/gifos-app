@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. A broadcast says off air and on air. The count opens a roster. The lobby, help, and shortcut list follow German and Spanish. Settings stay English.
+We do **not** lead any audience yet. A host can mute someone from the roster. A broadcast says off air and on air. The lobby, help, and shortcut list follow German and Spanish. Settings stay English. A service still has no rundown.
 
 ## Who we are measured against
 
@@ -28,8 +28,8 @@ Polished, efficient, trustworthy. Best of the field today: Zoom and Meet, about 
 | Visual polish | 7 | Dock is calm and the primary controls are labeled. Chat no longer slides under it |
 | Efficiency (keyboard, few clicks) | 6 | Alt+A / V / C / Q, and Tab reaches Mute on a tile. Share, hand, and view still need the pointer. Chat is still two clicks with the mouse |
 | Presenting | 5 | Share exists. Not yet walked as a client demo |
-| Large-room host | 7 | The count opens a roster of every face, with search, hand, and mute. You still cannot mute someone from that list |
-| **Audience** | **6.8** | Does not lead |
+| Large-room host | 8 | Mute and unmute for the room sit on each other person’s row. Waiting room, rename, and spotlight are still missing |
+| **Audience** | **7.0** | Does not lead |
 
 ## Church
 
@@ -57,4 +57,4 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 
 ## This cycle
 
-The lobby, the help essay, and the shortcut list follow a German or Spanish device (see QUIRKS.md). Personal locale 5 → 7, audience 6.3 → 6.8. Still behind FaceTime and Meet. Corporate stays 6.8. Church stays 6.8. We do not lead. Next gap: settings are still English, a service still has no rundown, and the roster cannot mute.
+Mute for everyone is on the roster (see QUIRKS.md). Corporate large-room 7 → 8, audience 6.8 → 7.0. That is the room mute, not a host console. Church stays 6.8. Personal stays 6.8. Still behind Zoom and Meet (~8), a church desk (~8), and FaceTime (~9). We do not lead. Next gap: a service still has no rundown.
