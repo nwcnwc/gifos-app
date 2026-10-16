@@ -7,18 +7,35 @@ async function openCreate(page) {
   await page.locator('#lob-admin-go').waitFor({ state: 'visible' });
 }
 
-test('broadcast create asks for one password', async ({ page }) => {
+test('broadcast create offers a readable host key', async ({ page }) => {
   await openCreate(page);
-  await expect(page.locator('#lob-admin-pass')).toBeVisible();
+  await expect(page.locator('#lob-admin-pass-head')).toHaveText('Your host key');
+  await expect(page.locator('#lob-admin-pass')).toHaveAttribute('type', 'text');
   await expect(page.locator('#lob-guest-pass')).toBeHidden();
   const note = await page.locator('#lob-admin-pass-note').innerText();
   expect(note.length).toBeLessThan(80);
-  expect(note.toLowerCase()).not.toContain('do not share');
-  const passwords = await page.locator('#lob-admin input[type="password"]:visible').count();
-  expect(passwords).toBe(1);
+  expect(note.toLowerCase()).not.toContain('password');
+  const first = await page.locator('#lob-admin-pass').inputValue();
+  expect(first).toMatch(/^[a-z]+-[a-z]+-[a-z]+-\d{2}$/);
+  const fits = await page.locator('#lob-admin-pass').evaluate((el) => el.scrollWidth <= el.clientWidth + 2);
+  expect(fits).toBe(true);
+  const gen = page.locator('#lob-keygen');
+  const genBox = await gen.boundingBox();
+  expect(genBox.height).toBeGreaterThanOrEqual(44);
+  const paint = await page.evaluate(() => ({
+    gen: getComputedStyle(document.getElementById('lob-keygen')).backgroundColor,
+    go: getComputedStyle(document.getElementById('lob-admin-go')).backgroundColor,
+  }));
+  expect(paint.gen).not.toBe(paint.go);
+  await gen.click();
+  const next = await page.locator('#lob-admin-pass').inputValue();
+  expect(next).toMatch(/^[a-z]+-[a-z]+-[a-z]+-\d{2}$/);
+  expect(next).not.toBe(first);
   const go = await page.locator('#lob-admin-go').boundingBox();
   const vh = page.viewportSize().height;
   expect(go.y + go.height).toBeLessThanOrEqual(vh + 0.5);
+  const gap = go.y - (genBox.y + genBox.height);
+  expect(gap).toBeGreaterThanOrEqual(8);
 });
 
 test('a viewer password stays optional and off the first step', async ({ page }) => {

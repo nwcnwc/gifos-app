@@ -1584,6 +1584,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.show .lob-primary, #lob-admin-go { background: #0064c8; border-color: transparent; color: #fff; font-weight: 700; text-align: center; }
   #lobby.show .lob-action { background: #fff; border: 1.5px solid #8d93a0; color: #1d1d1f; text-align: center; }
   .lob-expand input { min-height: 48px; color: #1d1d1f; background: #fff; }
+  .lob-keyrow { display: flex; align-items: stretch; gap: 8px; margin-bottom: .5rem; }
+  .lob-keyrow input { flex: 1 1 auto; width: auto; min-width: 0; margin-bottom: 0; }
+  #lob-keygen.lob-ghost { flex: 0 0 auto; min-height: 48px; min-width: 44px; padding: 0 12px;
+    background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; border-radius: .45rem; font-weight: 650; }
+  @media (max-width: 700px) {
+    .lob-keyrow { flex-direction: column; }
+    #lob-keygen.lob-ghost { width: 100%; }
+  }
   #lob-rename { min-height: 48px; padding: 8px 12px; color: #0064c8; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; }
   .lob-star, #lobby button.row-del { min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
   .lob-item .li-sub { opacity: 1; color: #3a3a3f; }
@@ -1643,8 +1651,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <div class="lob-form-body">
           <input id="lob-admin-name" maxlength="40" placeholder="Room name (anything you like)" autocomplete="off">
-          <label class="lob-pwlab" for="lob-admin-pass"><b id="lob-admin-pass-head">Admin password</b><small id="lob-admin-pass-note">Only you use this. Everyone else joins with the link.</small></label>
-          <input id="lob-admin-pass" type="password" maxlength="64" placeholder="Admin password" autocomplete="new-password">
+          <label class="lob-pwlab" for="lob-admin-pass"><b id="lob-admin-pass-head">Your host key</b><small id="lob-admin-pass-note">Only you need this. Everyone else uses the link.</small></label>
+          <div class="lob-keyrow">
+            <input id="lob-admin-pass" type="text" maxlength="64" placeholder="Type or generate" autocomplete="off" spellcheck="false">
+            <button type="button" id="lob-keygen" class="lob-ghost">Generate</button>
+          </div>
           <button type="button" id="lob-guest-reveal" class="lob-text">Add a guest password</button>
           <div id="lob-guest-extra" hidden>
             <label class="lob-pwlab" for="lob-guest-pass"><b id="lob-guest-pass-head">Guest password</b><small id="lob-guest-pass-note">Optional. Share this, not the admin password. It is not part of the link.</small></label>
@@ -11871,6 +11882,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bg.querySelector('#nm2cancel').onclick = () => bg.remove();
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(); });
     }
+    function mintHostKey() {
+      const words = ['amber', 'birch', 'cedar', 'daisy', 'ember', 'fern', 'grove', 'harbor', 'iris', 'juniper', 'kelp', 'linen', 'maple', 'north', 'olive', 'pebble', 'quartz', 'river', 'spruce', 'tide', 'violet', 'willow', 'yarrow', 'meadow'];
+      const buf = new Uint32Array(4);
+      crypto.getRandomValues(buf);
+      const pick = (i) => words[buf[i] % words.length];
+      return pick(0) + '-' + pick(1) + '-' + pick(2) + '-' + String(10 + (buf[3] % 90));
+    }
     function wireLobby() {
       const lob = document.getElementById('lobby');
       const toggle = (id) => { const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? '' : 'none'; };
@@ -11881,7 +11899,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const open = document.getElementById('lob-admin').style.display !== 'none';
         document.getElementById('lobby').classList.toggle('form-open', open);
         const n = document.getElementById('lob-admin-name');
+        const key = document.getElementById('lob-admin-pass');
+        if (open && key && !key.value) key.value = mintHostKey();
         if (open) n.focus();
+      };
+      document.getElementById('lob-keygen').onclick = () => {
+        const key = document.getElementById('lob-admin-pass');
+        key.value = mintHostKey();
+        key.focus();
+        key.select();
       };
       document.getElementById('lob-admin-cancel').onclick = () => {
         document.getElementById('lob-admin').style.display = 'none';
@@ -11896,7 +11922,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const chosen = slugRoom(rawName, '');
         const pass = (document.getElementById('lob-admin-pass').value || '').trim();
         if (!chosen) { err.textContent = 'Give your room a name.'; return; }
-        if (!pass) { err.textContent = 'Set an admin password — it’s the key to your room.'; return; }
+        if (!pass) { err.textContent = 'Add a host key, or tap Generate.'; return; }
         const go = document.getElementById('lob-admin-go'); go.disabled = true; go.textContent = 'Creating…';
         try {
           const K = await deriveAdminKey(chosen, pass);
@@ -11958,13 +11984,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.querySelector('#lobby h1').textContent = 'Broadcast';
         document.getElementById('lob-open').style.display = 'none';
         document.getElementById('lob-admin-btn').innerHTML = 'Start broadcasting<small>You go live on the Stage; anyone with the link watches and chats</small>';
-        document.getElementById('lob-admin-pass-head').textContent = 'Host password';
+        document.getElementById('lob-admin-pass-head').textContent = 'Your host key';
         document.getElementById('lob-guest-pass-head').textContent = 'Viewer password';
-        document.getElementById('lob-admin-pass').placeholder = 'Host password';
-        document.getElementById('lob-admin-pass-note').textContent = 'Only you use this. Viewers join with the link.';
+        document.getElementById('lob-admin-pass').placeholder = 'Type or generate';
+        document.getElementById('lob-admin-pass-note').textContent = 'Only you need this. Viewers use the link.';
         document.getElementById('lob-guest-reveal').textContent = 'Add a viewer password';
         document.getElementById('lob-guest-pass').placeholder = 'Viewer password';
-        document.getElementById('lob-guest-pass-note').textContent = 'Optional. Share this, not the host password. It is not part of the link.';
+        document.getElementById('lob-guest-pass-note').textContent = 'Optional. Share this, not your host key. It is not part of the link.';
         document.getElementById('lob-join-btn').innerHTML = 'Watch a broadcast<small>Paste a broadcast link someone shared</small>';
         document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch will show up here.';
       }
