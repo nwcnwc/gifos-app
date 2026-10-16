@@ -78,9 +78,13 @@ Joining now shows “This is how you'll appear” with the GifOS display name fi
 
 The top chip still says Live or Watching. A full-width bar under that chip now says **You are live** (red `#b61622`) or **You are watching** (light gray). It clears the chip, the Fit button, and the dock at 1280, 1920, and 900. A meeting hides it. After: `test/e2e/artifacts/onair-bar-live-after.png`, `onair-bar-watch-after.png`. The small pill in `onair-live-1280.png` is the earlier state.
 
+### Q17. Chat lived in More, and a prayer looked like any other line
+
+Chat is a labeled dock button, so it is one tap while More is closed. The dock still fits 1280, 1920, and 900. Prayer marks the composer (“Prayer request…”) and the sent line wears the word Prayer, separate from an ordinary message. The composer still clears the dock. After: `test/e2e/artifacts/chat-dock-after.png`, `chat-prayer-after.png`.
+
 ## Open
 
-StreamYard is still ahead on two church rows: telling a service apart from a small group once the room is open, and chat (it still lives in More, with no prayer-request path).
+StreamYard is still ahead on one church row: telling a service apart from a small group once the room is open.
 
 ## How a session was opened without a relay
 

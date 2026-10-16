@@ -1075,14 +1075,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cmsg { background: var(--surface, #14141f); border: 1px solid #22223a; border-radius: .5rem; padding: .3rem .55rem; max-width: 94%; align-self: flex-start; overflow-wrap: anywhere; }
   .cmsg.mine { align-self: flex-end; background: var(--surface, #17222e); border-color: var(--accent, #223448); }
   .cmsg b { color: #7b9cff; font-size: .7rem; display: block; }
+  .cmsg.prayer { background: #241833; border-color: #c9a6ff; }
+  .cmsg .praytag { margin-left: .35rem; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #e7d6ff; }
+  #pray[aria-pressed="true"] { background: #5c3d8a; color: #fff; border-color: #5c3d8a; }
+  .bar #chatbtn { position: relative; }
+  .bar #chatbtn .chatcount { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px;
+    border-radius: 99px; background: #b61622; color: #fff; font-size: 10px; font-weight: 800; line-height: 16px; }
+  .bar #chatbtn .chatcount[hidden] { display: none; }
   #cfiles { border-top: 1px solid var(--border, #2a2a3f); padding: .45rem .7rem; max-height: 34%; overflow-y: auto; }
   #cfiles h4 { font-size: .72rem; color: var(--muted, #8888aa); margin-bottom: .3rem; }
   .cfile { display: flex; align-items: center; gap: .45rem; font-size: .78rem; padding: .18rem 0; }
   .cfile .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cfile small { color: #667; }
   .cfile button { padding: .1rem .45rem; border-radius: .35rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; font-size: .72rem; }
-  #chatform { display: flex; gap: .4rem; padding: .5rem .6rem; border-top: 1px solid var(--border, #2a2a3f); }
-  #chatform input[type=text] { flex: 1; padding: .4rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; font-size: .85rem; }
+  #chatform { display: flex; gap: .4rem; padding: .5rem .6rem; border-top: 1px solid var(--border, #2a2a3f); min-width: 0; }
+  #chatform input[type=text] { flex: 1 1 auto; width: 0; min-width: 0; padding: .4rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; font-size: .85rem; }
+  #pray { flex: none; }
   #chatform button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   .tile .cap { position: absolute; left: 50%; transform: translateX(-50%); bottom: 2.1rem; max-width: 92%;
                background: rgba(10,10,15,.82); border: 1px solid var(--border, #2a2a3f); border-radius: .45rem;
@@ -1347,7 +1355,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     max-width: calc(100% - 16px); padding: 0 16px 0 18px; margin: 0;
     background: rgba(255,255,255,.94); border: 0; border-radius: 32px;
     box-shadow: 0 10px 30px rgba(0,0,0,.28); overflow: visible; }
-  .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #fsbtn, .bar #bartoggle {
+  .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #fsbtn, .bar #chatbtn, .bar #bartoggle {
     width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
     background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
     font-size: 11px; font-weight: 700; line-height: 1; letter-spacing: 0;
@@ -1430,9 +1438,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .topchip .title { font-size: 20px; }
     .topchip .status { font-size: 17px; }
     .bar { height: 88px; gap: 8px; padding: 0 10px; }
-    .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #fsbtn, .bar #bartoggle {
+    .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #fsbtn, .bar #chatbtn, .bar #bartoggle {
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
-    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
+    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #chatbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
     .bar #bargrip { height: 40px; width: 18px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
     .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px); }
@@ -1628,6 +1636,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
       <span class="docklab">Full</span>
     </button>
+    <button id="chatbtn" type="button" class="iconbtn" aria-label="Chat" title="Chat and share files — stays between the people on this meeting, not on a server">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>
+      <span class="docklab">Chat</span>
+      <span class="chatcount" hidden></span>
+    </button>
     <button id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
       <span class="docklab">More</span>
@@ -1665,7 +1678,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="votebtn" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
     <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
     <button id="hand" title="Raise your hand — raised hands float to the top">Hand</button>
-    <button id="chatbtn" title="Chat and share files — stays between the people on this meeting, not on a server">Chat</button>
     <button id="recbtn" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
     <button id="ccbtn" title="Live captions: your device writes down everyone it hears in this meeting and shares the lines with the meeting's transcript">CC</button>
     <button id="stagebtn" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
@@ -1831,6 +1843,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     </div>
     <div id="cfiles"><h4>Files pinned to this meeting</h4><div id="cfilelist"><small style="color:#667">No files yet — attach one below.</small></div></div>
     <form id="chatform">
+      <button type="button" id="pray" aria-pressed="false" title="Mark messages as prayer requests">Prayer</button>
       <button type="button" id="cattach" title="Pin a file to the meeting">📎</button>
       <input type="file" id="cfile-in" multiple style="display:none">
       <input type="text" id="chat-in" placeholder="Message everyone…" autocomplete="off" maxlength="2000">
@@ -12718,7 +12731,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (takeChat(m.m)) {
           renderChat();
           if (m.m && typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
-          if (!chatPanel.classList.contains('open')) { unread++; chatBtn.textContent = 'Chat (' + unread + ')'; }
+          if (!chatPanel.classList.contains('open')) { unread++; paintChatCount(); }
           // A frame the sender marked ackReq (today: only the follow-me link)
           // gets a delivery ack back over the mesh/DC — see FOLLOW-ME DELIVERY
           // WAIT. Ordinary chat carries none: this is not a read receipt.
@@ -13304,7 +13317,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // `link`, when present, renders as a "Join →" button — validate it is an
       // http(s) URL (never javascript:/data:) so a peer can't inject a live link.
       const link = (typeof m.link === 'string' && /^https?:\/\//i.test(m.link)) ? m.link.slice(0, 400) : undefined;
-      chat.set(m.id, { id: m.id, by: String(m.by || '?').slice(0, 40), byId: m.byId, at: m.at || 0, text: String(m.text || '').slice(0, 2000), link });
+      chat.set(m.id, { id: m.id, by: String(m.by || '?').slice(0, 40), byId: m.byId, at: m.at || 0, text: String(m.text || '').slice(0, 2000), link, prayer: m.prayer ? 1 : 0 });
       trimMap(chat, CHAT_MAX);
       return true;
     }
@@ -13486,7 +13499,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The signed-in admin moderates line by line: the standard row-delete
         // glyph mints a signed 'cdel' (see the #chatlog click delegate).
         const del = amAdmin ? '<button class="row-del" data-cdel="' + esc(m.id) + '" title="Delete this message for everyone">' + DEL_ICON + '</button>' : '';
-        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '"><b>' + (typeof avatarChip === 'function' ? (avatarChip(m.byId) || '') : '') + esc(m.by) + '</b>' + body + del + '</div>';
+        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + (m.prayer ? ' prayer' : '') + '"><b>' + (typeof avatarChip === 'function' ? (avatarChip(m.byId) || '') : '') + esc(m.by) + (m.prayer ? ' <span class="praytag">Prayer</span>' : '') + '</b>' + body + del + '</div>';
       }).join('');
       const co = chatOffInfo();
       if (co) html += '<div class="cmsg" style="opacity:.65"><b>🔇</b>Chat was turned off' + (co.by ? ' by ' + esc(co.by) : '') + '.' + (amAdmin ? '' : ' Only the host can post.') + '</div>';
@@ -13500,8 +13513,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const locked = off && !amAdmin;
       const inp = document.getElementById('chat-in');
       inp.disabled = locked;
+      const praying = document.getElementById('pray') && document.getElementById('pray').getAttribute('aria-pressed') === 'true';
       inp.placeholder = locked ? 'Chat is off — only the host can post.'
-        : (off ? 'Chat is off for guests — you can still post.' : 'Message everyone…');
+        : (off ? 'Chat is off for guests — you can still post.' : (praying ? 'Prayer request…' : 'Message everyone…'));
       document.querySelector('#chatform button[type="submit"]').disabled = locked;
       document.getElementById('cattach').disabled = locked;
       const b = document.getElementById('chatmod');
@@ -13575,7 +13589,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const inp = document.getElementById('chat-in');
       const text = inp.value.trim();
       if (!text) return;
+      const prayBtn = document.getElementById('pray');
       const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text };
+      if (prayBtn && prayBtn.getAttribute('aria-pressed') === 'true') m.prayer = 1;
       chat.set(m.id, m);
       sendAll({ k: 'chat', m });
       inp.value = '';
@@ -13600,11 +13616,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       e.target.value = '';
     });
+    function paintChatCount() {
+      const n = chatBtn.querySelector('.chatcount');
+      if (n) {
+        if (unread > 0) { n.hidden = false; n.textContent = unread > 9 ? '9+' : String(unread); }
+        else n.hidden = true;
+      }
+      chatBtn.setAttribute('aria-label', unread ? 'Chat, ' + unread + ' new' : 'Chat');
+    }
+    const prayBtn = document.getElementById('pray');
+    if (prayBtn) prayBtn.onclick = () => {
+      const on = prayBtn.getAttribute('aria-pressed') !== 'true';
+      prayBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      paintChatGate();
+    };
     chatBtn.onclick = () => {
       chatPanel.classList.toggle('open');
       // renderChat skips while the transcript tab is shown, and the transcript
       // is not painted while the panel is closed: paint the tab that shows.
-      if (chatPanel.classList.contains('open')) { unread = 0; chatBtn.textContent = 'Chat'; if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles(); }
+      if (chatPanel.classList.contains('open')) { unread = 0; paintChatCount(); if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles(); }
     };
     document.getElementById('chatclose').onclick = () => chatPanel.classList.remove('open');
 

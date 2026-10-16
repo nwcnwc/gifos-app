@@ -562,6 +562,44 @@ test('a volunteer cannot miss whether they are on air', async ({ page }) => {
   await expect(page.locator('#airbar')).toBeHidden();
 });
 
+test('chat is one tap on the dock, and a prayer is its own line', async ({ page }) => {
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await bootSession(page, w, h);
+    const chat = page.locator('.bar > #chatbtn');
+    await expect(chat).toBeVisible();
+    await expect(chat.locator('.docklab')).toHaveText('Chat');
+    const insideMore = await page.locator('#barmore #chatbtn').count();
+    expect(insideMore).toBe(0);
+    const bar = await page.locator('.bar').boundingBox();
+    expect(bar.x).toBeGreaterThanOrEqual(-1);
+    expect(bar.x + bar.width).toBeLessThanOrEqual(w + 1);
+    const lab = await chat.locator('.docklab').boundingBox();
+    const btn = await chat.boundingBox();
+    expect(lab.x).toBeGreaterThanOrEqual(btn.x - 1);
+    expect(lab.x + lab.width).toBeLessThanOrEqual(btn.x + btn.width + 1);
+  }
+  await bootSession(page, 1280, 720);
+  await page.locator('.bar > #chatbtn').click();
+  await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+  const hit = await composerOverlap(page);
+  expect(clearOfDock(hit.form), JSON.stringify(hit)).toBe(true);
+  await page.locator('#pray').click();
+  await expect(page.locator('#pray')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#chat-in')).toHaveAttribute('placeholder', 'Prayer request…');
+  await page.locator('#chat-in').fill('Please pray for Maya');
+  await page.locator('#chatform button[type=submit]').click();
+  const prayer = page.locator('#chatlog .cmsg.prayer');
+  await expect(prayer).toContainText('Prayer');
+  await expect(prayer).toContainText('Please pray for Maya');
+  await page.locator('#pray').click();
+  await page.locator('#chat-in').fill('See you after');
+  await page.locator('#chatform button[type=submit]').click();
+  const lines = page.locator('#chatlog .cmsg');
+  await expect(lines).toHaveCount(2);
+  await expect(lines.nth(1)).not.toHaveClass(/prayer/);
+  await expect(lines.nth(1)).toContainText('See you after');
+});
+
 test('chat composer stays clear of the dock after a live resize to 900px', async ({ page }) => {
   await openChat(page, 1920, 1080);
   await page.setViewportSize({ width: 1280, height: 720 });
