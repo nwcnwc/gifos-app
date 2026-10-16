@@ -1308,6 +1308,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
     .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
+    .bar #bargrip { height: 40px; width: 18px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
     .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px); }
     .bar:not(.collapsed) .barmore > button { min-height: 56px; font-size: 16px; }
@@ -1323,6 +1324,51 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="5"]) .tile.me {
       width: 138px; height: 182px; }
   }
+  /* Comfy: every face on screen, tiles touch, the dock floats over them.
+     The long :not chain is what the older gallery rule uses; matching it
+     is what lets these win. Padding is zeroed so the dock does not reserve
+     a band (the packer already insets the grid by ≤4px). */
+  body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
+    position: fixed; inset: 0; overflow: hidden; padding: 0 !important; margin: 0;
+    display: block; background: #0d0f14; z-index: 1; }
+  body.comfy #grid, body.comfy #stadium, body.comfy #stagefeed, body.comfy #stadfaces {
+    position: static; display: block; padding: 0; margin: 0; gap: 0; overflow: visible;
+    height: auto; background: transparent; border: 0; }
+  body.comfy #stadium.on { display: block; }
+  body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile,
+  body.comfy .stadface, body.comfy .rowtile {
+    border-radius: 0; border: 0; aspect-ratio: auto; min-height: 0; box-shadow: none; }
+  body.comfy.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
+    position: absolute; right: auto; bottom: auto; border: 0; border-radius: 0; box-shadow: none; }
+  body.comfy .tile.speaking, body.comfy .stadface.speaking {
+    box-shadow: inset 0 0 0 3px #7bffcf, inset 0 0 24px rgba(123,255,207,.35); }
+  body.comfy .tile video, body.comfy .stadface video { object-fit: cover; object-position: 50% 40%; }
+  body.comfy .tile .avatar.has-img, body.comfy .stadface .avatar.has-img {
+    background-size: cover; background-position: center 40%; color: transparent; }
+  body.comfy .stadface { overflow: hidden; background: var(--surface, #14141f); }
+  body.comfy .stadface .avatar {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 2.4rem; font-weight: 800; color: #3a3a55; background: var(--surface, #14141f); z-index: 1; }
+  body.comfy .stadface .name {
+    position: absolute; left: .4rem; bottom: .4rem; z-index: 2;
+    background: rgba(10,10,15,.72); color: #eceef8;
+    padding: .12rem .5rem; border-radius: .4rem; font-size: .75rem; }
+  body.comfy .tile.me .name::before { content: '\2726 '; }
+  body.comfy .tile[data-tier="row"]::after {
+    content: ''; position: absolute; top: 8px; right: 8px; width: 8px; height: 8px;
+    border-radius: 50%; background: #7b5cff; z-index: 3; pointer-events: none; }
+  body.comfy .stad-band {
+    position: absolute; z-index: 4; pointer-events: none; background: rgba(12,14,18,.72);
+    color: #f4f7fb; font-size: 12px; font-weight: 700; letter-spacing: .04em;
+    padding: 3px 8px; border-radius: 999px; }
+  body.comfy #stadium .rowtile.stad-src {
+    position: absolute; left: -12px; top: 0; width: 4px; height: 4px; opacity: 0;
+    pointer-events: none; overflow: hidden; }
+  .bar #bargrip {
+    width: 22px; height: 48px; padding: 0; border: 0; border-radius: 8px; background: transparent;
+    color: #8d93a0; cursor: grab; touch-action: none; flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center; }
+  .bar #bargrip:active { cursor: grabbing; }
   body.screen-on #feed { padding-bottom: 132px; box-sizing: border-box; background: #0c0e12; }
   body.screen-on #grid { flex: 0 0 120px; height: 120px; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; }
   body.screen-on #grid .tile { height: 104px; flex: 0 0 auto; width: auto; aspect-ratio: 16 / 9; }
@@ -1406,6 +1452,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <div class="admcount" id="admcount" style="display:none"></div>
   <div class="bar collapsed" role="toolbar" aria-label="Call controls">
+    <button id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
     <button id="cam" class="iconbtn off" aria-label="Camera" title="Your camera">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="2" y="6" width="13" height="12" rx="2"/><path d="M15 10.5 22 7v10l-7-3.5"/>
@@ -1888,6 +1937,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/mesh-identity.js"></script>
   <script src="js/mesh-wire.js"></script>
   <script src="js/mesh-media.js"></script>
+  <script src="js/meet-layout.js"></script>
+  <script src="js/meet-leave.js"></script>
+  <script src="js/meet-views.js"></script>
   <script src="js/mesh-pipe.js"></script>
   <script src="js/relay-config.js"></script>
   <script src="js/runtime.js"></script>
@@ -2091,6 +2143,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const DEL_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
 
     let myId = null, localStream = null, meTile = null, leaving = false;
+    // Set while "Leave the meeting?" is up. Repair loops must not put a
+    // track back on a sender until Cancel (DESIGN §11).
+    let outgoingHeld = false, leaveSnap = null, leavingForAsk = false;
     // startMesh resolves this when myId is minted. inviteFromSolo awaits it
     // instead of polling. A fresh socket arms a new promise only while myId
     // is still unset.
@@ -4134,6 +4189,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const tile = document.createElement('div');
       tile.className = 'tile' + (isMe ? ' me' : '');
       tile.dataset.peer = id;
+      tile.dataset.pzkey = 'peer:' + id;
       const video = document.createElement('video');
       video.autoplay = true; video.playsInline = true;
       if (isMe) video.muted = true;
@@ -4226,6 +4282,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (t.label.textContent !== want) { t.label.textContent = want; if (t.avatar) t.avatar.textContent = nameInitial(myName()); }
       }
       const st = (isMe ? myStatus : statusOf.get(id)) || {};
+      // Camera-off art: an avatar URL when one is already on the status or
+      // peer, otherwise the initials painted just above. After the myStatus
+      // read so a source test can still stop on that name.
+      if (t.avatar && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.avatarUrl) {
+        const url = GifOS.meetViews.avatarUrl(st, isMe ? null : t);
+        if (url || (t.avatar.classList && t.avatar.classList.contains('has-img'))) GifOS.meetViews.paintAvatar(t.avatar, url, t.avatar.textContent);
+      }
       const mod = modOf(id);
       const gMute = mod.mute && mod.mute.on, gBlur = mod.blur && mod.blur.on, gCam = mod.cam && mod.cam.on;
       const chips = [];
@@ -4263,6 +4326,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           : '<span class="warn">🖥 sharing their screen</span>');
       }
       if (st.hand) chips.push('<span class="warn">✋ hand raised</span>');
+      if (st.lv) chips.push('<span>leaving…</span>');
       if (st.bot) chips.push('<span class="botbadge">🤖 bot</span>');
       if (st.rec) chips.push('<span class="warn">⏺ recording this meeting</span>');
       if (st.scribe) chips.push('<span>✍ writing everyone down</span>');
@@ -4339,7 +4403,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             b.textContent = shareLabel; b.setAttribute('aria-label', shareLabel);
           }
         }
-      } else if (gMute && localStream) {
+      } else if (gMute && localStream && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) {
         // the group muted ME: cut the source too, not just everyone's speakers
         const a = localStream.getAudioTracks()[0];
         if (a && a.enabled) { a.enabled = false; myStatus.muted = true; }
@@ -4385,7 +4449,112 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         t.classList.toggle('lead', nRemote === 3 && i === 0);
         t.classList.toggle('span-bottom', nRemote === 5 && i === remoteTiles.length - 1);
       });
+      try { applyComfy(); } catch (e) {}
     }
+
+    // People hidden from the row are the stadium. Stagers stay in the row
+    // while comfy is on (their direct tile is the face; the strip is not).
+    function comfyStadRoster() {
+      const shown = {};
+      if (myId) shown[myId] = true;
+      for (const [pid, p] of peers) {
+        if (!p || p.headless || !p.tile) continue;
+        if (p.tile.style.display !== 'none') shown[pid] = true;
+      }
+      const out = [], seen = {};
+      const push = (id) => {
+        if (!id || seen[id] || shown[id]) return;
+        seen[id] = true;
+        out.push(id);
+      };
+      try { for (const id of Object.keys(rosterNames)) push(id); } catch (e) {}
+      for (const id of peers.keys()) push(id);
+      return out;
+    }
+    function comfyStadMeta() {
+      let n = 0, cols = 0, video = null, srcEl = null;
+      try {
+        srcEl = document.querySelector('#stadium [data-row="sd"]');
+        video = srcEl ? srcEl.querySelector('video') : null;
+      } catch (e) {}
+      try {
+        if (sdPack && sdPack.count && sdPack.count() > 0) { n = sdPack.count(); cols = sdPack.cols() || 0; }
+      } catch (e) {}
+      try {
+        if (!(n > 0) && mosIn) {
+          const m = mosIn.get('sdm') || mosIn.get('sd');
+          if (m && m.meta) { if (m.meta.n) n = m.meta.n; if (m.meta.cols) cols = m.meta.cols; }
+        }
+      } catch (e) {}
+      return { n: n | 0, cols: cols | 0, video: video, srcEl: srcEl };
+    }
+    let comfyBusy = false;
+    function applyComfy() {
+      if (comfyBusy) return;
+      const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
+      if (!MV || !MV.apply) return;
+      const feed = document.getElementById('feed');
+      const allowed = !!meTile && MV.comfyAllowed(document.body);
+      document.body.classList.toggle('comfy', allowed);
+      if (!allowed || !feed) { try { MV.clearRoot(feed); } catch (e) {} return; }
+      comfyBusy = true;
+      try {
+        const tiles = [];
+        const stg = stageIds();
+        if (meTile && meTile.tile && meTile.tile.style.display !== 'none') {
+          tiles.push({ id: 'me', el: meTile.tile, tier: 'row', me: true,
+            hand: !!myStatus.hand, handOrd: myStatus.hand || 0,
+            stage: stg.indexOf(myId) >= 0, stageOrd: Math.max(0, stg.indexOf(myId)),
+            speaker: !!(speakingOf && speakingOf.get && speakingOf.get('me')), pz: 'peer:me' });
+        }
+        for (const [pid, p] of peers) {
+          if (!p || !p.tile || p.headless || p.tile.style.display === 'none') continue;
+          const st = statusOf.get(pid) || {};
+          const si = stg.indexOf(pid);
+          tiles.push({ id: pid, el: p.tile, tier: 'row',
+            hand: !!st.hand, handOrd: st.hand || 0,
+            stage: si >= 0, stageOrd: Math.max(0, si),
+            speaker: !!(speakingOf && speakingOf.get && speakingOf.get(pid)), pz: 'peer:' + pid });
+        }
+        const meta = comfyStadMeta();
+        const roster = comfyStadRoster();
+        // Faces are the people not already on screen. The packer's count
+        // only drives the crop, and only when it names this same set.
+        const faces = [];
+        for (let j = 0; j < roster.length; j++) {
+          const id = roster[j];
+          let name = '\u2026';
+          try { name = displayName(id) || name; } catch (e) {}
+          // A camera-off face (or one we have not heard from yet) shows
+          // initials. The composite cell for that person is black.
+          const st = statusOf.get(id) || null;
+          const off = !st || (!!st.camOff && !st.scr);
+          faces.push({ id: id, name: name, initials: nameInitial(name), off: off });
+        }
+        const cols = (meta.n === roster.length) ? (meta.cols || 0) : 0;
+        if (meta.video && !meta.video._comfyRz) {
+          meta.video._comfyRz = true;
+          meta.video.addEventListener('resize', () => { try { layout(); } catch (e) {} });
+        }
+        const phone = window.innerWidth < 600;
+        let holdMs = 2500;
+        try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}
+        window.__comfyLast = MV.apply({
+          feed: feed, tiles: tiles, faces: faces, video: meta.video, cols: cols,
+          orderKey: roster.length + ':' + roster.join(','), holdMs: holdMs,
+          vw: window.innerWidth, vh: window.innerHeight, phone: phone,
+          pill: document.body.classList.contains('has-pill'),
+          mode: window.__meetViewMode || 'gallery', now: Date.now(),
+          onSettle: () => { try { layout(); } catch (e) {} },
+        });
+        if (meta.srcEl) meta.srcEl.classList.toggle('stad-src', faces.length > 0);
+      } finally { comfyBusy = false; }
+    }
+    let comfyResizeT = 0;
+    window.addEventListener('resize', () => {
+      if (comfyResizeT) clearTimeout(comfyResizeT);
+      comfyResizeT = setTimeout(() => { comfyResizeT = 0; try { layout(); } catch (e) {} }, 150);
+    });
 
     // ---- who's talking: per-stream audio meters → glowing tile border --------
     let ac = null;
@@ -4937,6 +5106,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, 20000);
     }
     function refreshOutbound() {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       reactCamIdle();
       const vt = sentVideoTrack();
       // Your self-view shows EXACTLY the track you broadcast (raw or blurred).
@@ -6593,6 +6763,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // pair's transport, once, after its channel is open. Returns true when
     // anything was added (the caller renegotiates over the channel).
     function enableMedia(p) {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return false;
       if (!p || !p.pc || p.mediaOn) return false;
       p.mediaOn = true;
       const pc = p.pc, carryCam = camPeer(p.id) && !p.headless;
@@ -8094,7 +8265,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Stage strip instead ("stagers live on the Stage ONLY",
         // docs/media-plane.md) — their main tracks are parked anyway, so the
         // tile would be a black square. It returns the moment they step down.
-        if (stg.has(pid)) { paintDisp(p.tile, 'none'); continue; }
+        if (stg.has(pid)) {
+          // Comfy gallery shows a stager in the row. The strip is a different mode.
+          let inGrid = false;
+          try { inGrid = !!(meTile && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.comfyAllowed(document.body)); } catch (e) { inGrid = false; }
+          paintDisp(p.tile, inGrid ? '' : 'none');
+          continue;
+        }
         const k = coordOfPeer.get(pid);
         if (!k) { paintDisp(p.tile, ''); continue; } // unknown coord ⇒ show
         const cc = net.topo.unck(k);
@@ -9989,6 +10166,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       regrabCamera('reviveCamera:ended-track');
     }
     function regrabCamera(reason) {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       // A re-grab replaces BOTH tracks in localStream, which restarts the blur
       // pipe and so changes sentVideoTrack — which rebuilds mySelfStream's memo,
       // mints a new stg stream id, and re-ships the stage feed to everyone (and
@@ -10117,6 +10295,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return md.enumerateDevices().then((list) => { audioDevKey = audioDevKeyOf(list); }, () => {});
     }
     function setMicMode(mode, force) {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (!localStream) return;
       // A request that lands while a grab is in flight is KEPT, never dropped:
       // every caller fires once (song start, song end, a device change), so a
@@ -12763,6 +12942,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // again (drop, then the same track) restarts the encoder. Never touches
     // a parked, staged, or cam-off sender — those are supposed to be quiet.
     function kickMainVideo(p) {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (!p || !p.mainV || p.remoteParkMain || myStatus.camOff || stageIds().includes(myId) || !camPeer(p.id)) return;
       let vt = null; try { vt = sentVideoTrack(); } catch (e) {}
       if (!vt || vt.readyState !== 'live') return;
@@ -12777,6 +12957,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Seat the mic again the same way. A staged sender is parked on purpose
     // and stays parked; mute is the track's enabled flag, so it carries over.
     function kickMainAudio(p) {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (!p || !p.mainA || stageIds().includes(myId)) return;
       const at = localStream && localStream.getAudioTracks()[0];
       if (!at || at.readyState !== 'live') return;
@@ -13715,6 +13896,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               job.senders.push(sd); job.trackList.push(carrier.track); job.srcTracks.push(tr);
               if (isStageJob(job.key)) stageSenders.add(sd);
               if (!job.active) { try { sd.replaceTrack(null); } catch (e) {} try { MPipe.pausePipe(jk, true); } catch (e) {} }
+              else if (typeof outgoingHeld !== 'undefined' && outgoingHeld) { try { sd.replaceTrack(null); } catch (e) {} }
               job.attachErr = null;
               return sd;
             }
@@ -13727,6 +13909,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         job.senders.push(sd); job.trackList.push(tr); job.srcTracks.push(tr);
         if (isStageJob(job.key)) stageSenders.add(sd);
         if (!job.active) { try { sd.replaceTrack(null); } catch (e) {} }
+        else if (typeof outgoingHeld !== 'undefined' && outgoingHeld) { try { sd.replaceTrack(null); } catch (e) {} }
         job.attachErr = null;
         return sd;
       } catch (e) { job.attachErr = (e && e.name) || 'error'; }
@@ -13917,7 +14100,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const wantsPipe = kind === 'video' && pipeEnabled() && !pipeDeny.has(jk) && !pipeJobs.has(jk)
               && (() => { try { return !!MPipe.receiverForTrack(nt, [...peers.values()].map((q) => q.pc).filter(Boolean)); } catch (e) { return false; } })();
             if (wantsPipe) { mosDetach(cur, jk, p, i); mosAttach(cur, jk, p, nt); ops.push('relane:' + kind); have = haveIdx(kind); continue; }
-            if (cur.active) { try { cur.senders[i].replaceTrack(nt); } catch (e) {} }
+            if (cur.active && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) { try { cur.senders[i].replaceTrack(nt); } catch (e) {} }
             cur.trackList[i] = nt; cur.srcTracks[i] = nt; ops.push('swap:' + kind);
           }
           // grow: the source gained a track of this kind — a fresh m-line
@@ -14076,6 +14259,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const jobPinned = (jk) => DEBUG_ON && window.__parkedJobs && (window.__parkedJobs.get(jk) || 0) > Date.now();
     function setJobActive(jk, on) {
       const job = mosJobs.get(jk); if (!job) return;
+      if (on && typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (on && jobPinned(jk)) return; // pinned parked — ignore the wake
       if (!!job.active === !!on) return;
       job.active = !!on;
@@ -15147,7 +15331,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let el = stadiumEl.querySelector('[data-row="sd"]');
       if (!stream) {
         if (el) { for (const v of el.querySelectorAll('video')) { try { v.pause(); v.srcObject = null; } catch (e) {} releaseAudio(v); } el.remove(); }
-        stadiumEl.classList.toggle('on', !!stadiumEl.querySelector('.rowtile')); compOf.delete('sd'); recSrcDirty = true; return;
+        stadiumEl.classList.toggle('on', !!stadiumEl.querySelector('.rowtile')); compOf.delete('sd'); recSrcDirty = true;
+        try { layout(); } catch (e) {}
+        return;
       }
       if (!el) {
         el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sd';
@@ -15160,6 +15346,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       stadiumEl.classList.add('on');
       compOf.set('sd', { via: 'mosaic', streamId: stream.id, stream, names: [], cnt: roomPastSection() ? displayCount() : knownTotal(), el: v });
       recSrcDirty = true;
+      try { layout(); } catch (e) {}
     }
     // A STAGER NEVER WATCHES ITSELF THROUGH ITS OWN COMPOSITE.
     //
@@ -19643,6 +19830,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
 
     micBtn.onclick = () => {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (document.body.classList.contains('app-room') && !roomAudioOn()) { setStatus('Talk is off — only the app host can turn it on.'); return; }
       if (!localStream) return lateMedia('mic');
       const track = localStream.getAudioTracks()[0]; if (!track) return lateMedia('mic');
@@ -19664,6 +19852,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (track.enabled) kickStageMic(track);
     };
     function kickStageMic(track) {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (!track || track.kind !== 'audio' || track.readyState !== 'live' || !track.enabled) return;
       for (const sd of stageSenders) {
         if (!sd || sd.track !== track) continue;
@@ -19672,6 +19861,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     camBtn.onclick = () => {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (document.body.classList.contains('app-room')) { setStatus('Video is not available in an app room yet — start a meeting and run the app from there.'); return; }
       if (!localStream) return lateMedia('cam');
       const track = localStream.getVideoTracks()[0]; if (!track) return lateMedia('cam');
@@ -20381,11 +20571,73 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const leaveAsk = document.getElementById('leave-ask');
     // The button asks first. leaveMeeting() itself stays immediate so a
     // hang-up from the OS and the test hook still leave at once.
-    if (leaveBtn) leaveBtn.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'flex'; };
+    if (leaveBtn) leaveBtn.onclick = () => { try { holdLeaveAsk(); } catch (e) {} if (leaveAsk) leaveAsk.style.display = 'flex'; };
     const leaveCancel = document.getElementById('leave-cancel');
-    if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; };
+    if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; try { releaseLeaveAsk(); } catch (e) {} };
     const leaveGo = document.getElementById('leave-go');
     if (leaveGo) leaveGo.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; leaveMeeting(); };
+    // Snapshot and silence every outgoing sender while the confirm is up.
+    // Cancel puts back exactly that snapshot. Confirm keeps the hold and
+    // leaves through leaveMeeting(). Defined after the buttons so a lifted
+    // onclick (no GifOS in the sandbox) still only shows the dialog.
+    function holdLeaveAsk() {
+      if (outgoingHeld) return;
+      const senders = [];
+      const seen = new Set();
+      const push = (sd) => { if (!sd || seen.has(sd)) return; seen.add(sd); senders.push(sd); };
+      try {
+        for (const p of peers.values()) {
+          if (!p || !p.pc || typeof p.pc.getSenders !== 'function') continue;
+          for (const sd of p.pc.getSenders()) push(sd);
+        }
+      } catch (e) {}
+      try { for (const sd of stageSenders) push(sd); } catch (e) {}
+      const tracks = [];
+      const grab = (stream) => {
+        if (!stream || typeof stream.getTracks !== 'function') return;
+        for (const t of stream.getTracks()) if (t) tracks.push(t);
+      };
+      try { grab(localStream); } catch (e) {}
+      try { grab(screenStream); } catch (e) {}
+      const ctx = {
+        mic: !myStatus.muted,
+        cam: !myStatus.camOff,
+        screen: !!(myStatus.scr && screenStream),
+        senders: senders,
+        tracks: tracks,
+      };
+      leaveSnap = (typeof GifOS !== 'undefined' && GifOS.meetLeave && GifOS.meetLeave.holdOutgoing) ? GifOS.meetLeave.holdOutgoing(ctx) : null;
+      outgoingHeld = true;
+      if (!leaving) { leaving = true; leavingForAsk = true; }
+      else leavingForAsk = false;
+      myStatus.lv = 1;
+      try { broadcastStatus(); } catch (e) {}
+      try { paintControls(); } catch (e) {}
+    }
+    function releaseLeaveAsk() {
+      if (!outgoingHeld && !leaveSnap) return;
+      const snap = leaveSnap;
+      leaveSnap = null;
+      outgoingHeld = false;
+      let back = { mic: false, cam: false, screen: false, dropped: [] };
+      try {
+        if (snap && typeof GifOS !== 'undefined' && GifOS.meetLeave && GifOS.meetLeave.releaseOutgoing) back = GifOS.meetLeave.releaseOutgoing(null, snap) || back;
+      } catch (e) {}
+      if (leavingForAsk) { leaving = false; leavingForAsk = false; }
+      const micTr = localStream && localStream.getAudioTracks()[0];
+      const camTr = localStream && localStream.getVideoTracks()[0];
+      let scrTr = null;
+      try { scrTr = screenStream && screenStream.getVideoTracks()[0]; } catch (e) {}
+      // An ended track stays off. A screen track is also kind 'video', so
+      // the dropped list is not a camera verdict.
+      myStatus.muted = !back.mic || !micTr || micTr.readyState === 'ended';
+      myStatus.camOff = !back.cam || !camTr || camTr.readyState === 'ended';
+      if (!back.screen || !scrTr || scrTr.readyState === 'ended') myStatus.scr = 0;
+      myStatus.lv = 0;
+      try { paintControls(); } catch (e) {}
+      try { broadcastStatus(); } catch (e) {}
+      try { refreshOutbound(); } catch (e) {}
+    }
     const leftRejoin = document.getElementById('left-rejoin'); if (leftRejoin) leftRejoin.onclick = () => location.reload();
     const leftClose = document.getElementById('left-close'); if (leftClose) leftClose.onclick = () => { location.href = homeHref(); };
 
@@ -22119,7 +22371,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       fsMain: () => ({ key: fsmain.dataset.key || null, bl: fsmain.classList.contains('blur2') ? 2 : fsmain.classList.contains('blur1') ? 1 : 0 }),
       fsThumbBlur: (key) => { const th = Array.from(fsstrip.children).find((t) => t.dataset.key === key); const tv = th && th.querySelector('video'); if (!tv) return null; return tv.classList.contains('blur2') ? 2 : tv.classList.contains('blur1') ? 1 : 0; },
       peerCamOff: (pid) => seatDark(statusOf.get(pid)),
-      defyCamOffForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; camDefiant = true; t.enabled = true; myStatus.camOff = false; broadcastStatus(); return true; },
+      defyCamOffForTest: () => { if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return false; const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; camDefiant = true; t.enabled = true; myStatus.camOff = false; broadcastStatus(); return true; },
       // a camera that comes on by a path that never asked the order (the page itself is honest)
       slipCamOnForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; t.enabled = true; myStatus.camOff = false; return true; },
       // freeze my outgoing pulses (simulates a phone that has throttled itself)
@@ -22177,6 +22429,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A modified client: claim a share and put a display track on the
       // senders without startScreenShare. Receivers still apply the grant.
       defyShareForTest: async () => {
+        if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return { claimed: false, held: true };
         let track = null;
         try {
           if (screenStream && screenStream.getVideoTracks()[0] && screenStream.getVideoTracks()[0].readyState === 'live') track = screenStream.getVideoTracks()[0];
@@ -22292,6 +22545,82 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       audioBlockedForTest: () => blockedAudio.size,
       audioBlockForTest: (el, name) => audioBlocked(el, { name }),
       takeTrForTest: (m) => takeTr(m),
+      comfyForTest: () => {
+        const feed = document.getElementById('feed');
+        const nodes = [];
+        const take = (el) => {
+          if (!el || el.classList.contains('stad-src')) return;
+          const cs = getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden') return;
+          const r = el.getBoundingClientRect();
+          if (r.width < 2 || r.height < 2) return;
+          nodes.push({
+            id: el.dataset.peer || el.dataset.stad || el.id || '',
+            tier: el.dataset.tier || '',
+            x: r.x, y: r.y, w: r.width, h: r.height,
+          });
+        };
+        document.querySelectorAll('#feed .tile').forEach(take);
+        document.querySelectorAll('#stadfaces .stadface, #stadcrowd').forEach(take);
+        const bar = document.querySelector('.bar');
+        const br = bar ? bar.getBoundingClientRect() : null;
+        let box = null;
+        try { box = GifOS.meetLayout.viewBox(window.innerWidth, window.innerHeight, { phone: window.innerWidth < 600, pill: document.body.classList.contains('has-pill') }); } catch (e) {}
+        return {
+          on: document.body.classList.contains('comfy'),
+          mode: window.__meetViewMode || 'gallery',
+          last: window.__comfyLast || null,
+          box: box,
+          nodes: nodes,
+          scroll: feed ? feed.scrollHeight - feed.clientHeight : null,
+          overflow: feed ? getComputedStyle(feed).overflow : null,
+          bar: br ? { x: br.x, y: br.y, w: br.width, h: br.height, free: bar.dataset.barfree || '', barx: bar.dataset.barx || '', bary: bar.dataset.bary || '' } : null,
+        };
+      },
+      outgoingHoldForTest: () => {
+        const senders = [];
+        const push = (sd, where) => {
+          if (!sd) return;
+          senders.push({ where: where, track: sd.track ? sd.track.kind : null, en: sd.track ? !!sd.track.enabled : null, rs: sd.track ? sd.track.readyState : null });
+        };
+        for (const [pid, p] of peers) {
+          if (!p || !p.pc || typeof p.pc.getSenders !== 'function') continue;
+          try { for (const sd of p.pc.getSenders()) push(sd, String(pid).slice(0, 8)); } catch (e) {}
+        }
+        const tracks = [];
+        const grab = (stream, where) => { if (!stream || !stream.getTracks) return; for (const t of stream.getTracks()) tracks.push({ where: where, kind: t.kind, en: !!t.enabled, rs: t.readyState }); };
+        grab(localStream, 'local');
+        try { grab(screenStream, 'screen'); } catch (e) {}
+        return { held: !!outgoingHeld, leaving: !!leaving, lv: myStatus.lv || 0, mic: !myStatus.muted, cam: !myStatus.camOff, scr: myStatus.scr || 0, senders: senders, tracks: tracks };
+      },
+      reclaimForTest: () => {
+        try { refreshOutbound(); } catch (e) {}
+        try { for (const p of peers.values()) { kickMainVideo(p); kickMainAudio(p); } } catch (e) {}
+        try { if (localStream) kickStageMic(localStream.getAudioTracks()[0]); } catch (e) {}
+        return { held: !!outgoingHeld, leaving: !!leaving };
+      },
+      inboundMediaForTest: async (pid) => {
+        const p = peers.get(pid);
+        if (!p || !p.pc || typeof p.pc.getStats !== 'function') return null;
+        let audioEnergy = 0, audioLevel = 0, audioBytes = 0, frames = 0, videoBytes = 0, nA = 0, nV = 0;
+        try {
+          const stats = await p.pc.getStats();
+          stats.forEach((s) => {
+            if (!s || s.type !== 'inbound-rtp') return;
+            if (s.kind === 'audio') {
+              nA++;
+              audioEnergy += s.totalAudioEnergy || 0;
+              if ((s.audioLevel || 0) > audioLevel) audioLevel = s.audioLevel || 0;
+              audioBytes += s.bytesReceived || 0;
+            } else if (s.kind === 'video') {
+              nV++;
+              frames += s.framesReceived || 0;
+              videoBytes += s.bytesReceived || 0;
+            }
+          });
+        } catch (e) { return { err: String(e).slice(0, 80) }; }
+        return { audioEnergy: audioEnergy, audioLevel: audioLevel, audioBytes: audioBytes, frames: frames, videoBytes: videoBytes, nA: nA, nV: nV };
+      },
       leaveForTest: () => leaveMeeting(),
       recording: () => !!(recRec && recRec.state !== 'inactive'),
       recMode: () => recMode,
