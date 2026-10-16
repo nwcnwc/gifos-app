@@ -224,4 +224,4 @@ The build name is a faint line under the header. A green round "A" in Nathan's s
 - Host, iPhone SE landscape. More opened, Password tapped with `force: true` because the button is off screen. Password sheet shot saved.
 - Chat, iPhone SE. Opened from More. Composer tap blocked by the dock.
 
-Four faces are real peer records (`__gifosVideo.presentPeers`), not cloned tiles. The gallery packer was not edited.
+Four faces are real peer records (`__gifosVideo.presentPeers`), not cloned tiles. On a phone the packer now refuses a wide squash; desktop packing is unchanged.
