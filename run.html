@@ -1381,6 +1381,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="5"]) .tile.me {
       width: 138px; height: 182px; }
   }
+  /* 320px and 360px phones cannot hold the 56px dock. Leave used to paint at
+     x=374, past the right edge, so hang-up was a sliver. Shrink the dock and
+     keep every primary control at least 44px inside the screen. */
+  @media (max-width: 380px) {
+    .bar { gap: 4px; height: 72px; padding: 0 8px; max-width: calc(100vw - 12px); }
+    .bar #bargrip { width: 16px; height: 36px; }
+    .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+      width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg {
+      width: 22px; height: 22px; }
+    .bar #leavebtn {
+      width: 48px; height: 48px; min-width: 48px; min-height: 48px; margin-left: 2px; }
+  }
   /* Comfy: every face on screen, tiles touch, the dock floats over them.
      The long :not chain is what the older gallery rule uses; matching it
      is what lets these win. Padding is zeroed so the dock does not reserve

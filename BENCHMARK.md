@@ -16,20 +16,16 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 | Dimension | Corporate | Church | Personal | Best rival on this dimension |
 | --- | ---: | ---: | ---: | --- |
 | First screen tells you what to do | 3 | 2 | 3 | FaceTime, Meet |
-| Hang up, mic, and camera stay on screen | 2 | 2 | 2 | Zoom, Meet |
+| Hang up, mic, and camera stay on screen | 4 | 4 | 4 | Zoom, Meet |
 | Chat can be read and sent on a phone | 2 | 2 | 2 | Meet, Teams |
 | Live, off air, watching, reconnecting | 3 | 1 | 3 | YouTube Live, StreamYard |
 | Large type and 44px targets | 3 | 2 | 3 | FaceTime |
 | Landscape, rotation, notch | 2 | 2 | 2 | Meet |
 | Warm, short, trustworthy copy | 3 | 2 | 3 | FaceTime |
-| **Audience average** | **2.6** | **2.0** | **2.6** | |
+| **Audience average** | **2.9** | **2.1** | **2.9** | |
 
-Corporate is pulled down by the clipped hang-up (Q1) and the covered chat field (Q2). The dock itself is the right idea: few round controls, More for the rest.
-
-Church is last. Starting a broadcast hides Create below the fold (Q4), never says LIVE or OFF AIR (Q5), and the same phone bugs hit the volunteer who is running the service from a handset.
-
-Personal is close to corporate on this surface because it is the same UI. It loses to FaceTime on friction: a family call still meets a dock that can hide hang-up, and a status line that does not grow at large text (Q6).
+Hang up, mic, and camera now stay inside a 320px and a 360px screen (Q1). Corporate and personal move from 2.6 to 2.9. Church moves from 2.0 to 2.1. None of the three lead. Zoom, Meet, and FaceTime still win the phone call, mostly because chat is covered by the dock (Q2) and a broadcast still has no LIVE / OFF AIR mark (Q5).
 
 ## Next gap
 
-Q1, the hang-up control off the right edge of a 320px and 360px phone. It is the control every audience needs, and it fails on the two smallest phones in the pass.
+Q2. On a meeting, the chat field and Send sit under the dock. Send is 34px tall. A person can hang up now, and still cannot reliably type to the room.

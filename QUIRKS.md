@@ -10,19 +10,6 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Open
 
-### Q1. Hang up is off the screen on a 320px and 360px phone
-
-Measured on a meeting (`#v=sundayroom`), portrait.
-
-| Phone | Leave button right edge | Viewport |
-| --- | --- | --- |
-| iPhone SE | 374px | 320px |
-| 360 Android | 374px | 360px |
-
-The dock is `width: auto` with `max-width: calc(100% - 16px)` and `overflow: visible`. Grip, camera, mic, reactions, and More stay on screen. Leave draws past the right edge, so the red hang-up control is only a sliver. A volunteer cannot reliably leave.
-
-Before: `test/mobile/screenshots/before/iphone-se-meeting-dock.png`.
-
 ### Q2. The chat field sits under the dock
 
 Same meeting, chat opened. The message field overlaps the dock on iPhone SE portrait, iPhone SE landscape, and 360 portrait. On portrait the Send button overlaps the dock too. Send is 34px tall, under a 44px touch target.
@@ -65,4 +52,11 @@ The viewport meta is `width=device-width, initial-scale=1.0, interactive-widget=
 
 ## Fixed
 
-None yet.
+### Q1. Hang up is off the screen on a 320px and 360px phone
+
+Measured on a meeting (`#v=sundayroom`), portrait. Leave’s right edge was 374px on both a 320px iPhone SE and a 360px Android. The dock is `width: auto` with `overflow: visible`, so the red hang-up control was only a sliver.
+
+Below 380px the dock now uses 44px primary controls and a 48px Leave, all inside the screen. `test/mobile/dock-fit.spec.mjs` covers iPhone SE, iPhone 15, Pixel 7, and the 360px Android.
+
+Before: `test/mobile/screenshots/before/iphone-se-meeting-dock.png`.
+After: `test/mobile/screenshots/after/iphone-se-meeting-dock.png` and `test/mobile/screenshots/after/android-360-meeting-dock.png`.
