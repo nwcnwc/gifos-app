@@ -693,29 +693,46 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.has-app #stadium, body.has-app #stagefeed { display: none; }
   /* BROADCAST (the Broadcast app, #bc=1 on an admin room): the Stage is the
      show and chat is the back-channel — the row grid and the stadium strip
-     never render. Viewers (guests) also lose every media control: they bring
-     no camera or mic at all. A guest the host GRANTS the stage (the same
-     signed 'app' grant that gates the Stage) gets the mic/cam buttons back —
-     body.stage-granted — so they can go live when called up. */
+     never render. Roles are body classes, not a Meet share grant
+     (e2e-broadcast-roles.js). A viewer watches and chats. A stage guest
+     (the signed 'app' grant) gets camera and mic. The host keeps publish
+     controls. Meet's row hammers stay off every role. */
   body.broadcast #grid, body.broadcast #stadium { display: none !important; }
   body.broadcast #stagefeed .rowtile { max-height: 76vh; }
-  body.broadcast.notadmin:not(.stage-granted) #mic,
-  body.broadcast.notadmin:not(.stage-granted) #cam,
-  body.broadcast.notadmin:not(.stage-granted) #flipcam,
-  body.broadcast.notadmin:not(.stage-granted) .blurctl,
-  body.broadcast.notadmin #appbtn,
-  body.broadcast.notadmin:not(.share-granted) #sharebtn,   /* a viewer is not a broadcaster until an admin allows their screen */
-  body.broadcast.notadmin #recbtn,
-  body.broadcast.notadmin #ccbtn,
-  body.broadcast.notadmin #pwbtn,
+  body.broadcast.bc-viewer #mic,
+  body.broadcast.bc-viewer #cam,
+  body.broadcast.bc-viewer #flipcam,
+  body.broadcast.bc-viewer .blurctl,
+  body.broadcast.bc-viewer #appbtn,
+  body.broadcast.bc-viewer #sharebtn,
+  body.broadcast.bc-viewer #recbtn,
+  body.broadcast.bc-viewer #ccbtn,
+  body.broadcast.bc-viewer #pwbtn,
+  body.broadcast.bc-viewer #stagebtn,
+  body.broadcast.bc-viewer #trbtn,
+  body.broadcast.bc-viewer #set-video,
+  body.broadcast.bc-viewer #set-captions,
+  body.broadcast.bc-viewer #reshare-back,
+  body.broadcast.bc-stage #appbtn,
+  body.broadcast.bc-stage #sharebtn,
+  body.broadcast.bc-stage #recbtn,
+  body.broadcast.bc-stage #ccbtn,
+  body.broadcast.bc-stage #pwbtn,
+  body.broadcast.bc-stage #trbtn,
+  body.broadcast.bc-stage #set-captions,
+  body.broadcast.bc-stage #reshare-back,
   body.broadcast #votebtn,
-  /* Nobody mixes in a broadcast: Stage audio is the only bus there is (the
-     whole Sound-mix section hides inside Settings). And the host's
-     guest-video hammers (Blur guests / Video off) moderate a row tier a
-     broadcast doesn't have — viewers bring no camera at all. */
+  /* Nobody mixes in a broadcast: Stage audio is the only bus there is.
+     Blur guests, Turn video off, and Allow screen share moderate a Meet
+     row a broadcast does not have — a share grant must not let a viewer
+     publish. Per-person mute, blur, promote, demote, and ban live on Who. */
   body.broadcast #mixpanel,
   body.broadcast #blurall,
-  body.broadcast #camall { display: none !important; }
+  body.broadcast #camall,
+  body.broadcast #shareall,
+  body.broadcast .modbar button[data-mod=share] { display: none !important; }
+  #who-list .bc-mods { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .15rem; }
+  #who-list .bc-mods button { padding: .15rem .45rem; font-size: .72rem; border-radius: .35rem; }
   #appbar { display: flex; align-items: center; gap: .5rem; padding: .25rem .6rem;
     background: var(--surface, #14141f); border-bottom: 1px solid var(--border, #2a2a3f); font-size: .85rem; }
   #appbar #appname { font-weight: 700; }
@@ -1318,7 +1335,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="name-modal" role="dialog" aria-modal="true" id="set-modal" style="display:none">
     <div class="name-box" style="max-width:440px;text-align:left">
       <h3 style="text-align:center">Settings</h3>
-      <div class="set-sec">
+      <div class="set-sec" id="set-video">
         <b>Video quality</b>
         <p class="set-help">What <b>your own camera</b> records and sends. <b>Auto</b> adapts to the room's size and your battery; a fixed choice pins it.</p>
         <span class="segwrap" id="vqrow" role="group" aria-label="Video quality">
@@ -1335,7 +1352,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <b>Your name</b>
         <p class="set-help">What everyone sees on your tile: <b id="set-name-cur">…</b> <button id="set-rename" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin-left:.4rem">Change</button></p>
       </div>
-      <div class="set-sec">
+      <div class="set-sec" id="set-captions">
         <b>Captions language</b>
         <p class="set-help">What <b>your own device</b> listens for when CC is on. It cannot guess: a phone set to Russian writes English down as nonsense, so pick the language you will speak.</p>
         <select id="cclang" style="padding:.35rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);max-width:100%"></select>
@@ -1351,7 +1368,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           </div>
         </div>
         <div id="ccsource" style="margin-top:.5rem;display:none"></div>
-        <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span>Admins only — every device starts writing down the voices it hears. Anyone can tap CC to opt out.</span></p>
+        <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span id="ccall-note">Admins only — every device starts writing down the voices it hears. Anyone can tap CC to opt out.</span></p>
       </div>
       <div id="mixpanel">
         <b>Sound mix</b>
@@ -1856,6 +1873,63 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { return !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()); }
       catch (e) { return false; }
     };
+    // none until joinRoom starts the adopt; pending while the stored key is
+    // still being checked, so a host is not treated as a viewer in that gap.
+    // ok after it verifies; no after it does not.
+    let bcAdoptState = 'none';
+    let bcSeatLock = false;
+    if (BROADCAST) document.body.classList.add(bcHostStored() ? 'bc-host' : 'bc-viewer');
+    // A broadcast seat. Hosts hold the admin key (or are still proving it).
+    // Stage guests hold the signed app grant. Everyone else watches.
+    // canStage is true for the whole page until joinRoom sets `av`, so a
+    // viewer is not a stage guest before the room exists.
+    function bcRole() {
+      if (!BROADCAST) return 'meet';
+      if (amAdmin || (myId && admins.includes(myId))) return 'host';
+      if (bcAdoptState === 'pending' || bcAdoptState === 'ok') return 'host';
+      if (bcAdoptState === 'none' && bcHostStored()) return 'host';
+      if (av && canStage(myId)) return 'stage';
+      return 'viewer';
+    }
+    function bcMayPublishAv() {
+      const r = bcRole();
+      return r === 'host' || r === 'stage' || r === 'meet';
+    }
+    function paintBroadcastRole() {
+      if (!BROADCAST) return;
+      const role = bcRole();
+      document.body.classList.toggle('bc-viewer', role === 'viewer');
+      document.body.classList.toggle('bc-stage', role === 'stage');
+      document.body.classList.toggle('bc-host', role === 'host');
+      document.body.classList.toggle('stage-granted', role === 'stage');
+      try { paintHand(); } catch (e) {}
+    }
+    // A viewer publishes nothing, including after a bypass. Stops tracks and
+    // parks the main senders. Does not run against a host whose key is still
+    // being checked (bcRole stays 'host' while the adopt is pending).
+    function enforceBroadcastSeat() {
+      if (!BROADCAST || bcSeatLock) return;
+      try { paintBroadcastRole(); } catch (e) {}
+      if (bcRole() !== 'viewer') return;
+      bcSeatLock = true;
+      try {
+        if ((myStatus.scr || screenStream) && typeof stopScreenShare === 'function') {
+          try { stopScreenShare('viewers do not publish'); } catch (e) {}
+        }
+        if (myStatus.stg) myStatus.stg = 0;
+        if (myStatus.cc) {
+          myStatus.cc = false;
+          try { syncSpeech(); } catch (e) {}
+        }
+        if (localStream) {
+          for (const tr of localStream.getTracks()) { try { tr.enabled = false; tr.stop(); } catch (e) {} }
+          localStream = null;
+        }
+        myStatus.muted = true;
+        myStatus.camOff = true;
+        try { refreshOutbound(); } catch (e) {}
+      } finally { bcSeatLock = false; }
+    }
     const grid = document.getElementById('grid');
     const statusEl = document.getElementById('status');
     const share = document.getElementById('share');
@@ -2071,8 +2145,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // composites or records that video, and the honest client's one outbound
     // answer (sentVideoTrack) will not emit a screen it is not allowed to.
     const mayShareScreen = (id) => {
-      if (!hasAdminRoom()) return true;
       const self = id === 'me' || id === myId;
+      // A broadcast share is the host's. A stage grant and a Meet share
+      // grant do not publish a viewer's or a guest's screen.
+      if (BROADCAST) {
+        const pid = self ? myId : id;
+        return self ? bcRole() === 'host' : admins.includes(pid);
+      }
+      if (!hasAdminRoom()) return true;
       const pid = self ? myId : id;
       // amAdmin, not only the admins view: that view refreshes on the sweep,
       // and the host is already signed in before their own id is copied in.
@@ -2848,6 +2928,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // socket no longer silences the room's pulse).
       const audible = relayUp() || Array.from(peers.values()).some((p) => p.dc && p.dc.readyState === 'open');
       try { holdForcedCam(); } catch (e) {}
+      try { enforceBroadcastSeat(); } catch (e) {}
       if (peers.size && audible && !throttled) broadcastStatus();
       // HALF-OPEN PAIR SELF-HEAL (behavior battery F1, 2026-07-26): a join
       // glare can leave an ASYMMETRIC DataChannel pair — both ends read
@@ -4655,6 +4736,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // — is baked into the broadcast pixels at the source. "Blurred" is never
     // viewer-side cosmetics alone: what leaves this browser is already blurry.
     function sentVideoTrack() {
+      // A broadcast viewer has no outbound video, even if a track was armed
+      // by a bypass. Stage guests and hosts publish as a meeting does.
+      if (BROADCAST && !bcMayPublishAv()) { try { stopBlurPipe(); } catch (e) {} return null; }
       // A SCREEN SHARE IS A SOURCE SWAP, NOT A SECOND CHANNEL (roadmap §4g).
       // This one function decides what video leaves this device, and every
       // consumer already reads it: the self-view, the MAIN senders to row-mates
@@ -4718,6 +4802,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, 20000);
     }
     function refreshOutbound() {
+      // Viewers do not ride the row. Stepping off the stage in Meet restores
+      // the main senders; in a broadcast that restore would publish a person
+      // the host just demoted. Park and leave.
+      if (BROADCAST && bcRole() === 'viewer') {
+        if (camIdleT) { clearTimeout(camIdleT); camIdleT = null; }
+        for (const p of peers.values()) {
+          if (p.mainV && p.mainV.track) p.mainV.replaceTrack(null).catch(() => {});
+          if (p.mainA && p.mainA.track) p.mainA.replaceTrack(null).catch(() => {});
+        }
+        return;
+      }
       reactCamIdle();
       const vt = sentVideoTrack();
       // Your self-view shows EXACTLY the track you broadcast (raw or blurred).
@@ -8630,6 +8725,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn();
       if (typeof updateCamAllBtn === 'function') updateCamAllBtn();
       paintChatGate(); renderChat(); // signing in as admin grows the chat toggle + per-line deletes
+      try { paintBroadcastRole(); } catch (e) {}
       refreshOutbound(); // admin presence changes what clears
     }
 
@@ -9770,6 +9866,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       regrabCamera('reviveCamera:ended-track');
     }
     function regrabCamera(reason) {
+      if (BROADCAST && !bcMayPublishAv()) return;
       // A re-grab replaces BOTH tracks in localStream, which restarts the blur
       // pipe and so changes sentVideoTrack — which rebuilds mySelfStream's memo,
       // mints a new stg stream id, and re-ships the stage feed to everyone (and
@@ -10356,13 +10453,55 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (r.forged && !i) { const w = document.createElement('b'); w.className = 'who-forged'; w.style.color = '#e5484d'; w.textContent = t; ip.appendChild(w); }
             else ip.appendChild(document.createTextNode(t));
           });
-          row.appendChild(nm); row.appendChild(ip); list.appendChild(row);
+          row.appendChild(nm); row.appendChild(ip);
+          if (BROADCAST && amAdmin && r.here && !r.me) {
+            row.style.flexWrap = 'wrap';
+            const mods = document.createElement('div');
+            mods.className = 'bc-mods';
+            const onStage = !!(modOf(r.pid).app && modOf(r.pid).app.on);
+            const muted = !!(modOf(r.pid).mute && modOf(r.pid).mute.on);
+            const blurred = !!(modOf(r.pid).blur && modOf(r.pid).blur.on);
+            const add = (act, label) => {
+              const b = document.createElement('button');
+              b.type = 'button';
+              b.dataset.bcMod = act;
+              b.dataset.pid = r.pid;
+              b.textContent = label;
+              mods.appendChild(b);
+            };
+            add('stage', onStage ? 'Demote' : 'Promote');
+            add('mute', muted ? 'Unmute' : 'Mute');
+            add('blur', blurred ? 'Unblur' : 'Blur');
+            add('ban', 'Ban');
+            row.appendChild(mods);
+          }
+          list.appendChild(row);
         }
       }
       whoModal.style.display = 'flex';
       if (opening) whoObserve().then(() => whoRefresh()); // what my links see right now, not 15 s ago
     }
     whoRefresh = () => { if (whoModal.style.display === 'flex') showWhoModal(); };
+    document.getElementById('who-list').addEventListener('click', (e) => {
+      const b = e.target.closest && e.target.closest('[data-bc-mod]');
+      if (!b || !amAdmin) return;
+      e.stopPropagation();
+      const id = b.dataset.pid;
+      const act = b.dataset.bcMod;
+      if (!id) return;
+      if (act === 'ban') {
+        const dev = devRelay.has(id) ? devOf[id] : '';
+        if (!dev) { relaySendObj({ t: 'who' }); setStatus('🛡 The door has not vouched for this person' + String.fromCharCode(39) + 's device yet — try Ban again in a moment.'); return; }
+        rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
+        admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); });
+        return;
+      }
+      if (act === 'stage') setMod(id, 'app', !(modOf(id).app && modOf(id).app.on));
+      else if (act === 'mute') setMod(id, 'mute', !(modOf(id).mute && modOf(id).mute.on));
+      else if (act === 'blur') setMod(id, 'blur', !(modOf(id).blur && modOf(id).blur.on));
+      else return;
+      showWhoModal();
+    });
     document.getElementById('who-close').onclick = () => { whoModal.style.display = 'none'; };
     whoModal.onclick = (e) => { if (e.target === whoModal) whoModal.style.display = 'none'; }; // tap the backdrop to dismiss
 
@@ -10391,7 +10530,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + '</ul>'
           + '<h4>Speaking up</h4>'
           + '<ul class="help-list">'
-          + '<li>Tap <b>Hand</b> to ask for the Stage. The host can call you up — your own phone then asks for your camera and mic (your choice to grant), and you join the host on Stage for the whole room.</li>'
+          + '<li>Tap <b>Ask to join</b> to ask for the Stage. The host can call you up — your own phone then asks for your camera and mic (your choice to grant), and you join the host on Stage for the whole room.</li>'
           + '<li>Stepping down is yours to do at any time; the host can also revoke the Stage.</li>'
           + '</ul>'
           + '<h4>For the host</h4>'
@@ -10399,7 +10538,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + '<li>Your <b>host password</b> is yours alone — it IS your control of this broadcast. Do not send it to viewers.</li>'
           + '<li>The <b>Password</b> button sets or changes the <b>viewer password</b>: without one the broadcast stays blurred; with one, whoever you give it to sees you clear.</li>'
           + '<li>The hand queue floats to the top — tap a name to call them up on Stage. Revoking their grant pulls them back down.</li>'
-          + '<li>Chat has a <b>Turn chat off</b> switch (your messages still land) and per-message delete. Ban lives on each tile’s controls.</li>'
+          + '<li>Chat has a <b>Turn chat off</b> switch (your messages still land) and per-message delete. Promote, demote, mute, blur, and ban are on <b>Who</b>.</li>'
           + '<li>A broadcast lives while its host is present: leave, and it winds down after a countdown.</li>'
           + '</ul>'
           + '<p>Underneath it is the same thing as a GifOS Meeting: everything goes straight between the people here, no accounts, no company keeping your video.</p>';
@@ -10496,7 +10635,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Adopt the stored key as a SIGNING key (§9): verifies K against the
       // room's V locally and arms signed moderation. Async — the first
       // signed heartbeat follows on the next beat.
-      if (admKey && av) adoptAdmKey(admKey).then((ok) => { if (ok) { applyAdminUi(); broadcastStatus(); } });
+      if (admKey && av) {
+        bcAdoptState = 'pending';
+        try { paintBroadcastRole(); } catch (e) {}
+        adoptAdmKey(admKey).then((ok) => {
+          bcAdoptState = ok ? 'ok' : 'no';
+          if (ok) { applyAdminUi(); broadcastStatus(); }
+          else { try { paintBroadcastRole(); enforceBroadcastSeat(); } catch (e) {} }
+        });
+      }
       loadPw();
       // An admin-room stored pw is PROVISIONAL until the door's verdict (the
       // roster's `locked` — see the roster handler). An admin's own device
@@ -12977,6 +13124,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // to broadcast at all is the ONLY case that returns null.
     let selfShipMemo = null;
     const mySelfStream = () => {
+      if (BROADCAST && !bcMayPublishAv()) return null;
       const v = sentVideoTrack();
       const a = (localStream && localStream.getAudioTracks()[0]) || null;
       if (!v && !a) return null;   // nothing to broadcast — no feed to ship
@@ -16167,7 +16315,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const handBtn = document.getElementById('hand');
     function paintHand() {
       handBtn.classList.toggle('off', !!myStatus.hand);
-      handBtn.textContent = myStatus.hand ? 'Lower hand' : 'Hand';
+      const ask = BROADCAST && bcRole() === 'viewer';
+      handBtn.textContent = myStatus.hand ? 'Lower hand' : (ask ? 'Ask to join' : 'Hand');
+      if (ask) handBtn.title = 'Ask the host to invite you on stage';
+      else if (!myStatus.hand) handBtn.title = 'Raise your hand — raised hands float to the top';
     }
     handBtn.onclick = () => {
       myStatus.hand = myStatus.hand ? null : Date.now();
@@ -16230,9 +16381,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       stageBtn.classList.toggle('on', on);
       stageBtn.textContent = on ? 'Step down' : 'Stage';
       stageBtn.style.display = (!hasAdminRoom() || amAdmin || (modOf(myId).app && modOf(myId).app.on) || myStatus.stg) ? '' : 'none';
-      // The broadcast skin hides a viewer's mic/cam buttons — until the host
-      // grants them the stage, when the controls they now need grow back.
-      document.body.classList.toggle('stage-granted', canStage(myId));
+      // Broadcast roles own the seat class. Meet still marks a stage grant
+      // the old way; a broadcast viewer must not inherit it.
+      if (BROADCAST) {
+        paintBroadcastRole();
+        if (bcRole() === 'viewer') enforceBroadcastSeat();
+      } else document.body.classList.toggle('stage-granted', canStage(myId));
     }
     // THE CAP IS DECIDED BY ARITHMETIC, NOT BY MY TAP. stageIds() keeps the C
     // earliest claims on every phone, so a step-up that lost a same-moment
@@ -16364,7 +16518,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // first customer meeting read that as "there is no share button at
       // all". The button now stays, greyed; pressing it says why (2026-10-02).
       shareBtn.classList.toggle('dim', !canScreenShare());
-      shareBtn.style.display = '';
+      shareBtn.style.display = (BROADCAST && bcRole() !== 'host') ? 'none' : '';
       // A screen on the Stage wants height. This does not rebuild the layout —
       // it lets the strip grow the way the broadcast skin already does.
       document.body.classList.toggle('screen-on', screenSharers().length > 0);
@@ -16528,6 +16682,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setStatus(why ? 'Screen share stopped — ' + why + '.' : 'Screen share stopped.');
     }
     if (shareBtn) shareBtn.onclick = () => {
+      if (BROADCAST && bcRole() !== 'host') return;
       if (myStatus.scr) { stopScreenShare(); return; }
       if (!canScreenShare()) {
         setStatus('🖥 This browser has no screen-capture support, so it cannot share a screen. Most phone browsers cannot; a computer browser can. To show a document from a phone, open it as an app with Run app.', 15000);
@@ -16801,6 +16956,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       applyBuses(); // refresh which faders show
       const nc = document.getElementById('set-name-cur'); if (nc) nc.textContent = myName();
       const car = document.getElementById('ccall-row'); if (car) car.style.display = (hasAdminRoom() && amAdmin) ? '' : 'none';
+      const ccNote = document.getElementById('ccall-note');
+      if (ccNote) ccNote.textContent = BROADCAST
+        ? 'In a broadcast only this host\u2019s device writes captions. Viewers and stage guests do not.'
+        : 'Admins only — every device starts writing down the voices it hears. Anyone can tap CC to opt out.';
       if (typeof applyCcAll === 'function') applyCcAll();
       setModal.style.display = 'flex';
     };
@@ -18252,6 +18411,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       ccvPublish();
     }
     document.getElementById('ccbtn').onclick = () => {
+      if (BROADCAST && bcRole() !== 'host') return;
       myStatus.cc = !myStatus.cc;
       if (myStatus.cc) { speechGaveUp = false; wspPaused = false; wspQ.stalls = 0; } // turning CC on retries both engines
       else if (ccOthers > 0) ccFillOptOut = true; // CC off while others caption: this device stops filling in too
@@ -18275,6 +18435,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const btn = document.getElementById('ccall');
       if (btn) btn.textContent = 'Captions for everyone: ' + (m ? 'on' : 'off');
       const cc = document.getElementById('ccbtn');
+      // A broadcast transcribes on the host's device only. A viewer or a
+      // stage guest must not start a speech engine because the room asked.
+      if (BROADCAST && bcRole() !== 'host') {
+        if (myStatus.cc) {
+          myStatus.cc = false;
+          ccByOrder = false;
+          if (cc) cc.classList.remove('on');
+          try { syncSpeech(); } catch (e) {}
+        }
+        return;
+      }
       if (!m) {
         if (ccByOrder && myStatus.cc) { ccByOrder = false; myStatus.cc = false; cc.classList.remove('on'); syncSpeech(); setStatus('Captions for everyone were turned off.'); broadcastStatus(); }
         return;
@@ -18945,6 +19116,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
     }
     recBtn.onclick = () => {
+      if (BROADCAST && bcRole() !== 'host') return;
       if (recStarting) return;
       if (recRec && recRec.state !== 'inactive') {
         // Halt the 15fps compositor BEFORE stop(): stop() makes the encoder
@@ -19108,6 +19280,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // lateMedia (a camera granted mid-call by a tap) and the boot path (a
     // camera granted AFTER the knock — the knock never waits on the prompt).
     function attachLocalTracks() {
+      if (!localStream || (BROADCAST && !bcMayPublishAv())) return;
       for (const [pid, p] of peers) {
         if (!p.pc) continue;
         let added = false;
@@ -19134,6 +19307,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return null;
     }
     function lateMedia(kind) {
+      if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
       if (lateRefusal(kind)) { setStatus(lateRefusal(kind)); return; }
       if (lateAsk) { setStatus('Still asking for the camera and microphone\u2026'); return; }
       // THE BOOT ASK IS THE ONLY ASK (knock-first, 2026-08-05): the knock no
@@ -19148,6 +19322,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const p = bootGumPending;
         setStatus('Asking for camera & microphone…');
         p.then(() => {
+          if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
           const tr = localStream && (kind === 'cam' ? localStream.getVideoTracks() : localStream.getAudioTracks())[0];
           if (!tr) return lateMedia(kind);
           if (lateRefusal(kind)) { setStatus(lateRefusal(kind)); return; }
@@ -19183,6 +19358,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, LATE_ASK_MS);
       gumWithMicFallback(md, ask)
         .then(({ stream: s, camErr }) => {
+          if (BROADCAST && !bcMayPublishAv()) {
+            try { for (const tr of s.getTracks()) tr.stop(); } catch (e) {}
+            if (gen === lateGen) lateAsk = false;
+            enforceBroadcastSeat();
+            return;
+          }
           if (lateWon !== won0) {
             // A grant already landed: keep that stream, release this one.
             try { for (const tr of s.getTracks()) tr.stop(); } catch (e) {}
@@ -19257,6 +19438,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
 
     micBtn.onclick = () => {
+      if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
       if (document.body.classList.contains('app-room') && !roomAudioOn()) { setStatus('Talk is off — only the app host can turn it on.'); return; }
       if (!localStream) return lateMedia('mic');
       const track = localStream.getAudioTracks()[0]; if (!track) return lateMedia('mic');
@@ -19286,6 +19468,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     camBtn.onclick = () => {
+      if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
       if (document.body.classList.contains('app-room')) { setStatus('Video is not available in an app room yet — start a meeting and run the app from there.'); return; }
       if (!localStream) return lateMedia('cam');
       const track = localStream.getVideoTracks()[0]; if (!track) return lateMedia('cam');
@@ -19304,6 +19487,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Flip front/back camera (mobile convention). regrabCamera does the whole
     // swap: same MediaStream identity, senders re-fed, blur pipe rebuilt.
     document.getElementById('flipcam').onclick = () => {
+      if (BROADCAST && !bcMayPublishAv()) return;
       if (!localStream) return;
       camFacing = camFacing === 'user' ? 'environment' : 'user';
       try { localStorage.setItem('gifos_cam_facing', camFacing); } catch (e) {}
@@ -19345,6 +19529,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // whether a tile actually goes clear is the room rule's meeting — when your
     // No blur can't show yet, the status line says exactly why.
     function setPersonalBlur(v) {
+      if (BROADCAST && !bcMayPublishAv()) return;
       myStatus.blur = v;
       paintControls();
       refreshOutbound(); // sender-side: broadcast blurred (or raw) to match
@@ -19608,6 +19793,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       el.setAttribute('aria-modal', 'true');
     }
     paintControls();
+    try { paintBroadcastRole(); } catch (e) {}
     // ---- Invite: the one place every meeting link is made ----------------------
     // A meeting's room IS its URL and is host-less, so "sharing" is handing out
     // the link you already hold. The ONE governance choice is open vs a room you
@@ -20073,6 +20259,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
     // Who may put an app on this room's stage?
     function appAllowed(pid) {
+      if (BROADCAST) {
+        if (pid === myId || pid === 'me') return bcRole() === 'host';
+        return admins.includes(pid);
+      }
       if (!hasAdminRoom()) return true;
       if (admins.includes(pid)) return true;
       const g = modTable[pid] && modTable[pid].app;
@@ -21639,6 +21829,43 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return { claimed: !!myStatus.scr, track: !!track };
       },
       myPid: () => myId, // S4 peer id (H(pubkey)); what modTable/admins/grants key on
+      broadcastRole: () => bcRole(),
+      broadcastProbe: () => {
+        const tracks = [];
+        try { if (localStream) for (const t of localStream.getTracks()) tracks.push({ kind: t.kind, state: t.readyState, enabled: !!t.enabled }); } catch (e) {}
+        const senders = [];
+        try {
+          for (const p of peers.values()) {
+            if (p.mainV && p.mainV.track) senders.push('v');
+            if (p.mainA && p.mainA.track) senders.push('a');
+          }
+        } catch (e) {}
+        let screen = false;
+        try { const scr = screenStream && screenStream.getVideoTracks()[0]; screen = !!(scr && scr.readyState === 'live'); } catch (e) {}
+        return { role: bcRole(), tracks: tracks, senders: senders, screen: screen };
+      },
+      // The signed stage grant, written the way a host's mod table would.
+      // setMod refuses to target yourself, so a one-page gate cannot use it.
+      broadcastGrantForTest: (on) => {
+        if (!myId) return { err: 'no id' };
+        const mine = modTable[myId] = modTable[myId] || {};
+        mine.app = { on: !!on, by: 'host', byId: 'host', at: Date.now() };
+        try { paintBroadcastRole(); } catch (e) {}
+        try { enforceBroadcastSeat(); } catch (e) {}
+        try { paintStage(); } catch (e) {}
+        try { paintControls(); } catch (e) {}
+        try { paintHand(); } catch (e) {}
+        return { role: bcRole() };
+      },
+      seedWatcherForTest: (name) => {
+        const id = 'bcwatch' + Math.random().toString(16).slice(2, 10);
+        if (rosterIds.indexOf(id) < 0) rosterIds.push(id);
+        rosterNames[id] = name || 'Ada';
+        devOf[id] = 'dev' + id;
+        devRelay.add(id);
+        statusOf.set(id, { at: Date.now(), rx: Date.now() });
+        return id;
+      },
 
       stopRoomAppForTest: () => { const w = findSharedApp(); if (w) stopRoomApp(w); },
       quality: () => rung(participantCount()).label,

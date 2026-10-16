@@ -54,6 +54,8 @@ A viewer may raise a hand, which asks the host to promote them. Chat stays avail
 
 The audience grid stays off in a broadcast, because viewers have no camera. Host moderation is on Who, and the hand queue still promotes the person who asked.
 
+The gate is `test/browser/e2e-broadcast-roles.js`. It checks the dock, the More cluster, Settings, and the phone and landscape layouts, and it checks that a click does not publish.
+
 ## What was wrong
 
 - Viewer microphone, camera, blur, screen share, captions, and recording were only hidden with CSS, and only after the page learned it was not the admin. A click, a system media key, or a scripted call still called `getUserMedia` or `getDisplayMedia` and attached the tracks.
@@ -62,3 +64,7 @@ The audience grid stays off in a broadcast, because viewers have no camera. Host
 - The same stage grant also allowed Run app, so a stage guest could publish an app.
 - Captions for everyone would start a viewer's transcriber.
 - Blur guests, Turn video off, and Allow screen share are Meet admin hammers. Allow screen share was still shown to a broadcast host and would have let viewers publish a screen. Per-person mute, blur, promote, demote, and ban lived on the grid tiles, which a broadcast does not draw, so a host could not use them.
+
+## What changed
+
+A viewer is `bc-viewer` from the first paint. Camera, microphone, blur, screen share, Run app, record, captions, password, and Stage stay off in every layout, including when a Meet share grant is present. Clicks and the system media keys do not call `getUserMedia` or `getDisplayMedia`, and a beat parks any sender a bypass attached. A stage guest gets camera and microphone; demoting them stops the tracks and removes those controls. They do not get screen share, Run app, record, or captions. The host keeps those, and Who carries promote, demote, mute, blur, and ban. Allow screen share, Blur guests, Turn video off, vote, and the sound mix stay off for every broadcast role.
