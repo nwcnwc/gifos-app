@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 against the desktop chrome in `run.html` (Meeting, and Broadcast via `#bc=1`). Scores are 1–5 for the **desktop UI** a person actually sees. 5 means that product is the reference for the row. This is not a score for media quality, scale, or mobile.
 
-GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (4.1, Zoom 4.9, Meet 4.3) or personal (4.2, FaceTime 4.8). Corporate ties Teams at 4.1. Personal is ahead of Meet (4.0) and behind FaceTime. A tie is not a lead. The church lead is the audience average.
+GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (4.3, Zoom 4.9) or personal (4.2, FaceTime 4.8). Corporate ties Meet at 4.3 and is ahead of Teams (4.1). Personal is ahead of Meet (4.0) and behind FaceTime. A tie is not a lead. The church lead is the audience average.
 
 ## Who we are scoring against
 
@@ -18,12 +18,12 @@ GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (4.1, Z
 | Mute / camera state is obvious | 5 | 5 | 4 | 5 |
 | Controls labeled, not hover-only | 5 | 4 | 4 | 4 |
 | Layout holds at 1280, 1920, 900, resize | 5 | 4 | 4 | 4 |
-| Chat usable while the dock is up | 5 | 5 | 4 | 4 |
+| Chat usable while the dock is up | 5 | 5 | 4 | 5 |
 | Keyboard path (shortcuts, Escape, focus) | 4 | 4 | 4 | 4 |
 | Trust: live, recording, who is here | 5 | 4 | 5 | 4 |
-| **Audience score** | **4.9** | **4.3** | **4.1** | **4.1** |
+| **Audience score** | **4.9** | **4.3** | **4.1** | **4.3** |
 
-Zoom still leads. A full-width line says Microphone off and Camera off, and it leaves when those are on (Q21). That row matches Zoom and Meet. The full-screen control says Full screen (Q24). Labeled controls stay at 4: the words are complete, and Zoom’s bar is still the reference. A card names who is recording, and the bar stays Recording (Q22). Trust stays at 4, even with Meet: there is no waiting room, and the card does not hold the recording until the other people have answered. Zoom and Teams stay at 5. Arithmetic: (5+4+4+4+4+4+4)/7 = 4.1. A tie with Teams is not a lead.
+Zoom still leads. Send is blue and 44px tall, and the empty files strip stays off the chat (Q25). That row matches Zoom and Meet. A full-width line says Microphone off and Camera off, and it leaves when those are on (Q21). That row matches Zoom and Meet. The full-screen control says Full screen (Q24). Labeled controls stay at 4: the words are complete, and Zoom’s bar is still the reference. A card names who is recording, and the bar stays Recording (Q22). Trust stays at 4, even with Meet: there is no waiting room, and the card does not hold the recording until the other people have answered. Zoom and Teams stay at 5 on trust. Arithmetic: (5+4+4+4+5+4+4)/7 = 4.3. A tie with Meet is not a lead.
 
 ## Church
 
@@ -83,3 +83,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q22 | 4.1 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.0 (FaceTime 4.8) | A recording card names who is recording. Trust stays 4. Scores unchanged. |
 | After Q23 | 4.1 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.2 (FaceTime 4.8) | Invite is the link and a blue Copy. Personal invite 4 → 5. Ahead of Meet. FaceTime still leads. |
 | After Q24 | 4.1 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.2 (FaceTime 4.8) | The dock says Full screen. Labeled controls stay 4. Scores unchanged. |
+| After Q25 | 4.3 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.2 (FaceTime 4.8) | Send is the blue button. The empty files strip is gone. Chat 4 → 5. Ties Meet. Not a lead. |

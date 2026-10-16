@@ -1083,15 +1083,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border-radius: 99px; background: #b61622; color: #fff; font-size: 10px; font-weight: 800; line-height: 16px; }
   .bar #chatbtn .chatcount[hidden] { display: none; }
   #cfiles { border-top: 1px solid var(--border, #2a2a3f); padding: .45rem .7rem; max-height: 34%; overflow-y: auto; }
+  #cfiles[hidden] { display: none !important; }
   #cfiles h4 { font-size: .72rem; color: var(--muted, #8888aa); margin-bottom: .3rem; }
   .cfile { display: flex; align-items: center; gap: .45rem; font-size: .78rem; padding: .18rem 0; }
   .cfile .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cfile small { color: #667; }
   .cfile button { padding: .1rem .45rem; border-radius: .35rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; font-size: .72rem; }
   #chatform { display: flex; gap: .4rem; padding: .5rem .6rem; border-top: 1px solid var(--border, #2a2a3f); min-width: 0; }
-  #chatform input[type=text] { flex: 1 1 auto; width: 0; min-width: 0; padding: .4rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; font-size: .85rem; }
+  #chatform input[type=text] { flex: 1 1 auto; width: 0; min-width: 0; min-height: 44px; padding: .4rem .6rem; border-radius: 12px; border: 1.5px solid #8d93a0; background: #fff; color: #1d1d1f; font: inherit; font-size: 16px; }
   #pray { flex: none; }
   #chatform button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
+  #chatform button[type=submit] { background: #0064c8; color: #fff; border: 0; min-height: 44px; min-width: 72px; border-radius: 12px; font-weight: 700; }
   .tile .cap { position: absolute; left: 50%; transform: translateX(-50%); bottom: 2.1rem; max-width: 92%;
                background: rgba(10,10,15,.82); border: 1px solid var(--border, #2a2a3f); border-radius: .45rem;
                padding: .35rem .7rem; font-size: 1.25rem; line-height: 1.35; color: #fff; z-index: 3; pointer-events: none;
@@ -1890,7 +1892,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div id="trlog"><small style="color:#667">Tap CC in the bar and your device writes down everyone it hears — the lines gather here under each speaker's name, on every device in the meeting.</small></div>
       <div id="trfoot"><button id="trdl">Download transcript</button></div>
     </div>
-    <div id="cfiles"><h4>Files pinned to this meeting</h4><div id="cfilelist"><small style="color:#667">No files yet — attach one below.</small></div></div>
+    <div id="cfiles" hidden><h4>Files pinned to this meeting</h4><div id="cfilelist"></div></div>
     <form id="chatform">
       <button type="button" id="pray" aria-pressed="false" title="Mark messages as prayer requests">Prayer</button>
       <button type="button" id="cattach" title="Pin a file to the meeting">📎</button>
@@ -13718,12 +13720,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       });
     });
     function renderFiles() {
+      const wrap = document.getElementById('cfiles');
       const el = document.getElementById('cfilelist');
-      // Files are only allowed in a PASSWORD-PROTECTED meeting: an open room anyone
-      // can wander into shouldn't leak shared files. No password → no files.
-      if (!roomPw) { el.innerHTML = '<small style="color:#889">🔒 Set a room password (the Password button) to share files here. Files are off in open rooms.</small>'; return; }
+      // Files are only allowed in a PASSWORD-PROTECTED meeting. The attach
+      // button says so. An empty list does not sit between the messages and Send.
       const fs = Array.from(files.values()).sort((a, b) => a.at - b.at);
-      el.innerHTML = fs.length ? fs.map((f) => {
+      if (!fs.length) { wrap.hidden = true; el.innerHTML = ''; return; }
+      wrap.hidden = false;
+      el.innerHTML = fs.map((f) => {
         const mine = (f.byId && f.byId === myId) || (!f.byId && f.by === myName());
         // The button follows the receive rule (fdelAllowed): an open room takes
         // anyone's unpin (attributed); an admin room takes the owner's or an admin's.
@@ -13731,8 +13735,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return '<div class="cfile" data-f="' + esc(f.id) + '"><span class="nm">' + esc(f.name) + '</span><small>' + fmtSize(f.size) + ' · ' + esc(f.by || '?') + '</small>'
           + (f.bytes ? '<button data-dl="' + esc(f.id) + '">⬇</button>' : '<small>receiving…</small>')
           + unpin + '</div>';
-      }).join('')
-        : '<small style="color:#667">No files yet — attach one below.</small>';
+      }).join('');
     }
     document.getElementById('cfilelist').addEventListener('click', (e) => {
       const dl = e.target.dataset.dl, del = e.target.dataset.del;

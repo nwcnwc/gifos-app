@@ -696,8 +696,17 @@ test('chat is one tap on the dock, and a prayer is its own line', async ({ page 
   await bootSession(page, 1280, 720);
   await page.locator('.bar > #chatbtn').click();
   await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+  await expect(page.locator('#cfiles')).toBeHidden();
+  const sendLook = await page.locator('#chatform button[type=submit]').evaluate((el) => {
+    const s = getComputedStyle(el);
+    const r = el.getBoundingClientRect();
+    return { bg: s.backgroundColor, h: r.height };
+  });
+  expect(sendLook.bg).toBe('rgb(0, 100, 200)');
+  expect(sendLook.h).toBeGreaterThanOrEqual(44);
   const hit = await composerOverlap(page);
   expect(clearOfDock(hit.form), JSON.stringify(hit)).toBe(true);
+  expect(clearOfDock(hit.send), JSON.stringify(hit)).toBe(true);
   await page.locator('#pray').click();
   await expect(page.locator('#pray')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#chat-in')).toHaveAttribute('placeholder', 'Prayer request…');
