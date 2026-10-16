@@ -48,6 +48,10 @@ The reaction tray is now emoji: ✋ 👏 👍 👎 😂, with accessible names R
 
 Opening React while More was open put `#reacttray` on top of `#barmore` (overlap 392×88px at 1280×720). Opening one now closes the other. After the same two taps, More is `display: none` and the emoji tray is the only popover. Before: `test/e2e/artifacts/react-more-stack-before.png`. After: `test/e2e/artifacts/react-more-stack-after.png`.
 
+### Q10. Full screen lived only on the tile
+
+The dock now has `#fsbtn`, labeled Full, with the accessible name “Full screen”. It sits between Invite and More, visible while More is closed, and the dock stays inside 1280, 1920, and 900 (the bar measured 626px wide at 1280). One tap opens the filmstrip view (`body.fsopen`) following the speaker; the view’s close button leaves it. The tile glyph `⛶` is still there for a single feed. Before: `test/e2e/artifacts/dock-fullscreen-before.png`. After: `test/e2e/artifacts/dock-fullscreen-after.png`, `fullscreen-view-after.png`.
+
 ## Open
 
 ### Q8. Guest tile tools are hover-first
@@ -59,10 +63,6 @@ Opening React while More was open put `#reacttray` on top of `#barmore` (overlap
 Broadcast lobby (1280 and 1920, card on screen; pixels confirm a white card on the right at 1920): “Start broadcasting” is clear. The second step is still “Host password — yours alone — do not share it” plus an optional viewer password. That is correct for a locked corporate webinar and heavy for a family hangout or a volunteer starting a Sunday stream. Screenshots: `test/e2e/artifacts/lobby-broadcast-1280.png`, `test/e2e/artifacts/lobby-broadcast-1920.png`.
 
 Password-label contrast on the white card measured **16.8:1** (head) and **5.1:1** (note). Not a contrast bug.
-
-### Q10. Full-screen control is a bare glyph
-
-Stage and gallery tiles expose full screen as `⛶` (`title` / `aria-label` “Full screen”). It is always painted, not hover-only. A big-monitor viewer can tab to it. The glyph is easy to miss next to the name plate, and a broadcast viewer has no separate “watch full screen” control in the dock.
 
 ## How a session was opened without a relay
 

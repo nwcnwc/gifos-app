@@ -261,6 +261,34 @@ test('reactions and More never stack', async ({ page }) => {
   await expect(page.locator('#reacttray')).toBeHidden();
 });
 
+test('the dock has a full-screen button', async ({ page }) => {
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await bootSession(page, w, h);
+    const fs = page.locator('#fsbtn');
+    await expect(fs).toBeVisible();
+    await expect(fs).toHaveAttribute('aria-label', 'Full screen');
+    await expect(fs.locator('.docklab')).toHaveText('Full');
+    const nested = await fs.evaluate((el) => !!el.closest('#barmore'));
+    expect(nested).toBe(false);
+    const bar = await page.locator('.bar').boundingBox();
+    const box = await fs.boundingBox();
+    const lab = await fs.locator('.docklab').boundingBox();
+    expect(box.x).toBeGreaterThanOrEqual(bar.x - 1);
+    expect(box.x + box.width).toBeLessThanOrEqual(bar.x + bar.width + 1);
+    expect(lab.x).toBeGreaterThanOrEqual(box.x - 1);
+    expect(lab.x + lab.width).toBeLessThanOrEqual(box.x + box.width + 1);
+    expect(lab.y + lab.height).toBeLessThanOrEqual(box.y + box.height + 1);
+    expect(bar.x).toBeGreaterThanOrEqual(-1);
+    expect(bar.x + bar.width).toBeLessThanOrEqual(w + 1);
+  }
+  await bootSession(page, 1280, 720);
+  await page.locator('#fsbtn').click();
+  await expect(page.locator('body')).toHaveClass(/fsopen/);
+  await expect(page.locator('#fsview')).toHaveClass(/on/);
+  await page.locator('#fsclose').click();
+  await expect(page.locator('body')).not.toHaveClass(/fsopen/);
+});
+
 test('chat composer stays clear of the dock after a live resize to 900px', async ({ page }) => {
   await openChat(page, 1920, 1080);
   await page.setViewportSize({ width: 1280, height: 720 });
