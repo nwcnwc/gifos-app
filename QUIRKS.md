@@ -150,6 +150,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** German and Spanish cover the Who title, the explanation, the group headings, the address lines, and Download. They cover the Share title, the app note, the two explanations, Choose, and Cancel. They cover Vote’s three choices and the line that appears while you are tapping faces. English stays in the markup. The file you download for the police stays English. Password, Invite, and Run app are still English.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit, and the earlier locale test and the English share demo still pass. Screenshots: `test/desktop/shots/sheets-before-who-1280.png`, `test/desktop/shots/sheets-before-share-1280.png`, `test/desktop/shots/sheets-before-vote-1280.png`, `test/desktop/shots/sheets-after-who-de-1280.png`, `test/desktop/shots/sheets-after-share-de-1280.png`, `test/desktop/shots/sheets-after-vote-de-1280.png`.
 
+### A phone that kills the camera said nothing
+
+- **Who hits it:** someone on a phone whose system takes the camera while the call is in the background, then comes back.
+- **What you saw:** the track had ended and the page did start the camera again, but the tile stayed blank and the line still read as if the camera were fine. Nothing on the picture said it had stopped.
+- **Repro:** `test/desktop/phone-cam.spec.js` failed before the fix (no `.cambackmark`). WebKit skips the canvas capture. The walk is a 390×844 phone.
+- **Fix:** while the camera is being brought back, the self tile says “Camera stopped — bringing it back”, large enough to read, inside the tile, clear of the name and the dock. When the new camera is live, the line goes. If the grab fails, the line says to tap Camera.
+- **Proof:** the test passes on Chromium and Firefox, and the staying test still passes. Screenshots: `test/desktop/shots/phone-before-390.png`, `test/desktop/shots/phone-after-stopped-390.png`, `test/desktop/shots/phone-after-back-390.png`. A camera that stays “live” but sends black still waits on the existing watchdog before this line appears.
+
 ### More was one unlabeled wall
 
 - **Who hits it:** a volunteer opening More and hunting for Chat or Vote.
@@ -182,4 +190,4 @@ Who, Share, and Vote follow a German or Spanish device. The password sheet, the 
 
 ### Not yet walked end to end
 
-Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. The path is still More, then the sheet, then the picker. A broadcast says off air and on air, and the booth has an order of service. There are still no lyrics and no program versus preview. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, and Vote follow German and Spanish. Password, Invite, and Run app stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that kills the camera was not walked.
+Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. The path is still More, then the sheet, then the picker. A broadcast says off air and on air, and the booth has an order of service. There are still no lyrics and no program versus preview. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, and Vote follow German and Spanish. Password, Invite, and Run app stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back.

@@ -51,10 +51,10 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 | --- | ---: | --- |
 | Warmth | 7 | The join card is a person, not a form. The in-call line still says “a password unlocks clear video” |
 | Effort to get in | 8 | One link. You confirm your name and picture, then you are in. A return in the same tab does not ask again |
-| Staying in the call (resize, tab away) | 6 | A friend who steps away shows Away on their tile. Coming back says Still in the call. A phone that kills the camera was not walked |
+| Staying in the call (resize, tab away) | 7 | A friend who steps away shows Away. Coming back says Still in the call. A phone that ends the camera says so on your tile and brings it back. A live-but-black camera still waits on the watchdog |
 | Locale | 8.5 | Lobby, help, shortcuts, join, dock, More, the count, chat, Settings, Who, Share, and Vote follow German and Spanish. Password, Invite, and Run app stay English |
-| **Audience** | **7.4** | Does not lead |
+| **Audience** | **7.6** | Does not lead |
 
 ## This cycle
 
-Who, Share, and Vote follow a German or Spanish device (see QUIRKS.md). Locale 8 → 8.5. Personal audience 7.3 → 7.4. Password, Invite, and Run app are still English, so this is not a 9. Corporate stays 7.3. Church stays 7.0. Still behind Zoom and Meet (~8), a church desk (~8), and FaceTime (~9). We do not lead. Next gap: a phone that kills the camera has not been walked.
+A phone that ends the camera says so on your tile and brings it back (see QUIRKS.md). Staying 6 → 7. Personal audience 7.4 → 7.6. A camera that stays live and sends black still waits on the watchdog, so this is not an 8. Corporate stays 7.3. Church stays 7.0. Still behind Zoom and Meet (~8), a church desk (~8), and FaceTime (~9). We do not lead. Next gap: a church service still has no lyrics, and no program versus preview.

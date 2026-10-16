@@ -1019,6 +1019,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: rgba(255,255,255,.96); color: #1d1d1f; font: 700 22px/1 system-ui, sans-serif;
     white-space: nowrap; box-shadow: 0 8px 24px rgba(0,0,0,.28);
   }
+  .tile .cambackmark { display: none; }
+  .tile.camback > .cambackmark {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 5;
+    max-width: calc(100% - 20px); min-height: 44px; padding: 10px 14px; border-radius: 16px;
+    background: rgba(255,255,255,.96); color: #1d1d1f; font: 700 20px/1.25 system-ui, sans-serif;
+    box-shadow: 0 8px 24px rgba(0,0,0,.28); pointer-events: none;
+  }
   #still { display: none; position: fixed; z-index: 24; left: 50%; top: 72px; transform: translateX(-50%);
     max-width: calc(100vw - 32px); min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px;
     background: #fff; color: #1d1d1f; font: 700 20px/1.2 system-ui, sans-serif; cursor: pointer;
@@ -2531,6 +2539,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         voteBannerUp: 'Tippen Sie den grünen Punkt, um jemanden AUF die Bühne zu wählen — bei {n} Stimmen ist es so. Nochmal tippen nimmt die Stimme zurück.',
         voteBannerDown: 'Tippen Sie das ✕, um jemanden von der Bühne zu wählen — bei {n} Stimmen steigt die Person ab. Nochmal tippen nimmt die Stimme zurück.',
         voteBannerKick: 'Tippen Sie das ✕, um jemanden AUS dem Raum zu wählen — die Mehrheit entfernt die Person. Nochmal tippen nimmt die Stimme zurück.',
+        camBack: 'Kamera weg — sie kommt zurück',
+        camFail: 'Kamera nicht zurück. Tippen Sie auf Kamera.',
         goLive: 'Kamera an, dann sind Sie live. Der Raum sieht Sie noch nicht.',
         waitLive: 'Die Sendung hat noch nicht begonnen.',
         orderOfService: 'Ablauf', rdNow: 'Jetzt', rdNext: 'Weiter', rdDone: 'Fertig',
@@ -2670,6 +2680,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         voteBannerUp: 'Toca el punto verde para votar a alguien AL escenario — con {n} votos sube. Toca otra vez para retirar el voto.',
         voteBannerDown: 'Toca la ✕ para votar que alguien BAJE del escenario — con {n} votos baja. Toca otra vez para retirar el voto.',
         voteBannerKick: 'Toca la ✕ para votar que alguien SALGA de la sala — la mayoría lo quita. Toca otra vez para retirar el voto.',
+        camBack: 'Cámara parada — vuelve enseguida',
+        camFail: 'La cámara no volvió. Toca Cámara.',
         goLive: 'Enciende la cámara para salir al aire. La sala aún no te ve.',
         waitLive: 'La transmisión aún no empieza.',
         orderOfService: 'Programa', rdNow: 'Ahora', rdNext: 'Siguiente', rdDone: 'Listo',
@@ -11731,14 +11743,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // If the tab was backgrounded long enough for the OS to kill the camera,
     // grab it again and swap the fresh tracks into every live link.
+    function showCamBack(on) {
+      if (!meTile || !meTile.tile) return;
+      meTile.tile.classList.toggle('camback', !!on);
+      let el = meTile.tile.querySelector('.cambackmark');
+      if (on && !el) {
+        el = document.createElement('div');
+        el.className = 'cambackmark';
+        meTile.tile.appendChild(el);
+      }
+      if (!el) return;
+      const word = on === 'fail'
+        ? uiText('camFail', 'Camera didn’t come back. Tap Camera.')
+        : uiText('camBack', 'Camera stopped — bringing it back');
+      if (el.textContent !== word) el.textContent = word;
+    }
     function reviveCamera() {
       if (!localStream) return;
       const vt = localStream.getVideoTracks()[0], at = localStream.getAudioTracks()[0];
       if ((!vt || vt.readyState !== 'ended') && (!at || at.readyState !== 'ended')) return;
+      const videoDead = !myStatus.camOff && (!vt || vt.readyState === 'ended');
+      if (videoDead) showCamBack(true);
       regrabCamera('reviveCamera:ended-track');
     }
     function regrabCamera(reason) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
+      const death = !!(reason && (String(reason).indexOf('reviveCamera') === 0 || String(reason).indexOf('blackCamWatch') === 0));
+      if (death) showCamBack(true);
       // A re-grab replaces BOTH tracks in localStream, which restarts the blur
       // pipe and so changes sentVideoTrack — which rebuilds mySelfStream's memo,
       // mints a new stg stream id, and re-ships the stage feed to everyone (and
@@ -11773,7 +11804,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           meterFor('me', localStream);
           stopBlurPipe();   // the old blur canvas read the dead camera track
           refreshOutbound(); // rebuild the (blurred or raw) sender AND the WYSIWYG self-view
-        }).catch(() => {});
+          if (death) showCamBack(false);
+        }).catch(() => { if (death) showCamBack('fail'); });
     }
 
     // Live-but-BLACK camera (iOS mostly: another app held the hardware, or
@@ -23810,6 +23842,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.dispatchEvent(new Event('visibilitychange'));
         const el = document.getElementById('still');
         return { ok: true, away: !!myStatus.away, still: !!(el && el.classList.contains('on')) };
+      },
+      killCameraForTest: () => {
+        const stopped = [];
+        const stopAll = (stream) => {
+          if (!stream || !stream.getVideoTracks) return;
+          for (const t of stream.getVideoTracks()) {
+            stopped.push(t.readyState);
+            try { t.stop(); } catch (e) {}
+          }
+        };
+        stopAll(localStream);
+        if (meTile && meTile.video) stopAll(meTile.video.srcObject);
+        const vt = localStream && localStream.getVideoTracks()[0];
+        return { ok: true, ended: !vt || vt.readyState === 'ended', n: stopped.length };
       },
       participants: participantCount,
       bot: () => !!myStatus.bot,
