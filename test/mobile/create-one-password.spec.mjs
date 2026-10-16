@@ -16,6 +16,7 @@ test('a stream to friends opens on a name and Go live', async ({ page }) => {
   await expect(quiet).toHaveText('Friends watch with the link.');
   await expect(page.locator('#lob-admin-name-lab')).toHaveText('Name');
   await expect(page.locator('#lob-admin-name')).toHaveAttribute('placeholder', 'Friday night');
+  await expect(page.locator('#lob-admin-name')).toHaveValue('Friday night');
   await expect(page.locator('#lob-join-btn')).toHaveText('Watch a stream');
   await expect(page.locator('#lob-empty')).toHaveText('Streams you start or watch will show up here.');
   await expect(page.locator('#lob-admin-go')).toHaveText('Go live');
@@ -88,11 +89,14 @@ test('a meeting lobby leads with a town hall and still shows the host key', asyn
   expect(first).toMatch(/^[a-z]+-[a-z]+-[a-z]+-\d{2}$/);
 });
 
-test('an empty stream name asks to name it first', async ({ page }) => {
+test('a blank stream name still goes live as Friday night', async ({ page }) => {
   await openCreate(page);
+  await page.locator('#lob-admin-name').fill('');
   await page.locator('#lob-admin-go').click();
-  await expect(page.locator('#lob-admin-err')).toHaveText('Name it first.');
-  await expect(page.locator('#lobby.show')).toBeVisible();
+  await expect(page.locator('#lob-admin-err')).toHaveText('');
+  await expect(page.locator('#lob-admin-name')).toHaveValue('Friday night');
+  await expect(page.locator('#lob-admin-go')).toHaveText('Creating…');
+  await expect(page.locator('#lob-admin-go')).toBeDisabled();
 });
 
 test('a viewer password stays optional and off the first step', async ({ page }) => {

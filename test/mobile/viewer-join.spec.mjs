@@ -14,12 +14,13 @@ test('a church viewer is told they are watching, not appearing on camera', async
   await expect(page.locator('#leavebtn')).toHaveAttribute('aria-label', 'Stop watching');
 });
 
-test('a broadcast host still sees how they will appear', async ({ page }) => {
+test('a broadcast host lands on the stream without another sheet', async ({ page }) => {
   await page.addInitScript((av) => {
     localStorage.setItem('gifos_vadm_sundayservice.' + av, 'stored-host-key');
   }, AV);
   await page.goto(VIEW, { waitUntil: 'domcontentloaded' });
-  await page.locator('#nm-lead').waitFor({ state: 'visible' });
-  await expect(page.locator('#nm-lead')).toContainText(/This is how you.ll appear in the meeting/);
-  await expect(page.locator('#nm-cam-btn')).toBeVisible();
+  await page.locator('#livebadge').waitFor({ state: 'visible' });
+  await expect(page.locator('.appear-box')).toHaveCount(0);
+  await expect(page.locator('#livebadge-txt')).toHaveText('OFF AIR');
+  await expect(page.locator('#leavebtn')).toBeVisible();
 });

@@ -2480,6 +2480,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         seed = 'Guest ' + (1000 + Math.floor(Math.random() * 9000));
         GifOS.store.setName(seed);
       }
+      // A stream host already tapped Go live. The lobby preview was the
+      // appearance. Viewers and meetings still get this step.
+      if (BROADCAST && bcHostStored()) return Promise.resolve(GifOS.store.identity());
       const watching = BROADCAST && !bcHostStored();
       const bg = document.createElement('div'); bg.className = 'name-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
@@ -12101,10 +12104,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       document.getElementById('lob-admin-go').onclick = async () => {
         const err = document.getElementById('lob-admin-err');
-        const rawName = document.getElementById('lob-admin-name').value || '';
+        let rawName = document.getElementById('lob-admin-name').value || '';
         // slugRoom turns a blank into "room", so the empty check has to
         // happen on what was typed. A name with no letter or digit is blank.
-        const nameErr = BC_INTENT ? 'Name it first.' : 'Give your room a name.';
+        // A stream is one tap: a blank name is Friday night, still editable.
+        if (BC_INTENT && !/[A-Za-z0-9]/.test(rawName)) {
+          rawName = 'Friday night';
+          document.getElementById('lob-admin-name').value = rawName;
+        }
+        const nameErr = 'Give your room a name.';
         if (!/[A-Za-z0-9]/.test(rawName)) { err.textContent = nameErr; return; }
         const chosen = slugRoom(rawName, '');
         let pass = (document.getElementById('lob-admin-pass').value || '').trim();
@@ -12192,7 +12200,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('lob-admin-btn').style.display = 'none';
         document.getElementById('lob-admin-name-lab').hidden = false;
         document.getElementById('lob-admin-name-lab').textContent = 'Name';
-        document.getElementById('lob-admin-name').placeholder = 'Friday night';
+        const streamName = document.getElementById('lob-admin-name');
+        streamName.placeholder = 'Friday night';
+        if (!streamName.value) streamName.value = 'Friday night';
         document.getElementById('lob-admin-go').textContent = 'Go live';
         document.getElementById('lob-key-block').hidden = true;
         document.getElementById('lob-key-reveal').hidden = false;

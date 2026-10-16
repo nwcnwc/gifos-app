@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q39. A stream asked for a name, then another sheet
+
+Go live did nothing until a name was typed, and the next screen was “This is how you’ll appear in the meeting.” The name now opens as Friday night. A blank name uses that too, so Go live is one tap. A host who holds the room key lands on the stream. A viewer still gets Watching the service. A meeting still gets the appearance step. The host key is still minted. `test/mobile/create-one-password.spec.mjs`, `test/mobile/viewer-join.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-stream-friends.png`.
+
+Design: the name is ready, then the blue Go live. Personal stays at 4. The stream opens off air, and the friend link is still another step. FaceTime is still one tap.
+
 ### Q38. A stream to friends opened as a church service
 
 `#bc=1` said Broadcast, Service name, Sunday morning, and Watch a broadcast. It now says Stream, “Friends watch with the link.”, Name, and Friday night. Go live stays the blue button. Watch a stream is the outline under it. An empty name says “Name it first.” Change host key and Add a viewer password stay under Watch, and the key is still minted. A short landscape hides the sentence with the title so Go live stays on the screen. `test/mobile/create-one-password.spec.mjs`.
