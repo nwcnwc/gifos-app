@@ -7529,10 +7529,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const picture = !!document.querySelector('#stagefeed .rowtile') || !!(ident && ident.classList.contains('on'));
       el.hidden = picture;
       if (picture) return;
-      const host = (typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin');
       let on = false;
       try { on = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) { on = false; }
-      line.textContent = (host && on) ? 'You are on stage. Your camera is off.' : 'The stage is clear.';
+      line.textContent = on ? 'You are on stage. Your camera is off.' : 'The stage is clear.';
     }
     function paintBroadcastIdent() {
       const el = document.getElementById('bc-ident');

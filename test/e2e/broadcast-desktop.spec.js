@@ -1618,6 +1618,9 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
       };
     });
     expect(lay.bg).toBe('rgb(182, 22, 34)');
+    await expect(page.locator('#bc-stage-line')).toHaveText('You are on stage. Your camera is off.');
+    const plateShown = await page.locator('#bc-stage').evaluate((el) => getComputedStyle(el).display !== 'none');
+    expect(plateShown).toBe(true);
     expect(lay.clip, JSON.stringify(lay)).toBe(true);
     expect(lay.inBtn, JSON.stringify(lay)).toBe(true);
     expect(lay.barIn, JSON.stringify(lay)).toBe(true);
@@ -1632,4 +1635,5 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
   await expect(page.locator('.bar > #stagebtn')).toHaveCount(0);
   await page.locator('#bartoggle').click();
   await expect(page.locator('#barmore #stagebtn')).toHaveText('Stage');
+  await expect(page.locator('#bc-stage-line')).toHaveText('The stage is clear.');
 });

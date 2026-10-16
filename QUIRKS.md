@@ -180,9 +180,13 @@ A desktop walk of both journeys is in `test/e2e/artifacts/journey/`. The viewer 
 
 Once a viewer is on the stage, the dock shows a red **Step off**, the same control as the host. The word fits, and the dock stays inside the window at 1280, 1920, and 900. Stepping off puts Stage back in More. A watcher who is not on stage does not get the button. Before: `test/e2e/artifacts/viewer-stepoff-before.png`. After: `test/e2e/artifacts/viewer-stepoff-after.png`.
 
+### Q41. A viewer on stage was told the stage was clear
+
+Anyone on the stage with no picture now reads **You are on stage. Your camera is off.** Stepping off brings back **The stage is clear.** A host already had the camera-off line. Before: `test/e2e/artifacts/viewer-onstage-before.png`. After: `test/e2e/artifacts/viewer-onstage-after.png`.
+
 ## Open
 
-A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The dock tucks on a small group, and Fit leaves with it (Q35). The room bar, the mute line, and the status chip stay. The lobby stays at 4: one button, and the other ways in are still on the first screen. Labeled controls stay at 4. Share is on a small-group dock (Q34), and Zoom’s bar is still the reference. The viewer join sentence is on the sheet (Q38). A viewer raises a hand from the dock (Q39). A promoted viewer steps off from a red dock button (Q40). The raised-hands list and promote and demote stay with the role-controls work (Q32).
+A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The dock tucks on a small group, and Fit leaves with it (Q35). The room bar, the mute line, and the status chip stay. The lobby stays at 4: one button, and the other ways in are still on the first screen. Labeled controls stay at 4. Share is on a small-group dock (Q34), and Zoom’s bar is still the reference. The viewer join sentence is on the sheet (Q38). A viewer raises a hand from the dock (Q39). A promoted viewer steps off from a red dock button (Q40). On stage with the camera off, the stage says so (Q41). The room bar still says You are watching while that person is on stage. The raised-hands list and promote and demote stay with the role-controls work (Q32).
 
 ## How a session was opened without a relay
 
