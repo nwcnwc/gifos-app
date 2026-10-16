@@ -30,8 +30,7 @@ const PHONES = [
       hasTouch: true,
       userAgent: devices['Pixel 7'].userAgent,
     },
-    mustSee: ['lob-open', 'lob-admin-btn', 'lob-join-btn'],
-    scrollTo: ['lob-rename'],
+    mustSee: ['lob-open', 'lob-admin-btn', 'lob-join-btn', 'lob-rename'],
   },
 ];
 

@@ -47,7 +47,7 @@ Family and friends. Warm, few steps, a texted link.
 
 | Job | Score | Note |
 | --- | --- | --- |
-| Open a texted link and pick a name | 7 | The name dialog shows, the field is 48px, Continue works. |
+| Open a texted link and pick a name | 8 | The join step opens with the GifOS name and picture, and says how you will appear. Continue is the only blue button. |
 | See everyone and hang up on a small phone | 6 | Faces paint. Hang up fits on SE and 360px. |
 | Send a chat line | 7 | The field is above the dock, 44px, and lifts when the keyboard band is set. |
 | Turn the phone sideways | 6 | Invite and Password scroll into the More sheet. |
@@ -63,4 +63,5 @@ Family and friends. Warm, few steps, a texted link.
 6. The controls say Captions and People. `test/mobile/plain-words.js` passes. Church captions 5→7, church audience 6→7.
 7. Safe area. `test/mobile/safe-area.js` failed, then passed. Corporate 6→7, personal 6→7. Church stays 7.
 8. Fit is 44px and grows at 200%. `test/mobile/fit-target.js` failed, then passed. Corporate end-call 7→8. Church tap targets 5→7, church audience 7→8. Personal 7→8.
-9. Header count. `test/mobile/header-count.js` failed, then passed. The chip says "4 in call" for four real peers, and the phrase fits. Corporate trust 4→5. Audience scores stay put. Nobody leads yet. On the list after this: the self tile's initial versus its name, then the 22×48 grip and the dock covering the bottom row on a 393px phone. The waiting-room admit list is still open.
+9. Header count. `test/mobile/header-count.js` failed, then passed. The chip says "4 in call" for four real peers, and the phrase fits. Corporate trust 4→5.
+10. Join appearance. `test/mobile/appear-preview.js` failed, then passed. The step prefills the system name and picture, and Continue is no longer the same purple as Not now. Personal name row 7→8. Audience scores stay put. Nobody leads yet. Still open: the 22×48 grip, the dock covering the bottom row on a 393px phone, and a waiting-room admit list.

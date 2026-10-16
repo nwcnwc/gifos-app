@@ -85,13 +85,19 @@ Repro: `test/mobile/header-count.js`. It failed (`header "Just you — send the 
 
 Before: `qa/mobile/shots/before-header-count.png`. After: `qa/mobile/shots/after-header-count.png`.
 
+### 10. Join step ignored the system name and picture
+
+A stored GifOS name skipped the join step. A first visit showed an empty field and seeded `Guest NNNN` behind the user's back. Continue and Not now were the same purple, with no gap. The lobby said "You'll join as … · change" in small type and never showed the system picture.
+
+Repro: `test/mobile/appear-preview.js`. It failed (no "This is how you'll appear", no picture, empty field, join skipped when a name was already stored), then passed. The field opens with the system name, or `Guest NNNN` on a first visit. The system picture is in the preview. Continue is blue. Not now is white with a gray border, 12px away, and both are at least 44px. Not now keeps the stored name. On the lobby the same preview sits on the camera so Start, the admin action, and Join stay on screen.
+
+Before: `qa/mobile/shots/before-appear-lobby.png`, `qa/mobile/shots/before-appear-name.png`. After: `qa/mobile/shots/after-appear-lobby.png`, `qa/mobile/shots/after-appear-name.png`.
+
 ## Open
 
 There is still no waiting-room admit list for a host.
 
-Name and avatar default, noted from the same shot and not the next fix: the self tile's big letter is G (the initial of Grandma Ruth) while another person is Ruth. The letter and the name pill are two labels for one person.
-
-Button spacing, measured on an iPhone 15 (393×659) with four peers, and not the next fix: Hang up ends at x=375, inside the 393px screen. The drag grip is 22×48, under 44px, because the later `.bar #bargrip` rule (22×48) wins over the 700px sizes and the 44px rule only applies under 380px. David and Sam's tiles run from y=540 to y=659 while the dock starts at y=557, so the dock covers the bottom row. The comfy layout comment says the packer insets that grid; this branch does not change the packer. The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
+Button spacing, measured on an iPhone 15 (393×659) with four peers: Hang up ends at x=375, inside the 393px screen. The drag grip is 22×48, under 44px, because the later `.bar #bargrip` rule (22×48) wins over the 700px sizes and the 44px rule only applies under 380px. David and Sam's tiles run from y=540 to y=659 while the dock starts at y=557, so the dock covers the bottom row. The comfy layout comment says the packer insets that grid; this branch does not change the packer. The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
 
 ## Personas (what was actually tried)
 

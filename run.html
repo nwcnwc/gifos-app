@@ -1159,6 +1159,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem; min-height: 48px;
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
   .name-box button { padding: .5rem 1.4rem; min-height: 48px; border-radius: .5rem; border: 1px solid var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; }
+  /* Appearance step: one blue primary, a white secondary, and a gap.
+     The old pair were two of the same purple pill, sitting against each other. */
+  .name-box.appear-box { background: #fff; color: #1d1d1f; border: 0; text-align: left;
+    width: min(360px, calc(100vw - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+    padding: 20px 18px 18px; border-radius: 20px; box-shadow: 0 16px 40px rgba(0,0,0,.28); }
+  .name-box.appear-box h3 { color: #1d1d1f; font-size: 1.35rem; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .name-box.appear-box p { color: #3a3a3f; font-size: 0.95rem; margin: 0 0 14px; line-height: 1.35; }
+  .appear-row { display: flex; align-items: center; gap: 12px; }
+  .appear-face { width: 56px; height: 56px; border-radius: 50%; overflow: hidden; position: relative; flex: 0 0 auto;
+    background: #1a1d24; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; }
+  .appear-face img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+  .appear-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .name-box.appear-box .appear-fields input[type=text],
+  .name-box.appear-box .appear-fields input:not([type=file]) { width: 100%; margin: 0; color: #1d1d1f; background: #fff;
+    border: 1.5px solid #8d93a0; border-radius: 12px; min-height: 44px; font-size: 1rem; }
+  .appear-change { position: relative; display: inline-flex; align-items: center; min-height: 44px; min-width: 44px;
+    color: #0064c8; font-weight: 700; font-size: 1rem; cursor: pointer; }
+  .name-box.appear-box .appear-change input { position: absolute; width: 1px; height: 1px; min-height: 0; margin: 0; padding: 0;
+    border: 0; opacity: 0; overflow: hidden; }
+  .appear-err { min-height: 0; margin: 8px 0 0; color: #9f1239; font-size: 0.9rem; }
+  .appear-err:empty { display: none; }
+  .appear-actions { display: flex; gap: 12px; margin-top: 16px; }
+  .name-box .appear-actions button { flex: 1 1 0; min-width: 44px; min-height: 44px; font-size: 1rem; font-weight: 700; border-radius: 14px; }
+  .name-box button.appear-primary { background: #0064c8; border-color: #0064c8; color: #fff; }
+  .name-box button.appear-secondary { background: #fff; border: 1.5px solid #8d93a0; color: #1d1d1f; }
   /* Help: a longer, scrollable panel — same modal chrome, room to breathe. */
   .help-box { width: 92vw; }
   .help-scroll { max-height: 70vh; overflow-y: auto; padding-right: .4rem; }
@@ -1463,7 +1488,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.show .lob-primary, #lob-admin-go { background: #0064c8; border-color: transparent; color: #fff; font-weight: 700; text-align: center; }
   #lobby.show .lob-action { background: #fff; border: 1.5px solid #8d93a0; color: #1d1d1f; text-align: center; }
   .lob-expand input { min-height: 48px; color: #1d1d1f; background: #fff; }
-  #lob-rename { min-height: 48px; padding: 8px 12px; color: #0064c8; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; }
+  .lob-appear { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; padding: 8px;
+    background: #f4f7fb; border-radius: 16px; }
+  /* On a phone tall enough to show the camera, the preview sits on that
+     picture instead of pushing Start, the admin action, and Join down. */
+  @media (min-height: 431px) {
+    #lobby.show .lob-appear { position: fixed; z-index: 36; left: 12px; right: 12px;
+      top: calc(12px + env(safe-area-inset-top, 0px)); margin: 0; width: auto;
+      background: rgba(255,255,255,.96); box-shadow: 0 8px 24px rgba(0,0,0,.28); }
+    #lobby.show .lob-pv-name { display: none; }
+  }
+  @media (min-width: 701px) and (min-height: 431px) {
+    #lobby.show .lob-appear { right: auto; width: min(440px, 42vw); left: 28px; top: 28px; }
+  }
+  .lob-appear-kicker { color: #3a3a3f; font-size: 13px; font-weight: 650; line-height: 1.2; }
+  .lob-appear-text { flex: 1; min-width: 0; }
+  .lob-appear-text b { display: block; color: #1d1d1f; font-size: 1.05rem; line-height: 1.25;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #lob-rename { flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 8px 14px; border-radius: 12px;
+    background: #fff; border: 1.5px solid #8d93a0; color: #1d1d1f; font-weight: 700; font-size: 1rem;
+    text-decoration: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
   .lob-star, #lobby button.row-del { min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
   .lob-item .li-sub { opacity: 1; color: #3a3a3f; }
   @media (max-width: 700px) {
@@ -1548,6 +1592,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     </div>
     <div class="lobby-card">
       <h1>Meeting</h1>
+      <div class="lob-appear">
+        <div class="appear-face" aria-hidden="true"><img id="lob-avatar" alt=""><span id="lob-letter"></span></div>
+        <div class="lob-appear-text">
+          <div class="lob-appear-kicker">This is how you'll appear</div>
+          <b id="lob-name">…</b>
+        </div>
+        <button type="button" id="lob-rename">Change</button>
+      </div>
       <p class="lob-quiet">You join muted. The camera stays however you set it here.</p>
       <button id="lob-open" class="lob-primary">Start a meeting<small>Open room · anyone with the link can join</small></button>
       <button id="lob-admin-btn" class="lob-action">Start a room you run<small>You're the admin: set a password, mute/blur, ban a troublemaker</small></button>
@@ -1570,7 +1622,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div class="lob-hist-h">Recent &amp; saved</div>
       <div id="lob-list"></div>
       <div id="lob-empty" class="lob-empty">Meetings you start or join will show up here.</div>
-      <div class="lob-namebar">You'll join as <b id="lob-name">…</b> · <button id="lob-rename" class="lob-link">change</button></div>
     </div>
   </div>
   <div class="topchip">
@@ -2298,32 +2349,83 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // A first visit is seeded with Guest NNNN so joinRoom can run, and the
     // picker stays up. Continue replaces that name and gossips it the same
     // way Settings → Change does. Not now keeps the seed.
+    function paintAppearFace(img, letterEl, name) {
+      let url = '';
+      try { const a = GifOS.store.identity().avatar; url = (a && a.url) || ''; } catch (e) {}
+      const letter = nameInitial(name || '');
+      if (letterEl) { letterEl.textContent = letter; letterEl.hidden = !!url; }
+      if (!img) return;
+      if (url) { img.src = url; img.hidden = false; }
+      else { img.removeAttribute('src'); img.hidden = true; }
+    }
+    function paintLobbyAppear() {
+      const name = myName();
+      const nameEl = document.getElementById('lob-name');
+      if (nameEl) nameEl.textContent = name;
+      const pv = document.getElementById('lob-preview-name');
+      if (pv) pv.textContent = name;
+      paintAppearFace(document.getElementById('lob-avatar'), document.getElementById('lob-letter'), name);
+    }
+    function bindAppearFile(input, img, letterEl, nameFn) {
+      if (!input) return;
+      input.addEventListener('change', () => {
+        const f = input.files && input.files[0];
+        input.value = '';
+        const err = input.closest('.name-box') && input.closest('.name-box').querySelector('.appear-err');
+        if (!f || !GifOS.avatar) return;
+        if (err) err.textContent = '';
+        GifOS.avatar.prepareFile(f).then((res) => {
+          if (!res || !res.ok) { if (err) err.textContent = (res && res.error) || 'Choose a GIF, PNG, JPG, or WebP.'; return; }
+          GifOS.store.setAvatar({ mime: res.mime, hash: res.hash, b64: res.b64 });
+          paintAppearFace(img, letterEl, nameFn());
+        }).catch(() => { if (err) err.textContent = 'Choose a GIF, PNG, JPG, or WebP.'; });
+      });
+    }
+    function appearDialog(opts) {
+      const bg = document.createElement('div');
+      bg.className = 'name-modal';
+      bg.setAttribute('role', 'dialog');
+      bg.setAttribute('aria-modal', 'true');
+      bg.innerHTML = '<div class="name-box appear-box"><h3>This is how you\'ll appear</h3><p>' + opts.note + '</p>' +
+        '<div class="appear-row"><div class="appear-face" aria-hidden="true"><img id="' + opts.imgId + '" alt=""><span id="' + opts.letterId + '"></span></div>' +
+        '<div class="appear-fields"><input id="' + opts.inputId + '" name="nickname" maxlength="40" autocomplete="nickname" aria-label="Your name">' +
+        '<label class="appear-change">Change picture<input id="' + opts.fileId + '" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Change picture"></label>' +
+        '</div></div><p class="appear-err" role="alert"></p><div class="appear-actions">' +
+        '<button id="' + opts.cancelId + '" type="button" class="appear-secondary">' + opts.cancelLabel + '</button>' +
+        '<button id="' + opts.okId + '" type="button" class="appear-primary">' + opts.okLabel + '</button></div></div>';
+      document.body.appendChild(bg);
+      const input = bg.querySelector('#' + opts.inputId);
+      input.value = opts.value || '';
+      const img = bg.querySelector('#' + opts.imgId);
+      const letter = bg.querySelector('#' + opts.letterId);
+      const paint = () => paintAppearFace(img, letter, input.value.trim() || opts.value || '');
+      paint();
+      input.addEventListener('input', paint);
+      bindAppearFile(bg.querySelector('#' + opts.fileId), img, letter, () => input.value.trim() || opts.value || '');
+      try { input.focus(); } catch (e) {}
+      return { bg: bg, input: input };
+    }
     function ensureName() {
       const me = GifOS.store.identity();
-      if (me.name) return Promise.resolve(me);
-      const seed = 'Guest ' + (1000 + Math.floor(Math.random() * 9000));
-      GifOS.store.setName(seed);
-      const bg = document.createElement('div'); bg.className = 'name-modal';
-      bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
-      bg.innerHTML = '<div class="name-box"><h3>Pick a screen name</h3>' +
-        '<p>The name people see on your tile. You can change it later under Settings.</p>' +
-        '<input id="nm" name="nickname" maxlength="40" placeholder="Your name" autocomplete="nickname">' +
-        '<button id="nmcancel" type="button">Not now</button>' +
-        '<button id="nmok">Continue</button></div>';
-      document.body.appendChild(bg);
-      const input = bg.querySelector('#nm'); input.focus();
+      const had = String(me.name || '').trim();
+      const seed = had || ('Guest ' + (1000 + Math.floor(Math.random() * 9000)));
+      if (!had) GifOS.store.setName(seed);
+      const dlg = appearDialog({
+        note: 'People in the meeting see this name and picture.',
+        inputId: 'nm', imgId: 'nm-avatar', letterId: 'nm-letter', fileId: 'nm-file',
+        cancelId: 'nmcancel', okId: 'nmok', cancelLabel: 'Not now', okLabel: 'Continue', value: seed,
+      });
       const done = (keep) => {
-        let v = keep ? seed : input.value.trim();
-        if (!v) v = seed;
-        const changed = v !== seed;
-        if (changed) GifOS.store.setName(v);
-        bg.remove();
-        if (!changed) return;
-        try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}
+        if (!keep) {
+          const v = dlg.input.value.trim() || seed;
+          if (v !== (GifOS.store.identity().name || '')) GifOS.store.setName(v);
+          try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}
+        }
+        dlg.bg.remove();
       };
-      bg.querySelector('#nmok').onclick = () => done(false);
-      bg.querySelector('#nmcancel').onclick = () => done(true);
-      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(false); });
+      dlg.bg.querySelector('#nmok').onclick = () => done(false);
+      dlg.bg.querySelector('#nmcancel').onclick = () => done(true);
+      dlg.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(false); });
       return Promise.resolve(GifOS.store.identity());
     }
 
@@ -11682,16 +11784,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function renameFlow(after) {
       const cur = (GifOS.store.identity().name) || '';
-      const bg = document.createElement('div'); bg.className = 'name-modal';
-      bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
-      bg.innerHTML = '<div class="name-box"><h3>Your screen name</h3><p>Other people in the meeting see this.</p>' +
-        '<input id="nm2" maxlength="40" autocomplete="off"><button id="nm2cancel" type="button">Cancel</button><button id="nm2ok">Save</button></div>';
-      document.body.appendChild(bg);
-      const input = bg.querySelector('#nm2'); input.value = cur; input.focus();
-      const done = () => { const v = input.value.trim(); if (v) GifOS.store.setName(v); bg.remove(); const ln = document.getElementById('lob-name'); if (ln) ln.textContent = myName(); if (after) after(); };
-      bg.querySelector('#nm2ok').onclick = done;
-      bg.querySelector('#nm2cancel').onclick = () => bg.remove();
-      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(); });
+      const dlg = appearDialog({
+        note: 'Other people in the meeting see this.',
+        inputId: 'nm2', imgId: 'nm2-avatar', letterId: 'nm2-letter', fileId: 'nm2-file',
+        cancelId: 'nm2cancel', okId: 'nm2ok', cancelLabel: 'Cancel', okLabel: 'Save', value: cur,
+      });
+      const done = () => {
+        const v = dlg.input.value.trim();
+        if (v) GifOS.store.setName(v);
+        dlg.bg.remove();
+        try { paintLobbyAppear(); } catch (e) {}
+        if (after) after();
+      };
+      dlg.bg.querySelector('#nm2ok').onclick = done;
+      dlg.bg.querySelector('#nm2cancel').onclick = () => dlg.bg.remove();
+      dlg.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(); });
     }
     function wireLobby() {
       const lob = document.getElementById('lobby');
@@ -11773,7 +11880,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('lob-join-btn').innerHTML = 'Watch a broadcast<small>Paste a broadcast link someone shared</small>';
         document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch will show up here.';
       }
-      document.getElementById('lob-name').textContent = myName();
+      paintLobbyAppear();
       renderLobbyList();
       wireLobby();
       document.getElementById('lobby').classList.add('show');
@@ -17864,6 +17971,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // repaint locally and go out to peers. setAvatar/setName notify; this does not write back.
     if (GifOS.store.onIdentity) GifOS.store.onIdentity(() => {
       try { paintMyAvatarPreview(); } catch (e) {}
+      try { paintLobbyAppear(); } catch (e) {}
       const nc = document.getElementById('set-name-cur'); if (nc) nc.textContent = myName();
       try { refreshAllTiles(); } catch (e) {}
       try { if (myId) { broadcastStatus(); pushLeaf(); } } catch (e) {}
