@@ -117,11 +117,19 @@ Repro: `test/mobile/wait-list.js`. It failed (`no Waiting room button`) on an iP
 
 Before: `qa/mobile/shots/before-wait-iphone-15.png`. After: `qa/mobile/shots/after-wait-iphone-15.png`.
 
+### 14. More said Password, Vote, and Stage
+
+Those three words do not say what a host is about to do. Password could be an account. Vote could be a poll. Stage could be a view. The longer meaning lived only on the button title, which a phone does not show.
+
+Repro: `test/mobile/host-words.js`. It failed (`Password`, `Vote`, `Stage`, and `Step down` once you were on stage) on an iPhone 15, an SE, and a 360px phone at 200% text, then passed. The controls say Room password, Vote on someone, and Step on stage. On stage, the same button says Step off stage. The phone sheet is two columns so the phrases fit inside the button, including at 32px type. Each control stays at least 44px and scrolls into view.
+
+Before: `qa/mobile/shots/before-host-words-iphone-15.png`. After: `qa/mobile/shots/after-host-words-iphone-15.png`.
+
 ## Open
 
 The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
 
-More's host labels (Password, Vote, Stage) are still short words. A volunteer can read them, and the longer meaning is on the button title.
+In landscape, Invite and Room password still sit down the More sheet. A host has to scroll to them.
 
 ## Personas (what was actually tried)
 
