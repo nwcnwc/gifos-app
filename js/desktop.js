@@ -91,7 +91,7 @@
     '     • "private"    — never leaves the owner\'s tab; each participant keeps their OWN copy (personal prefs, font size, a private library). This is the DEFAULT for any collection you don\'t list.',
     '   So: split personal state (prefs) into its own PRIVATE collection, and shared state into read-write/read-only ones — never mix them in one collection. The HOST is always the authority: enforcement is host-side, so a guest can be refused but never override. To flip one record at runtime (e.g. "make this item visible", or a leader toggling "only I lead" on a shared cursor), the host calls db.setVisibility(id, level) — owner-only; it is refused on a guest. Read a record\'s current level from its reserved _vis field.',
     '   HONESTY RULE for any in-app copy about saving: there is NO cloud and NO automatic cross-device sync. Data stays on THIS device only. It reaches other devices exactly two ways: live while people are connected through an invite link, or when someone sends their copy of the app. Never claim the app "syncs across your devices" or "backs up to the cloud". Never write "the file is the save" or "lives in the file" — those phrases mean nothing to a person. Say something true instead, like "Saved on this device. Close it, come back, it is still there."',
-    '3. Identity: const me = await gifos.me(); → { id, name }. Stamp me.id/me.name on records so every player sees who did what.',
+    '3. Identity: const me = await gifos.me(); → { id, name, avatar }. avatar is null or { mime, hash, url } (url is a data URL; a GIF stays a GIF). gifos.onIdentity(cb) fires when the name or picture changes. gifos.setAvatar(dataUrl) asks first, the same sheet as setName. Stamp me.id/me.name on records so every player sees who did what.',
     '4. If window.gifos is undefined (opened outside GifOS), degrade gracefully to in-memory state. Mobile-friendly, dark theme (#0a0a0f) by default.',
     '4b. BACK BUTTON: the GifOS shell traps the phone\'s Back button, so a reflex press never closes your app — by default it is simply swallowed. Register gifos.onBack(() => { ... }) to make Back meaningful: close the topmost modal, back out one screen/level. Apps with internal navigation SHOULD register it.',
     '5. LIVE MEDIA IS OFF-LIMITS, by design: the sandbox blocks camera, microphone, screen capture, and WebRTC, so a video/voice/streaming app cannot work as a GifOS app — do not attempt one; if I ask for video chat, tell me GifOS already ships it (the Meeting icon on my Home Screen) — and that any app can be run INSIDE a Meeting, gaining shared audio/video/recording around it without the app touching the camera itself. Apps CAN bundle and display static media (images, GIFs, audio files) inside the GIF and store binary blobs (base64) in gifos.db — but keep hot collections lean: put big blobs (over ~100KB) in their OWN collection, fetched with db.get(), because subscribers re-download a whole collection on every change, and relay-fallback bandwidth is strictly throttled — bloated hot collections make an app slow for everyone.',
@@ -3465,6 +3465,16 @@
           '<p class="add-help">Friends see this name when you play or work together. It stays on this computer.</p>' +
           '<label class="set-label" for="set-name">Name</label>' +
           '<input id="set-name" maxlength="40" aria-label="Name" placeholder="Your name" value="' + escapeHtml(store.identity().name) + '">' +
+          '<label class="set-label" for="set-avatar-file">Picture</label>' +
+          '<p class="add-help">Friends see this when your camera is off. An animated GIF stays animated.</p>' +
+          '<div class="set-avatar-row">' +
+            '<img id="set-avatar-preview" alt="" hidden>' +
+            '<div class="set-avatar-actions">' +
+              '<input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Picture">' +
+              '<button type="button" id="set-avatar-remove">Remove</button>' +
+            '</div>' +
+          '</div>' +
+          '<p id="set-avatar-err" class="add-help" role="alert"></p>' +
         '</section>' +
         '<section data-page="look" hidden>' +
           '<p class="add-help">Changes apply as you make them, on every GifOS page in this browser.</p>' +
@@ -3529,8 +3539,17 @@
     // One save model on every page. Name, the invite connection, and AI wait
     // for Save. Look, payments, and connected accounts still apply on their
     // own controls (a tested account is the only way an account is stored).
+    // undefined = the picture was not touched. null = Remove. An object is a new file.
+    const avatarHashNow = () => {
+      if (box._avatarDraft === undefined) {
+        const a = store.identity().avatar;
+        return (a && a.hash) || '';
+      }
+      return (box._avatarDraft && box._avatarDraft.hash) || '';
+    };
     const readDeferred = () => ({
       name: (box.querySelector('#set-name') || {}).value || '',
+      avatar: avatarHashNow(),
       relay: (box.querySelector('#set-relay') || {}).value || '',
       ai: AI_TYPES.map((t) => {
         const sel = box.querySelector('.ai-src[data-ai="' + t.key + '"]');
@@ -3590,11 +3609,52 @@
     wireAiSection(box);
     wireApiSection(box);
     wirePaySection(box);
+    const paintAvatar = () => {
+      const img = box.querySelector('#set-avatar-preview');
+      if (!img) return;
+      let url = '';
+      if (box._avatarDraft === undefined) {
+        const a = store.identity().avatar;
+        url = (a && a.url) || '';
+      } else if (box._avatarDraft && box._avatarDraft.b64) {
+        url = 'data:' + box._avatarDraft.mime + ';base64,' + box._avatarDraft.b64;
+      }
+      if (url) { img.src = url; img.hidden = false; }
+      else { img.removeAttribute('src'); img.hidden = true; }
+    };
+    const avatarErr = box.querySelector('#set-avatar-err');
+    const avatarFile = box.querySelector('#set-avatar-file');
+    if (avatarFile) avatarFile.addEventListener('change', () => {
+      const f = avatarFile.files && avatarFile.files[0];
+      avatarFile.value = '';
+      if (!f) return;
+      if (avatarErr) avatarErr.textContent = '';
+      const go = (GifOS.avatar && GifOS.avatar.prepareFile) ? GifOS.avatar.prepareFile(f) : Promise.resolve({ ok: false, error: 'Choose a GIF, PNG, JPG, or WebP.' });
+      Promise.resolve(go).then((res) => {
+        if (!box.isConnected) return;
+        if (!res || !res.ok) { if (avatarErr) avatarErr.textContent = (res && res.error) || 'Choose a GIF, PNG, JPG, or WebP.'; return; }
+        box._avatarDraft = { mime: res.mime, hash: res.hash, b64: res.b64 };
+        paintAvatar();
+        const note = box.querySelector('#set-save-note');
+        if (note && note.textContent === 'Saved') note.textContent = '';
+        paintActions();
+      });
+    });
+    const avatarRemove = box.querySelector('#set-avatar-remove');
+    if (avatarRemove) avatarRemove.onclick = () => {
+      box._avatarDraft = null;
+      if (avatarErr) avatarErr.textContent = '';
+      paintAvatar();
+      const note = box.querySelector('#set-save-note');
+      if (note && note.textContent === 'Saved') note.textContent = '';
+      paintActions();
+    };
+    paintAvatar();
     snapNow();
     const markDirty = (e) => {
       const t = e.target;
       if (!t || !t.matches) return;
-      if (t.matches('#set-name, #set-relay, .ai-f, .ai-src')) {
+      if (t.matches('#set-name, #set-relay, #set-avatar-file, .ai-f, .ai-src')) {
         const note = box.querySelector('#set-save-note');
         if (note && note.textContent === 'Saved') note.textContent = '';
         paintActions();
@@ -3682,8 +3742,13 @@
       const v = relayEl ? relayEl.value.trim() : '';
       try { if (v) localStorage.setItem('gifos_relay', v); else localStorage.removeItem('gifos_relay'); } catch (e) {}
       if (nameEl) store.setName(nameEl.value);
+      if (box._avatarDraft !== undefined) {
+        store.setAvatar(box._avatarDraft);
+        box._avatarDraft = undefined;
+      }
       if (box._saveAi) box._saveAi();
       snapNow();
+      paintAvatar();
       paintNameStatus();
       const note = box.querySelector('#set-save-note');
       if (note) note.textContent = 'Saved';
@@ -3695,6 +3760,9 @@
       const relayEl = box.querySelector('#set-relay');
       if (nameEl) nameEl.value = snap.name || '';
       if (relayEl) relayEl.value = snap.relay || '';
+      box._avatarDraft = undefined;
+      paintAvatar();
+      if (avatarErr) avatarErr.textContent = '';
       (snap.ai || []).forEach((row, i) => {
         const t = AI_TYPES[i];
         if (!t || !row) return;

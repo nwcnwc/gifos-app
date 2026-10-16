@@ -578,6 +578,11 @@ button.row-del svg { display: block; pointer-events: none; }
 }
 .settings-sheet #set-backup { margin-top: 18px; }
 .settings-sheet #set-erase { margin-top: 10px; }
+.settings-sheet .set-avatar-row { display: flex; align-items: center; gap: 12px; margin: 6px 0 4px; }
+.settings-sheet #set-avatar-preview { width: 72px; height: 72px; object-fit: cover; border-radius: 12px; background: #e8e8ef; flex: 0 0 auto; }
+.settings-sheet .set-avatar-actions { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.settings-sheet #set-avatar-file { max-width: 100%; }
+.settings-sheet #set-avatar-remove { min-height: 44px; align-self: flex-start; }
 .settings-sheet .add-help { color: #3a3a3f; }
 .settings-sheet :focus-visible { outline: 3px solid #0071e3; outline-offset: 2px; }
 .settings-sheet input, .settings-sheet select, .settings-sheet .bg-row button, .settings-sheet .ts-row button {
