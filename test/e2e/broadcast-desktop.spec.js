@@ -553,7 +553,8 @@ test('a small group tucks the dock when the call sits quiet', async ({ page }) =
       const bar = document.querySelector('.bar');
       const r = bar.getBoundingClientRect();
       const mic = document.getElementById('mic').getBoundingClientRect();
-      const fit = document.getElementById('fitbtn').getBoundingClientRect();
+      const fit = document.getElementById('fitbtn');
+      const fr = fit.getBoundingClientRect();
       return {
         tucked: bar.classList.contains('tucked'),
         hidden: bar.getAttribute('aria-hidden'),
@@ -562,8 +563,9 @@ test('a small group tucks the dock when the call sits quiet', async ({ page }) =
         vh: window.innerHeight,
         micTop: mic.top,
         micBottom: mic.bottom,
-        fitBottom: fit.bottom,
-        fitTop: fit.top,
+        fitBottom: fr.bottom,
+        fitTop: fr.top,
+        fitShown: getComputedStyle(fit).display !== 'none',
       };
     });
   }
@@ -628,8 +630,40 @@ test('a small group tucks the dock when the call sits quiet', async ({ page }) =
   expect(await page.evaluate(() => window.__gifosDock.tuck())).toBe(false);
   expect(service.tucked).toBe(false);
   expect(service.micBottom).toBeLessThanOrEqual(720);
-  expect(service.fitTop).toBeGreaterThanOrEqual(0);
-  expect(service.fitBottom).toBeLessThanOrEqual(720);
+  expect(service.fitShown).toBe(false);
+});
+
+test('a service hides Fit because the stage is one picture', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.hash.indexOf('bc=1') !== -1 && location.search.indexOf('view=1') === -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const [w, h, who] of [[1280, 720, 'host'], [1920, 1080, 'host'], [900, 720, 'view']]) {
+    await page.setViewportSize({ width: w, height: h });
+    const q = who === 'view' ? '&view=1' : '';
+    await page.goto('/run.html?desk=nofit' + w + q + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast #onair');
+    const fit = await page.evaluate(() => {
+      const el = document.getElementById('fitbtn');
+      const r = el.getBoundingClientRect();
+      return { display: getComputedStyle(el).display, w: r.width, h: r.height };
+    });
+    expect(fit.display, who + ' ' + w).toBe('none');
+    expect(fit.w).toBe(0);
+    expect(fit.h).toBe(0);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/run.html?desk=nofitsg#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  const btn = page.locator('#fitbtn');
+  await expect(btn).toBeVisible();
+  await expect(btn).toHaveText('▦ Fit');
+  await btn.click();
+  await expect(btn).toHaveText('▦ Scroll');
+  await expect(btn).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('a broadcast host moderates guests on the stage', async ({ page }) => {
