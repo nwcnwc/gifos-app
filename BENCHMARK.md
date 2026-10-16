@@ -39,7 +39,7 @@ A volunteer and an older member, a service or a small group, often a phone held 
 | --- | --- | --- |
 | Start or join from the lobby on an SE | 9 | Join is on screen in portrait and in landscape, including at 200% text. Start is the only blue button. The phone shows the action, not the essay under it. |
 | Tap targets for someone who misses small controls | 9 | Dock grip, chat close, Send, and Fit are 44px, including on an iPhone 15. Blur for all is a 64px square, inset from the tile corner, on a phone and on the desktop. |
-| Captions a member can find, at 200% text | 8 | Captions is on the call, says Captions, and the label is 32px at 200% text. |
+| Captions a member can find, at 200% text | 9 | Captions is on the call, and the line sits on the face. At 200% text it is 40px and stays inside the tile. A long line is cut to the lower part of the face. |
 | Host runs the room from the phone they already hold | 10 | Live, Record, and Captions are on the call. The phone sheet opens on Invite, Room password, Waiting room, and Chat. Invite is the blue one. Vote on someone and Step on stage scroll. |
 | **Audience** | **9** | Join stays on screen at 200% text. Captions, the dock, Fit, landscape More, and a waiting-room list work on a phone. We do not lead yet. |
 
@@ -88,3 +88,4 @@ Family and friends. Warm, few steps, a texted link.
 29. Join Clear and Save. The step said Not now and Continue. Clear blanks the name and the picture. Save keeps both and stays the solid button. `test/mobile/appear-preview.js` passes. Personal name row 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 30. Sideways tiles. `test/mobile/sideways-tiles.js` failed (SE 141×46 aspect 3.07, iPhone 15 bottom pair 130×60 aspect 2.19), then passed. Fit shares the header row on a short landscape phone, and a tile that would have been a strip stays within a portrait-phone shape. Desktop packing is unchanged. Personal sideways 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 31. Lobby at 200% text. `test/mobile/lobby-large-text.js` failed (Join bottom 986 on a 568px SE, and all three actions bottom 539 on a sideways SE), then passed. A phone shows the action title only, with tighter padding, so Start and Join stay on screen and Start stays the only blue button. Church lobby 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet. Captions are still the low church row.
+32. Caption on the face. `test/mobile/caption-on-tile.js` failed (a line was 618px tall on a 236px face and started above the screen at 200% text), then passed. The line stays in the lower part of the tile, at 1.25rem, including at 200%. Church captions 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.

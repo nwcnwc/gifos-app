@@ -1070,9 +1070,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #chatform { display: flex; gap: .4rem; padding: .5rem .6rem; border-top: 1px solid var(--border, #2a2a3f); }
   #chatform input[type=text] { flex: 1; min-width: 0; padding: .4rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; font-size: 1rem; }
   #chatform button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
-  .tile .cap { position: absolute; left: 50%; transform: translateX(-50%); bottom: 2.1rem; max-width: 92%;
-               background: rgba(10,10,15,.82); border: 1px solid var(--border, #2a2a3f); border-radius: .45rem;
-               padding: .35rem .7rem; font-size: 1.25rem; line-height: 1.35; color: #fff; z-index: 3; pointer-events: none;
+  .tile .cap { position: absolute; left: 8px; right: 8px; bottom: 8px; transform: none; max-width: none;
+               max-height: 42%; overflow: hidden; box-sizing: border-box;
+               background: rgba(10,10,15,.82); border: 0; border-radius: 8px;
+               padding: 6px 8px; font-size: 1.25rem; line-height: 1.3; color: #fff; z-index: 3; pointer-events: none;
                opacity: 0; transition: opacity .25s; }
   .tile .cap.show { opacity: 1; }
   /* A share that died in a freeze reload. One tap, high contrast, wraps on a phone. */

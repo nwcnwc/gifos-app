@@ -259,6 +259,14 @@ Repro: `test/mobile/lobby-large-text.js`. On a phone the essay is hidden and the
 
 Before: `qa/mobile/shots/before-lobby-200-iphone-se-200.png`, `qa/mobile/shots/before-lobby-200-iphone-se-land-200.png`. After: `qa/mobile/shots/after-lobby-200-iphone-se-200.png`, `qa/mobile/shots/after-lobby-200-iphone-se-land-200.png`.
 
+### 32. A caption line grew off the face
+
+On an iPhone SE the line "The Lord is my shepherd…" was 283px tall on a 155px face and started at y=-42. At 200% text it was 618px tall on a 236px face and started at y=-329. The words left the screen.
+
+Repro: `test/mobile/caption-on-tile.js`. The line is anchored to the bottom of the face, capped at 42% of the tile, and stays 1.25rem so it is 40px at 200% text.
+
+Before: `qa/mobile/shots/before-caption-tile-iphone-se-200.png`. After: `qa/mobile/shots/after-caption-tile-iphone-se-200.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.
