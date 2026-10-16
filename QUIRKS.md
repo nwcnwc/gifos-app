@@ -62,6 +62,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** the card says “This is how you'll appear”, prefills the GifOS name, shows the avatar (or an initial), and updates the preview as you type. Join is the blue primary. Not now is a white secondary, with space between them. Change picture is a separate text button. The knock waits until you choose. A session that already confirmed does not ask again.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/appear-before-1280.png`, `test/desktop/shots/appear-after-1280.png`.
 
+### A large room had no roster
+
+- **Who hits it:** a host with twenty people on the wall, trying to find who has a hand up.
+- **What you saw:** the header said “21 in the meeting” and the tiles were the only list. Who still opens addresses, which is not a roll call.
+- **Repro:** `test/desktop/roster.spec.js` failed before the fix (no `#roster`).
+- **Fix:** the count is a button. It opens a white list of every face the header counts, with search, Hand, and Muted. Names wrap. The list scrolls and stops above the dock. Close puts it away.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/roster-before-1280.png`, `test/desktop/shots/roster-after-1280.png`, `test/desktop/shots/roster-after-900.png`.
+
 ### A broadcast never said whether you were on air
 
 - **Who hits it:** the person running a church service, standing at the booth.
@@ -106,8 +114,8 @@ The meeting chrome follows a German or Spanish device: join, dock, More, the peo
 
 ### Status line is easy to lose
 
-“5 in the meeting” used to be one ellipsized sentence, and four faces whose calls had not connected yet still read “Just you”. The count is now its own uncut phrase and includes every face on the wall. The quality and password notes may still trail off. There is still no roster list.
+“5 in the meeting” used to be one ellipsized sentence, and four faces whose calls had not connected yet still read “Just you”. The count is now its own uncut phrase, it includes every face on the wall, and it opens the roster. The quality and password notes may still trail off.
 
 ### Not yet walked end to end
 
-A roster for a large room, then German and Spanish for the lobby, help, and the shortcut list. Screen-share for the consultant and tab-hide/return are still open. Gallery packing, self-view placement, and the reactions icon are not in this pass. A broadcast now says off air and on air; it still has no rundown and no lyrics.
+German and Spanish for the lobby, help, and the shortcut list. Screen-share for the consultant and tab-hide/return are still open. Gallery packing, self-view placement, and the reactions icon are not in this pass. A broadcast says off air and on air; it still has no rundown and no lyrics. The roster lists the room; it does not mute from the list.

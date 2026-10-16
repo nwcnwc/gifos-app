@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. A broadcast now says off air and on air. A large room still has no roster. Help, settings, and the lobby stay English.
+We do **not** lead any audience yet. A broadcast says off air and on air. The count opens a roster. Help, settings, and the lobby stay English.
 
 ## Who we are measured against
 
@@ -28,8 +28,8 @@ Polished, efficient, trustworthy. Best of the field today: Zoom and Meet, about 
 | Visual polish | 7 | Dock is calm and the primary controls are labeled. Chat no longer slides under it |
 | Efficiency (keyboard, few clicks) | 6 | Alt+A / V / C / Q, and Tab reaches Mute on a tile. Share, hand, and view still need the pointer. Chat is still two clicks with the mouse |
 | Presenting | 5 | Share exists. Not yet walked as a client demo |
-| Large-room host | 6 | The header counts the faces on the wall and that phrase is not ellipsized. There is still no roster |
-| **Audience** | **6.6** | Does not lead |
+| Large-room host | 7 | The count opens a roster of every face, with search, hand, and mute. You still cannot mute someone from that list |
+| **Audience** | **6.8** | Does not lead |
 
 ## Church
 
@@ -57,4 +57,4 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 
 ## This cycle
 
-A broadcast shows Off air until the camera is live, then a red On air pill with the speaker’s name (see QUIRKS.md). Church service 4 → 6, audience 6.3 → 6.8. Still behind a small-group Zoom and a service desk. Corporate stays 6.6. Personal stays 6.3. We do not lead. Next gap: a large room still has no roster.
+The people count opens a roster of every face, with search, Hand, and Muted (see QUIRKS.md). Corporate large-room 6 → 7, audience 6.6 → 6.8. Still behind Zoom and Meet. Church stays 6.8. Personal stays 6.3. We do not lead. Next gap: the lobby, help, and the shortcut list are still English.
