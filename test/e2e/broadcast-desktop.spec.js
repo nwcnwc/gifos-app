@@ -1306,6 +1306,98 @@ test('a service alone says you are live or you are watching', async ({ page }) =
   expect(viewer.hit, JSON.stringify(viewer)).toBe(false);
 });
 
+test('a host alone on a service gets Invite beside the live sentence', async ({ page }) => {
+  const SECRET = 'viewer-secret-99';
+  await page.addInitScript((secret) => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('view=1') !== -1 || location.search.indexOf('group=1') !== -1) localStorage.removeItem(key);
+    else localStorage.setItem(key, 'host-key');
+    if (location.search.indexOf('view=1') === -1 && location.search.indexOf('group=1') === -1) {
+      localStorage.setItem('gifos_vpw_sunday.0123456789abcdef', secret);
+    }
+  }, SECRET);
+  async function place() {
+    return page.evaluate(() => {
+      const el = document.getElementById('hdrinvite');
+      const st = document.getElementById('status');
+      const chip = document.querySelector('.topchip');
+      const b = el.getBoundingClientRect();
+      const c = chip.getBoundingClientRect();
+      const air = document.getElementById('onair').getBoundingClientRect();
+      const overlap = (a, r) => a.width > 0 && r.width > 0 && !(a.right < r.left || r.right < a.left || a.bottom < r.top || r.bottom < a.top);
+      const shown = getComputedStyle(el).display !== 'none' && !el.hidden;
+      return {
+        shown,
+        h: shown ? b.height : 0,
+        bg: shown ? getComputedStyle(el).backgroundColor : '',
+        text: st.textContent,
+        clip: st.scrollWidth > st.clientWidth + 1,
+        invite: chip.dataset.invite || '',
+        kind: st.dataset.kind || '',
+        inChip: shown && b.left >= c.left - 1 && b.right <= c.right + 1 && b.top >= c.top - 1 && b.bottom <= c.bottom + 1,
+        hitsLive: shown && overlap(b, air),
+        on: c.left >= -1 && c.right <= innerWidth + 1 && b.right <= innerWidth + 1,
+      };
+    });
+  }
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=inv' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.locator('#hdrinvite').waitFor({ state: 'visible' });
+    const host = await place();
+    expect(host.text).toContain('You are live. Send the link.');
+    expect(host.text).not.toContain('Just you');
+    expect(host.shown).toBe(true);
+    expect(host.h).toBeGreaterThanOrEqual(44);
+    expect(host.bg).toBe('rgb(0, 100, 200)');
+    expect(host.invite).toBe('1');
+    expect(host.kind).toBe('alone');
+    expect(host.inChip, JSON.stringify(host)).toBe(true);
+    expect(host.hitsLive, JSON.stringify(host)).toBe(false);
+    expect(host.clip, JSON.stringify(host)).toBe(false);
+    expect(host.on, JSON.stringify(host)).toBe(true);
+  }
+  const shared = await page.evaluate(async (secret) => {
+    const input = document.getElementById('share-url');
+    input.value = location.origin + '/run.html#v=sunday&av=0123456789abcdef&bc=1&pw=' + secret;
+    let payload = null;
+    let clip = '';
+    navigator.share = (p) => { payload = p; return Promise.resolve(); };
+    if (navigator.clipboard) navigator.clipboard.writeText = (t) => { clip = String(t); return Promise.resolve(); };
+    document.getElementById('hdrinvite').click();
+    navigator.share = undefined;
+    document.getElementById('hdrinvite').click();
+    return { payload, label: document.getElementById('hdrinvite').textContent, clip };
+  }, SECRET);
+  expect(shared.payload.url).toContain('sunday');
+  expect(shared.payload.url).toContain('bc=1');
+  expect(shared.payload.url).not.toContain(SECRET);
+  expect(shared.payload.url).not.toContain('pw=');
+  expect(shared.payload.text).not.toContain(SECRET);
+  expect(shared.label).toBe('Copied');
+  expect(shared.clip).toContain('sunday');
+  expect(shared.clip).toContain('bc=1');
+  expect(shared.clip).not.toContain(SECRET);
+  expect(shared.clip).not.toContain('pw=');
+  const n = await page.evaluate(() => window.__gifosVideo.markJoinedForTest('peer-ruth'));
+  expect(n).toBeGreaterThan(1);
+  await expect(page.locator('#hdrinvite')).toBeHidden();
+  const after = await page.evaluate(() => document.querySelector('.topchip').dataset.invite || '');
+  expect(after).toBe('');
+  await page.goto('/run.html?desk=invview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('watching') !== -1);
+  await expect(page.locator('#hdrinvite')).toBeHidden();
+  const viewerFlag = await page.evaluate(() => document.querySelector('.topchip').dataset.invite || '');
+  expect(viewerFlag).toBe('');
+  await page.goto('/run.html?desk=invgroup&group=1#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('Just you') !== -1);
+  await expect(page.locator('#hdrinvite')).toBeHidden();
+  const groupFlag = await page.evaluate(() => document.querySelector('.topchip').dataset.invite || '');
+  expect(groupFlag).toBe('');
+});
+
 test('microphone and camera off are a line you cannot miss', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');

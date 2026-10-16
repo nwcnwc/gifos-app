@@ -108,3 +108,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q47 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Full screen on a service shows the stage. A small group still follows the speaker. Scores unchanged. |
 | After Q48 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Viewer password matches the lobby and §LOCK: optional, not part of the link, stage stays blurred. Language stays 4. Scores unchanged. |
 | After Q49 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Who is watching describes the service. A small group still describes a meeting. Language stays 4. Scores unchanged. |
+| After Q50 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A host alone gets Invite in the chip. The live sentence stays. Invite was already a dock button, so the row stays 5. Scores unchanged. |

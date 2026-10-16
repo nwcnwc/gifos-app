@@ -1348,6 +1348,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip .status { color: #e7ebf2; font-size: 20px; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
     min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
+  /* A broadcast host who is the only person here gets Invite in the chip.
+     The sentence stays. Wide screens show the same button the phone shows.
+     The viewer password is never part of this link. */
+  #hdrinvite {
+    display: none; flex: 0 0 auto; box-sizing: border-box;
+    min-width: 44px; min-height: 44px; height: 44px; margin: 0 0 0 4px; padding: 0 14px;
+    border: 0; border-radius: 999px; background: #0064c8; color: #fff; cursor: pointer;
+    font: 700 16px/1 system-ui, sans-serif; white-space: nowrap;
+    align-items: center; justify-content: center;
+  }
+  #hdrinvite[hidden] { display: none !important; }
+  body.broadcast .topchip[data-invite="1"] { padding-top: 0; padding-bottom: 0; padding-right: 0; min-height: 44px; }
+  body.broadcast .topchip[data-invite="1"] #hdrinvite:not([hidden]) { display: inline-flex; }
   /* On air. Hosts wear Live (filled red, the same signal YouTube and a
      church stream use). Viewers wear Watching. Hidden outside a broadcast.
      [hidden] wins so a meeting never shows an empty pill. */
@@ -1702,6 +1715,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
     <span id="onair" hidden></span>
     <span class="status" id="status">Joining…</span>
+    <button type="button" id="hdrinvite" hidden title="Share the viewer link">Invite</button>
   </div>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
   <div class="admcount" id="admcount" style="display:none"></div>
@@ -2650,6 +2664,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (statusEl.title !== String(m)) statusEl.title = String(m);
       statusEl.classList.toggle('alert', blocking || !!hold);
       statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
+      const holdChip = statusEl.closest('.topchip');
+      if (holdChip) delete holdChip.dataset.invite;
+      const holdInvite = document.getElementById('hdrinvite');
+      if (holdInvite) holdInvite.hidden = true;
     };
     const uid = (p) => p + '_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
     // The one standard row-delete glyph (see button.row-del in the styles).
@@ -6643,6 +6661,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // of the reach states that replace the line. Tests and styling read
       // this, never the sentence.
       const statusKind = reachState && reachState !== 'partial' ? reachState : n === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
+      // A broadcast host who is the only person here gets Invite beside the
+      // sentence, at every width. The sentence stays. The viewer password is
+      // never part of the link this button shares.
+      const hostHere = typeof BROADCAST !== 'undefined' && BROADCAST
+        && (((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
+      const hostAlone = !!(hostHere && statusKind === 'alone');
+      const chip = statusEl.closest('.topchip');
+      if (chip) {
+        if (hostAlone) chip.dataset.invite = '1';
+        else delete chip.dataset.invite;
+      }
+      const hdrInvite = document.getElementById('hdrinvite');
+      if (hdrInvite) hdrInvite.hidden = !hostAlone;
       if (statusEl.dataset) {
         if (statusEl.dataset.kind !== statusKind) statusEl.dataset.kind = statusKind;
         const dr = reachState || '', du = reachState === 'partial' ? String(reach.dead) : '';
@@ -22035,6 +22066,81 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       location.reload(); // load the new admin room fresh — I arrive as its admin
     }
 
+    // The viewer link only. A password, if the room has one, stays out of the
+    // link and out of the words next to it. A phone with a share sheet gets
+    // that sheet. Otherwise the link is copied. Same path as the phone Invite.
+    function viewerShareUrl() {
+      let raw = (shareUrl && shareUrl.value) || '';
+      const named = (typeof room === 'string' && room) ? room : (params.get('v') || '');
+      if (!raw && named) {
+        const avBit = (params.get('av') || '').toLowerCase();
+        raw = location.origin + location.pathname + '#v=' + encodeURIComponent(named) + (avBit ? '&av=' + avBit : '') + (BROADCAST ? '&bc=1' : '') + (BROADCAST && params.has('st') ? '&st=1' : '');
+      }
+      if (!raw) return '';
+      const dropKeys = ['pw', 'password', 'guest', 'vpw', 'guestpw', 'pass'];
+      const drop = (sp) => { dropKeys.forEach((k) => sp.delete(k)); };
+      try {
+        const u = new URL(raw, location.origin);
+        drop(u.searchParams);
+        if (u.hash) {
+          const p = new URLSearchParams(u.hash.replace(/^#/, ''));
+          drop(p);
+          u.hash = p.toString();
+        }
+        raw = u.toString();
+      } catch (e) {}
+      const secrets = [];
+      try {
+        if (typeof roomPw === 'string' && roomPw) secrets.push(roomPw);
+        const stored = localStorage.getItem('gifos_vpw_' + (params.get('v') || '') + '.' + ((params.get('av') || '').toLowerCase()));
+        if (stored) secrets.push(stored);
+      } catch (e) {}
+      secrets.forEach((s) => {
+        if (!s) return;
+        raw = raw.split(encodeURIComponent(s)).join('').split(s).join('');
+      });
+      return raw;
+    }
+    function shareMeetingLink(btn) {
+      const url = viewerShareUrl();
+      if (!url) return;
+      const isApp = document.body.classList.contains('app-room');
+      const payload = {
+        title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : 'Join my GifOS meeting',
+        text: 'Tap this link and you’re in:',
+        url: url,
+      };
+      const markCopied = () => {
+        if (!btn) return;
+        const prev = btn.getAttribute('data-label') || 'Invite';
+        btn.textContent = 'Copied';
+        setTimeout(() => { if (btn.textContent === 'Copied') btn.textContent = prev; }, 1600);
+      };
+      const copy = () => {
+        try {
+          if (shareUrl) {
+            const prev = shareUrl.value;
+            shareUrl.value = url;
+            shareUrl.focus();
+            shareUrl.select();
+            document.execCommand('copy');
+            shareUrl.value = prev;
+          }
+        } catch (e) {}
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).catch(() => {});
+        markCopied();
+      };
+      if (typeof navigator.share === 'function') {
+        navigator.share(payload).catch((err) => {
+          if (err && err.name === 'AbortError') return;
+          copy();
+        });
+        return;
+      }
+      copy();
+    }
+    const hdrInviteBtn = document.getElementById('hdrinvite');
+    if (hdrInviteBtn) hdrInviteBtn.onclick = () => shareMeetingLink(hdrInviteBtn);
     document.getElementById('invite').onclick = () => {
       share.classList.add('show'); // keep the top copy row visible/copyable behind the sheet
       showInviteModal();
@@ -23290,6 +23396,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Test hook: lets the e2e suite observe mesh + quality state.
     window.__gifosVideo = {
       participants: participantCount,
+      shareInvite: () => shareMeetingLink(document.getElementById('hdrinvite')),
+      markJoinedForTest: (id) => {
+        const pid = String(id || 'peer').slice(0, 80);
+        if (pid && !rosterIds.includes(pid)) rosterIds.push(pid);
+        try { updateStatus(); } catch (e) {}
+        return participantCount();
+      },
       bot: () => !!myStatus.bot,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
