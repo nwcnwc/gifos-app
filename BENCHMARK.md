@@ -48,7 +48,7 @@ Family and friends. Warm, few steps, a texted link.
 | Job | Score | Note |
 | --- | --- | --- |
 | Open a texted link and pick a name | 8 | The join step opens with the GifOS name and picture, and says how you will appear. Continue is the only blue button. |
-| See everyone and hang up on a small phone | 7 | Four faces end above the dock on iPhone 15, SE, and 360px. Hang up fits. |
+| See everyone and hang up on a small phone | 8 | Four faces are two rows of two, each near a portrait-phone shape. They end above Live. Hang up fits. The build tag is still a solid chip in the corner. |
 | Send a chat line | 9 | The latest line and the count sit on the call. Emoji inserts into the field. Theirs is a light bubble and mine is blue, at 1rem. |
 | Turn the phone sideways | 8 | Invite, Room password, Waiting room, and Chat are on the first screen of More. You do not scroll to find them. |
 | **Audience** | **8** | The link, the name step, hang up, the first screen of landscape More, chat, the lobby, the home indicator, and a 44px Fit control are in good shape. FaceTime still feels quieter. We do not lead yet. |
@@ -78,3 +78,4 @@ Family and friends. Warm, few steps, a texted link.
 21. Send stayed on screen. `test/mobile/chat-above-dock.js` failed (`send off screen (right 382)`), then passed. The field shrinks so the emoji button does not push Send past the edge.
 22. Readable bubbles. `test/mobile/chat-bubbles.js` failed (13.6px body, name contrast 2.61, mine and theirs the same color), then passed, including at 200% text. Theirs is light, mine is blue, the name is 1rem, and a long line wraps inside the bubble. Corporate chat 8→9. Personal send-a-line 8→9. Audience scores stay 8 / 8 / 8. Nobody leads yet.
 23. Keyboard. `test/mobile/chat-keyboard.js` failed (the inset ignored the visible viewport, and in landscape Close scrolled off), then passed, including at 200% text. The sheet uses the larger of the dock and the keyboard. The field is 1rem. Audience scores stay 8 / 8 / 8. Nobody leads yet. Still open: the call is busier than FaceTime, so "see everyone" stays 7.
+24. Portrait tiles. `test/mobile/see-everyone.js` failed (bottom row 88px and 73px, three rows), then passed. Four people are two rows of two. A phone tile is no longer a wide strip. Personal see-everyone 7→8. Audience scores stay 8 / 8 / 8. Nobody leads yet. The corner still carries a solid build chip.

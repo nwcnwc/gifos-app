@@ -195,6 +195,14 @@ Repro: `test/mobile/chat-keyboard.js`. It failed (inset 0, field under the keybo
 
 Before: `qa/mobile/shots/before-chat-keyboard-land.png`. After: `qa/mobile/shots/after-chat-keyboard-land.png`.
 
+### 24. Four faces squeezed into a short bottom row
+
+On an iPhone 15 the grid was 1, 1, 2. Pat and Ruth were 389×176 strips. David and Sam were 195×88. On an SE the bottom pair was 158×73. Every tile was about 2.2 times as wide as it was tall.
+
+Repro: `test/mobile/see-everyone.js`. It failed (`David is 195x88`, `3 rows`), then passed. On a phone a tile may not be a wide squash. Four people are two rows of two, each tile taller than 140px on an iPhone 15 and 120px on an SE, and the shape stays between a portrait phone and a square. Desktop packing is unchanged.
+
+Before: `qa/mobile/shots/before-see-everyone-iphone-15.png`. After: `qa/mobile/shots/after-see-everyone-iphone-15.png`.
+
 ## Open
 
 The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
