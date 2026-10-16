@@ -102,6 +102,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** the host sees Order of service: Welcome, Song, Prayer, Scripture, Message, Closing. Now is the large line. Next walks it. On the last step the button says Done, then the card says Ended and Start over. The place stays for this tab. A viewer does not see the card. It sits above the dock and does not cover the off-air card. A normal meeting does not show it.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit, and the on-air test still passes. Screenshots: `test/desktop/shots/rundown-before-1280.png`, `test/desktop/shots/rundown-after-1280.png`, `test/desktop/shots/rundown-after-song-1280.png`, `test/desktop/shots/rundown-after-900.png`.
 
+### Settings stayed English
+
+- **Who hits it:** a German or Spanish device, opening Settings from More.
+- **What you saw:** the dock and the help were already translated, and the dialog still said “Settings”, “Video quality”, “Your name”, “Sound mix”, and “Conversation”.
+- **Repro:** `test/desktop/settings-locale.spec.js` failed before the fix (a `de-DE` dialog said “Settings”).
+- **Fix:** German and Spanish cover the settings title, video quality, name and picture, captions, sound mix, timing, and Close. English stays in the markup. Who, Share, and Vote are still English.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the earlier locale test still passes. An English device still says “Settings”. Screenshots: `test/desktop/shots/settings-before-1280.png`, `test/desktop/shots/settings-after-de-1280.png`, `test/desktop/shots/settings-after-es-1280.png`.
+
 ### Chrome was English only
 
 - **Who hits it:** anyone whose device is set to German or Spanish.
@@ -132,9 +140,9 @@ With no saved confirmation for this session, joining shows how you will appear: 
 
 Who, Invite, Hand, and Chat sit under People. Vote, Password, Stage, Record, CC, and Settings sit under Room. Run app is under Share. Keys and Help are under Help. Host tools stay hidden until there is a host. “Turn video off” matches the other labels. The list is still long.
 
-### Settings are still English
+### Settings were still English
 
-The lobby, the meeting help, the broadcast help, and the shortcut list follow a German or Spanish device. The settings body does not. Captions already followed the device language.
+The lobby, the meeting help, the broadcast help, the shortcut list, and Settings follow a German or Spanish device. Who, Share, and Vote do not. Captions already followed the device language.
 
 ### Status line is easy to lose
 
@@ -142,4 +150,4 @@ The lobby, the meeting help, the broadcast help, and the shortcut list follow a 
 
 ### Not yet walked end to end
 
-Screen-share for the consultant, tab-hide/return, and the settings body in German and Spanish. Gallery packing, self-view placement, and the reactions icon are not in this pass. A broadcast says off air and on air, and the booth has an order of service. There are still no lyrics and no program versus preview. The roster can mute someone for everyone. Waiting room, rename, and spotlight are still missing.
+Screen-share for the consultant and tab-hide/return. Gallery packing, self-view placement, and the reactions icon are not in this pass. A broadcast says off air and on air, and the booth has an order of service. There are still no lyrics and no program versus preview. The roster can mute someone for everyone. Waiting room, rename, and spotlight are still missing. Who, Share, and Vote stay English.

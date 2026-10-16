@@ -1795,12 +1795,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <div class="name-modal" role="dialog" aria-modal="true" id="set-modal" style="display:none">
     <div class="name-box" style="max-width:440px;text-align:left">
-      <h3 style="text-align:center">Settings</h3>
+      <h3 id="set-title" style="text-align:center" data-t="setTitle">Settings</h3>
       <div class="set-sec">
-        <b>Video quality</b>
-        <p class="set-help">What <b>your own camera</b> records and sends. <b>Auto</b> adapts to the room's size and your battery; a fixed choice pins it.</p>
-        <span class="segwrap" id="vqrow" role="group" aria-label="Video quality">
-          <button class="seg" data-vq="">Auto</button>
+        <b data-t="setVideo">Video quality</b>
+        <p class="set-help" data-t="setVideoHelp">What <b>your own camera</b> records and sends. <b>Auto</b> adapts to the room's size and your battery; a fixed choice pins it.</p>
+        <span class="segwrap" id="vqrow" role="group" aria-label="Video quality" data-al="setVideo">
+          <button class="seg" data-vq="" data-t="setAuto">Auto</button>
           <button class="seg" data-vq="1080p">1080p</button>
           <button class="seg" data-vq="720p">720p</button>
           <button class="seg" data-vq="480p">480p</button>
@@ -1810,46 +1810,46 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         </span>
       </div>
       <div class="set-sec">
-        <b>Your name</b>
-        <p class="set-help">What everyone sees on your tile: <b id="set-name-cur">…</b> <button id="set-rename" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin-left:.4rem">Change</button></p>
-        <p class="set-help">Your picture, when the camera is off. An animated GIF stays animated.</p>
+        <b data-t="setName">Your name</b>
+        <p class="set-help"><span data-t="setNameHelp">What everyone sees on your tile:</span> <b id="set-name-cur">…</b> <button id="set-rename" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin-left:.4rem" data-t="setChange">Change</button></p>
+        <p class="set-help" data-t="setPicHelp">Your picture, when the camera is off. An animated GIF stays animated.</p>
         <img id="set-avatar-preview" alt="" hidden style="width:72px;height:72px;object-fit:cover;border-radius:.5rem">
-        <input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Picture">
-        <button type="button" id="set-avatar-remove" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;align-self:flex-start">Remove</button>
+        <input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Picture" data-al="setPicture">
+        <button type="button" id="set-avatar-remove" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;align-self:flex-start" data-t="setRemove">Remove</button>
         <p id="set-avatar-err" class="set-help" role="alert"></p>
       </div>
       <div class="set-sec">
-        <b>Captions language</b>
-        <p class="set-help">What <b>your own device</b> listens for when CC is on. It cannot guess: a phone set to Russian writes English down as nonsense, so pick the language you will speak.</p>
+        <b data-t="setCcLang">Captions language</b>
+        <p class="set-help" data-t="setCcHelp">What <b>your own device</b> listens for when CC is on. It cannot guess: a phone set to Russian writes English down as nonsense, so pick the language you will speak.</p>
         <select id="cclang" style="padding:.35rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);max-width:100%"></select>
         <div id="ccengine-row" style="margin-top:.6rem">
-          <label class="rec-opt"><input type="radio" name="ccengine" value="browser"><span><b>Browser captions</b><small>Instant. One fixed language, picked above; two-word lines without punctuation on some devices. Your browser may send your voice to its maker's speech service (Chrome: Google).</small></span></label>
-          <label class="rec-opt"><input type="radio" name="ccengine" value="whisper"><span><b>Whisper on this device</b><small>Any language, found by itself. Real sentences with punctuation. Your own names and words. Can write everything in English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Nothing leaves the device.</small></span></label>
+          <label class="rec-opt"><input type="radio" name="ccengine" value="browser"><span><b data-t="setCcBrowser">Browser captions</b><small data-t="setCcBrowserHelp">Instant. One fixed language, picked above; two-word lines without punctuation on some devices. Your browser may send your voice to its maker's speech service (Chrome: Google).</small></span></label>
+          <label class="rec-opt"><input type="radio" name="ccengine" value="whisper"><span><b data-t="setCcWhisper">Whisper on this device</b><small data-t="setCcWhisperHelp">Any language, found by itself. Real sentences with punctuation. Your own names and words. Can write everything in English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Nothing leaves the device.</small></span></label>
           <div id="ccwhisper-weak" class="set-help" style="display:none;margin:.2rem 0 0 1.6rem"></div>
           <div id="ccwhisper" style="display:none;margin:.2rem 0 0 1.6rem">
             <div id="ccwhisper-state" class="set-help" style="margin-bottom:.4rem"></div>
-            <label class="rec-opt inline"><input type="checkbox" id="cctranslate"><span>Write everything in English</span></label>
-            <textarea id="ccwords" rows="2" placeholder="Names and words to recognise: Siobhan, Kubernetes, GifOS…" style="width:100%;margin-top:.4rem;padding:.4rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);font:inherit;font-size:.85rem"></textarea>
-            <label class="rec-opt" id="ccscribe-row" style="margin-top:.4rem"><input type="checkbox" id="ccscribe"><span><b>Write down everyone here (scribe)</b><small>Your device transcribes every voice it hears with Whisper and offers to be the others' captions, so their devices can stop transcribing. The most work a device can do here — best on a strong computer.</small></span></label>
+            <label class="rec-opt inline"><input type="checkbox" id="cctranslate"><span data-t="setCcEnglish">Write everything in English</span></label>
+            <textarea id="ccwords" rows="2" data-ph="setCcWords" placeholder="Names and words to recognise: Siobhan, Kubernetes, GifOS…" style="width:100%;margin-top:.4rem;padding:.4rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);font:inherit;font-size:.85rem"></textarea>
+            <label class="rec-opt" id="ccscribe-row" style="margin-top:.4rem"><input type="checkbox" id="ccscribe"><span><b data-t="setCcScribe">Write down everyone here (scribe)</b><small data-t="setCcScribeHelp">Your device transcribes every voice it hears with Whisper and offers to be the others' captions, so their devices can stop transcribing. The most work a device can do here — best on a strong computer.</small></span></label>
           </div>
         </div>
         <div id="ccsource" style="margin-top:.5rem;display:none"></div>
-        <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span>Admins only — every device starts writing down the voices it hears. Anyone can tap CC to opt out.</span></p>
+        <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span data-t="setCcAllHelp">Admins only — every device starts writing down the voices it hears. Anyone can tap CC to opt out.</span></p>
       </div>
       <div id="mixpanel">
-        <b>Sound mix</b>
-        <label>Stage <input type="range" id="mix-stage" min="0" max="100" value="100"></label>
-        <label>My row <input type="range" id="mix-row" min="0" max="100" value="100"></label>
-        <label id="mixlab-stadium">The stadium <input type="range" id="mix-stadium" min="0" max="100" value="100"></label>
-        <b>Timing</b>
+        <b data-t="setMix">Sound mix</b>
+        <label><span data-t="setStage">Stage</span> <input type="range" id="mix-stage" min="0" max="100" value="100"></label>
+        <label><span data-t="setRow">My row</span> <input type="range" id="mix-row" min="0" max="100" value="100"></label>
+        <label id="mixlab-stadium"><span data-t="setStadium">The stadium</span> <input type="range" id="mix-stadium" min="0" max="100" value="100"></label>
+        <b data-t="setTiming">Timing</b>
         <div id="timingrow">
-          <button data-timing="chat" title="Snappiest replies — your ears align to your own links only; across the room, timing may stagger">Conversation</button>
-          <button data-timing="unison" title="Everyone hears everyone at the same synced instant — reactions, responses and spontaneous song land together (the room may wait for its slowest link, capped)">Unison</button>
-          <button data-timing="song" title="Lead the room in song — steps you onto the stage with a music-grade mic and lines everyone's sound up to you; tap again to end (earbuds recommended for singers)">🎵 Song</button>
+          <button data-timing="chat" data-ti="setTalkTip" title="Snappiest replies — your ears align to your own links only; across the room, timing may stagger"><span data-t="setTalk">Conversation</span></button>
+          <button data-timing="unison" data-ti="setUnisonTip" title="Everyone hears everyone at the same synced instant — reactions, responses and spontaneous song land together (the room may wait for its slowest link, capped)"><span data-t="setUnison">Unison</span></button>
+          <button data-timing="song" data-ti="setSongTip" title="Lead the room in song — steps you onto the stage with a music-grade mic and lines everyone's sound up to you; tap again to end (earbuds recommended for singers)">🎵 <span data-t="rdSong">Song</span></button>
         </div>
       </div>
       <div style="display:flex;justify-content:center;margin-top:.9rem">
-        <button id="set-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+        <button id="set-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
       </div>
     </div>
   </div>
@@ -2446,6 +2446,44 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         rdEnded: 'Zu Ende', rdAgain: 'Von vorn',
         rdWelcome: 'Begrüßung', rdSong: 'Lied', rdPrayer: 'Gebet', rdScripture: 'Schrift',
         rdMessage: 'Predigt', rdClosing: 'Segen',
+        setTitle: 'Einstellungen', setVideo: 'Videoqualität',
+        setVideoHelp: 'Was Ihre eigene Kamera aufnimmt und sendet. Automatisch passt sich der Größe des Raums und Ihrem Akku an. Eine feste Wahl bleibt stehen.',
+        setAuto: 'Automatisch', setName: 'Ihr Name',
+        setNameHelp: 'Was alle auf Ihrem Feld sehen:',
+        setChange: 'Ändern',
+        setPicHelp: 'Ihr Bild, wenn die Kamera aus ist. Ein animiertes GIF bleibt animiert.',
+        setPicture: 'Bild', setRemove: 'Entfernen',
+        setCcLang: 'Untertitelsprache',
+        setCcHelp: 'Wonach Ihr Gerät hört, wenn CC an ist. Es rät nicht. Wählen Sie die Sprache, die Sie sprechen werden.',
+        setCcBrowser: 'Untertitel im Browser',
+        setCcBrowserHelp: 'Sofort. Eine feste Sprache, oben gewählt. Manche Geräte schreiben zwei Wörter ohne Satzzeichen. Der Browser kann Ihre Stimme an seinen Hersteller schicken (Chrome: Google).',
+        setCcWhisper: 'Whisper auf diesem Gerät',
+        setCcWhisperHelp: 'Jede Sprache, von selbst erkannt. Echte Sätze mit Satzzeichen. Ihre Namen und Wörter. Kann alles auf Englisch schreiben. Ein Satz erscheint ein paar Sekunden später. Auf dem Telefon langsamer und mit Akku. Nichts verlässt das Gerät.',
+        setCcEnglish: 'Alles auf Englisch schreiben',
+        setCcWords: 'Namen und Wörter: Siobhan, Kubernetes, GifOS…',
+        setCcScribe: 'Alle hier mitschreiben',
+        setCcScribeHelp: 'Ihr Gerät schreibt jede Stimme mit Whisper mit und bietet den anderen die Untertitel an. Die meiste Arbeit — am besten auf einem starken Computer.',
+        setCcAllOff: 'Untertitel für alle: aus', setCcAllOn: 'Untertitel für alle: an',
+        setCcAllHelp: 'Nur die Leitung. Jedes Gerät schreibt die Stimmen mit, die es hört. CC schaltet es für einen selbst aus.',
+        setMix: 'Klang', setStage: 'Bühne', setRow: 'Meine Reihe', setStadium: 'Das Stadion',
+        setTiming: 'Zeit', setTalk: 'Gespräch', setUnison: 'Einklang', setClose: 'Schließen',
+        setTalkTip: 'Die schnellsten Antworten. Die Ohren richten sich nur nach Ihren eigenen Verbindungen.',
+        setUnisonTip: 'Alle hören denselben Augenblick. Der Raum wartet auf die langsamste Verbindung.',
+        setSongTip: 'Sie leiten das Lied. Nochmal tippen beendet es. Ohrhörer helfen.',
+        setSongWait: '{name} leitet. Warten Sie, bis das Lied endet.',
+        setCcWeak: 'Nicht angeboten auf {where}.',
+        setCcWeakPhone: 'einem Telefon', setCcWeakCores: 'einem Gerät mit so wenigen Kernen', setCcWeakMem: 'einem Gerät mit so wenig Speicher',
+        setCcWeakWhy: 'Whisper läuft auf dem Prozessor. Es macht den Anruf langsamer und leert den Akku. Untertitel im Browser bleiben sofort.',
+        setCcAnyway: 'Whisper trotzdem',
+        setCcReady: 'Bereit:', setCcReadyTail: 'antwortet auf diesem Gerät.',
+        setCcPhoneSlow: 'Auf einem Telefon kann ein Satz 5 bis 10 Sekunden brauchen und verbraucht Akku.',
+        setCcNeed: 'Braucht die App Offline-Untertitel (Whisper), 13 MB, einmal pro Computer. Das Modell lädt beim ersten Mal.',
+        setCcInstall: 'Jetzt installieren', setCcStore: 'oder aus dem App Store',
+        setCcSource: 'Untertitelquelle', setCcMine: 'Mein Gerät schreibt mich mit',
+        setCcUse: 'Untertitel von {name}',
+        setCcNear: 'Dessen Gerät schreibt alle mit, Sie eingeschlossen, und Ihres hört auf.',
+        setCcFar: 'Dessen Gerät schreibt mit, wen es hört. Es ist nicht direkt mit Ihnen verbunden, deshalb schreibt Ihres Sie weiter mit.',
+        setCcTrust: 'Jede Zeile trägt dessen Namen. Wählen Sie das nur, wenn Sie der Person vertrauen.',
         sendInvite: 'Link schicken, er läuft nicht ab',
         waiting: 'wir warten auf die anderen…',
         chatTitle: 'Meeting-Chat',
@@ -2507,6 +2545,44 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         rdEnded: 'Terminó', rdAgain: 'Otra vez',
         rdWelcome: 'Bienvenida', rdSong: 'Canción', rdPrayer: 'Oración', rdScripture: 'Lectura',
         rdMessage: 'Mensaje', rdClosing: 'Cierre',
+        setTitle: 'Ajustes', setVideo: 'Calidad de video',
+        setVideoHelp: 'Lo que graba y envía tu propia cámara. Automático se adapta al tamaño de la sala y a tu batería. Una elección fija se queda.',
+        setAuto: 'Automático', setName: 'Tu nombre',
+        setNameHelp: 'Lo que todos ven en tu cuadro:',
+        setChange: 'Cambiar',
+        setPicHelp: 'Tu foto cuando la cámara está apagada. Un GIF animado sigue animado.',
+        setPicture: 'Foto', setRemove: 'Quitar',
+        setCcLang: 'Idioma de los subtítulos',
+        setCcHelp: 'Lo que escucha tu dispositivo cuando CC está activo. No adivina. Elige el idioma que vas a hablar.',
+        setCcBrowser: 'Subtítulos del navegador',
+        setCcBrowserHelp: 'Al instante. Un idioma fijo, el de arriba. En algunos dispositivos son dos palabras sin puntuación. El navegador puede enviar tu voz al servicio de su fabricante (Chrome: Google).',
+        setCcWhisper: 'Whisper en este dispositivo',
+        setCcWhisperHelp: 'Cualquier idioma, lo detecta solo. Frases de verdad, con puntuación. Tus nombres y palabras. Puede escribir todo en inglés. Una frase aparece unos segundos después. En el teléfono va más lento y gasta batería. Nada sale del dispositivo.',
+        setCcEnglish: 'Escribir todo en inglés',
+        setCcWords: 'Nombres y palabras: Siobhan, Kubernetes, GifOS…',
+        setCcScribe: 'Escribir a todos aquí',
+        setCcScribeHelp: 'Tu dispositivo transcribe cada voz con Whisper y se ofrece como subtítulos de los demás. El mayor trabajo: mejor en un computador fuerte.',
+        setCcAllOff: 'Subtítulos para todos: no', setCcAllOn: 'Subtítulos para todos: sí',
+        setCcAllHelp: 'Solo anfitriones. Cada dispositivo escribe las voces que oye. Cualquiera puede tocar CC para salir.',
+        setMix: 'Mezcla', setStage: 'Escenario', setRow: 'Mi fila', setStadium: 'El estadio',
+        setTiming: 'Tiempo', setTalk: 'Conversación', setUnison: 'Al unísono', setClose: 'Cerrar',
+        setTalkTip: 'Las respuestas más rápidas. Tus oídos se alinean solo con tus propias conexiones.',
+        setUnisonTip: 'Todos oyen el mismo instante. La sala espera a la conexión más lenta.',
+        setSongTip: 'Tú diriges la canción. Tocar otra vez la termina. Los audífonos ayudan.',
+        setSongWait: '{name} dirige. Espera a que termine la canción.',
+        setCcWeak: 'No se ofrece en {where}.',
+        setCcWeakPhone: 'un teléfono', setCcWeakCores: 'un dispositivo con tan pocos núcleos', setCcWeakMem: 'un dispositivo con tan poca memoria',
+        setCcWeakWhy: 'Whisper corre en el procesador. Hace la llamada más lenta y gasta la batería. Los subtítulos del navegador siguen al instante.',
+        setCcAnyway: 'Usar Whisper igual',
+        setCcReady: 'Listo:', setCcReadyTail: 'responde en este dispositivo.',
+        setCcPhoneSlow: 'En un teléfono una frase puede tardar de 5 a 10 segundos y gasta batería.',
+        setCcNeed: 'Hace falta la app Subtítulos sin conexión (Whisper), 13 MB, una vez por computador. El modelo se descarga la primera vez.',
+        setCcInstall: 'Instalar ahora', setCcStore: 'o desde la tienda',
+        setCcSource: 'Fuente de subtítulos', setCcMine: 'Mi dispositivo me escribe',
+        setCcUse: 'Subtítulos de {name}',
+        setCcNear: 'Su dispositivo escribe a todos, tú incluido, y el tuyo para.',
+        setCcFar: 'Su dispositivo escribe a quien oye. No está conectado directo contigo, así que el tuyo sigue escribiéndote.',
+        setCcTrust: 'Cada línea lleva su nombre. Elige esto solo si confías en esa persona.',
         sendInvite: 'envía el enlace; no caduca',
         waiting: 'esperando a los demás…',
         chatTitle: 'Chat de la reunión',
@@ -2568,6 +2644,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.querySelectorAll('[data-ph]').forEach((el) => {
         const v = uiText(el.getAttribute('data-ph'), '');
         if (v) el.setAttribute('placeholder', v);
+      });
+      document.querySelectorAll('[data-al]').forEach((el) => {
+        const v = uiText(el.getAttribute('data-al'), '');
+        if (v) el.setAttribute('aria-label', v);
+      });
+      document.querySelectorAll('[data-ti]').forEach((el) => {
+        const v = uiText(el.getAttribute('data-ti'), '');
+        if (v) el.setAttribute('title', v);
       });
       applyHelp();
     }
@@ -18776,7 +18860,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (btn.dataset.timing !== 'song') continue;
         const blocked = sing && !mine;
         btn.setAttribute('aria-disabled', blocked ? 'true' : 'false');
-        btn.title = blocked ? (singLeaderName() + ' is leading; wait for the song to end.') : SONG_PILL_TITLE;
+        btn.title = blocked
+          ? uiText('setSongWait', '{name} is leading; wait for the song to end.').replace('{name}', singLeaderName())
+          : uiText('setSongTip', SONG_PILL_TITLE);
       }
     }
     function toggleSing() {
@@ -19558,13 +19644,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       box.dataset.key = key;
       if (!list.length && !ccSourceId) { box.style.display = 'none'; box.innerHTML = ''; return; }
       box.style.display = '';
-      box.innerHTML = '<b>Captions source</b>'
-        + '<label class="rec-opt"><input type="radio" name="ccsource" value=""' + (!ccSourceId ? ' checked' : '') + '><span>My own device writes me down</span></label>'
+      box.innerHTML = '<b>' + uiText('setCcSource', 'Captions source') + '</b>'
+        + '<label class="rec-opt"><input type="radio" name="ccsource" value=""' + (!ccSourceId ? ' checked' : '') + '><span>' + uiText('setCcMine', 'My own device writes me down') + '</span></label>'
         + list.map((sc) => '<label class="rec-opt"><input type="radio" name="ccsource" value="' + esc(sc.id) + '"' + (ccSourceId === sc.id ? ' checked' : '')
-          + '><span>Use <b>' + esc(sc.name) + '</b>’s captions<small>' + (near(sc.id)
-            ? 'Their device writes down everyone, you included, and yours stops transcribing.'
-            : 'Their device writes down the people it hears. It is not linked to you directly, so your own device keeps writing you down.')
-          + ' Every line they write carries their name — choose this only if you trust them.</small></span></label>').join('');
+          + '><span>' + uiText('setCcUse', 'Use {name}’s captions').replace('{name}', '<b>' + esc(sc.name) + '</b>') + '<small>' + (near(sc.id)
+            ? uiText('setCcNear', 'Their device writes down everyone, you included, and yours stops transcribing.')
+            : uiText('setCcFar', 'Their device writes down the people it hears. It is not linked to you directly, so your own device keeps writing you down.'))
+          + ' ' + uiText('setCcTrust', 'Every line they write carries their name — choose this only if you trust them.')
+          + '</small></span></label>').join('');
       for (const r of box.querySelectorAll('input[name="ccsource"]')) r.onchange = () => {
         if (!r.checked) return;
         ccSourceId = r.value || null; box.dataset.key = '';
@@ -19629,9 +19716,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (allowed) { weak.style.display = 'none'; weak.innerHTML = ''; }
         else {
           weak.style.display = '';
-          weak.innerHTML = '<span style="color:#ffd23c">⚠ Not offered on ' + (WSP_WEAK === 'phone' ? 'a phone' : WSP_WEAK === 'cores' ? 'a device with this few processor cores' : 'a device with this little memory')
-            + '.</span> Whisper runs on the processor: it slows the call for you and everyone you talk to, and it drains the battery. Browser captions stay instant. '
-            + '<button id="ccwhisper-anyway" class="seg" style="border:1px solid #ffd23c;border-radius:.4rem">Use Whisper anyway</button>';
+          const where = WSP_WEAK === 'phone' ? uiText('setCcWeakPhone', 'a phone') : WSP_WEAK === 'cores' ? uiText('setCcWeakCores', 'a device with this few processor cores') : uiText('setCcWeakMem', 'a device with this little memory');
+          weak.innerHTML = '<span style="color:#ffd23c">⚠ ' + uiText('setCcWeak', 'Not offered on {where}.').replace('{where}', where)
+            + '</span> ' + uiText('setCcWeakWhy', 'Whisper runs on the processor: it slows the call for you and everyone you talk to, and it drains the battery. Browser captions stay instant.')
+            + ' <button id="ccwhisper-anyway" class="seg" style="border:1px solid #ffd23c;border-radius:.4rem">' + uiText('setCcAnyway', 'Use Whisper anyway') + '</button>';
           document.getElementById('ccwhisper-anyway').onclick = () => {
             lsSet(CC_WHISPER_ANYWAY_KEY, '1');
             lsSet(CC_ENGINE_KEY, 'whisper');
@@ -19648,13 +19736,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const a = whisperReady() ? GifOS.providers.assigned('stt') : null;
       if (scRow) scRow.style.display = a ? '' : 'none';
       if (a) {
-        state.innerHTML = '✅ Ready: <b>' + esc(a.appName || 'your speech-to-text app') + '</b> answers on this device.'
-          + (IS_MOBILE ? ' <span style="color:#ffd23c">On a phone a sentence can take 5 to 10 seconds to appear, and it uses battery.</span>' : '');
+        state.innerHTML = '✅ ' + uiText('setCcReady', 'Ready:') + ' <b>' + esc(a.appName || 'your speech-to-text app') + '</b> ' + uiText('setCcReadyTail', 'answers on this device.')
+          + (IS_MOBILE ? ' <span style="color:#ffd23c">' + uiText('setCcPhoneSlow', 'On a phone a sentence can take 5 to 10 seconds to appear, and it uses battery.') + '</span>' : '');
         return;
       }
-      state.innerHTML = 'Needs the <b>Offline Captions (Whisper)</b> app — 13 MB, once per computer; the model itself downloads the first time captions run. '
-        + '<button id="ccwhisper-install" class="seg" style="border:1px solid var(--accent,#7b5cff);border-radius:.4rem;color:#fff;background:var(--accent,#7b5cff)"' + (whisperInstalling ? ' disabled' : '') + '>Install it now</button> '
-        + '<span id="ccwhisper-prog"></span> <a href="store.html#app=' + WHISPER_APP_ID + '" target="_blank" rel="noopener" style="color:var(--accent2,#ff5caa);font-size:.8rem">or from the App Store</a>';
+      state.innerHTML = uiText('setCcNeed', 'Needs the <b>Offline Captions (Whisper)</b> app — 13 MB, once per computer; the model itself downloads the first time captions run.')
+        + ' <button id="ccwhisper-install" class="seg" style="border:1px solid var(--accent,#7b5cff);border-radius:.4rem;color:#fff;background:var(--accent,#7b5cff)"' + (whisperInstalling ? ' disabled' : '') + '>' + uiText('setCcInstall', 'Install it now') + '</button> '
+        + '<span id="ccwhisper-prog"></span> <a href="store.html#app=' + WHISPER_APP_ID + '" target="_blank" rel="noopener" style="color:var(--accent2,#ff5caa);font-size:.8rem">' + uiText('setCcStore', 'or from the App Store') + '</a>';
       document.getElementById('ccwhisper-install').onclick = () => { installWhisper(true).catch(() => {}); paintCcState(); };
       armWhisperRescan();
     }
@@ -20073,7 +20161,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function applyCcAll() {
       const m = ccAllInfo();
       const btn = document.getElementById('ccall');
-      if (btn) btn.textContent = 'Captions for everyone: ' + (m ? 'on' : 'off');
+      if (btn) btn.textContent = uiText(m ? 'setCcAllOn' : 'setCcAllOff', 'Captions for everyone: ' + (m ? 'on' : 'off'));
       const cc = document.getElementById('ccbtn');
       if (!m) {
         if (ccByOrder && myStatus.cc) { ccByOrder = false; myStatus.cc = false; cc.classList.remove('on'); syncSpeech(); setStatus('Captions for everyone were turned off.'); broadcastStatus(); }

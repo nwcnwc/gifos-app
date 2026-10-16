@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. A host can mute someone from the roster. A church broadcast has an order of service for the booth. The lobby, help, and shortcut list follow German and Spanish. Settings stay English.
+We do **not** lead any audience yet. A host can mute someone from the roster. A church broadcast has an order of service for the booth. Settings follow German and Spanish. Who, Share, and Vote do not.
 
 ## Who we are measured against
 
@@ -52,9 +52,9 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 | Warmth | 7 | The join card is a person, not a form. The in-call line still says “a password unlocks clear video” |
 | Effort to get in | 8 | One link. You confirm your name and picture, then you are in. A return in the same tab does not ask again |
 | Staying in the call (resize, tab away) | 5 | Resize no longer covers the composer. Tab-away not walked yet |
-| Locale | 7 | Lobby, help, shortcuts, join, dock, More, the count, and chat follow German and Spanish. Settings stay English |
-| **Audience** | **6.8** | Does not lead |
+| Locale | 8 | Lobby, help, shortcuts, join, dock, More, the count, chat, and Settings follow German and Spanish. Who, Share, and Vote stay English |
+| **Audience** | **7.0** | Does not lead |
 
 ## This cycle
 
-The booth has an order of service (see QUIRKS.md). Church service 6 → 7, audience 6.8 → 7.0. Lyrics and a separate preview are still missing, and a second computer does not follow the list. Corporate stays 7.0. Personal stays 6.8. Still behind Zoom and Meet (~8), a church desk (~8), and FaceTime (~9). We do not lead. Next gap: settings stay English.
+Settings follow a German or Spanish device (see QUIRKS.md). Personal locale 7 → 8, audience 6.8 → 7.0. Who, Share, and Vote are still English. Staying in the call is still 5. Corporate stays 7.0. Church stays 7.0. Still behind Zoom and Meet (~8), a church desk (~8), and FaceTime (~9). We do not lead. Next gap: a personal call still has not been walked through a tab away and back.
