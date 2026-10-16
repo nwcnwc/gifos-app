@@ -605,7 +605,22 @@
     // a natural number reads as deeper than any real seat (MAXDEPTH is 12).
     const pcDepth = (pc) => { if (!Number.isInteger(pc) || pc < 0) return 99; let d = 0; while (pc > 0) { pc = parentPath(pc); d++; } return d; };
     const isRoot = (c) => c.pc === 0;
-    const ckey = (c) => c.pc + '_' + c.r + '_' + c.i;                 // Map key (string, not uint64)
+    // Map key (string, not uint64). The same coord is asked for this string
+    // on every beat — intern it. r/i are columns of C (5, and the K-sweep's
+    // small C); anything wider skips the cache and still returns the string.
+    const ckCache = new Map();
+    const ckey = (c) => {
+      if ((c.r | 0) === c.r && (c.i | 0) === c.i && c.r >= 0 && c.r < 256 && c.i >= 0 && c.i < 256 && (c.pc | 0) === c.pc && c.pc >= 0 && c.pc < 0x8000000) {
+        const n = c.pc * 65536 + c.r * 256 + c.i;
+        let s = ckCache.get(n);
+        if (s !== undefined) return s;
+        s = c.pc + '_' + c.r + '_' + c.i;
+        if (ckCache.size > 16384) ckCache.clear();
+        ckCache.set(n, s);
+        return s;
+      }
+      return c.pc + '_' + c.r + '_' + c.i;
+    };
     const unck = (k) => { const p = k.split('_'); return { pc: +p[0], r: +p[1], i: +p[2] }; };
     const eq = (a, b) => a.pc === b.pc && a.r === b.r && a.i === b.i;
     // up: column-0 (head) only, and Section 1 (pc==0) has no up. null if none.
