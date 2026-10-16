@@ -37,11 +37,11 @@ A volunteer and an older member, a service or a small group, often a phone held 
 
 | Job | Score | Note |
 | --- | --- | --- |
-| Start or join from the lobby on an SE | 8 | Join is on screen in portrait and in landscape. Start is the only blue button. |
+| Start or join from the lobby on an SE | 9 | Join is on screen in portrait and in landscape, including at 200% text. Start is the only blue button. The phone shows the action, not the essay under it. |
 | Tap targets for someone who misses small controls | 9 | Dock grip, chat close, Send, and Fit are 44px, including on an iPhone 15. Blur for all is a 64px square, inset from the tile corner, on a phone and on the desktop. |
 | Captions a member can find, at 200% text | 8 | Captions is on the call, says Captions, and the label is 32px at 200% text. |
 | Host runs the room from the phone they already hold | 10 | Live, Record, and Captions are on the call. The phone sheet opens on Invite, Room password, Waiting room, and Chat. Invite is the blue one. Vote on someone and Step on stage scroll. |
-| **Audience** | **9** | Join, Captions, the dock, Fit, landscape More, and a waiting-room list work on a phone. More no longer covers the faces with a wall of buttons. We do not lead yet. |
+| **Audience** | **9** | Join stays on screen at 200% text. Captions, the dock, Fit, landscape More, and a waiting-room list work on a phone. We do not lead yet. |
 
 ## Personal
 
@@ -87,3 +87,4 @@ Family and friends. Warm, few steps, a texted link.
 28. Blur for all. The per-tile control was 83×32 and flush with the corner. It is now a 64px square, 12px in from the corner, on a phone and on the desktop. `test/mobile/blur-tile.js` passes. Church tap targets 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 29. Join Clear and Save. The step said Not now and Continue. Clear blanks the name and the picture. Save keeps both and stays the solid button. `test/mobile/appear-preview.js` passes. Personal name row 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 30. Sideways tiles. `test/mobile/sideways-tiles.js` failed (SE 141×46 aspect 3.07, iPhone 15 bottom pair 130×60 aspect 2.19), then passed. Fit shares the header row on a short landscape phone, and a tile that would have been a strip stays within a portrait-phone shape. Desktop packing is unchanged. Personal sideways 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.
+31. Lobby at 200% text. `test/mobile/lobby-large-text.js` failed (Join bottom 986 on a 568px SE, and all three actions bottom 539 on a sideways SE), then passed. A phone shows the action title only, with tighter padding, so Start and Join stay on screen and Start stays the only blue button. Church lobby 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet. Captions are still the low church row.

@@ -251,6 +251,14 @@ Fit now shares the name-chip row on a short landscape phone, so the faces start 
 
 Before: `qa/mobile/shots/before-sideways-tiles-iphone-se.png`, `qa/mobile/shots/before-sideways-tiles-iphone-15.png`. After: `qa/mobile/shots/after-sideways-tiles-iphone-se.png`, `qa/mobile/shots/after-sideways-tiles-iphone-15.png`.
 
+### 31. At 200% text the lobby hid Join
+
+On an iPhone SE with the text size at 200%, Join a link ended at y=986 on a 568px screen. The admin action ended at 772. Sideways, all three actions ended at 539 on a 320px screen. The essay under each button was the height.
+
+Repro: `test/mobile/lobby-large-text.js`. On a phone the essay is hidden and the padding stays 10px, so the title can grow and Start, the room you run, and Join stay on screen. Start stays the only blue button. A wide screen still shows the essay.
+
+Before: `qa/mobile/shots/before-lobby-200-iphone-se-200.png`, `qa/mobile/shots/before-lobby-200-iphone-se-land-200.png`. After: `qa/mobile/shots/after-lobby-200-iphone-se-200.png`, `qa/mobile/shots/after-lobby-200-iphone-se-land-200.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.

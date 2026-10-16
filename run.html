@@ -1617,6 +1617,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lobby.show { grid-template-rows: minmax(140px, 1.15fr) minmax(0, 1fr); }
     #lobby .lobby-card { max-width: none; margin: -18px 0 0; border-radius: 22px 22px 0 0; padding: 16px 16px 18px; overflow: auto; position: relative; }
     .lob-pv-name { bottom: 28px; }
+    /* The line under each action is an essay. At 200% text it pushed Join
+       off an SE. The button title is the action, and the padding stays a
+       fixed 10px so the label can grow without leaving the screen. */
+    #lobby .lob-actions small { display: none; }
+    #lobby.show .lob-actions .lob-primary,
+    #lobby.show .lob-actions .lob-action { padding: 10px 12px; margin-bottom: 8px; }
   }
   @media (min-width: 701px) {
     #lobby.show { grid-template-columns: 1.35fr .8fr; }
