@@ -1429,7 +1429,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     /* Flip joins the dock on a phone. Five 56px controls plus Leave do not fit,
        so the grip steps aside and the targets stay at 44px. */
     body.has-flip .bar #bargrip { display: none; }
-    body.has-flip .bar { gap: 4px; }
+    body.has-flip .bar { gap: 12px; }
     body.has-flip .bar #cam, body.has-flip .bar #flipcam, body.has-flip .bar #mic,
     body.has-flip .bar #reactbtn, body.has-flip .bar #bartoggle {
       width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
@@ -1437,7 +1437,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.has-flip .bar #reactbtn svg, body.has-flip .bar #bartoggle svg, body.has-flip .bar #leavebtn svg {
       width: 22px; height: 22px; }
     body.has-flip .bar #leavebtn {
-      width: 48px; height: 48px; min-width: 48px; min-height: 48px; margin-left: 2px; }
+      width: 48px; height: 48px; min-width: 48px; min-height: 48px; margin-left: 0; }
     .bar #bargrip { height: 40px; width: 18px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
     .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px);
@@ -1459,14 +1459,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      x=374, past the right edge, so hang-up was a sliver. Shrink the dock and
      keep every primary control at least 44px inside the screen. */
   @media (max-width: 380px) {
-    .bar { gap: 4px; height: 72px; padding: 0 8px; max-width: calc(100vw - 12px - var(--inset-left, 0px) - var(--inset-right, 0px)); }
+    .bar { gap: 8px; height: 72px; padding: 0 8px; max-width: calc(100vw - 12px - var(--inset-left, 0px) - var(--inset-right, 0px)); }
     .bar #bargrip { width: 16px; height: 36px; }
-    .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+    .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
       width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
-    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg {
+    .bar #cam svg, .bar #flipcam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg {
       width: 22px; height: 22px; }
     .bar #leavebtn {
-      width: 48px; height: 48px; min-width: 48px; min-height: 48px; margin-left: 2px; }
+      width: 48px; height: 48px; min-width: 48px; min-height: 48px; margin-left: 0; }
+    /* Flip plus five neighbors cannot keep a 12px gap and a 48px Leave on a
+       320px screen. 8px is the floor, Leave stays a 44px target, and the dock
+       uses the width the screen actually has. */
+    body.has-flip .bar {
+      gap: 8px; padding: 0 4px;
+      max-width: calc(100vw - 4px - var(--inset-left, 0px) - var(--inset-right, 0px));
+    }
+    body.has-flip .bar #leavebtn {
+      width: 44px; height: 44px; min-width: 44px; min-height: 44px; margin-left: 0;
+    }
   }
   /* Comfy: every face on screen, tiles touch, the dock floats over them.
      The long :not chain is what the older gallery rule uses; matching it

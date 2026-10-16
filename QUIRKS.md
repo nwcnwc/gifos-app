@@ -10,11 +10,15 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Open
 
-### Q10. Compact dock buttons sit 4px apart
-
-Below 700px, once Flip is on the dock, the gap is 4px so Leave still fits. The targets are 44px. A row of controls needs at least 8px between them.
-
 ## Fixed
+
+### Q10. Compact dock buttons sat 4px apart
+
+Once Flip joined the dock, the phone gap was 4px. It is 12px from 381px up, and 8px on a 320px phone, with every control still at least 44px and Leave still on the screen. Wider layouts keep a little extra air before Hang up. `test/mobile/dock-gap.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-dock-gap.png`.
+
+Design: the row reads as separate controls instead of one packed cluster. Hang up still has a touch more air than its neighbors on a wide phone, which keeps the destructive action visually apart. The chip title is still a fixed pixel size, so large type for church is not finished.
 
 ### Q12. Broadcast create demanded two passwords up front
 
