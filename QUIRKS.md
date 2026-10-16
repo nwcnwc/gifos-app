@@ -62,6 +62,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** the card says “This is how you'll appear”, prefills the GifOS name, shows the avatar (or an initial), and updates the preview as you type. Join is the blue primary. Not now is a white secondary, with space between them. Change picture is a separate text button. The knock waits until you choose. A session that already confirmed does not ask again.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/appear-before-1280.png`, `test/desktop/shots/appear-after-1280.png`.
 
+### The lobby, help, and shortcut list were English
+
+- **Who hits it:** a German or Spanish device, before the call and inside Help or `?`.
+- **What you saw:** “Meeting”, “How this meeting works”, and “Keyboard shortcuts”, after the dock had already been translated.
+- **Repro:** `test/desktop/locale-long.spec.js` is the lock. A `de-DE` lobby now says “Besprechung”, help says “kein Größenlimit”, and the shortcut list says “Tastatur”.
+- **Fix:** German and Spanish cover the lobby card, the meeting help, the broadcast and app help, and the shortcut list. English stays in the markup as the fallback. Settings stay English.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/locale-lobby-before-1280.png`, `test/desktop/shots/locale-lobby-de-1280.png`, `test/desktop/shots/locale-lobby-es-1280.png`, `test/desktop/shots/locale-help-de-1280.png`, `test/desktop/shots/locale-keys-de-1280.png`.
+
 ### A large room had no roster
 
 - **Who hits it:** a host with twenty people on the wall, trying to find who has a hand up.
@@ -108,9 +116,9 @@ With no saved confirmation for this session, joining shows how you will appear: 
 
 Who, Invite, Hand, and Chat sit under People. Vote, Password, Stage, Record, CC, and Settings sit under Room. Run app is under Share. Keys and Help are under Help. Host tools stay hidden until there is a host. “Turn video off” matches the other labels. The list is still long.
 
-### Help, settings, and the lobby are still English
+### Settings are still English
 
-The meeting chrome follows a German or Spanish device: join, dock, More, the people count, and chat. Captions already followed the device language. The help essays, the settings body, the lobby, and the shortcut list do not. A longer translation than the chrome has not been walked.
+The lobby, the meeting help, the broadcast help, and the shortcut list follow a German or Spanish device. The settings body does not. Captions already followed the device language.
 
 ### Status line is easy to lose
 
@@ -118,4 +126,4 @@ The meeting chrome follows a German or Spanish device: join, dock, More, the peo
 
 ### Not yet walked end to end
 
-German and Spanish for the lobby, help, and the shortcut list. Screen-share for the consultant and tab-hide/return are still open. Gallery packing, self-view placement, and the reactions icon are not in this pass. A broadcast says off air and on air; it still has no rundown and no lyrics. The roster lists the room; it does not mute from the list.
+Screen-share for the consultant, tab-hide/return, and the settings body in German and Spanish. Gallery packing, self-view placement, and the reactions icon are not in this pass. A broadcast says off air and on air; it still has no rundown and no lyrics. The roster lists the room; it does not mute from the list.

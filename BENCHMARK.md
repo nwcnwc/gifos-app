@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. A broadcast says off air and on air. The count opens a roster. Help, settings, and the lobby stay English.
+We do **not** lead any audience yet. A broadcast says off air and on air. The count opens a roster. The lobby, help, and shortcut list follow German and Spanish. Settings stay English.
 
 ## Who we are measured against
 
@@ -52,9 +52,9 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 | Warmth | 7 | The join card is a person, not a form. The in-call line still says “a password unlocks clear video” |
 | Effort to get in | 8 | One link. You confirm your name and picture, then you are in. A return in the same tab does not ask again |
 | Staying in the call (resize, tab away) | 5 | Resize no longer covers the composer. Tab-away not walked yet |
-| Locale | 5 | Join, dock, More, the people count, and chat follow German and Spanish. Help, settings, and the lobby stay English |
-| **Audience** | **6.3** | Does not lead |
+| Locale | 7 | Lobby, help, shortcuts, join, dock, More, the count, and chat follow German and Spanish. Settings stay English |
+| **Audience** | **6.8** | Does not lead |
 
 ## This cycle
 
-The people count opens a roster of every face, with search, Hand, and Muted (see QUIRKS.md). Corporate large-room 6 → 7, audience 6.6 → 6.8. Still behind Zoom and Meet. Church stays 6.8. Personal stays 6.3. We do not lead. Next gap: the lobby, help, and the shortcut list are still English.
+The lobby, the help essay, and the shortcut list follow a German or Spanish device (see QUIRKS.md). Personal locale 5 → 7, audience 6.3 → 6.8. Still behind FaceTime and Meet. Corporate stays 6.8. Church stays 6.8. We do not lead. Next gap: settings are still English, a service still has no rundown, and the roster cannot mute.

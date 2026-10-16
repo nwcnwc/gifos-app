@@ -1580,30 +1580,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span class="lob-pv-name" id="lob-preview-name">You</span>
     </div>
     <div class="lobby-card">
-      <h1>Meeting</h1>
-      <p class="lob-quiet">You join muted. The camera stays however you set it here.</p>
-      <button id="lob-open" class="lob-primary">Start a meeting<small>Open room · anyone with the link can join</small></button>
-      <button id="lob-admin-btn" class="lob-action">Start a room you run<small>You're the admin: set a password, mute/blur, ban a troublemaker</small></button>
+      <h1 data-t="lobTitle">Meeting</h1>
+      <p class="lob-quiet" data-t="lobQuiet">You join muted. The camera stays however you set it here.</p>
+      <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a meeting</span><small data-t="lobStartSub">Open room · anyone with the link can join</small></button>
+      <button id="lob-admin-btn" class="lob-action"><span data-t="lobRun">Start a room you run</span><small data-t="lobRunSub">You're the admin: set a password, mute/blur, ban a troublemaker</small></button>
       <div id="lob-admin" class="lob-expand" style="display:none">
-        <input id="lob-admin-name" maxlength="40" placeholder="Room name (anything you like)" autocomplete="off">
-        <label class="lob-pwlab">🔑 <b id="lob-admin-pass-head">Admin password</b> — yours alone — <b>do not share it</b><small id="lob-admin-pass-note">This is what puts you in charge of the room. Guests don’t need it. Anyone you give it to can run the room too.</small></label>
-        <input id="lob-admin-pass" type="password" maxlength="64" placeholder="Admin password (keep to yourself)" autocomplete="new-password">
-        <label class="lob-pwlab">🎟 <b id="lob-guest-pass-head">Guest password</b> — the one you <b>do</b> share<small id="lob-guest-pass-note">Optional. Faces stay blurred until you set one, and it is not part of the link.</small></label>
-        <input id="lob-guest-pass" type="password" maxlength="64" placeholder="Guest password (optional — share with guests)" autocomplete="new-password">
-        <div class="lob-row"><button id="lob-admin-cancel" class="lob-ghost">Cancel</button><button id="lob-admin-go">Create &amp; enter</button></div>
+        <input id="lob-admin-name" maxlength="40" data-ph="lobRoomPh" placeholder="Room name (anything you like)" autocomplete="off">
+        <label class="lob-pwlab">🔑 <b id="lob-admin-pass-head" data-t="lobAdminHead">Admin password</b> — <span data-t="lobAdminMid">yours alone — do not share it</span><small id="lob-admin-pass-note" data-t="lobAdminNote">This is what puts you in charge of the room. Guests don’t need it. Anyone you give it to can run the room too.</small></label>
+        <input id="lob-admin-pass" type="password" maxlength="64" data-ph="lobAdminPh" placeholder="Admin password (keep to yourself)" autocomplete="new-password">
+        <label class="lob-pwlab">🎟 <b id="lob-guest-pass-head" data-t="lobGuestHead">Guest password</b> — <span data-t="lobGuestMid">the one you do share</span><small id="lob-guest-pass-note" data-t="lobGuestNote">Optional. Faces stay blurred until you set one, and it is not part of the link.</small></label>
+        <input id="lob-guest-pass" type="password" maxlength="64" data-ph="lobGuestPh" placeholder="Guest password (optional — share with guests)" autocomplete="new-password">
+        <div class="lob-row"><button id="lob-admin-cancel" class="lob-ghost" data-t="lobCancel">Cancel</button><button id="lob-admin-go" data-t="lobCreate">Create &amp; enter</button></div>
         <div id="lob-admin-err" class="lob-err"></div>
       </div>
-      <button id="lob-join-btn" class="lob-action">Join a link<small>Paste an invite link or meeting id someone sent you</small></button>
+      <button id="lob-join-btn" class="lob-action"><span data-t="lobJoin">Join a link</span><small data-t="lobJoinSub">Paste an invite link or meeting id someone sent you</small></button>
       <div id="lob-join" class="lob-expand" style="display:none">
-        <input id="lob-join-in" placeholder="Paste link or meeting id" autocomplete="off">
-        <div class="lob-row"><button id="lob-join-cancel" class="lob-ghost">Cancel</button><button id="lob-join-go">Join</button></div>
+        <input id="lob-join-in" data-ph="lobPastePh" placeholder="Paste link or meeting id" autocomplete="off">
+        <div class="lob-row"><button id="lob-join-cancel" class="lob-ghost" data-t="lobCancel">Cancel</button><button id="lob-join-go" data-t="join">Join</button></div>
         <div id="lob-join-err" class="lob-err"></div>
       </div>
       <div class="lob-sep"></div>
-      <div class="lob-hist-h">Recent &amp; saved</div>
+      <div class="lob-hist-h" data-t="lobRecent">Recent &amp; saved</div>
       <div id="lob-list"></div>
-      <div id="lob-empty" class="lob-empty">Meetings you start or join will show up here.</div>
-      <div class="lob-namebar">You'll join as <b id="lob-name">…</b> · <button id="lob-rename" class="lob-link">change</button></div>
+      <div id="lob-empty" class="lob-empty" data-t="lobEmpty">Meetings you start or join will show up here.</div>
+      <div class="lob-namebar"><span data-t="lobJoinAs">You'll join as</span> <b id="lob-name">…</b> · <button id="lob-rename" class="lob-link" data-t="lobChange">change</button></div>
     </div>
   </div>
   <div class="topchip">
@@ -1955,7 +1955,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="help-modal" style="display:none">
     <div class="name-box help-box" style="max-width:600px;text-align:left">
-      <h3 style="text-align:center">How this meeting works</h3>
+      <h3 style="text-align:center" data-t="helpTitle">How this meeting works</h3>
       <div class="help-scroll">
         <p class="help-lead">This meeting has <b>no size limit</b>. Two people or two
         million, it runs the same. The dream it is built for: the <b>whole Earth in
@@ -2078,7 +2078,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         here is anonymous. Tap Who to see the list.</p>
       </div>
       <div style="display:flex;justify-content:center;margin-top:1rem">
-        <button id="help-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
+        <button id="help-close" data-t="helpGot" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
       </div>
     </div>
   </div>
@@ -2117,15 +2117,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <div class="name-modal" role="dialog" aria-modal="true" id="shortcutsheet" aria-labelledby="shortcut-title" style="display:none">
     <div class="name-box">
-      <h3 id="shortcut-title">Keyboard shortcuts</h3>
+      <h3 id="shortcut-title" data-t="shortcutTitle">Keyboard shortcuts</h3>
       <ul>
-        <li><kbd>Alt+A</kbd> Mute or unmute</li>
-        <li><kbd>Alt+V</kbd> Camera on or off</li>
-        <li><kbd>Alt+C</kbd> Open or close chat</li>
-        <li><kbd>Alt+Q</kbd> Leave the meeting</li>
-        <li><kbd>?</kbd> Show or hide this list</li>
+        <li><kbd>Alt+A</kbd> <span data-t="keyMic">Mute or unmute</span></li>
+        <li><kbd>Alt+V</kbd> <span data-t="keyCam">Camera on or off</span></li>
+        <li><kbd>Alt+C</kbd> <span data-t="keyChat">Open or close chat</span></li>
+        <li><kbd>Alt+Q</kbd> <span data-t="keyLeave">Leave the meeting</span></li>
+        <li><kbd>?</kbd> <span data-t="keyList">Show or hide this list</span></li>
       </ul>
-      <button id="shortcut-cancel" type="button">Close</button>
+      <button id="shortcut-cancel" type="button" data-t="rosterClose">Close</button>
     </div>
   </div>
 
@@ -2413,6 +2413,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         filesTitle: 'Dateien in diesem Meeting',
         filesLocked: 'Dateien erst nach einem Passwort (Taste Passwort).',
         filesEmpty: 'Noch keine Dateien.',
+        lobTitle: 'Besprechung', lobQuiet: 'Sie kommen stumm dazu. Die Kamera bleibt, wie Sie sie hier einstellen.',
+        lobStart: 'Besprechung starten', lobStartSub: 'Offener Raum · wer den Link hat, kommt rein',
+        lobRun: 'Einen Raum leiten', lobRunSub: 'Sie sind die Leitung: Passwort, stumm, unscharf, jemand raus',
+        lobJoin: 'Einem Link folgen', lobJoinSub: 'Link oder Kennung einfügen',
+        lobAdminHead: 'Leitungspasswort', lobAdminMid: 'nur für Sie — nicht weitergeben',
+        lobAdminNote: 'Damit leiten Sie den Raum. Gäste brauchen es nicht. Wer es bekommt, kann den Raum auch leiten.',
+        lobGuestHead: 'Gästepasswort', lobGuestMid: 'das geben Sie weiter',
+        lobGuestNote: 'Optional. Gesichter bleiben unscharf, bis Sie eines setzen. Es steht nicht im Link.',
+        lobCreate: 'Erstellen und hinein', lobCancel: 'Abbrechen',
+        lobRecent: 'Zuletzt und gemerkt', lobEmpty: 'Besprechungen, die Sie starten oder betreten, stehen hier.',
+        lobJoinAs: 'Sie erscheinen als', lobChange: 'ändern',
+        lobRoomPh: 'Raumname, ganz wie Sie wollen', lobAdminPh: 'Leitungspasswort (für Sie allein)',
+        lobGuestPh: 'Gästepasswort (optional — an Gäste)', lobPastePh: 'Link oder Kennung einfügen',
+        bcTitle: 'Sendung', bcStart: 'Sendung starten', bcStartSub: 'Sie sind auf der Bühne; wer den Link hat, schaut zu und schreibt',
+        bcHostHead: 'Leitungspasswort', bcViewerHead: 'Zuschauerpasswort',
+        bcHostPh: 'Leitungspasswort (für Sie allein)', bcViewerPh: 'Zuschauerpasswort (optional — an Zuschauer)',
+        bcHostNote: 'Damit leiten Sie die Sendung. Zuschauer brauchen es nicht.',
+        bcViewerNote: 'Optional. Das Bild bleibt unscharf, bis Sie eines setzen. Es steht nicht im Link.',
+        bcJoin: 'Eine Sendung schauen', bcJoinSub: 'Einen Sendungslink einfügen',
+        bcEmpty: 'Sendungen, die Sie starten oder schauen, stehen hier.',
+        shortcutTitle: 'Tastatur', keyMic: 'Stumm oder an', keyCam: 'Kamera an oder aus',
+        keyChat: 'Chat auf oder zu', keyLeave: 'Besprechung verlassen', keyList: 'Diese Liste zeigen oder schließen',
+        helpTitle: 'So funktioniert diese Besprechung', helpGot: 'Verstanden',
+        bcHelpTitle: 'So funktioniert diese Sendung', appHelpTitle: 'So funktioniert dieser App-Raum',
+        screenNameTitle: 'Ihr Name', screenNameNote: 'Die anderen in der Besprechung sehen ihn.', save: 'Speichern',
+        needName: 'Geben Sie dem Raum einen Namen.', needPass: 'Setzen Sie ein Leitungspasswort — es ist der Schlüssel.',
+        creating: 'Wird erstellt…', createFail: 'Der Raum ließ sich nicht erstellen. Nochmal versuchen.',
+        badLink: 'Das war kein Link und keine Kennung.',
       },
       es: {
         mic: 'Micro', cam: 'Cámara', more: 'Más', hide: 'Menos', leave: 'Salir',
@@ -2441,6 +2469,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         filesTitle: 'Archivos de esta reunión',
         filesLocked: 'Archivos solo con contraseña (botón Contraseña).',
         filesEmpty: 'Aún no hay archivos.',
+        lobTitle: 'Reunión', lobQuiet: 'Entras en silencio. La cámara queda como la dejes aquí.',
+        lobStart: 'Empezar una reunión', lobStartSub: 'Sala abierta · quien tenga el enlace entra',
+        lobRun: 'Una sala que tú diriges', lobRunSub: 'Tú eres el anfitrión: contraseña, silencio, desenfoque, expulsar',
+        lobJoin: 'Entrar con un enlace', lobJoinSub: 'Pega un enlace o el id',
+        lobAdminHead: 'Contraseña de anfitrión', lobAdminMid: 'solo tuya — no la compartas',
+        lobAdminNote: 'Con esto diriges la sala. Los invitados no la necesitan. Quien la tenga también puede dirigir.',
+        lobGuestHead: 'Contraseña de invitados', lobGuestMid: 'esta sí la compartes',
+        lobGuestNote: 'Opcional. Las caras siguen borrosas hasta que pongas una. No va en el enlace.',
+        lobCreate: 'Crear y entrar', lobCancel: 'Cancelar',
+        lobRecent: 'Recientes y guardadas', lobEmpty: 'Las reuniones que empieces o entres aparecen aquí.',
+        lobJoinAs: 'Entrarás como', lobChange: 'cambiar',
+        lobRoomPh: 'Nombre de la sala, el que quieras', lobAdminPh: 'Contraseña de anfitrión (solo tuya)',
+        lobGuestPh: 'Contraseña de invitados (opcional)', lobPastePh: 'Pega un enlace o el id',
+        bcTitle: 'Transmisión', bcStart: 'Empezar a transmitir', bcStartSub: 'Sales al escenario; quien tenga el enlace mira y escribe',
+        bcHostHead: 'Contraseña de anfitrión', bcViewerHead: 'Contraseña de espectadores',
+        bcHostPh: 'Contraseña de anfitrión (solo tuya)', bcViewerPh: 'Contraseña de espectadores (opcional)',
+        bcHostNote: 'Con esto diriges la transmisión. Los espectadores no la necesitan.',
+        bcViewerNote: 'Opcional. La imagen sigue borrosa hasta que pongas una. No va en el enlace.',
+        bcJoin: 'Ver una transmisión', bcJoinSub: 'Pega un enlace de transmisión',
+        bcEmpty: 'Las transmisiones que empieces o veas aparecen aquí.',
+        shortcutTitle: 'Teclado', keyMic: 'Silenciar o activar', keyCam: 'Cámara activada o no',
+        keyChat: 'Abrir o cerrar el chat', keyLeave: 'Salir de la reunión', keyList: 'Mostrar u ocultar esta lista',
+        helpTitle: 'Así funciona esta reunión', helpGot: 'Entendido',
+        bcHelpTitle: 'Así funciona esta transmisión', appHelpTitle: 'Así funciona esta sala de app',
+        screenNameTitle: 'Tu nombre', screenNameNote: 'Las demás personas de la reunión lo ven.', save: 'Guardar',
+        needName: 'Ponle un nombre a la sala.', needPass: 'Pon una contraseña de anfitrión — es la llave.',
+        creating: 'Creando…', createFail: 'No se pudo crear la sala. Inténtalo de nuevo.',
+        badLink: 'Eso no es un enlace ni un id.',
       },
     };
     function uiLang() {
@@ -2466,6 +2522,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const v = uiText(el.getAttribute('data-ph'), '');
         if (v) el.setAttribute('placeholder', v);
       });
+      applyHelp();
+    }
+    const HELP_HTML = {
+      de: '<p class="help-lead">Diese Besprechung hat <b>kein Größenlimit</b>. Zwei Menschen oder zwei Millionen, sie läuft gleich. Gebaut für den Traum, die <b>ganze Erde in einer Besprechung</b> — jeder kann sprechen, alle teilen einen Raum. Der Raum faltet sich in sich selbst, deshalb spricht Ihr Telefon immer nur mit ein paar Nachbarn.</p>'
+        + '<h4>Das Stadion</h4><p>Stellen Sie sich ein Stadion vor. Sie treffen nicht eine Million Gesichter, sondern die wenigen um Sie herum. Der Rest ist die Kulisse.</p><ul class="help-list"><li><b>Bühne</b> — die Front. Wer hier hinauftritt, wird von <i>allen</i> zuerst gesehen und gehört.</li><li><b>Reihe</b> — die Menschen direkt neben Ihnen. Das ist das Gespräch, mit einer direkten Verbindung.</li><li><b>Das Stadion</b> — alle weiter weg, als Mosaik gleich großer Felder, plus ein gemeinsamer Klang. Ein Amen von einer Million Stimmen kommt als ein Ton an.</li></ul>'
+        + '<h4>Der Bildschirm</h4><p>Von oben nach unten, <b>das Nahe zuerst</b>: die <b>Bühne</b>, dann <b>Ihre Reihe</b>, dann <b>das Stadion</b>. Ab etwa hundert Menschen werden die Felder ein lebendiger Teppich. <b>Tippen Sie ein gefaltetes Feld an</b>, um es zu vergrößern.</p>'
+        + '<h4>Der Klang</h4><p><b>Einstellungen</b> ist Ihr eigenes Mischpult. Es ändert nur, was <i>Sie</i> hören. Regler erscheinen, wenn der Raum sie braucht: Bühne, Ihre Reihe, das Stadion. Darunter liegt das <b>Timing</b>: Gespräch (schnell), Einklang (alle hören denselben Augenblick), und Lied.</p>'
+        + '<h4>Gemeinsam singen</h4><p>Singen in einem normalen Anruf wird Matsch, weil jede Stimme anders spät ankommt. Tippen Sie <b>Lied</b> in den Einstellungen: Sie treten auf die Bühne, das Mikrofon wird musiktauglich, und alle Telefone richten sich auf denselben Moment aus, wie in einer Steinkirche. Ohrhörer helfen. Nochmal tippen beendet das Lied.</p>'
+        + '<h4>Die Knöpfe</h4><ul class="help-list"><li><b>Unschärfe</b> — wie unscharf Ihr Bild für die anderen ist. Nur Sie können es scharf stellen.</li><li><b>Bühne</b> — hinauf, damit der ganze Raum Sie zuerst sieht. Nochmal tippen steigt ab.</li><li><b>Hand</b> — Sie wandern nach oben in die Warteschlange.</li><li><b>Passwort</b> — der Schlüssel zum scharfen Bild. Ohne Passwort bleiben alle unscharf.</li><li><b>Einladen</b> — ein Link.</li><li><b>App starten</b> — eine App, die alle hier gemeinsam benutzen.</li><li><b>Aufnahme / CC</b> — Aufnahme auf Ihr Gerät, oder Untertitel, die Ihr Telefon schreibt.</li></ul>'
+        + '<h4>Kurz weg</h4><p>Wechseln Sie den Tab, und Sie <b>bleiben in der Besprechung</b>. Sie hören weiter, die anderen hören Sie, und Ihr Feld zeigt „weg“. Die Kamera pausiert und kommt zurück, wenn Sie zurück sind.</p>'
+        + '<h4>Ihre Privatsphäre</h4><p><b>Bild und Stimme gehen direkt zu den Menschen im Raum.</b> Keine Firma sitzt dazwischen. Unterwegs ist alles verschlüsselt. Der eine ehrliche Preis: weil die Telefone sich direkt verbinden, kann jeder die <b>Internetadresse</b> der anderen sehen. Tippen Sie auf Wer.</p>',
+      es: '<p class="help-lead">Esta reunión <b>no tiene límite de tamaño</b>. Dos personas o dos millones, funciona igual. Está hecha para el sueño de <b>toda la Tierra en una reunión</b>: todos pueden hablar, todos comparten una sala. La sala se pliega sobre sí misma, así que tu teléfono solo habla con unos pocos vecinos.</p>'
+        + '<h4>El estadio</h4><p>Imagina un estadio. No te encuentras con un millón de caras, sino con las pocas que tienes al lado. El resto es el fondo.</p><ul class="help-list"><li><b>Escenario</b> — el frente. Quien sube es visto y oído primero por <i>todos</i>.</li><li><b>Fila</b> — la gente justo a tu lado. Esa es la conversación, con una conexión directa.</li><li><b>El estadio</b> — todos los demás, en un mosaico de cuadros iguales, más un solo sonido. Un amén de un millón de voces llega como un solo tono.</li></ul>'
+        + '<h4>La pantalla</h4><p>De arriba abajo, <b>lo cercano primero</b>: el <b>escenario</b>, luego <b>tu fila</b>, y al final <b>el estadio</b>. Pasadas unas cien personas los cuadros se vuelven un tapiz. <b>Toca un cuadro plegado</b> para agrandarlo.</p>'
+        + '<h4>El sonido</h4><p><b>Ajustes</b> es tu propia mesa de mezcla. Solo cambia lo que <i>tú</i> oyes. Los controles aparecen cuando la sala los necesita: escenario, tu fila, el estadio. Debajo está el <b>tiempo</b>: conversación (rápida), al unísono (todos oyen el mismo instante) y canción.</p>'
+        + '<h4>Cantar juntos</h4><p>Cantar en una llamada normal se vuelve papilla, porque cada voz llega tarde de otra forma. Toca <b>Canción</b> en Ajustes: subes al escenario, el micrófono pasa a calidad de música y todos los teléfonos se alinean al mismo momento, como en una iglesia de piedra. Los audífonos ayudan. Tocar otra vez termina la canción.</p>'
+        + '<h4>Los botones</h4><ul class="help-list"><li><b>Desenfoque</b> — qué tan borrosa ven los demás tu imagen. Solo tú puedes quitarlo.</li><li><b>Escenario</b> — sube para que toda la sala te vea primero. Toca otra vez para bajar.</li><li><b>Mano</b> — pasas arriba en la cola.</li><li><b>Contraseña</b> — la llave del video nítido. Sin ella, todos siguen borrosos.</li><li><b>Invitar</b> — un enlace.</li><li><b>Abrir app</b> — una app que todos usan juntos.</li><li><b>Grabar / CC</b> — grabar en tu dispositivo, o subtítulos que escribe tu teléfono.</li></ul>'
+        + '<h4>Si te vas un momento</h4><p>Cambia de pestaña y <b>sigues en la reunión</b>. Sigues oyendo, los demás te oyen, y tu cuadro dice que te fuiste. La cámara pausa y vuelve cuando regresas.</p>'
+        + '<h4>Tu privacidad</h4><p><b>Tu imagen y tu voz van directo a la gente de la sala.</b> Ninguna empresa está en medio. El camino va cifrado. El precio honesto: como los teléfonos se conectan directo, cada quien puede ver la <b>dirección de internet</b> de los demás. Toca Quién.</p>',
+    };
+    function applyHelp() {
+      const html = HELP_HTML[uiLang()];
+      const hs = document.querySelector('#help-modal .help-scroll');
+      if (html && hs) hs.innerHTML = html;
     }
     applyChrome();
 
@@ -11696,6 +11776,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + '</ul>'
           + '<p>Underneath it is the same thing as a GifOS Meeting: everything goes straight between the people here, no accounts, no limit on how many.</p>';
       }
+      if (uiLang() === 'en') return;
+      if (BROADCAST) {
+        h3.textContent = uiText('bcHelpTitle', 'How this broadcast works');
+        hs.innerHTML = uiLang() === 'de'
+          ? '<p class="help-lead">Das ist eine <b>Live-Sendung</b>: eine Leitung (und wen sie heraufruft) auf der <b>Bühne</b>, und ein <b>unbegrenztes Publikum</b>. Zwei Zuschauer oder zwei Millionen, es läuft gleich.</p><h4>Zuschauen</h4><ul class="help-list"><li>Der Link genügt. <b>Kamera und Mikrofon werden nicht benutzt.</b></li><li>Das Bild bleibt <b>unscharf</b>, bis die Leitung ein <b>Zuschauerpasswort</b> setzt. Es steht nicht im Link.</li><li><b>Chat</b> ist live und weg, wenn die Sendung endet.</li></ul><h4>Zu Wort kommen</h4><ul class="help-list"><li><b>Hand</b> bittet um die Bühne. Die Leitung kann Sie heraufrufen. Ihr Telefon fragt dann nach Kamera und Mikrofon.</li><li>Absteigen können Sie jederzeit. Die Leitung kann es auch zurücknehmen.</li></ul><h4>Für die Leitung</h4><ul class="help-list"><li>Das <b>Leitungspasswort</b> ist Ihres allein. Schicken Sie es nicht an Zuschauer.</li><li><b>Passwort</b> setzt das Zuschauerpasswort. Ohne eines bleibt das Bild unscharf.</li><li>Die Handliste steht oben. Tippen Sie einen Namen an, um ihn auf die Bühne zu holen.</li></ul>'
+          : '<p class="help-lead">Esto es una <b>transmisión en vivo</b>: un anfitrión (y a quien llame) en el <b>escenario</b>, y un <b>público sin límite</b>. Dos espectadores o dos millones, funciona igual.</p><h4>Mirar</h4><ul class="help-list"><li>Basta el enlace. <b>No se usan la cámara ni el micrófono.</b></li><li>El video sigue <b>borroso</b> hasta que el anfitrión pone una <b>contraseña de espectadores</b>. No va en el enlace.</li><li>El <b>chat</b> es en vivo y se va cuando termina la transmisión.</li></ul><h4>Hablar</h4><ul class="help-list"><li><b>Mano</b> pide el escenario. El anfitrión puede llamarte. Tu teléfono entonces pide cámara y micrófono.</li><li>Bajar es tuyo en cualquier momento. El anfitrión también puede retirarlo.</li></ul><h4>Para el anfitrión</h4><ul class="help-list"><li>La <b>contraseña de anfitrión</b> es solo tuya. No se la envíes a los espectadores.</li><li><b>Contraseña</b> pone la de espectadores. Sin ella el video sigue borroso.</li><li>La cola de manos sube arriba. Toca un nombre para llamarlo al escenario.</li></ul>';
+      } else if (ROOM.kind === 'app') {
+        h3.textContent = uiText('appHelpTitle', 'How this app room works');
+        hs.innerHTML = uiLang() === 'de'
+          ? '<p class="help-lead">Dieser Raum lebt um eine <b>gemeinsame App</b>: alle sehen und benutzen dieselbe App live.</p><h4>Die App ist die Sendung</h4><p>Eine Person führt sie. Fällt sie weg, pausiert eine eigene App, oder eine belastbare lässt jemand anderen weiterführen.</p><h4>Der Anruf ist freiwillig</h4><p>Keine Kamera und kein Mikrofon, bis Sie dem Anruf beitreten.</p>'
+          : '<p class="help-lead">Esta sala vive alrededor de una <b>app compartida</b>: todos ven y usan la misma app en vivo.</p><h4>La app es el show</h4><p>Una persona la dirige. Si se va, una app propia pausa, o una resistente deja que otra persona siga.</p><h4>La llamada es opcional</h4><p>Ni cámara ni micrófono hasta que entres a la llamada.</p>';
+      }
     }
     applyRoomHelp();
     helpModal.onclick = (e) => { if (e.target === helpModal) helpModal.style.display = 'none'; }; // tap the backdrop to dismiss
@@ -12040,8 +12132,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const cur = (GifOS.store.identity().name) || '';
       const bg = document.createElement('div'); bg.className = 'name-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
-      bg.innerHTML = '<div class="name-box"><h3>Your screen name</h3><p>Other people in the meeting see this.</p>' +
-        '<input id="nm2" maxlength="40" autocomplete="off"><button id="nm2cancel" type="button">Cancel</button><button id="nm2ok">Save</button></div>';
+      bg.innerHTML = '<div class="name-box"><h3>' + uiText('screenNameTitle', 'Your screen name') + '</h3><p>' + uiText('screenNameNote', 'Other people in the meeting see this.') + '</p>' +
+        '<input id="nm2" maxlength="40" autocomplete="off"><button id="nm2cancel" type="button">' + uiText('lobCancel', 'Cancel') + '</button><button id="nm2ok">' + uiText('save', 'Save') + '</button></div>';
       document.body.appendChild(bg);
       const input = bg.querySelector('#nm2'); input.value = cur; input.focus();
       const done = () => { const v = input.value.trim(); if (v) GifOS.store.setName(v); bg.remove(); const ln = document.getElementById('lob-name'); if (ln) ln.textContent = myName(); if (after) after(); };
@@ -12060,12 +12152,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const rawName = document.getElementById('lob-admin-name').value || '';
         // slugRoom turns a blank into "room", so the empty check has to
         // happen on what was typed. A name with no letter or digit is blank.
-        if (!/[A-Za-z0-9]/.test(rawName)) { err.textContent = 'Give your room a name.'; return; }
+        if (!/[A-Za-z0-9]/.test(rawName)) { err.textContent = uiText('needName', 'Give your room a name.'); return; }
         const chosen = slugRoom(rawName, '');
         const pass = (document.getElementById('lob-admin-pass').value || '').trim();
-        if (!chosen) { err.textContent = 'Give your room a name.'; return; }
-        if (!pass) { err.textContent = 'Set an admin password — it’s the key to your room.'; return; }
-        const go = document.getElementById('lob-admin-go'); go.disabled = true; go.textContent = 'Creating…';
+        if (!chosen) { err.textContent = uiText('needName', 'Give your room a name.'); return; }
+        if (!pass) { err.textContent = uiText('needPass', 'Set an admin password — it’s the key to your room.'); return; }
+        const go = document.getElementById('lob-admin-go'); go.disabled = true; go.textContent = uiText('creating', 'Creating…');
         try {
           const K = await deriveAdminKey(chosen, pass);
           const V = (await net.edKeysFromSeedHex(K)).verifier; // V commits to the PUBLIC key (§9)
@@ -12080,14 +12172,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const guest = (document.getElementById('lob-guest-pass').value || '').trim();
           if (guest) { try { localStorage.setItem('gifos_vpw_' + chosen + '.' + V, guest); localStorage.setItem('gifos_vpwat_' + chosen + '.' + V, String(Date.now())); } catch (e) {} } // stamp the store's clock (§LOCK expiry)
           enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' : ''));
-        } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = 'Create & enter'; }
+        } catch (e) { err.textContent = uiText('createFail', 'Could not create the room. Try again.'); go.disabled = false; go.textContent = uiText('lobCreate', 'Create & enter'); }
       };
       document.getElementById('lob-join-btn').onclick = () => { toggle('lob-join'); document.getElementById('lob-admin').style.display = 'none'; const i = document.getElementById('lob-join-in'); if (document.getElementById('lob-join').style.display !== 'none') i.focus(); };
       document.getElementById('lob-join-cancel').onclick = () => { document.getElementById('lob-join').style.display = 'none'; };
       const doJoin = () => {
         const err = document.getElementById('lob-join-err');
         const p = parseMeetInput(document.getElementById('lob-join-in').value);
-        if (!p) { err.textContent = 'Couldn’t read that — paste a meeting link or its id.'; return; }
+        if (!p) { err.textContent = uiText('badLink', 'Couldn’t read that — paste a meeting link or its id.'); return; }
         enterMeeting('#v=' + p.room + (p.av ? '&av=' + p.av : '') + (p.bc ? '&bc=1' : '') + (p.relay ? '&relay=' + encodeURIComponent(p.relay) : ''));
       };
       document.getElementById('lob-join-go').onclick = doJoin;
@@ -12117,17 +12209,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // reworded — no open rooms (a broadcast without a host is nothing), and
       // creating one mints the same admin room with &bc=1 riding the link.
       if (BC_INTENT) {
-        document.querySelector('#lobby h1').textContent = 'Broadcast';
+        document.querySelector('#lobby h1').textContent = uiText('bcTitle', 'Broadcast');
         document.getElementById('lob-open').style.display = 'none';
-        document.getElementById('lob-admin-btn').innerHTML = 'Start broadcasting<small>You go live on the Stage; anyone with the link watches and chats</small>';
-        document.getElementById('lob-admin-pass-head').textContent = 'Host password';
-        document.getElementById('lob-guest-pass-head').textContent = 'Viewer password';
-        document.getElementById('lob-admin-pass').placeholder = 'Host password (keep to yourself)';
-        document.getElementById('lob-admin-pass-note').textContent = 'This is what puts you in charge of the broadcast. Viewers don’t need it. Anyone you give it to can run your broadcast too.';
-        document.getElementById('lob-guest-pass').placeholder = 'Viewer password (optional — share with viewers)';
-        document.getElementById('lob-guest-pass-note').textContent = 'Optional. The picture stays blurred until you set one, and it is not part of the link.';
-        document.getElementById('lob-join-btn').innerHTML = 'Watch a broadcast<small>Paste a broadcast link someone shared</small>';
-        document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch will show up here.';
+        document.getElementById('lob-admin-btn').innerHTML = uiText('bcStart', 'Start broadcasting') + '<small>' + uiText('bcStartSub', 'You go live on the Stage; anyone with the link watches and chats') + '</small>';
+        document.getElementById('lob-admin-pass-head').textContent = uiText('bcHostHead', 'Host password');
+        document.getElementById('lob-guest-pass-head').textContent = uiText('bcViewerHead', 'Viewer password');
+        document.getElementById('lob-admin-pass').placeholder = uiText('bcHostPh', 'Host password (keep to yourself)');
+        document.getElementById('lob-admin-pass-note').textContent = uiText('bcHostNote', 'This is what puts you in charge of the broadcast. Viewers don’t need it. Anyone you give it to can run your broadcast too.');
+        document.getElementById('lob-guest-pass').placeholder = uiText('bcViewerPh', 'Viewer password (optional — share with viewers)');
+        document.getElementById('lob-guest-pass-note').textContent = uiText('bcViewerNote', 'Optional. The picture stays blurred until you set one, and it is not part of the link.');
+        document.getElementById('lob-join-btn').innerHTML = uiText('bcJoin', 'Watch a broadcast') + '<small>' + uiText('bcJoinSub', 'Paste a broadcast link someone shared') + '</small>';
+        document.getElementById('lob-empty').textContent = uiText('bcEmpty', 'Broadcasts you start or watch will show up here.');
       }
       document.getElementById('lob-name').textContent = myName();
       renderLobbyList();
