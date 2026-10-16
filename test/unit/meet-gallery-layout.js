@@ -104,6 +104,12 @@ const fitCrowd = L.layoutFor({ w: 390, h: 844, tiles: crowd, gallery: 'fit', mod
 const scrollCrowd = L.layoutFor({ w: 390, h: 844, tiles: crowd, gallery: 'scroll', mode: 'gallery' });
 check('crowded fit does not auto-scroll', fitCrowd.gallery === 'fit' && fitCrowd.contentH <= fitCrowd.box.h + 1.5, fitCrowd.gallery + ' h=' + fitCrowd.contentH);
 check('crowded scroll grows past one screen', scrollCrowd.gallery === 'scroll' && scrollCrowd.contentH > scrollCrowd.box.h + 8, scrollCrowd.contentH);
+const phoneBox = L.viewBox(390, 844, {});
+const deskBox = L.viewBox(1920, 1080, {});
+check('phone gallery clears the dock', phoneBox.y + phoneBox.h <= 844 - 100, phoneBox.h);
+check('desktop gallery clears the dock', deskBox.y + deskBox.h <= 1080 - 110, deskBox.h);
+const firstStad = scrollCrowd.rects.filter((t) => t.tier === 'stad').reduce((a, b) => (a && a.y < b.y ? a : b), null);
+check('scroll shows the crowd on the first screen', !!firstStad && firstStad.y + 8 < scrollCrowd.box.y + scrollCrowd.box.h, firstStad && firstStad.y);
 
 const rowCrowd = tilesFor(30, 16 / 9, 'row');
 const rowScroll = L.layoutFor({ w: 390, h: 844, tiles: rowCrowd, gallery: 'scroll', mode: 'gallery' });

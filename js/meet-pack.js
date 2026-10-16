@@ -314,10 +314,26 @@ function packTiers(box, gallery, me, opts, phone) {
     return { tiles: emit(list, p.rects, tier), rows: p.rows, split: tier === 'row' ? 1 : 0, contentH: box.h, minShort: p.minShort, tooSmall: p.minShort < (phone ? FIT_FLOOR.phone : FIT_FLOOR.other) };
   }
   if (mode === 'scroll') {
-    // row band: 50% of the first screen, or the nearest height whose row tiles are legal shapes
-    const okH = h => chooseRows({ x: box.x, y: box.y, w: box.w, h }, row.map(t => t.aspect)).viol <= 1;
-    let rh = box.h * 0.5;
-    for (let d = 0; d <= 0.45 && !okH(rh); d += 0.05) { if (okH(box.h * (0.5 + d))) { rh = box.h * (0.5 + d); break; } if (okH(box.h * (0.5 - d))) { rh = box.h * (0.5 - d); break; } }
+    // The row leads, but the first screen still shows the crowd. A taller
+    // band is only used when a shorter one cannot hold legal tile shapes,
+    // and it never takes more than 62% of the screen.
+    const okH = (h) => {
+      if (!(h > 48)) return false;
+      const c = chooseRows({ x: box.x, y: box.y, w: box.w, h: h }, row.map(t => t.aspect));
+      return !!(c && c.viol <= 1);
+    };
+    const maxH = box.h * 0.62;
+    let rh = Math.min(box.h * 0.40, maxH);
+    if (!okH(rh)) {
+      let picked = false;
+      for (let d = 0.04; d <= 0.22 && !picked; d += 0.04) {
+        const shorter = box.h * (0.40 - d);
+        const taller = Math.min(maxH, box.h * (0.40 + d));
+        if (okH(shorter)) { rh = shorter; picked = true; break; }
+        if (taller > rh && okH(taller)) { rh = taller; picked = true; break; }
+      }
+      if (!picked) rh = maxH;
+    }
     const rp = packRegion({ x: box.x, y: box.y, w: box.w, h: rh }, row.map(t => t.aspect));
     return scrollStad(box, stad, emit(row, rp.rects, 'row'), phone, box.y + rh, rp.rows);
   }

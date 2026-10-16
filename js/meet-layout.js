@@ -159,21 +159,25 @@
     return { rects: emit(list, use, 'stad'), crowd: crowd, band: crowd ? { text: 'Stadium · ' + stad.length, x: (use[0] ? use[0].x : b.x) + 6, y: (use[0] ? use[0].y : b.y) + 6 } : band, tier: null };
   }
 
-  // Content box under the top chip. The dock floats over the tiles, so it
-  // does not reserve a band. Phone with the mode pill needs a taller inset.
+  // Content box under the top chip and above the control dock. Names on the
+  // last row stay readable. Phone with the mode pill needs a taller top inset.
   function viewBox(vw, vh, opts) {
     opts = opts || {};
     const phone = opts.phone != null ? !!opts.phone : vw < 600;
     // 64 clears the header pill (it sits at y=14 and is about 40px tall) so
     // the top row's chips are not drawn underneath it. The mode pill is taller.
     const top = opts.top != null ? opts.top : (phone && opts.pill ? 92 : 64);
+    // Dock: 88px pill + 14px bottom inset on a phone, 104px + 14px on a desk,
+    // plus a few pixels so a name chip is not tucked under the bar.
+    const dock = opts.dock != null ? opts.dock : (phone ? 112 : 128);
     const pad = phone ? 2 : 4;
     return {
       x: pad,
       y: top,
       w: Math.max(1, vw - pad * 2),
-      h: Math.max(1, vh - top),
+      h: Math.max(1, vh - top - dock),
       phone: phone,
+      dock: dock,
     };
   }
 
@@ -260,6 +264,10 @@
     } else if (out.tooSmall && opts.gallery !== 'scroll') {
       band = { text: 'faces tiny · Scroll is in ▦', x: box.x + 6, y: box.y + 6 };
     }
+    let contentH = out.contentH || box.h;
+    // Scroll adds the dock height as trailing space so the last names can
+    // scroll clear of the bar. Fit already ends above the dock.
+    if ((out.gallery === 'scroll') && contentH > box.h + 1 && box.dock) contentH += box.dock;
     return withBots({
       mode: mode,
       gallery: out.gallery === 'scroll' ? 'scroll' : 'fit',
@@ -270,7 +278,7 @@
       tier: out.split != null ? { f: out.split, fellBack: false } : null,
       box: box,
       stage: out.regions && out.regions.stage || null,
-      contentH: out.contentH || box.h,
+      contentH: contentH,
       tooSmall: !!out.tooSmall,
     });
   }

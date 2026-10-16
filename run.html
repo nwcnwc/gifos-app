@@ -1413,9 +1413,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: rgba(10,10,15,.72); color: #eceef8;
     padding: .12rem .5rem; border-radius: .4rem; font-size: .75rem; }
   body.comfy .tile.me .name::before { content: '\2726 '; }
-  body.comfy .tile[data-tier="row"]::after {
-    content: ''; position: absolute; top: 8px; right: 8px; width: 8px; height: 8px;
-    border-radius: 50%; background: #7b5cff; z-index: 3; pointer-events: none; }
+  body.comfy .tile .name, body.comfy .stadface .name {
+    max-width: calc(100% - .8rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  body.comfy .tile:not(.speaking), body.comfy .stadface:not(.speaking) {
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
   body.comfy .stad-band {
     position: absolute; z-index: 4; pointer-events: none; background: rgba(12,14,18,.72);
     color: #f4f7fb; font-size: 12px; font-weight: 700; letter-spacing: .04em;
