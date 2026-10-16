@@ -51,17 +51,23 @@ Before: the cold lobby was not shot in the first pass. After: `qa/mobile/shots/a
 
 `gifos_ui_scale=2` sets the root to 32px. More-sheet labels stayed `font-size: 16px` (`#ccbtn` measured 16px on both an SE and a 360px phone).
 
-Repro: `test/mobile/text-scale-controls.js`. It failed (`ccbtn font 16px` and the same for Password, Record, Help, Stage), then passed. Those labels, the blur segments, and the Blur caption are `1rem`, so at 200% they are 32px. The sheet still scrolls them on screen, and Hang up stays on screen. The word on the captions control is still CC.
+Repro: `test/mobile/text-scale-controls.js`. It failed (`ccbtn font 16px` and the same for Password, Record, Help, Stage), then passed. Those labels, the blur segments, and the Blur caption are `1rem`, so at 200% they are 32px. The sheet still scrolls them on screen, and Hang up stays on screen.
 
 Before: `qa/mobile/shots/before-lowvision-more.png`. After: `qa/mobile/shots/after-text-scale-more.png`.
+
+### 7. Words a volunteer will not know
+
+The captions control said "CC". The people list said "Who". The first probe read those strings on every phone.
+
+Repro: `test/mobile/plain-words.js`. It requires the visible words Captions and People, each at least 44px. It passes. The ids are unchanged (`#ccbtn`, `#whobtn`). "Captions" still fits the landscape sheet (`more-sheet-fits.js`) and still grows at 200% (`text-scale-controls.js`).
+
+## Open
 
 ### 6. No safe-area insets
 
 The viewport meta is `width=device-width, initial-scale=1.0, interactive-widget=resizes-content`. It has no `viewport-fit=cover`. The dock uses `bottom: 14px` and the top chip uses `top: 14px`, with no `env(safe-area-inset-*)`. On a notched phone in Safari those insets stay 0 until `viewport-fit=cover` is set, and even then the dock is not padded. Not yet proven with a live inset (the CDP probe did not finish this pass).
 
-### 7. Words a volunteer will not know
-
-The captions control says "CC". The people list says "Who". Both are real controls; the labels are the gap versus Meet, Teams, and a church stream tool, where the same jobs say Captions and People.
+Fit is still 59×32. That is open too.
 
 ## Personas (what was actually tried)
 

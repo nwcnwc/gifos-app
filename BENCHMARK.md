@@ -11,11 +11,11 @@ Out of scope for this branch, so they are not scored as wins or losses here: the
 - Zoom, Meet, Teams, FaceTime: hang-up fits, the landscape More sheet scrolls, chat clears the dock, and Join is on screen on an SE. They still beat us on 200% control labels, the word Captions, safe areas, and the 32px Fit control.
 - Meet and Teams: the overflow menu scrolls inside the screen in landscape. Ours draws Password above the top edge and does not scroll.
 - iMessage, Meet, Teams: the composer stays above the keyboard and above the call controls. Ours is underneath the dock, and a tap never lands.
-- FaceTime and church volunteer panels: primary targets are at least 44px. Our move-grip is 22px wide and Fit is 32px tall. Chat's close control is 23px.
+- FaceTime and church volunteer panels: primary targets are at least 44px. The dock grip, chat close, and Send are 44px now. Fit is still 32px tall.
 - iOS: controls clear the home indicator and the notch. Our viewport does not opt into safe areas, and the dock is a fixed 14px from the layout bottom.
-- Meet, Teams, YouTube: captions are named Captions. Ours says CC, and a 200% text setting does not enlarge that label.
-- Zoom and church tools: a host can admit, lock, record, and caption from a phone without rotating into a dead end. Our host tools exist (password, stage, record, CC) and are unreachable in SE landscape.
-- StreamYard, Restream, YouTube Live: a producer sees a labeled live/record state that cannot be covered by another bar. We have Record and CC, buried in the same sheet.
+- Meet, Teams, YouTube name the control Captions. Ours does too, and at 200% text that label is 32px.
+- Zoom and church tools: a host can admit from a waiting-room list. Our phone can set a password, record, caption, and step on stage, including in landscape. There is no separate admit list.
+- StreamYard, Restream, YouTube Live: a producer sees a labeled live/record state that cannot be covered by another bar. Record and Captions scroll inside More.
 
 What we already do that they do not: one link, no account, join muted, camera choice stays in the lobby, blur until there is a reason to be clear, the meeting is the peers rather than a server in the middle. That is the personal and church advantage, and it is currently stuck behind the phone chrome.
 
@@ -26,10 +26,10 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 | Job | Score | Note |
 | --- | --- | --- |
 | End the call, mute, camera, on a 360px phone | 7 | Hang up, mute, and camera fit and are at least 44px. Fit is still 32px tall. |
-| Host: password, record, captions, stage, in landscape | 6 | Those controls scroll into view on SE, iPhone 15, Pixel 7, and 360px landscape. The captions control still says CC. |
+| Host: password, record, captions, stage, in landscape | 7 | Those controls scroll into view on SE, iPhone 15, Pixel 7, and 360px landscape. The captions control says Captions. |
 | Chat or check names without losing the controls | 7 | The field taps, sits above the dock, and lifts for a keyboard band. Close and Send are 44px. |
 | Looks trustworthy (nothing cut off, type scales) | 4 | Fine on iPhone 15 and Pixel 7 portrait. Fails the small phone. |
-| **Audience** | **6** | Hang up, landscape host tools, and chat work on a phone. Still behind Zoom, Meet, and Teams on Captions as a word, 200% labels, and the home-indicator inset. |
+| **Audience** | **6** | Hang up, landscape host tools, captions, and chat work on a phone. Still behind Zoom, Meet, and Teams on a waiting-room admit list and the home-indicator inset. |
 
 ## Church
 
@@ -39,9 +39,9 @@ A volunteer and an older member, a service or a small group, often a phone held 
 | --- | --- | --- |
 | Start or join from the lobby on an SE | 7 | Join is on screen in portrait. In landscape the first action is on screen and Join scrolls into the card. |
 | Tap targets for someone who misses small controls | 5 | Dock grip, chat close, and Send are 44px. Fit is still 32px tall. |
-| Captions a member can find, at 200% text | 5 | The label grows to 32px at 200% text. It still says CC. |
+| Captions a member can find, at 200% text | 7 | The control says Captions and grows to 32px at 200% text. |
 | Host runs the room from the phone they already hold | 6 | Password, record, captions, and stage scroll into reach in landscape. Labels are still terse. |
-| **Audience** | **6** | Dock, landscape More, and the lobby Join action work on an SE. Still behind a church stream panel: captions say CC, and 200% text does not enlarge them. |
+| **Audience** | **7** | Join, Captions, the dock, and landscape More work on an SE. Still behind a church stream panel on the home-indicator inset and the 32px Fit control. |
 
 ## Personal
 
@@ -53,7 +53,7 @@ Family and friends. Warm, few steps, a texted link.
 | See everyone and hang up on a small phone | 6 | Faces paint. Hang up fits on SE and 360px. |
 | Send a chat line | 7 | The field is above the dock, 44px, and lifts when the keyboard band is set. |
 | Turn the phone sideways | 6 | Invite and Password scroll into the More sheet. |
-| **Audience** | **6** | The link, the name step, hang up, landscape More, chat, and the small-phone lobby are in good shape. 200% labels and the home indicator are still behind FaceTime. |
+| **Audience** | **6** | The link, the name step, hang up, landscape More, chat, and the small-phone lobby are in good shape. The home indicator and the 32px Fit control are still behind FaceTime. |
 
 ## Cycle
 
@@ -61,4 +61,5 @@ Family and friends. Warm, few steps, a texted link.
 2. Landscape More sheet scrolls. `test/mobile/more-sheet-fits.js` failed, then passed. Corporate 4→5, church 4→5.
 3. Chat composer clears the dock and a keyboard band. `test/mobile/chat-above-dock.js` failed, then passed. Corporate 5→6, personal 5→6. Church stayed 5 until the lobby fix.
 4. Lobby Join is on screen on an SE. `test/mobile/lobby-join-visible.js` failed, then passed. Church 5→6. Corporate stays 6, personal stays 6.
-5. More labels follow 200% text size. `test/mobile/text-scale-controls.js` failed, then passed. Captions row 3→5. Audience scores stay 6. Nobody leads yet. Next: the captions control still says CC, Fit is 32px tall, and the dock ignores the home indicator.
+5. More labels follow 200% text size. `test/mobile/text-scale-controls.js` failed, then passed. Captions row 3→5.
+6. The controls say Captions and People. `test/mobile/plain-words.js` passes. Church captions 5→7, church audience 6→7. Corporate and personal stay 6. Nobody leads yet. Next: Fit is 32px tall, and the dock ignores the home indicator.
