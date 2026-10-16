@@ -918,6 +918,68 @@ test('chat is one tap on the dock, and a prayer is its own line', async ({ page 
   await expect(lines.nth(1)).toContainText('See you after');
 });
 
+test('service chat keeps the title on one line', async ({ page }) => {
+  async function headBox() {
+    return page.evaluate(() => {
+      const title = document.getElementById('paneltitle');
+      const priv = document.getElementById('chatprivacy');
+      const close = document.getElementById('chatclose');
+      const head = document.getElementById('chathead');
+      const tr = title.getBoundingClientRect();
+      const pr = priv.getBoundingClientRect();
+      const cr = close.getBoundingClientRect();
+      const hr = head.getBoundingClientRect();
+      const overlap = (a, b) => !(a.right < b.left + 1 || b.right < a.left + 1 || a.bottom < b.top + 1 || b.bottom < a.top + 1);
+      return {
+        title: title.textContent,
+        priv: priv.textContent,
+        titleH: tr.height,
+        oneLine: title.scrollWidth <= title.clientWidth + 1 && tr.height <= 28,
+        privBelow: pr.top >= tr.bottom - 1,
+        privWide: pr.width >= hr.width - 40,
+        hitTitle: overlap(tr, pr),
+        hitClose: overlap(pr, cr),
+        closeIn: cr.left >= hr.left - 1 && cr.right <= hr.right + 1 && cr.top >= hr.top - 1,
+      };
+    });
+  }
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=chead' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast .bar');
+    await page.locator('#chatbtn').click();
+    await page.waitForSelector('#chatpanel.open');
+    const m = await headBox();
+    expect(m.title).toBe('Service chat');
+    expect(m.priv).toBe('· private to this service, gone when everyone leaves');
+    expect(m.oneLine, JSON.stringify(m)).toBe(true);
+    expect(m.privBelow, JSON.stringify(m)).toBe(true);
+    expect(m.privWide, JSON.stringify(m)).toBe(true);
+    expect(m.hitTitle, JSON.stringify(m)).toBe(false);
+    expect(m.hitClose, JSON.stringify(m)).toBe(false);
+    expect(m.closeIn, JSON.stringify(m)).toBe(true);
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.setViewportSize({ width: 900, height: 720 });
+  const resized = await headBox();
+  expect(resized.oneLine, JSON.stringify(resized)).toBe(true);
+  expect(resized.privBelow, JSON.stringify(resized)).toBe(true);
+  await page.goto('/run.html?desk=cheadsg#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.locator('#chatbtn').click();
+  await page.waitForSelector('#chatpanel.open');
+  const group = await headBox();
+  expect(group.title).toBe('Small group chat');
+  expect(group.priv).toContain('small group');
+  expect(group.oneLine, JSON.stringify(group)).toBe(true);
+  expect(group.privBelow, JSON.stringify(group)).toBe(true);
+  expect(group.hitTitle, JSON.stringify(group)).toBe(false);
+});
+
 test('chat composer stays clear of the dock after a live resize to 900px', async ({ page }) => {
   await openChat(page, 1920, 1080);
   await page.setViewportSize({ width: 1280, height: 720 });
