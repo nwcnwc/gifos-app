@@ -23,7 +23,7 @@ Meet roles are the open-room participant, the guest in a room an admin runs, and
 | Password | More | Yes | No | Yes | No | No | Yes |
 | Vote onto or off the stage, or out of the room | More | Yes | No | No | No | No | No |
 | Admin sign-in | More | No | Yes | Yes | Yes | Yes | Yes |
-| Hand / ask for the stage | More | Hand | Hand | Hand | Ask to join | Hand | Hand |
+| Hand / ask for the stage | More | Hand | Hand | Hand | Ask to join, and Lower hand. Raising it does not publish | Hand | Hand |
 | Chat, including files | More, chat panel | Yes | Yes | Yes, and can turn chat off or delete a line | Yes | Yes | Yes, and can turn chat off or delete a line |
 | Record | More | Yes | Yes | Yes | No | No | Yes |
 | Captions (CC) | More | Yes | Yes | Yes | No | No | Yes |
@@ -31,11 +31,12 @@ Meet roles are the open-room participant, the guest in a room an admin runs, and
 | Settings | More | Yes | Yes | Yes | Name only | Name and video quality | Name, video quality, and captions |
 | Transcript | More, once captions exist | Yes | Yes | Yes | No | No | Yes |
 | Help | More | Yes | Yes | Yes | Yes | Yes | Yes |
-| Mute one person for everyone | Roster tile, and Who in a broadcast | Yes | No | Yes | No | No | Yes |
-| Blur one person for everyone | Roster tile, and Who in a broadcast | Yes | No | Yes | No | No | Yes |
-| Promote / demote (stage grant) | Hand queue promotes; roster tile; Who demotes and promotes | Vote, not a grant | No | Yes | No | No | Yes |
+| Mute one person for everyone | Stage seat, raised-hands list, and Who | Yes | No | Yes | No | No | Yes |
+| Blur one person for everyone | Stage seat, raised-hands list, and Who | Yes | No | Yes | No | No | Yes |
+| Promote / demote (stage grant) | Raised-hands list promotes; stage seat demotes; Who does both | Vote, not a grant | No | Yes | No | No | Yes |
 | Allow one person to share a screen | Roster tile | Not needed | No | Yes | No | No | No |
-| Ban a device | Roster tile, and Who in a broadcast | No | No | Yes | No | No | Yes |
+| Ban a device | Stage seat, raised-hands list, and Who | No | No | Yes | No | No | Yes |
+| On-air lamp | Bar, next to the word | No | No | No | Watching | Off air until sending, then Live | Off air until sending, then Live. Stepping on does not send |
 | Full-screen a tile | Tile | Yes | Yes | Yes | Yes, the stage | Yes | Yes |
 | Video quality | Settings | Yes | Yes | Yes | No | Yes | Yes |
 | Captions language, engine, scribe, captions for everyone | Settings | Yes | Language and engine | Yes, including captions for everyone | No | No | Yes, on the host's device only |
@@ -50,11 +51,11 @@ Meet roles are the open-room participant, the guest in a room an admin runs, and
 
 There is no letter shortcut for mute, camera, or share. The system media session is the shortcut, and it calls the same dock buttons.
 
-A viewer may raise a hand, which asks the host to promote them. Chat stays available. Nothing from a viewer is published: no camera, microphone, screen, app, recording, or captions, including when the button is clicked, the system shortcut fires, or a Meet share grant is present. Promoting a viewer makes them a stage guest: camera and microphone work as they do for a Meet participant, and their own blur and video quality come back. Demoting them stops every track they are sending and removes those controls. The host keeps Meet's publish controls that belong on a stage (camera, microphone, screen, app, recording, captions, password) plus promote, demote, mute, blur, and ban. Meet's row tools stay off the broadcast: votes, the stadium sound mix, blurring or cutting every guest at once, and letting guests share a screen.
+A viewer may raise a hand, and lower it, which asks the host to promote them. Chat stays available. Nothing from a viewer is published: no camera, microphone, screen, app, recording, or captions, including when the button is clicked, the system shortcut fires, or a Meet share grant is present. The viewer's join step says they are watching the service and staying off camera, and that their name and picture are seen only if they raise a hand and the host promotes them. Promoting a viewer makes them a stage guest: camera and microphone work as they do for a Meet participant, and their own blur and video quality come back. Demoting them stops every track they are sending and removes those controls. The host goes on stage when the admin key is adopted, can step off and back on, and does not publish until a camera or microphone tap. The lamp beside that state reads Watching, Off air, or Live. The host keeps Meet's publish controls that belong on a stage (camera, microphone, screen, app, recording, captions, password) plus promote, demote, mute, blur, and ban. Those actions sit on each other person's stage seat, on each raised hand, and on Who (On stage, Raised hands, Watching). Meet's row tools stay off the broadcast: votes, the stadium sound mix, blurring or cutting every guest at once, and letting guests share a screen.
 
-The audience grid stays off in a broadcast, because viewers have no camera. Host moderation is on Who, and the hand queue still promotes the person who asked.
+The audience grid and the stadium stay off in a broadcast. The stage is the only picture.
 
-The gate is `test/browser/e2e-broadcast-roles.js`. It checks the dock, the More cluster, Settings, and the phone and landscape layouts, and it checks that a click does not publish. The same command then runs `test/browser/e2e-avatar-feed.js`: with the camera off, the avatar is a frame of the video, and blur for all and a per-person blur cover that frame.
+The gate is `test/browser/e2e-broadcast-roles.js`. It checks the dock, the More cluster, Settings, and the phone and landscape layouts, and it checks that a click does not publish. The same command then runs `test/browser/e2e-avatar-feed.js`: with the camera off, the avatar is a frame of the video, and blur for all and a per-person blur cover that frame. It then runs `test/browser/e2e-broadcast-design.js`: stage only, the host stepping on and off without publishing, the raised-hands Promote list, stage-seat and viewer-list actions, the viewer join line, and the on-air words. That design check failed before those controls existed and passes after. Shots for each role are in `docs/screenshots/broadcast-design/`.
 
 ## Evidence from the desktop QA branch
 
@@ -77,4 +78,4 @@ The gate test is `test/e2e/broadcast-desktop.spec.js`, “a Watching viewer has 
 
 ## What changed
 
-A viewer is `bc-viewer` from the first paint. Camera, microphone, blur, screen share, Run app, record, captions, password, and Stage stay off in every layout, including when a Meet share grant is present. Clicks and the system media keys do not call `getUserMedia` or `getDisplayMedia`, and a beat parks any sender a bypass attached. A stage guest gets camera and microphone; demoting them stops the tracks and removes those controls. They do not get screen share, Run app, record, or captions. The host keeps those, and Who carries promote, demote, mute, blur, and ban. Allow screen share, Blur guests, Turn video off, vote, and the sound mix stay off for every broadcast role.
+A viewer is `bc-viewer` from the first paint. Camera, microphone, blur, screen share, Run app, record, captions, password, and Stage stay off in every layout, including when a Meet share grant is present. Clicks and the system media keys do not call `getUserMedia` or `getDisplayMedia`, and a beat parks any sender a bypass attached. A stage guest gets camera and microphone; demoting them stops the tracks and removes those controls. They do not get screen share, Run app, record, or captions. The host keeps those. Promote, demote, mute, blur, and ban are on the stage seats, the raised-hands list, and Who. Allow screen share, Blur guests, Turn video off, vote, and the sound mix stay off for every broadcast role. The bar lamp reads Watching, Off air, or Live. The viewer join step says the name and picture stay unseen until a hand is promoted.

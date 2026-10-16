@@ -668,6 +668,35 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      button (tap = the signed stage/app grant, §SIG). Everyone else — guests,
      open rooms — sees the identical banner, inert. */
   body.admroom.amadmin #handq .hq { text-decoration: underline; cursor: pointer; }
+  body.broadcast #handq .bc-hands-h { font-weight: 700; font-size: .78rem; margin: 0 0 .2rem; }
+  body.broadcast #handq .bc-hand { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap;
+    padding: .35rem .5rem; margin: .2rem 0; background: var(--surface, #14141f);
+    border: 1px solid var(--border, #2a2a3f); border-radius: .45rem; }
+  body.broadcast #handq .bc-hand .hq { flex: 1; min-width: 6rem; text-decoration: none; }
+  body.broadcast.amadmin #handq .bc-hand .hq { text-decoration: underline; }
+  #handq .bc-hand button, #bc-seats .bc-seat button { padding: .15rem .45rem; font-size: .72rem;
+    border-radius: .35rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b);
+    color: var(--text, #e0e0f0); cursor: pointer; }
+  #bc-seats { display: none; padding: 0 10px 8px; }
+  #bc-seats.on { display: block; }
+  #bc-seats .bc-seat { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap;
+    padding: .35rem .5rem; margin: .2rem 0; background: var(--surface, #14141f);
+    border: 1px solid var(--border, #2a2a3f); border-radius: .45rem; }
+  #bc-seats .bc-seat-name { flex: 1; min-width: 6rem; font-weight: 600; }
+  #onair[hidden] { display: none !important; }
+  #onair:not([hidden]) { display: inline-flex; align-items: center; gap: 6px; flex: none;
+    padding: .15rem .5rem; border-radius: 1rem; font-size: .72rem; font-weight: 700; letter-spacing: .02em; }
+  #onair .lamp { width: 8px; height: 8px; border-radius: 50%; background: #8a8aa8; flex: none; }
+  #onair.live { background: #b61622; color: #fff; }
+  #onair.live .lamp { background: #fff; box-shadow: 0 0 6px #fff; }
+  #onair.off { background: #2a2a3f; color: #e0e0f0; }
+  #onair.watch { background: #e8ecf1; color: #1d1d1f; }
+  #onair.watch .lamp { background: #0064c8; }
+  #bc-join-note { margin: 0; padding: .55rem .9rem; font-size: .85rem; line-height: 1.4;
+    background: var(--surface, #14141f); border-bottom: 1px solid var(--border, #2a2a3f); color: var(--text, #e0e0f0); }
+  #bc-join-note[hidden] { display: none !important; }
+  .lob-watch-note { margin: .2rem 0 .6rem; font-size: .85rem; line-height: 1.45; color: var(--text, #e0e0f0); }
+  .lob-watch-note[hidden] { display: none !important; }
   /* The Settings modal sections (video quality, and the sound mix that used
      to float as its own Mix panel — same element ids, new home). */
   .set-sec { display: flex; flex-direction: column; gap: .45rem; font-size: .8rem; margin-bottom: .9rem; }
@@ -725,7 +754,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* Nobody mixes in a broadcast: Stage audio is the only bus there is.
      Blur guests, Turn video off, and Allow screen share moderate a Meet
      row a broadcast does not have — a share grant must not let a viewer
-     publish. Per-person mute, blur, promote, demote, and ban live on Who. */
+     publish. Per-person mute, blur, promote, demote, and ban live on the
+     stage seats, the raised-hands list, and Who. */
   body.broadcast #mixpanel,
   body.broadcast #blurall,
   body.broadcast #camall,
@@ -1232,6 +1262,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button id="lob-join-btn" class="lob-action">Join a link<small>Paste an invite link or meeting id someone sent you</small></button>
       <div id="lob-join" class="lob-expand" style="display:none">
         <input id="lob-join-in" placeholder="Paste link or meeting id" autocomplete="off">
+        <p id="lob-watch-note" class="lob-watch-note" hidden></p>
         <div class="lob-row"><button id="lob-join-cancel" class="lob-ghost">Cancel</button><button id="lob-join-go">Join</button></div>
         <div id="lob-join-err" class="lob-err"></div>
       </div>
@@ -1247,6 +1278,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </button>
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
+    <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <button id="mic" class="iconbtn off" aria-label="Microphone" title="Your mic">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
@@ -1329,8 +1361,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div id="appmount"></div>
   </div>
   <div id="handq"></div>
+  <p id="bc-join-note" hidden></p>
   <div id="feed">
     <div id="stagefeed"></div>
+    <div id="bc-seats"></div>
     <div id="grid"></div>
     <div id="stadium"></div>
   </div>
@@ -1867,6 +1901,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return n ? out : null;
     })();
     const BROADCAST = BC_INTENT && !!params.get('v') && /^[a-f0-9]{16,64}$/.test((params.get('av') || '').toLowerCase());
+    const BC_WATCH_COPY = 'Watching the service. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.';
     if (BROADCAST) document.body.classList.add('broadcast');
     // The HOST is whoever holds this room's stored admin key — known before
     // any network exists, which is what lets the boot skip the viewer's
@@ -1905,6 +1940,39 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.body.classList.toggle('bc-host', role === 'host');
       document.body.classList.toggle('stage-granted', role === 'stage');
       try { paintHand(); } catch (e) {}
+      try { paintOnAir(); } catch (e) {}
+      try { paintBroadcastJoinNote(role); } catch (e) {}
+    }
+    function bcSending() {
+      const live = (kind) => {
+        if (!localStream) return false;
+        const tr = (kind === 'video' ? localStream.getVideoTracks() : localStream.getAudioTracks())[0];
+        return !!(tr && tr.readyState === 'live' && tr.enabled);
+      };
+      if (!myStatus.camOff && live('video')) return true;
+      if (!myStatus.muted && live('audio')) return true;
+      return false;
+    }
+    function paintOnAir() {
+      const el = document.getElementById('onair');
+      if (!el) return;
+      if (!BROADCAST) { el.hidden = true; return; }
+      const role = bcRole();
+      let kind = 'off', words = 'Off air';
+      if (role === 'viewer') { kind = 'watch'; words = 'Watching'; }
+      else if (bcSending()) { kind = 'live'; words = 'Live'; }
+      el.hidden = false;
+      el.className = kind;
+      const w = el.querySelector('.words');
+      if (w && w.textContent !== words) w.textContent = words;
+      el.setAttribute('aria-label', words);
+    }
+    function paintBroadcastJoinNote(role) {
+      const note = document.getElementById('bc-join-note');
+      if (!note) return;
+      if (!BROADCAST || role !== 'viewer') { note.hidden = true; return; }
+      if (note.textContent !== BC_WATCH_COPY) note.textContent = BC_WATCH_COPY;
+      note.hidden = false;
     }
     // A viewer publishes nothing, including after a bypass. Stops tracks and
     // parks the main senders. Does not run against a host whose key is still
@@ -8378,6 +8446,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // data mints a new device — bans deter, they don't imprison).
     let av = null; // the room's admin verifier — set at join, immutable
     let admKey = null, amAdmin = false, admins = [], devOf = {}, roomBan = [], bannedOut = false, banSeeded = false, pwReasserted = false;
+    if (BROADCAST) {
+      try { paintOnAir(); } catch (e) {}
+      try { paintBroadcastJoinNote(bcRole()); } catch (e) {}
+    }
     // hydrateRoomState writes a restored ban list and epoch into localStorage.
     // The socket may open first. roomStateSettled is false only while that
     // write is in flight. The roster's ban re-seed and door re-assert wait
@@ -9945,20 +10017,79 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const e of dg.hands || []) teach(e);
       for (const e of dg.stage || []) teach(e);
     }
+    function bcModOn(id, field) {
+      const m = modOf(id)[field];
+      return !!(m && m.on);
+    }
+    function bcActButtons(id, opts) {
+      const parts = [];
+      const add = (act, label) => {
+        parts.push('<button type="button" data-bc-act="' + act + '" data-pid="' + esc(id) + '">' + label + '</button>');
+      };
+      if (opts.promote) add('promote', 'Promote');
+      if (opts.demote) add('demote', 'Demote');
+      if (opts.mute) add('mute', bcModOn(id, 'mute') ? 'Unmute' : 'Mute');
+      if (opts.blur) add('blur', bcModOn(id, 'blur') ? 'Unblur' : 'Blur');
+      if (opts.ban) add('ban', 'Ban');
+      return parts.join('');
+    }
+    function paintBroadcastSeats() {
+      const el = document.getElementById('bc-seats');
+      if (!el) return;
+      if (!BROADCAST || !amAdmin) { if (el.innerHTML) el.innerHTML = ''; el.classList.remove('on'); return; }
+      const ids = stageIds().filter((id) => id && id !== myId);
+      if (!ids.length) { if (el.innerHTML) el.innerHTML = ''; el.classList.remove('on'); return; }
+      const html = '<div class="bc-hands-h">On stage</div>' + ids.map((id) => {
+        return '<div class="bc-seat" data-id="' + esc(id) + '"><span class="bc-seat-name">' + esc(displayName(id)) + '</span>'
+          + bcActButtons(id, { demote: true, mute: true, blur: true, ban: true }) + '</div>';
+      }).join('');
+      if (el.innerHTML !== html) el.innerHTML = html;
+      el.classList.add('on');
+    }
+    function applyBcAct(id, act) {
+      if (!id || id === myId || !amAdmin) return;
+      if (act === 'ban') {
+        const dev = devRelay.has(id) ? devOf[id] : '';
+        if (!dev) { relaySendObj({ t: 'who' }); setStatus('🛡 The door has not vouched for this person' + String.fromCharCode(39) + 's device yet — try Ban again in a moment.'); return; }
+        rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
+        admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); });
+        return;
+      }
+      if (act === 'promote') setMod(id, 'app', true);
+      else if (act === 'demote') setMod(id, 'app', false);
+      else if (act === 'mute') setMod(id, 'mute', !bcModOn(id, 'mute'));
+      else if (act === 'blur') setMod(id, 'blur', !bcModOn(id, 'blur'));
+      else return;
+      try { renderHandq(); } catch (e) {}
+      try { paintBroadcastSeats(); } catch (e) {}
+      try { if (whoModal && whoModal.style.display === 'flex') showWhoModal(); } catch (e) {}
+    }
     function renderHandq() {
       learnFoldedNames();
       const q = handQueue();
       handqEl.classList.toggle('on', q.length > 0);
       const stageFull = amAdmin && stageIds().length >= SCALE.C;
-      const seg = (e, i) => '<span class="hq" data-id="' + esc(e.i) + '">'
-        + (i === 0 ? '<b>' + esc(e.n) + '</b>' : esc(e.n)) + '</span>';
       const tot = handTotal(q), shown = Math.min(q.length, 8);
-      // The full stage is a fact about the queue, said once after the count.
-      const html = !q.length ? ''
-        : '✋ ' + tot + ' waiting' + (stageFull ? ' (stage full)' : '') + ': ' + q.slice(0, 8).map(seg).join(', ') + (tot > shown ? ', +' + (tot - shown) : '');
+      let html;
+      if (BROADCAST) {
+        const rows = q.slice(0, 8).map((e) => {
+          const actions = (amAdmin && e.i !== myId) ? bcActButtons(e.i, { promote: true, mute: true, blur: true, ban: true }) : '';
+          return '<div class="bc-hand" data-id="' + esc(e.i) + '"><span class="hq" data-id="' + esc(e.i) + '">' + esc(e.n) + '</span>' + actions + '</div>';
+        }).join('');
+        html = !q.length ? ''
+          : '<div class="bc-hands-h">Raised hands (' + tot + ')' + (stageFull ? ' · stage full' : '') + '</div>' + rows
+            + (tot > shown ? '<div class="bc-hands-h">+' + (tot - shown) + '</div>' : '');
+      } else {
+        const seg = (e, i) => '<span class="hq" data-id="' + esc(e.i) + '">'
+          + (i === 0 ? '<b>' + esc(e.n) + '</b>' : esc(e.n)) + '</span>';
+        // The full stage is a fact about the queue, said once after the count.
+        html = !q.length ? ''
+          : '✋ ' + tot + ' waiting' + (stageFull ? ' (stage full)' : '') + ': ' + q.slice(0, 8).map(seg).join(', ') + (tot > shown ? ', +' + (tot - shown) : '');
+      }
       if (html === handqHtml) return;
       handqHtml = html;
       handqEl.innerHTML = html;
+      try { paintBroadcastSeats(); } catch (e) {}
     }
     // ADMIN rooms, signed-in admins only: tapping a queued name CALLS THEM UP —
     // the tap issues the same individually-signed mod-table 'app' grant that
@@ -9967,11 +10098,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // anywhere). Open rooms: the queue stays informational — self step-up is
     // the only stage entry. One delegated listener; it survives repaints.
     handqEl.addEventListener('click', (e) => {
+      const act = e.target.closest && e.target.closest('[data-bc-act]');
+      if (act) {
+        e.preventDefault();
+        e.stopPropagation();
+        applyBcAct(act.dataset.pid, act.dataset.bcAct);
+        return;
+      }
       const el = e.target.closest('.hq');
       if (!el || !hasAdminRoom() || !amAdmin) return;
       const id = el.dataset.id;
       if (!id || id === myId) return;
       setMod(id, 'app', true);
+    });
+    const bcSeatsEl = document.getElementById('bc-seats');
+    if (bcSeatsEl) bcSeatsEl.addEventListener('click', (e) => {
+      const act = e.target.closest && e.target.closest('[data-bc-act]');
+      if (!act) return;
+      e.preventDefault();
+      e.stopPropagation();
+      applyBcAct(act.dataset.pid, act.dataset.bcAct);
     });
 
     // ---- which camera: front or back (the standard mobile flip) -------------
@@ -10584,8 +10730,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const list = document.getElementById('who-list');
       list.innerHTML = '';
       const rows = whoRows();
-      for (const g of WHO_GROUPS) {
-        const inG = rows.filter((r) => whoGroupOf(r) === g.k);
+      const bcHere = (r) => !r.me && r.here && !r.ejected;
+      const groups = BROADCAST ? [
+        { k: 'me', test: (r) => r.me },
+        { k: 'stage', title: 'On stage', note: 'On the stage the room is watching.', test: (r) => bcHere(r) && stageIds().indexOf(r.pid) >= 0 },
+        { k: 'hands', title: 'Raised hands', note: 'Asked to come on stage.', test: (r) => bcHere(r) && stageIds().indexOf(r.pid) < 0 && !!((statusOf.get(r.pid) || {}).hand) },
+        { k: 'watching', title: 'Watching', note: 'In the audience. A name and picture show up here only after a hand and a promotion.', test: (r) => bcHere(r) && stageIds().indexOf(r.pid) < 0 && !((statusOf.get(r.pid) || {}).hand) },
+        WHO_GROUPS[3],
+        WHO_GROUPS[4],
+      ] : WHO_GROUPS;
+      const groupOf = (r) => groups.find((g) => g.test(r)).k;
+      for (const g of groups) {
+        const inG = rows.filter((r) => groupOf(r) === g.k);
         if (!inG.length) continue;
         if (g.title) {
           const h = document.createElement('div'); h.className = 'who-h'; h.dataset.group = g.k;
@@ -10688,8 +10844,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + '<ul class="help-list">'
           + '<li>Your <b>host password</b> is yours alone — it IS your control of this broadcast. Do not send it to viewers.</li>'
           + '<li>The <b>Password</b> button sets or changes the <b>viewer password</b>: without one the broadcast stays blurred; with one, whoever you give it to sees you clear.</li>'
-          + '<li>The hand queue floats to the top — tap a name to call them up on Stage. Revoking their grant pulls them back down.</li>'
-          + '<li>Chat has a <b>Turn chat off</b> switch (your messages still land) and per-message delete. Promote, demote, mute, blur, and ban are on <b>Who</b>.</li>'
+          + '<li>The raised-hands list floats to the top. <b>Promote</b> calls that person up on Stage. <b>Demote</b> sends them back to watching, and their camera and microphone stop.</li>'
+          + '<li>Chat has a <b>Turn chat off</b> switch (your messages still land) and per-message delete. Mute, blur, demote, and ban are on each stage seat, on the raised-hands list, and on <b>Who</b>.</li>'
           + '<li>A broadcast lives while its host is present: leave, and it winds down after a countdown.</li>'
           + '</ul>'
           + '<p>Underneath it is the same thing as a GifOS Meeting: everything goes straight between the people here, no accounts, no company keeping your video.</p>';
@@ -11117,6 +11273,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('lob-guest-pass-note').textContent = 'Optional, but the picture stays fully blurred (Max) until you set one. The Blur slider softens it. Viewers type it to watch. It is not part of the link — send it to your audience yourself. The Password button changes it later.';
         document.getElementById('lob-join-btn').innerHTML = 'Watch a broadcast<small>Paste a broadcast link someone shared</small>';
         document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch will show up here.';
+        const watchNote = document.getElementById('lob-watch-note');
+        if (watchNote) { watchNote.hidden = false; watchNote.textContent = BC_WATCH_COPY; }
       }
       document.getElementById('lob-name').textContent = myName();
       renderLobbyList();
@@ -16537,6 +16695,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (BROADCAST) {
         paintBroadcastRole();
         if (bcRole() === 'viewer') enforceBroadcastSeat();
+        try { paintBroadcastSeats(); } catch (e) {}
       } else document.body.classList.toggle('stage-granted', canStage(myId));
     }
     // THE CAP IS DECIDED BY ARITHMETIC, NOT BY MY TAP. stageIds() keeps the C
@@ -19387,6 +19546,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         seg.setAttribute('aria-pressed', segOn ? 'true' : 'false');
       }
       paintShare();
+      try { paintOnAir(); } catch (e) {}
     }
 
     // A tap on a dead mic/cam button is the ONE moment we can ask again: a
@@ -22008,14 +22168,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { paintHand(); } catch (e) {}
         return { role: bcRole() };
       },
-      seedWatcherForTest: (name) => {
+      seedWatcherForTest: (name, opts) => {
         const id = 'bcwatch' + Math.random().toString(16).slice(2, 10);
         if (rosterIds.indexOf(id) < 0) rosterIds.push(id);
         rosterNames[id] = name || 'Ada';
         devOf[id] = 'dev' + id;
         devRelay.add(id);
-        statusOf.set(id, { at: Date.now(), rx: Date.now() });
+        const o = opts || {};
+        const st = { at: Date.now(), rx: Date.now() };
+        if (o.hand) st.hand = Date.now();
+        if (o.stage) {
+          st.stg = Date.now();
+          const mine = modTable[id] = modTable[id] || {};
+          mine.app = { on: true, by: myName(), byId: myId, at: Date.now() };
+        }
+        statusOf.set(id, st);
+        try { renderHandq(); paintBroadcastSeats(); layout(); } catch (e) {}
         return id;
+      },
+      broadcastModForTest: (id) => {
+        const m = modOf(id);
+        return { app: !!(m.app && m.app.on), mute: !!(m.mute && m.mute.on), blur: !!(m.blur && m.blur.on) };
       },
 
       stopRoomAppForTest: () => { const w = findSharedApp(); if (w) stopRoomApp(w); },

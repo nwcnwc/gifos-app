@@ -104,23 +104,32 @@ async function settle(page) {
       }
       if (host) {
         await page.waitForFunction(() => document.body.classList.contains('amadmin') || document.body.classList.contains('bc-host'), { timeout: 15000 }).catch(() => {});
-        await page.waitForTimeout(400);
+        await page.waitForFunction(() => {
+          const b = document.getElementById('stagebtn');
+          return b && (b.textContent || '').indexOf('Step') >= 0;
+        }, { timeout: 8000 }).catch(() => {});
         await page.evaluate(() => {
           const api = window.__gifosVideo;
-          if (!api) return;
-          if (typeof api.seedWatcherForTest === 'function') {
-            api.seedWatcherForTest('Ada', { hand: true });
-            api.seedWatcherForTest('Bea', { stage: true });
-            api.seedWatcherForTest('Cal');
-          }
-          const who = document.getElementById('whobtn');
-          if (who) who.click();
+          if (!api || typeof api.seedWatcherForTest !== 'function') return;
+          api.seedWatcherForTest('Ada', { hand: true });
+          api.seedWatcherForTest('Bea', { stage: true });
+          api.seedWatcherForTest('Cal');
         });
       }
       await page.waitForTimeout(250);
       const file = path.join(OUT, layout.name + '-' + name + '.png');
       await page.screenshot({ path: file });
       console.log('shot', file);
+      if (host && layout.name === 'desktop') {
+        await page.evaluate(() => {
+          const who = document.getElementById('whobtn');
+          if (who) who.click();
+        });
+        await page.waitForTimeout(200);
+        const whoFile = path.join(OUT, 'desktop-host-who.png');
+        await page.screenshot({ path: whoFile });
+        console.log('shot', whoFile);
+      }
       await ctx.close();
     }
   }
