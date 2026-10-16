@@ -331,6 +331,14 @@ Repro: `test/mobile/camera-words.js`. It failed (`no Camera a person can read`),
 
 Before: `qa/mobile/shots/before-camera-words-iphone-se.png`. After: `qa/mobile/shots/after-camera-words-iphone-se.png`.
 
+### 41. Alone, the header told you to send the invite
+
+The chip said "sunday · Just you". The tooltip was "Just you — send the invite; the link has no expiry". That is a sentence, not a control.
+
+Repro: `test/mobile/header-invite.js`. On a phone, alone, the header is the room name and an Invite button. The button is at least 44px, the word grows at 200%, and it stays inside the chip without covering Fit, Unmute, or Camera. A phone with a share sheet gets that sheet and the meeting link. Otherwise the link is copied. With other people here the button is gone and the header is "sunday · 4 in call". Wide screens keep the sentence. `.topchip[data-invite="1"]` and `__gifosVideo.shareInvite` are the hook for the desktop header.
+
+Before: `qa/mobile/shots/before-header-invite-iphone-se.png`. After: `qa/mobile/shots/after-header-invite-iphone-se.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.
