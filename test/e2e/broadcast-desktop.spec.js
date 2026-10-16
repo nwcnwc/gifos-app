@@ -1432,6 +1432,7 @@ test('a host steps on and off the stage from the dock', async ({ page }) => {
   expect(steppedOn).toBe(true);
   const onAir = await page.evaluate(() => getComputedStyle(document.querySelector('.bar > #stagebtn')).backgroundColor);
   expect(onAir).toBe('rgb(182, 22, 34)');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
   await step.click();
   await expect(step.locator('.docklab')).toHaveText('Step on');
   const steppedOff = await step.evaluate((el) => el.classList.contains('on'));
@@ -1618,6 +1619,24 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
       };
     });
     expect(lay.bg).toBe('rgb(182, 22, 34)');
+    await expect(page.locator('#airkind')).toHaveText('Service · You are on stage');
+    await expect(page.locator('#airbar')).toHaveClass(/live/);
+    const air = await page.evaluate(() => {
+      const bar = document.getElementById('airbar');
+      const kind = document.getElementById('airkind');
+      const rec = document.getElementById('airrec');
+      const s = getComputedStyle(bar);
+      const br = bar.getBoundingClientRect();
+      const kr = kind.getBoundingClientRect();
+      const rr = rec.getBoundingClientRect();
+      const overlap = !(kr.right < rr.left || rr.right < kr.left || kr.bottom < rr.top || rr.bottom < kr.top);
+      return { bg: s.backgroundColor, fg: s.color, overlap, full: br.width >= innerWidth - 2, inside: kr.left >= br.left - 1 && kr.right <= br.right + 1 && kr.top >= br.top - 1 && kr.bottom <= br.bottom + 1 };
+    });
+    expect(air.bg).toBe('rgb(182, 22, 34)');
+    expect(air.fg).toBe('rgb(255, 255, 255)');
+    expect(air.overlap, JSON.stringify(air)).toBe(false);
+    expect(air.full, JSON.stringify(air)).toBe(true);
+    expect(air.inside, JSON.stringify(air)).toBe(true);
     await expect(page.locator('#bc-stage-line')).toHaveText('You are on stage. Your camera is off.');
     const plateShown = await page.locator('#bc-stage').evaluate((el) => getComputedStyle(el).display !== 'none');
     expect(plateShown).toBe(true);
@@ -1636,4 +1655,6 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
   await page.locator('#bartoggle').click();
   await expect(page.locator('#barmore #stagebtn')).toHaveText('Stage');
   await expect(page.locator('#bc-stage-line')).toHaveText('The stage is clear.');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+  await expect(page.locator('#airbar')).toHaveClass(/watch/);
 });

@@ -2487,6 +2487,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       kind.textContent = text;
       paintRoomTrust();
     }
+    function paintBroadcastAir() {
+      if (typeof BROADCAST === 'undefined' || !BROADCAST) return;
+      const host = (typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin');
+      let onStage = false;
+      try { onStage = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) { onStage = false; }
+      if (host) paintAirKind('live', 'Service · You are live');
+      else if (onStage) paintAirKind('live', 'Service · You are on stage');
+      else paintAirKind('watch', 'Service · You are watching');
+    }
     function paintBroadcastChrome() {
       const pill = document.getElementById('onair');
       const say = (id, text) => { const el = document.getElementById(id); if (el && text) el.textContent = text; };
@@ -17833,6 +17842,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       stageBtn.style.display = (!hasAdminRoom() || amAdmin || hostHere || (modOf(myId).app && modOf(myId).app.on) || myStatus.stg) ? '' : 'none';
       if (typeof paintStagePlate === 'function') paintStagePlate();
+      if (typeof paintBroadcastAir === 'function') paintBroadcastAir();
       // The broadcast skin hides a viewer's mic/cam buttons — until the host
       // grants them the stage, when the controls they now need grow back.
       document.body.classList.toggle('stage-granted', canStage(myId));
