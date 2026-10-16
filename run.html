@@ -508,7 +508,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 <script src="js/sw-register.js" defer></script>
 <script src="js/build.js" defer></script>
 <script src="js/build-badge.js" defer></script>
-<script>/* Global UI text size (Settings → Text size). Scales the meeting chrome; applied early, live across tabs. */(function(){function ap(){try{var s=parseFloat(localStorage.getItem('gifos_ui_scale'))||1;s=Math.max(0.2,Math.min(3,s));document.documentElement.style.fontSize=(s===1?'':(16*s).toFixed(2)+'px');}catch(e){}}ap();try{window.addEventListener('storage',function(e){if(!e||e.key==='gifos_ui_scale')ap();});}catch(e){}})();</script>
+<script>/* Global UI text size (Settings → Text size). Scales the meeting chrome; applied early, live across tabs. */(function(){function ap(){try{var s=parseFloat(localStorage.getItem('gifos_ui_scale'))||1;s=Math.max(0.2,Math.min(3,s));document.documentElement.style.fontSize=(s===1?'':(16*s).toFixed(2)+'px');document.documentElement.classList.toggle('ui-large',s>=1.5);}catch(e){}}ap();try{window.addEventListener('storage',function(e){if(!e||e.key==='gifos_ui_scale')ap();});}catch(e){}})();</script>
 <title>Meeting — GifOS</title>
 <!-- Link-preview card for texted / posted invites. og:url is deliberately OMITTED
      so scrapers use the actual fetched URL and keep the invite's subdomain (the
@@ -1392,6 +1392,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   #call-rec.on { background: #b61622; color: #fff; border-color: transparent; }
   #call-cc.on { background: #0064c8; color: #fff; border-color: transparent; }
+  /* On a phone Live is the control a volunteer can see from a stand.
+     Sideways, it takes the rest of the one row so the faces keep their
+     height. Upright, it is its own band, taller than More. */
+  @media (max-width: 700px) {
+    #call-live { flex: 1 1 auto; font-size: 1.25rem; justify-content: flex-start; padding-left: 16px; }
+  }
+  @media (max-width: 700px) and (min-height: 520px) {
+    #callstate { row-gap: 4px; }
+    #call-live { flex: 1 0 100%; min-height: 64px; justify-content: center; padding-left: 12px; }
+    #call-rec, #call-cc { flex: 1 1 0; }
+  }
+  /* At 200% text the buttons are already large. A 64px floor on top of
+     that pushed the faces into a wide strip. Keep the full-width band. */
+  html.ui-large #call-live { min-height: 44px; font-size: 1rem; }
   /* Unread chat sits on the call, above Live, while More is closed.
      The line is the white banner. The count is the blue pill. */
   #chatnote {

@@ -299,6 +299,14 @@ Repro: `test/mobile/join-unmute.js`. It failed (`no Unmute a person can read` on
 
 Before: `qa/mobile/shots/before-join-unmute-iphone-se.png`. After: `qa/mobile/shots/after-join-unmute-iphone-se.png`.
 
+### 37. Live was a small chip beside Record and Captions
+
+On a phone Live was 72×44. More is 56px on an iPhone 15. From a stand, a volunteer could not see that the room was on.
+
+Repro: `test/mobile/live-stands-out.js`. It failed (SE Live 44px tall and 72px wide; sideways Live 72px wide), then passed. Upright, Live is its own band, 64px tall and the width of the row. Record and Captions share the next row. Sideways, Live takes the rest of the one row, so the faces keep their height. The word stays Live. At 200% text the band stays full width without growing the row past the faces.
+
+Before: `qa/mobile/shots/before-live-stands-out-iphone-se.png`, `qa/mobile/shots/before-live-stands-out-iphone-se-land.png`. After: `qa/mobile/shots/after-live-stands-out-iphone-se.png`, `qa/mobile/shots/after-live-stands-out-iphone-se-land.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.
