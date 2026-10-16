@@ -1241,6 +1241,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip .status { color: #e7ebf2; font-size: 20px; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
     min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
+  .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
+    border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
+    background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 14px/1.2 system-ui, sans-serif; }
+  body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
   body.app-room #reactbtn, body.app-room #reacttray { display: none !important; }
@@ -1483,6 +1487,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
     <span class="status" id="status">Joining…</span>
   </div>
+  <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
   <div class="admcount" id="admcount" style="display:none"></div>
   <div class="bar collapsed" role="toolbar" aria-label="Call controls">
     <button id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
@@ -1972,6 +1977,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/mesh-identity.js"></script>
   <script src="js/mesh-wire.js"></script>
   <script src="js/mesh-media.js"></script>
+  <script src="js/meet-pack.js"></script>
   <script src="js/meet-layout.js"></script>
   <script src="js/meet-leave.js"></script>
   <script src="js/meet-views.js"></script>
@@ -4648,12 +4654,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           orderKey: roster.length + ':' + roster.join(','), holdMs: holdMs,
           vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: myId || 'me',
           pill: document.body.classList.contains('has-pill'),
-          mode: window.__meetViewMode || 'gallery', swapSelf: !!window.__meetSwapSelf, now: Date.now(),
+          mode: window.__meetViewMode || 'gallery', swapSelf: !!window.__meetSwapSelf,
+          gallery: window.__meetGallery || 'fit', now: Date.now(),
           onSettle: () => { try { layout(); } catch (e) {} },
         });
         if (meta.srcEl) meta.srcEl.classList.toggle('stad-src', faces.length > 0);
       } finally { comfyBusy = false; }
     }
+    try {
+      window.__meetGallery = localStorage.getItem('meet.view.v1.gallery') === 'scroll' ? 'scroll' : 'fit';
+    } catch (e) { window.__meetGallery = 'fit'; }
+    const fitbtn = document.getElementById('fitbtn');
+    function paintFit() {
+      if (!fitbtn) return;
+      const scroll = window.__meetGallery === 'scroll';
+      fitbtn.textContent = scroll ? '▦ Scroll' : '▦ Fit';
+      fitbtn.setAttribute('aria-pressed', scroll ? 'false' : 'true');
+    }
+    if (fitbtn) fitbtn.addEventListener('click', () => {
+      window.__meetGallery = window.__meetGallery === 'scroll' ? 'fit' : 'scroll';
+      try { localStorage.setItem('meet.view.v1.gallery', window.__meetGallery); } catch (e) {}
+      paintFit();
+      try { layout(); } catch (e) {}
+    });
+    paintFit();
     let comfyResizeT = 0;
     window.addEventListener('resize', () => {
       if (comfyResizeT) clearTimeout(comfyResizeT);

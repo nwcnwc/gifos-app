@@ -322,6 +322,8 @@
     for (let i = 0; i < tiles.length; i++) {
       const t = tiles[i];
       if (t.el) {
+        const v = t.el.querySelector && t.el.querySelector('video');
+        if (v && v.videoWidth > 0 && v.videoHeight > 0) t.aspect = v.videoWidth / v.videoHeight;
         if (t.pz) t.el.dataset.pzkey = t.pz;
         t.el.dataset.tier = t.tier || 'row';
       }
@@ -333,6 +335,7 @@
       box: box,
       phone: !!opts.phone,
       swapSelf: !!opts.swapSelf,
+      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit',
     });
     const byId = {};
     for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
@@ -359,9 +362,27 @@
       const t = byId[r.id];
       if (!t || !t.el) continue;
       placeEl(t.el, r);
+      t.el.dataset.fit = r.fit || 'cover';
       used.push(t.el);
     }
     placeBand(feed, lay.band);
+    // Absolute tiles do not grow scrollHeight. A 1px spacer does, so Scroll
+    // can move through the stadium without a pager.
+    let spacer = feed.querySelector('#comfyspacer');
+    const need = (lay.box ? lay.box.y : 0) + (lay.contentH || 0);
+    if (lay.contentH && lay.box && need > lay.box.y + lay.box.h + 1) {
+      if (!spacer) {
+        spacer = (feed.ownerDocument || document).createElement('div');
+        spacer.id = 'comfyspacer';
+        feed.appendChild(spacer);
+      }
+      spacer.style.position = 'absolute';
+      spacer.style.left = '0';
+      spacer.style.top = '0';
+      spacer.style.width = '1px';
+      spacer.style.height = need + 'px';
+      spacer.style.pointerEvents = 'none';
+    } else if (spacer && spacer.remove) spacer.remove();
     const shadeItems = [];
     for (let i = 0; i < lay.rects.length; i++) {
       const r = lay.rects[i];

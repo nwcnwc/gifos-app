@@ -1,14 +1,20 @@
 /*
  * meet-layout.js — pure packing for Meet view modes. No DOM.
  *
- * Tiles touch edge to edge (gap 0) and cover the box exactly: every row is
- * the same height, a full row splits the width evenly, and the last partial
- * row stretches across the width so no hole remains. object-fit: cover on
- * the tile absorbs the aspect wobble. Ties in column choice keep fewer
- * columns. See spec/DESIGN.md §3 and spec/mock/m.html.
+ * layoutFor uses meet-pack.js (balanced lines, per-tile aspect, two tiers,
+ * stage rail). pack/place/tiered stay as the old column oracle for tests
+ * that still name that helper. The live gallery does not call them.
  */
 (function (root) {
   const GifOS = root.GifOS = root.GifOS || {};
+
+  function packApi() {
+    if (GifOS.meetPack && GifOS.meetPack.layout) return GifOS.meetPack;
+    if (typeof require === 'function') {
+      try { return require('./meet-pack.js'); } catch (e) { return null; }
+    }
+    return null;
+  }
 
   // Best column count. Score is the largest tile that still fits at aspect
   // a (width/height) with gap 0. A higher score wins; a tie keeps the
@@ -171,18 +177,25 @@
     };
   }
 
+  // Last chosen line count. A 1% score tie keeps it, so a resize does not flip the grid.
+  let prevRows = null;
+
+  function aspectOf(t) {
+    const a = t && +t.aspect;
+    return a > 0 ? a : 16 / 9;
+  }
+
   function layoutFor(opts) {
     opts = opts || {};
+    const Pack = packApi();
     const box = opts.box || viewBox(opts.w || 1, opts.h || 1, opts);
     const phone = !!box.phone || !!opts.phone;
     const modeIn = opts.mode || 'gallery';
     const mode = modeIn === 'auto' ? 'gallery' : modeIn;
-    const aMain = phone ? 3 / 4 : 16 / 10;
-    const aSide = 4 / 3;
-    const ordered = orderTiles(opts.tiles || []);
+    // Input order, not hand/stage rank. A raised hand is a badge. Self is
+    // pulled to the front by the packer. Bots are a small corner tile.
+    const ordered = opts.tiles || [];
     const bots = ordered.filter((t) => t.bot);
-    // Your own picture is a gallery tile on your screen unless you swapped
-    // yourself onto the stage. A bot is never the stage and never the speaker.
     const tiles = ordered.filter((t) => !t.bot);
     function withBots(g) {
       if (!g || !bots.length) return g;
@@ -197,69 +210,67 @@
       g.rects = (g.rects || []).concat(extra);
       return g;
     }
-    if (mode === 'gallery') {
-      const g = galleryIn(tiles, box, aMain, phone);
-      g.mode = 'gallery';
+    if (!Pack) {
+      const g = galleryIn(tiles, box, phone ? 3 / 4 : 16 / 10, phone);
+      g.mode = mode;
       g.box = box;
       return withBots(g);
     }
-    if (mode === 'stageGallery' || mode === 'stageOnly') {
-      let stageBox, side;
-      if (phone) {
-        const sh = mode === 'stageOnly' ? box.h : Math.min(box.w * 9 / 16 * 1.25, box.h * 0.48);
-        stageBox = { x: box.x, y: box.y, w: box.w, h: sh };
-        side = { x: box.x, y: box.y + sh, w: box.w, h: Math.max(0, box.h - sh) };
-      } else {
-        const sw = mode === 'stageOnly' ? Math.max(0, box.w - 200) : box.w * 0.72;
-        stageBox = { x: box.x, y: box.y, w: sw, h: box.h };
-        side = { x: box.x + sw, y: box.y, w: Math.max(0, box.w - sw), h: box.h };
-      }
-      // stage:true and tier 'stage' are the same fact. Your own picture stays
-      // off this rect unless you swapped. Bots never reach this list.
-      const onStage = (t) => (t.tier === 'stage' || !!t.stage) && (opts.swapSelf || !t.me);
-      const stageTiles = tiles.filter(onStage);
-      const stageId = (stageTiles[0] && stageTiles[0].id) || 'stage';
-      const rects = [{ id: stageId, tier: 'stage', x: stageBox.x, y: stageBox.y, w: stageBox.w, h: stageBox.h }];
-      if (mode === 'stageOnly') {
-        const speaker = tiles.filter((t) => t.speaker && t.tier !== 'stage')[0] || tiles.filter((t) => !t.me && t.tier !== 'stage')[0];
-        const me = tiles.filter((t) => t.me)[0];
-        const floats = [speaker, me].filter(Boolean);
-        if (phone) {
-          floats.forEach((p, i) => {
-            rects.push({ id: p.id, tier: 'float', x: box.x + box.w - 96 - 8, y: stageBox.y + stageBox.h - 110 - i * 102, w: 96, h: 96 });
-          });
-        } else if (side.w > 0 && floats.length) {
-          const placed = place(floats.length, side.x, side.y, side.w, side.h, aSide);
-          floats.forEach((p, i) => rects.push({ id: p.id, tier: 'float', x: placed[i].x, y: placed[i].y, w: placed[i].w, h: placed[i].h }));
-        }
-        const others = tiles.filter((t) => t.tier !== 'stage' && floats.indexOf(t) < 0).length;
-        return withBots({
-          mode: mode, rects: rects, crowd: false, box: box, tier: null,
-          band: others > 0 ? { text: '+' + others + ' more · tap to show', x: side.x + 4, y: side.y + 4 } : null,
-          stage: stageBox,
-        });
-      }
-      const rest = tiles.filter((t) => !onStage(t));
-      const g = galleryIn(rest, side.h > 0 && side.w > 0 ? side : box, aSide, phone);
-      return withBots({ mode: mode, rects: rects.concat(g.rects), crowd: g.crowd, band: g.band, tier: g.tier, box: box, stage: stageBox });
-    }
+    const onStage = (t) => (t.tier === 'stage' || !!t.stage) && (opts.swapSelf || !t.me);
+    let stage = [];
     if (mode === 'speaker') {
       const pick = tiles.filter((t) => opts.swapSelf || !t.me);
       const speaker = pick.filter((t) => t.speaker)[0] || pick.filter((t) => t.tier !== 'stad')[0] || pick[0];
-      const fh = phone ? box.h * 0.62 : Math.max(1, box.h - 150);
-      const rects = [];
-      if (speaker) rects.push({ id: speaker.id, tier: 'stage', x: box.x, y: box.y, w: box.w, h: Math.min(fh, box.h) });
-      const others = tiles.filter((t) => t !== speaker);
-      const stripH = box.h - fh;
-      if (others.length && stripH > 0) {
-        rects.push.apply(rects, emit(others, place(others.length, box.x, box.y + fh, box.w, stripH, aMain), 'row'));
-      }
-      return withBots({ mode: mode, rects: rects, crowd: false, band: null, tier: null, box: box });
+      if (speaker) stage = [{ id: speaker.id, aspect: aspectOf(speaker), share: !!speaker.share }];
+    } else if (mode === 'stageGallery' || mode === 'stageOnly') {
+      stage = tiles.filter(onStage).map((t) => ({ id: t.id, aspect: aspectOf(t), share: !!t.share }));
     }
-    const g = galleryIn(tiles, box, aMain, phone);
-    g.mode = 'gallery';
-    g.box = box;
-    return withBots(g);
+    const people = tiles.map((t) => ({
+      id: t.id,
+      aspect: aspectOf(t),
+      me: !!t.me,
+      row: t.tier === 'stad' ? 1 : 0,
+    }));
+    const order = new Pack.Order();
+    for (let i = 0; i < tiles.length; i++) if (!tiles[i].me) order.join(tiles[i].id);
+    for (let i = 0; i < tiles.length; i++) if (tiles[i].me) order.join(tiles[i].id);
+    const out = Pack.layout(people, mode === 'gallery' ? [] : stage, {
+      W: box.x + box.w,
+      H: box.y + box.h,
+      box: box,
+      phone: phone,
+      mode: mode === 'stageOnly' ? 'stageOnly' : 'auto',
+      order: order,
+      myRow: 0,
+      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit',
+      selfView: opts.selfView || 'tile',
+      prevRows: opts.prevRows != null ? opts.prevRows : prevRows,
+    });
+    if (typeof out.rows === 'number') prevRows = out.rows;
+    const rects = (out.tiles || []).map((t) => ({
+      id: t.id,
+      tier: t.region === 'stage' ? 'stage' : (t.tier || 'row'),
+      x: t.x, y: t.y, w: t.w, h: t.h,
+      fit: t.fit || 'cover',
+      quality: t.quality || (t.tier === 'stad' ? 'lo' : 'hi'),
+    }));
+    let band = null;
+    if (mode === 'stageOnly' && out.overflow > 0) {
+      band = { text: '+' + out.overflow + ' more · tap to show', x: box.x + 4, y: box.y + 4 };
+    } else if (out.tooSmall && opts.gallery !== 'scroll') {
+      band = { text: 'faces tiny · Scroll is in ▦', x: box.x + 6, y: box.y + 6 };
+    }
+    return withBots({
+      mode: mode,
+      rects: rects,
+      crowd: false,
+      band: band,
+      tier: out.split != null ? { f: out.split, fellBack: false } : null,
+      box: box,
+      stage: out.regions && out.regions.stage || null,
+      contentH: out.contentH || box.h,
+      tooSmall: !!out.tooSmall,
+    });
   }
 
   // Slice a stadium composite into per-face crops. cellCrop refuses a frame
