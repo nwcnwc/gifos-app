@@ -1220,8 +1220,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .name-box.appear-box { background: #fff; color: #1d1d1f; border: 0; text-align: left;
     width: min(360px, calc(100vw - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
     padding: 20px 18px 18px; border-radius: 20px; box-shadow: 0 16px 40px rgba(0,0,0,.28); }
-  .name-box.appear-box h3 { color: #1d1d1f; font-size: 1.35rem; margin: 0 0 4px; letter-spacing: -0.02em; }
-  .name-box.appear-box p { color: #3a3a3f; font-size: 0.95rem; margin: 0 0 14px; line-height: 1.35; }
+  .name-box.appear-box h3 { color: #1d1d1f; font-size: 1.35rem; margin: 0 0 14px; letter-spacing: -0.02em; }
   .appear-row { display: flex; align-items: center; gap: 12px; }
   .appear-face { width: 56px; height: 56px; border-radius: 50%; overflow: hidden; position: relative; flex: 0 0 auto;
     background: #1a1d24; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 22px; }
@@ -2710,7 +2709,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bg.className = 'name-modal';
       bg.setAttribute('role', 'dialog');
       bg.setAttribute('aria-modal', 'true');
-      bg.innerHTML = '<div class="name-box appear-box"><h3>This is how you\'ll appear</h3><p>' + opts.note + '</p>' +
+      bg.innerHTML = '<div class="name-box appear-box"><h3>This is how you\'ll appear</h3>' +
         '<div class="appear-row"><div class="appear-face" aria-hidden="true"><img id="' + opts.imgId + '" alt=""><span id="' + opts.letterId + '"></span></div>' +
         '<div class="appear-fields"><input id="' + opts.inputId + '" name="nickname" maxlength="40" autocomplete="nickname" aria-label="Your name">' +
         '<label class="appear-change">Change picture<input id="' + opts.fileId + '" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Change picture"></label>' +
@@ -2735,7 +2734,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const seed = had || ('Guest ' + (1000 + Math.floor(Math.random() * 9000)));
       if (!had) GifOS.store.setName(seed);
       const dlg = appearDialog({
-        note: 'People in the meeting see this name and picture.',
         inputId: 'nm', imgId: 'nm-avatar', letterId: 'nm-letter', fileId: 'nm-file',
         cancelId: 'nmcancel', okId: 'nmok', cancelLabel: 'Clear', okLabel: 'Save', value: seed,
       });
@@ -12303,7 +12301,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function renameFlow(after) {
       const cur = (GifOS.store.identity().name) || '';
       const dlg = appearDialog({
-        note: 'Other people in the meeting see this.',
         inputId: 'nm2', imgId: 'nm2-avatar', letterId: 'nm2-letter', fileId: 'nm2-file',
         cancelId: 'nm2cancel', okId: 'nm2ok', cancelLabel: 'Cancel', okLabel: 'Save', value: cur,
       });
