@@ -871,10 +871,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; font: inherit; }
   #votebtn { display: none; }
   body.canvote #votebtn { display: inline-block; }
-  .voteopt { display: block; width: 100%; text-align: left; margin-bottom: .5rem; padding: .6rem .8rem;
-    border-radius: .5rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b);
-    color: var(--text, #e0e0f0); cursor: pointer; font: inherit; }
-  .voteopt:hover { border-color: var(--accent, #7b5cff); }
+  .name-box button.voteopt { display: block; width: 100%; text-align: left; margin-bottom: .5rem; padding: .7rem .85rem;
+    border-radius: 14px; border: 1px solid #3a3a4a; background: #16161f; color: #f4f7fb; cursor: pointer; font: inherit; }
+  .name-box button.voteopt:hover { border-color: #8d93a0; }
+  .name-box button.voteopt .vic { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+  .name-box button.voteopt.up .vic { background: #1ca853; }
+  .name-box button.voteopt.down .vic { background: #e0a100; }
+  .name-box button.voteopt.danger { background: transparent; color: #ff5c5c; border-color: #ff5c5c; }
+  .name-box button.voteopt.danger .vic { background: #ff5c5c; }
+  .name-box #vote-cancel { background: transparent; color: #c8c8d4; border: 1px solid #5a5a68; }
   /* Descriptions derive from the theme's TEXT color (at reduced opacity), not
      --muted: on themes with a colored surface (blue!), fixed gray muted text
      lands at near-zero contrast and the popup is illegible. */
@@ -980,8 +985,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .note { color: var(--muted, #8888aa); font-size: .8rem; padding: 1rem; text-align: center; }
   .tile.me { border-color: #5ca0ff; }
   .tile .avatar { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: none; align-items: center; justify-content: center;
-                  font-size: 3rem; font-weight: 800; color: #3a3a55; background: var(--surface, #14141f); }
-  .tile.cam-off .avatar { display: flex; }
+                  font-size: 3rem; font-weight: 800; color: #fff; background: transparent; }
+  .tile.cam-off .avatar { display: flex; color: #fff; }
   /* The letter stays in the text (tests read it). The picture covers it. A GIF
      is an <img> of the original bytes — never drawn onto a canvas. */
   .tile .avatar.has-img { font-size: 0; color: transparent; }
@@ -994,12 +999,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.broadcast #bc-ident img { width: 256px; width: min(256px, 70vw); height: 256px; height: min(256px, 46vh); object-fit: cover; border-radius: 1rem; background: #14141f; }
   #bc-ident-name { background: rgba(10,10,15,.72); color: #eceef8; padding: .2rem .7rem; border-radius: .4rem; font-size: .95rem; }
   .tile.cam-off > video { visibility: hidden; }
-  .tile .chips { position: absolute; top: .4rem; left: .4rem; display: flex; flex-direction: column;
-                 gap: .25rem; align-items: flex-start; z-index: 3; pointer-events: none; }
-  .tile .chips span { background: rgba(10,10,15,.78); border: 1px solid rgba(255,255,255,.14); border-radius: .4rem;
-                      padding: .12rem .45rem; font-size: .68rem; color: #eceef8; }
+  .tile .chips { position: absolute; top: 6px; left: 6px; right: 6px; display: flex; flex-direction: row;
+                 flex-wrap: nowrap; gap: 3px; align-items: center; z-index: 3; pointer-events: none; overflow: hidden; }
+  .tile:has(> .blurbox.on) .chips { right: 118px; }
+  .tile .chips span { background: rgba(10,10,15,.78); border: 1px solid rgba(255,255,255,.14); border-radius: 999px;
+                      padding: 1px 6px; font-size: 11px; line-height: 1.35; color: #eceef8; white-space: nowrap; }
   .tile .chips span.warn { border-color: #b0742a; color: #ffd23c; }
-  .tile .chips span.botbadge { border-color: #5ca0ff; color: #d7e8ff; }
+  .tile .chips span.ico { width: 22px; height: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+                          font-size: 0; line-height: 0; border-radius: 6px; flex: 0 0 auto; }
+  .tile .chips span.ico svg { width: 14px; height: 14px; display: block; }
+  .tile > .blurbox { position: absolute; top: 0; right: 0; z-index: 6; display: none; min-width: 32px; min-height: 32px;
+                     padding: 8px 10px; border: 0; border-bottom-left-radius: 12px; cursor: pointer;
+                     background: rgba(10,10,15,.72); color: #fff; font: 700 12px/1.2 system-ui, sans-serif; }
+  .tile > .blurbox.on { display: block; }
+  .tile > .botbadge { position: absolute; right: 8px; bottom: 8px; z-index: 4; pointer-events: none;
+    background: rgba(10,10,15,.82); color: #d7e8ff; border: 1px solid #5ca0ff; border-radius: 999px;
+    padding: 2px 8px; font-size: 12px; font-weight: 700; }
   body.meet-session #lobby { display: none !important; }
   .tile .modbar { position: absolute; right: .4rem; top: .4rem; display: none; flex-direction: column;
                   gap: .3rem; z-index: 4; }
@@ -1255,6 +1270,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip .status { color: #e7ebf2; font-size: 20px; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
     min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
+  .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
+    border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
+    background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 14px/1.2 system-ui, sans-serif; }
+  body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
   body.app-room #reactbtn, body.app-room #reacttray { display: none !important; }
@@ -1280,12 +1299,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar .barmore { display: none; }
   .bar:not(.collapsed) .barmore { display: grid; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
     width: min(720px, calc(100vw - 24px)); grid-template-columns: repeat(4, 1fr); gap: 8px;
-    background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23; }
+    background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23;
+    pointer-events: none; }
+  .bar:not(.collapsed) .barmore > * { pointer-events: auto; }
+  /* Stage voting: the More sheet floats over the gallery; let .votedot receive taps. */
+  body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore,
+  body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore * { pointer-events: none !important; }
   .bar:not(.collapsed) .barmore > button { min-height: 64px; height: auto; padding: 8px 6px; border: 0; border-radius: 16px;
     background: #e8ecf1; color: #1d1d1f; font-size: 18px; font-weight: 650; white-space: normal; }
   .bar:not(.collapsed) .barmore .blurctl { grid-column: 1 / -1; display: flex; align-items: center; min-height: 48px; gap: 8px; }
   .bar:not(.collapsed) .barmore .blurlbl { display: inline; color: #3a3a3f; font-size: 14px; }
   .bar:not(.collapsed) .barmore .seg { min-height: 48px; min-width: 48px; color: #1d1d1f; background: #fff; }
+  .bar:not(.collapsed) .barmore .seg.sel,
+  .bar:not(.collapsed) .barmore .seg[aria-pressed="true"] { background: #1d1d1f; color: #fff; }
+  .bar .barmore .blab { display: block; font-size: 13px; font-weight: 700; margin-top: 2px; line-height: 1.1; }
   .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 122px; transform: translateX(-50%);
     display: flex; gap: 8px; background: rgba(255,255,255,.96); border-radius: 20px; padding: 10px;
     box-shadow: 0 10px 28px rgba(0,0,0,.25); }
@@ -1330,6 +1357,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border-radius: 16px; border: 2px solid #fff; aspect-ratio: auto; box-shadow: 0 12px 28px rgba(0,0,0,.45); }
   .tile .name { font-size: 1.15rem; padding: .28rem .75rem; }
   .tile .chips span { font-size: .95rem; }
+  .tile .chips span.ico { font-size: 0; width: 22px; height: 22px; padding: 0; }
   @media (max-width: 700px) {
     .topchip .title { font-size: 20px; }
     .topchip .status { font-size: 17px; }
@@ -1337,6 +1365,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
     .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
+    .bar #bargrip { height: 40px; width: 18px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
     .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px); }
     .bar:not(.collapsed) .barmore > button { min-height: 56px; font-size: 16px; }
@@ -1352,6 +1381,60 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="5"]) .tile.me {
       width: 138px; height: 182px; }
   }
+  /* Comfy: every face on screen, tiles touch, the dock floats over them.
+     The long :not chain is what the older gallery rule uses; matching it
+     is what lets these win. Padding is zeroed so the dock does not reserve
+     a band (the packer already insets the grid by ≤4px). */
+  body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
+    position: fixed; inset: 0; overflow: hidden; padding: 0 !important; margin: 0;
+    display: block; background: #0d0f14; z-index: 1; }
+  body.comfy #grid, body.comfy #stadium, body.comfy #stagefeed, body.comfy #stadfaces {
+    position: static; display: block; padding: 0; margin: 0; gap: 0; overflow: visible;
+    height: auto; background: transparent; border: 0; }
+  body.comfy #stadium.on { display: block; }
+  body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile,
+  body.comfy .stadface, body.comfy .rowtile {
+    border-radius: 0; border: 0; aspect-ratio: auto; min-height: 0; box-shadow: none; }
+  body.comfy.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
+    position: absolute; right: auto; bottom: auto; border: 0; border-radius: 0; box-shadow: none; }
+  body.comfy .tile.speaking, body.comfy .stadface.speaking {
+    box-shadow: inset 0 0 0 3px #7bffcf, inset 0 0 24px rgba(123,255,207,.35); }
+  body.comfy .tile video, body.comfy .stadface video { object-fit: cover; object-position: 50% 40%; }
+  body.comfy .tile.cam-off .avatar.has-img, body.comfy .stadface.cam-off .avatar.has-img {
+    color: transparent; }
+  body.comfy .stadface { overflow: hidden; background: transparent; }
+  body.comfy .stadface.cam-off, body.comfy .tile.cam-off {
+    background-color: var(--tile-shade, #3b4d78); }
+  body.comfy .stadface .avatar {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 2.4rem; font-weight: 800; color: #fff; background: transparent; z-index: 1; }
+  body.comfy .stadface .name {
+    position: absolute; left: .4rem; bottom: .4rem; z-index: 2;
+    background: rgba(10,10,15,.72); color: #eceef8;
+    padding: .12rem .5rem; border-radius: .4rem; font-size: .75rem; }
+  body.comfy .tile.me .name::before { content: '\2726 '; }
+  body.comfy .tile[data-tier="row"]::after {
+    content: ''; position: absolute; top: 8px; right: 8px; width: 8px; height: 8px;
+    border-radius: 50%; background: #7b5cff; z-index: 3; pointer-events: none; }
+  body.comfy .stad-band {
+    position: absolute; z-index: 4; pointer-events: none; background: rgba(12,14,18,.72);
+    color: #f4f7fb; font-size: 12px; font-weight: 700; letter-spacing: .04em;
+    padding: 3px 8px; border-radius: 999px; }
+  body.comfy .tile[data-tier="bot"] { z-index: 5; border-radius: 12px; overflow: hidden; }
+  /* Gallery keeps the stage strip playing (PiP can aim it) but off the mosaic.
+     A stage mode adds .show-stage and places that strip itself. */
+  body.comfy:not(.show-stage) #stagefeed {
+    position: absolute !important; left: -16px !important; top: 0 !important;
+    width: 4px !important; height: 4px !important; overflow: hidden !important;
+    opacity: 0 !important; pointer-events: none !important; margin: 0 !important; padding: 0 !important; }
+  body.comfy #stadium .rowtile.stad-src {
+    position: absolute; left: -12px; top: 0; width: 4px; height: 4px; opacity: 0;
+    pointer-events: none; overflow: hidden; }
+  .bar #bargrip {
+    width: 22px; height: 48px; padding: 0; border: 0; border-radius: 8px; background: transparent;
+    color: #8d93a0; cursor: grab; touch-action: none; flex: 0 0 auto;
+    display: inline-flex; align-items: center; justify-content: center; }
+  .bar #bargrip:active { cursor: grabbing; }
   body.screen-on #feed { padding-bottom: 132px; box-sizing: border-box; background: #0c0e12; }
   body.screen-on #grid { flex: 0 0 120px; height: 120px; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; }
   body.screen-on #grid .tile { height: 104px; flex: 0 0 auto; width: auto; aspect-ratio: 16 / 9; }
@@ -1433,8 +1516,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
     <span class="status" id="status">Joining…</span>
   </div>
+  <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
   <div class="admcount" id="admcount" style="display:none"></div>
   <div class="bar collapsed" role="toolbar" aria-label="Call controls">
+    <button id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
     <button id="cam" class="iconbtn off" aria-label="Camera" title="Your camera">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="2" y="6" width="13" height="12" rx="2"/><path d="M15 10.5 22 7v10l-7-3.5"/>
@@ -1446,7 +1533,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
     </button>
     <button id="reactbtn" type="button" class="iconbtn" aria-label="Reactions" aria-expanded="false" aria-pressed="false" title="Reactions">
-      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1.1 1.4 2.4 2 4 2s2.9-.6 4-2"/><circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none"/></svg>
     </button>
     <button id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
@@ -1463,16 +1550,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button class="seg" id="blur-none" data-blur="0">No blur</button>
       </span>
     </span>
+    <button type="button" id="whobtn" title="Who is on this meeting — names and internet addresses">Who</button>
     <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
         <path d="M4 16a8 8 0 0 0 14.9 2"/><polyline points="19 22 19 18 15 18"/></svg>
+      <span class="blab">Flip</span>
     </button>
     <button id="pipbtn" class="iconbtn" aria-label="Float the meeting" title="Float the meeting in a mini window — it stays on screen while you use other apps" style="display:none">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
+      <span class="blab">Float</span>
     </button>
-    <button type="button" id="whobtn" title="Who is on this meeting — names and internet addresses">Who</button>
     <button id="invite" title="Friends join you live with one link">Invite</button>
     <button id="appbtn" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
     <button id="sharebtn" title="Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)" style="display:none">Share screen</button>
@@ -1677,10 +1766,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="name-modal" role="dialog" aria-modal="true" id="vote-modal" style="display:none">
     <div class="name-box" style="max-width:24rem;text-align:left">
       <h3>Place a vote</h3>
-      <p style="font-size:.85rem;opacity:.8;margin:.4rem 0 .9rem">One vote per person, counted while the voter is in the room. A majority of the room acts — nobody has special power here.</p>
-      <button class="voteopt" data-vm="up">🟢 Vote onto stage<small>A green dot appears on everyone not on the stage — tap to vote them up. At a majority they take the stage.</small></button>
-      <button class="voteopt" data-vm="down">🔴 Vote off stage<small>A red ✕ appears on the stage panels — tap to vote them down. At a majority they step off.</small></button>
-      <button class="voteopt" data-vm="kick">⛔ Vote out of room<small>A red ✕ appears on everyone not on the stage — your vote follows them into every room you share.</small></button>
+      <p style="font-size:.85rem;opacity:.8;margin:.2rem 0 .8rem">One vote each, while you are in the room. A majority acts.</p>
+      <button class="voteopt up" data-vm="up"><span class="vic" aria-hidden="true"></span>Vote onto stage<small>A green dot marks who you can send up. A majority puts them on stage.</small></button>
+      <button class="voteopt down" data-vm="down"><span class="vic" aria-hidden="true"></span>Vote off stage<small>An amber dot marks who you can send down. A majority takes them off.</small></button>
+      <button class="voteopt danger" data-vm="kick"><span class="vic" aria-hidden="true"></span>Vote out of room<small>A red outline marks who you can remove. Your vote follows them into rooms you share.</small></button>
       <div style="display:flex;justify-content:flex-end;margin-top:.3rem"><button id="vote-cancel">Cancel</button></div>
     </div>
   </div>
@@ -1924,6 +2013,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/mesh-identity.js"></script>
   <script src="js/mesh-wire.js"></script>
   <script src="js/mesh-media.js"></script>
+  <script src="js/meet-pack.js"></script>
+  <script src="js/meet-layout.js"></script>
+  <script src="js/meet-leave.js"></script>
+  <script src="js/meet-views.js"></script>
   <script src="js/mesh-pipe.js"></script>
   <script src="js/relay-config.js"></script>
   <script src="js/runtime.js"></script>
@@ -2127,6 +2220,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const DEL_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
 
     let myId = null, localStream = null, meTile = null, leaving = false;
+    // Set while "Leave the meeting?" is up. Repair loops must not put a
+    // track back on a sender until Cancel (DESIGN §11).
+    let outgoingHeld = false, leaveSnap = null, leavingForAsk = false;
     // startMesh resolves this when myId is minted. inviteFromSolo awaits it
     // instead of polling. A fresh socket arms a new promise only while myId
     // is still unset.
@@ -2361,6 +2457,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return st.stg || 0;
       };
       const out = [];
+      // A meeting bot never takes the stage. It stays a small tile.
+      const botOf = (id) => id === myId ? !!myStatus.bot : !!((statusOf.get(id) || {}).bot);
       // Receiver-side vote enforcement: a device the room has majority-voted
       // OFF the stage is excluded on EVERY phone, whatever its own stg flag
       // says — a hacked client can refuse to step down, but nobody paints or
@@ -2372,6 +2470,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const t = stgOf(id);
         // A share grant is a stage seat only while they are actually sharing.
         // It is not a general pass onto the stage.
+        if (botOf(id)) continue;
         if (!t || !(canStage(id) || (shareClaim(id) && mayShareScreen(id)))) continue;
         if (vt) { const dv = devFor(id); if (dv && (vt.down[dv] || 0) >= vt.need) continue; }
         out.push([id, t]);
@@ -2383,7 +2482,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (dg) {
         const have = new Set(out.map((x) => x[0]));
         for (const e of dg.stage) {
-          if (!e.id || have.has(e.id) || e.id === myId || stHold(e.id) || !notTomb(e.id) || !(canStage(e.id) || ((e.f & 2) && mayShareScreen(e.id)))) continue;
+          if (!e.id || have.has(e.id) || e.id === myId || botOf(e.id) || stHold(e.id) || !notTomb(e.id) || !(canStage(e.id) || ((e.f & 2) && mayShareScreen(e.id)))) continue;
           if (vt) { const dv = e.dv || devFor(e.id); if (dv && (vt.down[dv] || 0) >= vt.need) continue; }
           out.push([e.id, e.k]);
         }
@@ -4248,6 +4347,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const tile = document.createElement('div');
       tile.className = 'tile' + (isMe ? ' me' : '');
       tile.dataset.peer = id;
+      tile.dataset.pzkey = 'peer:' + id;
       const video = document.createElement('video');
       video.autoplay = true; video.playsInline = true;
       if (isMe) video.muted = true;
@@ -4332,10 +4432,67 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (st && st.ccst === 'behind') return 'Transcription behind, skipping old audio';
       return 'transcribing';
     }
-    // Repaint one tile's overlay: mute/blur/camera chips (attributed when the
+    // Open rooms: anyone may blur anyone else. Admin rooms: only an admin.
+    // Never yourself (setMod refuses myId). The corner box is that power,
+    // visible, not a hover menu.
+    function localBlurPower() {
+      if (typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin) return false;
+      return true;
+    }
+    function paintTileChrome(t, id, isMe, st) {
+      if (!t || !t.tile || typeof t.tile.querySelector !== 'function') return;
+      if (typeof document === 'undefined' || !document || typeof document.createElement !== 'function') return;
+      const tile = t.tile;
+      if (st && st.bot) {
+        let mark = tile.querySelector(':scope > .botbadge');
+        if (!mark) { mark = document.createElement('span'); mark.className = 'botbadge'; tile.appendChild(mark); }
+        if (mark.textContent !== '\uD83E\uDD16 bot') mark.textContent = '\uD83E\uDD16 bot';
+      } else {
+        const mark = tile.querySelector(':scope > .botbadge');
+        if (mark && mark.remove) mark.remove();
+      }
+      let box = tile.querySelector(':scope > .blurbox');
+      const power = !isMe && localBlurPower();
+      if (!power) {
+        if (box && box.remove) box.remove();
+        return;
+      }
+      if (!box) {
+        box = document.createElement('button');
+        box.type = 'button';
+        box.className = 'blurbox';
+        box.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (e.preventDefault) e.preventDefault();
+          try {
+            const cur = modOf(id).blur;
+            setMod(id, 'blur', !(cur && cur.on));
+          } catch (err) {}
+        });
+        tile.appendChild(box);
+      }
+      let on = false, by = '';
+      try { const m = modOf(id).blur; on = !!(m && m.on); by = (m && m.by) || ''; } catch (e) {}
+      const label = on ? 'Unblur' : 'Blur for all';
+      box.className = 'blurbox on';
+      if (box.textContent !== label) box.textContent = label;
+      box.setAttribute('aria-pressed', on ? 'true' : 'false');
+      const tip = on ? ('Blurred for everyone' + (by ? ' by ' + by : '')) : 'Blur for all';
+      if (box.title !== tip) box.title = tip;
+    }
+    // Repaint one tile's overlay: mute/camera icons (attributed when the
     // group applied them), receiver-side ENFORCEMENT of group mute/blur, and
-    // the moderation menu's labels.
+    // the moderation menu's labels. Blur level is not a chip.
     function updateTile(id, inPass) {
+      // Inside the function so a source-lift of updateTile still builds icons.
+      // The words live on aria-label; the glyph is the only thing drawn.
+      const ICO_MIC_OFF = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path fill="currentColor" d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3 3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/></svg>';
+      const ICO_CAM_OFF = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false"><path fill="currentColor" d="M21 6.5l-4 4V7c0-.55-.45-1-1-1H9.82L21 17.18V6.5zM3.27 2 2 3.27 4.73 6H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2z"/></svg>';
+      const statusIco = (kind, label) => {
+        const svg = kind === 'mic-off' ? ICO_MIC_OFF : ICO_CAM_OFF;
+        const safe = esc(label);
+        return '<span class="ico" data-icon="' + kind + '" title="' + safe + '" aria-label="' + safe + '">' + svg + '</span>';
+      };
       const isMe = id === 'me';
       const t = isMe ? meTile : peers.get(id);
       if (!t) return;
@@ -4357,6 +4514,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       }
       const st = (isMe ? myStatus : statusOf.get(id)) || {};
+      // Camera-off art: an avatar URL when one is already on the status or
+      // peer, otherwise the initials painted just above. After the myStatus
+      // read so a source test can still stop on that name.
+      if (t.avatar && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.avatarUrl) {
+        const url = GifOS.meetViews.avatarUrl(st, isMe ? null : t);
+        if (url || (t.avatar.classList && t.avatar.classList.contains('has-img'))) GifOS.meetViews.paintAvatar(t.avatar, url, t.avatar.textContent);
+      }
       const mod = modOf(id);
       const gMute = mod.mute && mod.mute.on, gBlur = mod.blur && mod.blur.on, gCam = mod.cam && mod.cam.on;
       const chips = [];
@@ -4394,24 +4558,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           : '<span class="warn">🖥 sharing their screen</span>');
       }
       if (st.hand) chips.push('<span class="warn">✋ hand raised</span>');
-      if (st.bot) chips.push('<span class="botbadge">🤖 bot</span>');
+      if (st.lv) chips.push('<span>leaving…</span>');
       if (st.rec) chips.push('<span class="warn">⏺ recording this meeting</span>');
       if (st.scribe) chips.push('<span>✍ writing everyone down</span>');
       if (st.cc) chips.push('<span>📝 ' + ccLiveLabel(st) + '</span>');
-      if (gMute) chips.push('<span class="warn">🔇 muted for everyone by ' + esc(mod.mute.by) + '</span>');
-      else if (st.muted) chips.push('<span>🎤 muted</span>');
+      // Status icons only: a muted mic, a camera-off glyph. No icon when the
+      // camera is on. Blur is the picture itself, never a badge. A bot has
+      // neither a mic nor a camera.
+      if (!st.bot && gMute) chips.push(statusIco('mic-off', 'muted for everyone by ' + (mod.mute.by || 'someone')));
+      else if (!st.bot && st.muted) chips.push(statusIco('mic-off', 'muted'));
       const bl = blurLevelFor(id);
-      if (gBlur) chips.push('<span class="warn">🌫 blurred for everyone by ' + esc(mod.blur.by) + '</span>');
-      // What clears THIS tile is the blur rule's own branch: an admin room
-      // clears per tile once an admin is here (unanimity plays no part), so a
-      // consenting seat in the blurred waiting room is told to wait for the
-      // host, not for everyone. With the host present the tile is clear and
-      // this chip is unreachable.
-      else if (bl && consents(st)) chips.push('<span>🌫 ' + (!roomPw ? 'blurred — a room password is the key to clear video'
-        : hasAdminRoom() ? 'blurred until the host is here' : 'blurred until everyone is ready (camera on, No blur)') + '</span>');
-      else if (bl) chips.push('<span>🌫 ' + (bl === 2 ? 'max blur' : 'blurred') + '</span>');
-      if (gCam) chips.push('<span class="warn">📷 video off for everyone by ' + esc(mod.cam.by) + '</span>');
-      else if (st.camOff) chips.push('<span>📷 camera off</span>');
+      if (!st.bot && gCam) chips.push(statusIco('cam-off', 'video off for everyone by ' + (mod.cam.by || 'someone')));
+      else if (!st.bot && st.camOff) chips.push(statusIco('cam-off', 'camera off'));
       if (hasAdminRoom() && mod.app && mod.app.on && !admins.includes(id)) chips.push('<span>🧩 may run apps — allowed by ' + esc(mod.app.by) + '</span>');
       // The chip names a per-person allow only. A room-wide allow covers
       // everyone and would chip every tile; modOf would not tell them apart.
@@ -4432,8 +4590,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // .stopshare chip (role=button) and flashes every chip for nothing.
       const chipHtml = chips.join('');
       if (t.chipsHtml !== chipHtml) { t.chipsHtml = chipHtml; t.chips.innerHTML = chipHtml; reactStats.chipWrites++; }
+      try { paintTileChrome(t, id, isMe, st); } catch (e) {}
+      const dark = seatDark(st) || !!gCam || (!isMe && typeof shareBlocked === 'function' && !!shareBlocked(id));
+      if (dark && t.avatar && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.paintShade) {
+        const sid = isMe ? ((typeof myId !== 'undefined' && myId) ? myId : 'me') : id;
+        try {
+          GifOS.meetViews.paintShade(t.tile, sid);
+          GifOS.meetViews.paintShade(t.avatar, sid);
+          const url = GifOS.meetViews.avatarUrl(st, isMe ? null : t) || '';
+          GifOS.meetViews.paintAvatar(t.avatar, url, t.avatar.textContent || nameInitial(isMe ? myName() : displayName(id)));
+        } catch (e) {}
+      }
       t.tile.classList.toggle('noroute', !isMe && !!t.noRoute);
-      t.tile.classList.toggle('cam-off', seatDark(st) || !!gCam || (!isMe && typeof shareBlocked === 'function' && !!shareBlocked(id))); // admin video-off, and an unpermitted screen claim, hide the tile on every receiver; a permitted share is not a dark seat
+      t.tile.classList.toggle('cam-off', dark); // admin video-off, and an unpermitted screen claim, hide the tile on every receiver; a permitted share is not a dark seat
       if (t.avatar && typeof t.avatar.querySelector === 'function') {
         if (isMe) {
           const mine = (GifOS.store.identity() || {}).avatar;
@@ -4477,7 +4646,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             b.textContent = shareLabel; b.setAttribute('aria-label', shareLabel);
           }
         }
-      } else if (gMute && localStream) {
+      } else if (gMute && localStream && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) {
         // the group muted ME: cut the source too, not just everyone's speakers
         const a = localStream.getAudioTracks()[0];
         if (a && a.enabled) { a.enabled = false; myStatus.muted = true; }
@@ -4523,7 +4692,135 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         t.classList.toggle('lead', nRemote === 3 && i === 0);
         t.classList.toggle('span-bottom', nRemote === 5 && i === remoteTiles.length - 1);
       });
+      try { applyComfy(); } catch (e) {}
     }
+
+    // People hidden from the row are the stadium. Stagers stay in the row
+    // while comfy is on (their direct tile is the face; the strip is not).
+    function comfyStadRoster() {
+      const shown = {};
+      if (myId) shown[myId] = true;
+      for (const [pid, p] of peers) {
+        if (!p || p.headless || !p.tile) continue;
+        if (p.tile.style.display !== 'none') shown[pid] = true;
+      }
+      const out = [], seen = {};
+      const push = (id) => {
+        if (!id || seen[id] || shown[id]) return;
+        seen[id] = true;
+        out.push(id);
+      };
+      try { for (const id of Object.keys(rosterNames)) push(id); } catch (e) {}
+      for (const id of peers.keys()) push(id);
+      return out;
+    }
+    function comfyStadMeta() {
+      let n = 0, cols = 0, video = null, srcEl = null;
+      try {
+        srcEl = document.querySelector('#stadium [data-row="sd"]');
+        video = srcEl ? srcEl.querySelector('video') : null;
+      } catch (e) {}
+      try {
+        if (sdPack && sdPack.count && sdPack.count() > 0) { n = sdPack.count(); cols = sdPack.cols() || 0; }
+      } catch (e) {}
+      try {
+        if (!(n > 0) && mosIn) {
+          const m = mosIn.get('sdm') || mosIn.get('sd');
+          if (m && m.meta) { if (m.meta.n) n = m.meta.n; if (m.meta.cols) cols = m.meta.cols; }
+        }
+      } catch (e) {}
+      return { n: n | 0, cols: cols | 0, video: video, srcEl: srcEl };
+    }
+    let comfyBusy = false;
+    function applyComfy() {
+      if (comfyBusy) return;
+      const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
+      if (!MV || !MV.apply) return;
+      const feed = document.getElementById('feed');
+      const allowed = !!meTile && MV.comfyAllowed(document.body);
+      document.body.classList.toggle('comfy', allowed);
+      if (!allowed || !feed) { try { MV.clearRoot(feed); } catch (e) {} return; }
+      comfyBusy = true;
+      try {
+        const tiles = [];
+        const stg = stageIds();
+        if (meTile && meTile.tile && meTile.tile.style.display !== 'none') {
+          tiles.push({ id: 'me', el: meTile.tile, tier: myStatus.bot ? 'bot' : 'row', me: true, bot: !!myStatus.bot,
+            hand: !!myStatus.hand, handOrd: myStatus.hand || 0,
+            // Your own picture stays in the grid unless you swapped onto the stage.
+            stage: !myStatus.bot && !!window.__meetSwapSelf && stg.indexOf(myId) >= 0,
+            stageOrd: Math.max(0, stg.indexOf(myId)),
+            speaker: !myStatus.bot && !!(speakingOf && speakingOf.get && speakingOf.get('me')), pz: 'peer:me' });
+        }
+        for (const [pid, p] of peers) {
+          if (!p || !p.tile || p.headless || p.tile.style.display === 'none') continue;
+          const st = statusOf.get(pid) || {};
+          const si = stg.indexOf(pid);
+          const bot = !!st.bot;
+          tiles.push({ id: pid, el: p.tile, tier: bot ? 'bot' : 'row', bot: bot,
+            hand: !!st.hand, handOrd: st.hand || 0,
+            stage: !bot && si >= 0, stageOrd: Math.max(0, si),
+            speaker: !bot && !!(speakingOf && speakingOf.get && speakingOf.get(pid)), pz: 'peer:' + pid });
+        }
+        const meta = comfyStadMeta();
+        const roster = comfyStadRoster();
+        // Faces are the people not already on screen. The packer's count
+        // only drives the crop, and only when it names this same set.
+        const faces = [];
+        for (let j = 0; j < roster.length; j++) {
+          const id = roster[j];
+          let name = '\u2026';
+          try { name = displayName(id) || name; } catch (e) {}
+          // A camera-off face (or one we have not heard from yet) shows
+          // initials. The composite cell for that person is black.
+          const st = statusOf.get(id) || null;
+          const off = !st || (!!st.camOff && !st.scr);
+          let avatar = '';
+          try { avatar = (MV.avatarUrl && MV.avatarUrl(st || {}, null)) || ''; } catch (e2) {}
+          faces.push({ id: id, name: name, initials: nameInitial(name), off: off, avatar: avatar });
+        }
+        const cols = (meta.n === roster.length) ? (meta.cols || 0) : 0;
+        if (meta.video && !meta.video._comfyRz) {
+          meta.video._comfyRz = true;
+          meta.video.addEventListener('resize', () => { try { layout(); } catch (e) {} });
+        }
+        const phone = window.innerWidth < 600;
+        let holdMs = 2500;
+        try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}
+        window.__comfyLast = MV.apply({
+          feed: feed, tiles: tiles, faces: faces, video: meta.video, cols: cols,
+          orderKey: roster.length + ':' + roster.join(','), holdMs: holdMs,
+          vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: myId || 'me',
+          pill: document.body.classList.contains('has-pill'),
+          mode: window.__meetViewMode || 'gallery', swapSelf: !!window.__meetSwapSelf,
+          gallery: window.__meetGallery || 'fit', now: Date.now(),
+          onSettle: () => { try { layout(); } catch (e) {} },
+        });
+        if (meta.srcEl) meta.srcEl.classList.toggle('stad-src', faces.length > 0);
+      } finally { comfyBusy = false; }
+    }
+    try {
+      window.__meetGallery = localStorage.getItem('meet.view.v1.gallery') === 'scroll' ? 'scroll' : 'fit';
+    } catch (e) { window.__meetGallery = 'fit'; }
+    const fitbtn = document.getElementById('fitbtn');
+    function paintFit() {
+      if (!fitbtn) return;
+      const scroll = window.__meetGallery === 'scroll';
+      fitbtn.textContent = scroll ? '▦ Scroll' : '▦ Fit';
+      fitbtn.setAttribute('aria-pressed', scroll ? 'false' : 'true');
+    }
+    if (fitbtn) fitbtn.addEventListener('click', () => {
+      window.__meetGallery = window.__meetGallery === 'scroll' ? 'fit' : 'scroll';
+      try { localStorage.setItem('meet.view.v1.gallery', window.__meetGallery); } catch (e) {}
+      paintFit();
+      try { layout(); } catch (e) {}
+    });
+    paintFit();
+    let comfyResizeT = 0;
+    window.addEventListener('resize', () => {
+      if (comfyResizeT) clearTimeout(comfyResizeT);
+      comfyResizeT = setTimeout(() => { comfyResizeT = 0; try { layout(); } catch (e) {} }, 150);
+    });
 
     // ---- who's talking: per-stream audio meters → glowing tile border --------
     let ac = null;
@@ -5075,6 +5372,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, 20000);
     }
     function refreshOutbound() {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       reactCamIdle();
       const vt = sentVideoTrack();
       // Your self-view shows EXACTLY the track you broadcast (raw or blurred).
@@ -6880,6 +7178,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // pair's transport, once, after its channel is open. Returns true when
     // anything was added (the caller renegotiates over the channel).
     function enableMedia(p) {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return false;
       if (!p || !p.pc || p.mediaOn) return false;
       p.mediaOn = true;
       const pc = p.pc, carryCam = camPeer(p.id) && !p.headless;
@@ -8392,7 +8691,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Stage strip instead ("stagers live on the Stage ONLY",
         // docs/media-plane.md) — their main tracks are parked anyway, so the
         // tile would be a black square. It returns the moment they step down.
-        if (stg.has(pid)) { paintDisp(p.tile, 'none'); continue; }
+        if (stg.has(pid)) {
+          // Comfy gallery shows a stager in the row. The strip is a different mode.
+          let inGrid = false;
+          try { inGrid = !!(meTile && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.comfyAllowed(document.body)); } catch (e) { inGrid = false; }
+          paintDisp(p.tile, inGrid ? '' : 'none');
+          continue;
+        }
         const k = coordOfPeer.get(pid);
         if (!k) { paintDisp(p.tile, ''); continue; } // unknown coord ⇒ show
         const cc = net.topo.unck(k);
@@ -10287,6 +10592,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       regrabCamera('reviveCamera:ended-track');
     }
     function regrabCamera(reason) {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       // A re-grab replaces BOTH tracks in localStream, which restarts the blur
       // pipe and so changes sentVideoTrack — which rebuilds mySelfStream's memo,
       // mints a new stg stream id, and re-ships the stage feed to everyone (and
@@ -10415,6 +10721,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return md.enumerateDevices().then((list) => { audioDevKey = audioDevKeyOf(list); }, () => {});
     }
     function setMicMode(mode, force) {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (!localStream) return;
       // A request that lands while a grab is in flight is KEPT, never dropped:
       // every caller fires once (song start, song end, a device change), so a
@@ -13071,6 +13378,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // again (drop, then the same track) restarts the encoder. Never touches
     // a parked, staged, or cam-off sender — those are supposed to be quiet.
     function kickMainVideo(p) {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (!p || !p.mainV || p.remoteParkMain || myStatus.camOff || stageIds().includes(myId) || !camPeer(p.id)) return;
       let vt = null; try { vt = sentVideoTrack(); } catch (e) {}
       if (!vt || vt.readyState !== 'live') return;
@@ -13085,6 +13393,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Seat the mic again the same way. A staged sender is parked on purpose
     // and stays parked; mute is the track's enabled flag, so it carries over.
     function kickMainAudio(p) {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (!p || !p.mainA || stageIds().includes(myId)) return;
       const at = localStream && localStream.getAudioTracks()[0];
       if (!at || at.readyState !== 'live') return;
@@ -14023,6 +14332,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               job.senders.push(sd); job.trackList.push(carrier.track); job.srcTracks.push(tr);
               if (isStageJob(job.key)) stageSenders.add(sd);
               if (!job.active) { try { sd.replaceTrack(null); } catch (e) {} try { MPipe.pausePipe(jk, true); } catch (e) {} }
+              else if (typeof outgoingHeld !== 'undefined' && outgoingHeld) { try { sd.replaceTrack(null); } catch (e) {} }
               job.attachErr = null;
               return sd;
             }
@@ -14035,6 +14345,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         job.senders.push(sd); job.trackList.push(tr); job.srcTracks.push(tr);
         if (isStageJob(job.key)) stageSenders.add(sd);
         if (!job.active) { try { sd.replaceTrack(null); } catch (e) {} }
+        else if (typeof outgoingHeld !== 'undefined' && outgoingHeld) { try { sd.replaceTrack(null); } catch (e) {} }
         job.attachErr = null;
         return sd;
       } catch (e) { job.attachErr = (e && e.name) || 'error'; }
@@ -14225,7 +14536,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const wantsPipe = kind === 'video' && pipeEnabled() && !pipeDeny.has(jk) && !pipeJobs.has(jk)
               && (() => { try { return !!MPipe.receiverForTrack(nt, [...peers.values()].map((q) => q.pc).filter(Boolean)); } catch (e) { return false; } })();
             if (wantsPipe) { mosDetach(cur, jk, p, i); mosAttach(cur, jk, p, nt); ops.push('relane:' + kind); have = haveIdx(kind); continue; }
-            if (cur.active) { try { cur.senders[i].replaceTrack(nt); } catch (e) {} }
+            if (cur.active && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) { try { cur.senders[i].replaceTrack(nt); } catch (e) {} }
             cur.trackList[i] = nt; cur.srcTracks[i] = nt; ops.push('swap:' + kind);
           }
           // grow: the source gained a track of this kind — a fresh m-line
@@ -14384,6 +14695,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const jobPinned = (jk) => DEBUG_ON && window.__parkedJobs && (window.__parkedJobs.get(jk) || 0) > Date.now();
     function setJobActive(jk, on) {
       const job = mosJobs.get(jk); if (!job) return;
+      if (on && typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (on && jobPinned(jk)) return; // pinned parked — ignore the wake
       if (!!job.active === !!on) return;
       job.active = !!on;
@@ -15455,7 +15767,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let el = stadiumEl.querySelector('[data-row="sd"]');
       if (!stream) {
         if (el) { for (const v of el.querySelectorAll('video')) { try { v.pause(); v.srcObject = null; } catch (e) {} releaseAudio(v); } el.remove(); }
-        stadiumEl.classList.toggle('on', !!stadiumEl.querySelector('.rowtile')); compOf.delete('sd'); recSrcDirty = true; return;
+        stadiumEl.classList.toggle('on', !!stadiumEl.querySelector('.rowtile')); compOf.delete('sd'); recSrcDirty = true;
+        try { layout(); } catch (e) {}
+        return;
       }
       if (!el) {
         el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sd';
@@ -15468,6 +15782,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       stadiumEl.classList.add('on');
       compOf.set('sd', { via: 'mosaic', streamId: stream.id, stream, names: [], cnt: roomPastSection() ? displayCount() : knownTotal(), el: v });
       recSrcDirty = true;
+      try { layout(); } catch (e) {}
     }
     // A STAGER NEVER WATCHES ITSELF THROUGH ITS OWN COMPOSITE.
     //
@@ -19951,9 +20266,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       camBtn.classList.toggle('off', myStatus.camOff);
       camBtn.setAttribute('aria-pressed', myStatus.camOff ? 'false' : 'true');
       camBtn.title = myStatus.camOff ? 'Camera off — tap to turn on' : 'Camera on — tap to turn off';
-      // blur slider: purely YOUR selection — the room rule (blurLevelFor)
-      // decides what actually shows; the slider never locks or grays.
-      const lvl = blurLevel(myStatus.blur);
+      // The filled segment follows the blur that is actually on the feed
+      // (forced blur, room password, consent). The local wish is the fallback
+      // when this function is lifted without blurLevelFor in scope.
+      let lvl = blurLevel(myStatus.blur);
+      try {
+        // A source-lift stubs a missing blurLevelFor as a function that
+        // returns nothing. Only a numeric answer is the real blur rule.
+        if (typeof blurLevelFor === 'function') {
+          const eff = blurLevelFor('me');
+          if (typeof eff === 'number') lvl = blurLevel(eff);
+        }
+      } catch (e) {}
       for (const seg of blurSegs) {
         const segOn = +seg.dataset.blur === lvl;
         seg.classList.toggle('sel', segOn);
@@ -20154,6 +20478,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
 
     micBtn.onclick = () => {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (document.body.classList.contains('app-room') && !roomAudioOn()) { setStatus('Talk is off — only the app host can turn it on.'); return; }
       if (!localStream) return lateMedia('mic');
       const track = localStream.getAudioTracks()[0]; if (!track) return lateMedia('mic');
@@ -20175,6 +20500,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (track.enabled) kickStageMic(track);
     };
     function kickStageMic(track) {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (!track || track.kind !== 'audio' || track.readyState !== 'live' || !track.enabled) return;
       for (const sd of stageSenders) {
         if (!sd || sd.track !== track) continue;
@@ -20183,6 +20509,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     camBtn.onclick = () => {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (document.body.classList.contains('app-room')) { setStatus('Video is not available in an app room yet — start a meeting and run the app from there.'); return; }
       if (!localStream) return lateMedia('cam');
       const track = localStream.getVideoTracks()[0]; if (!track) return lateMedia('cam');
@@ -20892,11 +21219,73 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const leaveAsk = document.getElementById('leave-ask');
     // The button asks first. leaveMeeting() itself stays immediate so a
     // hang-up from the OS and the test hook still leave at once.
-    if (leaveBtn) leaveBtn.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'flex'; };
+    if (leaveBtn) leaveBtn.onclick = () => { try { holdLeaveAsk(); } catch (e) {} if (leaveAsk) leaveAsk.style.display = 'flex'; };
     const leaveCancel = document.getElementById('leave-cancel');
-    if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; };
+    if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; try { releaseLeaveAsk(); } catch (e) {} };
     const leaveGo = document.getElementById('leave-go');
     if (leaveGo) leaveGo.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; leaveMeeting(); };
+    // Snapshot and silence every outgoing sender while the confirm is up.
+    // Cancel puts back exactly that snapshot. Confirm keeps the hold and
+    // leaves through leaveMeeting(). Defined after the buttons so a lifted
+    // onclick (no GifOS in the sandbox) still only shows the dialog.
+    function holdLeaveAsk() {
+      if (outgoingHeld) return;
+      const senders = [];
+      const seen = new Set();
+      const push = (sd) => { if (!sd || seen.has(sd)) return; seen.add(sd); senders.push(sd); };
+      try {
+        for (const p of peers.values()) {
+          if (!p || !p.pc || typeof p.pc.getSenders !== 'function') continue;
+          for (const sd of p.pc.getSenders()) push(sd);
+        }
+      } catch (e) {}
+      try { for (const sd of stageSenders) push(sd); } catch (e) {}
+      const tracks = [];
+      const grab = (stream) => {
+        if (!stream || typeof stream.getTracks !== 'function') return;
+        for (const t of stream.getTracks()) if (t) tracks.push(t);
+      };
+      try { grab(localStream); } catch (e) {}
+      try { grab(screenStream); } catch (e) {}
+      const ctx = {
+        mic: !myStatus.muted,
+        cam: !myStatus.camOff,
+        screen: !!(myStatus.scr && screenStream),
+        senders: senders,
+        tracks: tracks,
+      };
+      leaveSnap = (typeof GifOS !== 'undefined' && GifOS.meetLeave && GifOS.meetLeave.holdOutgoing) ? GifOS.meetLeave.holdOutgoing(ctx) : null;
+      outgoingHeld = true;
+      if (!leaving) { leaving = true; leavingForAsk = true; }
+      else leavingForAsk = false;
+      myStatus.lv = 1;
+      try { broadcastStatus(); } catch (e) {}
+      try { paintControls(); } catch (e) {}
+    }
+    function releaseLeaveAsk() {
+      if (!outgoingHeld && !leaveSnap) return;
+      const snap = leaveSnap;
+      leaveSnap = null;
+      outgoingHeld = false;
+      let back = { mic: false, cam: false, screen: false, dropped: [] };
+      try {
+        if (snap && typeof GifOS !== 'undefined' && GifOS.meetLeave && GifOS.meetLeave.releaseOutgoing) back = GifOS.meetLeave.releaseOutgoing(null, snap) || back;
+      } catch (e) {}
+      if (leavingForAsk) { leaving = false; leavingForAsk = false; }
+      const micTr = localStream && localStream.getAudioTracks()[0];
+      const camTr = localStream && localStream.getVideoTracks()[0];
+      let scrTr = null;
+      try { scrTr = screenStream && screenStream.getVideoTracks()[0]; } catch (e) {}
+      // An ended track stays off. A screen track is also kind 'video', so
+      // the dropped list is not a camera verdict.
+      myStatus.muted = !back.mic || !micTr || micTr.readyState === 'ended';
+      myStatus.camOff = !back.cam || !camTr || camTr.readyState === 'ended';
+      if (!back.screen || !scrTr || scrTr.readyState === 'ended') myStatus.scr = 0;
+      myStatus.lv = 0;
+      try { paintControls(); } catch (e) {}
+      try { broadcastStatus(); } catch (e) {}
+      try { refreshOutbound(); } catch (e) {}
+    }
     const leftRejoin = document.getElementById('left-rejoin'); if (leftRejoin) leftRejoin.onclick = () => location.reload();
     const leftClose = document.getElementById('left-close'); if (leftClose) leftClose.onclick = () => { location.href = homeHref(); };
 
@@ -22639,7 +23028,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       fsMain: () => ({ key: fsmain.dataset.key || null, bl: fsmain.classList.contains('blur2') ? 2 : fsmain.classList.contains('blur1') ? 1 : 0 }),
       fsThumbBlur: (key) => { const th = Array.from(fsstrip.children).find((t) => t.dataset.key === key); const tv = th && th.querySelector('video'); if (!tv) return null; return tv.classList.contains('blur2') ? 2 : tv.classList.contains('blur1') ? 1 : 0; },
       peerCamOff: (pid) => seatDark(statusOf.get(pid)),
-      defyCamOffForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; camDefiant = true; t.enabled = true; myStatus.camOff = false; broadcastStatus(); return true; },
+      defyCamOffForTest: () => { if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return false; const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; camDefiant = true; t.enabled = true; myStatus.camOff = false; broadcastStatus(); return true; },
       // a camera that comes on by a path that never asked the order (the page itself is honest)
       slipCamOnForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; t.enabled = true; myStatus.camOff = false; return true; },
       // freeze my outgoing pulses (simulates a phone that has throttled itself)
@@ -22697,6 +23086,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A modified client: claim a share and put a display track on the
       // senders without startScreenShare. Receivers still apply the grant.
       defyShareForTest: async () => {
+        if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return { claimed: false, held: true };
         let track = null;
         try {
           if (screenStream && screenStream.getVideoTracks()[0] && screenStream.getVideoTracks()[0].readyState === 'live') track = screenStream.getVideoTracks()[0];
@@ -22812,6 +23202,95 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       audioBlockedForTest: () => blockedAudio.size,
       audioBlockForTest: (el, name) => audioBlocked(el, { name }),
       takeTrForTest: (m) => takeTr(m),
+      markBotForTest: (on) => {
+        myStatus.bot = !!on;
+        try { updateTile('me'); } catch (e) {}
+        try { broadcastStatus(); } catch (e) {}
+        try { layout(); } catch (e) {}
+        return !!myStatus.bot;
+      },
+      setAvatarForTest: (url) => {
+        if (url) myStatus.avatar = String(url); else delete myStatus.avatar;
+        try { updateTile('me'); } catch (e) {}
+        try { broadcastStatus(); } catch (e) {}
+        return myStatus.avatar || '';
+      },
+      comfyForTest: () => {
+        const feed = document.getElementById('feed');
+        const nodes = [];
+        const take = (el) => {
+          if (!el || el.classList.contains('stad-src')) return;
+          const cs = getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden') return;
+          const r = el.getBoundingClientRect();
+          if (r.width < 2 || r.height < 2) return;
+          nodes.push({
+            id: el.dataset.peer || el.dataset.stad || el.id || '',
+            tier: el.dataset.tier || '',
+            x: r.x, y: r.y, w: r.width, h: r.height,
+          });
+        };
+        document.querySelectorAll('#feed .tile').forEach(take);
+        document.querySelectorAll('#stadfaces .stadface, #stadcrowd').forEach(take);
+        const bar = document.querySelector('.bar');
+        const br = bar ? bar.getBoundingClientRect() : null;
+        let box = null;
+        try { box = GifOS.meetLayout.viewBox(window.innerWidth, window.innerHeight, { phone: window.innerWidth < 600, pill: document.body.classList.contains('has-pill') }); } catch (e) {}
+        return {
+          on: document.body.classList.contains('comfy'),
+          mode: window.__meetViewMode || 'gallery',
+          last: window.__comfyLast || null,
+          box: box,
+          nodes: nodes,
+          scroll: feed ? feed.scrollHeight - feed.clientHeight : null,
+          overflow: feed ? getComputedStyle(feed).overflow : null,
+          bar: br ? { x: br.x, y: br.y, w: br.width, h: br.height, free: bar.dataset.barfree || '', barx: bar.dataset.barx || '', bary: bar.dataset.bary || '' } : null,
+        };
+      },
+      outgoingHoldForTest: () => {
+        const senders = [];
+        const push = (sd, where) => {
+          if (!sd) return;
+          senders.push({ where: where, track: sd.track ? sd.track.kind : null, en: sd.track ? !!sd.track.enabled : null, rs: sd.track ? sd.track.readyState : null });
+        };
+        for (const [pid, p] of peers) {
+          if (!p || !p.pc || typeof p.pc.getSenders !== 'function') continue;
+          try { for (const sd of p.pc.getSenders()) push(sd, String(pid).slice(0, 8)); } catch (e) {}
+        }
+        const tracks = [];
+        const grab = (stream, where) => { if (!stream || !stream.getTracks) return; for (const t of stream.getTracks()) tracks.push({ where: where, kind: t.kind, en: !!t.enabled, rs: t.readyState }); };
+        grab(localStream, 'local');
+        try { grab(screenStream, 'screen'); } catch (e) {}
+        return { held: !!outgoingHeld, leaving: !!leaving, lv: myStatus.lv || 0, mic: !myStatus.muted, cam: !myStatus.camOff, scr: myStatus.scr || 0, senders: senders, tracks: tracks };
+      },
+      reclaimForTest: () => {
+        try { refreshOutbound(); } catch (e) {}
+        try { for (const p of peers.values()) { kickMainVideo(p); kickMainAudio(p); } } catch (e) {}
+        try { if (localStream) kickStageMic(localStream.getAudioTracks()[0]); } catch (e) {}
+        return { held: !!outgoingHeld, leaving: !!leaving };
+      },
+      inboundMediaForTest: async (pid) => {
+        const p = peers.get(pid);
+        if (!p || !p.pc || typeof p.pc.getStats !== 'function') return null;
+        let audioEnergy = 0, audioLevel = 0, audioBytes = 0, frames = 0, videoBytes = 0, nA = 0, nV = 0;
+        try {
+          const stats = await p.pc.getStats();
+          stats.forEach((s) => {
+            if (!s || s.type !== 'inbound-rtp') return;
+            if (s.kind === 'audio') {
+              nA++;
+              audioEnergy += s.totalAudioEnergy || 0;
+              if ((s.audioLevel || 0) > audioLevel) audioLevel = s.audioLevel || 0;
+              audioBytes += s.bytesReceived || 0;
+            } else if (s.kind === 'video') {
+              nV++;
+              frames += s.framesReceived || 0;
+              videoBytes += s.bytesReceived || 0;
+            }
+          });
+        } catch (e) { return { err: String(e).slice(0, 80) }; }
+        return { audioEnergy: audioEnergy, audioLevel: audioLevel, audioBytes: audioBytes, frames: frames, videoBytes: videoBytes, nA: nA, nV: nV };
+      },
       leaveForTest: () => leaveMeeting(),
       recording: () => !!(recRec && recRec.state !== 'inactive'),
       recMode: () => recMode,
