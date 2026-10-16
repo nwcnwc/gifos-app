@@ -12,6 +12,15 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q22. A broadcast still asked for a host key before the service had a name
+
+The create form opened on “Your host key” and Generate, then Create & enter. A broadcast now asks for a service name and Go live. The host key is still minted and stored, and Change host key reveals it. A viewer password stays behind its own step. A meeting still shows the host key on the form. Go live sits 12px under the last text link, and on a short landscape the extra title is hidden so those links stay above the buttons. `test/mobile/create-one-password.spec.mjs`.
+
+Before: `test/mobile/screenshots/after/iphone-se-host-key.png`.
+After: `test/mobile/screenshots/after/iphone-se-service-name.png`.
+
+Design: one label, one field, one filled button. Change host key and Add a viewer password are blue text. Cancel is an outline. Warm copy and the first screen stay at 4. You still tap Start broadcasting before the name, and a church desk still goes on with no host key at all.
+
 ### Q21. The lobby sentence stayed 14px at a 200% root font
 
 `.lob-quiet` was 14px and the preview name was 15px. They are now `0.875rem` and `0.9375rem`. A 32px root paints them at 28px and 30px. The line is “You join muted.” on a meeting and “Your picture is the preview.” on a broadcast, so it stays one sentence. The phone preview row is at most 18vh, and the card scrolls, so Start stays on the screen. `test/mobile/lobby-scale.spec.mjs`.

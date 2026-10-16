@@ -1260,9 +1260,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      GUEST password (the one you do share) must be impossible to confuse. */
   .lob-pwlab { display: block; font-size: 1rem; margin: .2rem 0 .3rem; color: #1d1d1f; font-weight: 700; }
   .lob-pwlab small { display: block; font-weight: 400; color: #3a3a3f; font-size: .9rem; line-height: 1.35; margin: .12rem 0 .1rem; }
-  #lob-guest-reveal.lob-text { display: inline-flex; align-items: center; min-height: 44px; margin: 4px 0 8px; padding: 8px 0;
+  #lob-guest-reveal.lob-text, #lob-key-reveal.lob-text { display: inline-flex; align-items: center; min-height: 44px; margin: 4px 0 8px; padding: 8px 0;
     border: 0; background: transparent; color: #0064c8; font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
-  #lob-guest-reveal[hidden], #lob-guest-extra[hidden] { display: none !important; }
+  #lob-guest-reveal[hidden], #lob-guest-extra[hidden], #lob-key-reveal[hidden], #lob-key-block[hidden], #lob-admin-name-lab[hidden] { display: none !important; }
+  .lob-namelab { display: block; font-size: 1rem; font-weight: 700; color: #1d1d1f; margin: 0 0 .35rem; }
   .lob-sep { border-top: 1px solid var(--border, #2a2a3f); margin: 1rem 0 .7rem; }
   .lob-hist-h { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; opacity: 1; color: #1d1d1f; font-weight: 700; margin-bottom: .4rem; }
   .lob-item { display: flex; align-items: center; gap: .6rem; padding: .5rem .55rem; border-radius: .5rem; cursor: pointer; }
@@ -1638,14 +1639,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.form-open #lob-admin {
     display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; margin: 0;
   }
-  #lobby.form-open .lob-form-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
-  #lobby.form-open #lob-admin .lob-row { flex: 0 0 auto; margin-top: .35rem; }
+  /* Grow only when the fields overflow, so a short form keeps Go live
+     under the name instead of pinning it to the bottom of a tall card. */
+  #lobby.form-open .lob-form-body { flex: 0 1 auto; min-height: 0; overflow: auto; }
+  #lobby.form-open #lob-admin .lob-row { flex: 0 0 auto; margin-top: 12px; }
   @media (min-width: 701px) {
     #lobby.form-open.show { grid-template-columns: 1.35fr .8fr; grid-template-rows: minmax(0, 1fr); }
   }
   @media (max-width: 700px), (max-height: 520px) {
     #lobby.form-open.show { grid-template-columns: none; grid-template-rows: 72px minmax(0, 1fr); }
     #lobby.form-open .lob-preview { min-height: 0; max-height: 72px; margin: 0; border-radius: 0; }
+  }
+  @media (max-height: 420px) {
+    #lobby.form-open h1 { display: none; }
   }
 </style>
 <script src="js/gifos-themes.js"></script>
@@ -1663,11 +1669,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button id="lob-admin-btn" class="lob-action">Start a room you run<small>You're the admin: set a password, mute/blur, ban a troublemaker</small></button>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <div class="lob-form-body">
+          <label class="lob-namelab" id="lob-admin-name-lab" for="lob-admin-name" hidden>Service name</label>
           <input id="lob-admin-name" maxlength="40" placeholder="Room name (anything you like)" autocomplete="off">
+          <button type="button" id="lob-key-reveal" class="lob-text" hidden>Change host key</button>
+          <div id="lob-key-block">
           <label class="lob-pwlab" for="lob-admin-pass"><b id="lob-admin-pass-head">Your host key</b><small id="lob-admin-pass-note">Only you need this. Everyone else uses the link.</small></label>
           <div class="lob-keyrow">
             <input id="lob-admin-pass" type="text" maxlength="64" placeholder="Type or generate" autocomplete="off" spellcheck="false">
             <button type="button" id="lob-keygen" class="lob-ghost">Generate</button>
+          </div>
           </div>
           <button type="button" id="lob-guest-reveal" class="lob-text">Add a guest password</button>
           <div id="lob-guest-extra" hidden>
@@ -11924,7 +11934,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const n = document.getElementById('lob-admin-name');
         const key = document.getElementById('lob-admin-pass');
         if (open && key && !key.value) key.value = mintHostKey();
+        if (open && BC_INTENT) {
+          document.getElementById('lob-key-block').hidden = true;
+          document.getElementById('lob-key-reveal').hidden = false;
+        }
         if (open) n.focus();
+      };
+      document.getElementById('lob-key-reveal').onclick = () => {
+        document.getElementById('lob-key-block').hidden = false;
+        document.getElementById('lob-key-reveal').hidden = true;
+        const key = document.getElementById('lob-admin-pass');
+        key.focus();
+        key.select();
       };
       document.getElementById('lob-keygen').onclick = () => {
         const key = document.getElementById('lob-admin-pass');
@@ -11941,11 +11962,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const rawName = document.getElementById('lob-admin-name').value || '';
         // slugRoom turns a blank into "room", so the empty check has to
         // happen on what was typed. A name with no letter or digit is blank.
-        if (!/[A-Za-z0-9]/.test(rawName)) { err.textContent = 'Give your room a name.'; return; }
+        const nameErr = BC_INTENT ? 'Name the service.' : 'Give your room a name.';
+        if (!/[A-Za-z0-9]/.test(rawName)) { err.textContent = nameErr; return; }
         const chosen = slugRoom(rawName, '');
-        const pass = (document.getElementById('lob-admin-pass').value || '').trim();
-        if (!chosen) { err.textContent = 'Give your room a name.'; return; }
+        let pass = (document.getElementById('lob-admin-pass').value || '').trim();
+        if (!pass && document.getElementById('lob-key-block').hidden) {
+          pass = mintHostKey();
+          document.getElementById('lob-admin-pass').value = pass;
+        }
+        if (!chosen) { err.textContent = nameErr; return; }
         if (!pass) { err.textContent = 'Add a host key, or tap Generate.'; return; }
+        const goLabel = BC_INTENT ? 'Go live' : 'Create & enter';
         const go = document.getElementById('lob-admin-go'); go.disabled = true; go.textContent = 'Creating…';
         try {
           const K = await deriveAdminKey(chosen, pass);
@@ -11961,7 +11988,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const guest = (document.getElementById('lob-guest-pass').value || '').trim();
           if (guest) { try { localStorage.setItem('gifos_vpw_' + chosen + '.' + V, guest); localStorage.setItem('gifos_vpwat_' + chosen + '.' + V, String(Date.now())); } catch (e) {} } // stamp the store's clock (§LOCK expiry)
           enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' : ''));
-        } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = 'Create & enter'; }
+        } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = goLabel; }
       };
       document.getElementById('lob-join-btn').onclick = () => { toggle('lob-join'); document.getElementById('lob-admin').style.display = 'none'; const i = document.getElementById('lob-join-in'); if (document.getElementById('lob-join').style.display !== 'none') i.focus(); };
       document.getElementById('lob-join-cancel').onclick = () => { document.getElementById('lob-join').style.display = 'none'; };
@@ -12007,7 +12034,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.querySelector('#lobby h1').textContent = 'Broadcast';
         document.querySelector('#lobby .lob-quiet').textContent = 'Your picture is the preview.';
         document.getElementById('lob-open').style.display = 'none';
-        document.getElementById('lob-admin-btn').innerHTML = 'Start broadcasting<small>You go live on the Stage; anyone with the link watches and chats</small>';
+        document.getElementById('lob-admin-btn').innerHTML = 'Start broadcasting<small>Name the service. Viewers use the link.</small>';
+        document.getElementById('lob-admin-name-lab').hidden = false;
+        document.getElementById('lob-admin-name').placeholder = 'Sunday morning';
+        document.getElementById('lob-admin-go').textContent = 'Go live';
+        document.getElementById('lob-key-block').hidden = true;
+        document.getElementById('lob-key-reveal').hidden = false;
         document.getElementById('lob-admin-pass-head').textContent = 'Your host key';
         document.getElementById('lob-guest-pass-head').textContent = 'Viewer password';
         document.getElementById('lob-admin-pass').placeholder = 'Type or generate';

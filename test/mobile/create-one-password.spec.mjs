@@ -7,16 +7,32 @@ async function openCreate(page) {
   await page.locator('#lob-admin-go').waitFor({ state: 'visible' });
 }
 
-test('broadcast create offers a readable host key', async ({ page }) => {
+test('broadcast create is a service name and Go live', async ({ page }) => {
   await openCreate(page);
+  await expect(page.locator('#lob-admin-name-lab')).toHaveText('Service name');
+  await expect(page.locator('#lob-admin-name')).toHaveAttribute('placeholder', 'Sunday morning');
+  await expect(page.locator('#lob-admin-go')).toHaveText('Go live');
+  await expect(page.locator('#lob-key-block')).toBeHidden();
+  await expect(page.locator('#lob-guest-pass')).toBeHidden();
+  const first = await page.locator('#lob-admin-pass').inputValue();
+  expect(first).toMatch(/^[a-z]+-[a-z]+-[a-z]+-\d{2}$/);
+  const reveal = page.locator('#lob-key-reveal');
+  await expect(reveal).toBeVisible();
+  await expect(reveal).toHaveText('Change host key');
+  const revealBox = await reveal.boundingBox();
+  expect(revealBox.height).toBeGreaterThanOrEqual(44);
+  const goBefore = await page.locator('#lob-admin-go').boundingBox();
+  const vh = page.viewportSize().height;
+  expect(goBefore.y + goBefore.height).toBeLessThanOrEqual(vh + 0.5);
+  expect(goBefore.y - (revealBox.y + revealBox.height)).toBeGreaterThanOrEqual(8);
+  await reveal.click();
+  await expect(page.locator('#lob-key-block')).toBeVisible();
+  await expect(reveal).toBeHidden();
   await expect(page.locator('#lob-admin-pass-head')).toHaveText('Your host key');
   await expect(page.locator('#lob-admin-pass')).toHaveAttribute('type', 'text');
-  await expect(page.locator('#lob-guest-pass')).toBeHidden();
   const note = await page.locator('#lob-admin-pass-note').innerText();
   expect(note.length).toBeLessThan(80);
   expect(note.toLowerCase()).not.toContain('password');
-  const first = await page.locator('#lob-admin-pass').inputValue();
-  expect(first).toMatch(/^[a-z]+-[a-z]+-[a-z]+-\d{2}$/);
   const fits = await page.locator('#lob-admin-pass').evaluate((el) => el.scrollWidth <= el.clientWidth + 2);
   expect(fits).toBe(true);
   const gen = page.locator('#lob-keygen');
@@ -31,11 +47,19 @@ test('broadcast create offers a readable host key', async ({ page }) => {
   const next = await page.locator('#lob-admin-pass').inputValue();
   expect(next).toMatch(/^[a-z]+-[a-z]+-[a-z]+-\d{2}$/);
   expect(next).not.toBe(first);
-  const go = await page.locator('#lob-admin-go').boundingBox();
-  const vh = page.viewportSize().height;
-  expect(go.y + go.height).toBeLessThanOrEqual(vh + 0.5);
-  const gap = go.y - (genBox.y + genBox.height);
-  expect(gap).toBeGreaterThanOrEqual(8);
+});
+
+test('a meeting still shows the host key up front', async ({ page }) => {
+  await page.goto('/run.html', { waitUntil: 'domcontentloaded' });
+  await page.locator('#lobby.show').waitFor();
+  await page.locator('#lob-admin-btn').click();
+  await page.locator('#lob-admin-go').waitFor({ state: 'visible' });
+  await expect(page.locator('#lob-admin-name-lab')).toBeHidden();
+  await expect(page.locator('#lob-key-block')).toBeVisible();
+  await expect(page.locator('#lob-key-reveal')).toBeHidden();
+  await expect(page.locator('#lob-admin-go')).toHaveText('Create & enter');
+  const first = await page.locator('#lob-admin-pass').inputValue();
+  expect(first).toMatch(/^[a-z]+-[a-z]+-[a-z]+-\d{2}$/);
 });
 
 test('a viewer password stays optional and off the first step', async ({ page }) => {
