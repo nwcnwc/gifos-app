@@ -82,9 +82,13 @@ The top chip still says Live or Watching. A full-width bar under that chip now s
 
 Chat is a labeled dock button, so it is one tap while More is closed. The dock still fits 1280, 1920, and 900. Prayer marks the composer (“Prayer request…”) and the sent line wears the word Prayer, separate from an ordinary message. The composer still clears the dock. After: `test/e2e/artifacts/chat-dock-after.png`, `chat-prayer-after.png`.
 
+### Q18. An open room did not say whether it was a service or a small group
+
+The full-width bar now names the room. A service says **Service · You are live** (red `#b61622`) or **Service · You are watching** (gray `#e8ecf1`). A small group says **Small group** on green `#143024`. Chat, leave, invite, Help, and the tab title use the same words. The lobby still says Start a call or Go live. The two bars do not share a background, and both clear the chip, the Fit button, and the dock at 1280, 1920, and 900. Before: the Q16 bars, which only said “You are live” / “You are watching”, and a meeting that hid the bar. After: `test/e2e/artifacts/service-bar-live-after.png`, `service-bar-watch-after.png`, `small-group-bar-after.png`.
+
 ## Open
 
-StreamYard is still ahead on one church row: telling a service apart from a small group once the room is open.
+Corporate trust is the next gap. Recording and “who is here” still live inside More, so a standup does not show either fact until that sheet is open. Personal leave and rejoin is the gap after that.
 
 ## How a session was opened without a relay
 

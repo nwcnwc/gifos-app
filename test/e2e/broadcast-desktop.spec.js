@@ -145,14 +145,17 @@ test('a broadcast host is marked Live and the room is not called a meeting', asy
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(HOST_SESSION);
   await page.waitForSelector('body.broadcast.meet-session');
-  await expect(page.locator('#paneltitle')).toHaveText('Broadcast chat');
+  await expect(page).toHaveTitle('Service — GifOS');
+  await expect(page.locator('#paneltitle')).toHaveText('Service chat');
+  await expect(page.locator('#airbar')).toHaveText('Service · You are live');
   await expect(page.locator('#onair')).toHaveText('Live');
   await expect(page.locator('#onair')).toHaveClass(/live/);
-  await expect(page.locator('#leavebtn')).toHaveAttribute('title', /broadcast/i);
-  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the broadcast?');
+  await expect(page.locator('#leavebtn')).toHaveAttribute('title', /service/i);
+  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the service?');
   expect((await page.locator('#leavebtn').getAttribute('title')).toLowerCase()).not.toContain('meeting');
+  expect((await page.locator('#airbar').textContent()).toLowerCase()).not.toContain('small group');
   await page.locator('#bartoggle').click();
-  await expect(page.locator('#bartoggle')).toHaveAttribute('aria-label', /broadcast/i);
+  await expect(page.locator('#bartoggle')).toHaveAttribute('aria-label', /service/i);
   const box = await page.locator('#onair').boundingBox();
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(1280);
@@ -165,7 +168,9 @@ test('a broadcast viewer is Watching, including at 900px', async ({ page }) => {
   await page.waitForSelector('body.broadcast');
   await expect(page.locator('#onair')).toHaveText('Watching');
   await expect(page.locator('#onair')).toHaveClass(/watch/);
-  await expect(page.locator('#paneltitle')).toHaveText('Broadcast chat');
+  await expect(page).toHaveTitle('Service — GifOS');
+  await expect(page.locator('#paneltitle')).toHaveText('Service chat');
+  await expect(page.locator('#airbar')).toHaveText('Service · You are watching');
   const box = await page.locator('#onair').boundingBox();
   expect(box.y).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(900);
@@ -176,9 +181,12 @@ test('a meeting keeps meeting words and hides the on-air pill', async ({ page })
   await page.goto(MEET_SESSION);
   await page.waitForSelector('body.meet-session');
   await expect(page.locator('body')).not.toHaveClass(/broadcast/);
-  await expect(page.locator('#paneltitle')).toHaveText('Meeting chat');
+  await expect(page).toHaveTitle('Small group — GifOS');
+  await expect(page.locator('#paneltitle')).toHaveText('Small group chat');
   await expect(page.locator('#onair')).toBeHidden();
-  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the meeting?');
+  await expect(page.locator('#airbar')).toHaveText('Small group');
+  await expect(page.locator('#airbar')).toHaveClass(/group/);
+  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the small group?');
 });
 
 test('invite is one tap on the dock, not inside More', async ({ page }) => {
@@ -206,7 +214,7 @@ test('invite is one tap on the dock, not inside More', async ({ page }) => {
   await bootSession(page, 1280, 720);
   await page.locator('#invite').click();
   await expect(page.locator('#inv-modal')).toBeVisible();
-  await expect(page.locator('#inv-modal h3')).toHaveText('Share this broadcast');
+  await expect(page.locator('#inv-modal h3')).toHaveText('Share this service');
 });
 
 test('reactions are emoji under a smiley, and the sparkle stays off this control', async ({ page }) => {
@@ -538,7 +546,7 @@ test('a volunteer cannot miss whether they are on air', async ({ page }) => {
     await page.goto('/run.html?desk=air' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#onair.live');
     const live = await readBar();
-    expect(live.text).toBe('You are live');
+    expect(live.text).toBe('Service · You are live');
     expect(live.bg).toBe('rgb(182, 22, 34)');
     expect(live.fg).toBe('rgb(255, 255, 255)');
     expect(live.h).toBeGreaterThanOrEqual(44);
@@ -552,14 +560,20 @@ test('a volunteer cannot miss whether they are on air', async ({ page }) => {
   await page.goto('/run.html?desk=airview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#onair.watch');
   const watch = await readBar();
-  expect(watch.text).toBe('You are watching');
+  expect(watch.text).toBe('Service · You are watching');
   expect(watch.bg).toBe('rgb(232, 236, 241)');
   expect(watch.fg).toBe('rgb(29, 29, 31)');
   expect(watch.h).toBeGreaterThanOrEqual(44);
   expect(watch.w).toBeGreaterThanOrEqual(1278);
   await page.goto(MEET_SESSION, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('body.meet-session .bar');
-  await expect(page.locator('#airbar')).toBeHidden();
+  const group = await readBar();
+  expect(group.text).toBe('Small group');
+  expect(group.bg).toBe('rgb(20, 48, 36)');
+  expect(group.bg).not.toBe('rgb(182, 22, 34)');
+  expect(group.h).toBeGreaterThanOrEqual(44);
+  expect(group.belowChip, JSON.stringify(group)).toBe(true);
+  expect(group.dock, JSON.stringify(group)).toBe(false);
 });
 
 test('chat is one tap on the dock, and a prayer is its own line', async ({ page }) => {

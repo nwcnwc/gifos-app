@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 against the desktop chrome in `run.html` (Meeting, and Broadcast via `#bc=1`). Scores are 1–5 for the **desktop UI** a person actually sees. 5 means that product is the reference for the row. This is not a score for media quality, scale, or mobile.
 
-GifOS leads **church** (4.5, StreamYard 4.0). It does not lead corporate (3.9, Zoom 4.9) or personal (3.8, FaceTime 4.8 and Meet 4.0). A tie is not a lead. Church still loses service-versus-group to StreamYard; the lead is the audience average.
+GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (3.9, Zoom 4.9) or personal (3.8, FaceTime 4.8 and Meet 4.0). A tie is not a lead. The church lead is the audience average.
 
 ## Who we are scoring against
 
@@ -32,12 +32,12 @@ Zoom still leads. The lobby’s blue button is Start a call, and Host this call 
 | A volunteer knows if they are on air | 5 | 5 | 5 | 5 |
 | Language a non-technical host understands | 4 | 4 | 3 | 4 |
 | Large, obvious controls | 4 | 3 | 4 | 5 |
-| Service (broadcast) vs small group (meeting) | 5 | 4 | 4 | 4 |
+| Service (broadcast) vs small group (meeting) | 5 | 4 | 4 | 5 |
 | Chat / prayer requests don’t fight the controls | 4 | 4 | 3 | 4 |
 | Join without an account or an install | 2 | 3 | 2 | 5 |
-| **Audience score** | **4.0** | **3.8** | **3.5** | **4.5** |
+| **Audience score** | **4.0** | **3.8** | **3.5** | **4.7** |
 
-GifOS leads this audience. The average is 4.5 against StreamYard 4.0. Chat is one tap on the dock, and a prayer request is its own line (Q17), so that row is even with StreamYard. The row still behind is service versus small group (4 vs 5). Arithmetic: (5+4+5+4+4+5)/6 = 4.5.
+GifOS leads this audience. The average is 4.7 against StreamYard 4.0. An open service says “Service · You are live” or “Service · You are watching”. An open small group says “Small group”, on a different color, with no menu (Q18). That row is even with StreamYard at 5. Language and chat stay tied at 4. Arithmetic: (5+4+5+5+4+5)/6 = 4.7.
 
 ## Personal
 
@@ -76,3 +76,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q15 | 3.7 (Zoom 4.9) | 4.2 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Host mute, blur, and ban sit on the broadcast stage. Scores stay: no row was “tools hidden in the gallery”. |
 | After Q16 | 3.7 (Zoom 4.9) | 4.3 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Full-width “You are live” / “You are watching”. On-air moves 4 → 5. Church average 4.3. |
 | After Q17 | 3.9 (Zoom 4.9) | 4.5 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Chat is a dock button. Prayer is a separate line. Corporate chat 3 → 4. Church chat 3 → 4. |
+| After Q18 | 3.9 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | An open room says Service or Small group. Service-versus-group 4 → 5. Corporate trust and personal leave stay where they were. |
