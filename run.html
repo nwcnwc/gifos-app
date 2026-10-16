@@ -1181,7 +1181,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.screen-on #grid .tile { flex: 0 0 11rem; width: 11rem; aspect-ratio: 16 / 9; }
   body.screen-on #stadium { flex: 0 0 auto; }
   #sharebtn.on { background: #b3402f; border-color: #d4593f; color: #fff; }
-  .stopshare { cursor: pointer; text-decoration: underline dotted; }
+  /* The thumbnail chip is a real stop. The row clips anything past the tile,
+     so this one stays first and does not shrink, and it takes the click
+     the rest of the chips ignore. */
+  .stopshare { cursor: pointer; text-decoration: underline dotted; pointer-events: auto; }
+  .tile .chips .stopshare { flex: 0 0 auto; order: -1; }
   /* Stop lives on the slide. The More row is a second way out, not the only one
      a client can see while they are looking at the deck. */
   #stagefeed .stagestop {
@@ -5309,9 +5313,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // collapsed is the DEFAULT (gifos_meet_bar). So the one moment a person
       // most needs a way out is the moment the way out can be off screen. A
       // tile is always on screen, so the chip that announces the share is the
-      // thing that ends it. (The browser's own "Stop sharing" bar still works
-      // and still lands here through track.onended — this is the third way,
-      // not the only one.)
+      // thing that ends it. On the filmstrip the tile is about 11rem wide, so
+      // the chip says Stop sharing — the same words as the button on the
+      // slide — instead of a sentence the row would clip. (The browser's own
+      // "Stop sharing" bar still works and still lands here through
+      // track.onended — this is the third way, not the only one.)
       // The chip and the sharer list are one verdict (fresh status, else the
       // folded stage bit). A list that already names the sharer must not wait
       // for a later status beat to say so on the tile.
@@ -5319,7 +5325,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // binding is not in scope, and a lifted call must not abort the repaint.
       if ((isMe ? st.scr : (typeof sharingScreen === 'function' && sharingScreen(id))) && (isMe || !(typeof shareBlocked === 'function' && shareBlocked(id)))) {
         chips.push(isMe
-          ? '<span class="warn stopshare" role="button" tabindex="0" title="Stop sharing your screen">🖥 you are sharing your screen — tap to stop</span>'
+          ? '<span class="warn stopshare" role="button" tabindex="0" title="Stop sharing your screen">🖥 ' + esc(uiText('stopShare', 'Stop sharing')) + '</span>'
           : '<span class="warn">🖥 sharing their screen</span>');
       }
       if (st.hand) chips.push('<span class="warn">✋ hand raised</span>');
@@ -18797,6 +18803,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           showLocalScreen();   // the slide, now — the mosaic sweep can be seconds later
           if (!screenSteppedUp) broadcastStatus(); // setStage already told the room
           refreshAllTiles();
+          // The More sheet is how the share started. Leaving it up paints a
+          // grid over the slide the room is looking at. Fold it without
+          // rewriting the saved preference — Stop sharing is on the slide,
+          // and the thumbnail chip is the other way out.
+          const barEl = document.querySelector('.bar');
+          const toggle = document.getElementById('bartoggle');
+          if (barEl && toggle && !barEl.classList.contains('collapsed')) {
+            barEl.classList.add('collapsed');
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.setAttribute('aria-label', uiText('more', 'More'));
+            toggle.title = uiText('more', 'More');
+            const word = toggle.querySelector('.dockword');
+            if (word) word.textContent = uiText('more', 'More');
+          }
           setStatus(uiText('shareLive', '🖥 Sharing your screen with the meeting. Sound from the shared tab does not travel — talk over it.'));
         })
         .catch((err) => {

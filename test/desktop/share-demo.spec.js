@@ -105,3 +105,55 @@ test('a consultant can put a slide on the stage and stop it', async ({ page, bro
   await expect(page.locator('#stagefeed video')).toHaveCount(0);
   await expect(page.locator('#sharebtn')).toHaveText('Share screen');
 });
+
+test('the menu steps aside once the slide is up, and the thumbnail can stop it', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
+  await boot(page);
+  await page.click('#bartoggle');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('gifos_meet_bar'))).toBe('0');
+  await page.click('#sharebtn');
+  await armSlide(page);
+  await page.click('#share-go');
+  await expect.poll(async () => page.evaluate(() => {
+    const v = document.querySelector('#stagefeed video');
+    return v ? v.videoWidth : 0;
+  })).toBeGreaterThanOrEqual(640);
+  const laid = await page.evaluate(() => {
+    const bar = document.querySelector('.bar');
+    const more = document.getElementById('barmore');
+    const me = document.querySelector('#grid .tile.me');
+    const chip = me && me.querySelector('.stopshare');
+    const chips = me && me.querySelector('.chips');
+    const video = document.querySelector('#stagefeed video');
+    const mr = more.getBoundingClientRect();
+    const vr = video.getBoundingClientRect();
+    const cr = chip.getBoundingClientRect();
+    const pr = chips.getBoundingClientRect();
+    const tr = me.getBoundingClientRect();
+    const overlap = mr.width > 8 && mr.height > 8 && mr.bottom > vr.top + 4 && mr.top < vr.bottom - 4 && mr.right > vr.left + 4 && mr.left < vr.right - 4;
+    return {
+      collapsed: bar.classList.contains('collapsed'),
+      pref: localStorage.getItem('gifos_meet_bar'),
+      moreDisplay: getComputedStyle(more).display,
+      coversSlide: overlap,
+      text: chip.textContent.trim(),
+      pe: getComputedStyle(chip).pointerEvents,
+      inTile: cr.left >= tr.left - 1 && cr.right <= tr.right - 1 && cr.top >= tr.top - 1 && cr.bottom <= tr.bottom - 1,
+      inChips: cr.left >= pr.left - 1 && cr.right <= pr.right - 1,
+      chipW: Math.round(cr.width),
+      chipsW: Math.round(pr.width),
+    };
+  });
+  expect(laid.collapsed).toBe(true);
+  expect(laid.pref).toBe('0');
+  expect(laid.moreDisplay).toBe('none');
+  expect(laid.coversSlide).toBe(false);
+  expect(laid.text).toContain('Stop sharing');
+  expect(laid.pe).toBe('auto');
+  expect(laid.inTile).toBe(true);
+  expect(laid.inChips).toBe(true);
+  expect(laid.chipW).toBeGreaterThan(40);
+  await page.locator('#grid .tile.me .stopshare').click();
+  await expect(page.locator('#stagefeed video')).toHaveCount(0);
+  await expect(page.locator('body')).not.toHaveClass(/screen-on/);
+});
