@@ -102,51 +102,30 @@ async function measure(page) {
 }
 
 async function seedPeople(page) {
-  await page.evaluate(() => {
-    const grid = document.getElementById('grid');
-    const me = grid && grid.querySelector('.tile.me');
-    if (!me || !window.GifOS || !GifOS.meetViews) return 'no-tile';
-    const names = [['Ruth', '#3b4d78'], ['David', '#6b4532'], ['Sam', '#2c5a46']];
-    const tiles = [{ id: 'me', el: me, tier: 'row', me: true, pz: 'peer:me' }];
-    names.forEach(([name, color], i) => {
-      const t = me.cloneNode(true);
-      t.classList.remove('me');
-      t.removeAttribute('style');
-      t.dataset.peer = 'fake' + i;
-      const label = t.querySelector('.name');
-      if (label) label.textContent = name;
-      const av = t.querySelector('.avatar');
-      if (av) av.textContent = name[0];
-      const video = t.querySelector('video');
+  await page.evaluate(async () => {
+    const api = window.__gifosVideo;
+    if (!api || typeof api.presentPeers !== 'function') return 'no-peers';
+    const people = [
+      { id: 'peer-ruth', name: 'Ruth', color: '#3b4d78' },
+      { id: 'peer-david', name: 'David', color: '#6b4532' },
+      { id: 'peer-sam', name: 'Sam', color: '#2c5a46' },
+    ];
+    api.presentPeers(people);
+    for (const person of people) {
+      const tile = document.querySelector('.tile[data-peer="' + person.id + '"]');
+      const video = tile && tile.querySelector('video');
+      if (!video) continue;
       const c = document.createElement('canvas');
       c.width = 160; c.height = 240;
       const g = c.getContext('2d');
-      g.fillStyle = color; g.fillRect(0, 0, 160, 240);
-      g.fillStyle = '#fff'; g.font = 'bold 28px sans-serif'; g.fillText(name, 16, 120);
+      g.fillStyle = person.color; g.fillRect(0, 0, 160, 240);
       try {
-        const stream = c.captureStream(8);
-        video.srcObject = stream;
+        video.srcObject = c.captureStream(8);
         video.muted = true;
-        video.play().catch(() => {});
-        t.classList.remove('cam-off');
-      } catch (e) { t.classList.add('cam-off'); }
-      grid.appendChild(t);
-      tiles.push({ id: 'fake' + i, el: t, tier: 'row', me: false, pz: 'peer:fake' + i });
-    });
-    document.body.classList.add('has-peers', 'comfy');
-    grid.dataset.remotes = '3';
-    try {
-      GifOS.meetViews.apply({
-        feed: document.getElementById('feed'),
-        tiles: tiles,
-        faces: [],
-        vw: window.innerWidth,
-        vh: window.innerHeight,
-        phone: window.innerWidth < 800,
-        mode: 'gallery',
-        gallery: 'fit',
-      });
-    } catch (e) { return String(e); }
+        await video.play().catch(() => {});
+        tile.classList.remove('cam-off');
+      } catch (e) {}
+    }
     return 'ok';
   });
 }

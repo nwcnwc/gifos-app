@@ -77,9 +77,21 @@ Repro: `test/mobile/fit-target.js`. It failed (`Fit is 59x32`, and `Fit font 14p
 
 Before: `qa/mobile/shots/before-fit-iphone-se.png`. After: `qa/mobile/shots/after-fit-iphone-se.png`.
 
+### 9. Header says "Just you" while other people are on screen
+
+The chip used the long sentence `Just you — send the invite; the link has no expiry · reconnecting to the room…`. On an iPhone 15 that line is cut to `Just you — s…`. The four faces in the first shots were cloned tiles, not peers, so the count stayed 1. A cloned tile is not someone in the room.
+
+Repro: `test/mobile/header-count.js`. It failed (`header "Just you — send the invite…"`, `clipped`, count 1, four names on screen), then passed. The header reads the real peer tiles and says `4 in call`, and that phrase fits in the chip. The longer sentence stays on the tooltip. QA seeding goes through `__gifosVideo.presentPeers`, the same peer records the grid uses.
+
+Before: `qa/mobile/shots/before-header-count.png`. After: `qa/mobile/shots/after-header-count.png`.
+
 ## Open
 
 There is still no waiting-room admit list for a host.
+
+Name and avatar default, noted from the same shot and not the next fix: the self tile's big letter is G (the initial of Grandma Ruth) while another person is Ruth. The letter and the name pill are two labels for one person.
+
+Button spacing, from the same shot and not the next fix: on an iPhone 15 (393px, above the 380px dock rule) Hang up is still past the right edge, and the dock covers the bottom row of tiles. The build tag `edge` sits on the top-right of the chip. A green round "A" in Nathan's shot did not appear in the Playwright capture.
 
 ## Personas (what was actually tried)
 
@@ -90,4 +102,4 @@ There is still no waiting-room admit list for a host.
 - Host, iPhone SE landscape. More opened, Password tapped with `force: true` because the button is off screen. Password sheet shot saved.
 - Chat, iPhone SE. Opened from More. Composer tap blocked by the dock.
 
-Four faces were painted with canvas `captureStream` through the existing `GifOS.meetViews.apply` packer so the call was not a solo tile. That packer was not edited.
+Four faces are real peer records (`__gifosVideo.presentPeers`), not cloned tiles. The gallery packer was not edited.

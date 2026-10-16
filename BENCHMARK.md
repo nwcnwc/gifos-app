@@ -26,8 +26,8 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 | End the call, mute, camera, on a 360px phone | 8 | Hang up, mute, camera, and Fit fit and are at least 44px. |
 | Host: password, record, captions, stage, in landscape | 7 | Those controls scroll into view on SE, iPhone 15, Pixel 7, and 360px landscape. The captions control says Captions. |
 | Chat or check names without losing the controls | 7 | The field taps, sits above the dock, and lifts for a keyboard band. Close and Send are 44px. |
-| Looks trustworthy (nothing cut off, type scales) | 4 | Fine on iPhone 15 and Pixel 7 portrait. Fails the small phone. |
-| **Audience** | **7** | Hang up, landscape host tools, captions, chat, and the home indicator are in good shape. Still behind Zoom and Meet on a waiting-room admit list. |
+| Looks trustworthy (nothing cut off, type scales) | 5 | The header says "4 in call" and the phrase fits. Hang up is still past the edge on an iPhone 15. |
+| **Audience** | **7** | Hang up on a narrow phone, landscape host tools, captions, chat, and the home indicator are in good shape. Still behind Zoom and Meet on a waiting-room admit list, and Hang up still clips at 393px. |
 
 ## Church
 
@@ -62,4 +62,5 @@ Family and friends. Warm, few steps, a texted link.
 5. More labels follow 200% text size. `test/mobile/text-scale-controls.js` failed, then passed. Captions row 3→5.
 6. The controls say Captions and People. `test/mobile/plain-words.js` passes. Church captions 5→7, church audience 6→7.
 7. Safe area. `test/mobile/safe-area.js` failed, then passed. Corporate 6→7, personal 6→7. Church stays 7.
-8. Fit is 44px and grows at 200%. `test/mobile/fit-target.js` failed, then passed. Corporate end-call 7→8. Church tap targets 5→7, church audience 7→8. Personal 7→8. Nobody leads yet. Next: a host waiting-room admit list.
+8. Fit is 44px and grows at 200%. `test/mobile/fit-target.js` failed, then passed. Corporate end-call 7→8. Church tap targets 5→7, church audience 7→8. Personal 7→8.
+9. Header count. `test/mobile/header-count.js` failed, then passed. The chip says "4 in call" for four real peers, and the phrase fits. Corporate trust 4→5. Audience scores stay put. Nobody leads yet. Next on the list, not ahead of the header: name/avatar default, then button spacing (Hang up still clips at 393px and the dock covers the bottom row). The waiting-room admit list is still open.

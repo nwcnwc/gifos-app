@@ -5526,6 +5526,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // it may be displayed and may never gate behaviour, so the bitrate ladder and
     // every other decision keep reading participantCount().
     function displayCount() { return roomPastSection() ? Math.max(participantCount(), roomDig().n) : participantCount(); }
+    // Faces the page itself has put on screen (me, plus each real peer tile).
+    // A cloned tile is not a person and is not in this set. The header uses
+    // this so the count matches the room you can see; it never gates quality.
+    function facesOnScreen() {
+      let n = 0;
+      const seen = new Set();
+      const take = (id, el) => {
+        if (!id || seen.has(id) || !el || !el.isConnected || el.style.display === 'none') return;
+        seen.add(id);
+        n++;
+      };
+      try { if (meTile && meTile.tile) take('me', meTile.tile); } catch (e) {}
+      for (const [pid, p] of peers) take(pid, p && p.tile);
+      return n;
+    }
+    function headerCount() { return Math.max(displayCount(), facesOnScreen()); }
     // BATTERY TIERS (Nathan 2026-07-26): encode watts are the meeting's
     // biggest phone cost, so quality follows the battery — ON BATTERY at all
     // sends one rung lighter, under 50% two rungs, under 25% three rungs and
@@ -6106,14 +6122,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const reach = typeof reachInfo === 'function' ? reachInfo() : null;
       const reachState = reach ? reach.state : null;
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
-      const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
-        : (n === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry' + reachTriedSentence())
-        : displayCount() + ' in the meeting · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
+      // The chip is one short line. The long sentence ellipsized to
+      // "Just you — s…" beside people who were already on screen. shown is
+      // the room you can see (the count, or the peer tiles), never a clone.
+      const shown = headerCount();
+      const detail = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
+        : (shown <= 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry' + reachTriedSentence())
+        : shown + ' in the meeting · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
+      const statusText = (reachState && reachState !== 'partial') ? REACH_MSG[reachState]
+        : (shown <= 1 ? (atDoor ? 'Waiting to get in' : 'Just you') : shown + ' in call');
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
       // of the reach states that replace the line. Tests and styling read
       // this, never the sentence.
-      const statusKind = reachState && reachState !== 'partial' ? reachState : n === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
+      const statusKind = reachState && reachState !== 'partial' ? reachState : shown <= 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
       if (statusEl.dataset) {
         if (statusEl.dataset.kind !== statusKind) statusEl.dataset.kind = statusKind;
         const dr = reachState || '', du = reachState === 'partial' ? String(reach.dead) : '';
@@ -6121,10 +6143,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
       }
       if (reachState && reachState !== 'partial') statusEl.classList.add('alert');
-      if (statusEl.textContent !== statusText) {
-        statusEl.textContent = statusText;
-        statusEl.title = statusText;
-      }
+      if (statusEl.textContent !== statusText) statusEl.textContent = statusText;
+      if (statusEl.title !== detail) statusEl.title = detail;
     }
 
     // ---- mesh plumbing ---------------------------------------------------------
@@ -22455,6 +22475,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Test hook: lets the e2e suite observe mesh + quality state.
     window.__gifosVideo = {
       participants: participantCount,
+      // Real peer records, the same ones the grid and the header count.
+      // A test or a QA page uses this instead of cloning tiles the room
+      // does not know about.
+      presentPeers: (people) => {
+        const list = Array.isArray(people) ? people : [];
+        for (const person of list) {
+          const id = String(person && person.id || '').slice(0, 80);
+          const name = String(person && person.name || 'Someone').slice(0, 40);
+          if (!id || id === myId || id === 'me') continue;
+          rosterNames[id] = name;
+          if (!rosterIds.includes(id)) rosterIds.push(id);
+          let p = peers.get(id);
+          if (!p) p = makePeer(id, name);
+          if (!p) continue;
+          p.name = name;
+          p.lastHeard = Date.now();
+          p.meshRxAt = Date.now();
+          if (p.label) p.label.textContent = name;
+          if (p.avatar) {
+            const letter = nameInitial(name);
+            try { if (typeof setTileLetter === 'function') setTileLetter(p.avatar, letter); else p.avatar.textContent = letter; } catch (e) { p.avatar.textContent = letter; }
+          }
+        }
+        try { layout(); } catch (e) {}
+        try { updateStatus(); } catch (e) {}
+        return { n: headerCount(), peers: peers.size };
+      },
       bot: () => !!myStatus.bot,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
