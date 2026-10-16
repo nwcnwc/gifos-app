@@ -25,11 +25,11 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 
 | Job | Score | Note |
 | --- | --- | --- |
-| End the call, mute, camera, on a 360px phone | 9 | Hang up, mute, camera, and Fit fit and are at least 44px. On a phone they tuck when the call is quiet and come back on a tap. |
+| End the call, mute, camera, on a 360px phone | 10 | Hang up, Unmute, and Camera are words a person can read. On a phone Live and the dock tuck when the call is quiet and come back on a tap. Camera stays up while the camera is off. |
 | Host: password, record, captions, stage, in landscape | 10 | Live, Record, and Captions are on the call. Record says what it will capture, and Start recording stays on screen, including at 200% text. Room password, Vote on someone, and Step on stage stay in More. Waiting room admits from a list. |
 | Chat or check names without losing the controls | 9 | The count and the latest line sit on the call. Emoji inserts into the field. Theirs is a light bubble, mine is blue, and both names are 1rem. |
 | Looks trustworthy (nothing cut off, type scales) | 10 | The header says the room and the count, and the phrase fits. At 200% text four faces stay above Live. Recording is a separate red state. When the call is quiet the faces use the space the dock was holding. |
-| **Audience** | **9** | The header names the room. Hang up, landscape host tools, the live state, captions, chat, and a waiting-room list are in good shape. Ending the call and chat are still open. We do not lead yet. |
+| **Audience** | **9** | The header names the room. Hang up, Unmute, and Camera are words. Landscape host tools, the live state, captions, and a waiting-room list are in good shape. Chat is still the open job. We do not lead yet. |
 
 ## Church
 
@@ -49,7 +49,7 @@ Family and friends. Warm, few steps, a texted link.
 
 | Job | Score | Note |
 | --- | --- | --- |
-| Open a texted link and pick a name | 10 | The join step opens with the GifOS name and picture. Save keeps them and is the solid blue button. Clear blanks both and is the outline. The call says Unmute until the mic is on. |
+| Open a texted link and pick a name | 10 | The join step opens with the GifOS name and picture. Save keeps them and is the solid blue button. Clear blanks both and is the outline. The call says Unmute, then Camera, until each is on. |
 | See everyone and hang up on a small phone | 10 | Four faces are two rows of two, near a portrait-phone shape, and Fit no longer sits on a face. Live, Record, Captions, and the dock tuck when the call is quiet. A tap brings Hang up back. |
 | Send a chat line | 9 | The latest line and the count sit on the call. Emoji inserts into the field. Theirs is a light bubble and mine is blue, at 1rem. |
 | Turn the phone sideways | 9 | Four faces stay near a portrait-phone shape, and Fit shares the header row. Invite, Room password, Waiting room, and Chat are on the first screen of More. |
@@ -96,3 +96,4 @@ Family and friends. Warm, few steps, a texted link.
 37. Live a volunteer can see. `test/mobile/live-stands-out.js` failed (SE Live 72×44, sideways Live 72px wide), then passed. Upright, Live is a 64px band across the call. Sideways, it takes the rest of the one row. Record and Captions stay secondary. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 38. The header names the room. `test/mobile/header-count.js` failed (`header "4 in call"`), then passed. Four peers read `header-count · 4 in call` on an SE and an iPhone 15, and the phrase fits. Corporate trust 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 39. Which button starts the meeting. `test/mobile/lobby-which-start.js` failed (the admin button also said Start, and at 200% text it was 102px against Start at 62px), then passed. The admin path says Room you run and is not taller than Start. Church lobby 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.
+40. Camera has no word. `test/mobile/camera-words.js` failed (no Camera a person can read), then passed on an SE, at 200% text, and sideways. After Unmute, the same slot says Camera until the camera is on. The picture stays on the video. Corporate end-call 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.

@@ -323,6 +323,14 @@ Repro: `test/mobile/lobby-which-start.js`. It failed, then passed on an SE, at 2
 
 Before: `qa/mobile/shots/before-lobby-which-start-iphone-se.png`, `qa/mobile/shots/before-lobby-which-start-iphone-se-200.png`. After: `qa/mobile/shots/after-lobby-which-start-iphone-se.png`, `qa/mobile/shots/after-lobby-which-start-iphone-se-200.png`.
 
+### 40. The camera is off and nothing says so
+
+A texted link joins with the camera off. The self view is a letter. The dock camera is a slash with no words, so a first call looks like the face is broken. The picture stays on the video feed. There is no second avatar layer.
+
+Repro: `test/mobile/camera-words.js`. It failed (`no Camera a person can read`), then passed on an SE, at 200% text, and sideways. Unmute is the word while the mic is off. After that, the same slot says Camera until the camera is on. A tap turns it on. The button stays when the dock tucks, and it does not cover a face.
+
+Before: `qa/mobile/shots/before-camera-words-iphone-se.png`. After: `qa/mobile/shots/after-camera-words-iphone-se.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.

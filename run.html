@@ -1352,8 +1352,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 1rem/1.2 system-ui, sans-serif; }
   /* A texted link skips the lobby, so "You join muted" is never seen.
      Unmute sits in the header band (tiles already start below Fit) and
-     stays when Live and the dock tuck. Muted is the call, not chrome. */
-  #unmute {
+     stays when Live and the dock tuck. Muted is the call, not chrome.
+     Once the mic is on, the same slot says Camera while the camera is off.
+     The picture stays on the video feed. This is not a second avatar. */
+  #unmute, #showcam {
     position: fixed; z-index: 7;
     top: calc(58px + env(safe-area-inset-top, 0px));
     left: calc(14px + env(safe-area-inset-left, 0px));
@@ -1361,12 +1363,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: #0064c8; color: #fff; cursor: pointer;
     font: 700 1rem/1.15 system-ui, sans-serif;
   }
-  #unmute[hidden] { display: none !important; }
+  #unmute[hidden], #showcam[hidden] { display: none !important; }
   @media (max-height: 500px) and (orientation: landscape) {
     /* The room name and the count share the header row with Fit.
        Unmute sits in the gap between them, and the chip stops short of it. */
     .topchip { max-width: calc(100% - 12rem - 48px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
-    #unmute {
+    #unmute, #showcam {
       top: calc(14px + env(safe-area-inset-top, 0px));
       left: auto;
       right: calc(5rem + 24px + env(safe-area-inset-right, 0px));
@@ -1898,6 +1900,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
   <button type="button" id="unmute" hidden>Unmute</button>
+  <button type="button" id="showcam" hidden>Camera</button>
   <div id="livecap"></div>
   <div id="callstate" hidden>
     <span id="call-live" role="status">Live</span>
@@ -20936,6 +20939,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // ---- controls: mic + camera (traffic-light icons), blur (3-way slider) -----
     const micBtn = document.getElementById('mic');
     const unmuteBtn = document.getElementById('unmute');
+    const showcamBtn = document.getElementById('showcam');
     const camBtn = document.getElementById('cam');
     const blurSeg = document.getElementById('blurseg');
     const blurSegs = Array.from(blurSeg.querySelectorAll('.seg'));
@@ -21085,7 +21089,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!callOpen() || !phoneCall()) return;
         if (!document.body.classList.contains('chrome-away')) return;
         const t = e.target;
-        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist')) {
+        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist')) {
           showChrome();
           return;
         }
@@ -21226,6 +21230,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       camBtn.classList.toggle('off', myStatus.camOff);
       camBtn.setAttribute('aria-pressed', myStatus.camOff ? 'false' : 'true');
       camBtn.title = myStatus.camOff ? 'Camera off — tap to turn on' : 'Camera on — tap to turn off';
+      if (showcamBtn) {
+        const lob = document.getElementById('lobby');
+        const inCall = !(lob && lob.classList.contains('show'));
+        showcamBtn.hidden = !inCall || muted || !myStatus.camOff;
+      }
       // The filled segment follows the blur that is actually on the feed
       // (forced blur, room password, consent). The local wish is the fallback
       // when this function is lifted without blurLevelFor in scope.
@@ -21486,6 +21495,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       reactRoomState();  // camera on/off changes your consent
       updateMediaSession();
     };
+    if (showcamBtn) showcamBtn.onclick = () => camBtn.onclick();
     // Flip front/back camera (mobile convention). regrabCamera does the whole
     // swap: same MediaStream identity, senders re-fed, blur pipe rebuilt.
     document.getElementById('flipcam').onclick = () => {
