@@ -9,17 +9,17 @@ Gallery packing, the self-view/stage placement, and the reactions icon are left 
 
 ## Fixed
 
-None yet. This commit is the baseline log.
-
-## Open
-
 ### 1. Hang up is off the screen on a narrow phone
 
-iPhone SE portrait and the 360px Android phone. The dock is `flex-wrap: nowrap` with a max width, and the buttons refuse to shrink (`min-width: 56px`, leave `64px`). The bar's scroll width is 366px. On the SE the bar is only 304px wide, so Hang up starts at x=310 and ends at x=374, past the 320px edge. On the 360px phone it ends at x=374, past the edge. iPhone 15 (393px) and Pixel 7 fit.
+iPhone SE portrait and the 360px Android phone. The dock is `flex-wrap: nowrap` with a max width, and the buttons refuse to shrink (`min-width: 56px`, leave `64px`). The bar's scroll width was 366px. On the SE the bar was only 304px wide, so Hang up started at x=310 and ended at x=374, past the 320px edge. On the 360px phone it ended at x=374. The drag grip was 22×48.
 
-A grandparent, an exec, and a teen all lose the control that ends the call. The drag grip is 22×48, under a 44px target, on every phone measured. Fit is 59×32, also under 44px tall.
+Repro: `test/mobile/dock-fits.js`. It failed with `leavebtn off screen (right 374)` and `bargrip is 22x48` on both phones, then passed after the fix: grip and the round controls are 44px, Hang up is 52×52, all inside the viewport. Below 380px the row tightens. The icon artwork is unchanged. iPhone 15 and Pixel 7 stay on the larger row, which already fit.
 
-Shot: `qa/mobile/shots/before-grandparent-call.png`.
+Before: `qa/mobile/shots/before-grandparent-call.png`. After: `qa/mobile/shots/after-dock-iphone-se.png`, `qa/mobile/shots/after-dock-android-360.png`.
+
+Fit is still 59×32. That stays open.
+
+## Open
 
 ### 2. Landscape More sheet hangs off the top and does not scroll
 

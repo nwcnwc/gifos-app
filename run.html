@@ -1476,6 +1476,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lobby .lob-preview { margin: 16px; border-radius: 20px; }
     #lobby .lobby-card { max-width: none; margin: 16px 16px 16px 0; border-radius: 20px; padding: 28px 32px; overflow: auto; }
   }
+  /* A 320px or 360px phone cannot hold 56px circles plus a 64px hang-up.
+     The row was nowrap, so Hang up drew past the right edge (x=374).
+     44px is the floor for a thumb. The glyphs are the same icons, smaller. */
+  @media (max-width: 380px) {
+    .bar { gap: 4px; padding: 0 6px; max-width: calc(100vw - 8px); height: 72px; }
+    .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+      width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg { width: 22px; height: 22px; }
+    .bar #bargrip { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+    .bar #leavebtn { width: 52px; height: 52px; min-width: 52px; min-height: 52px; margin-left: 2px; }
+    .bar #leavebtn svg { width: 26px; height: 26px; }
+  }
 </style>
 <script src="js/gifos-themes.js"></script>
 </head>
