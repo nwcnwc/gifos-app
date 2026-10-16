@@ -1096,6 +1096,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cwho b { display: inline; margin: 0; }
   .cmsg .cwhen { color: inherit; font-size: .875rem; font-weight: 600; white-space: nowrap; }
   #cfiles { border-top: 1px solid var(--border, #2a2a3f); padding: .45rem .7rem; max-height: 34%; overflow-y: auto; }
+  #cfiles[hidden] { display: none !important; }
   #cfiles h4 { font-size: .72rem; color: var(--muted, #8888aa); margin-bottom: .3rem; }
   .cfile { display: flex; align-items: center; gap: .45rem; font-size: .78rem; padding: .18rem 0; }
   .cfile .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2214,7 +2215,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div id="trlog"><small style="color:#667">Tap CC in the bar and your device writes down everyone it hears — the lines gather here under each speaker's name, on every device in the meeting.</small></div>
       <div id="trfoot"><button id="trdl">Download transcript</button></div>
     </div>
-    <div id="cfiles"><h4>Files pinned to this meeting</h4><div id="cfilelist"><small style="color:#667">No files yet — attach one below.</small></div></div>
+    <div id="cfiles" hidden><h4>Files pinned to this meeting</h4><div id="cfilelist"></div></div>
     <div id="emojirow" hidden role="group" aria-label="Emoji">
       <button type="button" data-emoji="😀">😀</button>
       <button type="button" data-emoji="😂">😂</button>
@@ -14107,12 +14108,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       });
     });
     function renderFiles() {
+      const box = document.getElementById('cfiles');
       const el = document.getElementById('cfilelist');
-      // Files are only allowed in a PASSWORD-PROTECTED meeting: an open room anyone
-      // can wander into shouldn't leak shared files. No password → no files.
-      if (!roomPw) { el.innerHTML = '<small style="color:#889">🔒 Set a room password (the Password button) to share files here. Files are off in open rooms.</small>'; return; }
+      // An empty tray used to sit between the messages and the field. The
+      // paperclip is the way to pin something. The list appears once a file
+      // is actually here.
       const fs = Array.from(files.values()).sort((a, b) => a.at - b.at);
-      el.innerHTML = fs.length ? fs.map((f) => {
+      if (!fs.length) { box.hidden = true; el.innerHTML = ''; return; }
+      box.hidden = false;
+      // Files are only allowed in a PASSWORD-PROTECTED meeting: an open room anyone
+      // can wander into shouldn't leak shared files. No password → no names.
+      if (!roomPw) { el.innerHTML = '<small style="color:#889">🔒 Set a room password (the Password button) to share files here. Files are off in open rooms.</small>'; return; }
+      el.innerHTML = fs.map((f) => {
         const mine = (f.byId && f.byId === myId) || (!f.byId && f.by === myName());
         // The button follows the receive rule (fdelAllowed): an open room takes
         // anyone's unpin (attributed); an admin room takes the owner's or an admin's.
@@ -14120,8 +14127,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return '<div class="cfile" data-f="' + esc(f.id) + '"><span class="nm">' + esc(f.name) + '</span><small>' + fmtSize(f.size) + ' · ' + esc(f.by || '?') + '</small>'
           + (f.bytes ? '<button data-dl="' + esc(f.id) + '">⬇</button>' : '<small>receiving…</small>')
           + unpin + '</div>';
-      }).join('')
-        : '<small style="color:#667">No files yet — attach one below.</small>';
+      }).join('');
     }
     document.getElementById('cfilelist').addEventListener('click', (e) => {
       const dl = e.target.dataset.dl, del = e.target.dataset.del;
@@ -14251,6 +14257,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         renderChat();
         countClosedChat(msg);
         return unread;
+      },
+      pin: function (o) {
+        const f = {
+          id: 'qa' + Date.now().toString(36),
+          name: String((o && o.name) || 'file').slice(0, 120),
+          size: 24000,
+          mime: 'application/pdf',
+          by: String((o && o.by) || 'Someone').slice(0, 40),
+          byId: 'qa-peer',
+          at: Date.now(),
+          bytes: new Uint8Array([1]),
+        };
+        if (o && o.locked && !roomPw) roomPw = 'qa';
+        files.set(f.id, f);
+        renderFiles();
+        return f.id;
       },
     };
 

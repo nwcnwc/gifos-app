@@ -431,6 +431,16 @@ Repro: `test/mobile/chat-time.js`. It failed (`no clock time on Ruth`), then pas
 
 Before: `qa/mobile/shots/before-chat-time-iphone-se.png`. After: `qa/mobile/shots/after-chat-time-iphone-se.png`.
 
+### 52. An empty file list sat under the messages
+
+The chat sheet always showed "Files pinned to this meeting", including when nothing was pinned. On an iPhone SE that block left the log at 278px and a 79px gap above the field. Attach already says files need a room password.
+
+The list stays hidden until a file is pinned. The paperclip stays. Unpinning the last file hides the list again.
+
+Repro: `test/mobile/chat-files.js`. It failed (`empty files tray is showing`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-files.js`.
+
+Before: `qa/mobile/shots/before-chat-files-iphone-se.png`. After: `qa/mobile/shots/after-chat-files-iphone-se.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.
