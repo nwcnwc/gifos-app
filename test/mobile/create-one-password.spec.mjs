@@ -18,25 +18,28 @@ test('a church desk opens on a service name and Go live', async ({ page }) => {
   await expect(page.locator('#lob-admin-name')).toHaveAttribute('placeholder', 'Sunday morning');
   await expect(page.locator('#lob-admin-name')).toHaveValue('Sunday morning');
   await expect(page.locator('#lob-join-btn')).toHaveText('Watch a service');
+  await expect(page.locator('#lob-join-btn')).toBeHidden();
   await expect(page.locator('#lob-empty')).toHaveText('Services you start or watch will show up here.');
   await expect(page.locator('#lob-admin-go')).toHaveText('Go live');
   await expect(page.locator('#lob-key-block')).toBeHidden();
+  await expect(page.locator('#lob-key-reveal')).toBeHidden();
+  await expect(page.locator('#lob-guest-reveal')).toBeHidden();
   await expect(page.locator('#lob-guest-pass')).toBeHidden();
   const first = await page.locator('#lob-admin-pass').inputValue();
   expect(first).toMatch(/^[a-z]+-[a-z]+-[a-z]+-\d{2}$/);
-  const reveal = page.locator('#lob-key-reveal');
-  await expect(reveal).toBeVisible();
-  await expect(reveal).toHaveText('Change host key');
-  const revealBox = await reveal.boundingBox();
-  expect(revealBox.height).toBeGreaterThanOrEqual(44);
+  const more = page.locator('#lob-desk-more');
+  await expect(more).toBeVisible();
+  await expect(more).toHaveText('More');
+  const moreBox = await more.boundingBox();
+  expect(moreBox.height).toBeGreaterThanOrEqual(44);
   const nameBox = await page.locator('#lob-admin-name').boundingBox();
   const quietBox = await quiet.boundingBox();
   expect(quietBox.y + quietBox.height).toBeLessThanOrEqual(nameBox.y + 1);
   const goBefore = await page.locator('#lob-admin-go').boundingBox();
-  const watchBox = await page.locator('#lob-join-btn').boundingBox();
   const vh = page.viewportSize().height;
   expect(goBefore.y + goBefore.height).toBeLessThanOrEqual(vh + 0.5);
   expect(goBefore.y - (nameBox.y + nameBox.height)).toBeGreaterThanOrEqual(8);
+  expect(moreBox.y + moreBox.height).toBeLessThanOrEqual(goBefore.y);
   const sheet = await page.evaluate(() => {
     const card = document.querySelector('#lobby .lobby-card').getBoundingClientRect();
     const go = document.getElementById('lob-admin-go').getBoundingClientRect();
@@ -56,7 +59,18 @@ test('a church desk opens on a service name and Go live', async ({ page }) => {
     expect(stage.top).toBeLessThanOrEqual(1);
     expect(stage.cardTop).toBeGreaterThan(stage.h - 24);
   }
-  expect(watchBox.y - (goBefore.y + goBefore.height)).toBeGreaterThanOrEqual(8);
+  expect(moreBox.y + moreBox.height).toBeLessThanOrEqual(sheet.cardTop + 4);
+  await more.click();
+  await expect(page.locator('#lob-admin-go')).toBeHidden();
+  await expect(page.locator('#lob-join-btn')).toBeVisible();
+  const reveal = page.locator('#lob-key-reveal');
+  await expect(reveal).toBeVisible();
+  await expect(reveal).toHaveText('Change host key');
+  const revealBox = await reveal.boundingBox();
+  expect(revealBox.height).toBeGreaterThanOrEqual(44);
+  const watchBox = await page.locator('#lob-join-btn').boundingBox();
+  expect(watchBox.height).toBeGreaterThanOrEqual(44);
+  expect(watchBox.y + watchBox.height).toBeLessThanOrEqual(vh + 0.5);
   expect(revealBox.y).toBeGreaterThanOrEqual(watchBox.y + watchBox.height - 1);
   await reveal.click();
   await expect(page.locator('#lob-key-block')).toBeVisible();
@@ -94,6 +108,9 @@ test('a stream name is filled in above Go live', async ({ page }) => {
   await expect(page.locator('#lob-admin-name-lab')).toHaveText('Name');
   await expect(page.locator('#lob-admin-name')).toHaveValue('Friday night');
   await expect(page.locator('#lob-join-btn')).toHaveText('Watch a stream');
+  await expect(page.locator('#lob-join-btn')).toBeHidden();
+  await expect(page.locator('#lob-key-reveal')).toBeHidden();
+  await expect(page.locator('#lob-desk-more')).toBeVisible();
   await expect(page.locator('#lob-admin-go')).toHaveText('Go live');
   const key = await page.locator('#lob-admin-pass').inputValue();
   expect(key).toMatch(/^[a-z]+-[a-z]+-[a-z]+-\d{2}$/);
@@ -184,6 +201,8 @@ test('a blank service name still goes live as Sunday morning', async ({ page }) 
 
 test('a viewer password stays optional and off the first step', async ({ page }) => {
   await openCreate(page);
+  await expect(page.locator('#lob-guest-reveal')).toBeHidden();
+  await page.locator('#lob-desk-more').click();
   const reveal = page.locator('#lob-guest-reveal');
   await expect(reveal).toBeVisible();
   const box = await reveal.evaluate((el) => {

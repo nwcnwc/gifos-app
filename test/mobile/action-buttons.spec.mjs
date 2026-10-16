@@ -102,29 +102,51 @@ test('Save keeps the shown name and avatar', async ({ page }) => {
   expect(after.avatar).toBeTruthy();
 });
 
-test('Go live is the first action, and Watch sits apart from it', async ({ page }) => {
+test('Go live is the sheet, and Watch opens from More', async ({ page }) => {
   await page.goto('/run.html#bc=1', { waitUntil: 'domcontentloaded' });
   await page.locator('#lobby.show').waitFor();
   await page.locator('#lob-admin-go').waitFor({ state: 'visible' });
   await expect(page.locator('#lob-admin-btn')).toBeHidden();
+  await expect(page.locator('#lob-join-btn')).toBeHidden();
   const g = await page.evaluate(() => {
     const go = document.getElementById('lob-admin-go').getBoundingClientRect();
-    const watch = document.getElementById('lob-join-btn').getBoundingClientRect();
+    const more = document.getElementById('lob-desk-more').getBoundingClientRect();
+    const card = document.querySelector('#lobby .lobby-card').getBoundingClientRect();
     return {
-      gap: watch.top - go.bottom,
       goH: go.height,
-      watchH: watch.height,
-      goBg: getComputedStyle(document.getElementById('lob-admin-go')).backgroundColor,
-      watchBg: getComputedStyle(document.getElementById('lob-join-btn')).backgroundColor,
       goBottom: go.bottom,
-      watchBottom: watch.bottom,
+      goTop: go.top,
+      cardTop: card.top,
+      moreBottom: more.bottom,
+      moreH: more.height,
       vh: innerHeight,
+      goBg: getComputedStyle(document.getElementById('lob-admin-go')).backgroundColor,
     };
   });
-  expect(g.gap).toBeGreaterThanOrEqual(8);
   expect(g.goH).toBeGreaterThanOrEqual(44);
-  expect(g.watchH).toBeGreaterThanOrEqual(44);
+  expect(g.moreH).toBeGreaterThanOrEqual(44);
   expect(g.goBottom).toBeLessThanOrEqual(g.vh + 0.5);
-  expect(g.watchBottom).toBeLessThanOrEqual(g.vh + 0.5);
-  expect(farEnough(rgb(g.goBg), rgb(g.watchBg))).toBe(true);
+  expect(g.goTop - g.cardTop).toBeLessThanOrEqual(40);
+  expect(g.moreBottom).toBeLessThanOrEqual(g.cardTop + 4);
+  await page.locator('#lob-desk-more').click();
+  const after = await page.evaluate(() => {
+    const watch = document.getElementById('lob-join-btn').getBoundingClientRect();
+    const card = document.querySelector('#lobby .lobby-card').getBoundingClientRect();
+    const go = document.getElementById('lob-admin-go');
+    return {
+      watchH: watch.height,
+      watchTop: watch.top,
+      watchBottom: watch.bottom,
+      cardTop: card.top,
+      vh: innerHeight,
+      goHidden: go.getClientRects().length === 0,
+      watchBg: getComputedStyle(document.getElementById('lob-join-btn')).backgroundColor,
+      goBg: getComputedStyle(go).backgroundColor,
+    };
+  });
+  expect(after.goHidden).toBe(true);
+  expect(after.watchH).toBeGreaterThanOrEqual(44);
+  expect(after.watchTop).toBeGreaterThanOrEqual(after.cardTop - 1);
+  expect(after.watchBottom).toBeLessThanOrEqual(after.vh + 0.5);
+  expect(farEnough(rgb(after.goBg), rgb(after.watchBg))).toBe(true);
 });

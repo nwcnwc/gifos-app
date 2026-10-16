@@ -1673,18 +1673,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.form-open .lob-form-body { flex: 0 1 auto; min-height: 0; overflow: auto; }
   #lobby.form-open #lob-admin .lob-row { flex: 0 0 auto; margin-top: 12px; }
   /* A broadcast opens on the service. Go live is the only filled action.
-     Watch stays under it. Cancel is not a step. */
+     Watch and the host key sit in More, off this sheet. Cancel is not a step. */
   #lobby.form-open.service-ready #lob-admin { flex: 0 1 auto; }
-  #lobby.form-open.service-ready #lob-join-btn { display: block !important; margin-top: 12px; flex: 0 0 auto; }
+  #lobby.form-open.service-ready.desk-more #lob-join-btn { display: block !important; margin-top: 0; flex: 0 0 auto; }
+  #lobby.service-ready:not(.desk-more) #lob-join-btn,
+  #lobby.service-ready:not(.desk-more) #lob-join,
+  #lobby.service-ready:not(.desk-more) #lob-key-reveal,
+  #lobby.service-ready:not(.desk-more) #lob-key-block,
+  #lobby.service-ready:not(.desk-more) #lob-guest-reveal,
+  #lobby.service-ready:not(.desk-more) #lob-guest-extra { display: none !important; }
+  #lobby.service-ready.desk-more #lob-admin .lob-row { display: none !important; }
   #lobby.service-ready #lob-admin-cancel { display: none !important; }
   #lobby.service-ready #lob-admin .lob-row { justify-content: stretch; }
+  #lobby.form-open.service-ready #lob-admin .lob-row { flex: 1 1 100%; }
   #lobby.service-ready #lob-admin-go { flex: 1 1 auto; width: 100%; }
   #lobby.service-ready #lob-admin-err:empty { min-height: 0; margin: 0; }
   /* The stream sentence sits under the title. A short landscape hides it
      with the title so Go live stays on the screen. */
   #lobby.form-open.service-ready .lob-quiet { display: block !important; margin: 0 0 0.5rem; }
   /* A desk names the service and goes live. The host key is still minted.
-     Change host key opens the same readable key and Generate, under Watch. */
+     More opens Watch and Change host key, with the same readable key and Generate. */
   #lobby.form-open.service-ready #lob-admin,
   #lobby.form-open.service-ready #lob-admin .lob-form-body { display: contents; }
   #lobby.service-ready #lob-admin-name-lab { order: 1; }
@@ -1702,6 +1710,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.service-ready #lob-list,
   #lobby.service-ready #lob-empty,
   #lobby.service-ready .lob-namebar { order: 20; }
+  #lob-desk-more[hidden] { display: none !important; }
+  #lobby.service-ready #lob-desk-more {
+    position: absolute; top: 12px; right: 16px; z-index: 4;
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 44px; padding: 8px 14px; margin: 0; cursor: pointer;
+    color: #f4f7fb; background: rgba(8, 10, 14, .78); border: 0; border-radius: 999px;
+    font: inherit; font-weight: 650;
+  }
   @media (max-height: 420px) {
     #lobby.form-open.service-ready .lob-quiet { display: none !important; }
     #lobby.form-open.service-ready.show { grid-template-rows: 40px minmax(0, 1fr); }
@@ -1716,11 +1732,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lobby.form-open.show { grid-template-columns: none; grid-template-rows: 72px minmax(0, 1fr); }
     #lobby.form-open .lob-preview { min-height: 0; max-height: 72px; margin: 0; border-radius: 0; }
   }
-  /* A stream on a phone is the camera. The title and the one sentence sit
-     on the picture. The sheet under it is the name, Go live, and Watch.
-     The host key is still minted; Change host key stays in the sheet, beside
-     the viewer-password link. A short landscape keeps the strip so Go live
-     stays on the screen. */
+  /* A stream on a phone is the camera. The title, the one sentence, and the
+     name sit on the picture. The sheet under it is Go live. More, on the
+     picture, opens Watch and the host key. A short landscape keeps the strip
+     so Go live stays on the screen. */
   @media (max-width: 700px) and (min-height: 421px) {
     #lobby.form-open.service-ready.show { grid-template-rows: minmax(200px, 1fr) auto; }
     #lobby.form-open.service-ready .lob-preview { max-height: none; min-height: 200px; }
@@ -1751,7 +1766,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lobby.form-open.service-ready #lob-guest-extra { flex: 1 1 100%; }
     #lobby.form-open.service-ready #lob-join-btn { white-space: nowrap; padding-top: 0; padding-bottom: 0; }
     /* The name is already filled, and it sits on the picture. Go live is
-       the first control in the sheet. The host key is still minted. */
+       the sheet. The host key is still minted, and More opens it. */
     #lobby.form-open.service-ready .lob-pv-name { display: none; }
     #lobby.form-open.service-ready #lob-admin-name-lab {
       position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
@@ -1763,6 +1778,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       background: rgba(8, 10, 14, .78); border: 0; border-radius: 14px;
     }
     #lobby.form-open.service-ready #lob-admin-name::placeholder { color: #d5d8e0; }
+    #lobby.service-ready #lob-desk-more { top: 8px; right: 12px; }
     #lobby.form-open.service-ready #lob-key-reveal { margin-right: 8px; }
     #lobby.form-open.service-ready #lob-key-reveal,
     #lobby.form-open.service-ready #lob-guest-reveal {
@@ -1772,6 +1788,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   @media (max-height: 420px) {
     #lobby.form-open h1 { display: none; }
+    #lobby.form-open.service-ready .lob-preview { overflow: visible; }
+    #lobby.service-ready #lob-desk-more { top: 0; right: 8px; }
   }
 </style>
 <script src="js/gifos-themes.js"></script>
@@ -1781,6 +1799,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div class="lob-preview" id="lob-preview">
       <video id="lob-preview-vid" autoplay muted playsinline></video>
       <span class="lob-pv-name" id="lob-preview-name">You</span>
+      <button type="button" id="lob-desk-more" hidden aria-pressed="false" aria-label="Watch, or change the host key">More</button>
     </div>
     <div class="lobby-card">
       <h1>Meeting</h1>
@@ -12227,6 +12246,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         key.select();
         const gen = document.getElementById('lob-keygen');
         if (gen && gen.scrollIntoView) gen.scrollIntoView({ block: 'nearest' });
+        placeDeskName();
+      };
+      const more = document.getElementById('lob-desk-more');
+      if (more) more.onclick = () => {
+        const open = lob.classList.toggle('desk-more');
+        more.setAttribute('aria-pressed', open ? 'true' : 'false');
+        more.textContent = open ? 'Done' : 'More';
+        more.setAttribute('aria-label', open ? 'Back to Go live' : 'Watch, or change the host key');
+        if (!open) {
+          document.getElementById('lob-join').style.display = 'none';
+          if (BC_INTENT) {
+            document.getElementById('lob-admin').style.display = '';
+            lob.classList.add('form-open', 'service-ready');
+          }
+        }
+        placeDeskName();
       };
       document.getElementById('lob-keygen').onclick = () => {
         const key = document.getElementById('lob-admin-pass');
@@ -12306,6 +12341,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('lob-guest-reveal').hidden = true;
         document.getElementById('lob-guest-pass').focus();
         if (extra.scrollIntoView) extra.scrollIntoView({ block: 'nearest' });
+        placeDeskName();
       };
       document.getElementById('lob-admin-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-admin-go').click(); });
       document.getElementById('lob-guest-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-admin-go').click(); });
@@ -12354,6 +12390,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('lob-guest-pass').placeholder = 'Viewer password';
         document.getElementById('lob-guest-pass-note').textContent = 'Optional. Share this, not your host key. It is not part of the link.';
         document.getElementById('lob-join-btn').textContent = streamLobby ? 'Watch a stream' : 'Watch a service';
+        const more = document.getElementById('lob-desk-more');
+        if (more) more.hidden = false;
         document.getElementById('lob-empty').textContent = streamLobby ? 'Streams you start or watch will show up here.' : 'Services you start or watch will show up here.';
         if (streamLobby) document.getElementById('lobby').classList.add('stream-ready');
       }

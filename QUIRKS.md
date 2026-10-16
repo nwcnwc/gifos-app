@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q49. Watch and the host key sat on the go-live sheet
+
+The sheet under the picture held Go live, then Watch, then Change host key. The sheet is now Go live. More sits on the picture and opens Watch and the host key, including Generate. The key is still minted. On an iPhone SE the name is y=422 to y=470 and Go live is y=508, the full width of the sheet. A stream uses the same sheet. `test/mobile/create-one-password.spec.mjs`, `test/mobile/action-buttons.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-service-desk.png`, `test/mobile/screenshots/after/iphone-se-stream-name.png`.
+
+Design: the picture, the filled name, then the blue Go live. Church and personal stay at 4. A town hall still joins through an appearance step.
+
 ### Q48. Go live on a service sat under the service name
 
 Sunday morning was a field in the sheet, above Go live. It now sits on the picture, and Go live is the first control in the sheet. On an iPhone SE the name is y=294 to y=342 and Go live is y=380. Watch a service stays under it. The host key is still minted. A blank name still goes live as Sunday morning. `test/mobile/create-one-password.spec.mjs`.
