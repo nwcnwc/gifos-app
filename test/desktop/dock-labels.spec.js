@@ -30,7 +30,7 @@ async function wordBox(page, id) {
 
 test('mic, camera, more, and leave show a word on the dock', async ({ page }) => {
   await boot(page, 1280, 720);
-  for (const [id, label] of [['mic', 'Mic'], ['cam', 'Camera'], ['bartoggle', 'More'], ['leavebtn', 'Leave']]) {
+  for (const [id, label] of [['mic', 'Mic'], ['cam', 'Camera'], ['sharebtn', 'Share screen'], ['bartoggle', 'More'], ['leavebtn', 'Leave']]) {
     const box = await wordBox(page, id);
     expect(box.missing, id).toBe(false);
     expect(box.text, id).toBe(label);
@@ -49,7 +49,7 @@ test('dock words stay inside their buttons when the window narrows', async ({ pa
   for (const w of [1600, 1280, 1100, 900]) {
     await page.setViewportSize({ width: w, height: 800 });
     await page.waitForTimeout(200);
-    for (const id of ['mic', 'cam', 'bartoggle', 'leavebtn']) {
+    for (const id of ['mic', 'cam', 'sharebtn', 'bartoggle', 'leavebtn']) {
       const box = await wordBox(page, id);
       expect(box.inside, id + ' at ' + w).toBe(true);
       expect(box.onScreen, id + ' at ' + w).toBe(true);

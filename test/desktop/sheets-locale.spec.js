@@ -53,21 +53,10 @@ test.describe('German sheets', () => {
     expect(wg.boxOnScreen).toBe(true);
     await page.click('#who-close');
 
-    await openMore(page, '#sharebtn');
-    const share = page.locator('#share-modal');
-    await expect(share.locator('h3')).toHaveText('Bildschirm teilen');
-    await expect(share).toContainText('Eine GifOS-App');
-    await expect(share).toContainText('Ihre Kamera pausiert');
-    await expect(share.locator('#share-go')).toHaveText('Auswählen, was geteilt wird…');
-    await expect(share.locator('#share-cancel')).toHaveText('Abbrechen');
-    await expect(share).not.toContainText('Share your screen');
-    await expect(share).not.toContainText('Choose what to share');
+    await expect(page.locator('#sharebtn .dockword')).toHaveText('Bildschirm');
     await expect(page.locator('#sharebtn')).toHaveAttribute('title', /App starten/);
-    const sg = await sheetFit(page, '#share-modal');
-    expect(sg.font).toBeGreaterThanOrEqual(16);
-    expect(sg.titleClip).toBe(false);
-    expect(sg.boxOnScreen).toBe(true);
-    await page.click('#share-cancel');
+    await expect(page.locator('#share-modal')).toBeHidden();
+    expect(await page.evaluate(() => !!document.getElementById('sharebtn').closest('#barmore'))).toBe(false);
 
     await openMore(page, '#votebtn');
     const vote = page.locator('#vote-modal');
@@ -109,15 +98,10 @@ test.describe('Spanish sheets', () => {
     await expect(page.locator('#whobtn')).toHaveAttribute('title', 'Quién está en esta reunión — nombres y direcciones de internet');
     await page.click('#who-close');
 
-    await openMore(page, '#sharebtn');
-    const share = page.locator('#share-modal');
-    await expect(share.locator('h3')).toHaveText('Compartir pantalla');
-    await expect(share).toContainText('¿Una app de GifOS?');
-    await expect(share.locator('#share-go')).toHaveText('Elegir qué compartir…');
-    await expect(share.locator('#share-cancel')).toHaveText('Cancelar');
-    await expect(share).not.toContainText('Share your screen');
+    await expect(page.locator('#sharebtn .dockword')).toHaveText('Pantalla');
     await expect(page.locator('#sharebtn')).toHaveAttribute('title', /Abrir app/);
-    await page.click('#share-cancel');
+    await expect(page.locator('#share-modal')).toBeHidden();
+    expect(await page.evaluate(() => !!document.getElementById('sharebtn').closest('#barmore'))).toBe(false);
 
     await openMore(page, '#votebtn');
     const vote = page.locator('#vote-modal');

@@ -31,25 +31,28 @@ async function armSlide(page) {
 test('a consultant can put a slide on the stage and stop it', async ({ page, browserName }) => {
   test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
   await boot(page);
-  await page.click('#bartoggle');
-  await page.click('#sharebtn');
-  await expect(page.locator('#share-modal')).toBeVisible();
-  await expect(page.locator('#share-go')).toHaveText('Choose what to share…');
-  const sheet = await page.evaluate(() => {
-    const go = document.getElementById('share-go');
-    const title = document.querySelector('#share-modal h3');
-    const note = document.getElementById('share-appnote');
+  const dock = await page.evaluate(() => {
+    const btn = document.getElementById('sharebtn');
+    const bar = document.querySelector('.bar');
+    const word = btn && btn.querySelector('.dockword');
+    const r = btn.getBoundingClientRect();
+    const br = bar.getBoundingClientRect();
     return {
-      go: parseFloat(getComputedStyle(go).fontSize),
-      title: parseFloat(getComputedStyle(title).fontSize),
-      note: parseFloat(getComputedStyle(note).fontSize),
+      inMore: !!(btn && btn.closest('#barmore')),
+      collapsed: bar.classList.contains('collapsed'),
+      word: word ? word.textContent.trim() : '',
+      inBar: r.top >= br.top - 2 && r.bottom <= br.bottom + 2 && r.left >= br.left - 2 && r.right <= br.right + 2,
+      onScreen: r.width > 8 && r.left >= -1 && r.right <= window.innerWidth + 1,
     };
   });
-  expect(sheet.go).toBeGreaterThanOrEqual(16);
-  expect(sheet.title).toBeGreaterThanOrEqual(22);
-  expect(sheet.note).toBeGreaterThanOrEqual(16);
+  expect(dock.inMore).toBe(false);
+  expect(dock.collapsed).toBe(true);
+  expect(dock.word).toBe('Share screen');
+  expect(dock.inBar).toBe(true);
+  expect(dock.onScreen).toBe(true);
   await armSlide(page);
-  await page.click('#share-go');
+  await page.click('#sharebtn');
+  await expect(page.locator('#share-modal')).toBeHidden();
   const stage = page.locator('#stagefeed video');
   await expect(stage).toBeVisible();
   await expect.poll(async () => page.evaluate(() => {
@@ -109,11 +112,9 @@ test('a consultant can put a slide on the stage and stop it', async ({ page, bro
 test('the menu steps aside once the slide is up, and the thumbnail can stop it', async ({ page, browserName }) => {
   test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
   await boot(page);
-  await page.click('#bartoggle');
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('gifos_meet_bar'))).toBe('0');
-  await page.click('#sharebtn');
   await armSlide(page);
-  await page.click('#share-go');
+  await page.click('#sharebtn');
+  await expect(page.locator('#share-modal')).toBeHidden();
   await expect.poll(async () => page.evaluate(() => {
     const v = document.querySelector('#stagefeed video');
     return v ? v.videoWidth : 0;
@@ -145,7 +146,7 @@ test('the menu steps aside once the slide is up, and the thumbnail can stop it',
     };
   });
   expect(laid.collapsed).toBe(true);
-  expect(laid.pref).toBe('0');
+  expect(laid.pref).toBe(null);
   expect(laid.moreDisplay).toBe('none');
   expect(laid.coversSlide).toBe(false);
   expect(laid.text).toContain('Stop sharing');
@@ -163,10 +164,8 @@ test.describe('the stage line follows the device', () => {
   test('a German device names the slide in German', async ({ page, browserName }) => {
     test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
     await boot(page);
-    await page.click('#bartoggle');
-    await page.click('#sharebtn');
     await armSlide(page);
-    await page.click('#share-go');
+    await page.click('#sharebtn');
     await expect.poll(async () => page.evaluate(() => {
       const v = document.querySelector('#stagefeed video');
       return v ? v.videoWidth : 0;
