@@ -16,12 +16,6 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 Before: `test/mobile/screenshots/before/iphone-se-portrait-host.png`.
 
-### Q6. 200% root font does not grow the status line
-
-`document.documentElement.style.fontSize = '32px'`. Lobby actions use `rem` and grow. `.topchip .status` stays `17px` (`20px` only on the wide landscape dock). The in-call status is the line a low-vision viewer has to read for reconnecting versus alone.
-
-Before: `test/mobile/screenshots/before/iphone-se-portrait-zoom.png`.
-
 ### Q9. First-visit name and avatar are a Guest number and a letter
 
 A first visit is stored as `Guest` plus four digits so the room can connect, and the camera-off tile is that letter on a flat color. The lobby preview says “You” until a name exists. Settings can change both later. This is on the list after the phone-layout gaps. Not the next fix.
@@ -53,6 +47,13 @@ After: `test/mobile/screenshots/after/iphone-se-meeting-chat.png`.
 ### Q8. Chat header spent a third of a short screen
 
 `#chathead` wrapped the title, the privacy sentence, Transcript, and close into about 110px on iPhone SE. On a phone the sentence is now clipped for sighted layout and kept for screen readers, and Transcript / close are 44px. That was required for Q2: the tall header pushed Send under the dock once the keyboard opened.
+
+### Q6. The status line ignored a 200% root font
+
+`document.documentElement.style.fontSize = '32px'`. Lobby actions use `rem`. `.topchip .status` stayed `17px` on a phone and `20px` on a wide layout. It is now `1.0625rem` on a phone and `1.25rem` on a wide layout, so a 32px root paints it at 34px or 40px, and the chip stays on screen. `test/mobile/status-scale.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-portrait-zoom.png`.
+After: `test/mobile/screenshots/after/iphone-se-status-scale.png`.
 
 ### Q7. The chip and the dock ignored the notch and the home indicator
 

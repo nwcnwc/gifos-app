@@ -19,13 +19,13 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 | Hang up, mic, and camera stay on screen | 4 | 4 | 4 | Zoom, Meet |
 | Chat can be read and sent on a phone | 4 | 4 | 4 | Meet, Teams |
 | Live, off air, watching, reconnecting | 3 | 3 | 3 | YouTube Live, StreamYard |
-| Large type and 44px targets | 3 | 2 | 3 | FaceTime |
+| Large type and 44px targets | 4 | 3 | 4 | FaceTime |
 | Landscape, rotation, notch | 4 | 4 | 4 | Meet |
 | Warm, short, trustworthy copy | 3 | 2 | 3 | FaceTime |
-| **Audience average** | **3.6** | **3.3** | **3.6** | |
+| **Audience average** | **3.7** | **3.4** | **3.7** | |
 
-Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast now says RECONNECTING, OFF AIR, LIVE, or WATCHING (Q5). Create & enter stays in the card while the room fields scroll (Q4). More scrolls inside the screen in landscape (Q3). The chip and the dock clear a notch and a home indicator (Q7). Corporate and personal are 3.6. Church is 3.3. None lead. The status line still ignores a larger text size (Q6), which is why large type stays at 2 for church. StreamYard still wins a church service on flip-camera, so rotation is not a 5. FaceTime still wins the first screen on copy: this path still asks for two passwords. A first-visit name is still `Guest` plus digits (Q9) and the 320px dock gap is 4px (Q10). Those are later.
+Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast now says RECONNECTING, OFF AIR, LIVE, or WATCHING (Q5). Create & enter stays in the card while the room fields scroll (Q4). More scrolls inside the screen in landscape (Q3). The chip and the dock clear a notch and a home indicator (Q7). The status line grows with the root text size (Q6). Corporate and personal are 3.7. Church is 3.4. None lead. The title in the chip is still a fixed pixel size, so large type is not a 5, and FaceTime still wins that row. StreamYard still wins a church service on flip-camera, so rotation is not a 5. FaceTime still wins the first screen on copy: this path still asks for two passwords. A first-visit name is still `Guest` plus digits (Q9) and the 320px dock gap is 4px (Q10). Those are later.
 
 ## Next gap
 
-Q6. The in-call status line stays 17px when the root font is 32px.
+Q5b. Flip camera stays hidden until the phone reports two cameras, and it lives inside More. A host rotating the handset has no flip control on the dock.
