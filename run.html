@@ -11916,8 +11916,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         : uiText('camBack', 'Camera stopped — bringing it back');
       if (el.textContent !== word) el.textContent = word;
     }
+    // One grab at a time. The watchdog and a return-to-the-tab can both notice
+    // the same dead track; a second getUserMedia would mint a new stage id.
+    let camGrabbing = false;
     function reviveCamera() {
-      if (!localStream) return;
+      if (!localStream || camGrabbing) return;
       const vt = localStream.getVideoTracks()[0], at = localStream.getAudioTracks()[0];
       if ((!vt || vt.readyState !== 'ended') && (!at || at.readyState !== 'ended')) return;
       const videoDead = !myStatus.camOff && (!vt || vt.readyState === 'ended');
@@ -11938,8 +11941,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         window.__regrabLog.push({ t: Date.now(), reason: reason || 'unknown', staged: (typeof stageIds === 'function' ? stageIds().indexOf(myId) >= 0 : null) });
         if (window.__regrabLog.length > 20) window.__regrabLog.shift();
       } catch (e) {}
+      camGrabbing = true;
       gumWithMicFallback(navigator.mediaDevices, { video: camVideoConstraints(), audio: true })
         .then(({ stream: s }) => {
+          camGrabbing = false;
           const nv = s.getVideoTracks()[0], na = s.getAudioTracks()[0];
           // fresh tracks come back live — restore the user's actual choices
           if (nv) nv.enabled = !myStatus.camOff;
@@ -11963,7 +11968,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           stopBlurPipe();   // the old blur canvas read the dead camera track
           refreshOutbound(); // rebuild the (blurred or raw) sender AND the WYSIWYG self-view
           if (death) showCamBack(false);
-        }).catch(() => { if (death) showCamBack('fail'); });
+        }).catch(() => { camGrabbing = false; if (death) showCamBack('fail'); });
     }
 
     // Live-but-BLACK camera (iOS mostly: another app held the hardware, or
@@ -11977,7 +11982,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const probe = document.createElement('canvas');
       probe.width = 32; probe.height = 18;
       const pctx = probe.getContext('2d', { willReadFrequently: true });
-      let darkTicks = 0, revives = 0, lastPainted = 0;
+      let darkTicks = 0, revives = 0, lastPainted = 0, endedTries = 0;
       const dark = () => {
         const v = meTile && meTile.video;
         if (!v || !v.videoWidth) return true; // no frames yet IS the symptom
@@ -11991,7 +11996,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setInterval(() => {
         if (!localStream || myStatus.camOff || document.hidden) return;
         const vt = localStream.getVideoTracks()[0];
-        if (!vt || vt.readyState === 'ended') return; // reviveCamera's case
+        // A phone can end the camera while this page stays in front: a call,
+        // or another app that takes the lens. visibilitychange never fires,
+        // so the return-to-the-tab path never runs. Say so on the next sample
+        // and grab again. Three tries, then the fail line stays. A grab
+        // already in flight is left alone.
+        if (!vt || vt.readyState === 'ended') {
+          if (vt && vt.readyState === 'ended' && !camGrabbing && endedTries < 3) {
+            endedTries++;
+            reviveCamera();
+          }
+          return;
+        }
+        endedTries = 0;
         // JUDGE THE TRACK THAT ACTUALLY LEAVES THIS DEVICE. While the blur pipe
         // runs it feeds on its own CLONE of the camera (startBlurPipe clones so
         // the self-view can keep the original — Safari won't render one track in

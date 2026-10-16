@@ -69,6 +69,64 @@ test('a phone that kills the camera says so, then brings it back', async ({ page
   await expect.poll(() => page.evaluate(() => window.__gumN || 0)).toBe(2);
 });
 
+test('a phone that kills the camera while you are still looking says so', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.setItem('gifos_appeared', '1');
+  });
+  await page.goto('/run.html#v=qaphonevisible&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#leavebtn', { state: 'visible' });
+  await page.evaluate(() => {
+    let n = 0;
+    let release = null;
+    window.__releaseCam = () => { if (release) { const go = release; release = null; go(); } };
+    const stream = () => {
+      const c = document.createElement('canvas');
+      c.width = 640; c.height = 360;
+      c.style.cssText = 'position:fixed;left:-4000px;top:0';
+      document.body.appendChild(c);
+      const x = c.getContext('2d');
+      x.fillStyle = '#c45b3e';
+      x.fillRect(0, 0, 640, 360);
+      return c.captureStream(8);
+    };
+    navigator.mediaDevices.getUserMedia = () => {
+      n += 1;
+      window.__gumN = n;
+      if (n === 1) return Promise.resolve(stream());
+      return new Promise((res) => { release = () => res(stream()); });
+    };
+  });
+  await page.click('#cam');
+  await expect.poll(() => page.evaluate(() => window.__gumN || 0)).toBe(1);
+  const killed = await page.evaluate(() => window.__gifosVideo.killCameraForTest());
+  expect(killed && killed.ended).toBe(true);
+  const mark = page.locator('.tile.me .cambackmark');
+  await expect(mark).toBeVisible({ timeout: 7000 });
+  await expect(mark).toHaveText('Camera stopped — bringing it back');
+  expect(await page.evaluate(() => window.__gumN || 0)).toBe(2);
+  const fit = await page.evaluate(() => {
+    const el = document.querySelector('.tile.me .cambackmark');
+    const tile = document.querySelector('.tile.me');
+    const er = el.getBoundingClientRect();
+    const tr = tile.getBoundingClientRect();
+    return {
+      font: parseFloat(getComputedStyle(el).fontSize),
+      inTile: er.left >= tr.left - 1 && er.right <= tr.right + 1 && er.top >= tr.top - 1 && er.bottom <= tr.bottom + 1,
+      clipped: el.scrollWidth > el.clientWidth + 2,
+      hidden: document.hidden,
+    };
+  });
+  expect(fit.hidden).toBe(false);
+  expect(fit.font).toBeGreaterThanOrEqual(20);
+  expect(fit.inTile).toBe(true);
+  expect(fit.clipped).toBe(false);
+  await page.evaluate(() => window.__releaseCam());
+  await expect(mark).toBeHidden();
+});
+
 test('a live camera that sends nothing says so before it restarts', async ({ page, browserName }) => {
   test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
   await page.setViewportSize({ width: 390, height: 844 });
