@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q36. A church viewer was asked to appear in the meeting
+
+Opening a service link showed “This is how you’ll appear in the meeting” and Preview camera. A viewer stays off camera. The step now says “Watching the service” and “You stay off camera. A name shows only if you chat.” Preview camera is gone. Clear and Save stay. Stop watching replaces Hang up. A host who holds the room’s key still gets the appearance step and Preview camera. `test/mobile/viewer-join.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-viewer-watch.png`.
+
+Design: one sentence, the name, Clear and Save. No camera. Church stays at 4. They still pass a name step before the service is the whole screen.
+
 ### Q35. Change host key sat above Go live
 
 A broadcast opened on the service name, then Change host key, then Go live. The key was in the path. Go live now sits under the name, Watch under that, and Change host key under Watch. On an iPhone SE the name is y=130 to y=178, Go live y=198 to y=246, Watch y=258 to y=307, and Change host key y=321. Opening it shows Your host key, the readable three-word key, and Generate, from y=317. The key is still minted and stored. A meeting still shows the host key above Create & enter. `test/mobile/create-one-password.spec.mjs`.

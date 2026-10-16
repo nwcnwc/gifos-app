@@ -2476,10 +2476,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         seed = 'Guest ' + (1000 + Math.floor(Math.random() * 9000));
         GifOS.store.setName(seed);
       }
+      const watching = BROADCAST && !bcHostStored();
       const bg = document.createElement('div'); bg.className = 'name-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
-      bg.innerHTML = '<div class="name-box appear-box"><h3>This is how you’ll appear</h3>' +
-        '<p id="nm-lead">This is how you’ll appear in the meeting.</p>' +
+      bg.innerHTML = '<div class="name-box appear-box"><h3>' + (watching ? 'Watching the service' : 'This is how you’ll appear') + '</h3>' +
+        '<p id="nm-lead">' + (watching
+          ? 'You stay off camera. A name shows only if you chat.'
+          : 'This is how you’ll appear in the meeting.') + '</p>' +
         '<div class="appear-preview">' +
           '<div class="appear-face"><video id="nm-cam" autoplay muted playsinline hidden></video>' +
           '<img id="nm-avatar" alt="" hidden><span id="nm-letter" aria-hidden="true"></span></div>' +
@@ -2550,6 +2553,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           err.textContent = '';
         }).catch(() => { err.textContent = 'The camera stayed off. Your picture is what people see.'; });
       };
+      if (watching) {
+        const camBtn = bg.querySelector('#nm-cam-btn');
+        if (camBtn) camBtn.hidden = true;
+        const leave = document.getElementById('leavebtn');
+        if (leave) {
+          leave.title = 'Stop watching.';
+          leave.setAttribute('aria-label', 'Stop watching');
+        }
+      }
       if (!systemName) input.focus();
       const save = () => {
         const v = input.value.trim();
