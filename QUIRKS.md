@@ -38,6 +38,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** entering a vote folds the sheet without changing the saved “keep More open” preference. The sheet’s height is capped to the space above the dock and scrolls inside that cap.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/more-vote-before-1280.png`, `test/desktop/shots/more-vote-after-1280.png`, `test/desktop/shots/more-short-before-480.png`, `test/desktop/shots/more-short-after-480.png`.
 
+### Tile moderation is hover-only
+
+- **Who hits it:** a keyboard host who needs Mute for everyone on someone else’s tile.
+- **What you saw:** `.modbar` was `display: none` until hover. The tile was not a tab stop. On a camera-off tile the full-screen button is hidden too, so there was no way in.
+- **Repro:** `test/desktop/tile-keys.spec.js` failed before the fix (no `tabindex` on a remote tile).
+- **Fix:** a remote tile is a tab stop. Focusing it shows the same moderation bar hover already showed, including Mute, and Tab reaches that button. The gallery geometry is unchanged.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/tile-keys-before-1280.png` (bar hidden), `test/desktop/shots/tile-keys-after-1280.png` (bar open from the keyboard).
+
 ## Open
 
 ### WebKit crashes if a gallery tile plays a canvas captureStream
@@ -47,10 +55,6 @@ Opening four fake videos and then clicking More closed the WebKit tab. Chromium 
 ### First visit covers the call with the name dialog
 
 With no saved name, a modal asks for a screen name while the meeting is already up. It sits over the dock (`z-index` 40) and swallows clicks until Not now or Continue. The knock does not wait on it, which is right; the dialog still hides the controls.
-
-### Tile moderation is hover-only
-
-`.tile .modbar` is `display: none` until hover, `.menu`, or `:focus-within`. The tile itself is not in the tab order, so the buttons inside never become reachable from the keyboard.
 
 ### More sheet is a dense grid of mixed labels
 

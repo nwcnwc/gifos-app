@@ -1019,6 +1019,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .modbar { position: absolute; right: .4rem; top: .4rem; display: none; flex-direction: column;
                   gap: .3rem; z-index: 4; }
   .tile:hover .modbar, .tile.menu .modbar, .tile:focus-within .modbar { display: flex; }
+  .tile:focus-visible { outline: 3px solid #7ec8ff; outline-offset: -3px; }
   .tile .modbar button { padding: .3rem .55rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.16);
                          background: rgba(10,10,15,.85); color: #eceef8; cursor: pointer; font-size: .68rem; }
   .tile .modbar button:hover { border-color: var(--accent2, #ff5caa); }
@@ -4393,6 +4394,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       tile.className = 'tile' + (isMe ? ' me' : '');
       tile.dataset.peer = id;
       tile.dataset.pzkey = 'peer:' + id;
+      if (!isMe) {
+        tile.tabIndex = 0;
+        tile.setAttribute('role', 'group');
+        tile.setAttribute('aria-label', (name || 'Participant') + '. Controls for this person.');
+      }
       const video = document.createElement('video');
       video.autoplay = true; video.playsInline = true;
       if (isMe) video.muted = true;
@@ -4541,6 +4547,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const isMe = id === 'me';
       const t = isMe ? meTile : peers.get(id);
       if (!t) return;
+      if (!isMe && t.tile) {
+        const who = (t.label && t.label.textContent) || 'Participant';
+        const al = who + '. Controls for this person.';
+        if (t.tile.getAttribute('aria-label') !== al) t.tile.setAttribute('aria-label', al);
+      }
       reactStats.tiles++;
       // My own name is read from the store on every pass: the tile is built
       // once, before the entry prompt's Continue or a Settings → Change, and
