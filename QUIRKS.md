@@ -315,6 +315,14 @@ Repro: `test/mobile/header-count.js`. It failed (`header "4 in call"`), then pas
 
 Before: `qa/mobile/shots/before-room-name-iphone-15.png`. After: `qa/mobile/shots/after-room-name-iphone-15.png`.
 
+### 39. The lobby's admin button looked like the way to start
+
+"Start a meeting" and "Start a room you run" both began with Start. At 200% text the admin label wrapped until that button was 102px and the blue Start was 62px. A volunteer would tap the bigger one.
+
+Repro: `test/mobile/lobby-which-start.js`. It failed, then passed on an SE, at 200% text, and sideways. The admin button says Room you run. It is not blue, and it is not taller than Start a meeting. Join a link stays on screen.
+
+Before: `qa/mobile/shots/before-lobby-which-start-iphone-se.png`, `qa/mobile/shots/before-lobby-which-start-iphone-se-200.png`. After: `qa/mobile/shots/after-lobby-which-start-iphone-se.png`, `qa/mobile/shots/after-lobby-which-start-iphone-se-200.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.

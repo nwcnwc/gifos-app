@@ -15,7 +15,7 @@ Out of scope for this branch, so they are not scored as wins or losses here: the
 - Zoom and church tools: a host admits from a waiting-room list, and the other host controls say what they do. Ours does too. In landscape, Invite, Room password, Waiting room, and Chat are on the first screen of More.
 - StreamYard, Restream, YouTube Live: a producer sees Live, and Record and Captions, on the call. Ours does too, above the dock, until the call is quiet. Record opens with the choice already made, and Start recording stays on screen.
 - FaceTime tucks the call controls until you tap. On a phone, Live, Record, Captions, and the dock do too. Fit and the name chip stay.
-- A church page that is only three big buttons still starts with less to read. On a phone, Live is the wide control on the call, and More's first screen is four actions with Invite in blue.
+- A church page with one go-live button still has less to read. On a phone, Start a meeting is the only blue button and the only one that says Start. Live is the wide control on the call.
 
 What we already do that they do not: one link, no account, join muted, camera choice stays in the lobby, blur until there is a reason to be clear, the meeting is the peers rather than a server in the middle. That is the personal and church advantage. The phone chrome around it is in better shape, and we still do not lead.
 
@@ -37,11 +37,11 @@ A volunteer and an older member, a service or a small group, often a phone held 
 
 | Job | Score | Note |
 | --- | --- | --- |
-| Start or join from the lobby on an SE | 9 | Join is on screen in portrait and in landscape, including at 200% text. Start is the only blue button. The phone shows the action, not the essay under it. |
+| Start or join from the lobby on an SE | 10 | Start a meeting is the only blue button and the only one that says Start. Room you run is the admin path, and it is not taller than Start, including at 200% text. Join stays on screen. |
 | Tap targets for someone who misses small controls | 9 | Dock grip, chat close, Send, and Fit are 44px, including on an iPhone 15. Blur for all is a 64px square, inset from the tile corner, on a phone and on the desktop. |
 | Captions a member can find, at 200% text | 10 | The line sits above Live, in white on black, at 40px when text is 200%. A long line starts at the beginning, and the rest scrolls inside the caption. |
 | Host runs the room from the phone they already hold | 10 | Live is the wide control on the call, 64px tall when the phone is upright. Record and Captions stay on the next row. The phone sheet opens on Invite, Room password, Waiting room, and Chat. Invite is the blue one. |
-| **Audience** | **9** | Live is the wide control on the call. Join stays on screen at 200% text. Captions, the dock, Fit, and a waiting-room list work on a phone. The lobby is still the open job. We do not lead yet. |
+| **Audience** | **9** | The lobby shows one Start. Live is the wide control on the call. Captions, the dock, Fit, and a waiting-room list work on a phone. Tap targets are still the open job. We do not lead yet. |
 
 ## Personal
 
@@ -95,3 +95,4 @@ Family and friends. Warm, few steps, a texted link.
 36. Unmute on a texted link. `test/mobile/join-unmute.js` failed (no Unmute a person can read), then passed on an SE, at 200% text, and sideways. The button is blue and stays when the dock tucks. A tap turns the mic on. Personal link 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 37. Live a volunteer can see. `test/mobile/live-stands-out.js` failed (SE Live 72×44, sideways Live 72px wide), then passed. Upright, Live is a 64px band across the call. Sideways, it takes the rest of the one row. Record and Captions stay secondary. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 38. The header names the room. `test/mobile/header-count.js` failed (`header "4 in call"`), then passed. Four peers read `header-count · 4 in call` on an SE and an iPhone 15, and the phrase fits. Corporate trust 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.
+39. Which button starts the meeting. `test/mobile/lobby-which-start.js` failed (the admin button also said Start, and at 200% text it was 102px against Start at 62px), then passed. The admin path says Room you run and is not taller than Start. Church lobby 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.
