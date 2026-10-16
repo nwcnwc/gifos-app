@@ -49,11 +49,11 @@ Family and friends. Warm, few steps, a texted link.
 
 | Job | Score | Note |
 | --- | --- | --- |
-| Open a texted link and pick a name | 9 | The join step opens with the GifOS name and picture. Save keeps them and is the solid blue button. Clear blanks both and is the outline. |
+| Open a texted link and pick a name | 10 | The join step opens with the GifOS name and picture. Save keeps them and is the solid blue button. Clear blanks both and is the outline. The call says Unmute until the mic is on. |
 | See everyone and hang up on a small phone | 10 | Four faces are two rows of two, near a portrait-phone shape, and Fit no longer sits on a face. Live, Record, Captions, and the dock tuck when the call is quiet. A tap brings Hang up back. |
 | Send a chat line | 9 | The latest line and the count sit on the call. Emoji inserts into the field. Theirs is a light bubble and mine is blue, at 1rem. |
 | Turn the phone sideways | 9 | Four faces stay near a portrait-phone shape, and Fit shares the header row. Invite, Room password, Waiting room, and Chat are on the first screen of More. |
-| **Audience** | **9** | The link, the name step, hang up, the grid, a sideways phone, chat, the lobby, and Fit are in good shape. The dock tucks the way a phone call does. Fit and the name chip stay. We do not lead yet. |
+| **Audience** | **9** | The link says Unmute, and the name step, hang up, and the grid are in good shape. Chat and a sideways phone are still the open jobs. The dock tucks the way a phone call does. Fit and the name chip stay. We do not lead yet. |
 
 ## Cycle
 
@@ -92,3 +92,4 @@ Family and friends. Warm, few steps, a texted link.
 33. Record start. `test/mobile/record-start.js` failed (Start bottom 758 on a 568px SE, and 1865 at 200% text), then passed. The sheet states the capture in one sentence, Start is the blue button, and Cancel is the outline. Both stay on screen in portrait, sideways, and at 200% text. Corporate host 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 34. Faces at 200% text. `test/mobile/large-text-faces.js` failed (on an SE and an iPhone 15, Ruth, David, and Sam ran under Live), then passed. Four faces stay on screen, above Live, inside a portrait-phone shape. A sideways phone still uses one row when that is the shape that fits. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 35. Readable captions. `test/mobile/caption-read.js` failed (no caption a member can read; the line was clipped on the face), then passed on an SE, sideways, and at 200% text. The caption sits above Live. The start of a long line is showing, and the rest scrolls inside it. Church captions 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.
+36. Unmute on a texted link. `test/mobile/join-unmute.js` failed (no Unmute a person can read), then passed on an SE, at 200% text, and sideways. The button is blue and stays when the dock tucks. A tap turns the mic on. Personal link 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.

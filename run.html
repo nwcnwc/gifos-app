@@ -1350,6 +1350,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .fitbtn { position: fixed; z-index: 6; top: calc(58px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); min-width: 44px; min-height: 44px;
     border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 1rem/1.2 system-ui, sans-serif; }
+  /* A texted link skips the lobby, so "You join muted" is never seen.
+     Unmute sits in the header band (tiles already start below Fit) and
+     stays when Live and the dock tuck. Muted is the call, not chrome. */
+  #unmute {
+    position: fixed; z-index: 7;
+    top: calc(58px + env(safe-area-inset-top, 0px));
+    left: calc(14px + env(safe-area-inset-left, 0px));
+    min-width: 44px; min-height: 44px; padding: 8px 16px; border: 0; border-radius: 999px;
+    background: #0064c8; color: #fff; cursor: pointer;
+    font: 700 1rem/1.15 system-ui, sans-serif;
+  }
+  #unmute[hidden] { display: none !important; }
+  @media (max-height: 500px) and (orientation: landscape) {
+    #unmute {
+      top: calc(14px + env(safe-area-inset-top, 0px));
+      left: 50%; right: auto; transform: translateX(-50%);
+    }
+  }
   /* Live, Record, and Captions sit on the call, above the dock, so a
      producer does not open More to see them. Live is the only red mark
      until recording starts. Captions turns blue, not red. */
@@ -1855,6 +1873,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <span class="status" id="status">Joining…</span>
   </div>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
+  <button type="button" id="unmute" hidden>Unmute</button>
   <div id="livecap"></div>
   <div id="callstate" hidden>
     <span id="call-live" role="status">Live</span>
@@ -20888,6 +20907,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
     // ---- controls: mic + camera (traffic-light icons), blur (3-way slider) -----
     const micBtn = document.getElementById('mic');
+    const unmuteBtn = document.getElementById('unmute');
     const camBtn = document.getElementById('cam');
     const blurSeg = document.getElementById('blurseg');
     const blurSegs = Array.from(blurSeg.querySelectorAll('.seg'));
@@ -21037,7 +21057,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!callOpen() || !phoneCall()) return;
         if (!document.body.classList.contains('chrome-away')) return;
         const t = e.target;
-        if (t && t.closest && t.closest('.fitbtn, .topchip, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist')) {
+        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist')) {
           showChrome();
           return;
         }
@@ -21169,6 +21189,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       micBtn.title = micLocked
         ? 'Muted for everyone' + (modOf('me').mute.by ? ' by ' + modOf('me').mute.by : '') + ' — someone else has to lift it'
         : (muted ? 'You are muted — tap to speak' : 'Your mic is on — tap to mute');
+      if (unmuteBtn) {
+        const lob = document.getElementById('lobby');
+        const inCall = !(lob && lob.classList.contains('show'));
+        unmuteBtn.hidden = !inCall || !muted;
+      }
       // camera
       camBtn.classList.toggle('off', myStatus.camOff);
       camBtn.setAttribute('aria-pressed', myStatus.camOff ? 'false' : 'true');
@@ -21406,6 +21431,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // attached and emitting nothing (kickMainVideo), audio side.
       if (track.enabled) kickStageMic(track);
     };
+    if (unmuteBtn) unmuteBtn.onclick = () => micBtn.onclick();
     function kickStageMic(track) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (!track || track.kind !== 'audio' || track.readyState !== 'live' || !track.enabled) return;

@@ -291,6 +291,14 @@ Repro: `test/mobile/caption-read.js`. The caption is one block above Live, white
 
 Before: `qa/mobile/shots/before-caption-read-iphone-se-200.png`. After: `qa/mobile/shots/after-caption-read-iphone-se-200.png`.
 
+### 36. A texted link joins muted with no word for it
+
+The lobby says you join muted. A link skips that page. The mic is a slashed icon and the dock has no words, so a first call looks broken.
+
+Repro: `test/mobile/join-unmute.js`. It failed (`no Unmute a person can read` on an SE, at 200% text, and sideways), then passed. Unmute is blue, 44px, and 1rem. It sits in the header band, clear of the faces and of Fit. A tap turns the mic on and the button goes away. It stays when Live and the dock tuck.
+
+Before: `qa/mobile/shots/before-join-unmute-iphone-se.png`. After: `qa/mobile/shots/after-join-unmute-iphone-se.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.
