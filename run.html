@@ -1159,6 +1159,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.screen-on #stadium { flex: 0 0 auto; }
   #sharebtn.on { background: #b3402f; border-color: #d4593f; color: #fff; }
   .stopshare { cursor: pointer; text-decoration: underline dotted; }
+  /* Stop lives on the slide. The More row is a second way out, not the only one
+     a client can see while they are looking at the deck. */
+  #stagefeed .stagestop {
+    position: absolute; top: 12px; right: 12px; z-index: 4;
+    min-height: 40px; padding: 0 14px; border: 0; border-radius: 12px;
+    background: #b61622; color: #fff; font: 700 16px/1 system-ui, sans-serif;
+    cursor: pointer;
+  }
   .share-note { border: 1px solid var(--border, #2a2a3f); border-left: 3px solid #6f7bd4;
     background: rgba(111,123,212,.10); border-radius: .45rem; padding: .55rem .7rem;
     font-size: .84rem; line-height: 1.4; margin: .2rem 0 .7rem; }
@@ -16671,6 +16679,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           ? '🖥 ' + shr.map((id) => (id === myId ? 'Your' : ((rosterNames[id] || (peers.get(id) || {}).name || 'A guest') + '’s'))).join(' & ') + ' screen — on stage'
           : 'On stage';
       }
+      // STOP ON THE SLIDE. The More row also says Stop sharing, and the
+      // thumbnail has a small chip, but a client demo is looking at the
+      // stage. The button is only mine to press.
+      let stop = el.querySelector('.stagestop');
+      if (myStatus.scr) {
+        if (!stop) {
+          stop = document.createElement('button');
+          stop.type = 'button';
+          stop.className = 'stagestop';
+          stop.addEventListener('click', () => stopScreenShare());
+          el.appendChild(stop);
+        }
+        const word = uiText('stopShare', 'Stop sharing');
+        if (stop.textContent !== word) stop.textContent = word;
+      } else if (stop) stop.remove();
       compOf.set('sgs', { via: 'stage', streamId: stream.id, stream, names: stageIds(), el: v });
       recSrcDirty = true;
     }
@@ -16731,8 +16754,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // down live announce state during convergence (e2e-mosaic run6: no
       // receiver ever accumulated a stage claim).
       if (!s || !c || (!beyondRow && !stageIds().length)) {
+        // A local share has pixels before this seat exists. Clearing the
+        // strip here left the stage blank until the mesh caught up (or
+        // forever, with no seat). Keep the slide.
+        const localShare = !!(myStatus.scr && screenStream);
         if (mosJobs.size || mosIn.size || mosStandby.size || prodPack || sdPack || sdnPacks.size || stripPack) stopMosaic();
-        else if (compOf.size) { paintStadiumTile(null); paintStageStrip(null); }
+        else if (compOf.size && !localShare) { paintStadiumTile(null); paintStageStrip(null); }
+        if (localShare) paintStageStrip(selfStageStream());
         return;
       }
       claimMos();
@@ -18239,6 +18267,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (!myStatus.stg) { screenSteppedUp = true; setStage(true); } else screenSteppedUp = false;
           paintShare(); paintControls();
           refreshOutbound();   // republish: self-view, row-mates, the stg: feed
+          showLocalScreen();   // the slide, now — the mosaic sweep can be seconds later
           if (!screenSteppedUp) broadcastStatus(); // setStage already told the room
           refreshAllTiles();
           setStatus('🖥 Sharing your screen with the meeting. Sound from the shared tab does not travel — talk over it.');
@@ -18268,7 +18297,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       refreshOutbound();   // the camera (or nothing) becomes the source again
       if (!steppedDown) broadcastStatus(); // setStage already told the room
       refreshAllTiles();
+      if (!screenSharers().length) paintStageStrip(null);
       setStatus(why ? 'Screen share stopped — ' + why + '.' : 'Screen share stopped.');
+    }
+    // The stage element is a second <video>. Headless camera failure hides
+    // the self tile (tileNote), and refreshOutbound never puts that display
+    // back. A share is the picture, so the tile shows it, and the stage
+    // paints the same track without waiting on a mesh seat.
+    function showLocalScreen() {
+      if (!(myStatus.scr && screenStream)) return;
+      if (meTile && meTile.video) {
+        meTile.video.style.display = '';
+        const note = meTile.tile && meTile.tile.querySelector('.note');
+        if (note) note.remove();
+      }
+      const st = selfStageStream();
+      if (st) paintStageStrip(st);
     }
     if (shareBtn) shareBtn.onclick = () => {
       if (myStatus.scr) { stopScreenShare(); return; }
