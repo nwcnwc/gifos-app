@@ -11985,7 +11985,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         applyRoffer(m);
       } else if (m.k === 'ranswer') {
-        if (p.pc) p.pc.setRemoteDescription(m.sdp)
+        if (!p.pc) return;
+        const carried = p.connected || (p.dc && p.dc.readyState === 'open');
+        const srd = () => p.pc.setRemoteDescription(m.sdp);
+        // A renegotiation answer that never settles (lost on the wire, or a
+        // test harness that swallows it) leaves have-local-offer on a live
+        // pair forever and offer-stale rollback races the hung promise (06d:
+        // roffer/ranswer storms after a long tunnel wake). Same budget as
+        // offer-stale: if it has not applied by then, take the offer back.
+        const applyRanswer = (carried && p.pc.signalingState === 'have-local-offer')
+          ? Promise.race([
+            srd(),
+            new Promise((_, rej) => setTimeout(() => {
+              const err = new Error('ranswer-timeout');
+              err.name = 'RanswerTimeout';
+              rej(err);
+            }, 2 * GLARE_YIELD_MS + 2000))
+          ])
+          : srd();
+        applyRanswer
           .then(() => {
             // A held Firefox offer must not be applied after our own offer
             // was answered. A bootstrap twin is the same: the answer means
@@ -11995,7 +12013,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (p.rofferYield) {
               const ym = p.rofferYield;
               const fx = /o=mozilla/i.test(String((ym.sdp && ym.sdp.sdp) || '').slice(0, 80));
-              const carried = p.connected || (p.dc && p.dc.readyState === 'open');
               if (fx || !carried) {
                 p.rofferYield = null;
                 if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
@@ -12004,7 +12021,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (typeof clog === 'function') clog('ranswer←' + String(p.id).slice(0, 6));
             afterNeg(p);
           })
-          .catch((e) => { if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140)); });
+          .catch((e) => {
+            if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140));
+            if (e && e.name === 'RanswerTimeout' && carried && p.pc && p.pc.signalingState === 'have-local-offer'
+                && !p.makingOffer && !p.glareTimer && !p.rofferYieldTimer) {
+              p.staleOfferSdp = null;
+              p.kickVideo = true;
+              Promise.resolve(p.pc.setLocalDescription({ type: 'rollback' })).then(() => renegotiate(p)).catch(() => maybeRebuildNeg(p, e));
+            }
+          });
       }
     }
     // A peer's lines are bounded two ways: per sender per window (a script
@@ -21160,6 +21185,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const p = peers.get(pid); if (!p) return { err: 'no such peer' };
         sendOffer(pid, false);
         return { ok: true, dc: (p.dc && p.dc.readyState) || 'none' };
+      },
+      // DEBUG: perfect-negotiation re-offer on an open channel (roffer path).
+      // behavior 06d uses this after a0fc973: the polite side no longer offers
+      // at the door, so the forced lost-answer wedge needs a live renegotiation.
+      renegForTest: (pid) => {
+        if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
+        const p = peers.get(pid); if (!p) return { err: 'no such peer' };
+        renegotiate(p);
+        return { ok: true, sig: p.pc && p.pc.signalingState, dc: (p.dc && p.dc.readyState) || 'none' };
       },
       // DEBUG: kill ONLY the DataChannel, leaving the pc and ICE untouched —
       // the state a real phone landed in (2026-08-17: `dc=closed/connected`
