@@ -34,6 +34,7 @@ test('a broadcast host who is not sending a picture reads OFF AIR', async ({ pag
 test('a meeting does not wear the broadcast badge', async ({ page }) => {
   await page.goto('/run.html#v=sundayroom', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#livebadge')).toBeHidden();
+  await expect(page.locator('#bc-link')).toBeHidden();
 });
 
 test('the broadcast state is a banner above the status sentence', async ({ page }) => {

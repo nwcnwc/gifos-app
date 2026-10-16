@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q40. The friend link was a later hunt
+
+Go live opened off air, and the link lived behind More. The off-air stage now says “Friends watch with this link.” with the link and Copy. On an iPhone SE the card runs y=118 to y=285, under the title chip, and Copy is 48px, above the dock. A short landscape keeps the card between the chip and the dock. The camera still puts the picture on, and then the card leaves. A viewer does not see it. A meeting does not see it. `test/mobile/viewer-join.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-stream-link.png`.
+
+Design: one white card, one sentence, the link, one blue Copy. Personal stays at 4. The picture is still a separate camera tap. FaceTime is still that camera.
+
 ### Q39. A stream asked for a name, then another sheet
 
 Go live did nothing until a name was typed, and the next screen was “This is how you’ll appear in the meeting.” The name now opens as Friday night. A blank name uses that too, so Go live is one tap. A host who holds the room key lands on the stream. A viewer still gets Watching the service. A meeting still gets the appearance step. The host key is still minted. `test/mobile/create-one-password.spec.mjs`, `test/mobile/viewer-join.spec.mjs`.
