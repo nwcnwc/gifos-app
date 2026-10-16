@@ -6,6 +6,8 @@ const HALL = '/run.html#v=allhands&av=' + AV + '&th=1';
 test('a town hall joiner lands in the town hall', async ({ page }) => {
   await page.goto(HALL, { waitUntil: 'domcontentloaded' });
   await expect(page).toHaveTitle('Town hall — GifOS');
+  await expect(page.locator('#status')).toContainText('The town hall has not started.');
+  await expect(page.locator('#status')).not.toContainText('send the invite');
   await expect(page.locator('.appear-box')).toHaveCount(0);
   await expect(page.locator('#nm-lead')).toHaveCount(0);
   await expect(page.locator('#leavebtn')).toHaveAttribute('aria-label', 'Leave the town hall');

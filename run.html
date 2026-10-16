@@ -6560,9 +6560,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const reach = typeof reachInfo === 'function' ? reachInfo() : null;
       const reachState = reach ? reach.state : null;
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
+      // A town hall viewer is here to watch. "Send the invite" is the host's
+      // line. Until someone else is in the room, say the hall has not started.
+      const place = TOWNHALL ? 'town hall' : 'meeting';
+      const watching = TOWNHALL && !(typeof bcHostStored === 'function' && bcHostStored());
+      const aloneLine = (watching ? 'The town hall has not started.' : 'Just you — send the invite; the link has no expiry') + reachTriedSentence();
+      const doorLine = 'Getting you back into the ' + place + ' — waiting for the others to answer…';
       const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
-        : (n === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry' + reachTriedSentence())
-        : displayCount() + ' in the ' + (TOWNHALL ? 'town hall' : 'meeting') + ' · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
+        : (n === 1 ? (atDoor ? doorLine : aloneLine)
+        : displayCount() + ' in the ' + place + ' · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
       // of the reach states that replace the line. Tests and styling read

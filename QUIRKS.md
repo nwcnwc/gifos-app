@@ -12,6 +12,12 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q51. A town hall viewer was told to send the invite
+
+Opening a town hall link skipped the appearance step and then said “Just you — send the invite; the link has no expiry.” That line is the host’s. A viewer now reads “The town hall has not started.” A host who holds the room key still gets the invite line. A meeting still gets it. `test/mobile/town-hall-join.spec.mjs`.
+
+Design: a viewer waits for the town hall. Corporate stays at 4. The room still wears a meeting’s controls.
+
 ### Q50. A town hall viewer stopped on the appearance step
 
 A person opening a town hall link saw “This is how you’ll appear in the town hall” before they could watch. They watch off camera, the way a church viewer does, so that step is gone. The title stays Town hall, and Leave the town hall stays the leave control. The camera control stays on the dock. A host who already holds the room key still gets the appearance step. A meeting still gets it. `test/mobile/town-hall-join.spec.mjs`.
