@@ -421,6 +421,16 @@ Repro: `test/mobile/people-list.js`. It failed (`title "Who is on this meeting"`
 
 Before: `qa/mobile/shots/before-people-list-iphone-se.png`. After: `qa/mobile/shots/after-people-list-iphone-se.png`.
 
+### 51. A chat line had no clock
+
+Zoom, Meet, Teams, and FaceTime put a time on the bubble. Ours showed the name and the words and nothing about when the line was sent.
+
+Each line now shows the hour and minute beside the name, in the same ink as the bubble. A line sent at 14:41 UTC reads 10:41 AM on a phone set to New York.
+
+Repro: `test/mobile/chat-time.js`. It failed (`no clock time on Ruth`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-time.js`. `test/mobile/chat-bubbles.js` still passes.
+
+Before: `qa/mobile/shots/before-chat-time-iphone-se.png`. After: `qa/mobile/shots/after-chat-time-iphone-se.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.

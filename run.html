@@ -1090,6 +1090,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cmsg { background: #e8ecf1; color: #1d1d1f; border: 0; border-radius: 16px; padding: 10px 12px; max-width: 78%; align-self: flex-start; overflow-wrap: anywhere; font-size: 1rem; line-height: 1.35; }
   .cmsg.mine { align-self: flex-end; background: #0064c8; color: #fff; }
   .cmsg b { color: inherit; font-size: 1rem; font-weight: 700; display: block; margin: 0 0 2px; }
+  /* The clock sits beside the name. Same ink as the line, so it stays
+     readable on the light bubble and on the blue one. */
+  .cwho { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin: 0 0 2px; }
+  .cwho b { display: inline; margin: 0; }
+  .cmsg .cwhen { color: inherit; font-size: .875rem; font-weight: 600; white-space: nowrap; }
   #cfiles { border-top: 1px solid var(--border, #2a2a3f); padding: .45rem .7rem; max-height: 34%; overflow-y: auto; }
   #cfiles h4 { font-size: .72rem; color: var(--muted, #8888aa); margin-bottom: .3rem; }
   .cfile { display: flex; align-items: center; gap: .45rem; font-size: .78rem; padding: .18rem 0; }
@@ -14043,6 +14048,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const w = document.getElementById('trwrap');
       return !!(w && w.classList.contains('show'));
     }
+    function chatWhen(at) {
+      const n = Number(at);
+      if (!n) return '';
+      try { return new Date(n).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+      catch (e) { return ''; }
+    }
     function renderChat() {
       if (!chatPanelOpen() || transcriptShown()) return;
       const log = document.getElementById('chatlog');
@@ -14054,7 +14065,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The signed-in admin moderates line by line: the standard row-delete
         // glyph mints a signed 'cdel' (see the #chatlog click delegate).
         const del = amAdmin ? '<button class="row-del" data-cdel="' + esc(m.id) + '" title="Delete this message for everyone">' + DEL_ICON + '</button>' : '';
-        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '"><b>' + (typeof avatarChip === 'function' ? (avatarChip(m.byId) || '') : '') + esc(m.by) + '</b>' + body + del + '</div>';
+        const when = chatWhen(m.at);
+        const stamp = when ? '<small class="cwhen">' + esc(when) + '</small>' : '';
+        const who = '<span class="cwho"><b>' + (typeof avatarChip === 'function' ? (avatarChip(m.byId) || '') : '') + esc(m.by) + '</b>' + stamp + '</span>';
+        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '">' + who + body + del + '</div>';
       }).join('');
       const co = chatOffInfo();
       if (co) html += '<div class="cmsg" style="opacity:.65"><b>🔇</b>Chat was turned off' + (co.by ? ' by ' + esc(co.by) : '') + '.' + (amAdmin ? '' : ' Only the host can post.') + '</div>';
@@ -14230,7 +14244,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
           by: String((o && o.by) || 'Someone').slice(0, 40),
           byId: 'qa-peer',
-          at: Date.now(),
+          at: (o && typeof o.at === 'number' && o.at > 0) ? o.at : Date.now(),
           text: String((o && o.text) || '').slice(0, 2000),
         };
         if (!takeChat(msg)) return unread;
