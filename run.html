@@ -1485,7 +1485,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.chrome-away .admcount { opacity: 0; pointer-events: none; }
   /* A rotated phone is short. The dock is a thin pill on the picture. */
   @media (max-height: 420px) {
-    .bar { height: 48px; min-height: 0; flex-wrap: nowrap;
+    .bar { height: clamp(48px, 3rem, 64px); min-height: 0; flex-wrap: nowrap;
       background: rgba(255,255,255,.58); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
       box-shadow: 0 8px 22px rgba(0,0,0,.22); }
     .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle,
@@ -1493,17 +1493,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.has-flip .bar #reactbtn, body.has-flip .bar #bartoggle,
     .bar #mic.iconbtn.off, .bar #cam.iconbtn.off,
     .bar #reactbtn.on, .bar #bartoggle[aria-expanded="true"] {
-      width: 44px; height: 44px; min-width: 44px; min-height: 44px;
+      width: clamp(44px, 1.75rem, 56px); height: clamp(44px, 1.75rem, 56px); min-width: 44px; min-height: 44px;
       background: transparent; color: #1d1d1f;
       filter: drop-shadow(0 0 1px rgba(255,255,255,.95));
     }
     .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { color: #9f1239; }
     .bar #reactbtn.on, .bar #bartoggle[aria-expanded="true"] { color: #0064c8; }
     .bar #cam svg, .bar #flipcam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg {
-      width: 22px; height: 22px;
+      width: clamp(22px, 1.125rem, 28px); height: clamp(22px, 1.125rem, 28px);
     }
     .bar #leavebtn, body.has-flip .bar #leavebtn {
-      width: 44px; height: 44px; min-width: 44px; min-height: 44px;
+      width: clamp(44px, 1.75rem, 56px); height: clamp(44px, 1.75rem, 56px); min-width: 44px; min-height: 44px;
       background: #b61622; color: #fff; filter: none; border-radius: 14px;
     }
   }

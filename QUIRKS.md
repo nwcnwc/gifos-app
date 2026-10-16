@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q33. A short landscape dock ignored a larger text size
+
+At a 32px root the portrait dock grows to 88px, and the rotated dock stayed 44px inside a 48px pill. It now follows the root size up to 56px controls and a 64px pill. On an iPhone SE landscape the controls are 56px, the glyphs are 28px, and the pill runs y=242 to y=306. The face stays y=87 to y=320, 560×233. The pill covers 78px of that tile, under half. A 16px root still paints the 44px glyphs in a 48px pill. `test/mobile/dock-scale.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-landscape-type.png`.
+
+Design: the rotated controls get larger with the text, and Hang up stays the only red. The picture stays a stage under the chip. Large type stays at 4. The rotated dock stops at 56px so the face is not a strip. FaceTime still wins that dimension.
+
 ### Q32. A rotated dock painted solid discs on the picture
 
 The frosted pill still carried grey circles, so each control hid a 44px patch of the face. On a short landscape those circles are gone. Camera, flip, mic, reactions, and More are 22px glyphs on the translucent pill, with the 44px target kept. Hang up stays the solid red control. The face is still y=59 to y=320 on an iPhone SE landscape. `test/mobile/landscape-stage.spec.mjs`.

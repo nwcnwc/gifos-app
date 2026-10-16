@@ -64,7 +64,7 @@ test('the dock grows with the root text size without thinning the face', async (
   expect(cover).toBeLessThan(box.meH * 0.5);
 });
 
-test('a short landscape dock stays a thin row when the text grows', async ({ page }) => {
+test('a short landscape dock grows with the text and stays a thin row', async ({ page }) => {
   const vp = page.viewportSize();
   await page.setViewportSize({ width: Math.max(vp.width, vp.height), height: Math.min(vp.width, vp.height) });
   await page.goto('/run.html#v=sundayroom', { waitUntil: 'domcontentloaded' });
@@ -78,11 +78,22 @@ test('a short landscape dock stays a thin row when the text grows', async ({ pag
     const me = document.querySelector('.tile.me').getBoundingClientRect();
     const bar = document.querySelector('.bar').getBoundingClientRect();
     const cam = document.getElementById('cam').getBoundingClientRect();
-    return { camH: cam.height, barH: bar.height, meW: me.width, meH: me.height, meBottom: me.bottom, barTop: bar.top, vh: innerHeight };
+    const glyph = document.querySelector('#cam svg').getBoundingClientRect();
+    const leave = document.getElementById('leavebtn').getBoundingClientRect();
+    return {
+      camH: cam.height, glyph: glyph.width, barH: bar.height, barRight: bar.right,
+      leaveRight: leave.right, meW: me.width, meH: me.height, meBottom: me.bottom,
+      barTop: bar.top, vh: innerHeight, vw: innerWidth,
+    };
   });
-  expect(box.camH).toBeLessThanOrEqual(44.5);
-  expect(box.barH).toBeLessThanOrEqual(48.5);
+  expect(box.camH).toBeGreaterThanOrEqual(52);
+  expect(box.camH).toBeLessThanOrEqual(56.5);
+  expect(box.glyph).toBeGreaterThanOrEqual(26);
+  expect(box.barH).toBeGreaterThanOrEqual(60);
+  expect(box.barH).toBeLessThanOrEqual(64.5);
+  expect(box.barRight).toBeLessThanOrEqual(box.vw + 0.5);
+  expect(box.leaveRight).toBeLessThanOrEqual(box.vw + 0.5);
   expect(box.meBottom).toBeGreaterThanOrEqual(box.vh - 2);
   expect(Math.min(box.meW, box.meH)).toBeGreaterThanOrEqual(120);
-  expect(box.meBottom - box.barTop).toBeLessThan(box.meH * 0.28);
+  expect(box.meBottom - box.barTop).toBeLessThan(box.meH * 0.4);
 });
