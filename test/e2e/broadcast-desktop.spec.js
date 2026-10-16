@@ -507,6 +507,7 @@ test('a small group tucks the dock when the call sits quiet', async ({ page }) =
       const bar = document.querySelector('.bar');
       const r = bar.getBoundingClientRect();
       const mic = document.getElementById('mic').getBoundingClientRect();
+      const fit = document.getElementById('fitbtn').getBoundingClientRect();
       return {
         tucked: bar.classList.contains('tucked'),
         hidden: bar.getAttribute('aria-hidden'),
@@ -515,6 +516,8 @@ test('a small group tucks the dock when the call sits quiet', async ({ page }) =
         vh: window.innerHeight,
         micTop: mic.top,
         micBottom: mic.bottom,
+        fitBottom: fit.bottom,
+        fitTop: fit.top,
       };
     });
   }
@@ -537,18 +540,22 @@ test('a small group tucks the dock when the call sits quiet', async ({ page }) =
     expect(away.hidden).toBe('true');
     expect(away.pe).toBe('none');
     expect(away.top).toBeGreaterThanOrEqual(h - 1);
+    expect(away.fitBottom).toBeLessThanOrEqual(0);
   }
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.setViewportSize({ width: 900, height: 720 });
   const resized = await dockPlace();
   expect(resized.tucked).toBe(true);
   expect(resized.top).toBeGreaterThanOrEqual(719);
+  expect(resized.fitBottom).toBeLessThanOrEqual(0);
   await page.evaluate(() => window.__gifosDock.wake());
   const back = await dockPlace();
   expect(back.tucked).toBe(false);
   expect(back.hidden).toBeNull();
   expect(back.micTop).toBeGreaterThanOrEqual(0);
   expect(back.micBottom).toBeLessThanOrEqual(720);
+  expect(back.fitTop).toBeGreaterThanOrEqual(0);
+  expect(back.fitBottom).toBeLessThanOrEqual(720);
   await page.evaluate(() => window.__gifosDock.tuck());
   await page.keyboard.press('Shift');
   const woke = await dockPlace();
@@ -575,6 +582,8 @@ test('a small group tucks the dock when the call sits quiet', async ({ page }) =
   expect(await page.evaluate(() => window.__gifosDock.tuck())).toBe(false);
   expect(service.tucked).toBe(false);
   expect(service.micBottom).toBeLessThanOrEqual(720);
+  expect(service.fitTop).toBeGreaterThanOrEqual(0);
+  expect(service.fitBottom).toBeLessThanOrEqual(720);
 });
 
 test('a broadcast host moderates guests on the stage', async ({ page }) => {

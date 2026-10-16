@@ -1388,6 +1388,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* Idle tuck is a transform written by placeDock. No transition: a key nudge
      has to land on the next frame, and a transition would leave the old place. */
   .bar.tucked { pointer-events: none; }
+  /* Fit is a control. It leaves with the dock on a quiet small group. */
+  body.dock-idle #fitbtn { transform: translateY(calc(-100% - 70px)); pointer-events: none; }
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #fsbtn, .bar #chatbtn, .bar #bartoggle {
     width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
     background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
@@ -20798,6 +20800,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const markTuck = (on) => {
         tucked = !!on;
         bar.classList.toggle('tucked', tucked);
+        document.body.classList.toggle('dock-idle', tucked);
         if (tucked) bar.setAttribute('aria-hidden', 'true');
         else bar.removeAttribute('aria-hidden');
         placeDock();

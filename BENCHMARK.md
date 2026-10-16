@@ -50,7 +50,7 @@ GifOS leads this audience. The average is 4.7 against StreamYard 4.0. An open se
 | Leave / rejoin is understandable | 5 | 4 | 5 |
 | **Audience score** | **4.8** | **4.0** | **4.4** |
 
-FaceTime leads. A small group leaves on the red button. The card says you left, Rejoin is blue, and Close is an outline (Q27). A service still asks, because you are live. That matches FaceTime on a personal call. On a small group the dock slides off once the call sits quiet, and a pointer or a key brings it back. A service keeps the dock (Q29). Warm chrome stays at 4: the room bar, the mute line, the status chip, and Fit stay on screen. Invite is a dock button, and the sheet’s obvious action is a blue Copy beside the link (Q23). Arithmetic: (4+4+5+4+5)/5 = 4.4. Ahead of Meet. Behind FaceTime. Not a lead.
+FaceTime leads. A small group leaves on the red button. The card says you left, Rejoin is blue, and Close is an outline (Q27). A service still asks, because you are live. That matches FaceTime on a personal call. On a small group the dock slides off once the call sits quiet, and Fit leaves with it. A pointer or a key brings both back. A service keeps the dock and Fit (Q29, Q35). Warm chrome stays at 4: the room bar, the mute line, and the status chip stay on screen. Invite is a dock button, and the sheet’s obvious action is a blue Copy beside the link (Q23). Arithmetic: (4+4+5+4+5)/5 = 4.4. Ahead of Meet. Behind FaceTime. Not a lead.
 
 ## Lead rule
 
@@ -93,3 +93,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q32 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A service hides the row and the stadium. A small group keeps the grid. Scores unchanged. The viewer dock and the hands list stay with role controls. |
 | After Q33 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A host alone on a service reads You are live. A viewer reads You are watching. A small group still reads Just you. Scores unchanged. |
 | After Q34 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Share is on the small-group dock. A service keeps it in More. Labeled controls stay 4. Zoom still leads. |
+| After Q35 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Fit leaves with the dock on a quiet small group. The room bar and the status chip stay. Warm chrome stays 4. FaceTime still leads. |
