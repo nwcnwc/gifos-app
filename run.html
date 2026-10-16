@@ -2591,6 +2591,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         voteBannerKick: 'Tippen Sie das ✕, um jemanden AUS dem Raum zu wählen — die Mehrheit entfernt die Person. Nochmal tippen nimmt die Stimme zurück.',
         camBack: 'Kamera weg — sie kommt zurück',
         camFail: 'Kamera nicht zurück. Tippen Sie auf Kamera.',
+        camBlack: 'Ihre Kamera sendet schwarz — sie startet neu…',
         goLive: 'Kamera an, dann sind Sie live. Der Raum sieht Sie noch nicht.',
         waitLive: 'Die Sendung hat noch nicht begonnen.',
         orderOfService: 'Ablauf', rdNow: 'Jetzt', rdNext: 'Weiter', rdDone: 'Fertig',
@@ -2747,6 +2748,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         voteBannerKick: 'Toca la ✕ para votar que alguien SALGA de la sala — la mayoría lo quita. Toca otra vez para retirar el voto.',
         camBack: 'Cámara parada — vuelve enseguida',
         camFail: 'La cámara no volvió. Toca Cámara.',
+        camBlack: 'Tu cámara manda negro — vuelve a arrancar…',
         goLive: 'Enciende la cámara para salir al aire. La sala aún no te ve.',
         waitLive: 'La transmisión aún no empieza.',
         orderOfService: 'Programa', rdNow: 'Ahora', rdNext: 'Siguiente', rdDone: 'Listo',
@@ -11983,23 +11985,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // That is e2e-stage-onerow's "keeps ONE stream id" red, and it predates
         // 0.9.0 (0.8.8 fails it at the same rate).
         const judge = (blurPipe && blurPipe.srcTrack && blurPipe.srcTrack.readyState === 'live') ? blurPipe.srcTrack : vt;
-        // `muted` ALONE IS NOT EVIDENCE OF A DEAD CAMERA. It is a transient,
-        // source-driven flag — it flips true whenever the source briefly cannot
-        // supply data and flips back on its own. This watchdog's premise, in its
-        // own words, is a track that is live but delivers NO FRAMES; if the blur
-        // pipe is still painting, that premise is simply false. Requiring both
-        // keeps every real failure covered — a dead camera stops painting, and a
-        // camera that is live-but-black is still caught by the pixel probe below,
-        // which is deliberately left as an independent trigger.
         const painting = !!(blurPipe && blurPipe.painted > lastPainted);
         lastPainted = blurPipe ? blurPipe.painted : 0;
-        if ((judge.muted && !painting) || dark()) {
+        // A phone that keeps the track "live" but sends no frames is the
+        // common kill. Say so on the tile at the first quiet sample. The
+        // re-grab still waits for three samples, so a dark room that is
+        // actually painting does not restart the camera or flash the line.
+        const silent = window.__gifosForceBlackCamHold === true || (judge.muted && !painting);
+        if (silent || dark()) {
+          if (silent) showCamBack(true);
           if (++darkTicks >= 3 && revives < 3) {
             darkTicks = 0; revives++;
-            setStatus('Your camera was sending black video — restarting it…');
-            regrabCamera('blackCamWatch:' + (judge.muted ? 'track-muted' : 'dark-pixels'));
+            setStatus(uiText('camBlack', 'Your camera was sending black video — restarting it…'));
+            regrabCamera('blackCamWatch:' + (silent ? 'track-muted' : 'dark-pixels'));
           }
-        } else { darkTicks = 0; revives = 0; }
+        } else {
+          if (darkTicks > 0) showCamBack(false);
+          darkTicks = 0; revives = 0;
+        }
       }, 3000);
     })();
 

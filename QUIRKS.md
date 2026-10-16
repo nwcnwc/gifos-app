@@ -174,6 +174,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** while the camera is being brought back, the self tile says “Camera stopped — bringing it back”, large enough to read, inside the tile, clear of the name and the dock. When the new camera is live, the line goes. If the grab fails, the line says to tap Camera.
 - **Proof:** the test passes on Chromium and Firefox, and the staying test still passes. Screenshots: `test/desktop/shots/phone-before-390.png`, `test/desktop/shots/phone-after-stopped-390.png`, `test/desktop/shots/phone-after-back-390.png`. A camera that stays “live” but sends black still waits on the existing watchdog before this line appears.
 
+### A live camera that sends nothing stayed quiet
+
+- **Who hits it:** a phone whose camera stays “live” but delivers no frames, the usual way a system takes the camera without ending the track.
+- **What you saw:** the tile stayed blank for about nine seconds, until the restart. Nothing said the camera had stopped.
+- **Repro:** `test/desktop/phone-cam.spec.js` (“a live camera that sends nothing”). The line is up while the camera has not been asked for again. WebKit skips the canvas capture.
+- **Fix:** the first quiet sample says “Camera stopped — bringing it back” on the self tile. The restart still waits for three samples, so a dark room that is actually painting does not flash the line or restart the camera. German and Spanish cover the restart line.
+- **Proof:** the test passes on Chromium and Firefox. Screenshots: `test/desktop/shots/phone-black-before-390.png`, `test/desktop/shots/phone-black-after-390.png`.
+
 ### A church song had no words, and no next line
 
 - **Who hits it:** a volunteer running a service, on the Song step, who needs the line they are on and the line that comes after it.
@@ -230,4 +238,4 @@ Who, Share, and Vote follow a German or Spanish device. The password sheet, the 
 
 ### Not yet walked end to end
 
-Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. The stage says whose screen it is, at 16px. The path is still More, then the sheet, then the picker. A broadcast says off air and on air, and the booth has an order of service. During Song the booth has Program and Preview. Those words stay on this computer. They are not on the outgoing picture. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, and Vote follow German and Spanish, including the tips and the line after you share or vote. The Password and Invite sheets stay English. The Who download for the police stays English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back. A camera that stays live and sends black still waits on the watchdog.
+Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. The stage says whose screen it is, at 16px. The path is still More, then the sheet, then the picker. A broadcast says off air and on air, and the booth has an order of service. During Song the booth has Program and Preview. Those words stay on this computer. They are not on the outgoing picture. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, and Vote follow German and Spanish, including the tips and the line after you share or vote. The Password and Invite sheets stay English. The Who download for the police stays English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back. A camera that stays live and sends no frames says so on the first quiet sample. A camera that is still painting black frames waits on the watchdog.
