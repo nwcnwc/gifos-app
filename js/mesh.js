@@ -2033,8 +2033,9 @@
       if (!this.hasCoord || mm.ttl <= 0) { this.noroomWhy = 'unseated'; this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
       for (const s of this.sitting.values()) if (s.joiner === mm.nc && s.assigner === this.id && s.pl && TICK - s.at <= SIT_TTL) { this.emit(mm.nc, Object.assign({}, s.pl)); return; } // FINDACK: a re-ask reaching the admitter that already vouches this seeker gets the SAME chair again (its PLACE was lost) — never a twin vouch
       // A marked re-ask follows the chain already taken while that hand-off is
-      // fresh and its target still holds the cell. A stale record still drops:
-      // an intermediate whose note aged out must not start a second scan while
+      // fresh, its target still holds the cell, and that target is still
+      // answering. A stale record whose target I still hear drops: an
+      // intermediate whose note aged out must not start a second scan while
       // the admitter's vouch can be alive (that scan seated one person twice).
       // No record at all, and this seat's own vouch for the seeker just died:
       // the PLACE never confirmed (a severed channel ate it, SITPING freed the
@@ -2042,14 +2043,24 @@
       // that re-ask left both ends of the sever unseated for the rest of the
       // run (chaos a007f8: Gil and Theo never came back). A target
       // that has left the cell is the same dead chain: fall through.
+      // A hand-off to a head that has missed two beats is not a live vouch.
+      // The FIND was lost in that dark spell. The note then kept the
+      // right-hand re-forwarding, and once the note aged out it dropped every
+      // later re-ask, so the seeker stayed at the door (chaos
+      // find-handoff-loop episode 0: the third founder held no seat, and the
+      // head's return never counted inside the rejoin bound). No note at all
+      // is the same loss seen from the head, which was dark when the FIND
+      // arrived. Scan, so the quiet-head arm can seat the free chair.
       if (mm.again) {
         const h = this.handed.get(mm.nc);
         const fresh = h && TICK - h.at <= KNOCK_FRESH && h.to !== this.id;
-        if (fresh && this.occGet(h.cell) === h.to) { this.handOn(mm, h.to, h.cell, h.deep); return; }
+        const silentTarget = !!(h && this.silentFor(h.cell, LONE_GREET_AFTER));
+        if (fresh && this.occGet(h.cell) === h.to && !silentTarget) { this.handOn(mm, h.to, h.cell, h.deep); return; }
         const left = !!(fresh && this.occGet(h.cell) !== h.to);
         const died = this.vouchDead.get(mm.nc);
         const mineDied = !h && died !== undefined && TICK - died <= SIT_TTL;
-        if (!left && !mineDied) return;
+        const lost = !h || silentTarget || !this.firstHandLive(h.cell);
+        if (!left && !mineDied && !lost) return;
       }
       if (this.coord.pc === 0) {
         const skip = [];   // forensics: why each Section-1 cell was passed over (noroomWhy, the test trace's NOROOM row)
