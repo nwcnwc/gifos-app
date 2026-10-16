@@ -1033,14 +1033,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .chips span.ico { width: 22px; height: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
                           font-size: 0; line-height: 0; border-radius: 6px; flex: 0 0 auto; }
   .tile .chips span.ico svg { width: 14px; height: 14px; display: block; }
-  /* Blur for all used to be a 32px tab glued to the corner, easy to hit
-     while aiming at the tile. It is a square floating over the video,
-     inset from that corner, at least a 44px target. */
+  /* Blur for all is a 64px square, inset from the corner. The edge has to
+     read on a light wall, a dark room, and a busy picture: a thin light
+     border, a soft dark shadow, and a frosted fill. "Blur" and "for all"
+     are two lines so the label stays inside the square. */
   .tile > .blurbox { position: absolute; top: 12px; right: 12px; z-index: 6; display: none;
                      box-sizing: border-box; width: 64px; height: 64px; min-width: 44px; min-height: 44px;
-                     padding: 4px; border: 0; border-radius: 12px; cursor: pointer;
-                     background: rgba(10,10,15,.78); color: #fff; font: 700 12px/1.15 system-ui, sans-serif;
-                     text-align: center; align-items: center; justify-content: center; }
+                     padding: 4px; border: 1px solid rgba(255,255,255,.82); border-radius: 6px; cursor: pointer;
+                     background: rgba(255,255,255,.46); color: #1a1c20;
+                     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+                     box-shadow: 0 1px 5px rgba(0,0,0,.42);
+                     font: 700 13px/1.1 system-ui, sans-serif; white-space: pre-line;
+                     text-align: center; align-items: center; justify-content: center; flex-direction: column; }
   .tile > .blurbox.on { display: flex; }
   .tile:has(> .blurbox.on) .modbar { top: 92px; right: 12px; }
   .tile > .botbadge { position: absolute; right: 8px; bottom: 8px; z-index: 4; pointer-events: none;
@@ -5075,9 +5079,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       let on = false, by = '';
       try { const m = modOf(id).blur; on = !!(m && m.on); by = (m && m.by) || ''; } catch (e) {}
-      const label = on ? 'Unblur' : 'Blur for all';
+      const label = on ? 'Unblur' : 'Blur\nfor all';
       box.className = 'blurbox on';
       if (box.textContent !== label) box.textContent = label;
+      box.setAttribute('aria-label', on ? 'Unblur' : 'Blur for all');
       box.setAttribute('aria-pressed', on ? 'true' : 'false');
       const tip = on ? ('Blurred for everyone' + (by ? ' by ' + by : '')) : 'Blur for all';
       if (box.title !== tip) box.title = tip;
