@@ -9,21 +9,27 @@ test('the status line grows with the root text size', async ({ page }) => {
   await page.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
   const box = await page.evaluate(() => {
     const el = document.getElementById('status');
+    const title = document.querySelector('.topchip .title');
     const chip = document.querySelector('.topchip').getBoundingClientRect();
+    const fit = document.getElementById('fitbtn').getBoundingClientRect();
     const r = el.getBoundingClientRect();
     return {
       font: parseFloat(getComputedStyle(el).fontSize),
+      title: parseFloat(getComputedStyle(title).fontSize),
       top: chip.top,
       bottom: chip.bottom,
       left: chip.left,
       right: chip.right,
       textTop: r.top,
       textBottom: r.bottom,
+      fitTop: fit.top,
       vw: innerWidth,
       vh: innerHeight,
     };
   });
   expect(box.font).toBeGreaterThanOrEqual(32);
+  expect(box.title).toBeGreaterThanOrEqual(32);
+  expect(box.fitTop).toBeGreaterThanOrEqual(box.bottom - 1);
   expect(box.top).toBeGreaterThanOrEqual(0);
   expect(box.bottom).toBeLessThanOrEqual(box.vh + 0.5);
   expect(box.left).toBeGreaterThanOrEqual(0);

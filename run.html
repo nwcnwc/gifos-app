@@ -1321,17 +1321,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #livebadge[data-state="off"] { background: #3a3a3f; color: #fff; }
   #livebadge[data-state="watching"] { background: #0b6b3a; color: #fff; }
   #livebadge[data-state="reconnecting"] { background: #8a5a00; color: #fff; }
-  .topchip .title { font-weight: 800; font-size: 26px; letter-spacing: -0.04em; text-decoration: none; cursor: pointer;
+  .topchip .title { font-weight: 800; font-size: 1.625rem; letter-spacing: -0.04em; text-decoration: none; cursor: pointer;
     background: linear-gradient(135deg, #0071e3, #5856d6); -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent; color: transparent; }
   .topchip .status { color: #e7ebf2; font-size: 1.25rem; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
     min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
-  .fitbtn { position: fixed; z-index: 6; top: calc(58px + var(--inset-top, 0px)); right: calc(14px + var(--inset-right, 0px)); min-width: 32px; min-height: 32px;
+  .fitbtn { position: fixed; z-index: 6; top: calc(14px + 2.75rem + var(--inset-top, 0px)); right: calc(14px + var(--inset-right, 0px)); min-width: 32px; min-height: 32px;
     border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 14px/1.2 system-ui, sans-serif; }
   body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
-  .admcount { position: fixed; z-index: 6; top: calc(58px + var(--inset-top, 0px)); left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px)); }
+  .admcount { position: fixed; z-index: 6; top: calc(14px + 2.75rem + var(--inset-top, 0px)); left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px)); }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
   body.app-room #reactbtn, body.app-room #reacttray { display: none !important; }
   #gifos-build-float { top: calc(14px + var(--inset-top, 0px)) !important; right: calc(14px + var(--inset-right, 0px)) !important; bottom: auto !important; left: auto !important;
@@ -1420,7 +1420,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .chips span { font-size: .95rem; }
   .tile .chips span.ico { font-size: 0; width: 22px; height: 22px; padding: 0; }
   @media (max-width: 700px) {
-    .topchip .title { font-size: 20px; }
+    .topchip .title { font-size: 1.25rem; }
     .topchip .status { font-size: 1.0625rem; }
     .bar { height: 88px; gap: 8px; padding: 0 10px; }
     .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle {

@@ -12,6 +12,15 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q13. The chip title ignored a 200% root font
+
+`.topchip .title` was `20px` on a phone and `26px` on a wide layout, so a 32px root left the word GifOS at 20px while the status line grew to 34px. The title is now `1.25rem` on a phone and `1.625rem` on a wide layout. At a 32px root that is 40px on a phone. Fit and the admin countdown drop with `14px + 2.75rem`, so at the default 16px root they stay at 58px and at 32px they sit under the taller chip (Fit top 102, chip bottom 81 on iPhone SE). `test/mobile/status-scale.spec.mjs`.
+
+Before: `test/mobile/screenshots/after/iphone-se-status-scale.png` (status already scaled, title still 20px).
+After: `test/mobile/screenshots/after/iphone-se-title-scale.png`.
+
+Design: the name and the status are one scale. Fit stays a separate control under the chip, with about 21px of air on a 32px root. Large type is still not a 5: Fit’s own label is `14px`. Live, off air, watching, and reconnecting stay a small chip badge.
+
 ### Q10. Compact dock buttons sat 4px apart
 
 Once Flip joined the dock, the phone gap was 4px. It is 12px from 381px up, and 8px on a 320px phone, with every control still at least 44px and Leave still on the screen. Wider layouts keep a little extra air before Hang up. `test/mobile/dock-gap.spec.mjs`.
