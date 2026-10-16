@@ -1512,6 +1512,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore .seg { min-height: 48px; min-width: 48px; color: #1d1d1f; background: #fff; }
   .bar:not(.collapsed) .barmore .seg.sel,
   .bar:not(.collapsed) .barmore .seg[aria-pressed="true"] { background: #1d1d1f; color: #fff; }
+  /* Chosen, but the room is still at Min. Not the solid "clear video is on" fill. */
+  .bar:not(.collapsed) .barmore .seg.wait,
+  .bar:not(.collapsed) .barmore .seg.wait[aria-pressed="true"] {
+    background: #fff; color: #1d1d1f; box-shadow: inset 0 0 0 2px #0064c8;
+  }
   .bar .barmore .blab { display: block; font-size: 13px; font-weight: 700; margin-top: 2px; line-height: 1.1; }
   .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 122px; transform: translateX(-50%);
     display: flex; gap: 8px; background: rgba(255,255,255,.96); border-radius: 20px; padding: 10px;
@@ -9344,6 +9349,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       for (const [pid] of statusOf) if (pid !== myId && stHold(pid) && notTomb(pid)) ids.add(pid);
       rosterIds = Array.from(ids);
+      // A pocketed phone blocks clear video for up to a minute, then drops
+      // out of this set. Repaint then, or No blur stays pending after the
+      // room has already gone clear.
+      const rosterSig = rosterIds.slice().sort().join('\n');
+      if (rosterSig !== renderFromOcc.rosterSig) {
+        renderFromOcc.rosterSig = rosterSig;
+        try { reactRoomState(); } catch (e) {}
+      }
       for (const pid of rosterIds) {
         // A peer carrying MY device id is a stale session of my own device —
         // never a real guest. Drop it instead of drawing a second "me" tile.
@@ -21350,16 +21363,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const inCall = !(lob && lob.classList.contains('show'));
         showcamBtn.hidden = !inCall || muted || !myStatus.camOff;
       }
-      // The filled segment is the choice this person made. The feed can
-      // still be Min: a password room stays there until everyone is ready,
-      // and a moderator block stays on the pixels. Painting that feed level
-      // here snapped No blur back to Min the moment it was tapped, while the
-      // header said you were ready for clear video.
+      // The filled segment is the choice this person made. While a password
+      // room is still at Min (someone is not ready, including a pocketed
+      // phone held for up to a minute), No blur stays chosen but pending.
+      // Painting the feed level snapped it back to Min. Painting a solid
+      // selection made it look finished while the header said you were only
+      // ready. The holdover expiring is what used to make No blur "start
+      // working" with no second tap.
       const lvl = blurLevel(myStatus.blur);
+      let feed = lvl;
+      try {
+        if (typeof blurLevelFor === 'function') {
+          const eff = blurLevelFor('me');
+          if (typeof eff === 'number') feed = blurLevel(eff);
+        }
+      } catch (e) {}
+      const pending = lvl === 0 && feed > 0;
       for (const seg of blurSegs) {
         const segOn = +seg.dataset.blur === lvl;
-        seg.classList.toggle('sel', segOn);
+        const wait = pending && segOn;
+        seg.classList.toggle('wait', wait);
+        seg.classList.toggle('sel', segOn && !wait);
         seg.setAttribute('aria-pressed', segOn ? 'true' : 'false');
+        if (wait) seg.title = 'Chosen. Clear video shows when everyone here is ready.';
+        else if (seg.title === 'Chosen. Clear video shows when everyone here is ready.') seg.title = '';
       }
       paintShare();
     }
@@ -24624,7 +24651,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // departure verdict to miss. Nothing in a 4-browser room can age an entry
       // past the holdover on demand, so hand the sweep exactly the shape it
       // exists for, plus a FRESH one it must leave alone.
-      _ghostStatus: (id, ageMs) => { const t = Date.now() - (ageMs | 0); statusOf.set(id, { muted: true, camOff: true, blur: 0, at: t, rx: t }); return statusOf.has(id); },
+      _ghostStatus: (id, ageMs, extra) => {
+        const t = Date.now() - (ageMs | 0);
+        const st = { muted: true, camOff: true, blur: 0, at: t, rx: t };
+        if (extra && typeof extra === 'object') {
+          if (extra.away) st.away = true;
+          if (typeof extra.blur === 'number') st.blur = extra.blur;
+          if (extra.camOff === false) st.camOff = false;
+        }
+        statusOf.set(id, st);
+        return statusOf.has(id);
+      },
       // SCALE FAULT INJECTION (scale audit V2/V3, test/browser/e2e-status-map.js):
       // stuff `statusOf` with N synthetic strangers, exactly as a room-wide
       // status flood at scale would. Nothing else is touched — the point is to

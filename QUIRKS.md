@@ -339,13 +339,19 @@ Repro: `test/mobile/header-invite.js`. On a phone, alone, the header is the room
 
 Before: `qa/mobile/shots/before-header-invite-iphone-se.png`. After: `qa/mobile/shots/after-header-invite-iphone-se.png`.
 
-### 42. No blur snapped back to Min
+### 42. No blur snapped back to Min, then started on its own after a minute
 
 In a password meeting the header said "You are ready for clear video…" and Min stayed selected. The tap landed on No blur. The button was not disabled. The choice was saved as 0. The segment then painted the feed level, and the room rule keeps that feed at Min until everyone is ready, so the control jumped back to Min.
 
-Repro: `test/mobile/blur-none.js`. It failed (`No blur did not stay selected (min true, none false)`, feed blur 1, header "You are ready for clear video — it shows when everyone here is (camera on, No blur: 1 of 2)."), then passed. No blur stays selected. The feed stays Min until Sam is ready. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/blur-none.js`.
+Repro: `test/mobile/blur-none.js`. It failed (`No blur did not stay selected (min true, none false)`, feed blur 1, header "You are ready for clear video — it shows when everyone here is (camera on, No blur: 1 of 2)."), then passed. The choice stays on No blur. The feed stays Min until the room is ready. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/blur-none.js`.
 
 Before: `qa/mobile/shots/before-blur-none-pixel-7.png`. After: `qa/mobile/shots/after-blur-none-pixel-7.png`.
+
+About a minute later the same tap started working with no second press. There is no segmentation-model fetch on this path. Blur is the canvas pipe. The minute is `HOLDOVER_MS` (60s): an away or still-connected peer who has not consented stays in the roster, so the feed stays at Min while the header already says you are ready. When that status ages out, the peer drops, the room consents, and clear video starts on its own.
+
+Repro: `test/mobile/blur-none-delay.js`. Sam is pocketed (away, 30s old, blur 1, camera on). The header is the ready sentence, the choice is 0, and the feed is still Min. No blur is pending: white, with a blue ring, not the solid black of clear video. Stamping that same status to 61s drops Sam. The feed goes clear and No blur becomes the solid choice, with no second tap. The failing run had no pending class (`sel true`, `wait false`) during the minute, then `feed 0` after it. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/blur-none-delay.js`.
+
+Before: `qa/mobile/shots/before-blur-wait-pixel-7.png`. During the minute: `qa/mobile/shots/after-blur-wait-pixel-7.png` and `qa/mobile/shots/after-blur-wait-seg.png`. After the minute: `qa/mobile/shots/after-blur-clear-pixel-7.png` and `qa/mobile/shots/after-blur-clear-seg.png`.
 
 ## Open
 
