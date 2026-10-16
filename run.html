@@ -19390,9 +19390,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let stopVideo = () => {};
       let armDraw = null;   // the compositor's metronome subscription, armed only once MediaRecorder took the stream
       let made = null;      // the MediaRecorder this attempt built (unstarted until armed)
+      // A failed start returns the sentence the sheet keeps on screen. The
+      // status line is rewritten by the meeting census, so it cannot be the
+      // only place an error lives.
+      const fail = (msg) => { setStatus(msg); return msg; };
       try {
         opts = opts || { scope: 'all', quality: recDefaultQuality(IS_MOBILE), matchMix: true };
-        if (!ensureAc()) { setStatus('This browser cannot record sound.'); return; }
+        if (!ensureAc()) return fail('This browser cannot record sound.');
         const scope = opts.scope || 'all';
         recMatchMix = opts.matchMix !== false;
         recQuality = REC_QUALITY[opts.quality] ? opts.quality : recDefaultQuality(IS_MOBILE);
@@ -19402,8 +19406,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         recSrcs = new Map();
         if (scope === 'stage' && !recSources().stage.length) {
           recDest = null; recMode = null;
-          setStatus('No one is on the stage yet — nothing to record.');
-          return;
+          return fail('No one is on the stage yet — nothing to record.');
         }
         // The container decides the file name and the save picker's type, so
         // it is chosen before either. Safari records mp4 only; an empty answer
@@ -19418,8 +19421,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             disp = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: false, preferCurrentTab: true });
           } catch (e) {
             recDest = null; recMode = null;
-            setStatus('Screen share was cancelled — recording not started.');
-            return;
+            return fail('Screen share was cancelled — recording not started.');
           }
           stopVideo = () => { for (const t of disp.getTracks()) { try { t.stop(); } catch (e) {} } };
         }
@@ -19427,8 +19429,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!opened || opened.kind === 'cancel') {
           if (opened && opened.abort) { try { opened.abort(); } catch (e) {} }
           recDest = null; recMode = null;
-          if (opened && opened.kind === 'cancel') setStatus('Recording not started.');
-          return;
+          return fail('Recording not started.');
         }
         recSink = opened;
         // The chip is the consent. Paint it and refuse to construct a
@@ -19439,8 +19440,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!recordingIndicatorsOk()) {
           myStatus.rec = false;
           try { updateTile('me'); broadcastStatus(); } catch (e) {}
-          setStatus('Recording stays off until the recording indicator is on screen.');
-          return;
+          return fail('Recording stays off until the recording indicator is on screen.');
         }
         if (scope === 'app') {
           videoTrack = disp.getVideoTracks()[0];
@@ -19481,7 +19481,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const recOpts = { videoBitsPerSecond: q.v, audioBitsPerSecond: 96000 };
         if (askMime) recOpts.mimeType = askMime;
         try { made = new MediaRecorder(stream, recOpts); }
-        catch (e) { setStatus('This browser cannot record the meeting.'); return; }
+        catch (e) { return fail('This browser cannot record the meeting.'); }
         recRec = made;
         recDraw = armDraw ? armDraw() : null;
         recRec.ondataavailable = (e) => { if (e.data && e.data.size && recSink) recSink.write(e.data); };
@@ -19526,7 +19526,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (recRestart) { const o = recRestart; recRestart = null; startRec(o); }
         };
         try { recRec.start(1000); }
-        catch (e) { setStatus('This browser cannot record the meeting.'); return; }
+        catch (e) { return fail('This browser cannot record the meeting.'); }
         armed = true;
         recStart = Date.now();
         recBtn.classList.add('on');
@@ -19569,14 +19569,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (document.getElementById('rec-options')) return;
       const hasApp = findSharedApp() && canScreenRecord();
       const bg = document.createElement('div'); bg.className = 'name-modal'; bg.id = 'rec-options';
-      const opt = (val, name, ttl, sub) => '<label class="rec-opt"><input type="radio" name="' + name + '" value="' + val + '"' + (val === 'stage' && name === 'rec-scope' ? ' checked' : '') + '> <span><b>' + ttl + '</b><small>' + sub + '</small></span></label>';
+      // Stage when someone is on it. Otherwise the widest scope that still
+      // has people: the stadium needs "everything", a row records the row,
+      // and an empty stage is never the default — Start used to pick it,
+      // bail, and close the sheet before anyone could read why.
+      const srcNow = recSources();
+      const scopeDefault = srcNow.stage.length ? 'stage' : (srcNow.stadium.length ? 'all' : (srcNow.row.length ? 'row' : 'stage'));
+      const stageSub = srcNow.stage.length
+        ? 'Just the front — the reader or speaker, verbatim. One clean feed.'
+        : 'Nobody is on the stage yet.';
+      const opt = (val, name, ttl, sub) => '<label class="rec-opt"><input type="radio" name="' + name + '" value="' + val + '"' + (val === scopeDefault ? ' checked' : '') + '> <span><b>' + ttl + '</b><small>' + sub + '</small></span></label>';
       const qDef = recDefaultQuality(IS_MOBILE);
       const qRadio = (val, label) => '<label class="rec-opt inline"><input type="radio" name="rec-q" value="' + val + '"' + (qDef === val ? ' checked' : '') + '> ' + label + '</label>';
       bg.innerHTML = '<div class="name-box" style="max-width:470px;text-align:left">' +
         '<h3>Record this meeting</h3>' +
         '<p style="color:#889;font-size:.85rem">Saved to YOUR device only — everyone sees the ⏺ while you record. Blur and mute are baked in.</p>' +
         '<div class="rec-sec"><b>What to capture</b>' +
-        opt('stage', 'rec-scope', 'The stage', 'Just the front — the reader or speaker, verbatim. One clean feed.') +
+        opt('stage', 'rec-scope', 'The stage', stageSub) +
         opt('row', 'rec-scope', 'Stage + my row', 'The stage plus the people right around you.') +
         opt('all', 'rec-scope', 'Everything I see', 'The whole screen — stage, your row, the stadium. The crowd is folded, as shown.') +
         (hasApp ? opt('app', 'rec-scope', 'With the shared app', 'Capture this tab so the app and tiles record together.') : '') +
@@ -19588,17 +19597,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         (IS_MOBILE ? '<p style="color:#889;font-size:.8rem;margin:.2rem 0 0">On a phone, 720p is the default. 1080p is drawn on the processor and fills memory fast.</p>' : '') +
         '</div>' +
         '<label class="rec-opt inline" style="margin-top:.3rem"><input type="checkbox" id="rec-matchmix" checked> Match my sound mix (record what I hear)</label>' +
+        '<p id="rec-err" hidden style="color:#ff8a8a;font-size:.9rem;margin:.6rem 0 0"></p>' +
         '<div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.9rem">' +
         '<button id="ro-cancel" class="lob-ghost">Cancel</button><button id="ro-start">Start recording</button></div></div>';
       document.body.appendChild(bg);
       const close = openModal(bg, () => { if (bg.parentNode) bg.remove(); });
       bg.querySelector('#ro-cancel').onclick = () => close();
-      bg.querySelector('#ro-start').onclick = () => {
+      bg.querySelector('#ro-start').onclick = async () => {
         if (recStarting) return;
         const scope = bg.querySelector('input[name=rec-scope]:checked').value;
         const quality = bg.querySelector('input[name=rec-q]:checked').value;
         const matchMix = bg.querySelector('#rec-matchmix').checked;
-        close(); startRec({ scope, quality, matchMix });
+        const err = await startRec({ scope, quality, matchMix });
+        if (typeof err === 'string' && err) {
+          const el = bg.querySelector('#rec-err');
+          if (el) { el.hidden = false; el.textContent = err; }
+          return;
+        }
+        close();
       };
     }
     function warnRecorderNewApp() {
