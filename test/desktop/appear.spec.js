@@ -14,6 +14,7 @@ test('the join step prefills your GifOS name and avatar', async ({ page }) => {
   const card = page.locator('#appear');
   await expect(card).toBeVisible();
   await expect(card).toContainText("This is how you'll appear");
+  await expect(card).not.toContainText("in the meeting");
   await expect(page.locator('#nm')).toHaveValue('Avery Chen');
   await expect(page.locator('#appear-name')).toHaveText('Avery Chen');
   const face = await page.locator('#appear-face img').getAttribute('src');
