@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. The meeting chrome follows a German or Spanish device. Help, settings, and the lobby stay English.
+We do **not** lead any audience yet. A broadcast now says off air and on air. A large room still has no roster. Help, settings, and the lobby stay English.
 
 ## Who we are measured against
 
@@ -40,8 +40,8 @@ Simple for volunteers and older members. Services and small groups. Best of the 
 | Volunteer simplicity | 7 | Join is one blue button. More is People, Share, Room, and Help, not one wall. The list is still long |
 | Readability for older eyes | 6 | Mic, Camera, More/Hide, and Leave say so in the button. Reactions is still an icon. Chat’s privacy line wraps |
 | Small group (conversation, singing) | 8 | One link, blur, unison. Voting someone up no longer hides the faces under the More sheet |
-| Service / broadcast | 4 | No lower third, no obvious on-air, no volunteer checklist |
-| **Audience** | **6.3** | Does not lead |
+| Service / broadcast | 6 | Off air is a card. On air is a red pill with the speaker’s name. No rundown, no lyrics, no program versus preview |
+| **Audience** | **6.8** | Does not lead |
 
 ## Personal
 
@@ -57,4 +57,4 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 
 ## This cycle
 
-German and Spanish cover the join card, the dock, More and its actions, the people count (including the password note), and the chat chrome (see QUIRKS.md). Personal locale 3 → 5, audience 5.8 → 6.3. Still behind FaceTime, and behind Meet. Corporate stays 6.6. Church stays 6.3. We do not lead. Next gap: a service still has no on-air state, and a large room still has no roster.
+A broadcast shows Off air until the camera is live, then a red On air pill with the speaker’s name (see QUIRKS.md). Church service 4 → 6, audience 6.3 → 6.8. Still behind a small-group Zoom and a service desk. Corporate stays 6.6. Personal stays 6.3. We do not lead. Next gap: a large room still has no roster.

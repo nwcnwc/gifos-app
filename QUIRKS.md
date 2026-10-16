@@ -62,6 +62,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** the card says “This is how you'll appear”, prefills the GifOS name, shows the avatar (or an initial), and updates the preview as you type. Join is the blue primary. Not now is a white secondary, with space between them. Change picture is a separate text button. The knock waits until you choose. A session that already confirmed does not ask again.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/appear-before-1280.png`, `test/desktop/shots/appear-after-1280.png`.
 
+### A broadcast never said whether you were on air
+
+- **Who hits it:** the person running a church service, standing at the booth.
+- **What you saw:** a dark page, “Joining the broadcast…”, and the same dock as a meeting. Nothing said the room could not see you, and nothing turned red when the camera went live.
+- **Repro:** `test/desktop/on-air.spec.js` failed before the fix (no `#onair`).
+- **Fix:** a broadcast shows a white Off air card until a picture is live. The host’s card names them and says to turn the camera on. On air is a red pill with their name, and it does not cover the dock. Watching someone else says Live, not On air. A normal meeting does not wear the lamp.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/on-air-before-1280.png`, `test/desktop/shots/on-air-after-off-1280.png`, `test/desktop/shots/on-air-after-host-1280.png`, `test/desktop/shots/on-air-after-on-1280.png`.
+
 ### Chrome was English only
 
 - **Who hits it:** anyone whose device is set to German or Spanish.
@@ -102,4 +110,4 @@ The meeting chrome follows a German or Spanish device: join, dock, More, the peo
 
 ### Not yet walked end to end
 
-Screen-share sheet for the consultant, a 20-person roster, and tab-hide/return on a throttled page. Those are next. Gallery packing, self-view placement, and the reactions icon are not in this pass. German and Spanish chrome is in; help, settings, and the lobby are still English.
+A roster for a large room, then German and Spanish for the lobby, help, and the shortcut list. Screen-share for the consultant and tab-hide/return are still open. Gallery packing, self-view placement, and the reactions icon are not in this pass. A broadcast now says off air and on air; it still has no rundown and no lyrics.

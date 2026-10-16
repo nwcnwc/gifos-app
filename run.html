@@ -1296,6 +1296,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip #statuscount { flex: 0 0 auto; white-space: nowrap; }
   .topchip #statusrest { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
+  /* Broadcast confidence lamp. Off air is a card the booth can read.
+     On air is a red pill. Live means you are watching, not transmitting. */
+  #onair { display: none; }
+  body.broadcast #onair[data-state="off"] {
+    display: flex; position: fixed; z-index: 24; left: 50%; top: 18vh; transform: translateX(-50%);
+    flex-direction: column; align-items: center; text-align: center; gap: 8px;
+    width: min(420px, calc(100vw - 32px)); padding: 28px 28px 24px;
+    background: #fff; color: #1d1d1f; border-radius: 22px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.28); pointer-events: none;
+  }
+  body.broadcast #onair[data-state="on"],
+  body.broadcast #onair[data-state="live"] {
+    display: flex; position: fixed; z-index: 24; left: 50%; top: 72px; transform: translateX(-50%);
+    flex-direction: row; align-items: center; gap: 10px;
+    max-width: calc(100vw - 32px); padding: 8px 16px; border-radius: 999px;
+    color: #fff; pointer-events: none;
+  }
+  body.broadcast #onair[data-state="on"] { background: #b61622; }
+  body.broadcast #onair[data-state="live"] { background: #1d1d1f; }
+  #onair .onair-lamp { width: 16px; height: 16px; border-radius: 50%; flex: 0 0 auto; background: #b45309; }
+  #onair[data-state="on"] .onair-lamp,
+  #onair[data-state="live"] .onair-lamp { background: #fff; width: 12px; height: 12px; }
+  #onair .onair-word { font: 700 28px/1.1 system-ui, sans-serif; white-space: nowrap; flex: 0 0 auto; }
+  #onair[data-state="on"] .onair-word,
+  #onair[data-state="live"] .onair-word { font-size: 18px; }
+  #onair .onair-who { font: 650 18px/1.25 system-ui, sans-serif; }
+  #onair[data-state="on"] .onair-who,
+  #onair[data-state="live"] .onair-who { font-size: 16px; white-space: nowrap; }
+  #onair .onair-note { margin: 4px 0 0; font: 400 16px/1.35 system-ui, sans-serif; color: #3a3a3f; max-width: 34ch; }
+  #onair[data-state="on"] .onair-note,
+  #onair[data-state="live"] .onair-note { display: none; }
   .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
     border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 14px/1.2 system-ui, sans-serif; }
@@ -1562,6 +1593,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="topchip">
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
     <span class="status" id="status"><span id="statuscount">Joining…</span><span id="statusrest"></span></span>
+  </div>
+  <div id="onair" data-state="off" aria-live="polite">
+    <span class="onair-lamp" aria-hidden="true"></span>
+    <span class="onair-word">Off air</span>
+    <span class="onair-who"></span>
+    <p class="onair-note"></p>
   </div>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
   <div class="admcount" id="admcount" style="display:none"></div>
@@ -2342,6 +2379,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         allowShare: 'Freigeben', stopShares: 'Freigabe aus',
         inMeeting: 'im Meeting', justYou: 'Nur Sie', backIn: 'Wieder dabei',
         unlockClear: 'Passwort für klares Video',
+        onAir: 'Auf Sendung', offAir: 'Nicht live', watching: 'Live',
+        goLive: 'Kamera an, dann sind Sie live. Der Raum sieht Sie noch nicht.',
+        waitLive: 'Die Sendung hat noch nicht begonnen.',
         sendInvite: 'Link schicken, er läuft nicht ab',
         waiting: 'wir warten auf die anderen…',
         chatTitle: 'Meeting-Chat',
@@ -2366,6 +2406,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         allowShare: 'Permitir pantalla', stopShares: 'Parar pantallas',
         inMeeting: 'en la reunión', justYou: 'Solo tú', backIn: 'Volviendo',
         unlockClear: 'contraseña para video nítido',
+        onAir: 'Al aire', offAir: 'Fuera del aire', watching: 'En vivo',
+        goLive: 'Enciende la cámara para salir al aire. La sala aún no te ve.',
+        waitLive: 'La transmisión aún no empieza.',
         sendInvite: 'envía el enlace; no caduca',
         waiting: 'esperando a los demás…',
         chatTitle: 'Chat de la reunión',
@@ -6316,6 +6359,52 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         statusEl.textContent = statusText;
       }
       if (statusEl.title !== statusText) statusEl.title = statusText;
+      try { paintOnAir(); } catch (e) {}
+    }
+    function stagePersonLive(id) {
+      if (!id) return false;
+      if (id === myId) return myStatus.camOff === false;
+      const st = statusOf.get(id);
+      return !!(st && st.camOff === false);
+    }
+    function onAirName(id) {
+      if (id === myId) return myName();
+      const p = peers.get(id);
+      return (p && p.name) || rosterNames[id] || 'Guest';
+    }
+    // A broadcast's confidence lamp. On air means THIS seat's camera is on
+    // the stage. Live means someone else is, and you are watching. Off air
+    // is the booth's warning that the room cannot see a picture yet.
+    function paintOnAir() {
+      const el = document.getElementById('onair');
+      if (!el) return;
+      if (typeof BROADCAST === 'undefined' || !BROADCAST) { el.setAttribute('data-state', ''); return; }
+      const mineUp = !!myStatus.stg && (amAdmin || (myId && stageIds().includes(myId)));
+      const mineLive = mineUp && myStatus.camOff === false;
+      let others = [];
+      try { others = stageIds().filter((id) => id && id !== myId && stagePersonLive(id)); } catch (e) { others = []; }
+      const word = el.querySelector('.onair-word');
+      const who = el.querySelector('.onair-who');
+      const note = el.querySelector('.onair-note');
+      let state = 'off', w = uiText('offAir', 'Off air'), name = '', n = '';
+      if (mineLive) {
+        state = 'on';
+        w = uiText('onAir', 'On air');
+        name = [myName()].concat(others.map(onAirName)).filter(Boolean).join(', ');
+      } else if (others.length) {
+        state = 'live';
+        w = uiText('watching', 'Live');
+        name = others.map(onAirName).filter(Boolean).join(', ');
+      } else if (mineUp || amAdmin || bcHostStored()) {
+        name = myName();
+        n = uiText('goLive', 'Turn the camera on to go live. The room cannot see you yet.');
+      } else {
+        n = uiText('waitLive', 'Waiting for the broadcast to start.');
+      }
+      el.setAttribute('data-state', state);
+      if (word && word.textContent !== w) word.textContent = w;
+      if (who && who.textContent !== name) who.textContent = name;
+      if (note && note.textContent !== n) note.textContent = n;
     }
 
     // ---- mesh plumbing ---------------------------------------------------------
@@ -17432,6 +17521,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       stageBtn.classList.toggle('on', on);
       stageBtn.textContent = on ? 'Step down' : 'Stage';
       stageBtn.style.display = (!hasAdminRoom() || amAdmin || (modOf(myId).app && modOf(myId).app.on) || myStatus.stg) ? '' : 'none';
+      try { paintOnAir(); } catch (e) {}
       // The broadcast skin hides a viewer's mic/cam buttons — until the host
       // grants them the stage, when the controls they now need grow back.
       document.body.classList.toggle('stage-granted', canStage(myId));
@@ -20830,6 +20920,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       track.enabled = !track.enabled;
       myStatus.camOff = !track.enabled;
       paintControls();
+      try { paintOnAir(); } catch (e) {}
       refreshOutbound(); // camera on while blurring → start the blur canvas
       broadcastStatus();
       reactRoomState();  // camera on/off changes your consent
@@ -23546,6 +23637,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       stageFlagForTest: () => myStatus.stg || 0,   // my raw step-up claim, painted or not
       stageFlipsForTest: () => stgFlips,          // how many times setStage ran
       setStageForTest: (on) => setStage(!!on),
+      armBroadcastHostForTest: () => {
+        amAdmin = true;
+        document.body.classList.remove('notadmin');
+        if (myId && admins.indexOf(myId) < 0) admins.push(myId);
+        myStatus.camOff = true;
+        try { setStage(true); } catch (e) { myStatus.stg = Date.now(); }
+        paintOnAir();
+        return { ok: !!myStatus.stg };
+      },
+      setCamLiveForTest: (on) => {
+        myStatus.camOff = !on;
+        try { paintControls(); } catch (e) {}
+        paintOnAir();
+        return { ok: true, camOff: !!myStatus.camOff };
+      },
       canStageNow: () => canStage(myId),
       mix: () => Object.assign({}, mix),
       setMix: (bus, v) => { mix[bus] = v; applyBuses(); },
