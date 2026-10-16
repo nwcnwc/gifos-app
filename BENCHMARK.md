@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 against the desktop chrome in `run.html` (Meeting, and Broadcast via `#bc=1`). Scores are 1–5 for the **desktop UI** a person actually sees. 5 means that product is the reference for the row. This is not a score for media quality, scale, or mobile.
 
-GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (4.1, Zoom 4.9, Meet 4.3) or personal (4.0, FaceTime 4.8). Corporate ties Teams at 4.1, and personal ties Meet at 4.0. A tie is not a lead. The church lead is the audience average.
+GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (4.1, Zoom 4.9, Meet 4.3) or personal (4.2, FaceTime 4.8). Corporate ties Teams at 4.1. Personal is ahead of Meet (4.0) and behind FaceTime. A tie is not a lead. The church lead is the audience average.
 
 ## Who we are scoring against
 
@@ -45,12 +45,12 @@ GifOS leads this audience. The average is 4.7 against StreamYard 4.0. An open se
 | --- | --- | --- | --- |
 | Warm, little chrome | 5 | 3 | 4 |
 | Start or join in one obvious step | 5 | 4 | 4 |
-| Invite is in the primary controls | 5 | 5 | 4 |
+| Invite is in the primary controls | 5 | 5 | 5 |
 | Reactions feel human | 4 | 4 | 4 |
 | Leave / rejoin is understandable | 5 | 4 | 4 |
-| **Audience score** | **4.8** | **4.0** | **4.0** |
+| **Audience score** | **4.8** | **4.0** | **4.2** |
 
-FaceTime leads. Leave is a labeled red button. Stay is an outline and Leave is red. After you leave, a white card says you left the small group, Rejoin is blue, and Close is an outline (Q20). That matches Meet. It stays short of FaceTime, which has no confirm step. Arithmetic: (4+4+4+4+4)/5 = 4.0. A tie with Meet is not a lead.
+FaceTime leads. Invite is a dock button, and the sheet’s obvious action is a blue Copy beside the link (Q23). That matches Meet and FaceTime on this row. Leave is a labeled red button. Stay is an outline and Leave is red. After you leave, a white card says you left the small group, Rejoin is blue, and Close is an outline (Q20). That matches Meet. It stays short of FaceTime, which has no confirm step. Arithmetic: (4+4+5+4+4)/5 = 4.2. Ahead of Meet. Behind FaceTime. Not a lead.
 
 ## Lead rule
 
@@ -81,3 +81,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q20 | 4.0 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.0 (FaceTime 4.8) | Leave is labeled. Rejoin is the blue way back. Personal leave 3 → 4. Ties Meet. FaceTime still leads. |
 | After Q21 | 4.1 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.0 (FaceTime 4.8) | Microphone off and Camera off are a full-width line. Mute 4 → 5. Corporate ties Teams. Not a lead. |
 | After Q22 | 4.1 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.0 (FaceTime 4.8) | A recording card names who is recording. Trust stays 4. Scores unchanged. |
+| After Q23 | 4.1 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.2 (FaceTime 4.8) | Invite is the link and a blue Copy. Personal invite 4 → 5. Ahead of Meet. FaceTime still leads. |

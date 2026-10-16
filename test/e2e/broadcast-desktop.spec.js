@@ -394,7 +394,7 @@ test('the screen-name step prefills your GifOS name and picture', async ({ page 
   await page.goto(SESSION, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('body.meet-session');
   await page.evaluate(() => { window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); return null; });
-  const dialog = page.locator('.appear-box');
+  const dialog = page.locator('#appear-modal .appear-box');
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('h3')).toHaveText("This is how you'll appear");
   await expect(page.locator('#nm')).toHaveValue('Avery Chen');
@@ -425,9 +425,9 @@ test('the screen-name step prefills your GifOS name and picture', async ({ page 
   expect(kept.name).toBe('Jordan Lee');
   expect(kept.avatar).toContain(png.slice(0, 24));
   await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); return null; });
-  await expect(page.locator('.appear-box')).toBeVisible();
+  await expect(page.locator('#appear-modal .appear-box')).toBeVisible();
   await page.locator('#nmcancel').click();
-  await expect(page.locator('.appear-box')).toBeVisible();
+  await expect(page.locator('#appear-modal .appear-box')).toBeVisible();
   await expect(page.locator('#nm')).toHaveValue('');
   await expect(page.locator('#appear-face img')).toHaveCount(0);
   const cleared = await page.evaluate(() => ({
@@ -901,4 +901,80 @@ test('a recording is a card everyone has to see', async ({ page }) => {
   await page.waitForSelector('#airkind');
   await page.evaluate(() => window.__gifosRoomTrust.setRecording(true));
   await expect(page.locator('#rec-notice-title')).toHaveText('You are recording this service');
+});
+
+test('sharing a personal call is the link and a blue Copy', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  async function sheet() {
+    return page.evaluate(() => {
+      const box = document.querySelector('#inv-modal .appear-box').getBoundingClientRect();
+      const copy = getComputedStyle(document.getElementById('inv-copy'));
+      const card = getComputedStyle(document.querySelector('#inv-modal .appear-box'));
+      const link = document.querySelector('#inv-modal .inv-link');
+      return {
+        bg: card.backgroundColor,
+        copyBg: copy.backgroundColor,
+        gap: link ? parseFloat(getComputedStyle(link).gap) : 0,
+        in: box.left >= -1 && box.top >= -1 && box.right <= innerWidth + 1 && box.bottom <= innerHeight + 1,
+      };
+    });
+  }
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=inv' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.group');
+    await page.locator('#invite').click();
+    await expect(page.locator('#inv-modal h3')).toHaveText('Share this small group');
+    await expect(page.locator('#inv-modal')).toContainText('Send this link. Anyone who opens it joins you.');
+    await expect(page.locator('#inv-modal')).not.toContainText(/troublemaker|blur|in charge|mute/i);
+    await expect(page.locator('#inv-copy')).toHaveClass(/appear-primary/);
+    await expect(page.locator('#inv-done')).toHaveClass(/appear-secondary/);
+    await expect(page.locator('#inv-adm-pass')).toBeHidden();
+    const lay = await sheet();
+    expect(lay.bg).toBe('rgb(255, 255, 255)');
+    expect(lay.copyBg).toBe('rgb(0, 100, 200)');
+    expect(lay.gap).toBeGreaterThanOrEqual(8);
+    expect(lay.in, JSON.stringify(lay)).toBe(true);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.setViewportSize({ width: 900, height: 720 });
+  const resized = await sheet();
+  expect(resized.in, JSON.stringify(resized)).toBe(true);
+  await page.locator('#inv-mkadm').click();
+  await expect(page.locator('#inv-adm-pass')).toBeVisible();
+  await expect(page.locator('#inv-adm-go')).toHaveClass(/appear-primary/);
+  await expect(page.locator('#inv-adm-back')).toHaveClass(/appear-secondary/);
+  await expect(page.locator('#inv-copy')).toHaveClass(/appear-secondary/);
+  const open = await sheet();
+  expect(open.in, JSON.stringify(open)).toBe(true);
+  const pair = await page.evaluate(() => {
+    const a = document.getElementById('inv-adm-back').getBoundingClientRect();
+    const b = document.getElementById('inv-adm-go').getBoundingClientRect();
+    return Math.round(b.left - a.right);
+  });
+  expect(pair).toBeGreaterThanOrEqual(8);
+  await page.locator('#inv-adm-back').click();
+  await expect(page.locator('#inv-adm-pass')).toBeHidden();
+  await expect(page.locator('#inv-copy')).toHaveClass(/appear-primary/);
+  await page.goto('/run.html?desk=invsvc#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airkind');
+  await page.locator('#invite').click();
+  await expect(page.locator('#inv-modal h3')).toHaveText('Share this service');
+  await expect(page.locator('#inv-modal')).toContainText('People who open it are watching');
+  await expect(page.locator('#inv-modal')).not.toContainText(/troublemaker|blur|in charge/i);
+  await expect(page.locator('#inv-mkadm')).toHaveCount(0);
+  await expect(page.locator('#inv-copy')).toHaveClass(/appear-primary/);
+  const svc = await sheet();
+  expect(svc.bg).toBe('rgb(255, 255, 255)');
+  expect(svc.in, JSON.stringify(svc)).toBe(true);
+  await page.goto('/run.html?desk=invhost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.live');
+  await page.locator('#invite').click();
+  await expect(page.locator('#inv-modal')).toContainText('The host password stays with you.');
 });

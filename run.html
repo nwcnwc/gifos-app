@@ -1200,6 +1200,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .appear-actions { display: flex; gap: 12px; justify-content: flex-end; }
   .name-box button.appear-primary { background: #0064c8; color: #fff; border: 0; min-width: 112px; }
   .name-box button.appear-secondary { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; min-width: 112px; }
+  /* Invite is the same white card as Save. Copy is the blue action. */
+  #inv-modal .appear-box { max-width: 440px; text-align: left; }
+  #inv-modal .appear-box p { font-size: 1rem; line-height: 1.4; color: #3a3a3f; margin: 0 0 12px; }
+  #inv-modal .inv-link { display: flex; gap: 12px; align-items: center; margin: 0 0 16px; }
+  #inv-modal .appear-box input { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
+  #inv-modal .inv-link input { flex: 1; min-width: 0; margin: 0; }
+  #inv-modal .name-box button.inv-more { display: block; margin: 14px 0 0; background: none; border: 0; color: #0064c8;
+    min-height: 0; min-width: 0; padding: 8px 0; font-weight: 700; text-decoration: underline; cursor: pointer; }
+  #inv-modal .lob-pwlab, #inv-modal .lob-pwlab b { color: #1d1d1f; }
+  #inv-modal .lob-pwlab small { color: #3a3a3f; }
+  #inv-modal .inv-check { display: flex; gap: 8px; align-items: flex-start; color: #1d1d1f; margin: 0 0 12px; font-size: 1rem; }
+  #inv-modal .inv-check input { width: 18px; min-width: 18px; height: 18px; flex: none; margin: 3px 0 0; padding: 0; }
   .lob-appear { margin-top: 16px; text-align: left; }
   .lob-appear-k { font-size: 13px; font-weight: 700; color: #3a3a3f; margin-bottom: 8px; }
   .lob-appear-row { display: flex; align-items: center; gap: 12px; }
@@ -1886,7 +1898,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="inv-modal" style="display:none">
-    <div class="name-box" style="max-width:440px;text-align:left">
+    <div class="name-box appear-box">
       <h3>Share this meeting</h3>
       <div id="inv-body"></div>
     </div>
@@ -2579,6 +2591,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         GifOS.store.setName(seed);
       }
       const bg = document.createElement('div'); bg.className = 'name-modal';
+      bg.id = 'appear-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
       bg.setAttribute('aria-labelledby', 'appear-title');
       bg.innerHTML = '<div class="name-box appear-box"><h3 id="appear-title">This is how you\'ll appear</h3>' +
@@ -21548,63 +21561,60 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // button is now sign-in + bans, and shows only inside an admin room.
     const invModal = document.getElementById('inv-modal');
     let closeInvModal = () => { invModal.style.display = 'none'; };
-    const surfaceBtn = 'background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)';
     function armCopiedLabel(btn, later) {
       btn.textContent = 'Copied ✓';
       later(() => { if (btn.textContent === 'Copied ✓') btn.textContent = 'Copy'; }, 2000);
     }
     function linkRowHtml() {
-      return '<div style="display:flex;gap:.5rem;margin:.6rem 0"><input id="inv-url" readonly value="' + esc(shareUrl.value) + '" style="flex:1;min-width:0"><button id="inv-copy">Copy</button><button id="inv-share" style="display:none">Share…</button></div>';
+      return '<div class="inv-link"><input id="inv-url" readonly value="' + esc(shareUrl.value) + '"><button id="inv-copy" type="button" class="appear-primary">Copy</button><button id="inv-share" type="button" class="appear-secondary" style="display:none">Share</button></div>';
     }
     function showInviteModal() {
       const body = document.getElementById('inv-body');
       const others = Math.max(0, displayCount() - 1);
       const ppl = others > 1 ? 'people' : 'person';
       // Same copy modal everywhere you can mint a link. An APP room gets its own
-      // copy: "mute/blur" and "create a room you control" are meeting concepts,
-      // meaningless for a shared app — so we don't show them here.
+      // copy: a room you run is a meeting idea, so an app does not offer it.
       const isApp = document.body.classList.contains('app-room');
-      // Say which thing you are sharing — a broadcast is not a meeting.
       document.querySelector('#inv-modal h3').textContent =
         isApp ? 'Share this app' : BROADCAST ? 'Share this service' : 'Share this small group';
+      const closeRow = '<div class="appear-actions"><button id="inv-done" type="button" class="appear-secondary">Close</button></div>';
       if (isApp) {
-        body.innerHTML =
-          '<p style="color:#aab">Anyone with this link joins you <b>live inside this app</b>, and the link has no expiry.</p>' +
-          linkRowHtml() +
-          '<div style="display:flex;justify-content:flex-end;margin-top:.9rem"><button id="inv-done" style="' + surfaceBtn + '">Close</button></div>';
-      } else if (hasAdminRoom()) {
-        body.innerHTML =
-          // The old line here said the admin password "is never in the link". A
-          // password FINGERPRINT is in the link (the verifier — it is what makes
-          // this a room you run), so the sentence was both untrue and more detail
-          // than anyone wants. What a person actually needs to know: the link lets
-          // people IN, it does not hand them the room.
-          '<p style="color:#aab"><b>You run this room.</b> The link is safe to send to anyone — it lets people join, it does not let them run the room. Your admin password is what does that, so keep it to yourself.</p>' +
-          linkRowHtml() +
-          '<div style="display:flex;justify-content:flex-end;margin-top:.4rem"><button id="inv-done">Done</button></div>';
+        body.innerHTML = '<p>Send this link. They join you live inside this app.</p>' + linkRowHtml() + closeRow;
+      } else if (hasAdminRoom() || BROADCAST) {
+        // A service is a hosted room even before the verifier is stored.
+        // The link lets people in. It does not hand them the host password.
+        const host = !BROADCAST
+          || document.body.classList.contains('amadmin')
+          || (typeof bcHostStored === 'function' && bcHostStored());
+        const line = BROADCAST
+          ? (host
+            ? 'Send this link. People who open it are watching. The host password stays with you.'
+            : 'Send this link. People who open it are watching.')
+          : 'Send this link. People who open it can join. The host password stays with you.';
+        body.innerHTML = '<p>' + line + '</p>' + linkRowHtml() + closeRow;
       } else {
         body.innerHTML =
-          '<p style="color:#aab">Anyone with this link can join, and the link carries no expiry. <b>No one is in charge</b> — anyone here can mute or blur anyone.</p>' +
+          '<p>Send this link. Anyone who opens it joins you.</p>' +
           linkRowHtml() +
-          '<div style="border-top:1px solid var(--border,#2a2a3f);margin:.9rem 0 .7rem"></div>' +
-          '<div id="inv-adm-collapsed"><p style="color:#aab;margin-bottom:.5rem">Want a room <b>you</b> run — a password, global mute/blur, and the power to ban a troublemaker?</p>' +
-            '<button id="inv-mkadm" style="' + surfaceBtn + '">Create a room you control →</button></div>' +
+          closeRow +
+          '<button id="inv-mkadm" type="button" class="inv-more">A room you run</button>' +
           '<div id="inv-adm-open" style="display:none">' +
-            '<div style="background:rgba(255,180,60,.12);border:1px solid rgba(255,180,60,.4);border-radius:.5rem;padding:.6rem .7rem;font-size:.85rem;margin-bottom:.7rem">This makes a <b>new, separate room</b> that you run — so <b>name it anything you like</b>. ' +
-              (others ? 'The ' + others + ' ' + ppl + ' here won\'t move automatically, so leave the box ticked to drop the new link into this room\'s chat and they can follow you over.' : 'You\'ll switch to it now.') + '</div>' +
-            '<input id="inv-adm-room" maxlength="40" placeholder="Room name (anything you like)" autocomplete="off" value="' + esc(room) + '" style="width:100%;box-sizing:border-box;margin-bottom:.5rem">' +
-            '<label class="lob-pwlab">🔑 <b>Admin password</b> — yours alone — <b>do not share it</b><small>This is what puts you in charge of the room. Guests don’t need it. Anyone you give it to can run the room too.</small></label>' +
-            '<input id="inv-adm-pass" type="password" maxlength="64" placeholder="Admin password (keep to yourself)" autocomplete="new-password" style="width:100%;box-sizing:border-box;margin-bottom:.6rem">' +
-            '<label class="lob-pwlab">🎟 <b>Guest password</b> — the one you <b>do</b> share<small>Optional, but faces stay fully blurred (Max) until you set one. The Blur slider softens it. Guests type it to get in. It is not part of the link — send it to them yourself.</small></label>' +
-            '<input id="inv-adm-guest" type="password" maxlength="64" placeholder="Guest password (optional — share with guests)" autocomplete="new-password" style="width:100%;box-sizing:border-box;margin-bottom:.6rem">' +
-            (others ? '<label style="display:flex;gap:.5rem;align-items:flex-start;cursor:pointer;margin-bottom:.7rem;font-size:.9rem"><input type="checkbox" id="inv-adm-post" checked style="margin-top:.2rem"><span>Post the new link to this room\'s chat so the ' + others + ' ' + ppl + ' here can follow me over.</span></label>' : '') +
-            '<div style="display:flex;gap:.5rem;justify-content:flex-end"><button id="inv-adm-back" style="' + surfaceBtn + '">Back</button><button id="inv-adm-go">Create &amp; switch</button></div>' +
-          '</div>' +
-          '<div style="display:flex;justify-content:flex-end;margin-top:.9rem"><button id="inv-done" style="' + surfaceBtn + '">Close</button></div>';
+            '<p>This makes a new room that you run. Name it, then set a host password only you know.</p>' +
+            (others
+              ? '<p>The ' + others + ' ' + ppl + ' here stay in this room. Leave the box ticked to drop the new link in chat so they can follow.</p>'
+              : '<p>You will switch to it now.</p>') +
+            '<input id="inv-adm-room" maxlength="40" placeholder="Name this room" autocomplete="off" value="' + esc(room) + '">' +
+            '<label class="lob-pwlab"><b>Host password</b><small>Only you. People who join do not need it.</small></label>' +
+            '<input id="inv-adm-pass" type="password" maxlength="64" placeholder="Host password" autocomplete="new-password">' +
+            '<label class="lob-pwlab"><b>Guest password</b><small>Optional. It is not part of the link.</small></label>' +
+            '<input id="inv-adm-guest" type="password" maxlength="64" placeholder="Guest password (optional)" autocomplete="new-password">' +
+            (others ? '<label class="inv-check"><input type="checkbox" id="inv-adm-post" checked><span>Drop the new link in chat so they can follow.</span></label>' : '') +
+            '<div class="appear-actions"><button id="inv-adm-back" type="button" class="appear-secondary">Back</button><button id="inv-adm-go" type="button" class="appear-primary">Create and switch</button></div>' +
+          '</div>';
       }
       const copyBtn = document.getElementById('inv-copy');
       const shareInviteBtn = document.getElementById('inv-share');
-      const inviteSharePayload = () => ({ title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : 'Join my GifOS meeting', text: 'Tap this link and you’re in:', url: shareUrl.value });
+      const inviteSharePayload = () => ({ title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS service' : 'Join my GifOS small group', text: 'Tap this link and you’re in:', url: shareUrl.value });
       if (shareInviteBtn && navigator.share) {
         shareInviteBtn.style.display = '';
         shareInviteBtn.onclick = () => { navigator.share(inviteSharePayload()).catch(() => {}); };
@@ -21618,15 +21628,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const done = document.getElementById('inv-done');
       if (done) done.onclick = () => closeInvModal();
       const mk = document.getElementById('inv-mkadm');
+      const copyLooksPrimary = (on) => {
+        if (!copyBtn) return;
+        copyBtn.classList.toggle('appear-primary', on);
+        copyBtn.classList.toggle('appear-secondary', !on);
+      };
       if (mk) mk.onclick = () => {
-        document.getElementById('inv-adm-collapsed').style.display = 'none';
+        mk.style.display = 'none';
+        if (done) done.style.display = 'none';
         document.getElementById('inv-adm-open').style.display = '';
+        copyLooksPrimary(false);
         document.getElementById('inv-adm-pass').focus();
       };
       const back = document.getElementById('inv-adm-back');
       if (back) back.onclick = () => {
         document.getElementById('inv-adm-open').style.display = 'none';
-        document.getElementById('inv-adm-collapsed').style.display = '';
+        if (mk) mk.style.display = '';
+        if (done) done.style.display = '';
+        copyLooksPrimary(true);
       };
       const go = document.getElementById('inv-adm-go');
       if (go) go.onclick = async () => {
@@ -21642,7 +21661,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try {
           await createAdminRoom(chosen, pass, post, guest);
         } catch (err) {
-          go.disabled = false; go.textContent = 'Create & switch';
+          go.disabled = false; go.textContent = 'Create and switch';
           invModal.style.display = 'flex';
           setStatus('Could not create the room (' + ((err && err.name) || 'Error') + ').');
         }
