@@ -163,17 +163,22 @@
   // does not reserve a band. Phone with the mode pill needs a taller inset.
   function viewBox(vw, vh, opts) {
     opts = opts || {};
-    const phone = opts.phone != null ? !!opts.phone : vw < 600;
+    const landscape = vw > vh;
+    const short = landscape && vh < 420;
+    const phone = opts.phone != null ? !!opts.phone : (!landscape && vw < 700);
     // 64 clears the header pill (it sits at y=14 and is about 40px tall) so
     // the top row's chips are not drawn underneath it. The mode pill is taller.
-    const top = opts.top != null ? opts.top : (phone && opts.pill ? 92 : 64);
+    // A short landscape reserves the dock, so a face is not painted under Hang up.
+    const top = opts.top != null ? opts.top : (short ? 56 : (phone && opts.pill ? 92 : 64));
+    const bottom = opts.bottom != null ? opts.bottom : (short ? 72 : 0);
     const pad = phone ? 2 : 4;
     return {
       x: pad,
       y: top,
       w: Math.max(1, vw - pad * 2),
-      h: Math.max(1, vh - top),
+      h: Math.max(1, vh - top - bottom),
       phone: phone,
+      bottom: bottom,
     };
   }
 

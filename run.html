@@ -1473,6 +1473,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="5"]) .tile.me {
       width: 138px; height: 182px; }
   }
+  /* A rotated phone is short. The dock drops to the control size so the face keeps the stage. */
+  @media (max-height: 420px) {
+    .bar { height: 56px; }
+    .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+      width: 44px; height: 44px; min-width: 44px; min-height: 44px;
+    }
+    .bar #cam svg, .bar #flipcam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg {
+      width: 22px; height: 22px;
+    }
+    .bar #leavebtn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+  }
   /* A rotated 320px phone at a 32px root cannot stack an 88px banner, the chip, and an 88px Fit above the dock. */
   @media (max-height: 380px) {
     .fitbtn { min-width: 44px; min-height: 44px; line-height: 1; padding: 6px 10px; }
@@ -5018,13 +5029,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           meta.video._comfyRz = true;
           meta.video.addEventListener('resize', () => { try { layout(); } catch (e) {} });
         }
-        const phone = window.innerWidth < 600;
+        const landscape = window.innerWidth > window.innerHeight;
+        const short = landscape && window.innerHeight < 420;
+        const phone = !landscape && window.innerWidth < 700;
+        let top, bottom;
+        if (short) {
+          const chip = document.querySelector('.topchip');
+          const shown = chip && getComputedStyle(chip).display !== 'none';
+          const chipBottom = shown ? chip.getBoundingClientRect().bottom : 14;
+          top = Math.max(48, Math.ceil(chipBottom + 6));
+          bottom = 72;
+        }
         let holdMs = 2500;
         try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: faces, video: meta.video, cols: cols,
           orderKey: roster.length + ':' + roster.join(','), holdMs: holdMs,
-          vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: myId || 'me',
+          vw: window.innerWidth, vh: window.innerHeight, phone: phone, top: top, bottom: bottom, selfId: myId || 'me',
           pill: document.body.classList.contains('has-pill'),
           mode: window.__meetViewMode || 'gallery', swapSelf: !!window.__meetSwapSelf,
           gallery: window.__meetGallery || 'fit', now: Date.now(),
@@ -23584,7 +23605,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const bar = document.querySelector('.bar');
         const br = bar ? bar.getBoundingClientRect() : null;
         let box = null;
-        try { box = GifOS.meetLayout.viewBox(window.innerWidth, window.innerHeight, { phone: window.innerWidth < 600, pill: document.body.classList.contains('has-pill') }); } catch (e) {}
+        try {
+          const landscape = window.innerWidth > window.innerHeight;
+          box = GifOS.meetLayout.viewBox(window.innerWidth, window.innerHeight, { phone: !landscape && window.innerWidth < 700, pill: document.body.classList.contains('has-pill') });
+        } catch (e) {}
         return {
           on: document.body.classList.contains('comfy'),
           mode: window.__meetViewMode || 'gallery',

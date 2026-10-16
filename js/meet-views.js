@@ -328,7 +328,9 @@
         t.el.dataset.tier = t.tier || 'row';
       }
     }
-    const box = ML.viewBox(opts.vw || 1, opts.vh || 1, { phone: !!opts.phone, pill: !!opts.pill });
+    const box = ML.viewBox(opts.vw || 1, opts.vh || 1, {
+      phone: !!opts.phone, pill: !!opts.pill, top: opts.top, bottom: opts.bottom,
+    });
     const lay = ML.layoutFor({
       mode: opts.mode || 'gallery',
       tiles: tiles,
