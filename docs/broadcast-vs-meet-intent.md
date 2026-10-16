@@ -1,8 +1,12 @@
 # Broadcast and Meet: what the design says
 
-This note is the design record for how Broadcast differs from Meet. It does not change any control. Claims are tied to a source. Anything not in a source is marked as an assumption or left as an open question.
+This note is the design record for how Broadcast differs from Meet. It does not change any control.
 
-`docs/broadcast-role-controls.md` is an audit of the current page. It is not a design source, and it is not treated as Nathan's confirmation.
+The authority is the repo: docs, specs, manifests, code, and commit history. A sentence said in chat is not the design. Where a chat sentence conflicts with the repo, this note follows the repo and records the conflict under Open questions. An unmerged branch is part of the repo. A Meet branch describes Meet. It does not replace the shipped Broadcast skin.
+
+Claims below are tied to a file or a commit. Anything the repo does not say is marked as an assumption or left as an open question.
+
+`docs/broadcast-role-controls.md` is an audit of the current page. It is not a design source.
 
 ## Sources read
 
@@ -33,7 +37,7 @@ The lobby offers two ways to start: "Start a meeting" (an open room, anyone with
 
 The lobby drops the open room. Creating a broadcast mints an admin room, and the button says "You go live on the Stage; anyone with the link watches and chats." (`run.html` `showLobby`, the `#bc=1` rewording.) Nathan placed the Broadcast icon directly under Meeting on the Home Screen (`js/desktop.js`, `placeBroadcastBelowMeeting`, 2026-08-03).
 
-The mobile scorecard scores Broadcast against three audiences: Corporate, Church, and Personal. The rivals named for a broadcast are StreamYard, YouTube Live, and church streaming desks (Resi, BoxCast, and a ProPresenter-style go-live panel). The church volunteer is the person who should get "a short path: name the service, go on, read a link." (`origin/cursor/qa-broadcast-mobile` `BENCHMARK.md` and `QUIRKS.md`.) The words "town hall" and "personal stream" are the wording of the request that asked for this note. The scorecard's matching rows are Corporate and Personal. Those two phrases are not in the repo.
+The mobile scorecard scores Broadcast against three audiences: Corporate, Church, and Personal. The rivals named for a broadcast are StreamYard, YouTube Live, and church streaming desks (Resi, BoxCast, and a ProPresenter-style go-live panel). The church volunteer is the person who should get "a short path: name the service, go on, read a link." (`origin/cursor/qa-broadcast-mobile` `BENCHMARK.md` and `QUIRKS.md`.) The phrases "town hall" and "personal stream" are not in the repo. The scorecard's matching rows are Corporate and Personal.
 
 Church language inside Meeting Help ("a great stone church", a hymn, an "Amen") is about singing together in a meeting, not a statement that Broadcast is the church product. (`run.html` Help, "Singing together".)
 
@@ -97,32 +101,34 @@ Hidden or changed, from the shipped skin and Help:
 - The host password and the viewer password are named differently from a meeting's admin password and guest password, and the lobby says so.
 - Share stays a separate grant. The shipped skin shows it to a non-host only after that grant. Record, captions, Run app, and Password stay off for non-hosts.
 
-## Preferences Nathan has stated that are not the shipped Broadcast skin
+## Meet layout notes that do not govern Broadcast
 
-These are recorded so a later control change does not ignore them. They are not implemented as Broadcast behavior in this note.
+These are repo sources for Meet on unmerged branches. They are not chat, and they are not the Broadcast skin.
 
-- The stage never covers the other participants unless Stage only is chosen. On the Meet branch `cursor/meet-selfview-stage`, stage and speaker views keep everyone else in a strip. The rectangles do not overlap. Stage only is the only mode that drops the strip, and a screen share must not pick it by itself. (`design/meet-selfview-stage.md`.) The same preference was restated in the request for this note. The shipped Broadcast skin does the opposite with the audience: it hides the row grid and the stadium entirely.
-- His own tile goes on the stage only if he puts it there. The Meet note says "Show me on stage" is off until you turn it on. Stepping up for the room, and being the person who is talking, do not put your own tile on the stage. (`design/meet-selfview-stage.md`.) The request for this note states the same preference. The shipped Broadcast page auto-steps the host onto the stage for the audience. That is a different act from drawing the host's self-view tile inside the stage frame, and the note does not say they are the same.
-- Tiles are never skinny. The Meet gallery packer refuses a tile narrower than a portrait phone (`w/h` below 0.44) when another arrangement exists, and a too-narrow box is shortened to that ratio. (`origin/cursor/meet-gallery-fit-scroll`, `js/meet-pack.js` and `test/unit/meet-gallery-layout.js`; commit `5bc3390`.) The request for this note states the same preference. Nothing in the Broadcast skin says the stage picture follows that rule.
-- The join screen prefills the system name and avatar, with a "this is how you'll appear" preview. This is stated in the request for this note. The shipped lobby shows "You'll join as {name}" and a change button (`run.html` `.lob-namebar`). No source in these repos describes a system avatar or that preview sentence.
-- The sparkle icon is for AI features. Reactions use a smiley. Commit `7ae8c49` on `cursor/reactions-smiley-pin-header` says the reactions control is a face, and the four-point sparkle is only on the transcript and the note bot. The Home Screen icons, including Meeting, use a separate four-point "aurora sparkle" as decoration (`themes/icons.js`). That icon sparkle is not the reactions control.
+- On `cursor/meet-selfview-stage`, stage and speaker views keep everyone else in a strip. The rectangles do not overlap. Stage only is the only mode that drops the strip, and a screen share must not pick it by itself. "Show me on stage" is off until that person turns it on. Stepping up, and being the person who is talking, do not put their own tile on the stage. (`design/meet-selfview-stage.md`, commit `1b9da0c`.)
+- On `cursor/meet-gallery-fit-scroll`, the gallery packer refuses a tile narrower than a portrait phone (`w/h` below 0.44) when another arrangement exists, and a too-narrow box is shortened to that ratio. (`js/meet-pack.js`, `test/unit/meet-gallery-layout.js`, commit `5bc3390`.)
+- On `cursor/reactions-smiley-pin-header`, the reactions control is a face, and the four-point sparkle is only on the transcript and the note bot. (`7ae8c49`.) Home Screen icons, including Meeting, use a separate four-point aurora sparkle as decoration. (`themes/icons.js`.)
+
+The shipped Broadcast skin does not use those rules. It hides the row grid and the stadium, it auto-steps the host onto the stage the audience watches, and its Help does not mention reactions or a tile aspect ratio.
 
 ## Assumptions
 
-- **Assumption.** "Corporate town hall" and "personal stream" mean the scorecard's Corporate and Personal rows. The repo names the rows and the rivals. It does not use those two phrases.
-- **Assumption.** A called-up person is a temporary stage guest, not a second host. Help says they join the host on stage and can step down, and it does not give them the host password, the viewer password, chat moderation, or ban.
-- **Assumption.** Hiding the audience grid is intentional for viewers who publish nothing, not an unfinished Meet layout. The CSS comment and the icon comment both say the grid is not the show. Whether co-presenters on stage must still see each other in a strip is not answered by those comments.
-- **Assumption.** The Meet self-view, gallery, and reactions notes apply to Meet first. They apply to Broadcast only where a later confirmation says so. They are listed above so they are not dropped.
+- **Assumption.** A called-up person is a temporary participant on the stage, not a second host. Help says they join the host on stage and can step down. It does not give them the host password, the viewer password, chat moderation, or ban.
+- **Assumption.** Hiding the audience grid is intentional for viewers who publish nothing, not an unfinished Meet layout. The CSS comment and the icon comment both say the grid is not the show. The comments do not say whether two people on the stage must still see each other.
 
 ## Open questions
 
-1. Does "the stage never covers the other participants" apply inside a broadcast? The shipped skin hides every viewer tile. If two people are on stage, must each still see the other in a strip, with Stage only as an explicit choice?
-2. The host is auto-stepped onto the stage for the audience. Is that still wanted, given "my tile goes on the stage only if I put it there"? Or does that sentence only govern the host's self-view, while the audience stage stays automatic?
-3. Must a broadcast stage tile obey the Meet rule that a tile is never narrower than a portrait phone?
-4. Which join screen prefills the system name and avatar: Meet, Broadcast, or both? What is the system avatar when the device has none?
-5. Do reactions exist in a broadcast, and is the smiley-versus-sparkle rule the same there? The shipped Broadcast Help does not mention reactions.
-6. The shipped skin shows Share to a non-host after a screen-share grant, and hides Run app, Record, and captions from every non-host. Is a called-up person allowed any of those, or only camera and microphone?
-7. Is the sound mix, including Song, deliberately absent from a broadcast? A church service is the audience the scorecard is losing, and Meeting Help's singing tools are exactly the stadium mix the broadcast skin hides.
-8. Help says ban lives on each tile, and the broadcast skin does not draw those tiles. Where should promote, demote, mute, blur, and ban live?
-9. Should a broadcast say LIVE, OFF AIR, or WATCHING? The scorecard's next gap is that a viewer sees "Joining the broadcast…" and a host with no picture has no OFF AIR mark (`BENCHMARK.md`, Q5).
-10. `nwcnwc/gifos` was not readable, and `docs/meeting.md` and `docs/media-plane.md` are cited but not in this repo. If those files hold a later decision, this note has not seen it.
+Chat conflicts. The repo is what this note follows. The chat sentence is recorded only so it is not quietly treated as the design.
+
+1. **Conflict.** Chat: the stage never covers the other participants unless Stage only is chosen. Repo, Broadcast: the row grid and the stadium never render (`origin/main` broadcast CSS; `themes/icons.js`, "never a grid"). Repo, Meet branch: a strip stays unless that person chooses Stage only (`design/meet-selfview-stage.md`). Follow the Broadcast skin for a broadcast. Do not put viewer tiles back because of the chat sentence. The Meet note stays Meet's.
+2. **Conflict.** Chat: his own tile goes on the stage only if he puts it there. Repo, Broadcast: the page puts the host on the stage once the admin key is adopted (`run.html` boot comment, `tryBroadcastStage`). Repo, Meet branch: "Show me on stage" is a self-view choice, and stepping up does not draw that tile on the stage (`design/meet-selfview-stage.md`). Follow the Broadcast auto-step for what the audience sees. The chat sentence does not cancel it.
+3. **Conflict.** Chat: tiles are never skinny. Repo, Meet gallery branch: a tile narrower than a portrait phone is not the pick (`js/meet-pack.js`). Repo, Broadcast: no such rule. Follow each app's own code. Do not impose the chat sentence on a broadcast stage.
+4. **Conflict.** Chat: the join screen prefills the system name and avatar, with a "this is how you'll appear" preview. Repo: the lobby says "You'll join as {name}" and offers change (`run.html` `.lob-namebar`). No source in these repos describes a system avatar or that preview sentence. Follow the lobby.
+5. **Conflict.** Chat: the sparkle icon is for AI features, and reactions use a smiley. Repo: the reactions control is a face, and the in-call sparkle is only on the transcript and the note bot (`7ae8c49`). The Home Screen aurora sparkle is decoration on many icons, including Meeting (`themes/icons.js`). Follow that split. Do not strip the icon sparkle because of the chat sentence. Broadcast Help does not mention reactions.
+
+Gaps inside the repo, not from chat:
+
+6. The shipped skin shows Share to a non-host after a screen-share grant, and hides Run app, Record, and captions from every non-host. The Help text only says a called-up person gets camera and microphone. The repo does not say whether the extra controls are intended.
+7. Help says ban lives on each tile. The broadcast skin does not draw those tiles. The repo does not say where promote, demote, mute, blur, and ban go instead.
+8. The Broadcast icon draws a LIVE lamp (`themes/icons.js`). The page a viewer sees says "Joining the broadcast…", and a host who is not sending a picture has no OFF AIR mark (`BENCHMARK.md` Q5, `QUIRKS.md` Q5). The repo records the gap and does not choose the words.
+9. `nwcnwc/gifos` was not readable, and `docs/meeting.md` and `docs/media-plane.md` are cited in `run.html` but are not in any branch of this repo. If those files exist elsewhere, this note has not seen them.
