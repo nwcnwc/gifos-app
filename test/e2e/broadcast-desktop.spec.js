@@ -1526,3 +1526,62 @@ test('a service picture fills the stage and a clear stage says so', async ({ pag
   const meet = await page.locator('#bc-stage').evaluate((el) => getComputedStyle(el).display);
   expect(meet).toBe('none');
 });
+
+test('a viewer raises a hand from the dock', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=hand' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.watch');
+    const hand = page.locator('.bar > #hand');
+    await expect(hand).toBeVisible();
+    await expect(hand.locator('.docklab')).toHaveText('Raise hand');
+    await expect(hand).toHaveAttribute('aria-label', 'Raise hand');
+    const lay = await page.evaluate(() => {
+      const btn = document.querySelector('.bar > #hand');
+      const lab = btn.querySelector('.docklab');
+      const bar = document.querySelector('.bar').getBoundingClientRect();
+      const r = btn.getBoundingClientRect();
+      const lr = lab.getBoundingClientRect();
+      return {
+        inMore: !!btn.closest('#barmore'),
+        clip: lab.scrollWidth <= lab.clientWidth + 1,
+        inBtn: lr.left >= r.left - 1 && lr.right <= r.right + 1 && lr.bottom <= r.bottom + 1,
+        barIn: bar.left >= -1 && bar.right <= innerWidth + 1 && bar.bottom <= innerHeight + 1,
+      };
+    });
+    expect(lay.inMore, JSON.stringify(lay)).toBe(false);
+    expect(lay.clip, JSON.stringify(lay)).toBe(true);
+    expect(lay.inBtn, JSON.stringify(lay)).toBe(true);
+    expect(lay.barIn, JSON.stringify(lay)).toBe(true);
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.setViewportSize({ width: 900, height: 720 });
+  const hand = page.locator('.bar > #hand');
+  const resized = await page.evaluate(() => document.querySelector('.bar').getBoundingClientRect().right <= innerWidth + 1);
+  expect(resized).toBe(true);
+  await hand.click();
+  await expect(hand.locator('.docklab')).toHaveText('Lower hand');
+  await expect(hand).toHaveAttribute('aria-pressed', 'true');
+  const raised = await page.evaluate(() => getComputedStyle(document.querySelector('.bar > #hand')).backgroundColor);
+  expect(raised).toBe('rgb(0, 100, 200)');
+  await hand.click();
+  await expect(hand.locator('.docklab')).toHaveText('Raise hand');
+  await expect(hand).toHaveAttribute('aria-pressed', 'false');
+  await page.goto('/run.html?desk=handhost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.live');
+  await expect(page.locator('.bar > #hand')).toHaveCount(0);
+  await page.locator('#bartoggle').click();
+  await expect(page.locator('#barmore #hand')).toHaveText('Hand');
+  await page.goto('/run.html?desk=handmeet#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await expect(page.locator('.bar > #hand')).toHaveCount(0);
+  await page.locator('#bartoggle').click();
+  await expect(page.locator('#barmore #hand')).toHaveText('Hand');
+});

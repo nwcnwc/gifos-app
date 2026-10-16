@@ -1423,6 +1423,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar > #stagebtn .docklab { max-width: none; }
   .bar > #stagebtn svg { width: 28px; height: 28px; }
   .bar > #stagebtn.on { background: #b61622; color: #fff; }
+  .bar > #hand { width: auto; min-width: 68px; height: 68px; min-height: 68px; padding: 0 12px; border: 0; border-radius: 50%;
+    background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
+    font-size: 11px; font-weight: 700; line-height: 1; }
+  .bar > #hand .docklab { max-width: none; }
+  .bar > #hand .dockface { font-size: 26px; line-height: 1; pointer-events: none; }
+  .bar > #hand.on { background: #0064c8; color: #fff; }
   .bar #reactbtn.on, .bar #bartoggle[aria-expanded="true"] { background: #0064c8; color: #fff; }
   .bar:not(.collapsed) .bartoggle svg { transform: none; }
   .bar #leavebtn { width: 72px; height: 72px; min-width: 72px; min-height: 72px; margin-left: 6px; padding: 0;
@@ -1511,6 +1517,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar > #sharebtn svg { width: 26px; height: 26px; }
     .bar > #stagebtn { height: 56px; min-height: 56px; padding: 0 8px; }
     .bar > #stagebtn svg { width: 22px; height: 22px; }
+    .bar > #hand { height: 56px; min-height: 56px; padding: 0 8px; }
+    .bar > #hand .dockface { font-size: 22px; }
     .bar #fsbtn { width: auto; min-width: 56px; padding: 0 6px; }
     .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #chatbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
     .bar #bargrip { height: 40px; width: 18px; }
@@ -2552,6 +2560,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           stage.classList.add('iconbtn');
           stage.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="2.4"/><path d="M8.2 13.2c.5-1.5 1.9-2.4 3.8-2.4s3.3.9 3.8 2.4"/><path d="M4 17.5h16"/></svg><span class="docklab">Step on</span>';
           stage.setAttribute('aria-label', 'Step on the stage');
+        }
+      } else if (bar) {
+        const hand = document.getElementById('hand');
+        const anchor = document.getElementById('reactbtn');
+        if (hand && anchor && hand.parentElement !== bar) bar.insertBefore(hand, anchor);
+        if (hand && !hand.querySelector('.docklab')) {
+          hand.classList.add('iconbtn');
+          hand.innerHTML = '<span class="dockface" aria-hidden="true">\u270B</span><span class="docklab">Raise hand</span>';
+          hand.setAttribute('aria-label', 'Raise hand');
+          hand.setAttribute('aria-pressed', 'false');
         }
       }
       if (pill) {
@@ -17710,8 +17728,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // ---- hand raise: float to the top in the order hands went up --------------
     const handBtn = document.getElementById('hand');
     function paintHand() {
-      handBtn.classList.toggle('off', !!myStatus.hand);
-      handBtn.textContent = myStatus.hand ? 'Lower hand' : 'Hand';
+      const up = !!myStatus.hand;
+      const docked = handBtn.parentElement && handBtn.parentElement.classList.contains('bar');
+      const lab = handBtn.querySelector('.docklab');
+      if (docked && lab) {
+        handBtn.classList.toggle('on', up);
+        lab.textContent = up ? 'Lower hand' : 'Raise hand';
+        handBtn.setAttribute('aria-label', up ? 'Lower hand' : 'Raise hand');
+        handBtn.setAttribute('aria-pressed', up ? 'true' : 'false');
+      } else {
+        handBtn.classList.toggle('off', up);
+        handBtn.textContent = up ? 'Lower hand' : 'Hand';
+      }
       const rh = document.getElementById('react-hand');
       if (rh) {
         rh.textContent = '✋';
