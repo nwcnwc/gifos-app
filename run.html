@@ -1406,10 +1406,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="5"]) .tile.me {
       width: 138px; height: 182px; }
   }
-  /* Comfy: every face on screen, tiles touch, the dock floats over them.
-     The long :not chain is what the older gallery rule uses; matching it
-     is what lets these win. Padding is zeroed so the dock does not reserve
-     a band (the packer already insets the grid by ≤4px). */
+  /* Comfy: every face on screen, tiles touch. The long :not chain is what
+     the older gallery rule uses; matching it is what lets these win.
+     Padding stays zero. The dock band is a content-box inset in viewBox
+     (innerHeight - bar.top), so the packer itself is unchanged. */
   body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
     position: fixed; inset: 0; overflow: hidden; padding: 0 !important; margin: 0;
     display: block; background: #0d0f14; z-index: 1; }
@@ -4950,11 +4950,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const phone = window.innerWidth < 600;
         let holdMs = 2500;
         try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}
+        let bottom = 0;
+        try {
+          const bar = document.querySelector('.bar');
+          if (bar) bottom = Math.max(0, window.innerHeight - bar.getBoundingClientRect().top);
+        } catch (e) {}
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: faces, video: meta.video, cols: cols,
           orderKey: roster.length + ':' + roster.join(','), holdMs: holdMs,
           vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: myId || 'me',
-          pill: document.body.classList.contains('has-pill'),
+          pill: document.body.classList.contains('has-pill'), bottom: bottom,
           mode: window.__meetViewMode || 'gallery', swapSelf: !!window.__meetSwapSelf,
           gallery: window.__meetGallery || 'fit', now: Date.now(),
           onSettle: () => { try { layout(); } catch (e) {} },
@@ -20381,12 +20386,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // did before — the fallback is the old bug, not a broken layout.
       // The dock sits at the bottom, so a panel that used to clear a top bar
       // starts at the top of the page instead.
+      let lastDock = -1;
       const setBarH = () => {
         try {
           document.documentElement.style.setProperty('--barh', '0px');
           const r = bar.getBoundingClientRect();
           const dock = Math.max(0, Math.round(window.innerHeight - r.top));
           document.documentElement.style.setProperty('--dockh', dock + 'px');
+          if (dock !== lastDock) {
+            lastDock = dock;
+            try { layout(); } catch (e2) {}
+          }
         } catch (e) {}
       };
       // iOS keeps the layout viewport tall and overlays the keyboard.

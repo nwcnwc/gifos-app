@@ -26,7 +26,7 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 | End the call, mute, camera, on a 360px phone | 8 | Hang up, mute, camera, and Fit fit and are at least 44px. |
 | Host: password, record, captions, stage, in landscape | 7 | Those controls scroll into view on SE, iPhone 15, Pixel 7, and 360px landscape. The captions control says Captions. |
 | Chat or check names without losing the controls | 7 | The field taps, sits above the dock, and lifts for a keyboard band. Close and Send are 44px. |
-| Looks trustworthy (nothing cut off, type scales) | 5 | The header says "4 in call" and the phrase fits. On an iPhone 15 the dock still covers the bottom row. |
+| Looks trustworthy (nothing cut off, type scales) | 6 | The header says "4 in call" and the phrase fits. The bottom row of faces ends above the dock. The grip on a 393px phone is still 22×48. |
 | **Audience** | **7** | Hang up, landscape host tools, captions, chat, the home indicator, and the header count are in good shape. Still behind Zoom and Meet on a waiting-room admit list. |
 
 ## Church
@@ -48,7 +48,7 @@ Family and friends. Warm, few steps, a texted link.
 | Job | Score | Note |
 | --- | --- | --- |
 | Open a texted link and pick a name | 8 | The join step opens with the GifOS name and picture, and says how you will appear. Continue is the only blue button. |
-| See everyone and hang up on a small phone | 6 | Faces paint. Hang up fits on SE and 360px. |
+| See everyone and hang up on a small phone | 7 | Four faces end above the dock on iPhone 15, SE, and 360px. Hang up fits. |
 | Send a chat line | 7 | The field is above the dock, 44px, and lifts when the keyboard band is set. |
 | Turn the phone sideways | 6 | Invite and Password scroll into the More sheet. |
 | **Audience** | **8** | The link, the name step, hang up, landscape More, chat, the lobby, the home indicator, and a 44px Fit control are in good shape. FaceTime still feels quieter; we do not lead yet. |
@@ -65,3 +65,4 @@ Family and friends. Warm, few steps, a texted link.
 8. Fit is 44px and grows at 200%. `test/mobile/fit-target.js` failed, then passed. Corporate end-call 7→8. Church tap targets 5→7, church audience 7→8. Personal 7→8.
 9. Header count. `test/mobile/header-count.js` failed, then passed. The chip says "4 in call" for four real peers, and the phrase fits. Corporate trust 4→5.
 10. Join appearance. `test/mobile/appear-preview.js` failed, then passed. The step prefills the system name and picture, and Continue is no longer the same purple as Not now. Personal name row 7→8. Audience scores stay put. Nobody leads yet. Still open: the 22×48 grip, the dock covering the bottom row on a 393px phone, and a waiting-room admit list.
+11. Dock clears the bottom row. `test/mobile/dock-clears-faces.js` failed, then passed. The content box reserves the measured dock. The packer is unchanged. Corporate trust 5→6. Personal "see everyone" 6→7. Audience scores stay 7 / 8 / 8. Nobody leads yet. Still open: the 22×48 grip on a 393px phone, and a waiting-room admit list.

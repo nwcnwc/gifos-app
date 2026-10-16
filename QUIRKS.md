@@ -93,11 +93,19 @@ Repro: `test/mobile/appear-preview.js`. It failed (no "This is how you'll appear
 
 Before: `qa/mobile/shots/before-appear-lobby.png`, `qa/mobile/shots/before-appear-name.png`. After: `qa/mobile/shots/after-appear-lobby.png`, `qa/mobile/shots/after-appear-name.png`.
 
+### 11. The dock covered the bottom row of faces
+
+On an iPhone 15 with four people, David and Sam's tiles ran to y=659 while the dock started at y=557. The same overlap was on an SE (tiles to 568, dock at 482) and a 360×740 phone (Sam to 740, dock at 654). The content box was `vh - top`. The packer was not the problem; it filled the box it was given, and that box ran under the controls.
+
+Repro: `test/mobile/dock-clears-faces.js`. It failed with those bottoms, then passed. `viewBox` now takes a measured bottom inset (`innerHeight - bar.top`) and the gallery packer is unchanged. Each face ends at or above the dock and stays at least 48px tall.
+
+Before: `qa/mobile/shots/before-dock-faces-iphone-15.png`. After: `qa/mobile/shots/after-dock-faces-iphone-15.png`.
+
 ## Open
 
 There is still no waiting-room admit list for a host.
 
-Button spacing, measured on an iPhone 15 (393×659) with four peers: Hang up ends at x=375, inside the 393px screen. The drag grip is 22×48, under 44px, because the later `.bar #bargrip` rule (22×48) wins over the 700px sizes and the 44px rule only applies under 380px. David and Sam's tiles run from y=540 to y=659 while the dock starts at y=557, so the dock covers the bottom row. The comfy layout comment says the packer insets that grid; this branch does not change the packer. The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
+The drag grip on an iPhone 15 is 22×48, under 44px, because the later `.bar #bargrip` rule (22×48) wins over the 700px sizes and the 44px rule only applies under 380px. Hang up still ends at x=375, inside the 393px screen. The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
 
 ## Personas (what was actually tried)
 
