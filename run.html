@@ -21350,18 +21350,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const inCall = !(lob && lob.classList.contains('show'));
         showcamBtn.hidden = !inCall || muted || !myStatus.camOff;
       }
-      // The filled segment follows the blur that is actually on the feed
-      // (forced blur, room password, consent). The local wish is the fallback
-      // when this function is lifted without blurLevelFor in scope.
-      let lvl = blurLevel(myStatus.blur);
-      try {
-        // A source-lift stubs a missing blurLevelFor as a function that
-        // returns nothing. Only a numeric answer is the real blur rule.
-        if (typeof blurLevelFor === 'function') {
-          const eff = blurLevelFor('me');
-          if (typeof eff === 'number') lvl = blurLevel(eff);
-        }
-      } catch (e) {}
+      // The filled segment is the choice this person made. The feed can
+      // still be Min: a password room stays there until everyone is ready,
+      // and a moderator block stays on the pixels. Painting that feed level
+      // here snapped No blur back to Min the moment it was tapped, while the
+      // header said you were ready for clear video.
+      const lvl = blurLevel(myStatus.blur);
       for (const seg of blurSegs) {
         const segOn = +seg.dataset.blur === lvl;
         seg.classList.toggle('sel', segOn);
