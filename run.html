@@ -1045,9 +1045,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      is exactly the old behaviour). */
   #chatpanel { position: fixed; right: 0; top: var(--barh, 0px); bottom: 0; width: min(340px, 100vw); z-index: 30;
                background: var(--bg, #101018); border-left: 1px solid var(--border, #2a2a3f); display: none; flex-direction: column; }
-  #chatpanel.open { display: flex; }
-  #chathead { display: flex; align-items: center; gap: .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
-  #chathead button { margin-left: auto; padding: .2rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
+  /* --dock-clear is 0 where the floating dock does not cross this panel, and
+     the dock's height where it does, so the composer is never underneath it. */
+  #chatpanel.open { display: flex; bottom: var(--dock-clear, 0px); }
+  #chathead { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
+  #chathead #paneltitle { flex: 1 1 auto; min-width: 0; }
+  #chathead small { flex: 1 1 100%; order: 5; min-width: 0; font-size: .75rem; font-weight: 400; line-height: 1.35; color: #c5cad6; }
+  #chathead button { margin-left: 0; flex: 0 0 auto; min-height: 36px; padding: .2rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
+  #chatclose { margin-left: auto; }
   #chatlog { flex: 1; overflow-y: auto; padding: .6rem; display: flex; flex-direction: column; gap: .35rem; font-size: .85rem; }
   .cmsg { background: var(--surface, #14141f); border: 1px solid #22223a; border-radius: .5rem; padding: .3rem .55rem; max-width: 94%; align-self: flex-start; overflow-wrap: anywhere; }
   .cmsg.mine { align-self: flex-end; background: var(--surface, #17222e); border-color: var(--accent, #223448); }
@@ -1725,10 +1730,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <input type="file" id="app-file-input" accept="image/gif,.gif" style="display:none">
 
   <div id="chatpanel">
-    <div id="chathead"><span id="paneltitle">Meeting chat</span> <small style="color:#667;font-weight:400">· private to this meeting, gone when everyone leaves</small>
-      <button id="trtab" style="margin-left:auto">Transcript</button>
+    <div id="chathead"><span id="paneltitle">Meeting chat</span> <small>· private to this meeting, gone when everyone leaves</small>
+      <button id="trtab" type="button">Transcript</button>
       <button id="chatmod" style="display:none" title="Silence the chat for everyone but you">Turn chat off</button>
-      <button id="chatclose">✕</button></div>
+      <button id="chatclose" type="button" aria-label="Close chat">✕</button></div>
     <div id="chatlog"></div>
     <div id="trwrap">
       <div id="trlog"><small style="color:#667">Tap CC in the bar and your device writes down everyone it hears — the lines gather here under each speaker's name, on every device in the meeting.</small></div>
@@ -8664,7 +8669,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // 'cannot-reach-room' (reachCounts skips an absent pair). A door is
       // judged by its transport, not by the roster.
       const seatedHere = (() => { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3); })();
-      for (const [pid, p] of peers) if (!ids.has(pid) && !linkTo(pid) && !(p.boot && !seatedHere) && !p.absentSince) p.absentSince = Date.now();
+      for (const [pid, p] of peers) if (!p.qa && !ids.has(pid) && !linkTo(pid) && !(p.boot && !seatedHere) && !p.absentSince) p.absentSince = Date.now();
       for (const pid of Object.keys(rosterNames)) if (!ids.has(pid)) delete rosterNames[pid];
       reconcileGrid();
       updateStatus();
@@ -10267,6 +10272,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const seatedNow = (() => { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3); })();
       let anyLinkOpen = false; for (const [qid, q] of peers) if (q.dc && q.dc.readyState === 'open' && linkTo(qid)) { anyLinkOpen = true; break; }
       for (const [pid, p] of Array.from(peers)) {
+        if (p.qa) continue; // painted stand-ins for the desktop UI suite — not mesh peers
         // A link the arithmetic no longer wants gets a 15s grace: the seat
         // map flaps while gossip settles, and an ICE rebuild two seconds
         // after a needless drop is pure lost time.
@@ -13285,7 +13291,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       chatPanel.classList.toggle('open');
       // renderChat skips while the transcript tab is shown, and the transcript
       // is not painted while the panel is closed: paint the tab that shows.
-      if (chatPanel.classList.contains('open')) { unread = 0; chatBtn.textContent = 'Chat'; if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles(); }
+      if (chatPanel.classList.contains('open')) {
+        unread = 0; chatBtn.textContent = 'Chat'; if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles();
+        // The More sheet floats above the chat (the dock's stacking context).
+        // Leave it open and the conversation is hidden behind a grid of buttons.
+        // Fold the sheet without rewriting the saved preference.
+        const barEl = document.querySelector('.bar');
+        const toggle = document.getElementById('bartoggle');
+        if (barEl && toggle && !barEl.classList.contains('collapsed')) {
+          barEl.classList.add('collapsed');
+          toggle.setAttribute('aria-expanded', 'false');
+          toggle.setAttribute('aria-label', 'More');
+          toggle.title = 'More';
+        }
+      }
     };
     document.getElementById('chatclose').onclick = () => chatPanel.classList.remove('open');
 
@@ -20183,9 +20202,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The dock sits at the bottom, so a panel that used to clear a top bar
       // starts at the top of the page instead.
       const setBarH = () => {
-        try { document.documentElement.style.setProperty('--barh', '0px'); } catch (e) {}
+        try {
+          document.documentElement.style.setProperty('--barh', '0px');
+          const panel = document.getElementById('chatpanel');
+          const br = bar.getBoundingClientRect();
+          let clear = 0;
+          if (panel && panel.classList.contains('open') && br.width > 0) {
+            const pr = panel.getBoundingClientRect();
+            const overlapX = pr.width > 0 && br.right > pr.left + 4 && br.left < pr.right - 4;
+            if (overlapX) clear = Math.max(0, Math.round(window.innerHeight - br.top + 12));
+          }
+          document.documentElement.style.setProperty('--dock-clear', clear + 'px');
+        } catch (e) {}
       };
       if (window.ResizeObserver) { try { new ResizeObserver(setBarH).observe(bar); } catch (e) {} }
+      const chatPanelEl = document.getElementById('chatpanel');
+      if (chatPanelEl && window.MutationObserver) {
+        try { new MutationObserver(setBarH).observe(chatPanelEl, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
+      }
       window.addEventListener('resize', setBarH);
       setBarH();
     })();
@@ -22362,8 +22396,103 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, 1500);
     }
 
+    // Painted stand-ins for desktop UI tests. DEBUG only. They are not mesh
+    // peers: no offers, no absence sweep. Each one is a canvas captureStream
+    // so the gallery shows a face without a camera.
+    function qaStubPc() {
+      const sender = {
+        track: null,
+        replaceTrack: function () { return Promise.resolve(); },
+        getParameters: function () { return { encodings: [{}] }; },
+        setParameters: function () { return Promise.resolve(); },
+      };
+      return {
+        connectionState: 'new', iceConnectionState: 'new', signalingState: 'stable',
+        getSenders: function () { return []; },
+        getReceivers: function () { return []; },
+        getTransceivers: function () { return []; },
+        getStats: function () { return Promise.resolve({ forEach: function () {} }); },
+        addEventListener: function () {}, removeEventListener: function () {}, close: function () {},
+        addTrack: function () { return sender; },
+        addTransceiver: function () { return { sender: sender, receiver: { track: null } }; },
+        addIceCandidate: function () { return Promise.resolve(); },
+        createOffer: function () { return Promise.resolve({ type: 'offer', sdp: '' }); },
+        createAnswer: function () { return Promise.resolve({ type: 'answer', sdp: '' }); },
+        setLocalDescription: function () { return Promise.resolve(); },
+        setRemoteDescription: function () { return Promise.resolve(); },
+      };
+    }
+    function seedGalleryForTest(spec) {
+      if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
+      spec = spec || {};
+      const names = spec.names || ['Avery Chen', 'Sam Okonkwo', 'Priya Shah', 'Luis Ortega', 'Noah Berg', 'Mina Park', 'Elena Vogel', 'Jonah Adeyemi', 'Ruth Keller', 'Hugo Martins', 'Amira Haddad', 'Owen Blake', 'Sofia Rossi', 'Kenji Mori', 'Grace Adeyemi', 'Paul Nguyen', 'Leah Cohen', 'Mateo Ruiz', 'Hana Kim', 'Idris Bello'];
+      const n = Math.max(0, Math.min(24, (spec.count | 0) || (spec.people && spec.people.length) || 4));
+      for (const [pid, p] of Array.from(peers.entries())) {
+        if (!p || !p.qa) continue;
+        try { if (p._qaTracks) for (const t of p._qaTracks) t.stop(); } catch (e) {}
+        try { if (p.tile && p.tile.remove) p.tile.remove(); } catch (e) {}
+        peers.delete(pid);
+        try { statusOf.delete(pid); } catch (e) {}
+        try { delete rosterNames[pid]; } catch (e) {}
+      }
+      const made = [];
+      for (let i = 0; i < n; i++) {
+        const id = 'qa' + (i + 1);
+        const name = (spec.names && spec.names[i]) || names[i % names.length];
+        const built = makeTile(id, name, false);
+        let stream = null;
+        // WebKit tears the tab down if a tile plays a canvas captureStream.
+        // Initials still stand in for that face. Chromium and Firefox get video.
+        const apple = /Apple/.test((navigator.vendor || ''));
+        try {
+          if (apple) throw new Error('no captureStream on this engine');
+          const c = document.createElement('canvas');
+          c.width = 640; c.height = 360;
+          const x = c.getContext('2d');
+          const hue = (i * 47) % 360;
+          x.fillStyle = 'hsl(' + hue + ' 38% 28%)';
+          x.fillRect(0, 0, 640, 360);
+          x.fillStyle = '#f4f7fb';
+          x.font = '700 64px system-ui, sans-serif';
+          x.textAlign = 'center';
+          x.textBaseline = 'middle';
+          x.fillText(String(name).split(' ')[0], 320, 180);
+          stream = c.captureStream(8);
+          built.video.srcObject = stream;
+          const pr = built.video.play();
+          if (pr && pr.catch) pr.catch(function () {});
+          built._qaCanvas = c;
+        } catch (e) { built.tile.classList.add('cam-off'); }
+        peers.set(id, Object.assign(built, {
+          id: id, name: name, qa: true, headless: false, connected: true,
+          lastHeard: Date.now(), meshRxAt: Date.now(), bornAt: Date.now(),
+          pc: qaStubPc(), dc: null, noRoute: false, absentSince: 0,
+          _qaTracks: stream ? stream.getTracks() : [],
+        }));
+        statusOf.set(id, { muted: i % 3 === 0, camOff: !stream, blur: 0, hand: i === 2 ? Date.now() : null, at: Date.now(), rx: Date.now(), bot: false });
+        rosterNames[id] = name;
+        try { whoLog.set(id, { att: true, first: Date.now() }); } catch (e) {}
+        made.push(id);
+      }
+      try { layout(); } catch (e) {}
+      try { updateStatus(); } catch (e) {}
+      if (!window.__qaBeat) {
+        window.__qaBeat = setInterval(function () {
+          const now = Date.now();
+          for (const p of peers.values()) {
+            if (!p || !p.qa) continue;
+            p.lastHeard = now;
+            const st = statusOf.get(p.id);
+            if (st) { st.at = now; st.rx = now; }
+          }
+        }, 4000);
+      }
+      return { ok: true, n: made.length, ids: made };
+    }
+
     // Test hook: lets the e2e suite observe mesh + quality state.
     window.__gifosVideo = {
+      seedGalleryForTest: (spec) => seedGalleryForTest(spec),
       participants: participantCount,
       bot: () => !!myStatus.bot,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage

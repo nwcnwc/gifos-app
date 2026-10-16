@@ -1,0 +1,10 @@
+{
+  "name": "gifos",
+  "private": true,
+  "scripts": {
+    "test:desktop": "playwright test -c test/desktop/playwright.config.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}
