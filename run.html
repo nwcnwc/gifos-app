@@ -1004,7 +1004,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile.cam-off > video { visibility: hidden; }
   .tile .chips { position: absolute; top: 6px; left: 6px; right: 6px; display: flex; flex-direction: row;
                  flex-wrap: nowrap; gap: 3px; align-items: center; z-index: 3; pointer-events: none; overflow: hidden; }
-  .tile:has(> .blurbox.on) .chips { right: 118px; }
+  .tile:has(> .blurbox.on) .chips { right: 96px; }
   .tile .chips span { background: rgba(10,10,15,.78); border: 1px solid rgba(255,255,255,.14); border-radius: 999px;
                       padding: 1px 6px; font-size: 11px; line-height: 1.35; color: #eceef8; white-space: nowrap; }
   .tile .chips span.warn { border-color: #b0742a; color: #ffd23c; }
@@ -1032,10 +1032,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: #fff; color: #1d1d1f; font: 700 20px/1.2 system-ui, sans-serif; cursor: pointer;
     box-shadow: 0 10px 30px rgba(0,0,0,.28); }
   #still.on { display: block; }
-  .tile > .blurbox { position: absolute; top: 0; right: 0; z-index: 6; display: none; min-width: 32px; min-height: 32px;
-                     padding: 8px 10px; border: 0; border-bottom-left-radius: 12px; cursor: pointer;
-                     background: rgba(10,10,15,.72); color: #fff; font: 700 12px/1.2 system-ui, sans-serif; }
-  .tile > .blurbox.on { display: block; }
+  /* Blur for all used to be a 32px tab glued to the corner, easy to hit
+     while aiming at the tile. It is a square floating over the video,
+     inset from that corner, at least a 44px target. */
+  .tile > .blurbox { position: absolute; top: 12px; right: 12px; z-index: 6; display: none;
+                     box-sizing: border-box; width: 64px; height: 64px; min-width: 44px; min-height: 44px;
+                     padding: 4px; border: 0; border-radius: 12px; cursor: pointer;
+                     background: rgba(10,10,15,.78); color: #fff; font: 700 12px/1.15 system-ui, sans-serif;
+                     text-align: center; align-items: center; justify-content: center; }
+  .tile > .blurbox.on { display: flex; }
+  .tile:has(> .blurbox.on) .modbar { top: 92px; right: 12px; }
   .tile > .botbadge { position: absolute; right: 8px; bottom: 8px; z-index: 4; pointer-events: none;
     background: rgba(10,10,15,.82); color: #d7e8ff; border: 1px solid #5ca0ff; border-radius: 999px;
     padding: 2px 8px; font-size: 12px; font-weight: 700; }
