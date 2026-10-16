@@ -2883,7 +2883,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let ccOthers = 0, anyScribeStatus = 0;
     function noteStatusFlags(prev, next) {
       const wasCc = !!(prev && prev.cc), nowCc = !!(next && next.cc);
-      if (wasCc !== nowCc) ccOthers += nowCc ? 1 : -1;
+      if (wasCc !== nowCc) {
+        ccOthers += nowCc ? 1 : -1;
+        try { if (typeof paintCallState === 'function') paintCallState(); } catch (e) {}
+        try { if (typeof refreshTrBtn === 'function') refreshTrBtn(); } catch (e) {}
+      }
       const wasSc = !!(prev && prev.scribe), nowSc = !!(next && next.scribe);
       if (wasSc !== nowSc) anyScribeStatus += nowSc ? 1 : -1;
       if (ccOthers < 0) ccOthers = 0;
@@ -5108,13 +5112,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return { tile, video, label, avatar, chips, cap, modbar, voteBtn };
     }
 
-    // What the CC chip says. Gossiped on myStatus.ccst so a Meeting Bot and
-    // every other tile see the same words: plain "transcribing" only while
-    // Whisper is actually keeping up.
+    // What the tile says. Captions and transcribing are one thing. The chip
+    // uses the word Captions, including when Whisper is paused or behind.
     function ccLiveLabel(st) {
-      if (st && st.ccst === 'paused') return 'Transcription paused';
-      if (st && st.ccst === 'behind') return 'Transcription behind, skipping old audio';
-      return 'transcribing';
+      if (st && st.ccst === 'paused') return 'Captions paused';
+      if (st && st.ccst === 'behind') return 'Captions behind, skipping old audio';
+      return 'Captions';
+    }
+    // Captions are one room state. The button is on when anyone here is
+    // writing the room down, not only when this phone turned it on.
+    function roomCaptionOn() {
+      if (myStatus.cc) return true;
+      for (const st of statusOf.values()) if (st && st.cc) return true;
+      return false;
+    }
+    function captionWriterName() {
+      if (myStatus.cc) { try { return myName(); } catch (e) { return 'You'; } }
+      for (const [id, st] of statusOf) {
+        if (!st || !st.cc) continue;
+        try { if (typeof displayName === 'function') return displayName(id) || 'Someone'; } catch (e) {}
+        try { if (typeof rosterNames !== 'undefined' && rosterNames[id]) return rosterNames[id]; } catch (e2) {}
+        return 'Someone';
+      }
+      return '';
     }
     // Open rooms: anyone may blur anyone else. Admin rooms: only an admin.
     // Never yourself (setMod refuses myId). The corner box is that power,
@@ -5245,8 +5265,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (st.hand) chips.push('<span class="warn">✋ hand raised</span>');
       if (st.lv) chips.push('<span>leaving…</span>');
       if (st.rec) chips.push('<span class="warn">⏺ recording this meeting</span>');
-      if (st.scribe) chips.push('<span>✍ writing everyone down</span>');
-      if (st.cc) chips.push('<span>📝 ' + ccLiveLabel(st) + '</span>');
+      if (st.cc || st.scribe) chips.push('<span>📝 ' + ccLiveLabel(st) + '</span>');
       // Status icons only: a muted mic, a camera-off glyph. No icon when the
       // camera is on. Blur is the picture itself, never a badge. A bot has
       // neither a mic nor a camera.
@@ -19165,7 +19184,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const lines = trBlocks();
       const html = lines.length
         ? lines.map((l) => '<div class="trline"><b>' + (typeof avatarChip === 'function' ? (avatarChip(l.byId) || '') : '') + esc(l.by) + '</b>' + esc(l.text) + (l.scribeBy ? ' <small style="color:var(--muted,#8888aa)">✍ ' + esc(l.scribeBy) + '</small>' : '') + '</div>').join('')
-        : '<small style="color:#667">Tap CC in the bar and your device writes down everyone it hears — the lines gather here under each speaker\'s name, on every device in the meeting.</small>';
+        : '<small style="color:#667">Captions are on for the room. The lines gather here under each speaker\'s name. Anyone here can open this transcript.</small>';
       paintLog(log, html);
     }
     // CAPTIONS FOLLOW THE EAR (2026-10-03). A caption line was a room-wide
@@ -19441,9 +19460,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return 'base';
     }
     function wspChipLabel() {
-      if (wspPaused) return 'Transcription paused';
-      if (wspQ.behind) return 'Transcription behind, skipping old audio';
-      return 'transcribing';
+      if (wspPaused) return 'Captions paused';
+      if (wspQ.behind) return 'Captions behind, skipping old audio';
+      return 'Captions';
     }
     // Real utterances are stamped Date.now() (~1e12). A unit lift's placeholder
     // (at: 1234) is not wall-clock and must not be treated as half an hour old.
@@ -19465,7 +19484,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           wspQ.items.splice(i, 1);
           wspQ.dropped++;
           if (typeof wspMarkBehind === 'function') wspMarkBehind();
-          setStatus('Transcription behind, skipping old audio', 8000);
+          setStatus('Captions behind, skipping old audio', 8000);
         }
       }
       const cap = WSP_BACKLOG + 2 * Math.max(0, wspCaps.size - 1);
@@ -19475,7 +19494,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           wspQ.items.splice(i, 1);
           wspQ.dropped++;
           if (typeof wspMarkBehind === 'function') wspMarkBehind();
-          setStatus('Transcription behind, skipping old audio', 8000);
+          setStatus('Captions behind, skipping old audio', 8000);
         }
       }
       const job = { id: w.id, chunks, at, rate: rate || w.rate, keep: !!keep, stage: !!w.stageSid };
@@ -19517,7 +19536,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const hasSr = hasWindow && (window.SpeechRecognition || window.webkitSpeechRecognition);
       try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
       try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
-      if (hasWindow && !hasSr) { setStatus('Transcription paused', 10000); return; }
+      if (hasWindow && !hasSr) { setStatus('Captions paused', 10000); return; }
       try { syncSpeech(); } catch (e) {}
       setStatus('Whisper captions stalled — browser captions are on.', 10000);
     }
@@ -19628,7 +19647,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         if (typeof wspMarkBehind === 'function') wspMarkBehind();
         else wspQ.behind = true;
-        setStatus('Transcription behind, skipping old audio', 8000);
+        setStatus('Captions behind, skipping old audio', 8000);
       }, softMs);
       let hardTimer = setTimeout(() => {
         hardTimer = null;
@@ -20236,7 +20255,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof myStatus !== 'undefined' && myStatus && !wspPaused) myStatus.ccst = 'paused';
       try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
       try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
-      try { setStatus('Transcription paused'); } catch (e) {}
+      try { setStatus('Captions paused'); } catch (e) {}
     }
     function syncSpeech() { // CC writes down my voice while I am unmuted, and every voice this device hears
       paintWspChip(); // the way back shows the moment Whisper is chosen; the 250 ms tick keeps it in step
@@ -20289,6 +20308,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       ccvPublish();
     }
     document.getElementById('ccbtn').onclick = () => {
+      if (!myStatus.cc && roomCaptionOn()) {
+        const who = captionWriterName();
+        setStatus((who || 'Someone') + ' is writing captions for the room. Open Transcript for the lines.');
+        paintCallState();
+        return;
+      }
       myStatus.cc = !myStatus.cc;
       if (myStatus.cc) { speechGaveUp = false; wspPaused = false; wspQ.stalls = 0; wspQ.behind = false; if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst; } // turning CC on retries both engines
       else if (ccOthers > 0) ccFillOptOut = true; // CC off while others caption: this device stops filling in too
@@ -20345,7 +20370,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setPanelView(true);
     };
     function refreshTrBtn() {
-      const anyCc = myStatus.cc || trs.size > 0 || ccOthers > 0;
+      const anyCc = roomCaptionOn() || trs.size > 0;
       document.getElementById('trbtn').style.display = anyCc ? '' : 'none';
     }
     // Every meeting download (transcript, recording) is filed as
@@ -20442,8 +20467,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function ccIndicatorOn(text) {
       text = String(text || '');
-      return text.indexOf('transcribing') >= 0 || text.indexOf('writing everyone down') >= 0
-        || text.indexOf('Transcription paused') >= 0 || text.indexOf('Transcription behind') >= 0;
+      return text.indexOf('Captions') >= 0 || text.indexOf('transcribing') >= 0
+        || text.indexOf('writing everyone down') >= 0
+        || text.indexOf('Transcription paused') >= 0 || text.indexOf('Captions paused') >= 0
+        || text.indexOf('Transcription behind') >= 0 || text.indexOf('Captions behind') >= 0;
     }
     function recordingIndicatorsOk() {
       try { updateTile('me'); } catch (e) {}
@@ -21101,9 +21128,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       rec.classList.toggle('on', recOn);
       rec.setAttribute('aria-pressed', recOn ? 'true' : 'false');
       rec.textContent = recOn ? 'Recording' : 'Record';
-      const ccOn = !!(ccBtn && ccBtn.classList.contains('on'));
+      const ccOn = typeof roomCaptionOn === 'function' && roomCaptionOn();
+      if (ccBtn) {
+        ccBtn.classList.toggle('on', ccOn);
+        ccBtn.setAttribute('aria-pressed', ccOn ? 'true' : 'false');
+      }
       cc.classList.toggle('on', ccOn);
       cc.setAttribute('aria-pressed', ccOn ? 'true' : 'false');
+      try { if (typeof refreshTrBtn === 'function') refreshTrBtn(); } catch (e) {}
       const key = row.offsetHeight + ':' + (row.hidden ? '0' : '1');
       if (key !== callStateBox) {
         callStateBox = key;
@@ -23553,6 +23585,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       },
       shareInvite: () => shareMeetingLink(document.getElementById('hdrinvite')),
       bot: () => !!myStatus.bot,
+      ccOn: () => !!myStatus.cc,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
       statusPeekForTest: (id) => { const st = statusOf.get(id); return st ? { stg: st.stg || 0, ageMs: Date.now() - (st.at || 0), rxAgeMs: Date.now() - (st.rx || 0) } : null; },
@@ -24700,13 +24733,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (extra && typeof extra === 'object') {
           if (extra.away) st.away = true;
           if (extra.bot) st.bot = true;
+          if (extra.cc) st.cc = true;
+          if (extra.scribe) st.scribe = true;
           if (typeof extra.blur === 'number') st.blur = extra.blur;
           if (extra.camOff === false) st.camOff = false;
         }
         statusOf.set(id, st);
-        if (st.bot) {
+        if (st.bot || st.cc) {
           try { updateTile(id); } catch (e) {}
           try { layout(); } catch (e) {}
+          try { if (typeof paintCallState === 'function') paintCallState(); } catch (e) {}
+          try { if (typeof refreshTrBtn === 'function') refreshTrBtn(); } catch (e) {}
         }
         return statusOf.has(id);
       },

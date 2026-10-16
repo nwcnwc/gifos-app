@@ -54,6 +54,13 @@ function overlaps(a, b) {
         id: el.dataset.peer || '',
         x: r.x, y: r.y, w: r.width, h: r.height,
         badge: mark ? mark.textContent : '',
+        badgeBox: mark ? { x: mark.getBoundingClientRect().x, y: mark.getBoundingClientRect().y, w: mark.getBoundingClientRect().width, h: mark.getBoundingClientRect().height } : null,
+        blur: (() => {
+          const b = el.querySelector(':scope > .blurbox');
+          if (!b) return null;
+          const r = b.getBoundingClientRect();
+          return { x: r.x, y: r.y, w: r.width, h: r.height, on: b.classList.contains('on') };
+        })(),
       });
     });
     return {
@@ -81,6 +88,12 @@ function overlaps(a, b) {
     for (const o of others) {
       const hit = overlaps(bot, o);
       if (hit > bot.w * bot.h * 0.15) bad.push('bot covers ' + o.id);
+    }
+    if (!bot.blur || !bot.blur.on) bad.push('Blur for all is missing on the bot');
+    else {
+      const cover = overlaps(bot.blur, bot);
+      if (cover > bot.w * bot.h * 0.35) bad.push('Blur for all covers the bot tile');
+      if (bot.badgeBox && overlaps(bot.blur, bot.badgeBox) > 4) bad.push('Blur for all covers the bot badge');
     }
   }
   const shot = bad.length ? 'before-bot-tile-pixel-7.png' : 'after-bot-tile-pixel-7.png';

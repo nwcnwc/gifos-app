@@ -363,7 +363,7 @@ Before: `qa/mobile/shots/before-blur-cam-pixel-7-seg.png`. After: `qa/mobile/sho
 
 Four people were in the header. The notes bot was a 72×72 stamp on the bottom right, on top of another face, so the room looked like three. A bot is packed with everyone else. The bot badge stays on the tile.
 
-Repro: `test/mobile/bot-tile.js`. It failed (`bot tile 72x72 beside 136; bot covers guest-3106`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/bot-tile.js`.
+Repro: `test/mobile/bot-tile.js`. It failed (`bot tile 72x72 beside 136; bot covers guest-3106`), then passed. Blur for all stays in the corner of that full tile and does not cover the bot badge. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/bot-tile.js`.
 
 Before: `qa/mobile/shots/before-bot-tile-pixel-7.png`. After: `qa/mobile/shots/after-bot-tile-pixel-7.png`.
 
@@ -392,6 +392,16 @@ Repro: `test/mobile/header-full.js`. It failed (`no full-message sheet`, and the
 Before: `qa/mobile/shots/before-header-full-pixel-7.png`. After: `qa/mobile/shots/after-header-full-pixel-7.png`.
 
 Guest 3106 showing stepped away is the away chip: the peer has been away for 25 seconds (screen off or another app). The mark in this build is "⏾ stepped away".
+
+### 48. Captions and "transcribing" were two things
+
+`myStatus.cc` is this device writing captions. The tile chip used a different word, "📝 transcribing" (`ccLiveLabel` in `run.html`). `#ccbtn` and `#call-cc` lit only when this phone's own `cc` flag was on (`paintCallState` copied the More button's class). A bot calling `transcribe({on:true})` sets `cc` and `scribe`, so its tile said "transcribing" while everyone else's Captions button stayed off. The spoken line is separate: `showCaption` puts the words on the shared `#livecap` bar and on the speaker's tile.
+
+Captions are one room state now. The chip says Captions, on the tile of whoever is writing. Both Captions buttons are on when anyone here has `cc`. Tapping yours starts writing when nobody else is. Tapping while someone else is already writing leaves the button on and does not start a second writer. Transcript stays in More and opens for anyone once the room is captioning.
+
+Repro: `test/mobile/captions-room.js`. It failed (on-call Captions off, bot tile "📝 transcribing", Transcript hidden), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/captions-room.js`.
+
+Before: `qa/mobile/shots/before-captions-room-pixel-7.png`. After: `qa/mobile/shots/after-captions-room-pixel-7.png`.
 
 ## Open
 
