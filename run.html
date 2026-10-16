@@ -6573,7 +6573,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (p.headless || !p.tile || p.tile.parentNode) return;
       grid.appendChild(p.tile);
     }
+    // Peer ids whose device was banned on this page. dropPeer alone loses to
+    // the next occ tick: the mesh still names the seat until ring-confirmed
+    // death, and that tick rebuilds the tile. The id stays dead. A reload
+    // mints a new id, which is the person coming back after unban.
+    const bannedSeat = new Set();
     function makePeer(peerId, name, headless) {
+      if (bannedSeat.has(peerId)) return null;
       if (peers.has(peerId)) return peers.get(peerId);
       if ((typeof isEjected === 'function' && isEjected(peerId) === true)) return null; // never a connection to a forger
       // The name frame is what the status line quotes. It often lands before
@@ -6718,6 +6724,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function sendOffer(peerId, iceRestart) {
       if ((typeof isEjected === 'function' && isEjected(peerId) === true)) return; // never dial a forger
       const p = makePeer(peerId, null);
+      if (!p) return; // banned seat or forger
       // ONE OFFER AT A TIME PER PC. A second createOffer→setLocalDescription
       // while the first is still minting on the same pc fails in Chromium
       // ("the order of m-lines in subsequent offer doesn't match order from
@@ -7010,7 +7017,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // the sweeper retires any link the arithmetic ends up not wanting.
         if (!linkTo(from) && meshKnows(from)) { rxStats.offerRejected++; return; }
         const p = makePeer(from, msg.name);
-        if (p && !linkTo(from) && !meshKnows(from)) p.boot = true; // a knocker's door, seen from the greeter: kept while it serves, never rebuilt once the knocker is seated elsewhere
+        if (!p) return; // banned seat or forger: no pair, no negotiation
+        if (!linkTo(from) && !meshKnows(from)) p.boot = true; // a knocker's door, seen from the greeter: kept while it serves, never rebuilt once the knocker is seated elsewhere
         // A fresh offer onto a LONG-DEAD local pc negotiates into a corpse:
         // the tunnel-return stall (behavior battery 06c, 2026-07-26) — the
         // evicted side's zombie ate the returning offers until the vouch
@@ -7405,6 +7413,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function ensureLink(pid, name) {
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return; // never link to a forger
+      if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) return; // this id was banned; the occ tick must not rebuild it
       if (!linkTo(pid)) return; // the sweeper retires unwanted links, with grace
       let p = peers.get(pid);
       if (!p) {
@@ -7421,6 +7430,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (iInitiate(pid)) { sendOffer(pid, false); p = peers.get(pid); }
         else {
           p = makePeer(pid, name); // their offer is on its way...
+          if (!p) return;
           // ...IF they know the pair exists. The mesh may have named this
           // seat to me alone: a head back from a dead spot learns the
           // newcomer its row admitted from the ring (HOME), and the newcomer
@@ -7432,6 +7442,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // initiator already dialing.
           askDial(pid, p);
         }
+        if (!p) return;
         // Newcomers can't trust gossip for moderation in admin rooms — an
         // admin hands them the signed table the moment their channel opens
         // (wireDc onopen); the relay carries no mod table.
@@ -7557,6 +7568,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return false;
     };
     const notTomb = (pid) => {
+      if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) return false; // a ban sticks: a late status or mesh hearing must not lift this seat
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return false; // ejected: gone for good, whatever it says
       const g = meshGone.get(pid); if (g === undefined) return true;
       const st = statusOf.get(pid); const p = peers.get(pid);
@@ -7746,6 +7758,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function renderFromOcc() {
       const s = meshSeat();
       if (!s) return;
+      if (typeof bannedSeat !== 'undefined') for (const pid of bannedSeat) if (peers.has(pid)) dropPeer(pid); // a ban's seat stays down even if a tick rebuilt it
       // FRESHLY SEATED, ONE FLUSH. Before hasCoord is true, gossip() has no
       // section to speak to and drops the frame silently (sc === null) — so
       // a status authored in that window, including scheduleNewPeerBeat's
@@ -9203,7 +9216,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       else if (m.t === 'ban') {
         // A ban is not just signaling: sever the banned device's live P2P links.
-        for (const pid of Object.keys(devOf)) if (devOf[pid] === m.dev) dropPeer(pid);
+        // Remember the id and confirm it gone. dropPeer alone is undone by the
+        // next occ tick while the mesh still names the seat (RING_HOLD).
+        for (const pid of Object.keys(devOf)) if (devOf[pid] === m.dev && pid !== myId) {
+          bannedSeat.add(pid);
+          confirmGone(pid, 'ban');
+        }
         const voted = m.by === 'the room (vote)';
         if (m.dev === myDevHash) {
           bannedOut = true;
@@ -9212,7 +9230,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           setStatus(voted ? '\u26d4 The people on this meeting voted you off.' : '\u26d4 You were banned from this room by ' + (nameForPeer(m.by) || 'an admin'));
         } else setStatus(voted ? '\u26d4 ' + (nameForDev(m.dev) || 'Someone') + ' was voted off the meeting.' : '\u26d4 ' + (nameForDev(m.dev) || banNames()[m.dev] || 'A device') + ' was banned by ' + (nameForPeer(m.by) || 'an admin'));
       }
-      else if (m.t === 'unban') setStatus('\u2705 ' + (nameForDev(m.dev) || banNames()[m.dev] || 'A device') + ' was unbanned by ' + (nameForPeer(m.by) || 'an admin'));
+      else if (m.t === 'unban') {
+        // The old peer id stays in bannedSeat. Unban admits the device; the
+        // reload mints a new id. Clearing the set would raise the ghost tile.
+        setStatus('\u2705 ' + (nameForDev(m.dev) || banNames()[m.dev] || 'A device') + ' was unbanned by ' + (nameForPeer(m.by) || 'an admin'));
+      }
       else if (m.t === 'votes') { voteTally = m.tally || {}; voteNeed = m.need || 0; refreshAllTiles(); }
       else if (m.t === 'peer-join') {
         // Greeters only: a socket joined the session. Keeps the full list
