@@ -1402,6 +1402,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar #mic.iconbtn:not(.off), .bar #cam.iconbtn:not(.off) { background: #146c36; color: #fff; }
   .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { background: #b61622; color: #fff; border-color: transparent; }
   .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 28px; height: 28px; }
+  .bar > #sharebtn { width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
+    background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
+    font-size: 11px; font-weight: 700; line-height: 1; }
+  .bar > #sharebtn svg { width: 28px; height: 28px; }
+  .bar > #sharebtn.on { background: #b3402f; color: #fff; }
   .bar #reactbtn.on, .bar #bartoggle[aria-expanded="true"] { background: #0064c8; color: #fff; }
   .bar:not(.collapsed) .bartoggle svg { transform: none; }
   .bar #leavebtn { width: 72px; height: 72px; min-width: 72px; min-height: 72px; margin-left: 6px; padding: 0;
@@ -1486,6 +1491,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar { height: 88px; gap: 8px; padding: 0 10px; }
     .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #fsbtn, .bar #chatbtn, .bar #bartoggle {
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
+    .bar > #sharebtn { width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
+    .bar > #sharebtn svg { width: 26px; height: 26px; }
     .bar #fsbtn { width: auto; min-width: 56px; padding: 0 6px; }
     .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #chatbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
     .bar #bargrip { height: 40px; width: 18px; }
@@ -1694,6 +1701,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span class="docklab">Chat</span>
       <span class="chatcount" hidden></span>
     </button>
+    <button id="sharebtn" type="button" class="iconbtn" aria-label="Share screen" title="Show the whole room a window, a tab or your desktop. To share a GifOS app, use Run app." style="display:none">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+      <span class="docklab">Share</span>
+    </button>
     <button id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
       <span class="docklab">More</span>
@@ -1724,7 +1735,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span class="blab">Float</span>
     </button>
     <button id="appbtn" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
-    <button id="sharebtn" title="Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)" style="display:none">Share screen</button>
     <button id="blurall" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
     <button id="camall" title="Turn video OFF for every guest at once (admins) — stronger than blur" style="display:none">Turn Video off</button>
     <button id="shareall" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
@@ -2511,6 +2521,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const files = document.querySelector('#cfiles h4');
       if (files) files.textContent = 'Files pinned to this service';
       if (bar) bar.setAttribute('aria-label', 'Service controls');
+      const shareOnDock = document.getElementById('sharebtn');
+      const moreSheet = document.getElementById('barmore');
+      if (shareOnDock && moreSheet && shareOnDock.parentElement !== moreSheet) moreSheet.appendChild(shareOnDock);
       const host = bcHostStored() || document.body.classList.contains('amadmin');
       if (pill) {
         pill.hidden = false;
@@ -17837,7 +17850,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!shareBtn) return;
       const on = !!myStatus.scr;
       shareBtn.classList.toggle('on', on);
-      shareBtn.textContent = on ? 'Stop sharing' : 'Share screen';
+      const sharingLabel = on ? 'Stop sharing' : 'Share screen';
+      const docked = shareBtn.parentElement && shareBtn.parentElement.classList.contains('bar');
+      const shareLab = shareBtn.querySelector('.docklab');
+      if (docked && shareLab) {
+        shareLab.textContent = on ? 'Stop' : 'Share';
+        shareBtn.setAttribute('aria-label', sharingLabel);
+      } else {
+        shareBtn.textContent = sharingLabel;
+        shareBtn.setAttribute('aria-label', sharingLabel);
+      }
       shareBtn.title = on
         ? 'You are sharing your screen with the meeting — tap to stop'
         : 'Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)';

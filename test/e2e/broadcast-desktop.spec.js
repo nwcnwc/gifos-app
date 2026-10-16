@@ -1278,3 +1278,54 @@ test('a service hides the row and the stadium, and a small group keeps the grid'
     expect(group.grid.display).toBe('grid');
   }
 });
+
+test('share screen is on the small-group dock', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=share' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.group .bar, #airbar.on.group');
+    await page.waitForSelector('.bar > #sharebtn');
+    const share = page.locator('.bar > #sharebtn');
+    await expect(share).toBeVisible();
+    await expect(share.locator('.docklab')).toHaveText('Share');
+    await expect(share).toHaveAttribute('aria-label', 'Share screen');
+    const inside = await share.evaluate((el) => !!el.closest('#barmore'));
+    expect(inside).toBe(false);
+    const lay = await page.evaluate(() => {
+      const btn = document.querySelector('.bar > #sharebtn');
+      const lab = btn.querySelector('.docklab');
+      const bar = document.querySelector('.bar').getBoundingClientRect();
+      const r = btn.getBoundingClientRect();
+      const lr = lab.getBoundingClientRect();
+      return {
+        clip: lab.scrollWidth <= lab.clientWidth + 1,
+        inBtn: lr.left >= r.left - 1 && lr.right <= r.right + 1 && lr.bottom <= r.bottom + 1,
+        barIn: bar.left >= -1 && bar.right <= innerWidth + 1 && bar.bottom <= innerHeight + 1,
+      };
+    });
+    expect(lay.clip, JSON.stringify(lay)).toBe(true);
+    expect(lay.inBtn, JSON.stringify(lay)).toBe(true);
+    expect(lay.barIn, JSON.stringify(lay)).toBe(true);
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.setViewportSize({ width: 900, height: 720 });
+  const resized = await page.evaluate(() => {
+    const bar = document.querySelector('.bar').getBoundingClientRect();
+    const lab = document.querySelector('.bar > #sharebtn .docklab');
+    return { text: lab.textContent, clip: lab.scrollWidth <= lab.clientWidth + 1, barIn: bar.right <= innerWidth + 1 };
+  });
+  expect(resized.text).toBe('Share');
+  expect(resized.clip).toBe(true);
+  expect(resized.barIn).toBe(true);
+  await page.goto('/run.html?desk=sharesvc#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.broadcast .bar');
+  await expect(page.locator('.bar > #sharebtn')).toHaveCount(0);
+  await page.locator('#bartoggle').click();
+  const tucked = page.locator('#barmore #sharebtn');
+  await expect(tucked).toBeVisible();
+  await expect(tucked).toHaveText('Share screen');
+});

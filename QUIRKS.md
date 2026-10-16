@@ -150,9 +150,13 @@ What does not match, and is left alone here because the role-controls work is bu
 
 Alone on a service, the chip used the small-group sentence. A host now reads **You are live. Send the link.** A viewer reads **You are watching this service.** A small group still reads **Just you. Send the invite.** The line fits beside Fit at 1280, 1920, and 900, and after a resize from 1920 to 900. Before: `test/e2e/artifacts/service-alone-before.png`. After: `test/e2e/artifacts/service-alone-after.png`.
 
+### Q34. Share screen was inside More
+
+On a small group, Share is a dock button. The label is **Share**, and the accessible name is Share screen. The word fits, and the dock stays inside the window at 1280, 1920, and 900, including after a resize to 900. A service puts Share back in More, so the stage dock does not gain a meeting button. Before: `test/e2e/artifacts/dock-share-before.png`. After: `test/e2e/artifacts/dock-share-after.png`.
+
 ## Open
 
-A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The dock tucks on a small group, and the room bar, the mute line, the status chip, and Fit stay. The lobby stays at 4: one button, and the other ways in are still on the first screen. Labeled controls stay at 4. Zoom’s bar is still the reference. A Watching viewer’s dock, the raised-hands list, promote and demote, and the viewer join sentence belong to the role-controls work (Q32).
+A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The dock tucks on a small group, and the room bar, the mute line, the status chip, and Fit stay. The lobby stays at 4: one button, and the other ways in are still on the first screen. Labeled controls stay at 4. Share is on a small-group dock (Q34), and Zoom’s bar is still the reference. A Watching viewer’s dock, the raised-hands list, promote and demote, and the viewer join sentence belong to the role-controls work (Q32).
 
 ## How a session was opened without a relay
 
