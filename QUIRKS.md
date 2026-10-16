@@ -10,13 +10,6 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Open
 
-
-### Q3. More sheet starts above the viewport in iPhone SE landscape
-
-Meeting or broadcast, More open, 568×320. The sheet box top is −8px and `overflow` is `visible`, so the top of the sheet is clipped and cannot be scrolled back. Button boxes in that pass were still inside the viewport. Shorter phones, or a host with more controls, get worse.
-
-Before: `test/mobile/screenshots/before/iphone-se-landscape-more.png`.
-
 ### Q5b. Flip camera stays hidden until two cameras are enumerated
 
 `#flipcam` is `display: none` until `enumerateDevices` reports more than one video input. A phone host does not get a flip control up front, including mid-service when they rotate the handset. Camera and mic stay hidden for a broadcast viewer, which is intended.
@@ -56,6 +49,13 @@ After: `test/mobile/screenshots/after/iphone-se-meeting-chat.png`.
 ### Q8. Chat header spent a third of a short screen
 
 `#chathead` wrapped the title, the privacy sentence, Transcript, and close into about 110px on iPhone SE. On a phone the sentence is now clipped for sighted layout and kept for screen readers, and Transcript / close are 44px. That was required for Q2: the tall header pushed Send under the dock once the keyboard opened.
+
+### Q3. More sheet started above the viewport in landscape
+
+Meeting, More open. On iPhone SE landscape the sheet top was −194px (the earlier pass measured −8px with a shorter sheet). iPhone 15, Pixel 7, and the 360px Android landscape did the same. The sheet now has a max height that clears the dock and the top of the screen, and the rest scrolls. `test/mobile/more-sheet.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-landscape-more.png`.
+After: `test/mobile/screenshots/after/iphone-se-landscape-more.png`.
 
 ### Q4. “Create & enter” was below the fold on every phone
 

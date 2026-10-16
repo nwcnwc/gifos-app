@@ -1316,7 +1316,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore { display: grid; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
     width: min(720px, calc(100vw - 24px)); grid-template-columns: repeat(4, 1fr); gap: 8px;
     background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23;
-    pointer-events: none; }
+    pointer-events: auto; align-content: start;
+    max-height: calc(100dvh - 14px - 122px - 8px - var(--kb, 0px) - var(--safe-top, 0px) - var(--safe-bottom, 0px));
+    overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .bar:not(.collapsed) .barmore > * { pointer-events: auto; }
   /* Stage voting: the More sheet floats over the gallery; let .votedot receive taps. */
   body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore,
@@ -1383,7 +1385,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
     .bar #bargrip { height: 40px; width: 18px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
-    .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px); }
+    .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px);
+      max-height: calc(100dvh - 14px - 102px - 8px - var(--kb, 0px) - var(--safe-top, 0px) - var(--safe-bottom, 0px)); }
     .bar:not(.collapsed) .barmore > button { min-height: 56px; font-size: 16px; }
     .reacttray { bottom: 102px; }
     .reacttray button { min-width: 56px; min-height: 56px; font-size: 16px; }

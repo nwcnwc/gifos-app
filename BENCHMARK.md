@@ -20,12 +20,12 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 | Chat can be read and sent on a phone | 4 | 4 | 4 | Meet, Teams |
 | Live, off air, watching, reconnecting | 3 | 3 | 3 | YouTube Live, StreamYard |
 | Large type and 44px targets | 3 | 2 | 3 | FaceTime |
-| Landscape, rotation, notch | 2 | 2 | 2 | Meet |
+| Landscape, rotation, notch | 3 | 3 | 3 | Meet |
 | Warm, short, trustworthy copy | 3 | 2 | 3 | FaceTime |
-| **Audience average** | **3.3** | **3.0** | **3.3** | |
+| **Audience average** | **3.4** | **3.1** | **3.4** | |
 
-Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast now says RECONNECTING, OFF AIR, LIVE, or WATCHING (Q5). Create & enter stays in the card while the room fields scroll (Q4). Corporate and personal are 3.3. Church is 3.0. None lead. Meet and Zoom still win the phone meeting on landscape More (Q3), large type (Q6), and the notch (Q7). StreamYard still wins a church service on flip-camera. FaceTime still wins the first screen on copy: this path still asks for two passwords.
+Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast now says RECONNECTING, OFF AIR, LIVE, or WATCHING (Q5). Create & enter stays in the card while the room fields scroll (Q4). More scrolls inside the screen in landscape (Q3). Corporate and personal are 3.4. Church is 3.1. None lead. Meet still wins the notch and the home indicator (Q7). The status line still ignores a larger text size (Q6). StreamYard still wins a church service on flip-camera. FaceTime still wins the first screen on copy: this path still asks for two passwords.
 
 ## Next gap
 
-Q3. The More sheet starts above the viewport in iPhone SE landscape, and the sheet cannot be scrolled.
+Q7. The dock and the top chip ignore the notch and the home indicator. There is no `viewport-fit=cover` and no `env(safe-area-inset-*)`.
