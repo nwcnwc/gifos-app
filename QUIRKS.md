@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q47. The stream sheet asked for a name before Go live
+
+A stream opened with an empty-looking name field above Go live, so the sheet was the first thing in the way. The name now opens as Friday night and sits on the picture, 12px above the sheet. On an iPhone SE the field is y=294 to y=342 and Go live is y=380, the first control in the sheet. Watch a stream stays under it. The host key is still minted. From the meeting lobby, Stream sits beside Open meeting and opens this desk. A blank name still goes live as Friday night. `test/mobile/create-one-password.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-stream-name.png`.
+
+Design: the picture, the filled name, then the blue Go live. Personal stays at 4. Watch and the host key still share the sheet. FaceTime is one tap.
+
 ### Q46. A church desk opened as a stream named Friday night
 
 `#bc=1` said Stream, “Friends watch with the link.”, and Friday night. It now says Service, “People watch with the link.”, Service name, and Sunday morning. Go live stays the blue button. Watch a service is the outline under it. A blank name uses Sunday morning. The host key is still minted. The link on the stage says “People watch with this link.” `test/mobile/create-one-password.spec.mjs`.
