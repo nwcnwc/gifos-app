@@ -1386,11 +1386,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-width: 700px) {
     .topchip .title { font-size: 20px; }
     .topchip .status { font-size: 17px; }
-    .bar { height: 88px; gap: 8px; padding: 0 10px; }
+    .bar { height: 88px; gap: 6px; padding: 0 6px; }
     .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
     .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
-    .bar #bargrip { height: 40px; width: 18px; }
+    .bar #bargrip { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
     .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px); }
     .bar:not(.collapsed) .barmore > button { min-height: 56px; font-size: 16px; }
@@ -1456,9 +1456,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     position: absolute; left: -12px; top: 0; width: 4px; height: 4px; opacity: 0;
     pointer-events: none; overflow: hidden; }
   .bar #bargrip {
-    width: 22px; height: 48px; padding: 0; border: 0; border-radius: 8px; background: transparent;
-    color: #8d93a0; cursor: grab; touch-action: none; flex: 0 0 auto;
+    width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 12px; background: #e8ecf1;
+    color: #3a3a3f; cursor: grab; touch-action: none; flex: 0 0 auto;
     display: inline-flex; align-items: center; justify-content: center; }
+  .bar #bargrip svg { width: 24px; height: 24px; }
   .bar #bargrip:active { cursor: grabbing; }
   body.screen-on #feed { padding-bottom: 132px; box-sizing: border-box; background: #0c0e12; }
   body.screen-on #grid { flex: 0 0 120px; height: 120px; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; }
@@ -1523,6 +1524,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* A 320px or 360px phone cannot hold 56px circles plus a 64px hang-up.
      The row was nowrap, so Hang up drew past the right edge (x=374).
      44px is the floor for a thumb. The glyphs are the same icons, smaller. */
+  /* 381–392px cannot hold 56px circles, a 64px hang-up, and a 44px grip
+     at the 6px gap used up to 700px. Tighten only that band. */
+  @media (max-width: 392px) and (min-width: 381px) {
+    .bar { gap: 4px; padding: 0 4px; }
+  }
   @media (max-width: 380px) {
     .bar { gap: 4px; padding: 0 6px; max-width: calc(100vw - 8px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); height: 72px; }
     .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {

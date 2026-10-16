@@ -9,7 +9,7 @@ Out of scope for this branch, so they are not scored as wins or losses here: the
 ## Where they still beat us
 
 - Zoom, Meet, Teams, FaceTime: hang-up fits, the landscape More sheet scrolls, chat clears the dock, Join is on screen on an SE, labels grow at 200%, the control says Captions, the notch and home indicator are clear, and Fit is at least 44px.
-- FaceTime and church volunteer panels: primary targets are at least 44px. The dock grip, chat close, Send, and Fit are 44px. Fit's label grows at 200%.
+- FaceTime and church volunteer panels: primary targets are at least 44px. The dock grip, chat close, Send, and Fit are 44px on an iPhone 15 as well as a narrow phone. Fit's label grows at 200%.
 - iOS: the notch and home indicator are cleared. `viewport-fit=cover` is set and the dock, chip, and Fit use `env(safe-area-inset-*)`.
 - Meet, Teams, YouTube name the control Captions. Ours does too, and at 200% text that label is 32px.
 - Zoom and church tools: a host can admit from a waiting-room list. Our phone can set a password, record, caption, and step on stage, including in landscape. There is no separate admit list.
@@ -26,7 +26,7 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 | End the call, mute, camera, on a 360px phone | 8 | Hang up, mute, camera, and Fit fit and are at least 44px. |
 | Host: password, record, captions, stage, in landscape | 7 | Those controls scroll into view on SE, iPhone 15, Pixel 7, and 360px landscape. The captions control says Captions. |
 | Chat or check names without losing the controls | 7 | The field taps, sits above the dock, and lifts for a keyboard band. Close and Send are 44px. |
-| Looks trustworthy (nothing cut off, type scales) | 6 | The header says "4 in call" and the phrase fits. The bottom row of faces ends above the dock. The grip on a 393px phone is still 22×48. |
+| Looks trustworthy (nothing cut off, type scales) | 7 | The header says "4 in call". Faces end above the dock. The grip is 44×44 on an iPhone 15. |
 | **Audience** | **7** | Hang up, landscape host tools, captions, chat, the home indicator, and the header count are in good shape. Still behind Zoom and Meet on a waiting-room admit list. |
 
 ## Church
@@ -36,7 +36,7 @@ A volunteer and an older member, a service or a small group, often a phone held 
 | Job | Score | Note |
 | --- | --- | --- |
 | Start or join from the lobby on an SE | 7 | Join is on screen in portrait. In landscape the first action is on screen and Join scrolls into the card. |
-| Tap targets for someone who misses small controls | 7 | Dock grip, chat close, Send, and Fit are 44px. Fit grows with the text size. |
+| Tap targets for someone who misses small controls | 8 | Dock grip, chat close, Send, and Fit are 44px, including on an iPhone 15. Fit grows with the text size. |
 | Captions a member can find, at 200% text | 7 | The control says Captions and grows to 32px at 200% text. |
 | Host runs the room from the phone they already hold | 6 | Password, record, captions, and stage scroll into reach in landscape. Labels are still terse. |
 | **Audience** | **8** | Join, Captions, the dock, Fit, and landscape More work on an SE, and the home indicator is clear. Still behind a church stream panel on a waiting-room admit list. |
@@ -66,3 +66,4 @@ Family and friends. Warm, few steps, a texted link.
 9. Header count. `test/mobile/header-count.js` failed, then passed. The chip says "4 in call" for four real peers, and the phrase fits. Corporate trust 4→5.
 10. Join appearance. `test/mobile/appear-preview.js` failed, then passed. The step prefills the system name and picture, and Continue is no longer the same purple as Not now. Personal name row 7→8. Audience scores stay put. Nobody leads yet. Still open: the 22×48 grip, the dock covering the bottom row on a 393px phone, and a waiting-room admit list.
 11. Dock clears the bottom row. `test/mobile/dock-clears-faces.js` failed, then passed. The content box reserves the measured dock. The packer is unchanged. Corporate trust 5→6. Personal "see everyone" 6→7. Audience scores stay 7 / 8 / 8. Nobody leads yet. Still open: the 22×48 grip on a 393px phone, and a waiting-room admit list.
+12. Drag grip is 44px. `test/mobile/grip-target.js` failed (`22x48` on iPhone 15 and Pixel 7), then passed. Hang up stays on screen. Corporate trust 6→7. Church tap targets 7→8. Audience scores stay 7 / 8 / 8. Nobody leads yet. Still open: a waiting-room admit list.

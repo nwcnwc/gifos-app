@@ -101,11 +101,19 @@ Repro: `test/mobile/dock-clears-faces.js`. It failed with those bottoms, then pa
 
 Before: `qa/mobile/shots/before-dock-faces-iphone-15.png`. After: `qa/mobile/shots/after-dock-faces-iphone-15.png`.
 
+### 12. The drag grip was 22×48 on a normal phone
+
+The 44px grip rule only applied under 380px. A later `.bar #bargrip` rule set 22×48, so an iPhone 15 and a Pixel 7 both measured 22×48. The mark was also `#8d93a0` on white.
+
+Repro: `test/mobile/grip-target.js`. It failed (`bargrip is 22x48`), then passed. The grip is 44×44 on iPhone 15 and Pixel 7, the icon is `#3a3a3f` on an `#e8ecf1` plate, and Hang up stays inside the screen. Below 393px the row gap tightens so the wider grip does not push Hang up off.
+
+Before: `qa/mobile/shots/before-grip-iphone-15.png`. After: `qa/mobile/shots/after-grip-iphone-15.png`.
+
 ## Open
 
 There is still no waiting-room admit list for a host.
 
-The drag grip on an iPhone 15 is 22×48, under 44px, because the later `.bar #bargrip` rule (22×48) wins over the 700px sizes and the 44px rule only applies under 380px. Hang up still ends at x=375, inside the 393px screen. The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
+The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
 
 ## Personas (what was actually tried)
 
