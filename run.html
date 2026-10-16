@@ -2021,6 +2021,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/relay-config.js"></script>
   <script src="js/runtime.js"></script>
   <script src="js/meet-host.js"></script>
+  <script src="js/host-voice.js"></script>
   <script src="js/camera-studio.js"></script>
   <script src="js/gifos-perms.js"></script>
   <script>
@@ -11773,6 +11774,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             bootGumPending = gumB.finally(() => { bootGumPending = null; });
             bootGumPending.catch(() => {});
             gumB.then((stream) => {
+              const hw = stream.getAudioTracks()[0] || null;
+              if (hw) hw.enabled = !myStatus.muted;
+              if (typeof botTakeHardwareMic === 'function' && botTakeHardwareMic(hw, stream)) {
+                try { ensureAc(); if (ac && ac.resume) ac.resume(); } catch (e) {}
+                updateTile('me');
+                broadcastStatus();
+                return;
+              }
               localStream = stream;
               for (const tr of stream.getTracks()) tr.enabled = false;
               const n = meTile.tile.querySelector('.note'); if (n) n.remove();
@@ -18260,6 +18269,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function addTranscriptLine(text, at, forId) { // forId: a scribe writing down THAT person
       text = String(text || '').trim();
       if (!text) return;
+      // The bot's own computer microphone is never written down, and neither
+      // is a line that repeats something the bot just said.
+      if (window.GifOS && GifOS.meetHost && typeof GifOS.meetHost.suppressBotLine === 'function'
+          && GifOS.meetHost.suppressBotLine(!!myStatus.bot, text, forId, myId, botSpokenLines)) return;
       const m = { id: uid('t'), byId: myId, by: myName(), at: at || Date.now(), text: text.slice(0, 400) };
       if (forId && forId !== myId) { m.byId = forId; m.by = String(rosterNames[forId] || (peers.get(forId) || {}).name || '…').slice(0, 40); m.scribe = myId; m.scribeBy = myName(); }
       if (!keepOwnTranscript(m)) return; // I only HEARD this — another device already wrote it down
@@ -18672,7 +18685,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const softMs = warm ? clipMs * 4 + 10000 : Math.max(clipMs * 4 + 10000, 180000);
       const hardMs = Math.max(clipMs * 8, 120000, warm ? 0 : 180000);
       let url = '';
-      try { url = String(lsGet('gifos_cc_stt_url') || ''); } catch (e) {}
+      try {
+        if (typeof window !== 'undefined' && window && window.__gifosSttStandIn) url = String(window.__gifosSttStandIn);
+        else url = String(lsGet('gifos_cc_stt_url') || '');
+      } catch (e) {}
       const remote = /^https?:\/\//.test(url) && typeof fetch === 'function';
       let pending;
       if (remote) {
@@ -18736,7 +18752,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       }).catch((e) => {
         if (done || abandoned) return;
-        const msg = (e && e.message) || String(e);
+        let msg = (e && e.message) || String(e);
+        if (url) msg = msg.split(url).join('the captions stand-in');
         if (/PROVIDER_STOPPED|AbortError/.test(msg)) return; // unloaded on purpose
         if (/NOT_CONFIGURED|PROVIDER_MISSING|PROVIDER_NOT_IN_FOLDER/.test(msg)) { wspProviderGone(); return; }
         setStatus('Whisper captions failed: ' + msg.slice(0, 160), 10000);
@@ -22217,6 +22234,209 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, 200);
     })();
 
+    // The bot's mouth. Speech is mixed onto the outbound microphone so the
+    // room hears it, and the bot's own voice is kept out of the transcript.
+    const botSpokenLines = [];
+    let botMouth = null;
+    let botSpeakingNow = false;
+    let botMouthGen = 0;
+    let botPlayCount = 0;
+    let botFinish = null;
+    function rememberBotSpoken(text) {
+      const t = String(text || '').trim();
+      if (!t) return;
+      botSpokenLines.push(t);
+      if (botSpokenLines.length > 20) botSpokenLines.splice(0, botSpokenLines.length - 20);
+    }
+    function bytesOf(raw) {
+      if (!raw) return new Uint8Array(0);
+      if (raw instanceof Uint8Array) return raw;
+      if (raw instanceof ArrayBuffer) return new Uint8Array(raw);
+      if (ArrayBuffer.isView(raw)) return new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength);
+      return new Uint8Array(0);
+    }
+    function toneWav(ms) {
+      const rate = 8000;
+      const n = Math.max(1, Math.floor(rate * ms / 1000));
+      const data = n * 2;
+      const buf = new ArrayBuffer(44 + data);
+      const v = new DataView(buf);
+      const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+      w(0, 'RIFF'); v.setUint32(4, 36 + data, true); w(8, 'WAVE');
+      w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+      v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+      w(36, 'data'); v.setUint32(40, data, true);
+      for (let i = 0; i < n; i++) {
+        const s = Math.sin(2 * Math.PI * 220 * i / rate) * 0.2;
+        v.setInt16(44 + i * 2, (s * 32767) | 0, true);
+      }
+      return buf;
+    }
+    function stopMouthNode() {
+      if (botMouth && botMouth.node) {
+        try { botMouth.node.onended = null; } catch (e) {}
+        try { botMouth.node.stop(); } catch (e) {}
+        botMouth.node = null;
+      }
+    }
+    function quietMouth() {
+      botSpeakingNow = false;
+      if (botMouth && botMouth.out) botMouth.out.enabled = !myStatus.muted;
+      try { delete document.documentElement.dataset.botSpeaking; } catch (e) {}
+    }
+    function stopMouth() {
+      botMouthGen++;
+      const fin = botFinish;
+      botFinish = null;
+      stopMouthNode();
+      quietMouth();
+      if (fin) fin(false);
+    }
+    function seatMouthTrack(track) {
+      if (!track) return;
+      if (!localStream) localStream = new MediaStream();
+      const cur = localStream.getAudioTracks();
+      for (const t of cur) if (t !== track && t !== (botMouth && botMouth.hw)) { try { localStream.removeTrack(t); } catch (e) {} }
+      if (!localStream.getAudioTracks().some((t) => t === track)) localStream.addTrack(track);
+      try { meterFor('me', localStream); } catch (e) {}
+      try { attachLocalTracks(); refreshOutbound(); } catch (e) {}
+    }
+    let pendingHw = null;
+    function connectHw(track) {
+      if (!track) return;
+      if (!botMouth || !botMouth.ctx) { pendingHw = track; return; }
+      botMouth.hw = track;
+      pendingHw = null;
+      track.enabled = !myStatus.muted;
+      try {
+        const src = botMouth.ctx.createMediaStreamSource(new MediaStream([track]));
+        src.connect(botMouth.micGain);
+        botMouth.hwSrc = src;
+      } catch (e) {}
+    }
+    function armMouth() {
+      const wait = (bootGumPending && typeof bootGumPending.then === 'function') ? bootGumPending.then(() => {}, () => {}) : Promise.resolve();
+      return wait.then(() => {
+        const ctx = ensureAc();
+        if (!ctx) return null;
+        if (botMouth && botMouth.ctx === ctx && botMouth.out) return botMouth;
+        const dest = ctx.createMediaStreamDestination();
+        const micGain = ctx.createGain();
+        micGain.gain.value = myStatus.muted ? 0 : 1;
+        micGain.connect(dest);
+        const speechGain = ctx.createGain();
+        speechGain.connect(dest);
+        const out = dest.stream.getAudioTracks()[0];
+        if (!out) return null;
+        out.enabled = !myStatus.muted;
+        const prev = localStream && localStream.getAudioTracks()[0];
+        botMouth = { ctx, dest, micGain, speechGain, out, hw: null, hwSrc: null, node: null };
+        if (pendingHw) connectHw(pendingHw);
+        else if (prev && prev !== out) {
+          try { localStream.removeTrack(prev); } catch (e) {}
+          connectHw(prev);
+        }
+        seatMouthTrack(out);
+        return botMouth;
+      });
+    }
+    function botTakeHardwareMic(track, stream) {
+      if (!botMouth) return false;
+      if (track) connectHw(track);
+      if (stream) for (const t of stream.getTracks()) if (t !== track) { try { t.stop(); } catch (e) {} }
+      return true;
+    }
+    function playMouthBytes(raw) {
+      const gen = ++botMouthGen;
+      return armMouth().then((mouth) => {
+        if (gen !== botMouthGen) return { spoken: false, stopped: true };
+        if (!mouth || !mouth.ctx) throw new Error('This meeting cannot play the bot microphone.');
+        const u8 = bytesOf(raw);
+        if (!u8.byteLength) throw new Error('This meeting cannot play the bot microphone.');
+        const copy = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+        const resume = mouth.ctx.resume ? mouth.ctx.resume() : Promise.resolve();
+        return Promise.resolve(resume).catch(() => {}).then(() => mouth.ctx.decodeAudioData(copy)).then((buf) => {
+          if (gen !== botMouthGen) return { spoken: false, stopped: true };
+          stopMouthNode();
+          const src = mouth.ctx.createBufferSource();
+          src.buffer = buf;
+          src.connect(mouth.speechGain);
+          mouth.node = src;
+          botSpeakingNow = true;
+          mouth.out.enabled = true;
+          try { document.documentElement.dataset.botSpeaking = '1'; } catch (e) {}
+          try { setStatus('Speaking.'); } catch (e) {}
+          return new Promise((resolve, reject) => {
+            let done = false;
+            const finish = (spoken) => {
+              if (done) return;
+              done = true;
+              if (botFinish === finish) botFinish = null;
+              if (mouth.node === src) mouth.node = null;
+              if (gen === botMouthGen) quietMouth();
+              if (spoken) botPlayCount++;
+              resolve({ spoken: !!spoken && gen === botMouthGen, stopped: gen !== botMouthGen });
+            };
+            botFinish = finish;
+            src.onended = () => finish(true);
+            try { src.start(); }
+            catch (e) {
+              done = true;
+              if (botFinish === finish) botFinish = null;
+              if (mouth.node === src) mouth.node = null;
+              quietMouth();
+              reject(new Error('This meeting cannot play the bot microphone.'));
+            }
+          });
+        }).catch((e) => {
+          if (e && /cannot play the bot microphone/.test(String(e.message || e))) throw e;
+          throw new Error('This meeting cannot play the bot microphone.');
+        });
+      });
+    }
+    function ensureHardwareMic() {
+      if (botMouth && botMouth.hw && botMouth.hw.readyState === 'live') return Promise.resolve(botMouth.hw);
+      const md = navigator.mediaDevices;
+      if (!md || !md.getUserMedia) return Promise.resolve(null);
+      return md.getUserMedia({ audio: true, video: false }).then((stream) => {
+        const tr = stream.getAudioTracks()[0] || null;
+        if (tr) connectHw(tr);
+        return tr;
+      }).catch(() => null);
+    }
+    function paintRoomControls() {
+      try { paintControls(); broadcastStatus(); updateMediaSession(); if (typeof syncSpeech === 'function') syncSpeech(); } catch (e) {}
+    }
+    function roomPeople() {
+      const meRow = { id: myId, name: myName(), bot: !!myStatus.bot, me: true };
+      const people = [meRow];
+      for (const [pid, p] of peers) {
+        const st = statusOf.get(pid);
+        people.push({ id: pid, name: (p && p.name) || '', bot: !!(st && st.bot), me: false });
+      }
+      return people;
+    }
+    function roomControls() {
+      return { hand: !!myStatus.hand, mic: !myStatus.muted, camera: !myStatus.camOff, people: roomPeople() };
+    }
+    function showBotCamera() {
+      try {
+        if (meTile && meTile.video) {
+          meTile.video.style.display = '';
+          if (localStream) meTile.video.srcObject = localStream;
+          const pr = meTile.video.play(); if (pr && pr.catch) pr.catch(() => {});
+        }
+        const n = meTile && meTile.tile && meTile.tile.querySelector('.note');
+        if (n) n.remove();
+        paintControls();
+        refreshOutbound();
+        broadcastStatus();
+        reactRoomState();
+        updateTile('me');
+        updateMediaSession();
+      } catch (e) {}
+    }
+
     // Session frame (#mb=1): the parent meet-host drives this document.
     // Ordinary meetings never take this branch.
     if (params.get('mb') === '1' && window.GifOS && GifOS.meetSession) {
@@ -22254,6 +22474,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             myStatus.muted = true;
           } else params.delete('bot');
           if (msg && msg.name) window.__gifosMeetName = String(msg.name).slice(0, 40);
+          if (msg && typeof msg.stt === 'string') window.__gifosSttStandIn = msg.stt;
           return new Promise((resolve, reject) => {
             preflighted(() => {
               let p;
@@ -22343,6 +22564,121 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             for (const p of open) { try { dcSend(p, frame); } catch (e) {} }
           }
           return { id: id, n: n, peers: open.length };
+        },
+        setStt(msg) {
+          window.__gifosSttStandIn = msg && msg.url ? String(msg.url) : '';
+          return { ok: true };
+        },
+        raiseHand(msg) {
+          if (!meetJoined) return Promise.reject(new Error('This meeting cannot raise a hand.'));
+          const on = !!(msg && msg.on);
+          myStatus.hand = on ? (myStatus.hand || Date.now()) : null;
+          try { paintHand(); broadcastStatus(); layout(); } catch (e) {}
+          return { hand: !!myStatus.hand };
+        },
+        setMic(msg) {
+          if (!meetJoined) return Promise.reject(new Error('This meeting cannot change the microphone.'));
+          const on = !!(msg && msg.on);
+          if (on && typeof amGloballyMuted === 'function' && amGloballyMuted()) {
+            return Promise.reject(new Error('This meeting cannot open the microphone.'));
+          }
+          const ready = on ? ensureHardwareMic() : Promise.resolve(true);
+          return ready.then((hw) => {
+            if (on && !hw && !(botMouth && botMouth.hw)) return Promise.reject(new Error('This meeting cannot open the microphone.'));
+            return armMouth();
+          }).then((mouth) => {
+            if (on && !mouth) return Promise.reject(new Error('This meeting cannot open the microphone.'));
+            myStatus.muted = !on;
+            if (mouth && mouth.micGain) mouth.micGain.gain.value = on ? 1 : 0;
+            if (mouth && mouth.hw) mouth.hw.enabled = !!on;
+            if (mouth && mouth.out) mouth.out.enabled = on || botSpeakingNow;
+            paintRoomControls();
+            return { mic: !myStatus.muted };
+          });
+        },
+        setCamera(msg) {
+          if (!meetJoined) return Promise.reject(new Error('This meeting cannot show a camera.'));
+          const on = !!(msg && msg.on);
+          if (!on) {
+            myStatus.camOff = true;
+            const vt = localStream && localStream.getVideoTracks()[0];
+            if (vt) vt.enabled = false;
+            try {
+              if (meTile && meTile.video) meTile.video.style.display = 'none';
+              paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession();
+            } catch (e) {}
+            return { camera: false };
+          }
+          if (typeof forcedCamOff === 'function' && forcedCamOff('me')) {
+            return Promise.reject(new Error('This meeting cannot show a camera.'));
+          }
+          const held = localStream && localStream.getVideoTracks()[0];
+          if (held && held.readyState === 'live') {
+            held.enabled = true;
+            myStatus.camOff = false;
+            showBotCamera();
+            return { camera: true };
+          }
+          const md = navigator.mediaDevices;
+          if (!md || !md.getUserMedia) return Promise.reject(new Error('This meeting cannot show a camera.'));
+          return md.getUserMedia({ video: (typeof camVideoConstraints === 'function' ? camVideoConstraints() : true), audio: false }).then((stream) => {
+            const tr = stream.getVideoTracks()[0];
+            if (!tr) throw new Error('This meeting cannot show a camera.');
+            if (!localStream) localStream = new MediaStream();
+            const old = localStream.getVideoTracks()[0];
+            if (old && old !== tr) { try { old.stop(); } catch (e) {} try { localStream.removeTrack(old); } catch (e) {} }
+            if (!localStream.getVideoTracks().some((t) => t === tr)) localStream.addTrack(tr);
+            tr.enabled = true;
+            myStatus.camOff = false;
+            try { attachLocalTracks(); } catch (e) {}
+            showBotCamera();
+            return { camera: !myStatus.camOff };
+          }).catch((e) => {
+            if (e && /cannot show a camera/.test(e.message || '')) throw e;
+            const name = e && e.name && e.name !== 'Error' ? ' (' + e.name + ')' : '';
+            throw new Error('This meeting cannot show a camera' + name + '.');
+          });
+        },
+        meetingState() {
+          if (!meetJoined) return Promise.reject(new Error('No such meeting.'));
+          return roomControls();
+        },
+        snapshot() {
+          if (!meetJoined) return Promise.reject(new Error('No such meeting.'));
+          return roomControls();
+        },
+        playMic(msg) {
+          if (!meetJoined) return Promise.reject(new Error('This meeting cannot play the bot microphone.'));
+          rememberBotSpoken(msg && msg.text);
+          return playMouthBytes(msg && msg.bytes).then((r) => {
+            if (!r || r.spoken === false) {
+              if (r && r.stopped) return { spoken: false, stopped: true };
+              throw new Error('This meeting cannot play the bot microphone.');
+            }
+            return { spoken: true };
+          });
+        },
+        stopMic() {
+          stopMouth();
+          return { stopped: true };
+        },
+        speakText(msg) {
+          if (!meetJoined) return Promise.reject(new Error('Grok Voice is not available on this meeting page.'));
+          const text = String((msg && msg.text) || '').trim();
+          if (!text) return Promise.reject(new Error('Nothing to say.'));
+          rememberBotSpoken(text);
+          try {
+            const synth = window.speechSynthesis;
+            if (synth && typeof synth.cancel === 'function' && typeof SpeechSynthesisUtterance === 'function') {
+              synth.cancel();
+              synth.speak(new SpeechSynthesisUtterance(text));
+            }
+          } catch (e) {}
+          const ms = Math.min(4000, Math.max(350, text.length * 45));
+          return playMouthBytes(toneWav(ms)).then((r) => {
+            if (!r || !r.spoken) throw new Error('Grok Voice is not available on this meeting page.');
+            return { spoken: true, text: text };
+          });
         }
       });
       setInterval(() => {
@@ -22366,6 +22702,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     window.__gifosVideo = {
       participants: participantCount,
       bot: () => !!myStatus.bot,
+      botMouth: () => ({
+        speaking: !!botSpeakingNow,
+        mic: !myStatus.muted,
+        camera: !myStatus.camOff,
+        hand: !!myStatus.hand,
+        played: botPlayCount,
+        last: botSpokenLines.length ? botSpokenLines[botSpokenLines.length - 1] : ''
+      }),
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
       statusPeekForTest: (id) => { const st = statusOf.get(id); return st ? { stg: st.stg || 0, ageMs: Date.now() - (st.at || 0), rxAgeMs: Date.now() - (st.rx || 0) } : null; },

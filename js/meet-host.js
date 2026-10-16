@@ -54,7 +54,7 @@
       var iframe = root.document.createElement('iframe');
       iframe.setAttribute('data-gifos-meet', id);
       iframe.setAttribute('title', 'Meeting session');
-      iframe.setAttribute('allow', 'microphone; autoplay');
+      iframe.setAttribute('allow', 'microphone; camera; autoplay');
       var x = (seq % 8) * 3;
       iframe.style.cssText = 'position:fixed;left:' + x + 'px;bottom:0;width:2px;height:2px;border:0;opacity:0.02;pointer-events:none;z-index:1';
       var sess = {
@@ -74,7 +74,8 @@
           iframe.contentWindow.postMessage({
             ns: NS, op: 'join', id: id,
             room: opts.room || '', link: opts.link || '', password: opts.password || '',
-            name: opts.name || '', bot: sess.bot, control: sess.control
+            name: opts.name || '', bot: sess.bot, control: sess.control,
+            stt: sttHeld || ''
           }, '*');
           return;
         }
@@ -101,6 +102,7 @@
           var ev = Object.assign({}, d.event || {});
           ev.meetingId = id;
           if (ev.type === 'chat') ev.control = !!(sess.control && remoteOk);
+          if (ev.type === 'transcript' && suppressTranscript(ev.line || ev)) return;
           postApp(ev);
         }
       };
@@ -136,6 +138,139 @@
   var xferDone = new Set();
   var xferBags = new Map();
 
+  // Voice settings live on this page. The app frame cannot fetch, so the key
+  // and the stand-in URLs stay here. Replies and events never carry them.
+  var sttHeld = '';
+  var secrets = [];
+  var spoken = [];
+  var speechId = '';
+  var voice = null;
+
+  function normLine(t) {
+    return String(t || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  }
+  function rememberSpoken(text) {
+    var t = String(text || '').trim();
+    if (!t) return;
+    spoken.push(t);
+    if (spoken.length > 20) spoken.splice(0, spoken.length - 20);
+  }
+  function noteSecrets(settings) {
+    if (!settings) return;
+    if (settings.llm && settings.llm.key) secrets.push(String(settings.llm.key));
+    if (settings.tts && settings.tts.url) secrets.push(String(settings.tts.url));
+    if (settings.stt && settings.stt.url) secrets.push(String(settings.stt.url));
+    if (secrets.length > 8) secrets.splice(0, secrets.length - 8);
+  }
+  function scrub(text) {
+    var s = String(text == null ? '' : text);
+    for (var i = 0; i < secrets.length; i++) {
+      if (secrets[i]) s = s.split(secrets[i]).join('[redacted]');
+    }
+    return s;
+  }
+  function scrubValue(v) {
+    if (typeof v === 'string') return scrub(v);
+    if (Array.isArray(v)) return v.map(scrubValue);
+    if (v && typeof v === 'object') {
+      if (typeof ArrayBuffer !== 'undefined' && (v instanceof ArrayBuffer || ArrayBuffer.isView(v))) return v;
+      var out = {};
+      for (var k in v) if (Object.prototype.hasOwnProperty.call(v, k)) out[k] = scrubValue(v[k]);
+      return out;
+    }
+    return v;
+  }
+  // A bot's own microphone is never a transcript line. A line that repeats
+  // one of the last 20 things the bot spoke is the same voice, whoever it
+  // was attributed to.
+  function suppressBotLine(bot, text, forId, myId, recent) {
+    if (!bot) return false;
+    if (!forId || forId === myId) return true;
+    var n = normLine(text);
+    if (!n) return false;
+    var list = recent || [];
+    for (var i = 0; i < list.length; i++) if (normLine(list[i]) === n) return true;
+    return false;
+  }
+  function suppressTranscript(line) {
+    if (!line) return false;
+    if (line.self || line.bot || line.me) return true;
+    var n = normLine(line.text);
+    if (!n) return false;
+    for (var i = 0; i < spoken.length; i++) if (normLine(spoken[i]) === n) return true;
+    return false;
+  }
+  function hostFetch(url, opts) {
+    var init = Object.assign({}, opts || {}, { redirect: 'error', credentials: 'omit' });
+    if (typeof root.fetch !== 'function') return Promise.reject(new Error('This page cannot reach the network.'));
+    return root.fetch(url, init);
+  }
+  function kokoro(req) {
+    var g = root.GifOS && root.GifOS.providers;
+    if (!g || typeof g.call !== 'function' || !g.assigned || !g.assigned('tts')) {
+      return Promise.reject(new Error('Kokoro is not available on this computer.'));
+    }
+    return g.call('tts', {
+      text: req && req.text || '',
+      voice: (req && req.voice) || 'af_heart',
+      app: (req && req.app) || 'offline-tts-kokoro'
+    });
+  }
+  function playSession(id, audio, clause) {
+    if (!id) return Promise.reject(new Error('No meeting to speak in.'));
+    rememberSpoken(clause);
+    var bytes = audio && (audio.bytes != null ? audio.bytes : audio);
+    var mime = (audio && audio.mime) || 'audio/wav';
+    return call(id, 'playMic', { bytes: bytes, mime: mime, text: clause == null ? '' : String(clause) });
+  }
+  function stopSession(id) {
+    if (!id || !sessions.has(id)) return Promise.resolve();
+    return call(id, 'stopMic', {}).then(function () {}, function () {});
+  }
+  function engine() {
+    if (voice) return voice;
+    if (!root.HostVoice || typeof root.HostVoice.create !== 'function') return null;
+    voice = root.HostVoice.create({
+      fetch: hostFetch,
+      tts: kokoro,
+      play: function (audio, clause) { return playSession(speechId, audio, clause); },
+      stop: function () { return stopSession(speechId); },
+      grok: function (text) {
+        rememberSpoken(text);
+        return call(speechId, 'speakText', { text: text == null ? '' : String(text) }).then(function (r) {
+          if (!r || r.spoken === false) throw new Error('Grok Voice is not available on this meeting page.');
+          return r;
+        });
+      }
+    });
+    return voice;
+  }
+  function needVoice() {
+    var eng = engine();
+    if (!eng) return Promise.reject(new Error('Voice is not available on this page.'));
+    return eng;
+  }
+  function pushStt(id) {
+    if (!sessions.has(id)) return Promise.resolve();
+    return call(id, 'setStt', { url: sttHeld }).then(function () {}, function () {});
+  }
+  function applyVoice(eng, settings) {
+    var pub;
+    try { pub = eng.setVoice(settings || {}); }
+    catch (e) { return Promise.reject(new Error(scrub(e && e.message || e))); }
+    pub = scrubValue(pub);
+    if (settings && Object.prototype.hasOwnProperty.call(settings, 'stt')) {
+      sttHeld = settings.stt && settings.stt.url ? String(settings.stt.url) : '';
+      var ids = Array.from(sessions.keys());
+      var chain = Promise.resolve();
+      ids.forEach(function (sid) {
+        chain = chain.then(function () { return pushStt(sid); });
+      });
+      return chain.then(function () { return pub; });
+    }
+    return Promise.resolve(pub);
+  }
+
   root.GifOS = root.GifOS || {};
   root.GifOS.meetHost = {
     join: join,
@@ -157,6 +292,71 @@
       sessions.forEach(function (s) { s.control = s.id === id; });
     },
     setRemoteAllowed: function (on) { remoteOk = !!on; },
+    scrub: scrub,
+    scrubValue: scrubValue,
+    suppressBotLine: suppressBotLine,
+    setVoice: function (settings) {
+      noteSecrets(settings);
+      var eng;
+      try { eng = needVoice(); }
+      catch (e) { return Promise.reject(new Error(scrub(e && e.message || e))); }
+      if (eng && typeof eng.then === 'function') {
+        return eng.then(function (ready) { return applyVoice(ready, settings); }, function (e) {
+          return Promise.reject(new Error(scrub(e && e.message || e)));
+        });
+      }
+      return applyVoice(eng, settings);
+    },
+    interject: function (id, text) {
+      if (!sessions.has(id)) return Promise.reject(new Error('No such meeting.'));
+      var line = String(text == null ? '' : text).trim();
+      if (!line) return Promise.reject(new Error('Nothing to say.'));
+      if (line.length > 2000) line = line.slice(0, 2000);
+      speechId = id;
+      rememberSpoken(line);
+      var eng;
+      try { eng = needVoice(); }
+      catch (e) { return Promise.reject(new Error(scrub(e && e.message || e))); }
+      var run = function (ready) {
+        return ready.interject(line).then(function (r) {
+          if (r && r.text) rememberSpoken(r.text);
+          return { id: id, spoken: !!(r && r.spoken), stopped: !!(r && r.stopped), text: (r && r.text) || line };
+        });
+      };
+      if (eng && typeof eng.then === 'function') return eng.then(run).catch(function (e) { throw new Error(scrub(e && e.message || e)); });
+      return run(eng).catch(function (e) { throw new Error(scrub(e && e.message || e)); });
+    },
+    converse: function (id, prompt) {
+      if (!sessions.has(id)) return Promise.reject(new Error('No such meeting.'));
+      prompt = prompt || {};
+      var text = (prompt.by ? String(prompt.by) + ': ' : '') + String(prompt.text || '');
+      speechId = id;
+      var eng;
+      try { eng = needVoice(); }
+      catch (e) { return Promise.reject(new Error(scrub(e && e.message || e))); }
+      var run = function (ready) {
+        return ready.converse(text).then(function (r) {
+          if (r && r.text) rememberSpoken(r.text);
+          return r || { spoken: false };
+        });
+      };
+      if (eng && typeof eng.then === 'function') return eng.then(run).catch(function (e) { throw new Error(scrub(e && e.message || e)); });
+      return run(eng).catch(function (e) { throw new Error(scrub(e && e.message || e)); });
+    },
+    stopSpeaking: function (id) {
+      var target = id || speechId;
+      speechId = target;
+      var eng = engine();
+      var stop = eng ? eng.interrupt() : Promise.resolve();
+      return Promise.resolve(stop).then(function () {
+        return target ? stopSession(target) : null;
+      }).then(function () { return { id: target || '', stopped: true }; });
+    },
+    raiseHand: function (id, on) { return call(id, 'raiseHand', { on: !!on }); },
+    setMic: function (id, on) { return call(id, 'setMic', { on: !!on }); },
+    setCamera: function (id, on) { return call(id, 'setCamera', { on: !!on }); },
+    meetingState: function (id) { return call(id, 'meetingState', {}); },
+    snapshot: function (id) { return call(id, 'snapshot', {}); },
     onApp: function (win) { appWin = win || null; },
     clearApp: function () { appWin = null; },
     leaveAll: function () {
