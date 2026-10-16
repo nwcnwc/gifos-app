@@ -1008,6 +1008,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .chips span.ico { width: 22px; height: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
                           font-size: 0; line-height: 0; border-radius: 6px; flex: 0 0 auto; }
   .tile .chips span.ico svg { width: 14px; height: 14px; display: block; }
+  .tile .awaymark { display: none; }
+  .tile.away > .awaymark {
+    display: flex; align-items: center; justify-content: center;
+    position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 5;
+    min-height: 40px; padding: 0 16px; border-radius: 999px; pointer-events: none;
+    background: rgba(255,255,255,.96); color: #1d1d1f; font: 700 22px/1 system-ui, sans-serif;
+    white-space: nowrap; box-shadow: 0 8px 24px rgba(0,0,0,.28);
+  }
+  #still { display: none; position: fixed; z-index: 24; left: 50%; top: 72px; transform: translateX(-50%);
+    max-width: calc(100vw - 32px); min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px;
+    background: #fff; color: #1d1d1f; font: 700 20px/1.2 system-ui, sans-serif; cursor: pointer;
+    box-shadow: 0 10px 30px rgba(0,0,0,.28); }
+  #still.on { display: block; }
   .tile > .blurbox { position: absolute; top: 0; right: 0; z-index: 6; display: none; min-width: 32px; min-height: 32px;
                      padding: 8px 10px; border: 0; border-bottom-left-radius: 12px; cursor: pointer;
                      background: rgba(10,10,15,.72); color: #fff; font: 700 12px/1.2 system-ui, sans-serif; }
@@ -1646,6 +1659,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <input id="roster-find" type="search" placeholder="Find a name" autocomplete="off">
     <div id="roster-list"></div>
   </aside>
+  <button type="button" id="still">Still in the call</button>
   <div id="onair" data-state="off" aria-live="polite">
     <span class="onair-lamp" aria-hidden="true"></span>
     <span class="onair-word">Off air</span>
@@ -2436,6 +2450,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         blurGuests: 'Weichzeichnen', unblurGuests: 'Schärfen', videoOff: 'Video aus', videoOn: 'Video an',
         allowShare: 'Freigeben', stopShares: 'Freigabe aus',
         inMeeting: 'im Meeting', justYou: 'Nur Sie', backIn: 'Wieder dabei',
+        away: 'Weg', stillHere: 'Sie sind noch dabei',
         unlockClear: 'Passwort für klares Video',
         onAir: 'Auf Sendung', offAir: 'Nicht live', watching: 'Live',
         rosterPeople: 'Personen', you: 'Sie', muted: 'Stumm', rosterClose: 'Schließen', rosterFind: 'Name suchen',
@@ -2535,6 +2550,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         blurGuests: 'Difuminar', unblurGuests: 'Quitar desenfoque', videoOff: 'Apagar video', videoOn: 'Encender video',
         allowShare: 'Permitir pantalla', stopShares: 'Parar pantallas',
         inMeeting: 'en la reunión', justYou: 'Solo tú', backIn: 'Volviendo',
+        away: 'Fuera', stillHere: 'Sigues en la llamada',
         unlockClear: 'contraseña para video nítido',
         onAir: 'Al aire', offAir: 'Fuera del aire', watching: 'En vivo',
         rosterPeople: 'personas', you: 'tú', muted: 'En silencio', rosterClose: 'Cerrar', rosterFind: 'Buscar un nombre',
@@ -3888,10 +3904,36 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Tell the room when this phone steps away (screen off / another app) —
     // the browser fires visibilitychange before it freezes us, so the last
     // thing we say is an honest "away", and the first thing back is "here".
+    let stillTimer = 0;
+    function showStill() {
+      const el = document.getElementById('still');
+      if (!el) return;
+      const word = uiText('stillHere', 'Still in the call');
+      if (el.textContent !== word) el.textContent = word;
+      el.classList.add('on');
+      clearTimeout(stillTimer);
+      stillTimer = setTimeout(() => { el.classList.remove('on'); }, 8000);
+    }
+    function paintAwayMark(t, on) {
+      if (!t || !t.tile) return;
+      t.tile.classList.toggle('away', !!on);
+      let mark = t.tile.querySelector('.awaymark');
+      if (!on) { if (mark) mark.remove(); return; }
+      if (!mark) {
+        mark = document.createElement('div');
+        mark.className = 'awaymark';
+        t.tile.appendChild(mark);
+      }
+      const word = uiText('away', 'Away');
+      if (mark.textContent !== word) mark.textContent = word;
+    }
+    const stillBtn = document.getElementById('still');
+    if (stillBtn) stillBtn.onclick = () => { stillBtn.classList.remove('on'); clearTimeout(stillTimer); };
     document.addEventListener('visibilitychange', () => {
       myStatus.away = !!document.hidden;
       broadcastStatus();
       if (document.hidden) return;
+      showStill();
       // RESUME-AFTER-FREEZE SELF-HEAL (2026-07-26): Android freezes a
       // backgrounded tab COMPLETELY after ~5min — workers included — so a
       // long app-switch comes back with a stale world: every status expired,
@@ -5030,7 +5072,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const mod = modOf(id);
       const gMute = mod.mute && mod.mute.on, gBlur = mod.blur && mod.blur.on, gCam = mod.cam && mod.cam.on;
       const chips = [];
-      if (!isMe && peerAway(id, 25000)) chips.push('<span>⏾ stepped away</span>');
+      paintAwayMark(t, !isMe && peerAway(id, 25000));
       // Not verified myself: everyone holds my media.
       if (isMe && (typeof keysTrusted === 'function' && keysTrusted() === true) && !myIpAttV) chips.push('<span class="warn">\u26a0 the relay has not verified you yet \u2014 others cannot see or hear you until it does. If this stays, update GifOS.</span>');
       if ((typeof attestOn === 'function' && attestOn() === true) && !isMe && !(typeof isEjected === 'function' && isEjected(id) === true)) {
@@ -23312,6 +23354,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Test hook: lets the e2e suite observe mesh + quality state.
     window.__gifosVideo = {
       seedGalleryForTest: (spec) => seedGalleryForTest(spec),
+      markPeerAwayForTest: (name, on) => {
+        for (const p of peers.values()) {
+          if (!p || p.name !== name) continue;
+          const st = statusOf.get(p.id) || {};
+          st.away = !!on;
+          statusOf.set(p.id, st);
+          try { updateTile(p.id); } catch (e) {}
+          return { ok: true, away: !!st.away };
+        }
+        return { ok: false };
+      },
+      setTabHiddenForTest: (hidden) => {
+        try { Object.defineProperty(document, 'hidden', { configurable: true, get: () => !!hidden }); } catch (e) {}
+        document.dispatchEvent(new Event('visibilitychange'));
+        const el = document.getElementById('still');
+        return { ok: true, away: !!myStatus.away, still: !!(el && el.classList.contains('on')) };
+      },
       participants: participantCount,
       bot: () => !!myStatus.bot,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage

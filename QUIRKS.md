@@ -110,6 +110,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** German and Spanish cover the settings title, video quality, name and picture, captions, sound mix, timing, and Close. English stays in the markup. Who, Share, and Vote are still English.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit, and the earlier locale test still passes. An English device still says “Settings”. Screenshots: `test/desktop/shots/settings-before-1280.png`, `test/desktop/shots/settings-after-de-1280.png`, `test/desktop/shots/settings-after-es-1280.png`.
 
+### Stepping away was a tiny chip
+
+- **Who hits it:** someone on a personal call who flips to another tab, and the friend who stays.
+- **What you saw:** the only signal was an 11px “stepped away” chip on the tile, easy to miss, and coming back said nothing. The call was still there. It did not feel like it.
+- **Repro:** `test/desktop/staying.spec.js` failed before the fix (no `.awaymark`, no `#still`).
+- **Fix:** a friend who steps away gets a white Away on their tile, large enough to read, clear of their name and the dock. Coming back shows Still in the call. Tap it and it goes. It does not cover the dock. A hidden tab does not show that line until you return.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/staying-before-1280.png`, `test/desktop/shots/staying-after-away-1280.png`, `test/desktop/shots/staying-after-back-1280.png`. A phone that kills the camera, and picture-in-picture, were not walked here.
+
 ### Chrome was English only
 
 - **Who hits it:** anyone whose device is set to German or Spanish.
@@ -140,9 +148,9 @@ With no saved confirmation for this session, joining shows how you will appear: 
 
 Who, Invite, Hand, and Chat sit under People. Vote, Password, Stage, Record, CC, and Settings sit under Room. Run app is under Share. Keys and Help are under Help. Host tools stay hidden until there is a host. “Turn video off” matches the other labels. The list is still long.
 
-### Settings were still English
+### Who, Share, and Vote are still English
 
-The lobby, the meeting help, the broadcast help, the shortcut list, and Settings follow a German or Spanish device. Who, Share, and Vote do not. Captions already followed the device language.
+The lobby, the meeting help, the broadcast help, the shortcut list, and Settings follow a German or Spanish device. Who, Share, and Vote do not.
 
 ### Status line is easy to lose
 
@@ -150,4 +158,4 @@ The lobby, the meeting help, the broadcast help, the shortcut list, and Settings
 
 ### Not yet walked end to end
 
-Screen-share for the consultant and tab-hide/return. Gallery packing, self-view placement, and the reactions icon are not in this pass. A broadcast says off air and on air, and the booth has an order of service. There are still no lyrics and no program versus preview. The roster can mute someone for everyone. Waiting room, rename, and spotlight are still missing. Who, Share, and Vote stay English.
+Screen-share for the consultant. Gallery packing, self-view placement, and the reactions icon are not in this pass. A broadcast says off air and on air, and the booth has an order of service. There are still no lyrics and no program versus preview. The roster can mute someone for everyone. Waiting room, rename, and spotlight are still missing. Who, Share, and Vote stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that kills the camera was not walked.
