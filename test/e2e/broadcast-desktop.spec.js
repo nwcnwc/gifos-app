@@ -47,10 +47,13 @@ async function bootSession(page, width, height) {
   });
   await page.setViewportSize({ width, height });
   await page.goto(SESSION);
-  await page.waitForSelector('body.broadcast.meet-session #mic .docklab');
+  await page.waitForSelector('body.broadcast.meet-session #leavebtn .docklab');
 }
 
 test('mute and camera are labeled and the off state is filled red', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
   for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
     await bootSession(page, w, h);
     const mic = page.locator('#mic');
@@ -390,6 +393,7 @@ test('a family call and a church broadcast start from a plain lobby', async ({ p
   }
   await page.locator('#lob-join-btn').click();
   await expect(page.locator('#lob-join-in')).toBeVisible();
+  await expect(page.locator('#lob-watch-note')).toBeHidden();
   await expect(page.locator('#lob-admin')).toBeHidden();
   await page.locator('#lob-admin-btn').click();
   await expect(page.locator('#lob-admin-pass')).toBeVisible();
@@ -436,7 +440,8 @@ test('the screen-name step prefills your GifOS name and picture', async ({ page 
   await page.evaluate(() => { window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); return null; });
   const dialog = page.locator('#appear-modal .appear-box');
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('h3')).toHaveText("This is how you'll appear");
+  await expect(dialog.locator('h3')).toHaveText('Watching the service');
+  await expect(dialog.locator('#appear-note')).toHaveText('You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.');
   await expect(page.locator('#nm')).toHaveValue('Avery Chen');
   await expect(page.locator('#appear-face img')).toHaveAttribute('src', new RegExp(png.slice(0, 24)));
   await expect(page.locator('#nmcancel')).toHaveText('Clear');
@@ -584,6 +589,104 @@ test('a small group tucks the dock when the call sits quiet', async ({ page }) =
   expect(service.micBottom).toBeLessThanOrEqual(720);
   expect(service.fitTop).toBeGreaterThanOrEqual(0);
   expect(service.fitBottom).toBeLessThanOrEqual(720);
+});
+
+test('a watching viewer keeps Hand and loses the publish controls', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Pat');
+    localStorage.setItem('gifos_meet_bar', '0');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(SESSION, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.broadcast.bc-watching #onair.watch');
+  await page.waitForFunction(() => window.__gifosVideo && window.__gifosVideo.stageFlagForTest);
+  await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+  await expect(page.locator('#mic')).toBeHidden();
+  await expect(page.locator('#cam')).toBeHidden();
+  await expect(page.locator('#stagebtn')).toBeHidden();
+  await expect(page.locator('#hand')).toBeVisible();
+  await expect(page.locator('#hand')).toHaveText('Hand');
+  const leaked = await page.evaluate(() => {
+    window.__gumCalls = 0;
+    const md = navigator.mediaDevices;
+    if (md && md.getUserMedia) {
+      const orig = md.getUserMedia.bind(md);
+      md.getUserMedia = function () {
+        window.__gumCalls += 1;
+        return orig.apply(md, arguments);
+      };
+    }
+    document.getElementById('mic').click();
+    document.getElementById('cam').click();
+    document.getElementById('stagebtn').click();
+    return {
+      gum: window.__gumCalls,
+      stage: window.__gifosVideo.stageFlagForTest(),
+    };
+  });
+  expect(leaked.gum).toBe(0);
+  expect(leaked.stage).toBe(0);
+  await page.locator('#hand').click();
+  await expect(page.locator('#hand')).toHaveText('Lower hand');
+  await page.locator('#helpbtn').click();
+  const help = page.locator('#help-modal .help-scroll');
+  await expect(help).toBeVisible();
+  await expect(help).not.toContainText('Ban lives on each tile');
+  await expect(help).toContainText('Raised hands are a list');
+  await expect(help).toContainText('Promote');
+  await expect(help).toContainText('Demote');
+  await expect(help).toContainText('stage seat');
+  await page.goto('/run.html?desk=watchjoin#bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#lobby.show');
+  await page.locator('#lob-join-btn').click();
+  await expect(page.locator('#lob-watch-note')).toBeVisible();
+  await expect(page.locator('#lob-watch-note')).toHaveText('Watching the service. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.');
+  await page.locator('#lob-admin-btn').click();
+  await expect(page.locator('#lob-admin')).toBeVisible();
+  await expect(page.locator('#lob-admin')).not.toContainText('only seen if you raise a hand');
+});
+
+test('a host promotes from a raised-hands list', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '0');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.hash.indexOf('who=view') === -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(HOST_SESSION, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.broadcast #onair.live');
+  await expect(page.locator('#handraise')).toBeHidden();
+  const id = await page.evaluate(() => window.__gifosVideo.raisedHandForTest('Sam Okonkwo'));
+  expect(id).toBe('qa-hand');
+  const row = page.locator('#handraise .raiserow[data-peer="qa-hand"]');
+  await expect(page.locator('#handraise')).toBeVisible();
+  await expect(page.locator('#handraise .raisekicker')).toHaveText('Raised hands');
+  await expect(row).toHaveAttribute('aria-label', /Sam Okonkwo/);
+  await expect(row.locator('[data-raise="promote"]')).toHaveText('Promote');
+  await expect(row.locator('[data-raise="mute"]')).toBeVisible();
+  await expect(row.locator('[data-raise="blur"]')).toBeVisible();
+  await expect(row.locator('[data-raise="ban"]')).toHaveText('Ban');
+  await row.locator('[data-raise="promote"]').click();
+  await expect(page.locator('#handraise .raiserow[data-peer="qa-hand"]')).toHaveCount(0);
+  const promoted = await page.evaluate(() => window.__gifosVideo.promotedHandsForTest());
+  expect(promoted).toContain('qa-hand');
+  const seat = page.locator('#stagemod .stagecard[data-peer="qa-hand"]');
+  await expect(seat).toBeVisible();
+  await expect(seat.locator('[data-adm="demote"]')).toHaveText('Demote');
+  await seat.locator('[data-adm="demote"]').click();
+  await expect(seat).toHaveCount(0);
+  await page.evaluate(() => { window.__gifosVideo.ensureNameForTest(); return null; });
+  await expect(page.locator('#appear-modal h3')).toHaveText("This is how you'll appear");
+  await expect(page.locator('#appear-note')).toHaveCount(0);
+  await page.goto(SESSION + '&who=view', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.broadcast.bc-watching #onair.watch');
+  await page.evaluate(() => window.__gifosVideo.raisedHandForTest('Sam Okonkwo'));
+  await expect(page.locator('#handraise')).toBeHidden();
+  await expect(page.locator('#mic')).toBeHidden();
+  await expect(page.locator('#hand')).toBeVisible();
 });
 
 test('a broadcast host moderates guests on the stage', async ({ page }) => {
@@ -1216,7 +1319,7 @@ test('captions and record stay readable when they are on', async ({ page }) => {
   for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/run.html?desk=cap' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('body.broadcast.meet-session #mic .docklab');
+    await page.waitForSelector('body.broadcast.bc-watching #leavebtn .docklab');
     await page.locator('#bartoggle').click();
     await expect(page.locator('#barmore')).toBeVisible();
     await expect(page.locator('#ccbtn')).toHaveText('Captions');

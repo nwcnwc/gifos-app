@@ -90,7 +90,7 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q29 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A small group tucks the dock when the call sits quiet. A service keeps it. Warm chrome stays 4. FaceTime still leads. |
 | After Q30 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A small group has one button. Host and Join are links. A service keeps Go live and Watch. Lobby stays 4. Zoom still leads. |
 | After Q31 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Captions is the word, and the on state is blue with white text. Labeled controls stay 4. Zoom still leads. |
-| After Q32 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A service hides the row and the stadium. A small group keeps the grid. Scores unchanged. The viewer dock and the hands list stay with role controls. |
+| After Q32 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A service hides the row and the stadium. A Watching viewer keeps Hand and loses Unmute, Video, and Stage. The host has a raised-hands list. Scores unchanged. |
 | After Q33 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A host alone on a service reads You are live. A viewer reads You are watching. A small group still reads Just you. Scores unchanged. |
 | After Q34 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Share is on the small-group dock. A service keeps it in More. Labeled controls stay 4. Zoom still leads. |
 | After Q35 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Fit leaves with the dock on a quiet small group. The room bar and the status chip stay. Warm chrome stays 4. FaceTime still leads. |
