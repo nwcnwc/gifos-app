@@ -1313,10 +1313,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip { position: fixed; z-index: 6; top: calc(14px + var(--inset-top, 0px)); left: calc(14px + var(--inset-left, 0px)); display: flex; align-items: center; gap: 8px;
     max-width: min(28rem, calc(100% - 120px - var(--inset-left, 0px) - var(--inset-right, 0px))); background: rgba(12,14,18,.92); color: #f4f7fb;
     border-radius: 999px; padding: 6px 12px 6px 14px; }
-  #livebadge { display: none; align-items: center; gap: 6px; flex: 0 0 auto; font-size: .8125rem; font-weight: 800;
+  #livebadge { display: none; align-items: center; gap: 8px; flex: 0 0 auto; font-size: .8125rem; font-weight: 800;
     letter-spacing: .04em; line-height: 1; padding: 5px 8px; border-radius: 999px; }
-  body.broadcast #livebadge { display: inline-flex; }
+  /* Broadcast state is a banner, not a word inside the chip. The chip keeps the name and the detail sentence underneath. */
+  body.broadcast { --banner-h: 2.75rem; }
+  body.broadcast #livebadge { display: flex; position: fixed; z-index: 7; top: var(--inset-top, 0px); left: 0; right: 0;
+    height: var(--banner-h); min-height: var(--banner-h); box-sizing: border-box; justify-content: center;
+    border-radius: 0; font-size: 1.625rem; letter-spacing: .08em;
+    padding: 0 calc(16px + var(--inset-right, 0px)) 0 calc(16px + var(--inset-left, 0px)); }
+  body.broadcast .topchip { top: calc(var(--banner-h) + 8px + var(--inset-top, 0px)); }
+  body.broadcast .fitbtn, body.broadcast .admcount { top: calc(var(--banner-h) + 8px + 2.75rem + var(--inset-top, 0px)); }
+  body.broadcast #gifos-build-float { top: calc(var(--banner-h) + 8px + var(--inset-top, 0px)) !important; }
   #livebadge .livedot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  body.broadcast #livebadge .livedot { width: 12px; height: 12px; }
   #livebadge[data-state="live"] { background: #b61622; color: #fff; }
   #livebadge[data-state="off"] { background: #3a3a3f; color: #fff; }
   #livebadge[data-state="watching"] { background: #0b6b3a; color: #fff; }
@@ -1422,6 +1431,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-width: 700px) {
     .topchip .title { font-size: 1.25rem; }
     .topchip .status { font-size: 1.0625rem; }
+    body.broadcast #livebadge { font-size: 1.25rem; }
     .bar { height: 88px; gap: 8px; padding: 0 10px; }
     .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
