@@ -1,7 +1,7 @@
 /*
- * No blur looks finished while a pocketed peer still holds the room at Min.
- * That hold lasts up to a minute (the away holdover). The header already
- * says you are ready. After the minute, clear video starts with no second tap.
+ * A pocketed peer holds the room at Min for up to a minute. The header
+ * already says you are ready, and No blur stays the selected choice.
+ * After the minute, clear video starts with no second tap.
  *
  * Gate: NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/blur-none-delay.js
  */
@@ -71,7 +71,7 @@ function stamp(page, ageMs) {
       wait: el.classList.contains('wait'),
       pressed: el.getAttribute('aria-pressed'),
       bg: cs.backgroundColor,
-      shadow: cs.boxShadow,
+      color: cs.color,
       wish: api.myBlur(),
       feed: api.blurClassOf('me'),
       status: document.getElementById('status').textContent,
@@ -80,9 +80,10 @@ function stamp(page, ageMs) {
     };
   });
   const during = await read();
-  const shotDuring = (!during.wait) ? 'before-blur-wait-pixel-7.png' : 'after-blur-wait-pixel-7.png';
+  const duringOk = during.wait === false && during.sel && during.bg === 'rgb(29, 29, 31)';
+  const shotDuring = duringOk ? 'after-blur-wait-pixel-7.png' : 'before-blur-wait-pixel-7.png';
   await page.screenshot({ path: path.join(SHOTS, shotDuring) });
-  if (during.wait) await page.locator('#blurseg').screenshot({ path: path.join(SHOTS, 'after-blur-wait-seg.png') });
+  if (duringOk) await page.locator('#blurseg').screenshot({ path: path.join(SHOTS, 'after-blur-wait-seg.png') });
   await stamp(page, 61000);
   await page.waitForFunction(() => {
     const api = window.__gifosVideo;
@@ -101,9 +102,8 @@ function stamp(page, ageMs) {
   if (during.wish !== 0) bad.push('choice ' + during.wish);
   if (during.feed !== 1) bad.push('feed during the minute is ' + during.feed);
   if (during.consent !== false) bad.push('room already consented during the holdover');
-  if (!during.wait) bad.push('No blur has no pending state while the header says ready and the feed is still Min (sel ' + during.sel + ')');
-  if (during.wait && during.bg !== 'rgb(255, 255, 255)') bad.push('pending No blur fill is ' + during.bg);
-  if (during.wait && during.shadow.indexOf('rgb(0, 100, 200)') < 0) bad.push('pending No blur has no blue ring (' + during.shadow + ')');
+  if (!during.sel || during.wait) bad.push('No blur is not the selected choice while the header says ready (sel ' + during.sel + ', wait ' + during.wait + ')');
+  if (during.bg !== 'rgb(29, 29, 31)' || during.color !== 'rgb(255, 255, 255)') bad.push('No blur fill ' + during.bg + ' / ' + during.color);
   if (later.feed !== 0) bad.push('after the minute the feed is still ' + later.feed + ' roster ' + JSON.stringify(later.roster));
   if (later.wait) bad.push('No blur stayed pending after the room cleared');
   if (later.feed === 0 && !later.sel) bad.push('clear video started and No blur is not the selected choice');

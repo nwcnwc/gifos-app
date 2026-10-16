@@ -347,11 +347,51 @@ Repro: `test/mobile/blur-none.js`. It failed (`No blur did not stay selected (mi
 
 Before: `qa/mobile/shots/before-blur-none-pixel-7.png`. After: `qa/mobile/shots/after-blur-none-pixel-7.png`.
 
-About a minute later the same tap started working with no second press. There is no segmentation-model fetch on this path. Blur is the canvas pipe. The minute is `HOLDOVER_MS` (60s): an away or still-connected peer who has not consented stays in the roster, so the feed stays at Min while the header already says you are ready. When that status ages out, the peer drops, the room consents, and clear video starts on its own.
+About a minute later the same tap started working with no second press. There is no segmentation-model fetch on this path. Blur is the canvas pipe. The minute is `HOLDOVER_MS` (60s): an away or still-connected peer who has not consented stays in the roster, so the feed stays at Min while the header already says you are ready. When that status ages out, the peer drops and clear video starts on its own. The control shows the choice the whole time. It does not wait for that minute.
 
-Repro: `test/mobile/blur-none-delay.js`. Sam is pocketed (away, 30s old, blur 1, camera on). The header is the ready sentence, the choice is 0, and the feed is still Min. No blur is pending: white, with a blue ring, not the solid black of clear video. Stamping that same status to 61s drops Sam. The feed goes clear and No blur becomes the solid choice, with no second tap. The failing run had no pending class (`sel true`, `wait false`) during the minute, then `feed 0` after it. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/blur-none-delay.js`.
+Repro: `test/mobile/blur-none-delay.js`. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/blur-none-delay.js`.
 
-Before: `qa/mobile/shots/before-blur-wait-pixel-7.png`. During the minute: `qa/mobile/shots/after-blur-wait-pixel-7.png` and `qa/mobile/shots/after-blur-wait-seg.png`. After the minute: `qa/mobile/shots/after-blur-clear-pixel-7.png` and `qa/mobile/shots/after-blur-clear-seg.png`.
+### 43. No blur stayed off Min while the camera was off
+
+The header said "No blur picked — turn your camera on to be ready for clear video." The segmented control did not. The wish was 0 and the feed stayed at Min, because clear video needs the camera. A white ring on No blur did not read as the selected choice, and this case never clears after a minute. The filled segment is the choice. The header says why the picture is still blurred.
+
+Repro: `test/mobile/blur-none-cam.js`. It failed (`No blur is not the selected segment (wait true)`, fill white), then passed. Min is not selected. No blur is the black selected segment. The feed stays Min. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/blur-none-cam.js`.
+
+Before: `qa/mobile/shots/before-blur-cam-pixel-7-seg.png`. After: `qa/mobile/shots/after-blur-cam-pixel-7-seg.png`.
+
+### 44. A bot was a tiny square
+
+Four people were in the header. The notes bot was a 72×72 stamp on the bottom right, on top of another face, so the room looked like three. A bot is packed with everyone else. The bot badge stays on the tile.
+
+Repro: `test/mobile/bot-tile.js`. It failed (`bot tile 72x72 beside 136; bot covers guest-3106`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/bot-tile.js`.
+
+Before: `qa/mobile/shots/before-bot-tile-pixel-7.png`. After: `qa/mobile/shots/after-bot-tile-pixel-7.png`.
+
+### 45. Captions on was a faint green
+
+In More, Captions selected was light green text on the gray button. The on-call Captions toggle is already blue with white text. The More button uses that same on state.
+
+Repro: `test/mobile/cc-on.js`. It failed (fill `rgb(232, 236, 241)`, word `rgb(156, 255, 180)`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/cc-on.js`.
+
+Before: `qa/mobile/shots/before-cc-on-pixel-7.png`. After: `qa/mobile/shots/after-cc-on-pixel-7.png`.
+
+### 46. Landscape More covered the header
+
+On a sideways phone wider than 700px the sheet skipped the short phone cap and started at y=24, over the header. It now stops under the header and above the dock, and the rest of the rows scroll inside that band.
+
+Repro: `test/mobile/more-land.js`. It failed (`sheet covers the header (top 24, chip 58)`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/more-land.js`.
+
+Before: `qa/mobile/shots/before-more-land-pixel-7.png`. After: `qa/mobile/shots/after-more-land-pixel-7.png`.
+
+### 47. The header cut the message off
+
+"No blur picked — turn your camera on…" and "4 in the meeting · 180p …" were one ellipsized line. A phone does not show the title tooltip. Tapping the line opens the whole message. The GifOS name stays the link home.
+
+Repro: `test/mobile/header-full.js`. It failed (`no full-message sheet`, and the line was truncated), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/header-full.js`.
+
+Before: `qa/mobile/shots/before-header-full-pixel-7.png`. After: `qa/mobile/shots/after-header-full-pixel-7.png`.
+
+Guest 3106 showing stepped away is the away chip: the peer has been away for 25 seconds (screen off or another app). The mark in this build is "⏾ stepped away".
 
 ## Open
 

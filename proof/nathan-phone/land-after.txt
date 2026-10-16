@@ -1,0 +1,3 @@
+PASS pixel-7-land {"top":58,"bottom":276,"left":59.5,"right":779.5,"h":218,"chipBottom":58,"barTop":294,"vh":412,"vw":839,"oy":"auto","scroll":438,"client":218}
+PASS wide-360 {"top":58,"bottom":224,"left":40,"right":760,"h":166,"chipBottom":58,"barTop":242,"vh":360,"vw":800,"oy":"auto","scroll":438,"client":166}
+PASS more landscape

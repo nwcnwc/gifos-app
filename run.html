@@ -1133,7 +1133,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #reshare-go { font-size: 1rem; line-height: 1.2; padding: .5rem .85rem; border-radius: .45rem; border: 0;
                 background: #2436d6; color: #fff; cursor: pointer; }
   #recbtn.on { border-color: #ff5c5c; color: #ff9c9c; }
-  #ccbtn.on { border-color: #5cff7b; color: #9cffb4; }
+  #ccbtn.on { background: #0064c8; color: #fff; border-color: transparent; }
   .trline { font-size: .82rem; padding: .15rem 0; overflow-wrap: anywhere; }
   .trline b { color: #7b9cff; margin-right: .35rem; }
   #trwrap { flex: 1; display: none; flex-direction: column; min-height: 0; }
@@ -1348,8 +1348,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: linear-gradient(135deg, #0071e3, #5856d6); -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent; color: transparent; }
   .topchip .status { color: #e7ebf2; font-size: 20px; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
-    min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    border: 0; background: transparent; padding: 0; font-family: inherit; font-weight: inherit;
+    text-align: left; cursor: pointer; appearance: none; -webkit-appearance: none; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
+  #status-full .name-box {
+    background: #fff; color: #1d1d1f; text-align: left;
+    width: min(22rem, calc(100vw - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+  }
+  #status-full .name-box p {
+    color: #1d1d1f; font-size: 1.05rem; line-height: 1.45; margin: 0 0 16px;
+    white-space: normal; overflow: visible; text-overflow: clip;
+  }
+  #status-full #status-full-close {
+    background: #0064c8; color: #fff; border: 0; min-height: 48px; min-width: 96px; font-size: 1rem;
+  }
   /* Alone on a phone, this replaces "Just you — send the invite…".
      Wide screens leave it hidden; the Meet desktop agent shows the same
      button when .topchip[data-invite="1"] and calls shareMeetingLink. */
@@ -1512,11 +1525,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore .seg { min-height: 48px; min-width: 48px; color: #1d1d1f; background: #fff; }
   .bar:not(.collapsed) .barmore .seg.sel,
   .bar:not(.collapsed) .barmore .seg[aria-pressed="true"] { background: #1d1d1f; color: #fff; }
-  /* Chosen, but the room is still at Min. Not the solid "clear video is on" fill. */
-  .bar:not(.collapsed) .barmore .seg.wait,
-  .bar:not(.collapsed) .barmore .seg.wait[aria-pressed="true"] {
-    background: #fff; color: #1d1d1f; box-shadow: inset 0 0 0 2px #0064c8;
-  }
   .bar .barmore .blab { display: block; font-size: 13px; font-weight: 700; margin-top: 2px; line-height: 1.1; }
   .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 122px; transform: translateX(-50%);
     display: flex; gap: 8px; background: rgba(255,255,255,.96); border-radius: 20px; padding: 10px;
@@ -1850,6 +1858,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-width: 700px) {
     .bar:not(.collapsed) .barmore { max-height: 9.25rem; }
   }
+  /* Sideways, a width over 700px skipped the phone cap and the sheet grew
+     up over the header (top 24, chip bottom 58). The sheet is anchored on
+     the dock, so a top edge would be measured from the dock, not the screen.
+     Cap the height to the band under the header instead. The rows scroll. */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .bar:not(.collapsed) .barmore {
+      max-height: calc(100dvh - 58px - 122px - 14px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+      min-height: 0;
+      overflow-y: auto;
+    }
+  }
   @media (min-width: 381px) {
     .bar { max-width: calc(100% - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
   }
@@ -1935,7 +1954,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <div class="topchip">
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
-    <span class="status" id="status">Joining…</span>
+    <button type="button" class="status" id="status" aria-expanded="false">Joining…</button>
     <button type="button" id="hdrinvite" hidden title="Copy the link or share it">Invite</button>
   </div>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
@@ -2427,6 +2446,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button id="left-close" style="margin-left:.5rem;background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
     </div>
   </div>
+  <div class="name-modal" id="status-full" style="display:none" aria-labelledby="status-full-text">
+    <div class="name-box">
+      <p id="status-full-text"></p>
+      <button type="button" id="status-full-close">Close</button>
+    </div>
+  </div>
   <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
     <div class="name-box">
       <h3 id="leave-ask-title">Leave the meeting?</h3>
@@ -2673,7 +2698,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (chip) delete chip.dataset.invite;
       const hdr = document.getElementById('hdrinvite');
       if (hdr) hdr.hidden = true;
+      paintStatusSheet();
     };
+    // The chip is one line. The title holds the whole sentence (a refusal,
+    // "No blur picked…", or "4 in the meeting · 180p …"). A tap opens it.
+    function statusMessage() {
+      const title = (statusEl.getAttribute('title') || '').trim();
+      const text = (statusEl.textContent || '').trim();
+      return (title && title.length >= text.length) ? title : (text || title);
+    }
+    function paintStatusSheet() {
+      const el = document.getElementById('status-full');
+      const p = document.getElementById('status-full-text');
+      if (!el || !p || el.style.display === 'none') return;
+      p.textContent = statusMessage();
+    }
+    function openStatusSheet() {
+      const el = document.getElementById('status-full');
+      const p = document.getElementById('status-full-text');
+      if (!el || !p) return;
+      p.textContent = statusMessage();
+      el.style.display = 'flex';
+      statusEl.setAttribute('aria-expanded', 'true');
+    }
+    function closeStatusSheet() {
+      const el = document.getElementById('status-full');
+      if (el) el.style.display = 'none';
+      statusEl.setAttribute('aria-expanded', 'false');
+    }
+    statusEl.addEventListener('click', (e) => { e.preventDefault(); openStatusSheet(); });
+    const statusFullClose = document.getElementById('status-full-close');
+    if (statusFullClose) statusFullClose.onclick = () => closeStatusSheet();
     const uid = (p) => p + '_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
     // The one standard row-delete glyph (see button.row-del in the styles).
     const DEL_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
@@ -6768,6 +6823,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (reachState && reachState !== 'partial') statusEl.classList.add('alert');
       if (statusEl.textContent !== statusShown) statusEl.textContent = statusShown;
       if (statusEl.title !== shownDetail) statusEl.title = shownDetail;
+      paintStatusSheet();
     }
     try {
       const hdrMq = window.matchMedia('(max-width: 700px), (max-height: 500px)');
@@ -21363,30 +21419,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const inCall = !(lob && lob.classList.contains('show'));
         showcamBtn.hidden = !inCall || muted || !myStatus.camOff;
       }
-      // The filled segment is the choice this person made. While a password
-      // room is still at Min (someone is not ready, including a pocketed
-      // phone held for up to a minute), No blur stays chosen but pending.
-      // Painting the feed level snapped it back to Min. Painting a solid
-      // selection made it look finished while the header said you were only
-      // ready. The holdover expiring is what used to make No blur "start
-      // working" with no second tap.
+      // The filled segment is the choice this person made. The feed can
+      // still be Min: the camera is off, or someone else is not ready.
+      // Painting that feed level left Min selected while the header said
+      // "No blur picked". The header says why clear video is not on yet.
       const lvl = blurLevel(myStatus.blur);
-      let feed = lvl;
-      try {
-        if (typeof blurLevelFor === 'function') {
-          const eff = blurLevelFor('me');
-          if (typeof eff === 'number') feed = blurLevel(eff);
-        }
-      } catch (e) {}
-      const pending = lvl === 0 && feed > 0;
       for (const seg of blurSegs) {
         const segOn = +seg.dataset.blur === lvl;
-        const wait = pending && segOn;
-        seg.classList.toggle('wait', wait);
-        seg.classList.toggle('sel', segOn && !wait);
+        seg.classList.remove('wait');
+        seg.classList.toggle('sel', segOn);
         seg.setAttribute('aria-pressed', segOn ? 'true' : 'false');
-        if (wait) seg.title = 'Chosen. Clear video shows when everyone here is ready.';
-        else if (seg.title === 'Chosen. Clear video shows when everyone here is ready.') seg.title = '';
+        if (seg.title === 'Chosen. Clear video shows when everyone here is ready.') seg.title = '';
       }
       paintShare();
     }
@@ -24656,10 +24699,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const st = { muted: true, camOff: true, blur: 0, at: t, rx: t };
         if (extra && typeof extra === 'object') {
           if (extra.away) st.away = true;
+          if (extra.bot) st.bot = true;
           if (typeof extra.blur === 'number') st.blur = extra.blur;
           if (extra.camOff === false) st.camOff = false;
         }
         statusOf.set(id, st);
+        if (st.bot) {
+          try { updateTile(id); } catch (e) {}
+          try { layout(); } catch (e) {}
+        }
         return statusOf.has(id);
       },
       // SCALE FAULT INJECTION (scale audit V2/V3, test/browser/e2e-status-map.js):

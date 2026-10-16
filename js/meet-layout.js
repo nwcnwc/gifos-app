@@ -195,28 +195,14 @@
     const modeIn = opts.mode || 'gallery';
     const mode = modeIn === 'auto' ? 'gallery' : modeIn;
     // Input order, not hand/stage rank. A raised hand is a badge. Self is
-    // pulled to the front by the packer. Bots are a small corner tile.
-    const ordered = opts.tiles || [];
-    const bots = ordered.filter((t) => t.bot);
-    const tiles = ordered.filter((t) => !t.bot);
-    function withBots(g) {
-      if (!g || !bots.length) return g;
-      const bw = phone ? 72 : 96;
-      const bh = 72;
-      const extra = bots.map((b, i) => ({
-        id: b.id, tier: 'bot',
-        x: box.x + Math.max(0, box.w - bw),
-        y: Math.max(box.y, box.y + box.h - bh - i * bh),
-        w: Math.min(bw, box.w), h: Math.min(bh, box.h),
-      }));
-      g.rects = (g.rects || []).concat(extra);
-      return g;
-    }
+    // pulled to the front by the packer. A bot is a person in that same
+    // grid. The bot badge is painted on the tile, not a smaller box.
+    const tiles = opts.tiles || [];
     if (!Pack) {
       const g = galleryIn(tiles, box, phone ? 3 / 4 : 16 / 10, phone);
       g.mode = mode;
       g.box = box;
-      return withBots(g);
+      return g;
     }
     const onStage = (t) => (t.tier === 'stage' || !!t.stage) && (opts.swapSelf || !t.me);
     let stage = [];
@@ -262,7 +248,7 @@
     } else if (out.tooSmall && opts.gallery !== 'scroll') {
       band = { text: 'faces tiny · Scroll is in ▦', x: box.x + 6, y: box.y + 6 };
     }
-    return withBots({
+    return {
       mode: mode,
       rects: rects,
       crowd: false,
@@ -272,7 +258,7 @@
       stage: out.regions && out.regions.stage || null,
       contentH: out.contentH || box.h,
       tooSmall: !!out.tooSmall,
-    });
+    };
   }
 
   // Slice a stadium composite into per-face crops. cellCrop refuses a frame

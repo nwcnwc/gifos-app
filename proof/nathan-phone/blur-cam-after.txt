@@ -1,0 +1,1 @@
+PASS blur none camera off

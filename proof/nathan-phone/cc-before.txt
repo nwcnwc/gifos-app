@@ -1,0 +1,2 @@
+FAIL Captions fill rgb(232, 236, 241); Captions word rgb(156, 255, 180); Captions fill does not match the on-call toggle (rgb(0, 100, 200))
+{"on":true,"text":"Captions","bg":"rgb(232, 236, 241)","color":"rgb(156, 255, 180)","callBg":"rgb(0, 100, 200)","callColor":"rgb(255, 255, 255)"}

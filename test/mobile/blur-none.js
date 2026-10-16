@@ -82,8 +82,7 @@ const ROOM = 'clear-ready';
     const none = el('blur-none');
     return {
       min: on('blur-min'),
-      none: none.classList.contains('sel') || none.classList.contains('wait'),
-      pending: none.classList.contains('wait'),
+      none: none.classList.contains('sel'),
       max: on('blur-max'),
       wish: api.myBlur(),
       feed: api.blurClassOf('me'),
@@ -103,7 +102,6 @@ const ROOM = 'clear-ready';
   if (info.status.indexOf('ready for clear video') < 0) bad.push('header "' + info.status + '"');
   if (info.feed !== 1) bad.push('feed blur ' + info.feed + ' (room should stay Min until Sam is ready)');
   if (!info.none || info.min) bad.push('No blur did not stay selected (min ' + info.min + ', none ' + info.none + ')');
-  if (info.feed > 0 && !info.pending) bad.push('No blur looks finished while the feed is still Min');
   const shot = bad.length ? 'before-blur-none-pixel-7.png' : 'after-blur-none-pixel-7.png';
   await page.screenshot({ path: path.join(SHOTS, shot) });
   await context.close();
