@@ -7393,23 +7393,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!linkTo(pid)) return; // the sweeper retires unwanted links, with grace
       let p = peers.get(pid);
       if (!p) {
-        // THE NEWCOMER DIALS (2026-08-02, the ghost-churn join wedge). The
-        // id-order rule ("higher id offers") assumes BOTH sides know the pair
-        // exists — but a just-seated newcomer's CLAIM/HELLO are DC-only and
-        // its neighbours may not learn its seat for many beats, so when the
-        // id-order pointed at the side that had never heard of us, nobody
-        // dialled and the pair sat half-open until the 12s starve watchdog
-        // (measured: owner occ=1 forever, guest CLAIM/HELLO/PHONE all
-        // dropped). A seat with NO open DataChannel at all is still ARRIVING:
-        // it dials every neighbour its PLACE taught it, id order be damned —
-        // it is the one node guaranteed to know the pair should exist, and
-        // the offer rides the sanctioned first-contact signaling path.
-        // Perfect negotiation (the glare rollback in onSignal) absorbs the
-        // rare double-dial; id order governs everything after first wiring.
-        // (A bootstrap channel to a greeter that is not one of my links does
-        // not count: it is the door I came in by, not a wired seat.)
-        let anyDc = false; for (const q of peers.values()) if (q.dc && q.dc.readyState === 'open' && linkTo(q.id)) { anyDc = true; break; }
-        if (iInitiate(pid) || !anyDc) { sendOffer(pid, false); p = peers.get(pid); }
+        // THE INITIATOR DIALS. Both sides used to offer when the caller had
+        // no open channel yet: a just-seated newcomer offered every neighbour
+        // it knew, because the other side may not have learned the seat, and
+        // the pair then starved at 12s. The two birth offers crossed, and
+        // onSignal rolled the polite one back. Chromium does not survive
+        // that rollback of a pc's first offer: the remote mic stays muted and
+        // the channel closes a second later (e2e-sixth-audio). The
+        // non-initiator asks (askDial) so the initiator is the only side
+        // that offers. A greeter door is not a wired seat and is not handled
+        // here.
+        if (iInitiate(pid)) { sendOffer(pid, false); p = peers.get(pid); }
         else {
           p = makePeer(pid, name); // their offer is on its way...
           // ...IF they know the pair exists. The mesh may have named this
