@@ -1497,6 +1497,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     overscroll-behavior: contain;
     pointer-events: auto;
   }
+  /* Chat used to run under the dock (z-index 30 vs 32), so the field could
+     not be tapped. End the panel at the dock, and again above the keyboard. */
+  #chatpanel.open { top: 0; bottom: calc(var(--dockh, 108px) + var(--kb, 0px)); }
+  #chat-in { min-height: 44px; }
+  #chatclose, #cattach, #chatform button[type=submit] { min-width: 44px; min-height: 44px; }
 </style>
 <script src="js/gifos-themes.js"></script>
 </head>
@@ -13306,7 +13311,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       chatPanel.classList.toggle('open');
       // renderChat skips while the transcript tab is shown, and the transcript
       // is not painted while the panel is closed: paint the tab that shows.
-      if (chatPanel.classList.contains('open')) { unread = 0; chatBtn.textContent = 'Chat'; if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles(); }
+      if (chatPanel.classList.contains('open')) {
+        unread = 0; chatBtn.textContent = 'Chat';
+        // The More sheet floats over the composer. Fold it so the field is the next tap.
+        const barEl = document.querySelector('.bar');
+        const toggle = document.getElementById('bartoggle');
+        if (barEl) barEl.classList.add('collapsed');
+        if (toggle) { toggle.setAttribute('aria-expanded', 'false'); toggle.setAttribute('aria-label', 'More'); toggle.title = 'More'; }
+        if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles();
+        const inp = document.getElementById('chat-in');
+        if (inp && inp.focus) inp.focus();
+      }
     };
     document.getElementById('chatclose').onclick = () => chatPanel.classList.remove('open');
 
@@ -20204,11 +20219,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The dock sits at the bottom, so a panel that used to clear a top bar
       // starts at the top of the page instead.
       const setBarH = () => {
-        try { document.documentElement.style.setProperty('--barh', '0px'); } catch (e) {}
+        try {
+          document.documentElement.style.setProperty('--barh', '0px');
+          const r = bar.getBoundingClientRect();
+          const dock = Math.max(0, Math.round(window.innerHeight - r.top));
+          document.documentElement.style.setProperty('--dockh', dock + 'px');
+        } catch (e) {}
+      };
+      // iOS keeps the layout viewport tall and overlays the keyboard.
+      // visualViewport is the part still visible. --kb is that covered band.
+      const syncKb = () => {
+        try {
+          const vv = window.visualViewport;
+          const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
+          document.documentElement.style.setProperty('--kb', kb + 'px');
+        } catch (e) {}
       };
       if (window.ResizeObserver) { try { new ResizeObserver(setBarH).observe(bar); } catch (e) {} }
-      window.addEventListener('resize', setBarH);
+      window.addEventListener('resize', () => { setBarH(); syncKb(); });
+      if (window.visualViewport) {
+        visualViewport.addEventListener('resize', () => { setBarH(); syncKb(); });
+        visualViewport.addEventListener('scroll', syncKb);
+      }
       setBarH();
+      syncKb();
     })();
 
     (function () {

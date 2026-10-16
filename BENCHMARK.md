@@ -8,7 +8,7 @@ Out of scope for this branch, so they are not scored as wins or losses here: the
 
 ## Where they still beat us
 
-- Zoom, Meet, Teams, FaceTime: hang-up was off screen at 320px and 360px. That row now fits. The landscape More sheet now scrolls. They still beat us on chat, which sits under the dock.
+- Zoom, Meet, Teams, FaceTime: hang-up was off screen at 320px and 360px. That row now fits. The landscape More sheet scrolls. Chat now sits above the dock and above a keyboard band. They still beat us on the lobby (Join below the fold on an SE), on 200% control labels, and on safe areas.
 - Meet and Teams: the overflow menu scrolls inside the screen in landscape. Ours draws Password above the top edge and does not scroll.
 - iMessage, Meet, Teams: the composer stays above the keyboard and above the call controls. Ours is underneath the dock, and a tap never lands.
 - FaceTime and church volunteer panels: primary targets are at least 44px. Our move-grip is 22px wide and Fit is 32px tall. Chat's close control is 23px.
@@ -27,9 +27,9 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 | --- | --- | --- |
 | End the call, mute, camera, on a 360px phone | 7 | Hang up, mute, and camera fit and are at least 44px. Fit is still 32px tall. |
 | Host: password, record, captions, stage, in landscape | 6 | Those controls scroll into view on SE, iPhone 15, Pixel 7, and 360px landscape. The captions control still says CC. |
-| Chat or check names without losing the controls | 2 | Composer is under the dock. |
+| Chat or check names without losing the controls | 7 | The field taps, sits above the dock, and lifts for a keyboard band. Close and Send are 44px. |
 | Looks trustworthy (nothing cut off, type scales) | 4 | Fine on iPhone 15 and Pixel 7 portrait. Fails the small phone. |
-| **Audience** | **5** | Hang up is on screen and landscape host tools scroll. Still behind Zoom, Meet, and Teams on chat and on the word Captions. |
+| **Audience** | **6** | Hang up, landscape host tools, and chat work on a phone. Still behind Zoom, Meet, and Teams on Captions as a word, 200% labels, and the home-indicator inset. |
 
 ## Church
 
@@ -51,11 +51,12 @@ Family and friends. Warm, few steps, a texted link.
 | --- | --- | --- |
 | Open a texted link and pick a name | 7 | The name dialog shows, the field is 48px, Continue works. |
 | See everyone and hang up on a small phone | 6 | Faces paint. Hang up fits on SE and 360px. |
-| Send a chat line | 2 | The field is under the dock. |
-| Turn the phone sideways | 6 | Invite and Password scroll into the More sheet. Chat is still under the dock. |
-| **Audience** | **5** | The link, the name step, hang up, and landscape More are in good shape. Chat is still behind FaceTime. |
+| Send a chat line | 7 | The field is above the dock, 44px, and lifts when the keyboard band is set. |
+| Turn the phone sideways | 6 | Invite and Password scroll into the More sheet. |
+| **Audience** | **6** | The link, the name step, hang up, landscape More, and chat are in good shape. Join on a small lobby screen is still behind FaceTime. |
 
 ## Cycle
 
 1. Dock fit on a narrow phone. `test/mobile/dock-fits.js` failed, then passed. Corporate 3→4, church 3→4, personal 4→5.
-2. Landscape More sheet scrolls. `test/mobile/more-sheet-fits.js` failed, then passed. Corporate 4→5, church 4→5. Personal stays 5 because chat is still blocked. Nobody leads yet. Next: the chat composer under the dock.
+2. Landscape More sheet scrolls. `test/mobile/more-sheet-fits.js` failed, then passed. Corporate 4→5, church 4→5.
+3. Chat composer clears the dock and a keyboard band. `test/mobile/chat-above-dock.js` failed, then passed. Corporate 5→6, personal 5→6. Church stays 5. Nobody leads yet. Next: Join below the fold on the iPhone SE lobby.

@@ -31,9 +31,11 @@ Before: `qa/mobile/shots/before-host-more-land.png`. After: `qa/mobile/shots/aft
 
 ### 3. Chat composer sits under the dock
 
-iPhone SE portrait. Chat is a full-width panel (`z-index: 30`) pinned to `bottom: 0`. The dock is `z-index: 32` and covers y=466–554. The message field occupies y=526–560, so the dock eats it. Playwright's tap on `#chat-in` times out: "div.bar intercepts pointer events". Send is 34px tall. Close is 23px tall. Setting `--kb` does nothing today; the page never reads the visual viewport, so a soft keyboard covers the field a second time on iOS (Chrome's `interactive-widget=resizes-content` is not what Safari does).
+iPhone SE portrait. Chat was a full-width panel (`z-index: 30`) pinned to `bottom: 0`. The dock is `z-index: 32` and covered y=466–554. The message field occupied y=526–560. Playwright's tap on `#chat-in` timed out: "div.bar intercepts pointer events". Send was 34px tall. Close was 23px. Attach was 41×34. The More sheet stayed open over the panel. `--kb` was ignored.
 
-Shot: `qa/mobile/shots/before-chat-dock.png`.
+Repro: `test/mobile/chat-above-dock.js`. It failed on the tap, the sizes, the open sheet, and a 240px keyboard. It passes now. Opening chat folds More. The panel ends at `--dockh` (measured from the top of the dock) plus `--kb` from `visualViewport`. Close, attach, the field, and Send are at least 44px. On the SE the field bottom is y=474 and the dock starts at y=482.
+
+Before: `qa/mobile/shots/before-chat-dock.png`. After: `qa/mobile/shots/after-chat-keyboard.png` (keyboard band set to 240px).
 
 ### 4. Lobby hides Join on a small phone
 
