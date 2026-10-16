@@ -134,6 +134,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** the slide is painted as soon as the capture starts, without waiting for a mesh seat. Stop sharing is a red button on the slide (16px, 40px tall). Tapping it clears the slide and the More row says Share screen again. The sheet and the More path are unchanged.
 - **Proof:** the test passes on Chromium and Firefox. The slide was on screen in about 60ms, 1262×458, object-fit contain, above the dock. Screenshots: `test/desktop/shots/share-before-sheet-1280.png`, `test/desktop/shots/share-after-live-1280.png`.
 
+### A client could not read whose screen was on stage
+
+- **Who hits it:** someone presenting a deck, and everyone looking at that stage.
+- **What you saw:** the line on the slide said “Your screen — on stage” at 10px. The share step’s title was 19px and Choose what to share was 13px, under a 13px note about Run app.
+- **Repro:** `test/desktop/share-demo.spec.js` requires the stage line and the Choose button at 16px, and the title at 22px or more.
+- **Fix:** the stage line is 16px. The share step title is 24px, the app note is 16px, and Choose what to share is 16px on the blue button. Stop sharing is unchanged. The path is still More, then the sheet, then the picker.
+- **Proof:** the test passes on Chromium and Firefox. WebKit skips the canvas capture. Screenshots: `test/desktop/shots/share-sheet-before-1280.png`, `test/desktop/shots/share-sheet-after-1280.png`, `test/desktop/shots/share-label-before-1280.png`, `test/desktop/shots/share-label-after-1280.png`.
+
 ### The host roster could mute, and nothing else
 
 - **Who hits it:** a host of a large room, looking for a waiting room, a rename, and a way to put one person in front.
@@ -214,4 +222,4 @@ Who, Share, and Vote follow a German or Spanish device. The password sheet, the 
 
 ### Not yet walked end to end
 
-Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. The path is still More, then the sheet, then the picker. A broadcast says off air and on air, and the booth has an order of service. During Song the booth has Program and Preview. Those words stay on this computer. They are not on the outgoing picture. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, and Vote follow German and Spanish. Password, Invite, and Run app stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back. A camera that stays live and sends black still waits on the watchdog.
+Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. The stage says whose screen it is, at 16px. The path is still More, then the sheet, then the picker. A broadcast says off air and on air, and the booth has an order of service. During Song the booth has Program and Preview. Those words stay on this computer. They are not on the outgoing picture. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, and Vote follow German and Spanish. Password, Invite, and Run app stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back. A camera that stays live and sends black still waits on the watchdog.

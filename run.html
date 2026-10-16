@@ -665,6 +665,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .rowtile .rlabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 6px;
     font-size: .65rem; color: var(--text, #e0e0f0); background: rgba(10,10,15,.7);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* A shared screen's pixels do not say whose window this is. The line on
+     the slide does, large enough to read while you are presenting. */
+  #stagefeed .rlabel.sharelabel { font: 700 16px/1.3 system-ui, sans-serif; padding: 8px 14px; color: #fff; }
   /* On stage: the tile floats first and wears the accent — the whole room's
      eye line. The four-bus mix panel is a personal knob rack (receiver-side
      volume only — as ungovernable as any volume knob); the section and
@@ -885,6 +888,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      lands at near-zero contrast and the popup is illegible. */
   .voteopt small { display: block; color: var(--text, #e0e0f0); opacity: .72; font-size: .78rem; margin-top: .15rem; }
   #who-modal .who-lead, #share-modal .share-body, #vote-modal .vote-lead { font-size: 16px; line-height: 1.4; color: #1d1d1f; }
+  #share-modal h3 { font-size: 24px; line-height: 1.2; color: #1d1d1f; }
+  #share-modal .share-note { font-size: 16px; line-height: 1.4; }
+  #share-modal #share-go { font: 700 16px/1.2 system-ui, sans-serif; }
   #vote-modal .voteopt { font-size: 16px; }
   #vote-modal .voteopt small { font-size: 15px; opacity: .85; }
   /* FULLSCREEN VIEW: one feed big + every other live feed as floating thumbs
@@ -17169,6 +17175,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         lbEl.textContent = shr.length
           ? '🖥 ' + shr.map((id) => (id === myId ? 'Your' : ((rosterNames[id] || (peers.get(id) || {}).name || 'A guest') + '’s'))).join(' & ') + ' screen — on stage'
           : 'On stage';
+        lbEl.classList.toggle('sharelabel', shr.length > 0);
       }
       // STOP ON THE SLIDE. The More row also says Stop sharing, and the
       // thumbnail has a small chip, but a client demo is looking at the

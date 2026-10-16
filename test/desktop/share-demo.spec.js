@@ -35,6 +35,19 @@ test('a consultant can put a slide on the stage and stop it', async ({ page, bro
   await page.click('#sharebtn');
   await expect(page.locator('#share-modal')).toBeVisible();
   await expect(page.locator('#share-go')).toHaveText('Choose what to share…');
+  const sheet = await page.evaluate(() => {
+    const go = document.getElementById('share-go');
+    const title = document.querySelector('#share-modal h3');
+    const note = document.getElementById('share-appnote');
+    return {
+      go: parseFloat(getComputedStyle(go).fontSize),
+      title: parseFloat(getComputedStyle(title).fontSize),
+      note: parseFloat(getComputedStyle(note).fontSize),
+    };
+  });
+  expect(sheet.go).toBeGreaterThanOrEqual(16);
+  expect(sheet.title).toBeGreaterThanOrEqual(22);
+  expect(sheet.note).toBeGreaterThanOrEqual(16);
   await armSlide(page);
   await page.click('#share-go');
   const stage = page.locator('#stagefeed video');
@@ -63,6 +76,15 @@ test('a consultant can put a slide on the stage and stop it', async ({ page, bro
       stopInSlide: !!(sr && sr.left >= vr.left - 1 && sr.right <= vr.right + 1 && sr.top >= vr.top - 1 && sr.bottom <= vr.bottom + 1),
       stopCoversDock: overlap(sr, dock),
       fit: getComputedStyle(v).objectFit,
+      label: (document.querySelector('#stagefeed .rlabel') || {}).textContent || '',
+      labelFont: (() => {
+        const el = document.querySelector('#stagefeed .rlabel');
+        return el ? parseFloat(getComputedStyle(el).fontSize) : 0;
+      })(),
+      labelClip: (() => {
+        const el = document.querySelector('#stagefeed .rlabel');
+        return el ? el.scrollWidth > el.clientWidth + 1 : true;
+      })(),
     };
   });
   expect(fit.vw).toBeGreaterThanOrEqual(640);
@@ -75,6 +97,9 @@ test('a consultant can put a slide on the stage and stop it', async ({ page, bro
   expect(fit.stopOn).toBe(true);
   expect(fit.stopInSlide).toBe(true);
   expect(fit.stopCoversDock).toBe(false);
+  expect(fit.label).toContain('Your screen');
+  expect(fit.labelFont).toBeGreaterThanOrEqual(16);
+  expect(fit.labelClip).toBe(false);
 
   await page.click('#stagefeed .stagestop');
   await expect(page.locator('#stagefeed video')).toHaveCount(0);

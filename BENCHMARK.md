@@ -27,7 +27,7 @@ Polished, efficient, trustworthy. Best of the field today: Zoom and Meet, about 
 | Trust (no account, private media, quiet join) | 9 | Ahead of Zoom, Meet, and Teams |
 | Visual polish | 7 | Dock is calm and the primary controls are labeled. Chat no longer slides under it |
 | Efficiency (keyboard, few clicks) | 6 | Alt+A / V / C / Q, and Tab reaches Mute on a tile. Share, hand, and view still need the pointer. Chat is still two clicks with the mouse |
-| Presenting | 6 | A slide fills the stage and Stop sharing sits on it. Share is still More, then a sheet, then the picker |
+| Presenting | 6 | A slide fills the stage, Stop sharing sits on it, and the stage says whose screen it is at 16px. Share is still More, then a sheet, then the picker |
 | Large-room host | 8.5 | Mute, a waiting room, rename, and spotlight sit on the roster. Someone waiting is off the wall until Admit. The lobby does not yet cut every audio path, so this is not a 9 |
 | **Audience** | **7.3** | Does not lead |
 
@@ -57,4 +57,4 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 
 ## This cycle
 
-During Song the booth reads the current line large and the next line smaller (see QUIRKS.md). Service 7 → 7.5. Church audience 7.0 → 7.1. The words are on this computer only, not on the outgoing picture and not on the other booth, so service is not an 8 and we do not lead a church desk (~8). Corporate stays 7.3. Personal stays 7.6. Still behind Zoom and Meet (~8) and FaceTime (~9). We do not lead. Blur for all on each tile is a 64px square, 12px in from the corner, the same rule as the phone build. The join step says Save and Clear. Save keeps the name and picture and stays the solid button. Clear blanks both and stays the outline. Scores stay where they are.
+During Song the booth reads the current line large and the next line smaller (see QUIRKS.md). Service 7 → 7.5. Church audience 7.0 → 7.1. The words are on this computer only, not on the outgoing picture and not on the other booth, so service is not an 8 and we do not lead a church desk (~8). Corporate stays 7.3. Personal stays 7.6. Still behind Zoom and Meet (~8) and FaceTime (~9). We do not lead. Blur for all on each tile is a 64px square, 12px in from the corner, the same rule as the phone build. The join step says Save and Clear. A client share now says whose screen is on stage, at 16px, and the share step’s title and Choose button are readable. The path is still More, then the sheet, then the picker, so presenting stays 6.
