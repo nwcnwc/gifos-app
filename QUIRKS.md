@@ -6,6 +6,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 
 ## Fixed
 
+### Chat took two clicks
+
+- **Who hits it:** anyone who wants the conversation, on a mouse, the way Zoom, Meet, and Teams put Chat on the main bar.
+- **What you saw:** Chat lived under More. The dock had no Chat button, so the panel took two clicks. Alt+C already opened it.
+- **Repro:** `test/desktop/chat-dock.spec.js` — “chat opens from the dock in one click” failed before the move (`#chatbtn` was inside More and had no size while the bar was collapsed).
+- **Fix:** Chat sits on the dock, with the word on the button. One click opens the panel and turns the button blue. Closing it clears that blue. A new message while the panel is shut shows the count on the word, not by replacing the icon. More no longer has a second Chat button.
+- **Proof:** the chat and dock tests pass on Chromium, Firefox, and WebKit, including a 900px window where Camera, Chat, and Leave all stay on screen. Screenshots: `test/desktop/shots/chat-one-before-1280.png`, `test/desktop/shots/chat-one-after-1280.png`, `test/desktop/shots/chat-one-open-1280.png`.
+
 ### CC started transcription and hid who was writing it on the tile
 
 - **Who hits it:** anyone who wanted the words of the meeting, and anyone looking at a face that said “transcribing”.
@@ -320,7 +328,7 @@ With no saved confirmation for this session, joining shows how you will appear: 
 
 ### More sheet is a dense grid of mixed labels
 
-Who, Invite, Hand, and Chat sit under People. Vote, Password, Stage, Record, Captions, and Settings sit under Room. Captions is also on the dock. Run app is under Share. Keys and Help are under Help. Host tools stay hidden until there is a host. “Turn video off” matches the other labels. The list is still long.
+Who, Invite, and Hand sit under People. Chat is on the dock. Vote, Password, Stage, Record, Captions, and Settings sit under Room. Captions is also on the dock. Run app is under Share. Keys and Help are under Help. Host tools stay hidden until there is a host. “Turn video off” matches the other labels. The list is still long.
 
 ### Run app is still English
 

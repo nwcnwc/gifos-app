@@ -45,6 +45,47 @@ async function composerState(page) {
   });
 }
 
+test('chat opens from the dock in one click', async ({ page }) => {
+  await boot(page, 1280, 720);
+  const btn = page.locator('#chatbtn');
+  await expect(btn).toBeVisible();
+  const place = await page.evaluate(() => {
+    const b = document.getElementById('chatbtn');
+    const bar = document.querySelector('.bar');
+    const box = b.getBoundingClientRect();
+    const word = b.querySelector('.dockword');
+    return {
+      inMore: !!b.closest('#barmore'),
+      collapsed: bar.classList.contains('collapsed'),
+      onScreen: box.left >= -1 && box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1,
+      word: word ? word.textContent.trim() : '',
+    };
+  });
+  expect(place.inMore).toBe(false);
+  expect(place.collapsed).toBe(true);
+  expect(place.onScreen).toBe(true);
+  expect(place.word).toBe('Chat');
+  await btn.click();
+  await expect(page.locator('#chatpanel.open')).toBeVisible();
+  expect(await page.evaluate(() => document.querySelector('.bar').classList.contains('collapsed'))).toBe(true);
+  const on = await btn.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(on).toBe('rgb(0, 100, 200)');
+  await page.setViewportSize({ width: 900, height: 720 });
+  await page.waitForTimeout(200);
+  const fit = await page.evaluate(() => {
+    const ids = ['cam', 'chatbtn', 'leavebtn'];
+    const out = {};
+    for (const id of ids) {
+      const b = document.getElementById(id).getBoundingClientRect();
+      out[id] = b.left >= -1 && b.right <= window.innerWidth + 1 && b.bottom <= window.innerHeight + 1;
+    }
+    return out;
+  });
+  expect(fit.cam).toBe(true);
+  expect(fit.chatbtn).toBe(true);
+  expect(fit.leavebtn).toBe(true);
+});
+
 test('chat composer clears the dock in a narrow window', async ({ page }) => {
   await boot(page, 900, 720);
   await openChat(page);
