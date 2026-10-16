@@ -1310,11 +1310,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     max-width: calc(100% - 16px - var(--inset-left, 0px) - var(--inset-right, 0px)); padding: 0 16px 0 18px; margin: 0;
     background: rgba(255,255,255,.94); border: 0; border-radius: 32px;
     box-shadow: 0 10px 30px rgba(0,0,0,.28); overflow: visible; }
-  .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+  .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
     width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
     background: #e8ecf1; color: #1d1d1f; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
   }
-  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 34px; height: 34px; }
+  .bar #flipcam { display: none; }
+  body.has-flip .bar #flipcam { display: inline-flex; }
+  .bar #cam svg, .bar #flipcam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 34px; height: 34px; }
   .bar #mic.iconbtn, .bar #cam.iconbtn { color: #1d1d1f; border-color: transparent; }
   .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { color: #9f1239; border-color: transparent; background: #e8ecf1; }
   .bar #reactbtn.on, .bar #bartoggle[aria-expanded="true"] { background: #0064c8; color: #fff; }
@@ -1389,9 +1391,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .topchip .title { font-size: 20px; }
     .topchip .status { font-size: 1.0625rem; }
     .bar { height: 88px; gap: 8px; padding: 0 10px; }
-    .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+    .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
-    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
+    .bar #cam svg, .bar #flipcam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
+    /* Flip joins the dock on a phone. Five 56px controls plus Leave do not fit,
+       so the grip steps aside and the targets stay at 44px. */
+    body.has-flip .bar #bargrip { display: none; }
+    body.has-flip .bar { gap: 4px; }
+    body.has-flip .bar #cam, body.has-flip .bar #flipcam, body.has-flip .bar #mic,
+    body.has-flip .bar #reactbtn, body.has-flip .bar #bartoggle {
+      width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+    body.has-flip .bar #cam svg, body.has-flip .bar #flipcam svg, body.has-flip .bar #mic svg,
+    body.has-flip .bar #reactbtn svg, body.has-flip .bar #bartoggle svg, body.has-flip .bar #leavebtn svg {
+      width: 22px; height: 22px; }
+    body.has-flip .bar #leavebtn {
+      width: 48px; height: 48px; min-width: 48px; min-height: 48px; margin-left: 2px; }
     .bar #bargrip { height: 40px; width: 18px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
     .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px);
@@ -1600,6 +1614,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <rect x="2" y="6" width="13" height="12" rx="2"/><path d="M15 10.5 22 7v10l-7-3.5"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
     </button>
+    <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
+        <path d="M4 16a8 8 0 0 0 14.9 2"/><polyline points="19 22 19 18 15 18"/></svg>
+    </button>
     <button id="mic" class="iconbtn off" aria-label="Microphone" title="Your mic">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
@@ -1624,12 +1643,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       </span>
     </span>
     <button type="button" id="whobtn" title="Who is on this meeting — names and internet addresses">Who</button>
-    <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
-        <path d="M4 16a8 8 0 0 0 14.9 2"/><polyline points="19 22 19 18 15 18"/></svg>
-      <span class="blab">Flip</span>
-    </button>
     <button id="pipbtn" class="iconbtn" aria-label="Float the meeting" title="Float the meeting in a mini window — it stays on screen while you use other apps" style="display:none">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
@@ -10672,16 +10685,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return { width: { ideal: m ? m.w : 1280 }, height: { ideal: m ? m.h : 720 }, facingMode: { ideal: camFacing } };
     };
     let flipChecked = false;
+    function showFlipButton() {
+      document.body.classList.add('has-flip');
+      const b = document.getElementById('flipcam');
+      if (b) b.style.display = '';
+    }
+    // A phone should offer flip before the camera permission dialog. Desktops
+    // still wait until enumerateDevices reports a second camera.
+    function phoneWantsFlip() {
+      try {
+        return window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(max-width: 900px)').matches;
+      } catch (e) { return false; }
+    }
     function maybeShowFlip() {
+      if (phoneWantsFlip()) showFlipButton();
       if (flipChecked || !localStream || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
       flipChecked = true; // device labels are readable now that a stream was granted
       navigator.mediaDevices.enumerateDevices().then((ds) => {
-        if (ds.filter((d) => d.kind === 'videoinput').length > 1) {
-          const b = document.getElementById('flipcam');
-          if (b) b.style.display = '';
-        }
+        if (ds.filter((d) => d.kind === 'videoinput').length > 1) showFlipButton();
       }).catch(() => {});
     }
+    maybeShowFlip();
     // If the tab was backgrounded long enough for the OS to kill the camera,
     // grab it again and swap the fresh tracks into every live link.
     function reviveCamera() {

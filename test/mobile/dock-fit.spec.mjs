@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 // The call dock must keep every primary control inside the screen, at a
 // 44px touch size. On a 320px and a 360px phone, Leave used to draw past
 // the right edge (right edge 374).
-const IDS = ['cam', 'mic', 'reactbtn', 'bartoggle', 'leavebtn'];
+const IDS = ['cam', 'flipcam', 'mic', 'reactbtn', 'bartoggle', 'leavebtn'];
 
 test('primary call controls stay on screen', async ({ page }) => {
   await page.goto('/run.html#v=sundayroom', { waitUntil: 'domcontentloaded' });

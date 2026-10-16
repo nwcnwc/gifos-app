@@ -10,12 +10,6 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Open
 
-### Q5b. Flip camera stays hidden until two cameras are enumerated
-
-`#flipcam` is `display: none` until `enumerateDevices` reports more than one video input. A phone host does not get a flip control up front, including mid-service when they rotate the handset. Camera and mic stay hidden for a broadcast viewer, which is intended.
-
-Before: `test/mobile/screenshots/before/iphone-se-portrait-host.png`.
-
 ### Q9. First-visit name and avatar are a Guest number and a letter
 
 A first visit is stored as `Guest` plus four digits so the room can connect, and the camera-off tile is that letter on a flat color. The lobby preview says “You” until a name exists. Settings can change both later. This is on the list after the phone-layout gaps. Not the next fix.
@@ -47,6 +41,13 @@ After: `test/mobile/screenshots/after/iphone-se-meeting-chat.png`.
 ### Q8. Chat header spent a third of a short screen
 
 `#chathead` wrapped the title, the privacy sentence, Transcript, and close into about 110px on iPhone SE. On a phone the sentence is now clipped for sighted layout and kept for screen readers, and Transcript / close are 44px. That was required for Q2: the tall header pushed Send under the dock once the keyboard opened.
+
+### Q5b. Flip was hidden until a second camera was enumerated
+
+`#flipcam` lived in More and stayed `display: none` until `enumerateDevices` reported two video inputs, which does not happen before the camera is granted. On a phone it now sits on the dock, at least 44px, as soon as the screen is narrow or the pointer is coarse. The grip steps aside so Leave still fits. A broadcast viewer still does not get it. A desktop still waits for a second camera. `test/mobile/flip-cam.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-portrait-host.png`.
+After: `test/mobile/screenshots/after/iphone-se-flip-dock.png`.
 
 ### Q6. The status line ignored a 200% root font
 
