@@ -888,6 +888,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #fsview.on { display: block; }
   body.fsopen #grid video { visibility: hidden; }
   #fsmain { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+  /* A camera-off (or moderated) talker is a name card. The video element stays
+     in the tree but must not paint: srcObject is null, and this hides any
+     frame that was still attached. */
+  #fsmain.dark { visibility: hidden; }
+  #fsname { display: none; position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 1;
+    align-items: center; justify-content: center; flex-direction: column; gap: .75rem;
+    background: #14141f; color: #eceef8; pointer-events: none; }
+  #fsname.on { display: flex; }
+  #fsname .fsinitial { font-size: min(22vw, 8rem); font-weight: 800; color: #3a3a55; line-height: 1; }
+  #fsname .fsnm { font-size: 1.35rem; background: rgba(10,10,15,.72); color: #eceef8;
+    padding: .3rem .9rem; border-radius: .45rem; max-width: min(28rem, 86vw);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #fsstrip { position: absolute; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; gap: .5rem;
     padding: .55rem; overflow-y: auto; overflow-x: hidden; z-index: 2;
     background: linear-gradient(to left, rgba(0,0,0,.55), transparent); }
@@ -895,9 +907,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border-radius: .5rem; overflow: hidden; cursor: pointer; flex: 0 0 auto; background: #111; }
   .fsthumb.sel { border-color: var(--accent, #7b5cff); box-shadow: 0 0 10px rgba(123,92,255,.5); }
   .fsthumb video { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .fsthumb .fslbl { position: absolute; left: .25rem; bottom: .25rem; font-size: .65rem;
+  .fsthumb .fslbl { position: absolute; left: .25rem; bottom: .25rem; z-index: 1; font-size: .65rem;
     background: rgba(10,10,15,.72); color: #eceef8; padding: .05rem .35rem; border-radius: .3rem; max-width: 92%;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Dark thumb: initials over a flat card. The <video> stays so a later
+     unmute can reuse the node, but it does not paint. */
+  .fsthumb .fsinitial { display: none; }
+  .fsthumb.dark video { visibility: hidden; }
+  .fsthumb.dark .fsinitial { display: flex; position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0;
+    align-items: center; justify-content: center; font-size: 1.7rem; font-weight: 800; color: #3a3a55; background: #14141f; }
   /* JOINING VEIL: until the seat is real, joining LOOKS like joining — never
      like an empty room. Sits UNDER the password/name modals (z 40): typing
      the password is part of joining. */
@@ -3772,7 +3790,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     fsmain.autoplay = true; fsmain.muted = true; fsmain.setAttribute('playsinline', ''); fsmain.setAttribute('muted', '');
     const fsstrip = document.createElement('div'); fsstrip.id = 'fsstrip';
     const fsclose = document.createElement('button'); fsclose.id = 'fsclose'; fsclose.textContent = '✕'; fsclose.title = 'Exit full screen';
-    fsview.appendChild(fsmain); fsview.appendChild(fsstrip); fsview.appendChild(fsclose);
+    const fsname = document.createElement('div'); fsname.id = 'fsname';
+    fsname.innerHTML = '<span class="fsinitial"></span><span class="fsnm"></span>';
+    fsview.appendChild(fsmain); fsview.appendChild(fsname); fsview.appendChild(fsstrip); fsview.appendChild(fsclose);
     document.body.appendChild(fsview);
     let fsSel = null, fsTick = null, fsAutoPid = null;
     // The grid videos stay attached while #fsview is open; body.fsopen only
@@ -3786,7 +3806,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function fsPickAuto(src) {
       // The person already on the big view keeps it while they are still
       // talking. A silent moment keeps that same person. A new talker takes
-      // the view only when the holder has stopped.
+      // the view only when the holder has stopped. A dark peer is in src as
+      // a name card, so a camera-off talker is picked the same way.
       const speakingKey = (key) => key.indexOf('peer:') === 0 && speakingOf.get(key.slice(5));
       if (!(fsAutoPid && speakingKey('peer:' + fsAutoPid))) {
         for (const s of src) if (speakingKey(s.key)) { fsAutoPid = s.key.slice(5); break; }
@@ -3794,8 +3815,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return (fsAutoPid && src.find((s) => s.key === 'peer:' + fsAutoPid))
         || src.find((s) => s.key.indexOf('stage:') === 0) || src[0] || null;
     }
-    // fsSources omits a dark seat. The full-screen button used to open the
-    // view anyway, and fsRefresh then pinned whoever was first.
+    // The grid's max button still skips a camera-off tile. Follow speaker
+    // does not: that person is a name card in the strip (fsSources).
     function fsSkipDark(el) { return !!(el && el.classList && el.classList.contains('cam-off')); }
     function fsSources() {
       const out = [];
@@ -3804,13 +3825,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (pipReady(v)) out.push({ key: 'stage:' + ((v.closest('.rowtile') || {}).dataset || {}).row, label: 'On stage', v });
       }
       for (const [pid, p] of peers) {
-        // The filmstrip is a SINK like the grid tile: an admin's video-off
-        // hides the peer here too (the ORDER, not their status — a sender
-        // that ignores it keeps transmitting), and the receiver blur level
-        // rides along so the big feed and the thumb paint it.
-        if (p.connected && pipReady(p.video) && !seatDark(statusOf.get(pid)) && !forcedCamOff(pid) && !(typeof shareBlocked === 'function' && shareBlocked(pid))) {
-          out.push({ key: 'peer:' + pid, label: displayName(pid), v: p.video, bl: blurLevelFor(pid) });
-        }
+        if (!p.connected) continue;
+        // Every connected peer is listed. A dark one (camera off, admin
+        // video-off, blocked share, or no ready picture) is a name card:
+        // v stays null so the raw frames are never painted. A live peer
+        // still carries the receiver blur level.
+        const label = displayName(pid);
+        const blocked = forcedCamOff(pid) || (typeof shareBlocked === 'function' && shareBlocked(pid));
+        const dark = !pipReady(p.video) || seatDark(statusOf.get(pid)) || blocked;
+        if (dark) out.push({ key: 'peer:' + pid, label: label, v: null, dark: true });
+        else out.push({ key: 'peer:' + pid, label: label, v: p.video, bl: blurLevelFor(pid) });
       }
       const sd = stadiumEl.querySelector('[data-row="sd"] video');
       if (pipReady(sd)) out.push({ key: 'sd', label: 'The stadium', v: sd });
@@ -3821,16 +3845,38 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function fsRefresh() {
       const src = fsSources();
       // Read the live stream every refresh, so a renegotiated feed follows.
-      // One visible sink per feed: #fsmain or a thumb, never both.
-      for (const s of src) s.stream = s.v ? s.v.srcObject : null;
+      // One visible sink per feed: #fsmain or a thumb, never both. A dark
+      // source has no stream, even if its grid <video> still holds frames.
+      for (const s of src) s.stream = (!s.dark && s.v) ? s.v.srcObject : null;
       const main = fsSel === 'auto' ? fsPickAuto(src) : (src.find((s) => s.key === fsSel) || src[0] || null);
+      const showName = (on, label) => {
+        const nameEl = (typeof document !== 'undefined' && typeof document.getElementById === 'function') ? document.getElementById('fsname') : null;
+        if (!nameEl) return;
+        nameEl.classList.toggle('on', !!on);
+        const letter = nameEl.querySelector('.fsinitial');
+        const nm = nameEl.querySelector('.fsnm');
+        if (!on) { if (letter) letter.textContent = ''; if (nm) nm.textContent = ''; return; }
+        const text = label || '';
+        const ch = Array.from(String(text))[0];
+        if (letter) letter.textContent = ch ? ch.toUpperCase() : '\u2022';
+        if (nm) nm.textContent = text;
+      };
       if (main) {
         if (fsSel !== 'auto') fsSel = main.key; // a pin re-anchors; auto stays auto
-        const st = main.stream;
-        if (fsmain.srcObject !== st) { fsmain.srcObject = st; const pr = fsmain.play(); if (pr && pr.catch) pr.catch(() => {}); }
+        if (main.dark) {
+          if (fsmain.srcObject) fsmain.srcObject = null;
+          fsmain.classList.add('dark');
+          fsBlurClass(fsmain, 0);
+          showName(true, main.label);
+        } else {
+          const st = main.stream;
+          if (fsmain.srcObject !== st) { fsmain.srcObject = st; const pr = fsmain.play(); if (pr && pr.catch) pr.catch(() => {}); }
+          fsmain.classList.remove('dark');
+          fsBlurClass(fsmain, main.bl);
+          showName(false);
+        }
         fsmain.dataset.key = main.key;
-        fsBlurClass(fsmain, main.bl);
-      } else { fsmain.srcObject = null; fsmain.dataset.key = ''; fsBlurClass(fsmain, 0); }
+      } else { fsmain.srcObject = null; fsmain.dataset.key = ''; fsmain.classList.remove('dark'); fsBlurClass(fsmain, 0); showName(false); }
       // Thumbs are kept BY KEY: a refresh moves and updates a playing thumb
       // and never tears one down while its feed stays. The big feed is not
       // also a thumb (one live sink per feed), and every thumb is a keyboard
@@ -3859,21 +3905,36 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         keep.add(s.key);
         let th = have.get(s.key);
         let tv;
+        const paintThumbCard = (el) => {
+          el.classList.toggle('dark', !!s.dark);
+          let ini = el.querySelector('.fsinitial');
+          if (!ini) { ini = document.createElement('span'); ini.className = 'fsinitial'; el.appendChild(ini); }
+          if (s.dark) {
+            const ch = Array.from(String(s.label || ''))[0];
+            ini.textContent = ch ? ch.toUpperCase() : '\u2022';
+          }
+        };
         if (!th) {
           th = document.createElement('div'); th.className = 'fsthumb'; th.dataset.key = s.key;
           tv = document.createElement('video'); tv.autoplay = true; tv.muted = true; tv.setAttribute('playsinline', ''); tv.setAttribute('muted', '');
-          tv.srcObject = s.stream; const pr = tv.play(); if (pr && pr.catch) pr.catch(() => {});
-          fsBlurClass(tv, s.bl);
+          tv.srcObject = s.stream; if (s.stream) { const pr = tv.play(); if (pr && pr.catch) pr.catch(() => {}); }
+          fsBlurClass(tv, s.dark ? 0 : s.bl);
           const lb = document.createElement('span'); lb.className = 'fslbl'; lb.textContent = s.label;
           th.appendChild(tv); th.appendChild(lb);
+          paintThumbCard(th);
         } else {
           // the same feed — re-borrow in place (a renegotiated stream swaps
-          // identity) and follow its blur level and name
+          // identity) and follow its blur level and name. A dark card keeps
+          // the node and drops the stream.
           tv = th.querySelector('video');
-          if (tv && tv.srcObject !== s.stream) { tv.srcObject = s.stream; const pr = tv.play(); if (pr && pr.catch) pr.catch(() => {}); }
-          if (tv) fsBlurClass(tv, s.bl);
+          if (tv && tv.srcObject !== s.stream) {
+            tv.srcObject = s.stream;
+            if (s.stream) { const pr = tv.play(); if (pr && pr.catch) pr.catch(() => {}); }
+          }
+          if (tv) fsBlurClass(tv, s.dark ? 0 : s.bl);
           const lb = th.querySelector('.fslbl');
           if (lb && lb.textContent !== s.label) lb.textContent = s.label;
+          paintThumbCard(th);
         }
         const key = s.key;
         asButton(th, s.label || 'Show this feed', () => { fsSel = key; fsRefresh(); });
@@ -3906,6 +3967,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       fsview.classList.remove('on');
       document.body.classList.remove('fsopen');
       fsmain.srcObject = null;
+      fsmain.classList.remove('dark');
+      fsname.classList.remove('on');
       for (const tv of fsstrip.querySelectorAll('video')) tv.srcObject = null; // no leftover sinks — decode work ends with the view
       fsstrip.textContent = ''; fsstrip.dataset.set = '';
       if (document.fullscreenElement === fsview) document.exitFullscreen().catch(() => {});
