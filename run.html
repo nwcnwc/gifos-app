@@ -1019,8 +1019,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .modbar { position: absolute; right: .4rem; top: .4rem; display: none; flex-direction: column;
                   gap: .3rem; z-index: 4; }
   .tile:hover .modbar, .tile.menu .modbar, .tile:focus-within .modbar { display: flex; }
-  .tile .modbar button { padding: .3rem .55rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.16);
-                         background: rgba(10,10,15,.85); color: #eceef8; cursor: pointer; font-size: .68rem; }
+  .tile:focus-visible { outline: 3px solid #8ec8ff; outline-offset: 3px; }
+  .tile .modbar button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .tile .modbar button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.16);
+                         background: rgba(10,10,15,.85); color: #eceef8; cursor: pointer; font-size: .85rem;
+                         white-space: nowrap; }
   .tile .modbar button:hover { border-color: var(--accent2, #ff5caa); }
   .tile.noroute { opacity: .8; border-style: dashed; }
   /* live audio → glowing border (never while muted) */
@@ -4470,6 +4473,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       tile.appendChild(maxbtn);
       let modbar = null, voteBtn = null;
       if (!isMe) {
+        tile.tabIndex = 0;
+        tile.setAttribute('role', 'group');
+        tile.setAttribute('aria-label', (name || 'Guest') + '. Guest controls.');
         // The vote TARGET (non-admin rooms): hidden until the bar's Vote menu
         // arms a mode — then it's the green dot / red ✕ centered on the tile.
         voteBtn = document.createElement('button');
@@ -4479,9 +4485,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         tile.appendChild(voteBtn);
         modbar = document.createElement('div');
         modbar.className = 'modbar';
-        modbar.innerHTML = '<button data-mod="mute" aria-label="Mute for everyone"></button><button data-mod="blur" aria-label="Blur for everyone"></button>'
-          + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage"></button>'
-          + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share"></button>'
+        modbar.innerHTML = '<button data-mod="mute" aria-label="Mute for everyone">Mute</button><button data-mod="blur" aria-label="Blur for everyone">Blur</button>'
+          + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage">Apps</button>'
+          + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share">Share</button>'
           + '<button class="banbtn" data-adm="ban" title="Ban this person&#39;s device from the room" aria-label="Ban this device">Ban</button>';
         modbar.addEventListener('click', (e) => {
           if (e.target.dataset.adm === 'ban') {
@@ -4725,15 +4731,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (t.modbar) {
           const muteLabel = gMute ? 'Unmute for everyone' : 'Mute for everyone';
           const blurLabel = gBlur ? 'Unblur for everyone' : 'Blur for everyone';
-          const appLabel = (mod.app && mod.app.on) ? 'Revoke apps & stage' : 'Allow apps & stage';
-          t.modbar.children[0].textContent = muteLabel; t.modbar.children[0].setAttribute('aria-label', muteLabel);
-          t.modbar.children[1].textContent = blurLabel; t.modbar.children[1].setAttribute('aria-label', blurLabel);
-          t.modbar.children[2].textContent = appLabel; t.modbar.children[2].setAttribute('aria-label', appLabel);
+          const appOn = !!(mod.app && mod.app.on);
+          const appLabel = appOn ? 'Revoke apps & stage' : 'Allow apps & stage';
+          t.modbar.children[0].textContent = gMute ? 'Unmute' : 'Mute';
+          t.modbar.children[0].setAttribute('aria-label', muteLabel);
+          t.modbar.children[1].textContent = gBlur ? 'Unblur' : 'Blur';
+          t.modbar.children[1].setAttribute('aria-label', blurLabel);
+          t.modbar.children[2].textContent = appOn ? 'Revoke' : 'Apps';
+          t.modbar.children[2].setAttribute('aria-label', appLabel);
           for (const b of t.modbar.children) {
             if (!b.getAttribute || b.getAttribute('data-mod') !== 'share') continue;
             const shareOn = !!(mod.share && mod.share.on);
-            const shareLabel = shareOn ? 'Revoke screen share' : 'Allow screen share';
-            b.textContent = shareLabel; b.setAttribute('aria-label', shareLabel);
+            b.textContent = shareOn ? 'Stop' : 'Share';
+            b.setAttribute('aria-label', shareOn ? 'Revoke screen share' : 'Allow screen share');
           }
         }
       } else if (gMute && localStream && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) {
@@ -23211,6 +23221,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       raiseHand: (on) => { myStatus.hand = on ? Date.now() : null; paintHand(); broadcastStatus(); layout(); },
       // exact raise stamp — lets tests force a same-millisecond tie and assert the id tie-break
       raiseHandAtForTest: (t) => { myStatus.hand = +t || Date.now(); paintHand(); broadcastStatus(); layout(); },
+      guestTileForTest: (name) => { const made = makeTile('qa-guest', name || 'Jordan Lee', false, false); return made.tile.dataset.peer; },
       // a GUEST's forged grant, injected past setMod's local guard — every
       // receiver must refuse it (§SIG: only the SIGNED table is ever merged)
       forgeModForTest: (target, field) => {

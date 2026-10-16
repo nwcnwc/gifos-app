@@ -289,6 +289,43 @@ test('the dock has a full-screen button', async ({ page }) => {
   await expect(page.locator('body')).not.toHaveClass(/fsopen/);
 });
 
+test('guest moderation tools are in the keyboard tab order', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(MEET_SESSION);
+  await page.waitForSelector('body.meet-session #grid');
+  const peer = await page.evaluate(() => window.__gifosVideo.guestTileForTest('Jordan Lee'));
+  expect(peer).toBe('qa-guest');
+  const tile = page.locator('.tile[data-peer="qa-guest"]');
+  await expect(tile).toHaveAttribute('tabindex', '0');
+  await expect(tile).toHaveAttribute('aria-label', /Jordan Lee/);
+  await tile.focus();
+  const shown = await tile.locator('.modbar').evaluate((el) => getComputedStyle(el).display);
+  expect(shown).toBe('flex');
+  const mute = tile.locator('[data-mod="mute"]');
+  await expect(mute).toHaveText('Mute');
+  await expect(mute).toHaveAttribute('aria-label', 'Mute for everyone');
+  const fits = await mute.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1);
+  expect(fits).toBe(true);
+  for (let i = 0; i < 4; i++) {
+    if (await mute.evaluate((el) => el === document.activeElement)) break;
+    await page.keyboard.press('Tab');
+  }
+  await expect(mute).toBeFocused();
+  await page.evaluate(() => document.body.classList.add('amadmin', 'admroom'));
+  await tile.focus();
+  const ban = tile.locator('[data-adm="ban"]');
+  for (let i = 0; i < 8; i++) {
+    if (await ban.evaluate((el) => el === document.activeElement)) break;
+    await page.keyboard.press('Tab');
+  }
+  await expect(ban).toBeFocused();
+  await expect(ban).toHaveText('Ban');
+});
+
 test('chat composer stays clear of the dock after a live resize to 900px', async ({ page }) => {
   await openChat(page, 1920, 1080);
   await page.setViewportSize({ width: 1280, height: 720 });

@@ -52,11 +52,13 @@ Opening React while More was open put `#reacttray` on top of `#barmore` (overlap
 
 The dock now has `#fsbtn`, labeled Full, with the accessible name “Full screen”. It sits between Invite and More, visible while More is closed, and the dock stays inside 1280, 1920, and 900 (the bar measured 626px wide at 1280). One tap opens the filmstrip view (`body.fsopen`) following the speaker; the view’s close button leaves it. The tile glyph `⛶` is still there for a single feed. Before: `test/e2e/artifacts/dock-fullscreen-before.png`. After: `test/e2e/artifacts/dock-fullscreen-after.png`, `fullscreen-view-after.png`.
 
+### Q8. Guest moderation tools were hover-first
+
+A guest tile is now in the tab order (`tabindex="0"`, named “Jordan Lee. Guest controls.”). Focusing it shows Mute, Blur, and, for a host, Apps, Share, and Ban. Tab reaches Mute and then Ban. The words fit the buttons; the longer phrase stays on the accessible name (“Mute for everyone”). Before: `test/e2e/artifacts/modbar-keyboard-before.png`. After: `test/e2e/artifacts/modbar-keyboard-after.png`.
+
+A broadcast still hides the gallery, so this bar is the meeting surface. It is not painted on the stage.
+
 ## Open
-
-### Q8. Guest tile tools are hover-first
-
-`.tile .modbar` is `display: none` until `:hover`, `.menu`, or `:focus-within`. The tile root is not focusable; the full-screen button on the tile is. A keyboard user can reach moderation only by landing on that button. Fine pointer users never see ban / blur / allow-share until they hover.
 
 ### Q9. Lobby copy is one voice for three audiences
 

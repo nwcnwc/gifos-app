@@ -23,7 +23,7 @@ GifOS does **not** lead any audience yet. Corporate 3.6 trails Zoom 4.9. Church 
 | Trust: live, recording, who is here | 5 | 4 | 5 | 3 |
 | **Audience score** | **4.9** | **4.3** | **4.1** | **3.6** |
 
-Zoom still leads. Invite (Q11), emoji reactions (Q12), and a dock Full screen button (Q10) are in. Reactions and More no longer stack (Q7). Layout stays 4: the dense More sheet is still not a reference layout.
+Zoom still leads. Invite (Q11), emoji reactions (Q12), a dock Full screen button (Q10), and keyboard guest tools (Q8) are in. Keyboard stays 4. Layout stays 4.
 
 ## Church
 
@@ -69,3 +69,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q12 | 3.6 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 3.4 (FaceTime 4.8) | Reactions are emoji under a smiley. Corporate and church rows did not move. |
 | After Q7 | 3.6 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 3.4 (FaceTime 4.8) | Reactions and More no longer stack. Scores unchanged: layout was already 4, and reactions were already 4. |
 | After Q10 | 3.6 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 3.4 (FaceTime 4.8) | Full screen is a labeled dock button. No scorecard row is “watch full screen”, so the audience scores stay. |
+| After Q8 | 3.6 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 3.4 (FaceTime 4.8) | Guest Mute and Ban are in the tab order. Keyboard stays 4: the dock grip still advertises arrow keys it does not handle. |
