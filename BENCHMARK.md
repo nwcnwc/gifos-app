@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. A host can mute, hold, rename, and spotlight from the roster. A shared slide fills the stage, with Stop sharing on the slide. A church broadcast has an order of service, and during Song the booth can read the current line and the next one. Those words stay on this computer. Settings, Who, Share, and Vote follow German and Spanish. Coming back from another tab says you are still in the call. Password, Invite, and Run app do not follow the language.
+We do **not** lead any audience yet. A host can mute, hold, rename, and spotlight from the roster. Share screen is one dock button. A shared slide fills the stage, with Stop sharing on the slide. A church broadcast has an order of service, and during Song the booth can read the current line and the next one. Those words stay on this computer. Settings, Who, Share, and Vote follow German and Spanish. Coming back from another tab says you are still in the call. Password, Invite, and Run app do not follow the language.
 
 ## Who we are measured against
 
