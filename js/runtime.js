@@ -650,6 +650,19 @@
           },
           list: function(){ return rpc({ type:'meet', op:'list' }); },
           setControl: function(id){ return rpc({ type:'meet', op:'setControl', meetingId: id }); },
+          setVoice: function(settings){ return rpc({ type:'meet', op:'setVoice', settings: settings || {} }); },
+          interject: function(id, text){ return rpc({ type:'meet', op:'interject', meetingId: id, text: text == null ? '' : String(text) }); },
+          speak: function(id, text){ return rpc({ type:'meet', op:'interject', meetingId: id, text: text == null ? '' : String(text) }); },
+          converse: function(id, prompt){
+            prompt = prompt || {};
+            return rpc({ type:'meet', op:'converse', meetingId: id, by: prompt.by == null ? '' : String(prompt.by), text: prompt.text == null ? '' : String(prompt.text) });
+          },
+          stopSpeaking: function(id){ return rpc({ type:'meet', op:'stopSpeaking', meetingId: id || '' }); },
+          raiseHand: function(id, on){ return rpc({ type:'meet', op:'raiseHand', meetingId: id, on: !!on }); },
+          setMic: function(id, on){ return rpc({ type:'meet', op:'setMic', meetingId: id, on: !!on }); },
+          setCamera: function(id, on){ return rpc({ type:'meet', op:'setCamera', meetingId: id, on: !!on }); },
+          meetingState: function(id){ return rpc({ type:'meet', op:'meetingState', meetingId: id }); },
+          snapshot: function(id){ return rpc({ type:'meet', op:'snapshot', meetingId: id }); },
           onTranscriptLine: function(cb){ if (typeof cb === 'function') meetSubs.tr.push(cb); },
           onParticipants: function(cb){ if (typeof cb === 'function') meetSubs.pe.push(cb); },
           onChat: function(cb){ if (typeof cb === 'function') meetSubs.ch.push(cb); },
@@ -3630,7 +3643,8 @@
           if (op === 'setControl' && remoteNo) {
             reply({ ok: false, error: capDisabled(manifest, 'remote') ? CAP_OFF_MSG('Remote') : 'This app did not declare the Remote ability.' });
           } else {
-            const done = (p) => Promise.resolve(p).then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
+            const clean = (v) => (host.scrubValue ? host.scrubValue(v) : v);
+            const done = (p) => Promise.resolve(p).then((result) => reply({ ok: true, result: clean(result) })).catch((err) => reply({ ok: false, error: host.scrub ? host.scrub(String(err && err.message || err)) : String(err && err.message || err) }));
             if (op === 'join') done(host.join({ room: d.room, link: d.link, password: d.password, name: d.name, bot: d.bot !== false, control: !!d.control && !remoteNo }));
             else if (op === 'leave') done(host.leave(d.meetingId));
             else if (op === 'startRecording') done(host.startRecording(d.meetingId));
@@ -3639,8 +3653,17 @@
             else if (op === 'sendChat') done(host.sendChat(d.meetingId, d.text));
             else if (op === 'transcribe') done(host.setTranscribe(d.meetingId, !!d.on));
             else if (op === 'sendXfer') done(host.sendXfer(d.meetingId, { id: d.xferId, name: d.name, mime: d.mime, bytes: d.bytes }));
-            else if (op === 'list') reply({ ok: true, result: host.list() });
+            else if (op === 'list') reply({ ok: true, result: clean(host.list()) });
             else if (op === 'setControl') { host.setControl(d.meetingId); reply({ ok: true, result: true }); }
+            else if (op === 'setVoice') done(host.setVoice(d.settings || {}));
+            else if (op === 'interject' || op === 'speak') done(host.interject(d.meetingId, d.text));
+            else if (op === 'converse') done(host.converse(d.meetingId, { by: d.by, text: d.text }));
+            else if (op === 'stopSpeaking') done(host.stopSpeaking(d.meetingId));
+            else if (op === 'raiseHand') done(host.raiseHand(d.meetingId, !!d.on));
+            else if (op === 'setMic') done(host.setMic(d.meetingId, !!d.on));
+            else if (op === 'setCamera') done(host.setCamera(d.meetingId, !!d.on));
+            else if (op === 'meetingState') done(host.meetingState(d.meetingId));
+            else if (op === 'snapshot') done(host.snapshot(d.meetingId));
             else reply({ ok: false, error: 'Unknown meet op.' });
           }
         }
