@@ -17809,16 +17809,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const seated = claimed && stageIds().includes(myId);
       const on = (typeof BROADCAST !== 'undefined' && BROADCAST) ? claimed : seated;
       stageBtn.classList.toggle('on', on);
-      const docked = stageBtn.parentElement && stageBtn.parentElement.classList.contains('bar');
-      const lab = stageBtn.querySelector('.docklab');
-      if (docked && lab) {
-        lab.textContent = on ? 'Step off' : 'Step on';
+      const hostHere = (typeof BROADCAST !== 'undefined' && BROADCAST) && ((typeof bcHostStored === 'function' && bcHostStored()) || amAdmin);
+      const promoted = (typeof BROADCAST !== 'undefined' && BROADCAST) && (!!myStatus.stg || !!(modOf(myId).app && modOf(myId).app.on));
+      if (promoted && !hostHere) {
+        const bar = document.querySelector('.bar');
+        const anchor = document.getElementById('reactbtn');
+        if (bar && anchor && stageBtn.parentElement !== bar) bar.insertBefore(stageBtn, anchor);
+        if (!stageBtn.querySelector('.docklab')) {
+          stageBtn.classList.add('iconbtn');
+          stageBtn.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="2.4"/><path d="M8.2 13.2c.5-1.5 1.9-2.4 3.8-2.4s3.3.9 3.8 2.4"/><path d="M4 17.5h16"/></svg><span class="docklab">Step off</span>';
+        }
+      } else if (!hostHere && stageBtn.parentElement && stageBtn.parentElement.classList.contains('bar')) {
+        const more = document.getElementById('barmore');
+        if (more) more.appendChild(stageBtn);
+      }
+      const dockedNow = stageBtn.parentElement && stageBtn.parentElement.classList.contains('bar');
+      const labNow = stageBtn.querySelector('.docklab');
+      if (dockedNow && labNow) {
+        labNow.textContent = on ? 'Step off' : 'Step on';
         stageBtn.setAttribute('aria-label', on ? 'Step off the stage' : 'Step on the stage');
         stageBtn.title = on ? 'Step off the stage. The room stops seeing you.' : 'Step onto the stage. The room sees and hears you.';
-      } else {
+      } else if (!dockedNow) {
         stageBtn.textContent = on ? 'Step down' : 'Stage';
       }
-      const hostHere = (typeof BROADCAST !== 'undefined' && BROADCAST) && ((typeof bcHostStored === 'function' && bcHostStored()) || amAdmin);
       stageBtn.style.display = (!hasAdminRoom() || amAdmin || hostHere || (modOf(myId).app && modOf(myId).app.on) || myStatus.stg) ? '' : 'none';
       if (typeof paintStagePlate === 'function') paintStagePlate();
       // The broadcast skin hides a viewer's mic/cam buttons — until the host
