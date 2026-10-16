@@ -2590,9 +2590,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       // A broadcast does not stop on a name. The host already tapped Go live.
       // A viewer is seeded the same way and goes straight to the service.
-      // Meetings still get the appearance step. The name stays in Settings.
-      if (BROADCAST) {
-        if (!bcHostStored()) {
+      // A town hall viewer watches off camera the same way, so this step is
+      // skipped. A town hall host, and a meeting, still get it. The name
+      // stays in Settings.
+      if (BROADCAST || (TOWNHALL && !bcHostStored())) {
+        if (BROADCAST && !bcHostStored()) {
           const leave = document.getElementById('leavebtn');
           if (leave) {
             leave.title = 'Stop watching.';

@@ -12,13 +12,19 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q50. A town hall viewer stopped on the appearance step
+
+A person opening a town hall link saw “This is how you’ll appear in the town hall” before they could watch. They watch off camera, the way a church viewer does, so that step is gone. The title stays Town hall, and Leave the town hall stays the leave control. The camera control stays on the dock. A host who already holds the room key still gets the appearance step. A meeting still gets it. `test/mobile/town-hall-join.spec.mjs`.
+
+Design: a viewer lands in the town hall. Corporate stays at 4. The room still wears a meeting’s controls.
+
 ### Q49. Watch and the host key sat on the go-live sheet
 
 The sheet under the picture held Go live, then Watch, then Change host key. The sheet is now Go live. More sits on the picture and opens Watch and the host key, including Generate. The key is still minted. On an iPhone SE the name is y=422 to y=470 and Go live is y=508, the full width of the sheet. A stream uses the same sheet. `test/mobile/create-one-password.spec.mjs`, `test/mobile/action-buttons.spec.mjs`.
 
 After: `test/mobile/screenshots/after/iphone-se-service-desk.png`, `test/mobile/screenshots/after/iphone-se-stream-name.png`.
 
-Design: the picture, the filled name, then the blue Go live. Church and personal stay at 4. A town hall still joins through an appearance step.
+Design: the picture, the filled name, then the blue Go live. Church and personal stay at 4. FaceTime is one tap, and that tap is the whole screen.
 
 ### Q48. Go live on a service sat under the service name
 
