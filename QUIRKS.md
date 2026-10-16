@@ -27,8 +27,6 @@ Repro: `test/mobile/more-sheet-fits.js`. It failed (`sheet top -194`, `overflow-
 
 Before: `qa/mobile/shots/before-host-more-land.png`. After: `qa/mobile/shots/after-more-iphone-se-land.png` (scrolled to Password).
 
-## Open
-
 ### 3. Chat composer sits under the dock
 
 iPhone SE portrait. Chat was a full-width panel (`z-index: 30`) pinned to `bottom: 0`. The dock is `z-index: 32` and covered y=466–554. The message field occupied y=526–560. Playwright's tap on `#chat-in` timed out: "div.bar intercepts pointer events". Send was 34px tall. Close was 23px. Attach was 41×34. The More sheet stayed open over the panel. `--kb` was ignored.
@@ -39,13 +37,15 @@ Before: `qa/mobile/shots/before-chat-dock.png`. After: `qa/mobile/shots/after-ch
 
 ### 4. Lobby hides Join on a small phone
 
-Cold open, no room in the link. The preview takes `minmax(140px, 1.15fr)`.
+Cold open, no room in the link. The preview took `minmax(140px, 1.15fr)`.
 
-- iPhone SE portrait: preview 304px, Join a link sits at y=579–661, below the 568px screen. Rename is further down.
-- iPhone SE landscape: Start, the admin button, and Join are all below y=320. The first action is already clipped.
-- 360×740 portrait: the three actions fit; "change" name is at y=851, off screen.
+- iPhone SE portrait: preview was 304px. Join a link sat at y=579–661, below the 568px screen.
+- iPhone SE landscape: Start was already below y=320.
+- 360×740 portrait: the three actions fit. Change-name scrolls into the card.
 
-A first-time grandparent who opens the app instead of a room link cannot see Join without knowing the card scrolls.
+Repro: `test/mobile/lobby-join-visible.js`. It failed (`lob-join-btn` bottom 661, landscape `lob-open` bottom 325), then passed. Under 640px tall the preview is at most 16vh. Under 430px tall the preview hides so the actions fill the screen, and Join scrolls into the card.
+
+Before: the cold lobby was not shot in the first pass. After: `qa/mobile/shots/after-lobby-iphone-se.png`, `qa/mobile/shots/after-lobby-iphone-se-land.png`.
 
 ### 5. 200% text size does not enlarge the controls
 

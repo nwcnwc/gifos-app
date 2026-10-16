@@ -8,7 +8,7 @@ Out of scope for this branch, so they are not scored as wins or losses here: the
 
 ## Where they still beat us
 
-- Zoom, Meet, Teams, FaceTime: hang-up was off screen at 320px and 360px. That row now fits. The landscape More sheet scrolls. Chat now sits above the dock and above a keyboard band. They still beat us on the lobby (Join below the fold on an SE), on 200% control labels, and on safe areas.
+- Zoom, Meet, Teams, FaceTime: hang-up fits, the landscape More sheet scrolls, chat clears the dock, and Join is on screen on an SE. They still beat us on 200% control labels, the word Captions, safe areas, and the 32px Fit control.
 - Meet and Teams: the overflow menu scrolls inside the screen in landscape. Ours draws Password above the top edge and does not scroll.
 - iMessage, Meet, Teams: the composer stays above the keyboard and above the call controls. Ours is underneath the dock, and a tap never lands.
 - FaceTime and church volunteer panels: primary targets are at least 44px. Our move-grip is 22px wide and Fit is 32px tall. Chat's close control is 23px.
@@ -37,11 +37,11 @@ A volunteer and an older member, a service or a small group, often a phone held 
 
 | Job | Score | Note |
 | --- | --- | --- |
-| Start or join from the lobby on an SE | 3 | Join is below the fold in portrait. Every action is below the fold in landscape. |
-| Tap targets for someone who misses small controls | 4 | Dock grip is 44px. Fit is still 32px tall. Chat close is still 23px. |
+| Start or join from the lobby on an SE | 7 | Join is on screen in portrait. In landscape the first action is on screen and Join scrolls into the card. |
+| Tap targets for someone who misses small controls | 5 | Dock grip, chat close, and Send are 44px. Fit is still 32px tall. |
 | Captions a member can find, at 200% text | 3 | Labeled CC. Label stays 16px when the root is 32px. |
 | Host runs the room from the phone they already hold | 6 | Password, record, captions, and stage scroll into reach in landscape. Labels are still terse. |
-| **Audience** | **5** | Dock and landscape More are usable. Still behind a church stream panel: Join is below the fold, captions say CC. |
+| **Audience** | **6** | Dock, landscape More, and the lobby Join action work on an SE. Still behind a church stream panel: captions say CC, and 200% text does not enlarge them. |
 
 ## Personal
 
@@ -53,7 +53,7 @@ Family and friends. Warm, few steps, a texted link.
 | See everyone and hang up on a small phone | 6 | Faces paint. Hang up fits on SE and 360px. |
 | Send a chat line | 7 | The field is above the dock, 44px, and lifts when the keyboard band is set. |
 | Turn the phone sideways | 6 | Invite and Password scroll into the More sheet. |
-| **Audience** | **6** | The link, the name step, hang up, landscape More, and chat are in good shape. Join on a small lobby screen is still behind FaceTime. |
+| **Audience** | **6** | The link, the name step, hang up, landscape More, chat, and the small-phone lobby are in good shape. 200% labels and the home indicator are still behind FaceTime. |
 
 ## Cycle
 

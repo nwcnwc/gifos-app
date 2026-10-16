@@ -1502,6 +1502,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #chatpanel.open { top: 0; bottom: calc(var(--dockh, 108px) + var(--kb, 0px)); }
   #chat-in { min-height: 44px; }
   #chatclose, #cattach, #chatform button[type=submit] { min-width: 44px; min-height: 44px; }
+  /* The preview was taking more than half of a short phone, so Join a link
+     sat below the fold (SE portrait bottom 661 on a 568px screen, and in
+     landscape the first action was already off screen). */
+  @media (max-width: 700px) and (max-height: 640px) {
+    #lobby.show { grid-template-rows: minmax(72px, 16vh) minmax(0, 1fr); }
+  }
+  @media (max-height: 430px) {
+    #lobby.show { grid-template-rows: minmax(0, 1fr); }
+    #lob-preview { display: none; }
+    #lobby .lob-quiet { display: none; }
+    #lobby .lobby-card { margin-top: 0; border-radius: 0; }
+  }
 </style>
 <script src="js/gifos-themes.js"></script>
 </head>
