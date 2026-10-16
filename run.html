@@ -707,16 +707,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.has-app #stadium, body.has-app #stagefeed { display: none; }
   /* BROADCAST (the Broadcast app, #bc=1 on an admin room): the Stage is the
      show and chat is the back-channel — the row grid and the stadium strip
-     never render. Viewers (guests) also lose every media control: they bring
-     no camera or mic at all. A guest the host GRANTS the stage (the same
-     signed 'app' grant that gates the Stage) gets the mic/cam buttons back —
-     body.stage-granted — so they can go live when called up. */
+     never render. A viewer who is Watching (body.bc-watching) brings no
+     camera or mic. That class is the watching state itself: it does not
+     wait for body.notadmin. A guest the host GRANTS the stage (the same
+     signed 'app' grant that gates the Stage) loses bc-watching and gets
+     the mic/cam buttons back. */
   body.broadcast #grid, body.broadcast #stadium { display: none !important; }
   body.broadcast #stagefeed .rowtile { max-height: 76vh; }
-  body.broadcast.notadmin:not(.stage-granted) #mic,
-  body.broadcast.notadmin:not(.stage-granted) #cam,
-  body.broadcast.notadmin:not(.stage-granted) #flipcam,
-  body.broadcast.notadmin:not(.stage-granted) .blurctl,
+  body.broadcast.bc-watching #mic,
+  body.broadcast.bc-watching #cam,
+  body.broadcast.bc-watching #flipcam,
+  body.broadcast.bc-watching .blurctl,
   body.broadcast.notadmin #appbtn,
   body.broadcast.notadmin:not(.share-granted) #sharebtn,   /* a viewer is not a broadcaster until an admin allows their screen */
   body.broadcast.notadmin #recbtn,
@@ -2442,6 +2443,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!BROADCAST) {
         document.title = 'Small group — GifOS';
         if (pill) { pill.hidden = true; pill.textContent = ''; pill.className = ''; }
+        document.body.classList.remove('bc-watching');
         paintAirKind('group', 'Small group');
         const whoMeet = document.getElementById('whobtn');
         if (whoMeet) whoMeet.title = 'Who is here — names and internet addresses';
@@ -2504,6 +2506,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         pill.setAttribute('role', 'status');
       }
       paintAirKind(host ? 'live' : 'watch', host ? 'Service · You are live' : 'Service · You are watching');
+      paintWatchingSeat();
     }
     // The HOST is whoever holds this room's stored admin key — known before
     // any network exists, which is what lets the boot skip the viewer's
@@ -2512,6 +2515,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { return !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()); }
       catch (e) { return false; }
     };
+    // Watching is the broadcast seat that is not the host and not on stage.
+    // It is painted with the Live/Watching chip, not from body.notadmin.
+    // canStage is true until the room exists, so stage-granted is only a
+    // real grant once `av` is set (paintStage). A session frame that never
+    // joins is still Watching.
+    function bcWatchingViewer() {
+      if (!BROADCAST) return false;
+      if (bcHostStored() || document.body.classList.contains('amadmin')) return false;
+      if (document.body.classList.contains('stage-granted')) return false;
+      return true;
+    }
+    function paintWatchingSeat() {
+      document.body.classList.toggle('bc-watching', bcWatchingViewer());
+    }
     paintBroadcastChrome();
     const grid = document.getElementById('grid');
     const statusEl = document.getElementById('status');
@@ -17695,7 +17712,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       stageBtn.style.display = (!hasAdminRoom() || amAdmin || (modOf(myId).app && modOf(myId).app.on) || myStatus.stg) ? '' : 'none';
       // The broadcast skin hides a viewer's mic/cam buttons — until the host
       // grants them the stage, when the controls they now need grow back.
-      document.body.classList.toggle('stage-granted', canStage(myId));
+      // canStage is true for the whole page until join sets `av`. That is
+      // not a grant, and it must not take a Watching viewer off bc-watching.
+      document.body.classList.toggle('stage-granted', !!(av && canStage(myId)));
+      try { paintWatchingSeat(); } catch (e) {}
     }
     // THE CAP IS DECIDED BY ARITHMETIC, NOT BY MY TAP. stageIds() keeps the C
     // earliest claims on every phone, so a step-up that lost a same-moment
@@ -21021,6 +21041,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return null;
     }
     function lateMedia(kind) {
+      if (typeof bcWatchingViewer === 'function' && bcWatchingViewer()) return;
       if (myStatus.bot) { setStatus('A bot does not use a camera or speak.'); return; }
       if (lateRefusal(kind)) { setStatus(lateRefusal(kind)); return; }
       if (lateAsk) { setStatus('Still asking for the camera and microphone\u2026'); return; }
@@ -21145,6 +21166,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
 
     micBtn.onclick = () => {
+      if (typeof bcWatchingViewer === 'function' && bcWatchingViewer()) return;
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (document.body.classList.contains('app-room') && !roomAudioOn()) { setStatus('Talk is off — only the app host can turn it on.'); return; }
       if (!localStream) return lateMedia('mic');
@@ -21176,6 +21198,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     camBtn.onclick = () => {
+      if (typeof bcWatchingViewer === 'function' && bcWatchingViewer()) return;
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (document.body.classList.contains('app-room')) { setStatus('Video is not available in an app room yet — start a meeting and run the app from there.'); return; }
       if (!localStream) return lateMedia('cam');

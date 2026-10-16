@@ -8,6 +8,10 @@ Geometry below is from `getBoundingClientRect` in Chromium unless a browser is n
 
 ## Fixed
 
+### Q25. A Watching viewer still had Video and Unmute
+
+The dock hid microphone and camera only under `body.notadmin`. A viewer session paints Watching without that class, so Video and Unmute stayed on the dock and a click called `getUserMedia` twice. The hide is now `body.bc-watching`, set from the watching seat itself (not the host, and not a stage grant). Clicks and `lateMedia` return before they publish. A host still has the buttons. The labeled-dock check runs as the host. Permanent repro: `test/e2e/broadcast-desktop.spec.js` (“a Watching viewer has no camera or mic…”).
+
 ### Q1. Chat composer slides under the control dock at 900px
 
 The chat panel now keeps a band clear of the dock (`padding-bottom: 128px`, `112px` when the dock is the shorter phone size). At 900×720 the composer ends at y=592 and the dock starts at y=602, so attach, the message field, and send are all clear. The same holds after a live resize from 1920×1080 to 900×720.
