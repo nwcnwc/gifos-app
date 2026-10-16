@@ -7376,7 +7376,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // dark spell — is rebuilt: the door needs a fresh bootstrap, not a
       // renegotiation of a corpse.
       if (p && p.pc) { newPcFor(p); if (p.neverUp === true && manyDoors) p.dialWait = Math.min(DOOR_REDIAL_CAP, (p.dialWait || 5000) * 2); }
-      sendOffer(pid, false);
+      // THE INITIATOR DIALS THE DOOR. A knocker's offer is also a name, and
+      // that name is a dial request: the id-order initiator offers back
+      // (onDialRequest). A polite knocker that offers too crosses that offer
+      // at birth. Chromium rolls the first one back and the remote mic stays
+      // muted (e2e-sixth-audio). The polite side only asks.
+      if (iInitiate(pid)) sendOffer(pid, false);
+      else { const q0 = makePeer(pid, null); if (q0) askDial(pid, q0); }
       const q = peers.get(pid); if (q) { q.boot = true; if (!manyDoors) armDoorRetry(pid, q); } // the door I came in by: retired once a seat's own link is open (retireBootPairs), unless the arithmetic names it
     }
     // The bootstrap channel to a greeter has done its work once I am seated
