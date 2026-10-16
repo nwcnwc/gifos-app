@@ -1475,23 +1475,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       width: 138px; height: 182px; }
   }
   /* A rotated phone puts the dock away until a tap. The title chip keeps
-     its band. The face takes the band the dock was reserving. */
+     its band. The face keeps the rest of the phone, and a tap lays the dock
+     on the picture instead of carving a band out of it. */
   body.chrome-away .bar {
     transform: translate(-50%, calc(100% + 24px));
     pointer-events: none;
   }
   body.chrome-away .fitbtn,
   body.chrome-away .admcount { opacity: 0; pointer-events: none; }
-  /* A rotated phone is short. The dock drops to the control size so the face keeps the stage. */
+  /* A rotated phone is short. The dock is a thin pill on the picture. */
   @media (max-height: 420px) {
-    .bar { height: 56px; min-height: 0; flex-wrap: nowrap; }
-    .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+    .bar { height: 48px; min-height: 0; flex-wrap: nowrap; }
+    .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle,
+    body.has-flip .bar #cam, body.has-flip .bar #flipcam, body.has-flip .bar #mic,
+    body.has-flip .bar #reactbtn, body.has-flip .bar #bartoggle {
       width: 44px; height: 44px; min-width: 44px; min-height: 44px;
     }
     .bar #cam svg, .bar #flipcam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg {
       width: 22px; height: 22px;
     }
-    .bar #leavebtn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+    .bar #leavebtn, body.has-flip .bar #leavebtn { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
   }
   /* A rotated 320px phone at a 32px root cannot stack an 88px banner, the chip, and an 88px Fit above the dock. */
   @media (max-height: 380px) {
@@ -5119,7 +5122,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (badge && getComputedStyle(badge).display !== 'none') chipBottom = Math.max(chipBottom, badge.getBoundingClientRect().bottom);
           }
           top = Math.max(48, Math.ceil(chipBottom + 6));
-          bottom = document.body.classList.contains('chrome-away') ? 0 : 72;
+          bottom = 0;
         }
         let holdMs = 2500;
         try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}

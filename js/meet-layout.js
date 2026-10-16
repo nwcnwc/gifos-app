@@ -161,21 +161,18 @@
 
   // Content box under the top chip. The dock floats over the tiles, so it
   // does not reserve a band. Phone with the mode pill needs a taller inset.
-  // A short landscape keeps the title chip's band. With the controls put
-  // away (body.chrome-away) the face takes the dock's band. While the
-  // controls are up, that band stays reserved so a face is not a strip under Hang up.
+  // A short landscape keeps the title chip's band and gives the face the
+  // rest of the phone. The dock, when it is up, sits on that picture.
   function viewBox(vw, vh, opts) {
     opts = opts || {};
     const landscape = vw > vh;
     const short = landscape && vh < 420;
     const phone = opts.phone != null ? !!opts.phone : (!landscape && vw < 700);
-    let away = false;
-    try { away = document.body.classList.contains('chrome-away'); } catch (e) {}
     // 64 clears the header pill (it sits at y=14 and is about 40px tall) so
     // the top row's chips are not drawn underneath it. The mode pill is taller.
     // 56 is the short-landscape chip band.
     const top = opts.top != null ? opts.top : (short ? 56 : (phone && opts.pill ? 92 : 64));
-    const bottom = opts.bottom != null ? opts.bottom : (short && !away ? 72 : 0);
+    const bottom = opts.bottom != null ? opts.bottom : 0;
     const pad = phone ? 2 : 4;
     return {
       x: pad,

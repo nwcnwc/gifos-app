@@ -68,6 +68,8 @@ test('a rotated meeting is the face until you tap', async ({ page }) => {
     const hit = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
     return {
       meBottom: me.bottom,
+      meH: me.height,
+      meW: me.width,
       barTop: bar.top,
       barH: bar.height,
       leaveH: r.height,
@@ -75,8 +77,14 @@ test('a rotated meeting is the face until you tap', async ({ page }) => {
       vh: innerHeight,
     };
   });
-  expect(shown.barH).toBeLessThanOrEqual(56);
-  expect(shown.meBottom).toBeLessThanOrEqual(shown.barTop + 1);
+  expect(shown.barH).toBeLessThanOrEqual(48);
+  expect(shown.meBottom).toBeGreaterThanOrEqual(shown.vh - 2);
+  expect(shown.meH).toBeGreaterThanOrEqual(shown.vh * 0.55);
+  expect(Math.min(shown.meW, shown.meH)).toBeGreaterThanOrEqual(120);
+  expect(shown.barTop).toBeLessThan(shown.meBottom - 8);
+  const cover = shown.meBottom - shown.barTop;
+  expect(cover).toBeLessThanOrEqual(64);
+  expect(cover).toBeLessThan(shown.meH * 0.28);
   expect(shown.leaveH).toBeGreaterThanOrEqual(44);
   expect(shown.hit).toBe(true);
 

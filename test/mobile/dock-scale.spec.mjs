@@ -63,3 +63,26 @@ test('the dock grows with the root text size without thinning the face', async (
   const cover = Math.max(0, box.meBottom - box.barTop);
   expect(cover).toBeLessThan(box.meH * 0.5);
 });
+
+test('a short landscape dock stays a thin row when the text grows', async ({ page }) => {
+  const vp = page.viewportSize();
+  await page.setViewportSize({ width: Math.max(vp.width, vp.height), height: Math.min(vp.width, vp.height) });
+  await page.goto('/run.html#v=sundayroom', { waitUntil: 'domcontentloaded' });
+  await page.locator('.tile.me').waitFor({ state: 'visible' });
+  await dismissName(page);
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '32px';
+    if (window.__meetChromeShow) window.__meetChromeShow();
+  });
+  const box = await page.evaluate(() => {
+    const me = document.querySelector('.tile.me').getBoundingClientRect();
+    const bar = document.querySelector('.bar').getBoundingClientRect();
+    const cam = document.getElementById('cam').getBoundingClientRect();
+    return { camH: cam.height, barH: bar.height, meW: me.width, meH: me.height, meBottom: me.bottom, barTop: bar.top, vh: innerHeight };
+  });
+  expect(box.camH).toBeLessThanOrEqual(44.5);
+  expect(box.barH).toBeLessThanOrEqual(48.5);
+  expect(box.meBottom).toBeGreaterThanOrEqual(box.vh - 2);
+  expect(Math.min(box.meW, box.meH)).toBeGreaterThanOrEqual(120);
+  expect(box.meBottom - box.barTop).toBeLessThan(box.meH * 0.28);
+});

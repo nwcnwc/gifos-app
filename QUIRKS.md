@@ -12,6 +12,15 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q28. A rotated call still gave up a band when the controls came back
+
+A tap used to lift the face so a 56px dock could sit under it. The face now stays put, from just under the title chip to the bottom of the phone. On an iPhone SE landscape the chip is y=14 to y=53 and the face is y=59 to y=320, 560×261. The dock is a 48px pill, y=258 to y=306, laid on that picture. Camera and Hang up stay 44px. A 32px root does not grow this row. The short side of the face stays well above 120px. `test/mobile/landscape-stage.spec.mjs`.
+
+Before: `test/mobile/screenshots/after/iphone-se-landscape-chip.png`.
+After: `test/mobile/screenshots/after/iphone-se-landscape-bar.png`.
+
+Design: the picture is the phone under the chip. The dock is a white pill on the lower edge, with a little of the picture showing under it, and Hang up is the only red. Landscape stays at 4. Meet's bar is a thinner translucent strip, so the face stays easier to read while the controls are up.
+
 ### Q27. The dock stayed one size when the text grew
 
 On a phone the controls were a fixed 44px or 56px row. They now follow the root text size, from 44px up to 64px, and Hang up from 44px up to 72px. At a 32px root on iPhone SE the row no longer fits, so the dock wraps: camera, flip, mic, and reactions on the first row at 64px, More and Hang up on the second at 64px and 72px. The bar is 312px wide and 156px tall, starting at y=398. The face stays 316×504. The dock covers less than half of that tile. Gaps on a row stay at least 8px. A short landscape keeps a single 56px row of 44px controls so a rotated face is not a strip. `test/mobile/dock-scale.spec.mjs`.
