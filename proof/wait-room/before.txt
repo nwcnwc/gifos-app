@@ -1,0 +1,15 @@
+FAIL unseated while waiting — no HOME roster on WHOHOME — HOME frames 1 rostered 1
+FAIL unseated while waiting — answerDoor sends nothing — n=1
+PASS unseated while waiting — knocker state stays at the door
+FAIL relay admission module is loaded
+FAIL wire asks the admit door before seating
+FAIL page loads the admit door
+FAIL password required to enter the waiting room — no relay-admit
+FAIL wrong password does not restart the room — no relay-admit
+FAIL admit token required — no relay-admit
+FAIL token is single-use — no relay-admit
+FAIL token is bound to that knocker — no relay-admit
+FAIL waiting knocker gets no roster, media, or chat — no relay-admit
+FAIL deny leaves them unseated — no relay-admit
+1 passed, 12 failed
+EXIT:1
