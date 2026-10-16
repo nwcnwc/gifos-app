@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 
 async function boot(page) {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.addInitScript(() => { localStorage.setItem('gifos_name', 'Jordan Lee'); });
+  await page.addInitScript(() => { localStorage.setItem('gifos_name', 'Jordan Lee'); sessionStorage.setItem('gifos_appeared', '1'); });
   await page.goto('/run.html#v=qakeys&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#mic', { state: 'visible' });
   await page.evaluate(() => {

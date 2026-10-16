@@ -54,6 +54,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** the label counts every face on the wall, and it will not go below the mesh count. “5 in the meeting” is its own phrase and does not shrink. The quality and password notes follow it and may ellipsize.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/people-count-before-1280.png`, `test/desktop/shots/people-count-after-1280.png`.
 
+### Screen-name step was a blank field and two identical buttons
+
+- **Who hits it:** anyone joining before this session has confirmed how they look.
+- **What you saw:** an empty name field, no picture, and Not now and Continue in the same blue, touching each other. A GifOS name and avatar already on the computer were ignored.
+- **Repro:** `test/desktop/appear.spec.js` failed before the fix (no `#appear`, the field was empty).
+- **Fix:** the card says “This is how you'll appear”, prefills the GifOS name, shows the avatar (or an initial), and updates the preview as you type. Join is the blue primary. Not now is a white secondary, with space between them. Change picture is a separate text button. The knock waits until you choose. A session that already confirmed does not ask again.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/appear-before-1280.png`, `test/desktop/shots/appear-after-1280.png`.
+
 ## Open
 
 ### WebKit crashes if a gallery tile plays a canvas captureStream
@@ -62,7 +70,7 @@ Opening four fake videos and then clicking More closed the WebKit tab. Chromium 
 
 ### First visit covers the call with the name dialog
 
-With no saved name, a modal asks for a screen name while the meeting is already up. It sits over the dock (`z-index` 40) and swallows clicks until Not now or Continue. The knock does not wait on it, which is right; the dialog still hides the controls.
+With no saved confirmation for this session, joining shows how you will appear: your GifOS name and picture, editable, then Join. Not now keeps the prefilled name. A session that already confirmed skips the card.
 
 ### More sheet is a dense grid of mixed labels
 

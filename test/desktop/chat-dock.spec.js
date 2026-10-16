@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 
 async function boot(page, width, height) {
   await page.setViewportSize({ width: width, height: height });
-  await page.addInitScript(() => { localStorage.setItem('gifos_name', 'Jordan Lee'); });
+  await page.addInitScript(() => { localStorage.setItem('gifos_name', 'Jordan Lee'); sessionStorage.setItem('gifos_appeared', '1'); });
   await page.goto('/run.html#v=qadesk&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#mic', { state: 'visible' });
   const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4 }));
