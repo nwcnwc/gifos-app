@@ -1505,6 +1505,35 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lobby .lob-preview { margin: 16px; border-radius: 20px; }
     #lobby .lobby-card { max-width: none; margin: 16px 16px 16px 0; border-radius: 20px; padding: 28px 32px; overflow: auto; }
   }
+  /* Opening Start broadcasting used to leave Create & enter below the fold.
+     Park the rest of the lobby and keep Cancel / Create in the card while
+     the fields scroll. A short or narrow screen also shrinks the preview. */
+  #lobby.form-open .lob-quiet,
+  #lobby.form-open #lob-admin-btn,
+  #lobby.form-open #lob-open,
+  #lobby.form-open #lob-join-btn,
+  #lobby.form-open #lob-join,
+  #lobby.form-open .lob-sep,
+  #lobby.form-open .lob-hist-h,
+  #lobby.form-open #lob-list,
+  #lobby.form-open #lob-empty,
+  #lobby.form-open .lob-namebar { display: none !important; }
+  #lobby.form-open h1 { font-size: 1.25rem; margin: 0 0 .35rem; }
+  #lobby.form-open .lobby-card {
+    display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+  }
+  #lobby.form-open #lob-admin {
+    display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; margin: 0;
+  }
+  #lobby.form-open .lob-form-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  #lobby.form-open #lob-admin .lob-row { flex: 0 0 auto; margin-top: .35rem; }
+  @media (min-width: 701px) {
+    #lobby.form-open.show { grid-template-columns: 1.35fr .8fr; grid-template-rows: minmax(0, 1fr); }
+  }
+  @media (max-width: 700px), (max-height: 520px) {
+    #lobby.form-open.show { grid-template-columns: none; grid-template-rows: 72px minmax(0, 1fr); }
+    #lobby.form-open .lob-preview { min-height: 0; max-height: 72px; margin: 0; border-radius: 0; }
+  }
 </style>
 <script src="js/gifos-themes.js"></script>
 </head>
@@ -1520,11 +1549,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button id="lob-open" class="lob-primary">Start a meeting<small>Open room · anyone with the link can join</small></button>
       <button id="lob-admin-btn" class="lob-action">Start a room you run<small>You're the admin: set a password, mute/blur, ban a troublemaker</small></button>
       <div id="lob-admin" class="lob-expand" style="display:none">
-        <input id="lob-admin-name" maxlength="40" placeholder="Room name (anything you like)" autocomplete="off">
-        <label class="lob-pwlab">🔑 <b id="lob-admin-pass-head">Admin password</b> — yours alone — <b>do not share it</b><small id="lob-admin-pass-note">This is what puts you in charge of the room. Guests don’t need it. Anyone you give it to can run the room too.</small></label>
-        <input id="lob-admin-pass" type="password" maxlength="64" placeholder="Admin password (keep to yourself)" autocomplete="new-password">
-        <label class="lob-pwlab">🎟 <b id="lob-guest-pass-head">Guest password</b> — the one you <b>do</b> share<small id="lob-guest-pass-note">Optional. Faces stay blurred until you set one, and it is not part of the link.</small></label>
-        <input id="lob-guest-pass" type="password" maxlength="64" placeholder="Guest password (optional — share with guests)" autocomplete="new-password">
+        <div class="lob-form-body">
+          <input id="lob-admin-name" maxlength="40" placeholder="Room name (anything you like)" autocomplete="off">
+          <label class="lob-pwlab">🔑 <b id="lob-admin-pass-head">Admin password</b> — yours alone — <b>do not share it</b><small id="lob-admin-pass-note">This is what puts you in charge of the room. Guests don’t need it. Anyone you give it to can run the room too.</small></label>
+          <input id="lob-admin-pass" type="password" maxlength="64" placeholder="Admin password (keep to yourself)" autocomplete="new-password">
+          <label class="lob-pwlab">🎟 <b id="lob-guest-pass-head">Guest password</b> — the one you <b>do</b> share<small id="lob-guest-pass-note">Optional. Faces stay blurred until you set one, and it is not part of the link.</small></label>
+          <input id="lob-guest-pass" type="password" maxlength="64" placeholder="Guest password (optional — share with guests)" autocomplete="new-password">
+        </div>
         <div class="lob-row"><button id="lob-admin-cancel" class="lob-ghost">Cancel</button><button id="lob-admin-go">Create &amp; enter</button></div>
         <div id="lob-admin-err" class="lob-err"></div>
       </div>
@@ -11672,8 +11703,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const lob = document.getElementById('lobby');
       const toggle = (id) => { const el = document.getElementById(id); el.style.display = el.style.display === 'none' ? '' : 'none'; };
       document.getElementById('lob-open').onclick = () => { enterMeeting('#v=' + shortCode()); };
-      document.getElementById('lob-admin-btn').onclick = () => { toggle('lob-admin'); document.getElementById('lob-join').style.display = 'none'; const n = document.getElementById('lob-admin-name'); if (document.getElementById('lob-admin').style.display !== 'none') n.focus(); };
-      document.getElementById('lob-admin-cancel').onclick = () => { document.getElementById('lob-admin').style.display = 'none'; };
+      document.getElementById('lob-admin-btn').onclick = () => {
+        toggle('lob-admin');
+        document.getElementById('lob-join').style.display = 'none';
+        const open = document.getElementById('lob-admin').style.display !== 'none';
+        document.getElementById('lobby').classList.toggle('form-open', open);
+        const n = document.getElementById('lob-admin-name');
+        if (open) n.focus();
+      };
+      document.getElementById('lob-admin-cancel').onclick = () => {
+        document.getElementById('lob-admin').style.display = 'none';
+        document.getElementById('lobby').classList.remove('form-open');
+      };
       document.getElementById('lob-admin-go').onclick = async () => {
         const err = document.getElementById('lob-admin-err');
         const rawName = document.getElementById('lob-admin-name').value || '';

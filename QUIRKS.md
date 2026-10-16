@@ -17,12 +17,6 @@ Meeting or broadcast, More open, 568×320. The sheet box top is −8px and `over
 
 Before: `test/mobile/screenshots/before/iphone-se-landscape-more.png`.
 
-### Q4. “Create & enter” is below the fold on every phone
-
-Broadcast lobby (`#bc=1`), Start broadcasting expanded. The create button’s top is past the viewport on iPhone SE (y ≈ 853, viewport 568), iPhone 15, Pixel 7, and 360, portrait and landscape. The card can scroll (`scrollHeight > clientHeight`), and nothing tells a volunteer to scroll. Passwords and the create action are the part that matters.
-
-Before: `test/mobile/screenshots/before/iphone-se-portrait-lobby-form.png`.
-
 ### Q5b. Flip camera stays hidden until two cameras are enumerated
 
 `#flipcam` is `display: none` until `enumerateDevices` reports more than one video input. A phone host does not get a flip control up front, including mid-service when they rotate the handset. Camera and mic stay hidden for a broadcast viewer, which is intended.
@@ -62,6 +56,13 @@ After: `test/mobile/screenshots/after/iphone-se-meeting-chat.png`.
 ### Q8. Chat header spent a third of a short screen
 
 `#chathead` wrapped the title, the privacy sentence, Transcript, and close into about 110px on iPhone SE. On a phone the sentence is now clipped for sighted layout and kept for screen readers, and Transcript / close are 44px. That was required for Q2: the tall header pushed Send under the dock once the keyboard opened.
+
+### Q4. “Create & enter” was below the fold on every phone
+
+Broadcast lobby (`#bc=1`), Start broadcasting expanded. The create button’s top was past the viewport on iPhone SE (y ≈ 853, viewport 568), iPhone 15, Pixel 7, and 360, portrait and landscape. Opening the form now parks the rest of the lobby, shrinks the preview on a short or narrow screen, and keeps Cancel / Create in the card while the fields scroll. `test/mobile/create-on-screen.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-portrait-lobby-form.png`.
+After: `test/mobile/screenshots/after/iphone-se-portrait-lobby-form.png` and `test/mobile/screenshots/after/iphone-se-landscape-lobby-form.png`.
 
 ### Q5. No LIVE / OFF AIR / WATCHING signal
 

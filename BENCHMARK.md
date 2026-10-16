@@ -9,23 +9,23 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 - **Zoom / Meet / Teams.** The hang-up, mute, and camera controls stay inside the screen on a 320px phone. Chat is a sheet or a column that does not sit under the call dock. Reconnecting is a banner, not a truncated sentence.
 - **FaceTime.** One primary action, huge targets, no password essay, the preview is the screen.
 - **StreamYard / YouTube Live.** A broadcast is either LIVE or it is not. The host sees that before they look at a status sentence. Viewers joining late see “live” or “offline”, not “Joining…”.
-- **Church desks.** A volunteer gets a short path: name the service, go on, read a link. The create action is on screen. Type stays large. Flip camera is a single tap during the service.
+- **Church desks.** A volunteer gets a short path: name the service, go on, read a link. Type stays large. Flip camera is a single tap during the service.
 
 ## Scorecard
 
 | Dimension | Corporate | Church | Personal | Best rival on this dimension |
 | --- | ---: | ---: | ---: | --- |
-| First screen tells you what to do | 3 | 2 | 3 | FaceTime, Meet |
+| First screen tells you what to do | 4 | 4 | 4 | FaceTime, Meet |
 | Hang up, mic, and camera stay on screen | 4 | 4 | 4 | Zoom, Meet |
 | Chat can be read and sent on a phone | 4 | 4 | 4 | Meet, Teams |
 | Live, off air, watching, reconnecting | 3 | 3 | 3 | YouTube Live, StreamYard |
 | Large type and 44px targets | 3 | 2 | 3 | FaceTime |
 | Landscape, rotation, notch | 2 | 2 | 2 | Meet |
 | Warm, short, trustworthy copy | 3 | 2 | 3 | FaceTime |
-| **Audience average** | **3.1** | **2.7** | **3.1** | |
+| **Audience average** | **3.3** | **3.0** | **3.3** | |
 
-Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast now says RECONNECTING, OFF AIR, LIVE, or WATCHING (Q5). Corporate and personal are 3.1. Church is 2.7. None lead. Meet and Zoom still win the phone meeting on landscape More (Q3), the below-the-fold create step (Q4), large type (Q6), and the notch (Q7). StreamYard still wins a church service on flip-camera and a create button that is on screen.
+Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast now says RECONNECTING, OFF AIR, LIVE, or WATCHING (Q5). Create & enter stays in the card while the room fields scroll (Q4). Corporate and personal are 3.3. Church is 3.0. None lead. Meet and Zoom still win the phone meeting on landscape More (Q3), large type (Q6), and the notch (Q7). StreamYard still wins a church service on flip-camera. FaceTime still wins the first screen on copy: this path still asks for two passwords.
 
 ## Next gap
 
-Q4. “Create & enter” is below the fold on every phone once Start broadcasting is expanded. A volunteer can scroll the card, and nothing tells them to.
+Q3. The More sheet starts above the viewport in iPhone SE landscape, and the sheet cannot be scrolled.
