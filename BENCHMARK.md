@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. Chat clears the dock, the primary controls have words, and mute, camera, chat, and leave have keyboard shortcuts. The More sheet, a large room, and locale are still open.
+We do **not** lead any audience yet. Chat clears the dock, the primary controls have words, mute, camera, chat, and leave have shortcuts, and a vote no longer leaves the More sheet over the faces. Locale, a large room, and the More wall are still open.
 
 ## Who we are measured against
 
@@ -39,9 +39,9 @@ Simple for volunteers and older members. Services and small groups. Best of the 
 | --- | ---: | --- |
 | Volunteer simplicity | 5 | Lobby copy is long. More is a wall of tools |
 | Readability for older eyes | 6 | Mic, Camera, More/Hide, and Leave say so in the button. Reactions is still an icon. Chat’s privacy line wraps |
-| Small group (conversation, singing) | 7 | One link, blur, unison. The call itself is close |
+| Small group (conversation, singing) | 8 | One link, blur, unison. Voting someone up no longer hides the faces under the More sheet |
 | Service / broadcast | 4 | No lower third, no obvious on-air, no volunteer checklist |
-| **Audience** | **5.5** | Does not lead |
+| **Audience** | **5.8** | Does not lead |
 
 ## Personal
 
@@ -57,4 +57,4 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 
 ## This cycle
 
-Keyboard shortcuts for the four primary actions, plus a readable `?` list and a Keys button (see QUIRKS.md). Corporate efficiency 3 → 5, audience 5.6 → 6.0. That is still behind Zoom and Meet, which cover share, hand, and view from the keyboard too. Church and personal scores stay put: a volunteer still faces the More wall, and a family call is not more effortless because Alt+A exists. We do not lead. Next gap: the More sheet still paints an opaque grid over faces in vote mode, and it is not clamped when the window is short.
+Starting a vote folds the More sheet, and the sheet scrolls inside a short window (see QUIRKS.md). Church small group 7 → 8, audience 5.5 → 5.8. Corporate and personal stay put: this does not add a shortcut, a roster, or a translation. The More list is still dense, and “Turn Video off” is still the odd label. We do not lead. Next gap: tile mute, blur, and remove are hover-only, so a keyboard host cannot reach them.

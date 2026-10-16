@@ -1323,6 +1323,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar .barmore { display: none; }
   .bar:not(.collapsed) .barmore { display: grid; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
     width: min(720px, calc(100vw - 24px)); grid-template-columns: repeat(4, 1fr); gap: 8px;
+    max-height: calc(100vh - 146px); max-height: calc(100dvh - 146px); overflow-x: hidden; overflow-y: auto;
     background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23;
     pointer-events: none; }
   .bar:not(.collapsed) .barmore > * { pointer-events: auto; }
@@ -20772,6 +20773,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function setVoteMode(m) {
       voteMode = m;
       for (const k of ['up', 'down', 'kick']) document.body.classList.toggle('vm-' + k, voteMode === k);
+      // The sheet is how you got here. Leaving it up paints an opaque grid
+      // over the faces you are about to tap. Fold it without changing the
+      // saved "keep More open" preference.
+      if (m) {
+        const barEl = document.querySelector('.bar');
+        const toggle = document.getElementById('bartoggle');
+        if (barEl && toggle && !barEl.classList.contains('collapsed')) {
+          barEl.classList.add('collapsed');
+          toggle.setAttribute('aria-expanded', 'false');
+          toggle.setAttribute('aria-label', 'More');
+          toggle.title = 'More';
+          const word = toggle.querySelector('.dockword');
+          if (word) word.textContent = 'More';
+        }
+      }
       const b = document.getElementById('votebanner');
       b.style.display = m ? 'flex' : 'none';
       if (m) {

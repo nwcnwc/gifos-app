@@ -30,6 +30,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** Alt+A mic, Alt+V camera, Alt+C chat, Alt+Q the leave confirm. The physical key is used, so a non-US layout still hits them. They do nothing while the caret is in a field, and nothing while a dialog is open. `?` opens a white list at 18px. More also has a Keys button. The dock’s accessible name mentions `?`.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshot: `test/desktop/shots/shortcuts-after-1280.png`. Share, hand, and the gallery view still have no chord.
 
+### More sheet covers the vote and runs off a short window
+
+- **Who hits it:** someone voting a person onto the stage, and anyone opening More on a short laptop window (480px tall).
+- **What you saw:** after picking “Vote onto stage” the white grid stayed open and covered every face. Clicks passed through, so the targets were invisible. At 480px the sheet started 22px above the window.
+- **Repro:** `test/desktop/more-sheet.spec.js` failed before the fix (remote tiles overlapped the sheet; at 480px the sheet top was negative).
+- **Fix:** entering a vote folds the sheet without changing the saved “keep More open” preference. The sheet’s height is capped to the space above the dock and scrolls inside that cap.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/more-vote-before-1280.png`, `test/desktop/shots/more-vote-after-1280.png`, `test/desktop/shots/more-short-before-480.png`, `test/desktop/shots/more-short-after-480.png`.
+
 ## Open
 
 ### WebKit crashes if a gallery tile plays a canvas captureStream
@@ -46,7 +54,7 @@ With no saved name, a modal asks for a screen name while the meeting is already 
 
 ### More sheet is a dense grid of mixed labels
 
-Who, Invite, Run app, Share screen, Password, Vote, Hand, Chat, Record, CC, Stage, Settings, Keys, Help, plus blur. “Turn Video off” is the odd capitalization. In vote mode the sheet stays opaque while clicks pass through it, so it covers faces. At 900×720 the grid fit; it has not been proven to clamp on a short window.
+Who, Invite, Run app, Share screen, Password, Vote, Hand, Chat, Record, CC, Stage, Settings, Keys, Help, plus blur. “Turn Video off” is the odd capitalization. The sheet now folds when a vote starts and scrolls inside a short window; the list itself is still a wall.
 
 ### Chrome is English only
 
