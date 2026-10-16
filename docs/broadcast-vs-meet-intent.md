@@ -2,7 +2,7 @@
 
 This note is the design record for how Broadcast differs from Meet. It does not change any control.
 
-The authority is the repo: docs, specs, manifests, code, and commit history. A sentence said in chat is not the design. Where a chat sentence conflicts with the repo, this note follows the repo and records the conflict under Open questions. An unmerged branch is part of the repo. A Meet branch describes Meet. It does not replace the shipped Broadcast skin.
+The authority is the repo: docs, specs, manifests, code, and commit history. An unmerged branch is part of the repo. A Meet branch describes Meet. It does not replace the shipped Broadcast skin. Nathan confirmed the five points under Confirmed design. Those answers settle the earlier chat-versus-repo conflicts. Anything this note still cannot pin down is under Still ambiguous.
 
 Claims below are tied to a file or a commit. Anything the repo does not say is marked as an assumption or left as an open question.
 
@@ -86,7 +86,7 @@ The gate is `test/browser/e2e-avatar-feed.js`. It is part of the broadcast role 
 
 **Meet, admin room.** The admin decides who may. Admins, and people they grant, can take the stage. The grant confers the right. The person's own client performs the step-up. No peer can put them on stage. A grant that arrives while their hand is raised is the admin answering the hand queue, and that client steps up itself. Stepping down is always their own right. (`run.html` comments above `paintStage` and `reactHandCall`.) Revoking the grant pulls them off on every receiver, because every receiver filters the stage set. (`run.html` comment above `canStage`.)
 
-**Broadcast.** The host is put on the stage by the page, once their admin key is adopted, unless the stage is full. Camera and microphone stay off until they tap. If that auto-step fails, the status line tells them to tap Stage. (`run.html` boot comment and `tryBroadcastStage`.) A viewer asks by raising a hand. The host decides: the hand queue floats to the top, and the host taps a name to call them up. The viewer's phone asks for the camera and microphone, and only then do they join the stage. The viewer may step down. The host may revoke the grant. (`run.html` broadcast Help.)
+**Broadcast.** The host is put on the stage by the page, once their admin key is adopted, unless the stage is full. Camera and microphone stay off until they tap. The host can step off and back on. If that auto-step fails, the status line tells them to tap Stage. (`run.html` boot comment and `tryBroadcastStage`.) A viewer asks by raising a hand, and can lower it. The host sees that queue as a list with Promote on each name. Promote is the signed stage grant. The viewer's phone asks for the camera and microphone, and only then do they join the stage. Demote returns them to a viewer and their client stops publishing. The viewer may step down. (`run.html` broadcast Help; Confirmed design.)
 
 ## What Broadcast reuses, and what it must hide or change
 
@@ -108,7 +108,9 @@ Hidden or changed, from the shipped skin and Help:
 - The audience grid and the stadium are not drawn. The icon is one panel plus eyes, not a grid of faces.
 - No vote. No per-listener stadium mix. No blur-all and no video-off-all.
 - The host password and the viewer password are named differently from a meeting's admin password and guest password, and the lobby says so.
-- Share stays a separate grant. The shipped skin shows it to a non-host only after that grant. Record, captions, Run app, and Password stay off for non-hosts.
+- Share stays a separate grant. Record, captions, Run app, and Password stay off for non-hosts, including someone the host has called up. Whether that last part should change is still open (Still ambiguous).
+- The viewer's join step says their name and picture are seen only if they raise a hand and are promoted. It also says they are watching the service and staying off camera (Confirmed design).
+- A lamp in the bar says Watching, Live, or Off air (Confirmed design).
 
 ## Meet layout notes that do not govern Broadcast
 
@@ -125,20 +127,31 @@ The shipped Broadcast skin does not use those rules. It hides the row grid and t
 - **Assumption.** A called-up person is a temporary participant on the stage, not a second host. Help says they join the host on stage and can step down. It does not give them the host password, the viewer password, chat moderation, or ban.
 - **Assumption.** Hiding the audience grid is intentional for viewers who publish nothing, not an unfinished Meet layout. The CSS comment and the icon comment both say the grid is not the show. The comments do not say whether two people on the stage must still see each other.
 
-## Open questions
+## Confirmed design
 
-Chat conflicts. The repo is what this note follows. The chat sentence is recorded only so it is not quietly treated as the design.
+Nathan confirmed these. They settle the five earlier conflicts. Broadcast follows this list.
 
-1. **Conflict.** Chat: the stage never covers the other participants unless Stage only is chosen. Repo, Broadcast: the row grid and the stadium never render (`origin/main` broadcast CSS; `themes/icons.js`, "never a grid"). Repo, Meet branch: a strip stays unless that person chooses Stage only (`design/meet-selfview-stage.md`). Follow the Broadcast skin for a broadcast. Do not put viewer tiles back because of the chat sentence. The Meet note stays Meet's.
-2. **Conflict.** Chat: his own tile goes on the stage only if he puts it there. Repo, Broadcast: the page puts the host on the stage once the admin key is adopted (`run.html` boot comment, `tryBroadcastStage`). Repo, Meet branch: "Show me on stage" is a self-view choice, and stepping up does not draw that tile on the stage (`design/meet-selfview-stage.md`). Follow the Broadcast auto-step for what the audience sees. The chat sentence does not cancel it.
-3. **Conflict.** Chat: tiles are never skinny. Repo, Meet gallery branch: a tile narrower than a portrait phone is not the pick (`js/meet-pack.js`). Repo, Broadcast: no such rule. Follow each app's own code. Do not impose the chat sentence on a broadcast stage.
-4. **Conflict.** Chat: the join screen prefills the system name and avatar, with a "this is how you'll appear" preview. On `origin/main` the lobby says "You'll join as {name}" and offers change (`run.html` `.lob-namebar`). On `cursor/qa-broadcast-desktop`, Q13 says joining shows "This is how you'll appear" with the GifOS display name filled in and the saved picture in the circle (`QUIRKS.md`; `test/e2e/artifacts/appear-lobby-after.png`). The two branches disagree. Neither one is a chat sentence.
-5. **Conflict.** Chat: the sparkle icon is for AI features, and reactions use a smiley. Repo: the reactions control is a face, and the in-call sparkle is only on the transcript and the note bot (`7ae8c49`). The Home Screen aurora sparkle is decoration on many icons, including Meeting (`themes/icons.js`). Follow that split. Do not strip the icon sparkle because of the chat sentence. Broadcast Help does not mention reactions.
+1. **Stage only.** A broadcast shows the stage. The row grid and the stadium stay off. Meet's "Stage only" choice and its strip of everyone else stay Meet's (`design/meet-selfview-stage.md`). They do not put viewer tiles back on a broadcast.
+2. **Host on stage, and promoting others.** The host goes on the stage when they adopt the admin key (`tryBroadcastStage`). Camera and microphone stay off until a tap. The host can step off and back on. A viewer raises and lowers a hand. The host sees a raised-hands list, with Promote on each person. Promote is the signed stage grant. Demote returns that person to a viewer, and that client stops publishing.
+3. **No other tiles.** A broadcast has only the stage, so Meet's gallery tile rules do not apply. The portrait-phone ratio on `cursor/meet-gallery-fit-scroll` stays Meet's.
+4. **Viewer join.** Name and picture are new. On the viewer's join step, the page says their name and picture are seen only if they raise a hand and the host promotes them to the stage. The same step says "Watching the service" and "You stay off camera". A search of `origin/cursor/qa-broadcast-mobile` (`run.html`, `QUIRKS.md`, `BENCHMARK.md`) did not find those two phrases as stored copy. They are written here because Nathan named them as the copy this step should match. The desktop line "This is how you'll appear" (`cursor/qa-broadcast-desktop` Q13) is not this step.
+5. **Sparkle.** Leave it. The reactions control is a face. The in-call sparkle stays on the transcript and the note bot (`7ae8c49`). The Home Screen aurora sparkle stays decoration, including on Meeting (`themes/icons.js`).
 
-Gaps inside the repo, not from chat:
+Two earlier gaps are decided the same way:
 
-6. The shipped skin on `origin/main` hides a non-host's microphone and camera until a stage grant. On `cursor/qa-broadcast-desktop` at `a5b2611`, a viewer in the WATCHING state still saw Video and Unmute, because the hide waited for `body.notadmin` and that session never sets it. `cursor/watching-viewer-no-av-f3b0` (`ce9ff24`) keys the hide off the watching seat (`body.bc-watching`) and does not publish from those clicks. The control table records the same finding.
-7. The shipped skin shows Share to a non-host after a screen-share grant, and hides Run app, Record, and captions from every non-host. The Help text only says a called-up person gets camera and microphone. The repo does not say whether the extra controls are intended.
-8. Help says ban lives on each tile. The broadcast skin does not draw those tiles. The repo does not say where promote, demote, mute, blur, and ban go instead.
-9. The Broadcast icon draws a LIVE lamp (`themes/icons.js`). The page a viewer sees says "Joining the broadcast…", and a host who is not sending a picture has no OFF AIR mark (`BENCHMARK.md` Q5, `QUIRKS.md` Q5 on `cursor/qa-broadcast-mobile`). `cursor/qa-broadcast-desktop` does paint Watching and Live. The two branches do not use the same words.
-10. `nwcnwc/gifos` was not readable, and `docs/meeting.md` and `docs/media-plane.md` are cited in `run.html` but are not in any branch of this repo. If those files exist elsewhere, this note has not seen them.
+- **Where ban and the other tile actions go.** Mute, blur, demote, and ban sit on each stage seat (everyone on stage except you). The same actions, with Promote, sit on each row of the admin raised-hands list. The viewer list (Who) groups On stage, Raised hands, and Watching, and each other person there has the same actions. A broadcast still does not draw the row grid, so those buttons are not the hidden Meet tile menu.
+- **On-air words.** The page shows a lamp with words beside it. A viewer reads Watching. A host or a stage guest who is sending a camera or a microphone reads Live. A host or a stage guest who is not sending reads Off air. Meetings hide the lamp. The desktop QA bar "Service · You are live" is a different skin. Nathan asked for the words next to the lamp, not that bar.
+
+The watching-viewer rule still holds. A viewer has no camera or microphone control and publishes nothing. On this page that seat is `bc-viewer`, from the viewer role itself, not from `body.notadmin`. `cursor/watching-viewer-no-av-f3b0` keys the same rule off `bc-watching` on the desktop skin.
+
+The avatar rule above still holds. The letter is a frame of the video, so blur covers it.
+
+## Still ambiguous
+
+- A called-up person gets camera and microphone. The shipped skin still hides Share, Run app, Record, and captions from them. Help does not say whether those should come back. They stay hidden.
+- Whether a viewer should see the raised-hands list, or only the host. The list is on the page for everyone. Promote, mute, blur, and ban show only for the host.
+- Promote on a person who has not raised a hand. Who still offers it. The grant is the right to step up. The hand is what makes their own client step up. Promote on the raised-hands list is the call-up.
+- The stage picture is still one strip. Seat actions are a row for each other person on that stage, because the strip is one picture and the row grid stays hidden.
+- The host does not get mute, blur, demote, or ban on their own seat.
+- Exact lamp words beyond Live, Off air, and Watching. "Service · You are live" and a full-width bar were not part of the confirmation.
+- `nwcnwc/gifos` was not readable, and `docs/meeting.md` and `docs/media-plane.md` are cited in `run.html` but are not in any branch of this repo. If those files exist elsewhere, this note has not seen them.
