@@ -1363,9 +1363,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   #unmute[hidden] { display: none !important; }
   @media (max-height: 500px) and (orientation: landscape) {
+    /* The room name and the count share the header row with Fit.
+       Unmute sits in the gap between them, and the chip stops short of it. */
+    .topchip { max-width: calc(100% - 12rem - 48px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
     #unmute {
       top: calc(14px + env(safe-area-inset-top, 0px));
-      left: 50%; right: auto; transform: translateX(-50%);
+      left: auto;
+      right: calc(5rem + 24px + env(safe-area-inset-right, 0px));
+      transform: none;
     }
   }
   /* Live, Record, and Captions sit on the call, above the dock, so a
@@ -1555,6 +1560,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       left: 12px; right: auto; width: 134px; height: 179px; }
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="5"]) .tile.me {
       width: 138px; height: 182px; }
+  }
+  /* Fit sits on the next row when the phone is upright, so the chip can
+     use the width and the room name can sit beside the count. */
+  @media (max-width: 700px) and (min-height: 520px) {
+    .topchip { max-width: calc(100% - 28px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
   }
   /* Comfy: every face on screen, tiles touch. The long :not chain is what
      the older gallery rule uses; matching it is what lets these win.
@@ -6640,6 +6650,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         : shown + ' in the meeting · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
       const statusText = (reachState && reachState !== 'partial') ? REACH_MSG[reachState]
         : (shown <= 1 ? (atDoor ? 'Waiting to get in' : 'Just you') : shown + ' in call');
+      // The count says how many. The room id says which meeting this phone
+      // is in. A manager between calls was reading "4 in call" and nothing else.
+      const roomLabel = String((params.get('v') || '')).replace(/\s+/g, ' ').trim();
+      const statusShown = roomLabel ? (roomLabel + ' · ' + statusText) : statusText;
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
       // of the reach states that replace the line. Tests and styling read
@@ -6652,7 +6666,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
       }
       if (reachState && reachState !== 'partial') statusEl.classList.add('alert');
-      if (statusEl.textContent !== statusText) statusEl.textContent = statusText;
+      if (statusEl.textContent !== statusShown) statusEl.textContent = statusShown;
       if (statusEl.title !== detail) statusEl.title = detail;
     }
 

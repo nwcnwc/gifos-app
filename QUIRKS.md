@@ -307,6 +307,14 @@ Repro: `test/mobile/live-stands-out.js`. It failed (SE Live 44px tall and 72px w
 
 Before: `qa/mobile/shots/before-live-stands-out-iphone-se.png`, `qa/mobile/shots/before-live-stands-out-iphone-se-land.png`. After: `qa/mobile/shots/after-live-stands-out-iphone-se.png`, `qa/mobile/shots/after-live-stands-out-iphone-se-land.png`.
 
+### 38. The header counted people and never named the room
+
+A manager between meetings read "4 in call" or "Just you". The room id was only in the link.
+
+Repro: `test/mobile/header-count.js`. It failed (`header "4 in call"`), then passed. Four peers read `header-count · 4 in call`, and the phrase fits on an SE and an iPhone 15 without covering Fit. On a sideways phone the chip stops short of Unmute.
+
+Before: `qa/mobile/shots/before-room-name-iphone-15.png`. After: `qa/mobile/shots/after-room-name-iphone-15.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.

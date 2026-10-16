@@ -28,8 +28,8 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 | End the call, mute, camera, on a 360px phone | 9 | Hang up, mute, camera, and Fit fit and are at least 44px. On a phone they tuck when the call is quiet and come back on a tap. |
 | Host: password, record, captions, stage, in landscape | 10 | Live, Record, and Captions are on the call. Record says what it will capture, and Start recording stays on screen, including at 200% text. Room password, Vote on someone, and Step on stage stay in More. Waiting room admits from a list. |
 | Chat or check names without losing the controls | 9 | The count and the latest line sit on the call. Emoji inserts into the field. Theirs is a light bubble, mine is blue, and both names are 1rem. |
-| Looks trustworthy (nothing cut off, type scales) | 9 | The header says "4 in call". At 200% text four faces stay above Live. Recording is a separate red state. When the call is quiet the faces use the space the dock was holding. |
-| **Audience** | **9** | Hang up, landscape host tools, the live state, captions, chat, the home indicator, the header count, and a waiting-room admit list are in good shape. The quiet call tucks the dock. We do not lead yet. |
+| Looks trustworthy (nothing cut off, type scales) | 10 | The header says the room and the count, and the phrase fits. At 200% text four faces stay above Live. Recording is a separate red state. When the call is quiet the faces use the space the dock was holding. |
+| **Audience** | **9** | The header names the room. Hang up, landscape host tools, the live state, captions, chat, and a waiting-room list are in good shape. Ending the call and chat are still open. We do not lead yet. |
 
 ## Church
 
@@ -94,3 +94,4 @@ Family and friends. Warm, few steps, a texted link.
 35. Readable captions. `test/mobile/caption-read.js` failed (no caption a member can read; the line was clipped on the face), then passed on an SE, sideways, and at 200% text. The caption sits above Live. The start of a long line is showing, and the rest scrolls inside it. Church captions 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 36. Unmute on a texted link. `test/mobile/join-unmute.js` failed (no Unmute a person can read), then passed on an SE, at 200% text, and sideways. The button is blue and stays when the dock tucks. A tap turns the mic on. Personal link 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 37. Live a volunteer can see. `test/mobile/live-stands-out.js` failed (SE Live 72×44, sideways Live 72px wide), then passed. Upright, Live is a 64px band across the call. Sideways, it takes the rest of the one row. Record and Captions stay secondary. Audience scores stay 9 / 9 / 9. Nobody leads yet.
+38. The header names the room. `test/mobile/header-count.js` failed (`header "4 in call"`), then passed. Four peers read `header-count · 4 in call` on an SE and an iPhone 15, and the phrase fits. Corporate trust 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.

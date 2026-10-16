@@ -1,6 +1,7 @@
 /*
- * The header must name how many people are actually in the call, and the
- * whole phrase has to fit. Four real peers used to read "Just you — s…".
+ * The header must name how many people are actually in the call, and which
+ * room this is. The whole phrase has to fit. Four real peers used to read
+ * "Just you — s…", and the chip never said the meeting.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/header-count.js
  */
@@ -88,30 +89,35 @@ async function boot(browser, device) {
     }, PEOPLE);
     const info = await page.evaluate(() => {
       const el = document.getElementById('status');
-      const chip = document.querySelector('.topchip').getBoundingClientRect();
+      const chipEl = document.querySelector('.topchip');
+      const chip = chipEl.getBoundingClientRect();
       const b = el.getBoundingClientRect();
+      const fit = document.getElementById('fitbtn').getBoundingClientRect();
       const names = Array.from(document.querySelectorAll('.tile .name')).map((n) => n.textContent.trim());
+      const hit = !(b.right < fit.left + 1 || b.left > fit.right - 1 || b.bottom < fit.top + 1 || b.top > fit.bottom - 1);
       return {
         text: el.textContent,
         title: el.title || '',
         clipped: el.scrollWidth > el.clientWidth + 2,
         inChip: b.left >= chip.left - 1 && b.right <= chip.right + 1 && b.top >= chip.top - 1 && b.bottom <= chip.bottom + 1,
         off: b.left < -1 || b.right > window.innerWidth + 1,
+        coversFit: hit && fit.height > 2,
         names: names,
         count: (window.__gifosVideo && window.__gifosVideo.participants) ? window.__gifosVideo.participants() : null,
       };
     });
     const bad = [];
     if (!presented.ok) bad.push(presented.why || 'could not present peers');
-    if (info.text !== '4 in call') bad.push('header "' + info.text + '"');
+    if (info.text !== 'header-count · 4 in call') bad.push('header "' + info.text + '"');
     if (info.clipped) bad.push('header text is cut off');
     if (info.off || !info.inChip) bad.push('header sits outside the chip');
+    if (info.coversFit) bad.push('header covers Fit');
     for (const person of PEOPLE) {
       if (!info.names.some((n) => n.indexOf(person.name) >= 0)) bad.push('missing tile ' + person.name);
     }
     if (!info.names.some((n) => n.indexOf('Grandma Ruth') >= 0)) bad.push('missing self tile');
     if (phone.name === 'iphone-15') {
-      const file = presented.ok ? 'after-header-count.png' : 'before-header-count.png';
+      const file = bad.length ? 'before-room-name-iphone-15.png' : 'after-room-name-iphone-15.png';
       await page.screenshot({ path: path.join(SHOTS, file) });
     }
     if (bad.length) failures.push(phone.name + ': ' + bad.join('; ') + ' ' + JSON.stringify(info));
