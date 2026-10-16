@@ -1583,6 +1583,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     min-height: 48px; border-radius: 16px; }
   #lobby.show .lob-primary, #lob-admin-go { background: #0064c8; border-color: transparent; color: #fff; font-weight: 700; text-align: center; }
   #lobby.show .lob-action { background: #fff; border: 1.5px solid #8d93a0; color: #1d1d1f; text-align: center; }
+  /* A small group has one door. Host and Join are the same kind of link as
+     the guest password, and they still open in place. */
+  #lobby.show #lob-admin-btn.lob-link,
+  #lobby.show #lob-join-btn.lob-link { display: block; width: 100%; min-height: 44px; margin: 0 0 2px;
+    color: #0064c8; font-weight: 700; font-size: 16px; text-align: center; text-decoration: underline;
+    background: transparent; border: 0; }
   .lob-expand input { min-height: 48px; color: #1d1d1f; background: #fff; }
   #lob-rename { min-height: 48px; padding: 8px 12px; color: #0064c8; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; }
   .lob-star, #lobby button.row-del { min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
@@ -1610,7 +1616,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <h1>Small group</h1>
       <p class="lob-quiet">You come in muted. Turn the camera on here if you want to be seen.</p>
       <button id="lob-open" class="lob-primary">Start a call<small>Anyone with the link can join</small></button>
-      <button id="lob-admin-btn" class="lob-action">Host this call<small>A password only you know</small></button>
+      <button type="button" id="lob-admin-btn" class="lob-link">Host this call</button>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <input id="lob-admin-name" maxlength="40" placeholder="Name this call" autocomplete="off">
         <label class="lob-pwlab">🔑 <b id="lob-admin-pass-head">Host password</b> — only you<small id="lob-admin-pass-note">Do not share it. Guests do not need it, and it is not part of the link.</small></label>
@@ -1623,7 +1629,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <div class="lob-row"><button id="lob-admin-cancel" class="lob-ghost">Cancel</button><button id="lob-admin-go">Start</button></div>
         <div id="lob-admin-err" class="lob-err"></div>
       </div>
-      <button id="lob-join-btn" class="lob-action">Join a link<small>Paste a link someone sent you</small></button>
+      <button type="button" id="lob-join-btn" class="lob-link">Join a link</button>
       <div id="lob-join" class="lob-expand" style="display:none">
         <input id="lob-join-in" placeholder="Paste link or meeting id" autocomplete="off">
         <div class="lob-row"><button id="lob-join-cancel" class="lob-ghost">Cancel</button><button id="lob-join-go">Join</button></div>
@@ -12194,7 +12200,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (quiet) quiet.textContent = 'You host. People watch with the link.';
         document.getElementById('lob-open').style.display = 'none';
         const start = document.getElementById('lob-admin-btn');
-        start.classList.remove('lob-action');
+        start.classList.remove('lob-action', 'lob-link');
         start.classList.add('lob-primary');
         start.innerHTML = 'Go live<small>A host password keeps you in charge</small>';
         document.getElementById('lob-admin-go').textContent = 'Go live';
@@ -12205,7 +12211,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('lob-guest-pass-head').textContent = 'Viewer password';
         document.getElementById('lob-guest-pass').placeholder = 'Viewer password (optional)';
         document.getElementById('lob-guest-pass-note').textContent = 'Optional. It is not part of the link.';
-        document.getElementById('lob-join-btn').innerHTML = 'Watch<small>Paste a link someone sent you</small>';
+        const watch = document.getElementById('lob-join-btn');
+        watch.classList.remove('lob-link');
+        watch.classList.add('lob-action');
+        watch.innerHTML = 'Watch<small>Paste a link someone sent you</small>';
         document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch show up here.';
       }
       paintLobbyAppear();

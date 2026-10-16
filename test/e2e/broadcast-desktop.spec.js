@@ -359,23 +359,51 @@ test('a family call and a church broadcast start from a plain lobby', async ({ p
     await page.waitForSelector('#lobby.show');
     await expect(page.locator('#lobby h1')).toHaveText('Small group');
     await expect(page.locator('#lob-open')).toHaveText(/Start a call/);
+    await expect(page.locator('#lob-admin-btn')).toHaveText('Host this call');
+    await expect(page.locator('#lob-join-btn')).toHaveText('Join a link');
+    await expect(page.locator('#lob-admin-btn')).toHaveClass(/lob-link/);
+    await expect(page.locator('#lob-join-btn')).toHaveClass(/lob-link/);
     await expect(page.locator('#lobby')).not.toContainText(/troublemaker|open room|admin/i);
     await expect(page.locator('#lob-guest-pass')).toBeHidden();
     const colors = await page.evaluate(() => {
       const primary = getComputedStyle(document.getElementById('lob-open'));
-      const secondary = getComputedStyle(document.getElementById('lob-admin-btn'));
-      return { p: primary.backgroundColor, s: secondary.backgroundColor };
+      const host = document.getElementById('lob-admin-btn');
+      const join = document.getElementById('lob-join-btn');
+      const hs = getComputedStyle(host);
+      const pr = document.getElementById('lob-open').getBoundingClientRect();
+      const hr = host.getBoundingClientRect();
+      const jr = join.getBoundingClientRect();
+      return {
+        p: primary.backgroundColor,
+        h: hs.backgroundColor,
+        border: hs.borderTopWidth,
+        shorter: hr.height < pr.height - 4 && jr.height < pr.height - 4,
+        in: hr.left >= 0 && jr.right <= innerWidth,
+      };
     });
     expect(colors.p).toBe('rgb(0, 100, 200)');
-    expect(colors.s).not.toBe(colors.p);
+    expect(colors.h).not.toBe(colors.p);
+    expect(colors.border).toBe('0px');
+    expect(colors.shorter).toBe(true);
+    expect(colors.in).toBe(true);
     await cardFits(w, h);
   }
+  await page.locator('#lob-join-btn').click();
+  await expect(page.locator('#lob-join-in')).toBeVisible();
+  await expect(page.locator('#lob-admin')).toBeHidden();
+  await page.locator('#lob-admin-btn').click();
+  await expect(page.locator('#lob-admin-pass')).toBeVisible();
+  await expect(page.locator('#lob-join')).toBeHidden();
+  await cardFits(900, 720);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/run.html?desk=church#bc=1');
   await page.waitForSelector('#lobby.show h1');
   await expect(page.locator('#lobby h1')).toHaveText('Service');
   await expect(page.locator('#lob-admin-btn')).toBeVisible();
   await expect(page.locator('#lob-admin-btn')).toHaveText(/Go live/);
+  await expect(page.locator('#lob-admin-btn')).toHaveClass(/lob-primary/);
+  await expect(page.locator('#lob-join-btn')).toHaveText(/Watch/);
+  await expect(page.locator('#lob-join-btn')).toHaveClass(/lob-action/);
   await expect(page.locator('#lob-open')).toBeHidden();
   await expect(page.locator('#lob-guest-pass')).toBeHidden();
   const liveBg = await page.locator('#lob-admin-btn').evaluate((el) => getComputedStyle(el).backgroundColor);
