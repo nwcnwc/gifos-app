@@ -14,15 +14,19 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** the chat panel’s bottom clears the dock only where they share horizontal space (`--dock-clear`, remeasured on resize and when chat opens). The privacy line takes its own row. Opening chat folds the More sheet without changing the saved “keep More open” preference. Close has an accessible name.
 - **Proof:** the same test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/chat-dock-before-900.png`, `test/desktop/shots/chat-dock-after-900.png`.
 
+### Dock controls are icon-only
+
+- **Who hits it:** a keyboard user, and an older volunteer, looking at Mic, Camera, More, and Leave.
+- **What you saw:** four circles and a red hang-up. The names lived in `title`, so they appeared only on hover. Reactions stays an icon; that control belongs to another owner.
+- **Repro:** `test/desktop/dock-labels.spec.js` failed on Chromium before the fix (`dockword` missing on `#mic`).
+- **Fix:** Mic, Camera, More, and Leave each show a word inside the button. Opening More changes that word to Hide, including when chat folds the sheet. The buttons grow just enough to hold the word (dock about 482px, still inside a 900px window). The reactions SVG is unchanged.
+- **Proof:** the same test passes on Chromium, Firefox, and WebKit, and the chat-dock tests still pass. Screenshots: `test/desktop/shots/dock-labels-before-1280.png`, `test/desktop/shots/dock-labels-after-1280.png`, `test/desktop/shots/dock-labels-after-900.png`.
+
 ## Open
 
 ### WebKit crashes if a gallery tile plays a canvas captureStream
 
 Opening four fake videos and then clicking More closed the WebKit tab. Chromium and Firefox play the streams. The test hook skips `captureStream` when `navigator.vendor` contains Apple and shows initials instead. Not a product bug for real cameras; it blocks this suite’s fake media on WebKit.
-
-### Dock controls are icon-only
-
-Mic, camera, reactions, More, and Leave have no visible words. Titles exist, so a pointer user can hover. A keyboard user and an older volunteer cannot tell Mute from Camera without guessing. Reactions icon is left to the other owner.
 
 ### No keyboard shortcuts
 

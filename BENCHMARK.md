@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. The chat fix below moves one cell. The rest of the gap is still open.
+We do **not** lead any audience yet. Chat no longer fights the dock, and the four primary controls now have words. Keyboard shortcuts, the More sheet, and locale are still open.
 
 ## Who we are measured against
 
@@ -25,11 +25,11 @@ Polished, efficient, trustworthy. Best of the field today: Zoom and Meet, about 
 | | GifOS | Notes |
 | --- | ---: | --- |
 | Trust (no account, private media, quiet join) | 9 | Ahead of Zoom, Meet, and Teams |
-| Visual polish | 6 | Dock is calm. Chat used to slide under it below ~1140px; that is fixed |
-| Efficiency (keyboard, few clicks) | 3 | No shortcuts. Chat is two clicks (More, then Chat) |
+| Visual polish | 7 | Dock is calm and the primary controls are labeled. Chat no longer slides under it |
+| Efficiency (keyboard, few clicks) | 3 | No shortcuts. Chat is two clicks (More, then Chat). Labels do not remove a click |
 | Presenting | 5 | Share exists. Not yet walked as a client demo |
 | Large-room host | 4 | Count is a status sentence that ellipsizes |
-| **Audience** | **5.4** | Does not lead |
+| **Audience** | **5.6** | Does not lead |
 
 ## Church
 
@@ -38,10 +38,10 @@ Simple for volunteers and older members. Services and small groups. Best of the 
 | | GifOS | Notes |
 | --- | ---: | --- |
 | Volunteer simplicity | 5 | Lobby copy is long. More is a wall of tools |
-| Readability for older eyes | 5 | Icons are large. They have no words. Privacy line in chat was 110px wide; it now wraps |
+| Readability for older eyes | 6 | Mic, Camera, More/Hide, and Leave say so in the button. Reactions is still an icon. Chat’s privacy line wraps |
 | Small group (conversation, singing) | 7 | One link, blur, unison. The call itself is close |
 | Service / broadcast | 4 | No lower third, no obvious on-air, no volunteer checklist |
-| **Audience** | **5.3** | Does not lead |
+| **Audience** | **5.5** | Does not lead |
 
 ## Personal
 
@@ -57,4 +57,4 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 
 ## This cycle
 
-Fixed the chat panel fighting the dock (see QUIRKS.md). Corporate polish 5 → 6, church readability unchanged except the chat line, personal “staying in the call” still 5 until tab-away is proven. Audience totals stay in the mid 5s. Next gap: words on the dock and keyboard shortcuts, which are the largest corporate-efficiency and church-readability holes that this UI can close without touching gallery layout, self-view, or the reactions icon.
+Labeled Mic, Camera, More/Hide, and Leave (see QUIRKS.md). Corporate polish 6 → 7. Church readability 5 → 6, audience 5.3 → 5.5. Efficiency stays 3: a word does not replace a shortcut, and chat is still More then Chat. Personal is unchanged. We do not lead. Next gap: keyboard shortcuts for mute, camera, chat, and leave, skipped while typing, and visible without a hover.
