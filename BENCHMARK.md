@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 against the desktop chrome in `run.html` (Meeting, and Broadcast via `#bc=1`). Scores are 1–5 for the **desktop UI** a person actually sees. 5 means that product is the reference for the row. This is not a score for media quality, scale, or mobile.
 
-GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (4.0, Zoom 4.9) or personal (3.8, FaceTime 4.8 and Meet 4.0). A tie is not a lead. The church lead is the audience average.
+GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (4.0, Zoom 4.9) or personal (4.0, FaceTime 4.8). Personal ties Meet at 4.0, and a tie is not a lead. The church lead is the audience average.
 
 ## Who we are scoring against
 
@@ -47,10 +47,10 @@ GifOS leads this audience. The average is 4.7 against StreamYard 4.0. An open se
 | Start or join in one obvious step | 5 | 4 | 4 |
 | Invite is in the primary controls | 5 | 5 | 4 |
 | Reactions feel human | 4 | 4 | 4 |
-| Leave / rejoin is understandable | 5 | 4 | 3 |
-| **Audience score** | **4.8** | **4.0** | **3.8** |
+| Leave / rejoin is understandable | 5 | 4 | 4 |
+| **Audience score** | **4.8** | **4.0** | **4.0** |
 
-FaceTime leads. The join step shows your GifOS name and picture under “This is how you'll appear”, and Join is blue beside an outline Not now (Q13). Arithmetic: (4+4+4+4+3)/5 = 3.8.
+FaceTime leads. Leave is a labeled red button. Stay is an outline and Leave is red. After you leave, a white card says you left the small group, Rejoin is blue, and Close is an outline (Q20). That matches Meet. It stays short of FaceTime, which has no confirm step. Arithmetic: (4+4+4+4+4)/5 = 4.0. A tie with Meet is not a lead.
 
 ## Lead rule
 
@@ -78,3 +78,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q17 | 3.9 (Zoom 4.9) | 4.5 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Chat is a dock button. Prayer is a separate line. Corporate chat 3 → 4. Church chat 3 → 4. |
 | After Q18 | 3.9 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | An open room says Service or Small group. Service-versus-group 4 → 5. Corporate trust and personal leave stay where they were. |
 | After Q19 | 4.0 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Recording state and who is here are on the room bar. Trust 3 → 4. Church and personal stay. |
+| After Q20 | 4.0 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.0 (FaceTime 4.8) | Leave is labeled. Rejoin is the blue way back. Personal leave 3 → 4. Ties Meet. FaceTime still leads. |

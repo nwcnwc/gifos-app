@@ -90,9 +90,13 @@ The full-width bar now names the room. A service says **Service · You are live*
 
 The room bar now says **Not recording** or **Recording**, and a headcount (**1 here**) that opens the name list. More can stay closed. Recording is a white pill with red text. Not recording is an outline on the same bar. Both fit inside the bar at 1280, 1920, and 900, clear of the dock. Tapping Not recording opens the record sheet. Tapping the count shows the names, including your own. A service keeps “Service · You are live” beside those controls. After: `test/e2e/artifacts/trust-group-after.png`, `trust-group-recording-after.png`, `trust-service-after.png`.
 
+### Q20. Leave was an unlabeled phone icon, and coming back said “meeting”
+
+The dock button says **Leave**. The question is Stay (outline) and Leave (red), with a gap between them. After you leave, a white card says **You left the small group** or **You left the service**. Rejoin is blue `#0064c8`. Close is a white outline button. Rejoin reloads the same link and the room bar is back. The label fits inside the button at 1280, 1920, and 900. After: `test/e2e/artifacts/leave-dock-after.png`, `leave-ask-after.png`, `leave-rejoin-after.png`.
+
 ## Open
 
-Leaving and coming back is the next gap. The leave question exists, and the screen after you leave does not yet make the way back as obvious as FaceTime.
+The next gap is how obvious mute and camera are. The dock buttons are red or green, and there is still no line you cannot miss, the way the room bar states on-air and recording. FaceTime is also still ahead on how little chrome a personal call shows.
 
 ## How a session was opened without a relay
 

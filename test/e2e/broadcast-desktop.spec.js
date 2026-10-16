@@ -695,3 +695,83 @@ test('chat composer stays clear of the dock after a live resize to 900px', async
   expect(clearOfDock(hit.input), JSON.stringify(hit)).toBe(true);
   expect(clearOfDock(hit.form), JSON.stringify(hit)).toBe(true);
 });
+
+test('leaving and rejoining a personal call is obvious', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=leave' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.group');
+    const leave = page.locator('#leavebtn');
+    await expect(leave.locator('.docklab')).toHaveText('Leave');
+    const lay = await page.evaluate(() => {
+      const btn = document.getElementById('leavebtn').getBoundingClientRect();
+      const lab = document.querySelector('#leavebtn .docklab').getBoundingClientRect();
+      const bar = document.querySelector('.bar').getBoundingClientRect();
+      return {
+        labIn: lab.left >= btn.left - 1 && lab.right <= btn.right + 1 && lab.top >= btn.top - 1 && lab.bottom <= btn.bottom + 1,
+        barIn: bar.left >= -1 && bar.right <= innerWidth + 1,
+      };
+    });
+    expect(lay.labIn, JSON.stringify(lay)).toBe(true);
+    expect(lay.barIn, JSON.stringify(lay)).toBe(true);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.locator('#leavebtn').click();
+  await expect(page.locator('#leave-ask')).toBeVisible();
+  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the small group?');
+  const ask = await page.evaluate(() => {
+    const stay = document.getElementById('leave-cancel').getBoundingClientRect();
+    const go = document.getElementById('leave-go').getBoundingClientRect();
+    const ss = getComputedStyle(document.getElementById('leave-cancel'));
+    const gs = getComputedStyle(document.getElementById('leave-go'));
+    return {
+      gap: Math.round(go.left - stay.right),
+      stayBg: ss.backgroundColor, goBg: gs.backgroundColor,
+      on: stay.right <= innerWidth && go.right <= innerWidth && stay.bottom <= innerHeight,
+    };
+  });
+  expect(ask.gap).toBeGreaterThanOrEqual(8);
+  expect(ask.stayBg).not.toBe(ask.goBg);
+  expect(ask.goBg).toBe('rgb(182, 22, 34)');
+  expect(ask.on).toBe(true);
+  await page.locator('#leave-cancel').click();
+  await expect(page.locator('#leave-ask')).toBeHidden();
+  await expect(page.locator('#left-modal')).toBeHidden();
+  await page.locator('#leavebtn').click();
+  await page.locator('#leave-go').click();
+  await expect(page.locator('#left-modal')).toBeVisible();
+  await expect(page.locator('#left-title')).toHaveText('You left the small group');
+  await expect(page.locator('#left-note')).toContainText('Rejoin');
+  const back = await page.evaluate(() => {
+    const re = document.getElementById('left-rejoin');
+    const cl = document.getElementById('left-close');
+    const rr = re.getBoundingClientRect();
+    const cr = cl.getBoundingClientRect();
+    const rs = getComputedStyle(re);
+    const cs = getComputedStyle(cl);
+    return {
+      reBg: rs.backgroundColor, clBg: cs.backgroundColor, clBorder: cs.borderTopWidth,
+      gap: Math.round(cr.left - rr.right),
+      on: rr.left >= 0 && cr.right <= innerWidth && rr.bottom <= innerHeight && cr.bottom <= innerHeight,
+    };
+  });
+  expect(back.reBg).toBe('rgb(0, 100, 200)');
+  expect(back.clBg).toBe('rgb(255, 255, 255)');
+  expect(back.reBg).not.toBe(back.clBg);
+  expect(back.gap).toBeGreaterThanOrEqual(8);
+  expect(back.on).toBe(true);
+  await page.locator('#left-rejoin').click();
+  await page.waitForSelector('#airbar.on.group');
+  await expect(page.locator('#left-modal')).toBeHidden();
+  await expect(page.locator('#airkind')).toHaveText('Small group');
+  await page.goto('/run.html?desk=leavesvc#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airkind');
+  await page.locator('#leavebtn').click();
+  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the service?');
+  await page.locator('#leave-go').click();
+  await expect(page.locator('#left-title')).toHaveText('You left the service');
+});
