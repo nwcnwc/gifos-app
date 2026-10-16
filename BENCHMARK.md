@@ -17,15 +17,15 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 | --- | ---: | ---: | ---: | --- |
 | First screen tells you what to do | 3 | 2 | 3 | FaceTime, Meet |
 | Hang up, mic, and camera stay on screen | 4 | 4 | 4 | Zoom, Meet |
-| Chat can be read and sent on a phone | 2 | 2 | 2 | Meet, Teams |
+| Chat can be read and sent on a phone | 4 | 4 | 4 | Meet, Teams |
 | Live, off air, watching, reconnecting | 3 | 1 | 3 | YouTube Live, StreamYard |
 | Large type and 44px targets | 3 | 2 | 3 | FaceTime |
 | Landscape, rotation, notch | 2 | 2 | 2 | Meet |
 | Warm, short, trustworthy copy | 3 | 2 | 3 | FaceTime |
-| **Audience average** | **2.9** | **2.1** | **2.9** | |
+| **Audience average** | **3.1** | **2.4** | **3.1** | |
 
-Hang up, mic, and camera now stay inside a 320px and a 360px screen (Q1). Corporate and personal move from 2.6 to 2.9. Church moves from 2.0 to 2.1. None of the three lead. Zoom, Meet, and FaceTime still win the phone call, mostly because chat is covered by the dock (Q2) and a broadcast still has no LIVE / OFF AIR mark (Q5).
+Hang up stays on screen (Q1). The chat field and Send sit above the dock, including when a keyboard covers the bottom half of an iPhone SE (Q2). Corporate and personal are 3.1. Church is 2.4. None lead. YouTube Live and StreamYard still win the church score because a broadcast never says LIVE or OFF AIR (Q5), and the create action is still below the fold (Q4).
 
 ## Next gap
 
-Q2. On a meeting, the chat field and Send sit under the dock. Send is 34px tall. A person can hang up now, and still cannot reliably type to the room.
+Q5. A broadcast viewer’s status is “Joining the broadcast…”, and a host who is not sending a picture has no OFF AIR mark. Church and streaming tools win this in one glance.

@@ -10,13 +10,6 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Open
 
-### Q2. The chat field sits under the dock
-
-Same meeting, chat opened. The message field overlaps the dock on iPhone SE portrait, iPhone SE landscape, and 360 portrait. On portrait the Send button overlaps the dock too. Send is 34px tall, under a 44px touch target.
-
-Broadcast viewers hide camera and mic, so the dock is narrower and Send clears it, but the message field still overlaps.
-
-Before: `test/mobile/screenshots/before/iphone-se-meeting-chat.png`.
 
 ### Q3. More sheet starts above the viewport in iPhone SE landscape
 
@@ -44,11 +37,7 @@ Before: `test/mobile/screenshots/before/iphone-se-portrait-zoom.png`.
 
 ### Q7. No safe-area insets
 
-The viewport meta is `width=device-width, initial-scale=1.0, interactive-widget=resizes-content`. The dock is `bottom: 14px` and the top chip is `top: 14px`. Neither uses `env(safe-area-inset-*)`, and the meta does not set `viewport-fit=cover`. On a notched phone the chip and the dock sit under the hardware.
-
-### Q8. Chat header spends a third of a short screen
-
-`#chathead` lays the title, the “private to this meeting…” subtitle, Transcript, and close in one wrapping row. On iPhone SE portrait the header measures 110px tall before any message. Combined with Q2, the log is a short band between a tall header and the dock.
+The viewport meta is `width=device-width, initial-scale=1.0, interactive-widget=resizes-content`. The dock is `bottom: calc(14px + var(--kb, 0px))` and the top chip is `top: 14px`. Neither uses `env(safe-area-inset-*)`, and the meta does not set `viewport-fit=cover`. On a notched phone the chip and the dock sit under the hardware.
 
 ## Fixed
 
@@ -60,3 +49,12 @@ Below 380px the dock now uses 44px primary controls and a 48px Leave, all inside
 
 Before: `test/mobile/screenshots/before/iphone-se-meeting-dock.png`.
 After: `test/mobile/screenshots/after/iphone-se-meeting-dock.png` and `test/mobile/screenshots/after/android-360-meeting-dock.png`.
+
+### Q2. The chat field sits under the dock
+
+Same meeting, chat opened. The message field overlapped the dock on every phone in the pass, portrait and landscape. Send was 34px tall. On iPhone SE an overlaid keyboard (visual viewport at 46% of the layout height) pushed the field into the dock again until the phone header stopped wrapping.
+
+The composer now sits in the band above the dock (`--dock-clear`), Send and the field are at least 44px, and a `visualViewport` shrink lifts both the dock and the field. `test/mobile/chat-dock.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-meeting-chat.png`.
+After: `test/mobile/screenshots/after/iphone-se-meeting-chat.png`.

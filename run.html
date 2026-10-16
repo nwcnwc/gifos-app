@@ -1043,24 +1043,32 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      itself underneath, and the suite could no longer get out. --barh is the
      bar's measured height (set below; 0 where ResizeObserver is missing, which
      is exactly the old behaviour). */
-  #chatpanel { position: fixed; right: 0; top: var(--barh, 0px); bottom: 0; width: min(340px, 100vw); z-index: 30;
+  #chatpanel { position: fixed; right: 0; top: var(--barh, 0px); bottom: var(--dock-clear, 108px); width: min(340px, 100vw); z-index: 30; overflow: hidden;
                background: var(--bg, #101018); border-left: 1px solid var(--border, #2a2a3f); display: none; flex-direction: column; }
   #chatpanel.open { display: flex; }
-  #chathead { display: flex; align-items: center; gap: .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
-  #chathead button { margin-left: auto; padding: .2rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
-  #chatlog { flex: 1; overflow-y: auto; padding: .6rem; display: flex; flex-direction: column; gap: .35rem; font-size: .85rem; }
+  #chathead { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .5rem; padding: .45rem .6rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
+  #chathead small { flex: 1 0 100%; font-size: .75rem; line-height: 1.3; font-weight: 400; color: #c5c8dc; }
+  #chathead button { margin-left: 0; min-width: 44px; min-height: 44px; padding: .2rem .55rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
+  #chathead #trtab { margin-left: auto; }
+  /* A phone header that wraps the privacy sentence is ~110px. With the keyboard
+     up on a 320px screen that pushes Send under the dock. Keep the sentence
+     for screen readers and give the row back to the composer. */
+  @media (max-width: 700px) {
+    #chathead small { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  }
+  #chatlog { flex: 1; min-height: 0; overflow-y: auto; padding: .6rem; display: flex; flex-direction: column; gap: .35rem; font-size: .85rem; }
   .cmsg { background: var(--surface, #14141f); border: 1px solid #22223a; border-radius: .5rem; padding: .3rem .55rem; max-width: 94%; align-self: flex-start; overflow-wrap: anywhere; }
   .cmsg.mine { align-self: flex-end; background: var(--surface, #17222e); border-color: var(--accent, #223448); }
   .cmsg b { color: #7b9cff; font-size: .7rem; display: block; }
-  #cfiles { border-top: 1px solid var(--border, #2a2a3f); padding: .45rem .7rem; max-height: 34%; overflow-y: auto; }
+  #cfiles { flex: 0 1 auto; min-height: 0; border-top: 1px solid var(--border, #2a2a3f); padding: .45rem .7rem; max-height: 34%; overflow-y: auto; }
   #cfiles h4 { font-size: .72rem; color: var(--muted, #8888aa); margin-bottom: .3rem; }
   .cfile { display: flex; align-items: center; gap: .45rem; font-size: .78rem; padding: .18rem 0; }
   .cfile .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cfile small { color: #667; }
   .cfile button { padding: .1rem .45rem; border-radius: .35rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; font-size: .72rem; }
-  #chatform { display: flex; gap: .4rem; padding: .5rem .6rem; border-top: 1px solid var(--border, #2a2a3f); }
-  #chatform input[type=text] { flex: 1; padding: .4rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; font-size: .85rem; }
-  #chatform button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
+  #chatform { flex: 0 0 auto; display: flex; gap: .4rem; padding: .5rem .6rem; border-top: 1px solid var(--border, #2a2a3f); }
+  #chatform input[type=text] { flex: 1; min-width: 0; min-height: 44px; padding: .4rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; font-size: .85rem; }
+  #chatform button { min-width: 44px; min-height: 44px; padding: .4rem .7rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   .tile .cap { position: absolute; left: 50%; transform: translateX(-50%); bottom: 2.1rem; max-width: 92%;
                background: rgba(10,10,15,.82); border: 1px solid var(--border, #2a2a3f); border-radius: .45rem;
                padding: .35rem .7rem; font-size: 1.25rem; line-height: 1.35; color: #fff; z-index: 3; pointer-events: none;
@@ -1280,7 +1288,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #gifos-build-float { top: 14px !important; right: 14px !important; bottom: auto !important; left: auto !important;
     opacity: 1 !important; color: #e7ebf2 !important; background: rgba(12,14,18,.92); padding: 4px 10px;
     border-radius: 999px; z-index: 6 !important; text-shadow: none !important; }
-  .bar { position: fixed; z-index: 32; left: 50%; bottom: 14px; transform: translateX(-50%);
+  .bar { position: fixed; z-index: 32; left: 50%; bottom: calc(14px + var(--kb, 0px)); transform: translateX(-50%);
     display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; height: 104px; width: auto;
     max-width: calc(100% - 16px); padding: 0 16px 0 18px; margin: 0;
     background: rgba(255,255,255,.94); border: 0; border-radius: 32px;
@@ -20196,10 +20204,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The dock sits at the bottom, so a panel that used to clear a top bar
       // starts at the top of the page instead.
       const setBarH = () => {
-        try { document.documentElement.style.setProperty('--barh', '0px'); } catch (e) {}
+        try {
+          document.documentElement.style.setProperty('--barh', '0px');
+          const vv = window.visualViewport;
+          const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
+          document.documentElement.style.setProperty('--kb', kb + 'px');
+          const dock = bar.offsetHeight || 88;
+          document.documentElement.style.setProperty('--dock-clear', Math.ceil(dock + 14 + kb + 8) + 'px');
+        } catch (e) {}
       };
       if (window.ResizeObserver) { try { new ResizeObserver(setBarH).observe(bar); } catch (e) {} }
       window.addEventListener('resize', setBarH);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', setBarH);
+        window.visualViewport.addEventListener('scroll', setBarH);
+      }
       setBarH();
     })();
 
