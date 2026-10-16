@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q54. A viewer alone was told to send the invite
+
+A church viewer who opened a quiet service, and a friend who opened a quiet stream, read “Just you — send the invite; the link has no expiry.” That line is the host’s. The stage now says “The service has not started.” or “The stream has not started.” The chip says the same thing, and the banner stays OFF AIR. Once this tab has seen someone else in the room and the room is empty again, the stage says “The service has ended.” or “The stream has ended.” A host who is alone still gets Invite. A town hall viewer still reads that the hall has not started. A meeting still gets the invite line. `test/mobile/broadcast-ended.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-viewer-ended.png`. After: `test/mobile/screenshots/after/iphone-se-viewer-ended.png`, `test/mobile/screenshots/after/iphone-se-service-ended.png`.
+
+Design: the empty stage is the sentence, the way a player says the broadcast has not started or has ended. Church and personal stay at 4. There is still no replay.
+
 ### Q53. A host alone was told to send the invite
 
 The chip said “Just you — send the invite; the link has no expiry.” On a phone that sentence is a blue Invite button. It opens the share sheet, or copies the viewer link when the phone has no share sheet. The viewer password is not in the link or the words. The button goes away once someone joins. A viewer does not get it. Wide screens keep the sentence: `.topchip[data-invite="1"]` and `__gifosVideo.shareInvite` are there for the desktop Broadcast agent. `test/mobile/header-invite.spec.mjs`.

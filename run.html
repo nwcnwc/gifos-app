@@ -1376,6 +1376,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.broadcast .topchip[data-invite="1"] { padding-top: 0; padding-bottom: 0; padding-right: 0; min-height: 44px; }
     body.broadcast .topchip[data-invite="1"] #hdrinvite:not([hidden]) { display: inline-flex; }
   }
+  /* A broadcast viewer with an empty stage gets the sentence on the stage.
+     OFF AIR stays the banner. The chip carries the same sentence. */
+  #bc-ended[hidden] { display: none !important; }
+  body.broadcast #bc-ended:not([hidden]) {
+    display: flex; position: fixed; z-index: 4; left: 24px; right: 24px;
+    top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px));
+    bottom: calc(108px + var(--inset-bottom, 0px));
+    align-items: center; justify-content: center; margin: 0; padding: 0;
+    pointer-events: none; text-align: center;
+  }
+  #bc-ended p {
+    margin: 0; max-width: 18rem; color: #f4f7fb;
+    font: 700 1.75rem/1.25 system-ui, sans-serif; letter-spacing: -0.02em;
+  }
+  body.broadcast.bc-quiet #fitbtn { display: none; }
+  @media (max-height: 500px) {
+    body.broadcast #bc-ended:not([hidden]) {
+      top: calc(var(--banner-h) + 8px + 2.75rem + var(--inset-top, 0px));
+      bottom: calc(72px + var(--inset-bottom, 0px));
+    }
+    #bc-ended p { font-size: 1.25rem; }
+  }
   .fitbtn { position: fixed; z-index: 6; top: calc(14px + 2.75rem + var(--inset-top, 0px)); right: calc(14px + var(--inset-right, 0px)); min-width: 2.75rem; min-height: 2.75rem;
     border: 0; border-radius: 999px; padding: 0.35rem 0.75rem; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 1rem/1.2 system-ui, sans-serif; }
@@ -1970,6 +1992,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <div id="handq"></div>
   <div id="feed">
+    <div id="bc-ended" hidden><p id="bc-ended-txt"></p></div>
     <div id="stagefeed"></div>
     <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-name"></div></div>
     <div id="grid"></div>
@@ -2563,6 +2586,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // moment any gossip arrives.
     let statusHoldUntil = 0;
     let statusDetail = '';
+    // A broadcast viewer who has shared the room with someone, then finds it
+    // empty, is watching an ending. A fresh visit is a service that has not
+    // started. The mark lives for this tab, so next week's visit starts clean.
+    let broadcastSawCompany = false;
     // A message that STOPS someone (🛡 a refusal, 📷 an admin's video-off) is
     // the one message that must be read: it holds 12s and wears the warn
     // colour. Ordinary notices keep the 4s beat. An explicit hold wins.
@@ -6588,9 +6615,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
       // A town hall viewer is here to watch. "Send the invite" is the host's
       // line. Until someone else is in the room, say the hall has not started.
-      const place = TOWNHALL ? 'town hall' : 'meeting';
-      const watching = TOWNHALL && !(typeof bcHostStored === 'function' && bcHostStored());
-      const aloneLine = (watching ? 'The town hall has not started.' : 'Just you — send the invite; the link has no expiry') + reachTriedSentence();
+      // A broadcast viewer gets the same honesty on the stage: the service or
+      // stream has not started, or it has ended once this tab has seen company.
+      const hostStored = typeof bcHostStored === 'function' && bcHostStored();
+      const bcViewer = typeof BROADCAST !== 'undefined' && BROADCAST && !hostStored;
+      if (typeof BROADCAST !== 'undefined' && BROADCAST && n > 1) {
+        broadcastSawCompany = true;
+        try { sessionStorage.setItem('gifos_bc_seen_' + String(params.get('v') || '') + '.' + String(params.get('av') || '').toLowerCase(), '1'); } catch (e) {}
+      }
+      let sawCompany = broadcastSawCompany;
+      if (!sawCompany && typeof BROADCAST !== 'undefined' && BROADCAST) {
+        try { sawCompany = sessionStorage.getItem('gifos_bc_seen_' + String(params.get('v') || '') + '.' + String(params.get('av') || '').toLowerCase()) === '1'; } catch (e) {}
+        if (sawCompany) broadcastSawCompany = true;
+      }
+      const place = TOWNHALL ? 'town hall' : (typeof BROADCAST !== 'undefined' && BROADCAST ? (params.has('st') ? 'stream' : 'service') : 'meeting');
+      const watching = TOWNHALL && !hostStored;
+      const bcNoun = params.has('st') ? 'stream' : 'service';
+      const bcAlone = sawCompany ? ('The ' + bcNoun + ' has ended.') : ('The ' + bcNoun + ' has not started.');
+      const aloneCore = watching ? 'The town hall has not started.' : (bcViewer ? bcAlone : 'Just you — send the invite; the link has no expiry');
+      const aloneLine = aloneCore + reachTriedSentence();
       const doorLine = 'Getting you back into the ' + place + ' — waiting for the others to answer…';
       const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
         : (n === 1 ? (atDoor ? doorLine : aloneLine)
@@ -6627,6 +6670,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (reachState && reachState !== 'partial') statusEl.classList.add('alert');
       if (statusEl.textContent !== shown) statusEl.textContent = shown;
       if (statusEl.title !== shown) statusEl.title = shown;
+      const quiet = document.getElementById('bc-ended');
+      if (quiet) {
+        const on = bcViewer && statusKind === 'alone';
+        quiet.hidden = !on;
+        document.body.classList.toggle('bc-quiet', on);
+        const quietTxt = document.getElementById('bc-ended-txt');
+        if (quietTxt && on && quietTxt.textContent !== bcAlone) quietTxt.textContent = bcAlone;
+      }
       paintLiveBadge();
     }
     try {
@@ -23266,6 +23317,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       markJoinedForTest: (id) => {
         const pid = String(id || 'peer').slice(0, 80);
         if (pid && !rosterIds.includes(pid)) rosterIds.push(pid);
+        try { updateStatus(); } catch (e) {}
+        return participantCount();
+      },
+      markLeftForTest: (id) => {
+        const pid = String(id || 'peer');
+        rosterIds = rosterIds.filter((x) => x !== pid);
         try { updateStatus(); } catch (e) {}
         return participantCount();
       },
