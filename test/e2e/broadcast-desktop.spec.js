@@ -181,6 +181,34 @@ test('a meeting keeps meeting words and hides the on-air pill', async ({ page })
   await expect(page.locator('#leave-ask-title')).toHaveText('Leave the meeting?');
 });
 
+test('invite is one tap on the dock, not inside More', async ({ page }) => {
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await bootSession(page, w, h);
+    const invite = page.locator('#invite');
+    await expect(invite).toBeVisible();
+    await expect(invite.locator('.docklab')).toHaveText('Invite');
+    await expect(page.locator('.bar')).toHaveClass(/collapsed/);
+    const nested = await invite.evaluate((el) => !!el.closest('#barmore'));
+    expect(nested).toBe(false);
+    const bar = await page.locator('.bar').boundingBox();
+    const box = await invite.boundingBox();
+    expect(box.width).toBeGreaterThan(40);
+    expect(box.x).toBeGreaterThanOrEqual(bar.x - 1);
+    expect(box.x + box.width).toBeLessThanOrEqual(bar.x + bar.width + 1);
+    expect(box.y).toBeGreaterThanOrEqual(bar.y - 1);
+    expect(box.y + box.height).toBeLessThanOrEqual(bar.y + bar.height + 1);
+    expect(bar.x).toBeGreaterThanOrEqual(-1);
+    expect(bar.x + bar.width).toBeLessThanOrEqual(w + 1);
+    const lab = await invite.locator('.docklab').boundingBox();
+    expect(lab.x).toBeGreaterThanOrEqual(box.x - 1);
+    expect(lab.x + lab.width).toBeLessThanOrEqual(box.x + box.width + 1);
+  }
+  await bootSession(page, 1280, 720);
+  await page.locator('#invite').click();
+  await expect(page.locator('#inv-modal')).toBeVisible();
+  await expect(page.locator('#inv-modal h3')).toHaveText('Share this broadcast');
+});
+
 test('chat composer stays clear of the dock after a live resize to 900px', async ({ page }) => {
   await openChat(page, 1920, 1080);
   await page.setViewportSize({ width: 1280, height: 720 });

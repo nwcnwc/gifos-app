@@ -1302,7 +1302,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     max-width: calc(100% - 16px); padding: 0 16px 0 18px; margin: 0;
     background: rgba(255,255,255,.94); border: 0; border-radius: 32px;
     box-shadow: 0 10px 30px rgba(0,0,0,.28); overflow: visible; }
-  .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+  .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #bartoggle {
     width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
     background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
     font-size: 11px; font-weight: 700; line-height: 1; letter-spacing: 0;
@@ -1312,7 +1312,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      and Meet, not a small slash on a gray circle. */
   .bar #mic.iconbtn:not(.off), .bar #cam.iconbtn:not(.off) { background: #146c36; color: #fff; }
   .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { background: #b61622; color: #fff; border-color: transparent; }
-  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 28px; height: 28px; }
+  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 28px; height: 28px; }
   .bar #reactbtn.on, .bar #bartoggle[aria-expanded="true"] { background: #0064c8; color: #fff; }
   .bar:not(.collapsed) .bartoggle svg { transform: none; }
   .bar #leavebtn { width: 72px; height: 72px; min-width: 72px; min-height: 72px; margin-left: 6px; padding: 0;
@@ -1384,9 +1384,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .topchip .title { font-size: 20px; }
     .topchip .status { font-size: 17px; }
     .bar { height: 88px; gap: 8px; padding: 0 10px; }
-    .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+    .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #bartoggle {
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
-    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
+    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
     .bar #bargrip { height: 40px; width: 18px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
     .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px); }
@@ -1562,6 +1562,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1.1 1.4 2.4 2 4 2s2.9-.6 4-2"/><circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none"/></svg>
       <span class="docklab">React</span>
     </button>
+    <button id="invite" type="button" class="iconbtn" aria-label="Invite" title="Friends join you live with one link">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.6 19.2c.7-2.8 2.8-4.4 5.4-4.4s4.7 1.6 5.4 4.4"/><path d="M18 8.5v5.5M15.2 11.2h5.6"/></svg>
+      <span class="docklab">Invite</span>
+    </button>
     <button id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
       <span class="docklab">More</span>
@@ -1590,7 +1594,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
       <span class="blab">Float</span>
     </button>
-    <button id="invite" title="Friends join you live with one link">Invite</button>
     <button id="appbtn" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
     <button id="sharebtn" title="Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)" style="display:none">Share screen</button>
     <button id="blurall" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
@@ -2247,6 +2250,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (rec) rec.title = 'Record this broadcast ON YOUR DEVICE (everyone sees that you are recording)';
       const inv = document.querySelector('#inv-modal h3');
       if (inv) inv.textContent = 'Share this broadcast';
+      const inviteBtn = document.getElementById('invite');
+      if (inviteBtn) inviteBtn.title = 'Invite someone to this broadcast — one link';
       const files = document.querySelector('#cfiles h4');
       if (files) files.textContent = 'Files pinned to this broadcast';
       const host = bcHostStored() || document.body.classList.contains('amadmin');

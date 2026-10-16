@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 against the desktop chrome in `run.html` (Meeting, and Broadcast via `#bc=1`). Scores are 1–5 for the **desktop UI** a person actually sees. 5 means that product is the reference for the row. This is not a score for media quality, scale, or mobile.
 
-GifOS does **not** lead any audience yet. The gap column is what this branch is closing, one repro at a time.
+GifOS does **not** lead any audience yet. Corporate 3.6 trails Zoom 4.9. Church 4.0 is tied with StreamYard. Personal 3.0 trails FaceTime 4.8. A tie is not a lead.
 
 ## Who we are scoring against
 
@@ -23,7 +23,7 @@ GifOS does **not** lead any audience yet. The gap column is what this branch is 
 | Trust: live, recording, who is here | 5 | 4 | 5 | 3 |
 | **Audience score** | **4.9** | **4.3** | **4.1** | **3.6** |
 
-Zoom still leads. The More sheet scrolls instead of clipping on a short window (Q4). Invite is still inside More, and reactions still stack on that sheet (Q7).
+Zoom still leads. The More sheet scrolls instead of clipping on a short window (Q4). Invite is on the dock (Q11). Reactions still stack on the More sheet (Q7). Corporate rows did not move: none of them is “find Invite”.
 
 ## Church
 
@@ -45,12 +45,12 @@ Tied with StreamYard. The lead rule wants a strict lead. StreamYard still wins s
 | --- | --- | --- | --- |
 | Warm, little chrome | 5 | 3 | 3 |
 | Start or join in one obvious step | 5 | 4 | 3 |
-| Invite is in the primary controls | 5 | 5 | 2 |
+| Invite is in the primary controls | 5 | 5 | 4 |
 | Reactions feel human | 4 | 4 | 2 |
 | Leave / rejoin is understandable | 5 | 4 | 3 |
-| **Audience score** | **4.8** | **4.0** | **2.6** |
+| **Audience score** | **4.8** | **4.0** | **3.0** |
 
-FaceTime leads. Invite is buried in More. Reactions are the words Clap / Yes / No / Laugh, stacked on the same popover as More (Q7).
+FaceTime leads. Invite is a labeled dock button (Q11), one tap, still a dense share sheet behind it — so 4, not 5. Reactions are the words Clap / Yes / No / Laugh, stacked on the same popover as More (Q7). Arithmetic: (3+3+4+2+3)/5 = 3.0.
 
 ## Lead rule
 
@@ -65,3 +65,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q2–Q3 | 2.7 (Zoom 4.9) | 3.8 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | Broadcast words, Live for the host, Watching for a viewer |
 | After Q5–Q6 | 3.4 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | Labeled red/green mic and camera, M and V outside text fields |
 | After Q4 | 3.6 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | More sheet scrolls inside a short window |
+| After Q11 | 3.6 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 3.0 (FaceTime 4.8) | Invite is a labeled dock button. Church unchanged: no row scored “find Invite”. |
