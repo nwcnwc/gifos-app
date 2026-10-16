@@ -241,6 +241,26 @@ test('reactions are emoji under a smiley, and the sparkle stays off this control
   await expect(page.locator('.tile.me .reactburst')).toHaveText('👏');
 });
 
+test('reactions and More never stack', async ({ page }) => {
+  await bootSession(page, 1280, 720);
+  await page.locator('#bartoggle').click();
+  await expect(page.locator('#barmore')).toBeVisible();
+  await page.locator('#reactbtn').click();
+  await expect(page.locator('#reacttray')).toBeVisible();
+  await expect(page.locator('#barmore')).toBeHidden();
+  const overlap = await page.evaluate(() => {
+    const a = document.getElementById('barmore').getBoundingClientRect();
+    const c = document.getElementById('reacttray').getBoundingClientRect();
+    const ix = Math.max(0, Math.min(a.right, c.right) - Math.max(a.left, c.left));
+    const iy = Math.max(0, Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top));
+    return { ix: Math.round(ix), iy: Math.round(iy) };
+  });
+  expect(overlap.ix === 0 || overlap.iy === 0, JSON.stringify(overlap)).toBe(true);
+  await page.locator('#bartoggle').click();
+  await expect(page.locator('#barmore')).toBeVisible();
+  await expect(page.locator('#reacttray')).toBeHidden();
+});
+
 test('chat composer stays clear of the dock after a live resize to 900px', async ({ page }) => {
   await openChat(page, 1920, 1080);
   await page.setViewportSize({ width: 1280, height: 720 });

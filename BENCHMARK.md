@@ -23,7 +23,7 @@ GifOS does **not** lead any audience yet. Corporate 3.6 trails Zoom 4.9. Church 
 | Trust: live, recording, who is here | 5 | 4 | 5 | 3 |
 | **Audience score** | **4.9** | **4.3** | **4.1** | **3.6** |
 
-Zoom still leads. The More sheet scrolls instead of clipping on a short window (Q4). Invite is on the dock (Q11). Reactions are emoji (Q12) and still stack on the More sheet (Q7).
+Zoom still leads. Invite is on the dock (Q11). Reactions are emoji (Q12) and no longer stack on More (Q7). Layout stays 4: the popover collision is gone, and the dense More sheet is still the layout that is not yet a reference.
 
 ## Church
 
@@ -50,7 +50,7 @@ Tied with StreamYard. The lead rule wants a strict lead. StreamYard still wins s
 | Leave / rejoin is understandable | 5 | 4 | 3 |
 | **Audience score** | **4.8** | **4.0** | **3.4** |
 
-FaceTime leads. Invite is a labeled dock button (Q11). Reactions are emoji under a smiley (Q12), tied with FaceTime and Meet on that row, not ahead. The tray still opens on top of More (Q7). Arithmetic: (3+3+4+4+3)/5 = 3.4.
+FaceTime leads. Invite is a labeled dock button (Q11). Reactions are emoji under a smiley (Q12) and no longer sit on More (Q7). That row stays 4, tied with FaceTime and Meet: the burst is still local to your own tile. Arithmetic: (3+3+4+4+3)/5 = 3.4.
 
 ## Lead rule
 
@@ -67,3 +67,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q4 | 3.6 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | More sheet scrolls inside a short window |
 | After Q11 | 3.6 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 3.0 (FaceTime 4.8) | Invite is a labeled dock button. Church unchanged: no row scored “find Invite”. |
 | After Q12 | 3.6 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 3.4 (FaceTime 4.8) | Reactions are emoji under a smiley. Corporate and church rows did not move. |
+| After Q7 | 3.6 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 3.4 (FaceTime 4.8) | Reactions and More no longer stack. Scores unchanged: layout was already 4, and reactions were already 4. |

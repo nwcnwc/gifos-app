@@ -20278,14 +20278,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const btn = document.getElementById('reactbtn');
       const tray = document.getElementById('reacttray');
       if (!btn || !tray) return;
+      const bar = document.querySelector('.bar');
+      const more = document.getElementById('bartoggle');
       const shut = () => {
         tray.setAttribute('hidden', '');
         btn.setAttribute('aria-expanded', 'false');
         btn.setAttribute('aria-pressed', 'false');
         btn.classList.remove('on');
       };
+      // Both popovers share the same slot above the dock. Opening one closes the other.
+      if (more && more.onclick) {
+        const openMore = more.onclick;
+        more.onclick = function (ev) {
+          if (bar && bar.classList.contains('collapsed')) shut();
+          return openMore.call(this, ev);
+        };
+      }
       btn.onclick = () => {
         if (tray.hasAttribute('hidden')) {
+          if (bar && more && !bar.classList.contains('collapsed')) more.click();
           tray.removeAttribute('hidden');
           btn.setAttribute('aria-expanded', 'true');
           btn.setAttribute('aria-pressed', 'true');

@@ -44,11 +44,11 @@ Mic, camera, reactions, and More now carry a visible word inside the button (`Un
 
 The reaction tray is now emoji: ✋ 👏 👍 👎 😂, with accessible names Raise hand, Clap, Yes, No, Laugh. A clap paints 👏 on your tile, not the word Clap. The dock control shows 😊 plus the word React. No sparkle glyph (✨ ✦ ✧ ⭐) is on this control; that mark stays available for AI. Before: `test/e2e/artifacts/react-tray-before.png`. After: `test/e2e/artifacts/react-tray-after.png`.
 
+### Q7. Reactions and More occupied the same slot
+
+Opening React while More was open put `#reacttray` on top of `#barmore` (overlap 392×88px at 1280×720). Opening one now closes the other. After the same two taps, More is `display: none` and the emoji tray is the only popover. Before: `test/e2e/artifacts/react-more-stack-before.png`. After: `test/e2e/artifacts/react-more-stack-after.png`.
+
 ## Open
-
-### Q7. Reactions and More occupy the same slot
-
-`#reacttray` and `#barmore` are both `left: 50%; bottom: 122px`. Opening one does not close the other, so the trays stack.
 
 ### Q8. Guest tile tools are hover-first
 
