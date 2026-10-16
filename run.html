@@ -6432,7 +6432,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       p.rofferYieldTimer = null; p.rofferYield = null; p.kickVideo = false;
       // Offer turns belong to the old pc. turnSeen/turnLegacy describe the peer and stay.
       clearTimeout(p.turnAskT); clearTimeout(p.turnOkT); clearTimeout(p.turnGivenT);
-      p.turnAskT = p.turnOkT = p.turnGivenT = null; p.turnOk = p.turnGiven = p.turnWanted = false;
+      p.turnAskT = p.turnOkT = p.turnGivenT = null; p.turnOk = p.turnGiven = p.turnWanted = false; p.offeredPend = "";
       p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
       p.offering = null; // an offer still minting belongs to the closed pc (sendOffer drops it)
       p.offerFp = ''; // no remote offer has landed on this pc yet (onSignal's new-pc rule)
@@ -12514,10 +12514,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!p.turnGiven) return;
       p.turnGiven = false; clearTimeout(p.turnGivenT); p.turnGivenT = null;
     }
+    function pendingSig(p) {
+      try {
+        return p.pc.getTransceivers().map((tr) => (tr.mid || "?") + ":" + ((tr.sender && tr.sender.track && tr.sender.track.id) || "") + ":" + (tr.currentDirection || "")).join("|");
+      } catch (e) { return ""; }
+    }
     function afterNeg(p) {
       if (!p) return;
       if (p.turnWanted) giveTurn(p);
-      if (p.renegAgain || hasPendingTx(p)) { p.renegAgain = false; renegotiate(p); return; }
+      // An offer that was just answered and left the same senders pending
+      // must not be sent again. Repeating it is how a fresh link's channel
+      // closes (fault 2b): the answer did not clear the pending set, so the
+      // next offer is the same one, and the pair dies a few seconds in.
+      const pend = hasPendingTx(p);
+      const sig = pend ? pendingSig(p) : "";
+      if (p.renegAgain || (pend && sig !== p.offeredPend)) {
+        p.renegAgain = false;
+        if (pend) p.offeredPend = sig;
+        renegotiate(p);
+        return;
+      }
+      if (!pend) p.offeredPend = "";
       if (p.kickVideo) { p.kickVideo = false; kickMainVideo(p); kickMainAudio(p); }
     }
     // createOffer/setRemoteDescription failed in a way this pc will repeat.
