@@ -370,7 +370,9 @@
     // can move through the stadium without a pager.
     let spacer = feed.querySelector('#comfyspacer');
     const need = (lay.box ? lay.box.y : 0) + (lay.contentH || 0);
-    if (lay.contentH && lay.box && need > lay.box.y + lay.box.h + 1) {
+    const overflows = !!(lay.contentH && lay.box && need > lay.box.y + lay.box.h + 1);
+    if (feed.classList) feed.classList.toggle('can-scroll', overflows);
+    if (overflows) {
       if (!spacer) {
         spacer = (feed.ownerDocument || document).createElement('div');
         spacer.id = 'comfyspacer';
