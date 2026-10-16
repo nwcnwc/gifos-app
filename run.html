@@ -1425,6 +1425,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   #call-live { background: #b61622; color: #fff; }
   #call-live::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff; margin-right: 8px; }
+  /* LIVE is the Broadcast skin (one host live on the Stage). A regular
+     meeting does not wear it. Record and Captions stay on the call. */
+  body:not(.broadcast) #call-live { display: none !important; }
   #call-rec, #call-cc {
     background: rgba(12,14,18,.92); color: #f4f7fb; border: 1.5px solid #c5cad3; cursor: pointer;
   }

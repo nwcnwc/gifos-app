@@ -1,6 +1,6 @@
 /*
- * Live, Record, and Captions sit on the call. A producer does not open
- * More to see that the room is live, or to start a recording or captions.
+ * Record and Captions sit on the call. A producer does not open More
+ * to start a recording or captions. LIVE is not on a regular meeting.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/call-state.js
  */
@@ -90,17 +90,17 @@ function overlaps(a, b) {
     const bad = [];
     if (info.moreOpen) bad.push('More is open');
     if (info.state.hidden) bad.push('state hidden');
-    if (info.live.text !== 'Live') bad.push('live says "' + info.live.text + '"');
+    if (!info.live.hidden) bad.push('LIVE is on a regular meeting');
     if (info.rec.text !== 'Record') bad.push('record says "' + info.rec.text + '"');
     if (info.cc.text !== 'Captions') bad.push('captions says "' + info.cc.text + '"');
-    for (const part of [info.live, info.rec, info.cc]) {
+    for (const part of [info.rec, info.cc]) {
       if (part.h < 44 || part.w < 44) bad.push(part.text + ' is ' + Math.round(part.w) + 'x' + Math.round(part.h));
       if (part.wide || part.tall) bad.push(part.text + ' text does not fit');
       if (part.top < -1 || part.bottom > info.vh + 1 || part.left < -1 || part.right > info.vw + 1) bad.push(part.text + ' off screen');
       if (part.bottom > info.dockTop + 1) bad.push(part.text + ' runs into the dock');
       if (overlaps(part, info.status)) bad.push(part.text + ' covers the header');
     }
-    if (info.live.bg === info.rec.bg) bad.push('Live and Record look the same while recording is off');
+    if (info.rec.bg === 'rgb(182, 22, 34)') bad.push('Record is red before it starts');
     if (phone.scale && info.rec.font < 24) bad.push('record font ' + info.rec.font + 'px at 200%');
     if (phone.name === 'iphone-15') await page.screenshot({ path: path.join(SHOTS, 'after-call-state-iphone-15.png') });
     if (!phone.scale) {
@@ -110,12 +110,11 @@ function overlaps(a, b) {
         more: document.getElementById('ccbtn').classList.contains('on'),
         chip: document.getElementById('call-cc').classList.contains('on'),
         text: (document.getElementById('call-cc').innerText || '').trim(),
-        liveBg: getComputedStyle(document.getElementById('call-live')).backgroundColor,
         ccBg: getComputedStyle(document.getElementById('call-cc')).backgroundColor,
       }));
       if (!ccOn.more || !ccOn.chip) bad.push('Captions on the call did not turn captions on');
       if (ccOn.text !== 'Captions') bad.push('captions label changed to "' + ccOn.text + '"');
-      if (ccOn.liveBg === ccOn.ccBg) bad.push('Captions on uses the same color as Live');
+      if (ccOn.ccBg !== 'rgb(0, 100, 200)') bad.push('Captions on is ' + ccOn.ccBg);
       await page.locator('#call-rec').tap();
       await page.waitForTimeout(150);
       const recSheet = await page.evaluate(() => {

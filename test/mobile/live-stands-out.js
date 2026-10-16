@@ -1,9 +1,7 @@
 /*
- * On a phone Live is a small chip in a row of three, shorter than More.
- * A volunteer across the room cannot see that the call is on. Live has to
- * be the large control. Record and Captions stay secondary, on screen, and
- * the word stays Live. A sideways phone keeps them on one row so the faces
- * do not lose their height.
+ * LIVE belongs to Broadcast. On a regular meeting it is not on screen.
+ * Record and Captions stay on the call, including sideways, and the faces
+ * stay above that row.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/live-stands-out.js
  */
@@ -82,24 +80,8 @@ function overlaps(a, b) {
     });
     const bad = [];
     const live = info.live;
-    if (!live) bad.push('no Live control');
-    else {
-      if (live.text !== 'Live') bad.push('live says "' + live.text + '"');
-      if (live.font < 20) bad.push('Live font ' + live.font + 'px');
-      if (live.h < 44 || live.w < 44) bad.push('Live is ' + Math.round(live.w) + 'x' + Math.round(live.h));
-      if (live.top < -1 || live.bottom > info.vh + 1) bad.push('Live is off screen');
-      if (info.dock && live.bottom > info.dock.top + 1) bad.push('Live runs into the dock');
-      if (overlaps(live, info.status)) bad.push('Live covers the header');
-      if (phone.band) {
-        if (live.h < 64) bad.push('Live is ' + Math.round(live.h) + 'px tall');
-        if (!info.state || live.w < info.state.w * 0.9) bad.push('Live is a chip ' + Math.round(live.w) + 'px wide');
-      } else {
-        if (live.w < 160) bad.push('Live is only ' + Math.round(live.w) + 'px wide');
-        if (info.more && live.w <= info.more.w) bad.push('Live is no wider than More');
-        if (info.rec && Math.abs(live.top - info.rec.top) > 8) bad.push('sideways Live wrapped onto its own row');
-        if (info.state && info.state.h > 56) bad.push('sideways state is ' + Math.round(info.state.h) + 'px tall');
-      }
-    }
+    if (live && live.h > 1) bad.push('LIVE is on a regular meeting (' + Math.round(live.w) + 'x' + Math.round(live.h) + ')');
+    if (!phone.band && info.state && info.state.h > 56) bad.push('sideways state is ' + Math.round(info.state.h) + 'px tall');
     for (const part of [info.rec, info.cc]) {
       if (!part) { bad.push('a state control is missing'); continue; }
       if (part.h < 44 || part.w < 44) bad.push(part.text + ' is ' + Math.round(part.w) + 'x' + Math.round(part.h));
@@ -108,7 +90,7 @@ function overlaps(a, b) {
     }
     if (info.rec && info.rec.text !== 'Record') bad.push('record says "' + info.rec.text + '"');
     if (info.cc && info.cc.text !== 'Captions') bad.push('captions says "' + info.cc.text + '"');
-    if (info.state && info.tiles.some((t) => t.bottom > info.state.top + 1)) bad.push('a face runs under Live');
+    if (info.state && info.tiles.some((t) => t.bottom > info.state.top + 1)) bad.push('a face runs under Record');
     const shot = (bad.length ? 'before' : 'after') + '-live-stands-out-' + phone.name + '.png';
     if (phone.name === 'iphone-se' || phone.name === 'iphone-se-land') {
       await page.screenshot({ path: path.join(SHOTS, shot) });

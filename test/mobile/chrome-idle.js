@@ -85,11 +85,11 @@ function overlaps(a, b) {
     const bad = [];
     if (shown.moreOpen) bad.push('More is open');
     if (!shown.leaveHit) bad.push('Hang up is not tappable at the start');
-    if (!shown.live || shown.live.vis === 'hidden' || shown.live.op === '0') bad.push('Live is not on screen at the start');
-    for (const part of [shown.live, shown.rec, shown.cc, shown.leave]) {
+    if (shown.live && shown.live.h > 1) bad.push('LIVE is on a regular meeting');
+    for (const part of [shown.rec, shown.cc, shown.leave]) {
       if (!part || part.h < 44 || part.w < 44) bad.push((part && part.text) || 'control' + ' is small at the start');
     }
-    const stateTop = shown.live ? shown.live.top : shown.vh;
+    const stateTop = shown.rec ? shown.rec.top : shown.vh;
     const hooked = await page.evaluate(() => {
       const api = window.__gifosChrome;
       if (!api || typeof api.idle !== 'function') return false;
@@ -115,11 +115,11 @@ function overlaps(a, b) {
     if (tucked.moreOpen) quiet.push('More opened itself');
     if (tucked.leaveHit) quiet.push('Hang up still takes the tap');
     if (tucked.bar && tucked.bar.pe !== 'none') quiet.push('dock still takes taps');
-    if (tucked.live && tucked.live.vis !== 'hidden' && tucked.live.op !== '0' && tucked.live.pe !== 'none') quiet.push('Live still takes taps');
+    if (tucked.live && tucked.live.h > 1 && tucked.live.vis !== 'hidden' && tucked.live.op !== '0' && tucked.live.pe !== 'none') quiet.push('LIVE still takes taps');
     const covered = tucked.tiles.some((t) => overlaps(t, tucked.bar) && tucked.bar.op !== '0' && tucked.bar.top < tucked.vh);
     if (covered) quiet.push('dock still covers a face');
     if (tucked.lowest < tucked.vh - 24) quiet.push('faces did not grow into the dock band (bottom ' + Math.round(tucked.lowest) + ')');
-    if (tucked.lowest < stateTop + 16) quiet.push('faces still stop above Live');
+    if (tucked.lowest < stateTop + 16) quiet.push('faces still stop above Record');
     if (phone.name === 'iphone-15') await page.screenshot({ path: path.join(SHOTS, 'after-chrome-idle-iphone-15.png') });
     const spot = await page.evaluate(() => {
       const tiles = Array.from(document.querySelectorAll('.tile')).filter((el) => {
@@ -135,13 +135,13 @@ function overlaps(a, b) {
     if (back.away) quiet.push('a tap left the controls tucked');
     if (back.moreOpen) quiet.push('a tap opened More');
     if (!back.leaveHit) quiet.push('Hang up did not come back');
-    for (const part of [back.live, back.rec, back.cc, back.leave]) {
+    for (const part of [back.rec, back.cc, back.leave]) {
       if (!part) { quiet.push('a control is missing'); continue; }
       if (part.h < 44 || part.w < 44) quiet.push(part.text + ' is ' + Math.round(part.w) + 'x' + Math.round(part.h));
       if (part.top < -1 || part.bottom > back.vh + 1 || part.left < -1 || part.right > back.vw + 1) quiet.push(part.text + ' is off screen');
       if (overlaps(part, back.status)) quiet.push(part.text + ' covers the header');
     }
-    if (back.live && back.live.text !== 'Live') quiet.push('Live says "' + (back.live && back.live.text) + '"');
+    if (back.live && back.live.h > 1) quiet.push('LIVE came back on a regular meeting');
     if (back.rec && back.rec.text !== 'Record') quiet.push('Record says "' + back.rec.text + '"');
     if (back.cc && back.cc.text !== 'Captions') quiet.push('Captions says "' + back.cc.text + '"');
     if (phone.name === 'iphone-15') await page.screenshot({ path: path.join(SHOTS, 'after-chrome-back-iphone-15.png') });

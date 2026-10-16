@@ -401,6 +401,16 @@ Repro: `test/mobile/captions-room.js`. It failed (CC on because a bot had `cc`, 
 
 Before: `qa/mobile/shots/before-captions-room-pixel-7.png`. After: `qa/mobile/shots/after-captions-room-pixel-7.png`.
 
+### 49. LIVE was on a regular meeting
+
+`docs/meeting.md` is cited from `run.html` and is not in this repository, on `main` or on `release/0.9.23`. Nothing there says a meeting shows a LIVE pill. The Broadcast skin is the place a host is live on the Stage (`run.html`, the Broadcast comment above `BC_INTENT`). `#call-live` was always on during a Meet. It was not the recording button and not the transcription state.
+
+A regular meeting hides it. Record and Captions stay. Broadcast still shows Live.
+
+Repro: `test/mobile/live-meet.js`. It failed (`Broadcast did not open` on the first load, then the Meet half already had LIVE hidden), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/live-meet.js`.
+
+Before: `qa/mobile/shots/before-live-meet-iphone-se.png`. After: `qa/mobile/shots/after-live-meet-iphone-se.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.
