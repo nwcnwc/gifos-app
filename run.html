@@ -1266,7 +1266,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar .barmore { display: none; }
   .bar:not(.collapsed) .barmore { display: grid; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
     width: min(720px, calc(100vw - 24px)); grid-template-columns: repeat(4, 1fr); gap: 8px;
-    background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23; }
+    background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23;
+    pointer-events: none; }
+  .bar:not(.collapsed) .barmore > * { pointer-events: auto; }
+  /* Stage voting: the More sheet floats over the gallery; let .votedot receive taps. */
+  body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore,
+  body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore * { pointer-events: none !important; }
   .bar:not(.collapsed) .barmore > button { min-height: 64px; height: auto; padding: 8px 6px; border: 0; border-radius: 16px;
     background: #e8ecf1; color: #1d1d1f; font-size: 18px; font-weight: 650; white-space: normal; }
   .bar:not(.collapsed) .barmore .blurctl { grid-column: 1 / -1; display: flex; align-items: center; min-height: 48px; gap: 8px; }
