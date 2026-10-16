@@ -57,7 +57,7 @@
   // A link never switches anyone (see the channel loader). Each choice below is one constant.
   const PIN_CONFIRM = 'type';          // confirm by: 'type' (type EDGE or the version), 'checkbox', or 'hold' (press and hold)
   const PIN_OLDER_PICKER = 'list';     // older releases: 'list' (pick one) or 'type' (type the exact version)
-  const PIN_EXPIRE_DAYS = 0;           // pins never expire; the loader does not treat gifos_pin_until as a deadline
+  const PIN_EXPIRE_DAYS = 0;           // pins never expire; the loader does not treat gifos_pin_until as an end
   const PIN_LINK_OPENS_CONFIRM = true; // ?edge opens the edge confirm (never switches by itself); false ignores it
   const PIN_HOLD_MS = 2000;            // 'hold' confirm: how long to hold
   const PIN_BANNER_SINCE = '0.9.23';   // older releases than this have no header indicator of their own
@@ -3738,7 +3738,7 @@
   // ----- the three version moves, all channel-aware (see the root loader) -----
   // Edge and older releases are reached only through confirmPin() below. Each
   // switch records gifos_pin_until — the loader's proof that it was confirmed.
-  // It is not a deadline: a pin never expires (PIN_EXPIRE_DAYS is 0).
+  // A pin never expires, so the receipt stored here is always '0'.
   // gifos_reseed tells the build we're switching TO to re-bake its default apps on
   // first load (see reseedDefaultsIfNeeded) — set on every build move so the new
   // build's default apps actually land instead of the ones baked at seed time.
