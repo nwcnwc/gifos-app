@@ -9,7 +9,7 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 - **Zoom / Meet / Teams.** The hang-up, mute, and camera controls stay inside the screen on a 320px phone. Chat is a sheet or a column that does not sit under the call dock. Reconnecting is a banner, not a truncated sentence.
 - **FaceTime.** One primary action, huge targets, no password essay, the preview is the screen.
 - **StreamYard / YouTube Live.** A broadcast is either LIVE or it is not. The host sees that before they look at a status sentence. Viewers joining late see “live” or “offline”, not “Joining…”.
-- **Church desks.** A volunteer gets a short path: name the service, go on, read a link. Type stays large. Flip camera is a single tap during the service.
+- **Church desks.** A volunteer gets a short path: name the service, go on, read a link. The words on that path stay short.
 
 ## Scorecard
 
