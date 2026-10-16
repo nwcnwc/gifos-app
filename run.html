@@ -1321,7 +1321,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore { display: grid; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
     width: min(720px, calc(100vw - 24px)); grid-template-columns: repeat(4, 1fr); gap: 8px;
     background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23;
-    pointer-events: none; }
+    pointer-events: none;
+    max-height: calc(100vh - 140px); max-height: calc(100dvh - 140px); overflow-y: auto; }
   .bar:not(.collapsed) .barmore > * { pointer-events: auto; }
   /* Stage voting: the More sheet floats over the gallery; let .votedot receive taps. */
   body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore,

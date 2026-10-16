@@ -17,13 +17,13 @@ GifOS does **not** lead any audience yet. The gap column is what this branch is 
 | Lobby says what will happen | 5 | 4 | 4 | 3 |
 | Mute / camera state is obvious | 5 | 5 | 4 | 4 |
 | Controls labeled, not hover-only | 5 | 4 | 4 | 4 |
-| Layout holds at 1280, 1920, 900, resize | 5 | 4 | 4 | 3 |
+| Layout holds at 1280, 1920, 900, resize | 5 | 4 | 4 | 4 |
 | Chat usable while the dock is up | 5 | 5 | 4 | 3 |
 | Keyboard path (shortcuts, Escape, focus) | 4 | 4 | 4 | 4 |
 | Trust: live, recording, who is here | 5 | 4 | 5 | 3 |
-| **Audience score** | **4.9** | **4.3** | **4.1** | **3.4** |
+| **Audience score** | **4.9** | **4.3** | **4.1** | **3.6** |
 
-Zoom still leads. Mute is a filled red **Unmute** and M/V work outside text fields (Q5, Q6). Layout on a short window (Q4) and invite-still-in-More are the next corporate gaps.
+Zoom still leads. The More sheet scrolls instead of clipping on a short window (Q4). Invite is still inside More, and reactions still stack on that sheet (Q7).
 
 ## Church
 
@@ -64,3 +64,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q1 | 2.6 (Zoom 4.9) | 2.8 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | Composer clears the dock at 900 and after resize |
 | After Q2–Q3 | 2.7 (Zoom 4.9) | 3.8 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | Broadcast words, Live for the host, Watching for a viewer |
 | After Q5–Q6 | 3.4 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | Labeled red/green mic and camera, M and V outside text fields |
+| After Q4 | 3.6 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | More sheet scrolls inside a short window |

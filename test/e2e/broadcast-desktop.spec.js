@@ -92,6 +92,37 @@ test('the M key does not unmute while a chat message is being typed', async ({ p
   await expect(page.locator('#mic .docklab')).toHaveText('Unmute');
 });
 
+test('the More sheet stays on screen when the window is short', async ({ page }) => {
+  await bootSession(page, 1280, 360);
+  await page.locator('#bartoggle').click();
+  await expect(page.locator('#barmore')).toBeVisible();
+  const info = await page.evaluate(() => {
+    const vh = window.innerHeight;
+    const menu = document.getElementById('barmore');
+    const mr = menu.getBoundingClientRect();
+    const bad = [];
+    if (mr.top < -1) bad.push('menu-top ' + Math.round(mr.top));
+    if (mr.bottom > vh + 1) bad.push('menu-bottom ' + Math.round(mr.bottom));
+    const scrollable = menu.scrollHeight > menu.clientHeight + 2;
+    for (const el of menu.querySelectorAll('button')) {
+      if (getComputedStyle(el).display === 'none' || el.offsetParent === null) continue;
+      const r = el.getBoundingClientRect();
+      const inMenu = r.bottom <= mr.bottom + 1 && r.top >= mr.top - 1;
+      const onScreen = r.top >= -1 && r.bottom <= vh + 1 && r.left >= -1 && r.right <= window.innerWidth + 1;
+      if (!onScreen && !(scrollable && inMenu)) bad.push((el.id || el.textContent || '').slice(0, 24));
+    }
+    return { bad, top: Math.round(mr.top), bottom: Math.round(mr.bottom), scrollable, sh: menu.scrollHeight, ch: menu.clientHeight };
+  });
+  expect(info.bad, JSON.stringify(info)).toEqual([]);
+  expect(info.top).toBeGreaterThanOrEqual(0);
+  // Every control can be scrolled into view.
+  const help = page.locator('#helpbtn');
+  await help.scrollIntoViewIfNeeded();
+  const helpBox = await help.boundingBox();
+  expect(helpBox.y).toBeGreaterThanOrEqual(0);
+  expect(helpBox.y + helpBox.height).toBeLessThanOrEqual(360);
+});
+
 test('chat composer stays clear of the dock at 900px', async ({ page }) => {
   await openChat(page, 900, 720);
   const hit = await composerOverlap(page);

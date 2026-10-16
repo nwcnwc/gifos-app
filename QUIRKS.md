@@ -32,11 +32,11 @@ Mic, camera, reactions, and More now carry a visible word inside the button (`Un
 
 `M` toggles the mic and `V` toggles the camera, except while focus is in a text field. The chat test types `m` into the composer and the mic stays on Unmute. The buttons’ titles name the shortcut.
 
-## Open
-
 ### Q4. More sheet can leave the viewport
 
-`#barmore` is `overflow: visible` and anchored `bottom: 122px` with no `max-height`. At 1280×500 the sheet’s top is **−2px** (chrome clipped, buttons still inside). Shorter live-resizes clip controls with no way to scroll to them. Escape does close the sheet (handled). Not the worst item at 720px tall, but it fails the resize pass.
+`#barmore` now has `max-height: calc(100dvh - 140px)` and `overflow-y: auto`. At 1280×360 the sheet used to start at y=−142 with Who, Invite, and the blur segments off screen and no scroll. It now stays inside the viewport, and Help can be scrolled into view. Screenshot: `test/e2e/artifacts/more-sheet-short-after.png`.
+
+## Open
 
 ### Q7. Reactions and More occupy the same slot
 
