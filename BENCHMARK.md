@@ -9,7 +9,7 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 - **Zoom / Meet / Teams.** The hang-up, mute, and camera controls stay inside the screen on a 320px phone. Chat is a sheet or a column that does not sit under the call dock. Reconnecting is a banner, not a truncated sentence.
 - **FaceTime.** One primary action, huge targets, no password essay, the preview is the screen.
 - **StreamYard / YouTube Live.** A broadcast is either LIVE or it is not. The host sees that before they look at a status sentence. Viewers joining late see “live” or “offline”, not “Joining…”.
-- **Church desks.** A volunteer gets a short path: name the service, go on, read a link. The words on that path stay short.
+- **Church desks.** A volunteer names the service and goes on. This path still asks for one host password before the room exists.
 
 ## Scorecard
 
@@ -21,11 +21,11 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 | Live, off air, watching, reconnecting | 3 | 3 | 3 | YouTube Live, StreamYard |
 | Large type and 44px targets | 4 | 3 | 4 | FaceTime |
 | Landscape, rotation, notch | 4 | 4 | 4 | Meet |
-| Warm, short, trustworthy copy | 4 | 2 | 4 | FaceTime |
-| **Audience average** | **3.9** | **3.4** | **3.9** | |
+| Warm, short, trustworthy copy | 4 | 3 | 4 | FaceTime |
+| **Audience average** | **3.9** | **3.6** | **3.9** | |
 
-Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast now says RECONNECTING, OFF AIR, LIVE, or WATCHING (Q5). Create & enter stays in the card while the room fields scroll (Q4). More scrolls inside the screen in landscape (Q3). The chip and the dock clear a notch and a home indicator (Q7). The status line grows with the root text size (Q6). Flip sits on the phone dock (Q5b). Corporate and personal are 3.7. Church is 3.4. None lead. Landscape stays at 4: Meet is still the meeting a corporate user would rotate into, and a 5 would mean they would switch. The title in the chip is still a fixed pixel size, so large type is not a 5. FaceTime still wins the first screen on copy: Create still asks for two passwords. The join step now opens with the GifOS display name and picture (Q9), says “This is how you’ll appear in the meeting” (Q9b), and gives Continue the only filled button with 12px before Not now (Q11). Corporate and personal are 3.9. Church stays 3.4. None lead. Church copy stays at 2 because Create still asks for two passwords, so that row is not a 5. The 320px dock gap is still 4px (Q10).
+Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast now says RECONNECTING, OFF AIR, LIVE, or WATCHING (Q5). Create & enter stays in the card while the room fields scroll (Q4). More scrolls inside the screen in landscape (Q3). The chip and the dock clear a notch and a home indicator (Q7). The status line grows with the root text size (Q6). Flip sits on the phone dock (Q5b). Corporate and personal are 3.7. Church is 3.4. None lead. Landscape stays at 4: Meet is still the meeting a corporate user would rotate into, and a 5 would mean they would switch. The title in the chip is still a fixed pixel size, so large type is not a 5. FaceTime still wins the first screen on copy: Create still asks for two passwords. Create asks for one host password. A viewer password is a separate step, not the first screen (Q12). Church copy moves to 3. Corporate and personal stay 3.9. Church is 3.6. None lead. FaceTime still wins warm copy because a church host still sets one password before the room exists. The 320px dock gap is still 4px (Q10).
 
 ## Next gap
 
-Warm copy, church score 2. After the join step, Create still leads with two password essays. Q10, the 4px dock gap, stays behind that.
+Q10. On a phone with Flip on the dock, the controls sit 4px apart. The gap needs to be at least 8px without pushing Leave off the screen.

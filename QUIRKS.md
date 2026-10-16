@@ -12,9 +12,18 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ### Q10. Compact dock buttons sit 4px apart
 
-Below 380px the dock gap is 4px so Leave still fits. Larger phones use 8px or 12px. The targets are 44px. The tighter gap is a polish item, after the phone-layout gaps. Not the next fix.
+Below 700px, once Flip is on the dock, the gap is 4px so Leave still fits. The targets are 44px. A row of controls needs at least 8px between them.
 
 ## Fixed
+
+### Q12. Broadcast create demanded two passwords up front
+
+Start broadcasting opened a host-password essay and a viewer-password essay before Create. The first step is now the room name and one host password: “Only you use this. Viewers join with the link.” Add a viewer password is a 44px text button that reveals the second field. `test/mobile/create-one-password.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-two-passwords.png`.
+After: `test/mobile/screenshots/after/iphone-se-one-password.png`.
+
+Design: one label, one short sentence, one field, then the blue Create. The optional password is not a second competing form. What is still heavier than a church desk is that a host password is required at all. The dock gap (Q10) is the next measured spacing miss.
 
 ### Q11. Join actions were the same color and touched
 
