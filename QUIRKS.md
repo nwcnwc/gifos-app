@@ -74,9 +74,13 @@ A meeting lobby’s blue button is **Start a call** (“Anyone with the link can
 
 Joining now shows “This is how you'll appear” with the GifOS display name filled in and the saved picture in the circle. The person can edit the name and choose another picture before Join. Join is blue `#0064c8`. Not now is a white button with a gray outline, and the two do not touch (gap at least 8px). The lobby shows the same preview, so a call started from there does not ask twice. A direct link still asks. Before: the old lobby line “You'll join as …” in `lobby-family-after.png` from the previous round. After: `test/e2e/artifacts/appear-lobby-after.png`, `appear-dialog-after.png`.
 
+### Q16. On air was a small pill
+
+The top chip still says Live or Watching. A full-width bar under that chip now says **You are live** (red `#b61622`) or **You are watching** (light gray). It clears the chip, the Fit button, and the dock at 1280, 1920, and 900. A meeting hides it. After: `test/e2e/artifacts/onair-bar-live-after.png`, `onair-bar-watch-after.png`. The small pill in `onair-live-1280.png` is the earlier state.
+
 ## Open
 
-StreamYard is still ahead on three church rows: telling a volunteer they are on air (the Live pill is small), telling a service apart from a small group once the room is open, and chat (it still lives in More, with no prayer-request path).
+StreamYard is still ahead on two church rows: telling a service apart from a small group once the room is open, and chat (it still lives in More, with no prayer-request path).
 
 ## How a session was opened without a relay
 

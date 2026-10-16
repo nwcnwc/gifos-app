@@ -506,6 +506,62 @@ test('a broadcast host moderates guests on the stage', async ({ page }) => {
   await expect(page.locator('#stagemod')).toBeHidden();
 });
 
+test('a volunteer cannot miss whether they are on air', async ({ page }) => {
+  async function readBar() {
+    return page.evaluate(() => {
+      const el = document.getElementById('airbar');
+      const s = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      const chip = document.querySelector('.topchip').getBoundingClientRect();
+      const fit = document.getElementById('fitbtn').getBoundingClientRect();
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const overlap = (a, b) => !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+      return {
+        text: el.textContent, bg: s.backgroundColor, fg: s.color, hidden: el.hidden,
+        x: r.x, y: r.y, w: r.width, h: r.height, vw: innerWidth, vh: innerHeight,
+        belowChip: r.top >= chip.bottom - 1,
+        belowFit: r.top >= fit.bottom - 1,
+        dock: overlap(r, dock),
+      };
+    });
+  }
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.hash.indexOf('bc=1') !== -1 && location.hash.indexOf('v=sunday') !== -1 && location.search.indexOf('view=1') === -1) {
+      localStorage.setItem(key, 'host-key');
+    } else localStorage.removeItem(key);
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=air' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#onair.live');
+    const live = await readBar();
+    expect(live.text).toBe('You are live');
+    expect(live.bg).toBe('rgb(182, 22, 34)');
+    expect(live.fg).toBe('rgb(255, 255, 255)');
+    expect(live.h).toBeGreaterThanOrEqual(44);
+    expect(live.w).toBeGreaterThanOrEqual(w - 2);
+    expect(live.belowChip, JSON.stringify(live)).toBe(true);
+    expect(live.belowFit, JSON.stringify(live)).toBe(true);
+    expect(live.dock, JSON.stringify(live)).toBe(false);
+    expect(live.y + live.h).toBeLessThanOrEqual(h);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/run.html?desk=airview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#onair.watch');
+  const watch = await readBar();
+  expect(watch.text).toBe('You are watching');
+  expect(watch.bg).toBe('rgb(232, 236, 241)');
+  expect(watch.fg).toBe('rgb(29, 29, 31)');
+  expect(watch.h).toBeGreaterThanOrEqual(44);
+  expect(watch.w).toBeGreaterThanOrEqual(1278);
+  await page.goto(MEET_SESSION, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.meet-session .bar');
+  await expect(page.locator('#airbar')).toBeHidden();
+});
+
 test('chat composer stays clear of the dock after a live resize to 900px', async ({ page }) => {
   await openChat(page, 1920, 1080);
   await page.setViewportSize({ width: 1280, height: 720 });

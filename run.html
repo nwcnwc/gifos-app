@@ -1321,6 +1321,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #onair.live::before, #onair.watch::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex: none; }
   #onair.live::before { background: #fff; }
   #onair.watch::before { background: #0064c8; }
+  /* The pill is easy to miss. This bar is the state a volunteer cannot overlook. */
+  #airbar { display: none; }
+  #airbar[hidden] { display: none !important; }
+  body.broadcast #airbar.on { display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-top: 104px; min-height: 52px; font: 800 22px/1.2 system-ui, sans-serif; }
+  body.broadcast #airbar.live { background: #b61622; color: #fff; }
+  body.broadcast #airbar.watch { background: #e8ecf1; color: #1d1d1f; }
+  body.broadcast #airbar.live::before, body.broadcast #airbar.watch::before {
+    content: ''; width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  body.broadcast #airbar.live::before { background: #fff; }
+  body.broadcast #airbar.watch::before { background: #0064c8; }
   .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
     border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 14px/1.2 system-ui, sans-serif; }
@@ -1697,6 +1708,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div id="appmount"></div>
   </div>
   <div id="handq"></div>
+  <div id="airbar" hidden role="status"></div>
   <div id="feed">
     <div id="stagefeed"></div>
     <div id="stagemod" hidden aria-label="On stage"></div>
@@ -2273,8 +2285,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // key helper exists (just below) and again whenever admin state changes.
     function paintBroadcastChrome() {
       const pill = document.getElementById('onair');
+      const air = document.getElementById('airbar');
       if (!BROADCAST) {
         if (pill) { pill.hidden = true; pill.textContent = ''; pill.className = ''; }
+        if (air) { air.hidden = true; air.textContent = ''; air.className = ''; }
         return;
       }
       document.title = 'Broadcast — GifOS';
@@ -2312,6 +2326,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         pill.className = host ? 'live' : 'watch';
         pill.textContent = host ? 'Live' : 'Watching';
         pill.setAttribute('role', 'status');
+      }
+      if (air) {
+        air.hidden = false;
+        air.className = host ? 'on live' : 'on watch';
+        air.textContent = host ? 'You are live' : 'You are watching';
       }
     }
     // The HOST is whoever holds this room's stored admin key — known before
