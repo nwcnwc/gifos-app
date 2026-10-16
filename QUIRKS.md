@@ -91,7 +91,7 @@ There is still no waiting-room admit list for a host.
 
 Name and avatar default, noted from the same shot and not the next fix: the self tile's big letter is G (the initial of Grandma Ruth) while another person is Ruth. The letter and the name pill are two labels for one person.
 
-Button spacing, from the same shot and not the next fix: on an iPhone 15 (393px, above the 380px dock rule) Hang up is still past the right edge, and the dock covers the bottom row of tiles. The build tag `edge` sits on the top-right of the chip. A green round "A" in Nathan's shot did not appear in the Playwright capture.
+Button spacing, measured on an iPhone 15 (393×659) with four peers, and not the next fix: Hang up ends at x=375, inside the 393px screen. The drag grip is 22×48, under 44px, because the later `.bar #bargrip` rule (22×48) wins over the 700px sizes and the 44px rule only applies under 380px. David and Sam's tiles run from y=540 to y=659 while the dock starts at y=557, so the dock covers the bottom row. The comfy layout comment says the packer insets that grid; this branch does not change the packer. The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
 
 ## Personas (what was actually tried)
 
