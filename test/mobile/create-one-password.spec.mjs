@@ -21,10 +21,14 @@ test('broadcast create is a service name and Go live', async ({ page }) => {
   await expect(reveal).toHaveText('Change host key');
   const revealBox = await reveal.boundingBox();
   expect(revealBox.height).toBeGreaterThanOrEqual(44);
+  const nameBox = await page.locator('#lob-admin-name').boundingBox();
   const goBefore = await page.locator('#lob-admin-go').boundingBox();
+  const watchBox = await page.locator('#lob-join-btn').boundingBox();
   const vh = page.viewportSize().height;
   expect(goBefore.y + goBefore.height).toBeLessThanOrEqual(vh + 0.5);
-  expect(goBefore.y - (revealBox.y + revealBox.height)).toBeGreaterThanOrEqual(8);
+  expect(goBefore.y - (nameBox.y + nameBox.height)).toBeGreaterThanOrEqual(8);
+  expect(watchBox.y - (goBefore.y + goBefore.height)).toBeGreaterThanOrEqual(8);
+  expect(revealBox.y).toBeGreaterThanOrEqual(watchBox.y + watchBox.height - 1);
   await reveal.click();
   await expect(page.locator('#lob-key-block')).toBeVisible();
   await expect(reveal).toBeHidden();

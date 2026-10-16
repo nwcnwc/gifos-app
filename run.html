@@ -1658,6 +1658,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby.service-ready #lob-admin .lob-row { justify-content: stretch; }
   #lobby.service-ready #lob-admin-go { flex: 1 1 auto; width: 100%; }
   #lobby.service-ready #lob-admin-err:empty { min-height: 0; margin: 0; }
+  /* A desk names the service and goes live. The host key is still minted.
+     Change host key opens the same readable key and Generate, under Watch. */
+  #lobby.form-open.service-ready #lob-admin,
+  #lobby.form-open.service-ready #lob-admin .lob-form-body { display: contents; }
+  #lobby.service-ready #lob-admin-name-lab { order: 1; }
+  #lobby.service-ready #lob-admin-name { order: 2; }
+  #lobby.service-ready #lob-admin .lob-row { order: 3; }
+  #lobby.service-ready #lob-join-btn { order: 4; }
+  #lobby.service-ready #lob-join { order: 5; }
+  #lobby.service-ready #lob-admin-err { order: 6; }
+  #lobby.service-ready #lob-key-reveal { order: 7; }
+  #lobby.service-ready #lob-key-block { order: 8; }
+  #lobby.service-ready #lob-guest-reveal { order: 9; }
+  #lobby.service-ready #lob-guest-extra { order: 10; }
+  #lobby.service-ready .lob-sep,
+  #lobby.service-ready .lob-hist-h,
+  #lobby.service-ready #lob-list,
+  #lobby.service-ready #lob-empty,
+  #lobby.service-ready .lob-namebar { order: 20; }
   @media (max-height: 420px) {
     #lobby.form-open.service-ready.show { grid-template-rows: 40px minmax(0, 1fr); }
     #lobby.form-open.service-ready .lob-preview { max-height: 40px; }

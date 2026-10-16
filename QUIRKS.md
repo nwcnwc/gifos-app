@@ -12,6 +12,15 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q35. Change host key sat above Go live
+
+A broadcast opened on the service name, then Change host key, then Go live. The key was in the path. Go live now sits under the name, Watch under that, and Change host key under Watch. On an iPhone SE the name is y=130 to y=178, Go live y=198 to y=246, Watch y=258 to y=307, and Change host key y=321. Opening it shows Your host key, the readable three-word key, and Generate, from y=317. The key is still minted and stored. A meeting still shows the host key above Create & enter. `test/mobile/create-one-password.spec.mjs`.
+
+Before: `test/mobile/screenshots/after/iphone-se-service-first.png`.
+After: `test/mobile/screenshots/after/iphone-se-service-desk.png` and `test/mobile/screenshots/after/iphone-se-host-key-open.png`.
+
+Design: the name, the blue Go live, then the outline Watch. The host key is a text link under that, and opening it is the same readable key the meeting uses. Warm copy stays at 4. A church desk still does not list a host key.
+
 ### Q34. A rotated strip was still a tall band
 
 The frosted pill was 48px with 22px marks. It is now 36px, and the marks are 18px. The targets stay 44px, so a thumb still lands, and they sit a little proud of the strip. Hang up stays the solid red control. On an iPhone SE landscape the pill is y=270 to y=306 and the face is y=59 to y=320, 560×261. A 32px root grows the strip to 48px and the marks to 24px. `test/mobile/landscape-stage.spec.mjs`.
