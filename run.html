@@ -19,7 +19,7 @@
 <meta http-equiv="Content-Security-Policy" content="frame-src about:">
 <meta name="referrer" content="same-origin">
 <meta name="robots" content="noindex">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0a0a0f">
 <!-- First paint is dark GROUND, immediately: the real theme gate lives ~400
@@ -1043,7 +1043,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      itself underneath, and the suite could no longer get out. --barh is the
      bar's measured height (set below; 0 where ResizeObserver is missing, which
      is exactly the old behaviour). */
-  #chatpanel { position: fixed; right: 0; top: var(--barh, 0px); bottom: var(--dock-clear, 108px); width: min(340px, 100vw); z-index: 30; overflow: hidden;
+  #chatpanel { position: fixed; right: var(--inset-right, 0px); top: max(var(--barh, 0px), var(--inset-top, 0px)); bottom: var(--dock-clear, 108px); width: min(340px, calc(100vw - var(--inset-left, 0px) - var(--inset-right, 0px))); z-index: 30; overflow: hidden;
                background: var(--bg, #101018); border-left: 1px solid var(--border, #2a2a3f); display: none; flex-direction: column; }
   #chatpanel.open { display: flex; }
   #chathead { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .5rem; padding: .45rem .6rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
@@ -1269,8 +1269,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, .seg:focus-visible {
     outline: 3px solid #0064c8; outline-offset: 2px;
   }
-  .topchip { position: fixed; z-index: 6; top: 14px; left: 14px; display: flex; align-items: center; gap: 8px;
-    max-width: min(28rem, calc(100% - 120px)); background: rgba(12,14,18,.92); color: #f4f7fb;
+  /* Chromium reports env(safe-area-inset-*) as 0. Tests set --safe-* so the
+     same max() that a notched phone gets from env() can be checked. */
+  :root {
+    --safe-top: 0px; --safe-right: 0px; --safe-bottom: 0px; --safe-left: 0px;
+    --inset-top: max(env(safe-area-inset-top, 0px), var(--safe-top));
+    --inset-right: max(env(safe-area-inset-right, 0px), var(--safe-right));
+    --inset-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-bottom));
+    --inset-left: max(env(safe-area-inset-left, 0px), var(--safe-left));
+  }
+  .topchip { position: fixed; z-index: 6; top: calc(14px + var(--inset-top, 0px)); left: calc(14px + var(--inset-left, 0px)); display: flex; align-items: center; gap: 8px;
+    max-width: min(28rem, calc(100% - 120px - var(--inset-left, 0px) - var(--inset-right, 0px))); background: rgba(12,14,18,.92); color: #f4f7fb;
     border-radius: 999px; padding: 6px 12px 6px 14px; }
   #livebadge { display: none; align-items: center; gap: 6px; flex: 0 0 auto; font-size: .8125rem; font-weight: 800;
     letter-spacing: .04em; line-height: 1; padding: 5px 8px; border-radius: 999px; }
@@ -1286,19 +1295,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip .status { color: #e7ebf2; font-size: 20px; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
     min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
-  .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
+  .fitbtn { position: fixed; z-index: 6; top: calc(58px + var(--inset-top, 0px)); right: calc(14px + var(--inset-right, 0px)); min-width: 32px; min-height: 32px;
     border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 14px/1.2 system-ui, sans-serif; }
   body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
-  .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
+  .admcount { position: fixed; z-index: 6; top: calc(58px + var(--inset-top, 0px)); left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px)); }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
   body.app-room #reactbtn, body.app-room #reacttray { display: none !important; }
-  #gifos-build-float { top: 14px !important; right: 14px !important; bottom: auto !important; left: auto !important;
+  #gifos-build-float { top: calc(14px + var(--inset-top, 0px)) !important; right: calc(14px + var(--inset-right, 0px)) !important; bottom: auto !important; left: auto !important;
     opacity: 1 !important; color: #e7ebf2 !important; background: rgba(12,14,18,.92); padding: 4px 10px;
     border-radius: 999px; z-index: 6 !important; text-shadow: none !important; }
-  .bar { position: fixed; z-index: 32; left: 50%; bottom: calc(14px + var(--kb, 0px)); transform: translateX(-50%);
+  .bar { position: fixed; z-index: 32; left: 50%; bottom: calc(14px + var(--kb, 0px) + var(--inset-bottom, 0px)); transform: translateX(-50%);
     display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; height: 104px; width: auto;
-    max-width: calc(100% - 16px); padding: 0 16px 0 18px; margin: 0;
+    max-width: calc(100% - 16px - var(--inset-left, 0px) - var(--inset-right, 0px)); padding: 0 16px 0 18px; margin: 0;
     background: rgba(255,255,255,.94); border: 0; border-radius: 32px;
     box-shadow: 0 10px 30px rgba(0,0,0,.28); overflow: visible; }
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
@@ -1317,7 +1326,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     width: min(720px, calc(100vw - 24px)); grid-template-columns: repeat(4, 1fr); gap: 8px;
     background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23;
     pointer-events: auto; align-content: start;
-    max-height: calc(100dvh - 14px - 122px - 8px - var(--kb, 0px) - var(--safe-top, 0px) - var(--safe-bottom, 0px));
+    max-height: calc(100dvh - 14px - 122px - 8px - var(--kb, 0px) - var(--inset-top, 0px) - var(--inset-bottom, 0px));
     overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .bar:not(.collapsed) .barmore > * { pointer-events: auto; }
   /* Stage voting: the More sheet floats over the gallery; let .votedot receive taps. */
@@ -1371,7 +1380,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="5"] > .tile.span-bottom {
     grid-column: 1 / -1; }
   body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
-    position: fixed; z-index: 4; width: 294px; height: 221px; right: 28px; bottom: 140px; left: auto; top: auto;
+    position: fixed; z-index: 4; width: 294px; height: 221px; right: 28px; bottom: calc(140px + var(--inset-bottom, 0px)); left: auto; top: auto;
     border-radius: 16px; border: 2px solid #fff; aspect-ratio: auto; box-shadow: 0 12px 28px rgba(0,0,0,.45); }
   .tile .name { font-size: 1.15rem; padding: .28rem .75rem; }
   .tile .chips span { font-size: .95rem; }
@@ -1386,7 +1395,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar #bargrip { height: 40px; width: 18px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
     .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px);
-      max-height: calc(100dvh - 14px - 102px - 8px - var(--kb, 0px) - var(--safe-top, 0px) - var(--safe-bottom, 0px)); }
+      max-height: calc(100dvh - 14px - 102px - 8px - var(--kb, 0px) - var(--inset-top, 0px) - var(--inset-bottom, 0px)); }
     .bar:not(.collapsed) .barmore > button { min-height: 56px; font-size: 16px; }
     .reacttray { bottom: 102px; }
     .reacttray button { min-width: 56px; min-height: 56px; font-size: 16px; }
@@ -1394,7 +1403,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #leave-ask #leave-cancel, #leave-ask #leave-go { min-height: 56px; font-size: 1.05rem; }
     .tile .name { font-size: 1rem; }
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
-      width: 180px; height: 240px; right: 14px; bottom: 118px; border-radius: 18px; }
+      width: 180px; height: 240px; right: calc(14px + var(--inset-right, 0px)); bottom: calc(118px + var(--inset-bottom, 0px)); border-radius: 18px; }
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="3"]) .tile.me {
       left: 12px; right: auto; width: 134px; height: 179px; }
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="5"]) .tile.me {
@@ -1404,7 +1413,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      x=374, past the right edge, so hang-up was a sliver. Shrink the dock and
      keep every primary control at least 44px inside the screen. */
   @media (max-width: 380px) {
-    .bar { gap: 4px; height: 72px; padding: 0 8px; max-width: calc(100vw - 12px); }
+    .bar { gap: 4px; height: 72px; padding: 0 8px; max-width: calc(100vw - 12px - var(--inset-left, 0px) - var(--inset-right, 0px)); }
     .bar #bargrip { width: 16px; height: 36px; }
     .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
       width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
@@ -1482,7 +1491,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #joinveil h3 { color: #1d1d1f; }
   #joinveil p { color: #3a3a3f; }
   #lobby { background: #e8ecf1; }
-  #lobby.show { display: grid; padding: 0; overflow: hidden; align-items: stretch; justify-content: stretch; }
+  #lobby.show { display: grid; padding: var(--inset-top, 0px) var(--inset-right, 0px) var(--inset-bottom, 0px) var(--inset-left, 0px); overflow: hidden; align-items: stretch; justify-content: stretch; box-sizing: border-box; }
   .lob-preview { position: relative; min-height: 180px; background: #1a1d24; overflow: hidden; }
   .lob-preview video { width: 100%; height: 100%; object-fit: cover; display: block; background: #1a1d24; }
   .lob-pv-name { position: absolute; left: 16px; bottom: 16px; background: rgba(8,10,14,.78); color: #f4f7fb;
@@ -20289,7 +20298,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
           document.documentElement.style.setProperty('--kb', kb + 'px');
           const dock = bar.offsetHeight || 88;
-          document.documentElement.style.setProperty('--dock-clear', Math.ceil(dock + 14 + kb + 8) + 'px');
+          const raised = Math.max(14 + kb, Math.round(window.innerHeight - bar.getBoundingClientRect().bottom));
+          document.documentElement.style.setProperty('--dock-clear', Math.ceil(dock + raised + 8) + 'px');
         } catch (e) {}
       };
       if (window.ResizeObserver) { try { new ResizeObserver(setBarH).observe(bar); } catch (e) {} }

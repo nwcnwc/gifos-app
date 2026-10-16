@@ -20,12 +20,12 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 | Chat can be read and sent on a phone | 4 | 4 | 4 | Meet, Teams |
 | Live, off air, watching, reconnecting | 3 | 3 | 3 | YouTube Live, StreamYard |
 | Large type and 44px targets | 3 | 2 | 3 | FaceTime |
-| Landscape, rotation, notch | 3 | 3 | 3 | Meet |
+| Landscape, rotation, notch | 4 | 4 | 4 | Meet |
 | Warm, short, trustworthy copy | 3 | 2 | 3 | FaceTime |
-| **Audience average** | **3.4** | **3.1** | **3.4** | |
+| **Audience average** | **3.6** | **3.3** | **3.6** | |
 
-Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast now says RECONNECTING, OFF AIR, LIVE, or WATCHING (Q5). Create & enter stays in the card while the room fields scroll (Q4). More scrolls inside the screen in landscape (Q3). Corporate and personal are 3.4. Church is 3.1. None lead. Meet still wins the notch and the home indicator (Q7). The status line still ignores a larger text size (Q6). StreamYard still wins a church service on flip-camera. FaceTime still wins the first screen on copy: this path still asks for two passwords.
+Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast now says RECONNECTING, OFF AIR, LIVE, or WATCHING (Q5). Create & enter stays in the card while the room fields scroll (Q4). More scrolls inside the screen in landscape (Q3). The chip and the dock clear a notch and a home indicator (Q7). Corporate and personal are 3.6. Church is 3.3. None lead. The status line still ignores a larger text size (Q6), which is why large type stays at 2 for church. StreamYard still wins a church service on flip-camera, so rotation is not a 5. FaceTime still wins the first screen on copy: this path still asks for two passwords. A first-visit name is still `Guest` plus digits (Q9) and the 320px dock gap is 4px (Q10). Those are later.
 
 ## Next gap
 
-Q7. The dock and the top chip ignore the notch and the home indicator. There is no `viewport-fit=cover` and no `env(safe-area-inset-*)`.
+Q6. The in-call status line stays 17px when the root font is 32px.

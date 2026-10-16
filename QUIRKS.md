@@ -22,9 +22,13 @@ Before: `test/mobile/screenshots/before/iphone-se-portrait-host.png`.
 
 Before: `test/mobile/screenshots/before/iphone-se-portrait-zoom.png`.
 
-### Q7. No safe-area insets
+### Q9. First-visit name and avatar are a Guest number and a letter
 
-The viewport meta is `width=device-width, initial-scale=1.0, interactive-widget=resizes-content`. The dock is `bottom: calc(14px + var(--kb, 0px))` and the top chip is `top: 14px`. Neither uses `env(safe-area-inset-*)`, and the meta does not set `viewport-fit=cover`. On a notched phone the chip and the dock sit under the hardware.
+A first visit is stored as `Guest` plus four digits so the room can connect, and the camera-off tile is that letter on a flat color. The lobby preview says “You” until a name exists. Settings can change both later. This is on the list after the phone-layout gaps. Not the next fix.
+
+### Q10. Compact dock buttons sit 4px apart
+
+Below 380px the dock gap is 4px so Leave still fits. Larger phones use 8px or 12px. The targets are 44px. The tighter gap is a polish item, after the phone-layout gaps. Not the next fix.
 
 ## Fixed
 
@@ -49,6 +53,12 @@ After: `test/mobile/screenshots/after/iphone-se-meeting-chat.png`.
 ### Q8. Chat header spent a third of a short screen
 
 `#chathead` wrapped the title, the privacy sentence, Transcript, and close into about 110px on iPhone SE. On a phone the sentence is now clipped for sighted layout and kept for screen readers, and Transcript / close are 44px. That was required for Q2: the tall header pushed Send under the dock once the keyboard opened.
+
+### Q7. The chip and the dock ignored the notch and the home indicator
+
+The viewport meta had no `viewport-fit=cover`. The chip was `top: 14px` and the dock was `bottom: calc(14px + var(--kb))`, so both sat in the hardware inset. They now use `max(env(safe-area-inset-*), --safe-*)`. A 47px notch and a 34px home indicator move the chip, Fit, and the dock, and chat stays above the raised dock. Side insets do the same in landscape. `test/mobile/safe-area.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-safe-area.png` (red bands are the injected insets).
 
 ### Q3. More sheet started above the viewport in landscape
 
