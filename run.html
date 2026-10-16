@@ -1460,6 +1460,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     color: #3a3a3f; cursor: grab; touch-action: none; flex: 0 0 auto;
     display: inline-flex; align-items: center; justify-content: center; }
   .bar #bargrip svg { width: 24px; height: 24px; }
+  /* Waiting room: a host list above the dock. Admit is the only blue
+     action. Not now stays white so the two choices are not the same button. */
+  #waitbtn[aria-pressed="true"] { background: #0064c8; color: #fff; }
+  #waitlist {
+    position: fixed; z-index: 40;
+    left: calc(12px + env(safe-area-inset-left, 0px));
+    right: calc(12px + env(safe-area-inset-right, 0px));
+    bottom: calc(var(--dockh, 108px) + 8px);
+    max-height: calc(100dvh - var(--dockh, 108px) - 80px - env(safe-area-inset-top, 0px));
+    overflow-y: auto; overscroll-behavior: contain;
+    background: #fff; color: #1d1d1f; border-radius: 18px; padding: 12px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.32);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  #waitlist[hidden] { display: none !important; }
+  .wait-head { font-weight: 800; font-size: 1.05rem; line-height: 1.3; }
+  .wait-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .wait-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-weight: 650; font-size: 1rem; }
+  .wait-admit, .wait-no {
+    flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 8px 12px; border-radius: 12px;
+    font-weight: 700; font-size: 1rem; cursor: pointer;
+  }
+  .wait-admit { background: #0064c8; color: #fff; border: 0; }
+  .wait-no { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
   .bar #bargrip:active { cursor: grabbing; }
   body.screen-on #feed { padding-bottom: 132px; box-sizing: border-box; background: #0c0e12; }
   body.screen-on #grid { flex: 0 0 120px; height: 120px; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; }
@@ -1687,6 +1712,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="camall" title="Turn video OFF for every guest at once (admins) — stronger than blur" style="display:none">Turn Video off</button>
     <button id="shareall" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
     <button id="pwbtn" title="Lock this room with a password">Password</button>
+    <button id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them">Waiting room</button>
     <button id="votebtn" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
     <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
     <button id="hand" title="Raise your hand — raised hands float to the top">Hand</button>
@@ -1706,6 +1732,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button type="button" data-burst="Laugh">Laugh</button>
     </div>
   </div>
+  <div id="waitlist" hidden role="region" aria-label="Waiting room"></div>
   <div class="share" id="share">
     <span class="hint">Send this link to friends — opening it brings them right in:</span>
     <input id="share-url" readonly>
@@ -2672,6 +2699,86 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let relaySocketed = new Set();
     let relayRosterScope = 'full';
     let doorAnswerAt = 0;           // a dark return's {t:'who'} pull is pending: its roster answers the door's knockers once (answerDoor)  // 'door' ⇒ relaySocketed holds only the greeters (see the roster handler)
+    let holdDoor = false;           // waiting room: do not auto-answer the door; the host admits from the list
+    const waitDeclined = new Set();
+    const waitQueue = new Map();
+    function waitPaint() {
+      const list = document.getElementById('waitlist');
+      const btn = document.getElementById('waitbtn');
+      if (btn) btn.setAttribute('aria-pressed', holdDoor ? 'true' : 'false');
+      document.body.classList.toggle('hold-door', holdDoor);
+      if (!list) return;
+      list.textContent = '';
+      if (!waitQueue.size) { list.hidden = true; return; }
+      list.hidden = false;
+      const head = document.createElement('div');
+      head.className = 'wait-head';
+      head.textContent = waitQueue.size === 1 ? '1 person waiting' : (waitQueue.size + ' people waiting');
+      list.appendChild(head);
+      for (const [id, name] of waitQueue) {
+        const row = document.createElement('div');
+        row.className = 'wait-row';
+        const nm = document.createElement('span');
+        nm.className = 'wait-name';
+        nm.textContent = name || 'Someone waiting';
+        const admit = document.createElement('button');
+        admit.type = 'button';
+        admit.className = 'wait-admit';
+        admit.textContent = 'Admit';
+        admit.addEventListener('click', () => { try { meetWait.admit(id); } catch (e) {} });
+        const no = document.createElement('button');
+        no.type = 'button';
+        no.className = 'wait-no';
+        no.textContent = 'Not now';
+        no.addEventListener('click', () => { try { meetWait.decline(id); } catch (e) {} });
+        row.appendChild(nm);
+        row.appendChild(admit);
+        row.appendChild(no);
+        list.appendChild(row);
+      }
+    }
+    function closeMoreForWait() {
+      const bar = document.querySelector('.bar');
+      const toggle = document.getElementById('bartoggle');
+      if (bar) bar.classList.add('collapsed');
+      if (toggle) {
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-label', 'More');
+        toggle.title = 'More';
+      }
+    }
+    const meetWait = {
+      hold(on) {
+        holdDoor = !!on;
+        if (holdDoor) closeMoreForWait();
+        waitPaint();
+        return holdDoor;
+      },
+      note(id, name) {
+        id = String(id || '');
+        if (!id || id === myId || waitDeclined.has(id)) return false;
+        waitQueue.set(id, String(name || '').trim().slice(0, 40) || 'Someone waiting');
+        waitPaint();
+        return true;
+      },
+      admit(id) {
+        id = String(id || '');
+        waitQueue.delete(id);
+        waitDeclined.delete(id);
+        waitPaint();
+        try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor([id]); } catch (e) {}
+        return true;
+      },
+      decline(id) {
+        id = String(id || '');
+        waitQueue.delete(id);
+        if (id) waitDeclined.add(id);
+        waitPaint();
+        return true;
+      },
+      holding() { return holdDoor; },
+    };
+    try { (window.GifOS = window.GifOS || {}).meetWait = meetWait; } catch (e) {}
     let pendingDoorGrant = null;    // an admin re-grant waiting on a pulled full list
     // Peers the relay answered {t:'nosock'} for, and when. Under a 'door' roster
     // this — not absence from the list — is what "unreachable by relay" means.
@@ -10117,7 +10224,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A DOOR BACK FROM DARK answers the sockets still knocking at it (mesh.js
         // answerDoor): once per dark return, on the full list
         // the return pulled; a member's socket is skipped by the seat.
-        if (doorAnswerAt && Date.now() - doorAnswerAt < 15000 && relayRosterScope === 'full') { doorAnswerAt = 0; try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor(Array.from(relaySocketed).filter((id) => id !== myId)); } catch (e) {} }
+        if (doorAnswerAt && Date.now() - doorAnswerAt < 15000 && relayRosterScope === 'full') {
+          doorAnswerAt = 0;
+          const ids = Array.from(relaySocketed).filter((id) => id !== myId);
+          try {
+            const s = meshSeat();
+            if (holdDoor) {
+              const members = new Set();
+              try { if (s) for (const v of s.occ.values()) if (v) members.add(v); } catch (e2) {}
+              for (const id of ids) {
+                if (members.has(id) || waitDeclined.has(id)) continue;
+                meetWait.note(id, rosterNames[id] || 'Someone waiting');
+              }
+            } else if (s && s.answerDoor) s.answerDoor(ids.filter((id) => !waitDeclined.has(id)));
+          } catch (e) {}
+        }
         if (doorRoundPending && relayRosterScope === 'full') { doorRoundPending = false; try { const s = meshSeat(); if (s && s.doorRound) s.doorRound(Array.from(relaySocketed).filter((id) => id !== myId)); } catch (e) {} }   // the door round's list (doorRoundBeat)
         if (relayRosterScope === 'full' && pendingDoorGrant) { const g = pendingDoorGrant; pendingDoorGrant = null; g(); }
         roomBan = m.ban || []; // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
@@ -11111,6 +11232,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       inp.focus();
     }
     document.getElementById('pwbtn').onclick = () => showPwModal(false);
+    document.getElementById('waitbtn').onclick = () => { meetWait.hold(!holdDoor); };
     document.getElementById('pw-cancel').onclick = () => {
       if (pwModal.dataset.mode === 'join') { location.href = MEET_PATH; return; }
       pwModal.style.display = 'none';

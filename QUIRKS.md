@@ -109,11 +109,19 @@ Repro: `test/mobile/grip-target.js`. It failed (`bargrip is 22x48`), then passed
 
 Before: `qa/mobile/shots/before-grip-iphone-15.png`. After: `qa/mobile/shots/after-grip-iphone-15.png`.
 
+### 13. No waiting-room admit list
+
+A host could set a password, record, and step on stage. There was no list of people at the door, and no Admit control. That is the job Zoom and a church volunteer panel both put on the phone.
+
+Repro: `test/mobile/wait-list.js`. It failed (`no Waiting room button`) on an iPhone 15 and an SE in landscape, then passed. Waiting room is off until the host turns it on, so a dark return still answers the door. When it is on, Ruth and David show above the dock. Admit is blue, Not now is white with a gray border, both at least 44px, 8px apart. Admit removes Ruth and asks the existing door answer to let her in. Not now removes David and hides the list when it is empty. The mesh admission protocol is unchanged.
+
+Before: `qa/mobile/shots/before-wait-iphone-15.png`. After: `qa/mobile/shots/after-wait-iphone-15.png`.
+
 ## Open
 
-There is still no waiting-room admit list for a host.
-
 The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
+
+More's host labels (Password, Vote, Stage) are still short words. A volunteer can read them, and the longer meaning is on the button title.
 
 ## Personas (what was actually tried)
 
