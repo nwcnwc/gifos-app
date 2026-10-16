@@ -36,13 +36,13 @@ test('alt shortcuts run the dock and skip the keys while typing', async ({ page 
   await expect(page.locator('#chatpanel.open')).toBeVisible();
   await page.locator('#chat-in').focus();
   await page.keyboard.press('Alt+a');
-  await page.keyboard.press('Shift+/');
+  await page.keyboard.press('?');
   expect(await hits(page, 'mic')).toBe('1');
   await expect(page.locator('#chat-in')).toHaveValue('?');
   await expect(page.locator('#shortcutsheet')).toBeHidden();
 
   await page.locator('#chat-in').blur();
-  await page.keyboard.press('Shift+/');
+  await page.keyboard.press('?');
   const sheet = page.locator('#shortcutsheet');
   await expect(sheet).toBeVisible();
   const read = await sheet.evaluate((el) => {

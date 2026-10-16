@@ -22,15 +22,19 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** Mic, Camera, More, and Leave each show a word inside the button. Opening More changes that word to Hide, including when chat folds the sheet. The buttons grow just enough to hold the word (dock about 482px, still inside a 900px window). The reactions SVG is unchanged.
 - **Proof:** the same test passes on Chromium, Firefox, and WebKit, and the chat-dock tests still pass. Screenshots: `test/desktop/shots/dock-labels-before-1280.png`, `test/desktop/shots/dock-labels-after-1280.png`, `test/desktop/shots/dock-labels-after-900.png`.
 
+### No keyboard shortcuts for mute, camera, chat, and leave
+
+- **Who hits it:** a keyboard-only power user running mute, camera, chat, and leave.
+- **What you saw:** those actions were pointer-only. Titles did not list a chord, and there was no shortcut list.
+- **Repro:** `test/desktop/shortcuts.spec.js` failed before the fix (no `aria-keyshortcuts` on `#mic`).
+- **Fix:** Alt+A mic, Alt+V camera, Alt+C chat, Alt+Q the leave confirm. The physical key is used, so a non-US layout still hits them. They do nothing while the caret is in a field, and nothing while a dialog is open. `?` opens a white list at 18px. More also has a Keys button. The dock’s accessible name mentions `?`.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshot: `test/desktop/shots/shortcuts-after-1280.png`. Share, hand, and the gallery view still have no chord.
+
 ## Open
 
 ### WebKit crashes if a gallery tile plays a canvas captureStream
 
 Opening four fake videos and then clicking More closed the WebKit tab. Chromium and Firefox play the streams. The test hook skips `captureStream` when `navigator.vendor` contains Apple and shows initials instead. Not a product bug for real cameras; it blocks this suite’s fake media on WebKit.
-
-### No keyboard shortcuts
-
-Alt-style mute, camera, chat, and leave are not implemented. A power user cannot run the call without the pointer. Focus rings exist on buttons.
 
 ### First visit covers the call with the name dialog
 
@@ -42,7 +46,7 @@ With no saved name, a modal asks for a screen name while the meeting is already 
 
 ### More sheet is a dense grid of mixed labels
 
-Who, Invite, Run app, Share screen, Password, Vote, Hand, Chat, Record, CC, Stage, Settings, Help, plus blur. “Turn Video off” is the odd capitalization. At 900×720 the grid fit; it has not been proven to clip at short heights with every admin button visible.
+Who, Invite, Run app, Share screen, Password, Vote, Hand, Chat, Record, CC, Stage, Settings, Keys, Help, plus blur. “Turn Video off” is the odd capitalization. In vote mode the sheet stays opaque while clicks pass through it, so it covers faces. At 900×720 the grid fit; it has not been proven to clamp on a short window.
 
 ### Chrome is English only
 

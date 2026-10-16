@@ -1160,6 +1160,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .name-box { background: var(--surface, #14141f); border: 1px solid var(--border, #2a2a3f); border-radius: .8rem; padding: 1.6rem; max-width: 340px; text-align: center;
     max-height: calc(100vh - 2rem); max-height: calc(100dvh - 2rem); overflow-y: auto; }
   .name-box h3 { margin-bottom: .5rem; }
+  #shortcutsheet .name-box { background: #fff; color: #1d1d1f; text-align: left; max-width: 440px; width: min(440px, calc(100vw - 32px)); }
+  #shortcutsheet h3 { color: #1d1d1f; font-size: 1.45rem; margin-bottom: .75rem; }
+  #shortcutsheet ul { list-style: none; margin: 0 0 1rem; padding: 0; }
+  #shortcutsheet li { font-size: 18px; line-height: 1.45; color: #1d1d1f; margin: .35rem 0; }
+  #shortcutsheet kbd { font: 700 16px/1 system-ui, sans-serif; background: #e8ecf1; color: #1d1d1f; padding: .2rem .45rem; border-radius: 6px; }
+  #shortcutsheet #shortcut-cancel { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
   .name-box p { color: var(--muted, #8888aa); font-size: .85rem; margin-bottom: 1rem; }
   .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem; min-height: 48px;
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
@@ -1538,17 +1544,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
   <div class="admcount" id="admcount" style="display:none"></div>
-  <div class="bar collapsed" role="toolbar" aria-label="Call controls">
+  <div class="bar collapsed" role="toolbar" aria-label="Call controls. Press ? for keyboard shortcuts">
     <button id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
-    <button id="cam" class="iconbtn off" aria-label="Camera" title="Your camera">
+    <button id="cam" class="iconbtn off" aria-label="Camera" aria-keyshortcuts="Alt+V" title="Your camera">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="2" y="6" width="13" height="12" rx="2"/><path d="M15 10.5 22 7v10l-7-3.5"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
       <span class="dockword">Camera</span>
     </button>
-    <button id="mic" class="iconbtn off" aria-label="Microphone" title="Your mic">
+    <button id="mic" class="iconbtn off" aria-label="Microphone" aria-keyshortcuts="Alt+A" title="Your mic">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
@@ -1561,7 +1567,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
       <span class="dockword">More</span>
     </button>
-    <button id="leavebtn" type="button" aria-label="Hang up" title="Leave the meeting. Your camera and microphone stop.">
+    <button id="leavebtn" type="button" aria-label="Hang up" aria-keyshortcuts="Alt+Q" title="Leave the meeting. Your camera and microphone stop.">
       <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(135 12 12)"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 3.1 2 2 0 0 1 4.1 1h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 8.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.7 2.1z"/></g></svg>
       <span class="dockword">Leave</span>
     </button>
@@ -1596,12 +1602,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="votebtn" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
     <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
     <button id="hand" title="Raise your hand — raised hands float to the top">Hand</button>
-    <button id="chatbtn" title="Chat and share files — stays between the people on this meeting, not on a server">Chat</button>
+    <button id="chatbtn" type="button" aria-keyshortcuts="Alt+C" title="Chat and share files — stays between the people on this meeting, not on a server">Chat</button>
     <button id="recbtn" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
     <button id="ccbtn" title="Live captions: your device writes down everyone it hears in this meeting and shares the lines with the meeting's transcript">CC</button>
     <button id="stagebtn" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
     <button id="setbtn" title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
     <button id="trbtn" title="The meeting's live transcript" style="display:none">Transcript</button>
+    <button id="keysbtn" type="button" title="Keyboard shortcuts">Keys</button>
     <button id="helpbtn" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
     </div>
     <div id="reacttray" class="reacttray" hidden role="group" aria-label="Reactions">
@@ -2002,6 +2009,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <h3 id="leave-ask-title">Leave the meeting?</h3>
       <button id="leave-cancel" type="button">Stay</button>
       <button id="leave-go" type="button">Leave</button>
+    </div>
+  </div>
+  <div class="name-modal" role="dialog" aria-modal="true" id="shortcutsheet" aria-labelledby="shortcut-title" style="display:none">
+    <div class="name-box">
+      <h3 id="shortcut-title">Keyboard shortcuts</h3>
+      <ul>
+        <li><kbd>Alt+A</kbd> Mute or unmute</li>
+        <li><kbd>Alt+V</kbd> Camera on or off</li>
+        <li><kbd>Alt+C</kbd> Open or close chat</li>
+        <li><kbd>Alt+Q</kbd> Leave the meeting</li>
+        <li><kbd>?</kbd> Show or hide this list</li>
+      </ul>
+      <button id="shortcut-cancel" type="button">Close</button>
     </div>
   </div>
 
@@ -21306,6 +21326,52 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; try { releaseLeaveAsk(); } catch (e) {} };
     const leaveGo = document.getElementById('leave-go');
     if (leaveGo) leaveGo.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; leaveMeeting(); };
+    // Keyboard: Alt+A mic, Alt+V camera, Alt+C chat, Alt+Q leave confirm.
+    // ? lists them. None of these fire while a field has the caret, and the
+    // Alt chords stay quiet under a dialog. The physical key (e.code) is
+    // what matters, so a non-US layout still hits the same keys.
+    function shortcutTyping(e) {
+      const t = e.target;
+      return !!(t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]'));
+    }
+    function shortcutBlocked() {
+      for (const el of document.querySelectorAll('.name-modal')) {
+        if (!el.isConnected || el.style.display === 'none') continue;
+        return true;
+      }
+      return false;
+    }
+    function toggleShortcutSheet(force) {
+      const el = document.getElementById('shortcutsheet');
+      if (!el) return;
+      const open = el.style.display !== 'none';
+      const show = force === true ? true : force === false ? false : !open;
+      el.style.display = show ? 'flex' : 'none';
+      if (show) {
+        const b = document.getElementById('shortcut-cancel');
+        if (b) { try { b.focus(); } catch (err) {} }
+      }
+    }
+    const keysBtn = document.getElementById('keysbtn');
+    if (keysBtn) keysBtn.onclick = () => toggleShortcutSheet(true);
+    const shortcutCancel = document.getElementById('shortcut-cancel');
+    if (shortcutCancel) shortcutCancel.onclick = () => toggleShortcutSheet(false);
+    document.addEventListener('keydown', (e) => {
+      if (e.repeat || e.metaKey || e.ctrlKey) return;
+      if (e.key === '?' || (e.shiftKey && !e.altKey && e.code === 'Slash')) {
+        if (shortcutTyping(e)) return;
+        e.preventDefault();
+        toggleShortcutSheet();
+        return;
+      }
+      if (!e.altKey || e.shiftKey || shortcutTyping(e) || shortcutBlocked()) return;
+      const id = { KeyA: 'mic', KeyV: 'cam', KeyC: 'chatbtn', KeyQ: 'leavebtn' }[e.code];
+      if (!id) return;
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      e.preventDefault();
+      btn.click();
+    });
     // Snapshot and silence every outgoing sender while the confirm is up.
     // Cancel puts back exactly that snapshot. Confirm keeps the hold and
     // leaves through leaveMeeting(). Defined after the buttons so a lifted

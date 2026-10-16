@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. Chat no longer fights the dock, and the four primary controls now have words. Keyboard shortcuts, the More sheet, and locale are still open.
+We do **not** lead any audience yet. Chat clears the dock, the primary controls have words, and mute, camera, chat, and leave have keyboard shortcuts. The More sheet, a large room, and locale are still open.
 
 ## Who we are measured against
 
@@ -26,10 +26,10 @@ Polished, efficient, trustworthy. Best of the field today: Zoom and Meet, about 
 | --- | ---: | --- |
 | Trust (no account, private media, quiet join) | 9 | Ahead of Zoom, Meet, and Teams |
 | Visual polish | 7 | Dock is calm and the primary controls are labeled. Chat no longer slides under it |
-| Efficiency (keyboard, few clicks) | 3 | No shortcuts. Chat is two clicks (More, then Chat). Labels do not remove a click |
+| Efficiency (keyboard, few clicks) | 5 | Alt+A / V / C / Q cover mic, camera, chat, and leave. Share, hand, and view still need the pointer. Chat is still two clicks with the mouse |
 | Presenting | 5 | Share exists. Not yet walked as a client demo |
 | Large-room host | 4 | Count is a status sentence that ellipsizes |
-| **Audience** | **5.6** | Does not lead |
+| **Audience** | **6.0** | Does not lead |
 
 ## Church
 
@@ -57,4 +57,4 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 
 ## This cycle
 
-Labeled Mic, Camera, More/Hide, and Leave (see QUIRKS.md). Corporate polish 6 → 7. Church readability 5 → 6, audience 5.3 → 5.5. Efficiency stays 3: a word does not replace a shortcut, and chat is still More then Chat. Personal is unchanged. We do not lead. Next gap: keyboard shortcuts for mute, camera, chat, and leave, skipped while typing, and visible without a hover.
+Keyboard shortcuts for the four primary actions, plus a readable `?` list and a Keys button (see QUIRKS.md). Corporate efficiency 3 → 5, audience 5.6 → 6.0. That is still behind Zoom and Meet, which cover share, hand, and view from the keyboard too. Church and personal scores stay put: a volunteer still faces the More wall, and a family call is not more effortless because Alt+A exists. We do not lead. Next gap: the More sheet still paints an opaque grid over faces in vote mode, and it is not clamped when the window is short.
