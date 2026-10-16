@@ -775,3 +775,64 @@ test('leaving and rejoining a personal call is obvious', async ({ page }) => {
   await page.locator('#leave-go').click();
   await expect(page.locator('#left-title')).toHaveText('You left the service');
 });
+
+test('microphone and camera off are a line you cannot miss', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.hash.indexOf('bc=1') !== -1 && location.search.indexOf('view=1') === -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  async function readAv() {
+    return page.evaluate(() => {
+      const bar = document.getElementById('avstate');
+      const air = document.getElementById('airbar').getBoundingClientRect();
+      const r = bar.getBoundingClientRect();
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const mic = document.getElementById('avmic');
+      const cam = document.getElementById('avcam');
+      const overlap = (a, b) => !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+      const s = getComputedStyle(bar);
+      return {
+        hidden: bar.hidden, text: (bar.textContent || '').replace(/\s+/g, ' ').trim(),
+        mic: mic.hidden ? '' : mic.textContent, cam: cam.hidden ? '' : cam.textContent,
+        bg: s.backgroundColor, fg: s.color, h: r.height, w: r.width,
+        belowAir: r.top >= air.bottom - 1,
+        dock: overlap(r, dock),
+        onScreen: r.left >= -1 && r.right <= innerWidth + 1 && r.bottom <= innerHeight,
+      };
+    });
+  }
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=av' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#avstate.on');
+    const both = await readAv();
+    expect(both.mic).toBe('Microphone off');
+    expect(both.cam).toBe('Camera off');
+    expect(both.bg).toBe('rgb(58, 16, 20)');
+    expect(both.fg).toBe('rgb(255, 255, 255)');
+    expect(both.h).toBeGreaterThanOrEqual(40);
+    expect(both.w).toBeGreaterThanOrEqual(w - 2);
+    expect(both.belowAir, JSON.stringify(both)).toBe(true);
+    expect(both.dock, JSON.stringify(both)).toBe(false);
+    expect(both.onScreen, JSON.stringify(both)).toBe(true);
+  }
+  await page.evaluate(() => window.__gifosRoomTrust.setDevices(false, true));
+  await expect(page.locator('#avmic')).toBeHidden();
+  await expect(page.locator('#avcam')).toHaveText('Camera off');
+  await expect(page.locator('#avstate')).toBeVisible();
+  await page.evaluate(() => window.__gifosRoomTrust.setDevices(true, false));
+  await expect(page.locator('#avcam')).toBeHidden();
+  await expect(page.locator('#avmic')).toHaveText('Microphone off');
+  await page.evaluate(() => window.__gifosRoomTrust.setDevices(false, false));
+  await expect(page.locator('#avstate')).toBeHidden();
+  await page.goto('/run.html?desk=avhost#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#avstate.on');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+  await expect(page.locator('#avmic')).toHaveText('Microphone off');
+  await page.goto('/run.html?desk=avview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#onair.watch');
+  await expect(page.locator('#avstate')).toBeHidden();
+});

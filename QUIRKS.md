@@ -94,9 +94,13 @@ The room bar now says **Not recording** or **Recording**, and a headcount (**1 h
 
 The dock button says **Leave**. The question is Stay (outline) and Leave (red), with a gap between them. After you leave, a white card says **You left the small group** or **You left the service**. Rejoin is blue `#0064c8`. Close is a white outline button. Rejoin reloads the same link and the room bar is back. The label fits inside the button at 1280, 1920, and 900. After: `test/e2e/artifacts/leave-dock-after.png`, `leave-ask-after.png`, `leave-rejoin-after.png`.
 
+### Q21. Mute and camera were only a dock color
+
+A full-width line under the room bar says **Microphone off** and **Camera off** while those are off. White on `#3a1014`. It sits under the room bar, clears the dock, and fits 1280, 1920, and 900. It hides when the microphone and camera are on. Someone only watching a service does not see it. After: `test/e2e/artifacts/av-off-after.png`, `av-on-after.png`.
+
 ## Open
 
-The next gap is how obvious mute and camera are. The dock buttons are red or green, and there is still no line you cannot miss, the way the room bar states on-air and recording. FaceTime is also still ahead on how little chrome a personal call shows.
+Corporate trust is still short of Zoom and Teams: a recording shows on the bar, and nothing stops it until the other people have seen that it is on. FaceTime is still ahead on how little chrome a personal call shows. The lobby, the labeled controls, the layout, and chat are the other corporate rows still at 4.
 
 ## How a session was opened without a relay
 

@@ -1348,6 +1348,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     padding: 0 12px; border-radius: 999px; cursor: pointer; background: transparent; color: inherit;
     border: 2px solid currentColor; }
   #airrec[aria-pressed="true"] { background: #fff; color: #b61622; border-color: #b61622; }
+  #avstate { display: none; }
+  #avstate[hidden] { display: none !important; }
+  #avstate.on { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 14px;
+    min-height: 44px; padding: 8px 16px; background: #3a1014; color: #fff;
+    font: 800 18px/1.2 system-ui, sans-serif; }
+  #avstate span { display: inline-flex; align-items: center; gap: 8px; }
+  #avstate span[hidden] { display: none !important; }
+  #avstate span::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #ffb4b4; flex: none; }
   .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
     border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 14px/1.2 system-ui, sans-serif; }
@@ -1742,6 +1750,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button type="button" id="airrec" aria-pressed="false">Not recording</button>
       <button type="button" id="airwho">1 here</button>
     </span>
+  </div>
+  <div id="avstate" hidden>
+    <span id="avmic" hidden>Microphone off</span>
+    <span id="avcam" hidden>Camera off</span>
   </div>
   <div id="feed">
     <div id="stagefeed"></div>
@@ -20841,6 +20853,36 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         seg.setAttribute('aria-pressed', segOn ? 'true' : 'false');
       }
       paintShare();
+      paintAvState();
+    }
+    function paintAvState() {
+      const bar = document.getElementById('avstate');
+      const mic = document.getElementById('avmic');
+      const cam = document.getElementById('avcam');
+      if (!bar || !mic || !cam) return;
+      const watching = typeof BROADCAST !== 'undefined' && BROADCAST && !(bcHostStored() || document.body.classList.contains('amadmin'));
+      let muted = false, camOff = false, locked = false;
+      try {
+        if (!watching && typeof myStatus !== 'undefined' && myStatus) {
+          muted = !!myStatus.muted;
+          camOff = !!myStatus.camOff;
+          if (typeof amGloballyMuted === 'function' && amGloballyMuted()) { muted = true; locked = true; }
+        }
+      } catch (e) {}
+      mic.hidden = !muted;
+      cam.hidden = !camOff;
+      mic.textContent = locked ? 'Muted for everyone' : 'Microphone off';
+      cam.textContent = 'Camera off';
+      const show = muted || camOff;
+      bar.hidden = !show;
+      bar.className = show ? 'on' : '';
+    }
+    if (window.__gifosRoomTrust) {
+      window.__gifosRoomTrust.setDevices = (muted, camOff) => {
+        myStatus.muted = !!muted;
+        myStatus.camOff = !!camOff;
+        paintControls();
+      };
     }
 
     // A tap on a dead mic/cam button is the ONE moment we can ask again: a

@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 against the desktop chrome in `run.html` (Meeting, and Broadcast via `#bc=1`). Scores are 1–5 for the **desktop UI** a person actually sees. 5 means that product is the reference for the row. This is not a score for media quality, scale, or mobile.
 
-GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (4.0, Zoom 4.9) or personal (4.0, FaceTime 4.8). Personal ties Meet at 4.0, and a tie is not a lead. The church lead is the audience average.
+GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (4.1, Zoom 4.9, Meet 4.3) or personal (4.0, FaceTime 4.8). Corporate ties Teams at 4.1, and personal ties Meet at 4.0. A tie is not a lead. The church lead is the audience average.
 
 ## Who we are scoring against
 
@@ -15,15 +15,15 @@ GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (4.0, Z
 | | Zoom | Meet | Teams | GifOS now |
 | --- | --- | --- | --- | --- |
 | Lobby says what will happen | 5 | 4 | 4 | 4 |
-| Mute / camera state is obvious | 5 | 5 | 4 | 4 |
+| Mute / camera state is obvious | 5 | 5 | 4 | 5 |
 | Controls labeled, not hover-only | 5 | 4 | 4 | 4 |
 | Layout holds at 1280, 1920, 900, resize | 5 | 4 | 4 | 4 |
 | Chat usable while the dock is up | 5 | 5 | 4 | 4 |
 | Keyboard path (shortcuts, Escape, focus) | 4 | 4 | 4 | 4 |
 | Trust: live, recording, who is here | 5 | 4 | 5 | 4 |
-| **Audience score** | **4.9** | **4.3** | **4.1** | **4.0** |
+| **Audience score** | **4.9** | **4.3** | **4.1** | **4.1** |
 
-Zoom still leads. The room bar says Not recording or Recording, and the headcount opens the name list, without opening More (Q19). That matches Meet. It stays short of Zoom and Teams: there is no waiting room and no consent step that stops the recording until everyone has seen it. Arithmetic: (4+4+4+4+4+4+4)/7 = 4.0.
+Zoom still leads. A full-width line says Microphone off and Camera off, and it leaves when those are on (Q21). That row matches Zoom and Meet. Trust still matches Meet and stays short of Zoom and Teams: there is no waiting room and no consent step that stops a recording until everyone has seen it. Arithmetic: (5+4+4+4+4+4+4)/7 = 4.1. A tie with Teams is not a lead.
 
 ## Church
 
@@ -79,3 +79,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q18 | 3.9 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | An open room says Service or Small group. Service-versus-group 4 → 5. Corporate trust and personal leave stay where they were. |
 | After Q19 | 4.0 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Recording state and who is here are on the room bar. Trust 3 → 4. Church and personal stay. |
 | After Q20 | 4.0 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.0 (FaceTime 4.8) | Leave is labeled. Rejoin is the blue way back. Personal leave 3 → 4. Ties Meet. FaceTime still leads. |
+| After Q21 | 4.1 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.0 (FaceTime 4.8) | Microphone off and Camera off are a full-width line. Mute 4 → 5. Corporate ties Teams. Not a lead. |
