@@ -134,6 +134,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** the slide is painted as soon as the capture starts, without waiting for a mesh seat. Stop sharing is a red button on the slide (16px, 40px tall). Tapping it clears the slide and the More row says Share screen again. The sheet and the More path are unchanged.
 - **Proof:** the test passes on Chromium and Firefox. The slide was on screen in about 60ms, 1262×458, object-fit contain, above the dock. Screenshots: `test/desktop/shots/share-before-sheet-1280.png`, `test/desktop/shots/share-after-live-1280.png`.
 
+### The host roster could mute, and nothing else
+
+- **Who hits it:** a host of a large room, looking for a waiting room, a rename, and a way to put one person in front.
+- **What you saw:** each other person had Mute. There was no switch for a waiting room, no Admit, no Rename, and no Spotlight.
+- **Repro:** `test/desktop/host-roster.spec.js` failed before the fix (no `#roster-wait-toggle`). WebKit skips the walk that plays a canvas capture. A guest in an admin room is covered on WebKit too.
+- **Fix:** Waiting room is a switch on the roster. Someone who arrives after it is on comes off the wall and sits under Waiting, with Admit. Rename edits their name on the tile. Spotlight marks them on stage and puts that tile first. A guest in an admin room does not see these. The person waiting is off the wall; this is not yet a sealed lobby that cuts every audio path.
+- **Proof:** the test passes on Chromium and Firefox, and the roster mute tests still pass on all three browsers. Screenshots: `test/desktop/shots/host-roster-before-1280.png`, `test/desktop/shots/host-roster-after-wait-1280.png`, `test/desktop/shots/host-roster-after-spot-1280.png`.
+
 ### More was one unlabeled wall
 
 - **Who hits it:** a volunteer opening More and hunting for Chat or Vote.
@@ -166,4 +174,4 @@ The lobby, the meeting help, the broadcast help, the shortcut list, and Settings
 
 ### Not yet walked end to end
 
-Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. The path is still More, then the sheet, then the picker. A broadcast says off air and on air, and the booth has an order of service. There are still no lyrics and no program versus preview. The roster can mute someone for everyone. Waiting room, rename, and spotlight are still missing. Who, Share, and Vote stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that kills the camera was not walked.
+Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. The path is still More, then the sheet, then the picker. A broadcast says off air and on air, and the booth has an order of service. There are still no lyrics and no program versus preview. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, and Vote stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that kills the camera was not walked.
