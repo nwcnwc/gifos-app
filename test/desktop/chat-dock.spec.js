@@ -27,13 +27,17 @@ async function composerState(page) {
     const input = document.querySelector('#chat-in');
     const ib = input.getBoundingClientRect();
     const hit = document.elementFromPoint(ib.left + 12, ib.top + ib.height / 2);
-    const small = document.querySelector('#chathead small').getBoundingClientRect();
+    const note = document.querySelector('#chathead small');
+    const small = note.getBoundingClientRect();
+    const cs = getComputedStyle(note);
     const panel = document.querySelector('#chatpanel').getBoundingClientRect();
     const close = document.querySelector('#chatclose').getBoundingClientRect();
     return {
       overlap: overlap,
       inputHit: !!(hit && (hit === input || input.contains(hit))),
       smallWide: small.width >= 220,
+      noteFont: parseFloat(cs.fontSize),
+      noteOneLine: small.height <= parseFloat(cs.lineHeight) + 2,
       smallInside: small.left >= panel.left - 1 && small.right <= panel.right + 1,
       closeInside: close.left >= panel.left - 1 && close.right <= panel.right + 1
         && close.top >= 0 && close.bottom <= window.innerHeight,
@@ -49,6 +53,9 @@ test('chat composer clears the dock in a narrow window', async ({ page }) => {
   expect(m.closeInside).toBe(true);
   expect(m.smallInside).toBe(true);
   expect(m.smallWide).toBe(true);
+  expect(m.noteFont).toBeGreaterThanOrEqual(16);
+  expect(m.noteOneLine).toBe(true);
+  await expect(page.locator('#chathead small')).toHaveText('Private. Gone when everyone leaves.');
   expect(m.overlap).toBe(false);
   expect(m.inputHit).toBe(true);
 });
@@ -63,5 +70,31 @@ test('chat composer stays clear while the window shrinks', async ({ page }) => {
     expect(m.overlap, 'composer overlaps the dock at ' + w).toBe(false);
     expect(m.inputHit, 'message field is covered at ' + w).toBe(true);
     expect(m.closeInside, 'close chat leaves the panel at ' + w).toBe(true);
+    expect(m.noteFont, 'privacy line is small at ' + w).toBeGreaterThanOrEqual(16);
+    expect(m.noteOneLine, 'privacy line wraps at ' + w).toBe(true);
   }
+});
+
+test.describe('German chat privacy', () => {
+  test.use({ locale: 'de-DE' });
+  test('the privacy line is one readable German line', async ({ page }) => {
+    await boot(page, 1280, 720);
+    await openChat(page);
+    const m = await composerState(page);
+    expect(m.noteFont).toBeGreaterThanOrEqual(16);
+    expect(m.noteOneLine).toBe(true);
+    await expect(page.locator('#chathead small')).toHaveText('Nur hier. Weg, wenn alle gehen.');
+  });
+});
+
+test.describe('Spanish chat privacy', () => {
+  test.use({ locale: 'es-MX' });
+  test('the privacy line is one readable Spanish line', async ({ page }) => {
+    await boot(page, 1280, 720);
+    await openChat(page);
+    const m = await composerState(page);
+    expect(m.noteFont).toBeGreaterThanOrEqual(16);
+    expect(m.noteOneLine).toBe(true);
+    await expect(page.locator('#chathead small')).toHaveText('Solo aquí. Se borra cuando salen.');
+  });
 });

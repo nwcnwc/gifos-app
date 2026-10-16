@@ -1087,7 +1087,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #chatpanel.open { display: flex; bottom: var(--dock-clear, 0px); }
   #chathead { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
   #chathead #paneltitle { flex: 1 1 auto; min-width: 0; }
-  #chathead small { flex: 1 1 100%; order: 5; min-width: 0; font-size: .75rem; font-weight: 400; line-height: 1.35; color: #c5cad6; }
+  #chathead small { flex: 1 1 100%; order: 5; min-width: 0; font-size: 16px; font-weight: 400; line-height: 1.3; color: #e4e7ee; }
   #chathead button { margin-left: 0; flex: 0 0 auto; min-height: 36px; padding: .2rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   #chatclose { margin-left: auto; }
   #chatlog { flex: 1; overflow-y: auto; padding: .6rem; display: flex; flex-direction: column; gap: .35rem; font-size: .85rem; }
@@ -2002,7 +2002,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <input type="file" id="app-file-input" accept="image/gif,.gif" style="display:none">
 
   <div id="chatpanel">
-    <div id="chathead"><span id="paneltitle" data-t="chatTitle">Meeting chat</span> <small data-t="chatPrivate">· private to this meeting, gone when everyone leaves</small>
+    <div id="chathead"><span id="paneltitle" data-t="chatTitle">Meeting chat</span> <small data-t="chatPrivate">Private. Gone when everyone leaves.</small>
       <button id="trtab" type="button" data-t="transcript">Transcript</button>
       <button id="chatmod" style="display:none" title="Silence the chat for everyone but you">Turn chat off</button>
       <button id="chatclose" type="button" aria-label="Close chat">✕</button></div>
@@ -2539,7 +2539,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         shareScreen: 'Bildschirm', stopShare: 'Beenden', float: 'Bild-in-Bild', flip: 'Drehen',
         vote: 'Abstimmung', password: 'Passwort', stage: 'Bühne', record: 'Aufnahme', settings: 'Einstellungen', keys: 'Tasten',
         blur: 'Unschärfe', noBlur: 'Aus',
-        transcript: 'Protokoll', chatPrivate: '· nur in diesem Meeting, weg wenn alle gehen',
+        transcript: 'Protokoll', chatPrivate: 'Nur hier. Weg, wenn alle gehen.',
         blurGuests: 'Weichzeichnen', unblurGuests: 'Schärfen', videoOff: 'Video aus', videoOn: 'Video an',
         allowShare: 'Freigeben', stopShares: 'Freigabe aus',
         inMeeting: 'im Meeting', justYou: 'Nur Sie', backIn: 'Wieder dabei',
@@ -2733,7 +2733,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         shareScreen: 'Pantalla', stopShare: 'Parar', float: 'Flotar', flip: 'Girar',
         vote: 'Votar', password: 'Contraseña', stage: 'Escenario', record: 'Grabar', settings: 'Ajustes', keys: 'Teclas',
         blur: 'Desenfoque', noBlur: 'Sin',
-        transcript: 'Transcripción', chatPrivate: '· solo de esta reunión, se borra cuando todos salen',
+        transcript: 'Transcripción', chatPrivate: 'Solo aquí. Se borra cuando salen.',
         blurGuests: 'Difuminar', unblurGuests: 'Quitar desenfoque', videoOff: 'Apagar video', videoOn: 'Encender video',
         allowShare: 'Permitir pantalla', stopShares: 'Parar pantallas',
         inMeeting: 'en la reunión', justYou: 'Solo tú', backIn: 'Volviendo',
