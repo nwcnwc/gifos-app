@@ -282,34 +282,38 @@ function twoTier(box, gallery, me, opts, phone) {
   const minShort = Math.min(rp.minShort, sp.minShort);
   return { tiles: [...emit(row, rp.rects, 'row'), ...emit(stad, sp.rects, 'stad')], rows: rp.rows + '+' + sp.rows, split: best.f, contentH: box.h, minShort, tooSmall: minShort < (phone ? FIT_FLOOR.phone : FIT_FLOOR.other) };
 }
-// Landscape phone: the visible box is wide and short, so stretching a grid
-// across it makes a strip. Keep every tile inside the phone shape limits.
-// One row fills the width when that shape is legal; otherwise tiles sit at
-// the widest legal shape and a further row grows downward for scrolling.
+// A short phone box cannot be stretched into a strip. Prefer a legal grid
+// that keeps every face on this screen. Scroll only when the minimum tile
+// cannot hold them all.
 function phoneFit(box, list, tier) {
   const n = list.length;
   const maxA = aspectMax(true);
-  let h = box.h;
-  if (!(h >= MIN_SIDE.phone)) h = MIN_SIDE.phone;
-  const maxW = h * maxA;
-  const minW = Math.min(maxW, h * ASPECT_MIN);
-  const equalW = box.w / Math.max(1, n);
-  let cols, tileW;
-  if (equalW >= minW && equalW <= maxW) {
-    cols = n;
-    tileW = equalW;
-  } else if (n * maxW <= box.w + 0.5) {
-    cols = n;
-    tileW = maxW;
-  } else {
+  const minSide = MIN_SIDE.phone;
+  let pick = null;
+  for (let rows = 1; rows <= n; rows++) {
+    const cols = Math.ceil(n / rows);
+    const h = box.h / rows;
+    if (h + 0.5 < minSide) continue;
+    const maxW = h * maxA;
+    const minW = Math.min(maxW, h * ASPECT_MIN);
+    const equalW = box.w / cols;
+    let tileW = 0;
+    if (equalW >= minW && equalW <= maxW) tileW = equalW;
+    else if (equalW > maxW && cols * maxW <= box.w + 0.5) tileW = maxW;
+    else continue;
+    if (Math.min(tileW, h) + 0.5 < minSide) continue;
+    const area = tileW * h;
+    if (!pick || area > pick.area) pick = { rows: rows, cols: cols, h: h, tileW: tileW, area: area };
+  }
+  let h = box.h, cols = 1, tileW = box.w, rows = n;
+  if (pick) { h = pick.h; cols = pick.cols; tileW = pick.tileW; rows = pick.rows; }
+  else {
+    if (!(h >= minSide)) h = minSide;
+    const maxW = h * maxA;
     cols = Math.max(1, Math.min(n, Math.floor(box.w / Math.max(1, Math.min(maxW, box.w)))));
     tileW = Math.min(maxW, box.w / cols);
-    if (tileW < minW && box.w >= minW) {
-      cols = Math.max(1, Math.floor(box.w / minW));
-      tileW = Math.min(maxW, box.w / cols);
-    }
+    rows = Math.ceil(n / cols);
   }
-  const rows = Math.ceil(n / cols);
   const tiles = [];
   for (let i = 0; i < n; i++) {
     const r = Math.floor(i / cols), c = i % cols;

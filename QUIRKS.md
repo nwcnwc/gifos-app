@@ -275,6 +275,14 @@ Repro: `test/mobile/record-start.js`. The sheet says what will be recorded, in o
 
 Before: `qa/mobile/shots/before-record-start-iphone-se.png`. After: `qa/mobile/shots/after-record-start-iphone-se.png`.
 
+### 34. At 200% text three of four faces left the screen
+
+On an iPhone SE and an iPhone 15 with the text size at 200%, Live and the dock left a short box. The packer made one column of large tiles. Ruth, David, and Sam started under Live and continued off the screen.
+
+Repro: `test/mobile/large-text-faces.js`. When every face can sit in the box at a portrait-phone shape, they do, above Live. A sideways phone that only has room for one row still uses that row.
+
+Before: `qa/mobile/shots/before-large-text-faces-iphone-se.png`. After: `qa/mobile/shots/after-large-text-faces-iphone-se.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.
