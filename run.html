@@ -1573,87 +1573,87 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="2" y="6" width="13" height="12" rx="2"/><path d="M15 10.5 22 7v10l-7-3.5"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
-      <span class="dockword">Camera</span>
+      <span class="dockword" data-t="cam">Camera</span>
     </button>
     <button id="mic" class="iconbtn off" aria-label="Microphone" aria-keyshortcuts="Alt+A" title="Your mic">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
-      <span class="dockword">Mic</span>
+      <span class="dockword" data-t="mic">Mic</span>
     </button>
     <button id="reactbtn" type="button" class="iconbtn" aria-label="Reactions" aria-expanded="false" aria-pressed="false" title="Reactions">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1.1 1.4 2.4 2 4 2s2.9-.6 4-2"/><circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none"/></svg>
     </button>
     <button id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
-      <span class="dockword">More</span>
+      <span class="dockword" data-t="more">More</span>
     </button>
     <button id="leavebtn" type="button" aria-label="Hang up" aria-keyshortcuts="Alt+Q" title="Leave the meeting. Your camera and microphone stop.">
       <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(135 12 12)"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 3.1 2 2 0 0 1 4.1 1h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 8.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.7 2.1z"/></g></svg>
-      <span class="dockword">Leave</span>
+      <span class="dockword" data-t="leave">Leave</span>
     </button>
     <div class="barmore" id="barmore">
     <span class="blurctl" title="How much your own video is blurred to everyone else">
-      <span class="blurlbl">Blur</span>
+      <span class="blurlbl" data-t="blur">Blur</span>
       <span id="blurseg" class="segwrap" role="group" aria-label="Blur level">
         <button class="seg" id="blur-max" data-blur="2">Max</button>
         <button class="seg" id="blur-min" data-blur="1">Min</button>
-        <button class="seg" id="blur-none" data-blur="0">No blur</button>
+        <button class="seg" id="blur-none" data-blur="0" data-t="noBlur">No blur</button>
       </span>
     </span>
     <section class="moregroup">
-      <h4>People</h4>
+      <h4 data-t="people">People</h4>
       <div class="morerow">
-        <button type="button" id="whobtn" title="Who is on this meeting — names and internet addresses">Who</button>
-        <button id="hand" title="Raise your hand — raised hands float to the top">Hand</button>
-        <button id="chatbtn" type="button" aria-keyshortcuts="Alt+C" title="Chat and share files — stays between the people on this meeting, not on a server">Chat</button>
-        <button id="invite" title="Friends join you live with one link">Invite</button>
+        <button type="button" id="whobtn" data-t="who" title="Who is on this meeting — names and internet addresses">Who</button>
+        <button id="hand" data-t="hand" title="Raise your hand — raised hands float to the top">Hand</button>
+        <button id="chatbtn" data-t="chat" type="button" aria-keyshortcuts="Alt+C" title="Chat and share files — stays between the people on this meeting, not on a server">Chat</button>
+        <button id="invite" data-t="invite" title="Friends join you live with one link">Invite</button>
         <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
             <path d="M4 16a8 8 0 0 0 14.9 2"/><polyline points="19 22 19 18 15 18"/></svg>
-          <span class="blab">Flip</span>
+          <span class="blab" data-t="flip">Flip</span>
         </button>
         <button id="pipbtn" class="iconbtn" aria-label="Float the meeting" title="Float the meeting in a mini window — it stays on screen while you use other apps" style="display:none">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
-          <span class="blab">Float</span>
+          <span class="blab" data-t="float">Float</span>
         </button>
       </div>
     </section>
     <section class="moregroup">
-      <h4>Share</h4>
+      <h4 data-t="share">Share</h4>
       <div class="morerow">
-        <button id="appbtn" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
-        <button id="sharebtn" title="Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)" style="display:none">Share screen</button>
+        <button id="appbtn" data-t="runApp" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
+        <button id="sharebtn" data-t="shareScreen" title="Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)" style="display:none">Share screen</button>
       </div>
     </section>
     <section class="moregroup">
-      <h4>Room</h4>
+      <h4 data-t="room">Room</h4>
       <div class="morerow">
-        <button id="votebtn" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
-        <button id="pwbtn" title="Lock this room with a password">Password</button>
-        <button id="stagebtn" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
-        <button id="recbtn" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
+        <button id="votebtn" data-t="vote" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
+        <button id="pwbtn" data-t="password" title="Lock this room with a password">Password</button>
+        <button id="stagebtn" data-t="stage" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
+        <button id="recbtn" data-t="record" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
         <button id="ccbtn" title="Live captions: your device writes down everyone it hears in this meeting and shares the lines with the meeting's transcript">CC</button>
-        <button id="setbtn" title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
+        <button id="setbtn" data-t="settings" title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
       </div>
     </section>
     <section class="moregroup">
-      <h4>Host</h4>
+      <h4 data-t="host">Host</h4>
       <div class="morerow">
-        <button id="blurall" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
-        <button id="camall" title="Turn video off for every guest at once (admins) — stronger than blur" style="display:none">Turn video off</button>
-        <button id="shareall" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
+        <button id="blurall" data-t="blurGuests" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
+        <button id="camall" data-t="videoOff" title="Turn video off for every guest at once (admins) — stronger than blur" style="display:none">Turn video off</button>
+        <button id="shareall" data-t="allowShare" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
         <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
       </div>
     </section>
     <section class="moregroup">
-      <h4>Help</h4>
+      <h4 data-t="help">Help</h4>
       <div class="morerow">
-        <button id="keysbtn" type="button" title="Keyboard shortcuts">Keys</button>
-        <button id="helpbtn" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
-        <button id="trbtn" title="The meeting's live transcript" style="display:none">Transcript</button>
+        <button id="keysbtn" data-t="keys" type="button" title="Keyboard shortcuts">Keys</button>
+        <button id="helpbtn" data-t="help" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
+        <button id="trbtn" data-t="transcript" title="The meeting's live transcript" style="display:none">Transcript</button>
       </div>
     </section>
     </div>
@@ -1802,8 +1802,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <input type="file" id="app-file-input" accept="image/gif,.gif" style="display:none">
 
   <div id="chatpanel">
-    <div id="chathead"><span id="paneltitle">Meeting chat</span> <small>· private to this meeting, gone when everyone leaves</small>
-      <button id="trtab" type="button">Transcript</button>
+    <div id="chathead"><span id="paneltitle" data-t="chatTitle">Meeting chat</span> <small data-t="chatPrivate">· private to this meeting, gone when everyone leaves</small>
+      <button id="trtab" type="button" data-t="transcript">Transcript</button>
       <button id="chatmod" style="display:none" title="Silence the chat for everyone but you">Turn chat off</button>
       <button id="chatclose" type="button" aria-label="Close chat">✕</button></div>
     <div id="chatlog"></div>
@@ -1811,12 +1811,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div id="trlog"><small style="color:#667">Tap CC in the bar and your device writes down everyone it hears — the lines gather here under each speaker's name, on every device in the meeting.</small></div>
       <div id="trfoot"><button id="trdl">Download transcript</button></div>
     </div>
-    <div id="cfiles"><h4>Files pinned to this meeting</h4><div id="cfilelist"><small style="color:#667">No files yet — attach one below.</small></div></div>
+    <div id="cfiles"><h4 data-t="filesTitle">Files pinned to this meeting</h4><div id="cfilelist"><small style="color:#667">No files yet — attach one below.</small></div></div>
     <form id="chatform">
       <button type="button" id="cattach" title="Pin a file to the meeting">📎</button>
       <input type="file" id="cfile-in" multiple style="display:none">
-      <input type="text" id="chat-in" placeholder="Message everyone…" autocomplete="off" maxlength="2000">
-      <button type="submit">Send</button>
+      <input type="text" id="chat-in" data-ph="chatPlaceholder" placeholder="Message everyone…" autocomplete="off" maxlength="2000">
+      <button type="submit" data-t="send">Send</button>
     </form>
   </div>
 
@@ -2325,6 +2325,84 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const avInboxes = new Map(); // peer id -> avatar chunk inbox (gifos-avatar.js)
     const ABSENT_GRACE = 12000; // BACKSTOP ONLY: roster-absent AND link-down this long → tile drops. Announced (D2) and probe-confirmed (D5) departures remove the tile event-driven, within a beat (see departSweep/confirmGone).
 
+    // Visible chrome for a German or Spanish device. English stays in the
+    // markup. Anything without a translation stays English on purpose.
+    const UI_TEXT = {
+      de: {
+        mic: 'Mikro', cam: 'Kamera', more: 'Mehr', hide: 'Weniger', leave: 'Ende',
+        hideControls: 'Steuerungen ausblenden',
+        appearTitle: 'So sehen Sie aus', screenName: 'Name', notNow: 'Nicht jetzt', join: 'Beitreten', changePic: 'Bild ändern',
+        people: 'Leute', share: 'Teilen', room: 'Raum', host: 'Leitung', help: 'Hilfe',
+        who: 'Wer', hand: 'Hand', chat: 'Chat', invite: 'Einladen', runApp: 'App starten', showApp: 'App zeigen',
+        shareScreen: 'Bildschirm', stopShare: 'Beenden', float: 'Bild-in-Bild', flip: 'Drehen',
+        vote: 'Abstimmung', password: 'Passwort', stage: 'Bühne', record: 'Aufnahme', settings: 'Einstellungen', keys: 'Tasten',
+        blur: 'Unschärfe', noBlur: 'Aus',
+        transcript: 'Protokoll', chatPrivate: '· nur in diesem Meeting, weg wenn alle gehen',
+        blurGuests: 'Weichzeichnen', unblurGuests: 'Schärfen', videoOff: 'Video aus', videoOn: 'Video an',
+        allowShare: 'Freigeben', stopShares: 'Freigabe aus',
+        inMeeting: 'im Meeting', justYou: 'Nur Sie', backIn: 'Wieder dabei',
+        unlockClear: 'Passwort für klares Video',
+        sendInvite: 'Link schicken, er läuft nicht ab',
+        waiting: 'wir warten auf die anderen…',
+        chatTitle: 'Meeting-Chat',
+        chatPlaceholder: 'Nachricht an alle…', send: 'Senden',
+        chatOff: 'Chat ist aus — nur die Leitung schreibt.',
+        chatOffHost: 'Chat ist für Gäste aus — Sie können schreiben.',
+        filesTitle: 'Dateien in diesem Meeting',
+        filesLocked: 'Dateien erst nach einem Passwort (Taste Passwort).',
+        filesEmpty: 'Noch keine Dateien.',
+      },
+      es: {
+        mic: 'Micro', cam: 'Cámara', more: 'Más', hide: 'Menos', leave: 'Salir',
+        hideControls: 'Ocultar controles',
+        appearTitle: 'Así te verán', screenName: 'Nombre', notNow: 'Ahora no', join: 'Entrar', changePic: 'Cambiar foto',
+        people: 'Gente', share: 'Compartir', room: 'Sala', host: 'Anfitrión', help: 'Ayuda',
+        who: 'Quién', hand: 'Mano', chat: 'Chat', invite: 'Invitar', runApp: 'Abrir app', showApp: 'Mostrar app',
+        shareScreen: 'Pantalla', stopShare: 'Parar', float: 'Flotar', flip: 'Girar',
+        vote: 'Votar', password: 'Contraseña', stage: 'Escenario', record: 'Grabar', settings: 'Ajustes', keys: 'Teclas',
+        blur: 'Desenfoque', noBlur: 'Sin',
+        transcript: 'Transcripción', chatPrivate: '· solo de esta reunión, se borra cuando todos salen',
+        blurGuests: 'Difuminar', unblurGuests: 'Quitar desenfoque', videoOff: 'Apagar video', videoOn: 'Encender video',
+        allowShare: 'Permitir pantalla', stopShares: 'Parar pantallas',
+        inMeeting: 'en la reunión', justYou: 'Solo tú', backIn: 'Volviendo',
+        unlockClear: 'contraseña para video nítido',
+        sendInvite: 'envía el enlace; no caduca',
+        waiting: 'esperando a los demás…',
+        chatTitle: 'Chat de la reunión',
+        chatPlaceholder: 'Mensaje para todos…', send: 'Enviar',
+        chatOff: 'Chat apagado — solo escribe el anfitrión.',
+        chatOffHost: 'Chat apagado para invitados — tú sí puedes escribir.',
+        filesTitle: 'Archivos de esta reunión',
+        filesLocked: 'Archivos solo con contraseña (botón Contraseña).',
+        filesEmpty: 'Aún no hay archivos.',
+      },
+    };
+    function uiLang() {
+      const l = (navigator.language || 'en').toLowerCase();
+      if (l.indexOf('de') === 0) return 'de';
+      if (l.indexOf('es') === 0) return 'es';
+      return 'en';
+    }
+    function uiText(key, en) {
+      const pack = UI_TEXT[uiLang()];
+      return (pack && pack[key]) || en || '';
+    }
+    function applyChrome() {
+      document.documentElement.lang = uiLang();
+      document.querySelectorAll('[data-t]').forEach((el) => {
+        const v = uiText(el.getAttribute('data-t'), '');
+        if (!v) return;
+        el.textContent = v;
+        const btn = el.closest('button');
+        if (btn && el.classList.contains('dockword')) btn.setAttribute('aria-label', v);
+      });
+      document.querySelectorAll('[data-ph]').forEach((el) => {
+        const v = uiText(el.getAttribute('data-ph'), '');
+        if (v) el.setAttribute('placeholder', v);
+      });
+    }
+    applyChrome();
+
     // ---- screen name (same identity the rest of GifOS uses) ----------------
     // A direct join confirms how you look before the knock. The field is the
     // GifOS name you already have, or a Guest seed, and the face is your
@@ -2341,16 +2419,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
         bg.setAttribute('aria-labelledby', 'appear-title');
         bg.innerHTML = '<div class="name-box">' +
-          '<h3 id="appear-title">This is how you\'ll appear</h3>' +
+          '<h3 id="appear-title">' + uiText('appearTitle', 'This is how you\'ll appear') + '</h3>' +
           '<div class="appear-face" id="appear-face"></div>' +
           '<div class="appear-name" id="appear-name"></div>' +
-          '<label class="appear-lab" for="nm">Screen name</label>' +
+          '<label class="appear-lab" for="nm">' + uiText('screenName', 'Screen name') + '</label>' +
           '<input id="nm" name="nickname" maxlength="40" autocomplete="nickname">' +
-          '<button id="appear-pic" type="button">Change picture</button>' +
+          '<button id="appear-pic" type="button">' + uiText('changePic', 'Change picture') + '</button>' +
           '<input id="appear-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden>' +
           '<div class="appear-actions">' +
-            '<button id="nmcancel" type="button">Not now</button>' +
-            '<button id="nmok" type="button">Join</button>' +
+            '<button id="nmcancel" type="button">' + uiText('notNow', 'Not now') + '</button>' +
+            '<button id="nmok" type="button">' + uiText('join', 'Join') + '</button>' +
           '</div></div>';
         document.body.appendChild(bg);
         const input = bg.querySelector('#nm');
@@ -6171,7 +6249,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const link = (relayUp() || (meshSeat() && meshSeat().state === 3 && meshCoord() && meshCoord().pc !== 0)) ? '' : ' · reconnecting to the room…';
       let extra = '';
       if (n > 1) {
-        if (!roomPw) extra = ' · a password unlocks clear video';
+        if (!roomPw) extra = ' · ' + uiText('unlockClear', 'a password unlocks clear video');
         else if (hasAdminRoom() && admins.length === 0) extra = ' · no admin here — everyone stays blurred';
         else if (!adminPresent() && !allConsent()) {
           // Past one section the ready count is the fold's: everyone minus the
@@ -6210,10 +6288,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (reachState && reachState !== 'partial') {
         restText = REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence()) + tail;
       } else if (n === 1) {
-        countText = atDoor ? 'Getting you back in' : 'Just you';
-        restText = (atDoor ? ' — waiting for the others to answer…' : ' — send the invite; the link has no expiry' + reachTriedSentence()) + tail;
+        countText = atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you');
+        restText = (atDoor ? ' — ' + uiText('waiting', 'waiting for the others to answer…') : ' — ' + uiText('sendInvite', 'send the invite; the link has no expiry') + reachTriedSentence()) + tail;
       } else {
-        countText = n + ' in the meeting';
+        countText = n + ' ' + uiText('inMeeting', 'in the meeting');
         restText = ' · ' + q.label + reachTriedSentence() + tail;
       }
       const statusText = countText + restText;
@@ -12574,7 +12652,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (takeChat(m.m)) {
           renderChat();
           if (m.m && typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
-          if (!chatPanel.classList.contains('open')) { unread++; chatBtn.textContent = 'Chat (' + unread + ')'; }
+          if (!chatPanel.classList.contains('open')) { unread++; chatBtn.textContent = uiText('chat', 'Chat') + ' (' + unread + ')'; }
           // A frame the sender marked ackReq (today: only the follow-me link)
           // gets a delivery ack back over the mesh/DC — see FOLLOW-ME DELIVERY
           // WAIT. Ordinary chat carries none: this is not a read receipt.
@@ -13356,8 +13434,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const locked = off && !amAdmin;
       const inp = document.getElementById('chat-in');
       inp.disabled = locked;
-      inp.placeholder = locked ? 'Chat is off — only the host can post.'
-        : (off ? 'Chat is off for guests — you can still post.' : 'Message everyone…');
+      inp.placeholder = locked ? uiText('chatOff', 'Chat is off — only the host can post.')
+        : (off ? uiText('chatOffHost', 'Chat is off for guests — you can still post.') : uiText('chatPlaceholder', 'Message everyone…'));
       document.querySelector('#chatform button[type="submit"]').disabled = locked;
       document.getElementById('cattach').disabled = locked;
       const b = document.getElementById('chatmod');
@@ -13384,7 +13462,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const el = document.getElementById('cfilelist');
       // Files are only allowed in a PASSWORD-PROTECTED meeting: an open room anyone
       // can wander into shouldn't leak shared files. No password → no files.
-      if (!roomPw) { el.innerHTML = '<small style="color:#889">🔒 Set a room password (the Password button) to share files here. Files are off in open rooms.</small>'; return; }
+      if (!roomPw) { el.innerHTML = '<small style="color:#889">🔒 ' + uiText('filesLocked', 'Set a room password (the Password button) to share files here. Files are off in open rooms.') + '</small>'; return; }
       const fs = Array.from(files.values()).sort((a, b) => a.at - b.at);
       el.innerHTML = fs.length ? fs.map((f) => {
         const mine = (f.byId && f.byId === myId) || (!f.byId && f.by === myName());
@@ -13395,7 +13473,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + (f.bytes ? '<button data-dl="' + esc(f.id) + '">⬇</button>' : '<small>receiving…</small>')
           + unpin + '</div>';
       }).join('')
-        : '<small style="color:#667">No files yet — attach one below.</small>';
+        : '<small style="color:#667">' + uiText('filesEmpty', 'No files yet — attach one below.') + '</small>';
     }
     document.getElementById('cfilelist').addEventListener('click', (e) => {
       const dl = e.target.dataset.dl, del = e.target.dataset.del;
@@ -13461,7 +13539,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // renderChat skips while the transcript tab is shown, and the transcript
       // is not painted while the panel is closed: paint the tab that shows.
       if (chatPanel.classList.contains('open')) {
-        unread = 0; chatBtn.textContent = 'Chat'; if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles();
+        unread = 0; chatBtn.textContent = uiText('chat', 'Chat'); if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles();
         // The More sheet floats above the chat (the dock's stacking context).
         // Leave it open and the conversation is hidden behind a grid of buttons.
         // Fold the sheet without rewriting the saved preference.
@@ -13470,10 +13548,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (barEl && toggle && !barEl.classList.contains('collapsed')) {
           barEl.classList.add('collapsed');
           toggle.setAttribute('aria-expanded', 'false');
-          toggle.setAttribute('aria-label', 'More');
-          toggle.title = 'More';
+          toggle.setAttribute('aria-label', uiText('more', 'More'));
+          toggle.title = uiText('more', 'More');
           const word = toggle.querySelector('.dockword');
-          if (word) word.textContent = 'More';
+          if (word) word.textContent = uiText('more', 'More');
         }
       }
     };
@@ -17479,7 +17557,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!shareBtn) return;
       const on = !!myStatus.scr;
       shareBtn.classList.toggle('on', on);
-      shareBtn.textContent = on ? 'Stop sharing' : 'Share screen';
+      shareBtn.textContent = on ? uiText('stopShare', 'Stop sharing') : uiText('shareScreen', 'Share screen');
       shareBtn.title = on
         ? 'You are sharing your screen with the meeting — tap to stop'
         : 'Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)';
@@ -20203,7 +20281,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const replaced = recStarting || (recRec && recRec.state !== 'inactive');
           if (!replaced) {
             recBtn.classList.remove('on');
-            recBtn.textContent = 'Record';
+            recBtn.textContent = uiText('record', 'Record');
             myStatus.rec = false;
             try { broadcastStatus(); } catch (e) {}
           }
@@ -20353,10 +20431,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       function apply(collapsed) {
         bar.classList.toggle('collapsed', collapsed);
         toggle.setAttribute('aria-expanded', String(!collapsed));
-        toggle.setAttribute('aria-label', collapsed ? 'More' : 'Hide meeting controls');
-        toggle.title = collapsed ? 'More' : 'Hide meeting controls';
+        toggle.setAttribute('aria-label', collapsed ? uiText('more', 'More') : uiText('hideControls', 'Hide meeting controls'));
+        toggle.title = collapsed ? uiText('more', 'More') : uiText('hideControls', 'Hide meeting controls');
         const word = toggle.querySelector('.dockword');
-        if (word) word.textContent = collapsed ? 'More' : 'Hide';
+        if (word) word.textContent = collapsed ? uiText('more', 'More') : uiText('hide', 'Hide');
       }
       toggle.onclick = function () {
         const next = !bar.classList.contains('collapsed'); apply(next);
@@ -20839,7 +20917,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!amAdmin) return;
       const on = allGuestsBlocked();
       blurAllBtn.classList.toggle('on', on);
-      blurAllBtn.textContent = on ? 'Unblur guests' : 'Blur guests';
+      blurAllBtn.textContent = on ? uiText('unblurGuests', 'Unblur guests') : uiText('blurGuests', 'Blur guests');
     }
     blurAllBtn.onclick = () => {
       if (!amAdmin) return;
@@ -20857,7 +20935,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!amAdmin) return;
       const on = allGuestsCamOff();
       camAllBtn.classList.toggle('on', on);
-      camAllBtn.textContent = on ? 'Turn video on' : 'Turn video off';
+      camAllBtn.textContent = on ? uiText('videoOn', 'Turn video on') : uiText('videoOff', 'Turn video off');
     }
     camAllBtn.onclick = () => {
       if (!amAdmin) return;
@@ -20878,7 +20956,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!amAdmin) return;
       const on = guestsMayShare();
       shareAllBtn.classList.toggle('on', on);
-      shareAllBtn.textContent = on ? 'Stop guest shares' : 'Allow screen share';
+      shareAllBtn.textContent = on ? uiText('stopShares', 'Stop guest shares') : uiText('allowShare', 'Allow screen share');
     }
     if (shareAllBtn) shareAllBtn.onclick = () => {
       if (!amAdmin) return;
@@ -20911,10 +20989,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (barEl && toggle && !barEl.classList.contains('collapsed')) {
           barEl.classList.add('collapsed');
           toggle.setAttribute('aria-expanded', 'false');
-          toggle.setAttribute('aria-label', 'More');
-          toggle.title = 'More';
+          toggle.setAttribute('aria-label', uiText('more', 'More'));
+          toggle.title = uiText('more', 'More');
           const word = toggle.querySelector('.dockword');
-          if (word) word.textContent = 'More';
+          if (word) word.textContent = uiText('more', 'More');
         }
       }
       const b = document.getElementById('votebanner');
@@ -22317,10 +22395,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const isMine = !!(myStatus.app && appKey === myStatus.app.s);
       const btn = document.getElementById('appbtn');
       if (want && want.s === appHiddenSid && !isMine) {
-        btn.textContent = 'Show app';
+        btn.textContent = uiText('showApp', 'Show app');
         btn.title = 'An app is shared here (' + (want.name || 'App') + ') — you hid it. Tap to bring it back.';
       } else {
-        btn.textContent = 'Run app';
+        btn.textContent = uiText('runApp', 'Run app');
         btn.title = canIRunApp() ? 'Run an app inside this meeting — everyone here shares and interacts with it live'
           : 'Only this room\u2019s admins — or people they allow — can run an app here';
       }

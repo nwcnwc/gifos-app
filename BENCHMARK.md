@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. More is now People, Share, Room, and Help instead of one wall. The interface is still English only.
+We do **not** lead any audience yet. The meeting chrome follows a German or Spanish device. Help, settings, and the lobby stay English.
 
 ## Who we are measured against
 
@@ -52,9 +52,9 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 | Warmth | 7 | The join card is a person, not a form. The in-call line still says “a password unlocks clear video” |
 | Effort to get in | 8 | One link. You confirm your name and picture, then you are in. A return in the same tab does not ask again |
 | Staying in the call (resize, tab away) | 5 | Resize no longer covers the composer. Tab-away not walked yet |
-| Locale | 3 | Chrome is English. Captions follow the device language |
-| **Audience** | **5.8** | Does not lead |
+| Locale | 5 | Join, dock, More, the people count, and chat follow German and Spanish. Help, settings, and the lobby stay English |
+| **Audience** | **6.3** | Does not lead |
 
 ## This cycle
 
-More is four labeled rows, and the host row stays hidden until a host control is on screen (see QUIRKS.md). Church volunteer simplicity 6 → 7, audience 6.0 → 6.3. Still behind Zoom for a volunteer. Corporate and personal stay put. We do not lead. Next gap: the chrome is English only.
+German and Spanish cover the join card, the dock, More and its actions, the people count (including the password note), and the chat chrome (see QUIRKS.md). Personal locale 3 → 5, audience 5.8 → 6.3. Still behind FaceTime, and behind Meet. Corporate stays 6.6. Church stays 6.3. We do not lead. Next gap: a service still has no on-air state, and a large room still has no roster.

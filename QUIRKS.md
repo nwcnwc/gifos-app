@@ -62,6 +62,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** the card says “This is how you'll appear”, prefills the GifOS name, shows the avatar (or an initial), and updates the preview as you type. Join is the blue primary. Not now is a white secondary, with space between them. Change picture is a separate text button. The knock waits until you choose. A session that already confirmed does not ask again.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/appear-before-1280.png`, `test/desktop/shots/appear-after-1280.png`.
 
+### Chrome was English only
+
+- **Who hits it:** anyone whose device is set to German or Spanish.
+- **What you saw:** the join card, the dock, More, the people count, and chat all stayed in English.
+- **Repro:** `test/desktop/locale.spec.js` failed before the fix (a `de-DE` browser still said “This is how you'll appear” and “Join”).
+- **Fix:** German and Spanish cover the join card, the dock (including Weniger / Menos while More is open), the More rows and their actions, the people count, the password note on that line, and the chat title, privacy line, composer, and files note. `html lang` follows the device. English stays in the markup as the fallback. Help essays, the settings body, the lobby, and the shortcut list stay English.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/locale-before-join-1280.png`, `test/desktop/shots/locale-after-join-de-1280.png`, `test/desktop/shots/locale-after-more-de-1280.png`, `test/desktop/shots/locale-after-join-es-1280.png`, `test/desktop/shots/locale-after-chat-de-1280.png`.
+
 ### More was one unlabeled wall
 
 - **Who hits it:** a volunteer opening More and hunting for Chat or Vote.
@@ -84,9 +92,9 @@ With no saved confirmation for this session, joining shows how you will appear: 
 
 Who, Invite, Hand, and Chat sit under People. Vote, Password, Stage, Record, CC, and Settings sit under Room. Run app is under Share. Keys and Help are under Help. Host tools stay hidden until there is a host. “Turn video off” matches the other labels. The list is still long.
 
-### Chrome is English only
+### Help, settings, and the lobby are still English
 
-Captions already follow the device language. The lobby, dock, and chat do not. A German or Spanish locale still reads English, and longer translations are untested because there are no translations.
+The meeting chrome follows a German or Spanish device: join, dock, More, the people count, and chat. Captions already followed the device language. The help essays, the settings body, the lobby, and the shortcut list do not. A longer translation than the chrome has not been walked.
 
 ### Status line is easy to lose
 
@@ -94,4 +102,4 @@ Captions already follow the device language. The lobby, dock, and chat do not. A
 
 ### Not yet walked end to end
 
-Screen-share sheet for the consultant, a 20-person roster, tab-hide/return on a throttled page, and a non-English locale overflow pass. Those are next. Gallery packing, self-view placement, and the reactions icon are not in this pass.
+Screen-share sheet for the consultant, a 20-person roster, and tab-hide/return on a throttled page. Those are next. Gallery packing, self-view placement, and the reactions icon are not in this pass. German and Spanish chrome is in; help, settings, and the lobby are still English.
