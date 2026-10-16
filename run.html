@@ -1336,16 +1336,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     gap: 2px; padding: 8px 10px 6px;
   }
   .bar .barmore { display: none; }
-  .bar:not(.collapsed) .barmore { display: grid; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
-    width: min(720px, calc(100vw - 24px)); grid-template-columns: repeat(4, 1fr); gap: 8px;
+  .bar:not(.collapsed) .barmore { display: flex; flex-direction: column; gap: 12px; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
+    width: min(720px, calc(100vw - 24px));
     max-height: calc(100vh - 146px); max-height: calc(100dvh - 146px); overflow-x: hidden; overflow-y: auto;
     background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23;
     pointer-events: none; }
   .bar:not(.collapsed) .barmore > * { pointer-events: auto; }
+  .bar:not(.collapsed) .barmore .moregroup { display: flex; flex-direction: column; gap: 6px; }
+  .bar:not(.collapsed) .barmore .moregroup:not(:has(.morerow > button:not([style*="display:none"]):not([style*="display: none"]))) { display: none; }
+  .bar:not(.collapsed) .barmore .moregroup h4 { margin: 0; padding: 0 4px; font: 700 12px/1.2 system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: #5c6370; }
+  .bar:not(.collapsed) .barmore .morerow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   /* Stage voting: the More sheet floats over the gallery; let .votedot receive taps. */
   body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore,
   body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore * { pointer-events: none !important; }
-  .bar:not(.collapsed) .barmore > button { min-height: 64px; height: auto; padding: 8px 6px; border: 0; border-radius: 16px;
+  .bar:not(.collapsed) .barmore .morerow > button { min-height: 64px; height: auto; padding: 8px 6px; border: 0; border-radius: 16px;
     background: #e8ecf1; color: #1d1d1f; font-size: 18px; font-weight: 650; white-space: normal; }
   .bar:not(.collapsed) .barmore .blurctl { grid-column: 1 / -1; display: flex; align-items: center; min-height: 48px; gap: 8px; }
   .bar:not(.collapsed) .barmore .blurlbl { display: inline; color: #3a3a3f; font-size: 14px; }
@@ -1409,8 +1413,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
     .bar #bargrip { height: 40px; width: 18px; }
     .bar #leavebtn { width: auto; height: 72px; min-width: 68px; min-height: 72px; padding: 6px 8px 4px; }
-    .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px); }
-    .bar:not(.collapsed) .barmore > button { min-height: 56px; font-size: 16px; }
+    .bar:not(.collapsed) .barmore { bottom: 102px; width: calc(100vw - 24px); }
+    .bar:not(.collapsed) .barmore .morerow { grid-template-columns: repeat(3, 1fr); }
+    .bar:not(.collapsed) .barmore .morerow > button { min-height: 56px; font-size: 16px; }
     .reacttray { bottom: 102px; }
     .reacttray button { min-width: 56px; min-height: 56px; font-size: 16px; }
     #leave-ask .name-box h3 { font-size: 1.35rem; }
@@ -1596,36 +1601,61 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button class="seg" id="blur-none" data-blur="0">No blur</button>
       </span>
     </span>
-    <button type="button" id="whobtn" title="Who is on this meeting — names and internet addresses">Who</button>
-    <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
-        <path d="M4 16a8 8 0 0 0 14.9 2"/><polyline points="19 22 19 18 15 18"/></svg>
-      <span class="blab">Flip</span>
-    </button>
-    <button id="pipbtn" class="iconbtn" aria-label="Float the meeting" title="Float the meeting in a mini window — it stays on screen while you use other apps" style="display:none">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
-      <span class="blab">Float</span>
-    </button>
-    <button id="invite" title="Friends join you live with one link">Invite</button>
-    <button id="appbtn" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
-    <button id="sharebtn" title="Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)" style="display:none">Share screen</button>
-    <button id="blurall" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
-    <button id="camall" title="Turn video OFF for every guest at once (admins) — stronger than blur" style="display:none">Turn Video off</button>
-    <button id="shareall" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
-    <button id="pwbtn" title="Lock this room with a password">Password</button>
-    <button id="votebtn" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
-    <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
-    <button id="hand" title="Raise your hand — raised hands float to the top">Hand</button>
-    <button id="chatbtn" type="button" aria-keyshortcuts="Alt+C" title="Chat and share files — stays between the people on this meeting, not on a server">Chat</button>
-    <button id="recbtn" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
-    <button id="ccbtn" title="Live captions: your device writes down everyone it hears in this meeting and shares the lines with the meeting's transcript">CC</button>
-    <button id="stagebtn" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
-    <button id="setbtn" title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
-    <button id="trbtn" title="The meeting's live transcript" style="display:none">Transcript</button>
-    <button id="keysbtn" type="button" title="Keyboard shortcuts">Keys</button>
-    <button id="helpbtn" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
+    <section class="moregroup">
+      <h4>People</h4>
+      <div class="morerow">
+        <button type="button" id="whobtn" title="Who is on this meeting — names and internet addresses">Who</button>
+        <button id="hand" title="Raise your hand — raised hands float to the top">Hand</button>
+        <button id="chatbtn" type="button" aria-keyshortcuts="Alt+C" title="Chat and share files — stays between the people on this meeting, not on a server">Chat</button>
+        <button id="invite" title="Friends join you live with one link">Invite</button>
+        <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
+            <path d="M4 16a8 8 0 0 0 14.9 2"/><polyline points="19 22 19 18 15 18"/></svg>
+          <span class="blab">Flip</span>
+        </button>
+        <button id="pipbtn" class="iconbtn" aria-label="Float the meeting" title="Float the meeting in a mini window — it stays on screen while you use other apps" style="display:none">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
+          <span class="blab">Float</span>
+        </button>
+      </div>
+    </section>
+    <section class="moregroup">
+      <h4>Share</h4>
+      <div class="morerow">
+        <button id="appbtn" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
+        <button id="sharebtn" title="Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)" style="display:none">Share screen</button>
+      </div>
+    </section>
+    <section class="moregroup">
+      <h4>Room</h4>
+      <div class="morerow">
+        <button id="votebtn" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
+        <button id="pwbtn" title="Lock this room with a password">Password</button>
+        <button id="stagebtn" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
+        <button id="recbtn" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
+        <button id="ccbtn" title="Live captions: your device writes down everyone it hears in this meeting and shares the lines with the meeting's transcript">CC</button>
+        <button id="setbtn" title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
+      </div>
+    </section>
+    <section class="moregroup">
+      <h4>Host</h4>
+      <div class="morerow">
+        <button id="blurall" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
+        <button id="camall" title="Turn video off for every guest at once (admins) — stronger than blur" style="display:none">Turn video off</button>
+        <button id="shareall" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
+        <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
+      </div>
+    </section>
+    <section class="moregroup">
+      <h4>Help</h4>
+      <div class="morerow">
+        <button id="keysbtn" type="button" title="Keyboard shortcuts">Keys</button>
+        <button id="helpbtn" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
+        <button id="trbtn" title="The meeting's live transcript" style="display:none">Transcript</button>
+      </div>
+    </section>
     </div>
     <div id="reacttray" class="reacttray" hidden role="group" aria-label="Reactions">
       <button type="button" id="react-hand">Hand</button>
@@ -20827,7 +20857,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!amAdmin) return;
       const on = allGuestsCamOff();
       camAllBtn.classList.toggle('on', on);
-      camAllBtn.textContent = on ? 'Turn Video on' : 'Turn Video off';
+      camAllBtn.textContent = on ? 'Turn video on' : 'Turn video off';
     }
     camAllBtn.onclick = () => {
       if (!amAdmin) return;

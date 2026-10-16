@@ -62,6 +62,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** the card says “This is how you'll appear”, prefills the GifOS name, shows the avatar (or an initial), and updates the preview as you type. Join is the blue primary. Not now is a white secondary, with space between them. Change picture is a separate text button. The knock waits until you choose. A session that already confirmed does not ask again.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/appear-before-1280.png`, `test/desktop/shots/appear-after-1280.png`.
 
+### More was one unlabeled wall
+
+- **Who hits it:** a volunteer opening More and hunting for Chat or Vote.
+- **What you saw:** one grid of equal buttons, with no groups.
+- **Repro:** `test/desktop/more-groups.spec.js` failed before the fix (no People / Room / Help headings).
+- **Fix:** People, Share, Room, and Help are labeled rows. Host stays hidden until a host control is actually shown. “Turn video off” uses the same capitalization as the other labels.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the vote and short-window tests still pass. Screenshots: `test/desktop/shots/more-groups-before-1280.png`, `test/desktop/shots/more-groups-after-1280.png`.
+
 ## Open
 
 ### WebKit crashes if a gallery tile plays a canvas captureStream
@@ -74,7 +82,7 @@ With no saved confirmation for this session, joining shows how you will appear: 
 
 ### More sheet is a dense grid of mixed labels
 
-Who, Invite, Run app, Share screen, Password, Vote, Hand, Chat, Record, CC, Stage, Settings, Keys, Help, plus blur. “Turn Video off” is the odd capitalization. The sheet now folds when a vote starts and scrolls inside a short window; the list itself is still a wall.
+Who, Invite, Hand, and Chat sit under People. Vote, Password, Stage, Record, CC, and Settings sit under Room. Run app is under Share. Keys and Help are under Help. Host tools stay hidden until there is a host. “Turn video off” matches the other labels. The list is still long.
 
 ### Chrome is English only
 

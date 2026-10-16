@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. Joining now shows your GifOS name and picture before you enter, with one clear Join button. The More wall and English-only chrome are still open.
+We do **not** lead any audience yet. More is now People, Share, Room, and Help instead of one wall. The interface is still English only.
 
 ## Who we are measured against
 
@@ -37,11 +37,11 @@ Simple for volunteers and older members. Services and small groups. Best of the 
 
 | | GifOS | Notes |
 | --- | ---: | --- |
-| Volunteer simplicity | 6 | The join card says how you will appear, with one blue Join. More is still a wall of tools |
+| Volunteer simplicity | 7 | Join is one blue button. More is People, Share, Room, and Help, not one wall. The list is still long |
 | Readability for older eyes | 6 | Mic, Camera, More/Hide, and Leave say so in the button. Reactions is still an icon. Chat’s privacy line wraps |
 | Small group (conversation, singing) | 8 | One link, blur, unison. Voting someone up no longer hides the faces under the More sheet |
 | Service / broadcast | 4 | No lower third, no obvious on-air, no volunteer checklist |
-| **Audience** | **6.0** | Does not lead |
+| **Audience** | **6.3** | Does not lead |
 
 ## Personal
 
@@ -57,4 +57,4 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 
 ## This cycle
 
-The join step prefills the GifOS name and avatar and shows “This is how you'll appear” (see QUIRKS.md). Join is blue. Not now is white, and the two do not touch. Church volunteer simplicity 5 → 6, audience 5.8 → 6.0. Personal warmth 6 → 7, effort 7 → 8, audience 5.3 → 5.8. That is still behind Meet for a family call and behind Zoom for a volunteer. We do not lead. Next gap: More is still one wall of buttons.
+More is four labeled rows, and the host row stays hidden until a host control is on screen (see QUIRKS.md). Church volunteer simplicity 6 → 7, audience 6.0 → 6.3. Still behind Zoom for a volunteer. Corporate and personal stay put. We do not lead. Next gap: the chrome is English only.
