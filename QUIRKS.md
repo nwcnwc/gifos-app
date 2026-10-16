@@ -339,6 +339,14 @@ Repro: `test/mobile/header-invite.js`. On a phone, alone, the header is the room
 
 Before: `qa/mobile/shots/before-header-invite-iphone-se.png`. After: `qa/mobile/shots/after-header-invite-iphone-se.png`.
 
+### 42. No blur snapped back to Min
+
+In a password meeting the header said "You are ready for clear video…" and Min stayed selected. The tap landed on No blur. The button was not disabled. The choice was saved as 0. The segment then painted the feed level, and the room rule keeps that feed at Min until everyone is ready, so the control jumped back to Min.
+
+Repro: `test/mobile/blur-none.js`. It failed (`No blur did not stay selected (min true, none false)`, feed blur 1, header "You are ready for clear video — it shows when everyone here is (camera on, No blur: 1 of 2)."), then passed. No blur stays selected. The feed stays Min until Sam is ready. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/blur-none.js`.
+
+Before: `qa/mobile/shots/before-blur-none-pixel-7.png`. After: `qa/mobile/shots/after-blur-none-pixel-7.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.
