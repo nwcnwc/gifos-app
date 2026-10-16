@@ -1822,7 +1822,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <h4 data-t="people">People</h4>
       <div class="morerow">
         <button type="button" id="whobtn" data-t="who" data-ti="whoTip" title="Who is on this meeting — names and internet addresses">Who</button>
-        <button id="hand" data-t="hand" title="Raise your hand — raised hands float to the top">Hand</button>
+        <button id="hand" data-t="hand" aria-keyshortcuts="Alt+H" title="Raise your hand — raised hands float to the top">Hand</button>
         <button id="invite" data-t="invite" data-ti="invTip" title="Friends join you live with one link">Invite</button>
         <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2280,6 +2280,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <li><kbd>Alt+V</kbd> <span data-t="keyCam">Camera on or off</span></li>
         <li><kbd>Alt+S</kbd> <span data-t="keyShare">Share or stop sharing</span></li>
         <li><kbd>Alt+C</kbd> <span data-t="keyChat">Open or close chat</span></li>
+        <li><kbd>Alt+H</kbd> <span data-t="keyHand">Raise or lower your hand</span></li>
         <li><kbd>Alt+Q</kbd> <span data-t="keyLeave">Leave the meeting</span></li>
         <li><kbd>?</kbd> <span data-t="keyList">Show or hide this list</span></li>
       </ul>
@@ -2735,7 +2736,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bcJoin: 'Eine Sendung schauen', bcJoinSub: 'Einen Sendungslink einfügen',
         bcEmpty: 'Sendungen, die Sie starten oder schauen, stehen hier.',
         shortcutTitle: 'Tastatur', keyMic: 'Stumm oder an', keyCam: 'Kamera an oder aus',
-        keyChat: 'Chat auf oder zu', keyShare: 'Bildschirm teilen oder beenden', keyLeave: 'Besprechung verlassen', keyList: 'Diese Liste zeigen oder schließen',
+        keyChat: 'Chat auf oder zu', keyShare: 'Bildschirm teilen oder beenden', keyHand: 'Hand heben oder senken', keyLeave: 'Besprechung verlassen', keyList: 'Diese Liste zeigen oder schließen',
         helpTitle: 'So funktioniert diese Besprechung', helpGot: 'Verstanden',
         bcHelpTitle: 'So funktioniert diese Sendung', appHelpTitle: 'So funktioniert dieser App-Raum',
         screenNameTitle: 'Ihr Name', screenNameNote: 'Die anderen in der Besprechung sehen ihn.', save: 'Speichern',
@@ -2932,7 +2933,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bcJoin: 'Ver una transmisión', bcJoinSub: 'Pega un enlace de transmisión',
         bcEmpty: 'Las transmisiones que empieces o veas aparecen aquí.',
         shortcutTitle: 'Teclado', keyMic: 'Silenciar o activar', keyCam: 'Cámara activada o no',
-        keyChat: 'Abrir o cerrar el chat', keyShare: 'Compartir o dejar de compartir', keyLeave: 'Salir de la reunión', keyList: 'Mostrar u ocultar esta lista',
+        keyChat: 'Abrir o cerrar el chat', keyShare: 'Compartir o dejar de compartir', keyHand: 'Levantar o bajar la mano', keyLeave: 'Salir de la reunión', keyList: 'Mostrar u ocultar esta lista',
         helpTitle: 'Así funciona esta reunión', helpGot: 'Entendido',
         bcHelpTitle: 'Así funciona esta transmisión', appHelpTitle: 'Así funciona esta sala de app',
         screenNameTitle: 'Tu nombre', screenNameNote: 'Las demás personas de la reunión lo ven.', save: 'Guardar',
@@ -22877,7 +22878,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; try { releaseLeaveAsk(); } catch (e) {} };
     const leaveGo = document.getElementById('leave-go');
     if (leaveGo) leaveGo.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; leaveMeeting(); };
-    // Keyboard: Alt+A mic, Alt+V camera, Alt+S share, Alt+C chat, Alt+Q leave confirm.
+    // Keyboard: Alt+A mic, Alt+V camera, Alt+S share, Alt+C chat, Alt+H hand, Alt+Q leave confirm.
     // ? lists them. None of these fire while a field has the caret, and the
     // Alt chords stay quiet under a dialog. The physical key (e.code) is
     // what matters, so a non-US layout still hits the same keys.
@@ -22916,10 +22917,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (!e.altKey || e.shiftKey || shortcutTyping(e) || shortcutBlocked()) return;
-      const id = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyQ: 'leavebtn' }[e.code];
+      const id = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyH: 'hand', KeyQ: 'leavebtn' }[e.code];
       if (!id) return;
       const btn = document.getElementById(id);
-      if (!btn || getComputedStyle(btn).display === 'none') return;
+      // A control inside More is still a shortcut while the sheet is folded.
+      // A button hidden on its own (a viewer who cannot share) stays quiet.
+      if (!btn || (getComputedStyle(btn).display === 'none' && !btn.closest('#barmore'))) return;
       e.preventDefault();
       btn.click();
     });
