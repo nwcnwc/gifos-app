@@ -22580,7 +22580,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           built._qaCanvas = c;
         } catch (e) { built.tile.classList.add('cam-off'); }
         peers.set(id, Object.assign(built, {
-          id: id, name: name, qa: true, headless: false, connected: true,
+          id: id, name: name, qa: true, headless: false,
+          // connected:false is the room Nathan saw: the faces are already on
+          // the wall, and the transport has not vouched for them yet.
+          connected: spec.connected !== false,
           lastHeard: Date.now(), meshRxAt: Date.now(), bornAt: Date.now(),
           pc: qaStubPc(), dc: null, noRoute: false, absentSince: 0,
           _qaTracks: stream ? stream.getTracks() : [],
