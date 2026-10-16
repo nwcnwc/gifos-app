@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 against the desktop chrome in `run.html` (Meeting, and Broadcast via `#bc=1`). Scores are 1–5 for the **desktop UI** a person actually sees. 5 means that product is the reference for the row. This is not a score for media quality, scale, or mobile.
 
-GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (3.9, Zoom 4.9) or personal (3.8, FaceTime 4.8 and Meet 4.0). A tie is not a lead. The church lead is the audience average.
+GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (4.0, Zoom 4.9) or personal (3.8, FaceTime 4.8 and Meet 4.0). A tie is not a lead. The church lead is the audience average.
 
 ## Who we are scoring against
 
@@ -20,10 +20,10 @@ GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (3.9, Z
 | Layout holds at 1280, 1920, 900, resize | 5 | 4 | 4 | 4 |
 | Chat usable while the dock is up | 5 | 5 | 4 | 4 |
 | Keyboard path (shortcuts, Escape, focus) | 4 | 4 | 4 | 4 |
-| Trust: live, recording, who is here | 5 | 4 | 5 | 3 |
-| **Audience score** | **4.9** | **4.3** | **4.1** | **3.9** |
+| Trust: live, recording, who is here | 5 | 4 | 5 | 4 |
+| **Audience score** | **4.9** | **4.3** | **4.1** | **4.0** |
 
-Zoom still leads. The lobby’s blue button is Start a call, and Host this call is an outline button (Q9). The dock grip now keeps its arrow-key promise (Q14); keyboard stays 4 because Zoom’s shortcut set is still richer. Chat is a dock button and the composer clears the dock (Q17); trust is still behind. Arithmetic: (4+4+4+4+4+4+3)/7 = 3.9.
+Zoom still leads. The room bar says Not recording or Recording, and the headcount opens the name list, without opening More (Q19). That matches Meet. It stays short of Zoom and Teams: there is no waiting room and no consent step that stops the recording until everyone has seen it. Arithmetic: (4+4+4+4+4+4+4)/7 = 4.0.
 
 ## Church
 
@@ -77,3 +77,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q16 | 3.7 (Zoom 4.9) | 4.3 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Full-width “You are live” / “You are watching”. On-air moves 4 → 5. Church average 4.3. |
 | After Q17 | 3.9 (Zoom 4.9) | 4.5 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Chat is a dock button. Prayer is a separate line. Corporate chat 3 → 4. Church chat 3 → 4. |
 | After Q18 | 3.9 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | An open room says Service or Small group. Service-versus-group 4 → 5. Corporate trust and personal leave stay where they were. |
+| After Q19 | 4.0 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Recording state and who is here are on the room bar. Trust 3 → 4. Church and personal stay. |

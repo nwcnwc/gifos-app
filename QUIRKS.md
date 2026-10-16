@@ -86,9 +86,13 @@ Chat is a labeled dock button, so it is one tap while More is closed. The dock s
 
 The full-width bar now names the room. A service says **Service · You are live** (red `#b61622`) or **Service · You are watching** (gray `#e8ecf1`). A small group says **Small group** on green `#143024`. Chat, leave, invite, Help, and the tab title use the same words. The lobby still says Start a call or Go live. The two bars do not share a background, and both clear the chip, the Fit button, and the dock at 1280, 1920, and 900. Before: the Q16 bars, which only said “You are live” / “You are watching”, and a meeting that hid the bar. After: `test/e2e/artifacts/service-bar-live-after.png`, `service-bar-watch-after.png`, `small-group-bar-after.png`.
 
+### Q19. Recording and who is here were inside More
+
+The room bar now says **Not recording** or **Recording**, and a headcount (**1 here**) that opens the name list. More can stay closed. Recording is a white pill with red text. Not recording is an outline on the same bar. Both fit inside the bar at 1280, 1920, and 900, clear of the dock. Tapping Not recording opens the record sheet. Tapping the count shows the names, including your own. A service keeps “Service · You are live” beside those controls. After: `test/e2e/artifacts/trust-group-after.png`, `trust-group-recording-after.png`, `trust-service-after.png`.
+
 ## Open
 
-Corporate trust is the next gap. Recording and “who is here” still live inside More, so a standup does not show either fact until that sheet is open. Personal leave and rejoin is the gap after that.
+Leaving and coming back is the next gap. The leave question exists, and the screen after you leave does not yet make the way back as obvious as FaceTime.
 
 ## How a session was opened without a relay
 

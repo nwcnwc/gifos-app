@@ -147,7 +147,7 @@ test('a broadcast host is marked Live and the room is not called a meeting', asy
   await page.waitForSelector('body.broadcast.meet-session');
   await expect(page).toHaveTitle('Service — GifOS');
   await expect(page.locator('#paneltitle')).toHaveText('Service chat');
-  await expect(page.locator('#airbar')).toHaveText('Service · You are live');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
   await expect(page.locator('#onair')).toHaveText('Live');
   await expect(page.locator('#onair')).toHaveClass(/live/);
   await expect(page.locator('#leavebtn')).toHaveAttribute('title', /service/i);
@@ -170,7 +170,7 @@ test('a broadcast viewer is Watching, including at 900px', async ({ page }) => {
   await expect(page.locator('#onair')).toHaveClass(/watch/);
   await expect(page).toHaveTitle('Service — GifOS');
   await expect(page.locator('#paneltitle')).toHaveText('Service chat');
-  await expect(page.locator('#airbar')).toHaveText('Service · You are watching');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
   const box = await page.locator('#onair').boundingBox();
   expect(box.y).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(900);
@@ -184,7 +184,7 @@ test('a meeting keeps meeting words and hides the on-air pill', async ({ page })
   await expect(page).toHaveTitle('Small group — GifOS');
   await expect(page.locator('#paneltitle')).toHaveText('Small group chat');
   await expect(page.locator('#onair')).toBeHidden();
-  await expect(page.locator('#airbar')).toHaveText('Small group');
+  await expect(page.locator('#airkind')).toHaveText('Small group');
   await expect(page.locator('#airbar')).toHaveClass(/group/);
   await expect(page.locator('#leave-ask-title')).toHaveText('Leave the small group?');
 });
@@ -525,7 +525,7 @@ test('a volunteer cannot miss whether they are on air', async ({ page }) => {
       const dock = document.querySelector('.bar').getBoundingClientRect();
       const overlap = (a, b) => !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
       return {
-        text: el.textContent, bg: s.backgroundColor, fg: s.color, hidden: el.hidden,
+        text: document.getElementById('airkind').textContent, bg: s.backgroundColor, fg: s.color, hidden: el.hidden,
         x: r.x, y: r.y, w: r.width, h: r.height, vw: innerWidth, vh: innerHeight,
         belowChip: r.top >= chip.bottom - 1,
         belowFit: r.top >= fit.bottom - 1,
@@ -574,6 +574,78 @@ test('a volunteer cannot miss whether they are on air', async ({ page }) => {
   expect(group.h).toBeGreaterThanOrEqual(44);
   expect(group.belowChip, JSON.stringify(group)).toBe(true);
   expect(group.dock, JSON.stringify(group)).toBe(false);
+});
+
+test('recording and who is here sit on the room bar', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=trust' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.group');
+    await expect(page.locator('.bar')).toHaveClass(/collapsed/);
+    await expect(page.locator('#barmore')).toBeHidden();
+    const rec = page.locator('#airrec');
+    const who = page.locator('#airwho');
+    await expect(rec).toBeVisible();
+    await expect(rec).toHaveText('Not recording');
+    await expect(rec).toHaveAttribute('aria-pressed', 'false');
+    await expect(who).toBeVisible();
+    await expect(who).toHaveText('1 here');
+    const insideMore = await page.locator('#barmore #airrec, #barmore #airwho').count();
+    expect(insideMore).toBe(0);
+    const lay = await page.evaluate(() => {
+      const bar = document.getElementById('airbar').getBoundingClientRect();
+      const rec = document.getElementById('airrec').getBoundingClientRect();
+      const who = document.getElementById('airwho').getBoundingClientRect();
+      const kind = document.getElementById('airkind').getBoundingClientRect();
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const overlap = (a, b) => !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+      const inside = (a, b) => a.left >= b.left - 1 && a.right <= b.right + 1 && a.top >= b.top - 1 && a.bottom <= b.bottom + 1;
+      return {
+        kind: kind.width > 20,
+        recIn: inside(rec, bar),
+        whoIn: inside(who, bar),
+        recOn: rec.left >= 0 && rec.right <= innerWidth && rec.top >= 0 && rec.bottom <= innerHeight,
+        whoOn: who.left >= 0 && who.right <= innerWidth && who.top >= 0 && who.bottom <= innerHeight,
+        dock: overlap(bar, dock),
+      };
+    });
+    expect(lay.kind, JSON.stringify(lay)).toBe(true);
+    expect(lay.recIn, JSON.stringify(lay)).toBe(true);
+    expect(lay.whoIn, JSON.stringify(lay)).toBe(true);
+    expect(lay.recOn, JSON.stringify(lay)).toBe(true);
+    expect(lay.whoOn, JSON.stringify(lay)).toBe(true);
+    expect(lay.dock, JSON.stringify(lay)).toBe(false);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const off = await page.locator('#airrec').evaluate((el) => getComputedStyle(el).backgroundColor);
+  await page.evaluate(() => window.__gifosRoomTrust.setRecording(true));
+  await expect(page.locator('#airrec')).toHaveText('Recording');
+  await expect(page.locator('#airrec')).toHaveAttribute('aria-pressed', 'true');
+  const on = await page.locator('#airrec').evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(on).toBe('rgb(255, 255, 255)');
+  expect(on).not.toBe(off);
+  await page.evaluate(() => window.__gifosRoomTrust.setRecording(false));
+  await expect(page.locator('#airrec')).toHaveText('Not recording');
+  await page.locator('#airwho').click();
+  await expect(page.locator('#who-modal')).toBeVisible();
+  await expect(page.locator('#who-modal h3')).toHaveText('Who is here');
+  await expect(page.locator('#who-list')).toContainText('Avery Chen');
+  await page.locator('#who-close').click();
+  await expect(page.locator('#who-modal')).toBeHidden();
+  await page.locator('#airrec').click();
+  await expect(page.locator('#rec-options h3')).toHaveText('Record this small group');
+  await page.locator('#ro-cancel').click();
+  await expect(page.locator('#rec-options')).toHaveCount(0);
+  await page.goto('/run.html?desk=trustsvc#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airkind');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+  await expect(page.locator('#airrec')).toHaveText('Not recording');
+  await page.locator('#airrec').click();
+  await expect(page.locator('#rec-options h3')).toHaveText('Record this service');
 });
 
 test('chat is one tap on the dock, and a prayer is its own line', async ({ page }) => {

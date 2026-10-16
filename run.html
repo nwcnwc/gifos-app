@@ -1343,6 +1343,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #airbar.live::before { background: #fff; }
   #airbar.watch::before { background: #0064c8; }
   #airbar.group::before { background: #7dcea0; }
+  #airbar .airacts { display: flex; align-items: center; gap: 8px; margin-left: 8px; }
+  #airrec, #airwho { appearance: none; font: 700 15px/1 system-ui, sans-serif; min-height: 36px;
+    padding: 0 12px; border-radius: 999px; cursor: pointer; background: transparent; color: inherit;
+    border: 2px solid currentColor; }
+  #airrec[aria-pressed="true"] { background: #fff; color: #b61622; border-color: #b61622; }
   .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
     border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 14px/1.2 system-ui, sans-serif; }
@@ -1723,7 +1728,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div id="appmount"></div>
   </div>
   <div id="handq"></div>
-  <div id="airbar" hidden role="status"></div>
+  <div id="airbar" hidden>
+    <span id="airkind" role="status"></span>
+    <span class="airacts">
+      <button type="button" id="airrec" aria-pressed="false">Not recording</button>
+      <button type="button" id="airwho">1 here</button>
+    </span>
+  </div>
   <div id="feed">
     <div id="stagefeed"></div>
     <div id="stagemod" hidden aria-label="On stage"></div>
@@ -2299,15 +2310,65 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // to keep saying "meeting" on the chat, the leave dialog, and Help, and
     // nothing told a host they were on air. Paint that chrome once the host
     // key helper exists (just below) and again whenever admin state changes.
+    function someoneRecording() {
+      try {
+        if (typeof myStatus !== 'undefined' && myStatus && myStatus.rec) return true;
+        if (typeof statusOf !== 'undefined' && statusOf && typeof statusOf.forEach === 'function') {
+          let on = false;
+          statusOf.forEach((st) => { if (st && st.rec) on = true; });
+          return on;
+        }
+      } catch (e) {}
+      return false;
+    }
+    function roomHeadCount() {
+      try {
+        if (typeof displayCount === 'function') {
+          const n = displayCount();
+          if (n > 0) return n;
+        }
+      } catch (e) {}
+      return 1;
+    }
+    function paintRoomTrust() {
+      const rec = document.getElementById('airrec');
+      const who = document.getElementById('airwho');
+      const on = someoneRecording();
+      if (rec) {
+        rec.setAttribute('aria-pressed', on ? 'true' : 'false');
+        rec.textContent = on ? 'Recording' : 'Not recording';
+        rec.title = on
+          ? 'Recording on this device. Everyone here can see it. Tap to stop.'
+          : 'Not recording. Tap to record on this device. Everyone here will see it.';
+      }
+      if (who) {
+        const n = roomHeadCount();
+        who.textContent = n + ' here';
+        who.title = 'Who is here';
+        who.setAttribute('aria-label', 'Who is here, ' + n);
+      }
+    }
+    function paintAirKind(cls, text) {
+      const air = document.getElementById('airbar');
+      const kind = document.getElementById('airkind');
+      if (!air || !kind) return;
+      air.hidden = false;
+      air.className = 'on ' + cls;
+      kind.textContent = text;
+      paintRoomTrust();
+    }
     function paintBroadcastChrome() {
       const pill = document.getElementById('onair');
-      const air = document.getElementById('airbar');
       const say = (id, text) => { const el = document.getElementById(id); if (el && text) el.textContent = text; };
       const bar = document.querySelector('.bar');
       if (!BROADCAST) {
         document.title = 'Small group — GifOS';
         if (pill) { pill.hidden = true; pill.textContent = ''; pill.className = ''; }
-        if (air) { air.hidden = false; air.className = 'on group'; air.textContent = 'Small group'; }
+        paintAirKind('group', 'Small group');
+        const whoMeet = document.getElementById('whobtn');
+        if (whoMeet) whoMeet.title = 'Who is here — names and internet addresses';
+        const whoMeetH = document.querySelector('#who-modal h3');
+        if (whoMeetH) whoMeetH.textContent = 'Who is here';
         if (bar) bar.setAttribute('aria-label', 'Small group controls');
         const curTitle = document.getElementById('paneltitle');
         if (curTitle && curTitle.textContent !== 'Transcript') curTitle.textContent = 'Small group chat';
@@ -2360,11 +2421,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         pill.textContent = host ? 'Live' : 'Watching';
         pill.setAttribute('role', 'status');
       }
-      if (air) {
-        air.hidden = false;
-        air.className = host ? 'on live' : 'on watch';
-        air.textContent = host ? 'Service · You are live' : 'Service · You are watching';
-      }
+      paintAirKind(host ? 'live' : 'watch', host ? 'Service · You are live' : 'Service · You are watching');
     }
     // The HOST is whoever holds this room's stored admin key — known before
     // any network exists, which is what lets the boot skip the viewer's
@@ -2529,6 +2586,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // gate by test/unit/meet-join-max-blur.js.
     try { localStorage.removeItem('gifos_blur'); } catch (e) {}
     const myStatus = { muted: true, camOff: true, blur: 2, hand: null, rec: false, cc: false, pwEp: 0, scr: 0, scribe: false };
+    window.__gifosRoomTrust = {
+      setRecording(on) {
+        myStatus.rec = !!on;
+        try { paintRoomTrust(); } catch (e) {}
+      },
+    };
     const statusOf = new Map();  // peerId -> { muted, camOff, blur, scr }
     // How many OTHER seats' held statuses advertise captions or a scribe.
     // refreshTrBtn and the scribe interval read the counts. They do not scan
@@ -4101,6 +4164,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       layout();
       if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn(); if (typeof updateCamAllBtn === 'function') updateCamAllBtn(); if (typeof updateShareAllBtn === 'function') updateShareAllBtn();
       try { paintStageMod(); } catch (e) {}
+      try { paintRoomTrust(); } catch (e) {}
     }
     // ============================ THE BLUR RULE ==============================
     // ONE rule, computed identically on every device from shared state, drives
@@ -6371,6 +6435,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         statusEl.textContent = statusText;
         statusEl.title = statusText;
       }
+      try { paintRoomTrust(); } catch (e) {}
     }
 
     // ---- mesh plumbing ---------------------------------------------------------
@@ -11625,6 +11690,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     };
     document.getElementById('whobtn').onclick = showWhoModal;
+    const airWho = document.getElementById('airwho');
+    if (airWho) airWho.onclick = showWhoModal;
 
     function joinRoom() {
       room = params.get('v') || shortCode();
@@ -19897,6 +19964,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function recordingIndicatorsOk() {
       try { updateTile('me'); } catch (e) {}
+      try { paintRoomTrust(); } catch (e) {}
+      const airRec = document.getElementById('airrec');
+      if (!airRec || airRec.textContent !== 'Recording' || airRec.offsetParent === null) return false;
       const tile = meTile && meTile.tile;
       const chips = tile && tile.querySelector('.chips');
       const text = chips ? (chips.textContent || '') : '';
@@ -20107,7 +20177,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       const stg = new Set(stageIds()), mates = new Set(rowMates());
       const g = { stage: [], row: [], stadium: [] };
-      g.row.push({ key: 'me', video: meTile.video, label: myName() + ' (you)', bus: 'row', blur: 0, stream: localStream, me: true, camOff: seatDark(myStatus) });
+      if (meTile && meTile.video) g.row.push({ key: 'me', video: meTile.video, label: myName() + ' (you)', bus: 'row', blur: 0, stream: localStream, me: true, camOff: seatDark(myStatus) });
       for (const [pid, p] of peers) {
         const st = statusOf.get(pid) || {};
         const src = { key: pid, video: p.video, label: p.name || '…', blur: blurLevelFor(pid), stream: p.video.srcObject,
@@ -20309,7 +20379,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { updateTile('me'); broadcastStatus(); } catch (e) {}
         if (!recordingIndicatorsOk()) {
           myStatus.rec = false;
-          try { updateTile('me'); broadcastStatus(); } catch (e) {}
+          try { updateTile('me'); broadcastStatus(); paintRoomTrust(); } catch (e) {}
           return fail('Recording stays off until the recording indicator is on screen.');
         }
         if (scope === 'app') {
@@ -20385,7 +20455,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             recBtn.classList.remove('on');
             recBtn.textContent = 'Record';
             myStatus.rec = false;
-            try { broadcastStatus(); } catch (e) {}
+            try { broadcastStatus(); paintRoomTrust(); } catch (e) {}
           }
           if (recReloadAfterStop) {
             recReloadAfterStop = false;
@@ -20407,6 +20477,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         recBtn.textContent = 'Stop 0:00';
         myStatus.rec = true;
         broadcastStatus();
+        try { paintRoomTrust(); } catch (e) {}
         if (recIndWatch) clearInterval(recIndWatch);
         recIndWatch = setInterval(() => {
           if (!recRec || recRec.state === 'inactive') { clearInterval(recIndWatch); recIndWatch = null; return; }
@@ -20428,7 +20499,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           recDest = null; recMode = null;
           if (myStatus.rec) {
             myStatus.rec = false;
-            try { updateTile('me'); broadcastStatus(); } catch (e) {}
+            try { updateTile('me'); broadcastStatus(); paintRoomTrust(); } catch (e) {}
           }
         }
         recStarting = false;
@@ -20452,7 +20523,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const qDef = recDefaultQuality(IS_MOBILE);
       const qRadio = (val, label) => '<label class="rec-opt inline"><input type="radio" name="rec-q" value="' + val + '"' + (qDef === val ? ' checked' : '') + '> ' + label + '</label>';
       bg.innerHTML = '<div class="name-box" style="max-width:470px;text-align:left">' +
-        '<h3>Record this meeting</h3>' +
+        '<h3>Record this ' + (BROADCAST ? 'service' : 'small group') + '</h3>' +
         '<p style="color:#889;font-size:.85rem">Saved to YOUR device only — everyone sees the ⏺ while you record. Blur and mute are baked in.</p>' +
         '<div class="rec-sec"><b>What to capture</b>' +
         opt('stage', 'rec-scope', 'The stage', stageSub) +
@@ -20519,6 +20590,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       showRecOptions();
     };
+    const airRecBtn = document.getElementById('airrec');
+    if (airRecBtn) airRecBtn.onclick = () => recBtn.click();
 
     // ---- controls: mic + camera (traffic-light icons), blur (3-way slider) -----
     const micBtn = document.getElementById('mic');
