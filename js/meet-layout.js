@@ -262,6 +262,8 @@
     }
     return withBots({
       mode: mode,
+      gallery: out.gallery === 'scroll' ? 'scroll' : 'fit',
+      paged: false,
       rects: rects,
       crowd: false,
       band: band,

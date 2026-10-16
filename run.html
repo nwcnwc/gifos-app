@@ -1421,6 +1421,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     color: #f4f7fb; font-size: 12px; font-weight: 700; letter-spacing: .04em;
     padding: 3px 8px; border-radius: 999px; }
   body.comfy .tile[data-tier="bot"] { z-index: 5; border-radius: 12px; overflow: hidden; }
+  /* Scroll is a manual gallery choice. Fit stays one screen (overflow hidden
+     above). Scroll grows downward; it is not a pager and it is not applied
+     just because faces got small. */
+  body.comfy.gallery-scroll:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
+    overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   /* Gallery keeps the stage strip playing (PiP can aim it) but off the mosaic.
      A stage mode adds .show-stage and places that strip itself. */
   body.comfy:not(.show-stage) #stagefeed {
@@ -1516,7 +1521,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
     <span class="status" id="status">Joining…</span>
   </div>
-  <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
+  <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" aria-label="Gallery" title="Fit everyone on one screen. Press to scroll the room instead.">▦ Fit</button>
   <div class="admcount" id="admcount" style="display:none"></div>
   <div class="bar collapsed" role="toolbar" aria-label="Call controls">
     <button id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
@@ -4808,8 +4813,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const scroll = window.__meetGallery === 'scroll';
       fitbtn.textContent = scroll ? '▦ Scroll' : '▦ Fit';
       fitbtn.setAttribute('aria-pressed', scroll ? 'false' : 'true');
+      fitbtn.title = scroll
+        ? 'Infinite scroll. Press to fit everyone on one screen.'
+        : 'Fit everyone on one screen. Press to scroll the room instead.';
+      document.body.classList.toggle('gallery-scroll', scroll);
+      if (!scroll) {
+        const feed = document.getElementById('feed');
+        if (feed) feed.scrollTop = 0;
+      }
     }
     if (fitbtn) fitbtn.addEventListener('click', () => {
+      // Manual only. A crowded Fit grid never flips this on its own.
       window.__meetGallery = window.__meetGallery === 'scroll' ? 'fit' : 'scroll';
       try { localStorage.setItem('meet.view.v1.gallery', window.__meetGallery); } catch (e) {}
       paintFit();
