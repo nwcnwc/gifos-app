@@ -22,6 +22,9 @@ test('the join step prefills your GifOS name and avatar', async ({ page }) => {
   await page.fill('#nm', 'Sam Okonkwo');
   await expect(page.locator('#appear-name')).toHaveText('Sam Okonkwo');
 
+  await expect(page.locator('#nmok')).toHaveText('Save');
+  await expect(page.locator('#nmcancel')).toHaveText('Clear');
+
   const buttons = await page.evaluate(() => {
     const a = document.getElementById('nmcancel');
     const b = document.getElementById('nmok');
@@ -39,10 +42,36 @@ test('the join step prefills your GifOS name and avatar', async ({ page }) => {
   expect(buttons.overlap).toBe(false);
   expect(buttons.gap).toBeGreaterThanOrEqual(8);
   expect(buttons.same).toBe(false);
+  expect(buttons.primary).toBe('rgb(0, 100, 200)');
+  expect(buttons.secondary).toBe('rgb(255, 255, 255)');
 
   await page.click('#nmok');
   await expect(card).toBeHidden();
   await expect(page.locator('#mic')).toBeVisible();
-  const saved = await page.evaluate(() => localStorage.getItem('gifos_name'));
-  expect(saved).toBe('Sam Okonkwo');
+  const saved = await page.evaluate(() => ({
+    name: localStorage.getItem('gifos_name'),
+    avatar: localStorage.getItem('gifos_avatar'),
+  }));
+  expect(saved.name).toBe('Sam Okonkwo');
+  expect(saved.avatar && saved.avatar.indexOf('image/png') >= 0).toBe(true);
+});
+
+test('Clear blanks the name and the picture', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.addInitScript((png) => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_avatar', JSON.stringify({
+      mime: 'image/png', hash: 'ab'.repeat(32), b64: png,
+    }));
+  }, PNG);
+  await page.goto('/run.html#v=qaappear&debug=on', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#appear')).toBeVisible();
+  await page.click('#nmcancel');
+  await expect(page.locator('#appear')).toBeHidden();
+  const cleared = await page.evaluate(() => ({
+    name: localStorage.getItem('gifos_name'),
+    avatar: localStorage.getItem('gifos_avatar'),
+  }));
+  expect(cleared.name).toBeFalsy();
+  expect(cleared.avatar).toBeFalsy();
 });

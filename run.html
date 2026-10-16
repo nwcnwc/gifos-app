@@ -2515,7 +2515,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       de: {
         mic: 'Mikro', cam: 'Kamera', more: 'Mehr', hide: 'Weniger', leave: 'Ende',
         hideControls: 'Steuerungen ausblenden',
-        appearTitle: 'So sehen Sie aus', screenName: 'Name', notNow: 'Nicht jetzt', join: 'Beitreten', changePic: 'Bild ändern',
+        appearTitle: 'So sehen Sie aus', screenName: 'Name', notNow: 'Nicht jetzt', join: 'Beitreten',
+        appearClear: 'Leeren', appearSave: 'Speichern', changePic: 'Bild ändern',
         people: 'Leute', share: 'Teilen', room: 'Raum', host: 'Leitung', help: 'Hilfe',
         who: 'Wer', hand: 'Hand', chat: 'Chat', invite: 'Einladen', runApp: 'App starten', showApp: 'App zeigen',
         shareScreen: 'Bildschirm', stopShare: 'Beenden', float: 'Bild-in-Bild', flip: 'Drehen',
@@ -2657,7 +2658,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       es: {
         mic: 'Micro', cam: 'Cámara', more: 'Más', hide: 'Menos', leave: 'Salir',
         hideControls: 'Ocultar controles',
-        appearTitle: 'Así te verán', screenName: 'Nombre', notNow: 'Ahora no', join: 'Entrar', changePic: 'Cambiar foto',
+        appearTitle: 'Así te verán', screenName: 'Nombre', notNow: 'Ahora no', join: 'Entrar',
+        appearClear: 'Limpiar', appearSave: 'Guardar', changePic: 'Cambiar foto',
         people: 'Gente', share: 'Compartir', room: 'Sala', host: 'Anfitrión', help: 'Ayuda',
         who: 'Quién', hand: 'Mano', chat: 'Chat', invite: 'Invitar', runApp: 'Abrir app', showApp: 'Mostrar app',
         shareScreen: 'Pantalla', stopShare: 'Parar', float: 'Flotar', flip: 'Girar',
@@ -2858,8 +2860,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // ---- screen name (same identity the rest of GifOS uses) ----------------
     // A direct join confirms how you look before the knock. The field is the
     // GifOS name you already have, or a Guest seed, and the face is your
-    // avatar. A session that already confirmed skips the card. Not now keeps
-    // the prefilled name. Join saves whatever is in the field.
+    // avatar. A session that already confirmed skips the card. Save keeps the
+    // name and picture on the screen. Clear blanks both, then closes.
     function ensureName() {
       const me = GifOS.store.identity();
       let appeared = false;
@@ -2879,8 +2881,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           '<button id="appear-pic" type="button">' + uiText('changePic', 'Change picture') + '</button>' +
           '<input id="appear-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden>' +
           '<div class="appear-actions">' +
-            '<button id="nmcancel" type="button">' + uiText('notNow', 'Not now') + '</button>' +
-            '<button id="nmok" type="button">' + uiText('join', 'Join') + '</button>' +
+            '<button id="nmcancel" type="button">' + uiText('appearClear', 'Clear') + '</button>' +
+            '<button id="nmok" type="button">' + uiText('appearSave', 'Save') + '</button>' +
           '</div></div>';
         document.body.appendChild(bg);
         const input = bg.querySelector('#nm');
@@ -2889,7 +2891,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         input.value = seed;
         let faceUrl = (me.avatar && me.avatar.url) || '';
         const paint = () => {
-          const name = input.value.trim() || seed;
+          const name = input.value.trim();
           nameEl.textContent = name;
           if (faceUrl) {
             face.textContent = '';
@@ -2919,19 +2921,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           };
           reader.readAsDataURL(file);
         };
-        const done = (keep) => {
-          let v = keep ? seed : input.value.trim();
-          if (!v) v = seed;
-          if (v !== (GifOS.store.identity().name || '')) GifOS.store.setName(v);
-          else if (!me.name) GifOS.store.setName(v);
+        const finish = () => {
           try { sessionStorage.setItem('gifos_appeared', '1'); } catch (e) {}
           bg.remove();
           try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}
           resolve(GifOS.store.identity());
         };
-        bg.querySelector('#nmok').onclick = () => done(false);
-        bg.querySelector('#nmcancel').onclick = () => done(true);
-        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(false); });
+        const save = () => {
+          const shown = input.value.trim();
+          if (shown !== (GifOS.store.identity().name || '')) GifOS.store.setName(shown);
+          finish();
+        };
+        const clear = () => {
+          input.value = '';
+          faceUrl = '';
+          paint();
+          GifOS.store.setName('');
+          try { GifOS.store.setAvatar(null); } catch (e) {}
+          finish();
+        };
+        bg.querySelector('#nmok').onclick = save;
+        bg.querySelector('#nmcancel').onclick = clear;
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
         input.focus();
         try { input.select(); } catch (e) {}
       });

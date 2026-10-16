@@ -12,8 +12,8 @@ test.describe('German', () => {
   test('join card and dock follow German', async ({ page }) => {
     await openJoin(page);
     await expect(page.locator('#appear-title')).toHaveText('So sehen Sie aus');
-    await expect(page.locator('#nmok')).toHaveText('Beitreten');
-    await expect(page.locator('#nmcancel')).toHaveText('Nicht jetzt');
+    await expect(page.locator('#nmok')).toHaveText('Speichern');
+    await expect(page.locator('#nmcancel')).toHaveText('Leeren');
     await page.click('#nmok');
     await expect(page.locator('#mic .dockword')).toHaveText('Mikro');
     await expect(page.locator('#cam .dockword')).toHaveText('Kamera');
@@ -48,7 +48,8 @@ test.describe('Spanish', () => {
   test('join card and dock follow Spanish', async ({ page }) => {
     await openJoin(page);
     await expect(page.locator('#appear-title')).toHaveText('Así te verán');
-    await expect(page.locator('#nmok')).toHaveText('Entrar');
+    await expect(page.locator('#nmok')).toHaveText('Guardar');
+    await expect(page.locator('#nmcancel')).toHaveText('Limpiar');
     await page.click('#nmok');
     await expect(page.locator('#mic .dockword')).toHaveText('Micro');
     await expect(page.locator('#cam .dockword')).toHaveText('Cámara');

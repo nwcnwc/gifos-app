@@ -174,6 +174,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** it is a 64px square, 12px in from that corner, floating over the video. The name, full screen, and the tile menu stay at least 12px away. The words are still “Blur for all”. The same sizes are on the phone build.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/blur-before-1280.png`, `test/desktop/shots/blur-after-1280.png`.
 
+### The join step said Not now and Join
+
+- **Who hits it:** someone opening a meeting link, looking at the name and picture they will show.
+- **What you saw:** Not now kept the prefilled name. Join was the word for keeping it. Neither said what happened to the picture.
+- **Repro:** `test/desktop/appear.spec.js`. Clear removes the stored name and picture. Save leaves both.
+- **Fix:** Clear is the outline and blanks the name and the picture, then closes. Save is the solid blue button and keeps what is on the screen. German says Leeren and Speichern. Spanish says Limpiar and Guardar. The lobby’s own Join button is unchanged.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the locale tests still pass. Screenshots: `test/desktop/shots/join-before-1280.png`, `test/desktop/shots/join-after-1280.png`.
+
 ### More was one unlabeled wall
 
 - **Who hits it:** a volunteer opening More and hunting for Chat or Vote.
@@ -190,7 +198,7 @@ Opening four fake videos and then clicking More closed the WebKit tab. Chromium 
 
 ### First visit covers the call with the name dialog
 
-With no saved confirmation for this session, joining shows how you will appear: your GifOS name and picture, editable, then Join. Not now keeps the prefilled name. A session that already confirmed skips the card.
+With no saved confirmation for this session, joining shows how you will appear: your GifOS name and picture, editable. Save keeps them. Clear blanks both. A session that already confirmed skips the card.
 
 ### More sheet is a dense grid of mixed labels
 
