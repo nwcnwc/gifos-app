@@ -357,6 +357,7 @@ test('a family call and a church broadcast start from a plain lobby', async ({ p
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/run.html?desk=family' + w);
     await page.waitForSelector('#lobby.show');
+    await expect(page.locator('#lobby h1')).toHaveText('Small group');
     await expect(page.locator('#lob-open')).toHaveText(/Start a call/);
     await expect(page.locator('#lobby')).not.toContainText(/troublemaker|open room|admin/i);
     await expect(page.locator('#lob-guest-pass')).toBeHidden();
@@ -372,7 +373,7 @@ test('a family call and a church broadcast start from a plain lobby', async ({ p
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/run.html?desk=church#bc=1');
   await page.waitForSelector('#lobby.show h1');
-  await expect(page.locator('#lobby h1')).toHaveText('Broadcast');
+  await expect(page.locator('#lobby h1')).toHaveText('Service');
   await expect(page.locator('#lob-admin-btn')).toBeVisible();
   await expect(page.locator('#lob-admin-btn')).toHaveText(/Go live/);
   await expect(page.locator('#lob-open')).toBeHidden();

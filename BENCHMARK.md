@@ -23,7 +23,7 @@ GifOS leads **church** (4.7, StreamYard 4.0). It does not lead corporate (4.3, Z
 | Trust: live, recording, who is here | 5 | 4 | 5 | 4 |
 | **Audience score** | **4.9** | **4.3** | **4.1** | **4.3** |
 
-Zoom still leads. Send is blue and 44px tall, and the empty files strip stays off the chat (Q25). That row matches Zoom and Meet. A full-width line says Microphone off and Camera off, and it leaves when those are on (Q21). That row matches Zoom and Meet. The full-screen control says Full screen (Q24). Labeled controls stay at 4: the words are complete, and Zoom’s bar is still the reference. A card names who is recording, and the bar stays Recording (Q22). Trust stays at 4, even with Meet: there is no waiting room, and the card does not hold the recording until the other people have answered. Zoom and Teams stay at 5 on trust. Arithmetic: (5+4+4+4+5+4+4)/7 = 4.3. A tie with Meet is not a lead.
+Zoom still leads. The lobby says Small group or Service, the same words as the open room (Q26). Lobby stays at 4: three doors, not one join. Send is blue and 44px tall, and the empty files strip stays off the chat (Q25). That row matches Zoom and Meet. A full-width line says Microphone off and Camera off, and it leaves when those are on (Q21). That row matches Zoom and Meet. The full-screen control says Full screen (Q24). Labeled controls stay at 4: the words are complete, and Zoom’s bar is still the reference. A card names who is recording, and the bar stays Recording (Q22). Trust stays at 4, even with Meet: there is no waiting room, and the card does not hold the recording until the other people have answered. Zoom and Teams stay at 5 on trust. Arithmetic: (5+4+4+4+5+4+4)/7 = 4.3. A tie with Meet is not a lead.
 
 ## Church
 
@@ -84,3 +84,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q23 | 4.1 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.2 (FaceTime 4.8) | Invite is the link and a blue Copy. Personal invite 4 → 5. Ahead of Meet. FaceTime still leads. |
 | After Q24 | 4.1 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.2 (FaceTime 4.8) | The dock says Full screen. Labeled controls stay 4. Scores unchanged. |
 | After Q25 | 4.3 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.2 (FaceTime 4.8) | Send is the blue button. The empty files strip is gone. Chat 4 → 5. Ties Meet. Not a lead. |
+| After Q26 | 4.3 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.2 (FaceTime 4.8) | The lobby says Small group or Service. Lobby stays 4. Scores unchanged. |

@@ -114,9 +114,13 @@ The dock button now says **Full screen**. The word fits inside the button at 128
 
 Send is blue `#0064c8`, 44px tall, white text. The message field is white with a gray border, also 44px. The files strip stays hidden until a file is pinned. Prayer still posts its own line. The composer clears the dock at 1280, 1920, and 900, and after a live resize to 900. Before: `test/e2e/artifacts/chat-send-before.png`. After: `test/e2e/artifacts/chat-send-after.png`.
 
+### Q26. The lobby said Meeting or Broadcast
+
+A cold open now says **Small group**. Go live says **Service**. The blue button is still Start a call or Go live, and the quiet line still says you come in muted, or that people watch with the link. The card fits 1280, 1920, and 900. After: `test/e2e/artifacts/lobby-words-after.png`, `lobby-service-after.png`.
+
 ## Open
 
-A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows, and on leaving without a confirm step. The lobby, the labeled controls, and the layout are the corporate rows still at 4. Labeled controls stay at 4: the words are complete, and Zoom’s bar is still the reference. The lobby still says Meeting while the room says Small group.
+A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows, and on leaving without a confirm step. The lobby stays at 4: it names the room, and it is still three doors rather than one join. Labeled controls and layout stay at 4. The status line in the top chip still clips.
 
 ## How a session was opened without a relay
 

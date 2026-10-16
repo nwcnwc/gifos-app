@@ -1604,7 +1604,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span class="lob-pv-name" id="lob-preview-name">You</span>
     </div>
     <div class="lobby-card">
-      <h1>Meeting</h1>
+      <h1>Small group</h1>
       <p class="lob-quiet">You come in muted. Turn the camera on here if you want to be seen.</p>
       <button id="lob-open" class="lob-primary">Start a call<small>Anyone with the link can join</small></button>
       <button id="lob-admin-btn" class="lob-action">Host this call<small>A password only you know</small></button>
@@ -12181,12 +12181,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (legacy) legacy.textContent = me.name || '…';
     }
     function showLobby() {
-      document.title = (BC_INTENT ? 'Broadcast' : 'Meeting') + ' — GifOS';
+      document.title = (BC_INTENT ? 'Service' : 'Small group') + ' — GifOS';
       // The Broadcast app opens THIS page with #bc=1 and no room: same lobby,
       // reworded — no open rooms (a broadcast without a host is nothing), and
       // creating one mints the same admin room with &bc=1 riding the link.
       if (BC_INTENT) {
-        document.querySelector('#lobby h1').textContent = 'Broadcast';
+        document.querySelector('#lobby h1').textContent = 'Service';
         const quiet = document.querySelector('#lobby .lob-quiet');
         if (quiet) quiet.textContent = 'You host. People watch with the link.';
         document.getElementById('lob-open').style.display = 'none';
