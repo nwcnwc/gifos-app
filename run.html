@@ -724,6 +724,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.broadcast.notadmin:not(.share-granted) #sharebtn,   /* a viewer is not a broadcaster until an admin allows their screen */
   body.broadcast.notadmin #recbtn,
   body.broadcast.notadmin #ccbtn,
+  body.broadcast.notadmin #ccdock,
   body.broadcast.notadmin #pwbtn,
   body.broadcast #votebtn,
   /* Nobody mixes in a broadcast: Stage audio is the only bus there is (the
@@ -1119,7 +1120,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #reshare-go { font-size: 1rem; line-height: 1.2; padding: .5rem .85rem; border-radius: .45rem; border: 0;
                 background: #2436d6; color: #fff; cursor: pointer; }
   #recbtn.on { border-color: #ff5c5c; color: #ff9c9c; }
-  #ccbtn.on { border-color: #5cff7b; color: #9cffb4; }
+  /* CC selected is a filled blue button, the same mark as on a phone.
+     A green edge on a grey button was too easy to miss. */
+  #ccbtn.on, #ccdock.on { background: #0064c8; color: #fff; border-color: transparent; }
   .trline { font-size: .82rem; padding: .15rem 0; overflow-wrap: anywhere; }
   .trline b { color: #7b9cff; margin-right: .35rem; }
   #trwrap { flex: 1; display: none; flex-direction: column; min-height: 0; }
@@ -1484,19 +1487,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     max-width: calc(100% - 16px); padding: 0 16px 0 18px; margin: 0;
     background: rgba(255,255,255,.94); border: 0; border-radius: 32px;
     box-shadow: 0 10px 30px rgba(0,0,0,.28); overflow: visible; }
-  .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #bartoggle {
+  .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #ccdock, .bar #bartoggle {
     width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
     background: #e8ecf1; color: #1d1d1f; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
   }
-  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #sharebtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 34px; height: 34px; flex: 0 0 auto; }
+  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #sharebtn svg, .bar #ccdock svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 34px; height: 34px; flex: 0 0 auto; }
   .bar #mic.iconbtn, .bar #cam.iconbtn { color: #1d1d1f; border-color: transparent; }
   .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { color: #9f1239; border-color: transparent; background: #e8ecf1; }
-  .bar #reactbtn.on, .bar #bartoggle[aria-expanded="true"] { background: #0064c8; color: #fff; }
+  .bar #reactbtn.on, .bar #ccdock.on, .bar #bartoggle[aria-expanded="true"] { background: #0064c8; color: #fff; }
   .bar:not(.collapsed) .bartoggle svg { transform: none; }
   .bar #leavebtn { width: 72px; height: 72px; min-width: 72px; min-height: 72px; margin-left: 6px; padding: 0;
     border: 0; border-radius: 22px; background: #b61622; color: #fff; display: inline-flex; align-items: center; justify-content: center; }
   /* Mic, camera, Share screen, More, and Leave say what they are. Reactions stays an icon. */
-  .bar #cam, .bar #mic, .bar #sharebtn, .bar #bartoggle {
+  .bar #cam, .bar #mic, .bar #sharebtn, .bar #ccdock, .bar #bartoggle {
     height: 76px; width: auto; min-width: 72px; min-height: 76px;
     padding: 8px 10px 6px; flex-direction: column; gap: 2px; border-radius: 22px;
   }
@@ -1524,6 +1527,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore * { pointer-events: none !important; }
   .bar:not(.collapsed) .barmore .morerow > button { min-height: 64px; height: auto; padding: 8px 6px; border: 0; border-radius: 16px;
     background: #e8ecf1; color: #1d1d1f; font-size: 18px; font-weight: 650; white-space: normal; }
+  .bar:not(.collapsed) .barmore .morerow > #ccbtn.on { background: #0064c8; color: #fff; }
   .bar:not(.collapsed) .barmore .blurctl { grid-column: 1 / -1; display: flex; align-items: center; min-height: 48px; gap: 8px; }
   .bar:not(.collapsed) .barmore .blurlbl { display: inline; color: #3a3a3f; font-size: 14px; }
   .bar:not(.collapsed) .barmore .seg { min-height: 48px; min-width: 48px; color: #1d1d1f; background: #fff; }
@@ -1580,10 +1584,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .topchip .status { font-size: 17px; }
     .bar { height: 88px; gap: 8px; padding: 0 10px; }
     .bar #reactbtn { width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
-    .bar #cam, .bar #mic, .bar #sharebtn, .bar #bartoggle {
+    .bar #cam, .bar #mic, .bar #sharebtn, .bar #ccdock, .bar #bartoggle {
       width: auto; height: 72px; min-width: 64px; min-height: 72px; padding: 6px 8px 4px; }
     .bar .dockword { font-size: 11px; }
-    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #sharebtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
+    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #sharebtn svg, .bar #ccdock svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
     .bar #bargrip { height: 40px; width: 18px; }
     .bar #leavebtn { width: auto; height: 72px; min-width: 68px; min-height: 72px; padding: 6px 8px 4px; }
     .bar:not(.collapsed) .barmore { bottom: 102px; width: calc(100vw - 24px); }
@@ -1789,6 +1793,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
       <span class="dockword" data-t="shareScreen">Share screen</span>
     </button>
+    <button id="ccdock" type="button" aria-pressed="false" aria-label="Captions" data-ti="ccTip" title="Show or hide captions on your screen. This meeting is written down either way.">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 12h3M7 15h5M14 15h3"/></svg>
+      <span class="dockword">CC</span>
+    </button>
     <button id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
       <span class="dockword" data-t="more">More</span>
@@ -1839,7 +1847,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button id="pwbtn" data-t="password" data-ti="pwTip" title="Lock this room with a password">Password</button>
         <button id="stagebtn" data-t="stage" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
         <button id="recbtn" data-t="record" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
-        <button id="ccbtn" title="Live captions: your device writes down everyone it hears in this meeting and shares the lines with the meeting's transcript">CC</button>
+        <button id="ccbtn" type="button" aria-pressed="false" data-t="captions" data-ti="ccTip" title="Show or hide captions on your screen. This meeting is written down either way.">Captions</button>
         <button id="setbtn" data-t="settings" title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
       </div>
     </section>
@@ -1857,7 +1865,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div class="morerow">
         <button id="keysbtn" data-t="keys" type="button" title="Keyboard shortcuts">Keys</button>
         <button id="helpbtn" data-t="help" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
-        <button id="trbtn" data-t="transcript" title="The meeting's live transcript" style="display:none">Transcript</button>
+        <button id="trbtn" data-t="transcript" title="The meeting's live transcript">Transcript</button>
       </div>
     </section>
     </div>
@@ -2012,8 +2020,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button id="chatclose" type="button" aria-label="Close chat">✕</button></div>
     <div id="chatlog"></div>
     <div id="trwrap">
-      <div id="trlog"><small style="color:#667">Tap CC in the bar and your device writes down everyone it hears — the lines gather here under each speaker's name, on every device in the meeting.</small></div>
-      <div id="trfoot"><button id="trdl">Download transcript</button></div>
+      <div id="trlog"><small data-t="trEmpty" style="color:#667">This meeting is written down. Lines appear here under each name. Anyone here can read or download them.</small></div>
+      <div id="trfoot"><button id="trdl" type="button" data-t="trDownload">Download transcript</button></div>
     </div>
     <div id="cfiles"><h4 data-t="filesTitle">Files pinned to this meeting</h4><div id="cfilelist"><small style="color:#667">No files yet — attach one below.</small></div></div>
     <form id="chatform">
@@ -2546,6 +2554,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         vote: 'Abstimmung', password: 'Passwort', stage: 'Bühne', record: 'Aufnahme', settings: 'Einstellungen', keys: 'Tasten',
         blur: 'Unschärfe', noBlur: 'Aus',
         transcript: 'Protokoll', chatPrivate: 'Nur hier. Weg, wenn alle gehen.',
+        captions: 'Untertitel', ccTip: 'Untertitel nur auf diesem Bildschirm',
+        trEmpty: 'Dieses Treffen wird mitgeschrieben. Die Zeilen stehen hier unter dem Namen. Jeder kann sie lesen oder herunterladen.',
+        trDownload: 'Protokoll laden',
         blurGuests: 'Weichzeichnen', unblurGuests: 'Schärfen', videoOff: 'Video aus', videoOn: 'Video an',
         allowShare: 'Freigeben', stopShares: 'Freigabe aus',
         inMeeting: 'im Meeting', justYou: 'Nur Sie', backIn: 'Wieder dabei',
@@ -2740,6 +2751,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         vote: 'Votar', password: 'Contraseña', stage: 'Escenario', record: 'Grabar', settings: 'Ajustes', keys: 'Teclas',
         blur: 'Desenfoque', noBlur: 'Sin',
         transcript: 'Transcripción', chatPrivate: 'Solo aquí. Se borra cuando salen.',
+        captions: 'Subtítulos', ccTip: 'Subtítulos solo en tu pantalla',
+        trEmpty: 'Esta reunión se transcribe. Las líneas quedan aquí, con el nombre. Cualquiera puede leerlas o descargarlas.',
+        trDownload: 'Descargar transcripción',
         blurGuests: 'Difuminar', unblurGuests: 'Quitar desenfoque', videoOff: 'Apagar video', videoOn: 'Encender video',
         allowShare: 'Permitir pantalla', stopShares: 'Parar pantallas',
         inMeeting: 'en la reunión', justYou: 'Solo tú', backIn: 'Volviendo',
@@ -5264,9 +5278,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return { tile, video, label, avatar, chips, cap, modbar, voteBtn };
     }
 
-    // What the CC chip says. Gossiped on myStatus.ccst so a Meeting Bot and
-    // every other tile see the same words: plain "transcribing" only while
-    // Whisper is actually keeping up.
+    // Engine words for a stall. They stay off the tiles: a meeting is always
+    // transcribed, so nobody wears a "transcribing" badge.
     function ccLiveLabel(st) {
       if (st && st.ccst === 'paused') return 'Transcription paused';
       if (st && st.ccst === 'behind') return 'Transcription behind, skipping old audio';
@@ -5419,7 +5432,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (st.lv) chips.push('<span>leaving…</span>');
       if (st.rec) chips.push('<span class="warn">⏺ recording this meeting</span>');
       if (st.scribe) chips.push('<span>✍ writing everyone down</span>');
-      if (st.cc) chips.push('<span>📝 ' + ccLiveLabel(st) + '</span>');
       // Status icons only: a muted mic, a camera-off glyph. No icon when the
       // camera is on. Blur is the picture itself, never a badge. A bot has
       // neither a mic nor a camera.
@@ -19677,10 +19689,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     });
     paintTiming();
 
-    // ---- live transcript: ONE device's CC writes down EVERYONE it hears ------
-    // A captioning device transcribes its own voice AND every voice it hears
-    // first-hand (its direct links and the Stage), each line attributed to the
-    // speaker. A person who never pressed CC is written down by whoever did.
+    // ---- live transcript: every browser writes down its own voice ------------
+    // The meeting is always transcribed. Each device writes its own voice
+    // while it is unmuted, and the lines gather in chat for everyone. CC only
+    // shows or hides those lines on this screen. A scribe can still write
+    // down the other voices it hears.
     // Final lines gossip over the DataChannels (dedupe by id, exactly like
     // chat) and merge into one attributed transcript on every phone. No server
     // anywhere — though the browser itself may use its vendor's speech service.
@@ -19779,7 +19792,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       trimMap(trs, CHAT_MAX);
       return true;
     }
+    let ccShow = false;
+    function hideCaptions() {
+      const nodes = document.querySelectorAll('.tile .cap.show');
+      for (let i = 0; i < nodes.length; i++) nodes[i].classList.remove('show');
+    }
     function showCaption(byId, text) {
+      if (!ccShow) return;
       const t = byId === myId ? meTile : peers.get(byId);
       if (!t || !t.cap) return;
       t.cap.textContent = text;
@@ -19795,7 +19814,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const lines = trBlocks();
       const html = lines.length
         ? lines.map((l) => '<div class="trline"><b>' + (typeof avatarChip === 'function' ? (avatarChip(l.byId) || '') : '') + esc(l.by) + '</b>' + esc(l.text) + (l.scribeBy ? ' <small style="color:var(--muted,#8888aa)">✍ ' + esc(l.scribeBy) + '</small>' : '') + '</div>').join('')
-        : '<small style="color:#667">Tap CC in the bar and your device writes down everyone it hears — the lines gather here under each speaker\'s name, on every device in the meeting.</small>';
+        : '<small style="color:#667">' + esc(uiText('trEmpty', 'This meeting is written down. Lines appear here under each name. Anyone here can read or download them.')) + '</small>';
       paintLog(log, html);
     }
     // CAPTIONS FOLLOW THE EAR (2026-10-03). A caption line was a room-wide
@@ -20277,7 +20296,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         wspQ.lastLatencyMs = Math.max(0, Date.now() - t0);
         const text = r && r.text ? String(r.text).trim() : '';
         if (text && wspCaps.has(job.id)) {
-          if (job.id === 'me') { if (myStatus.cc) addTranscriptLine(text, job.at); }
+          if (job.id === 'me') { addTranscriptLine(text, job.at); }
           else if (scribeOn() && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id);
         }
         if (!wspQ.items.length && myStatus && myStatus.ccst === 'behind') {
@@ -20305,7 +20324,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function scribeOn() { return (!!myStatus.scribe || (!!myStatus.cc && !ccSourceWritesMe())) && ccEngine() === 'whisper' && whisperReady(); }
     function wspSync() {
       const want = new Set();
-      if (!wspPaused && myStatus.cc && ccEngine() === 'whisper' && whisperReady() && (!ccSourceId || !ccSourceWritesMe()) && !myStatus.muted) want.add('me');
+      if (!wspPaused && !myStatus.muted && ccEngine() === 'whisper' && whisperReady() && (!ccSourceId || !ccSourceWritesMe())) want.add('me');
       if (!wspPaused && scribeOn()) {
         const stagers = (typeof stageIds === 'function') ? stageIds() : [];
         const stageSet = new Set(stagers);
@@ -20571,7 +20590,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       words.onchange = () => lsSet(CC_WORDS_KEY, words.value.replace(/\s+/g, ' ').trim().slice(0, 400));
       scribe.onchange = () => {
         myStatus.scribe = scribe.checked;
-        if (scribe.checked && !myStatus.cc) { myStatus.cc = true; ccByOrder = false; document.getElementById('ccbtn').classList.add('on'); }
         broadcastStatus(); syncSpeech();
         setStatus(scribe.checked ? '✍ You are writing everyone down — the others can pick your captions under Settings → Captions.' + (myStatus.muted ? ' (You are muted, so your own voice is not written.)' : '') : 'You stopped writing everyone down.', 8000);
       };
@@ -20637,11 +20655,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function ccFilling() { return !myStatus.cc && !ccFillOptOut && !speechGaveUp && ccOthers > 0; }
     function ccvPublish() {
       const ids = new Set();
-      if (myStatus.cc || ccFilling()) {
+      if (myStatus.cc || myStatus.scribe || ccFilling()) {
         for (const id of ccMix.ins.keys()) ids.add(id === 'me' ? myId : id);
         for (const id of wspCaps.keys()) ids.add(id === 'me' ? myId : id);
         if (speech && !speech.input && !myStatus.muted) ids.add(myId);
       }
+      if (!myStatus.muted && (wspCaps.has('me') || (speech && !speech.input))) ids.add(myId);
       const next = Array.from(ids).filter(Boolean).sort();
       const prev = myStatus.ccv || [];
       if (next.length === prev.length && next.every((x, i) => x === prev[i])) return;
@@ -20758,6 +20777,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return best;
     }
     let speech = null, speechFails = 0, speechRetry = null, speechGaveUp = false;
+    function speechKeep(rec) {
+      if (!rec) return false;
+      if (rec.input) return !!(myStatus.cc || myStatus.scribe || ccFilling());
+      return !myStatus.muted && !ccWrittenElsewhere(myId);
+    }
     function speechRunning() { return !!speech; }
     function speechRetryDelay(n) { return Math.min(30000, 1000 * Math.pow(2, Math.max(0, n - 1))); }
     function startSpeech(input) { // input: the room ear's mix track; none = the raw microphone
@@ -20796,12 +20820,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         };
         speech.onend = () => {
-          if (!((myStatus.cc || ccFilling()) && speech === rec && (rec.input || !myStatus.muted))) return;
+          if (!(speech === rec && speechKeep(rec))) return;
           if (speechFails > 0) {
             const wait = speechRetryDelay(speechFails);
             speechRetry = setTimeout(() => {
               speechRetry = null;
-              if ((myStatus.cc || ccFilling()) && speech === rec && (rec.input || !myStatus.muted)) { try { go(); } catch (err) {} }
+              if (speech === rec && speechKeep(rec)) { try { go(); } catch (err) {} }
             }, wait);
             return;
           }
@@ -20811,27 +20835,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (speech !== rec) return;
           if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'language-not-supported') {
             stopSpeech();
-            myStatus.cc = false;
-            document.getElementById('ccbtn').classList.remove('on');
-            setStatus('Captions are not working here (' + e.error + ').');
-            broadcastStatus();
+            setStatus('Transcription paused');
             return;
           }
           if (e.error === 'network' || e.error === 'audio-capture' || e.error === 'aborted') {
             speechFails++;
             if (speechFails >= 3) {
-              // The engine stays stopped until a tap on CC clears speechGaveUp.
-              // A lit CC and a status saying cc would claim captions nobody
-              // writes, so both go dark with the reason held on screen. Under
-              // a room-wide order this counts as an opt-out, or the next
-              // order replay would relight CC into the same dead service.
+              // CC only hides captions on this screen, so a dead speech
+              // service must not turn that button off. Retry on its own.
               speechGaveUp = true;
               stopSpeech();
-              myStatus.cc = false;
-              if (typeof ccAllInfo === 'function' && ccAllInfo()) ccOptOutAt = Date.now();
-              document.getElementById('ccbtn').classList.remove('on');
-              setStatus('Captions stopped: this browser cannot reach its speech service — tap CC to retry.', 15000);
-              broadcastStatus();
+              setStatus('Transcription paused', 15000);
+              setTimeout(() => { speechGaveUp = false; speechFails = 0; try { syncSpeech(); } catch (err) {} }, 20000);
             }
           }
         };
@@ -20870,9 +20885,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
       try { setStatus('Transcription paused'); } catch (e) {}
     }
-    function syncSpeech() { // CC writes down my voice while I am unmuted, and every voice this device hears
+    function syncSpeech() { // own voice is written whenever this browser is unmuted; a scribe still writes the room
       paintWspChip(); // the way back shows the moment Whisper is chosen; the 250 ms tick keeps it in step
-      const mine = myStatus.cc && !myStatus.muted;
+      const mine = !myStatus.muted;
+      const hearRoom = !!(myStatus.cc || myStatus.scribe);
       ccSrcDirect = ccSourceWritesMe();
       if (ccSrcDirect) { // the chosen scribe hears me directly: no engine of my own
         if (speechRunning()) stopSpeech();
@@ -20880,9 +20896,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         wspStop('me'); wspSync();
         return;
       }
-      if (myStatus.cc && ccEngine() === 'whisper' && !wspPaused && whisperReady()) {
+      if ((mine || hearRoom) && ccEngine() === 'whisper' && !wspPaused && whisperReady()) {
         // Whisper cuts each voice on its own capture (wspSync): mine while
-        // unmuted, and every voice I hear first-hand (scribeOn).
+        // unmuted, and every voice I hear first-hand when I am the scribe.
         if (!mine || wspCaps.has('me') || startWhisper()) {
           if (speechRunning()) stopSpeech();
           ccMixStop();
@@ -20897,15 +20913,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       wspStop('me'); wspSync();
       const filling = ccFilling();
       ccFillOn = filling;
-      if (!myStatus.cc && !filling) { if (speechRunning()) stopSpeech(); ccvPublish(); return; }
-      if (filling && !ccFillSaid) { ccFillSaid = true; setStatus('Captions are on in this meeting — this device also writes down the voices only it hears. Tap CC twice to opt out.', 8000); }
+      if (!mine && !hearRoom && !filling) { if (speechRunning()) stopSpeech(); ccvPublish(); return; }
+      if (filling && !ccFillSaid) { ccFillSaid = true; setStatus('Captions are on in this meeting — this device also writes down the voices only it hears.', 8000); }
       if (typeof browserCaptionsMissing === 'function' && browserCaptionsMissing()) {
         if (speechRunning()) stopSpeech();
-        noteNoBrowserSpeech();
+        if (mine || hearRoom || filling) noteNoBrowserSpeech();
         ccvPublish();
         return;
       }
-      if (ccTrackInput()) {
+      if ((hearRoom || filling) && ccTrackInput()) {
         if (speechRunning() && !speech.input) stopSpeech(); // a raw-microphone engine hands over to the room ear
         const input = ccMixStart();
         if (input) {
@@ -20914,46 +20930,49 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return;
         }
       }
-      // No track input: this engine hears my own microphone only.
-      const meToo = !myStatus.muted && (myStatus.cc || !ccWrittenElsewhere(myId));
+      // No track input, or this device is only writing itself: my microphone.
+      const meToo = mine && !ccWrittenElsewhere(myId);
       if (meToo && !speechRunning()) startSpeech();
       if (!meToo && speechRunning()) stopSpeech();
       ccvPublish();
     }
-    document.getElementById('ccbtn').onclick = () => {
-      myStatus.cc = !myStatus.cc;
-      if (myStatus.cc) { speechGaveUp = false; wspPaused = false; wspQ.stalls = 0; wspQ.behind = false; if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst; } // turning CC on retries both engines
-      else if (ccOthers > 0) ccFillOptOut = true; // CC off while others caption: this device stops filling in too
+    function paintCcButtons() {
+      const on = !!ccShow;
+      const ids = ['ccbtn', 'ccdock'];
+      for (let i = 0; i < ids.length; i++) {
+        const b = document.getElementById(ids[i]);
+        if (!b) continue;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+    }
+    function toggleCaptions() {
+      ccShow = !ccShow;
       ccByOrder = false;
-      if (!myStatus.cc && ccAllInfo()) ccOptOutAt = Date.now(); // opting out of a room-wide order holds until the next order
-      document.getElementById('ccbtn').classList.toggle('on', myStatus.cc);
-      syncSpeech();
-      if (myStatus.cc && myStatus.muted) setStatus((ccMix.dest || scribeOn()) ? 'Captions are on — you are muted, so your own voice is not written down; everyone else your device hears still is.' : 'Captions are on — but you are muted, so nothing gets written down. Unmute to caption yourself.');
-      broadcastStatus();
-    };
-    // CAPTIONS FOR EVERYONE. Each person had to find CC alone, and one never
-    // did. An admin's room-wide 'cc' order (pseudo-target '*', the same signed
-    // table as the chat switch) turns captions on for every unmuted device at
-    // once. It is a request, not a hammer: tapping CC off afterwards opts that
-    // device out until the admin issues a NEW order; turning the order off
-    // stops only the devices the order started.
+      if (!ccShow && typeof ccAllInfo === 'function' && ccAllInfo()) ccOptOutAt = Date.now();
+      paintCcButtons();
+      if (!ccShow) hideCaptions();
+    }
+    document.getElementById('ccbtn').onclick = toggleCaptions;
+    const ccDockBtn = document.getElementById('ccdock');
+    if (ccDockBtn) ccDockBtn.onclick = toggleCaptions;
+    // CAPTIONS FOR EVERYONE. Transcription is already on. An admin's room-wide
+    // 'cc' order only shows the lines on each screen. Tapping CC off afterwards
+    // hides them on that screen until the admin issues a new order.
     var ccOptOutAt = 0, ccByOrder = false;
     function ccAllInfo() { const m = modTable['*'] && modTable['*'].cc; return (m && m.on) ? m : null; }
     function applyCcAll() {
       const m = ccAllInfo();
       const btn = document.getElementById('ccall');
       if (btn) btn.textContent = uiText(m ? 'setCcAllOn' : 'setCcAllOff', 'Captions for everyone: ' + (m ? 'on' : 'off'));
-      const cc = document.getElementById('ccbtn');
       if (!m) {
-        if (ccByOrder && myStatus.cc) { ccByOrder = false; myStatus.cc = false; cc.classList.remove('on'); syncSpeech(); setStatus('Captions for everyone were turned off.'); broadcastStatus(); }
+        if (ccByOrder && ccShow) { ccByOrder = false; ccShow = false; paintCcButtons(); hideCaptions(); setStatus('Captions for everyone were turned off.'); }
         return;
       }
-      if (myStatus.cc || ccOptOutAt >= (m.at || 0)) return;
-      myStatus.cc = true; ccByOrder = true; speechGaveUp = false;
-      cc.classList.add('on');
-      syncSpeech();
-      setStatus((m.by || 'An admin') + ' turned captions on for everyone — this device writes down the voices it hears. Tap CC to opt out.', 8000);
-      broadcastStatus();
+      if (ccShow || ccOptOutAt >= (m.at || 0)) return;
+      ccShow = true; ccByOrder = true;
+      paintCcButtons();
+      setStatus((m.by || 'An admin') + ' turned captions on for your screen. Tap CC to hide them.', 8000);
     }
     (function wireCcAll() {
       const btn = document.getElementById('ccall'); if (!btn) return;
@@ -20977,8 +20996,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setPanelView(true);
     };
     function refreshTrBtn() {
-      const anyCc = myStatus.cc || trs.size > 0 || ccOthers > 0;
-      document.getElementById('trbtn').style.display = anyCc ? '' : 'none';
+      const btn = document.getElementById('trbtn');
+      if (btn) btn.style.display = '';
     }
     // Every meeting download (transcript, recording) is filed as
     // <YYYY_MM_DD>_<Room>_gifos_<Kind>.<ext>: the LOCAL date the meeting (or
@@ -23949,8 +23968,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             delete myStatus.ccst;
           } else if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst;
           try { if (on) localStorage.setItem('gifos_cc_engine', 'whisper'); else localStorage.removeItem('gifos_cc_engine'); } catch (e) {}
-          const cc = document.getElementById('ccbtn');
-          if (cc) cc.classList.toggle('on', on);
           try { updateTile('me'); broadcastStatus(); syncSpeech(); } catch (e) {}
           const chips = meTile && meTile.tile && meTile.tile.querySelector('.chips');
           const text = chips ? chips.textContent || '' : '';
@@ -23987,7 +24004,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { if (ac && ac.state !== 'running' && ac.resume) ac.resume(); } catch (e) {}
         if (!meetJoined || typeof window.__gifosMeetEmit !== 'function') return;
         const meRow = { id: myId, name: myName(), bot: !!myStatus.bot, me: true };
-        if (myStatus.cc || myStatus.scribe) meRow.cc = ccLiveLabel(myStatus);
         const people = [meRow];
         for (const [pid, p] of peers) {
           const st = statusOf.get(pid);
@@ -25049,10 +25065,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       transcriptBlocks: () => trBlocks().map((l) => l.by + ': ' + l.text),
       transcriptDrops: () => trDrops,
       captionsForTest: () => ({ writes: myStatus.ccv || [], mix: Array.from(ccMix.ins.keys()), drops: trDrops,
+        show: !!ccShow, cc: !!myStatus.cc,
         lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ by: l.by, byId: l.byId, scribe: l.scribe || null, at: l.at, text: l.text })) }),
+      markCcForTest: (id) => {
+        const st = statusOf.get(id) || {};
+        st.cc = true; st.ccst = 'behind';
+        statusOf.set(id, st);
+        try { updateTile(id); } catch (e) {}
+        const p = peers.get(id);
+        return p && p.chips ? (p.chips.textContent || '') : '';
+      },
+      ownVoiceForTest: () => {
+        myStatus.muted = false;
+        syncSpeech();
+        return { cc: !!myStatus.cc, show: !!ccShow, speech: speechRunning() };
+      },
       whisperForTest: () => ({ engine: ccEngine(), live: !!wsp, ready: whisperReady(), queue: wspQ.items.length, sent: wspQ.sent, dropped: wspQ.dropped, rate: wsp ? wsp.rate : 0, captures: Array.from(wspCaps.keys()), scribe: scribeOn(), source: ccSourceId, inFlight: !!wspQ.busy, behind: !!wspQ.behind, paused: !!wspPaused, lastLatencyMs: wspQ.lastLatencyMs || 0, model: wspModel(), scribes: ccScribes().map((x) => x.id) }),
       whisperFeedForTest: (f32, rate, forId) => { const w = wspCaps.get(forId || 'me'); if (!w) return false; wspEnqueue(w, [Float32Array.from(f32)], Date.now(), rate || 16000, true); return true; },
-      scribeForTest: (on) => { myStatus.scribe = !!on; if (on && !myStatus.cc) { myStatus.cc = true; document.getElementById('ccbtn').classList.add('on'); } broadcastStatus(); syncSpeech(); },
+      scribeForTest: (on) => { myStatus.scribe = !!on; broadcastStatus(); syncSpeech(); },
       ccSourceForTest: (id) => { ccSourceId = id || null; syncSpeech(); scribeWatch(); },
       installWhisperForTest: () => installWhisper(true),
       whisperEngineForTest: (eng) => { lsSet(CC_ENGINE_KEY, eng === 'whisper' ? 'whisper' : ''); syncSpeech(); },
