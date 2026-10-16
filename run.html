@@ -2497,8 +2497,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const ABSENT_GRACE = 12000; // BACKSTOP ONLY: roster-absent AND link-down this long → tile drops. Announced (D2) and probe-confirmed (D5) departures remove the tile event-driven, within a beat (see departSweep/confirmGone).
 
     // The knock waits for this preview. A stored GifOS name and picture are
-    // filled in, and the person can change both before they join. Not now
-    // keeps what was already stored.
+    // filled in, and the person can change both before they join. Save keeps
+    // what is shown. Clear blanks the name and the picture.
     function paintAppearFace(el, name, avatar) {
       if (!el) return;
       el.textContent = '';
@@ -2542,13 +2542,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         '<div class="appear-face" id="appear-face"></div>' +
         '<input id="nm" name="nickname" maxlength="40" autocomplete="nickname" aria-label="Your name">' +
         '<label class="appear-file">Change picture<input id="appear-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden></label>' +
-        '<div class="appear-actions"><button id="nmcancel" type="button" class="appear-secondary">Not now</button>' +
-        '<button id="nmok" type="button" class="appear-primary">Join</button></div></div>';
+        '<div class="appear-actions"><button id="nmcancel" type="button" class="appear-secondary">Clear</button>' +
+        '<button id="nmok" type="button" class="appear-primary">Save</button></div></div>';
       document.body.appendChild(bg);
       const input = bg.querySelector('#nm');
       input.value = seed;
       const face = bg.querySelector('#appear-face');
-      const paint = () => paintAppearFace(face, input.value.trim() || seed, GifOS.store.identity().avatar);
+      const paint = () => paintAppearFace(face, input.value.trim(), GifOS.store.identity().avatar);
       paint();
       input.addEventListener('input', paint);
       bg.querySelector('#appear-file').addEventListener('change', (e) => {
@@ -2557,18 +2557,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       });
       input.focus();
       return new Promise((resolve) => {
-        const done = (keep) => {
-          let v = keep ? seed : (input.value.trim() || seed);
-          if (!v) v = seed;
-          if (v !== GifOS.store.identity().name) GifOS.store.setName(v);
+        const save = () => {
+          GifOS.store.setName(input.value.trim());
           try { sessionStorage.setItem('gifos_appear_ok', '1'); } catch (e) {}
           bg.remove();
           try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}
           resolve(GifOS.store.identity());
         };
-        bg.querySelector('#nmok').onclick = () => done(false);
-        bg.querySelector('#nmcancel').onclick = () => done(true);
-        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(false); });
+        bg.querySelector('#nmok').onclick = save;
+        bg.querySelector('#nmcancel').onclick = () => {
+          input.value = '';
+          try { GifOS.store.setName(''); GifOS.store.setAvatar(null); } catch (e) {}
+          paint();
+        };
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
       });
     }
 

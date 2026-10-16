@@ -399,6 +399,8 @@ test('the screen-name step prefills your GifOS name and picture', async ({ page 
   await expect(dialog.locator('h3')).toHaveText("This is how you'll appear");
   await expect(page.locator('#nm')).toHaveValue('Avery Chen');
   await expect(page.locator('#appear-face img')).toHaveAttribute('src', new RegExp(png.slice(0, 24)));
+  await expect(page.locator('#nmcancel')).toHaveText('Clear');
+  await expect(page.locator('#nmok')).toHaveText('Save');
   const colors = await page.evaluate(() => {
     const primary = getComputedStyle(document.getElementById('nmok'));
     const secondary = getComputedStyle(document.getElementById('nmcancel'));
@@ -416,8 +418,24 @@ test('the screen-name step prefills your GifOS name and picture', async ({ page 
   await page.locator('#nmok').click();
   await expect(dialog).toBeHidden();
   await page.evaluate(() => window.__gifosNameP.then(() => null));
-  const saved = await page.evaluate(() => localStorage.getItem('gifos_name'));
-  expect(saved).toBe('Jordan Lee');
+  const kept = await page.evaluate(() => ({
+    name: localStorage.getItem('gifos_name'),
+    avatar: localStorage.getItem('gifos_avatar'),
+  }));
+  expect(kept.name).toBe('Jordan Lee');
+  expect(kept.avatar).toContain(png.slice(0, 24));
+  await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); return null; });
+  await expect(page.locator('.appear-box')).toBeVisible();
+  await page.locator('#nmcancel').click();
+  await expect(page.locator('.appear-box')).toBeVisible();
+  await expect(page.locator('#nm')).toHaveValue('');
+  await expect(page.locator('#appear-face img')).toHaveCount(0);
+  const cleared = await page.evaluate(() => ({
+    name: localStorage.getItem('gifos_name'),
+    avatar: localStorage.getItem('gifos_avatar'),
+  }));
+  expect(cleared.name).toBeNull();
+  expect(cleared.avatar).toBeNull();
 });
 
 test('arrow keys nudge the dock and a double click puts it back', async ({ page }) => {
