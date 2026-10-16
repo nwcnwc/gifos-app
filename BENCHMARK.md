@@ -106,4 +106,5 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q45 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Service chat keeps its title on one line. The privacy line sits under it. Chat stays 4. Scores unchanged. |
 | After Q46 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Service help says Raise hand and Step off. Language stays 4. Scores unchanged. |
 | After Q47 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Full screen on a service shows the stage. A small group still follows the speaker. Scores unchanged. |
-| After Q48 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A service password sheet says Viewer password and that the stage stays blurred without it. Language stays 4. Scores unchanged. |
+| After Q48 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Viewer password matches the lobby and §LOCK: optional, not part of the link, stage stays blurred. Language stays 4. Scores unchanged. |
+| After Q49 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Who is watching describes the service. A small group still describes a meeting. Language stays 4. Scores unchanged. |
