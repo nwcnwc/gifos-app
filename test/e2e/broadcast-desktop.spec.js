@@ -437,6 +437,8 @@ test('the screen-name step prefills your GifOS name and picture', async ({ page 
   const dialog = page.locator('#appear-modal .appear-box');
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('h3')).toHaveText("This is how you'll appear");
+  await expect(dialog.locator('#appear-note')).toHaveText('Only seen if you raise your hand and are promoted to the stage.');
+  await expect(dialog).not.toContainText('in the meeting');
   await expect(page.locator('#nm')).toHaveValue('Avery Chen');
   await expect(page.locator('#appear-face img')).toHaveAttribute('src', new RegExp(png.slice(0, 24)));
   await expect(page.locator('#nmcancel')).toHaveText('Clear');
@@ -476,6 +478,50 @@ test('the screen-name step prefills your GifOS name and picture', async ({ page 
   }));
   expect(cleared.name).toBeNull();
   expect(cleared.avatar).toBeNull();
+});
+
+test('a broadcast viewer is told their picture stays off the stage', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=anote' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast');
+    await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); });
+    const note = page.locator('#appear-note');
+    await expect(note).toBeVisible();
+    await expect(note).toHaveText('Only seen if you raise your hand and are promoted to the stage.');
+    await expect(page.locator('#appear-title')).toHaveText("This is how you'll appear");
+    const fit = await page.evaluate(() => {
+      const box = document.querySelector('#appear-modal .appear-box').getBoundingClientRect();
+      const line = document.getElementById('appear-note').getBoundingClientRect();
+      const s = getComputedStyle(document.getElementById('appear-note'));
+      return {
+        inside: line.left >= box.left - 1 && line.right <= box.right + 1 && line.top >= box.top - 1 && line.bottom <= box.bottom + 1,
+        color: s.color,
+        boxRight: box.right,
+        lineRight: line.right,
+      };
+    });
+    expect(fit.inside, JSON.stringify(fit)).toBe(true);
+    expect(fit.color).toBe('rgb(29, 29, 31)');
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/run.html?desk=anotehost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.live');
+  await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); });
+  await expect(page.locator('#appear-title')).toHaveText("This is how you'll appear");
+  await expect(page.locator('#appear-note')).toHaveCount(0);
+  await page.goto('/run.html?desk=anotemeet#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); });
+  await expect(page.locator('#appear-title')).toHaveText("This is how you'll appear");
+  await expect(page.locator('#appear-note')).toHaveCount(0);
+  await expect(page.locator('#appear-modal')).not.toContainText('in the meeting');
 });
 
 test('arrow keys nudge the dock and a double click puts it back', async ({ page }) => {

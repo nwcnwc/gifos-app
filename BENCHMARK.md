@@ -96,3 +96,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q35 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Fit leaves with the dock on a quiet small group. The room bar and the status chip stay. Warm chrome stays 4. FaceTime still leads. |
 | After Q36 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A host steps on and off from the dock. A viewer and a small group keep Stage in More. Scores unchanged. |
 | After Q37 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A clear stage says so. A picture fills the space above the dock. Scores unchanged. |
+| After Q38 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A broadcast viewer’s join sheet says they are seen only if promoted. A host and a small group stay title only. Scores unchanged. |

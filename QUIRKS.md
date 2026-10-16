@@ -144,7 +144,7 @@ Nathan’s Broadcast design: only the stage shows. No row, no stadium, no other 
 
 What this desktop branch already matches: a service hides `#grid` and `#stadium`. Comfy layout does not run on a broadcast. A small group keeps the grid. That grid is the many-to-many call, and it is not the Broadcast product. The service lobby still asks for the host password, and adopting that key calls `tryBroadcastStage`.
 
-What does not match, and is left alone here because the role-controls work is building it: a Watching viewer in this frame still has Unmute, Video, Hand, and Stage, because those hide only after `notadmin`, and this frame never joins. Service help still says ban lives on each tile, and a service does not draw those tiles. `#stagemod` is a host card row, not the raised-hands list. The join step does not yet say a viewer’s name and picture stay off until they are promoted. Shots: `test/e2e/artifacts/broadcast-stage-flag.png`, `small-group-grid-flag.png`.
+What does not match, and is left alone here because the role-controls work is building it: a Watching viewer in this frame still has Unmute, Video, Hand, and Stage, because those hide only after `notadmin`, and this frame never joins. Service help still says ban lives on each tile, and a service does not draw those tiles. `#stagemod` is a host card row, not the raised-hands list. Shots: `test/e2e/artifacts/broadcast-stage-flag.png`, `small-group-grid-flag.png`.
 
 ### Q33. A live service said Just you
 
@@ -166,9 +166,13 @@ On a service the host’s dock says **Step on**. It turns red and says **Step of
 
 An empty service now says **The stage is clear.** A host who has stepped on with the camera off reads **You are on stage. Your camera is off.** A picture fills the space between the room bar and the dock at 1280, 1920, and 900, and after a resize to 900. A small group does not show the line. Before: `test/e2e/artifacts/stage-picture-before.png`. After: `test/e2e/artifacts/stage-picture-after.png`. Filled: `test/e2e/artifacts/stage-picture-fill.png`.
 
+### Q38. The join sheet told a viewer they would appear in the meeting
+
+The sheet’s title stays **This is how you'll appear.** There is no “in the meeting” line. A broadcast viewer also reads **Only seen if you raise your hand and are promoted to the stage.** A host and a small group get the title only. The line fits inside the card at 1280, 1920, and 900. Before: `test/e2e/artifacts/appear-note-before.png`. After: `test/e2e/artifacts/appear-note-after.png`.
+
 ## Open
 
-A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The dock tucks on a small group, and Fit leaves with it (Q35). The room bar, the mute line, and the status chip stay. The lobby stays at 4: one button, and the other ways in are still on the first screen. Labeled controls stay at 4. Share is on a small-group dock (Q34), and Zoom’s bar is still the reference. A Watching viewer’s dock, the raised-hands list, promote and demote, and the viewer join sentence belong to the role-controls work (Q32).
+A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The dock tucks on a small group, and Fit leaves with it (Q35). The room bar, the mute line, and the status chip stay. The lobby stays at 4: one button, and the other ways in are still on the first screen. Labeled controls stay at 4. Share is on a small-group dock (Q34), and Zoom’s bar is still the reference. The viewer join sentence is on the sheet (Q38). A Watching viewer’s dock, the raised-hands list, and promote and demote still belong to the role-controls work (Q32).
 
 ## How a session was opened without a relay
 

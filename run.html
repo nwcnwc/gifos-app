@@ -1202,6 +1202,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .appear-box { background: #fff; color: #1d1d1f; max-width: 400px; }
   .appear-box h3 { color: #1d1d1f; font-size: 1.35rem; }
   .appear-box p { color: #3a3a3f; }
+  #appear-note { margin: 0 0 14px; font-size: 1rem; line-height: 1.4; color: #1d1d1f; }
   .appear-face { width: 96px; height: 96px; margin: 0 auto 14px; border-radius: 50%; background: #1a1d24; color: #fff;
     display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 700; overflow: hidden; }
   .appear-face img, .lob-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -2659,7 +2660,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bg.id = 'appear-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
       bg.setAttribute('aria-labelledby', 'appear-title');
+      const appearViewer = (typeof BROADCAST !== 'undefined' && BROADCAST) && !(typeof bcHostStored === 'function' && bcHostStored());
+      if (appearViewer) bg.setAttribute('aria-describedby', 'appear-note');
       bg.innerHTML = '<div class="name-box appear-box"><h3 id="appear-title">This is how you\'ll appear</h3>' +
+        (appearViewer ? '<p id="appear-note">Only seen if you raise your hand and are promoted to the stage.</p>' : '') +
         '<div class="appear-face" id="appear-face"></div>' +
         '<input id="nm" name="nickname" maxlength="40" autocomplete="nickname" aria-label="Your name">' +
         '<label class="appear-file">Change picture<input id="appear-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden></label>' +
