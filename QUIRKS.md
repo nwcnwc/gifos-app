@@ -149,6 +149,14 @@ Repro: `test/mobile/lobby-join-visible.js`. It failed (`lob-join-btn off screen 
 
 Before: `qa/mobile/shots/before-lobby-join-land.png`. After: `qa/mobile/shots/after-lobby-iphone-se-land.png`.
 
+### 18. Unread chat is only a label inside More
+
+An incoming line did `Chat (2)` on the More button. With the sheet closed, the call showed no count. The live row also sat on top of the message field (both y=430–474 on an SE), so a tap on the field hit Live.
+
+Repro: `test/mobile/chat-badge.js`. It failed (`no on-call unread count`) on an iPhone 15, an SE, and a 360px phone at 200% text, then passed. The count is a blue pill above Live, at least 44px, and the number grows with the text size. It does not cover the header, Fit, Live, or the dock. Tapping it opens chat and clears the count. More still says Chat. The open chat sheet paints over the live row, so the field takes the tap again (`chat-above-dock.js`).
+
+Before: `qa/mobile/shots/before-chat-badge-iphone-15.png`. After: `qa/mobile/shots/after-chat-badge-iphone-15.png`.
+
 ## Open
 
 The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.

@@ -1322,6 +1322,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   #call-rec.on { background: #b61622; color: #fff; border-color: transparent; }
   #call-cc.on { background: #0064c8; color: #fff; border-color: transparent; }
+  /* Unread chat sits on the call, above Live, while More is closed.
+     The count is the target. Blue, not the Live red. */
+  #chatbadge {
+    position: fixed; z-index: 31;
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    bottom: calc(var(--dockh, 108px) + var(--stateh, 0px) + 16px);
+    min-width: 44px; min-height: 44px; padding: 0 12px;
+    border: 0; border-radius: 999px; cursor: pointer;
+    background: #0064c8; color: #fff;
+    font: 700 1rem/1 system-ui, sans-serif;
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 16px rgba(0,0,0,.35);
+  }
+  #chatbadge[hidden] { display: none !important; }
+  body.solo-app #chatbadge { display: none !important; }
   body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
@@ -1600,7 +1615,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   /* Chat used to run under the dock (z-index 30 vs 32), so the field could
      not be tapped. End the panel at the dock, and again above the keyboard. */
-  #chatpanel.open { top: 0; bottom: calc(var(--dockh, 108px) + var(--kb, 0px)); }
+  /* The live row is also z-index 31 and shares this band. The open sheet
+     has to paint over it or Live steals the tap on the message field. */
+  #chatpanel.open { top: 0; bottom: calc(var(--dockh, 108px) + var(--kb, 0px)); z-index: 31; }
   #chat-in { min-height: 44px; }
   #chatclose, #cattach, #chatform button[type=submit] { min-width: 44px; min-height: 44px; }
   /* More labels were 16px even when Settings text size was 200% (root 32px). */
@@ -1696,6 +1713,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button type="button" id="call-rec" aria-pressed="false">Record</button>
     <button type="button" id="call-cc" aria-pressed="false">Captions</button>
   </div>
+  <button type="button" id="chatbadge" hidden aria-live="polite">0</button>
   <div class="admcount" id="admcount" style="display:none"></div>
   <div class="bar collapsed" role="toolbar" aria-label="Call controls">
     <button id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
@@ -5107,6 +5125,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (state && !state.hidden && state.getClientRects().length) {
             const sr = state.getBoundingClientRect();
             if (sr.height > 2) bottom = Math.max(bottom, window.innerHeight - sr.top);
+          }
+          const badge = document.getElementById('chatbadge');
+          if (badge && !badge.hidden && badge.getClientRects().length) {
+            const br = badge.getBoundingClientRect();
+            if (br.height > 2) bottom = Math.max(bottom, window.innerHeight - br.top);
           }
         } catch (e) {}
         window.__comfyLast = MV.apply({
@@ -12513,6 +12536,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const MAX_FILE = 25 * 1024 * 1024;
     const FILE_PART = 32768;
     let unread = 0;
+    function paintChatBadge() {
+      const b = document.getElementById('chatbadge');
+      if (!b) return;
+      const lob = document.getElementById('lobby');
+      const inCall = !(lob && lob.classList.contains('show'));
+      const open = !!(chatPanel && chatPanel.classList.contains('open'));
+      const show = inCall && unread > 0 && !open;
+      b.textContent = unread > 99 ? '99+' : String(Math.max(0, unread));
+      b.setAttribute('aria-label', 'Chat, ' + unread + (unread === 1 ? ' new message' : ' new messages'));
+      b.hidden = !show;
+      const key = (b.hidden ? '0' : '1') + ':' + b.offsetWidth + ':' + b.offsetHeight;
+      if (key !== paintChatBadge.key) {
+        paintChatBadge.key = key;
+        try { layout(); } catch (e) {}
+      }
+    }
+    function countClosedChat() {
+      if (chatPanel && chatPanel.classList.contains('open')) return;
+      unread++;
+      paintChatBadge();
+    }
 
     const chatPanel = document.getElementById('chatpanel');
     const chatBtn = document.getElementById('chatbtn');
@@ -12761,7 +12805,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (takeChat(m.m)) {
           renderChat();
           if (m.m && typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
-          if (!chatPanel.classList.contains('open')) { unread++; chatBtn.textContent = 'Chat (' + unread + ')'; }
+          countClosedChat();
           // A frame the sender marked ackReq (today: only the follow-me link)
           // gets a delivery ack back over the mesh/DC — see FOLLOW-ME DELIVERY
           // WAIT. Ordinary chat carries none: this is not a read receipt.
@@ -13649,6 +13693,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // is not painted while the panel is closed: paint the tab that shows.
       if (chatPanel.classList.contains('open')) {
         unread = 0; chatBtn.textContent = 'Chat';
+        paintChatBadge();
         // The More sheet floats over the composer. Fold it so the field is the next tap.
         const barEl = document.querySelector('.bar');
         const toggle = document.getElementById('bartoggle');
@@ -13660,6 +13705,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     };
     document.getElementById('chatclose').onclick = () => chatPanel.classList.remove('open');
+    document.getElementById('chatbadge').onclick = () => { if (chatBtn) chatBtn.click(); };
+    window.__gifosChat = {
+      note: function (o) {
+        const msg = {
+          id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+          by: String((o && o.by) || 'Someone').slice(0, 40),
+          byId: 'qa-peer',
+          at: Date.now(),
+          text: String((o && o.text) || '').slice(0, 2000),
+        };
+        if (!takeChat(msg)) return unread;
+        renderChat();
+        countClosedChat();
+        return unread;
+      },
+    };
 
     // ---- peer relay: a mutual friend forwards media between blocked pairs ----
     // When B and C can't reach each other but both reach A, B asks A (the
@@ -20532,6 +20593,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!row || !rec || !cc) return;
       const inCall = !(lob && lob.classList.contains('show'));
       row.hidden = !inCall;
+      const stateH = (inCall && row.offsetHeight) ? row.offsetHeight : 0;
+      document.documentElement.style.setProperty('--stateh', stateH + 'px');
       if (!inCall) return;
       const recOn = recBtn.classList.contains('on') || (recBtn.textContent || '').indexOf('Stop') === 0;
       rec.classList.toggle('on', recOn);
@@ -20611,7 +20674,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } catch (e) {}
       };
       if (window.ResizeObserver) { try { new ResizeObserver(setBarH).observe(bar); } catch (e) {} }
-      window.addEventListener('resize', () => { setBarH(); syncKb(); });
+      window.addEventListener('resize', () => { setBarH(); syncKb(); try { paintCallState(); } catch (e) {} });
       if (window.visualViewport) {
         visualViewport.addEventListener('resize', () => { setBarH(); syncKb(); });
         visualViewport.addEventListener('scroll', syncKb);

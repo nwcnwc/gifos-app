@@ -25,9 +25,9 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 | --- | --- | --- |
 | End the call, mute, camera, on a 360px phone | 8 | Hang up, mute, camera, and Fit fit and are at least 44px. |
 | Host: password, record, captions, stage, in landscape | 9 | Live, Record, and Captions are on the call. Room password, Vote on someone, and Step on stage stay in More and scroll into view. Waiting room admits from a list. |
-| Chat or check names without losing the controls | 7 | The field taps, sits above the dock, and lifts for a keyboard band. Close and Send are 44px. |
+| Chat or check names without losing the controls | 7 | A closed chat shows the unread count on the call. The field taps and sits above the dock. There is still no preview of the line, and the bubbles are small. |
 | Looks trustworthy (nothing cut off, type scales) | 8 | The header says "4 in call". Live is on the call, and Recording is a separate red state. Faces end above the dock. |
-| **Audience** | **8** | Hang up, landscape host tools, the live state, captions, chat, the home indicator, the header count, and a waiting-room admit list are in good shape. Chat is still the soft spot. |
+| **Audience** | **8** | Hang up, landscape host tools, the live state, captions, the unread count, the home indicator, the header count, and a waiting-room admit list are in good shape. Chat still has no preview and small bubbles. |
 
 ## Church
 
@@ -49,7 +49,7 @@ Family and friends. Warm, few steps, a texted link.
 | --- | --- | --- |
 | Open a texted link and pick a name | 8 | The join step opens with the GifOS name and picture, and says how you will appear. Continue is the only blue button. |
 | See everyone and hang up on a small phone | 7 | Four faces end above the dock on iPhone 15, SE, and 360px. Hang up fits. |
-| Send a chat line | 7 | The field is above the dock, 44px, and lifts when the keyboard band is set. |
+| Send a chat line | 7 | The field is above the dock and 44px. A new line shows a count on the call. You still cannot read the line without opening chat. |
 | Turn the phone sideways | 8 | Invite, Room password, Waiting room, and Chat are on the first screen of More. You do not scroll to find them. |
 | **Audience** | **8** | The link, the name step, hang up, the first screen of landscape More, chat, the lobby, the home indicator, and a 44px Fit control are in good shape. FaceTime still feels quieter; we do not lead yet. |
 
@@ -72,3 +72,4 @@ Family and friends. Warm, few steps, a texted link.
 15. Landscape first screen. `test/mobile/landscape-first.js` failed (Invite and Room password below the sheet on an SE), then passed. Those two, plus Waiting room and Chat, are the first four controls. Personal sideways 6→8. Audience scores stay 8 / 8 / 8. Nobody leads yet. Still open: Record and Captions live inside More, so a producer does not see a live/record state on the call itself.
 16. Live and record state on the call. `test/mobile/call-state.js` failed (no state on the call), then passed, including at 200% text. Live, Record, and Captions sit above the dock. Recording is red. Captions on is blue. Corporate trust 7→8. Church captions 7→8. Audience scores stay 8 / 8 / 8. Nobody leads yet. Still open: in landscape the lobby still makes you scroll to Join.
 17. Landscape lobby Join. `test/mobile/lobby-join-visible.js` failed (`bottom 378` on an SE), then passed. The three actions share one row, and Join is on screen. Church lobby 7→8. Audience scores stay 8 / 8 / 8. Nobody leads yet.
+18. Unread badge on the call. `test/mobile/chat-badge.js` failed (no count with More closed), then passed, including at 200% text. The count sits above Live. Opening chat clears it. The chat sheet also paints over the live row so the field can be tapped. Chat stays 7: there is still no preview, no emoji, and the bubbles are small and dark. Audience scores stay 8 / 8 / 8. Nobody leads yet.
