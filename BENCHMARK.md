@@ -2,7 +2,7 @@
 
 Scored 16 Oct 2026 from the desktop UI in `run.html` (branch `cursor/qa-meet-desktop`), driven locally in Chromium, Firefox, and WebKit. Scores are 1–10. A lead means we are ahead of the best product that audience already uses, on that row, for the desktop call itself.
 
-We do **not** lead any audience yet. A host can mute someone from the roster. A broadcast says off air and on air. The lobby, help, and shortcut list follow German and Spanish. Settings stay English. A service still has no rundown.
+We do **not** lead any audience yet. A host can mute someone from the roster. A church broadcast has an order of service for the booth. The lobby, help, and shortcut list follow German and Spanish. Settings stay English.
 
 ## Who we are measured against
 
@@ -40,8 +40,8 @@ Simple for volunteers and older members. Services and small groups. Best of the 
 | Volunteer simplicity | 7 | Join is one blue button. More is People, Share, Room, and Help, not one wall. The list is still long |
 | Readability for older eyes | 6 | Mic, Camera, More/Hide, and Leave say so in the button. Reactions is still an icon. Chat’s privacy line wraps |
 | Small group (conversation, singing) | 8 | One link, blur, unison. Voting someone up no longer hides the faces under the More sheet |
-| Service / broadcast | 6 | Off air is a card. On air is a red pill with the speaker’s name. No rundown, no lyrics, no program versus preview |
-| **Audience** | **6.8** | Does not lead |
+| Service / broadcast | 7 | The booth has an order of service, Off air, and On air. No lyrics, and no program versus preview. The list is on this computer, not the other booth |
+| **Audience** | **7.0** | Does not lead |
 
 ## Personal
 
@@ -57,4 +57,4 @@ Warm and effortless for family and friends. Best of the field: FaceTime, about 9
 
 ## This cycle
 
-Mute for everyone is on the roster (see QUIRKS.md). Corporate large-room 7 → 8, audience 6.8 → 7.0. That is the room mute, not a host console. Church stays 6.8. Personal stays 6.8. Still behind Zoom and Meet (~8), a church desk (~8), and FaceTime (~9). We do not lead. Next gap: a service still has no rundown.
+The booth has an order of service (see QUIRKS.md). Church service 6 → 7, audience 6.8 → 7.0. Lyrics and a separate preview are still missing, and a second computer does not follow the list. Corporate stays 7.0. Personal stays 6.8. Still behind Zoom and Meet (~8), a church desk (~8), and FaceTime (~9). We do not lead. Next gap: settings stay English.

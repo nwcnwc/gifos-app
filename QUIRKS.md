@@ -94,6 +94,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** a broadcast shows a white Off air card until a picture is live. The host’s card names them and says to turn the camera on. On air is a red pill with their name, and it does not cover the dock. Watching someone else says Live, not On air. A normal meeting does not wear the lamp.
 - **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/on-air-before-1280.png`, `test/desktop/shots/on-air-after-off-1280.png`, `test/desktop/shots/on-air-after-host-1280.png`, `test/desktop/shots/on-air-after-on-1280.png`.
 
+### A broadcast had no order of service
+
+- **Who hits it:** the volunteer running a church service from the booth.
+- **What you saw:** Off air and On air, and nothing that said Welcome, then Song, then the message. The order lived on a paper.
+- **Repro:** `test/desktop/rundown.spec.js` failed before the fix (no `#rundown`).
+- **Fix:** the host sees Order of service: Welcome, Song, Prayer, Scripture, Message, Closing. Now is the large line. Next walks it. On the last step the button says Done, then the card says Ended and Start over. The place stays for this tab. A viewer does not see the card. It sits above the dock and does not cover the off-air card. A normal meeting does not show it.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the on-air test still passes. Screenshots: `test/desktop/shots/rundown-before-1280.png`, `test/desktop/shots/rundown-after-1280.png`, `test/desktop/shots/rundown-after-song-1280.png`, `test/desktop/shots/rundown-after-900.png`.
+
 ### Chrome was English only
 
 - **Who hits it:** anyone whose device is set to German or Spanish.
@@ -134,4 +142,4 @@ The lobby, the meeting help, the broadcast help, and the shortcut list follow a 
 
 ### Not yet walked end to end
 
-Screen-share for the consultant, tab-hide/return, and the settings body in German and Spanish. Gallery packing, self-view placement, and the reactions icon are not in this pass. A broadcast says off air and on air; it still has no rundown and no lyrics. The roster can mute someone for everyone. Waiting room, rename, and spotlight are still missing.
+Screen-share for the consultant, tab-hide/return, and the settings body in German and Spanish. Gallery packing, self-view placement, and the reactions icon are not in this pass. A broadcast says off air and on air, and the booth has an order of service. There are still no lyrics and no program versus preview. The roster can mute someone for everyone. Waiting room, rename, and spotlight are still missing.

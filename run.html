@@ -1347,6 +1347,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #onair .onair-note { margin: 4px 0 0; font: 400 16px/1.35 system-ui, sans-serif; color: #3a3a3f; max-width: 34ch; }
   #onair[data-state="on"] .onair-note,
   #onair[data-state="live"] .onair-note { display: none; }
+  /* Order of service: the booth's list. Viewers never see it. While it is
+     open the off-air card moves to the right so the two do not stack. */
+  #rundown { display: none; position: fixed; z-index: 24; left: 14px; bottom: 128px;
+    width: min(260px, calc(100vw - 28px)); max-height: calc(100vh - 200px);
+    flex-direction: column; gap: 8px; padding: 16px 16px 14px; box-sizing: border-box;
+    background: #fff; color: #1d1d1f; border-radius: 20px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.28); overflow: auto; }
+  #rundown.open { display: flex; }
+  #rundown h3 { margin: 0; font: 700 16px/1.2 system-ui, sans-serif; color: #3a3a3f; }
+  #rundown ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  #rundown li { display: flex; align-items: baseline; gap: 8px; min-height: 28px; color: #1d1d1f; }
+  #rundown li .rdname { font: 600 18px/1.25 system-ui, sans-serif; min-width: 0; }
+  #rundown li.past { color: #8d93a0; }
+  #rundown li.past .rdname { font-weight: 500; }
+  #rundown li.now .rdname { font: 700 26px/1.15 system-ui, sans-serif; }
+  #rundown .nowtag { flex: 0 0 auto; font: 700 13px/1 system-ui, sans-serif; letter-spacing: .04em;
+    text-transform: uppercase; color: #0064c8; }
+  #rundown-end { margin: 0; font: 700 26px/1.15 system-ui, sans-serif; }
+  #rundown-end:empty { display: none; }
+  #rundown-next { min-height: 44px; border: 0; border-radius: 12px; background: #0064c8; color: #fff;
+    font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+  #rundown-next.secondary { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
+  @media (max-width: 1000px) {
+    body.broadcast.rundown #onair[data-state="off"] {
+      left: 290px; transform: none; width: min(400px, calc(100vw - 306px));
+    }
+  }
   .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
     border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 14px/1.2 system-ui, sans-serif; }
@@ -1625,6 +1652,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <span class="onair-who"></span>
     <p class="onair-note"></p>
   </div>
+  <aside id="rundown" aria-label="Order of service">
+    <h3 id="rundown-title">Order of service</h3>
+    <ol id="rundown-list"></ol>
+    <p id="rundown-end"></p>
+    <button type="button" id="rundown-next">Next</button>
+  </aside>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
   <div class="admcount" id="admcount" style="display:none"></div>
   <div class="bar collapsed" role="toolbar" aria-label="Call controls. Press ? for keyboard shortcuts">
@@ -2409,6 +2442,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         muteForAll: 'Stumm', unmuteForAll: 'Ton an', forEveryone: 'Für alle',
         goLive: 'Kamera an, dann sind Sie live. Der Raum sieht Sie noch nicht.',
         waitLive: 'Die Sendung hat noch nicht begonnen.',
+        orderOfService: 'Ablauf', rdNow: 'Jetzt', rdNext: 'Weiter', rdDone: 'Fertig',
+        rdEnded: 'Zu Ende', rdAgain: 'Von vorn',
+        rdWelcome: 'Begrüßung', rdSong: 'Lied', rdPrayer: 'Gebet', rdScripture: 'Schrift',
+        rdMessage: 'Predigt', rdClosing: 'Segen',
         sendInvite: 'Link schicken, er läuft nicht ab',
         waiting: 'wir warten auf die anderen…',
         chatTitle: 'Meeting-Chat',
@@ -2466,6 +2503,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         muteForAll: 'Silenciar', unmuteForAll: 'Activar', forEveryone: 'Para todos',
         goLive: 'Enciende la cámara para salir al aire. La sala aún no te ve.',
         waitLive: 'La transmisión aún no empieza.',
+        orderOfService: 'Programa', rdNow: 'Ahora', rdNext: 'Siguiente', rdDone: 'Listo',
+        rdEnded: 'Terminó', rdAgain: 'Otra vez',
+        rdWelcome: 'Bienvenida', rdSong: 'Canción', rdPrayer: 'Oración', rdScripture: 'Lectura',
+        rdMessage: 'Mensaje', rdClosing: 'Cierre',
         sendInvite: 'envía el enlace; no caduca',
         waiting: 'esperando a los demás…',
         chatTitle: 'Chat de la reunión',
@@ -6487,7 +6528,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintOnAir() {
       const el = document.getElementById('onair');
       if (!el) return;
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) { el.setAttribute('data-state', ''); return; }
+      if (typeof BROADCAST === 'undefined' || !BROADCAST) {
+        el.setAttribute('data-state', '');
+        try { paintRundown(); } catch (e) {}
+        return;
+      }
       const mineUp = !!myStatus.stg && (amAdmin || (myId && stageIds().includes(myId)));
       const mineLive = mineUp && myStatus.camOff === false;
       let others = [];
@@ -6515,7 +6560,76 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (who && who.textContent !== name) who.textContent = name;
       if (note && note.textContent !== n) note.textContent = n;
       try { if (document.getElementById('roster').classList.contains('open')) paintRoster(); } catch (e) {}
+      try { paintRundown(); } catch (e2) {}
     }
+    // A church broadcast's order of service. Only the booth sees it. The
+    // place is remembered for this tab, and Next walks Welcome through Closing.
+    const RUNDOWN_STEPS = [
+      ['rdWelcome', 'Welcome'],
+      ['rdSong', 'Song'],
+      ['rdPrayer', 'Prayer'],
+      ['rdScripture', 'Scripture'],
+      ['rdMessage', 'Message'],
+      ['rdClosing', 'Closing'],
+    ];
+    function rundownStoreKey() { return 'gifos_rundown_' + (params.get('v') || ''); }
+    function rundownAt() {
+      let n = 0;
+      try { n = parseInt(sessionStorage.getItem(rundownStoreKey()) || '0', 10); } catch (e) {}
+      if (!isFinite(n) || n < 0) n = 0;
+      if (n > RUNDOWN_STEPS.length) n = RUNDOWN_STEPS.length;
+      return n;
+    }
+    function setRundownAt(n) {
+      try { sessionStorage.setItem(rundownStoreKey(), String(n)); } catch (e) {}
+    }
+    function paintRundown() {
+      const el = document.getElementById('rundown');
+      if (!el) return;
+      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored()));
+      el.classList.toggle('open', !!host);
+      document.body.classList.toggle('rundown', !!host);
+      if (!host) return;
+      const at = rundownAt();
+      const ended = at >= RUNDOWN_STEPS.length;
+      const title = document.getElementById('rundown-title');
+      if (title) title.textContent = uiText('orderOfService', 'Order of service');
+      const list = document.getElementById('rundown-list');
+      if (list) {
+        list.textContent = '';
+        RUNDOWN_STEPS.forEach((step, i) => {
+          const li = document.createElement('li');
+          if (!ended && i === at) li.className = 'now';
+          else if (ended || i < at) li.className = 'past';
+          if (!ended && i === at) {
+            const tag = document.createElement('span');
+            tag.className = 'nowtag';
+            tag.textContent = uiText('rdNow', 'Now');
+            li.appendChild(tag);
+            li.setAttribute('aria-current', 'step');
+          }
+          const name = document.createElement('span');
+          name.className = 'rdname';
+          name.textContent = uiText(step[0], step[1]);
+          li.appendChild(name);
+          list.appendChild(li);
+        });
+      }
+      const end = document.getElementById('rundown-end');
+      if (end) end.textContent = ended ? uiText('rdEnded', 'Ended') : '';
+      const btn = document.getElementById('rundown-next');
+      if (btn) {
+        btn.classList.toggle('secondary', ended);
+        const label = ended ? uiText('rdAgain', 'Start over') : (at === RUNDOWN_STEPS.length - 1 ? uiText('rdDone', 'Done') : uiText('rdNext', 'Next'));
+        if (btn.textContent !== label) btn.textContent = label;
+      }
+    }
+    const rundownNext = document.getElementById('rundown-next');
+    if (rundownNext) rundownNext.onclick = () => {
+      const at = rundownAt();
+      setRundownAt(at >= RUNDOWN_STEPS.length ? 0 : at + 1);
+      paintRundown();
+    };
     function rosterRows() {
       const rows = [];
       const seen = new Set();
