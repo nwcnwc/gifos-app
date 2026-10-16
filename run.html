@@ -372,20 +372,15 @@
     } catch (e) {}
     var pin = null, chan = null, cur = null, until = null;
     try { pin = localStorage.getItem('gifos_pin'); chan = localStorage.getItem('gifos_channel'); cur = localStorage.getItem('gifos_current'); until = localStorage.getItem('gifos_pin_until'); } catch (e) {}
-    // The confirm records gifos_pin_until (ms; '0' = no expiry). Past it, the
-    // choice ends and the visitor is back on latest. A choice with no record
-    // predates the confirm (a stray ?edge link could have made it), so on
-    // gifos.app it is reset to latest (RESET_UNCONFIRMED). Either way the Home
-    // Screen says so once (gifos_pin_ended).
+    // gifos_pin_until is the confirm's receipt, not a clock. '0' or any
+    // timestamp — including one months old — means this computer chose the
+    // pin on purpose, and the pin stays. A choice with no record predates
+    // the confirm (a stray ?edge link could have made it), so on gifos.app
+    // it is reset once (RESET_UNCONFIRMED). The Home Screen says so once.
     var RESET_UNCONFIRMED = true;
-    if (pin || chan === 'edge') {
-      var ended = '';
-      if (until !== null && until !== '0' && !(Number(until) > Date.now())) ended = 'expired';
-      else if (until === null && RESET_UNCONFIRMED && /(^|\.)gifos\.app$/.test(location.hostname)) ended = 'reset';
-      if (ended) {
-        try { localStorage.setItem('gifos_pin_ended', ended + ':' + (pin || 'edge')); localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin_until'); } catch (e) {}
-        pin = null; chan = null;
-      }
+    if ((pin || chan === 'edge') && until === null && RESET_UNCONFIRMED && /(^|\.)gifos\.app$/.test(location.hostname)) {
+      try { localStorage.setItem('gifos_pin_ended', 'reset:' + (pin || 'edge')); localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin_until'); } catch (e) {}
+      pin = null; chan = null;
     }
     var stay = cleared ? { clear: true } : null;
     // A PRETTY router path (/meet/<room>, /join/<code>[/…]) is NOT a
