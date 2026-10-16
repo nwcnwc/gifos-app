@@ -1275,6 +1275,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip .status { color: #e7ebf2; font-size: 20px; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
     min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
+  /* On air. Hosts wear Live (filled red, the same signal YouTube and a
+     church stream use). Viewers wear Watching. Hidden outside a broadcast.
+     [hidden] wins so a meeting never shows an empty pill. */
+  #onair[hidden] { display: none !important; }
+  #onair:not([hidden]) { display: inline-flex; align-items: center; gap: 6px; flex: none;
+    font-weight: 800; font-size: 13px; letter-spacing: .06em; text-transform: uppercase;
+    border-radius: 999px; padding: 3px 8px 3px 7px; line-height: 1.2; }
+  #onair.live { background: #b61622; color: #fff; }
+  #onair.watch { background: #e8ecf1; color: #1d1d1f; }
+  #onair.live::before, #onair.watch::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  #onair.live::before { background: #fff; }
+  #onair.watch::before { background: #0064c8; }
   .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
     border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 14px/1.2 system-ui, sans-serif; }
@@ -1520,6 +1532,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <div class="topchip">
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
+    <span id="onair" hidden></span>
     <span class="status" id="status">Joining…</span>
   </div>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
@@ -1731,7 +1744,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <input type="file" id="app-file-input" accept="image/gif,.gif" style="display:none">
 
   <div id="chatpanel">
-    <div id="chathead"><span id="paneltitle">Meeting chat</span> <small style="color:#667;font-weight:400">· private to this meeting, gone when everyone leaves</small>
+    <div id="chathead"><span id="paneltitle">Meeting chat</span> <small id="chatprivacy" style="color:#667;font-weight:400">· private to this meeting, gone when everyone leaves</small>
       <button id="trtab" style="margin-left:auto">Transcript</button>
       <button id="chatmod" style="display:none" title="Silence the chat for everyone but you">Turn chat off</button>
       <button id="chatclose">✕</button></div>
@@ -2190,6 +2203,51 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     })();
     const BROADCAST = BC_INTENT && !!params.get('v') && /^[a-f0-9]{16,64}$/.test((params.get('av') || '').toLowerCase());
     if (BROADCAST) document.body.classList.add('broadcast');
+    // The lobby is renamed when you arrive wanting a broadcast. The room used
+    // to keep saying "meeting" on the chat, the leave dialog, and Help, and
+    // nothing told a host they were on air. Paint that chrome once the host
+    // key helper exists (just below) and again whenever admin state changes.
+    function paintBroadcastChrome() {
+      const pill = document.getElementById('onair');
+      if (!BROADCAST) {
+        if (pill) { pill.hidden = true; pill.textContent = ''; pill.className = ''; }
+        return;
+      }
+      document.title = 'Broadcast — GifOS';
+      const say = (id, text) => { const el = document.getElementById(id); if (el && text) el.textContent = text; };
+      const curTitle = document.getElementById('paneltitle');
+      if (curTitle && curTitle.textContent === 'Meeting chat') curTitle.textContent = 'Broadcast chat';
+      say('chatprivacy', '· private to this broadcast, gone when everyone leaves');
+      const leave = document.getElementById('leavebtn');
+      if (leave) {
+        leave.title = 'Leave the broadcast. Your camera and microphone stop.';
+        leave.setAttribute('aria-label', 'Leave the broadcast');
+      }
+      say('leave-ask-title', 'Leave the broadcast?');
+      const help = document.getElementById('helpbtn');
+      if (help) help.title = 'How this broadcast works';
+      const helpH = document.querySelector('#help-modal h3');
+      if (helpH) helpH.textContent = 'How this broadcast works';
+      const who = document.getElementById('whobtn');
+      if (who) who.title = 'Who is watching — names and internet addresses';
+      const whoH = document.querySelector('#who-modal h3');
+      if (whoH) whoH.textContent = 'Who is watching';
+      const chat = document.getElementById('chatbtn');
+      if (chat && chat.textContent === 'Chat') chat.title = 'Chat with everyone watching — stays between the people here, not on a server';
+      const rec = document.getElementById('recbtn');
+      if (rec) rec.title = 'Record this broadcast ON YOUR DEVICE (everyone sees that you are recording)';
+      const inv = document.querySelector('#inv-modal h3');
+      if (inv) inv.textContent = 'Share this broadcast';
+      const files = document.querySelector('#cfiles h4');
+      if (files) files.textContent = 'Files pinned to this broadcast';
+      const host = bcHostStored() || document.body.classList.contains('amadmin');
+      if (pill) {
+        pill.hidden = false;
+        pill.className = host ? 'live' : 'watch';
+        pill.textContent = host ? 'Live' : 'Watching';
+        pill.setAttribute('role', 'status');
+      }
+    }
     // The HOST is whoever holds this room's stored admin key — known before
     // any network exists, which is what lets the boot skip the viewer's
     // camera ask entirely (below) while the host boots like a meeting.
@@ -2197,6 +2255,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { return !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()); }
       catch (e) { return false; }
     };
+    paintBroadcastChrome();
     const grid = document.getElementById('grid');
     const statusEl = document.getElementById('status');
     const share = document.getElementById('share');
@@ -9459,6 +9518,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof updateCamAllBtn === 'function') updateCamAllBtn();
       paintChatGate(); renderChat(); // signing in as admin grows the chat toggle + per-line deletes
       refreshOutbound(); // admin presence changes what clears
+      if (typeof paintBroadcastChrome === 'function') paintBroadcastChrome();
     }
 
     const pwKey = () => 'gifos_vpw_' + roomKey();
@@ -19417,7 +19477,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const w = document.getElementById('trwrap'), c = document.getElementById('chatlog');
       w.classList.toggle('show', showTr);
       c.style.display = showTr ? 'none' : '';
-      document.getElementById('paneltitle').textContent = showTr ? 'Transcript' : 'Meeting chat';
+      document.getElementById('paneltitle').textContent = showTr ? 'Transcript' : (BROADCAST ? 'Broadcast chat' : 'Meeting chat');
       document.getElementById('trtab').textContent = showTr ? 'Chat' : 'Transcript';
       if (showTr) renderTranscript(); else renderChat();
     }
@@ -20169,8 +20229,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       function apply(collapsed) {
         bar.classList.toggle('collapsed', collapsed);
         toggle.setAttribute('aria-expanded', String(!collapsed));
-        toggle.setAttribute('aria-label', collapsed ? 'More' : 'Hide meeting controls');
-        toggle.title = collapsed ? 'More' : 'Hide meeting controls';
+        const surface = (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'broadcast' : 'meeting';
+        toggle.setAttribute('aria-label', collapsed ? 'More' : 'Hide ' + surface + ' controls');
+        toggle.title = collapsed ? 'More' : 'Hide ' + surface + ' controls';
       }
       toggle.onclick = function () {
         const next = !bar.classList.contains('collapsed'); apply(next);

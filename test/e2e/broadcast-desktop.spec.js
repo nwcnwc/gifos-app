@@ -51,6 +51,53 @@ test('chat composer stays clear of the dock at 900px', async ({ page }) => {
   expect(hit.send.bottom).toBeLessThanOrEqual(hit.vh);
 });
 
+const HOST_SESSION = '/run.html?desk=host#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+const MEET_SESSION = '/run.html?desk=meet#mb=1&v=standup';
+
+test('a broadcast host is marked Live and the room is not called a meeting', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(HOST_SESSION);
+  await page.waitForSelector('body.broadcast.meet-session');
+  await expect(page.locator('#paneltitle')).toHaveText('Broadcast chat');
+  await expect(page.locator('#onair')).toHaveText('Live');
+  await expect(page.locator('#onair')).toHaveClass(/live/);
+  await expect(page.locator('#leavebtn')).toHaveAttribute('title', /broadcast/i);
+  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the broadcast?');
+  expect((await page.locator('#leavebtn').getAttribute('title')).toLowerCase()).not.toContain('meeting');
+  await page.locator('#bartoggle').click();
+  await expect(page.locator('#bartoggle')).toHaveAttribute('aria-label', /broadcast/i);
+  const box = await page.locator('#onair').boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(1280);
+});
+
+test('a broadcast viewer is Watching, including at 900px', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('gifos_name', 'Avery Chen'));
+  await page.setViewportSize({ width: 900, height: 720 });
+  await page.goto(SESSION);
+  await page.waitForSelector('body.broadcast');
+  await expect(page.locator('#onair')).toHaveText('Watching');
+  await expect(page.locator('#onair')).toHaveClass(/watch/);
+  await expect(page.locator('#paneltitle')).toHaveText('Broadcast chat');
+  const box = await page.locator('#onair').boundingBox();
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(900);
+});
+
+test('a meeting keeps meeting words and hides the on-air pill', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('gifos_name', 'Avery Chen'));
+  await page.goto(MEET_SESSION);
+  await page.waitForSelector('body.meet-session');
+  await expect(page.locator('body')).not.toHaveClass(/broadcast/);
+  await expect(page.locator('#paneltitle')).toHaveText('Meeting chat');
+  await expect(page.locator('#onair')).toBeHidden();
+  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the meeting?');
+});
+
 test('chat composer stays clear of the dock after a live resize to 900px', async ({ page }) => {
   await openChat(page, 1920, 1080);
   await page.setViewportSize({ width: 1280, height: 720 });

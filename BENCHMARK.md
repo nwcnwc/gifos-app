@@ -20,24 +20,24 @@ GifOS does **not** lead any audience yet. The gap column is what this branch is 
 | Layout holds at 1280, 1920, 900, resize | 5 | 4 | 4 | 3 |
 | Chat usable while the dock is up | 5 | 5 | 4 | 3 |
 | Keyboard path (shortcuts, Escape, focus) | 4 | 4 | 4 | 3 |
-| Trust: live, recording, who is here | 5 | 4 | 5 | 2 |
-| **Audience score** | **4.9** | **4.3** | **4.1** | **2.6** |
+| Trust: live, recording, who is here | 5 | 4 | 5 | 3 |
+| **Audience score** | **4.9** | **4.3** | **4.1** | **2.7** |
 
-Zoom leads. The chat composer now clears the dock (Q1). The biggest remaining gaps are icon-only mute (Q5) and no on-air trust mark (Q3).
+Zoom leads. Live/Watching is in the chip (Q3). The biggest remaining gap is icon-only mute (Q5).
 
 ## Church
 
 | | StreamYard | YouTube Live | Church desk tools | GifOS now |
 | --- | --- | --- | --- | --- |
-| A volunteer knows if they are on air | 5 | 5 | 5 | 1 |
-| Language a non-technical host understands | 4 | 4 | 3 | 2 |
+| A volunteer knows if they are on air | 5 | 5 | 5 | 4 |
+| Language a non-technical host understands | 4 | 4 | 3 | 3 |
 | Large, obvious controls | 4 | 3 | 4 | 4 |
-| Service (broadcast) vs small group (meeting) | 5 | 4 | 4 | 2 |
+| Service (broadcast) vs small group (meeting) | 5 | 4 | 4 | 4 |
 | Chat / prayer requests don’t fight the controls | 4 | 4 | 3 | 3 |
 | Join without an account or an install | 2 | 3 | 2 | 5 |
-| **Audience score** | **4.0** | **3.8** | **3.5** | **2.8** |
+| **Audience score** | **4.0** | **3.8** | **3.5** | **3.8** |
 
-StreamYard leads. GifOS already wins “open the link, no account”. It loses the service: the room still says Meeting (Q2), nothing says Live (Q3), and the chat field hides under the dock on a narrow desktop (Q1).
+StreamYard still leads, by a thin margin. GifOS now says Live or Watching and calls the room a broadcast. Church tools still win a dedicated service desk (scenes, lower thirds).
 
 ## Personal
 
@@ -62,3 +62,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | --- | --- | --- | --- | --- |
 | Baseline | 2.3 (Zoom 4.9) | 2.7 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | Q1–Q10 open |
 | After Q1 | 2.6 (Zoom 4.9) | 2.8 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | Composer clears the dock at 900 and after resize |
+| After Q2–Q3 | 2.7 (Zoom 4.9) | 3.8 (StreamYard 4.0) | 2.6 (FaceTime 4.8) | Broadcast words, Live for the host, Watching for a viewer |

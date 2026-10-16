@@ -4,3 +4,4 @@ _*
 !_headers
 .DS_Store
 node_modules/
+test-results/

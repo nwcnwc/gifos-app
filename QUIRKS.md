@@ -14,17 +14,17 @@ The chat panel now keeps a band clear of the dock (`padding-bottom: 128px`, `112
 
 Permanent repro: `test/e2e/broadcast-desktop.spec.js` (“chat composer stays clear…”). Passed on Chromium, Firefox, and WebKit. Before: `test/e2e/artifacts/chat-900-before.png`. After: `test/e2e/artifacts/chat-900-after.png`.
 
-## Open
-
 ### Q2. A broadcast still talks like a meeting
 
-On a page with `body.broadcast`, `#paneltitle` reads **“Meeting chat”**. The leave button title is “Leave the meeting…”. The More toggle’s open label is “Hide meeting controls”. Help still titles itself “How this meeting works”.
-
-The lobby is renamed Broadcast. The room is not. A church volunteer and a corporate producer both get the wrong product name mid-show.
+`paintBroadcastChrome()` rewrites the in-room words when `body.broadcast` is set: chat title, privacy line, leave button, leave dialog, Help, Who, record, invite, and pinned files. A plain meeting stays “Meeting chat” / “Leave the meeting?”. Switching the chat panel to the transcript and back restores “Broadcast chat”, not “Meeting chat”.
 
 ### Q3. No Live / Watching state
 
-StreamYard, YouTube Live, and church streaming tools put a persistent on-air mark in the chrome. Broadcast’s only status is the top chip (`#status`), which is `nowrap` + ellipsis. There is no Live pill for the host and no Watching pill for a viewer.
+The top chip now carries `#onair`. A host (stored admin key, or signed-in admin) sees a filled red **Live** pill. Everyone else in the broadcast sees **Watching**. Meetings hide the pill. It stays inside the viewport at 1280 and at 900. Screenshots: `test/e2e/artifacts/onair-live-1280.png`, `test/e2e/artifacts/onair-watching-900.png`.
+
+Both are in `test/e2e/broadcast-desktop.spec.js` and passed on Chromium, Firefox, and WebKit.
+
+## Open
 
 ### Q4. More sheet can leave the viewport
 
