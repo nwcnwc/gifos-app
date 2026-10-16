@@ -37,6 +37,17 @@ test('a stream to friends opens on a name and Go live', async ({ page }) => {
   const vh = page.viewportSize().height;
   expect(goBefore.y + goBefore.height).toBeLessThanOrEqual(vh + 0.5);
   expect(goBefore.y - (nameBox.y + nameBox.height)).toBeGreaterThanOrEqual(8);
+  const stage = await page.evaluate(() => {
+    const preview = document.getElementById('lob-preview').getBoundingClientRect();
+    const card = document.querySelector('#lobby .lobby-card').getBoundingClientRect();
+    return { h: preview.height, top: preview.top, cardTop: card.top, w: innerWidth, vh: innerHeight };
+  });
+  if (stage.vh >= 540 && stage.w <= 700) {
+    const face = Math.min(stage.h, stage.cardTop);
+    expect(face).toBeGreaterThanOrEqual(220);
+    expect(stage.top).toBeLessThanOrEqual(1);
+    expect(stage.cardTop).toBeGreaterThan(stage.h - 24);
+  }
   expect(watchBox.y - (goBefore.y + goBefore.height)).toBeGreaterThanOrEqual(8);
   expect(revealBox.y).toBeGreaterThanOrEqual(watchBox.y + watchBox.height - 1);
   await reveal.click();
@@ -52,6 +63,8 @@ test('a stream to friends opens on a name and Go live', async ({ page }) => {
   const gen = page.locator('#lob-keygen');
   const genBox = await gen.boundingBox();
   expect(genBox.height).toBeGreaterThanOrEqual(44);
+  expect(genBox.y).toBeGreaterThanOrEqual(0);
+  expect(genBox.y + genBox.height).toBeLessThanOrEqual(vh + 0.5);
   const paint = await page.evaluate(() => ({
     gen: getComputedStyle(document.getElementById('lob-keygen')).backgroundColor,
     go: getComputedStyle(document.getElementById('lob-admin-go')).backgroundColor,

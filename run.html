@@ -1712,6 +1712,47 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lobby.form-open.show { grid-template-columns: none; grid-template-rows: 72px minmax(0, 1fr); }
     #lobby.form-open .lob-preview { min-height: 0; max-height: 72px; margin: 0; border-radius: 0; }
   }
+  /* A stream on a phone is the camera. The title and the one sentence sit
+     on the picture. The sheet under it is the name, Go live, and Watch.
+     The host key is still minted; Change host key stays in the sheet, beside
+     the viewer-password link. A short landscape keeps the strip so Go live
+     stays on the screen. */
+  @media (max-width: 700px) and (min-height: 421px) {
+    #lobby.form-open.service-ready.show { grid-template-rows: minmax(200px, 1fr) auto; }
+    #lobby.form-open.service-ready .lob-preview { max-height: none; min-height: 200px; }
+    #lobby.form-open.service-ready .lob-pv-name { bottom: 36px; }
+    #lobby.form-open.service-ready .lobby-card {
+      position: static; display: flex; flex-direction: row; flex-wrap: wrap; align-items: stretch;
+      margin: -22px 0 0; border-radius: 22px 22px 0 0;
+      padding: 14px 16px calc(12px + var(--inset-bottom, 0px));
+      max-height: calc(100dvh - 200px); overflow: auto;
+    }
+    #lobby.form-open.service-ready.show h1 {
+      position: absolute; top: 12px; left: 16px; z-index: 2; width: auto; margin: 0;
+      color: #f4f7fb; background: rgba(8, 10, 14, .78); border-radius: 999px;
+      padding: 8px 14px; font-size: 1.05rem; line-height: 1.2;
+    }
+    #lobby.form-open.service-ready .lob-quiet {
+      position: absolute; top: calc(12px + 2.8rem); left: 16px; right: 16px; z-index: 2; width: auto; margin: 0;
+      color: #f4f7fb; background: rgba(8, 10, 14, .78); border-radius: 14px;
+      padding: 8px 12px; text-align: left;
+    }
+    #lobby.form-open.service-ready #lob-admin-name-lab,
+    #lobby.form-open.service-ready #lob-admin-name,
+    #lobby.form-open.service-ready .lob-row,
+    #lobby.form-open.service-ready #lob-join-btn,
+    #lobby.form-open.service-ready #lob-join,
+    #lobby.form-open.service-ready #lob-admin-err,
+    #lobby.form-open.service-ready #lob-key-block,
+    #lobby.form-open.service-ready #lob-guest-extra { flex: 1 1 100%; }
+    #lobby.form-open.service-ready #lob-join-btn { white-space: nowrap; padding-top: 0; padding-bottom: 0; }
+    #lobby.form-open.service-ready #lob-key-reveal { margin-right: 8px; }
+    #lobby.form-open.service-ready #lob-key-reveal,
+    #lobby.form-open.service-ready #lob-guest-reveal {
+      flex: 1 1 42%; min-width: 0; margin: 4px 0 0; padding: 8px 6px; justify-content: center; text-align: center;
+      white-space: normal; line-height: 1.2;
+    }
+  }
   @media (max-height: 420px) {
     #lobby.form-open h1 { display: none; }
   }
@@ -12155,6 +12196,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const key = document.getElementById('lob-admin-pass');
         key.focus();
         key.select();
+        const gen = document.getElementById('lob-keygen');
+        if (gen && gen.scrollIntoView) gen.scrollIntoView({ block: 'nearest' });
       };
       document.getElementById('lob-keygen').onclick = () => {
         const key = document.getElementById('lob-admin-pass');
@@ -12232,6 +12275,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         extra.hidden = false;
         document.getElementById('lob-guest-reveal').hidden = true;
         document.getElementById('lob-guest-pass').focus();
+        if (extra.scrollIntoView) extra.scrollIntoView({ block: 'nearest' });
       };
       document.getElementById('lob-admin-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-admin-go').click(); });
       document.getElementById('lob-guest-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-admin-go').click(); });

@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q44. A stream on a phone was a form with a strip of camera
+
+The camera sat in a 72px strip and the white sheet was the screen. On a phone the picture is now the top of the screen, 292px tall on an iPhone SE. Stream and “Friends watch with the link.” sit on the picture. The sheet under it is the name, Go live, and Watch. Change host key and Add a viewer password share the row under Watch. The host key is still minted. Opening it brings Generate onto the screen. A short landscape keeps the strip so Go live stays on the screen. `test/mobile/create-one-password.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-stream-preview.png`.
+
+Design: the picture, then the name, the blue Go live, the outline Watch. Personal stays at 4. The sheet still asks for a name. FaceTime is one tap.
+
 ### Q43. A town hall joiner landed in a meeting
 
 The link from Start a town hall opened as a meeting: “in the meeting,” and a meeting title. The link now carries `th=1` (`?th=1` on a pretty `/meet` path, `&th=1` in the hash). A joiner lands in the town hall. The title is Town hall. The first sentence is “This is how you’ll appear in the town hall.” Leave says Leave the town hall. The shared link keeps the flag. A meeting without the flag still says meeting. The camera, the stage, and the host key are unchanged. `test/mobile/town-hall-join.spec.mjs`.
