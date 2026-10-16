@@ -126,6 +126,17 @@ test('the booth reads the current line and the next one', async ({ page }) => {
   expect(narrow.coversDock).toBe(false);
   expect(narrow.coversAir).toBe(false);
   expect(narrow.coversRundown).toBe(false);
+
+  await page.setViewportSize({ width: 1100, height: 600 });
+  const short = await lyricBox(page);
+  expect(short.program).toBe('Amazing grace, how sweet the sound');
+  expect(short.programFont).toBeGreaterThanOrEqual(28);
+  expect(short.previewFont).toBeGreaterThanOrEqual(16);
+  expect(short.previewFont).toBeLessThan(short.programFont);
+  expect(short.lineOnScreen).toBe(true);
+  expect(short.coversAir).toBe(false);
+  expect(short.coversDock).toBe(false);
+  expect(short.coversRundown).toBe(false);
 });
 
 test.describe('German lyrics chrome', () => {

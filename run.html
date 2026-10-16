@@ -1448,7 +1448,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px 18px 14px; box-sizing: border-box;
     background: #fff; color: #1d1d1f; border-radius: 20px;
     box-shadow: 0 16px 40px rgba(0,0,0,.28); }
-  #lyrics.open { display: flex; }
+  /* Grow upward from the dock, but stop under Off air. Off air sits at 18vh
+     and is about 200px tall; on a short window the lyric card used to climb
+     over it. The program line stays 32px. The card scrolls instead. */
+  #lyrics.open { display: flex; overflow: auto; max-height: calc(100vh - 18vh - 128px - 220px); }
   #lyrics .ly-k { margin: 0; font: 700 16px/1.2 system-ui, sans-serif; letter-spacing: .04em;
     text-transform: uppercase; color: #0064c8; }
   #lyrics .ly-k.preview { color: #5c6370; margin-top: 8px; }
