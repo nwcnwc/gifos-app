@@ -964,6 +964,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .avatar { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: none; align-items: center; justify-content: center;
                   font-size: 3rem; font-weight: 800; color: #3a3a55; background: var(--surface, #14141f); }
   .tile.cam-off .avatar { display: flex; }
+  /* The letter stays in the text (tests read it). The picture covers it. A GIF
+     is an <img> of the original bytes — never drawn onto a canvas. */
+  .tile .avatar.has-img { font-size: 0; color: transparent; }
+  .tile .avatar .avatar-img { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .cmsg img.avchip, .trline img.avchip, .brow img.avchip { width: 1.25rem; height: 1.25rem; object-fit: cover;
+    border-radius: .25rem; vertical-align: middle; margin-right: .35rem; }
+  #bc-ident { display: none; }
+  body.broadcast #bc-ident.on { display: flex; position: fixed; z-index: 6; left: 50%; top: 12vh; transform: translateX(-50%);
+    flex-direction: column; align-items: center; gap: .6rem; pointer-events: none; max-width: 90vw; }
+  body.broadcast #bc-ident img { width: 256px; width: min(256px, 70vw); height: 256px; height: min(256px, 46vh); object-fit: cover; border-radius: 1rem; background: #14141f; }
+  #bc-ident-name { background: rgba(10,10,15,.72); color: #eceef8; padding: .2rem .7rem; border-radius: .4rem; font-size: .95rem; }
   .tile.cam-off > video { visibility: hidden; }
   .tile .chips { position: absolute; top: .4rem; left: .4rem; display: flex; flex-direction: column;
                  gap: .25rem; align-items: flex-start; z-index: 3; pointer-events: none; }
@@ -1499,6 +1510,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div id="handq"></div>
   <div id="feed">
     <div id="stagefeed"></div>
+    <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-name"></div></div>
     <div id="grid"></div>
     <div id="stadium"></div>
   </div>
@@ -1521,6 +1533,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div class="set-sec">
         <b>Your name</b>
         <p class="set-help">What everyone sees on your tile: <b id="set-name-cur">…</b> <button id="set-rename" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin-left:.4rem">Change</button></p>
+        <p class="set-help">Your picture, when the camera is off. An animated GIF stays animated.</p>
+        <img id="set-avatar-preview" alt="" hidden style="width:72px;height:72px;object-fit:cover;border-radius:.5rem">
+        <input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Picture">
+        <button type="button" id="set-avatar-remove" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;align-self:flex-start">Remove</button>
+        <p id="set-avatar-err" class="set-help" role="alert"></p>
       </div>
       <div class="set-sec">
         <b>Captions language</b>
@@ -1878,6 +1895,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/gifos-paywallet.js"></script>
   <script src="js/gifos-pay-broker.js"></script>
   <script src="js/gifos-assets.js"></script>
+  <script src="js/gifos-avatar.js"></script>
   <script src="js/gifos-store.js"></script>
   <script src="js/gifos-install.js"></script>
   <script src="js/gifos-lock.js"></script>
@@ -2097,6 +2115,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let myIdReady = Promise.resolve();
     let myIdReadyResolve = null;
     const peers = new Map(); // peerId -> { pc, tile, video, name, connected, absentSince, lastKick }
+    const avInboxes = new Map(); // peer id -> avatar chunk inbox (gifos-avatar.js)
     const ABSENT_GRACE = 12000; // BACKSTOP ONLY: roster-absent AND link-down this long → tile drops. Announced (D2) and probe-confirmed (D5) departures remove the tile event-driven, within a beat (see departSweep/confirmGone).
 
     // ---- screen name (same identity the rest of GifOS uses) ----------------
@@ -4126,6 +4145,38 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const ch = Array.from(String(name || ''))[0];
       return ch ? ch.toUpperCase() : '\u2022';
     }
+    // Keep the letter as text. A fake avatar from a unit test has no querySelector;
+    // setting textContent there is the whole job. A live tile may already hold an <img>.
+    function setTileLetter(avatar, letter) {
+      if (!avatar) return;
+      if (typeof avatar.querySelector !== 'function') { avatar.textContent = letter; return; }
+      const img = avatar.querySelector('img.avatar-img');
+      if (!img) { avatar.textContent = letter; return; }
+      const drop = [];
+      for (let i = 0; i < avatar.childNodes.length; i++) if (avatar.childNodes[i].nodeType === 3) drop.push(avatar.childNodes[i]);
+      drop.forEach((n) => n.remove());
+      avatar.insertBefore(document.createTextNode(letter), avatar.firstChild);
+    }
+    function paintAvatarImg(avatar, url, hash) {
+      if (!avatar || typeof avatar.querySelector !== 'function') return;
+      let img = avatar.querySelector('img.avatar-img');
+      if (!url) {
+        if (img) img.remove();
+        avatar.classList.remove('has-img');
+        return;
+      }
+      if (!img) {
+        img = document.createElement('img');
+        img.className = 'avatar-img';
+        img.alt = '';
+        avatar.appendChild(img);
+      }
+      if (img.getAttribute('data-hash') !== (hash || '')) {
+        img.src = url;
+        img.setAttribute('data-hash', hash || '');
+      }
+      avatar.classList.add('has-img');
+    }
     function displayName(pid) {
       if (pid === myId) return myName() || '\u2026';
       return rosterNames[pid] || (peers.get(pid) || {}).name || '\u2026';
@@ -4223,7 +4274,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // a label set only at makeTile stayed "Guest NNNN" for the whole call.
       if (isMe && t.label) {
         const want = myName() + ' (you)';
-        if (t.label.textContent !== want) { t.label.textContent = want; if (t.avatar) t.avatar.textContent = nameInitial(myName()); }
+        if (t.label.textContent !== want) {
+          t.label.textContent = want;
+          // Inline on purpose: meet-own-name.js runs updateTile alone, and the
+          // stand-in avatar has no querySelector. Do not call out of this branch.
+          if (t.avatar) {
+            const letter = nameInitial(myName());
+            if (typeof t.avatar.querySelector !== 'function') t.avatar.textContent = letter;
+            else if (typeof setTileLetter === 'function') setTileLetter(t.avatar, letter);
+          }
+        }
       }
       const st = (isMe ? myStatus : statusOf.get(id)) || {};
       const mod = modOf(id);
@@ -4303,6 +4363,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (t.chipsHtml !== chipHtml) { t.chipsHtml = chipHtml; t.chips.innerHTML = chipHtml; reactStats.chipWrites++; }
       t.tile.classList.toggle('noroute', !isMe && !!t.noRoute);
       t.tile.classList.toggle('cam-off', seatDark(st) || !!gCam || (!isMe && typeof shareBlocked === 'function' && !!shareBlocked(id))); // admin video-off, and an unpermitted screen claim, hide the tile on every receiver; a permitted share is not a dark seat
+      if (t.avatar && typeof t.avatar.querySelector === 'function') {
+        if (isMe) {
+          const mine = (GifOS.store.identity() || {}).avatar;
+          paintAvatarImg(t.avatar, mine && mine.url, mine && mine.hash);
+        } else paintAvatarImg(t.avatar, t.avatarUrl || '', t.avatarHash || '');
+      }
+      if (typeof BROADCAST !== 'undefined' && BROADCAST) paintBroadcastIdent();
       t.video.classList.remove('blur1', 'blur2');
       // The ME tile already SHOWS the pre-blurred outbound pixels (WYSIWYG), so
       // a CSS blur on top would double it; receiver-side CSS blur is for the
@@ -6371,7 +6438,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const nm = String(f.n || '').slice(0, RELAY_NAME_MAX);
         if (nm) rosterNames[from] = nm;
         const p = peers.get(from);
-        if (p && nm && p.name !== nm) { p.name = nm; if (p.label) p.label.textContent = nm; if (p.avatar) p.avatar.textContent = nameInitial(nm); }
+        if (p && nm && p.name !== nm) {
+          p.name = nm; if (p.label) p.label.textContent = nm;
+          if (p.avatar) { const letter = nameInitial(nm); if (typeof setTileLetter === 'function') setTileLetter(p.avatar, letter); else p.avatar.textContent = letter; }
+        }
         if (!(p && (p.connected || p.relayed))) noteReachTried(from, nm);
         if (typeof updateStatus === 'function') { try { updateStatus(); } catch (e) {} }
         onDialRequest(p || { id: from, dc: null });
@@ -6433,6 +6503,152 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return txm(() => net.seal(roomE2E, msg).then((env) =>
         net.sendChunked(env, (piece, str) => { try { dc.send(str); } catch (e) {} })));
     };
+    // The picture goes to each open channel once per hash, in pieces whose JSON
+    // is <=16KB, paced, and only on this channel. A newer hash bumps _avGen so
+    // the in-flight send stops. A new channel sends again. Leaving the peer
+    // drops the record (the peer object goes away), so a rejoin is sent again.
+    function avatarRecord() {
+      let raw = '';
+      try { raw = localStorage.getItem('gifos_avatar') || ''; } catch (e) {}
+      if (!raw) return null;
+      try {
+        const o = JSON.parse(raw);
+        if (!o || !o.b64 || !o.hash || !o.mime) return null;
+        return o;
+      } catch (e) { return null; }
+    }
+    function avPace(p) {
+      const dc = p && p.dc;
+      const start = Date.now();
+      const waitBacklog = () => new Promise((resolve) => {
+        const step = () => {
+          if (!dc || dc.readyState !== 'open' || (dc.bufferedAmount || 0) <= 65536 || Date.now() - start > 8000) resolve();
+          else setTimeout(step, 40);
+        };
+        step();
+      });
+      return waitBacklog().then(() => new Promise((resolve) => {
+        const gap = (GifOS.avatar && GifOS.avatar.chunkDelay) ? GifOS.avatar.chunkDelay(dc ? dc.bufferedAmount : 0) : 40;
+        setTimeout(resolve, gap);
+      }));
+    }
+    function sendAvatarTo(p) {
+      if (!p || !p.dc || p.dc.readyState !== 'open' || !GifOS.avatar) return Promise.resolve();
+      const ident = GifOS.store.identity();
+      const hash = (ident.avatar && ident.avatar.hash) || '';
+      const dc = p.dc;
+      // Once per open channel. A replaced channel (reconnect) sends again;
+      // the same channel sends again only when the hash changes.
+      if (p._avSent === hash && p._avSentDc === dc) return Promise.resolve();
+      if (p._avSending === hash && p._avSendingDc === dc) return Promise.resolve();
+      const gen = (p._avGen = (p._avGen || 0) + 1);
+      p._avSending = hash;
+      p._avSendingDc = dc;
+      const finish = (sent) => {
+        if (p._avGen !== gen) return;
+        if (sent) { p._avSent = hash; p._avSentDc = dc; }
+        p._avSending = '';
+      };
+      if (!hash) {
+        return dcSend(p, { k: 'av', h: '', clear: 1 }).then(() => finish(p.dc === dc), () => finish(false));
+      }
+      const rec = avatarRecord();
+      if (!rec || rec.hash !== hash) { finish(false); return Promise.resolve(); }
+      let bytes;
+      try { bytes = GifOS.avatar.fromB64(rec.b64); } catch (e) { finish(false); return Promise.resolve(); }
+      if (bytes.length > 256 * 1024) { finish(false); return Promise.resolve(); }
+      const parts = GifOS.avatar.chunks(bytes, { hash: hash, mime: rec.mime });
+      if (!parts.length) { finish(false); return Promise.resolve(); }
+      let aborted = false;
+      let chain = Promise.resolve();
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        chain = chain.then(() => {
+          if (aborted || p._avGen !== gen || p.dc !== dc || dc.readyState !== 'open') { aborted = true; return; }
+          return avPace(p).then(() => {
+            if (p._avGen !== gen || p.dc !== dc || dc.readyState !== 'open') { aborted = true; return; }
+            return dcSend(p, part);
+          });
+        });
+      }
+      return chain.then(() => finish(!aborted && p._avGen === gen), () => finish(false));
+    }
+    function refreshAvatarSurfaces() {
+      try { paintBroadcastIdent(); } catch (e) {}
+      try { if (chatPanelOpen()) renderChat(); } catch (e) {}
+      try { if (transcriptShown()) renderTranscript(); } catch (e) {}
+      try { if (whoModal && whoModal.style.display === 'flex') showWhoModal(); } catch (e) {}
+    }
+    function takeAvatar(p, m) {
+      if (!p || !GifOS.avatar) return;
+      let ib = avInboxes.get(p.id);
+      if (!ib) { ib = GifOS.avatar.makeInbox(); avInboxes.set(p.id, ib); }
+      const box = ib.push(m);
+      if (!box) return;
+      if (box.clear) {
+        p.avatarUrl = '';
+        p.avatarHash = '';
+        paintAvatarImg(p.avatar, '', '');
+        refreshAvatarSurfaces();
+        return;
+      }
+      if (box.error || !box.done) return;
+      const bytes = box.bytes, mime = box.mime, want = box.hash;
+      GifOS.avatar.hashBytes(bytes).then((h) => {
+        if (h !== want || !peers.has(p.id)) return;
+        const url = 'data:' + mime + ';base64,' + GifOS.avatar.toB64(bytes);
+        p.avatarUrl = url;
+        p.avatarHash = h;
+        paintAvatarImg(p.avatar, url, h);
+        refreshAvatarSurfaces();
+      }).catch(() => {});
+    }
+    function paintBroadcastIdent() {
+      const el = document.getElementById('bc-ident');
+      if (!el) return;
+      if (typeof BROADCAST === 'undefined' || !BROADCAST) { el.classList.remove('on'); return; }
+      const stage = (typeof stageIds === 'function') ? stageIds() : [];
+      let pid = stage.length ? stage[0] : null;
+      if (!pid && typeof amAdmin !== 'undefined' && amAdmin) pid = myId;
+      if (!pid) { const it = peers.values().next(); pid = it && it.value ? it.value.id : null; }
+      if (!pid) { el.classList.remove('on'); return; }
+      const isMe = pid === myId;
+      const st = isMe ? myStatus : (statusOf.get(pid) || {});
+      const camOn = isMe ? myStatus.camOff === false : st.camOff === false;
+      if (camOn) { el.classList.remove('on'); return; }
+      let url = '', hash = '', name = '';
+      if (isMe) {
+        const a = (GifOS.store.identity() || {}).avatar;
+        if (a && a.url) { url = a.url; hash = a.hash || ''; }
+        name = myName();
+      } else {
+        const prefer = peers.get(pid);
+        const pick = (prefer && prefer.avatarUrl) ? prefer : Array.from(peers.values()).find((q) => q.avatarUrl);
+        if (pick && pick.avatarUrl) { url = pick.avatarUrl; hash = pick.avatarHash || ''; name = pick.name || rosterNames[pick.id] || ''; }
+        else name = (prefer && prefer.name) || rosterNames[pid] || '';
+      }
+      const img = document.getElementById('bc-ident-img');
+      const nm = document.getElementById('bc-ident-name');
+      if (nm) nm.textContent = name || '';
+      if (img) {
+        if (url) {
+          if (img.getAttribute('data-hash') !== hash) { img.src = url; img.setAttribute('data-hash', hash); }
+        } else img.removeAttribute('src');
+      }
+      el.classList.toggle('on', !!url);
+    }
+    function avatarChip(byId) {
+      let url = '', hash = '';
+      if (byId === myId) {
+        const a = (GifOS.store.identity() || {}).avatar;
+        if (a && a.url) { url = a.url; hash = a.hash || ''; }
+      } else {
+        const q = peers.get(byId);
+        if (q && q.avatarUrl) { url = q.avatarUrl; hash = q.avatarHash || ''; }
+      }
+      if (!url) return '';
+      return '<img class="avchip" alt="" data-hash="' + esc(hash) + '" src="' + url + '">';
+    }
     // File bodies ride their own chain and one chunk at a time. The shared
     // seal chain used to take every chunk in one synchronous loop, before
     // bufferedAmount moved, so the backpressure check never fired and a chat
@@ -6834,6 +7050,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       releaseAudio(p.video);
       p.tile.remove();
       peers.delete(peerId);
+      // A lifted dropPeer has no inbox. typeof stays quiet when the name is absent.
+      if (typeof avInboxes !== 'undefined' && avInboxes && typeof avInboxes.delete === 'function') avInboxes.delete(peerId);
       recSrcDirty = true;
       releaseMeter(peerId);
       if (!stillHere) { if (typeof dropStatus === 'function') dropStatus(peerId); else statusOf.delete(peerId); }
@@ -7123,7 +7341,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function handTotal(q) { const dg = digLists(); return Math.max(q.length, dg ? dg.handN : 0); }
     function learn(from, msg, p, adm) {
-      if (msg.name && p) { const nm = String(msg.name).slice(0, 40); p.name = nm; p.label.textContent = nm; p.avatar.textContent = nameInitial(nm); }
+      if (msg.name && p) {
+        const nm = String(msg.name).slice(0, 40); p.name = nm; p.label.textContent = nm;
+        if (p.avatar) { const letter = nameInitial(nm); if (typeof setTileLetter === 'function') setTileLetter(p.avatar, letter); else p.avatar.textContent = letter; }
+      }
       if (msg.name) rosterNames[from] = String(msg.name).slice(0, 40);
       // An offer or answer proves nothing about who sent it (it may have come
       // over the relay, or through another participant), so it never writes
@@ -7412,7 +7633,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const sp = peers.get(from);
         if (sp) {
           sp.lastHeard = Date.now();
-          if (msg.name && sp.name !== msg.name) { const nm = String(msg.name).slice(0, 40); sp.name = nm; if (sp.label) sp.label.textContent = nm; if (sp.avatar) sp.avatar.textContent = nameInitial(nm); }
+          if (msg.name && sp.name !== msg.name) {
+            const nm = String(msg.name).slice(0, 40); sp.name = nm; if (sp.label) sp.label.textContent = nm;
+            if (sp.avatar) { const letter = nameInitial(nm); if (typeof setTileLetter === 'function') setTileLetter(sp.avatar, letter); else sp.avatar.textContent = letter; }
+          }
           if ('sid' in msg && sidIsNews(sp, msg.sid)) { sp.ownSid = msg.sid; claimOwnStream(sp); }
         }
         // ONE PULSE, ONE RE-DERIVATION: every DC-linked section mate hears each
@@ -7682,7 +7906,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }, 20000);
       }
       p.absentSince = 0;
-      if (name && p.name !== name) { p.name = name; p.label.textContent = name; }
+      if (name && p.name !== name) {
+        p.name = name; p.label.textContent = name;
+        if (p.avatar) { const letter = nameInitial(name); if (typeof setTileLetter === 'function') setTileLetter(p.avatar, letter); else p.avatar.textContent = letter; }
+      }
     }
     // ---- EVENT-DRIVEN DEPARTURES (healing-laws D2/D5) ----------------------
     // The mesh already NOTICES a vanished peer fast — a LEAVE frees the seat
@@ -9908,7 +10135,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!p) return;
       p.name = name;
       if (p.label) p.label.textContent = name;
-      if (p.avatar) p.avatar.textContent = nameInitial(name);
+      if (p.avatar) { const letter = nameInitial(name); if (typeof setTileLetter === 'function') setTileLetter(p.avatar, letter); else p.avatar.textContent = letter; }
     }
     function learnFoldedNames() {
       const dg = digLists();
@@ -10571,6 +10798,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const row = document.createElement('div'); row.className = 'brow'; row.dataset.group = g.k;
           if (!r.here) row.style.opacity = '.65';
           const nm = document.createElement('span'); nm.style.flex = '1'; nm.textContent = r.name;
+          const whoAv = r.me ? (GifOS.store.identity().avatar) : ((peers.get(r.pid) && peers.get(r.pid).avatarUrl) ? { url: peers.get(r.pid).avatarUrl, hash: peers.get(r.pid).avatarHash } : null);
+          if (whoAv && whoAv.url) {
+            const img = document.createElement('img');
+            img.className = 'avchip'; img.alt = ''; img.src = whoAv.url;
+            if (whoAv.hash) img.setAttribute('data-hash', whoAv.hash);
+            nm.appendChild(img);
+          }
           const ip = document.createElement('span'); ip.style.color = '#889'; ip.style.textAlign = 'right';
           whoAddrLines(r).forEach((t, i) => {
             if (i) ip.appendChild(document.createElement('br'));
@@ -11669,6 +11903,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // never over the relay (sendSig: a connected pair negotiates on its
         // own channel).
         try { dcSend(p, { k: 'sig', msg: statusPayload() }); txStats.dcStatus++; } catch (e) {}
+        try { sendAvatarTo(p); } catch (e) {}
         if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
         try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
@@ -11780,6 +12015,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         (m.metas || []).forEach((meta) => takeMeta(meta, p));
         if (freshChats.length) renderChat();
         renderFiles();
+      } else if (m.k === 'av') {
+        takeAvatar(p, m);
       } else if (m.k === 'chat') {
         if (takeChat(m.m)) {
           renderChat();
@@ -12527,7 +12764,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The signed-in admin moderates line by line: the standard row-delete
         // glyph mints a signed 'cdel' (see the #chatlog click delegate).
         const del = amAdmin ? '<button class="row-del" data-cdel="' + esc(m.id) + '" title="Delete this message for everyone">' + DEL_ICON + '</button>' : '';
-        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '"><b>' + esc(m.by) + '</b>' + body + del + '</div>';
+        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '"><b>' + (typeof avatarChip === 'function' ? (avatarChip(m.byId) || '') : '') + esc(m.by) + '</b>' + body + del + '</div>';
       }).join('');
       const co = chatOffInfo();
       if (co) html += '<div class="cmsg" style="opacity:.65"><b>🔇</b>Chat was turned off' + (co.by ? ' by ' + esc(co.by) : '') + '.' + (amAdmin ? '' : ' Only the host can post.') + '</div>';
@@ -17096,6 +17333,41 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const nc = document.getElementById('set-name-cur'); if (nc) nc.textContent = myName();
       try { refreshAllTiles(); broadcastStatus(); if (typeof pushLeaf === 'function') pushLeaf(); } catch (e) {}
     });
+    function paintMyAvatarPreview() {
+      const img = document.getElementById('set-avatar-preview');
+      if (!img) return;
+      const a = (GifOS.store.identity() || {}).avatar;
+      if (a && a.url) { img.src = a.url; img.hidden = false; }
+      else { img.removeAttribute('src'); img.hidden = true; }
+    }
+    paintMyAvatarPreview();
+    const avatarFile = document.getElementById('set-avatar-file');
+    const avatarErr = document.getElementById('set-avatar-err');
+    if (avatarFile) avatarFile.addEventListener('change', () => {
+      const f = avatarFile.files && avatarFile.files[0];
+      avatarFile.value = '';
+      if (!f || !GifOS.avatar) return;
+      if (avatarErr) avatarErr.textContent = '';
+      GifOS.avatar.prepareFile(f).then((res) => {
+        if (!res || !res.ok) { if (avatarErr) avatarErr.textContent = (res && res.error) || 'Choose a GIF, PNG, JPG, or WebP.'; return; }
+        GifOS.store.setAvatar({ mime: res.mime, hash: res.hash, b64: res.b64 });
+      }).catch(() => { if (avatarErr) avatarErr.textContent = 'Choose a GIF, PNG, JPG, or WebP.'; });
+    });
+    const avatarRemove = document.getElementById('set-avatar-remove');
+    if (avatarRemove) avatarRemove.onclick = () => {
+      if (avatarErr) avatarErr.textContent = '';
+      GifOS.store.setAvatar(null);
+    };
+    // Name and picture changes (this page, or the home screen in another tab)
+    // repaint locally and go out to peers. setAvatar/setName notify; this does not write back.
+    if (GifOS.store.onIdentity) GifOS.store.onIdentity(() => {
+      try { paintMyAvatarPreview(); } catch (e) {}
+      const nc = document.getElementById('set-name-cur'); if (nc) nc.textContent = myName();
+      try { refreshAllTiles(); } catch (e) {}
+      try { if (myId) { broadcastStatus(); pushLeaf(); } } catch (e) {}
+      try { for (const p of peers.values()) sendAvatarTo(p); } catch (e) {}
+      try { paintBroadcastIdent(); } catch (e) {}
+    });
     document.getElementById('set-close').onclick = () => { setModal.style.display = 'none'; };
     setModal.addEventListener('click', (e) => { if (e.target === setModal) setModal.style.display = 'none'; });
     document.getElementById('vqrow').addEventListener('click', (e) => {
@@ -17561,7 +17833,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const log = document.getElementById('trlog');
       const lines = trBlocks();
       const html = lines.length
-        ? lines.map((l) => '<div class="trline"><b>' + esc(l.by) + '</b>' + esc(l.text) + (l.scribeBy ? ' <small style="color:var(--muted,#8888aa)">✍ ' + esc(l.scribeBy) + '</small>' : '') + '</div>').join('')
+        ? lines.map((l) => '<div class="trline"><b>' + (typeof avatarChip === 'function' ? (avatarChip(l.byId) || '') : '') + esc(l.by) + '</b>' + esc(l.text) + (l.scribeBy ? ' <small style="color:var(--muted,#8888aa)">✍ ' + esc(l.scribeBy) + '</small>' : '') + '</div>').join('')
         : '<small style="color:#667">Tap CC in the bar and your device writes down everyone it hears — the lines gather here under each speaker\'s name, on every device in the meeting.</small>';
       paintLog(log, html);
     }

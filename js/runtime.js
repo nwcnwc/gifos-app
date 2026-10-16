@@ -131,6 +131,18 @@
   // Per-browser identity (defined in gifos-store.js so the desktop shares it).
   const identity = store.identity;
   const setName = store.setName;
+  const identFrames = new Set();
+  function publishIdentity() {
+    let ident;
+    try { ident = identity(); } catch (e) { return; }
+    identFrames.forEach((ifr) => {
+      try {
+        const w = ifr && ifr.contentWindow;
+        if (w) w.postMessage({ ns: 'gifos', type: 'identity', identity: ident }, '*');
+      } catch (e) {}
+    });
+  }
+  try { if (store.onIdentity) store.onIdentity(publishIdentity); } catch (e) {}
 
   // ---- app-facing shim injected into the sandboxed iframe -----------------
   function clientShim(gen, nonce) {
@@ -238,6 +250,10 @@
         // capture, delivered the moment it is taken.
         if(d.type==='part' && pending[d.id] && pending[d.id].part){
           try { pending[d.id].part(d.shot !== undefined ? d.shot : (d.text || '')); } catch(err){}
+        }
+        if(d.type==='identity'){
+          var cbs = window.__gifosIdentCbs || [];
+          for (var ii = 0; ii < cbs.length; ii++) { try { cbs[ii](d.identity); } catch (err) {} }
         }
         if(d.type==='db-change'){
           if(d.collection==='*'){ Object.keys(subs).forEach(refresh); }
@@ -451,6 +467,16 @@
         assetHas: function(path){ return rpc({type:'asset-has', path:path}).then(function(r){ return !!(r && r.present); }); },
         info: function(){ return rpc({type:'info'}); },
         me: function(){ return rpc({type:'me'}); },
+        onIdentity: function(cb){
+          if (typeof cb !== 'function') return function(){};
+          if (!window.__gifosIdentCbs) window.__gifosIdentCbs = [];
+          window.__gifosIdentCbs.push(cb);
+          rpc({type:'me'}).then(function(id){ try { cb(id); } catch (e) {} });
+          return function(){
+            var i = window.__gifosIdentCbs.indexOf(cb);
+            if (i >= 0) window.__gifosIdentCbs.splice(i, 1);
+          };
+        },
         // What the LINK that opened this app asked for — an object of the
         // arguments declared in this app's manifest "launch" block, or null if
         // the link said nothing (the ordinary case) or the person declined.
@@ -460,6 +486,7 @@
         // drawing something.
         launch: function(){ return rpc({type:'launch'}); },
         setName: function(n){ return rpc({type:'setName', name:n}); },
+        setAvatar: function(url){ return rpc({type:'setAvatar', url:url==null?'':String(url)}); },
         // APP -> APP HANDOFF (manifest "handoff", docs/app-handoff.md). One
         // structured document, of a kind GifOS itself names, put on a shelf
         // the OS owns so another app can pick it up. Neither app can read the
@@ -2827,6 +2854,35 @@
       } catch (e) { resolve(false); }
     });
   }
+  // The picture sheet: same consent as a rename. The preview is a real <img>
+  // of the data URL, so a GIF keeps animating while the person decides.
+  function confirmAvatar(manifest, url) {
+    return new Promise(function (resolve) {
+      try {
+        const doc = root.document; if (!doc || !doc.body) return resolve(false);
+        const old = doc.getElementById('gifos-avatar-modal'); if (old) old.remove();
+        const app = escHtml((manifest && (manifest.shortName || manifest.name || manifest.appId)) || 'This app');
+        const safe = /^data:image\/(gif|png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(url || ''));
+        const bg = doc.createElement('div'); bg.id = 'gifos-avatar-modal'; bg.className = 'perm-modal';
+        bg.setAttribute('style', 'position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
+        const box = doc.createElement('div'); box.className = 'perm-box';
+        box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:23rem;width:100%;padding:1.2rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
+        box.innerHTML = '<h3 style="margin:0 0 .5rem;font-size:1.1rem">' + app + ' wants to change your picture</h3>' +
+          '<p style="color:#b6b6cf;font-size:.9rem;margin:0 0 .9rem">' + (url
+            ? 'This picture would be saved on this computer, next to your name. Every app and meeting here would see it.'
+            : 'It would remove the picture you use on this computer. Every app and meeting here would see you without it.') + '</p>' +
+          (safe ? '<img id="gifos-avatar-preview" alt="" style="width:96px;height:96px;object-fit:cover;border-radius:.6rem;display:block;margin:0 0 .9rem">' : '') +
+          '<div style="display:flex;gap:.6rem;justify-content:flex-end"><button id="gifos-avatar-no" style="padding:.5rem 1.1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Keep my picture</button>' +
+          '<button id="gifos-avatar-yes" style="padding:.5rem 1.3rem;border-radius:.5rem;border:none;background:#7b5cff;color:#fff;cursor:pointer;font:inherit">' + (url ? 'Use this picture' : 'Remove it') + '</button></div>';
+        bg.appendChild(box); doc.body.appendChild(bg);
+        if (safe) { const img = box.querySelector('#gifos-avatar-preview'); if (img) img.src = url; }
+        const done = function (yes) { bg.remove(); resolve(yes); };
+        box.querySelector('#gifos-avatar-yes').onclick = function () { done(true); };
+        box.querySelector('#gifos-avatar-no').onclick = function () { done(false); };
+        bg.addEventListener('click', function (e) { if (e.target === bg) done(false); });
+      } catch (e) { resolve(false); }
+    });
+  }
 
   function showSystemSetup(opts) {
     try {
@@ -3373,6 +3429,7 @@
     const nonce = mountNonce();
     const teardown = () => {
       if (torn) return; torn = true; live = 0;
+      identFrames.delete(iframe);
       root.removeEventListener('message', handler);
       try { if (root.GifOS && root.GifOS.meetHost) { root.GifOS.meetHost.clearApp(); root.GifOS.meetHost.leaveAll(); } } catch (e) {}
       try { iframe.srcdoc = LEFT_FRAME_HTML; } catch (e) {}
@@ -3396,7 +3453,7 @@
         return;
       }
       if (!iframe.contentWindow || e.source !== iframe.contentWindow) return;
-      if (d.type === 'hello') { if (d.gen === gen) { live = gen; retry = false; } return; }
+      if (d.type === 'hello') { if (d.gen === gen) { live = gen; retry = false; identFrames.add(iframe); publishIdentity(); } return; }
       if (!live) return;
       // Guard at REPLY time, not just receipt: async ops (db/fetch/…) can
       // resolve after the iframe was torn out of the DOM (app takeover /
@@ -3501,6 +3558,28 @@
           else {
             setupShownAt = nowMs;
             confirmName(manifest, want).then((yes) => reply({ ok: true, result: yes ? setName(want) : identity() }));
+          }
+        }
+      }
+      else if (d.type === 'setAvatar') {
+        const url = String(d.url == null ? '' : d.url);
+        const cur = identity();
+        const have = (cur.avatar && cur.avatar.url) || '';
+        if (url === have) reply({ ok: true, result: cur });
+        else {
+          const nowMs = Date.now();
+          if (nowMs - setupShownAt < 5000) reply({ ok: true, result: identity() });
+          else {
+            setupShownAt = nowMs;
+            confirmAvatar(manifest, url).then((yes) => {
+              if (!yes) { reply({ ok: true, result: identity() }); return; }
+              if (!url) { reply({ ok: true, result: store.setAvatar(null) }); return; }
+              const prep = (root.GifOS && root.GifOS.avatar && root.GifOS.avatar.prepareDataUrl) ? root.GifOS.avatar.prepareDataUrl(url) : Promise.resolve({ ok: false, error: 'Choose a GIF, PNG, JPG, or WebP.' });
+              Promise.resolve(prep).then((res) => {
+                if (!res || !res.ok) reply({ ok: false, error: (res && res.error) || 'Choose a GIF, PNG, JPG, or WebP.' });
+                else reply({ ok: true, result: store.setAvatar({ mime: res.mime, hash: res.hash, b64: res.b64 }) });
+              }).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
+            });
           }
         }
       }
