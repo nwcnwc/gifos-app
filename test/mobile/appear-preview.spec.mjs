@@ -15,7 +15,8 @@ test('the join step shows how you will appear and lets you change it', async ({ 
     }));
   }, PNG);
   await page.goto('/run.html#v=sundayroom', { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('#nm-lead')).toContainText(/This is how you.ll appear in the meeting/);
+  await expect(page.locator('.appear-box h3')).toHaveText(/This is how you.ll appear/);
+  await expect(page.locator('#nm-lead')).toHaveCount(0);
   await expect(page.locator('#nm-preview-name')).toHaveText('Ada Lovelace');
   await expect(page.locator('#nm-avatar')).toBeVisible();
   const face = await page.locator('.appear-face').evaluate((el) => {

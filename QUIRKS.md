@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q52. The join sheet said “This is how you’ll appear” twice
+
+The title and the line under it were the same sentence. The title stays. The repeat is gone on a meeting and on a town hall host. A broadcast viewer keeps that line, and it now says “Only seen if you raise your hand and are promoted to the stage.” A broadcast host still skips the sheet. A town hall viewer still skips it. `test/mobile/appear-preview.spec.mjs`, `test/mobile/viewer-join.spec.mjs`, `test/mobile/town-hall-join.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-join-double.png`. After: `test/mobile/screenshots/after/iphone-se-join-sheet.png`, `test/mobile/screenshots/after/iphone-se-broadcast-viewer-join.png`.
+
+Design: one title, and a second line only when it says something the title does not. Church stays at 4.
+
 ### Q51. A town hall viewer was told to send the invite
 
 Opening a town hall link skipped the appearance step and then said “Just you — send the invite; the link has no expiry.” That line is the host’s. A viewer now reads “The town hall has not started.” A host who holds the room key still gets the invite line. A meeting still gets it. `test/mobile/town-hall-join.spec.mjs`.

@@ -25,15 +25,17 @@ test('a town hall host still confirms how they appear', async ({ page }) => {
     localStorage.setItem('gifos_vadm_allhands.0123456789abcdef0123456789abcdef', 'stored-host-key');
   });
   await page.goto(HALL, { waitUntil: 'domcontentloaded' });
-  await page.locator('#nm-lead').waitFor({ state: 'visible' });
-  await expect(page.locator('#nm-lead')).toHaveText('This is how you’ll appear in the town hall.');
+  await page.locator('.appear-box h3').waitFor({ state: 'visible' });
+  await expect(page.locator('.appear-box h3')).toHaveText(/This is how you.ll appear/);
+  await expect(page.locator('#nm-lead')).toHaveCount(0);
   await expect(page.locator('body')).not.toHaveClass(/broadcast/);
 });
 
 test('a meeting joiner still lands in the meeting', async ({ page }) => {
   await page.goto('/run.html#v=allhands&av=' + AV, { waitUntil: 'domcontentloaded' });
-  await page.locator('#nm-lead').waitFor({ state: 'visible' });
-  await expect(page.locator('#nm-lead')).toHaveText('This is how you’ll appear in the meeting.');
+  await page.locator('.appear-box h3').waitFor({ state: 'visible' });
+  await expect(page.locator('.appear-box h3')).toHaveText(/This is how you.ll appear/);
+  await expect(page.locator('#nm-lead')).toHaveCount(0);
   await expect(page.locator('body')).not.toHaveClass(/townhall/);
   const link = await page.locator('#share-url').inputValue();
   expect(link).not.toContain('th=1');
