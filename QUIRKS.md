@@ -12,6 +12,15 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q23. A rotated meeting kept the dock on the picture
+
+A landscape iPhone SE is 568×320. The face used to stop above a 56px dock, so the call was a band between the chip and the controls. The controls now leave until you tap the picture. The face runs from y=0 to y=320, and the dock sits at y=330, off the screen. A tap brings a 56px dock back, Hang up is hittable, and the face ends above it (y=59 to y=248, dock top 250). A few seconds later the controls leave and the face takes the screen again. More and Reactions hold the dock while they are open. `test/mobile/landscape-stage.spec.mjs`.
+
+Before: `test/mobile/screenshots/after/iphone-se-landscape-stage.png`.
+After: `test/mobile/screenshots/after/iphone-se-landscape-face.png` and `test/mobile/screenshots/after/iphone-se-landscape-chrome.png`.
+
+Design: the idle screen is the picture, with the name in the corner. A tap returns a white dock and a red Hang up, and the face moves up so the chin stays clear. Landscape stays at 4. Meet still puts a thinner bar on the picture and does not give a band back to a title chip.
+
 ### Q22. A broadcast still asked for a host key before the service had a name
 
 The create form opened on “Your host key” and Generate, then Create & enter. A broadcast now asks for a service name and Go live. The host key is still minted and stored, and Change host key reveals it. A viewer password stays behind its own step. A meeting still shows the host key on the form. Go live sits 12px under the last text link, and on a short landscape the extra title is hidden so those links stay above the buttons. `test/mobile/create-one-password.spec.mjs`.

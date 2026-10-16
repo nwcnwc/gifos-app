@@ -62,6 +62,7 @@ test('landscape side insets keep the chip and the dock on screen', async ({ page
   const vp = page.viewportSize();
   await page.setViewportSize({ width: Math.max(vp.width, vp.height), height: Math.min(vp.width, vp.height) });
   await inCall(page);
+  await page.evaluate(() => window.__meetChromeShow && window.__meetChromeShow());
   await applyInsets(page, { '--safe-top': '0px', '--safe-bottom': '21px', '--safe-left': '47px', '--safe-right': '47px' });
   const box = await page.evaluate(() => {
     const chip = document.querySelector('.topchip').getBoundingClientRect();

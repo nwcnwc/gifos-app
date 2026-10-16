@@ -39,4 +39,11 @@ test('dock controls keep that gap in landscape', async ({ page }) => {
   const vp = page.viewportSize();
   await page.setViewportSize({ width: Math.max(vp.width, vp.height), height: Math.min(vp.width, vp.height) });
   await expectGaps(page);
+  await page.evaluate(() => window.__meetChromeShow && window.__meetChromeShow());
+  const onScreen = await page.evaluate(() => {
+    const leave = document.getElementById('leavebtn').getBoundingClientRect();
+    return { top: leave.top, bottom: leave.bottom, vh: innerHeight };
+  });
+  expect(onScreen.top).toBeGreaterThanOrEqual(0);
+  expect(onScreen.bottom).toBeLessThanOrEqual(onScreen.vh + 0.5);
 });

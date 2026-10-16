@@ -32,6 +32,7 @@ test('Flip stays on the dock in landscape', async ({ page }) => {
   await page.goto('/run.html#v=sundayroom', { waitUntil: 'domcontentloaded' });
   await page.locator('#leavebtn').waitFor({ state: 'visible' });
   await dismissName(page);
+  await page.evaluate(() => window.__meetChromeShow && window.__meetChromeShow());
   const box = await page.locator('#flipcam').evaluate((el) => {
     const r = el.getBoundingClientRect();
     const style = getComputedStyle(el);

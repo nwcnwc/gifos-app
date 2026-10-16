@@ -76,6 +76,7 @@ test('chat composer stays above the dock in landscape', async ({ page }) => {
     height: Math.min(vp.width, vp.height),
   });
   await openChat(page);
+  await page.evaluate(() => window.__meetChromeShow && window.__meetChromeShow());
   const g = await composer(page);
   expect(overlap(g.input, g.bar), 'message field overlaps the dock').toBe(false);
   expect(overlap(g.send, g.bar), 'Send overlaps the dock').toBe(false);

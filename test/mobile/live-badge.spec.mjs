@@ -84,7 +84,10 @@ test('a large root font on a short landscape broadcast keeps Fit above the dock'
     localStorage.setItem('gifos_vadm_' + room + '.' + av, 'test-admin-key');
   }, { room: ROOM, av: AV });
   await page.goto(viewer, { waitUntil: 'domcontentloaded' });
-  await page.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = '32px';
+    if (window.__meetChromeShow) window.__meetChromeShow();
+  });
   const box = await page.evaluate(() => {
     const fit = document.getElementById('fitbtn').getBoundingClientRect();
     const bar = document.querySelector('.bar').getBoundingClientRect();

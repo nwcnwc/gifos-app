@@ -1475,6 +1475,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="5"]) .tile.me {
       width: 138px; height: 182px; }
   }
+  /* A rotated phone puts the controls away until a tap. The face keeps the
+     band the dock was reserving. A broadcast keeps its state banner. */
+  body.chrome-away .bar {
+    transform: translate(-50%, calc(100% + 24px));
+    pointer-events: none;
+  }
+  body.chrome-away .topchip,
+  body.chrome-away .fitbtn,
+  body.chrome-away .admcount { opacity: 0; pointer-events: none; }
+  body.chrome-away.broadcast .topchip { opacity: 1; background: transparent; pointer-events: none; }
+  body.chrome-away.broadcast .topchip .title,
+  body.chrome-away.broadcast .topchip .status { opacity: 0; }
   /* A rotated phone is short. The dock drops to the control size so the face keeps the stage. */
   @media (max-height: 420px) {
     .bar { height: 56px; }
@@ -4989,6 +5001,64 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return { n: n | 0, cols: cols | 0, video: video, srcEl: srcEl };
     }
     let comfyBusy = false;
+    let meetChromeMode = 'auto';
+    let meetChromeTimer = 0;
+    function shortLand() {
+      return window.innerWidth > window.innerHeight && window.innerHeight < 420;
+    }
+    function meetChromeBusy() {
+      const bar = document.querySelector('.bar');
+      if (bar && !bar.classList.contains('collapsed')) return true;
+      const tray = document.getElementById('reacttray');
+      if (tray && !tray.hidden) return true;
+      const chat = document.getElementById('chatpanel');
+      if (chat && chat.classList.contains('open')) return true;
+      return false;
+    }
+    function syncMeetChrome() {
+      const away = shortLand() && meetChromeMode !== 'show' && !meetChromeBusy();
+      document.body.classList.toggle('chrome-away', away);
+    }
+    function showMeetChrome(hold) {
+      meetChromeMode = 'show';
+      if (meetChromeTimer) { clearTimeout(meetChromeTimer); meetChromeTimer = 0; }
+      syncMeetChrome();
+      try { layout(); } catch (e) {}
+      if (hold) return;
+      meetChromeTimer = setTimeout(() => {
+        meetChromeTimer = 0;
+        if (meetChromeBusy()) { showMeetChrome(false); return; }
+        meetChromeMode = 'auto';
+        syncMeetChrome();
+        try { layout(); } catch (e) {}
+      }, 3200);
+    }
+    function hideMeetChrome() {
+      if (meetChromeTimer) { clearTimeout(meetChromeTimer); meetChromeTimer = 0; }
+      meetChromeMode = 'auto';
+      syncMeetChrome();
+      try { layout(); } catch (e) {}
+    }
+    window.__meetChromeShow = function () { showMeetChrome(true); };
+    let swallowStageClick = false;
+    document.addEventListener('pointerdown', (e) => {
+      if (!shortLand()) return;
+      if (e.target.closest && e.target.closest('.name-modal, #lobby, #leave-ask')) return;
+      const onChrome = e.target.closest && e.target.closest('.bar, .topchip, .fitbtn, #chatpanel, #livebadge');
+      if (onChrome) {
+        if (meetChromeMode === 'show' || document.body.classList.contains('chrome-away')) showMeetChrome(false);
+        return;
+      }
+      swallowStageClick = true;
+      if (document.body.classList.contains('chrome-away')) showMeetChrome(false);
+      else hideMeetChrome();
+    }, true);
+    document.addEventListener('click', (e) => {
+      if (!swallowStageClick) return;
+      swallowStageClick = false;
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
     function applyComfy() {
       if (comfyBusy) return;
       const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
@@ -5045,12 +5115,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const short = landscape && window.innerHeight < 420;
         const phone = !landscape && window.innerWidth < 700;
         let top, bottom;
+        syncMeetChrome();
         if (short) {
-          const chip = document.querySelector('.topchip');
-          const shown = chip && getComputedStyle(chip).display !== 'none';
-          const chipBottom = shown ? chip.getBoundingClientRect().bottom : 14;
-          top = Math.max(48, Math.ceil(chipBottom + 6));
-          bottom = 72;
+          if (document.body.classList.contains('chrome-away')) {
+            let banner = 0;
+            if (document.body.classList.contains('broadcast')) {
+              const badge = document.getElementById('livebadge');
+              if (badge && getComputedStyle(badge).display !== 'none') banner = badge.getBoundingClientRect().bottom;
+            }
+            top = Math.max(0, Math.ceil(banner));
+            bottom = 0;
+          } else {
+            const chip = document.querySelector('.topchip');
+            const shown = chip && getComputedStyle(chip).display !== 'none' && getComputedStyle(chip).opacity !== '0';
+            const chipBottom = shown ? chip.getBoundingClientRect().bottom : 14;
+            top = Math.max(48, Math.ceil(chipBottom + 6));
+            bottom = 72;
+          }
         }
         let holdMs = 2500;
         try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}
@@ -20526,6 +20607,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       toggle.onclick = function () {
         const next = !bar.classList.contains('collapsed'); apply(next);
+        try { showMeetChrome(!next); } catch (e) {}
         try { localStorage.setItem('gifos_meet_bar', next ? '1' : '0'); } catch (e) {}
       };
       let saved = null; try { saved = localStorage.getItem('gifos_meet_bar'); } catch (e) {}
@@ -20572,11 +20654,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       btn.onclick = () => {
         if (tray.hasAttribute('hidden')) {
+          try { showMeetChrome(true); } catch (e) {}
           tray.removeAttribute('hidden');
           btn.setAttribute('aria-expanded', 'true');
           btn.setAttribute('aria-pressed', 'true');
           btn.classList.add('on');
-        } else shut();
+        } else { shut(); try { showMeetChrome(false); } catch (e) {} }
       };
       tray.addEventListener('click', (e) => {
         const b = e.target.closest('button');
