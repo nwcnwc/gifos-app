@@ -39,7 +39,7 @@ A volunteer and an older member, a service or a small group, often a phone held 
 | --- | --- | --- |
 | Start or join from the lobby on an SE | 9 | Join is on screen in portrait and in landscape, including at 200% text. Start is the only blue button. The phone shows the action, not the essay under it. |
 | Tap targets for someone who misses small controls | 9 | Dock grip, chat close, Send, and Fit are 44px, including on an iPhone 15. Blur for all is a 64px square, inset from the tile corner, on a phone and on the desktop. |
-| Captions a member can find, at 200% text | 9 | Captions is on the call, and the line sits on the face. At 200% text it is 40px and stays inside the tile. A long line is cut to the lower part of the face. |
+| Captions a member can find, at 200% text | 10 | The line sits above Live, in white on black, at 40px when text is 200%. A long line starts at the beginning, and the rest scrolls inside the caption. |
 | Host runs the room from the phone they already hold | 10 | Live, Record, and Captions are on the call. The phone sheet opens on Invite, Room password, Waiting room, and Chat. Invite is the blue one. Vote on someone and Step on stage scroll. |
 | **Audience** | **9** | Join stays on screen at 200% text. Captions, the dock, Fit, landscape More, and a waiting-room list work on a phone. We do not lead yet. |
 
@@ -91,3 +91,4 @@ Family and friends. Warm, few steps, a texted link.
 32. Caption on the face. `test/mobile/caption-on-tile.js` failed (a line was 618px tall on a 236px face and started above the screen at 200% text), then passed. The line stays in the lower part of the tile, at 1.25rem, including at 200%. Church captions 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 33. Record start. `test/mobile/record-start.js` failed (Start bottom 758 on a 568px SE, and 1865 at 200% text), then passed. The sheet states the capture in one sentence, Start is the blue button, and Cancel is the outline. Both stay on screen in portrait, sideways, and at 200% text. Corporate host 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 34. Faces at 200% text. `test/mobile/large-text-faces.js` failed (on an SE and an iPhone 15, Ruth, David, and Sam ran under Live), then passed. Four faces stay on screen, above Live, inside a portrait-phone shape. A sideways phone still uses one row when that is the shape that fits. Audience scores stay 9 / 9 / 9. Nobody leads yet.
+35. Readable captions. `test/mobile/caption-read.js` failed (no caption a member can read; the line was clipped on the face), then passed on an SE, sideways, and at 200% text. The caption sits above Live. The start of a long line is showing, and the rest scrolls inside it. Church captions 9→10. Audience scores stay 9 / 9 / 9. Nobody leads yet.

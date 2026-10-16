@@ -1101,6 +1101,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                padding: 6px 8px; font-size: 1.25rem; line-height: 1.3; color: #fff; z-index: 3; pointer-events: none;
                opacity: 0; transition: opacity .25s; }
   .tile .cap.show { opacity: 1; }
+  /* On a phone the line is one caption above Live, not a clip on the face.
+     A long line starts at the top and the rest scrolls inside the caption. */
+  #livecap {
+    display: none; position: fixed; z-index: 30;
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    bottom: calc(var(--dockh, 108px) + var(--stateh, 0px) + 8px);
+    max-height: 4.6em; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    box-sizing: border-box; padding: 8px 12px; border-radius: 12px;
+    background: rgba(10,10,15,.92); color: #fff;
+    font: 700 1.25rem/1.35 system-ui, sans-serif;
+  }
+  #livecap.show { display: block; }
+  body.chrome-away #livecap { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  @media (max-width: 700px), (max-height: 500px) {
+    .tile .cap { display: none !important; }
+  }
   /* A share that died in a freeze reload. One tap, high contrast, wraps on a phone. */
   #reshare-back { display: none; position: fixed; left: 50%; bottom: 4.6rem; transform: translateX(-50%);
                   z-index: 80; max-width: 92vw; width: max-content; box-sizing: border-box;
@@ -1838,6 +1855,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <span class="status" id="status">Joining…</span>
   </div>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
+  <div id="livecap"></div>
   <div id="callstate" hidden>
     <span id="call-live" role="status">Live</span>
     <button type="button" id="call-rec" aria-pressed="false">Record</button>
@@ -18885,6 +18903,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return true;
     }
     function showCaption(byId, text) {
+      const bar = document.getElementById('livecap');
+      if (bar) {
+        let name = '';
+        try {
+          if (byId === myId) name = myName();
+          else { const p = peers.get(byId); name = (p && p.name) || ''; }
+        } catch (e) {}
+        bar.textContent = (name ? name + '. ' : '') + String(text || '');
+        bar.classList.add('show');
+        bar.scrollTop = 0;
+        clearTimeout(bar._hide);
+        bar._hide = setTimeout(() => bar.classList.remove('show'), 6000);
+      }
       const t = byId === myId ? meTile : peers.get(byId);
       if (!t || !t.cap) return;
       t.cap.textContent = text;

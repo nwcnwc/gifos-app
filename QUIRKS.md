@@ -283,6 +283,14 @@ Repro: `test/mobile/large-text-faces.js`. When every face can sit in the box at 
 
 Before: `qa/mobile/shots/before-large-text-faces-iphone-se.png`. After: `qa/mobile/shots/after-large-text-faces-iphone-se.png`.
 
+### 35. A long caption was cut off on the face
+
+The line sat in the bottom 42% of one tile with the overflow hidden. On a phone the rest of the sentence could not be read. At 200% text the same line had previously grown off the top of the screen.
+
+Repro: `test/mobile/caption-read.js`. The caption is one block above Live, white on black, at 1.25rem. It shows the start of the line. When the line is longer than the block, the rest scrolls inside it. It does not cover Live or the dock.
+
+Before: `qa/mobile/shots/before-caption-read-iphone-se-200.png`. After: `qa/mobile/shots/after-caption-read-iphone-se-200.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.

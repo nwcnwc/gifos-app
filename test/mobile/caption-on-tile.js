@@ -1,5 +1,5 @@
 /*
- * A caption line has to stay on the face and stay readable at 200% text.
+ * A caption line has to stay on the call and stay readable at 200% text.
  * A long line used to grow past the tile and off the top of an SE.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/caption-on-tile.js
@@ -46,32 +46,23 @@ const PEOPLE = [
     await page.evaluate((line) => window.__gifosVideo.addTranscript(line), LINE);
     await page.waitForTimeout(400);
     const info = await page.evaluate(() => {
-      const shown = Array.from(document.querySelectorAll('.tile .cap.show'));
-      return shown.map((el) => {
-        const b = el.getBoundingClientRect();
-        const tile = el.closest('.tile').getBoundingClientRect();
-        const cs = getComputedStyle(el);
-        return {
-          text: el.textContent,
-          op: parseFloat(cs.opacity),
-          font: parseFloat(cs.fontSize),
-          top: b.top, bottom: b.bottom, h: b.height, w: b.width,
-          tileTop: tile.top, tileBottom: tile.bottom, tileH: tile.height,
-          vh: window.innerHeight,
-        };
-      });
+      const el = document.getElementById('livecap');
+      const b = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      return {
+        text: el.textContent || '',
+        shown: cs.display !== 'none' && b.height > 2,
+        font: parseFloat(cs.fontSize),
+        top: b.top, bottom: b.bottom, h: b.height,
+        vh: window.innerHeight,
+      };
     });
     const bad = [];
-    if (!info.length) bad.push('no caption on a face');
-    for (const c of info) {
-      if (c.text.indexOf('shepherd') < 0) bad.push('caption text missing');
-      if (c.op < 0.9) bad.push('caption opacity ' + c.op);
-      if (c.font < phone.minFont) bad.push('caption font ' + c.font + 'px');
-      if (c.top < c.tileTop - 1 || c.bottom > c.tileBottom + 1) {
-        bad.push('caption leaves the face (' + Math.round(c.top) + '..' + Math.round(c.bottom) + ' tile ' + Math.round(c.tileTop) + '..' + Math.round(c.tileBottom) + ')');
-      }
-      if (c.top < -1 || c.bottom > c.vh + 1) bad.push('caption off screen');
-      if (c.h > c.tileH + 1) bad.push('caption taller than the face (' + Math.round(c.h) + ' vs ' + Math.round(c.tileH) + ')');
+    if (!info.shown) bad.push('no caption on the call');
+    else {
+      if (info.text.indexOf('shepherd') < 0) bad.push('caption text missing');
+      if (info.font < phone.minFont) bad.push('caption font ' + info.font + 'px');
+      if (info.top < -1 || info.bottom > info.vh + 1) bad.push('caption off screen');
     }
     if (phone.scale === '2') {
       const shot = (bad.length ? 'before' : 'after') + '-caption-tile-iphone-se-200.png';
