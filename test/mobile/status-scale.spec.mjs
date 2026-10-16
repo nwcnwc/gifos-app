@@ -23,6 +23,8 @@ test('the status line grows with the root text size', async ({ page }) => {
       right: chip.right,
       textTop: r.top,
       textBottom: r.bottom,
+      textHeight: r.height,
+      text: el.innerText,
       fitTop: fit.top,
       fitFont: parseFloat(getComputedStyle(fitEl).fontSize),
       fitHeight: fit.height,
@@ -31,6 +33,8 @@ test('the status line grows with the root text size', async ({ page }) => {
     };
   });
   expect(box.font).toBeGreaterThanOrEqual(32);
+  expect(box.textHeight).toBeGreaterThanOrEqual(70);
+  expect(box.text).toContain('no expiry');
   expect(box.title).toBeGreaterThanOrEqual(32);
   expect(box.fitFont).toBeGreaterThanOrEqual(32);
   expect(box.fitHeight).toBeGreaterThanOrEqual(44);

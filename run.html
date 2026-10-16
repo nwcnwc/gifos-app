@@ -1339,6 +1339,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .fitbtn { position: fixed; z-index: 6; top: calc(14px + 2.75rem + var(--inset-top, 0px)); right: calc(14px + var(--inset-right, 0px)); min-width: 2.75rem; min-height: 2.75rem;
     border: 0; border-radius: 999px; padding: 0.35rem 0.75rem; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 1rem/1.2 system-ui, sans-serif; }
+  /* A tall phone can give the status a second line. A short landscape stays one line so Fit does not land on the dock. */
+  @media (min-height: 500px) {
+    .topchip .status { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-overflow: clip; }
+    .fitbtn { top: calc(14px + 4.25rem + var(--inset-top, 0px)); }
+    body.broadcast .fitbtn, body.broadcast .admcount { top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px)); }
+  }
   body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: calc(14px + 2.75rem + var(--inset-top, 0px)); left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px)); }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
