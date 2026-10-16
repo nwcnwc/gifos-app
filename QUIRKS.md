@@ -243,6 +243,14 @@ Repro: `test/mobile/appear-preview.js`. The buttons say Clear and Save. Save is 
 
 Before: `qa/mobile/shots/before-join-clear-iphone-se.png`. After: `qa/mobile/shots/after-join-save-iphone-se.png`.
 
+### 30. A sideways phone squashed every face into a strip
+
+Four people on an iPhone SE held sideways were one row of 141×46 tiles (aspect 3.07). On an iPhone 15 sideways the bottom pair was 130×60 (aspect 2.19). The content box was only as tall as the gap between Fit and Live, and a wide phone was packed with the desktop shape limit.
+
+Fit now shares the name-chip row on a short landscape phone, so the faces start higher. A landscape phone that cannot hold a legal tile by stretching the grid keeps every tile inside the portrait-phone shape (short side at least 96, aspect at most 1.05) and centers that row. A further row grows downward and the feed scrolls. Portrait phones stay two rows of two. Desktop 1280×800 packing is unchanged. `test/mobile/sideways-tiles.js`.
+
+Before: `qa/mobile/shots/before-sideways-tiles-iphone-se.png`, `qa/mobile/shots/before-sideways-tiles-iphone-15.png`. After: `qa/mobile/shots/after-sideways-tiles-iphone-se.png`, `qa/mobile/shots/after-sideways-tiles-iphone-15.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.
@@ -256,4 +264,4 @@ The build name is a faint line under the header. A green round "A" in Nathan's s
 - Host, iPhone SE landscape. More opened, Password tapped with `force: true` because the button is off screen. Password sheet shot saved.
 - Chat, iPhone SE. Opened from More. Composer tap blocked by the dock.
 
-Four faces are real peer records (`__gifosVideo.presentPeers`), not cloned tiles. On a phone the packer now refuses a wide squash; desktop packing is unchanged. On a phone the dock and the Live row tuck when the call is quiet, and a tap brings them back.
+Four faces are real peer records (`__gifosVideo.presentPeers`), not cloned tiles. On a phone the packer now refuses a wide squash, including when the phone is sideways; desktop packing is unchanged. On a phone the dock and the Live row tuck when the call is quiet, and a tap brings them back.

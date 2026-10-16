@@ -1488,6 +1488,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
     position: fixed; inset: 0; overflow: hidden; padding: 0 !important; margin: 0;
     display: block; background: #0d0f14; z-index: 1; }
+  body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll {
+    overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   body.comfy #grid, body.comfy #stadium, body.comfy #stagefeed, body.comfy #stadfaces {
     position: static; display: block; padding: 0; margin: 0; gap: 0; overflow: visible;
     height: auto; background: transparent; border: 0; }
@@ -1695,6 +1697,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
   .topchip { top: calc(14px + env(safe-area-inset-top, 0px)); left: calc(14px + env(safe-area-inset-left, 0px)); }
   .fitbtn { top: calc(58px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); }
+  /* On a short landscape phone the chip and Fit share one row, so the
+     faces can start higher. Portrait keeps Fit under the chip. */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .fitbtn { top: calc(14px + env(safe-area-inset-top, 0px)); }
+  }
   .bar:not(.collapsed) .barmore {
     bottom: calc(122px + env(safe-area-inset-bottom, 0px));
     max-height: calc(100dvh - 160px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
@@ -5229,7 +5236,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           meta.video._comfyRz = true;
           meta.video.addEventListener('resize', () => { try { layout(); } catch (e) {} });
         }
-        const phone = window.innerWidth < 600;
+        const vwNow = window.innerWidth, vhNow = window.innerHeight;
+        const shortLand = vhNow < 500 && vwNow > vhNow && vwNow < 900;
+        const phone = vwNow < 600 || shortLand;
+        let topInset = 0;
+        if (shortLand) {
+          let below = 0;
+          const fitEl = document.getElementById('fitbtn');
+          const chipEl = document.querySelector('.topchip');
+          if (chipEl) below = Math.max(below, chipEl.getBoundingClientRect().bottom);
+          if (fitEl) below = Math.max(below, fitEl.getBoundingClientRect().bottom);
+          if (below > 0) topInset = Math.ceil(below + 8);
+        }
         let holdMs = 2500;
         try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}
         let bottom = 0;
@@ -5260,7 +5278,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           feed: feed, tiles: tiles, faces: faces, video: meta.video, cols: cols,
           orderKey: roster.length + ':' + roster.join(','), holdMs: holdMs,
           vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: myId || 'me',
-          pill: document.body.classList.contains('has-pill'), bottom: bottom,
+          pill: document.body.classList.contains('has-pill'), bottom: bottom, top: topInset,
           mode: window.__meetViewMode || 'gallery', swapSelf: !!window.__meetSwapSelf,
           gallery: window.__meetGallery || 'fit', now: Date.now(),
           onSettle: () => { try { layout(); } catch (e) {} },

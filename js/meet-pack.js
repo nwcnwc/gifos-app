@@ -242,6 +242,9 @@ function twoTier(box, gallery, me, opts, phone) {
     const list = row.length ? row : stad, tier = row.length ? 'row' : 'stad';
     if (mode === 'scroll' && tier === 'stad') return scrollStad(box, list, [], phone, box.y);
     const p = packRegion(box, list.map(t => t.aspect), { prevRows: opts.prevRows, phone: phone });
+    // A short landscape phone cannot hold a legal tile if the grid is stretched
+    // across the whole box. Cap the shape and let a later row scroll.
+    if (phone && box.w > box.h && p && (p.viol > 1 || p.minShort < MIN_SIDE.phone)) return phoneFit(box, list, tier);
     return { tiles: emit(list, p.rects, tier), rows: p.rows, split: tier === 'row' ? 1 : 0, contentH: box.h, minShort: p.minShort, tooSmall: p.minShort < (phone ? FIT_FLOOR.phone : FIT_FLOOR.other) };
   }
   if (mode === 'scroll') {
@@ -266,12 +269,60 @@ function twoTier(box, gallery, me, opts, phone) {
   }
   if (best.val < -1e17) { // no band split gives legal tile shapes: one shared grid (row first), quality still differs
     const all = [...row, ...stad], p = packRegion(box, all.map(t => t.aspect), { prevRows: opts.prevRows, phone: phone });
+    if (phone && box.w > box.h && p && (p.viol > 1 || p.minShort < MIN_SIDE.phone)) {
+      const laid = phoneFit(box, all, 'row');
+      laid.tiles.forEach((t, i) => { t.tier = i < row.length ? 'row' : 'stad'; });
+      laid.merged = true;
+      return laid;
+    }
     return { tiles: all.map((q, i) => ({ id: q.id, ...p.rects[i], tier: i < row.length ? 'row' : 'stad' })), rows: p.rows, split: null, merged: true, contentH: box.h, minShort: p.minShort, tooSmall: p.minShort < (phone ? FIT_FLOOR.phone : FIT_FLOOR.other) };
   }
   const rp = packRegion(best.rb, row.map(t => t.aspect), { prevRows: opts.prevRows, phone: phone });
   const sp = packRegion(best.sb, stad.map(t => t.aspect), { phone: phone });
   const minShort = Math.min(rp.minShort, sp.minShort);
   return { tiles: [...emit(row, rp.rects, 'row'), ...emit(stad, sp.rects, 'stad')], rows: rp.rows + '+' + sp.rows, split: best.f, contentH: box.h, minShort, tooSmall: minShort < (phone ? FIT_FLOOR.phone : FIT_FLOOR.other) };
+}
+// Landscape phone: the visible box is wide and short, so stretching a grid
+// across it makes a strip. Keep every tile inside the phone shape limits.
+// One row fills the width when that shape is legal; otherwise tiles sit at
+// the widest legal shape and a further row grows downward for scrolling.
+function phoneFit(box, list, tier) {
+  const n = list.length;
+  const maxA = aspectMax(true);
+  let h = box.h;
+  if (!(h >= MIN_SIDE.phone)) h = MIN_SIDE.phone;
+  const maxW = h * maxA;
+  const minW = Math.min(maxW, h * ASPECT_MIN);
+  const equalW = box.w / Math.max(1, n);
+  let cols, tileW;
+  if (equalW >= minW && equalW <= maxW) {
+    cols = n;
+    tileW = equalW;
+  } else if (n * maxW <= box.w + 0.5) {
+    cols = n;
+    tileW = maxW;
+  } else {
+    cols = Math.max(1, Math.min(n, Math.floor(box.w / Math.max(1, Math.min(maxW, box.w)))));
+    tileW = Math.min(maxW, box.w / cols);
+    if (tileW < minW && box.w >= minW) {
+      cols = Math.max(1, Math.floor(box.w / minW));
+      tileW = Math.min(maxW, box.w / cols);
+    }
+  }
+  const rows = Math.ceil(n / cols);
+  const tiles = [];
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / cols), c = i % cols;
+    const inRow = r === rows - 1 ? n - r * cols : cols;
+    const x0 = box.x + (box.w - inRow * tileW) / 2;
+    const a = list[i].aspect || (16 / 9), t = tileW / h, keep = Math.min(t / a, a / t);
+    tiles.push({
+      id: list[i].id, x: x0 + c * tileW, y: box.y + r * h, w: tileW, h: h, tier: tier,
+      fit: keep >= keepNeeded(t, a) ? 'cover' : 'contain', objPos: a < t ? '50% 40%' : '50% 50%',
+    });
+  }
+  const minShort = Math.min(tileW, h);
+  return { tiles, rows: rows, split: tier === 'row' ? 1 : 0, contentH: rows * h, minShort: minShort, tooSmall: minShort < FIT_FLOOR.phone };
 }
 // Scroll: columns = most that keep the short side >= SCROLL_MIN at the
 // median aspect; the region is as tall as it needs to be.

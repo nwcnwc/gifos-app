@@ -52,8 +52,8 @@ Family and friends. Warm, few steps, a texted link.
 | Open a texted link and pick a name | 9 | The join step opens with the GifOS name and picture. Save keeps them and is the solid blue button. Clear blanks both and is the outline. |
 | See everyone and hang up on a small phone | 10 | Four faces are two rows of two, near a portrait-phone shape, and Fit no longer sits on a face. Live, Record, Captions, and the dock tuck when the call is quiet. A tap brings Hang up back. |
 | Send a chat line | 9 | The latest line and the count sit on the call. Emoji inserts into the field. Theirs is a light bubble and mine is blue, at 1rem. |
-| Turn the phone sideways | 8 | Invite, Room password, Waiting room, and Chat are on the first screen of More. You do not scroll to find them. |
-| **Audience** | **9** | The link, the name step, hang up, the grid, chat, the lobby, and Fit are in good shape. The dock tucks the way a phone call does. Fit and the name chip stay. We do not lead yet. |
+| Turn the phone sideways | 9 | Four faces stay near a portrait-phone shape, and Fit shares the header row. Invite, Room password, Waiting room, and Chat are on the first screen of More. |
+| **Audience** | **9** | The link, the name step, hang up, the grid, a sideways phone, chat, the lobby, and Fit are in good shape. The dock tucks the way a phone call does. Fit and the name chip stay. We do not lead yet. |
 
 ## Cycle
 
@@ -86,3 +86,4 @@ Family and friends. Warm, few steps, a texted link.
 27. Calmer More. `test/mobile/more-calm.js` failed (`13 buttons on the first screen`, sheet top 44), then passed on an iPhone 15 and an SE. The first screen is Invite, Room password, Waiting room, and Chat. Invite is blue. The name stays clear. Church host 9→10, church audience 8→9. Audience scores are 9 / 9 / 9. Nobody leads yet.
 28. Blur for all. The per-tile control was 83×32 and flush with the corner. It is now a 64px square, 12px in from the corner, on a phone and on the desktop. `test/mobile/blur-tile.js` passes. Church tap targets 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.
 29. Join Clear and Save. The step said Not now and Continue. Clear blanks the name and the picture. Save keeps both and stays the solid button. `test/mobile/appear-preview.js` passes. Personal name row 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.
+30. Sideways tiles. `test/mobile/sideways-tiles.js` failed (SE 141×46 aspect 3.07, iPhone 15 bottom pair 130×60 aspect 2.19), then passed. Fit shares the header row on a short landscape phone, and a tile that would have been a strip stays within a portrait-phone shape. Desktop packing is unchanged. Personal sideways 8→9. Audience scores stay 9 / 9 / 9. Nobody leads yet.

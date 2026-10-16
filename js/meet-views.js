@@ -330,6 +330,7 @@
     }
     const box = ML.viewBox(opts.vw || 1, opts.vh || 1, {
       phone: !!opts.phone, pill: !!opts.pill, bottom: Math.max(0, +opts.bottom || 0),
+      top: opts.top > 0 ? opts.top : undefined,
     });
     const lay = ML.layoutFor({
       mode: opts.mode || 'gallery',
@@ -371,8 +372,12 @@
     // Absolute tiles do not grow scrollHeight. A 1px spacer does, so Scroll
     // can move through the stadium without a pager.
     let spacer = feed.querySelector('#comfyspacer');
-    const need = (lay.box ? lay.box.y : 0) + (lay.contentH || 0);
-    if (lay.contentH && lay.box && need > lay.box.y + lay.box.h + 1) {
+    const contentH = lay.contentH || (lay.box ? lay.box.h : 0);
+    const need = (lay.box ? lay.box.y : 0) + contentH;
+    const overflows = !!(lay.box && contentH > lay.box.h + 1);
+    const tail = overflows ? Math.max(0, (+opts.vh || 0) - lay.box.y - lay.box.h) : 0;
+    if (feed.classList) feed.classList.toggle('comfy-scroll', overflows);
+    if (overflows) {
       if (!spacer) {
         spacer = (feed.ownerDocument || document).createElement('div');
         spacer.id = 'comfyspacer';
@@ -382,7 +387,7 @@
       spacer.style.left = '0';
       spacer.style.top = '0';
       spacer.style.width = '1px';
-      spacer.style.height = need + 'px';
+      spacer.style.height = (need + tail) + 'px';
       spacer.style.pointerEvents = 'none';
     } else if (spacer && spacer.remove) spacer.remove();
     const shadeItems = [];
