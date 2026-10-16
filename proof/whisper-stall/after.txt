@@ -1,0 +1,78 @@
+# node test/unit/whisper-stall.js
+# fixed run.html, 2026-10-15
+PASS lift: const wspCaps = new Map();
+PASS whisperForTest exposes inFlight, behind, paused, lastLatencyMs and model
+PASS the tile chip can say transcription is behind or paused
+PASS a 4-core device asks Whisper for tiny
+PASS gifos_cc_whisper_model overrides the core count
+PASS more than 4 cores ask for base
+PASS the first clip is the only call in flight
+PASS the first answer is written and Whisper stays up
+PASS three queued clips still make one provider call
+PASS the warm budget is the short clip timeout, not the cold download
+STATE after two warm budgets: {"inFlight":1,"maxInFlight":1,"busy":true,"paused":false,"behind":true,"chip":"Transcription behind, skipping old audio","sent":2,"queue":2,"statuses":["Transcription behind, skipping old audio"],"syncs":0,"stops":0}
+PASS never two provider calls in flight
+PASS the queue stays busy until the provider answers
+PASS slowness does not pause Whisper
+PASS Whisper does not give up while the chip still says transcribing
+PASS a slow call is shown as behind, not as plain transcribing
+PASS the status line says transcription is skipping old audio
+PASS the late answer is still written
+PASS after that answer still only one call runs at a time
+PASS later clips are written too
+PASS Whisper is still not paused once the backlog clears
+STATE after hard cap: {"inFlight":0,"maxInFlight":1,"busy":false,"paused":false,"stops":1,"sent":2,"statuses":["Transcription behind, skipping old audio"]}
+PASS a dead provider is stopped so the next call can start fresh
+PASS the hard cap does not pause Whisper
+PASS the dead call was not joined by a second one
+PASS the queue is free after the dead call is released
+PASS with no SpeechRecognition, give-up does not start browser captions
+PASS …and the chip says transcription is paused
+PASS …and the status says transcription is paused
+PASS a gifos_cc_stt_url receives one POST and no local provider call
+PASS the remote JSON text is written
+PASS the posted body is 16 kHz float PCM
+30 passed, 0 failed
+EXIT:0
+
+# other gates that touch captions, the meeting page, or run.html
+# historical suites live in /home/nathan/h0922/gifos/test and were run read-only
+# with readFileSync of gifos-app/run.html redirected at this worktree. None were edited.
+
+## mu-whisper-speech.js EXIT:1
+PASS 30  FAIL 7
+FAIL before the first answer, a call may take 180 s (the model download) — 180000
+FAIL after the first answer the next clip gets four clip-lengths plus 10 s — 180000
+FAIL …and posts no status line yet — Transcription behind, skipping old audio
+FAIL the next clip is sent
+FAIL the second stall leaves the queue idle
+FAIL …stops Whisper for this meeting, once — 
+FAIL a later clip is not sent after the give-up — 2
+ReferenceError: whisperAllowed is not defined
+
+## mu-captions-scribe.js EXIT:1
+PASS 22 then ReferenceError: paintWspChip is not defined (same crash on unmodified run.html)
+
+## meet-transcript.js EXIT:1
+PASS 15  FAIL 1
+FAIL another device's scribed line is dropped while I have not chosen that scribe
+ReferenceError: clog is not defined
+(same FAIL and same clog ReferenceError on unmodified run.html; whisper asserts are after the throw)
+
+## meet-audio-lifecycle.js EXIT:1
+PASS 10 then ReferenceError: ccSourceWritesMe is not defined (same on unmodified run.html, also PASS 10)
+
+## mu-chat-and-files.js EXIT:2
+PASS 3  FAIL 1
+FAIL the channel-less hi waits 20s
+TypeError: Cannot read properties of undefined (reading '0')
+(same FAIL and TypeError on unmodified run.html)
+
+## mu-recording-leave.js EXIT:1
+PASS 63 then FAIL harness — ReferenceError: recordingIndicatorsOk is not defined (same on unmodified run.html, also PASS 63)
+
+## store-defaults.js EXIT:0
+30 passed, 0 failed
+
+## caption-bye-scope.js EXIT:0
+ALL PASS
