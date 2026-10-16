@@ -52,6 +52,14 @@ function makeSeat(id, envExtra) {
   const knocker = makeSeat('knocker-1');
   check('unseated while waiting — knocker state stays at the door', knocker.seat.state !== 3 && !knocker.seat.hasCoord, 'state ' + knocker.seat.state);
 }
+// A room that is not holding the door still answers, or nobody can join.
+{
+  const host = makeSeat('host-open');
+  host.seat.take({ pc: 0, r: 0, i: 0 }, null, []);
+  host.sent.length = 0;
+  const n = host.seat.answerDoor(['knocker-9']);
+  check('open door still answers WHOHOME', n === 1 && host.sent.some((s) => s.m && s.m.t === 'HOME' && Array.isArray(s.m.roster) && s.m.roster.length), 'n=' + n);
+}
 
 check('relay admission module is loaded', !!admit && typeof admit.createRoom === 'function' && typeof admit.knock === 'function');
 const wireSrc = fs.readFileSync(path.join(__dirname, '..', '..', 'js', 'mesh-wire.js'), 'utf8');

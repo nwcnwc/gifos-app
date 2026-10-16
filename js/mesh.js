@@ -1898,6 +1898,12 @@
     }
     noteTree() { if (this.state !== 3 || !this.hasCoord || this.genKey == null) return; const n = this.occ.size; if (!this.lastTree || this.lastTree.gkey !== this.genKey || n > this.lastTree.n) this.lastTree = { gkey: this.genKey, n }; }
     // HOME: a Section-1 seat's answer to a WHOHOME (the door's introduction).
+    // The waiting room withholds the door. Absent doorHeld means the old
+    // path: answer. A thrown hold fails closed — no roster leaves.
+    doorBlocks(from) {
+      if (typeof this.env.doorHeld !== 'function') return false;
+      try { return !!this.env.doorHeld(from); } catch (e) { return true; }
+    }
     homeFor(to) {
       // App may attach Stage / Stadium face lists for R5 pick-one UI.
       let stage = [], stadium = [];
@@ -1922,7 +1928,7 @@
     answerDoor(ids) {
       if (this.state !== 3 || !this.hasCoord || this.coord.pc !== 0 || !Array.isArray(ids)) return 0;
       const members = new Set(this.occ.values()); let n = 0;
-      for (const x of ids) { if (n >= 8) break; if (x == null || x === this.id || members.has(x)) continue; this.homeFor(x); n++; }
+      for (const x of ids) { if (n >= 8) break; if (x == null || x === this.id || members.has(x) || this.doorBlocks(x)) continue; this.homeFor(x); n++; }
       return n;
     }
     // GREET: my cell to one peer over the channel that just opened to it,
@@ -3763,6 +3769,7 @@
           return;
         }
         case 'WHOHOME': {
+          if (this.doorBlocks(m.from)) return; // waiting room: no HOME, no roster
           if (!this.hasCoord) { this.emit(m.from, { t: 'HOME' }); return; }
           if (m.ttl <= 0) return;
           if (this.coord.pc === 0) { this.homeFor(m.from); return; }

@@ -1639,6 +1639,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     display: flex; flex-direction: column; gap: 10px;
   }
   #waitlist[hidden] { display: none !important; }
+  /* A knocker the relay has not seated. Covers the call so the waiting
+     person sees no tiles, roster, or chat. */
+  #waitdoor {
+    position: fixed; z-index: 70; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; padding: 24px; text-align: center;
+    background: #f4f6f8; color: #1d1d1f;
+  }
+  #waitdoor[hidden] { display: none !important; }
+  #waitdoor h1 { margin: 0; font: 700 1.35rem/1.3 system-ui, sans-serif; }
+  #waitdoor p { margin: 0; max-width: 28rem; font: 400 1rem/1.4 system-ui, sans-serif; }
+  #waitdoor-leave {
+    min-width: 44px; min-height: 44px; padding: 8px 18px; border-radius: 999px;
+    border: 1.5px solid #8d93a0; background: #fff; color: #1d1d1f;
+    font: 700 1rem/1.2 system-ui, sans-serif; cursor: pointer;
+  }
   .wait-head { font-weight: 800; font-size: 1.05rem; line-height: 1.3; }
   .wait-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .wait-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -1984,6 +2000,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     </div>
   </div>
   <div id="waitlist" hidden role="region" aria-label="Waiting room"></div>
+  <div id="waitdoor" hidden role="status">
+    <h1>Waiting for the host</h1>
+    <p>You'll join when the host lets you in. This meeting can't see or hear you yet.</p>
+    <button type="button" id="waitdoor-leave">Leave</button>
+  </div>
   <div class="share" id="share">
     <span class="hint">Send this link to friends — opening it brings them right in:</span>
     <input id="share-url" readonly>
@@ -2419,6 +2440,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/gifos-update.js"></script>
   <script src="js/gifos-net.js"></script>
   <script src="js/mesh.js"></script>
+  <script src="js/relay-admit.js"></script>
   <script src="js/mesh-identity.js"></script>
   <script src="js/mesh-wire.js"></script>
   <script src="js/mesh-media.js"></script>
@@ -2971,8 +2993,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let relaySocketed = new Set();
     let relayRosterScope = 'full';
     let doorAnswerAt = 0;           // a dark return's {t:'who'} pull is pending: its roster answers the door's knockers once (answerDoor)  // 'door' ⇒ relaySocketed holds only the greeters (see the roster handler)
-    let holdDoor = false;           // waiting room: do not auto-answer the door; the host admits from the list
+    let holdDoor = false;           // waiting room: do not auto-answer the door; the host admits from the list. Gate: node test/unit/wait-room.js
+    let atWaitDoor = false;         // this page is the knocker, held by the relay, not seated
     const waitDeclined = new Set();
+    const waitAdmitted = new Set(); // host pressed Admit: the next WHOHOME may be answered
     const waitQueue = new Map();
     function waitPaint() {
       const list = document.getElementById('waitlist');
@@ -3021,14 +3045,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     const meetWait = {
       hold(on) {
+        if (hasAdminRoom() && !amAdmin) return holdDoor;
         holdDoor = !!on;
         if (holdDoor) closeMoreForWait();
         waitPaint();
+        // Admin rooms tell the relay. The relay is what keeps a knocker
+        // unseated; this page's list is only the host's view of that.
+        if (hasAdminRoom() && amAdmin) {
+          const bit = holdDoor ? '1' : '0';
+          admSigned('waitroom', { on: bit }).then((w) => { if (w) relaySendObj({ t: 'waitroom', on: bit, w }); });
+        }
         return holdDoor;
       },
       note(id, name) {
         id = String(id || '');
-        if (!id || id === myId || waitDeclined.has(id)) return false;
+        if (!id || id === myId || waitDeclined.has(id) || waitAdmitted.has(id)) return false;
         waitQueue.set(id, String(name || '').trim().slice(0, 40) || 'Someone waiting');
         waitPaint();
         return true;
@@ -3037,18 +3068,41 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         id = String(id || '');
         waitQueue.delete(id);
         waitDeclined.delete(id);
+        if (id) waitAdmitted.add(id);
         waitPaint();
-        try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor([id]); } catch (e) {}
+        // An admin room does not hand over HOME on this socket. The relay
+        // mints a token, the knocker reconnects, and only then is WHOHOME
+        // answered (doorHeld is false for an admitted id).
+        if (hasAdminRoom() && amAdmin) {
+          admSigned('admit', { id: id }).then((w) => { if (w) relaySendObj({ t: 'admit', id: id, w }); });
+        } else {
+          try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor([id]); } catch (e) {}
+        }
         return true;
       },
       decline(id) {
         id = String(id || '');
         waitQueue.delete(id);
+        waitAdmitted.delete(id);
         if (id) waitDeclined.add(id);
         waitPaint();
+        if (hasAdminRoom() && amAdmin) {
+          admSigned('deny', { id: id }).then((w) => { if (w) relaySendObj({ t: 'deny', id: id, w }); });
+        }
         return true;
       },
       holding() { return holdDoor; },
+      // True while this id must not receive HOME. Fail closed if the
+      // waiting room is on and they have not been admitted.
+      blocks(id) { return holdDoor && !waitAdmitted.has(String(id || '')); },
+      waiting(on) {
+        atWaitDoor = !!on;
+        const el = document.getElementById('waitdoor');
+        if (el) el.hidden = !atWaitDoor;
+        document.body.classList.toggle('wait-door', atWaitDoor);
+        return atWaitDoor;
+      },
+      atDoor() { return atWaitDoor; },
     };
     try { (window.GifOS = window.GifOS || {}).meetWait = meetWait; } catch (e) {}
     let pendingDoorGrant = null;    // an admin re-grant waiting on a pulled full list
@@ -10275,6 +10329,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         oldKeys: (prevRoomE2E && prevRoomE2E !== roomE2E) ? [prevRoomE2E] : [],   // a door blob this key opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
+        doorHeld: (id) => { try { return meetWait.blocks(id); } catch (e) { return false; } },
+        onDoor: (kind, frame) => {
+          if (kind === 'unseated') {
+            meetWait.waiting(true);
+            const denied = frame && frame.t === 'denied';
+            const h = document.querySelector('#waitdoor h1');
+            const p = document.querySelector('#waitdoor p');
+            if (h) h.textContent = denied ? 'Not admitted' : 'Waiting for the host';
+            if (p) p.textContent = denied
+              ? 'The host didn\u2019t let you in. You are not in the meeting.'
+              : 'You\u2019ll join when the host lets you in. This meeting can\u2019t see or hear you yet.';
+            setStatus(denied ? 'The host didn\u2019t let you in.' : 'Waiting for the host to let you in.');
+          } else if (kind === 'seated') {
+            meetWait.waiting(false);
+          }
+        },
         sendDC: meshSendDC,
         // Entry asks are delivered only on a channel to the greeter they name.
         // meshSendDC also returns true for a dump onto some other peer; the
@@ -10530,7 +10600,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A DOOR BACK FROM DARK answers the sockets still knocking at it (mesh.js
         // answerDoor): once per dark return, on the full list
         // the return pulled; a member's socket is skipped by the seat.
-        if (doorAnswerAt && Date.now() - doorAnswerAt < 15000 && relayRosterScope === 'full') {
+        if (doorAnswerAt && Date.now() - doorAnswerAt < 15000 && relayRosterScope === 'full' && !atWaitDoor) {
           doorAnswerAt = 0;
           const ids = Array.from(relaySocketed).filter((id) => id !== myId);
           try {
@@ -10545,7 +10615,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             } else if (s && s.answerDoor) s.answerDoor(ids.filter((id) => !waitDeclined.has(id)));
           } catch (e) {}
         }
-        if (doorRoundPending && relayRosterScope === 'full') { doorRoundPending = false; try { const s = meshSeat(); if (s && s.doorRound) s.doorRound(Array.from(relaySocketed).filter((id) => id !== myId)); } catch (e) {} }   // the door round's list (doorRoundBeat)
+        if (doorRoundPending && relayRosterScope === 'full' && !atWaitDoor) { doorRoundPending = false; try { const s = meshSeat(); if (s && s.doorRound) s.doorRound(Array.from(relaySocketed).filter((id) => id !== myId)); } catch (e) {} }   // the door round's list (doorRoundBeat). A knocker the relay is holding does not found a room from that list.
         if (relayRosterScope === 'full' && pendingDoorGrant) { const g = pendingDoorGrant; pendingDoorGrant = null; g(); }
         roomBan = m.ban || []; // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
         Object.assign(devOf, m.devs || {}); // MERGE (absence grace keeps tiles whose Ban button must work)
@@ -11538,7 +11608,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       inp.focus();
     }
     document.getElementById('pwbtn').onclick = () => showPwModal(false);
-    document.getElementById('waitbtn').onclick = () => { meetWait.hold(!holdDoor); };
+    document.getElementById('waitbtn').onclick = () => {
+      if (hasAdminRoom() && !amAdmin) { setStatus('Only an admin can turn the waiting room on.'); return; }
+      meetWait.hold(!holdDoor);
+    };
+    document.getElementById('waitdoor-leave').onclick = () => { location.href = MEET_PATH; };
     document.getElementById('pw-cancel').onclick = () => {
       if (pwModal.dataset.mode === 'join') { location.href = MEET_PATH; return; }
       pwModal.style.display = 'none';
