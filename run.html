@@ -1168,6 +1168,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
   #nm-avatar { width: 72px; height: 72px; object-fit: cover; border-radius: 50%; display: block; margin: 0 auto .8rem; }
   #nm-avatar[hidden] { display: none; }
+  .appear-preview { display: flex; align-items: center; gap: 12px; text-align: left; margin: 0 0 14px; padding: 12px;
+    border-radius: 16px; background: rgba(255,255,255,.06); }
+  .appear-face { position: relative; width: 72px; height: 72px; min-width: 72px; border-radius: 50%; overflow: hidden;
+    background: #3a3a3f; color: #fff; font-weight: 700; font-size: 1.6rem; display: flex; align-items: center; justify-content: center; }
+  .appear-face #nm-avatar, .appear-face #nm-cam { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+    border-radius: 0; object-fit: cover; }
+  .appear-face #nm-cam[hidden], .appear-face #nm-avatar[hidden] { display: none; }
+  #nm-preview-name { display: block; font-size: 1.05rem; line-height: 1.25; overflow-wrap: anywhere; }
+  .appear-label { display: block; text-align: left; font-size: .85rem; font-weight: 700; margin: 0 0 .35rem; }
+  .appear-edits { display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; margin: 0 0 12px; }
+  .name-box.appear-box .appear-edits button { min-height: 44px; min-width: 44px; padding: .4rem .8rem; border-radius: 12px;
+    background: transparent; color: var(--text, #e0e0f0); border: 1.5px solid #8d93a0; }
+  .appear-err { color: #ffb4b4; font-size: .82rem; min-height: 1em; text-align: left; margin: 0 0 .4rem; }
   .name-box button { padding: .5rem 1.4rem; min-height: 48px; border-radius: .5rem; border: 1px solid var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; }
   /* Help: a longer, scrollable panel — same modal chrome, room to breathe. */
   .help-box { width: 92vw; }
@@ -2337,27 +2350,81 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       const bg = document.createElement('div'); bg.className = 'name-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
-      bg.innerHTML = '<div class="name-box"><h3>Pick a screen name</h3>' +
-        '<p>The name people see on your tile. You can change it later under Settings.</p>' +
-        '<img id="nm-avatar" alt="" hidden>' +
+      bg.innerHTML = '<div class="name-box appear-box"><h3>This is how you’ll appear</h3>' +
+        '<p id="nm-lead">This is how you’ll appear in the meeting.</p>' +
+        '<div class="appear-preview">' +
+          '<div class="appear-face"><video id="nm-cam" autoplay muted playsinline hidden></video>' +
+          '<img id="nm-avatar" alt="" hidden><span id="nm-letter" aria-hidden="true"></span></div>' +
+          '<div><b id="nm-preview-name"></b></div></div>' +
+        '<label class="appear-label" for="nm">Name</label>' +
         '<input id="nm" name="nickname" maxlength="40" placeholder="Your name" autocomplete="nickname">' +
+        '<div class="appear-edits"><button type="button" id="nm-pic">Change picture</button>' +
+        '<button type="button" id="nm-cam-btn">Preview camera</button></div>' +
+        '<input id="nm-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" hidden aria-label="Choose a picture">' +
+        '<p id="nm-err" class="appear-err" role="alert"></p>' +
         '<button id="nmcancel" type="button">Not now</button>' +
         '<button id="nmok">Continue</button></div>';
       document.body.appendChild(bg);
       const input = bg.querySelector('#nm');
-      if (systemName) input.value = systemName;
+      const previewName = bg.querySelector('#nm-preview-name');
+      const letter = bg.querySelector('#nm-letter');
       const img = bg.querySelector('#nm-avatar');
+      const video = bg.querySelector('#nm-cam');
+      const err = bg.querySelector('#nm-err');
+      let camStream = null;
+      if (systemName) input.value = systemName;
+      const paintPreview = () => {
+        const shown = input.value.trim() || systemName || 'You';
+        previewName.textContent = shown;
+        letter.textContent = shown.slice(0, 1).toUpperCase();
+      };
       if (me.avatar && me.avatar.url) {
         img.src = me.avatar.url;
         img.alt = (systemName || 'Your picture');
         img.hidden = false;
       }
-      input.focus();
+      paintPreview();
+      input.addEventListener('input', paintPreview);
+      const stopCam = () => {
+        if (!camStream) return;
+        try { camStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+        camStream = null;
+        video.srcObject = null;
+        video.hidden = true;
+      };
+      bg.querySelector('#nm-pic').onclick = () => bg.querySelector('#nm-file').click();
+      bg.querySelector('#nm-file').onchange = () => {
+        const file = bg.querySelector('#nm-file').files && bg.querySelector('#nm-file').files[0];
+        if (!file || !window.GifOS || !GifOS.avatar || !GifOS.avatar.prepareFile) return;
+        GifOS.avatar.prepareFile(file).then((rec) => {
+          if (!rec || !rec.ok) { err.textContent = (rec && rec.error) || 'Choose a GIF, PNG, JPG, or WebP.'; return; }
+          GifOS.store.setAvatar({ mime: rec.mime, hash: rec.hash, b64: rec.b64 });
+          img.src = 'data:' + rec.mime + ';base64,' + rec.b64;
+          img.alt = input.value.trim() || 'Your picture';
+          img.hidden = false;
+          stopCam();
+          err.textContent = '';
+        }).catch(() => { err.textContent = 'That picture could not be used.'; });
+      };
+      bg.querySelector('#nm-cam-btn').onclick = () => {
+        if (camStream) { stopCam(); bg.querySelector('#nm-cam-btn').textContent = 'Preview camera'; return; }
+        const md = navigator.mediaDevices;
+        if (!md || !md.getUserMedia) { err.textContent = 'This phone has no camera preview. Your picture is what people see.'; return; }
+        md.getUserMedia({ video: true, audio: false }).then((stream) => {
+          camStream = stream;
+          video.srcObject = stream;
+          video.hidden = false;
+          bg.querySelector('#nm-cam-btn').textContent = 'Use your picture';
+          err.textContent = '';
+        }).catch(() => { err.textContent = 'The camera stayed off. Your picture is what people see.'; });
+      };
+      if (!systemName) input.focus();
       const done = (keep) => {
         let v = keep ? seed : input.value.trim();
         if (!v) v = seed;
         const changed = v !== seed;
         if (changed) GifOS.store.setName(v);
+        stopCam();
         bg.remove();
         if (!changed) return;
         try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}

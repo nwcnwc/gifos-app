@@ -21,11 +21,11 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 | Live, off air, watching, reconnecting | 3 | 3 | 3 | YouTube Live, StreamYard |
 | Large type and 44px targets | 4 | 3 | 4 | FaceTime |
 | Landscape, rotation, notch | 4 | 4 | 4 | Meet |
-| Warm, short, trustworthy copy | 3 | 2 | 3 | FaceTime |
-| **Audience average** | **3.7** | **3.4** | **3.7** | |
+| Warm, short, trustworthy copy | 4 | 2 | 4 | FaceTime |
+| **Audience average** | **3.9** | **3.4** | **3.9** | |
 
-Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast now says RECONNECTING, OFF AIR, LIVE, or WATCHING (Q5). Create & enter stays in the card while the room fields scroll (Q4). More scrolls inside the screen in landscape (Q3). The chip and the dock clear a notch and a home indicator (Q7). The status line grows with the root text size (Q6). Flip sits on the phone dock (Q5b). Corporate and personal are 3.7. Church is 3.4. None lead. Landscape stays at 4: Meet is still the meeting a corporate user would rotate into, and a 5 would mean they would switch. The title in the chip is still a fixed pixel size, so large type is not a 5. FaceTime still wins the first screen on copy: Create still asks for two passwords. The join step now opens with the GifOS display name and picture (Q9). Averages stay 3.7, 3.4, and 3.7. The step still does not show how you will appear (Q9b), and `Not now` and `Continue` are the same color (Q11). Church copy stays at 2 because Create still asks for two passwords. The 320px dock gap is still 4px (Q10).
+Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast now says RECONNECTING, OFF AIR, LIVE, or WATCHING (Q5). Create & enter stays in the card while the room fields scroll (Q4). More scrolls inside the screen in landscape (Q3). The chip and the dock clear a notch and a home indicator (Q7). The status line grows with the root text size (Q6). Flip sits on the phone dock (Q5b). Corporate and personal are 3.7. Church is 3.4. None lead. Landscape stays at 4: Meet is still the meeting a corporate user would rotate into, and a 5 would mean they would switch. The title in the chip is still a fixed pixel size, so large type is not a 5. FaceTime still wins the first screen on copy: Create still asks for two passwords. The join step now opens with the GifOS display name and picture (Q9) and says “This is how you’ll appear in the meeting” (Q9b). Corporate and personal are 3.9. Church stays 3.4. None lead. Church copy stays at 2 because Create still asks for two passwords, so the warm-copy row is not a 5. `Not now` and `Continue` are still the same color (Q11). The 320px dock gap is still 4px (Q10).
 
 ## Next gap
 
-Q9b. The join step needs a “This is how you’ll appear in the meeting” preview, with the name and the picture or camera, and a way to change either before continuing.
+Q11. `Not now` and `Continue` are the same purple and have no gap. One of them has to be the only primary, with at least 8px between them.

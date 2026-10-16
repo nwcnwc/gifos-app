@@ -10,10 +10,6 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Open
 
-### Q9b. The join step does not show how you will appear
-
-The name step says “Pick a screen name”. It does not say “This is how you’ll appear in the meeting”, and there is no face-plus-name preview you can correct before Continue. The system picture is on the step now (Q9). The preview is next.
-
 ### Q11. Join actions are the same color and sit together
 
 `Not now` and `Continue` both use the accent fill. There is no gap rule between them, so they read as one control. A primary and a secondary need different fills and at least 8px between them. Both targets are already 48px tall.
@@ -23,6 +19,14 @@ The name step says “Pick a screen name”. It does not say “This is how you�
 Below 380px the dock gap is 4px so Leave still fits. Larger phones use 8px or 12px. The targets are 44px. The tighter gap is a polish item, after the phone-layout gaps. Not the next fix.
 
 ## Fixed
+
+### Q9b. The join step now says how you will appear
+
+The step leads with “This is how you’ll appear in the meeting.” A face (the system picture, or a letter when there is none) sits beside the name, and the name updates as you type. Change picture writes a new GifOS picture. Preview camera shows the camera in that face and can be put back. `test/mobile/appear-preview.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-appear-preview.png`.
+
+Design: the face and the name are one group, with 12px between them, and the edits are outline buttons rather than a second primary. The card is still the old dark surface on a light meeting, and `Not now` and `Continue` are still the same purple with no gap (Q11). That pair is the next visual failure.
 
 ### Q9. The join step ignored the GifOS name and picture
 
