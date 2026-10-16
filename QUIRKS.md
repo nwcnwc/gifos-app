@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q41. Go live left the camera off
+
+A stream host landed off air and had to tap the camera. Go live now turns the camera on. The mic stays quiet. A reload that already chose keeps that choice. A meeting still joins with the camera off. The friend link becomes a row above the dock, y=422 to y=486 on an iPhone SE, so the picture stays the stage. Blur stays on the video. There is no separate picture laid over it. `test/mobile/viewer-join.spec.mjs`.
+
+After: `test/mobile/screenshots/after/iphone-se-stream-live.png`.
+
+Design: the stage is the camera, Copy sits on the dock. Personal stays at 4. The host key is still minted, and the first screen is still a form FaceTime does not have.
+
 ### Q40. The friend link was a later hunt
 
 Go live opened off air, and the link lived behind More. The off-air stage now says “Friends watch with this link.” with the link and Copy. On an iPhone SE the card runs y=118 to y=285, under the title chip, and Copy is 48px, above the dock. A short landscape keeps the card between the chip and the dock. The camera still puts the picture on, and then the card leaves. A viewer does not see it. A meeting does not see it. `test/mobile/viewer-join.spec.mjs`.

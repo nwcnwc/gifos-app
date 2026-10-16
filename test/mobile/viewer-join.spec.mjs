@@ -54,6 +54,73 @@ test('a broadcast host lands on the stream without another sheet', async ({ page
   await expect(copy).toHaveText('Copied');
 });
 
+test('Go live turns the host camera on and keeps the link above the dock', async ({ page }) => {
+  await page.addInitScript((av) => {
+    localStorage.setItem('gifos_vadm_sundayservice.' + av, 'stored-host-key');
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 48;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#2060c0';
+    ctx.fillRect(0, 0, 64, 48);
+    navigator.mediaDevices.getUserMedia = async () => {
+      const stream = new MediaStream();
+      stream.addTrack(canvas.captureStream(5).getVideoTracks()[0]);
+      const ac = new AudioContext();
+      const dest = ac.createMediaStreamDestination();
+      const osc = ac.createOscillator();
+      osc.connect(dest);
+      osc.start();
+      const audio = dest.stream.getAudioTracks()[0];
+      if (audio) stream.addTrack(audio);
+      return stream;
+    };
+  }, AV);
+  await page.goto(VIEW, { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#livebadge-txt')).toHaveText('LIVE');
+  await expect(page.locator('#cam')).not.toHaveClass(/off/);
+  await expect(page.locator('#mic')).toHaveClass(/off/);
+  const link = page.locator('#bc-link');
+  await expect(link).toBeVisible();
+  await expect(link).toHaveClass(/live/);
+  const place = await page.evaluate(() => {
+    const card = document.getElementById('bc-link').getBoundingClientRect();
+    const btn = document.getElementById('bc-link-copy').getBoundingClientRect();
+    const bar = document.querySelector('.bar').getBoundingClientRect();
+    const stage = document.getElementById('feed').getBoundingClientRect();
+    return {
+      cardTop: card.top,
+      cardBottom: card.bottom,
+      btnH: btn.height,
+      btnBottom: btn.bottom,
+      barTop: bar.top,
+      stageMid: stage.top + stage.height / 2,
+      vh: innerHeight,
+    };
+  });
+  expect(place.btnH).toBeGreaterThanOrEqual(44);
+  expect(place.btnBottom).toBeLessThanOrEqual(place.barTop + 1);
+  expect(place.cardTop).toBeGreaterThan(place.stageMid);
+  expect(place.cardBottom).toBeLessThanOrEqual(place.vh + 0.5);
+});
+
+test('a meeting still joins with the camera off', async ({ page }) => {
+  await page.addInitScript(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 48;
+    navigator.mediaDevices.getUserMedia = async () => {
+      const stream = new MediaStream();
+      stream.addTrack(canvas.captureStream(5).getVideoTracks()[0]);
+      return stream;
+    };
+  });
+  await page.goto('/run.html#v=sundayroom', { waitUntil: 'domcontentloaded' });
+  await page.locator('#nmok').click();
+  await expect(page.locator('#cam')).toHaveClass(/off/);
+  await expect(page.locator('#livebadge')).toBeHidden();
+});
+
 test('the stream link stays between the title and the dock on a short landscape', async ({ page }) => {
   const vp = page.viewportSize();
   await page.setViewportSize({ width: Math.max(vp.width, vp.height), height: Math.min(vp.width, vp.height) });

@@ -1010,6 +1010,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border: 1.5px solid #8d93a0; padding: 8px 12px; font-size: 0.875rem; color: #1d1d1f; background: #fff; }
   #bc-link button { position: sticky; bottom: 0; flex: 0 0 auto; min-height: 48px; border-radius: 16px;
     border: none; background: #0064c8; color: #fff; font-weight: 700; }
+  body.broadcast #bc-link.on.live { flex-direction: row; align-items: center; padding: 8px; gap: 8px; }
+  body.broadcast #bc-link.on.live p { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  body.broadcast #bc-link.on.live input { flex: 1 1 auto; min-width: 0; }
+  body.broadcast #bc-link.on.live button { width: auto; padding: 0 16px; }
   .tile.cam-off > video { visibility: hidden; }
   .tile .chips { position: absolute; top: 6px; left: 6px; right: 6px; display: flex; flex-direction: row;
                  flex-wrap: nowrap; gap: 3px; align-items: center; z-index: 3; pointer-events: none; overflow: hidden; }
@@ -6516,16 +6521,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       paintStreamLink();
     }
 
-    // The host's off-air stage is the link. Viewers never see it. A live
-    // picture takes the stage back; Invite still has the link.
+    // The host's stage carries the friend link. Off air it sits under the
+    // title. On air it is a row above the dock, so the picture stays the stage.
+    // Viewers never see it.
     function paintStreamLink() {
       const card = document.getElementById('bc-link');
       if (!card) return;
       const host = typeof BROADCAST !== 'undefined' && BROADCAST && typeof bcHostStored === 'function' && bcHostStored();
       const onAir = myStatus && myStatus.camOff === false;
       const url = (typeof shareUrl !== 'undefined' && shareUrl && shareUrl.value) || '';
-      const show = !!(host && !onAir && url);
+      const show = !!(host && url);
       card.classList.toggle('on', show);
+      card.classList.toggle('live', show && onAir);
       if (!show) return;
       const input = document.getElementById('bc-link-url');
       if (input && input.value !== url) input.value = url;
@@ -6537,8 +6544,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const top = Math.ceil(chipBottom + 8);
       const barTop = bar ? bar.getBoundingClientRect().top : window.innerHeight;
       const limit = (barTop > top + 48 && barTop < window.innerHeight) ? barTop : window.innerHeight;
-      card.style.top = top + 'px';
-      card.style.maxHeight = Math.max(96, Math.floor(limit - top - 8)) + 'px';
+      if (onAir) {
+        card.style.top = 'auto';
+        card.style.maxHeight = 'none';
+        card.style.bottom = Math.ceil(window.innerHeight - limit + 8) + 'px';
+      } else {
+        card.style.bottom = '';
+        card.style.top = top + 'px';
+        card.style.maxHeight = Math.max(96, Math.floor(limit - top - 8)) + 'px';
+      }
     }
 
     // ---- mesh plumbing ---------------------------------------------------------
@@ -12312,8 +12326,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             else {
               // The HOST auto-steps onto the Stage: a broadcast page's whole
               // point, and the Stage is where their camera reaches the room.
-              // Camera and mic still start OFF (quiet-join discipline). Going
-              // live on pixels stays a deliberate tap.
+              // Go live turns the camera on. The mic stays quiet.
               // tryBroadcastStage runs from the admin-key adopt and from the
               // S4 identity, whichever lands second. The sweep retries while
               // the stage is full. At 30s we stop and say so.
@@ -12401,7 +12414,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             for (const tr of localStream.getTracks()) tr.enabled = false;
             // A freeze reload stashed the live mic/camera/share. Put them back
             // before the first status goes out, so peers never see a quiet rejoin.
-            try { if (typeof applyRecoverMedia === 'function') applyRecoverMedia(); } catch (e) {}
+            let restored = false;
+            try { restored = typeof applyRecoverMedia === 'function' && applyRecoverMedia() === true; } catch (e) {}
+            // A personal stream's Go live is the camera. A meeting still joins
+            // quiet. A reload that already chose keeps that choice. The mic
+            // stays off. Blur stays on the video track; there is no avatar overlay.
+            if (!restored && BROADCAST && bcHostStored()) {
+              const cam = localStream.getVideoTracks()[0];
+              if (cam && !(typeof forcedCamOff === 'function' && forcedCamOff('me'))) {
+                cam.enabled = true;
+                myStatus.camOff = false;
+                try { paintControls(); } catch (e) {}
+                try { updateStatus(); } catch (e) {}
+              }
+            }
             // A reload leaves remote companions and the stage ear paused.
             // Start them again on this boot, before the first paint, so the
             // call is audible without a tap or a volume write.
@@ -17934,7 +17960,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function applyRecoverMedia() {
       const o = takeRecoverMedia();
-      if (!o) return;
+      if (!o) return false;
       if (localStream) {
         const mic = localStream.getAudioTracks()[0];
         if (mic) {
@@ -17951,6 +17977,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       try { paintControls(); } catch (e) {}
       if (o.sharing) { try { recoverScreenShare(); } catch (e) {} }
+      return true;
     }
     function startScreenShare() {
       if (myStatus.scr) return;
