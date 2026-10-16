@@ -122,9 +122,13 @@ A cold open now says **Small group**. Go live says **Service**. The blue button 
 
 Leave on a small group goes straight to **You left the small group**. Rejoin is still blue. Close is still the outline. The confirm stays on a service, because you are live: Stay is the outline and Leave is red. After: `test/e2e/artifacts/leave-onetap-after.png`.
 
+### Q28. The status line was cut off
+
+Alone in a room, the chip said “Just you — send the invite; the link has no expiry” and then clipped the rest, including at 1920. It now says **Just you. Send the invite.** The chip can use the width beside Fit. The whole line fits at 1280, 1920, and 900, and after a resize from 1920 to 900, and it does not cover Fit. After: `test/e2e/artifacts/status-fit-after.png`.
+
 ## Open
 
-A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The lobby stays at 4: it names the room, and it is still three doors rather than one join. Labeled controls and layout stay at 4. The status line in the top chip still clips.
+A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The dock is still on screen. The lobby stays at 4: it names the room, and it is still three doors rather than one join. Labeled controls stay at 4.
 
 ## How a session was opened without a relay
 

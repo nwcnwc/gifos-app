@@ -1323,7 +1323,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     outline: 3px solid #0064c8; outline-offset: 2px;
   }
   .topchip { position: fixed; z-index: 6; top: 14px; left: 14px; display: flex; align-items: center; gap: 8px;
-    max-width: min(28rem, calc(100% - 120px)); background: rgba(12,14,18,.92); color: #f4f7fb;
+    max-width: calc(100% - 120px); background: rgba(12,14,18,.92); color: #f4f7fb;
     border-radius: 999px; padding: 6px 12px 6px 14px; }
   .topchip .title { font-weight: 800; font-size: 26px; letter-spacing: -0.04em; text-decoration: none; cursor: pointer;
     background: linear-gradient(135deg, #0071e3, #5856d6); -webkit-background-clip: text; background-clip: text;
@@ -6511,7 +6511,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const reachState = reach ? reach.state : null;
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
       const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
-        : (n === 1 ? (atDoor ? 'Getting you back into the ' + (BROADCAST ? 'service' : 'small group') + ' — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry' + reachTriedSentence())
+        : (n === 1 ? (atDoor ? 'Getting you back into the ' + (BROADCAST ? 'service' : 'small group') + ' — waiting for the others to answer…' : 'Just you. Send the invite.' + reachTriedSentence())
         : displayCount() + ' in this ' + (BROADCAST ? 'service' : 'small group') + ' · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one

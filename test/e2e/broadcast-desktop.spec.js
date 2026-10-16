@@ -802,6 +802,44 @@ test('leaving and rejoining a personal call is obvious', async ({ page }) => {
   await expect(page.locator('#left-title')).toHaveText('You left the service');
 });
 
+test('the status line fits beside Fit', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  async function readStatus() {
+    return page.evaluate(() => {
+      const st = document.getElementById('status');
+      const chip = document.querySelector('.topchip').getBoundingClientRect();
+      const fit = document.getElementById('fitbtn').getBoundingClientRect();
+      const ix = Math.max(0, Math.min(chip.right, fit.right) - Math.max(chip.left, fit.left));
+      const iy = Math.max(0, Math.min(chip.bottom, fit.bottom) - Math.max(chip.top, fit.top));
+      return {
+        text: st.textContent,
+        clip: st.scrollWidth > st.clientWidth + 1,
+        hit: ix > 0 && iy > 0,
+        on: chip.left >= -1 && chip.right <= innerWidth + 1 && fit.right <= innerWidth + 1,
+      };
+    });
+  }
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=stat' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+    await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('Just you') !== -1);
+    const m = await readStatus();
+    expect(m.text).toContain('Just you. Send the invite.');
+    expect(m.text).not.toContain('no expiry');
+    expect(m.clip, JSON.stringify(m)).toBe(false);
+    expect(m.hit, JSON.stringify(m)).toBe(false);
+    expect(m.on, JSON.stringify(m)).toBe(true);
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.setViewportSize({ width: 900, height: 720 });
+  const resized = await readStatus();
+  expect(resized.clip, JSON.stringify(resized)).toBe(false);
+  expect(resized.hit, JSON.stringify(resized)).toBe(false);
+});
+
 test('microphone and camera off are a line you cannot miss', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
