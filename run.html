@@ -1323,11 +1323,32 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #call-rec.on { background: #b61622; color: #fff; border-color: transparent; }
   #call-cc.on { background: #0064c8; color: #fff; border-color: transparent; }
   /* Unread chat sits on the call, above Live, while More is closed.
-     The count is the target. Blue, not the Live red. */
-  #chatbadge {
+     The line is the white banner. The count is the blue pill. */
+  #chatnote {
     position: fixed; z-index: 31;
+    left: calc(8px + env(safe-area-inset-left, 0px));
     right: calc(8px + env(safe-area-inset-right, 0px));
     bottom: calc(var(--dockh, 108px) + var(--stateh, 0px) + 16px);
+    display: flex; align-items: stretch; gap: 8px;
+  }
+  #chatnote[hidden] { display: none !important; }
+  body.solo-app #chatnote { display: none !important; }
+  #chatpreview {
+    flex: 1 1 auto; min-width: 0; min-height: 44px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border: 0; border-radius: 16px; cursor: pointer;
+    background: #fff; color: #1d1d1f;
+    font: 1rem/1.25 system-ui, sans-serif; text-align: left;
+    box-shadow: 0 6px 16px rgba(0,0,0,.28); overflow: hidden;
+  }
+  #chatpreview b, #chatpreview span {
+    font-size: 1rem; color: #1d1d1f;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #chatpreview b { flex: 0 1 auto; max-width: 42%; font-weight: 700; }
+  #chatpreview span { flex: 1 1 auto; min-width: 0; font-weight: 500; }
+  #chatbadge {
+    flex: 0 0 auto;
     min-width: 44px; min-height: 44px; padding: 0 12px;
     border: 0; border-radius: 999px; cursor: pointer;
     background: #0064c8; color: #fff;
@@ -1336,7 +1357,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     box-shadow: 0 6px 16px rgba(0,0,0,.35);
   }
   #chatbadge[hidden] { display: none !important; }
-  body.solo-app #chatbadge { display: none !important; }
   body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
@@ -1713,7 +1733,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button type="button" id="call-rec" aria-pressed="false">Record</button>
     <button type="button" id="call-cc" aria-pressed="false">Captions</button>
   </div>
-  <button type="button" id="chatbadge" hidden aria-live="polite">0</button>
+  <div id="chatnote" hidden>
+    <button type="button" id="chatpreview"><b id="chatpreview-by"></b><span id="chatpreview-txt"></span></button>
+    <button type="button" id="chatbadge" hidden aria-live="polite">0</button>
+  </div>
   <div class="admcount" id="admcount" style="display:none"></div>
   <div class="bar collapsed" role="toolbar" aria-label="Call controls">
     <button id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
@@ -5126,10 +5149,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const sr = state.getBoundingClientRect();
             if (sr.height > 2) bottom = Math.max(bottom, window.innerHeight - sr.top);
           }
-          const badge = document.getElementById('chatbadge');
-          if (badge && !badge.hidden && badge.getClientRects().length) {
-            const br = badge.getBoundingClientRect();
-            if (br.height > 2) bottom = Math.max(bottom, window.innerHeight - br.top);
+          const note = document.getElementById('chatnote');
+          if (note && !note.hidden && note.getClientRects().length) {
+            const nr = note.getBoundingClientRect();
+            if (nr.height > 2) bottom = Math.max(bottom, window.innerHeight - nr.top);
           }
         } catch (e) {}
         window.__comfyLast = MV.apply({
@@ -12536,23 +12559,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const MAX_FILE = 25 * 1024 * 1024;
     const FILE_PART = 32768;
     let unread = 0;
+    let lastChatLine = null;
     function paintChatBadge() {
       const b = document.getElementById('chatbadge');
-      if (!b) return;
+      const note = document.getElementById('chatnote');
+      const by = document.getElementById('chatpreview-by');
+      const txt = document.getElementById('chatpreview-txt');
+      const preview = document.getElementById('chatpreview');
+      if (!b || !note) return;
       const lob = document.getElementById('lobby');
       const inCall = !(lob && lob.classList.contains('show'));
       const open = !!(chatPanel && chatPanel.classList.contains('open'));
       const show = inCall && unread > 0 && !open;
+      if (by) by.textContent = lastChatLine ? lastChatLine.by : '';
+      if (txt) txt.textContent = lastChatLine ? lastChatLine.text : '';
+      if (preview && lastChatLine) preview.setAttribute('aria-label', lastChatLine.by + ' said ' + lastChatLine.text + '. Open chat.');
       b.textContent = unread > 99 ? '99+' : String(Math.max(0, unread));
       b.setAttribute('aria-label', 'Chat, ' + unread + (unread === 1 ? ' new message' : ' new messages'));
       b.hidden = !show;
-      const key = (b.hidden ? '0' : '1') + ':' + b.offsetWidth + ':' + b.offsetHeight;
+      note.hidden = !show;
+      const key = (note.hidden ? '0' : '1') + ':' + note.offsetWidth + ':' + note.offsetHeight;
       if (key !== paintChatBadge.key) {
         paintChatBadge.key = key;
         try { layout(); } catch (e) {}
       }
     }
-    function countClosedChat() {
+    function countClosedChat(m) {
+      if (m) lastChatLine = { by: String(m.by || 'Someone').slice(0, 40), text: String(m.text || '').slice(0, 160) };
       if (chatPanel && chatPanel.classList.contains('open')) return;
       unread++;
       paintChatBadge();
@@ -12805,7 +12838,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (takeChat(m.m)) {
           renderChat();
           if (m.m && typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
-          countClosedChat();
+          countClosedChat(m.m);
           // A frame the sender marked ackReq (today: only the follow-me link)
           // gets a delivery ack back over the mesh/DC — see FOLLOW-ME DELIVERY
           // WAIT. Ordinary chat carries none: this is not a read receipt.
@@ -13706,6 +13739,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     };
     document.getElementById('chatclose').onclick = () => chatPanel.classList.remove('open');
     document.getElementById('chatbadge').onclick = () => { if (chatBtn) chatBtn.click(); };
+    document.getElementById('chatpreview').onclick = () => { if (chatBtn) chatBtn.click(); };
     window.__gifosChat = {
       note: function (o) {
         const msg = {
@@ -13717,7 +13751,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         };
         if (!takeChat(msg)) return unread;
         renderChat();
-        countClosedChat();
+        countClosedChat(msg);
         return unread;
       },
     };

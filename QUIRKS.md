@@ -157,6 +157,14 @@ Repro: `test/mobile/chat-badge.js`. It failed (`no on-call unread count`) on an 
 
 Before: `qa/mobile/shots/before-chat-badge-iphone-15.png`. After: `qa/mobile/shots/after-chat-badge-iphone-15.png`.
 
+### 19. A new line did not show what was said
+
+The count arrived on the call, and the words stayed inside chat. With the sheet closed you could see "2" and not the sentence.
+
+Repro: `test/mobile/chat-preview.js`. It failed (`no message preview`), then passed on an iPhone 15, an SE, and a 360px phone at 200% text. The latest line sits in a white banner beside the count, above Live. The sender and the text are 1rem, dark on white. Tapping the banner opens chat and clears both. Four faces end above the banner.
+
+Before: `qa/mobile/shots/before-chat-preview-iphone-15.png`. After: `qa/mobile/shots/after-chat-preview-iphone-15.png`.
+
 ## Open
 
 The build tag `edge` sits at x=333–379, y=14, and the name chip ends at x=159, so the tag does not cover the status. A green round "A" in Nathan's shot did not appear in the Playwright capture.
