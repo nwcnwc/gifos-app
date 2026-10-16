@@ -6,6 +6,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 
 ## Fixed
 
+### The gallery view needed the pointer
+
+- **Who hits it:** someone switching between fitting every face and scrolling larger faces, without reaching for the corner button.
+- **What you saw:** Fit sat at the top right with no shortcut. The list had Alt+H and not this.
+- **Repro:** `test/desktop/shortcuts.spec.js` requires `aria-keyshortcuts="Alt+F"` on `#fitbtn`. Before the chord, that attribute was empty.
+- **Fix:** Alt+F switches Fit and Scroll. The same button still does it with the pointer. The list says so, including “Alle zeigen oder scrollen” and “Ver a todos o desplazar”. The gallery geometry is unchanged.
+- **Proof:** the shortcut tests pass on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/view-key-before-1280.png`, `test/desktop/shots/view-key-after-1280.png`, `test/desktop/shots/view-key-scroll-1280.png`.
+
 ### Raising a hand needed the pointer
 
 - **Who hits it:** a keyboard user who wants a hand up without opening More.
