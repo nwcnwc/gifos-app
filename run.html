@@ -1680,6 +1680,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore > button,
   .bar:not(.collapsed) .barmore .seg,
   .bar:not(.collapsed) .barmore .blurlbl { font-size: 1rem; }
+  /* Invite is the one blue action in the sheet. The others stay gray. */
+  .bar:not(.collapsed) .barmore > #invite { background: #0064c8; color: #fff; }
   /* Notch and home indicator. env() is 0 until viewport-fit=cover, which
      the viewport meta sets. The dock was 14px from the layout bottom, on
      top of a 34px home indicator, and the name chip sat at y=14 under a
@@ -1695,6 +1697,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-width: 700px) {
     .bar:not(.collapsed) .barmore { bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
     .reacttray { bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
+  }
+  /* A phone was opening More over the faces: 13 equal buttons on an iPhone 15.
+     The first screen is the four the sheet already leads with. Two rows are
+     14px of padding, two 56px buttons, and the 8px gap, written in rem so
+     the rows grow with the text size. Everything else scrolls. */
+  @media (max-width: 700px) {
+    .bar:not(.collapsed) .barmore { max-height: 9.25rem; }
   }
   @media (min-width: 381px) {
     .bar { max-width: calc(100% - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }

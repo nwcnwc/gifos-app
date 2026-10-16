@@ -15,7 +15,7 @@ Out of scope for this branch, so they are not scored as wins or losses here: the
 - Zoom and church tools: a host admits from a waiting-room list, and the other host controls say what they do. Ours does too. In landscape, Invite, Room password, Waiting room, and Chat are on the first screen of More.
 - StreamYard, Restream, YouTube Live: a producer sees Live, and Record and Captions, on the call. Ours does too, above the dock, until the call is quiet. The record sheet still asks what to capture before it starts.
 - FaceTime tucks the call controls until you tap. On a phone, Live, Record, Captions, and the dock do too. Fit and the name chip stay.
-- A church volunteer panel is still calmer than More.
+- A purpose-built church volunteer page still has a bigger live control than More. On a phone, More's first screen is now four actions, and Invite is the blue one.
 
 What we already do that they do not: one link, no account, join muted, camera choice stays in the lobby, blur until there is a reason to be clear, the meeting is the peers rather than a server in the middle. That is the personal and church advantage. The phone chrome around it is in better shape, and we still do not lead.
 
@@ -40,8 +40,8 @@ A volunteer and an older member, a service or a small group, often a phone held 
 | Start or join from the lobby on an SE | 8 | Join is on screen in portrait and in landscape. Start is the only blue button. |
 | Tap targets for someone who misses small controls | 8 | Dock grip, chat close, Send, and Fit are 44px, including on an iPhone 15. Fit grows with the text size. |
 | Captions a member can find, at 200% text | 8 | Captions is on the call, says Captions, and the label is 32px at 200% text. |
-| Host runs the room from the phone they already hold | 9 | Live, Record, and Captions are on the call. Room password, Vote on someone, Step on stage, and a waiting-room list are named in plain words. |
-| **Audience** | **8** | Join, Captions, the dock, Fit, landscape More, and a waiting-room list work on a phone. A volunteer panel is still calmer. |
+| Host runs the room from the phone they already hold | 10 | Live, Record, and Captions are on the call. The phone sheet opens on Invite, Room password, Waiting room, and Chat. Invite is the blue one. Vote on someone and Step on stage scroll. |
+| **Audience** | **9** | Join, Captions, the dock, Fit, landscape More, and a waiting-room list work on a phone. More no longer covers the faces with a wall of buttons. We do not lead yet. |
 
 ## Personal
 
@@ -83,3 +83,4 @@ Family and friends. Warm, few steps, a texted link.
 24. Portrait tiles. `test/mobile/see-everyone.js` failed (bottom row 88px and 73px, three rows), then passed. Four people are two rows of two. A phone tile is no longer a wide strip. Personal see-everyone 7→8. Audience scores stay 8 / 8 / 8. Nobody leads yet. The corner still carries a solid build chip.
 25. Quieter chrome. `test/mobile/call-calm.js` failed (Fit covered a face, and the build tag was a solid chip), then passed. Faces start below Fit. The build name is faint and has no fill. Personal see-everyone 8→9. Audience scores stay 8 / 8 / 8. Nobody leads yet. FaceTime still hides more of its chrome.
 26. Idle chrome. `test/mobile/chrome-idle.js` failed (`chrome stays up when idle`), then passed on an iPhone 15 and an SE. Live, Record, Captions, and the dock tuck, the faces grow into that band, and a tap brings them back at 44px. More holds them up. Corporate end-call 8→9, corporate trust 8→9, corporate audience 8→9. Personal see-everyone 9→10, personal audience 8→9. Church stays 8. Nobody leads yet. A volunteer panel is still calmer. Fit and the name chip stay on screen.
+27. Calmer More. `test/mobile/more-calm.js` failed (`13 buttons on the first screen`, sheet top 44), then passed on an iPhone 15 and an SE. The first screen is Invite, Room password, Waiting room, and Chat. Invite is blue. The name stays clear. Church host 9→10, church audience 8→9. Audience scores are 9 / 9 / 9. Nobody leads yet.

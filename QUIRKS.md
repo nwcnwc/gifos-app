@@ -219,6 +219,14 @@ Repro: `test/mobile/chrome-idle.js`. It failed (`chrome stays up when idle`), th
 
 Before: `qa/mobile/shots/before-chrome-idle-iphone-15.png`. After: `qa/mobile/shots/after-chrome-idle-iphone-15.png`, `qa/mobile/shots/after-chrome-back-iphone-15.png`.
 
+### 27. More covers the call with a wall of equal buttons
+
+On an iPhone 15, More was 13 buttons from y=44, over the name and the faces. Invite was the same gray as Room password. An SE showed 12.
+
+Repro: `test/mobile/more-calm.js`. It failed (`13 buttons on the first screen`, sheet top 44), then passed on an iPhone 15 and an SE. The first screen is Invite, Room password, Waiting room, and Chat. Invite is the blue one. The rest scroll. The name stays clear.
+
+Before: `qa/mobile/shots/before-more-calm-iphone-15.png`. After: `qa/mobile/shots/after-more-calm-iphone-15.png`.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.
