@@ -61,13 +61,17 @@ The captions control said "CC". The people list said "Who". The first probe read
 
 Repro: `test/mobile/plain-words.js`. It requires the visible words Captions and People, each at least 44px. It passes. The ids are unchanged (`#ccbtn`, `#whobtn`). "Captions" still fits the landscape sheet (`more-sheet-fits.js`) and still grows at 200% (`text-scale-controls.js`).
 
-## Open
-
 ### 6. No safe-area insets
 
-The viewport meta is `width=device-width, initial-scale=1.0, interactive-widget=resizes-content`. It has no `viewport-fit=cover`. The dock uses `bottom: 14px` and the top chip uses `top: 14px`, with no `env(safe-area-inset-*)`. On a notched phone in Safari those insets stay 0 until `viewport-fit=cover` is set, and even then the dock is not padded. Not yet proven with a live inset (the CDP probe did not finish this pass).
+The viewport meta was `width=device-width, initial-scale=1.0, interactive-widget=resizes-content`. The dock used `bottom: 14px` and the name chip `top: 14px`. With a 47px notch and a 34px home indicator (Chrome safe-area override), the chip sat at y=14 and the dock ended at y=645 on a 659px iPhone 15, 20px onto the indicator. Landscape put the dock on the bottom edge too.
 
-Fit is still 59×32. That is open too.
+Repro: `test/mobile/safe-area.js`. It failed on the meta, the chip, the dock, and hang up, then passed. The meta is `viewport-fit=cover`. Chip, Fit, dock, More sheet, and the reaction tray use `env(safe-area-inset-*)`. On that iPhone 15 the chip is at y=61 and the dock ends at y=611, above the indicator line at 625.
+
+After: `qa/mobile/shots/after-safe-area-iphone-15.png`.
+
+## Open
+
+Fit is still 32px tall. There is still no waiting-room admit list for a host.
 
 ## Personas (what was actually tried)
 

@@ -19,7 +19,7 @@
 <meta http-equiv="Content-Security-Policy" content="frame-src about:">
 <meta name="referrer" content="same-origin">
 <meta name="robots" content="noindex">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0a0a0f">
 <!-- First paint is dark GROUND, immediately: the real theme gate lives ~400
@@ -1480,7 +1480,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      The row was nowrap, so Hang up drew past the right edge (x=374).
      44px is the floor for a thumb. The glyphs are the same icons, smaller. */
   @media (max-width: 380px) {
-    .bar { gap: 4px; padding: 0 6px; max-width: calc(100vw - 8px); height: 72px; }
+    .bar { gap: 4px; padding: 0 6px; max-width: calc(100vw - 8px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); height: 72px; }
     .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
       width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
     .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg { width: 22px; height: 22px; }
@@ -1506,6 +1506,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore > button,
   .bar:not(.collapsed) .barmore .seg,
   .bar:not(.collapsed) .barmore .blurlbl { font-size: 1rem; }
+  /* Notch and home indicator. env() is 0 until viewport-fit=cover, which
+     the viewport meta sets. The dock was 14px from the layout bottom, on
+     top of a 34px home indicator, and the name chip sat at y=14 under a
+     47px notch. */
+  .bar { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
+  .topchip { top: calc(14px + env(safe-area-inset-top, 0px)); left: calc(14px + env(safe-area-inset-left, 0px)); }
+  .fitbtn { top: calc(58px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); }
+  .bar:not(.collapsed) .barmore {
+    bottom: calc(122px + env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 160px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+  .reacttray { bottom: calc(122px + env(safe-area-inset-bottom, 0px)); }
+  @media (max-width: 700px) {
+    .bar:not(.collapsed) .barmore { bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
+    .reacttray { bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
+  }
+  @media (min-width: 381px) {
+    .bar { max-width: calc(100% - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
+  }
   /* The preview was taking more than half of a short phone, so Join a link
      sat below the fold (SE portrait bottom 661 on a 568px screen, and in
      landscape the first action was already off screen). */

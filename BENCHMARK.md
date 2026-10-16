@@ -12,7 +12,7 @@ Out of scope for this branch, so they are not scored as wins or losses here: the
 - Meet and Teams: the overflow menu scrolls inside the screen in landscape. Ours draws Password above the top edge and does not scroll.
 - iMessage, Meet, Teams: the composer stays above the keyboard and above the call controls. Ours is underneath the dock, and a tap never lands.
 - FaceTime and church volunteer panels: primary targets are at least 44px. The dock grip, chat close, and Send are 44px now. Fit is still 32px tall.
-- iOS: controls clear the home indicator and the notch. Our viewport does not opt into safe areas, and the dock is a fixed 14px from the layout bottom.
+- iOS: the notch and home indicator are cleared. `viewport-fit=cover` is set and the dock, chip, and Fit use `env(safe-area-inset-*)`. Fit itself is still 32px tall.
 - Meet, Teams, YouTube name the control Captions. Ours does too, and at 200% text that label is 32px.
 - Zoom and church tools: a host can admit from a waiting-room list. Our phone can set a password, record, caption, and step on stage, including in landscape. There is no separate admit list.
 - StreamYard, Restream, YouTube Live: a producer sees a labeled live/record state that cannot be covered by another bar. Record and Captions scroll inside More.
@@ -29,7 +29,7 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 | Host: password, record, captions, stage, in landscape | 7 | Those controls scroll into view on SE, iPhone 15, Pixel 7, and 360px landscape. The captions control says Captions. |
 | Chat or check names without losing the controls | 7 | The field taps, sits above the dock, and lifts for a keyboard band. Close and Send are 44px. |
 | Looks trustworthy (nothing cut off, type scales) | 4 | Fine on iPhone 15 and Pixel 7 portrait. Fails the small phone. |
-| **Audience** | **6** | Hang up, landscape host tools, captions, and chat work on a phone. Still behind Zoom, Meet, and Teams on a waiting-room admit list and the home-indicator inset. |
+| **Audience** | **7** | Hang up, landscape host tools, captions, chat, and the home indicator are in good shape. Still behind Zoom and Meet on a waiting-room admit list. |
 
 ## Church
 
@@ -53,7 +53,7 @@ Family and friends. Warm, few steps, a texted link.
 | See everyone and hang up on a small phone | 6 | Faces paint. Hang up fits on SE and 360px. |
 | Send a chat line | 7 | The field is above the dock, 44px, and lifts when the keyboard band is set. |
 | Turn the phone sideways | 6 | Invite and Password scroll into the More sheet. |
-| **Audience** | **6** | The link, the name step, hang up, landscape More, chat, and the small-phone lobby are in good shape. The home indicator and the 32px Fit control are still behind FaceTime. |
+| **Audience** | **7** | The link, the name step, hang up, landscape More, chat, the lobby, and the home indicator are in good shape. Fit is still 32px, behind FaceTime. |
 
 ## Cycle
 
@@ -62,4 +62,5 @@ Family and friends. Warm, few steps, a texted link.
 3. Chat composer clears the dock and a keyboard band. `test/mobile/chat-above-dock.js` failed, then passed. Corporate 5→6, personal 5→6. Church stayed 5 until the lobby fix.
 4. Lobby Join is on screen on an SE. `test/mobile/lobby-join-visible.js` failed, then passed. Church 5→6. Corporate stays 6, personal stays 6.
 5. More labels follow 200% text size. `test/mobile/text-scale-controls.js` failed, then passed. Captions row 3→5.
-6. The controls say Captions and People. `test/mobile/plain-words.js` passes. Church captions 5→7, church audience 6→7. Corporate and personal stay 6. Nobody leads yet. Next: Fit is 32px tall, and the dock ignores the home indicator.
+6. The controls say Captions and People. `test/mobile/plain-words.js` passes. Church captions 5→7, church audience 6→7.
+7. Safe area. `test/mobile/safe-area.js` failed, then passed. Corporate 6→7, personal 6→7. Church stays 7. Nobody leads yet. Next: the 32px Fit control, then a host admit list.
