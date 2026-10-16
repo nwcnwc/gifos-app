@@ -126,9 +126,13 @@ Leave on a small group goes straight to **You left the small group**. Rejoin is 
 
 Alone in a room, the chip said “Just you — send the invite; the link has no expiry” and then clipped the rest, including at 1920. It now says **Just you. Send the invite.** The chip can use the width beside Fit. The whole line fits at 1280, 1920, and 900, and after a resize from 1920 to 900, and it does not cover Fit. After: `test/e2e/artifacts/status-fit-after.png`.
 
+### Q29. The dock stayed up on a quiet small group
+
+On a small group the dock slides off the bottom after the call sits quiet, and a pointer, a key, or focus brings it back. It stays put while More is open, reactions are open, a text field is focused, or a card is up. A service does not tuck. Before: `test/e2e/artifacts/dock-tuck-before.png`. After: `test/e2e/artifacts/dock-tuck-after.png`.
+
 ## Open
 
-A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The dock is still on screen. The lobby stays at 4: it names the room, and it is still three doors rather than one join. Labeled controls stay at 4.
+A recording card names who is recording, and the bar stays Recording (Q22). Trust stays short of Zoom and Teams: there is no waiting room, and the card does not hold the recording until the other people have answered. FaceTime is still ahead on how little chrome a personal call shows. The dock tucks on a small group, and the room bar, the mute line, the status chip, and Fit stay. The lobby stays at 4: it names the room, and it is still three doors rather than one join. Labeled controls stay at 4.
 
 ## How a session was opened without a relay
 

@@ -50,7 +50,7 @@ GifOS leads this audience. The average is 4.7 against StreamYard 4.0. An open se
 | Leave / rejoin is understandable | 5 | 4 | 5 |
 | **Audience score** | **4.8** | **4.0** | **4.4** |
 
-FaceTime leads. A small group leaves on the red button. The card says you left, Rejoin is blue, and Close is an outline (Q27). A service still asks, because you are live. That matches FaceTime on a personal call. Invite is a dock button, and the sheet’s obvious action is a blue Copy beside the link (Q23). Arithmetic: (4+4+5+4+5)/5 = 4.4. Ahead of Meet. Behind FaceTime. Not a lead.
+FaceTime leads. A small group leaves on the red button. The card says you left, Rejoin is blue, and Close is an outline (Q27). A service still asks, because you are live. That matches FaceTime on a personal call. On a small group the dock slides off once the call sits quiet, and a pointer or a key brings it back. A service keeps the dock (Q29). Warm chrome stays at 4: the room bar, the mute line, the status chip, and Fit stay on screen. Invite is a dock button, and the sheet’s obvious action is a blue Copy beside the link (Q23). Arithmetic: (4+4+5+4+5)/5 = 4.4. Ahead of Meet. Behind FaceTime. Not a lead.
 
 ## Lead rule
 
@@ -87,3 +87,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q26 | 4.3 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.2 (FaceTime 4.8) | The lobby says Small group or Service. Lobby stays 4. Scores unchanged. |
 | After Q27 | 4.3 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A small group leaves on the red button. A service still asks. Personal leave 4 → 5. FaceTime still leads. |
 | After Q28 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | The status line fits beside Fit. Layout 4 → 5. Ahead of Meet and Teams. Zoom still leads. |
+| After Q29 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A small group tucks the dock when the call sits quiet. A service keeps it. Warm chrome stays 4. FaceTime still leads. |

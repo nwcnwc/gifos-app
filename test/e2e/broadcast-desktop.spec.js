@@ -473,6 +473,82 @@ test('arrow keys nudge the dock and a double click puts it back', async ({ page 
   expect(edge.x).toBeGreaterThanOrEqual(0);
 });
 
+test('a small group tucks the dock when the call sits quiet', async ({ page }) => {
+  async function dockPlace() {
+    return page.evaluate(() => {
+      const bar = document.querySelector('.bar');
+      const r = bar.getBoundingClientRect();
+      const mic = document.getElementById('mic').getBoundingClientRect();
+      return {
+        tucked: bar.classList.contains('tucked'),
+        hidden: bar.getAttribute('aria-hidden'),
+        pe: getComputedStyle(bar).pointerEvents,
+        top: r.top,
+        vh: window.innerHeight,
+        micTop: mic.top,
+        micBottom: mic.bottom,
+      };
+    });
+  }
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=tuck' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.group');
+    const before = await dockPlace();
+    expect(before.tucked).toBe(false);
+    expect(before.micBottom).toBeLessThanOrEqual(h);
+    expect(before.micTop).toBeGreaterThanOrEqual(0);
+    const ok = await page.evaluate(() => window.__gifosDock.tuck());
+    expect(ok).toBe(true);
+    const away = await dockPlace();
+    expect(away.tucked).toBe(true);
+    expect(away.hidden).toBe('true');
+    expect(away.pe).toBe('none');
+    expect(away.top).toBeGreaterThanOrEqual(h - 1);
+  }
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.setViewportSize({ width: 900, height: 720 });
+  const resized = await dockPlace();
+  expect(resized.tucked).toBe(true);
+  expect(resized.top).toBeGreaterThanOrEqual(719);
+  await page.evaluate(() => window.__gifosDock.wake());
+  const back = await dockPlace();
+  expect(back.tucked).toBe(false);
+  expect(back.hidden).toBeNull();
+  expect(back.micTop).toBeGreaterThanOrEqual(0);
+  expect(back.micBottom).toBeLessThanOrEqual(720);
+  await page.evaluate(() => window.__gifosDock.tuck());
+  await page.keyboard.press('Shift');
+  const woke = await dockPlace();
+  expect(woke.tucked).toBe(false);
+  expect(woke.micBottom).toBeLessThanOrEqual(720);
+  await page.locator('#bartoggle').click();
+  expect(await page.evaluate(() => window.__gifosDock.tuck())).toBe(false);
+  await page.locator('#bartoggle').click();
+  await page.locator('#reactbtn').click();
+  expect(await page.evaluate(() => window.__gifosDock.tuck())).toBe(false);
+  await page.locator('#reactbtn').click();
+  await page.locator('#chatbtn').click();
+  await page.locator('#chat-in').focus();
+  expect(await page.evaluate(() => window.__gifosDock.tuck())).toBe(false);
+  await page.evaluate(() => window.__gifosDock.setIdle(200));
+  await page.locator('#chat-in').blur();
+  await page.evaluate(() => window.__gifosDock.wake());
+  await page.waitForFunction(() => document.querySelector('.bar').classList.contains('tucked'));
+  await page.goto('/run.html?desk=tucksvc#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.broadcast .bar');
+  await page.evaluate(() => window.__gifosDock.setIdle(200));
+  await page.waitForTimeout(500);
+  const service = await dockPlace();
+  expect(await page.evaluate(() => window.__gifosDock.tuck())).toBe(false);
+  expect(service.tucked).toBe(false);
+  expect(service.micBottom).toBeLessThanOrEqual(720);
+});
+
 test('a broadcast host moderates guests on the stage', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
