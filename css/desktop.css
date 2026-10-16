@@ -624,3 +624,50 @@ button.row-del { min-width: 48px; min-height: 48px; display: inline-flex; align-
     border-radius: 0;
   }
 }
+
+/* Settings → Updates: "Latest release (recommended)" is the one choice in
+   view; edge and older releases sit in the collapsed Advanced / testing
+   section, each behind a confirm (desktop.js confirmPin). */
+.vlatest { display: flex; align-items: center; gap: .6rem; padding: .6rem .75rem; margin-bottom: .45rem;
+  border: 1px solid var(--border); border-radius: .5rem; font-size: .85rem; }
+.vlatest.on { border-color: color-mix(in srgb, #22a559 55%, var(--border)); background: color-mix(in srgb, #22a559 7%, transparent); }
+.vlatest-mark { width: 1.1rem; flex: none; text-align: center; font-weight: 800; color: #1f9d55; }
+.vlatest-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
+.vlatest-t > span { color: var(--muted); font-size: .78rem; }
+.vlatest-t > .vlatest-away { color: color-mix(in srgb, #d97706 75%, var(--text)); }
+.vtesting { margin-top: 1.2rem; border-top: 1px solid var(--border); padding-top: .3rem; }
+.vtesting > summary.vhead { display: flex; align-items: center; gap: .5rem; cursor: pointer; list-style: none;
+  min-height: 40px; color: var(--muted); font-size: .8rem; }
+.vtesting > summary.vhead::-webkit-details-marker { display: none; }
+.vtesting > summary.vhead::marker { content: ''; }
+.vtesting[open] > summary.vhead { color: var(--text); }
+.vtesting[open] > summary .vcaret { transform: rotate(90deg); }
+.vtype-row { display: flex; gap: .4rem; }
+.vtype-row input { flex: 1; min-width: 0; }
+
+/* The switch confirm. */
+.pin-confirm { text-align: left; }
+.pin-confirm h3 { text-align: center; }
+.pin-confirm .pin-risks { margin: .3rem 0 .8rem; padding-left: 1.1rem; font-size: .85rem; line-height: 1.4; }
+.pin-confirm .pin-risks li { margin: .2rem 0; }
+.pin-confirm .set-label { display: block; font-size: .85rem; margin: .2rem 0 .3rem; }
+.pin-confirm .pin-word { box-sizing: border-box; width: 100%; padding: .55rem .65rem; font-size: 1rem; border-radius: .45rem;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; }
+.pin-confirm .pin-ack-row { display: flex; gap: .5rem; align-items: center; font-size: .85rem; margin: .3rem 0; }
+.pin-confirm .pin-go { position: relative; overflow: hidden; }
+.pin-confirm .pin-go:disabled { opacity: .45; cursor: not-allowed; }
+.pin-confirm .pin-go-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(255,255,255,.28); pointer-events: none; }
+.pin-confirm .pin-go-t { position: relative; }
+
+/* The Home Screen banner while on edge or an older release. It is in the page
+   flow above the menubar; #desktop is moved down by its height. */
+.pin-bar { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem .7rem; padding: .4rem 1rem;
+  background: linear-gradient(135deg, rgba(245,158,11,.30), rgba(239,68,68,.22)); border-bottom: 1px solid #d97706;
+  font-size: .82rem; color: var(--text); position: relative; z-index: 6; }
+.pin-bar .pin-msg { flex: 1 1 14rem; min-width: 0; }
+.pin-bar .pin-left { color: var(--muted); white-space: nowrap; }
+.pin-bar button { padding: .25rem .8rem; border-radius: .4rem; border: 1px solid #b45309; background: #b45309;
+  color: #fff; cursor: pointer; font-size: .78rem; font-weight: 600; white-space: nowrap; }
+.pin-bar .dismiss { background: none; border: 0; color: var(--muted); padding: .25rem .5rem; }
+#desktop { top: calc(2.5rem + var(--pinbar-h, 0px)); }
