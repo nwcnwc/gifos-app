@@ -308,6 +308,44 @@ test('the dock has a full-screen button', async ({ page }) => {
   await expect(page.locator('body')).not.toHaveClass(/fsopen/);
 });
 
+test('a service password is the viewer password', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=vpw' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#onair.live');
+    await page.locator('#bartoggle').click();
+    const pw = page.locator('#pwbtn');
+    await expect(pw).toHaveAttribute('title', 'Set the viewer password. Without one, the stage stays blurred.');
+    await pw.click();
+    await expect(page.locator('#pw-title')).toHaveText('Viewer password');
+    const hint = page.locator('#pw-hint');
+    await expect(hint).toContainText('the stage stays blurred');
+    await expect(hint).toContainText('does not ride the link');
+    await expect(hint).not.toContainText('meeting');
+    const box = await page.locator('#pw-modal .name-box').boundingBox();
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(h + 1);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(w + 1);
+    const words = await hint.boundingBox();
+    expect(words.x).toBeGreaterThanOrEqual(box.x - 1);
+    expect(words.x + words.width).toBeLessThanOrEqual(box.x + box.width + 1);
+    await page.locator('#pw-cancel').click();
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/run.html?desk=vpwsg#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.locator('#bartoggle').click();
+  await page.locator('#pwbtn').click();
+  await expect(page.locator('#pw-title')).toHaveText('Room password');
+  await expect(page.locator('#pw-hint')).toContainText('meeting');
+});
+
 test('full screen on a service shows the stage', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
