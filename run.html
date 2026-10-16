@@ -711,6 +711,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      no camera or mic at all. A guest the host GRANTS the stage (the same
      signed 'app' grant that gates the Stage) gets the mic/cam buttons back —
      body.stage-granted — so they can go live when called up. */
+  body.bot-eyes #mic, body.bot-eyes #cam, body.bot-eyes #flipcam { display: none !important; }
   body.broadcast #grid, body.broadcast #stadium { display: none !important; }
   body.broadcast #stagefeed .rowtile { max-height: 76vh; }
   body.broadcast.notadmin:not(.stage-granted) #mic,
@@ -22223,6 +22224,46 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       window.__gifosMeetEmit = (ev) => { try { GifOS.meetSession.emit(ev); } catch (e) {} };
       let meetJoined = false;
       const peopleSig = { last: '' };
+      // The bot speaks with audio the app already made. This does not open the
+      // computer's microphone. The mic button still owns unmute for that.
+      let botSpeechAudio = null;
+      let botSpeechUrl = '';
+      function stopBotSpeech() {
+        if (botSpeechAudio) { try { botSpeechAudio.pause(); } catch (e) {} botSpeechAudio = null; }
+        if (botSpeechUrl) { try { URL.revokeObjectURL(botSpeechUrl); } catch (e) {} botSpeechUrl = ''; }
+        const track = localStream && localStream.getAudioTracks()[0];
+        if (track && track.enabled) { track.enabled = false; myStatus.muted = true; }
+        try { paintControls(); broadcastStatus(); } catch (e) {}
+        return { stopped: true };
+      }
+      function playBotSpeech(msg) {
+        const raw = msg && msg.bytes;
+        if (!raw) return Promise.reject(new Error('Nothing to play.'));
+        stopBotSpeech();
+        const bytes = raw instanceof Uint8Array ? raw : new Uint8Array(raw);
+        const blob = new Blob([bytes], { type: (msg && msg.mime) || 'audio/wav' });
+        botSpeechUrl = URL.createObjectURL(blob);
+        const audio = new Audio();
+        audio.src = botSpeechUrl;
+        botSpeechAudio = audio;
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return Promise.reject(new Error('This meeting cannot play the bot.'));
+        const ctx = new Ctx();
+        const src = ctx.createMediaElementSource(audio);
+        const dest = ctx.createMediaStreamDestination();
+        src.connect(dest);
+        const out = dest.stream.getAudioTracks()[0];
+        try {
+          for (const p of peers.values()) {
+            if (p.mainA && p.mainA.replaceTrack) p.mainA.replaceTrack(out);
+          }
+        } catch (e) {}
+        myStatus.muted = false;
+        try { paintControls(); broadcastStatus(); } catch (e) {}
+        const said = { spoken: true, text: (msg && msg.text) || '' };
+        const go = () => audio.play().then(() => said);
+        return go().catch(() => ctx.resume().then(go));
+      }
       GifOS.meetSession.install({
         join(msg) {
           if (meetJoined) return Promise.reject(new Error('This session is already in a meeting.'));
@@ -22298,6 +22339,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           chat.set(m.id, m);
           sendAll({ k: 'chat', m });
           try { renderChat(); } catch (e) {}
+          try {
+            if (typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: text, by: m.by, byId: m.byId, at: m.at, self: true });
+          } catch (e) {}
           return { ok: true, id: m.id };
         },
         transcribe(msg) {
@@ -22343,6 +22387,35 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             for (const p of open) { try { dcSend(p, frame); } catch (e) {} }
           }
           return { id: id, n: n, peers: open.length };
+        },
+        raiseHand(msg) {
+          const on = !!(msg && msg.on);
+          if (window.__gifosVideo && typeof window.__gifosVideo.raiseHand === 'function') window.__gifosVideo.raiseHand(on);
+          else {
+            myStatus.hand = on ? Date.now() : null;
+            try { paintHand(); broadcastStatus(); layout(); } catch (e) {}
+          }
+          return { hand: !!myStatus.hand };
+        },
+        setMic(msg) {
+          const on = !!(msg && msg.on);
+          const btn = document.getElementById('mic');
+          if (btn && on === !!myStatus.muted) btn.click();
+          return { mic: !myStatus.muted };
+        },
+        setCamera(msg) {
+          const on = !!(msg && msg.on);
+          const track = localStream && localStream.getVideoTracks()[0];
+          if (!track) return { camera: false };
+          const btn = document.getElementById('cam');
+          if (btn && on === !!myStatus.camOff) btn.click();
+          return { camera: !myStatus.camOff };
+        },
+        speak(msg) { return playBotSpeech(msg); },
+        stopSpeaking() { return stopBotSpeech(); },
+        watch(msg) {
+          document.body.classList.toggle('bot-eyes', !!(msg && msg.on));
+          return { watch: document.body.classList.contains('bot-eyes') };
         }
       });
       setInterval(() => {

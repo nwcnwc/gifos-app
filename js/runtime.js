@@ -650,6 +650,17 @@
           },
           list: function(){ return rpc({ type:'meet', op:'list' }); },
           setControl: function(id){ return rpc({ type:'meet', op:'setControl', meetingId: id }); },
+          // The same controls a person has on the meeting page. Speech is audio
+          // the app already produced (gifos.ai); this page only plays it.
+          raiseHand: function(id, on){ return rpc({ type:'meet', op:'raiseHand', meetingId: id, on: !!on }); },
+          setMic: function(id, on){ return rpc({ type:'meet', op:'setMic', meetingId: id, on: !!on }); },
+          setCamera: function(id, on){ return rpc({ type:'meet', op:'setCamera', meetingId: id, on: !!on }); },
+          speak: function(id, audio){
+            audio = audio || {};
+            return rpc({ type:'meet', op:'speak', meetingId: id, bytes: audio.bytes || null, mime: audio.mime || '', text: audio.text == null ? '' : String(audio.text) });
+          },
+          stopSpeaking: function(id){ return rpc({ type:'meet', op:'stopSpeaking', meetingId: id }); },
+          watch: function(id, on){ return rpc({ type:'meet', op:'watch', meetingId: id, on: !!on }); },
           onTranscriptLine: function(cb){ if (typeof cb === 'function') meetSubs.tr.push(cb); },
           onParticipants: function(cb){ if (typeof cb === 'function') meetSubs.pe.push(cb); },
           onChat: function(cb){ if (typeof cb === 'function') meetSubs.ch.push(cb); },
@@ -3641,6 +3652,12 @@
             else if (op === 'sendXfer') done(host.sendXfer(d.meetingId, { id: d.xferId, name: d.name, mime: d.mime, bytes: d.bytes }));
             else if (op === 'list') reply({ ok: true, result: host.list() });
             else if (op === 'setControl') { host.setControl(d.meetingId); reply({ ok: true, result: true }); }
+            else if (op === 'raiseHand') done(host.raiseHand(d.meetingId, !!d.on));
+            else if (op === 'setMic') done(host.setMic(d.meetingId, !!d.on));
+            else if (op === 'setCamera') done(host.setCamera(d.meetingId, !!d.on));
+            else if (op === 'speak') done(host.speak(d.meetingId, { bytes: d.bytes, mime: d.mime, text: d.text }));
+            else if (op === 'stopSpeaking') done(host.stopSpeaking(d.meetingId));
+            else if (op === 'watch') done(host.watch(d.meetingId, !!d.on));
             else reply({ ok: false, error: 'Unknown meet op.' });
           }
         }
