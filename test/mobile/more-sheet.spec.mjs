@@ -10,7 +10,7 @@ async function openMore(page, landscape) {
   }
   await page.goto('/run.html#v=sundayroom', { waitUntil: 'domcontentloaded' });
   await page.locator('#leavebtn').waitFor({ state: 'visible' });
-  const cancel = page.locator('#nmcancel');
+  const cancel = page.locator('#nmok');
   try {
     await cancel.waitFor({ state: 'visible', timeout: 2000 });
     await cancel.evaluate((el) => el.click());

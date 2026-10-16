@@ -1183,8 +1183,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .appear-err { color: #9f1239; font-size: .82rem; min-height: 1em; text-align: left; margin: 0 0 .4rem; }
   .name-box button { padding: .5rem 1.4rem; min-height: 48px; border-radius: .5rem; border: 1px solid var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; }
   /* The join step was a dark card with two identical purple actions and no
-     gap. One blue primary, one outline secondary, 12px apart, on the same
-     light card as the rest of the meeting. */
+     gap. Save is the blue primary. Clear is the outline. 12px apart, on the
+     same light card as the rest of the meeting. */
   .name-box.appear-box { background: #fff; color: #1d1d1f; border: 0; border-radius: 20px; text-align: left;
     width: min(400px, calc(100vw - 24px)); max-width: none; padding: 16px;
     max-height: calc(100dvh - 24px - var(--inset-top, 0px) - var(--inset-bottom, 0px)); }
@@ -2437,8 +2437,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The knock does not wait on this picker. A stored GifOS name is the
     // field's default, and the system picture is the face on the step.
     // A first visit with no name is seeded with Guest NNNN so joinRoom can
-    // run. Continue writes an edit the same way Settings does. Not now
-    // keeps whatever was already stored.
+    // run. Save keeps the name and picture shown in the form. Clear blanks
+    // both in the form; Save then joins with that blank.
     function ensureName() {
       const me = GifOS.store.identity();
       const systemName = (me.name || '').trim();
@@ -2461,8 +2461,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         '<button type="button" id="nm-cam-btn">Preview camera</button></div>' +
         '<input id="nm-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" hidden aria-label="Choose a picture">' +
         '<p id="nm-err" class="appear-err" role="alert"></p>' +
-        '<div class="name-actions"><button id="nmcancel" type="button">Not now</button>' +
-        '<button id="nmok" type="button">Continue</button></div></div>';
+        '<div class="name-actions"><button id="nmcancel" type="button">Clear</button>' +
+        '<button id="nmok" type="button">Save</button></div></div>';
       document.body.appendChild(bg);
       const input = bg.querySelector('#nm');
       const previewName = bg.querySelector('#nm-preview-name');
@@ -2471,11 +2471,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const video = bg.querySelector('#nm-cam');
       const err = bg.querySelector('#nm-err');
       let camStream = null;
+      let formCleared = false;
+      let avatarCleared = false;
       if (systemName) input.value = systemName;
       const paintPreview = () => {
-        const shown = input.value.trim() || systemName || 'You';
+        const typed = input.value.trim();
+        const shown = (formCleared || typed) ? typed : (systemName || 'You');
         previewName.textContent = shown;
-        letter.textContent = shown.slice(0, 1).toUpperCase();
+        letter.textContent = shown ? shown.slice(0, 1).toUpperCase() : '';
       };
       if (me.avatar && me.avatar.url) {
         img.src = me.avatar.url;
@@ -2498,6 +2501,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         GifOS.avatar.prepareFile(file).then((rec) => {
           if (!rec || !rec.ok) { err.textContent = (rec && rec.error) || 'Choose a GIF, PNG, JPG, or WebP.'; return; }
           GifOS.store.setAvatar({ mime: rec.mime, hash: rec.hash, b64: rec.b64 });
+          avatarCleared = false;
           img.src = 'data:' + rec.mime + ';base64,' + rec.b64;
           img.alt = input.value.trim() || 'Your picture';
           img.hidden = false;
@@ -2518,19 +2522,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }).catch(() => { err.textContent = 'The camera stayed off. Your picture is what people see.'; });
       };
       if (!systemName) input.focus();
-      const done = (keep) => {
-        let v = keep ? seed : input.value.trim();
-        if (!v) v = seed;
-        const changed = v !== seed;
-        if (changed) GifOS.store.setName(v);
+      const save = () => {
+        const v = input.value.trim();
+        const nameChanged = formCleared ? v !== seed : (!!v && v !== seed);
+        if (formCleared) GifOS.store.setName(v);
+        else if (v && v !== seed) GifOS.store.setName(v);
+        if (avatarCleared) GifOS.store.setAvatar(null);
         stopCam();
         bg.remove();
-        if (!changed) return;
+        if (!nameChanged && !avatarCleared) return;
         try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}
       };
-      bg.querySelector('#nmok').onclick = () => done(false);
-      bg.querySelector('#nmcancel').onclick = () => done(true);
-      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(false); });
+      const clearForm = () => {
+        formCleared = true;
+        avatarCleared = true;
+        input.value = '';
+        img.hidden = true;
+        img.removeAttribute('src');
+        img.alt = '';
+        stopCam();
+        const camBtn = bg.querySelector('#nm-cam-btn');
+        if (camBtn) camBtn.textContent = 'Preview camera';
+        paintPreview();
+        input.focus();
+      };
+      bg.querySelector('#nmok').onclick = () => save();
+      bg.querySelector('#nmcancel').onclick = () => clearForm();
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
       return Promise.resolve(GifOS.store.identity());
     }
 

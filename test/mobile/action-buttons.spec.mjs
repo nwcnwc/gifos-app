@@ -1,4 +1,18 @@
+import { createHash } from 'crypto';
 import { test, expect } from '@playwright/test';
+
+const FACE_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC', 'base64');
+const FACE = {
+  hash: createHash('sha256').update(FACE_PNG).digest('hex'),
+  b64: FACE_PNG.toString('base64'),
+};
+
+async function prefillJoin(page) {
+  await page.addInitScript((face) => {
+    localStorage.setItem('gifos_name', 'Ada Lovelace');
+    localStorage.setItem('gifos_avatar', JSON.stringify({ mime: 'image/png', hash: face.hash, b64: face.b64 }));
+  }, FACE);
+}
 
 function rgb(color) {
   const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(color || '');
@@ -30,10 +44,12 @@ async function pair(page, secondary, primary) {
   }, [secondary, primary]);
 }
 
-test('Continue is the only filled join action', async ({ page }) => {
+test('Save is the only filled join action', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('gifos_name', 'Ada Lovelace'));
   await page.goto('/run.html#v=sundayroom', { waitUntil: 'domcontentloaded' });
   await page.locator('#nmok').waitFor({ state: 'visible' });
+  await expect(page.locator('#nmcancel')).toHaveText('Clear');
+  await expect(page.locator('#nmok')).toHaveText('Save');
   const g = await pair(page, '#nmcancel', '#nmok');
   expect(g.gap).toBeGreaterThanOrEqual(8);
   expect(g.gap).toBeLessThanOrEqual(16);
@@ -42,6 +58,48 @@ test('Continue is the only filled join action', async ({ page }) => {
   expect(g.secondaryW).toBeGreaterThanOrEqual(44);
   expect(g.primaryW).toBeGreaterThanOrEqual(44);
   expect(farEnough(rgb(g.secondaryBg), rgb(g.primaryBg))).toBe(true);
+});
+
+test('Clear blanks the name and the avatar, and Save joins with that blank', async ({ page }) => {
+  await prefillJoin(page);
+  await page.goto('/run.html#v=sundayroom', { waitUntil: 'domcontentloaded' });
+  await page.locator('#nm').waitFor({ state: 'visible' });
+  await expect(page.locator('#nm')).toHaveValue('Ada Lovelace');
+  await expect(page.locator('#nm-avatar')).toBeVisible();
+  await page.locator('#nmcancel').click();
+  await expect(page.locator('#nm')).toHaveValue('');
+  await expect(page.locator('#nm-avatar')).toBeHidden();
+  await expect(page.locator('#nm-preview-name')).toHaveText('');
+  await expect(page.locator('#nmok')).toBeVisible();
+  const mid = await page.evaluate(() => ({
+    name: localStorage.getItem('gifos_name'),
+    avatar: localStorage.getItem('gifos_avatar'),
+  }));
+  expect(mid.name).toBe('Ada Lovelace');
+  expect(mid.avatar).toBeTruthy();
+  await page.locator('#nmok').click();
+  await expect(page.locator('#nmok')).toBeHidden();
+  const after = await page.evaluate(() => ({
+    name: localStorage.getItem('gifos_name'),
+    avatar: localStorage.getItem('gifos_avatar'),
+  }));
+  expect(after.name).toBeNull();
+  expect(after.avatar).toBeNull();
+});
+
+test('Save keeps the shown name and avatar', async ({ page }) => {
+  await prefillJoin(page);
+  await page.goto('/run.html#v=sundayroom', { waitUntil: 'domcontentloaded' });
+  await page.locator('#nmok').waitFor({ state: 'visible' });
+  await expect(page.locator('#nm')).toHaveValue('Ada Lovelace');
+  await page.locator('#nmok').click();
+  await expect(page.locator('#nmok')).toBeHidden();
+  const after = await page.evaluate(() => ({
+    name: localStorage.getItem('gifos_name'),
+    avatar: localStorage.getItem('gifos_avatar'),
+  }));
+  expect(after.name).toBe('Ada Lovelace');
+  expect(after.avatar).toBeTruthy();
 });
 
 test('Go live is the first action, and Watch sits apart from it', async ({ page }) => {

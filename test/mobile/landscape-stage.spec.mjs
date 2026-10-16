@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 async function dismissName(page) {
-  const cancel = page.locator('#nmcancel');
+  const cancel = page.locator('#nmok');
   try {
     await cancel.waitFor({ state: 'visible', timeout: 2000 });
     await cancel.evaluate((el) => el.click());

@@ -12,6 +12,15 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q31. Not now and Continue did not say how you join
+
+The join step is the same screen for a meeting and a broadcast. The outline button said Not now and the blue button said Continue. They now say Clear and Save. Clear empties the name field and the picture in the form and leaves the step open. Save closes it and keeps whatever the form is showing. Clearing and then saving joins with no stored name and no picture. Saving without clearing keeps Ada Lovelace and the picture. Save stays the only filled button (`#0064c8`). Clear stays the outline, 12px away, both at least 44px. `test/mobile/action-buttons.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-join-not-now.png`.
+After: `test/mobile/screenshots/after/iphone-se-join-save.png` and `test/mobile/screenshots/after/iphone-se-join-clear.png`.
+
+Design: the preview, the field, then Clear and Save. Save is the blue button. After Clear the face is an empty circle and the field shows its placeholder, so the blank is what you would be saving. Warm copy stays at 4. A church desk still goes on with no host key.
+
 ### Q30. A 200% text size still capped the dock at 64px
 
 The phone controls followed the root size only up to 64px, and Hang up up to 72px. They now follow `2.75rem` up to 88px, and Hang up follows `3rem` up to 96px. At a 32px root on iPhone SE the dock is two rows: camera, flip, and mic at y=356, 88px; reactions, More, and Hang up at y=452, with Hang up 96px. The bar is 312×204, from y=350. The face stays 316×504. The dock covers 218px of that tile, under half. Gaps on a row are 8px. A short landscape stays a 44px row inside a 48px pill. `test/mobile/dock-scale.spec.mjs`.

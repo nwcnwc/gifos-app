@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('chat text follows the root size and stays above the dock', async ({ page }) => {
   await page.goto('/run.html#v=sundayroom', { waitUntil: 'domcontentloaded' });
   await page.locator('#leavebtn').waitFor({ state: 'visible' });
-  const cancel = page.locator('#nmcancel');
+  const cancel = page.locator('#nmok');
   try {
     await cancel.waitFor({ state: 'visible', timeout: 2000 });
     await cancel.evaluate((el) => el.click());

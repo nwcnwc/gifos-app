@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 const IDS = ['cam', 'flipcam', 'mic', 'reactbtn', 'bartoggle', 'leavebtn'];
 
 async function dismissName(page) {
-  const cancel = page.locator('#nmcancel');
+  const cancel = page.locator('#nmok');
   try {
     await cancel.waitFor({ state: 'visible', timeout: 2000 });
     await cancel.evaluate((el) => el.click());
