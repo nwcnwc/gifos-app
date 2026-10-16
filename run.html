@@ -2544,7 +2544,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         allowShare: 'Freigeben', stopShares: 'Freigabe aus',
         inMeeting: 'im Meeting', justYou: 'Nur Sie', backIn: 'Wieder dabei',
         away: 'Weg', stillHere: 'Sie sind noch dabei',
-        unlockClear: 'Passwort für klares Video',
+        unlockClear: 'Gesichter weich bis zum Passwort',
         onAir: 'Auf Sendung', offAir: 'Nicht live', watching: 'Live',
         rosterPeople: 'Personen', you: 'Sie', muted: 'Stumm', rosterClose: 'Schließen', rosterFind: 'Name suchen',
         muteForAll: 'Stumm', unmuteForAll: 'Ton an', forEveryone: 'Für alle',
@@ -2738,7 +2738,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         allowShare: 'Permitir pantalla', stopShares: 'Parar pantallas',
         inMeeting: 'en la reunión', justYou: 'Solo tú', backIn: 'Volviendo',
         away: 'Fuera', stillHere: 'Sigues en la llamada',
-        unlockClear: 'contraseña para video nítido',
+        unlockClear: 'caras suaves hasta una contraseña',
         onAir: 'Al aire', offAir: 'Fuera del aire', watching: 'En vivo',
         rosterPeople: 'personas', you: 'tú', muted: 'En silencio', rosterClose: 'Cerrar', rosterFind: 'Buscar un nombre',
         muteForAll: 'Silenciar', unmuteForAll: 'Activar', forEveryone: 'Para todos',
@@ -6875,7 +6875,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const link = (relayUp() || (meshSeat() && meshSeat().state === 3 && meshCoord() && meshCoord().pc !== 0)) ? '' : ' · reconnecting to the room…';
       let extra = '';
       if (n > 1) {
-        if (!roomPw) extra = ' · ' + uiText('unlockClear', 'a password unlocks clear video');
+        if (!roomPw) extra = ' · ' + uiText('unlockClear', 'faces stay soft until a password');
         else if (hasAdminRoom() && admins.length === 0) extra = ' · no admin here — everyone stays blurred';
         else if (!adminPresent() && !allConsent()) {
           // Past one section the ready count is the fold's: everyone minus the

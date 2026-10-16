@@ -38,7 +38,10 @@ test.describe('German', () => {
     const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4, connected: false }));
     expect(seeded && seeded.ok).toBe(true);
     await expect(page.locator('#statuscount')).toHaveText('5 im Meeting');
-    await expect(page.locator('#statusrest')).toContainText('Passwort für klares Video');
+    await expect(page.locator('#statusrest')).toContainText('Gesichter weich bis zum Passwort');
+    await expect(page.locator('#statusrest')).not.toContainText('Passwort für klares Video');
+    await expect(page.locator('#statusrest')).not.toContainText('reconnecting');
+    expect(await page.evaluate(() => document.getElementById('statusrest').scrollWidth <= document.getElementById('statusrest').clientWidth + 1)).toBe(true);
     expect(await page.locator('html').getAttribute('lang')).toBe('de');
   });
 });
@@ -62,7 +65,25 @@ test.describe('Spanish', () => {
     const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4, connected: false }));
     expect(seeded && seeded.ok).toBe(true);
     await expect(page.locator('#statuscount')).toHaveText('5 en la reunión');
-    await expect(page.locator('#statusrest')).toContainText('contraseña para video nítido');
+    await expect(page.locator('#statusrest')).toContainText('caras suaves hasta una contraseña');
+    await expect(page.locator('#statusrest')).not.toContainText('video nítido');
+    await expect(page.locator('#statusrest')).not.toContainText('reconnecting');
+    expect(await page.evaluate(() => document.getElementById('statusrest').scrollWidth <= document.getElementById('statusrest').clientWidth + 1)).toBe(true);
     expect(await page.locator('html').getAttribute('lang')).toBe('es');
   });
+});
+
+test('the in-call line talks about faces', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 720 });
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.setItem('gifos_appeared', '1');
+  });
+  await page.goto('/run.html#v=qawarm&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#statuscount', { state: 'visible' });
+  await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4, connected: false }));
+  await expect(page.locator('#statusrest')).toContainText('faces stay soft until a password');
+  await expect(page.locator('#statusrest')).not.toContainText('unlocks clear video');
+  await expect(page.locator('#statusrest')).not.toContainText('reconnecting');
+  expect(await page.evaluate(() => document.getElementById('statusrest').scrollWidth <= document.getElementById('statusrest').clientWidth + 1)).toBe(true);
 });
