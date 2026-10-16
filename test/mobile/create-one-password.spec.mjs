@@ -37,6 +37,14 @@ test('a church desk opens on a service name and Go live', async ({ page }) => {
   const vh = page.viewportSize().height;
   expect(goBefore.y + goBefore.height).toBeLessThanOrEqual(vh + 0.5);
   expect(goBefore.y - (nameBox.y + nameBox.height)).toBeGreaterThanOrEqual(8);
+  const sheet = await page.evaluate(() => {
+    const card = document.querySelector('#lobby .lobby-card').getBoundingClientRect();
+    const go = document.getElementById('lob-admin-go').getBoundingClientRect();
+    const name = document.getElementById('lob-admin-name').getBoundingClientRect();
+    return { cardTop: card.top, goTop: go.top, nameBottom: name.bottom };
+  });
+  expect(sheet.nameBottom).toBeLessThanOrEqual(sheet.cardTop + 4);
+  expect(sheet.goTop - sheet.cardTop).toBeLessThanOrEqual(40);
   const stage = await page.evaluate(() => {
     const preview = document.getElementById('lob-preview').getBoundingClientRect();
     const card = document.querySelector('#lobby .lobby-card').getBoundingClientRect();
