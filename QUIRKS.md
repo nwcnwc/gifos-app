@@ -58,6 +58,10 @@ A guest tile is now in the tab order (`tabindex="0"`, named “Jordan Lee. Guest
 
 A broadcast still hides the gallery, so this bar is the meeting surface. It is not painted on the stage.
 
+### Q14. The dock grip promised arrow keys and ignored them
+
+The grip’s title says “Arrow keys nudge.” Arrow keys now move the dock 24px (48px with Shift). It stays 8px inside the window. A double click, or a double tap, puts it back in the center. Before: `test/e2e/artifacts/dock-grip-before.png`. After: `test/e2e/artifacts/dock-grip-after.png`.
+
 ### Q9. Lobby copy was one voice, and the password essay came first
 
 A meeting lobby’s blue button is **Start a call** (“Anyone with the link can join”). **Host this call** is an outline button. The guest password stays hidden until “Add a password for guests”. A broadcast lobby’s blue button is **Go live**; the viewer password stays hidden until “Add a password for viewers”. The card stays inside 1280, 1920, and 900. The words “troublemaker”, “open room”, and “admin” are gone from the lobby. Before: `test/e2e/artifacts/lobby-simple-before.png`, `lobby-family-before.png`. After: `lobby-family-after.png`, `lobby-simple-after.png`, `lobby-golive-after.png`.
@@ -68,7 +72,7 @@ Joining now shows “This is how you'll appear” with the GifOS display name fi
 
 ## Open
 
-The dock grip’s title still says arrow keys nudge it, and nothing handles that. A broadcast still hides the gallery, so the keyboard moderation bar is not on the stage.
+A broadcast still hides the gallery, so the keyboard moderation bar is not on the stage.
 
 ## How a session was opened without a relay
 

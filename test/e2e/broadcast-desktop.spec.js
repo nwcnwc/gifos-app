@@ -412,6 +412,29 @@ test('the screen-name step prefills your GifOS name and picture', async ({ page 
   expect(saved).toBe('Jordan Lee');
 });
 
+test('arrow keys nudge the dock and a double click puts it back', async ({ page }) => {
+  await bootSession(page, 1280, 720);
+  const before = await page.locator('.bar').boundingBox();
+  await page.locator('#bargrip').focus();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowUp');
+  const moved = await page.locator('.bar').boundingBox();
+  expect(moved.x).toBeGreaterThan(before.x + 16);
+  expect(moved.y).toBeLessThan(before.y - 16);
+  expect(moved.x).toBeGreaterThanOrEqual(-1);
+  expect(moved.x + moved.width).toBeLessThanOrEqual(1281);
+  expect(moved.y).toBeGreaterThanOrEqual(-1);
+  expect(moved.y + moved.height).toBeLessThanOrEqual(721);
+  await page.locator('#bargrip').dblclick();
+  const back = await page.locator('.bar').boundingBox();
+  expect(Math.abs(back.x - before.x)).toBeLessThan(2);
+  expect(Math.abs(back.y - before.y)).toBeLessThan(2);
+  await page.locator('#bargrip').focus();
+  for (let i = 0; i < 40; i++) await page.keyboard.press('ArrowLeft');
+  const edge = await page.locator('.bar').boundingBox();
+  expect(edge.x).toBeGreaterThanOrEqual(0);
+});
+
 test('chat composer stays clear of the dock after a live resize to 900px', async ({ page }) => {
   await openChat(page, 1920, 1080);
   await page.setViewportSize({ width: 1280, height: 720 });

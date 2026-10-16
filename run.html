@@ -20388,6 +20388,63 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       let saved = null; try { saved = localStorage.getItem('gifos_meet_bar'); } catch (e) {}
       apply(saved === null ? true : saved !== '0'); // default: collapsed
+      const grip = document.getElementById('bargrip');
+      let dockx = 0, docky = 0;
+      // Two translates, not one calc() and not left/bottom. Mixing a % and a
+      // length inside translateX() is dropped. Setting left and bottom is
+      // serialized as the inset shorthand, which also pins top, so the dock
+      // cannot move upward.
+      const placeDock = () => {
+        const w = bar.offsetWidth, h = bar.offsetHeight;
+        const maxX = Math.max(0, (window.innerWidth - w) / 2 - 8);
+        const maxY = Math.max(0, window.innerHeight - h - 22);
+        dockx = Math.max(-maxX, Math.min(maxX, dockx));
+        docky = Math.max(-6, Math.min(maxY, docky));
+        bar.style.left = '';
+        bar.style.right = '';
+        bar.style.top = '';
+        bar.style.bottom = '';
+        if (dockx === 0 && docky === 0) {
+          bar.style.transform = '';
+          return;
+        }
+        bar.style.transform = 'translateX(-50%) translate(' + dockx + 'px, ' + (-docky) + 'px)';
+      };
+      const nudge = (dx, dy) => { dockx += dx; docky += dy; placeDock(); };
+      const resetDock = () => { dockx = 0; docky = 0; placeDock(); };
+      window.addEventListener('resize', placeDock);
+      if (grip) {
+        grip.addEventListener('keydown', (e) => {
+          const step = e.shiftKey ? 48 : 24;
+          if (e.key === 'ArrowLeft') { e.preventDefault(); nudge(-step, 0); }
+          else if (e.key === 'ArrowRight') { e.preventDefault(); nudge(step, 0); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); nudge(0, step); }
+          else if (e.key === 'ArrowDown') { e.preventDefault(); nudge(0, -step); }
+        });
+        grip.addEventListener('dblclick', (e) => { e.preventDefault(); resetDock(); });
+        let drag = null, lastTap = 0;
+        grip.addEventListener('pointerdown', (e) => {
+          if (e.button != null && e.button !== 0) return;
+          try { grip.setPointerCapture(e.pointerId); } catch (err) {}
+          drag = { x: e.clientX, y: e.clientY, dockx: dockx, docky: docky, moved: false };
+        });
+        grip.addEventListener('pointermove', (e) => {
+          if (!drag) return;
+          const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+          if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+          dockx = drag.dockx; docky = drag.docky;
+          nudge(dx, -dy);
+        });
+        grip.addEventListener('pointerup', () => {
+          if (!drag) return;
+          const moved = drag.moved;
+          drag = null;
+          const now = Date.now();
+          if (!moved && now - lastTap < 400) { resetDock(); lastTap = 0; }
+          else if (!moved) lastTap = now;
+        });
+        grip.addEventListener('pointercancel', () => { drag = null; });
+      }
       // Publish the bar's own height so the fixed overlays that hang from the
       // top (the chat panel) can start BELOW it instead of on top of it. It has
       // to be measured, not assumed: the bar wraps, and collapsing it changes

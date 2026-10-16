@@ -23,7 +23,7 @@ GifOS leads **church** (4.2, StreamYard 4.0). It does not lead corporate (3.7, Z
 | Trust: live, recording, who is here | 5 | 4 | 5 | 3 |
 | **Audience score** | **4.9** | **4.3** | **4.1** | **3.7** |
 
-Zoom still leads. The lobby’s blue button is Start a call, and Host this call is an outline button (Q9). Chat and trust are still behind. Arithmetic: (4+4+4+4+3+4+3)/7 = 3.7.
+Zoom still leads. The lobby’s blue button is Start a call, and Host this call is an outline button (Q9). The dock grip now keeps its arrow-key promise (Q14); keyboard stays 4 because Zoom’s shortcut set is still richer. Chat and trust are still behind. Arithmetic: (4+4+4+4+3+4+3)/7 = 3.7.
 
 ## Church
 
@@ -72,3 +72,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q8 | 3.6 (Zoom 4.9) | 4.0 (StreamYard 4.0) | 3.4 (FaceTime 4.8) | Guest Mute and Ban are in the tab order. Keyboard stays 4: the dock grip still advertises arrow keys it does not handle. |
 | After Q9 | 3.7 (Zoom 4.9) | 4.2 (StreamYard 4.0) | 3.6 (FaceTime 4.8) | Plain lobby: Start a call, or Go live with the viewer password tucked away. Church average leads. |
 | After Q13 | 3.7 (Zoom 4.9) | 4.2 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Appearance preview prefills the GifOS name and picture. Join is blue; Not now is an outline. |
+| After Q14 | 3.7 (Zoom 4.9) | 4.2 (StreamYard 4.0) | 3.8 (FaceTime 4.8) | Arrow keys nudge the dock, and a double click centers it. Keyboard stays 4: Zoom’s shortcut set is still the reference. |
