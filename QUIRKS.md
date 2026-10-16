@@ -58,3 +58,7 @@ The composer now sits in the band above the dock (`--dock-clear`), Send and the 
 
 Before: `test/mobile/screenshots/before/iphone-se-meeting-chat.png`.
 After: `test/mobile/screenshots/after/iphone-se-meeting-chat.png`.
+
+### Q8. Chat header spent a third of a short screen
+
+`#chathead` wrapped the title, the privacy sentence, Transcript, and close into about 110px on iPhone SE. On a phone the sentence is now clipped for sighted layout and kept for screen readers, and Transcript / close are 44px. That was required for Q2: the tall header pushed Send under the dock once the keyboard opened.
