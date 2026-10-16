@@ -37,7 +37,7 @@ Zoom still leads. The status line says “Just you. Send the invite.” and fits
 | Join without an account or an install | 2 | 3 | 2 | 5 |
 | **Audience score** | **4.0** | **3.8** | **3.5** | **4.7** |
 
-GifOS leads this audience. The average is 4.7 against StreamYard 4.0. An open service says “Service · You are live” or “Service · You are watching”. An open small group says “Small group”, on a different color, with no menu (Q18). That row is even with StreamYard at 5. The host steps on and off from the dock (Q36). Language and chat stay tied at 4. Service chat keeps its title on one line, and the privacy line sits under it (Q45). Arithmetic: (5+4+5+5+4+5)/6 = 4.7.
+GifOS leads this audience. The average is 4.7 against StreamYard 4.0. An open service says “Service · You are live” or “Service · You are watching”. An open small group says “Small group”, on a different color, with no menu (Q18). That row is even with StreamYard at 5. The host steps on and off from the dock (Q36). Language and chat stay tied at 4. Service help says Raise hand and Step off, the same words as the dock (Q46). Service chat keeps its title on one line, and the privacy line sits under it (Q45). Arithmetic: (5+4+5+5+4+5)/6 = 4.7.
 
 ## Personal
 
@@ -104,3 +104,4 @@ An audience flips to GifOS only when its audience score is strictly above every 
 | After Q43 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | The top line and the badge say On stage, and return to Watching after they step off. Scores unchanged. |
 | After Q44 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | A service hides Fit. A small group still switches Fit and Scroll. Warm chrome stays 4. Scores unchanged. |
 | After Q45 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Service chat keeps its title on one line. The privacy line sits under it. Chat stays 4. Scores unchanged. |
+| After Q46 | 4.4 (Zoom 4.9) | 4.7 (StreamYard 4.0) | 4.4 (FaceTime 4.8) | Service help says Raise hand and Step off. Language stays 4. Scores unchanged. |

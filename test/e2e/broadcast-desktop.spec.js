@@ -918,6 +918,39 @@ test('chat is one tap on the dock, and a prayer is its own line', async ({ page 
   await expect(lines.nth(1)).toContainText('See you after');
 });
 
+test('service help names Raise hand and Step off', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=help' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast .bar');
+    await page.locator('#bartoggle').click();
+    await page.locator('#helpbtn').click();
+    await expect(page.locator('#help-modal h3')).toHaveText('How this service works');
+    const scroll = page.locator('#help-modal .help-scroll');
+    await expect(scroll).toContainText('Raise hand');
+    await expect(scroll).toContainText('Step off');
+    await expect(scroll).not.toContainText('Tap Hand');
+    await expect(scroll).not.toContainText('Stepping down');
+    const box = await page.locator('#help-modal .help-box').boundingBox();
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(h + 1);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(w + 1);
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/run.html?desk=helpsg#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.locator('#bartoggle').click();
+  await page.locator('#helpbtn').click();
+  await expect(page.locator('#help-modal h3')).toHaveText('How this small group works');
+  await expect(page.locator('#help-modal .help-scroll')).toContainText('stadium');
+  await expect(page.locator('#help-modal .help-scroll')).not.toContainText('Tap Raise hand');
+});
+
 test('service chat keeps the title on one line', async ({ page }) => {
   async function headBox() {
     return page.evaluate(() => {
