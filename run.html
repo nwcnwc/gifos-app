@@ -2597,8 +2597,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (bar) bar.setAttribute('aria-label', 'Service controls');
       const shareOnDock = document.getElementById('sharebtn');
       const moreSheet = document.getElementById('barmore');
-      if (shareOnDock && moreSheet && shareOnDock.parentElement !== moreSheet) moreSheet.appendChild(shareOnDock);
       const host = bcHostStored() || document.body.classList.contains('amadmin');
+      // Slides and a window are how a host fills the stage. Share sits on the
+      // host dock, the same place a small group already has it. A viewer keeps
+      // it in More until they are allowed to share.
+      if (shareOnDock && moreSheet && bar) {
+        if (host) {
+          const moreBtn = document.getElementById('bartoggle');
+          if (shareOnDock.parentElement !== bar && moreBtn) bar.insertBefore(shareOnDock, moreBtn);
+        } else if (shareOnDock.parentElement !== moreSheet) moreSheet.appendChild(shareOnDock);
+      }
       if (host && bar) {
         const stage = document.getElementById('stagebtn');
         const anchor = document.getElementById('reactbtn');
@@ -18048,9 +18056,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         shareBtn.textContent = sharingLabel;
         shareBtn.setAttribute('aria-label', sharingLabel);
       }
-      shareBtn.title = on
-        ? 'You are sharing your screen with the meeting — tap to stop'
-        : 'Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)';
+      shareBtn.title = (typeof BROADCAST !== 'undefined' && BROADCAST)
+        ? (on ? 'You are sharing your screen on the stage. Tap to stop.' : 'Show the stage a window, a tab, or your desktop.')
+        : (on
+          ? 'You are sharing your screen with the meeting — tap to stop'
+          : 'Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)');
       // FEATURE DETECTION, NEVER A UA CHECK (the preflight's rule). A phone
       // browser without getDisplayMedia used to HIDE the button, and the
       // first customer meeting read that as "there is no share button at
