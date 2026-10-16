@@ -37,6 +37,8 @@ async function lyricBox(page) {
       preview: preview ? preview.textContent.trim() : '',
       programFont: program ? parseFloat(getComputedStyle(program).fontSize) : 0,
       previewFont: preview ? parseFloat(getComputedStyle(preview).fontSize) : 0,
+      programKFont: document.getElementById('lyrics-program-k') ? parseFloat(getComputedStyle(document.getElementById('lyrics-program-k')).fontSize) : 0,
+      previewKFont: document.getElementById('lyrics-preview-k') ? parseFloat(getComputedStyle(document.getElementById('lyrics-preview-k')).fontSize) : 0,
       clipped: program ? program.scrollWidth > program.clientWidth + 1 : true,
       onScreen: er.width > 8 && er.left >= -1 && er.right <= window.innerWidth + 1 && er.top >= -1 && er.bottom <= window.innerHeight + 1,
       lineOnScreen: !!(pr && pr.width > 8 && pr.left >= -1 && pr.right <= window.innerWidth + 1 && pr.top >= er.top - 1 && pr.bottom <= er.bottom + 1),
@@ -80,6 +82,8 @@ test('the booth reads the current line and the next one', async ({ page }) => {
   expect(song.programFont).toBeGreaterThanOrEqual(28);
   expect(song.previewFont).toBeLessThan(song.programFont);
   expect(song.previewFont).toBeGreaterThanOrEqual(16);
+  expect(song.programKFont).toBeGreaterThanOrEqual(16);
+  expect(song.previewKFont).toBeGreaterThanOrEqual(16);
   expect(song.clipped).toBe(false);
   expect(song.onScreen).toBe(true);
   expect(song.lineOnScreen).toBe(true);
