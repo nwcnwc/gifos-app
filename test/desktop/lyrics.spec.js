@@ -237,3 +237,104 @@ for (const blur of [2, 0]) {
     await expect.poll(async () => (await outgoingWords(page)).white).toBe(0);
   });
 }
+
+// A church sings more than one hymn. The booth types its own song before
+// or during the service, one line per line, and Song reads it: Program,
+// Preview, Next line, and the line painted onto the picture the room sees.
+// The words stay on this computer (no extra data to the room).
+const OWN_SONG = [
+  'Holy, holy, holy! Lord God Almighty!',
+  'Early in the morning our song shall rise to Thee;',
+  'Holy, holy, holy, merciful and mighty!',
+];
+
+test('the booth enters its own song and Song reads it', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
+  await page.addInitScript(() => {
+    // Every word drawn onto a canvas: the outgoing picture is one of them.
+    window.__painted = [];
+    const fill = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (t) {
+      window.__painted.push(String(t));
+      if (window.__painted.length > 400) window.__painted.splice(0, 200);
+      return fill.apply(this, arguments);
+    };
+  });
+  await boot(page, 'v=qalyricown&av=0123456789abcdef&bc=1&debug=on');
+  await page.evaluate(() => {
+    navigator.mediaDevices.getUserMedia = () => {
+      const c = document.createElement('canvas');
+      c.width = 640; c.height = 360;
+      c.style.cssText = 'position:fixed;left:-4000px;top:0';
+      document.body.appendChild(c);
+      const x = c.getContext('2d');
+      setInterval(() => { x.fillStyle = '#c45b3e'; x.fillRect(0, 0, 640, 360); }, 100);
+      x.fillStyle = '#c45b3e'; x.fillRect(0, 0, 640, 360);
+      return Promise.resolve(c.captureStream(8));
+    };
+  });
+  const armed = await page.evaluate(() => window.__gifosVideo.armBroadcastHostForTest());
+  expect(armed && armed.ok).toBe(true);
+  await page.click('#cam');
+  await page.evaluate(() => window.__gifosVideo.setClearForTest(true));
+
+  // Before the service: the order of service offers the song's words.
+  const edit = page.locator('#rundown #song-edit');
+  await expect(edit).toBeVisible();
+  await expect(edit).toHaveText('Song words');
+  const eb = await edit.boundingBox();
+  expect(eb.height).toBeGreaterThanOrEqual(44);
+  expect(await edit.evaluate((b) => parseFloat(getComputedStyle(b).fontSize))).toBeGreaterThanOrEqual(16);
+  await edit.click();
+  const text = page.locator('#song-text');
+  await expect(text).toBeVisible();
+  await expect(text).toBeFocused();
+  // It opens on the song the booth would read now.
+  expect((await text.inputValue()).split('\n')[0]).toBe('Amazing grace, how sweet the sound');
+  expect(await text.evaluate((t) => parseFloat(getComputedStyle(t).fontSize))).toBeGreaterThanOrEqual(16);
+  await page.screenshot({ path: 'test/desktop/shots/own-song-edit-1280.png' });
+  // Blank lines and stray spaces do not become lines.
+  await text.fill('  ' + OWN_SONG[0] + '  \n\n' + OWN_SONG[1] + '\n   \n' + OWN_SONG[2] + '\n');
+  await page.click('#song-save');
+  await expect(text).toBeHidden();
+
+  await page.click('#rundown-next');
+  const song = await lyricBox(page);
+  expect(song.display).not.toBe('none');
+  expect(song.program).toBe(OWN_SONG[0]);
+  expect(song.preview).toBe(OWN_SONG[1]);
+  expect(song.coversAir).toBe(false);
+  expect(song.coversDock).toBe(false);
+  expect(song.coversRundown).toBe(false);
+  // The room sees the booth's own line, not the built-in hymn.
+  await expect.poll(() => page.evaluate(() => window.__painted.join(' | ')), { timeout: 10000 }).toContain('Holy, holy, holy!');
+  expect(await page.evaluate(() => window.__painted.join(' | '))).not.toContain('Amazing');
+  await page.screenshot({ path: 'test/desktop/shots/own-song-1280.png' });
+
+  await page.click('#lyrics-next');
+  await page.click('#lyrics-next');
+  const last = await lyricBox(page);
+  expect(last.program).toBe(OWN_SONG[2]);
+  expect(last.preview).toBe('');
+  expect(last.next).toBe('Start over');
+
+  // The song stays for this room after a reload.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#leavebtn', { state: 'visible' });
+  await page.evaluate(() => window.__gifosVideo.armBroadcastHostForTest());
+  const back = await lyricBox(page);
+  expect(back.program).toBe(OWN_SONG[2]);
+
+  // An empty song goes back to the built-in hymn.
+  await page.click('#rundown #song-edit');
+  await page.locator('#song-text').fill('\n  \n');
+  await page.click('#song-save');
+  const hymn = await lyricBox(page);
+  expect(hymn.program).toBe('Amazing grace, how sweet the sound');
+});
+
+test('a viewer has no song words button', async ({ page }) => {
+  await boot(page, 'v=qalyricown2&av=0123456789abcdef&bc=1&debug=on');
+  await expect(page.locator('#song-edit')).toBeHidden();
+  await expect(page.locator('#song-text')).toBeHidden();
+});
