@@ -130,3 +130,22 @@ test('a running app\'s face strip shows each face\'s marks whole, with no cut te
   expect(got.cut).toEqual([]);
   expect(got.noteCut).toBe(false);
 });
+
+// Run app lives in All tools, so the More sheet is open when the app starts.
+// It stayed open on top of the app (a grid of buttons over the 2048 board) until
+// you found Hide. Starting an app folds the sheet, like starting a screen share.
+test('starting an app folds the More sheet off the app', async ({ page }) => {
+  await boot(page);
+  await page.setInputFiles('#app-file-input', 'apps/2048/2048.gif');
+  await page.waitForFunction(() => document.body.classList.contains('has-app'), null, { timeout: 30000 });
+  await page.waitForFunction(() => document.getElementById('appstop').getClientRects().length > 0);
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const got = await page.evaluate(() => {
+    const more = document.getElementById('barmore');
+    const shown = !!more && more.getClientRects().length > 0 && getComputedStyle(more).visibility !== 'hidden';
+    const t = document.getElementById('bartoggle');
+    return { moreShown: shown, expanded: t.getAttribute('aria-expanded'), word: t.textContent.trim() };
+  });
+  await page.screenshot({ path: 'test/desktop/shots/app-more-1280.png' });
+  expect(got).toEqual({ moreShown: false, expanded: 'false', word: 'More' });
+});
