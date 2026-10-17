@@ -3466,3 +3466,67 @@ test('C, H and R open Chat, raise a hand and open Reactions', async ({ page }) =
     await expect(page.locator('#reactbtn'), who).toHaveAttribute('aria-keyshortcuts', 'R');
   }
 });
+
+test('F opens Full screen, Escape closes it, and its close button is named', async ({ page }) => {
+  // Full screen took a Tab walk through the dock (Zoom and YouTube give it
+  // a key), its close button read only "✕", and when the browser kept the
+  // page out of real full screen, Escape folded More under the black view
+  // instead of closing it. Closing left the keyboard on nothing.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+    // Stand in for a browser that declines real full screen, so Escape
+    // reaches the page as it does when the view could not go full screen.
+    if (location.search.indexOf('nofs=1') !== -1) Element.prototype.requestFullscreen = function () { return Promise.reject(new Error('denied')); };
+  });
+  for (const who of ['host', 'view', 'group']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const url = who === 'group'
+      ? '/run.html?desk=fskeyg&nofs=1#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=fskey' + who + '&nofs=1' + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+    // F opens the full-screen view with the keyboard on its close button.
+    await page.keyboard.press('f');
+    if (who === 'host') {
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: 'artifacts/fskey-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    }
+    await expect(page.locator('#fsview'), who + ': F opens Full screen').toHaveClass(/on/);
+    const close = page.locator('#fsclose');
+    await expect(close, who + ': the close button is named').toHaveAccessibleName('Exit full screen');
+    await expect(close, who + ': focus moves into the view').toBeFocused();
+    // Escape closes the view (not More beneath it) and lands on Full screen.
+    const barOpen = await page.evaluate(() => !document.querySelector('.bar').classList.contains('collapsed'));
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#fsview'), who + ': Escape closes Full screen').not.toHaveClass(/on/);
+    await expect(page.locator('body'), who).not.toHaveClass(/fsopen/);
+    const barNow = await page.evaluate(() => !document.querySelector('.bar').classList.contains('collapsed'));
+    expect(barNow, who + ': Escape leaves More as it was').toBe(barOpen);
+    await expect(page.locator('#fsbtn'), who + ': focus returns to Full screen').toBeFocused();
+    // F toggles: open, then F again closes.
+    await page.keyboard.press('f');
+    await expect(page.locator('#fsview'), who).toHaveClass(/on/);
+    await page.keyboard.press('f');
+    await expect(page.locator('#fsview'), who + ': F closes Full screen').not.toHaveClass(/on/);
+    await expect(page.locator('#fsbtn'), who).toBeFocused();
+    // Typing an f in the chat stays in the chat.
+    await page.keyboard.press('c');
+    await expect(page.locator('#chat-in'), who).toBeFocused();
+    await page.keyboard.type('f');
+    await expect(page.locator('#chat-in'), who).toHaveValue('f');
+    await expect(page.locator('#fsview'), who).not.toHaveClass(/on/);
+    await page.locator('#chat-in').fill('');
+    await page.keyboard.press('Escape');
+    // The ? list names it.
+    await page.keyboard.press('?');
+    const keys = await page.locator('#keys-modal kbd').allTextContents();
+    expect(keys, who).toContain('F');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#fsbtn'), who).toHaveAttribute('aria-keyshortcuts', 'F');
+  }
+});
