@@ -13474,6 +13474,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               if (p.pc !== pc0 || !peers.has(p.id)) return; // replaced meanwhile: nothing left to cure
               p.rollbackRebuiltAt = Date.now();
               if (typeof clog === 'function') clog('rollback on a live pair ' + String(p.id).slice(0, 6) + ': deferred rebuild');
+              endRelayRolesFor(p.id); // carries of this pair's media hold the old connection's tracks
               newPcFor(p); sendOffer(p.id, false);
             }, wait);
           }
@@ -13481,6 +13482,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         p.rollbackRebuiltAt = t;
         if (typeof clog === 'function') clog('rollback on a live pair ' + String(p.id).slice(0, 6) + ': rebuild');
+        // A friend's carry of this pair's media (and anything carried through
+        // it) holds the old connection's tracks: end those roles, as for a
+        // pair that died, so each requester asks again and gets the new ones.
+        endRelayRolesFor(p.id);
         newPcFor(p); sendOffer(p.id, false);
         return;
       }
