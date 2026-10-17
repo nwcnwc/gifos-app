@@ -3937,3 +3937,57 @@ test('with the chat open, the dock sits in the call beside it, not across its ed
     }
   }
 });
+
+test('with the chat open, the room bar keeps each pill and its title on one line', async ({ page }) => {
+  // Seen at 900 with the chat open: the call beside it is 560px, and the room
+  // bar broke "Service · You are watching" over two lines and every pill in
+  // two ("Not / recording", "1 / watching", "Sound / on").
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const w of [900, 800, 1024, 1280]) {
+    for (const who of ['view', 'host', 'group']) {
+      await page.setViewportSize({ width: w, height: 720 });
+      const url = who === 'group'
+        ? '/run.html?desk=airwrap' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=airwrap' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.mouse.move(w / 3, 360);
+      await page.locator('#chatbtn').click();
+      await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+      const got = await page.evaluate(async () => {
+        await new Promise((r) => requestAnimationFrame(r));
+        const bar = document.getElementById('airbar').getBoundingClientRect();
+        const kind = document.getElementById('airkind');
+        const out = { kindH: Math.round(kind.getBoundingClientRect().height), kindLine: Math.round(parseFloat(getComputedStyle(kind).lineHeight)),
+          barLeft: Math.round(bar.left), barRight: Math.round(bar.right), barBottom: Math.round(bar.bottom), pills: {} };
+        for (const id of ['airrec', 'airwho', 'airsound']) {
+          const e = document.getElementById(id);
+          if (!e || !e.offsetWidth) continue;
+          const r = e.getBoundingClientRect();
+          const t = document.createRange();
+          t.selectNodeContents(e);
+          const lines = new Set(Array.from(t.getClientRects()).filter((x) => x.width > 0).map((x) => Math.round(x.top))).size;
+          out.pills[id] = { lines, left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), over: e.scrollWidth - e.clientWidth };
+        }
+        const av = document.getElementById('avstate');
+        out.below = av && av.offsetHeight ? Math.round(av.getBoundingClientRect().top) : out.barBottom;
+        return out;
+      });
+      if (w === 900 && who === 'view') await page.screenshot({ path: 'artifacts/airbar-wrap-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      const tag = who + ' at ' + w + ': ' + JSON.stringify(got);
+      expect(got.kindH, tag + ' title on one line').toBeLessThanOrEqual(got.kindLine + 2);
+      for (const [id, p] of Object.entries(got.pills)) {
+        expect(p.lines, tag + ' ' + id + ' on one line').toBe(1);
+        expect(p.over, tag + ' ' + id + ' whole').toBeLessThanOrEqual(0);
+        expect(p.left >= got.barLeft && p.right <= got.barRight && p.bottom <= got.barBottom, tag + ' ' + id + ' inside the bar').toBe(true);
+      }
+      expect(got.barBottom, tag + ' bar above the mute line').toBeLessThanOrEqual(got.below);
+    }
+  }
+});
