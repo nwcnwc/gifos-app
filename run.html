@@ -1518,6 +1518,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #status-full #status-full-close {
     background: #0064c8; color: #fff; border: 0; min-height: 48px; min-width: 96px; font-size: 1rem;
   }
+  /* A phone hides the "3 in the meeting" count, so People (Rename, Mute,
+     Spotlight, the waiting room) opens from here. */
+  #status-full .status-full-acts { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+  #status-full #status-full-people {
+    background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; min-height: 48px; min-width: 96px; font-size: 1rem;
+  }
   /* Alone on a phone, this replaces "Just you — send the invite…".
      Wide screens leave it hidden; the Meet desktop agent shows the same
      button when .topchip[data-invite="1"] and calls shareMeetingLink. */
@@ -1998,7 +2004,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (min-width: 701px) and (min-height: 501px) {
     .topchip button#status { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); }
   }
-  #roster { display: none; position: fixed; z-index: 30; top: 14px; right: 14px; bottom: 128px;
+  /* Above the Record/Captions row (31) and the dock (32), which painted over its foot. */
+  #roster { display: none; position: fixed; z-index: 33; top: 14px; right: 14px; bottom: 128px;
     width: min(320px, calc(100vw - 28px)); background: #fff; color: #1d1d1f; border-radius: 20px;
     box-shadow: 0 16px 40px rgba(0,0,0,.28); flex-direction: column; overflow: hidden; }
   #roster.open { display: flex; }
@@ -2009,6 +2016,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #roster-find { margin: 0 14px 8px; min-height: 44px; border-radius: 12px; border: 1px solid #c5cad3;
     padding: 0 12px; font: 16px/1.2 system-ui, sans-serif; color: #1d1d1f; background: #fff; }
   #roster-list { overflow: auto; flex: 1; min-height: 0; }
+  /* A sideways phone: ending at the dock left the list 0px tall. Cover the
+     dock (Close is in the panel) and scroll the whole panel. */
+  @media (max-height: 500px) {
+    #roster { top: 8px; bottom: 8px; overflow-y: auto; }
+    #roster-list { flex: none; overflow: visible; }
+    #roster .roster-head { position: sticky; top: 0; z-index: 1; background: #fff; }
+  }
   .roster-row { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 14px;
     border-top: 1px solid #e8ecf1; font: 600 16px/1.3 system-ui, sans-serif; flex-wrap: wrap; }
   .roster-row .nm { flex: 1; min-width: 0; }
@@ -2807,7 +2821,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="name-modal" id="status-full" style="display:none" aria-labelledby="status-full-text">
     <div class="name-box">
       <p id="status-full-text"></p>
-      <button type="button" id="status-full-close">Close</button>
+      <div class="status-full-acts">
+        <button type="button" id="status-full-people" data-t="people" aria-controls="roster">People</button>
+        <button type="button" id="status-full-close">Close</button>
+      </div>
     </div>
   </div>
   <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
@@ -3118,6 +3135,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     statusEl.addEventListener('click', (e) => { e.preventDefault(); openStatusSheet(); });
     const statusFullClose = document.getElementById('status-full-close');
     if (statusFullClose) statusFullClose.onclick = () => closeStatusSheet();
+    const statusFullPeople = document.getElementById('status-full-people');
+    if (statusFullPeople) statusFullPeople.onclick = () => { closeStatusSheet(); toggleRoster(true); };
     const uid = (p) => p + '_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
     // The one standard row-delete glyph (see button.row-del in the styles).
     const DEL_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
