@@ -3241,3 +3241,35 @@ test('the Tab walk in a session stops only on controls you can see', async ({ pa
     expect(hidden, who + ': unseen Tab stops').toEqual([]);
   }
 });
+
+test('Tab reaches the room bar before the dock, top to bottom', async ({ page }) => {
+  // The room bar sits above the stage and the dock below it, but Tab ran
+  // the whole dock first and reached the room bar last, on a service host,
+  // a viewer and a small group.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const who of ['host', 'view', 'group']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const url = who === 'group'
+      ? '/run.html?desk=taborderg#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=taborder' + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+    const ids = [];
+    for (let i = 0; i < 18; i++) {
+      await page.keyboard.press('Tab');
+      ids.push(await page.evaluate(() => document.activeElement ? document.activeElement.id : ''));
+    }
+    if (who === 'host') await page.screenshot({ path: 'artifacts/tab-order-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    const rec = ids.indexOf('airrec'), dock = ids.indexOf('bargrip');
+    expect(rec, who + ': Tab reaches the room bar (' + ids.join(' ') + ')').toBeGreaterThan(-1);
+    expect(dock, who + ': Tab reaches the dock (' + ids.join(' ') + ')').toBeGreaterThan(-1);
+    expect(rec, who + ': the room bar comes before the dock (' + ids.join(' ') + ')').toBeLessThan(dock);
+  }
+});
