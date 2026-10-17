@@ -2845,6 +2845,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // started. The mark lives for this tab, so next week's visit starts clean.
     let broadcastSawCompany = false;
     let viewerReplayUrl = null;
+    let viewerReplayBlob = null; // the bytes behind viewerReplayUrl, handed to a late arrival
+    // A late arrival hears who in the room holds the replay (k:'rpl') and
+    // pulls it from one of them (rplw/rplc). Once it lands it holds it too.
+    const lateReplay = { srcs: new Map(), from: null, parts: null, got: 0, total: 0, size: 0, mime: '', t: null, open: false };
     let viewerReplayRec = null;
     let viewerReplayStreamId = null;
     // A message that STOPS someone (🛡 a refusal, 📷 an admin's video-off) is
@@ -6935,14 +6939,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (quiet) {
         const hallQuiet = typeof TOWNHALL !== 'undefined' && TOWNHALL && statusKind === 'alone';
         const stageLive = !!document.querySelector('#stagefeed .rowtile');
-        const on = ((bcViewer && statusKind === 'alone') || hallQuiet) && !stageLive;
-        const quietLine = hallQuiet ? 'The town hall has not started.' : bcAlone;
+        // Someone in the room holds the replay: the service ended, even when
+        // other viewers are still here.
+        const replayHere = !!(bcViewer && ((viewerReplayUrl && sawCompany) || lateReplay.srcs.size));
+        const on = ((bcViewer && (statusKind === 'alone' || (replayHere && statusKind === 'meeting'))) || hallQuiet) && !stageLive;
+        const quietLine = hallQuiet ? 'The town hall has not started.' : replayHere ? ('The ' + bcNoun + ' has ended.') : bcAlone;
         quiet.hidden = !on;
         document.body.classList.toggle('bc-quiet', on);
         const quietTxt = document.getElementById('bc-ended-txt');
         if (quietTxt && on && quietTxt.textContent !== quietLine) quietTxt.textContent = quietLine;
         const replayBtn = document.getElementById('bc-replay');
-        if (replayBtn) replayBtn.hidden = !(on && bcViewer && /has ended/.test(quietLine) && viewerReplayUrl);
+        if (replayBtn) replayBtn.hidden = !(on && bcViewer && /has ended/.test(quietLine) && replayHere);
         paintBcCalendar(on && bcViewer && !hallQuiet && !!sched && sched.phase === 'future');
       }
       paintLiveBadge();
@@ -6974,7 +6981,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (host && picture && linkDown) { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
       else if (host && picture) { state = 'live'; label = 'LIVE'; aria = 'You are live'; }
       else if (host) { state = 'off'; label = 'OFF AIR'; aria = 'You are off air'; }
-      else if (joining || alone) { state = 'off'; label = 'OFF AIR'; aria = 'The broadcast is off air'; }
+      else if (joining || alone || document.body.classList.contains('bc-quiet')) { state = 'off'; label = 'OFF AIR'; aria = 'The broadcast is off air'; }
       else if (linkDown || kind === 'door') { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
       else { state = 'watching'; label = 'WATCHING'; aria = 'You are watching'; }
       b.dataset.state = state;
@@ -13454,6 +13461,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
         dcSend(p, { k: 'hi', chats: Array.from(chat.values()).slice(-500), trs: Array.from(trs.values()).slice(-300), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj() });
+        try { offerReplay(p); } catch (e) {}
         // THE MOMENT A CHANNEL EXISTS is the moment the stage pulls can finally
         // travel. Everything below was silently impossible a millisecond ago:
         // sgaFan delivers only to peers whose DC is already OPEN, so a
@@ -13630,6 +13638,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // asker leaves the wanters list, so no stop entry outlives its pump.
         if (m.id && p && p.filePump && p.filePump[m.id]) (p.fcStop = p.fcStop || new Set()).add(m.id);
         else if (m.id && p) { const f = files.get(m.id); if (f && f.wanters) f.wanters = f.wanters.filter((w) => w !== p && !(w && w.id === p.id)); }
+      } else if (m.k === 'rpl') {
+        takeReplayOffer(p, m);
+      } else if (m.k === 'rplw') {
+        if (BROADCAST) sendReplayOver(p);
+      } else if (m.k === 'rplx') {
+        if (p && p.rplPump) { p.rplPump.stop = true; p.rplPump = null; }
+      } else if (m.k === 'rplc') {
+        takeReplayChunk(p, m);
       } else if (m.k === 'fdel') {
         // One flood from its author, never re-broadcast (see chat). An admin
         // room takes the order from a signed fdel, or from the owner unpinning
@@ -20850,9 +20866,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!chunks.length) return;
         const blob = new Blob(chunks, { type: String(rec.mimeType || 'video/webm').split(';')[0] });
         if (!blob.size) return;
-        if (viewerReplayUrl) { try { URL.revokeObjectURL(viewerReplayUrl); } catch (e2) {} }
-        viewerReplayUrl = URL.createObjectURL(blob);
-        try { updateStatus(); } catch (e2) {}
+        setViewerReplay(blob);
       };
       try { rec.start(400); viewerReplayRec = rec; viewerReplayStreamId = stream.id; }
       catch (e) { viewerReplayRec = null; }
@@ -20954,11 +20968,114 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return '';
     }
-    const replayWatch = document.getElementById('bc-replay');
-    if (replayWatch) replayWatch.onclick = () => {
+    // Holding the replay makes this phone a source for anyone who arrives
+    // after the end: tell every open link once it lands.
+    function setViewerReplay(blob, url) {
+      if (viewerReplayUrl && viewerReplayUrl !== url) { try { URL.revokeObjectURL(viewerReplayUrl); } catch (e) {} }
+      viewerReplayBlob = blob || null;
+      viewerReplayUrl = blob ? (url || URL.createObjectURL(blob)) : null;
+      if (blob) for (const pid of gossipIds()) { const q = peers.get(pid); if (q) offerReplay(q); }
+      try { updateStatus(); } catch (e) {}
+    }
+    function offerReplay(p) {
+      const b = viewerReplayBlob;
+      if (!b || !b.size || !BROADCAST || !p || !p.dc || p.dc.readyState !== 'open') return;
+      dcSend(p, { k: 'rpl', size: b.size, mime: String(b.type || 'video/webm').split(';')[0] });
+    }
+    function takeReplayOffer(p, m) {
+      if (!viewerMayReplay() || viewerReplayUrl || !p || !p.id) return;
+      const size = Math.floor(+m.size || 0);
+      if (!(size > 0 && size <= 4 * 1024 * 1024 * 1024)) return;
+      const had = lateReplay.srcs.size;
+      lateReplay.srcs.set(p.id, { size, mime: /^video\/[\w.+-]+$/.test(String(m.mime)) ? String(m.mime) : 'video/webm' });
+      if (!had) { try { updateStatus(); } catch (e) {} }
+    }
+    // One source at a time, in order. 8 s with no new chunk is a stalled
+    // source: ask the next one. With none left, the button says so.
+    function pullLateReplay() {
+      clearTimeout(lateReplay.t);
+      const btn = document.getElementById('bc-replay');
+      let next = null;
+      for (const [pid, info] of lateReplay.srcs) {
+        const q = peers.get(pid);
+        if (!q || !q.dc || q.dc.readyState !== 'open') { lateReplay.srcs.delete(pid); continue; }
+        if (pid !== lateReplay.from) { next = [pid, info]; break; }
+      }
+      if (!next && lateReplay.from && lateReplay.srcs.has(lateReplay.from) && !lateReplay.got) next = [lateReplay.from, lateReplay.srcs.get(lateReplay.from)];
+      if (lateReplay.from && (!next || next[0] !== lateReplay.from)) { const old = peers.get(lateReplay.from); if (old) dcSend(old, { k: 'rplx' }); }
+      if (!next) {
+        lateReplay.from = null; lateReplay.parts = null;
+        if (btn) { btn.disabled = false; btn.textContent = 'Watch'; }
+        setStatus('Nobody here has the replay now. Try again in a minute.');
+        try { updateStatus(); } catch (e) {}
+        return;
+      }
+      const [pid, info] = next;
+      lateReplay.from = pid;
+      lateReplay.size = info.size;
+      lateReplay.mime = info.mime;
+      lateReplay.total = Math.max(1, Math.ceil(info.size / FILE_PART));
+      lateReplay.parts = new Array(lateReplay.total);
+      lateReplay.got = 0;
+      if (btn) { btn.disabled = true; btn.textContent = 'Getting it…'; }
+      dcSend(peers.get(pid), { k: 'rplw' });
+      armLateReplay();
+    }
+    function armLateReplay() {
+      clearTimeout(lateReplay.t);
+      lateReplay.t = setTimeout(pullLateReplay, 8000);
+    }
+    function takeReplayChunk(p, m) {
+      const L = lateReplay;
+      if (!L.parts || !p || p.id !== L.from) return;
+      const seq = m.seq | 0;
+      if (seq < 0 || seq >= L.total || L.parts[seq] || typeof m.b !== 'string') return;
+      L.parts[seq] = partOfB64(m.b);
+      L.got++;
+      armLateReplay();
+      const btn = document.getElementById('bc-replay');
+      if (L.got < L.total) {
+        if (btn) btn.textContent = 'Getting it… ' + Math.floor(L.got / L.total * 100) + '%';
+        return;
+      }
+      clearTimeout(L.t);
+      const blob = new Blob(L.parts, { type: L.mime });
+      L.parts = null; L.from = null;
+      if (btn) { btn.disabled = false; btn.textContent = 'Watch'; }
+      if (blob.size !== L.size) { L.srcs.delete(p.id); setStatus('That copy of the replay was broken. Tap Watch to try again.'); try { updateStatus(); } catch (e) {} return; }
+      L.srcs.clear();
+      setViewerReplay(blob);
+      if (L.open) { L.open = false; openViewerReplay(); }
+    }
+    // The source side: slice the held file and pump it with the same
+    // backpressure as a pinned file. rplx, or a closed channel, stops it.
+    function sendReplayOver(p) {
+      const blob = viewerReplayBlob;
+      if (!blob || !blob.size || !p || p.rplPump) return;
+      const total = Math.max(1, Math.ceil(blob.size / FILE_PART));
+      let seq = 0;
+      const pump = p.rplPump = { stop: false };
+      const step = () => {
+        if (pump.stop || p.rplPump !== pump || !p.dc || p.dc.readyState !== 'open' || seq >= total) { if (p.rplPump === pump) p.rplPump = null; return; }
+        if ((p.dc.bufferedAmount || 0) > (1 << 20)) { setTimeout(step, 40); return; }
+        const n = seq++;
+        blob.slice(n * FILE_PART, (n + 1) * FILE_PART).arrayBuffer()
+          .then((ab) => dcSendFile(p, { k: 'rplc', seq: n, b: b64ofPart(new Uint8Array(ab)) }))
+          .then(() => setTimeout(step, 0), () => { if (p.rplPump === pump) p.rplPump = null; });
+      };
+      step();
+    }
+    function openViewerReplay() {
       if (!viewerReplayUrl) return;
       const noun = (typeof params !== 'undefined' && params.has('st')) ? 'stream' : 'service';
       showRecReplay({ href: viewerReplayUrl, name: noun + '.webm', watch: true });
+    }
+    const replayWatch = document.getElementById('bc-replay');
+    if (replayWatch) replayWatch.onclick = () => {
+      if (viewerReplayUrl) { openViewerReplay(); return; }
+      if (!lateReplay.srcs.size || lateReplay.parts) return;
+      lateReplay.open = true;
+      pullLateReplay();
     };
     function resumeReload() {
       const REC_SAVE_MAX_MS = 20000;
@@ -23890,11 +24007,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       shareInvite: () => shareMeetingLink(document.getElementById('hdrinvite')),
       showReplayForTest: (href, name, saved) => recDeliver({ href: href, name: name || '', saved: !!saved }),
       noteViewerReplayForTest: (href) => {
-        if (viewerReplayUrl && viewerReplayUrl !== href) { try { URL.revokeObjectURL(viewerReplayUrl); } catch (e) {} }
-        viewerReplayUrl = href || null;
-        try { updateStatus(); } catch (e) {}
-        const btn = document.getElementById('bc-replay');
-        return !!(btn && !btn.hidden);
+        if (!href) { setViewerReplay(null); return false; }
+        return fetch(href).then((r) => r.blob()).then((blob) => {
+          setViewerReplay(blob, href);
+          const btn = document.getElementById('bc-replay');
+          return !!(btn && !btn.hidden);
+        });
       },
       armViewerReplayForTest: (stream) => { armViewerReplay(stream); return !!(viewerReplayRec && viewerReplayRec.state === 'recording'); },
       finishViewerReplayForTest: () => new Promise((resolve) => {
