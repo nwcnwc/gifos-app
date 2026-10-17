@@ -1133,7 +1133,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar.dockslim > #stagebtn, .bar.dockslim > #hand { height: 56px; min-height: 56px; padding: 0 8px; }
     .bar.dockslim #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; margin-left: 4px; }
     .bar.dockslim > .inmore { display: none !important; }
-    body.chatside.dockbeside .bar:not(.collapsed) .barmore { width: min(720px, calc(100vw - 364px)); }
+    body.chatside.dockbeside .bar:not(.collapsed) .barmore { width: max-content; min-width: min(720px, calc(100vw - 364px)); max-width: calc(100vw - 364px); }
   }
   #chathead { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
   /* The privacy line used to sit beside the title and collapse into a narrow
@@ -1580,6 +1580,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar:not(.collapsed) .barmore .blurlbl { color: #1d1d1f; font-size: 18px; font-weight: 650; }
     .bar:not(.collapsed) .barmore .segwrap { border-color: #c5ccd6; border-radius: 12px; }
     .bar:not(.collapsed) .barmore .seg { padding: 0 16px; font-size: 16px; font-weight: 600; }
+    /* Four equal columns as wide as the longest label, so "Allow screen share"
+       and "Stop guest shares" stay on one line; never wider than the window (Q102). */
+    .bar:not(.collapsed) .barmore { width: max-content; min-width: min(720px, calc(100vw - 24px)); max-width: calc(100vw - 24px); }
   }
   .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 122px; transform: translateX(-50%);
     display: flex; gap: 8px; background: rgba(255,255,255,.96); border-radius: 20px; padding: 10px;
