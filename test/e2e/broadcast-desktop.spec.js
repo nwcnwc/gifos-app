@@ -1543,6 +1543,53 @@ test('a recording is a card everyone has to see', async ({ page }) => {
   await expect(page.locator('#rec-notice-title')).toHaveText('You are recording this service');
 });
 
+test('someone else recording you gets Stay or Leave, as in Zoom and Teams', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  const card = () => page.evaluate(() => {
+    const box = document.querySelector('#rec-notice .appear-box');
+    const leave = document.getElementById('rec-notice-leave');
+    const ok = document.getElementById('rec-notice-ok');
+    const r = box.getBoundingClientRect();
+    const inside = (el) => { const b = el.getBoundingClientRect(); return b.left >= r.left && b.right <= r.right && b.top >= r.top && b.bottom <= r.bottom; };
+    return {
+      text: box.innerText,
+      ok: ok.textContent,
+      leave: leave && leave.getClientRects().length ? leave.textContent : '',
+      fits: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight && inside(ok) && (!leave || !leave.getClientRects().length || inside(leave)),
+    };
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=recleave' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.group');
+    await page.evaluate(() => { try { sessionStorage.removeItem('gifos_rec_seen'); } catch (e) {} window.__gifosRoomTrust.setPeerRecording('Jordan Lee', true); });
+    await expect(page.locator('#rec-notice-title')).toHaveText('Jordan Lee is recording this small group');
+    if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/rec-leave-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    const got = await card();
+    expect({ consent: /Staying means you agree to be recorded/.test(got.text), stay: got.ok, leave: got.leave, fits: got.fits }, JSON.stringify(got))
+      .toEqual({ consent: true, stay: 'Stay', leave: 'Leave', fits: true });
+  }
+  await page.locator('#rec-notice-leave').click();
+  await expect(page.locator('#left-modal')).toBeVisible();
+  await expect(page.locator('#left-title')).toHaveText('You left the small group');
+  // The person recording, and a viewer who is not in a service recording,
+  // only read the card.
+  await page.goto('/run.html?desk=recleaveme#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.evaluate(() => { try { sessionStorage.removeItem('gifos_rec_seen'); } catch (e) {} window.__gifosRoomTrust.setRecording(true); });
+  await expect(page.locator('#rec-notice-title')).toHaveText('You are recording this small group');
+  expect(await card()).toMatchObject({ ok: 'OK', leave: '' });
+  await page.goto('/run.html?desk=recleaveview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#onair.watch');
+  await page.evaluate(() => { try { sessionStorage.removeItem('gifos_rec_seen'); } catch (e) {} window.__gifosRoomTrust.setPeerRecording('Pastor Kim', true); });
+  await expect(page.locator('#rec-notice-title')).toHaveText('Pastor Kim is recording this service');
+  expect(await card()).toMatchObject({ ok: 'OK', leave: '' });
+});
+
 test('sharing a personal call is the link and a blue Copy', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
