@@ -1951,7 +1951,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let vaSigning = null, vaForceSign = false;     // the admin's launch in progress; sign again now (a top-up)
     let vaMeter = null, vaMeterAt = 0, vaMeterBusy = false, vaUsedAtStart = null, vaMeterAsks = 0;
     let vaTerms = null, vaTermsAt = 0, vaTermsBusy = false;
-    let vaBuying = false, vaResumed = false, vaNudged = '', vaTopupRetry = false, vaResentAt = 0, vaPairSaidAt = 0;
+    let vaBuying = false, vaResumed = false, vaNudged = '', vaTopupRetry = false;
     // Quality ladder: live links → per-link video constraints. adapt() passes
     // n = 1 + peers.size, the direct links, bounded by the row, not the room.
     // Upload cost grows with those links, so both resolution and each link's
@@ -6266,20 +6266,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       for (const pid of [...vaPaid.keys()]) if (!peers.has(pid)) vaDrop(pid);
       for (const [pid, p] of peers) vaSwitchIfChanged(pid, p);
-      // The order again every 30 s on every open channel: a page that missed it
-      // (its receipt key had not loaded yet) is not left out until the next
-      // ticket. Receivers drop an order they already hold by its signature.
-      if (vaOrder && now - vaResentAt > 30000) {
-        vaResentAt = now;
-        for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'va', w: vaOrder.w });
-      }
-      // The paid end says its pair state again every 10 s. The far end loses
-      // it whenever it rebuilds its transport, and one lost message must not
-      // leave a paid pair voice only at that end.
-      if (now - vaPairSaidAt > 10000) {
-        vaPairSaidAt = now;
-        for (const p of peers.values()) if (p.turnMine && p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'va-pair', paid: p.turnPaid ? 1 : 0 });
-      }
       // My status says when I am on a paid crossing: the admin's meter counts people.
       const vb = [...peers.values()].some((p) => p.turnMine && p.turnPaid && p.connected);
       if (vb && myStatus.vb !== 1) myStatus.vb = 1;
