@@ -9548,6 +9548,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const mic = document.getElementById('mic'), cam = document.getElementById('cam');
         if (mic) row.appendChild(twButton(myStatus.muted ? 'Unmute' : 'Mute', !myStatus.muted, () => { mic.click(); closeTileWin(); }));
         if (cam) row.appendChild(twButton(myStatus.camOff ? 'Camera on' : 'Camera off', !myStatus.camOff, () => { cam.click(); closeTileWin(); }));
+        if (myStatus.scr) row.appendChild(twButton(uiText('stopShare', 'Stop sharing'), false, () => { try { stopScreenShare(); } catch (e) {} closeTileWin(); }, 'danger'));
       } else if (isStage) {
         if (myStatus.scr) row.appendChild(twButton(uiText('stopShare', 'Stop sharing'), false, () => { try { stopScreenShare(); } catch (e) {} closeTileWin(); }, 'danger'));
       } else if (id) {

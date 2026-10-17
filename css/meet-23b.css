@@ -115,3 +115,16 @@ body.broadcast.dock-calm #airbar, body.broadcast.chrome-away #airbar { opacity: 
 /* While you share, your tile shows your face over the outbound screen. */
 .tile.me > video.selfcam { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%;
   object-fit: cover; z-index: 1; pointer-events: none; background: #000; }
+/* No Blur box sits on a tile any more, so the chips use the full width and
+   wrap whole on a small square instead of being cut. */
+body.comfy .tile > .chips { right: 6px !important; flex-wrap: wrap; align-content: flex-start; gap: 3px; }
+body.comfy .tile > .chips span:not(.ico) { white-space: normal; max-width: 100%; }
+/* A small square (under 200px) wears its marks as icons only. */
+body.comfy .tile.slim > .chips span.ico { width: 22px; height: 22px; padding: 0; }
+body.comfy .tile.slim > .chips span.ico i.w { display: none; }
+/* While your screen is on the Stage, the Stage carries "Stop sharing";
+   your own small square does not repeat it. */
+body.comfy.show-stage .tile.me > .chips .stopshare { display: none; }
+/* The Stage's share line is read from across the room: 16px, not the
+   small label size an older rule gave every stage label. */
+#stagefeed .rowtile .rlabel.sharelabel { font-size: 16px; }
