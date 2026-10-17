@@ -2436,6 +2436,46 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function netBeatTarget() { try { const s = meshSeat(); return s && netRoom ? netRoom.heirFor(s.id) : null; } catch (e) { return null; } }
     function netBeatFrom(pid) { if (netRoom && pid != null) netRoom.beat(pid, Date.now()); }
     function netPulse() { if (netRoom) netRoom.pulse(Date.now()); }
+    // The room view this page builds from what it knows itself. Nothing in it
+    // grows with the room beyond what the status pulse already carries:
+    //   reach(a, b)   my own pairs: the transport's word (a connected pair that
+    //                 is not relayed; a pair that never came up after a full
+    //                 dial is unreachable). Other pairs: the connectivity each
+    //                 peer gossips with its status; unknown pairs count as
+    //                 reachable (no bridge is built on a guess).
+    //   stun(id)      my own direct-path probe; a peer's as its pulse says.
+    //   seats()       my own seat, plus a bounded record per peer whose pulse
+    //                 names a seat (coord, label, anchored); their sitting-down
+    //                 marks and door knockers are not known here.
+    //   turn/credOk   the relay-pool state the pool code sets with
+    //                 netSeatingPool(level, credOk); 0 until it does, so no
+    //                 bridge is decided before a pool exists.
+    //   socketOpen    a peer whose status pulse reached me within 60 s.
+    let netPool = { level: 0, cred: false };
+    function netSeatingPool(level, credOk) { netPool = { level: level | 0, cred: !!credOk }; if (netRoom) netRoom.topoChanged(); }
+    function netSeatingLiveView() {
+      const me = () => meshSeat();
+      const rec = (pid, st) => ({ id: pid, alive: true, state: 3, hasCoord: true, coord: st.seat, glabel: st.lab != null ? st.lab : pid, anchored: !!st.anc, sitting: new Map(), glFind: -2, lastReached: -1 });
+      const pairRelayed = (p) => !!(p && p.viaRelay);   // set by the pool code when a pair's selected candidate pair is relayed
+      const view = {
+        tick: () => { const s = me(); return s ? s.TICK : 0; },
+        seats: () => { const s = me(); const out = s ? [s] : []; for (const [pid, st] of statusOf) if (pid !== myId && st && st.seat && typeof st.seat.pc === 'number') out.push(rec(pid, st)); return out; },
+        seat: (id) => { const s = me(); if (s && id === s.id) return s; const st = statusOf.get(id); return (st && st.seat && typeof st.seat.pc === 'number') ? rec(id, st) : null; },
+        reach: (a, b) => {
+          if (a === b) return true;
+          if (a === myId || b === myId) { const p = peers.get(a === myId ? b : a); if (!p) return true; if (p.connected) return !pairRelayed(p); if (p.neverUp && p.deadSince && Date.now() - p.deadSince > 5000) return false; return true; }
+          const ca = connsOf.get(a), cb = connsOf.get(b);
+          if ((ca && ca.includes(b)) || (cb && cb.includes(a))) return true;
+          return !(ca && cb);   // both maps known and neither names the other: unreachable; otherwise unknown counts as reachable
+        },
+        stun: (id) => { if (id === myId) return directPath !== 'blocked'; const st = statusOf.get(id); return !(st && st.net === 'blocked'); },
+        clientsOf: (a, b) => { let ca = !view.stun(a), cb = !view.stun(b); if (!ca && !cb) ca = true; return [ca, cb]; },   // never two relay clients where one end can be reached
+        turn: () => netPool.level,
+        credOk: () => netPool.cred,
+        socketOpen: (id) => { if (id === myId) return true; const st = statusOf.get(id); return !!(st && st.rx && Date.now() - st.rx < 60000); },
+      };
+      return view;
+    }
     // ── end NETWORK-AWARE SEATING ───────────────────────────────────────────
     function myRowIds() {
       const c = meshCoord();
@@ -2619,6 +2659,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // presence is the mesh occ map now, not counting-by-aggregation.
       const c = meshCoord();
       myStatus.seat = c ? { pc: c.pc, r: c.r, i: c.i } : undefined;
+      // Network-aware seating: my seat's network label, whether I sit anchored
+      // in another network's row, and whether my network can be reached from
+      // outside. Three small fields; a peer's view of the room reads them.
+      { const ms = meshSeat(); if (ms && ms.hasCoord && ms.glabel != null) { myStatus.lab = ms.glabel; myStatus.anc = ms.anchored ? 1 : 0; } else { delete myStatus.lab; delete myStatus.anc; } myStatus.net = directPath === 'blocked' ? 'blocked' : 'ok'; }
       // My stage votes ride the pulse (open rooms): present targets only, so
       // a departed target's entry never lingers in the payload; capped so a
       // hoarder can't bloat everyone's gossip.
@@ -9230,6 +9274,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         onRelayMsg: onRelayFrame,
         prevTree: readTreeMem(),
       });
+      try { if (window.GIFOS_NET_SEATING !== false && GifOS.mesh && GifOS.mesh.NetRoom) netSeatingInstall(netSeatingLiveView()); } catch (e) { if (typeof clog === 'function') clog('net seating view: ' + String(e).slice(0, 80)); }   // the room view for network-aware seating; window.GIFOS_NET_SEATING = false before boot leaves the rules off
       updateStatus(); applyAdminUi();
       });
     }
