@@ -40,11 +40,12 @@ function clearOfDock(box) {
   return box.ix === 0 || box.iy === 0;
 }
 
-async function bootSession(page, width, height) {
-  await page.addInitScript(() => {
+async function bootSession(page, width, height, host) {
+  await page.addInitScript((isHost) => {
     localStorage.setItem('gifos_name', 'Avery Chen');
     localStorage.setItem('gifos_meet_bar', '1');
-  });
+    if (isHost) localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  }, !!host);
   await page.setViewportSize({ width, height });
   await page.goto(SESSION);
   await page.waitForSelector('body.broadcast.meet-session #leavebtn .docklab');
@@ -55,7 +56,7 @@ test('mute and camera are labeled and the off state is filled red', async ({ pag
     localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
   });
   for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
-    await bootSession(page, w, h);
+    await bootSession(page, w, h, true);
     const mic = page.locator('#mic');
     await expect(mic.locator('.docklab')).toHaveText('Unmute');
     await expect(mic).toHaveAttribute('aria-label', 'Unmute');
@@ -178,6 +179,62 @@ test('a broadcast viewer is Watching, including at 900px', async ({ page }) => {
   const box = await page.locator('#onair').boundingBox();
   expect(box.y).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(900);
+});
+
+test('a Watching viewer has no camera or mic on the dock and does not publish', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    const md = navigator.mediaDevices;
+    if (!md || !md.getUserMedia || md.__bcWatching) return;
+    const orig = md.getUserMedia.bind(md);
+    md.__bcWatching = true;
+    md.getUserMedia = function () {
+      window.__bcGum = (window.__bcGum || 0) + 1;
+      return orig.apply(md, arguments);
+    };
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(SESSION);
+  await page.waitForSelector('#onair.watch');
+  await expect(page.locator('#onair')).toHaveText('Watching');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+  // The old hide waited for body.notadmin. This session never gets that class.
+  const seat = await page.evaluate(() => {
+    document.body.classList.remove('notadmin');
+    const shown = (id) => {
+      const el = document.getElementById(id);
+      if (!el) return 'missing';
+      const s = getComputedStyle(el);
+      return s.display !== 'none' && s.visibility !== 'hidden' && el.offsetParent !== null;
+    };
+    return {
+      notadmin: document.body.classList.contains('notadmin'),
+      watching: document.body.classList.contains('bc-watching'),
+      mic: shown('mic'),
+      cam: shown('cam'),
+    };
+  });
+  expect(seat.notadmin).toBe(false);
+  expect.soft(seat.watching, 'watching state is on the body').toBe(true);
+  expect.soft(seat.mic, 'mic is on the dock').toBe(false);
+  expect.soft(seat.cam, 'camera is on the dock').toBe(false);
+  const before = await page.evaluate(() => window.__bcGum || 0);
+  await page.evaluate(() => {
+    document.getElementById('mic').click();
+    document.getElementById('cam').click();
+  });
+  await page.waitForTimeout(400);
+  const published = await page.evaluate(() => {
+    const tracks = [];
+    for (const v of document.querySelectorAll('video')) {
+      const stream = v.srcObject;
+      if (!stream || !stream.getTracks) continue;
+      for (const t of stream.getTracks()) tracks.push(t.readyState + ':' + t.kind + ':' + t.enabled);
+    }
+    return { gum: window.__bcGum || 0, tracks };
+  });
+  expect(published.gum).toBe(before);
+  expect(published.tracks.filter((t) => t.indexOf('live') === 0 && t.endsWith(':true'))).toEqual([]);
 });
 
 test('a meeting keeps meeting words and hides the on-air pill', async ({ page }) => {
