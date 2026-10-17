@@ -185,6 +185,182 @@
     return a > 0 ? a : 16 / 9;
   }
 
+  // Your own video. The default is a gallery tile: same cell as everyone
+  // else, first seat, nothing covered. Float, strip, and hidden are explicit.
+  // See design/meet-selfview-stage.md.
+  const SELF_ARRANGEMENTS = ['tile', 'float', 'strip', 'hidden'];
+  const SELF_SIZES = ['s', 'm', 'l'];
+  const SELF_ANCHORS = ['tl', 'tr', 'bl', 'br', 'free'];
+  const SELF_EDGES = ['auto', 'bottom', 'top', 'left', 'right'];
+  const SELF_SCALE = { s: 0.20, m: 0.30, l: 0.42 };
+  const SELF_MARGIN = { phone: 10, other: 16 };
+  const SELF_LIFT = { phone: 108, other: 128 };
+  const SELF_THICK = {
+    phone: { s: 76, m: 108, l: 148 },
+    other: { s: 96, m: 140, l: 196 },
+  };
+  const SELF_KEY = 'gifos_self_view_v1';
+  const SELF_DEFAULT = { arrangement: 'tile', size: 'm', anchor: 'br', edge: 'auto', x: null, y: null, onStage: false };
+
+  function normalizeSelf(raw) {
+    if (raw == null || raw === '') return Object.assign({}, SELF_DEFAULT);
+    if (typeof raw === 'string') {
+      const arrangement = raw === 'inset' ? 'float' : (SELF_ARRANGEMENTS.indexOf(raw) >= 0 ? raw : 'tile');
+      return Object.assign({}, SELF_DEFAULT, { arrangement: arrangement });
+    }
+    const named = raw.arrangement === 'inset' ? 'float' : raw.arrangement;
+    const arrangement = SELF_ARRANGEMENTS.indexOf(named) >= 0 ? named : 'tile';
+    const size = SELF_SIZES.indexOf(raw.size) >= 0 ? raw.size : 'm';
+    const anchor = SELF_ANCHORS.indexOf(raw.anchor) >= 0 ? raw.anchor : 'br';
+    const edge = SELF_EDGES.indexOf(raw.edge) >= 0 ? raw.edge : 'auto';
+    const x = Number.isFinite(+raw.x) ? +raw.x : null;
+    const y = Number.isFinite(+raw.y) ? +raw.y : null;
+    const free = anchor === 'free' || (raw.anchor == null && x != null && y != null);
+    return {
+      arrangement: arrangement,
+      size: size,
+      anchor: free ? 'free' : anchor,
+      edge: edge,
+      x: free ? x : null,
+      y: free ? y : null,
+      onStage: !!raw.onStage,
+    };
+  }
+
+  function selfDevice(phone) { return phone ? 'p' : 'd'; }
+
+  function loadSelf(store, phone) {
+    if (!store || typeof store.getItem !== 'function') return normalizeSelf(null);
+    let o = null;
+    try { o = JSON.parse(store.getItem(SELF_KEY) || 'null'); } catch (e) { return normalizeSelf(null); }
+    const p = o && o[selfDevice(phone)];
+    return normalizeSelf(p || null);
+  }
+
+  function saveSelf(store, phone, spec) {
+    if (!store || typeof store.setItem !== 'function') return;
+    let o = {};
+    try { o = JSON.parse(store.getItem(SELF_KEY) || '{}') || {}; } catch (e) { o = {}; }
+    if (!o || typeof o !== 'object') o = {};
+    const s = normalizeSelf(spec);
+    o[selfDevice(phone)] = {
+      arrangement: s.arrangement, size: s.size, anchor: s.anchor, edge: s.edge,
+      x: s.x, y: s.y, onStage: s.onStage,
+    };
+    try { store.setItem(SELF_KEY, JSON.stringify(o)); } catch (e) {}
+  }
+
+  function cycleArrangement(spec) {
+    const s = normalizeSelf(spec);
+    const i = SELF_ARRANGEMENTS.indexOf(s.arrangement);
+    return normalizeSelf(Object.assign({}, s, { arrangement: SELF_ARRANGEMENTS[(i + 1) % SELF_ARRANGEMENTS.length] }));
+  }
+  function cycleSize(spec) {
+    const s = normalizeSelf(spec);
+    const i = Math.max(0, SELF_SIZES.indexOf(s.size));
+    return normalizeSelf(Object.assign({}, s, { size: SELF_SIZES[(i + 1) % SELF_SIZES.length] }));
+  }
+  function cycleEdge(spec) {
+    const order = ['bottom', 'right', 'left', 'top'];
+    const s = normalizeSelf(spec);
+    const cur = s.edge === 'auto' ? 'bottom' : s.edge;
+    const i = Math.max(0, order.indexOf(cur));
+    return normalizeSelf(Object.assign({}, s, { edge: order[(i + 1) % order.length] }));
+  }
+
+  // Phone: bottom. Wide desktop: the trailing edge. A chosen edge wins.
+  function selfEdge(spec, phone, box) {
+    const s = normalizeSelf(spec);
+    if (s.edge !== 'auto') return s.edge;
+    if (phone) return 'bottom';
+    const w = box && box.w > 0 ? box.w : 1;
+    const h = box && box.h > 0 ? box.h : 1;
+    return w / h >= 1.15 ? 'right' : 'bottom';
+  }
+
+  function floatSelf(box, spec, phone, aspect) {
+    const s = normalizeSelf(spec);
+    const bw = Math.max(1, box.w || 0), bh = Math.max(1, box.h || 0);
+    const short = Math.min(bw, bh);
+    let side = short * (SELF_SCALE[s.size] || SELF_SCALE.m);
+    side = Math.max(72, Math.min(side, short * 0.5));
+    const a = aspect > 0 ? aspect : (phone ? 3 / 4 : 16 / 9);
+    let w, h;
+    if (a >= 1) { h = side; w = side * a; }
+    else { w = side; h = side / a; }
+    const fitW = Math.max(48, bw - 8), fitH = Math.max(48, bh - 8);
+    if (w > fitW) { const k = fitW / w; w *= k; h *= k; }
+    if (h > fitH) { const k = fitH / h; w *= k; h *= k; }
+    const margin = phone ? SELF_MARGIN.phone : SELF_MARGIN.other;
+    const lift = phone ? SELF_LIFT.phone : SELF_LIFT.other;
+    let x, y;
+    if (s.anchor === 'free' && s.x != null && s.y != null) {
+      x = s.x; y = s.y;
+    } else {
+      const left = s.anchor === 'tl' || s.anchor === 'bl';
+      const top = s.anchor === 'tl' || s.anchor === 'tr';
+      const bottomLift = top ? 0 : lift;
+      x = left ? box.x + margin : box.x + bw - w - margin;
+      y = top ? box.y + margin : box.y + bh - h - margin - bottomLift;
+    }
+    const minX = box.x, minY = box.y;
+    const maxX = box.x + bw - w, maxY = box.y + bh - h;
+    x = Math.min(Math.max(minX, x), Math.max(minX, maxX));
+    y = Math.min(Math.max(minY, y), Math.max(minY, maxY));
+    return { x: x, y: y, w: w, h: h };
+  }
+
+  function reserveSelf(box, spec, phone) {
+    const s = normalizeSelf(spec);
+    const edge = selfEdge(s, phone, box);
+    const table = phone ? SELF_THICK.phone : SELF_THICK.other;
+    let thick = table[s.size] || table.m;
+    const along = (edge === 'left' || edge === 'right') ? box.w : box.h;
+    const minRest = Math.min(along * 0.55, phone ? 220 : 320);
+    thick = Math.min(thick, Math.max(64, along - minRest));
+    thick = Math.max(56, Math.min(thick, along * 0.42));
+    let band, rest;
+    if (edge === 'top') {
+      band = { x: box.x, y: box.y, w: box.w, h: thick };
+      rest = { x: box.x, y: box.y + thick, w: box.w, h: box.h - thick };
+    } else if (edge === 'left') {
+      band = { x: box.x, y: box.y, w: thick, h: box.h };
+      rest = { x: box.x + thick, y: box.y, w: box.w - thick, h: box.h };
+    } else if (edge === 'right') {
+      band = { x: box.x + box.w - thick, y: box.y, w: thick, h: box.h };
+      rest = { x: box.x, y: box.y, w: box.w - thick, h: box.h };
+    } else {
+      band = { x: box.x, y: box.y + box.h - thick, w: box.w, h: thick };
+      rest = { x: box.x, y: box.y, w: box.w, h: box.h - thick };
+    }
+    return { edge: edge, band: band, rest: rest };
+  }
+
+  function nudgeSelf(spec, key, step, box, phone, aspect) {
+    const s = normalizeSelf(spec);
+    if (s.arrangement !== 'float') return s;
+    const dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[key];
+    if (!dir) return s;
+    const cur = floatSelf(box, s, phone, aspect);
+    const n = step > 0 ? step : 16;
+    const moved = floatSelf(box, Object.assign({}, s, { anchor: 'free', x: cur.x + dir[0] * n, y: cur.y + dir[1] * n }), phone, aspect);
+    return normalizeSelf(Object.assign({}, s, { anchor: 'free', x: moved.x, y: moved.y }));
+  }
+
+  function attachSelf(g, me, box, spec, phone, meStaged) {
+    spec = normalizeSelf(spec);
+    g.self = spec;
+    if (!me || meStaged || spec.arrangement === 'tile' || spec.arrangement === 'hidden') return g;
+    let r = null;
+    if (spec.arrangement === 'float') r = floatSelf(box, spec, phone, aspectOf(me));
+    else if (spec.arrangement === 'strip' && g.selfBand) r = g.selfBand;
+    if (!r) return g;
+    g.rects = (g.rects || []).concat([{
+      id: me.id, tier: 'self', x: r.x, y: r.y, w: r.w, h: r.h, fit: 'cover', quality: 'hi',
+    }]);
+    return g;
+  }
+
   function layoutFor(opts) {
     opts = opts || {};
     const Pack = packApi();
@@ -210,21 +386,45 @@
       g.rects = (g.rects || []).concat(extra);
       return g;
     }
+    const selfSpec = normalizeSelf(opts.self != null ? opts.self : (opts.selfView != null ? opts.selfView : null));
+    const stageSelf = !!(opts.stageSelf || opts.swapSelf || selfSpec.onStage);
+    let me = null;
+    for (let i = 0; i < tiles.length; i++) if (tiles[i].me) me = tiles[i];
     if (!Pack) {
       const g = galleryIn(tiles, box, phone ? 3 / 4 : 16 / 10, phone);
       g.mode = mode;
       g.box = box;
+      g.self = selfSpec;
       return withBots(g);
     }
-    const onStage = (t) => (t.tier === 'stage' || !!t.stage) && (opts.swapSelf || !t.me);
+    // Your tile joins the stage only when you put it there (stageSelf /
+    // swapSelf / self.onStage). A stage flag on you is not enough.
+    const onStage = (t) => {
+      if (t.me) return stageSelf;
+      return t.tier === 'stage' || !!t.stage;
+    };
     let stage = [];
     if (mode === 'speaker') {
-      const pick = tiles.filter((t) => opts.swapSelf || !t.me);
+      const pick = tiles.filter((t) => stageSelf || !t.me);
       const speaker = pick.filter((t) => t.speaker)[0] || pick.filter((t) => t.tier !== 'stad')[0] || pick[0];
       if (speaker) stage = [{ id: speaker.id, aspect: aspectOf(speaker), share: !!speaker.share }];
     } else if (mode === 'stageGallery' || mode === 'stageOnly') {
       stage = tiles.filter(onStage).map((t) => ({ id: t.id, aspect: aspectOf(t), share: !!t.share }));
+      if (stageSelf && me) {
+        const mine = stage.filter((s) => s.id === me.id);
+        const rest = stage.filter((s) => s.id !== me.id);
+        stage = mine.concat(rest).slice(0, 5);
+      }
     }
+    const meStaged = !!(stageSelf && me && stage.some((s) => s.id === me.id));
+    let packBox = box;
+    let selfBand = null;
+    if (selfSpec.arrangement === 'strip' && me && !meStaged) {
+      const reserved = reserveSelf(box, selfSpec, phone);
+      packBox = { x: reserved.rest.x, y: reserved.rest.y, w: reserved.rest.w, h: reserved.rest.h, phone: box.phone };
+      selfBand = reserved.band;
+    }
+    const packSelf = (!meStaged && selfSpec.arrangement !== 'tile') ? 'hidden' : 'tile';
     const people = tiles.map((t) => ({
       id: t.id,
       aspect: aspectOf(t),
@@ -235,15 +435,16 @@
     for (let i = 0; i < tiles.length; i++) if (!tiles[i].me) order.join(tiles[i].id);
     for (let i = 0; i < tiles.length; i++) if (tiles[i].me) order.join(tiles[i].id);
     const out = Pack.layout(people, mode === 'gallery' ? [] : stage, {
-      W: box.x + box.w,
-      H: box.y + box.h,
-      box: box,
+      W: packBox.x + packBox.w,
+      H: packBox.y + packBox.h,
+      box: packBox,
       phone: phone,
       mode: mode === 'stageOnly' ? 'stageOnly' : 'auto',
       order: order,
       myRow: 0,
       gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit',
-      selfView: opts.selfView || 'tile',
+      selfView: packSelf,
+      stageSelf: stageSelf && meStaged,
       prevRows: opts.prevRows != null ? opts.prevRows : prevRows,
     });
     if (typeof out.rows === 'number') prevRows = out.rows;
@@ -260,7 +461,7 @@
     } else if (out.tooSmall && opts.gallery !== 'scroll') {
       band = { text: 'faces tiny · Scroll is in ▦', x: box.x + 6, y: box.y + 6 };
     }
-    return withBots({
+    const laid = {
       mode: mode,
       rects: rects,
       crowd: false,
@@ -268,9 +469,15 @@
       tier: out.split != null ? { f: out.split, fellBack: false } : null,
       box: box,
       stage: out.regions && out.regions.stage || null,
+      regions: out.regions || null,
+      strip: out.strip || null,
       contentH: out.contentH || box.h,
       tooSmall: !!out.tooSmall,
-    });
+      overflow: out.overflow || 0,
+      selfBand: selfBand,
+    };
+    attachSelf(laid, me, box, selfSpec, phone, meStaged);
+    return withBots(laid);
   }
 
   // Slice a stadium composite into per-face crops. cellCrop refuses a frame
@@ -309,8 +516,9 @@
 
   // Auto is sticky: a manual pick wins until the person chooses Auto again.
   // A gesture lock (pinch in progress, or the 2s after) holds the mode.
-  // Share/app, once the first frame has settled, goes to stage+gallery,
-  // or stage-only when a phone is landscape. Otherwise gallery.
+  // Share/app, once the first frame has settled, goes to stage+gallery
+  // (the other people stay in a strip). Only a manual stageOnly hides them.
+  // Otherwise gallery.
   function autoResolve(s) {
     s = s || {};
     const manual = s.manual || 'auto';
@@ -318,7 +526,8 @@
     if (s.gestureLock) return s.held || 'gallery';
     const sharing = !!(s.share || s.app);
     if (sharing && s.shareSettled === false) return s.held || 'gallery';
-    if (sharing && s.phoneLandscape) return 'stageOnly';
+    // Sharing opens the stage with the other people still in a strip.
+    // Only an explicit manual "stageOnly" (returned above) hides them.
     if (sharing) return 'stageGallery';
     return 'gallery';
   }
@@ -367,6 +576,10 @@
     layoutFor: layoutFor, stadiumSlices: stadiumSlices, autoResolve: autoResolve,
     BAR_KEY: BAR_KEY, clampBar: clampBar, defaultBar: defaultBar, nudgeBar: nudgeBar,
     loadBar: loadBar, saveBar: saveBar,
+    SELF_KEY: SELF_KEY, SELF_DEFAULT: SELF_DEFAULT, normalizeSelf: normalizeSelf,
+    loadSelf: loadSelf, saveSelf: saveSelf, cycleArrangement: cycleArrangement,
+    cycleSize: cycleSize, cycleEdge: cycleEdge, selfEdge: selfEdge,
+    floatSelf: floatSelf, reserveSelf: reserveSelf, nudgeSelf: nudgeSelf,
   };
   GifOS.meetLayout = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
