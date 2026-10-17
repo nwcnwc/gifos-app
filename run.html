@@ -2097,6 +2097,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #cfiles { display: none; }
     #chathead, #chatform { padding: 4px 8px; }
     #chatlog { padding: 4px; }
+    /* Find in chat took 60 of the 120px a sideways keyboard leaves, and
+       pushed the field and Send under the keys. It steps aside while the
+       keyboard is up for something else, and stays while you search. */
+    html.kb-up #chatfind:not(:focus-within) { display: none; }
   }
   #chat-in { min-height: 44px; }
   #chatclose, #cattach, #cemoji, #chatform button[type=submit] { min-width: 44px; min-height: 44px; }
@@ -23158,6 +23162,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const vv = window.visualViewport;
           const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
           document.documentElement.style.setProperty('--kb', kb + 'px');
+          document.documentElement.classList.toggle('kb-up', kb > 0);
         } catch (e) {}
       };
       window.__gifosKb = { sync: syncKb };

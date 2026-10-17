@@ -581,9 +581,19 @@ Repro: `test/mobile/chat-react.js`. It failed (`no way to react to a line`), the
 
 Before: `qa/mobile/shots/before-chat-react-iphone-se.png`. After: `qa/mobile/shots/after-chat-react-iphone-se.png`.
 
+### 67. A sideways keyboard covered the chat field again
+
+On an SE turned sideways, the keyboard leaves about 120px. Find in chat (64px with its border) came after the keyboard fix, and it took that band with the header. The message field and Send sat under the keys (field bottom 171, keyboard line 120).
+
+While the keyboard is up on a short screen, Find in chat steps aside unless you are typing in it. The field and Send sit above the keys. Tap Find with the keyboard up and it stays, at 61 to 105px.
+
+Repro: `test/mobile/chat-keyboard.js`. It failed (`field cannot be tapped; keyboard covers field (bottom 171, line 120); send is not above the keyboard`), then passed. All 18 chat tests pass.
+
+Before: `qa/mobile/shots/before-chat-keyboard-land.png`. After: `qa/mobile/shots/after-chat-keyboard-land.png`, and `qa/mobile/shots/after-chat-find-kb-land.png` (Find in use with the keyboard up).
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, Reply keeps that line on the answer, and Delete takes back your own line. An address in a line is a link. The room name and full screen are 44px taps. A sideways phone shows the whole name. A chat line takes a reaction. `test/mobile/chat-keyboard.js` fails on an SE turned sideways: the keyboard covers the chat field and Send. It failed before reactions too.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, Reply keeps that line on the answer, and Delete takes back your own line. An address in a line is a link. The room name and full screen are 44px taps. A sideways phone shows the whole name. A chat line takes a reaction. The keyboard leaves the chat field and Send in view on a sideways SE.
 
 ## Personas (what was actually tried)
 
