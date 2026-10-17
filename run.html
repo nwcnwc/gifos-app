@@ -2080,7 +2080,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* The call-state band and the chat preview are phone chrome: a desktop has
      the CC and Chat dock buttons, the room bar, and the booth cards there. */
   @media (min-width: 701px) and (min-height: 501px) { #callstate, #chatnote { display: none !important; } }
-  @media (max-width: 700px), (max-height: 500px) { .bar #fsbtn, .bar #ccdock { display: none !important; } }
+  /* A phone dock holds five buttons; Full screen and CC live in More there (placeDockForWidth). */
+  @media (max-width: 700px), (max-height: 500px) { .bar > #fsbtn, .bar > #ccdock { display: none !important; } }
   /* A 320px phone: Video, Mic, React, More and Leave fit in one row (qa-meet-mobile). */
   /* These two bands repeat the phone pass's sizes with body in the selector so
      they outrank the 700px block that follows them in the sheet. */
@@ -4114,6 +4115,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         const row = first.querySelector('.morerow');
         ['invite', 'pwbtn', 'recbtn', 'chatbtn', 'waitbtn'].forEach((id) => { const el = document.getElementById(id); if (el && el.parentElement !== row) row.appendChild(el); });
+        // The one Full screen for the whole screen sits in the Room row on a phone.
+        const fsP = document.getElementById('fsbtn'), roomRowP = rowOf('room');
+        if (fsP && roomRowP && fsP.parentElement !== roomRowP) roomRowP.appendChild(fsP);
         // Hand goes back to People and Help to its row; the wide window's
         // first row (Hand, Invite, Help) is empty on a phone and hides.
         const yourowP = more.querySelector('.morerow.yourow');
@@ -4155,6 +4159,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           yourow.insertBefore(inv, help && help.parentElement === yourow ? help : null);
         }
         put('chatbtn', people, 'ccdock');
+        put('fsbtn', people, 'bartoggle');
         const roomRow = rowOf('room'), hostRow = rowOf('host');
         const pw = document.getElementById('pwbtn'), rec = document.getElementById('recbtn'), wait = document.getElementById('waitbtn');
         if (roomRow) {
