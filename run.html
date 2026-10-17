@@ -25895,6 +25895,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         };
         return { save: read('appsave'), steal: read('appsteal'), hide: read('apphide'), talk: read('appaudio') };
       },
+      // The sharer's own app bar: Invite, the lead switch (tapped once when
+      // tap is set), and Full screen, as the sharer reads them.
+      appWordsForTest: (tap) => {
+        document.body.classList.add('has-app');
+        appKey = 'qa-words'; myStatus.app = { s: 'qa-words' };
+        showAppPane('Notes', '');
+        appLeadable = true; appLeadOn = false; appLeadSet = () => {};
+        updateAppButtons(myStatus.app);
+        document.getElementById('appinvite').style.display = '';
+        if (tap) document.getElementById('applead').click();
+        const read = (id) => {
+          const b = document.getElementById(id);
+          return { text: b.textContent.trim(), title: b.title, label: b.getAttribute('aria-label') || '', font: parseFloat(getComputedStyle(b).fontSize), display: getComputedStyle(b).display };
+        };
+        return { invite: read('appinvite'), lead: read('applead'), full: read('appfull'), status: document.getElementById('status').textContent };
+      },
       stealChoicesForTest: () => {
         appClientCtl = appClientCtl || { stealToDesktop: () => new Promise(() => {}) };
         const b = document.getElementById('appsteal');
