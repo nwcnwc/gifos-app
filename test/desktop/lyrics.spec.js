@@ -183,7 +183,16 @@ async function outgoingWords(page) {
     const band = x.getImageData(0, Math.floor(c.height * 0.6), c.width, c.height - Math.floor(c.height * 0.6)).data;
     const upper = x.getImageData(0, 0, c.width, Math.floor(c.height * 0.4)).data;
     const count = (d) => { let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 220 && d[i + 1] > 220 && d[i + 2] > 220) n++; return n; };
-    return { ok: true, white: count(band), top: count(upper), w: c.width, h: c.height };
+    // The room sees this camera as a centered square with the name strip
+    // over its bottom 17% (mesh-media.js). Words outside the square are
+    // cut off; words in the bottom 18% sit under the name.
+    const side = Math.min(c.width, c.height);
+    const sx = Math.floor((c.width - side) / 2);
+    const strip = Math.ceil(c.height * 0.18);
+    let outside = 0;
+    if (sx > 0) outside += count(x.getImageData(0, 0, sx, c.height).data) + count(x.getImageData(sx + side, 0, c.width - sx - side, c.height).data);
+    const underName = count(x.getImageData(0, c.height - strip, c.width, strip).data);
+    return { ok: true, white: count(band), top: count(upper), outside, underName, w: c.width, h: c.height };
   });
 }
 
@@ -217,8 +226,11 @@ for (const blur of [2, 0]) {
     await page.click('#rundown-next');
     await expect.poll(async () => (await outgoingWords(page)).white).toBeGreaterThan(40);
     const song = await outgoingWords(page);
-    // The words sit low on the picture, clear of a face.
+    // The words sit low on the picture, clear of a face, inside the square
+    // the room is shown, and above the name strip.
     expect(song.top).toBe(0);
+    expect(song.outside).toBe(0);
+    expect(song.underName).toBe(0);
     await page.screenshot({ path: `test/desktop/shots/lyrics-air-blur${blur}-1280.png` });
 
     await page.click('#rundown-next');
