@@ -7627,6 +7627,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Sealed frame over this pair's DataChannel (chat, files, relay control).
     const dcSend = (p, msg) => {
       if (p && p.wireHold) return p.wireHold.then(() => dcSend(p, msg)); // DEBUG lever, see renegotiate
+      if (p && p.testTx) { p.testTx.push(msg); return Promise.resolve(); } // openLinkForTest: a channel that only records
       if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
       const dc = p.dc;
       return txm(() => net.seal(roomE2E, msg).then((env) =>
@@ -24360,6 +24361,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       audienceReactForTest: (emoji, fromId) => takeAudienceReact(emoji, fromId || 'viewer'),
       // one frame arriving from a peer, the way a DataChannel or the mesh hands it in
       remoteFrameForTest: (from, m) => { onRemote(String(from), m); },
+      // a peer whose channel just opened, before the roster has caught up; it
+      // records the frames handed to it
+      openLinkForTest: (id) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); },
+      linkFramesForTest: (id) => { const p = peers.get(String(id)); return p && p.testTx ? p.testTx.slice() : null; },
       sentFramesForTest: () => sentFrames.slice(),
       stageHearLevelForTest: () => heardStage(),
       headCountForTest: (n) => { headCountOverride = Math.max(0, +n || 0); paintRoomTrust(); return roomHeadCount(); },

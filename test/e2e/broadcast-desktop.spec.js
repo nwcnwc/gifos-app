@@ -2717,3 +2717,27 @@ test('a viewer clap counts once on the host stage, however it arrives', async ({
     expect(lay.dock, JSON.stringify(lay)).toBe(false);
   }
 });
+
+test('a viewer clap reaches the host the moment the link opens', async ({ page }) => {
+  // The roster catches up on its own tick. A viewer can be linked to the host
+  // and clap before the host is on the roster; that clap must still go out.
+  // A real two-browser run of the same thing: test/e2e/cross-clap.js.
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  await page.goto('/run.html?desk=clapearly#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  await page.evaluate(() => window.__gifosVideo.openLinkForTest('host-early'));
+  await page.locator('#reactbtn').click();
+  await page.locator('#reacttray button[aria-label="Clap"]').click();
+  await page.locator('#reacttray button[aria-label="Clap"]').click();
+  await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 2');
+  const got = await page.evaluate(() => window.__gifosVideo.linkFramesForTest('host-early').filter((m) => m.k === 'react'));
+  expect(got.length, JSON.stringify(got)).toBe(2);
+  expect(got[0].e).toBe('👏');
+  expect(got[0].id).not.toBe(got[1].id);
+  expect(errors).toEqual([]);
+});
