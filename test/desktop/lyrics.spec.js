@@ -338,3 +338,104 @@ test('a viewer has no song words button', async ({ page }) => {
   await expect(page.locator('#song-edit')).toBeHidden();
   await expect(page.locator('#song-text')).toBeHidden();
 });
+
+// A service sings more than one song: one after Welcome and one after the
+// Message. Each has its own words, and Song words opens the one that is on
+// now or comes next, so the booth can type the second while the first plays.
+const SECOND_SONG = [
+  'Be Thou my vision, O Lord of my heart;',
+  'Naught be all else to me, save that Thou art.',
+];
+
+test('a service has a second song after the Message with its own words', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
+  await page.addInitScript(() => {
+    window.__painted = [];
+    const fill = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (t) {
+      window.__painted.push(String(t));
+      if (window.__painted.length > 400) window.__painted.splice(0, 200);
+      return fill.apply(this, arguments);
+    };
+  });
+  await boot(page, 'v=qalyrictwo&av=0123456789abcdef&bc=1&debug=on');
+  await page.evaluate(() => {
+    navigator.mediaDevices.getUserMedia = () => {
+      const c = document.createElement('canvas');
+      c.width = 640; c.height = 360;
+      c.style.cssText = 'position:fixed;left:-4000px;top:0';
+      document.body.appendChild(c);
+      const x = c.getContext('2d');
+      setInterval(() => { x.fillStyle = '#c45b3e'; x.fillRect(0, 0, 640, 360); }, 100);
+      x.fillStyle = '#c45b3e'; x.fillRect(0, 0, 640, 360);
+      return Promise.resolve(c.captureStream(8));
+    };
+  });
+  const armed = await page.evaluate(() => window.__gifosVideo.armBroadcastHostForTest());
+  expect(armed && armed.ok).toBe(true);
+  await page.click('#cam');
+  await page.evaluate(() => window.__gifosVideo.setClearForTest(true));
+
+  const steps = () => page.locator('#rundown li .rdname').allTextContents();
+  const now = () => page.locator('#rundown li.now .rdname').textContent();
+  const shot = (name) => page.screenshot({ path: `test/desktop/shots/two-songs-${name}-1280.png` });
+  // Take the before picture first: on base the next line fails.
+  await shot('before');
+  // The order of service has two songs, the second after the Message.
+  expect(await steps()).toEqual(['Welcome', 'Song 1', 'Prayer', 'Scripture', 'Message', 'Song 2', 'Closing']);
+
+  // Before the service, Song words opens song 1.
+  await page.click('#rundown #song-edit');
+  await expect(page.locator('#songedit-title')).toHaveText('Song words · Song 1');
+  await page.locator('#song-text').fill(OWN_SONG.join('\n'));
+  await page.click('#song-save');
+
+  await page.click('#rundown-next');
+  expect(await now()).toBe('Song 1');
+  let b = await lyricBox(page);
+  expect(b.program).toBe(OWN_SONG[0]);
+  await page.click('#lyrics-next');
+
+  // During Prayer, Song words opens the song that comes next.
+  await page.click('#rundown-next');
+  expect(await now()).toBe('Prayer');
+  await page.click('#rundown #song-edit');
+  await expect(page.locator('#songedit-title')).toHaveText('Song words · Song 2');
+  const text = page.locator('#song-text');
+  await expect(text).toBeFocused();
+  // Song 2 starts from its own built-in words, not song 1's.
+  expect(await text.inputValue()).not.toContain(OWN_SONG[0]);
+  expect((await text.inputValue()).length).toBeGreaterThan(10);
+  await text.fill(SECOND_SONG.join('\n'));
+  await shot('edit');
+  await page.click('#song-save');
+
+  // Scripture, Message, then Song 2 reads the second song from its first line.
+  for (let i = 0; i < 3; i++) await page.click('#rundown-next');
+  expect(await now()).toBe('Song 2');
+  b = await lyricBox(page);
+  expect(b.display).not.toBe('none');
+  expect(b.program).toBe(SECOND_SONG[0]);
+  expect(b.preview).toBe(SECOND_SONG[1]);
+  expect(b.coversAir).toBe(false);
+  expect(b.coversDock).toBe(false);
+  expect(b.coversRundown).toBe(false);
+  // The room sees the second song's line on the booth's picture.
+  await expect.poll(() => page.evaluate(() => window.__painted.join(' | '))).toContain(SECOND_SONG[0]);
+  await shot('after');
+
+  // Closing has no lyrics.
+  await page.click('#rundown-next');
+  expect(await now()).toBe('Closing');
+  expect((await lyricBox(page)).display).toBe('none');
+
+  // Both songs stay for this room after a reload.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#leavebtn', { state: 'visible' });
+  await page.evaluate(() => window.__gifosVideo.armBroadcastHostForTest());
+  await page.click('#rundown-next');
+  await page.click('#rundown-next');
+  expect(await now()).toBe('Welcome');
+  await page.click('#rundown-next');
+  expect((await lyricBox(page)).program).toBe(OWN_SONG[0]);
+});
