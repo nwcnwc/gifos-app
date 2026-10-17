@@ -35,6 +35,62 @@ test('a town hall joiner lands in the town hall', async ({ page }) => {
   expect(link).not.toContain('bc=1');
 });
 
+test('a speaker fills the town hall stage', async ({ page }) => {
+  await page.goto(HALL, { waitUntil: 'domcontentloaded' });
+  await page.locator('#bc-ended-txt').waitFor({ state: 'visible' });
+  const box = await page.evaluate(() => {
+    window.__gifosVideo.markJoinedForTest('speaker-ann');
+    const feed = document.getElementById('stagefeed');
+    const el = document.createElement('div');
+    el.className = 'rowtile';
+    el.dataset.row = 'sgs';
+    el.style.aspectRatio = '1.7778';
+    const v = document.createElement('video');
+    const lb = document.createElement('div');
+    lb.className = 'rlabel';
+    lb.textContent = 'On stage';
+    el.append(v, lb);
+    feed.appendChild(el);
+    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    const vs = getComputedStyle(v);
+    const quiet = document.getElementById('bc-ended');
+    return {
+      w: r.width, h: r.height, x: r.x, y: r.y,
+      radius: cs.borderRadius, fit: vs.objectFit,
+      short: Math.min(r.width, r.height),
+      vw: innerWidth, vh: innerHeight,
+      quiet: quiet.hidden || getComputedStyle(quiet).display === 'none',
+    };
+  });
+  expect(box.w).toBeGreaterThanOrEqual(box.vw - 1);
+  expect(box.h).toBeGreaterThanOrEqual(box.vh * 0.75);
+  expect(box.h).toBeGreaterThan(box.w * 0.7);
+  expect(box.short).toBeGreaterThanOrEqual(120);
+  expect(box.x).toBeLessThanOrEqual(1);
+  expect(box.y).toBeLessThanOrEqual(1);
+  expect(parseFloat(box.radius)).toBe(0);
+  expect(box.fit).toBe('cover');
+  expect(box.quiet).toBe(true);
+});
+
+test('a meeting speaker stays a tile', async ({ page }) => {
+  await page.goto('/run.html#v=allhands&av=' + AV, { waitUntil: 'domcontentloaded' });
+  await page.locator('#nmok').click();
+  const box = await page.evaluate(() => {
+    const feed = document.getElementById('stagefeed');
+    const el = document.createElement('div');
+    el.className = 'rowtile';
+    el.dataset.row = 'sgs';
+    const v = document.createElement('video');
+    el.append(v, document.createElement('div'));
+    feed.appendChild(el);
+    const r = el.getBoundingClientRect();
+    return { h: r.height, vh: innerHeight };
+  });
+  expect(box.h).toBeLessThan(box.vh * 0.5);
+});
+
 test('a town hall host still confirms how they appear', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_vadm_allhands.0123456789abcdef0123456789abcdef', 'stored-host-key');

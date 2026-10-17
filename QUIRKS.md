@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q58. A town hall speaker was a meeting tile
+
+The stage strip was a 16:9 card, 320×180, parked at the top of the phone. A speaker now fills the watcher’s screen. The picture is cover, the corners are square, and the short side stays at least 120px. “On stage” sits above the dock. The “has not started” line stays off while a speaker is up. A meeting speaker stays a tile. The host still has the gallery. `test/mobile/town-hall-join.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-town-hall-speaker.png`. After: `test/mobile/screenshots/after/iphone-se-town-hall-speaker.png`.
+
+Design: the speaker is the stage. Corporate stays at 4. FaceTime is still one tap, and that tap is the whole screen.
+
 ### Q57. A town hall watcher filled the phone with their own tile
 
 The gallery gave a watcher a meeting tile of themselves, 316×504 on an iPhone SE, while the stage sat off screen. The watcher’s room is now the stage. Their tile is gone. The stage says “The town hall has not started.” The host still has the gallery, and still keeps the camera. A meeting still shows the gallery. `test/mobile/town-hall-join.spec.mjs`.
