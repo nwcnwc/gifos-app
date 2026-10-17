@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q72. Nobody watched, the host ended, and a late arrival read "has not started"
+
+A church went live, nobody joined in time, and the host tapped Leave. Someone who opened the link ten minutes later read "The service has not started." and had nothing to play. The host's phone had kept the whole service (Q69), but Leave took it out of the room. Resi and BoxCast put the replay behind the same link. Now Leave on a kept service ends it and keeps the seat: the stage, mic, and camera are off and nothing is sent, but the page still answers anyone who opens the link. The replay fills the host's phone, and it says "The service has ended. Anyone who opens the link while this stays open can watch it." The screen stays awake. The late arrival reads "The service has ended." on the quiet line and on the chip (not "2 in the service"), OFF AIR, and Watch pulls the host's kept file over the room (Q71's pieces), byte for byte. Close on the host's sheet is the real leave. `test/mobile/host-seed.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-host-seed-host.png`, `iphone-se-host-seed-late.png`. After: `test/mobile/screenshots/after/iphone-se-host-seed-host.png`, `iphone-se-host-seed-late.png`, `iphone-se-host-seed-playing.png`.
+
+Design: the host's own copy is offered for as long as the host leaves that sheet open. Church stays at 4. Once that sheet is closed and every viewer who holds it has gone, the link cannot play it; Resi's still can.
+
 ### Q70. A shared link never said when, and an old link said "has not started"
 
 A church shares Sunday's link midweek. A viewer who opened it on Wednesday read "The service has not started." and nothing about when to come back. Someone who opened it on Monday read the same thing. Resi, BoxCast, and YouTube Live all show the start time on the watch page. The host now sets a start time in More, in the phone's own date and time picker, and More reads "Starts Sunday at 10:00 AM". The viewer link carries it as `at=<unix seconds>`, and Invite's text says "Live Sunday at 10:00 AM." On Wednesday the viewer reads "The service starts Sunday at 10:00 AM." in their own time zone, with Add to calendar under it, 48px tall and above the dock. That opens an .ics with the link and a 15-minute alarm. The same day reads "today at 6:30 PM", and the next day reads "tomorrow". From 15 minutes before the time until 3 hours after, it reads "The service is about to start.", in case the host is late. After that, someone who opens the link reads "The service has ended." A link without a time is unchanged. The host's phone keeps the time for that room. `test/mobile/service-time.spec.mjs`.
