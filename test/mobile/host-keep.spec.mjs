@@ -5,6 +5,9 @@ import { test, expect } from '@playwright/test';
 
 const AV = '0123456789abcdef0123456789abcdef';
 
+// A host's phone has a camera.
+test.use({ launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] }, permissions: ['camera', 'microphone'] });
+
 async function phoneShare(page) {
   await page.addInitScript(() => {
     window.__shared = [];
@@ -66,4 +69,17 @@ test('a viewer is not recorded by the page', async ({ page }) => {
   await page.waitForTimeout(2500);
   expect(await myChips(page)).not.toMatch(/recording this meeting/);
   await expect(page.locator('#recbtn')).toHaveText('Record');
+});
+
+test('a Stop stays stopped', async ({ page }) => {
+  await phoneShare(page);
+  await goLive(page, 'bc=1');
+  await expect(page.locator('#recbtn')).toHaveText(/^Stop /, { timeout: 10000 });
+  await page.waitForTimeout(1200);
+  await page.evaluate(() => document.getElementById('recbtn').click());
+  await expect(page.locator('#rec-replay')).toBeVisible({ timeout: 15000 });
+  await page.locator('#rec-replay-close').click();
+  await page.waitForTimeout(3000);
+  await expect(page.locator('#recbtn')).toHaveText('Record');
+  expect(await myChips(page)).not.toMatch(/recording this meeting/);
 });

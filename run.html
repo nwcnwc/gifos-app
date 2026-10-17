@@ -10126,10 +10126,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!myId || !amAdmin) return;
       admins = adminsNow();
       // Already up: clear the want so a later step-down is not undone.
-      if (myStatus.stg) { bcStageWant = false; return; }
+      if (myStatus.stg) { bcStageWant = false; bcKeepService(); return; }
       if (!canStage(myId) || stageIds().length >= SCALE.C) return;
       bcStageWant = false;
       setStage(true);
+      bcKeepService();
+    }
+    // Resi and BoxCast keep every service without a tap. The host's Go live
+    // keeps the stage the same way, with the recording chip everyone sees,
+    // and Leave hands the replay over. Once per page, so a Stop stays stopped.
+    let bcKept = false;
+    function bcKeepService() {
+      if (bcKept || !BROADCAST || !bcHostStored()) return;
+      bcKept = true;
+      const until = Date.now() + 30000;
+      const tick = () => {
+        if (leaving || (recRec && recRec.state !== 'inactive') || recStarting) return;
+        if (!myStatus.stg || !recScopeSources('program').stage.length) {
+          if (Date.now() < until) setTimeout(tick, 500);
+          return;
+        }
+        startRec({ scope: 'program', quality: recDefaultQuality(IS_MOBILE), matchMix: false, keep: true }).then((err) => {
+          if (typeof err === 'string' && err && Date.now() < until) setTimeout(tick, 1000);
+        }, () => {});
+      };
+      setTimeout(tick, 0);
     }
     async function adoptAdmKey(K) { // derive + verify K against this room's V
       const k = await net.edKeysFromSeedHex(K).catch(() => null);
@@ -20662,7 +20683,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if ((myStatus.cc || myStatus.scribe) && !ccIndicatorOn(text)) return false;
       return true;
     }
-    async function recOpenSink(name) {
+    async function recOpenSink(name, quiet) {
       // A bot session is the meeting page itself, stamped before boot. It keeps
       // the bytes on the page. A normal meeting has no stamp and opens the picker.
       if (window.__gifosMb === '1') {
@@ -20681,7 +20702,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           abort() { chunks.length = 0; return Promise.resolve(); },
         };
       }
-      if (typeof window.showSaveFilePicker === 'function') {
+      // quiet: a kept service starts without a tap, so no picker can open.
+      if (!quiet && typeof window.showSaveFilePicker === 'function') {
         try {
           const handle = await window.showSaveFilePicker({
             suggestedName: name,
@@ -21059,6 +21081,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function recScopeSources(scope) {
       const g = recSources();
       if (scope === 'stage') return { stage: g.stage, grid: [] };
+      // 'program' is what a kept service records: the stage, or the host
+      // alone on it before the strip exists. The strip is video only, so the
+      // host's own voice is mixed in as an ear.
+      if (scope === 'program') {
+        const me = myStatus.stg ? g.row.find((x) => x.me) : null;
+        if (g.stage.length) return { stage: g.stage, grid: [], ear: me ? [me] : [] };
+        return { stage: me ? [me] : [], grid: [] };
+      }
       if (scope === 'row') return { stage: g.stage, grid: g.row };
       return { stage: g.stage, grid: [...g.row, ...g.stadium] }; // 'all' / 'app'
     }
@@ -21172,7 +21202,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         recMode = scope;
         recDest = ac.createMediaStreamDestination();
         recSrcs = new Map();
-        if (scope === 'stage' && !recSources().stage.length) {
+        if ((scope === 'stage' || scope === 'program') && !recScopeSources(scope).stage.length) {
           recDest = null; recMode = null;
           return fail('No one is on the stage yet — nothing to record.');
         }
@@ -21193,7 +21223,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
           stopVideo = () => { for (const t of disp.getTracks()) { try { t.stop(); } catch (e) {} } };
         }
-        const opened = await recOpenSink(recFileName());
+        const opened = await recOpenSink(recFileName(), !!opts.keep);
         if (!opened || opened.kind === 'cancel') {
           if (opened && opened.abort) { try { opened.abort(); } catch (e) {} }
           recDest = null; recMode = null;
@@ -21222,8 +21252,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           canvas.width = q.w; canvas.height = q.h;
           const ctx = canvas.getContext('2d');
           const draw = () => {
-            const { stage, grid } = recScopeSources(scope);
-            recSetGains([...stage, ...grid]);
+            const { stage, grid, ear } = recScopeSources(scope);
+            recSetGains([...stage, ...grid, ...(ear || [])]);
             ctx.filter = 'none';
             ctx.fillStyle = '#0a0a0f'; ctx.fillRect(0, 0, canvas.width, canvas.height);
             if (stage.length && grid.length) {

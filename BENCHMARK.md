@@ -8,7 +8,7 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 
 - **Zoom / Meet / Teams.** The hang-up, mute, and camera controls stay inside the screen on a 320px phone. Chat is a sheet or a column that does not sit under the call dock.
 - **FaceTime.** One primary action, huge targets, the preview is the screen. On a tall phone the picture is that screen, and a tap on it is Go live (Q59). Watch and the host key open from More. FaceTime still wins the call: one control, and almost nothing else on the glass.
-- **StreamYard / YouTube Live.** The state is a banner now (Q14). The picture leads a phone before Go live (Q44). A quiet viewer reads that the service or stream has not started, and an emptied room reads that it has ended (Q54). A recording on the phone plays back (Q60). A speaker fills the phone, and the frame stays whole (Q61). A viewer who watched can watch it again (Q62), and the host or that viewer can Share the video to whoever missed it (Q68). Someone who opens the link after it ended still reads that it has not started.
+- **StreamYard / YouTube Live.** The state is a banner now (Q14). The picture leads a phone before Go live (Q44). A quiet viewer reads that the service or stream has not started, and an emptied room reads that it has ended (Q54). A recording on the phone plays back (Q60). A speaker fills the phone, and the frame stays whole (Q61). A viewer who watched can watch it again (Q62), and the host or that viewer can Share the video to whoever missed it (Q68). Go live keeps every service without a Record tap, and Leave hands the host that replay (Q69). Someone who opens the link after it ended still reads that it has not started.
 - **Church desks.** A viewer’s join says they are seen only if they raise a hand and are brought on stage (Q52). A quiet service reads OFF AIR. Sunday morning sits on the picture, and a tap on the picture is Go live (Q59, Q46).
 
 ## Scorecard
@@ -32,4 +32,4 @@ Corporate, church, and personal are 4.0. None lead. A 5 would mean that audience
 
 ## Next gap
 
-None of these are a 5. A replay can now be sent from the phone (Q68), but it exists only if the host tapped Record or a viewer watched. Resi and BoxCast keep every service without a tap. Someone who opens the link after it ended reads that it has not started, and that link cannot play the replay.
+None of these are a 5. Go live now keeps every service, and Leave hands the host the replay to send (Q68, Q69). Resi and BoxCast also put that replay behind the same link. Someone who opens the link after it ended reads that it has not started, and that link cannot play the replay.

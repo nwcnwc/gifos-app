@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q69. A service was kept only if the host remembered Record
+
+Go live put the host on the stage, and nothing was kept. On Leave, an iPhone SE read “You left the meeting”, and there was nothing to send to whoever missed it. Resi and BoxCast keep every service without a tap. Go live now keeps the stage the same way. It starts once the host is on the stage, with the recording chip everyone already sees, and Record reads Stop 0:00. The file goes to the phone's own storage, so no save picker opens. On Leave the replay fills the phone, with Share, Save, and Close in one row, and Share hands the file to the share sheet. A stream is kept the same way. A viewer's page records nothing. Stop still stops, and it does not start again. The strip on the stage carries no sound, so the host's own voice is mixed in. `test/mobile/host-keep.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-host-keep.png`. After: `test/mobile/screenshots/after/iphone-se-host-keep.png`.
+
+Design: every service is kept, so there is always a replay to send. Church and personal stay at 4. Someone who opens the link after it ended still reads that it has not started, and the live screen does not yet say the service is being kept.
+
 ### Q68. Someone who missed the service could not be sent it
 
 The phone replay had Save and Close. Save put a file in Downloads, and getting that file to the church group meant leaving the app to find it. The replay now leads with Share. It hands the video file to the phone's share sheet, so the host, or a viewer who watched, sends the service to whoever missed it in one tap. The file is ready before the tap, because a share sheet only opens inside it. On an iPhone SE, Share, Save, and Close are 89×48, 91×48, and 91×48 in one row. At a 32px root they wrap to two rows, Close 288×48 under the other two, ending at y=552 of 568. After a send, Close does not download a second copy, and Save still saves. A phone that cannot share a file keeps Save and Close. A wide screen still downloads. `test/mobile/replay-share.spec.mjs`.
