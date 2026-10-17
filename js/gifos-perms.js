@@ -273,7 +273,11 @@
             // manifest: true = PayPal only, else exactly the rails named.
             var PAY_NAMES = { paypal: 'PayPal', x402: 'USDC (connected wallet)', transfer: 'USDC (any wallet)', fednow: 'bank transfer (FedNow)', mpp: 'AI agents' };
             var pv = (manifest.capabilities || {}).pay;
-            var how = pv === true ? ['PayPal'] : (Array.isArray(pv) ? pv.map(function (r) { return PAY_NAMES[r] || String(r); }) : []);
+            // Only the rails the OS will offer: the payment sheet's switch
+            // (GifOS.payBroker.offeredRails) decides for both.
+            var offered = GifOS.payBroker && GifOS.payBroker.offeredRails;
+            var listed = Array.isArray(pv) ? (offered ? offered(pv) : pv) : [];
+            var how = pv === true ? ['PayPal'] : listed.map(function (r) { return PAY_NAMES[r] || String(r); });
             return capRow(k, CAP_LABELS.pay + (how.length ? ' <span class="host" style="font-weight:400">— ' + escapeText(how.join(', ')) + '</span>' : ''), CAP_DESC.pay);
           }
           return capRow(k, CAP_LABELS[k], CAP_DESC[k]);
