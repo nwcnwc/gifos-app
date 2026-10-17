@@ -2564,6 +2564,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return !(ca && cb);   // both maps known and neither names the other: unreachable; otherwise unknown counts as reachable
         },
         reachWhy: (id) => doorWhy.get(id) || null,
+        // The joiners still at the door I hold a direct link to: a connected
+        // pair that is not relayed, to a peer that no pulse, roster or cell of
+        // mine names as seated (mesh.js netDecide: the lowest id heads them).
+        doorPeers: () => {
+          const s = me(); const held = new Set();
+          if (s) { if (s.occ) for (const v of s.occ.values()) if (v != null) held.add(v); for (const e of (s.netRoster || s.roster || [])) if (e && e.v != null) held.add(e.v); }
+          const out = [];
+          for (const [pid, p] of peers) { if (pid === myId || !p || !p.connected || pairRelayed(p) || held.has(pid)) continue; const st = statusOf.get(pid); if (st && st.seat && typeof st.seat.pc === 'number') continue; out.push(pid); }
+          return out;
+        },
         stun: (id) => { if (id === myId) return directPath !== 'blocked'; const st = statusOf.get(id); return !(st && st.net === 'blocked'); },
         clientsOf: (a, b) => { let ca = !view.stun(a), cb = !view.stun(b); if (!ca && !cb) ca = true; return [ca, cb]; },   // never two relay clients where one end can be reached
         turn: () => netPool.level,

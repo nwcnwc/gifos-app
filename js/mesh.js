@@ -1650,6 +1650,15 @@
       if (reached) { this.glabel = best; if (bestSeat != null && !R.labelHasS1Row(best, this)) this.glHead = R.seatOf(bestSeat).coord; return best; }   // a head anchored in a Section-1 cell: its group grows in its own child row, so the FIND names it
       const w = R.walk(this.id); this.walkRounds = w ? w.rounds : 0;
       if (w) { this.glabel = w.label; this.glHead = w.head; return w.label; }
+      // NEIGHBOURS AT THE DOOR. A page's view cannot see another joiner's
+      // door test (the simulator's knockers and sitting-down marks), so two
+      // members of one new network who knock together would each head a
+      // group. A view that names the joiners still at the door that I reach
+      // directly (o.doorPeers) settles it by id: the lowest of us heads the
+      // group and the rest carry its id as their label; their FINDs wait
+      // (label-unseated) until it sits.
+      if (R.o.doorPeers) { let low = null; try { for (const q of R.o.doorPeers(this.id) || []) if (q != null && q !== this.id && idLess(q, this.id) && (low == null || idLess(q, low))) low = q; } catch (e) { low = null; }
+        if (low != null) { this.glabel = low; return low; } }
       this.glabel = this.id; return NET_NONE;   // a new group: its head
     }
     // DARK LINKS COUNT AS HEALTHY. Across a dark link nothing crosses from me,
@@ -2061,6 +2070,7 @@
         this.route(f.coord, null, m);
       } else {
         this.markSitting(k, nc); this.sitting.get(k).pl = Object.assign({}, m); // FINDACK: a snapshot for a re-sent PLACE — taken before emit, because route() and the transport stamp the sent object in flight
+        if (m.gl !== undefined) this.sitting.get(k).gl = m.gl;   // the label I wrote: a page's view knows nothing else of a joiner still sitting down
         this.emit(nc, m); this._gspReplay(nc);
       }
     }
@@ -4984,6 +4994,13 @@
   //                       down marks and door knockers. In the harness that is
   //                       the seat table; a page builds the same from its own
   //                       seat and the answers it received.
+  //                       A page knows a joiner only once it is seated: the
+  //                       seat's own sitting-down marks (the label its PLACE
+  //                       carried) and the FIND's label stand in until then.
+  //   o.doorPeers(me)     OPTIONAL: the joiners still at the door that `me`
+  //                       holds a direct link to (a page cannot see their
+  //                       door tests; the lowest id among them heads them).
+  //   o.reachWhy(id)      OPTIONAL, debug only: why o.reach said what it said.
   //   o.groupOf(id), o.groups(), o.groupsReach(g, h)  OPTIONAL, for a harness
   //                       fabric's own carriage model and for reports; no
   //                       seating decision reads them.
@@ -5043,6 +5060,11 @@
     stun(id) { return !this.o.stun || !!this.o.stun(id); }
     labelOf(id) { if (!this.seatedLive(id)) return null; const s = this.seatOf(id); return s.glabel != null ? s.glabel : s.id; }   // a seated seat with no label yet (seated before the view existed) is its own group's first member
     anchoredAt(id) { const s = this.seatOf(id); return !!s && !!s.anchored; }
+    // A JOINER STILL SITTING DOWN. A meeting page knows a peer's seat only from
+    // the peer's status, so a joiner I vouched into a cell is unknown to my
+    // view until it is seated: my own sitting-down mark (the label my PLACE
+    // carried) stands in for it.
+    doorRec(x, me) { if (!me || !me.sitting) return null; for (const ss of me.sitting.values()) if (ss.joiner === x && ss.gl !== undefined) return ss; return null; }
     // The seated occupant of each cell, rebuilt when the tick or the room changes.
     at(k) {
       if (this.atTick !== this.TICK || this.atEpoch !== this.epoch) {
@@ -5056,7 +5078,7 @@
     // belongs to that head's group (its PLACE carries the group).
     cellOccOrSoft(k, me) {
       const x = this.at(k); if (x != null) return x;
-      if (me) { const s = me.sitting.get(k); if (s && this.TICK - s.at <= SIT_TTL && s.joiner != null) { const j = this.seatOf(s.joiner); if (j && j.alive) return s.joiner; } }
+      if (me) { const s = me.sitting.get(k); if (s && this.TICK - s.at <= SIT_TTL && s.joiner != null) { const j = this.seatOf(s.joiner); if (j ? j.alive : this.doorRec(s.joiner, me)) return s.joiner; } }   // a joiner my view does not know yet counts by my own fresh mark
       return null;
     }
     // A row's group: its first occupant's; an anchored seat never counts.
@@ -5076,9 +5098,9 @@
     sameGroup(l1, l2, me) { if (l1 === l2) return true; if (!netLab(l1) || !netLab(l2)) return false; for (let t = 0; t < C(); t++) if (this.rowLabel(0, t, me) === l1 && this.s1Same(l2, t, me)) return true; return false; }
     labelHasS1Row(gl, me) { for (let t = 0; t < C(); t++) if (this.s1Row(gl, t, me)) return true; return false; }
     // ROW PURITY: one label per row (the PLACE carried it); an anchored seat never counts.
-    rowOk(pc, r, nc, me) {
-      const ns = this.seatOf(nc); const gl = ns ? ns.glabel : null;
-      for (let j = 0; j < C(); j++) { const x = this.cellOccOrSoft(ck({ pc, r, i: j }), me); if (x != null && x !== nc && !this.anchoredAt(x)) { const xs = this.seatOf(x); if (!xs || !this.sameGroup(xs.glabel, gl, me)) return false; } }
+    rowOk(pc, r, nc, me, ncLabel) {
+      const ns = this.seatOf(nc); const gl = ns ? ns.glabel : (ncLabel !== undefined ? ncLabel : null);   // a seeker my view does not know yet: the label its FIND carried
+      for (let j = 0; j < C(); j++) { const x = this.cellOccOrSoft(ck({ pc, r, i: j }), me); if (x != null && x !== nc && !this.anchoredAt(x)) { const xs = this.seatOf(x); const d = xs ? null : this.doorRec(x, me); if ((!xs && !d) || !this.sameGroup(xs ? xs.glabel : d.gl, gl, me)) return false; } }
       return true;
     }
     // May a seeker of group gl sit in row (pc, r)? Its group's row, or a free
@@ -5095,7 +5117,7 @@
       }
       if (lab != null && lab !== gl && !(pc === 0 && this.s1Same(gl, r, me))) return false;
       if (lab == null && pc !== 0 && me && !this.sameGroup(me.glabel, gl, me)) return false;   // a group opens a new row only under a seat of its own: its head then reaches its owner, so no second bridge
-      return this.rowOk(pc, r, nc, me);
+      return this.rowOk(pc, r, nc, me, netLab(gl) ? gl : nc);   // the label the PLACE would carry
     }
     // A group opens a free Section-1 row only when every row it holds is full.
     s1GroupFull(gl, me) { for (let t = 0; t < C(); t++) { if (!this.s1Row(gl, t, me)) continue; if (this.rowCount(0, t, me) < C()) return false; } return true; }
