@@ -2651,7 +2651,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try {
         if (typeof myStatus !== 'undefined' && myStatus && myStatus.rec) subject = 'You are';
         else if (typeof statusOf !== 'undefined' && statusOf && statusOf.forEach) {
-          statusOf.forEach((st) => { if (!subject && st && st.rec && st.name) subject = st.name + ' is'; });
+          // A real peer's status carries no name; the roster has it.
+          statusOf.forEach((st, pid) => {
+            const name = st && st.rec ? (st.name || (typeof nameForPeer === 'function' ? nameForPeer(pid) : '')) : '';
+            if (!subject && name) subject = name + ' is';
+          });
         }
       } catch (e) {}
       const kind = recRoomWord();
@@ -2668,7 +2672,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let seen = false;
       try { seen = sessionStorage.getItem('gifos_rec_seen') === '1'; } catch (e) {}
       if (seen) { if (existing) existing.remove(); return; }
-      if (existing) return;
+      const left = document.getElementById('left-modal');
+      if (left && left.style.display === 'flex') { if (existing) existing.remove(); return; }
+      if (existing) {
+        // The recorder's name can land after their status.
+        const t = existing.querySelector('#rec-notice-title');
+        if (t && t.textContent !== recNoticeTitle()) t.textContent = recNoticeTitle();
+        return;
+      }
+      // Someone else is recording you (Zoom and Teams ask the same): staying
+      // is consent, and Leave is right there. The recorder, and a viewer who
+      // is not in a service recording, only read it.
+      let mine = false, onStage = false, host = false;
+      try { mine = !!(typeof myStatus !== 'undefined' && myStatus && myStatus.rec); } catch (e) {}
+      try { onStage = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) {}
+      try { host = (typeof bcHostStored === 'function' && !!bcHostStored()) || document.body.classList.contains('amadmin'); } catch (e) {}
+      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const ask = !mine && (!service || (onStage && !host));
       const bg = document.createElement('div');
       bg.id = 'rec-notice';
       bg.className = 'name-modal';
@@ -2677,8 +2697,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bg.setAttribute('aria-labelledby', 'rec-notice-title');
       bg.innerHTML = '<div class="name-box appear-box"><h3 id="rec-notice-title"></h3>' +
         '<p>Saved on a device in this room. The bar keeps saying Recording until it stops.</p>' +
-        '<button id="rec-notice-ok" type="button" class="appear-primary">OK</button></div>';
+        (ask
+          ? '<p>Staying means you agree to be recorded.</p><div class="appear-actions">' +
+            '<button id="rec-notice-leave" type="button" class="appear-secondary">Leave</button>' +
+            '<button id="rec-notice-ok" type="button" class="appear-primary">Stay</button></div></div>'
+          : '<button id="rec-notice-ok" type="button" class="appear-primary">OK</button></div>');
       bg.querySelector('#rec-notice-title').textContent = recNoticeTitle();
+      const leave = bg.querySelector('#rec-notice-leave');
+      if (leave) leave.onclick = () => {
+        bg.remove();
+        const btn = document.getElementById('leavebtn');
+        if (btn) btn.click();
+      };
       bg.querySelector('#rec-notice-ok').onclick = () => {
         try { sessionStorage.setItem('gifos_rec_seen', '1'); } catch (e) {}
         bg.remove();
