@@ -124,7 +124,7 @@ test('the words on a face you point at are 16px', async ({ context }) => {
         const cs = getComputedStyle(el);
         return el.getClientRects().length && cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.5;
       };
-      const els = [...tile.querySelectorAll(':scope > .blurbox, .modbar button, .maxbtn, .name')].filter(seen);
+      const els = [...tile.querySelectorAll(':scope > .blurbox, .modbar button, .name')].filter(seen);
       const boxes = els.map((el) => {
         const r = el.getBoundingClientRect();
         return { id: el.className + ':' + (el.textContent || '').trim(), left: r.left, right: r.right, top: r.top, bottom: r.bottom };
@@ -221,7 +221,7 @@ async function faceMarks(page, count, tag) {
     await page.waitForTimeout(400);
     covered.push(...await faces.nth(i).evaluate((tile) => {
       const seen = (el) => { const cs = getComputedStyle(el); return el.getClientRects().length && cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.5; };
-      const btns = [...tile.querySelectorAll(':scope > .blurbox, .modbar button, .maxbtn')].filter(seen);
+      const btns = [...tile.querySelectorAll(':scope > .blurbox, .modbar button')].filter(seen);
       const out = [];
       for (const m of tile.querySelectorAll('.chips [data-icon]')) {
         const mb = m.getBoundingClientRect();

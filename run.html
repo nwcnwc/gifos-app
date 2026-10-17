@@ -1272,23 +1272,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile.reconnecting > video { opacity: .35; }
   /* live audio → glowing border (never while muted) */
   .tile.speaking { border-color: #5cff7b; box-shadow: 0 0 0 2px #5cff7b, 0 0 18px rgba(92,255,123,.4); }
-  /* per-tile maximize: the focused feed spans the full row, others wrap below */
-  .tile .maxbtn { position: absolute; right: .4rem; bottom: .4rem; z-index: 4; padding: .15rem .5rem;
-                  border-radius: .4rem; border: 1px solid rgba(255,255,255,.16); background: rgba(10,10,15,.85);
-                  color: #eceef8; cursor: pointer; font-size: .75rem; }
+  /* the focused feed spans the full row, others wrap below */
   /* On a phone the corner control was 28×32 and sat on the name. 44px, and
      the name stops before it. */
   @media (max-width: 700px), (max-height: 500px) {
-    .tile .maxbtn { box-sizing: border-box; width: 44px; height: 44px; min-width: 44px; min-height: 44px;
-      padding: 0; right: 8px; bottom: 8px; display: inline-flex; align-items: center; justify-content: center;
-      font-size: 1.15rem; border-radius: 12px; }
     /* `body.comfy .tile .name` below sets its own cap; the phone cap must outrank it. */
     .tile .name, html body.comfy .tile .name { max-width: calc(100% - 60px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; }
     /* An upright SE's side tiles are about 105px wide, so the name beside
        Full screen read "R…". A tile under 200px (.slim, set in makeTile)
        puts Full screen and Blur on the top corners and gives the name the
        bottom, on two lines if it needs them. */
-    .tile.slim .maxbtn { top: 8px; left: 8px; right: auto; bottom: auto; }
     /* "Blur for everyone" can't fit a 44px chip ("everyone" alone is 42px
        at 9px). On a slim tile it lives in the tap menu, beside Mute for
        everyone, the same on every tile. */
@@ -1309,7 +1302,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         justify-content: center; overflow-y: auto; border-radius: 10px; background: rgba(10,10,15,.55); }
       .tile.slim:not(.short).menu .modbar button { box-sizing: border-box; width: 100%; min-height: 44px; padding: 2px 4px;
         font-size: 13px; line-height: 1.1; white-space: normal; flex: 0 0 auto; background: #14141c; }
-      .tile.slim:not(.short).menu > .blurbox, .tile.slim:not(.short).menu .maxbtn { visibility: hidden; }
+      .tile.slim:not(.short).menu > .blurbox { visibility: hidden; }
       /* A short upright tile (about 100px: an SE in Safari, or the side
          column of 7 on an SE) put a two-line name over "✋ hand raised", the
          mute icon and Full screen. As on a sideways tile, the chips sit right
@@ -1321,7 +1314,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
          buttons in a 95px box hid Mute for all above its scroll top.
          It opens as the sideways sheet instead, under Fit. */
       body.amadmin .tile.slim.menu, .tile.slim.short.menu { outline: 3px solid #7ec8ff; outline-offset: -3px; }
-      body.amadmin .tile.slim.menu > .blurbox, body.amadmin .tile.slim.menu .maxbtn { visibility: visible; }
+      body.amadmin .tile.slim.menu > .blurbox { visibility: visible; }
       body.amadmin .tile.slim.menu .modbar, .tile.slim.short.menu .modbar { position: fixed; top: 110px; left: 50%; right: auto; bottom: auto; transform: translateX(-50%);
         width: min(300px, calc(100vw - 24px)); max-height: calc(100vh - 122px); overflow-y: auto; box-sizing: border-box;
         display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; z-index: 20; justify-content: normal;
@@ -1392,7 +1385,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .tile.slim .name, html body.comfy .tile.slim .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 1px 4px; z-index: 5;
       white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
   }
-  .tile.cam-off .maxbtn { display: none; }
   .tile.focus { grid-column: 1 / -1; aspect-ratio: 16 / 9; }
   /* chat + pinned files panel (pure P2P — DataChannels, no server anywhere) */
   /* THE CHAT PANEL MUST NOT COVER THE MEETING BAR. It is a fixed full-height
@@ -2261,15 +2253,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.dock-calm .bar, body.dock-calm .fitbtn { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
   /* Calm is faces only: the tile buttons go too, even under a resting pointer.
      Names and the mute chips stay. */
-  .tile > .blurbox, .tile .maxbtn, .tile .modbar { transition: opacity .2s ease; }
-  body.dock-calm .tile > .blurbox, body.dock-calm .tile .maxbtn, body.dock-calm .tile .modbar {
+  .tile > .blurbox, .tile .modbar { transition: opacity .2s ease; }
+  body.dock-calm .tile > .blurbox, body.dock-calm .tile .modbar {
     opacity: 0; pointer-events: none; transition: opacity .8s ease; }
   /* On a desktop a face is clean until you point at it (Zoom and Meet do
-     the same): Blur for all and Max show on the face under the pointer or
-     with keyboard focus. A blurred face keeps Unblur so the state is seen. */
-  body.desk-ptr .tile > .blurbox[aria-pressed="false"], body.desk-ptr .tile .maxbtn { opacity: 0; pointer-events: none; }
-  body.desk-ptr:not(.dock-calm) .tile:is(:hover, :focus-within, .menu) > .blurbox,
-  body.desk-ptr:not(.dock-calm) .tile:is(:hover, :focus-within, .menu) .maxbtn { opacity: 1; pointer-events: auto; }
+     the same): Blur for all shows on the face under the pointer or with
+     keyboard focus. A blurred face keeps Unblur so the state is seen. */
+  body.desk-ptr .tile > .blurbox[aria-pressed="false"] { opacity: 0; pointer-events: none; }
+  body.desk-ptr:not(.dock-calm) .tile:is(:hover, :focus-within, .menu) > .blurbox { opacity: 1; pointer-events: auto; }
   /* Older eyes read a face's buttons too: their words are 16px on a desktop.
      The square grows to fit "Blur for" on one line, and the row sits beside
      it, so a short face in a room of nine still has room for the name. */
@@ -2288,7 +2279,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.head-calm .topchip { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
   body.head-calm #gifos-build-float { opacity: 0 !important; transition: opacity .8s ease; }
   @media (prefers-reduced-motion: reduce) { .bar, body.dock-calm .bar, body.dock-calm .fitbtn,
-    .tile > .blurbox, .tile .maxbtn, .tile .modbar, .topchip, #gifos-build-float { transition: none !important; } }
+    .tile > .blurbox, .tile .modbar, .topchip, #gifos-build-float { transition: none !important; } }
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #fsbtn, .bar #bartoggle {
     width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
     background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
@@ -2333,7 +2324,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #left-rejoin { background: #0064c8; color: #fff; border: 0; }
   #left-close { margin-left: 12px; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
   /* Unmute, camera, Reactions, Share screen, Chat, More, and Leave say what they do. */
-  .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
+  .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #fsbtn, .bar #bartoggle {
     height: 76px; width: auto; min-width: 72px; min-height: 76px;
     padding: 8px 10px 6px; flex-direction: column; gap: 2px; border-radius: 22px;
   }
@@ -2346,6 +2337,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     gap: 2px; padding: 8px 10px 6px;
   }
   .bar .barmore { display: none; }
+  /* A dock button that does not fit the window waits in More (fitDock). */
+  .bar > .inmore, .bar .barmore .dockrow[hidden], .bar .barmore .dockmore[hidden] { display: none !important; }
   .bar:not(.collapsed) .barmore { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
     width: min(720px, calc(100vw - 24px));
     max-height: calc(100vh - 146px); max-height: calc(100dvh - 146px); overflow-x: hidden; overflow-y: auto;
@@ -2472,7 +2465,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        The name takes the bottom of the tile. Full screen and Blur
        sit on the top corners and stay 44px. */
     @media (max-height: 500px) and (orientation: landscape) {
-      .tile .maxbtn { top: 8px; left: 8px; right: auto; bottom: auto; }
       .tile > .blurbox { width: 64px; height: 44px; min-width: 44px; min-height: 44px; top: 8px; right: 8px; padding: 2px; font-size: 10px; line-height: 1.05; }
       .tile:not(.cam-off) .chips { left: 56px; right: 76px; }
       .tile .name, html body.comfy .tile .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); font-size: .75rem; padding: 1px 4px; z-index: 5; }
@@ -3130,6 +3122,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
       <span class="docklab dockword" data-t="shareScreen">Share screen</span>
     </button>
+    <!-- One Full screen for the whole screen; the faces carry none. -->
     <button id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
       <span class="docklab dockword" data-t="more">More</span>
@@ -3139,6 +3132,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span class="docklab dockword" data-t="leave">Leave</span>
     </button>
     <div class="barmore" id="barmore">
+    <!-- Dock buttons that do not fit the window wait here (fitDock). -->
+    <div class="morerow dockrow" id="dockrow" hidden>
+      <button type="button" class="dockmore" data-dock="fsbtn" hidden>Full screen</button>
+      <button type="button" class="dockmore" data-dock="ccdock" hidden>CC</button>
+      <button type="button" class="dockmore" data-dock="chatbtn" hidden>Chat</button>
+      <button type="button" class="dockmore" data-dock="sharebtn" hidden>Share screen</button>
+      <button type="button" class="dockmore" data-dock="reactbtn" hidden>Reactions</button>
+    </div>
     <span class="blurctl" title="How much your own video is blurred to everyone else">
       <span class="blurlbl" data-t="blur">Blur</span>
       <span id="blurseg" class="segwrap" role="group" aria-label="Blur level">
@@ -3715,6 +3716,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <li><kbd>Alt+C</kbd> <span data-t="keyChat">Open or close chat</span></li>
         <li><kbd>Alt+H</kbd> <span data-t="keyHand">Raise or lower your hand</span></li>
         <li><kbd>Alt+F</kbd> <span data-t="keyView">Fit everyone or scroll</span></li>
+        <li><kbd>F</kbd> <span data-t="keyFull">Open or close Full screen</span></li>
         <li><kbd>Alt+Q</kbd> <span data-t="keyLeave">Leave the meeting</span></li>
         <li><kbd>Alt+W</kbd> <span data-t="keyWho">Who is here</span></li>
         <li><kbd>Alt+I</kbd> <span data-t="keyInvite">Invite</span></li>
@@ -4541,6 +4543,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         blur: 'Unschärfe', noBlur: 'Aus',
         transcript: 'Protokoll', chatPrivate: 'Nur hier. Weg, wenn alle gehen.',
         captions: 'Untertitel', ccTip: 'Untertitel nur auf diesem Bildschirm',
+        fsTip: 'Vollbild ansehen. Folgt der Person, die spricht.', keyFull: 'Vollbild öffnen oder schließen',
         trEmpty: 'Dieses Treffen wird mitgeschrieben. Die Zeilen stehen hier unter dem Namen. Jeder kann sie lesen oder herunterladen.',
         trDownload: 'Protokoll laden',
         muteGuests: 'Gäste stumm', unmuteGuests: 'Gäste laut', blurGuests: 'Weichzeichnen', unblurGuests: 'Schärfen', videoOff: 'Video aus', videoOn: 'Video an',
@@ -4835,6 +4838,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         blur: 'Desenfoque', noBlur: 'Sin',
         transcript: 'Transcripción', chatPrivate: 'Solo aquí. Se borra cuando salen.',
         captions: 'Subtítulos', ccTip: 'Subtítulos solo en tu pantalla',
+        fsTip: 'Ver en pantalla completa. Sigue a quien habla.', keyFull: 'Abrir o cerrar pantalla completa',
         trEmpty: 'Esta reunión se transcribe. Las líneas quedan aquí, con el nombre. Cualquiera puede leerlas o descargarlas.',
         trDownload: 'Descargar transcripción',
         muteGuests: 'Silenciar invitados', unmuteGuests: 'Activar invitados', blurGuests: 'Difuminar', unblurGuests: 'Quitar desenfoque', videoOff: 'Apagar video', videoOn: 'Encender video',
@@ -7303,7 +7307,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
 
     // ---- FULLSCREEN VIEW with a filmstrip (standard call UX) ------------------
-    // The maximize button opens ONE fullscreen surface: the chosen feed big,
+    // The dock's Full screen opens ONE fullscreen surface: the chosen feed big,
     // every other live feed (stage, row-mates, stadium, my preview) as
     // floating thumbs on the right (landscape) or bottom (portrait); tapping
     // a thumb swaps the big view. Pure DISPLAY layer — srcObjects are
@@ -7313,7 +7317,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const fsmain = document.createElement('video'); fsmain.id = 'fsmain';
     fsmain.autoplay = true; fsmain.muted = true; fsmain.setAttribute('playsinline', ''); fsmain.setAttribute('muted', '');
     const fsstrip = document.createElement('div'); fsstrip.id = 'fsstrip';
-    const fsclose = document.createElement('button'); fsclose.id = 'fsclose'; fsclose.textContent = '✕'; fsclose.title = 'Exit full screen';
+    const fsclose = document.createElement('button'); fsclose.id = 'fsclose'; fsclose.textContent = '✕'; fsclose.title = 'Exit full screen'; fsclose.setAttribute('aria-label', 'Exit full screen');
     const fsname = document.createElement('div'); fsname.id = 'fsname';
     fsname.innerHTML = '<span class="fsinitial"></span><span class="fsnm"></span>';
     fsview.appendChild(fsmain); fsview.appendChild(fsname); fsview.appendChild(fsstrip); fsview.appendChild(fsclose);
@@ -7339,9 +7343,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return (fsAutoPid && src.find((s) => s.key === 'peer:' + fsAutoPid))
         || src.find((s) => s.key.indexOf('stage:') === 0) || src[0] || null;
     }
-    // The grid's max button still skips a camera-off tile. Follow speaker
-    // does not: that person is a name card in the strip (fsSources).
-    function fsSkipDark(el) { return !!(el && el.classList && el.classList.contains('cam-off')); }
+    // Follow speaker does not skip a camera-off person: that person is a
+    // name card in the strip (fsSources).
     function fsSources() {
       const out = [];
       for (const v of stagefeedEl.querySelectorAll('.rowtile video')) {
@@ -7488,13 +7491,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (fsview.classList.contains('on')) fsRefresh();
     }
     function fsBlurClass(v, bl) { v.classList.remove('blur1', 'blur2'); if (bl) v.classList.add('blur' + bl); }
+    let fsOwnExit = false; // an exit closeFsView asked for is on its way
+    let fsFull = false; // the view was the full-screen element at the last change
+    let fsAskAt = 0; // when the view last asked the browser for full screen
     function openFsView(key) {
       fsSel = key || null;
       fsview.classList.add('on');
       document.body.classList.add('fsopen');
       fsRefresh();
       if (!fsTick) fsTick = setInterval(fsRefresh, 2000);
+      fsAskAt = Date.now();
       if (fsview.requestFullscreen) fsview.requestFullscreen().catch(() => {});
+      try { fsclose.focus(); } catch (e) {} // the keyboard goes where the picture is
     }
     function closeFsView() {
       if (fsTick) { clearInterval(fsTick); fsTick = null; }
@@ -7505,16 +7513,56 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       fsname.classList.remove('on');
       for (const tv of fsstrip.querySelectorAll('video')) tv.srcObject = null; // no leftover sinks — decode work ends with the view
       fsstrip.textContent = ''; fsstrip.dataset.set = '';
-      if (document.fullscreenElement === fsview) document.exitFullscreen().catch(() => {});
+      // Back to Full screen, as a closed sheet returns to its button (More
+      // when it waits there). While the view is still the full-screen
+      // element the rest of the page is inert, so focus moves once the exit
+      // lands.
+      const lost = !document.activeElement || document.activeElement === document.body || fsview.contains(document.activeElement);
+      const refocus = () => {
+        if (!lost) return;
+        const fb = document.getElementById('fsbtn');
+        const back = fb && fb.offsetParent !== null ? fb : document.getElementById('bartoggle');
+        if (back && back.offsetParent !== null) try { back.focus(); } catch (e) {}
+      };
+      if (document.fullscreenElement === fsview) { fsOwnExit = true; document.exitFullscreen().then(refocus, () => { fsOwnExit = false; refocus(); }); }
+      else refocus();
     }
     fsclose.onclick = () => closeFsView();
-    const fsDock = document.getElementById('fsbtn');
-    if (fsDock) fsDock.onclick = () => {
-      if (document.body.classList.contains('fsopen')) closeFsView();
+    // The one Full screen for the whole screen (dock or More): the in-page
+    // view, following the speaker, with the strip to switch people. On an
+    // iPhone with no element full screen it is still this fixed overlay,
+    // never one raw <video>, so blur and camera-off hold.
+    function toggleFsView() {
+      if (fsview.classList.contains('on')) closeFsView();
       else openFsView('auto');
-    };
+    }
+    const fsDock = document.getElementById('fsbtn');
+    if (fsDock) fsDock.onclick = toggleFsView;
+    // Only the browser's own exit (its Escape, a swipe) closes the view
+    // here. The exit closeFsView asked for can land after F opened the view
+    // again, and used to close it a moment later. A full screen that lands
+    // after the view closed (F twice, quickly) is let go at once, or the
+    // page sat in full screen with nothing on it. Firefox fires the change
+    // twice per exit, so only a real change of state counts.
     document.addEventListener('fullscreenchange', () => {
-      if (!document.fullscreenElement && fsview.classList.contains('on')) closeFsView();
+      const el = document.fullscreenElement;
+      if (el === fsview) {
+        if (fsFull) return;
+        fsFull = true;
+        if (!fsview.classList.contains('on')) { fsOwnExit = true; document.exitFullscreen().catch(() => {}); }
+        return;
+      }
+      if (!el && !fsFull && fsAskAt && Date.now() - fsAskAt < 1000 && fsview.classList.contains('on') && fsview.requestFullscreen) {
+        // Firefox drops a request made while its last exit was still
+        // finishing; ask once more while the key press still counts.
+        fsAskAt = 0;
+        fsview.requestFullscreen().catch(() => {});
+        return;
+      }
+      if (el || !fsFull) return;
+      fsFull = false;
+      if (fsOwnExit) { fsOwnExit = false; return; }
+      if (fsview.classList.contains('on')) closeFsView();
     });
 
     // ---- tiles ---------------------------------------------------------------
@@ -7841,21 +7889,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Full screen opens the filmstrip view (#fsview): this feed big, every
       // other live feed as tappable floating thumbs. Esc / ✕ exits. iOS
       // Safari can only fullscreen a <video>, so it gets the native one.
-      const maxbtn = document.createElement('button');
-      maxbtn.className = 'maxbtn'; maxbtn.textContent = '⛶'; maxbtn.title = uiText('fullScreen', 'Full screen');
-      maxbtn.setAttribute('aria-label', maxbtn.title);
-      maxbtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (fsSkipDark(tile)) return;
-        // iOS Safari can only fullscreen a <video> natively — no overlay there.
-        // The native player paints the RAW frames: no CSS blur, no cam-off
-        // hide. So a remote feed that is blurred or video-off never takes
-        // it; the in-page overlay (position:fixed, same CSS) serves instead.
-        const moderated = !isMe && (forcedCamOff(id) || (typeof shareBlocked === 'function' && shareBlocked(id)) || blurLevelFor(id) > 0);
-        if (!document.fullscreenEnabled && video.webkitEnterFullscreen && !moderated) { try { video.webkitEnterFullscreen(); } catch (e2) {} return; }
-        openFsView(isMe ? 'me' : 'peer:' + id);
-      });
-      tile.appendChild(maxbtn);
       if (window.ResizeObserver) {
         if (!makeTile.slimObs) {
           makeTile.slimObs = new ResizeObserver((list) => list.forEach((en) => {
@@ -27685,6 +27718,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       syncModalFocus();
       const top = topNameModal();
       if (e.key === 'Escape') {
+        // The full-screen view sits over everything. When the browser kept it
+        // out of real full screen, Escape reaches the page and must close the
+        // view, not fold More beneath it.
+        const fsv = document.getElementById('fsview');
+        if (fsv && fsv.classList.contains('on')) {
+          const x = document.getElementById('fsclose');
+          if (x) { e.preventDefault(); x.click(); }
+          return;
+        }
         if (top) {
           const b = modalDismissBtn(top);
           if (b) { e.preventDefault(); b.click(); queueMicrotask(syncModalFocus); }
@@ -27719,6 +27761,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const n of barEl.querySelectorAll('button, a[href], input, select, textarea')) {
           if (n.disabled) continue;
           if (n.style && n.style.display === 'none') continue;
+          if (n.hidden || (n.classList && n.classList.contains('inmore'))) continue;
           if (!sheetOpen && n.closest && n.closest('#barmore')) continue;
           if (!trayOpen && n.closest && n.closest('#reacttray')) continue;
           let hide = false, p = n.parentElement;
@@ -28232,13 +28275,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         toggleShortcutSheet();
         return;
       }
+      if (!e.altKey && !e.shiftKey && e.code === 'KeyF' && !shortcutTyping(e) && !shortcutBlocked()) {
+        // Full screen, as Zoom and YouTube give it a key; F again closes. It
+        // works while the button waits in More too.
+        const lob = document.getElementById('lobby');
+        const fb = document.getElementById('fsbtn');
+        const barEl = document.querySelector('.bar');
+        if (!fb || !barEl || getComputedStyle(barEl).display === 'none' || (lob && lob.classList.contains('show'))) return;
+        e.preventDefault();
+        fb.click();
+        return;
+      }
       if (!e.altKey || e.shiftKey || shortcutTyping(e) || shortcutBlocked()) return;
       const id = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'invite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', Slash: 'helpbtn', KeyM: 'muteall', KeyB: 'blurall', KeyX: 'camall', KeyP: 'shareall' }[e.code];
       if (!id) return;
       const btn = document.getElementById(id);
       // A control inside More is still a shortcut while the sheet is folded.
       // A button hidden on its own (a viewer who cannot share) stays quiet.
-      if (!btn || (getComputedStyle(btn).display === 'none' && !btn.closest('#barmore'))) return;
+      if (!btn || (getComputedStyle(btn).display === 'none' && !btn.closest('#barmore') && !btn.classList.contains('inmore'))) return;
       // The host's room-wide tools are hidden for a guest, and their keys with them.
       if (/^(muteall|blurall|camall|shareall)$/.test(id) && btn.style.display === 'none') return;
       e.preventDefault();

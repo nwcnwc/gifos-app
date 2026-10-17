@@ -119,7 +119,7 @@ for (const [locale, want] of Object.entries(FACE_WORDS)) {
         return {
           meName: me.querySelector('.name').textContent,
           meChips: titles(me),
-          fullTips: [...document.querySelectorAll('#feed .tile .maxbtn')].map((b) => b.title + '|' + b.getAttribute('aria-label')),
+          fullTips: [...document.querySelectorAll('#fsbtn')].map((b) => b.querySelector('.dockword').textContent + '|' + b.getAttribute('aria-label')),
           tileLabels: others.map((t) => t.getAttribute('aria-label')),
           hands: [...document.querySelectorAll('#feed .tile .chips span')].map((s) => s.textContent).filter((s) => s.indexOf('✋') === 0),
         };
@@ -127,7 +127,7 @@ for (const [locale, want] of Object.entries(FACE_WORDS)) {
       await page.screenshot({ path: 'test/desktop/shots/face-lang-' + locale.slice(0, 2) + '-1280.png' });
       expect(got.meName).toBe('Avery Chen ' + want.you);
       expect(got.meChips).toEqual([want.muted, want.camOff]);
-      expect(got.fullTips.length).toBeGreaterThanOrEqual(4);
+      expect(got.fullTips.length).toBe(1);
       for (const t of got.fullTips) expect(t).toBe(want.full + '|' + want.full);
       for (const l of got.tileLabels) expect(l).toMatch(/^\S.*\. /);
       expect(got.tileLabels.map((l) => l.slice(l.indexOf('. ') + 2))).toEqual(got.tileLabels.map(() => want.controls));

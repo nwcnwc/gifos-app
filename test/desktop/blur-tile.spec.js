@@ -48,7 +48,6 @@ test('Blur for all is a square inset from the tile corner', async ({ page }) => 
         rightGap: tb.right - b.right,
         clipped: el.scrollHeight > el.clientHeight + 2 || el.scrollWidth > el.clientWidth + 2,
         name: gap(a, box(tile.querySelector('.name'))),
-        max: gap(a, box(tile.querySelector('.maxbtn'))),
         mod: gap(a, box(tile.querySelector('.modbar'))),
         overVideo: b.top > tb.top + 4 && b.right < tb.right - 4 && b.bottom < tb.bottom - 4 && b.left > tb.left + 4,
       };
@@ -65,7 +64,6 @@ test('Blur for all is a square inset from the tile corner', async ({ page }) => 
     expect(b.clipped).toBe(false);
     expect(b.overVideo).toBe(true);
     expect(b.name).toBeGreaterThanOrEqual(12);
-    expect(b.max).toBeGreaterThanOrEqual(12);
     expect(b.mod).toBeGreaterThanOrEqual(12);
   }
 });
@@ -97,7 +95,6 @@ test('Blur for all shows only on the face you point at', async ({ page }) => {
     return tiles.map((t) => ({
       hover: t.matches(':hover'),
       blur: shown(t.querySelector(':scope > .blurbox')),
-      max: shown(t.querySelector('.maxbtn')),
       name: shown(t.querySelector('.name')),
       pressed: (t.querySelector(':scope > .blurbox') || {}).getAttribute?.('aria-pressed'),
     }));
@@ -109,7 +106,6 @@ test('Blur for all shows only on the face you point at', async ({ page }) => {
   await page.screenshot({ path: 'test/desktop/shots/blur-hover-after-1280.png' });
   expect(away.filter((t) => t.hover).length).toBe(0);
   expect(away.filter((t) => t.blur).length).toBe(0);
-  expect(away.filter((t) => t.max).length).toBe(0);
   expect(away.every((t) => t.name)).toBe(true);
   // Point at one face: that face, and only that face, offers Blur for all.
   const first = page.locator('#feed .tile:not(.me)').first();

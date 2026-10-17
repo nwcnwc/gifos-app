@@ -9,7 +9,11 @@ const SHOT = process.env.FS_SHOT || 'after';
 
 async function boot(page, width, height, hash, name) {
   await page.setViewportSize({ width: width, height: height });
-  await page.addInitScript((nm) => { localStorage.setItem('gifos_name', nm); sessionStorage.setItem('gifos_appeared', '1'); }, name || 'Jordan Lee');
+  await page.addInitScript((nm) => {
+    localStorage.setItem('gifos_name', nm); sessionStorage.setItem('gifos_appeared', '1');
+    window.__fsChangeAt = 0;
+    document.addEventListener('fullscreenchange', () => { window.__fsChangeAt = Date.now(); }, true);
+  }, name || 'Jordan Lee');
   await page.goto('/run.html#' + hash, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#leavebtn', { state: 'visible' });
 }
@@ -87,9 +91,23 @@ async function pressControl(page, id) {
   else await page.click('.bar .dockmore[data-dock="fsbtn"]');
 }
 
+// Let the browser's full screen finish changing before the next key, as a
+// person would: Firefox swallows a key in the ~40 ms its change takes, and
+// sends a second change event after document.fullscreenElement settles.
+async function quiet(page) {
+  await page.waitForFunction(() => Date.now() - window.__fsChangeAt > 250);
+}
+
+async function openedUp(page) {
+  await page.waitForFunction(() => document.getElementById('fsview').classList.contains('on'));
+  await page.waitForFunction(() => document.fullscreenElement === document.getElementById('fsview'), null, { timeout: 1500 }).catch(() => {});
+  await quiet(page);
+}
+
 async function closedOut(page) {
   await page.waitForFunction(() => !document.getElementById('fsview').classList.contains('on'));
   await page.waitForFunction(() => !document.fullscreenElement);
+  await quiet(page);
 }
 
 // (a) + (b) + (c) in a Meet room of four (me and three), at one size.
@@ -105,7 +123,7 @@ async function meetCase(page, width, height, shot) {
   expect({ onTiles, controls }).toEqual({ onTiles: [], controls: [expect.any(String)] });
 
   await pressControl(page, controls[0]);
-  await page.waitForFunction(() => document.getElementById('fsview').classList.contains('on'));
+  await openedUp(page);
   await page.waitForFunction(() => document.querySelectorAll('#fsstrip .fsthumb').length >= 3);
   const open = await viewState(page);
   const pick = open.thumbs.find((k) => k.startsWith('peer:') && k !== open.main);
@@ -122,11 +140,11 @@ async function meetCase(page, width, height, shot) {
 
   // F opens it and F again closes it; Escape closes it too.
   await page.keyboard.press('f');
-  await page.waitForFunction(() => document.getElementById('fsview').classList.contains('on'));
+  await openedUp(page);
   await page.keyboard.press('f');
   await closedOut(page);
   await page.keyboard.press('f');
-  await page.waitForFunction(() => document.getElementById('fsview').classList.contains('on'));
+  await openedUp(page);
   await page.keyboard.press('Escape');
   await closedOut(page);
   expect((await viewState(page)).on).toBe(false);
@@ -150,7 +168,7 @@ test('Broadcast desktop: one Full screen button on the dock, none on a face', as
   const controls = await reachControl(page);
   expect({ onTiles, controls }).toEqual({ onTiles: [], controls: ['fsbtn'] });
   await page.click('#fsbtn');
-  await page.waitForFunction(() => document.getElementById('fsview').classList.contains('on'));
+  await openedUp(page);
   await page.click('#fsclose');
   await closedOut(page);
 });

@@ -98,7 +98,6 @@ test('a quiet small call hides the tile buttons and keeps the names', async ({ p
     return {
       hovered: !!hovered,
       blur: tiles.filter((t) => shown(t.querySelector(':scope > .blurbox'))).length,
-      max: tiles.filter((t) => shown(t.querySelector('.maxbtn'))).length,
       mod: tiles.filter((t) => shown(t.querySelector('.modbar'))).length,
       names: tiles.filter((t) => shown(t.querySelector('.name'))).length,
       n: tiles.length,
@@ -114,7 +113,6 @@ test('a quiet small call hides the tile buttons and keeps the names', async ({ p
   await page.screenshot({ path: 'test/desktop/shots/calm-tiles-after-1280.png' });
   expect(quiet.hovered).toBe(true);
   expect(quiet.blur).toBe(0);
-  expect(quiet.max).toBe(0);
   expect(quiet.mod).toBe(0);
   expect(quiet.names).toBe(quiet.n);
   await page.mouse.move(660, 220);
