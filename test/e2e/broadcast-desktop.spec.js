@@ -4058,3 +4058,27 @@ test('with the chat open on a small window, the dock fits in the call and the re
     }
   }
 });
+
+test('the small group lobby says muted once: the preview says it, the card does not repeat it', async ({ page }) => {
+  // Seen at 1280: the preview read "You join muted, with the camera off" and
+  // the card under Small group read "You come in muted. Turn the camera on
+  // from the call...", the same news twice a hand apart. Zoom and Meet say it
+  // once, on the preview.
+  await page.addInitScript(() => { localStorage.setItem('gifos_name', 'Avery Chen'); });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=lobmuted' + w + 'g');
+    await page.waitForSelector('#lobby.show');
+    if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/lobby-muted-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    const note = page.locator('#lob-preview .lob-pv-note');
+    await expect(note).toBeVisible();
+    await expect(note).toHaveText('You join muted, with the camera off');
+    const quiet = page.locator('#lobby .lob-quiet');
+    await expect(quiet).toBeVisible();
+    await expect(quiet).not.toContainText(/muted/i);
+    // The card still says where the mic and camera come on.
+    await expect(quiet).toContainText(/from the call/);
+    const oneLine = await quiet.evaluate((el) => el.getBoundingClientRect().height <= parseFloat(getComputedStyle(el).lineHeight) * 1.5);
+    expect(oneLine, 'card line fits on one line at ' + w).toBe(true);
+  }
+});
