@@ -5,9 +5,11 @@
  * pushed two faces into a second row you had to scroll to, and on an
  * iPhone 12 the tiles were so short that a long name ran over Full screen.
  * The room beside the dock was empty. Record and Captions now stand beside
- * the dock, so with the buttons up every face is on screen, whole, without
- * a scroll, and Record and Captions are still 44px, read in full, and are
- * the thing a tap on them hits.
+ * the dock. With the buttons up an iPhone 12 and a Pixel 5 show every face
+ * whole without a scroll, names clear of Full screen. An SE's band is too
+ * short for two rows of 96px faces, so it shows a full row of five, as
+ * tall as the band, and "↓2" for the rest. Record and Captions are still
+ * 44px, read in full, and are the thing a tap on them hits.
  *
  * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/sideways-callstate-beside.js
  */
@@ -18,7 +20,8 @@ const { chromium, devices } = require('playwright');
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
 const NAMES = ['Pastor Dave', 'Ruth', 'Margaret Johnson', 'Lobby iPad', 'Grace', 'Tom & Linda Ruiz'];
-const PHONES = [['iPhone SE landscape', 'iphone-se-land'], ['iPhone 12 landscape', 'iphone-12-land'], ['Pixel 5 landscape', 'pixel-5-land']];
+// [device, shot tag, faces whole with the buttons up]
+const PHONES = [['iPhone SE landscape', 'iphone-se-land', 5], ['iPhone 12 landscape', 'iphone-12-land', 7], ['Pixel 5 landscape', 'pixel-5-land', 7]];
 
 function look(page) {
   return page.evaluate(() => {
@@ -30,10 +33,20 @@ function look(page) {
     const br = R(bar);
     const btns = [...document.querySelectorAll('#callstate button')].filter((b) => b.offsetParent);
     const tiles = [...document.querySelectorAll('#feed .tile')].filter((t) => t.querySelector('.name') && t.offsetParent);
-    const out = { away: document.body.classList.contains('chrome-away'), scroll: feed.scrollHeight - feed.clientHeight, tiles: [], btns: [] };
+    const hint = document.getElementById('stadband');
+    const out = {
+      away: document.body.classList.contains('chrome-away'), scroll: feed.scrollHeight - feed.clientHeight, tiles: [], btns: [],
+      hint: hint && hint.offsetParent && getComputedStyle(hint).visibility !== 'hidden' ? hint.textContent.trim() : '',
+    };
+    // The part of a tile the feed shows (a scrolling feed clips its later rows).
+    const clip = (r) => {
+      const y0 = Math.max(r.top, fr.top), y1 = Math.min(r.bottom, fr.bottom, innerHeight - parseFloat(getComputedStyle(feed).getPropertyValue('--comfy-clip') || 0));
+      return y1 - y0 > 1 ? { left: r.left, right: r.right, top: y0, bottom: y1 } : null;
+    };
     for (const t of tiles) {
       const r = R(t);
-      const whole = r.top >= Math.max(0, fr.top) - 1 && r.bottom <= Math.min(innerHeight, fr.bottom) + 1 && r.left >= -1 && r.right <= innerWidth + 1;
+      const vis = clip(r);
+      const whole = !!vis && vis.top <= r.top + 1 && vis.bottom >= r.bottom - 1 && r.left >= -1 && r.right <= innerWidth + 1;
       const n = t.querySelector('.name');
       const nr = R(n);
       const at = document.elementFromPoint(nr.left + nr.width / 2, nr.top + nr.height / 2);
@@ -44,7 +57,7 @@ function look(page) {
         name: n.textContent.trim(), h: Math.round(r.height), whole,
         nameTop: !!at && (at === n || n.contains(at)),
         nameOnMax: !!mr && meet(nr, mr),
-        under: [br, ...btns.map(R)].some((c) => meet(r, c)),
+        under: !!vis && [br, ...btns.map(R)].some((c) => meet(vis, c)),
       });
     }
     for (const b of btns) {
@@ -56,6 +69,8 @@ function look(page) {
         full: b.scrollWidth <= b.clientWidth + 1,
         top: !!at && (at === b || b.contains(at)),
         onDock: meet(r, br),
+        // Beside the dock, not in a row of their own above it.
+        beside: r.top >= br.top - 8 && r.bottom <= br.bottom + 1,
       });
     }
     return out;
@@ -67,7 +82,7 @@ function look(page) {
   const browser = await chromium.launch({ headless: true });
   const bad = [];
   const shots = [];
-  for (const [dev, tag] of PHONES) {
+  for (const [dev, tag, want] of PHONES) {
     const context = await browser.newContext(Object.assign({}, devices[dev], { hasTouch: true }));
     await context.addInitScript(() => { try { localStorage.setItem('gifos_name', 'Nathan'); } catch (e) {} });
     const page = await context.newPage();
@@ -86,9 +101,10 @@ function look(page) {
     shots.push(f);
     if (a.away) bad.push(dev + ': the call\'s buttons did not stay up');
     if (a.tiles.length !== 7) bad.push(dev + ': ' + a.tiles.length + ' tiles, want 7');
-    const cut = a.tiles.filter((t) => !t.whole).map((t) => t.name);
-    if (cut.length) bad.push(dev + ': ' + cut.join(', ') + ' not whole on screen with the buttons up');
-    if (a.scroll > 1) bad.push(dev + ': the tiles scroll ' + a.scroll + 'px');
+    const whole = a.tiles.filter((t) => t.whole);
+    if (whole.length < want) bad.push(dev + ': ' + whole.length + ' faces whole with the buttons up, want ' + want + ' (' + whole.map((t) => t.name + ' ' + t.h + 'px').join(', ') + ')');
+    if (want === 7 && a.scroll > 1) bad.push(dev + ': the tiles scroll ' + a.scroll + 'px');
+    if (want < 7 && a.hint !== '\u2193' + (7 - want)) bad.push(dev + ': ' + (7 - want) + ' faces below and the hint says "' + a.hint + '"');
     for (const t of a.tiles) {
       if (t.under) bad.push(dev + ': ' + t.name + '\'s tile is under the dock or Record/Captions');
       if (t.whole && !t.nameTop) bad.push(dev + ': ' + t.name + '\'s name is covered');
@@ -101,6 +117,7 @@ function look(page) {
       if (!b.full) bad.push(dev + ': ' + b.text + ' is cut');
       if (!b.top) bad.push(dev + ': something lies over ' + b.text);
       if (b.onDock) bad.push(dev + ': ' + b.text + ' lies on the dock');
+      if (!b.beside) bad.push(dev + ': ' + b.text + ' takes a row above the dock');
     }
     // Captions still turns captions on from where it now stands.
     const cc = page.locator('#call-cc');

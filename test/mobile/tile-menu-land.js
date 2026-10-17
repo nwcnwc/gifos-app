@@ -94,7 +94,9 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
     });
     const tag = want + ' (' + Math.round(info.tile.w) + 'x' + Math.round(info.tile.h) + ' tile)';
     if (!info.slim) bad.push(tag + ': not a slim tile, the case is gone');
-    if (info.tile.h > 130) bad.push(tag + ': not a short tile, the case is gone');
+    // Since Record/Captions moved beside the dock (sideways-callstate-beside.js)
+    // these tiles are 155x148, not 105x100; the sideways sheet still serves them.
+    if (info.tile.h > 160) bad.push(tag + ': not a short tile, the case is gone');
     if (!info.open) { bad.push(tag + ': a tap did not open the menu'); continue; }
     if (info.btns.length < 2) bad.push(tag + ': the menu shows ' + info.btns.length + ' buttons');
     if (!info.who.includes(want)) bad.push(tag + ': the menu does not say it is for ' + want);

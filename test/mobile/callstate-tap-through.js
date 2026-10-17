@@ -40,7 +40,9 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
   const row = await page.evaluate(() => {
     const cs = document.getElementById('callstate');
     const r = cs.getBoundingClientRect();
-    return { shown: !cs.hidden && r.height > 0, top: r.top, bottom: r.bottom };
+    const d = document.querySelector('.bar').getBoundingClientRect();
+    // Since sideways-callstate-beside.js the row stands beside the dock, below the tiles.
+    return { shown: !cs.hidden && r.height > 0, top: r.top, bottom: r.bottom, beside: r.right <= d.left + 1 };
   });
   if (!row.shown) bad.push('Record/Captions row is not on the call, the case is gone');
 
@@ -59,7 +61,7 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
       const el = document.elementFromPoint(x, y);
       return { x, y, onTile: !!(el && el.closest('.tile') === t), hit: el ? (el.id || el.className || el.tagName) : 'nothing' };
     }, row);
-    if (row.shown && (spot.y < row.top || spot.y > row.bottom)) bad.push(want + ': the name does not reach the Record row, the case is gone');
+    if (row.shown && !row.beside && (spot.y < row.top || spot.y > row.bottom)) bad.push(want + ': the name does not reach the Record row, the case is gone');
     if (!spot.onTile) bad.push(want + ': the name where the row meets it is under #' + spot.hit + ', not the tile');
     if (!shot) {
       shot = true;

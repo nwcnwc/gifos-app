@@ -1,7 +1,8 @@
 /*
  * LIVE belongs to Broadcast. On a regular meeting it is not on screen.
  * Record and Captions stay on the call, including sideways, and the faces
- * stay above that row.
+ * stay above that row. Sideways they stand in a column beside the dock
+ * (sideways-callstate-beside.js), so there they must clear the dock's side.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/live-stands-out.js
  */
@@ -81,12 +82,13 @@ function overlaps(a, b) {
     const bad = [];
     const live = info.live;
     if (live && live.h > 1) bad.push('LIVE is on a regular meeting (' + Math.round(live.w) + 'x' + Math.round(live.h) + ')');
-    if (!phone.band && info.state && info.state.h > 56) bad.push('sideways state is ' + Math.round(info.state.h) + 'px tall');
+    const beside = !!(info.state && info.dock && info.state.right <= info.dock.left + 1);
+    if (!phone.band && !beside && info.state && info.state.h > 56) bad.push('sideways state is ' + Math.round(info.state.h) + 'px tall');
     for (const part of [info.rec, info.cc]) {
       if (!part) { bad.push('a state control is missing'); continue; }
       if (part.h < 44 || part.w < 44) bad.push(part.text + ' is ' + Math.round(part.w) + 'x' + Math.round(part.h));
       if (part.top < -1 || part.bottom > info.vh + 1 || part.left < -1 || part.right > info.vw + 1) bad.push(part.text + ' is off screen');
-      if (info.dock && part.bottom > info.dock.top + 1) bad.push(part.text + ' runs into the dock');
+      if (info.dock && (beside ? overlaps(part, info.dock) : part.bottom > info.dock.top + 1)) bad.push(part.text + ' runs into the dock');
     }
     if (info.rec && info.rec.text !== 'Record') bad.push('record says "' + info.rec.text + '"');
     if (info.cc && info.cc.text !== 'Captions') bad.push('captions says "' + info.cc.text + '"');

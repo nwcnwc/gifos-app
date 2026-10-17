@@ -310,7 +310,10 @@ function phoneFit(box, list, tier) {
   else {
     if (!(h >= minSide)) h = minSide;
     const maxW = h * maxA;
-    cols = Math.max(1, Math.min(n, Math.floor(box.w / Math.max(1, Math.min(maxW, box.w)))));
+    // As many faces across as a legal tile allows, not the widest tiles: a
+    // sideways SE's 148px band holds five 109px faces, not three 155px ones.
+    const minW = Math.max(minSide, h * ASPECT_MIN);
+    cols = Math.max(1, Math.min(n, Math.floor(box.w / Math.max(1, Math.min(minW, box.w)))));
     tileW = Math.min(maxW, box.w / cols);
     rows = Math.ceil(n / cols);
   }
