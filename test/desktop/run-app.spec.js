@@ -182,3 +182,48 @@ test('every word on a running app\'s bar is 16px or more', async ({ page }) => {
   expect(got.small).toEqual([]);
   expect(got.offRight).toBe(0);
 });
+
+// The line beside a running app's name says who runs it: "· you are hosting
+// it for the meeting" for me, "· shared with the meeting by Jordan Lee" for a
+// guest. It was the last English line on a German or Spanish app bar.
+for (const [locale, lang, want] of [
+  ['de-DE', 'German', { host: 'Sie stellen sie der Besprechung bereit', guest: 'mit der Besprechung geteilt von Jordan Lee' }],
+  ['es-MX', 'Spanish', { host: 'tú la alojas para la reunión', guest: 'compartida con la reunión por Jordan Lee' }],
+]) {
+  test.describe(lang + ' app who line', () => {
+    test.use({ locale });
+    test('the line beside a running app says who runs it in ' + lang, async ({ page, browser }) => {
+      const room = 'qaappwho' + locale.slice(0, 2) + Date.now().toString(36);
+      await page.setViewportSize({ width: 1280, height: 720 });
+      await page.addInitScript(() => {
+        localStorage.setItem('gifos_name', 'Jordan Lee');
+        sessionStorage.setItem('gifos_appeared', '1');
+      });
+      await page.goto('/run.html#v=' + room + '&debug=on', { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#mic', { state: 'visible' });
+      await page.waitForFunction(() => window.__gifosVideo.canRunApp());
+      await page.click('#bartoggle');
+      await page.click('#moretools');
+      await page.click('#appbtn');
+      await page.setInputFiles('#app-file-input', 'apps/2048/2048.gif');
+      await page.waitForFunction(() => document.body.classList.contains('has-app'), null, { timeout: 30000 });
+      await page.keyboard.press('Escape');
+      const host = await page.evaluate(() => document.getElementById('appwho').textContent);
+      if (locale === 'de-DE') await page.locator('#appbar').screenshot({ path: 'test/desktop/shots/app-who-host-de-1280.png' });
+
+      const ctx = await browser.newContext({ locale, viewport: { width: 1280, height: 720 } });
+      const guest = await ctx.newPage();
+      await guest.addInitScript(() => {
+        localStorage.setItem('gifos_name', 'Avery Chen');
+        sessionStorage.setItem('gifos_appeared', '1');
+      });
+      await guest.goto('/run.html#v=' + room + '&debug=on', { waitUntil: 'domcontentloaded' });
+      await guest.waitForFunction(() => document.body.classList.contains('has-app'), null, { timeout: 30000 });
+      const seen = await guest.evaluate(() => document.getElementById('appwho').textContent);
+      if (locale === 'de-DE') await guest.locator('#appbar').screenshot({ path: 'test/desktop/shots/app-who-guest-de-1280.png' });
+      await ctx.close();
+
+      expect({ host, guest: seen }).toEqual({ host: '· ' + want.host, guest: '· ' + want.guest });
+    });
+  });
+}
