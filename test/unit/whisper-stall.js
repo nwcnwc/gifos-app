@@ -155,6 +155,11 @@ function bindClock(w) {
       hook ? hook[0].slice(0, 180) : 'missing');
     check('the tile chip can say transcription is behind or paused',
       html.indexOf('Transcription paused') > 0 && html.indexOf('Transcription behind, skipping old audio') > 0);
+    check('a tile does not wear a transcribing badge',
+      html.indexOf("📝 ' + ccLiveLabel") < 0 && html.indexOf('📝 transcribing') < 0);
+    check('own voice is written down without the CC switch',
+      html.indexOf("if (job.id === 'me') { addTranscriptLine(text, job.at); }") > 0
+      && html.indexOf("if (job.id === 'me') { if (myStatus.cc) addTranscriptLine") < 0);
 
     // ---- model: 4 cores is tiny; an override wins; a bigger machine is base ----
     setCores(4);

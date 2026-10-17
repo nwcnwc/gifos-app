@@ -655,12 +655,11 @@ test('the screen-name step prefills your GifOS name and picture', async ({ page 
   }));
   expect(kept.name).toBe('Jordan Lee');
   expect(kept.avatar).toContain(png.slice(0, 24));
-  await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); return null; });
+  await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); sessionStorage.removeItem('gifos_appeared'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); return null; });
   await expect(page.locator('#appear-modal .appear-box')).toBeVisible();
   await page.locator('#nmcancel').click();
-  await expect(page.locator('#appear-modal .appear-box')).toBeVisible();
-  await expect(page.locator('#nm')).toHaveValue('');
-  await expect(page.locator('#appear-face img')).toHaveCount(0);
+  // Clear blanks the name and the picture, then closes (qa-meet-desktop, newer).
+  await expect(page.locator('#appear-modal')).toHaveCount(0);
   const cleared = await page.evaluate(() => ({
     name: localStorage.getItem('gifos_name'),
     avatar: localStorage.getItem('gifos_avatar'),
@@ -680,7 +679,7 @@ test('a broadcast viewer is told their picture stays off the stage', async ({ pa
     await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
     await page.goto('/run.html?desk=anote' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('body.broadcast');
-    await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); });
+    await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); sessionStorage.removeItem('gifos_appeared'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); });
     const note = page.locator('#appear-note');
     await expect(note).toBeVisible();
     // The viewer's join step wording from desktop-watching-gaps (newer).
@@ -703,12 +702,12 @@ test('a broadcast viewer is told their picture stays off the stage', async ({ pa
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/run.html?desk=anotehost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airbar.on.off');
-  await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); });
+  await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); sessionStorage.removeItem('gifos_appeared'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); });
   await expect(page.locator('#appear-title')).toHaveText("This is how you'll appear");
   await expect(page.locator('#appear-note')).toHaveCount(0);
   await page.goto('/run.html?desk=anotemeet#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airbar.on.group');
-  await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); });
+  await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); sessionStorage.removeItem('gifos_appeared'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); });
   await expect(page.locator('#appear-title')).toHaveText("This is how you'll appear");
   await expect(page.locator('#appear-note')).toHaveCount(0);
   await expect(page.locator('#appear-modal')).not.toContainText('in the meeting');
@@ -1279,7 +1278,7 @@ test('service chat keeps the title on one line', async ({ page }) => {
     await page.waitForSelector('#chatpanel.open');
     const m = await headBox();
     expect(m.title).toBe('Service chat');
-    expect(m.priv).toBe('· private to this service, gone when everyone leaves');
+    expect(m.priv).toBe('Private. Gone when everyone leaves.'); // one short 16px line (qa-meet-desktop)
     expect(m.oneLine, JSON.stringify(m)).toBe(true);
     expect(m.privBelow, JSON.stringify(m)).toBe(true);
     expect(m.privWide, JSON.stringify(m)).toBe(true);
@@ -1298,7 +1297,7 @@ test('service chat keeps the title on one line', async ({ page }) => {
   await page.waitForSelector('#chatpanel.open');
   const group = await headBox();
   expect(group.title).toBe('Small group chat');
-  expect(group.priv).toContain('small group');
+  expect(group.priv).toBe('Private. Gone when everyone leaves.');
   expect(group.oneLine, JSON.stringify(group)).toBe(true);
   expect(group.privBelow, JSON.stringify(group)).toBe(true);
   expect(group.hitTitle, JSON.stringify(group)).toBe(false);
@@ -1406,7 +1405,7 @@ test('the status line fits beside Fit', async ({ page }) => {
     await page.goto('/run.html?desk=stat' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('Just you') !== -1);
     const m = await readStatus();
-    expect(m.text).toContain('Just you. Send the invite.');
+    expect(m.text).toContain('Just you'); // Invite is the button beside it, not a sentence
     expect(m.text).not.toContain('no expiry');
     expect(m.clip, JSON.stringify(m)).toBe(false);
     expect(m.hit, JSON.stringify(m)).toBe(false);
