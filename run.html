@@ -1058,6 +1058,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .modbar { position: absolute; right: .4rem; top: .4rem; display: none; flex-direction: column;
                   gap: .3rem; z-index: 4; }
   .tile:hover .modbar, .tile.menu .modbar, .tile:focus-within .modbar { display: flex; }
+  /* Below the 32px "Blur for all" box (z 6), not under it: Mute was hidden there. */
+  .tile:has(> .blurbox.on) .modbar { top: 40px; }
   .tile:focus-visible { outline: 3px solid #8ec8ff; outline-offset: 3px; }
   .tile .modbar button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   .tile .modbar button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.16);

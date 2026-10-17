@@ -4475,18 +4475,20 @@ test('Fit sits in the header, clear of every tile and its controls', async ({ pa
   }
 });
 
-test('a tile\'s hover menu sits clear of its "Blur for all" box', async ({ page }) => {
+test('a tile\'s hover menu sits clear of its "Blur for all" box', async ({ context }) => {
   // Seen on two machines (fit-header-cross-after.png): hovering a peer's tile
   // at 1280 opened the menu (Mute, Blur) at the tile's top right, under the
   // "Blur for all" box, which sits above it, so Mute was hidden and the click
   // landed on Blur for all. Zoom's hover menu never sits under another
   // control. The box is built here as paintTileChrome builds it (an mb=1 page
   // never joins); cross-tilemenu.js hovers a real peer's tile.
-  await page.addInitScript(() => {
+  await context.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
     localStorage.setItem('gifos_meet_bar', '1');
   });
   for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    // A fresh page per width: a second goto to the same #hash url does not reload.
+    const page = await context.newPage();
     await page.setViewportSize({ width: w, height: h });
     await page.goto(MEET_SESSION);
     await page.waitForSelector('body.meet-session #grid');
