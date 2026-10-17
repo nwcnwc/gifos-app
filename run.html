@@ -1503,8 +1503,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile > .blurbox, .tile .maxbtn, .tile .modbar { transition: opacity .2s ease; }
   body.dock-calm .tile > .blurbox, body.dock-calm .tile .maxbtn, body.dock-calm .tile .modbar {
     opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+  /* The header line and the build label go too, unless the line is saying
+     something (a notice, an alert, a reach state). */
+  .topchip, #gifos-build-float { transition: opacity .2s ease; }
+  body.head-calm .topchip { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+  body.head-calm #gifos-build-float { opacity: 0 !important; transition: opacity .8s ease; }
   @media (prefers-reduced-motion: reduce) { .bar, body.dock-calm .bar, body.dock-calm .fitbtn,
-    .tile > .blurbox, .tile .maxbtn, .tile .modbar { transition: none !important; } }
+    .tile > .blurbox, .tile .maxbtn, .tile .modbar, .topchip, #gifos-build-float { transition: none !important; } }
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
     width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
     background: #e8ecf1; color: #1d1d1f; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
@@ -22161,6 +22166,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let calm = false;
         try { calm = Date.now() - lastInput >= dockCalmMs && !busy(); } catch (e) {}
         if (calm !== document.body.classList.contains('dock-calm')) document.body.classList.toggle('dock-calm', calm);
+        // The header only goes while it is the plain count line.
+        let head = calm;
+        if (head) {
+          const st = document.getElementById('status');
+          head = !!st && st.dataset.kind === 'meeting' && !st.classList.contains('alert') && Date.now() >= statusHoldUntil;
+        }
+        if (head !== document.body.classList.contains('head-calm')) document.body.classList.toggle('head-calm', head);
       }, 250);
     })();
 
@@ -24592,6 +24604,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       },
       participants: participantCount,
       setDockCalmMsForTest: (ms) => { dockCalmMs = Math.max(0, ms | 0); return { ok: true }; },
+      statusNoticeForTest: (m) => { setStatus(String(m)); return { ok: true }; },
       bot: () => !!myStatus.bot,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
