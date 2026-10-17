@@ -15,7 +15,8 @@
  *   - One anchor. A TURN client sends its voice once, to one anchor, and
  *     receives one stream back: everything the anchor hears, minus the
  *     client's own voice.
- *   - Off the join path. Credentials are asked for after joining; an error, a
+ *   - Off the join path. Credentials are asked for after joining, and only
+ *     once a pair has failed its direct path (poolNeeded); an error, a
  *     timeout or an "unavailable" answer all mean "no TURN", and the meeting
  *     runs as it does without it.
  *
@@ -51,6 +52,18 @@
     if (down < P0_MS) return 'direct';
     if (f.friendPath && down < P1_MS) return 'friend';
     return 'turn';
+  }
+
+  // poolNeeded(stages, invited) → may a blocked page ask the pool now?
+  // stages: pairStage of each pair it links to; invited: a peer dialled it
+  // through TURN. Only once a pair has failed its direct path (stage
+  // 'friend' or 'turn'): people on one blocked network reach each other
+  // directly, so a meeting held inside it (S = 1, an all-hands of 1,000 in
+  // one company) asks for no credential at all.
+  function poolNeeded(stages, invited) {
+    if (invited) return true;
+    for (const s of stages || []) if (s === 'friend' || s === 'turn') return true;
+    return false;
   }
 
   // pairUsesTurn(f) → true when this page may put TURN servers in this
@@ -320,7 +333,7 @@
 
   const api = {
     ICE_URL, DEFAULT_WORKER, WORKER_KEY, workerBase, POOL, FETCH_TIMEOUT_MS, RETRY_MAX_MS, P0_MS, P1_MS, MAX_SERVED,
-    reachable, pairStage, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, mayServe,
+    reachable, pairStage, poolNeeded, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, mayServe,
     retryDelayMs, parseIce, createCredentials, askIce, freeTicket, TICKET_CREDS,
   };
   const GifOS = (root.GifOS = root.GifOS || {});

@@ -6036,10 +6036,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The beat's TURN pass (the sweep calls it after the pair verdicts).
     function turnSweep(now) {
       if (myStatus.np !== directPath) myStatus.np = directPath; // my reachability rides my status: an anchor choice reads it
-      // 1. Credentials: only a page whose network blocks direct connections,
-      // only once it has joined, and asked in the background.
-      const want = directPath === 'blocked' && !!meshNode && !!sessId && !leaving;
-      if (want && (!turnCred || turnCredRoom !== sessId)) {
+      // 1. How long each pair has gone without a working path.
+      for (const [pid, p] of peers) {
+        if (p.connected || p.relayed) turnDownAt.delete(pid);
+        else if (!p.absentSince && !turnDownAt.has(pid)) turnDownAt.set(pid, now);
+      }
+      for (const [pid, t] of [...turnDownAt]) if (!peers.has(pid) && now - t > 120000) turnDownAt.delete(pid);
+      for (const [pid, t] of [...turnAnchorDead]) if (t < now) turnAnchorDead.delete(pid);
+      const stageOf = (pid, p) => MT.pairStage({ connected: p.connected, relayed: !!p.relayed, downMs: turnDownAt.has(pid) ? now - turnDownAt.get(pid) : 0, friendPath: friendPathFor(pid, now) });
+      const anchorable = (pid, p) => !(p.absentSince || p.headless || !(linkTo(pid) || p.boot)) && !(typeof isEjected === 'function' && isEjected(pid) === true);
+      // 2. Credentials: only a page whose network blocks direct connections,
+      // only once it has joined, only once a pair it links to has failed its
+      // direct path or a peer dialled it through TURN (MT.poolNeeded: people
+      // on one blocked network reach each other directly and need none), and
+      // asked in the background.
+      const keep = !!turnCred && turnCredRoom === sessId;
+      let want = directPath === 'blocked' && !!meshNode && !!sessId && !leaving;
+      if (want && !keep) {
+        const stages = []; let invited = false;
+        for (const [pid, p] of peers) { if (!anchorable(pid, p)) continue; if (turnInvited(p)) invited = true; stages.push(stageOf(pid, p)); }
+        want = MT.poolNeeded(stages, invited);
+      }
+      if (want && !keep) {
         if (turnCred) turnCred.stop();
         turnCredRoom = sessId;
         // The free pool needs the relay's TURN ticket (workers turnstile): the
@@ -6047,17 +6065,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         turnFree = MT.freeTicket(() => (meshNode && meshNode.turnTicket ? meshNode.turnTicket() : ''));
         turnCred = MT.createCredentials({ ask: MT.askIce(window.fetch.bind(window)), room: sessId, onChange: onTurnCred, extra: turnFree.extra, granted: turnFree.granted });
         turnCred.start();
-      } else if (turnCred && directPath !== 'blocked') {
-        turnCred.stop(); turnCred = null; turnCredRoom = null; // this network can be reached now: no pool
+      } else if (turnCred && (directPath !== 'blocked' || (sessId && turnCredRoom !== sessId))) {
+        turnCred.stop(); turnCred = null; turnCredRoom = null; // this network can be reached now (or another room): no pool
         onTurnCred('expired');
       }
-      // 2. How long each pair has gone without a working path.
-      for (const [pid, p] of peers) {
-        if (p.connected || p.relayed) turnDownAt.delete(pid);
-        else if (!p.absentSince && !turnDownAt.has(pid)) turnDownAt.set(pid, now);
-      }
-      for (const [pid, t] of [...turnDownAt]) if (!peers.has(pid) && now - t > 120000) turnDownAt.delete(pid);
-      for (const [pid, t] of [...turnAnchorDead]) if (t < now) turnAnchorDead.delete(pid);
       const servers = turnServers();
       // 3. The client side: one anchor, kept while it carries me.
       if (directPath === 'blocked' && servers) {
@@ -6075,14 +6086,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (turnAnchorId == null) {
           const cands = [];
           for (const [pid, p] of peers) {
-            if (p.absentSince || p.headless || !(linkTo(pid) || p.boot)) continue;
-            if (typeof isEjected === 'function' && isEjected(pid) === true) continue;
+            if (!anchorable(pid, p)) continue;
             const st = statusOf.get(pid);
             cands.push({ id: pid,
               reachable: st && st.np === 'ok' ? true : st && st.np === 'blocked' ? false : null,
               links: connsOf.has(pid) ? connsOf.get(pid).length : null,
               deadUntil: turnAnchorDead.get(pid) || 0,
-              stage: MT.pairStage({ connected: p.connected, relayed: !!p.relayed, downMs: turnDownAt.has(pid) ? now - turnDownAt.get(pid) : 0, friendPath: friendPathFor(pid, now) }) });
+              stage: stageOf(pid, p) });
           }
           const pick = MT.chooseAnchor(cands, null, now);
           if (pick != null) setTurnAnchor(pick, now);
