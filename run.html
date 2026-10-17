@@ -893,11 +893,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .name-box button.voteopt.down .vic { background: #e0a100; }
   .name-box button.voteopt.danger { background: transparent; color: #ff5c5c; border-color: #ff5c5c; }
   .name-box button.voteopt.danger .vic { background: #ff5c5c; }
-  .name-box #vote-cancel { background: transparent; color: #c8c8d4; border: 1px solid #5a5a68; }
+  /* Cancel sits on the sheet itself, which follows the theme's surface. */
+  .name-box #vote-cancel { background: transparent; color: var(--text, #e0e0f0); border: 1px solid #8d93a0; }
   /* Descriptions derive from the theme's TEXT color (at reduced opacity), not
      --muted: on themes with a colored surface (blue!), fixed gray muted text
      lands at near-zero contrast and the popup is illegible. */
   .voteopt small { display: block; color: var(--text, #e0e0f0); opacity: .72; font-size: .78rem; margin-top: .15rem; }
+  /* The up and down options are always dark, so their hints are always light. */
+  .name-box button.voteopt:not(.danger) small { color: #b9bfcc; opacity: 1; }
   /* FULLSCREEN VIEW: one feed big + every other live feed as floating thumbs
      (right edge in landscape, bottom edge in portrait) — tap a thumb to swap
      it into the big view. Standard call UX. */
