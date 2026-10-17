@@ -591,9 +591,19 @@ Repro: `test/mobile/chat-keyboard.js`. It failed (`field cannot be tapped; keybo
 
 Before: `qa/mobile/shots/before-chat-keyboard-land.png`. After: `qa/mobile/shots/after-chat-keyboard-land.png`, and `qa/mobile/shots/after-chat-find-kb-land.png` (Find in use with the keyboard up).
 
+### 68. A search in chat hid the line you sent
+
+Search "Tuesday" and the log shows only that line. The Search key did nothing, so on a sideways SE the keyboard stayed on Find and the message field sat under the keys. Once Find stepped aside, nothing on screen said the log was cut down. And a line you sent did not match, so it vanished as you sent it.
+
+The Search key ends the search and drops the keyboard; the filter stays. While a search is on, the chat title reads 'Lines with "Tuesday"' (it trims, and Close stays put). Sending a line clears the search, so your line shows with the rest.
+
+Repro: `test/mobile/chat-find-sign.js`. It failed (`Search key leaves the keyboard on Find; message field cannot be tapped; keyboard covers field (bottom 171, line 120); the line you sent is not in the log`), then passed. All 19 chat tests, safe-area.js and landscape-first.js pass. `header-full.js` fails with and without this change.
+
+Before: `qa/mobile/shots/before-chat-find-sign-land.png`. After: `qa/mobile/shots/after-chat-find-sign-land.png`, and `qa/mobile/shots/after-chat-find-iphone-se.png` (the title in portrait).
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, Reply keeps that line on the answer, and Delete takes back your own line. An address in a line is a link. The room name and full screen are 44px taps. A sideways phone shows the whole name. A chat line takes a reaction. The keyboard leaves the chat field and Send in view on a sideways SE.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, Reply keeps that line on the answer, and Delete takes back your own line. An address in a line is a link. The room name and full screen are 44px taps. A sideways phone shows the whole name. A chat line takes a reaction. The keyboard leaves the chat field and Send in view on a sideways SE. The chat title says when a search is cutting the log down. `header-full.js` fails: the room name is not trimmed.
 
 ## Personas (what was actually tried)
 

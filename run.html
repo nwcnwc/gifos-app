@@ -1130,7 +1130,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                background: var(--bg, #101018); border-left: 1px solid var(--border, #2a2a3f); display: none; flex-direction: column; }
   #chatpanel.open { display: flex; }
   #chathead { display: flex; align-items: center; gap: .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
-  #chathead button { margin-left: auto; padding: .2rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
+  /* A long search in the title trims; it never pushes Close off. */
+  #paneltitle { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #chathead button { flex-shrink: 0; margin-left: auto; padding: .2rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   #chatlog { flex: 1; overflow-y: auto; padding: .6rem; display: flex; flex-direction: column; gap: 8px; font-size: 1rem; }
   #chatnew { align-self: center; flex: 0 0 auto; margin: 0 12px 8px; min-height: 44px; padding: 0 16px;
              border: 0; border-radius: 22px; background: #0064c8; color: #fff; cursor: pointer;
@@ -15710,7 +15712,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintChatFind() {
       const q = document.getElementById('chatq');
       const clear = document.getElementById('chatqclear');
-      if (clear) clear.hidden = !(q && String(q.value || '').trim());
+      const text = q ? String(q.value || '').trim() : '';
+      if (clear) clear.hidden = !text;
+      // Sideways, Find steps aside while the keyboard is up. The title is
+      // still on screen, so it says the log is cut down.
+      const title = document.getElementById('paneltitle');
+      if (title && !transcriptShown()) title.textContent = text ? 'Lines with “' + text + '”' : uiText('chatTitle', 'Meeting chat');
     }
     function renderChat() {
       if (!chatPanelOpen() || transcriptShown()) return;
@@ -15764,6 +15771,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const clear = document.getElementById('chatqclear');
       if (!q || !clear) return;
       q.addEventListener('input', () => renderChat());
+      // The Search key ends the search and drops the keyboard; the filter stays.
+      q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); q.blur(); } });
       clear.onclick = () => { q.value = ''; renderChat(); try { q.focus(); } catch (e) {} };
     })();
     // The chat gate: repainted on every mod merge and admin-state flip. The
@@ -15945,6 +15954,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       chat.set(m.id, m);
       sendAll({ k: 'chat', m });
       inp.value = '';
+      // A search would hide the line you just sent.
+      const q = document.getElementById('chatq');
+      if (q) q.value = '';
       pendingReply = null;
       paintReply();
       paintMentions();
