@@ -2613,3 +2613,56 @@ test('a service can mute the stage on this device', async ({ page }) => {
   expect(groupSound).toBe(true);
   await expect(page.locator('#mixpanel')).toBeAttached();
 });
+
+test('a service room bar counts the people watching, not the host', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  async function whoLay() {
+    return page.evaluate(() => {
+      const bar = document.getElementById('airbar').getBoundingClientRect();
+      const who = document.getElementById('airwho').getBoundingClientRect();
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const overlap = (a, b) => a.width > 0 && b.width > 0 && !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+      const inside = who.width > 20 && who.left >= bar.left - 1 && who.right <= bar.right + 1 && who.top >= bar.top - 1 && who.bottom <= bar.bottom + 1;
+      const on = who.left >= -1 && who.right <= innerWidth + 1 && who.top >= -1 && who.bottom <= innerHeight + 1;
+      return { inside, on, dock: overlap(who, dock) };
+    });
+  }
+  const who = page.locator('#airwho');
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=watch' + w + '&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.live');
+    await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+    await expect(who).toHaveText('0 watching');
+    await expect(who).toHaveAttribute('title', 'Who is watching');
+    await expect(who).toHaveAttribute('aria-label', 'Who is watching, 0');
+    const lay = await whoLay();
+    expect(lay.inside, JSON.stringify(lay)).toBe(true);
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+    expect(lay.dock, JSON.stringify(lay)).toBe(false);
+    if (w === 1280) {
+      await page.evaluate(() => window.__gifosVideo.headCountForTest(13));
+      await expect(who).toHaveText('12 watching');
+      await page.evaluate(() => window.__gifosVideo.headCountForTest(2));
+      await expect(who).toHaveText('1 watching');
+      await who.click();
+      await expect(page.locator('#who-modal h3')).toHaveText('Who is watching');
+      await page.locator('#who-close').click();
+    }
+  }
+  await page.goto('/run.html?desk=watchviewer#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  await expect(who).toHaveText('1 watching');
+  await page.evaluate(() => window.__gifosVideo.headCountForTest(13));
+  await expect(who).toHaveText('13 watching');
+  await page.goto('/run.html?desk=watchgroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await expect(who).toHaveText('1 here');
+  await expect(who).toHaveAttribute('title', 'Who is here');
+});
