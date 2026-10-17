@@ -731,8 +731,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.broadcast.notadmin #ccbtn,
   body.broadcast.notadmin #pwbtn,
   body.broadcast #votebtn,
-  /* Nobody mixes in a broadcast: Stage audio is the only bus there is (the
-     whole Sound-mix section hides inside Settings). And the host's
+  /* Nobody mixes buses in a broadcast: Stage audio is the only bus, so the
+     Sound-mix section stays hidden. Mute for what you hear lives on the room
+     bar (Sound on / Muted) and never changes anyone else's stage. The host's
      guest-video hammers (Blur guests / Video off) moderate a row tier a
      broadcast doesn't have — viewers bring no camera at all. */
   body.broadcast #mixpanel,
@@ -1389,10 +1390,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #airbar.watch::before { background: #0064c8; }
   #airbar.group::before { background: #7dcea0; }
   #airbar .airacts { display: flex; align-items: center; gap: 8px; margin-left: 8px; }
-  #airrec, #airwho { appearance: none; font: 700 15px/1 system-ui, sans-serif; min-height: 36px;
+  #airrec, #airwho, body.broadcast #airsound:not([hidden]) { appearance: none; display: inline-block; font: 700 15px/1 system-ui, sans-serif; min-height: 36px;
     padding: 0 12px; border-radius: 999px; cursor: pointer; background: transparent; color: inherit;
     border: 2px solid currentColor; }
-  #airrec[aria-pressed="true"] { background: #fff; color: #b61622; border-color: #b61622; }
+  #airsound { display: none; }
+  #airrec[aria-pressed="true"], #airsound[aria-pressed="true"] { background: #fff; color: #b61622; border-color: #b61622; }
   #avstate { display: none; }
   #avstate[hidden] { display: none !important; }
   #avstate.on { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 14px;
@@ -1855,6 +1857,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <span class="airacts">
       <button type="button" id="airrec" aria-pressed="false">Not recording</button>
       <button type="button" id="airwho">1 here</button>
+      <button type="button" id="airsound" hidden aria-pressed="false">Sound on</button>
     </span>
   </div>
   <div id="avstate" hidden>
@@ -2451,6 +2454,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } catch (e) {}
       return false;
     }
+    // A service mute is this device only. It does not write the shared mix,
+    // so a small group still opens at the fader the person last set.
+    let serviceHeard = true;
+    function paintServiceSound() {
+      const btn = document.getElementById('airsound');
+      if (!btn) return;
+      let bc = false;
+      try { bc = typeof BROADCAST !== 'undefined' && !!BROADCAST; } catch (e) { bc = false; }
+      btn.hidden = !bc;
+      if (!bc) return;
+      const muted = !serviceHeard;
+      btn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+      btn.textContent = muted ? 'Muted' : 'Sound on';
+      btn.title = muted
+        ? 'The stage is muted on this device. Tap to hear it. Everyone else still hears it.'
+        : 'You can hear the stage. Tap to mute it on this device. Everyone else still hears it.';
+      btn.setAttribute('aria-label', muted ? 'Stage muted on this device' : 'Mute the stage on this device');
+    }
     function roomHeadCount() {
       try {
         if (typeof displayCount === 'function') {
@@ -2477,6 +2498,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         who.title = 'Who is here';
         who.setAttribute('aria-label', 'Who is here, ' + n);
       }
+      paintServiceSound();
       maybeShowRecNotice();
     }
     function recRoomWord() {
@@ -11961,6 +11983,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + '<li>The link is all you need. Your <b>camera and microphone are not used</b> — watching asks no permissions at all.</li>'
           + '<li>The video stays <b>blurred</b> until the host sets a <b>viewer password</b>. If you’re asked for one, the host shares it separately — it’s the ticket, and it does not ride the link.</li>'
           + '<li><b>Chat</b> is live to everyone here, is not stored on any server, and is gone when the broadcast ends.</li>'
+          + '<li><b>Sound on</b> on the room bar mutes the stage on this device. Everyone else still hears it.</li>'
           + '</ul>'
           + '<h4>Speaking up</h4>'
           + '<ul class="help-list">'
@@ -12059,6 +12082,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     document.getElementById('whobtn').onclick = showWhoModal;
     const airWho = document.getElementById('airwho');
     if (airWho) airWho.onclick = showWhoModal;
+    const airSound = document.getElementById('airsound');
+    if (airSound) airSound.onclick = () => {
+      if (typeof BROADCAST === 'undefined' || !BROADCAST) return;
+      serviceHeard = !serviceHeard;
+      try { applyBuses(); } catch (e) {}
+      try { paintServiceSound(); } catch (e) {}
+      try {
+        setStatus(serviceHeard
+          ? 'You can hear the stage.'
+          : 'The stage is muted on this device. Everyone else still hears it.');
+      } catch (e) {}
+    };
 
     function joinRoom() {
       room = params.get('v') || shortCode();
@@ -18537,6 +18572,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // is honoured everywhere; the fader range above 0 still rides volume.
       el._aud.muted = !!el._gmute || !(vol > 0); // group mute rides the same pipe as the faders
     }
+    // Service mute is a local gate on the stage bus. The saved fader stays put.
+    function heardStage() {
+      let base = 1;
+      try { base = mix.stage; } catch (e) { base = 1; }
+      try {
+        if (typeof BROADCAST !== 'undefined' && BROADCAST && !serviceHeard) return 0;
+      } catch (e) {}
+      return base;
+    }
     function applyBuses() {
       const stg = new Set(stageIds());
       const mates = new Set(rowMates());
@@ -18556,7 +18600,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       // feed tiles (the nested mosaics): stage strip is Stage; stadium tiles
       // are The stadium.
-      for (const el of stagefeedEl.querySelectorAll('.rowtile video')) { if (el.classList.contains('stageface')) continue; busVolume(el, mix.stage); }
+      const stageVol = heardStage();
+      for (const el of stagefeedEl.querySelectorAll('.rowtile video')) { if (el.classList.contains('stageface')) continue; busVolume(el, stageVol); }
       for (const el of stadiumEl.querySelectorAll('.rowtile')) {
         const v = el.querySelector('video'); if (!v) continue;
         busVolume(v, mix.stadium); hasStadium = true; // the only stadium-area tile now is the Stadium composite
@@ -18566,7 +18611,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const stadLab = document.getElementById('mixlab-stadium');
       const stadMark = hasStadium ? '1' : '0';
       if (stadLab && stadLab.dataset.on !== stadMark) { stadLab.dataset.on = stadMark; stadLab.style.display = hasStadium ? '' : 'none'; }
-      if (stageEar) { stageEar.el.volume = mix.stage; stageEar.el.muted = !(mix.stage > 0); } // the Stage fader drives the ear fold (muted at 0: iOS ignores volume)
+      if (stageEar) { stageEar.el.volume = stageVol; stageEar.el.muted = !(stageVol > 0); } // the Stage fader drives the ear fold (muted at 0: iOS ignores volume)
       kickPausedAudio();
     }
     // The Settings modal: the sound mix's new home (same fader ids as when it
@@ -24278,6 +24323,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }),
       pipEnterForTest: () => enterPip(true),
       audienceReactForTest: (emoji, fromId) => takeAudienceReact(emoji, fromId || 'viewer'),
+      stageHearLevelForTest: () => heardStage(),
       // moderation SINKS (e2e-meet-mod.js): what the filmstrip would list and how
       // blurred, and a sender that defies the admin's video-off — the DOM-hacked
       // guest the receiver-side rule exists for (it only re-enables MY track).

@@ -2514,3 +2514,102 @@ test('a viewer clap reaches the stage as a count', async ({ page }) => {
   const stageCount = await page.locator('#bc-reacts').evaluate((el) => !el.hidden && getComputedStyle(el).display !== 'none');
   expect(stageCount).toBe(false);
 });
+
+test('a service can mute the stage on this device', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  async function soundLay() {
+    return page.evaluate(() => {
+      const bar = document.getElementById('airbar').getBoundingClientRect();
+      const btn = document.getElementById('airsound').getBoundingClientRect();
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const overlap = (a, b) => a.width > 0 && b.width > 0 && !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+      const inside = btn.width > 20 && btn.left >= bar.left - 1 && btn.right <= bar.right + 1 && btn.top >= bar.top - 1 && btn.bottom <= bar.bottom + 1;
+      const on = btn.left >= -1 && btn.right <= innerWidth + 1 && btn.top >= -1 && btn.bottom <= innerHeight + 1;
+      return { inside, on, dock: overlap(btn, dock), w: Math.round(btn.width), h: Math.round(btn.height) };
+    });
+  }
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=sound' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.watch');
+    const btn = page.locator('#airsound');
+    await expect(btn).toBeVisible();
+    await expect(btn).toHaveText('Sound on');
+    await expect(btn).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+    const lay = await soundLay();
+    expect(lay.inside, JSON.stringify(lay)).toBe(true);
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+    expect(lay.dock, JSON.stringify(lay)).toBe(false);
+    expect(lay.h).toBeGreaterThanOrEqual(36);
+    if (w === 1280) {
+      await page.evaluate(() => {
+        const tile = document.createElement('div');
+        tile.className = 'rowtile';
+        const v = document.createElement('video');
+        v.id = 'qa-stage-vid';
+        tile.appendChild(v);
+        document.getElementById('stagefeed').appendChild(tile);
+        window.__gifosVideo.setMix('stage', 1);
+      });
+      const saved = await page.evaluate(() => localStorage.getItem('gifos_mix'));
+      await btn.click();
+      await expect(btn).toHaveText('Muted');
+      await expect(btn).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('#status')).toHaveText('The stage is muted on this device. Everyone else still hears it.');
+      await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+      const muted = await page.evaluate(() => {
+        const v = document.getElementById('qa-stage-vid');
+        return {
+          level: window.__gifosVideo.stageHearLevelForTest(),
+          mix: window.__gifosVideo.mix().stage,
+          vol: v ? v.volume : null,
+          stored: localStorage.getItem('gifos_mix'),
+        };
+      });
+      expect(muted.level).toBe(0);
+      expect(muted.mix).toBe(1);
+      expect(muted.vol).toBe(0);
+      expect(muted.stored).toBe(saved);
+      const mutedLay = await soundLay();
+      expect(mutedLay.inside, JSON.stringify(mutedLay)).toBe(true);
+      expect(mutedLay.on, JSON.stringify(mutedLay)).toBe(true);
+      expect(mutedLay.dock, JSON.stringify(mutedLay)).toBe(false);
+      await btn.click();
+      await expect(btn).toHaveText('Sound on');
+      await expect(page.locator('#status')).toHaveText('You can hear the stage.');
+      const back = await page.evaluate(() => {
+        const v = document.getElementById('qa-stage-vid');
+        return {
+          level: window.__gifosVideo.stageHearLevelForTest(),
+          vol: v ? v.volume : null,
+        };
+      });
+      expect(back.level).toBe(1);
+      expect(back.vol).toBe(1);
+      await expect(page.locator('#mixpanel')).toBeHidden();
+    }
+  }
+  await page.goto('/run.html?desk=soundhost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.live');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+  await expect(page.locator('#airsound')).toHaveText('Sound on');
+  await page.locator('#airsound').click();
+  await expect(page.locator('#airsound')).toHaveText('Muted');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+  const hostLay = await soundLay();
+  expect(hostLay.inside, JSON.stringify(hostLay)).toBe(true);
+  expect(hostLay.dock, JSON.stringify(hostLay)).toBe(false);
+  await page.goto('/run.html?desk=soundgroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await expect(page.locator('#airkind')).toHaveText('Small group');
+  const groupSound = await page.locator('#airsound').evaluate((el) => el.hidden || getComputedStyle(el).display === 'none');
+  expect(groupSound).toBe(true);
+  await expect(page.locator('#mixpanel')).toBeAttached();
+});
