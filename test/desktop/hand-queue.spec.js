@@ -121,3 +121,37 @@ test('a presenter reads the hand queue, and the header is off the slide', async 
   expectReadable(got, 'Priya Shah');
   expect(got.slideUnderHeader).toBe(false);
 });
+
+// The hand line says hands are up, not "waiting": a waiting room now holds
+// people who are not yet in, and a host's roster lists them under Waiting, so
+// "✋ 1 waiting: Priya Shah" read as if Priya were held outside. It follows
+// German and Spanish like the hand chip on her face.
+const HAND_WORDS = [
+  { lang: 'en-US', one: '✋ 1 hand up: Priya Shah', two: /^✋ 2 hands up: /, chip: 'hand raised' },
+  { lang: 'de-DE', one: '✋ 1 Hand oben: Priya Shah', two: /^✋ 2 Hände oben: /, chip: 'Hand gehoben' },
+  { lang: 'es-ES', one: '✋ 1 mano levantada: Priya Shah', two: /^✋ 2 manos levantadas: /, chip: 'mano levantada' },
+];
+for (const w of HAND_WORDS) {
+  test.describe('hand line in ' + w.lang, () => {
+    test.use({ locale: w.lang });
+    test('the hand line says hands up, not waiting (' + w.lang + ')', async ({ page }) => {
+      await boot(page, 1280);
+      const one = (await readQueue(page)).text;
+      // Shot before the first check, so a failing run still leaves its picture.
+      if (w.lang === 'en-US') await page.screenshot({ path: 'test/desktop/shots/hand-words-' + (process.env.HAND_WORDS_PHASE || 'after') + '-1280.png' });
+      if (w.lang === 'de-DE') await page.screenshot({ path: 'test/desktop/shots/hand-words-' + (process.env.HAND_WORDS_PHASE || 'after') + '-de-1280.png' });
+      expect(one).not.toMatch(/waiting/i);
+      expect(one).toBe(w.one);
+      // Line and chip in ONE read: a seeded face's chip can drop a few seconds
+      // in once the relay says "reconnecting" (Firefox), so a later separate
+      // read of the chip measured the seed, not the words.
+      await expect.poll(() => page.evaluate((chip) => ({
+        line: document.getElementById('handq').textContent,
+        chips: [...document.querySelectorAll('#feed .tile .chips')].filter((c) => c.textContent.includes(chip)).length,
+      }), w.chip), { timeout: 2000 }).toEqual({ line: w.one, chips: 1 });
+      await page.evaluate(() => window.__gifosVideo.raiseHand(true));
+      await expect.poll(async () => (await readQueue(page)).text).toMatch(w.two);
+      expectReadable(await readQueue(page), 'Priya Shah');
+    });
+  });
+}

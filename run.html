@@ -850,7 +850,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #appbar #appwho { color: var(--muted, #8888aa); font-size: .78rem;
     flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #appbar #appstop { margin-left: auto; font-size: 16px; }
-  #appbar #appsave, #appbar #appsteal, #appbar #apphide, #appbar #appaudio { font-size: 16px; }
+  #appbar #appsave, #appbar #appsteal, #appbar #apphide, #appbar #appaudio,
+  #appbar #appinvite, #appbar #applead { font-size: 16px; }
+  /* A desktop has the room: Help and the "you are hosting it" line read at
+     16px like the rest of the bar (older eyes). Phones keep the small line. */
+  @media (min-width: 900px) {
+    #appbar #apphelp, #appbar #appwho { font-size: 16px; }
+  }
   /* When the app bar is the ONLY bar (solo / app room before a call), it also
      carries the GifOS home link — same gradient wordmark as the meeting bar. */
   #appbar .brand { display: none; font-weight: 800; font-size: .9rem; text-decoration: none; cursor: pointer;
@@ -2187,6 +2193,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   #chatbadge[hidden] { display: none !important; }
   @media (min-width: 601px) and (min-height: 501px) { .fitbtn { top: calc(14px + var(--gtop, 0px)); min-height: 44px; padding: 10px 16px; } }
+  /* Same for an app in a meeting: its bar starts below the header row, and Fit
+     (faces are a strip under the app, nothing to fit) leaves Stop app clear. */
+  body.desk-ptr.has-app:not(.solo-app):not(.app-room) #apppane,
+  body.desk-ptr.has-app.app-room.audio-on #apppane { padding-top: 70px; }
+  body.has-app .fitbtn { display: none; }
   body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
@@ -2631,10 +2642,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* A presenting desktop's strip is 104px tall: chips wrap whole instead of
      being cut at the edge, and the row keeps no room for the Blur for all
      square, which shows only under the pointer and then sits on top. */
-  body.desk-ptr.screen-on #grid .tile .chips { top: 4px; right: 6px; flex-wrap: wrap; align-content: flex-start; gap: 2px 3px; }
-  /* A 104px thumbnail has no room for the mark words: icons only there. */
-  body.desk-ptr.screen-on #grid .tile .chips span.ico { width: 22px; height: 22px; padding: 0; }
-  body.desk-ptr.screen-on #grid .tile .chips span.ico i.w { display: none; }
+  body.desk-ptr.screen-on #grid .tile .chips,
+  body.desk-ptr.has-app #grid .tile .chips { top: 4px; right: 6px; flex-wrap: wrap; align-content: flex-start; gap: 2px 3px; }
+  /* A 104px thumbnail (or a running app's 180px strip) has no room for the
+     mark words: icons only there, and no view-only note running behind the
+     chips and name (the Camera off mark already says it). */
+  body.desk-ptr.screen-on #grid .tile .chips span.ico,
+  body.desk-ptr.has-app #grid .tile .chips span.ico { width: 22px; height: 22px; padding: 0; }
+  body.desk-ptr.screen-on #grid .tile .chips span.ico i.w,
+  body.desk-ptr.has-app #grid .tile .chips span.ico i.w,
+  body.desk-ptr.screen-on #grid .tile .note,
+  body.desk-ptr.has-app #grid .tile .note { display: none; }
   @media (max-width: 700px) {
     body.screen-on #grid { flex-basis: 92px; height: 92px; }
     body.screen-on #grid .tile { height: 76px; }
@@ -3256,7 +3274,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <img id="appgif" alt="">
       <span id="appname">App</span>
       <span id="appwho"></span>
-      <button id="appinvite" style="display:none" title="Share this app live — friends join with one link">Invite</button>
+      <button id="appinvite" style="display:none" data-t="invite" data-ti="barInviteTip" title="Share this app live — friends join with one link">Invite</button>
       <button id="appsave" style="display:none" data-t="barSave" data-ti="barSaveTip" title="Save a snapshot GIF — the app with its data, yours to keep">Save</button>
       <button id="apphelp" data-t="help" data-ti="appHelpTip" title="How this app works">Help</button>
       <button id="appaudio" style="display:none" data-t="barTalkOff" data-ti="barTalkTip" title="Talk with the people in this app — when on, everyone here gets their own mic control (host only)">Talk: off</button>
@@ -4662,6 +4680,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         barTalkOnStatus: 'Sprechen ist an — alle hier können ihr Mikrofon einschalten.',
         barTalkOffStatus: 'Sprechen ist aus — jedes Mikrofon ist still.',
         barTalkHostOff: 'Die Leitung hat Sprechen ausgeschaltet.',
+        barInviteTip: 'Diese App live teilen — Freunde kommen mit einem Link dazu',
+        barLeading: '👑 Sie leiten', barCommunal: 'Gemeinsam',
+        barLeadingTip: 'Sie leiten diese App — nur Ihr Blättern bewegt den Raum. Tippen für gemeinsame Steuerung.',
+        barCommunalTip: 'Gemeinsam — jeder hier kann die geteilte App steuern. Tippen, um zu leiten.',
+        barLeadingStatus: '🧩 Sie leiten die App — nur Ihre Änderungen an den gemeinsamen Reglern bleiben.',
+        barCommunalStatus: '🧩 Gemeinsame Steuerung — jeder hier kann die geteilte App steuern.',
+        fullScreen: 'Vollbild', leaveFullScreen: 'Vollbild beenden',
+        appWhoHost: '· Sie stellen sie der Besprechung bereit', appWhoPinned: 'Sie stellen sie bereit',
+        appWhoShared: '· mit der Besprechung geteilt', appWhoSharedBy: '· mit der Besprechung geteilt von ', appWhoDevice: 'auf diesem Gerät',
+        tileControls: 'Steuerung für diese Person.', handChip: 'Hand gehoben', handUpOne: 'Hand oben', handUpMany: 'Hände oben', stageFull: 'Bühne voll', leavingChip: 'geht…', recChip: 'nimmt dieses Meeting auf', scribeChip: 'schreibt alle mit', stopShareTip: 'Ihre Bildschirmfreigabe beenden',
         stealData: '+ Daten', stealDataTip: 'Die App und alles, was jetzt darin ist',
         stealJoined: 'wie ich kam', stealJoinedTip: 'Die App und der Raum, wie er war, als Sie kamen',
         stealApp: 'nur die App', stealAppTip: 'Eine saubere Kopie — nur die App, keine Daten des Raums',
@@ -4946,6 +4974,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         barTalkOnStatus: 'Hablar está activo — todos aquí pueden encender su micrófono.',
         barTalkOffStatus: 'Hablar está apagado — todos los micrófonos quedan en silencio.',
         barTalkHostOff: 'El anfitrión apagó Hablar.',
+        barInviteTip: 'Comparte esta app en vivo — tus amigos entran con un enlace',
+        barLeading: '👑 Diriges', barCommunal: 'Entre todos',
+        barLeadingTip: 'Diriges esta app — solo tus cambios de página mueven la sala. Toca para control entre todos.',
+        barCommunalTip: 'Entre todos — cualquiera aquí puede manejar la app compartida. Toca para dirigir.',
+        barLeadingStatus: '🧩 Diriges la app — solo tus cambios en los controles compartidos se quedan.',
+        barCommunalStatus: '🧩 Control entre todos — cualquiera aquí puede manejar la app compartida.',
+        fullScreen: 'Pantalla completa', leaveFullScreen: 'Salir de pantalla completa',
+        appWhoHost: '· tú la alojas para la reunión', appWhoPinned: 'tú la alojas',
+        appWhoShared: '· compartida con la reunión', appWhoSharedBy: '· compartida con la reunión por ', appWhoDevice: 'en este dispositivo',
+        tileControls: 'Controles para esta persona.', handChip: 'mano levantada', handUpOne: 'mano levantada', handUpMany: 'manos levantadas', stageFull: 'escenario lleno', leavingChip: 'saliendo…', recChip: 'grabando esta reunión', scribeChip: 'anotando a todos', stopShareTip: 'Dejar de compartir tu pantalla',
         stealData: '+ datos', stealDataTip: 'La app y todo lo que hay ahora',
         stealJoined: 'como entré', stealJoinedTip: 'La app y la sala como estaban cuando entraste',
         stealApp: 'solo la app', stealAppTip: 'Una copia limpia — solo la app, sin los datos de la sala',
@@ -7786,7 +7824,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!isMe) {
         tile.tabIndex = 0;
         tile.setAttribute('role', 'group');
-        tile.setAttribute('aria-label', (name || 'Participant') + '. Controls for this person.');
+        tile.setAttribute('aria-label', (name || uiText('rosterPerson', 'Participant')) + '. ' + uiText('tileControls', 'Controls for this person.'));
       }
       const video = document.createElement('video');
       video.autoplay = true; video.playsInline = true;
@@ -7804,8 +7842,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // other live feed as tappable floating thumbs. Esc / ✕ exits. iOS
       // Safari can only fullscreen a <video>, so it gets the native one.
       const maxbtn = document.createElement('button');
-      maxbtn.className = 'maxbtn'; maxbtn.textContent = '⛶'; maxbtn.title = 'Full screen';
-      maxbtn.setAttribute('aria-label', 'Full screen');
+      maxbtn.className = 'maxbtn'; maxbtn.textContent = '⛶'; maxbtn.title = uiText('fullScreen', 'Full screen');
+      maxbtn.setAttribute('aria-label', maxbtn.title);
       maxbtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (fsSkipDark(tile)) return;
@@ -8007,8 +8045,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       }
       if (!isMe && t.tile) {
-        const who = (t.label && t.label.textContent) || 'Participant';
-        const al = who + '. Controls for this person.';
+        const who = (t.label && t.label.textContent) || uiText('rosterPerson', 'Participant');
+        const al = who + '. ' + uiText('tileControls', 'Controls for this person.');
         if (t.tile.getAttribute('aria-label') !== al) t.tile.setAttribute('aria-label', al);
       }
       reactStats.tiles++;
@@ -8016,7 +8054,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // once, before the entry prompt's Continue or a Settings → Change, and
       // a label set only at makeTile stayed "Guest NNNN" for the whole call.
       if (isMe && t.label) {
-        const want = myName() + ' (you)';
+        const want = myName() + ' ' + uiText('whoYou', '(you)');
         if (t.label.textContent !== want) {
           t.label.textContent = want;
           // Inline on purpose: meet-own-name.js runs updateTile alone, and the
@@ -10144,8 +10182,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       ['rdPrayer', 'Prayer'],
       ['rdScripture', 'Scripture'],
       ['rdMessage', 'Message'],
+      ['rdSong', 'Song'],
       ['rdClosing', 'Closing'],
     ];
+    // Which song a step is (0 for the first Song, 1 for the second), or -1.
+    function songSlotOf(i) {
+      if (!RUNDOWN_STEPS[i] || RUNDOWN_STEPS[i][0] !== 'rdSong') return -1;
+      let n = 0;
+      for (let j = 0; j < i; j++) if (RUNDOWN_STEPS[j][0] === 'rdSong') n++;
+      return n;
+    }
+    // The song on now, or the next one coming (after the end, the first).
+    function songSlotAhead() {
+      const at = rundownAt();
+      for (let i = at; i < RUNDOWN_STEPS.length; i++) if (songSlotOf(i) >= 0) return songSlotOf(i);
+      return 0;
+    }
     function rundownStoreKey() { return 'gifos_rundown_' + (params.get('v') || ''); }
     function rundownAt() {
       let n = 0;
@@ -10194,7 +10246,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
           const name = document.createElement('span');
           name.className = 'rdname';
-          name.textContent = uiText(step[0], step[1]);
+          const slot = songSlotOf(i);
+          name.textContent = uiText(step[0], step[1]) + (slot >= 0 ? ' ' + (slot + 1) : '');
           li.appendChild(name);
           list.appendChild(li);
         });
@@ -10213,7 +10266,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     if (rundownNext) rundownNext.onclick = () => {
       const at = rundownAt();
       const next = at >= RUNDOWN_STEPS.length ? 0 : at + 1;
-      if (next === 0) setLyricAt(0);
+      if (next === 0 || songSlotOf(next) >= 0) setLyricAt(0);
       setRundownAt(next);
       paintRundown();
     };
@@ -10221,23 +10274,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Only the Program / Preview labels follow the device language.
     // The index lives in this tab. It is not sent to the room as data; the
     // current line is painted onto the outgoing camera (paintLyricOnAir).
-    const HYMN_LINES = [
+    // Song 2 (after the Message) has its own built-in hymn.
+    const HYMN_LINES = [[
       'Amazing grace, how sweet the sound',
       'That saved a wretch like me',
       'I once was lost, but now am found',
       'Was blind, but now I see.',
-    ];
+    ], [
+      'Praise God, from whom all blessings flow;',
+      'Praise Him, all creatures here below;',
+      'Praise Him above, ye heavenly host;',
+      'Praise Father, Son, and Holy Ghost.',
+    ]];
     // The booth's own song replaces the hymn: one line per line, blank lines
-    // dropped. Kept per room on this computer, so it can be typed before the
-    // service. Empty goes back to the hymn.
-    function songStoreKey() { return 'gifos_song_' + (params.get('v') || ''); }
+    // dropped. Kept per room and per song on this computer, so it can be typed
+    // before the service. Empty goes back to the hymn.
+    function songStoreKey(slot) { return (slot ? 'gifos_song' + (slot + 1) + '_' : 'gifos_song_') + (params.get('v') || ''); }
     function songLinesFrom(text) {
       return String(text || '').split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').trim().slice(0, 120)).filter(Boolean).slice(0, 200);
     }
-    function songLines() {
+    function songLines(slot) {
+      if (slot === undefined) slot = songSlotAhead();
       let own = [];
-      try { own = songLinesFrom(localStorage.getItem(songStoreKey())); } catch (e) {}
-      return own.length ? own : HYMN_LINES;
+      try { own = songLinesFrom(localStorage.getItem(songStoreKey(slot))); } catch (e) {}
+      return own.length ? own : (HYMN_LINES[slot] || HYMN_LINES[0]);
     }
     function lyricStoreKey() { return 'gifos_lyric_' + (params.get('v') || ''); }
     function lyricAt() {
@@ -10253,7 +10313,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function lyricSongOn() {
       const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored()));
-      return !!(host && rundownAt() === 1);
+      return !!(host && songSlotOf(rundownAt()) >= 0);
     }
     // The line the room sees on the booth's camera, or '' outside Song.
     function lyricOnAir() {
@@ -10294,11 +10354,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setLyricAt(at >= songLines().length - 1 ? 0 : at + 1);
       paintLyrics();
     };
+    // The song the open Song words box edits, picked when it opens.
+    let songEditSlot = 0;
     function paintSongWords() {
       const b = document.getElementById('song-edit');
       if (b) b.textContent = uiText('songWords', 'Song words');
       const t = document.getElementById('songedit-title');
-      if (t) t.textContent = uiText('songWords', 'Song words');
+      if (t) t.textContent = uiText('songWords', 'Song words') + ' · ' + uiText('rdSong', 'Song') + ' ' + (songEditSlot + 1);
       const n = document.getElementById('songedit-note');
       if (n) n.textContent = uiText('songNote', 'One line per line. Song reads them in order.');
       const sv = document.getElementById('song-save');
@@ -10312,9 +10374,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       el.classList.toggle('open', open);
       document.body.classList.toggle('songedit', open);
       if (open) {
+        songEditSlot = songSlotAhead();
         paintSongWords();
         const t = document.getElementById('song-text');
-        if (t) { t.value = songLines().join('\n'); try { t.focus(); } catch (e) {} }
+        if (t) { t.value = songLines(songEditSlot).join('\n'); try { t.focus(); } catch (e) {} }
       } else {
         const b = document.getElementById('song-edit');
         if (b) { try { b.focus(); } catch (e) {} }
@@ -10327,10 +10390,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const t = document.getElementById('song-text');
       const lines = songLinesFrom(t ? t.value : '');
       try {
-        if (lines.length) localStorage.setItem(songStoreKey(), lines.join('\n'));
-        else localStorage.removeItem(songStoreKey());
+        if (lines.length) localStorage.setItem(songStoreKey(songEditSlot), lines.join('\n'));
+        else localStorage.removeItem(songStoreKey(songEditSlot));
       } catch (e) {}
-      setLyricAt(0);
+      // Typing the next song must not move the song being sung now.
+      if (songSlotOf(rundownAt()) === songEditSlot || songSlotOf(rundownAt()) < 0) setLyricAt(0);
       openSongWords(false);
       paintLyrics();
     };
@@ -12330,6 +12394,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       clearTimeout(p.hiLate);
       try { if (p.doorRetry) clearTimeout(p.doorRetry); } catch (e) {}
       p.doorRetry = 0;
+      if (p.bootOut) doorsShut.set(peerId, Date.now()); // a door I knocked through, closed by me
       if (p.boot && p.neverUp === true && !linkTo(peerId)) doorOffGrid.add(p.id); // a seatless door stays off the grid; a neighbour can still be relayed
       try { p.pc.close(); } catch (e) {}
       releaseAudio(p.video);
@@ -12756,6 +12821,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // ...unless I am the one knocking (a greeter dialled me back): then it
           // is my door, closed by me once I am seated, like the ones I dial
           const ms = meshSeat(); if (!(ms && ms.hasCoord && ms.state === 3)) p.bootOut = true;
+          // ...or a greeter answering a knock of mine late: its dial-back can
+          // land just after I sat down and closed that door, and taken for a
+          // knock at me it stayed open for good (seven on one front seat at a
+          // large room size). It is still my door, and the sweeper closes it again.
+          else if (Date.now() - (doorsShut.get(from) || 0) < DOOR_SHUT_MS) p.bootOut = true;
         }
         // A fresh offer onto a LONG-DEAD local pc negotiates into a corpse:
         // the tunnel-return stall (behavior battery 06c, 2026-07-26) — the
@@ -13082,6 +13152,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // bootDial(pid): the wire's dial hook — a knocker has an entry ask for a
     // greeter and no channel to it. Open one: the bootstrap over the relay.
+    // Doors I knocked through and have closed, by greeter, for DOOR_SHUT_MS:
+    // a greeter's dial-back that lands after is still mine to close (onSignal).
+    const doorsShut = new Map(), DOOR_SHUT_MS = 30000;
     const DOOR_REDIAL_CAP = 40000; // the longest wait between redials of a door that never connected (bootDial)
     function clearDoorRetry(p) {
       if (p && p.doorRetry) { clearTimeout(p.doorRetry); p.doorRetry = 0; }
@@ -15609,8 +15682,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const seg = (e, i) => '<span class="hq" data-id="' + esc(e.i) + '">'
           + (i === 0 ? '<b>' + esc(e.n) + '</b>' : esc(e.n)) + '</span>';
         // The full stage is a fact about the queue, said once after the count.
+        // "Hands up", not "waiting": the waiting room is people not yet in.
         html = !q.length ? ''
-          : '✋ ' + tot + ' waiting' + (stageFull ? ' (stage full)' : '') + ': ' + q.slice(0, 8).map(seg).join(', ') + (tot > shown ? ', +' + (tot - shown) : '');
+          : '✋ ' + tot + ' ' + (tot === 1 ? uiText('handUpOne', 'hand up') : uiText('handUpMany', 'hands up'))
+            + (stageFull ? ' (' + uiText('stageFull', 'stage full') + ')' : '') + ': ' + q.slice(0, 8).map(seg).join(', ') + (tot > shown ? ', +' + (tot - shown) : '');
       }
       if (html === handqHtml) return;
       handqHtml = html;
@@ -17110,7 +17185,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return v;
       }, () => { roomStateSettled = true; return false; });
       return ensureName().then(() => {
-          meTile = makeTile('me', myName() + ' (you)', true);
+          meTile = makeTile('me', myName() + ' ' + uiText('whoYou', '(you)'), true);
           updateTile('me');
           joinRoom();
           updateStatus();
@@ -17278,7 +17353,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const nm = (rec.name && rec.name.replace(/\.gif$/i, '')) || 'App';
         document.title = nm + ' — GifOS';
         const mount = () => {
-          showAppPane(nm, 'on this device');
+          showAppPane(nm, uiText('appWhoDevice', 'on this device'));
           setAppGif(rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes), nm);
           const inv = document.getElementById('appinvite');
           // THE deferred preflight gate (see the top of this file): a solo app
@@ -17326,7 +17401,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.body.classList.add('app-room');
       try { refreshAudioBtn(); } catch (e) {}
       return ensureName().then(() => {
-        meTile = makeTile('me', myName() + ' (you)', true);
+        meTile = makeTile('me', myName() + ' ' + uiText('whoYou', '(you)'), true);
         tileNote(meTile, 'This is an app room — no camera until you join the call (banner or the camera button).');
         updateTile('me');
         const j = ROOM.join;
@@ -28517,7 +28592,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // dark behind the top layer (see #appbar .fs-btn above). Hidden outright
     // where the browser has no fullscreen at all — gifos-fullscreen.js decides.
     if (window.GifOS && GifOS.fullscreen) {
-      GifOS.fullscreen.attach(document.getElementById('appfull'), document.documentElement, { fill: 'app-full' });
+      GifOS.fullscreen.attach(document.getElementById('appfull'), document.documentElement, {
+        fill: 'app-full', enterLabel: uiText('fullScreen', 'Full screen'), exitLabel: uiText('leaveFullScreen', 'Leave full screen') });
     }
     document.getElementById('apphelp-close').onclick = () => { document.getElementById('apphelp-modal').style.display = 'none'; };
     document.getElementById('apphelp-modal').onclick = (e) => {
@@ -28638,7 +28714,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         appInstall = installFactsOf(rec);
         name = name || (rec && rec.name && rec.name.replace(/\.gif$/i, '')) || 'App';
         appMode = 'host'; appKey = null;
-        showAppPane(name, ROOM.appPinned ? 'you host it' : '· you are hosting it for the meeting');
+        showAppPane(name, ROOM.appPinned ? uiText('appWhoPinned', 'you host it') : uiText('appWhoHost', '· you are hosting it for the meeting'));
+        // Run app lives in the More sheet; left open it is a grid of buttons
+        // over the app. Fold it without rewriting the saved preference.
+        const barEl = document.querySelector('.bar');
+        const toggle = document.getElementById('bartoggle');
+        if (barEl && toggle && !barEl.classList.contains('collapsed')) {
+          barEl.classList.add('collapsed');
+          toggle.setAttribute('aria-expanded', 'false');
+          toggle.setAttribute('aria-label', uiText('more', 'More'));
+          toggle.title = uiText('more', 'More');
+          const word = toggle.querySelector('.dockword');
+          if (word) word.textContent = uiText('more', 'More');
+        }
         if (rec && rec.bytes) setAppGif(rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes), name);
         const ctl = await GifOS.runtime.boot(appMountEl, fileId, null);
         appHostCtl = ctl; // Save/snapshot chrome (one-runtime)
@@ -28695,7 +28783,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function mountClientApp(app) {
       appEv('client-mount', { s: String(app.s).slice(0, 8), ts: app.ts || 0, by: app.byName || null });
       appMode = 'client'; appKey = app.s; appInstall = null;
-      showAppPane(app.name, '· shared with the meeting' + (app.byName ? ' by ' + app.byName : ''));
+      showAppPane(app.name, app.byName ? uiText('appWhoSharedBy', '· shared with the meeting by ') + app.byName : uiText('appWhoShared', '· shared with the meeting'));
       try {
         // §11: when the host drives the mesh Stage data lane (app.mesh) and the
         // runtime has the client adapter, render the app LOCALLY from the data
@@ -28999,10 +29087,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (ROOM.appPinned) { stopB.style.display = 'none'; hideB.style.display = 'none'; }
       const leadB = document.getElementById('applead');
       leadB.style.display = (isMine && appLeadable) ? '' : 'none';
-      leadB.textContent = appLeadOn ? '👑 Leading' : 'Communal';
+      leadB.textContent = appLeadOn ? uiText('barLeading', '👑 Leading') : uiText('barCommunal', 'Communal');
       leadB.title = appLeadOn
-        ? 'You lead this app — only your page-turns move the room. Tap for communal control.'
-        : 'Communal — anyone here can drive the shared app\u2019s controls. Tap to lead.';
+        ? uiText('barLeadingTip', 'You lead this app — only your page-turns move the room. Tap for communal control.')
+        : uiText('barCommunalTip', 'Communal — anyone here can drive the shared app\u2019s controls. Tap to lead.');
     }
     document.getElementById('appbtn').onclick = () => {
       const want = findSharedApp();
@@ -29031,8 +29119,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       appLeadOn = !appLeadOn;
       appLeadSet(appLeadOn);
       updateAppButtons(findSharedApp());
-      setStatus(appLeadOn ? '🧩 You lead the app — only your changes to its shared controls stick.'
-        : '🧩 Communal control — anyone here can drive the shared app.');
+      setStatus(appLeadOn ? uiText('barLeadingStatus', '🧩 You lead the app — only your changes to its shared controls stick.')
+        : uiText('barCommunalStatus', '🧩 Communal control — anyone here can drive the shared app.'));
     };
     document.getElementById('app-cancel').onclick = () => { document.getElementById('app-modal').style.display = 'none'; };
     // ---- run a GIF app that isn't on this computer (file or link) ----
@@ -30766,6 +30854,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return { text: b.textContent, title: b.title, font: parseFloat(getComputedStyle(b).fontSize) };
         };
         return { save: read('appsave'), steal: read('appsteal'), hide: read('apphide'), talk: read('appaudio') };
+      },
+      // The sharer's own app bar: Invite, the lead switch (tapped once when
+      // tap is set), and Full screen, as the sharer reads them.
+      appWordsForTest: (tap) => {
+        document.body.classList.add('has-app');
+        appKey = 'qa-words'; myStatus.app = { s: 'qa-words' };
+        showAppPane('Notes', '');
+        appLeadable = true; appLeadOn = false; appLeadSet = () => {};
+        updateAppButtons(myStatus.app);
+        document.getElementById('appinvite').style.display = '';
+        if (tap) document.getElementById('applead').click();
+        const read = (id) => {
+          const b = document.getElementById(id);
+          return { text: b.textContent.trim(), title: b.title, label: b.getAttribute('aria-label') || '', font: parseFloat(getComputedStyle(b).fontSize), display: getComputedStyle(b).display };
+        };
+        return { invite: read('appinvite'), lead: read('applead'), full: read('appfull'), status: document.getElementById('status').textContent };
       },
       stealChoicesForTest: () => {
         appClientCtl = appClientCtl || { stealToDesktop: () => new Promise(() => {}) };

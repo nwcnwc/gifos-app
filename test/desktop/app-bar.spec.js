@@ -76,3 +76,56 @@ test.describe('Spanish app bar', () => {
     expect(choices.map((c) => c.text)).toEqual(['+ datos', 'como entré', 'solo la app']);
   });
 });
+
+// Invite, the lead switch, and Full screen on a sharer's app bar were the last
+// English words on it. The before/after shot shows the bar as the sharer sees it.
+async function barWords(page, tap) {
+  return page.evaluate((t) => window.__gifosVideo.appWordsForTest(t), tap);
+}
+async function barShot(page, name) {
+  await page.locator('#appbar').screenshot({ path: 'test/desktop/shots/' + name });
+}
+
+test('an English app bar still says Invite, Communal, and Full screen', async ({ page }) => {
+  await boot(page, 'qawordsen');
+  const bar = await barWords(page, false);
+  expect(bar.invite.text).toBe('Invite');
+  expect(bar.lead.text).toBe('Communal');
+  expect(bar.full.label).toBe('Full screen');
+  const led = await barWords(page, true);
+  expect(led.lead.text).toBe('👑 Leading');
+  expect(led.status).toContain('You lead the app');
+});
+
+for (const [locale, lang, want] of [
+  ['de-DE', 'German', { invite: 'Einladen', inviteTip: 'Link', communal: 'Gemeinsam', commTip: 'jeder', leading: '👑 Sie leiten', leadTip: 'Sie leiten', full: 'Vollbild', status: 'Sie leiten die App' }],
+  ['es-MX', 'Spanish', { invite: 'Invitar', inviteTip: 'enlace', communal: 'Entre todos', commTip: 'cualquiera', leading: '👑 Diriges', leadTip: 'Diriges', full: 'Pantalla completa', status: 'Diriges la app' }],
+]) {
+  test.describe(lang + ' app bar words', () => {
+    test.use({ locale });
+    test('Invite, the lead switch, and Full screen follow ' + lang, async ({ page }) => {
+      await boot(page, 'qawords' + locale.slice(0, 2));
+      const bar = await barWords(page, false);
+      if (locale === 'de-DE') await barShot(page, 'app-words-de-1280.png');
+      expect(bar.invite.text).toBe(want.invite);
+      expect(bar.invite.title).toContain(want.inviteTip);
+      expect(bar.lead.display).not.toBe('none');
+      expect(bar.lead.text).toBe(want.communal);
+      expect(bar.lead.title).toContain(want.commTip);
+      expect(bar.full.label).toBe(want.full);
+      expect(bar.full.title).toBe(want.full);
+      for (const key of ['invite', 'lead']) expect(bar[key].font).toBeGreaterThanOrEqual(16);
+      const led = await barWords(page, true);
+      expect(led.lead.text).toBe(want.leading);
+      expect(led.lead.title).toContain(want.leadTip);
+      expect(led.status).toContain(want.status);
+      expect(led.status).not.toContain('You lead');
+      const box = await page.evaluate(() => {
+        const bar = document.getElementById('appbar');
+        const buttons = [...bar.querySelectorAll('button')].filter((b) => getComputedStyle(b).display !== 'none');
+        return { right: Math.max(...buttons.map((b) => b.getBoundingClientRect().right)), iw: window.innerWidth };
+      });
+      expect(box.right).toBeLessThanOrEqual(box.iw + 1);
+    });
+  });
+}
