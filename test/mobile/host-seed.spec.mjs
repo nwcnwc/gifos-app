@@ -24,7 +24,7 @@ test('a late arrival watches the copy the host kept', async ({ browser }, info) 
     await h.locator('#leavebtn').click();
     await h.locator('#leave-go').click();
     await expect(h.locator('#rec-replay')).toBeVisible({ timeout: 15000 });
-    await expect(h.locator('#rec-replay-seed')).toHaveText(/open the link while this stays open can watch/);
+    await expect(h.locator('#rec-replay-seed')).toHaveText(/Anyone who opens the link while this stays open can watch it\./);
     const kept = await h.evaluate(async () => (await (await fetch(document.getElementById('rec-replay-vid').src)).blob()).size);
     expect(kept).toBeGreaterThan(1000);
 
