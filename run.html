@@ -2876,6 +2876,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         barLeadingStatus: '🧩 Sie leiten die App — nur Ihre Änderungen an den gemeinsamen Reglern bleiben.',
         barCommunalStatus: '🧩 Gemeinsame Steuerung — jeder hier kann die geteilte App steuern.',
         fullScreen: 'Vollbild', leaveFullScreen: 'Vollbild beenden',
+        appWhoHost: '· Sie stellen sie der Besprechung bereit', appWhoPinned: 'Sie stellen sie bereit',
+        appWhoShared: '· mit der Besprechung geteilt', appWhoSharedBy: '· mit der Besprechung geteilt von ', appWhoDevice: 'auf diesem Gerät',
         tileControls: 'Steuerung für diese Person.', handChip: 'Hand gehoben', handUpOne: 'Hand oben', handUpMany: 'Hände oben', stageFull: 'Bühne voll', leavingChip: 'geht…', recChip: 'nimmt dieses Meeting auf', scribeChip: 'schreibt alle mit', stopShareTip: 'Ihre Bildschirmfreigabe beenden',
         stealData: '+ Daten', stealDataTip: 'Die App und alles, was jetzt darin ist',
         stealJoined: 'wie ich kam', stealJoinedTip: 'Die App und der Raum, wie er war, als Sie kamen',
@@ -3168,6 +3170,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         barLeadingStatus: '🧩 Diriges la app — solo tus cambios en los controles compartidos se quedan.',
         barCommunalStatus: '🧩 Control entre todos — cualquiera aquí puede manejar la app compartida.',
         fullScreen: 'Pantalla completa', leaveFullScreen: 'Salir de pantalla completa',
+        appWhoHost: '· tú la alojas para la reunión', appWhoPinned: 'tú la alojas',
+        appWhoShared: '· compartida con la reunión', appWhoSharedBy: '· compartida con la reunión por ', appWhoDevice: 'en este dispositivo',
         tileControls: 'Controles para esta persona.', handChip: 'mano levantada', handUpOne: 'mano levantada', handUpMany: 'manos levantadas', stageFull: 'escenario lleno', leavingChip: 'saliendo…', recChip: 'grabando esta reunión', scribeChip: 'anotando a todos', stopShareTip: 'Dejar de compartir tu pantalla',
         stealData: '+ datos', stealDataTip: 'La app y todo lo que hay ahora',
         stealJoined: 'como entré', stealJoinedTip: 'La app y la sala como estaban cuando entraste',
@@ -14046,7 +14050,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const nm = (rec.name && rec.name.replace(/\.gif$/i, '')) || 'App';
         document.title = nm + ' — GifOS';
         const mount = () => {
-          showAppPane(nm, 'on this device');
+          showAppPane(nm, uiText('appWhoDevice', 'on this device'));
           setAppGif(rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes), nm);
           const inv = document.getElementById('appinvite');
           // THE deferred preflight gate (see the top of this file): a solo app
@@ -24163,7 +24167,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         appInstall = installFactsOf(rec);
         name = name || (rec && rec.name && rec.name.replace(/\.gif$/i, '')) || 'App';
         appMode = 'host'; appKey = null;
-        showAppPane(name, ROOM.appPinned ? 'you host it' : '· you are hosting it for the meeting');
+        showAppPane(name, ROOM.appPinned ? uiText('appWhoPinned', 'you host it') : uiText('appWhoHost', '· you are hosting it for the meeting'));
         // Run app lives in the More sheet; left open it is a grid of buttons
         // over the app. Fold it without rewriting the saved preference.
         const barEl = document.querySelector('.bar');
@@ -24232,7 +24236,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function mountClientApp(app) {
       appEv('client-mount', { s: String(app.s).slice(0, 8), ts: app.ts || 0, by: app.byName || null });
       appMode = 'client'; appKey = app.s; appInstall = null;
-      showAppPane(app.name, '· shared with the meeting' + (app.byName ? ' by ' + app.byName : ''));
+      showAppPane(app.name, app.byName ? uiText('appWhoSharedBy', '· shared with the meeting by ') + app.byName : uiText('appWhoShared', '· shared with the meeting'));
       try {
         // §11: when the host drives the mesh Stage data lane (app.mesh) and the
         // runtime has the client adapter, render the app LOCALLY from the data

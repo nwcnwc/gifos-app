@@ -219,6 +219,8 @@ for (const [locale, lang, want] of [
       });
       await guest.goto('/run.html#v=' + room + '&debug=on', { waitUntil: 'domcontentloaded' });
       await guest.waitForFunction(() => document.body.classList.contains('has-app'), null, { timeout: 30000 });
+      await expect(guest.locator('#appname')).toBeVisible();
+      await guest.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
       const seen = await guest.evaluate(() => document.getElementById('appwho').textContent);
       if (locale === 'de-DE') await guest.locator('#appbar').screenshot({ path: 'test/desktop/shots/app-who-guest-de-1280.png' });
       await ctx.close();
