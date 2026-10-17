@@ -6256,8 +6256,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // Nobody reachable to anchor on: the bridges link to each other,
           // each to a lower one, and the lowest (the root) waits to be
           // dialled, so S blocked networks make S-1 links and no loop.
+          // A page whose verdict never reached me (no pulse yet: a door
+          // dialled over the relay, before any mesh link) is unknown, not
+          // blocked: with no chain to dial, it is the candidate.
           let pool = cands;
-          if (!cands.some((c) => c.reachable === true && c.stage === 'turn')) pool = cands.filter((c) => net.bridges.has(c.id) && c.id !== net.bridge && (spill || String(c.id) < String(myId)));
+          if (!cands.some((c) => c.reachable === true && c.stage === 'turn')) {
+            pool = cands.filter((c) => net.bridges.has(c.id) && c.id !== net.bridge && (spill || String(c.id) < String(myId)));
+            if (!pool.length) pool = cands.filter((c) => c.reachable == null);
+          }
           const pick = MT.chooseAnchor(pool, null, now);
           if (pick != null) setTurnAnchor(pick, now);
         }
