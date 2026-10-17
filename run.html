@@ -6774,9 +6774,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // hint are the host's business, and the room bar counts who is watching.
       const bcWatcher = !!(BROADCAST && !(typeof bcHostStored === 'function' && bcHostStored())
         && !document.body.classList.contains('amadmin') && !(typeof myStatus !== 'undefined' && myStatus.stg));
+      // A LIVE SERVICE HOST is told she is live; the room bar counts who is
+      // watching, and the password she typed to go live is the host one, so
+      // the hint names the VIEWER password (without it the broadcast stays
+      // blurred, see blurLevelFor).
+      const bcLive = !!(BROADCAST && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
       let extra = '';
       if (n > 1 && !bcWatcher) {
-        if (!roomPw) extra = ' · a password unlocks clear video';
+        if (!roomPw) extra = bcLive ? ' · blurred until you set a viewer password' : ' · a password unlocks clear video';
         else if (hasAdminRoom() && admins.length === 0) extra = ' · no admin here — everyone stays blurred';
         else if (!adminPresent() && !allConsent()) {
           // Past one section the ready count is the fold's: everyone minus the
@@ -6817,6 +6822,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         : reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
         : (n === 1 ? (atDoor ? 'Getting you back into the ' + (BROADCAST ? 'service' : 'small group') + ' — waiting for the others to answer…' : (BROADCAST ? ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin') ? 'You are live. Send the link.' : ((typeof myStatus !== 'undefined' && myStatus.stg) ? 'You are on stage.' : 'You are watching this service.')) : 'Just you. Send the invite.') + reachTriedSentence())
         : bcWatcher ? 'You are watching this service.' + reachTriedSentence()
+        : bcLive ? 'You are live · ' + q.label + reachTriedSentence()
         : displayCount() + ' in this ' + (BROADCAST ? 'service' : 'small group') + ' · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
