@@ -69,8 +69,8 @@ async function camOn(page) {
 }
 
 // Wait until both screens agree with the expectation, then return both reads.
-async function settle(j, a, want) {
-  const ok = (r) => r && r.looksSoft === want;
+async function settle(j, a, want, camOff) {
+  const ok = (r) => r && r.looksSoft === want && r.camOff === camOff;
   const t0 = Date.now();
   let rj, ra;
   while (Date.now() - t0 < 30000) {
@@ -100,7 +100,7 @@ test.describe('self-view blur matches remote view', () => {
       await camOn(A.page);
       await seeEachOther(J.page, A.page);
 
-      const off = await settle(J.page, A.page, true);
+      const off = await settle(J.page, A.page, true, true);
       await pair(J.page, A.page, 'soft-camoff');
       expect(off.self.status).toMatch(/faces stay soft/);
       expect(off.self.camOff).toBe(true);
@@ -113,7 +113,7 @@ test.describe('self-view blur matches remote view', () => {
       expect(off.self.avatarFilter).toBe(off.remote.avatarFilter);
 
       await camOn(J.page);
-      const on = await settle(J.page, A.page, true);
+      const on = await settle(J.page, A.page, true, false);
       await pair(J.page, A.page, 'soft-camon');
       expect(on.self.camOff).toBe(false);
       expect(on.remote.camOff).toBe(false);
@@ -164,7 +164,7 @@ test.describe('self-view blur matches remote view', () => {
         return t && !/blur\(/.test(getComputedStyle(t.querySelector('video')).filter);
       }, null, { timeout: 60000 });
 
-      const off = await settle(J.page, A.page, false);
+      const off = await settle(J.page, A.page, false, true);
       await pair(J.page, A.page, 'clear-camoff');
       expect(off.self.status).not.toMatch(/soft|blurred/);
       expect(off.self.camOff).toBe(true);
@@ -173,7 +173,7 @@ test.describe('self-view blur matches remote view', () => {
       expect(off.self.looksSoft).toBe(false);
 
       await camOn(J.page);
-      const on = await settle(J.page, A.page, false);
+      const on = await settle(J.page, A.page, false, false);
       await pair(J.page, A.page, 'clear-camon');
       expect(on.self.camOff).toBe(false);
       expect(on.remote.looksSoft).toBe(false);
