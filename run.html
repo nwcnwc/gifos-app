@@ -10596,10 +10596,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // One WYSIWYG source means the preview never becomes a second <video>
       // element fighting the camera track — the mobile-browser failure that
       // froze/blanked either the preview or the outbound when they diverged.
-      if (meTile && vt) {
+      // 0.9.23b: my shared screen is on the Stage; my Row tile keeps my face.
+      let selfVt = vt;
+      if (myStatus.scr && !myStatus.camOff && localStream) {
+        const camT = localStream.getVideoTracks()[0];
+        if (camT && camT.readyState === 'live' && camT !== vt) selfVt = camT;
+      }
+      if (meTile && selfVt) {
         const cur = meTile.video.srcObject;
-        if (!cur || cur.getVideoTracks()[0] !== vt) {
-          meTile.video.srcObject = new MediaStream([vt]);
+        if (!cur || cur.getVideoTracks()[0] !== selfVt) {
+          meTile.video.srcObject = new MediaStream([selfVt]);
           const pr = meTile.video.play(); if (pr && pr.catch) pr.catch(() => {});
         }
       }
@@ -29161,7 +29167,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (bar.matches(':hover') || bar.querySelector(':focus-visible')) return true;
         // Keyboard focus on a tile or its buttons keeps them (calm hides tile buttons too).
         if (document.querySelector('#feed :focus-visible, #feed .tile.menu')) return true;
-        if (bar.querySelector('[aria-expanded="true"], .on:not(#ccdock)')) return true;
+        if (bar.querySelector('[aria-expanded="true"], .on:not(#ccdock):not(#sharebtn)')) return true;
         const chat = document.getElementById('chatpanel');
         if (chat && chat.classList.contains('open')) return true;
         for (const d of document.querySelectorAll('[role="dialog"][aria-modal="true"]')) {
