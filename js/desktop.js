@@ -2296,8 +2296,7 @@
     const okBtn = document.createElement('button'); okBtn.textContent = 'Rename';
     const cancel = document.createElement('button'); cancel.textContent = 'Cancel'; cancel.className = 'ghost';
     row.appendChild(okBtn); row.appendChild(cancel);
-    box.appendChild(row); bg.appendChild(box); document.body.appendChild(bg);
-    input.focus(); input.select();
+    box.appendChild(row); bg.appendChild(box);
     const commit = async () => {
       it.name = input.value.trim() || it.name;
       await saveItem(it);                      // stays put; only its name changed
@@ -2315,10 +2314,18 @@
       }
       render();
     };
-    const done = (save) => { bg.remove(); if (save) commit(); else render(); };
+    const done = (save) => {
+      if (bg._done) return;
+      bg._done = true;
+      if (bg._dlg) bg._dlg.close(); else bg.remove();
+      if (save) commit(); else render();
+    };
     okBtn.onclick = () => done(true);
     cancel.onclick = () => done(false);
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(true); if (e.key === 'Escape') done(false); });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); done(true); } });
+    const dlg = armDialog(bg, box, { label: 'Rename', initial: input, onEscape: () => done(false) });
+    bg._dlg = dlg;
+    input.select();
     bg.addEventListener('click', (e) => { if (e.target === bg) done(false); });
   }
 
@@ -2393,12 +2400,105 @@
   }
 
   // ---------- modals ----------
+  // One keyboard path for every sheet: Tab stays inside the top dialog, Escape
+  // runs that dialog's dismiss, and the page behind is inert while one is open.
+  function dialogFocusables(root) {
+    const sel = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])';
+    return [...root.querySelectorAll(sel)].filter((el) => {
+      if (el.tabIndex < 0) return false;
+      if (el.closest('[hidden]')) return false;
+      const st = getComputedStyle(el);
+      if (st.display === 'none' || st.visibility === 'hidden') return false;
+      return true;
+    });
+  }
+  function topModalBg() {
+    const all = [...document.querySelectorAll('.modal-bg')].filter((m) => m.style.display !== 'none' && !m.hidden);
+    return all.length ? all[all.length - 1] : null;
+  }
+  function syncDialogInert() {
+    const open = [...document.querySelectorAll('.modal-bg')].filter((m) => m.style.display !== 'none' && !m.hidden);
+    document.querySelectorAll('#desktop, .menubar, .arrange-bar').forEach((el) => {
+      if (open.length) el.setAttribute('inert', ''); else el.removeAttribute('inert');
+    });
+    document.querySelectorAll('.modal-bg .modal').forEach((box) => box.removeAttribute('inert'));
+    if (open.length > 1) open.slice(0, -1).forEach((bg) => {
+      const box = bg.querySelector('.modal');
+      if (box) box.setAttribute('inert', '');
+    });
+  }
+  let dialogKeyBound = false;
+  function ensureDialogKeys() {
+    if (dialogKeyBound) return;
+    dialogKeyBound = true;
+    document.addEventListener('keydown', (e) => {
+      const bg = topModalBg();
+      if (!bg) return;
+      const box = bg.querySelector('.modal');
+      if (!box) return;
+      if (e.key === 'Escape') {
+        if (!bg._onEscape) return;
+        e.preventDefault();
+        e.stopPropagation();
+        bg._onEscape();
+      } else if (e.key === 'Tab') {
+        const list = dialogFocusables(box);
+        if (!list.length) { e.preventDefault(); return; }
+        const i = list.indexOf(document.activeElement);
+        const next = e.shiftKey
+          ? (i <= 0 ? list[list.length - 1] : list[i - 1])
+          : (i < 0 || i === list.length - 1 ? list[0] : list[i + 1]);
+        e.preventDefault();
+        next.focus();
+      }
+    }, true);
+  }
+  function armDialog(bg, box, opts) {
+    opts = opts || {};
+    ensureDialogKeys();
+    box.setAttribute('role', opts.role || 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    if (opts.label) box.setAttribute('aria-label', opts.label);
+    else {
+      const h = box.querySelector('h3');
+      if (h) {
+        if (!h.id) h.id = 'dlg-h-' + Math.random().toString(36).slice(2, 8);
+        box.setAttribute('aria-labelledby', h.id);
+      }
+    }
+    const opener = opts.returnFocus || (document.activeElement && document.activeElement !== document.body ? document.activeElement : null);
+    const close = () => {
+      if (bg._closed) return;
+      bg._closed = true;
+      bg.remove();
+      syncDialogInert();
+      if (opener && opener.focus && document.contains(opener)) { try { opener.focus(); } catch (err) {} }
+      if (opts.onClose) opts.onClose();
+    };
+    bg._onEscape = opts.onEscape === false ? null : () => { if (opts.onEscape) opts.onEscape(); else close(); };
+    bg._close = close;
+    document.body.appendChild(bg);
+    syncDialogInert();
+    setTimeout(() => {
+      let el = null;
+      if (opts.initial && opts.initial.focus) el = opts.initial;
+      else if (typeof opts.initial === 'string') el = box.querySelector(opts.initial);
+      if (!el) el = dialogFocusables(box)[0];
+      if (el && el.focus) { try { el.focus(); } catch (err) {} }
+    }, 0);
+    return { close };
+  }
   function showModal(title, msgHtml) {
     const bg = document.createElement('div'); bg.className = 'modal-bg';
-    bg.innerHTML = '<div class="modal"><h3>' + escapeHtml(title) + '</h3><p>' + msgHtml + '</p><button>OK</button></div>';
-    bg.querySelector('button').onclick = () => bg.remove();
-    bg.addEventListener('click', (e) => { if (e.target === bg) bg.remove(); });
-    document.body.appendChild(bg);
+    const box = document.createElement('div'); box.className = 'modal';
+    box.innerHTML = '<h3>' + escapeHtml(title) + '</h3><p>' + msgHtml + '</p>';
+    const ok = document.createElement('button'); ok.type = 'button'; ok.textContent = 'OK';
+    box.appendChild(ok);
+    bg.appendChild(box);
+    const dlg = armDialog(bg, box);
+    const shut = () => dlg.close();
+    ok.onclick = shut;
+    bg.addEventListener('click', (e) => { if (e.target === bg) shut(); });
   }
   // A modal that REPORTS while something long runs, and closes itself when it
   // is done. No OK button and no click-away: there is nothing yet to accept,
@@ -2410,42 +2510,55 @@
     bg.innerHTML = '<div class="modal"><h3>' + escapeHtml(title) + '</h3><p class="busy-say">' + (msgHtml || '') +
       '</p><div class="busy-bar busy"><i></i></div></div>';
     const line = bg.querySelector('.busy-say'), bar = bg.querySelector('.busy-bar');
-    document.body.appendChild(bg);
+    const box = bg.querySelector('.modal');
+    armDialog(bg, box, { onEscape: false, label: title });
     return {
       say(html, frac) {
         line.innerHTML = html;
         if (frac == null) { bar.classList.add('busy'); bar.firstChild.style.width = '100%'; }
         else { bar.classList.remove('busy'); bar.firstChild.style.width = Math.max(0, Math.min(100, Math.round(frac * 100))) + '%'; }
       },
-      close() { bg.remove(); },
+      close() { bg.remove(); syncDialogInert(); },
       // Step aside for a question (a confirm raised mid-download) and come
       // back: the busy modal is the only sign the tab is working, so it is
       // hidden, not destroyed, and show() restores it with its text intact.
-      hide() { bg.style.display = 'none'; },
-      show() { bg.style.display = ''; },
+      hide() { bg.style.display = 'none'; syncDialogInert(); },
+      show() { bg.style.display = ''; syncDialogInert(); },
     };
   }
 
-  // Confirm with explicit action buttons. Cancel is always present.
-  function showConfirm(title, msgHtml, buttons, onCancel) {
+  // Confirm with explicit action buttons. Cancel is always present and takes
+  // the first focus, so a dangerous action is never the landing key.
+  function showConfirm(title, msgHtml, buttons, onCancel, opts) {
+    opts = opts || {};
     const bg = document.createElement('div'); bg.className = 'modal-bg';
     const box = document.createElement('div'); box.className = 'modal';
     box.innerHTML = '<h3>' + escapeHtml(title) + '</h3><p>' + msgHtml + '</p>';
     const row = document.createElement('div'); row.className = 'modal-actions';
+    const api = {};
     for (const btn of buttons) {
       const b = document.createElement('button');
+      b.type = 'button';
       b.textContent = btn.label;
       if (btn.danger) b.className = 'danger';
-      b.onclick = () => { bg.remove(); btn.fn(); };
+      b.onclick = () => { api.close(); btn.fn(); };
       row.appendChild(b);
     }
     const cancel = document.createElement('button');
+    cancel.type = 'button';
     cancel.textContent = 'Cancel'; cancel.className = 'ghost';
-    cancel.onclick = () => { bg.remove(); if (onCancel) onCancel(); };
+    cancel.id = 'confirm-cancel';
+    cancel.onclick = () => { api.close(); if (onCancel) onCancel(); };
     row.appendChild(cancel);
     box.appendChild(row);
     bg.appendChild(box);
-    document.body.appendChild(bg);
+    const dlg = armDialog(bg, box, {
+      role: opts.alert ? 'alertdialog' : 'dialog',
+      initial: cancel,
+      onEscape: () => cancel.click(),
+    });
+    api.close = dlg.close;
+    bg.addEventListener('click', (e) => { if (e.target === bg) cancel.click(); });
   }
 
   const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -2466,20 +2579,23 @@
     inp.parentNode.insertBefore(wrap, inp);
     wrap.appendChild(inp);
     inp.style.marginBottom = '0';
-    inp.style.paddingRight = '2rem';
+    inp.style.paddingRight = '3.2rem';
     inp.style.width = '100%';
     inp.style.boxSizing = 'border-box';
+    const what = inp.getAttribute('aria-label') || inp.getAttribute('placeholder') || 'password';
     const b = document.createElement('button');
     b.type = 'button';
+    b.className = 'pw-eye';
     if (inp.id) b.id = 'pweye-' + inp.id;
-    b.title = 'Show password'; b.setAttribute('aria-label', 'Show password');
-    b.style.cssText = 'position:absolute;right:.3rem;top:50%;transform:translateY(-50%);background:none;border:none;padding:.2rem;margin:0;color:var(--muted,#8888aa);cursor:pointer;line-height:0';
+    const eyeLabel = (showing) => (showing ? 'Hide ' : 'Show ') + what;
+    b.title = eyeLabel(false); b.setAttribute('aria-label', eyeLabel(false));
+    b.style.cssText = 'position:absolute;right:0;top:50%;transform:translateY(-50%);background:none;border:none;padding:0;margin:0;color:var(--muted,#3a3a3f);cursor:pointer;line-height:0';
     b.innerHTML = PWEYE_SVG;
     b.onclick = () => {
       const show = inp.type === 'password';
       inp.type = show ? 'text' : 'password';
       b.querySelector('.slash').style.display = show ? '' : 'none';
-      b.title = show ? 'Hide password' : 'Show password';
+      b.title = eyeLabel(show);
       b.setAttribute('aria-label', b.title);
     };
     wrap.appendChild(b);
@@ -2793,18 +2909,25 @@
       // role already assigned to a provider renders its saved option
       // immediately so the select never lies while the scan runs.
       const savedApp = c.app ? '<option value="' + escapeHtml(c.app) + '" selected>📦 ' + escapeHtml(c.appName || 'Provider app') + ' — app on this device</option>' : '';
-      return '<div class="ai-row" data-ai="' + t.key + '">' +
-        '<div class="ai-head"><b>' + t.label + '</b><button class="ai-test" data-ai="' + t.key + '">Test</button>' +
-        '<span class="ai-status" data-ai="' + t.key + '"></span></div>' +
-        '<select class="ai-src" data-ai="' + t.key + '"><option value="">Your own endpoint (URL + key)</option>' + savedApp + '</select>' +
-        '<input class="ai-f" data-ai="' + t.key + '" data-f="url" placeholder="Base URL — e.g. https://api.openai.com/v1" value="' + escapeHtml(c.url || '') + '">' +
-        '<div class="ai-2"><input class="ai-f" data-ai="' + t.key + '" data-f="key" type="password" placeholder="API key" value="' + escapeHtml(c.key || '') + '">' +
-        '<input class="ai-f" data-ai="' + t.key + '" data-f="model" placeholder="Model — ' + escapeHtml(t.ph) + '" value="' + escapeHtml(c.model || '') + '"></div>' +
+      const lab = escapeHtml(t.label);
+      return '<div class="ai-row" data-ai="' + t.key + '" hidden>' +
+        '<div class="ai-head"><b>' + t.label + '</b><button type="button" class="ai-test" data-ai="' + t.key + '">Test</button>' +
+        '<span class="ai-status" data-ai="' + t.key + '" aria-live="polite"></span></div>' +
+        '<label class="set-label">Source<select class="ai-src" data-ai="' + t.key + '" aria-label="Source for ' + lab + '"><option value="">Your own address and key</option>' + savedApp + '</select></label>' +
+        '<label class="set-label">Address<input class="ai-f" data-ai="' + t.key + '" data-f="url" aria-label="Address for ' + lab + '" placeholder="https://api.openai.com/v1" value="' + escapeHtml(c.url || '') + '"></label>' +
+        '<label class="set-label">Key<input class="ai-f" data-ai="' + t.key + '" data-f="key" type="password" aria-label="API key for ' + lab + '" placeholder="API key" value="' + escapeHtml(c.key || '') + '"></label>' +
+        '<label class="set-label">Model<input class="ai-f" data-ai="' + t.key + '" data-f="model" aria-label="Model for ' + lab + '" placeholder="Model — ' + escapeHtml(t.ph) + '" value="' + escapeHtml(c.model || '') + '"></label>' +
         '</div>';
     }).join('');
-    return '<details class="adv"><summary>AI models</summary>' +
-      '<p class="add-help">Wire up your own OpenAI-compatible endpoints — or assign a <b>Provider app</b> from your Providers folder, which answers <b>on this device</b> with no key at all. Any app that asks for the <b>ai</b> ability uses whatever you pick here; with an endpoint it <b>never sees your keys</b> (they stay in this browser and aren’t included in a shared computer backup; the endpoint must allow browser/CORS requests — Test tells you).</p>' +
-      rows + '</details>';
+    const picks = AI_TYPES.map((t) => {
+      const c = cfg[t.key] || {};
+      const on = !!(c.url || c.app);
+      return '<button type="button" class="set-row" data-ai-pick="' + t.key + '"><span class="set-row-t"><b>' + escapeHtml(t.label) + '</b><span class="set-status">' + (on ? 'Set up' : 'Not set up') + '</span></span><span class="chev" aria-hidden="true">›</span></button>';
+    }).join('');
+    return '<details class="adv" id="set-ai-adv" open><summary class="set-sr" tabindex="-1">AI models</summary>' +
+      '<p class="add-help">Apps that ask for AI use what you pick here. A key stays in this browser and is not included in a shared backup. A Provider app in your Providers folder can answer on this device with no key.</p>' +
+      '<div class="set-card">' + picks + '</div>' +
+      '<div id="set-ai-detail">' + rows + '</div></details>';
   }
   function aiTinyWav() {
     const sr = 8000, n = 800, len = 44 + n * 2, b = new ArrayBuffer(len), v = new DataView(b);
@@ -2888,8 +3011,10 @@
       const row = box.querySelector('.ai-row[data-ai="' + key + '"]'); if (!row) return;
       const sel = row.querySelector('.ai-src');
       const viaApp = !!(sel && sel.value);
-      row.querySelectorAll('.ai-f').forEach((i) => { i.style.display = viaApp ? 'none' : ''; });
-      const two = row.querySelector('.ai-2'); if (two) two.style.display = viaApp ? 'none' : '';
+      row.querySelectorAll('.ai-f').forEach((i) => {
+        i.style.display = viaApp ? 'none' : '';
+        const lab = i.closest('label'); if (lab) lab.hidden = !!viaApp;
+      });
       const tb = row.querySelector('.ai-test'); if (tb) tb.style.display = viaApp ? 'none' : '';
     };
     AI_TYPES.forEach((t) => {
@@ -2918,6 +3043,15 @@
         testAiEndpoint(t, readRow(key)).then((r) => { st.textContent = r.msg; st.className = 'ai-status ' + (r.ok ? 'ok' : 'bad'); });
       };
     });
+    box.querySelectorAll('[data-ai-pick]').forEach((btn) => {
+      btn.onclick = () => {
+        const key = btn.getAttribute('data-ai-pick');
+        box.querySelectorAll('#set-ai-detail .ai-row').forEach((r) => { r.hidden = r.getAttribute('data-ai') !== key; });
+        const row = box.querySelector('#set-ai-detail .ai-row[data-ai="' + key + '"]');
+        const focus = row && row.querySelector('select, input, button');
+        if (focus) focus.focus();
+      };
+    });
   }
 
   // ---- Third-party APIs: generalises the AI broker to ANY keyed API ---------
@@ -2929,11 +3063,11 @@
   const API_LS = 'gifos_api_config';
   const API_PROXY_DEFAULT = 'https://cors-proxy.gifos.app';
   const AUTH_TYPES = [
-    { v: 'bearer', label: 'Bearer  (Authorization: Bearer …)' },
-    { v: 'token', label: 'Token  (Authorization: Token …) — Deepgram' },
-    { v: 'basic', label: 'Basic  (Authorization: Basic …) — SimpleFIN' },
-    { v: 'header', label: 'Custom header  (e.g. x-api-key)' },
-    { v: 'query', label: 'Query parameter  (?apikey=…)' },
+    { v: 'bearer', label: 'Bearer token' },
+    { v: 'token', label: 'Token header' },
+    { v: 'basic', label: 'Basic' },
+    { v: 'header', label: 'Custom header' },
+    { v: 'query', label: 'Query parameter' },
   ];
   const apiCfgAll = () => { try { return JSON.parse(root.localStorage.getItem(API_LS) || '{}') || {}; } catch (e) { return {}; } };
   function apiRowHtml(idx, name, c) {
@@ -2944,25 +3078,25 @@
     const savedNote = c.url ? (c.proxy ? 'saved · via proxy' : 'saved · direct') : '';
     const customProxy = (c.proxy && c.proxy !== true && c.proxy !== 'default') ? c.proxy : '';
     return '<div class="ai-row api-row" data-row="' + idx + '">' +
-      '<div class="ai-head"><input class="api-f api-name" data-row="' + idx + '" data-f="name" placeholder="short name — e.g. deepgram" value="' + escapeHtml(name || '') + '">' +
-      '<button class="ai-test api-test" data-row="' + idx + '">Test &amp; save</button>' +
-      '<button class="api-del row-del" data-row="' + idx + '" title="Remove this API">' + DEL_ICON + '</button></div>' +
-      '<input class="api-f" data-row="' + idx + '" data-f="url" placeholder="Base URL — e.g. https://api.deepgram.com" value="' + escapeHtml(c.url || '') + '">' +
-      '<div class="ai-2"><select class="api-f api-auth" data-row="' + idx + '" data-f="authType">' + opts + '</select>' +
-      '<input class="api-f api-authname" data-row="' + idx + '" data-f="authName" placeholder="header / param name"' + (needName ? '' : ' style="display:none"') + ' value="' + escapeHtml(c.authName || '') + '"></div>' +
-      '<input class="api-f" data-row="' + idx + '" data-f="key" type="password" placeholder="API key" value="' + escapeHtml(c.key || '') + '">' +
-      '<details class="api-adv"' + (customProxy ? ' open' : '') + '><summary>Advanced</summary>' +
-      '<input class="api-proxy-url" data-row="' + idx + '" placeholder="Custom CORS proxy URL (optional — self-hosted)" value="' + escapeHtml(customProxy) + '"></details>' +
-      '<div class="ai-status api-status" data-row="' + idx + '">' + escapeHtml(savedNote) + '</div>' +
+      '<div class="ai-head"><label class="set-label">Name<input class="api-f api-name" data-row="' + idx + '" data-f="name" aria-label="Name for this account" placeholder="short name — e.g. deepgram" value="' + escapeHtml(name || '') + '"></label>' +
+      '<button type="button" class="ai-test api-test" data-row="' + idx + '">Test &amp; save</button>' +
+      '<button type="button" class="api-del row-del" data-row="' + idx + '" aria-label="Remove this account">' + DEL_ICON + '</button></div>' +
+      '<label class="set-label">Address<input class="api-f" data-row="' + idx + '" data-f="url" aria-label="Address for this account" placeholder="https://api.deepgram.com" value="' + escapeHtml(c.url || '') + '"></label>' +
+      '<label class="set-label">How the key is sent<select class="api-f api-auth" data-row="' + idx + '" data-f="authType" aria-label="How the key is sent">' + opts + '</select></label>' +
+      '<label class="set-label api-authname-lab"' + (needName ? '' : ' hidden') + '>Header or parameter name<input class="api-f api-authname" data-row="' + idx + '" data-f="authName" aria-label="Header or parameter name" placeholder="header or parameter name" value="' + escapeHtml(c.authName || '') + '"></label>' +
+      '<label class="set-label">Key<input class="api-f" data-row="' + idx + '" data-f="key" type="password" aria-label="Key for this account" placeholder="API key" value="' + escapeHtml(c.key || '') + '"></label>' +
+      '<details class="api-adv"' + (customProxy ? ' open' : '') + '><summary>Custom proxy</summary>' +
+      '<label class="set-label">Proxy address<input class="api-proxy-url" data-row="' + idx + '" aria-label="Custom proxy address" placeholder="https://your-proxy.example" value="' + escapeHtml(customProxy) + '"></label></details>' +
+      '<div class="ai-status api-status" data-row="' + idx + '" aria-live="polite">' + escapeHtml(savedNote) + '</div>' +
       '</div>';
   }
   function apiSectionHtml() {
     const cfg = apiCfgAll();
     const rows = Object.keys(cfg).map((n, i) => apiRowHtml(i, n, cfg[n])).join('');
-    return '<details class="adv"><summary>Third-party APIs</summary>' +
-      '<p class="add-help">Beyond OpenAI-shaped models, wire up <b>any keyed API</b> — Deepgram, a trading API, whatever. Give it a short <b>name</b>, its base URL, how it authenticates, and your key, then hit <b>Test &amp; save</b>. GifOS tries the call <b>directly</b> first. Deepgram needs no proxy at all — GifOS speaks its WebSocket protocol natively, so your key goes straight to Deepgram. For other sites that block browser calls (most brokerages), it retries through a stateless CORS proxy (<span class="mono">' + escapeHtml(API_PROXY_DEFAULT) + '</span>) and remembers that. Honesty note: requests routed that way <b>pass through that proxy in flight</b> — it stores and logs nothing, but if you’d rather nothing of yours transit GifOS infrastructure, put your own proxy URL under Advanced (the one-file Worker is in the repo, <span class="mono">cors-proxy/</span>). It only saves if a test succeeds. Your key travels only toward that API’s own host (directly or via the proxy you chose), not to the app, and stays out of a shared backup.</p>' +
+    return '<details class="adv" id="set-api-adv" open><summary class="set-sr" tabindex="-1">Third-party APIs</summary>' +
+      '<p class="add-help">A short name, the service’s address, and your key. GifOS sends the key only to that service, and only saves it after a test succeeds. Deepgram is spoken directly. If another service blocks the browser, GifOS retries through a proxy (<span class="mono">' + escapeHtml(API_PROXY_DEFAULT) + '</span>) and remembers that — those requests pass through that proxy in flight. Your own proxy address stays under Custom proxy.</p>' +
       '<div class="api-rows">' + rows + '</div>' +
-      '<button class="widebtn" id="api-add">＋ Add a third-party API</button>' +
+      '<button type="button" class="widebtn" id="api-add">Add a connected account</button>' +
       '</details>';
   }
   // Providers the system knows the shape of. MIRRORS runtime.js KNOWN_APIS —
@@ -3127,9 +3261,18 @@
     const wireRow = (row) => {
       const auth = row.querySelector('.api-auth');
       const nameInput = row.querySelector('.api-authname');
-      if (auth) auth.onchange = () => { nameInput.style.display = (auth.value === 'header' || auth.value === 'query') ? '' : 'none'; };
+      if (auth) auth.onchange = () => {
+        const show = auth.value === 'header' || auth.value === 'query';
+        const lab = nameInput.closest('label');
+        if (lab) lab.hidden = !show; else nameInput.style.display = show ? '' : 'none';
+      };
       const del = row.querySelector('.api-del');
-      if (del) del.onclick = () => { removeOne((readRow(row).name || '')); row.remove(); };
+      if (del) del.onclick = () => {
+        const nm = readRow(row).name || 'this account';
+        showConfirm('Remove this account?', 'Remove <b>' + escapeHtml(nm) + '</b> from this computer? The service itself is not changed.', [
+          { label: 'Remove', danger: true, fn: () => { removeOne(readRow(row).name || ''); row.remove(); } },
+        ], null, { alert: true });
+      };
       const test = row.querySelector('.api-test');
       const st = row.querySelector('.api-status');
       if (test) test.onclick = () => { test.disabled = true; testAndSave(row, st).finally(() => { test.disabled = false; }); };
@@ -3216,13 +3359,15 @@
         '<div class="pay-head"><b>' + escapeHtml(payScopeName(id)) + '</b><span class="pay-dim">' + a.led.length + ' payment' + (a.led.length === 1 ? '' : 's') + ' · ' + payUsd(String(spent)) + ' total</span></div>' +
         (ent ? '<div class="pay-ents">Purchased: ' + ent + '</div>' : '') +
         led +
-        '<div class="pay-cap-row">Per-charge ceiling $<input class="pay-cap" data-app="' + escapeHtml(id) + '" type="number" min="0" step="1" value="' + (function () { try { return Number(BigInt(cap) / 10000n) / 100; } catch (e) { return ''; } })() + '"></div>' +
+        '<div class="pay-cap-row"><label class="set-label">Per-charge ceiling in dollars<input class="pay-cap" data-app="' + escapeHtml(id) + '" type="number" min="0" step="1" aria-label="Per-charge ceiling in dollars" value="' + (function () { try { return Number(BigInt(cap) / 10000n) / 100; } catch (e) { return ''; } })() + '"></label></div>' +
         '</div>';
     }).join('');
-    return '<details class="adv"><summary>Payments</summary>' +
-      '<p class="add-help">Everything any app has charged on this computer, and what each one is allowed to ask for. Every payment here was approved by you on a GifOS payment screen naming the app\u2019s verified author \u2014 apps never see your card, wallet, or balance, and what you bought is recorded here (not inside the app), so sharing an app\u2019s GIF never shares a purchase. Payments are final; \u201cforgetting\u201d a purchase only clears it from this computer. The ceiling is the most one charge from that app may ask for.</p>' +
-      (rows || '<p class="add-help">No app has charged anything yet.</p>') +
-      '</details>';
+    const lead = rows
+      ? 'Charges you approved on this computer. Apps never see your card, wallet, or balance. Forgetting a purchase only clears it from this computer and does not refund it. The ceiling is the most one charge from that app may ask for.'
+      : 'Nothing charged on this computer. Apps never see your card, wallet, or balance.';
+    const support = (typeof GifOS !== 'undefined' && GifOS.charge && typeof GifOS.charge.paymentSupportHtml === 'function')
+      ? '<p class="add-help" id="pay-support">' + GifOS.charge.paymentSupportHtml() + '</p>' : '';
+    return '<div id="set-pay"><p class="add-help">' + lead + '</p>' + support + (rows || '') + '</div>';
   }
   function wirePaySection(box) {
     for (const inp of box.querySelectorAll('.pay-cap')) {
@@ -3258,85 +3403,198 @@
     let prefs = null; try { prefs = await store.getState('sys::prefs'); } catch (e) {}
     const curColor = (prefs && prefs.bg && prefs.bg.color) || '#0a0a0f';
 
+    const nameNow = (store.identity().name || '').trim();
+    const aiN = AI_TYPES.filter((t) => { const c = aiCfgAll()[t.key] || {}; return !!(c.url || c.app); }).length;
+    const apiN = Object.keys(apiCfgAll()).length;
+    const payN = Object.keys(payLedger()).length;
+    const nameStatus = nameNow || 'Not set';
+    const aiStatus = aiN ? (aiN + ' set up') : 'Not set up';
+    const apiStatus = apiN ? (apiN + (apiN === 1 ? ' account' : ' accounts')) : 'None';
+    const payStatus = payN ? (payN + (payN === 1 ? ' app' : ' apps')) : 'Nothing charged on this computer';
+    const relayStatus = relay ? 'Your own connection' : 'Standard GifOS connection';
+
     const bg = document.createElement('div'); bg.className = 'modal-bg';
-    const box = document.createElement('div'); box.className = 'modal wide';
+    const box = document.createElement('div'); box.className = 'modal wide settings-sheet';
     box.innerHTML =
-      '<h3>Settings</h3>' +
-      '<h4>Your name</h4>' +
-      '<p class="add-help">Friends see this name when you play or work together.</p>' +
-      '<input id="set-name" maxlength="40" placeholder="Your name" value="' + escapeHtml(store.identity().name) + '">' +
-      '<div class="add-sep"></div>' +
-      '<h4>Background</h4>' +
-      '<p class="add-help">Pick a color or use your own picture.</p>' +
-      '<div class="bg-row">' +
-        '<input type="color" id="set-bg-color" value="' + escapeHtml(curColor) + '" title="Background color">' +
-        '<button id="set-bg-image">Use a picture…</button>' +
-        '<button id="set-bg-reset" class="ghost">Reset</button>' +
-      '</div>' +
-      '<div class="add-sep"></div>' +
-      '<h4>Text size</h4>' +
-      '<p class="add-help">Make GifOS’s own text bigger or smaller everywhere — icon labels, app headers, menus, this window. (Inside an app, use that app’s own controls if it has them.)</p>' +
-      '<div class="ts-row"><button id="ts-minus" class="ghost" title="Smaller">A−</button><span id="ts-val" class="mono"></span><button id="ts-plus" class="ghost" title="Bigger">A+</button><button id="ts-reset" class="ghost">Reset</button></div>' +
-      '<div class="add-sep"></div>' +
-      aiSectionHtml() +
-      '<div class="add-sep"></div>' +
-      apiSectionHtml() +
-      '<div class="add-sep"></div>' +
-      paySectionHtml() +
-      '<div class="add-sep"></div>' +
-      '<details class="adv" id="set-advanced"><summary>Advanced settings</summary>' +
-      '<h4>Storage</h4>' +
-      '<p class="add-help">Your desktop lives entirely in this browser. ' + storageLine + '<br>' + persistLine + '</p>' +
-      (persisted ? '' : '<button class="widebtn" id="set-persist">Protect this Home Screen now</button>') +
-      '<h4 id="set-version-h">Version</h4>' +
-      '<div id="set-version"><p class="add-help">Running <b>v' + escapeHtml(VERSION) + '</b>. Checking gifos.app for the latest…</p></div>' +
-      '<h4>Connection service</h4>' +
-      '<p class="add-help">The little service that introduces people to each other when you share an invite. Leave this blank unless you run your own (the default is <span class="mono">wss://relay.gifos.app</span>). A change applies to apps you open afterwards.</p>' +
-      '<input id="set-relay" placeholder="wss://relay.gifos.app" value="' + escapeHtml(relay) + '">' +
-      '<button class="widebtn" id="set-relay-test">Test connection</button>' +
-      '<p class="add-help" id="set-relay-status"></p>' +
-      '<h4>Performance</h4>' +
-      '<p class="add-help">How the last repaint of your Home Screen went. Reused icons are reused as-is (fast); rebuilt ones changed. Mostly useful for spotting a slow, oversized desktop.</p>' +
-      '<p class="add-help mono" id="set-perf">' + perfLine(renderStats) + '</p>' +
-      '<button class="widebtn" id="set-perf-refresh">Repaint &amp; measure</button>' +
-      '<div class="add-sep"></div>' +
-      // Erasing the whole computer lives here — inside Advanced, behind its own
-      // collapsed disclosure — so it can never be hit by accident.
-      '<details class="adv danger-zone"><summary>Erase this computer</summary>' +
-      '<p class="add-help">This wipes the <b>whole computer</b> stored in this browser — every app, file, folder, wallpaper and all app state — then reinstalls a fresh one on the <b>same version channel</b> you’re already using (edge, the live release, or a pinned snapshot). There is no undo and no server copy. Back up first (menu → “Back up Home Screen”) if you might want it back.</p>' +
-      '<button class="widebtn danger" id="set-erase">Erase this computer…</button>' +
-      '</details>' +
-      '</details>' +
-      '<div class="modal-actions"><button id="set-save">Save</button><button class="ghost" id="set-close">Close</button></div>';
-    bg.appendChild(box); document.body.appendChild(bg);
-    for (const i of box.querySelectorAll('input[type=password]')) pwEye(i); // API-key fields wear the reveal eye
+      '<header class="set-head">' +
+        '<div class="set-head-start"><button type="button" class="set-textbtn" id="set-back" hidden>Back</button></div>' +
+        '<h3 id="set-title">Settings</h3>' +
+        '<div class="set-head-end"><span id="set-save-note" class="set-save-note" aria-live="polite"></span>' +
+          '<button type="button" class="set-textbtn" id="set-cancel" hidden>Cancel</button>' +
+          '<button type="button" class="set-textbtn" id="set-save" hidden>Save</button>' +
+          '<button type="button" class="set-textbtn" id="set-close">Close</button></div>' +
+      '</header>' +
+      '<div class="set-body">' +
+        '<section data-page="root">' +
+          '<div class="set-group">You</div><div class="set-card">' +
+            '<button type="button" class="set-row" id="set-go-you"><span class="set-row-t"><b>Your name</b><span>Friends see this when you play together</span></span><span class="set-status" id="set-status-name">' + escapeHtml(nameStatus) + '</span><span class="chev" aria-hidden="true">›</span></button>' +
+          '</div>' +
+          '<div class="set-group">Look</div><div class="set-card">' +
+            '<button type="button" class="set-row" id="set-go-look"><span class="set-row-t"><b>Background and text</b><span>Color, picture, and text size</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+          '</div>' +
+          '<div class="set-group">For apps</div><div class="set-card">' +
+            '<button type="button" class="set-row" id="set-go-ai"><span class="set-row-t"><b>AI</b><span id="set-status-ai">' + escapeHtml(aiStatus) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+            '<button type="button" class="set-row" id="set-go-accounts"><span class="set-row-t"><b>Connected accounts</b><span>Keys for other services</span></span><span class="set-status" id="set-status-api">' + escapeHtml(apiStatus) + '</span><span class="chev" aria-hidden="true">›</span></button>' +
+            '<button type="button" class="set-row" id="set-go-payments"><span class="set-row-t"><b>Payments</b><span id="set-status-pay">' + escapeHtml(payStatus) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+          '</div>' +
+          '<div class="set-group">This computer</div><div class="set-card">' +
+            '<button type="button" class="set-row" id="set-go-system"><span class="set-row-t"><b>System</b><span>Storage, updates, invite connection</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+          '</div>' +
+        '</section>' +
+        '<section data-page="you" hidden>' +
+          '<p class="add-help">Friends see this name when you play or work together. It stays on this computer.</p>' +
+          '<label class="set-label" for="set-name">Name</label>' +
+          '<input id="set-name" maxlength="40" aria-label="Name" placeholder="Your name" value="' + escapeHtml(store.identity().name) + '">' +
+        '</section>' +
+        '<section data-page="look" hidden>' +
+          '<p class="add-help">Changes apply as you make them, on every GifOS page in this browser.</p>' +
+          '<div class="set-group">Background</div>' +
+          '<div class="set-card set-pad">' +
+            '<label class="set-label" for="set-bg-color">Color</label>' +
+            '<div class="bg-row">' +
+              '<input type="color" id="set-bg-color" value="' + escapeHtml(curColor) + '" aria-label="Background color">' +
+              '<button type="button" id="set-bg-image">Use a picture…</button>' +
+              '<button type="button" id="set-bg-reset" class="ghost" aria-label="Reset background">Reset</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="set-group">Text size</div>' +
+          '<div class="set-card set-pad">' +
+            '<p class="add-help">GifOS’s own text — icon labels, menus, this window. Inside an app, that app’s own controls still apply.</p>' +
+            '<div class="ts-row"><button type="button" id="ts-minus" class="ghost" aria-label="Smaller text">A−</button><span id="ts-val" class="mono" aria-live="polite"></span><button type="button" id="ts-plus" class="ghost" aria-label="Bigger text">A+</button><button type="button" id="ts-reset" class="ghost" aria-label="Reset text size">Reset</button></div>' +
+          '</div>' +
+        '</section>' +
+        '<section data-page="ai" hidden>' + aiSectionHtml() + '</section>' +
+        '<section data-page="accounts" hidden>' + apiSectionHtml() + '</section>' +
+        '<section data-page="payments" hidden>' + paySectionHtml() + '</section>' +
+        '<section data-page="system" hidden>' +
+          '<div class="set-card">' +
+            '<button type="button" class="set-row" id="set-go-storage"><span class="set-row-t"><b>Storage</b><span>' + storageLine.replace(/<[^>]+>/g, '') + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+            '<button type="button" class="set-row" id="set-go-updates"><span class="set-row-t"><b>Updates</b><span>Releases and the edge build</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+            '<button type="button" class="set-row" id="set-go-connection"><span class="set-row-t"><b>Invite connection</b><span>' + escapeHtml(relayStatus) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+          '</div>' +
+          '<div class="set-gap"></div>' +
+          '<div class="set-card">' +
+            '<button type="button" class="set-row danger" id="set-go-erase"><span class="set-row-t"><b>Erase this computer</b><span>Wipes apps and files in this browser</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+          '</div>' +
+        '</section>' +
+        '<section data-page="storage" hidden>' +
+          '<p class="add-help" id="set-storage-line">Your desktop lives entirely in this browser. ' + storageLine + '<br>' + persistLine + '</p>' +
+          (persisted ? '' : '<button type="button" class="widebtn" id="set-persist">Protect this Home Screen now</button>') +
+        '</section>' +
+        '<section data-page="updates" hidden>' +
+          '<details class="adv" id="set-advanced" open><summary class="set-sr" tabindex="-1">System</summary>' +
+          '<h4 id="set-version-h">Updates</h4>' +
+          '<div id="set-version"><p class="add-help">Running <b>v' + escapeHtml(VERSION) + '</b>. Checking gifos.app for the latest…</p></div>' +
+          '</details></section>' +
+        '<section data-page="connection" hidden>' +
+          '<p class="add-help">This is how invite links find each other. Leave the field blank to keep the standard connection, <span class="mono">wss://relay.gifos.app</span>. Test checks that address. A change applies to apps you open afterwards.</p>' +
+          '<label class="set-label" for="set-relay">Your own connection</label>' +
+          '<input id="set-relay" aria-label="Your own connection" placeholder="Leave blank to keep the standard one" value="' + escapeHtml(relay) + '">' +
+          '<button type="button" class="widebtn" id="set-relay-test">Test connection</button>' +
+          '<p class="add-help" id="set-relay-status" aria-live="polite"></p>' +
+        '</section>' +
+        '<section data-page="erase" hidden>' +
+          '<button type="button" class="widebtn" id="set-backup">Back up first</button>' +
+          '<button type="button" class="widebtn danger" id="set-erase">Erase this computer…</button>' +
+        '</section>' +
+      '</div>';
+    bg.appendChild(box);
+    const TITLES = {
+      root: 'Settings', you: 'Your name', look: 'Background and text', ai: 'AI',
+      accounts: 'Connected accounts', payments: 'Payments', system: 'System',
+      storage: 'Storage', updates: 'Updates', connection: 'Invite connection',
+      erase: 'Erase this computer',
+    };
+    let stack = ['root'];
+    // One save model on every page. Name, the invite connection, and AI wait
+    // for Save. Look, payments, and connected accounts still apply on their
+    // own controls (a tested account is the only way an account is stored).
+    const readDeferred = () => ({
+      name: (box.querySelector('#set-name') || {}).value || '',
+      relay: (box.querySelector('#set-relay') || {}).value || '',
+      ai: AI_TYPES.map((t) => {
+        const sel = box.querySelector('.ai-src[data-ai="' + t.key + '"]');
+        const fields = {};
+        box.querySelectorAll('.ai-f[data-ai="' + t.key + '"]').forEach((i) => { fields[i.getAttribute('data-f')] = i.value; });
+        return { src: sel ? sel.value : '', fields };
+      }),
+    });
+    let savedSnap = '';
+    const snapNow = () => { savedSnap = JSON.stringify(readDeferred()); };
+    const isDirty = () => JSON.stringify(readDeferred()) !== savedSnap;
+    const paintNameStatus = () => {
+      const nameEl = box.querySelector('#set-name');
+      const ns = box.querySelector('#set-status-name');
+      if (nameEl && ns) ns.textContent = nameEl.value.trim() || 'Not set';
+    };
+    const paintActions = () => {
+      const dirty = isDirty();
+      const saveBtn = box.querySelector('#set-save');
+      const cancelBtn = box.querySelector('#set-cancel');
+      const closeBtn = box.querySelector('#set-close');
+      if (saveBtn) saveBtn.hidden = !dirty;
+      if (cancelBtn) cancelBtn.hidden = !dirty;
+      if (closeBtn) closeBtn.hidden = dirty;
+    };
+    const showPage = (id) => {
+      box.querySelectorAll('[data-page]').forEach((s) => { s.hidden = s.getAttribute('data-page') !== id; });
+      box.dataset.page = id;
+      const title = box.querySelector('#set-title');
+      if (title) title.textContent = TITLES[id] || 'Settings';
+      const backBtn = box.querySelector('#set-back');
+      if (backBtn) backBtn.hidden = id === 'root';
+      if (id === 'root') paintNameStatus();
+      paintActions();
+      const body = box.querySelector('.set-body');
+      if (body) body.scrollTop = 0;
+    };
+    const go = (id) => {
+      stack.push(id);
+      showPage(id);
+      const backBtn = box.querySelector('#set-back');
+      if (backBtn && !backBtn.hidden) backBtn.focus();
+    };
+    const back = () => {
+      if (stack.length > 1) stack.pop();
+      showPage(stack[stack.length - 1] || 'root');
+      if ((stack[stack.length - 1] || 'root') === 'root') {
+        const you = box.querySelector('#set-go-you');
+        if (you) you.focus();
+      }
+    };
+    box.querySelectorAll('[id^="set-go-"]').forEach((btn) => {
+      const id = btn.id.replace('set-go-', '');
+      btn.onclick = () => go(id);
+    });
+    for (const i of box.querySelectorAll('input[type=password]')) pwEye(i);
     wireAiSection(box);
     wireApiSection(box);
     wirePaySection(box);
+    snapNow();
+    const markDirty = (e) => {
+      const t = e.target;
+      if (!t || !t.matches) return;
+      if (t.matches('#set-name, #set-relay, .ai-f, .ai-src')) {
+        const note = box.querySelector('#set-save-note');
+        if (note && note.textContent === 'Saved') note.textContent = '';
+        paintActions();
+      }
+    };
+    box.addEventListener('input', markDirty);
+    box.addEventListener('change', markDirty);
 
-    // Version panel: paint from what we know, then ALWAYS re-check the live site
-    // (the request is network-first through the SW) so the newest release shows
-    // even if the boot-time check missed it. Repaint with the fresh answer.
     const vc = box.querySelector('#set-version');
-    // Deep-link from the update nudge: open the Advanced section and bring the
-    // Version panel into view. The panel repaints once the live check returns
-    // (which changes its height), so we re-reveal AFTER that repaint too —
-    // scrolling only once, before the repaint, left the click landing at the top
-    // of the Settings sheet instead of on the Version section.
-    // Target the Advanced-settings disclosure by id: the AI-models and
-    // Third-party-APIs sections ALSO carry class "adv", so a bare
-    // querySelector('details.adv') opened the wrong one and left the Version
-    // panel hidden — the reason the update nudge appeared to link nowhere.
+    // What's new opens the Updates page. #set-advanced stays a details.adv so the
+    // deep link still targets that id, and it is not the first .adv (AI is).
     const revealVersion = () => {
       if (opts.focus !== 'version') return;
+      stack = ['root', 'system', 'updates'];
+      showPage('updates');
       const adv = box.querySelector('#set-advanced');
-      if (adv && !adv.open) adv.open = true;
+      if (adv) adv.open = true;
       const h = box.querySelector('#set-version-h') || box.querySelector('#set-version');
       if (h && h.scrollIntoView) h.scrollIntoView({ block: 'start' });
     };
-    if (opts.focus === 'version') { const adv = box.querySelector('#set-advanced'); if (adv) adv.open = true; }
-    // The deep-link came from "What's new", so deliver the news: unfold the
-    // notes of every release newer than the running build (see paintVersion).
     const unfoldNew = opts.focus === 'version';
     paintVersion(vc, null, unfoldNew);
     revealVersion();
@@ -3349,20 +3607,17 @@
       inp.click();
     };
     box.querySelector('#set-bg-reset').onclick = () => resetBackground();
-    // Text size: scales the rem-based GifOS chrome via the root font-size, saved
-    // globally so every GifOS page (desktop, app headers, meetings) picks it up.
     const tsVal = box.querySelector('#ts-val');
     const paintTs = () => { tsVal.textContent = Math.round(getUiScale() * 100) + '%'; };
     paintTs();
     box.querySelector('#ts-plus').onclick = () => { setUiScale(getUiScale() + 0.1); paintTs(); };
     box.querySelector('#ts-minus').onclick = () => { setUiScale(getUiScale() - 0.1); paintTs(); };
     box.querySelector('#ts-reset').onclick = () => { setUiScale(1); paintTs(); };
-    // Reachability probe: joining a session with no host makes a healthy relay
-    // answer { t:'error', 'no host …' } — ANY message back proves it's alive.
     box.querySelector('#set-relay-test').onclick = () => {
       const out = box.querySelector('#set-relay-status');
-      let url = box.querySelector('#set-relay').value.trim() || root.GIFOS_RELAY || '';
-      if (!url) { out.textContent = 'Nothing to test — no address is set.'; return; }
+      // index.html does not load relay-config.js, so a blank field still means
+      // the standard connection the apps use.
+      let url = box.querySelector('#set-relay').value.trim() || root.GIFOS_RELAY || 'wss://relay.gifos.app';
       out.textContent = 'Testing ' + url + ' …';
       let done = false;
       const finish = (msg) => { if (!done) { done = true; out.textContent = msg; } };
@@ -3373,27 +3628,78 @@
         ws.onerror = () => { clearTimeout(timer); finish('Could not connect. If you did not set this yourself, try again in a moment; if you run your own service, check that it is live on this domain.'); };
       } catch (e) { finish('Error: ' + (e.message || e)); }
     };
-    const perfBtn = box.querySelector('#set-perf-refresh');
-    if (perfBtn) perfBtn.onclick = async () => { await render(); box.querySelector('#set-perf').textContent = perfLine(renderStats); };
     const eraseBtn = box.querySelector('#set-erase');
-    if (eraseBtn) eraseBtn.onclick = () => { bg.remove(); resetFlow(); };
+    if (eraseBtn) eraseBtn.onclick = () => { eraseBtn.focus(); resetFlow(); };
+    const backupBtn = box.querySelector('#set-backup');
+    if (backupBtn) backupBtn.onclick = () => { backupDesktop().catch(() => {}); };
     const persistBtn = box.querySelector('#set-persist');
     if (persistBtn) persistBtn.onclick = async () => {
       const ok = navigator.storage && navigator.storage.persist ? await navigator.storage.persist() : false;
-      persistBtn.textContent = ok ? 'Protected' : 'The browser declined for now — it grants this once the site is used more';
-      persistBtn.disabled = true;
+      if (ok) {
+        persistBtn.textContent = 'Protected';
+        persistBtn.disabled = true;
+      } else {
+        persistBtn.textContent = 'The browser declined for now — nothing was lost. It grants this once the site is used more. You can try again.';
+        persistBtn.disabled = false;
+      }
     };
-    box.querySelector('#set-save').onclick = () => {
-      const v = box.querySelector('#set-relay').value.trim();
+    // Save writes the deferred fields and stays. Cancel puts them back.
+    // Close is only there when nothing is waiting, and it does not write.
+    // Accounts still save only through Test & save.
+    const saveAll = () => {
+      const relayEl = box.querySelector('#set-relay');
+      const nameEl = box.querySelector('#set-name');
+      const v = relayEl ? relayEl.value.trim() : '';
       try { if (v) localStorage.setItem('gifos_relay', v); else localStorage.removeItem('gifos_relay'); } catch (e) {}
-      store.setName(box.querySelector('#set-name').value);
+      if (nameEl) store.setName(nameEl.value);
       if (box._saveAi) box._saveAi();
-      // Third-party APIs save themselves via each row's Test & save (so a saved
-      // API always has a passing test) — nothing to persist here.
-      bg.remove();
+      snapNow();
+      paintNameStatus();
+      const note = box.querySelector('#set-save-note');
+      if (note) note.textContent = 'Saved';
+      paintActions();
     };
-    box.querySelector('#set-close').onclick = () => bg.remove();
-    bg.addEventListener('click', (e) => { if (e.target === bg) bg.remove(); });
+    const revertDeferred = () => {
+      let snap; try { snap = JSON.parse(savedSnap); } catch (e) { return; }
+      const nameEl = box.querySelector('#set-name');
+      const relayEl = box.querySelector('#set-relay');
+      if (nameEl) nameEl.value = snap.name || '';
+      if (relayEl) relayEl.value = snap.relay || '';
+      (snap.ai || []).forEach((row, i) => {
+        const t = AI_TYPES[i];
+        if (!t || !row) return;
+        const sel = box.querySelector('.ai-src[data-ai="' + t.key + '"]');
+        if (sel) { sel.value = row.src || ''; if (sel.onchange) sel.onchange(); }
+        box.querySelectorAll('.ai-f[data-ai="' + t.key + '"]').forEach((inp) => {
+          const f = inp.getAttribute('data-f');
+          if (row.fields && Object.prototype.hasOwnProperty.call(row.fields, f)) inp.value = row.fields[f];
+        });
+      });
+      paintNameStatus();
+      const note = box.querySelector('#set-save-note');
+      if (note) note.textContent = '';
+      paintActions();
+    };
+    box.querySelector('#set-save').onclick = () => saveAll();
+    box.querySelector('#set-cancel').onclick = () => revertDeferred();
+    box.querySelector('#set-close').onclick = () => { if (!isDirty()) dlg.close(); };
+    box.querySelector('#set-back').onclick = () => back();
+    const dlg = armDialog(bg, box, {
+      label: 'Settings',
+      initial: opts.focus === 'version' ? '#set-back' : '#set-go-you',
+      onEscape: () => {
+        if (box.dataset.page === 'erase') back();
+        else if (isDirty()) revertDeferred();
+        else dlg.close();
+      },
+    });
+    bg.addEventListener('click', (e) => {
+      if (e.target !== bg) return;
+      if (window.matchMedia('(max-width: 700px)').matches) return;
+      if (!isDirty()) dlg.close();
+    });
+    showPage('root');
+    if (opts.focus === 'version') revealVersion();
   }
 
   // ----- the three version moves, all channel-aware (see the root loader) -----
@@ -3445,17 +3751,18 @@
     // Load the LATEST edge build (site root) — a single moving target you can only
     // move forward to, never a specific past build. Notes fold behind it. ----
     const edgeLabel = !onEdge ? 'Load edge' : (newerEdge ? 'Update' : 'Re-pull');
+    // The numeric build stamp stays off the row title. The channel name is
+    // "Edge build", with a running pill when this page is the edge channel.
     const edgeRow =
-      '<details class="vrow vedge">' +
+      '<div class="vitem"><details class="vrow vedge">' +
         '<summary class="vhead">' +
           '<span class="vcaret" aria-hidden="true">▸</span>' +
-          '<span class="vlabel">Edge build <span class="vbuild">build ' + edgeBuild + '</span>' +
+          '<span class="vlabel">Edge build' +
             (onEdge ? ' <span class="vpill run">running</span>' : '') + '</span>' +
-          '<span class="vspacer"></span>' +
-          '<button class="vbtn' + (onEdge && !newerEdge ? ' ghost' : '') + '" id="set-edge">' + edgeLabel + '</button>' +
         '</summary>' +
-        '<div class="vnotes"><p class="add-help">The unreleased build at the site root, ahead of every release. It carries a build number that bumps on every change; you can jump to the latest, but edge builds aren’t archived — you can’t pin or roll back to a specific one.</p></div>' +
-      '</details>';
+        '<div class="vnotes"><p class="add-help">The unreleased build at the site root, ahead of every release. You can jump to the latest, but edge builds aren’t archived — you can’t pin or roll back to a specific one.</p></div>' +
+      '</details>' +
+      '<button type="button" class="vbtn' + (onEdge && !newerEdge ? ' ghost' : '') + '" id="set-edge">' + edgeLabel + '</button></div>';
 
     // ---- RELEASE rows: newest first, each with its release notes FOLDED behind
     // it. A row is "running" only when it's the pinned/current build (on the edge
@@ -3465,7 +3772,11 @@
     // VERSION ('edge' on the root): no row may claim "latest" or offer "Use
     // latest", and the edge sentinel is not a release row (the edge row above
     // already shows the running build).
-    const rows = availableVersions.filter((v) => versionChecked || v !== EDGE).slice().sort(cmpVer).reverse().map((v) => {
+    const sorted = availableVersions.filter((v) => versionChecked || v !== EDGE).slice().sort(cmpVer).reverse();
+    const newest = sorted[0];
+    const visible = [];
+    const earlier = [];
+    sorted.forEach((v) => {
       const isLive = versionChecked && v === latestVersion;
       const isRunning = !onEdge && (pinned ? v === pinned : v === VERSION);
       const e = notesFor(v);
@@ -3473,33 +3784,34 @@
       const critical = !!(e && e.critical && !onEdge && cmpVer(v, VERSION) > 0);
       // "New to you": newer than what you run, no newer than the live release.
       const newSince = !onEdge && cmpVer(v, VERSION) > 0 && cmpVer(v, latestVersion) <= 0;
-      // The edge build number this release was cut from (releases before build
-      // numbering have none — shown without a build).
-      const bn = Number(releaseBuilds[v]);
+      const dateTag = (e && e.date) ? '<span class="cl-date">' + escapeHtml(e.date) + '</span>' : '';
       const tags = (isLive ? '<span class="vpill live">latest</span>' : '') +
                    (isRunning ? '<span class="vpill run">running</span>' : '') +
                    (critical ? '<span class="vpill crit">critical</span>' : '');
-      const buildTag = bn ? '<span class="vbuild">build ' + bn + '</span>' : '';
-      const dateTag = (e && e.date) ? '<span class="cl-date">' + escapeHtml(e.date) + '</span>' : '';
-      const action = isRunning ? '<span class="vtag">running</span>'
-        : '<button data-v="' + escapeHtml(v) + '" class="vbtn">' + (isLive ? 'Use latest' : 'Roll back') + '</button>';
-      // Caret leads the row (big, left) so the tap-to-unfold target sits far from
-      // the Roll-back button on the right — no accidental rollback reaching for it.
+      // The switch sits beside the row, not inside the summary, so the row's
+      // name is the version — and Roll back is never a filled primary button.
+      const action = isRunning ? ''
+        : '<button type="button" data-v="' + escapeHtml(v) + '" class="vbtn' + (isLive ? '' : ' rollback') + '">' + (isLive ? 'Use latest' : 'Roll back') + '</button>';
       const head =
         '<span class="vcaret' + (hasNotes ? '' : ' vcaret-empty') + '" aria-hidden="true">▸</span>' +
-        '<span class="vlabel">v' + escapeHtml(v) + ' ' + tags + buildTag + dateTag + '</span>' +
-        '<span class="vspacer"></span>' + action;
-      // No notes on file → a plain, non-expandable row (no fold to open onto empty).
-      if (!hasNotes) return '<div class="vrow vrow-plain"><div class="vhead">' + head + '</div></div>';
-      return '<details class="vrow"' + (critical || (unfoldNew && newSince) ? ' open' : '') + '>' +
-        '<summary class="vhead">' + head + '</summary>' +
-        '<div class="vnotes">' + releaseNotesHtml(e) + '</div>' +
-      '</details>';
-    }).join('');
+        '<span class="vlabel">v' + escapeHtml(v) + ' ' + tags + dateTag + '</span>';
+      const row = !hasNotes
+        ? '<div class="vrow vrow-plain"><div class="vhead">' + head + '</div></div>'
+        : '<details class="vrow"' + (critical || (unfoldNew && newSince) ? ' open' : '') + '>' +
+            '<summary class="vhead">' + head + '</summary>' +
+            '<div class="vnotes">' + releaseNotesHtml(e) + '</div></details>';
+      const item = '<div class="vitem">' + row + action + '</div>';
+      // Current, latest, and running stay in view. Older releases fold away.
+      const keepOut = isLive || isRunning || v === newest || critical || (unfoldNew && newSince);
+      (keepOut ? visible : earlier).push(item);
+    });
+    const earlierHtml = earlier.length
+      ? '<details class="v-earlier"><summary class="vhead">Earlier versions</summary>' + earlier.join('') + '</details>'
+      : '';
 
     container.innerHTML =
       (offline ? '<p class="add-help bad">Couldn’t reach gifos.app to check the latest release — you may be offline. The snapshots below still work.</p>' : '') +
-      '<div class="vlist">' + edgeRow + rows + '</div>';
+      '<div class="vlist">' + edgeRow + visible.join('') + earlierHtml + '</div>';
     const eb = container.querySelector('#set-edge');
     if (eb) eb.onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); loadEdge(); };
     container.querySelectorAll('.vbtn[data-v]').forEach((b) => {
@@ -3553,8 +3865,7 @@
     closeContext();
     const bg = document.createElement('div'); bg.className = 'modal-bg';
     const box = document.createElement('div'); box.className = 'modal wide';
-    bg.appendChild(box); document.body.appendChild(bg);
-    bg.addEventListener('click', (e) => { if (e.target === bg) bg.remove(); });
+    bg.appendChild(box);
     const paint = () => {
       const h = loadInviteHistory();
       const rows = h.length ? h.map((e, i) =>
@@ -3563,7 +3874,7 @@
             '<span class="hist-name">' + escapeHtml(e.name || 'Invite') + '</span>' +
             '<span class="hist-meta">' + escapeHtml(relTime(e.ts) + ' · ' + shortInviteUrl(e.url || '')) + '</span>' +
           '</a>' +
-          '<button class="hist-del row-del" data-i="' + i + '" title="Remove">' + DEL_ICON + '</button>' +
+          '<button type="button" class="hist-del row-del" data-i="' + i + '" title="Remove" aria-label="Remove">' + DEL_ICON + '</button>' +
         '</div>').join('')
         : '<p class="add-help">No invites visited yet. Open a friend’s invite link and it will show up here.</p>';
       box.innerHTML =
@@ -3583,9 +3894,12 @@
         showConfirm('Clear invite history?', 'Remove all ' + n + ' saved invite link' + (n === 1 ? '' : 's') + '? This only clears the list on this device — the sessions themselves aren’t affected.',
           [{ label: 'Clear all', danger: true, fn: () => { saveInviteHistory([]); paint(); } }]);
       };
-      box.querySelector('#hist-close').onclick = () => bg.remove();
+      box.querySelector('#hist-close').onclick = () => bg._close();
     };
     paint();
+    const dlg = armDialog(bg, box, { label: 'Invite history', initial: '#hist-close' });
+    bg._close = () => dlg.close();
+    bg.addEventListener('click', (e) => { if (e.target === bg) bg._close(); });
   }
   const histBtn = document.getElementById('history-btn');
   if (histBtn) histBtn.addEventListener('click', showHistory);
@@ -3980,11 +4294,13 @@
         '<button id="ad-create">Create app</button>' +
         '<button class="ghost" id="ad-close">Close</button>' +
       '</div>';
-    bg.appendChild(box); document.body.appendChild(bg);
+    bg.appendChild(box);
+    const dlg = armDialog(bg, box, { label: 'Add to your Home Screen' });
+    const shut = () => dlg.close();
 
     box.querySelector('#ad-store').onclick = () => { location.href = 'store.html' + (nsParam('#db=') || ''); };
-    box.querySelector('#ad-file').onclick = () => { bg.remove(); fileInput.click(); };
-    box.querySelector('#ad-folder').onclick = () => { bg.remove(); newFolder(60, 60); };
+    box.querySelector('#ad-file').onclick = () => { shut(); fileInput.click(); };
+    box.querySelector('#ad-folder').onclick = () => { shut(); newFolder(60, 60); };
     const urlInput = box.querySelector('#ad-url'), urlBtn = box.querySelector('#ad-url-go'), urlMsg = box.querySelector('#ad-url-msg');
     const goUrl = async () => {
       const v = urlInput.value.trim();
@@ -3995,7 +4311,7 @@
         urlMsg.textContent = total ? 'Fetching — ' + mb(got) + ' of ' + mb(total) : 'Fetching — ' + mb(got);
       });
       if (err) { urlBtn.disabled = false; urlMsg.textContent = err; urlMsg.className = 'add-help bad'; return; }
-      bg.remove();
+      shut();
     };
     urlBtn.onclick = goUrl;
     urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); goUrl(); } });
@@ -4008,11 +4324,11 @@
     box.querySelector('#ad-create').onclick = async () => {
       const html = extractHtml(box.querySelector('#ad-html').value);
       if (!html) { box.querySelector('#ad-html').focus(); return; }
-      bg.remove();
+      shut();
       await createAppFromHtml(box.querySelector('#ad-name').value, html);
     };
-    box.querySelector('#ad-close').onclick = () => bg.remove();
-    bg.addEventListener('click', (e) => { if (e.target === bg) bg.remove(); });
+    box.querySelector('#ad-close').onclick = () => shut();
+    bg.addEventListener('click', (e) => { if (e.target === bg) shut(); });
   }
 
   fileInput.addEventListener('change', async (e) => {
@@ -4038,16 +4354,20 @@
 
   // Dev-only escape hatch — dies before 1.0. Backup is one click away on purpose.
   function resetFlow() {
+    // Same channel as eraseReloadUrl: pin, edge, or the live release. Not a
+    // reinstall of whatever gifos.app calls latest.
+    const channel = 'You stay on the <b>same version channel</b> you are using now (edge, the live release, or a pinned snapshot).';
+    const backToErase = () => { const b = document.getElementById('set-erase'); if (b) b.focus(); };
     showConfirm('Erase this entire computer?',
-      'This is not just the Home Screen layout — it wipes the <b>whole computer</b> stored in this browser: every app, file, folder, wallpaper, and all app state. It then reinstalls a fresh computer on the latest version from gifos.app. There is no undo and no server copy.',
+      'This wipes every app, file, folder, and wallpaper stored in this browser. There is no undo and no server copy. ' + channel,
       [
         { label: 'Back up first, then erase', fn: async () => {
           if (!(await backupDesktop().then(() => true, () => false))) return; // no backup, no erase
-          showConfirm('Backup downloaded', 'Your computer image is downloading — it can boot or restore this exact computer later. Erase and reinstall the latest now?',
-            [{ label: 'Erase This Computer', danger: true, fn: eraseComputer }]);
+          showConfirm('Backup downloaded', 'Your computer image is downloading — it can boot or restore this exact computer later. Erase now? ' + channel,
+            [{ label: 'Erase This Computer', danger: true, fn: eraseComputer }], backToErase, { alert: true });
         } },
         { label: 'Erase without backup', danger: true, fn: eraseComputer },
-      ]);
+      ], backToErase, { alert: true });
   }
 
   // deselect on empty click/tap

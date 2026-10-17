@@ -18,7 +18,7 @@ body {
 /* status pills on the version rows (running / latest / critical) */
 .vpill { display: inline-block; font-size: .66rem; font-weight: 700;
   letter-spacing: .03em; text-transform: uppercase; border-radius: .3rem; padding: .05rem .35rem; vertical-align: middle; }
-.vpill.live { color: #fff; background: color-mix(in srgb, #34c759 78%, #000); }
+.vpill.live { color: #052e16; background: #86efac; }
 .vpill.run { color: var(--accent); border: 1px solid var(--accent); }
 .vpill.crit { color: #fff; background: #d33; }
 .vbuild { color: var(--muted); font-size: .72rem; font-variant-numeric: tabular-nums; }
@@ -523,3 +523,104 @@ button.row-del svg { display: block; pointer-events: none; }
 .pay-ent { display: inline-flex; align-items: center; gap: .25rem; border: 1px solid var(--border); border-radius: .4rem; padding: .1rem .35rem; }
 .pay-cap-row { margin-top: .45rem; font-size: .85rem; }
 .pay-cap { width: 5.5rem; padding: .25rem .4rem; font: inherit; }
+
+/* Settings Direction A — stacked pages on the light Home Screen surface.
+   Scoped to .settings-sheet so the Add popup (also .modal.wide) is unchanged. */
+.settings-sheet {
+  --text: #1d1d1f; --muted: #3a3a3f; --border: #d2d2d7; --accent: #0071e3;
+  --surface: #fff; --bg: #f5f5f7; --onaccent: #fff;
+  background: #f5f5f7; color: #1d1d1f; text-align: left;
+  width: min(480px, calc(100vw - 48px));
+  max-height: min(740px, calc(100dvh - 48px));
+  padding: 0; border: none; border-radius: 16px; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.settings-sheet .set-head {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  gap: 8px; min-height: 56px; padding: 8px 10px; background: #fff;
+  border-bottom: 1px solid #e5e5ea; position: sticky; top: 0; z-index: 2;
+}
+.settings-sheet .set-head h3 { margin: 0; text-align: center; font-size: 1.05rem; }
+.settings-sheet .set-head-end { justify-self: end; display: flex; align-items: center; gap: 2px; }
+.settings-sheet .set-save-note { color: #3a3a3f; font-size: .75rem; min-width: 2.4rem; }
+.settings-sheet button.set-textbtn {
+  background: none; border: none; color: #0071e3; font: inherit; font-weight: 650;
+  min-height: 44px; min-width: 64px; padding: 0 10px; cursor: pointer; border-radius: 8px;
+}
+.settings-sheet button.set-textbtn:hover { background: rgba(0,113,227,.08); }
+.settings-sheet .set-body { overflow: auto; padding: 4px 16px 28px; flex: 1; }
+.settings-sheet .set-group {
+  font-size: .75rem; font-weight: 700; letter-spacing: .02em; color: #3a3a3f;
+  margin: 16px 4px 6px;
+}
+.settings-sheet .set-card {
+  background: #fff; border: 1px solid #e5e5ea; border-radius: 12px; overflow: hidden;
+}
+.settings-sheet .set-pad { padding: 12px 14px; }
+.settings-sheet .set-gap { height: 18px; }
+.settings-sheet button.set-row {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 56px;
+  padding: 8px 14px; border: none; border-bottom: 1px solid #e5e5ea; border-radius: 0;
+  background: #fff; color: #1d1d1f; font: inherit; text-align: left; cursor: pointer;
+}
+.settings-sheet .set-card button.set-row:last-child { border-bottom: none; }
+.settings-sheet button.set-row.danger,
+.settings-sheet button.set-row.danger b { color: #c41e3a; }
+.settings-sheet .set-row-t { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.settings-sheet .set-row-t b { font-size: .95rem; }
+.settings-sheet .set-row-t span, .settings-sheet .set-status { color: #3a3a3f; font-size: .8rem; }
+.settings-sheet .set-status { margin-left: auto; }
+.settings-sheet .chev { color: #6e6e73; font-size: 1.1rem; }
+.settings-sheet .set-label { display: block; font-size: .78rem; font-weight: 650; color: #3a3a3f; margin: 10px 0 4px; }
+.settings-sheet .set-callout {
+  background: #fff5f5; border: 1px solid #c41e3a; color: #1d1d1f;
+  border-radius: 12px; padding: 14px; line-height: 1.45; margin-top: 12px;
+}
+.settings-sheet #set-backup { margin-top: 18px; }
+.settings-sheet #set-erase { margin-top: 10px; }
+.settings-sheet .add-help { color: #3a3a3f; }
+.settings-sheet :focus-visible { outline: 3px solid #0071e3; outline-offset: 2px; }
+.settings-sheet input, .settings-sheet select, .settings-sheet .bg-row button, .settings-sheet .ts-row button {
+  min-height: 48px;
+}
+.settings-sheet .bg-row input[type="color"] { width: 48px; min-width: 48px; height: 48px; }
+.settings-sheet .ts-row button { min-width: 48px; }
+.settings-sheet .ai-test { min-height: 48px; padding: .45rem .9rem; }
+.settings-sheet .ai-row { background: #fff; margin-top: 12px; }
+.set-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.vitem { display: flex; align-items: stretch; gap: .35rem; }
+.vitem > .vrow { flex: 1; min-width: 0; }
+.vrow > summary.vhead, .v-earlier > summary.vhead { min-height: 48px; }
+.v-earlier { border: 1px solid var(--border); border-radius: .5rem; margin-top: .2rem; }
+.v-earlier > summary.vhead { cursor: pointer; list-style: none; padding: .45rem .7rem; }
+.v-earlier > summary.vhead::-webkit-details-marker { display: none; }
+.v-earlier > .vitem { margin: .35rem; }
+/* Text actions, not filled primaries. Roll back is red text. Specificity beats .modal button. */
+.modal button.vbtn {
+  background: none; border: none; color: #0071e3; min-height: 48px; padding: .4rem .7rem;
+  font-weight: 650; box-shadow: none;
+}
+.modal button.vbtn.ghost { color: #1d1d1f; background: none; }
+.modal button.vbtn.rollback { color: #c41e3a; background: none; border: none; }
+.modal button.vbtn:hover { background: rgba(0,113,227,.08); }
+.modal button.vbtn.rollback:hover { background: rgba(196,30,58,.08); }
+.modal.wide .widebtn.danger {
+  background: #c41e3a; border-color: #9a1830; color: #fff; min-height: 48px;
+}
+.modal-actions button { min-height: 48px; }
+.ctx button { min-height: 48px; padding: .65rem .8rem; }
+button.row-del { min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
+.modal button.pw-eye {
+  background: none; border: none; color: #3a3a3f; min-width: 48px; min-height: 48px;
+  padding: 0; box-shadow: none;
+}
+@media (max-width: 700px) {
+  .modal-bg:has(.settings-sheet) { background: #f5f5f7; align-items: stretch; padding: 0; }
+  .settings-sheet {
+    width: 100%; max-width: none; height: 100%; max-height: none;
+    border-radius: 0;
+  }
+}

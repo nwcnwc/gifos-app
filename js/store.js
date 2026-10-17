@@ -57,6 +57,7 @@
     db: 'Saves data in the icon', multiplayer: 'Multiplayer', microphone: 'Microphone',
     camera: 'Camera', wasm: 'Runs WebAssembly', gpu: 'Uses the GPU', ai: 'AI', api: 'Third-party API', network: 'Network',
     links: 'Opens web links', assets: 'Downloads extra files',
+    meet: 'Joins meetings', remote: 'Remote control',
   };
   function capList(caps) {
     const out = [];
@@ -557,6 +558,12 @@
     }
     bar.hidden = false;
     if (tip) tip.href = link;
+    if (GifOS.charge && typeof GifOS.charge.paymentSupportHtml === 'function' && !bar.querySelector('#paybar-support')) {
+      const p = document.createElement('p');
+      p.id = 'paybar-support';
+      p.innerHTML = GifOS.charge.paymentSupportHtml();
+      bar.appendChild(p);
+    }
   }
 
   function showBrowse(push) {
@@ -629,7 +636,9 @@
         // Feature is optional cash, never a gate. A listing you cannot pay
         // for is the normal state; a listing you can still installs free.
         (feature
-          ? '<a class="btn ghost" id="feature" href="' + esc(feature) + '" target="_blank" rel="noopener">Feature this listing</a>'
+          ? '<a class="btn ghost" id="feature" href="' + esc(feature) + '" target="_blank" rel="noopener">Feature this listing</a>' +
+            (GifOS.charge && typeof GifOS.charge.paymentSupportHtml === 'function'
+              ? '<p class="note" id="feature-support">' + GifOS.charge.paymentSupportHtml() + '</p>' : '')
           : '') +
         '<span class="note" id="note">' + esc(human(app.bytes)) + ' download' +
           // An app whose weights arrive separately is TWO downloads, and the

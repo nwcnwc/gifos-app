@@ -9,7 +9,7 @@
      allowed; anything else sees a link to open the page itself. Parser-
      blocking and ES5 on purpose: it runs before any chrome paints.
      Guarded by test/unit/frame-guard.js. -->
-<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
+<script id="gifos-frame-guard">(function(){try{if(window.top===window.self)return;var ok=false;try{ok=window.top.location.origin===window.location.origin;if(!ok&&window.location.origin==='null')ok=window.top.location.origin===window.parent.location.origin;}catch(e){}if(ok)return;var h=document.documentElement;h.style.visibility='hidden';function show(){var b=document.body;if(!b)return;while(b.firstChild)b.removeChild(b.firstChild);var p=document.createElement('p');p.style.cssText='font:16px system-ui,sans-serif;padding:24px;color:#eee;background:#111;margin:0';p.appendChild(document.createTextNode('GifOS does not run inside another site\'s page. '));var a=document.createElement('a');a.href=location.href;a.target='_blank';a.rel='noopener';a.textContent='Open it in its own tab';a.style.color='#9db4ff';p.appendChild(a);b.appendChild(p);h.style.visibility='';}if(document.body)show();else document.addEventListener('DOMContentLoaded',show);}catch(e){}})();</script>
 <!-- The ONLY frames this page ever holds are srcdoc app mounts. A sandboxed
      frame may still navigate ITSELF, and the replacement document would keep
      the runtime's bridge with none of the app CSP (site/js/runtime.js,
@@ -850,8 +850,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     font: bold 1.5rem system-ui; }
   .stgvotes button .nm { font-size: .72rem; background: rgba(10,10,15,.75); padding: .1rem .45rem; border-radius: .35rem; }
   .stgvotes button.voted .x { box-shadow: 0 0 0 4px #fff, 0 0 20px rgba(255,255,255,.55); }
-  /* Bottom-anchored so it never covers the controls bar or the tiles' targets. */
-  #votebanner { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 40;
+  /* Sits above the control bar (104px tall, 14px off the bottom) so a vote
+     in progress never covers Camera or the other bar buttons. */
+  #votebanner { position: fixed; bottom: 128px; left: 50%; transform: translateX(-50%); z-index: 40;
     display: flex; gap: .8rem; align-items: center; max-width: min(40rem, 94vw);
     background: rgba(10,10,15,.92); border: 1px solid var(--accent, #7b5cff);
     border-radius: .7rem; padding: .5rem .9rem; font-size: .85rem; color: #e0e0f0; }
@@ -958,6 +959,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .chips span { background: rgba(10,10,15,.78); border: 1px solid rgba(255,255,255,.14); border-radius: .4rem;
                       padding: .12rem .45rem; font-size: .68rem; color: #eceef8; }
   .tile .chips span.warn { border-color: #b0742a; color: #ffd23c; }
+  .tile .chips span.botbadge { border-color: #5ca0ff; color: #d7e8ff; }
+  body.meet-session #lobby { display: none !important; }
   .tile .modbar { position: absolute; right: .4rem; top: .4rem; display: none; flex-direction: column;
                   gap: .3rem; z-index: 4; }
   .tile:hover .modbar, .tile.menu .modbar, .tile:focus-within .modbar { display: flex; }
@@ -1098,9 +1101,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     max-height: calc(100vh - 2rem); max-height: calc(100dvh - 2rem); overflow-y: auto; }
   .name-box h3 { margin-bottom: .5rem; }
   .name-box p { color: var(--muted, #8888aa); font-size: .85rem; margin-bottom: 1rem; }
-  .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem;
+  .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem; min-height: 48px;
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
-  .name-box button { padding: .5rem 1.4rem; border-radius: .5rem; border: 1px solid var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; }
+  .name-box button { padding: .5rem 1.4rem; min-height: 48px; border-radius: .5rem; border: 1px solid var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; }
   /* Help: a longer, scrollable panel — same modal chrome, room to breathe. */
   .help-box { width: 92vw; }
   .help-scroll { max-height: 70vh; overflow-y: auto; padding-right: .4rem; }
@@ -1159,13 +1162,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .lob-row { display: flex; justify-content: flex-end; gap: .5rem; }
   .lob-row button { padding: .45rem .9rem; }
   .lob-ghost { background: var(--surface, #1c1c2b); border: 1px solid var(--border, #2a2a3f); color: var(--text, #e0e0f0); }
-  .lob-err { color: #ff8a8a; font-size: .82rem; margin-top: .35rem; min-height: 1em; }
+  .lob-err { color: #9f1239; font-size: .82rem; margin-top: .35rem; min-height: 1em; }
   /* The two-password minting labels: the ADMIN password (never shared) vs the
      GUEST password (the one you do share) must be impossible to confuse. */
   .lob-pwlab { display: block; font-size: .82rem; margin: .2rem 0 .3rem; color: var(--text, #e0e0f0); }
   .lob-pwlab small { display: block; font-weight: 400; color: var(--muted, #8888aa); font-size: .74rem; line-height: 1.35; margin: .12rem 0 .1rem; }
   .lob-sep { border-top: 1px solid var(--border, #2a2a3f); margin: 1rem 0 .7rem; }
-  .lob-hist-h { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; opacity: .55; margin-bottom: .4rem; }
+  .lob-hist-h { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; opacity: 1; color: #1d1d1f; font-weight: 700; margin-bottom: .4rem; }
   .lob-item { display: flex; align-items: center; gap: .6rem; padding: .5rem .55rem; border-radius: .5rem; cursor: pointer; }
   .lob-item:hover { background: var(--surface, #1c1c2b); }
   .lob-item .li-main { flex: 1; min-width: 0; }
@@ -1195,20 +1198,180 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .tile video, .rowtile video, .fsthumb video, .tile .avatar {
       position: absolute; top: 0; right: 0; bottom: 0; left: 0; height: 100%; }
   }
+
+  /* Clear Stage: the call is a dark stage, the dock sits on the bottom,
+     and you float once someone else is here. Gallery rules skip screen
+     share, a shared app, and a broadcast so those layouts keep their strip. */
+  body { background: #0c0e12; }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, .seg:focus-visible {
+    outline: 3px solid #0064c8; outline-offset: 2px;
+  }
+  .topchip { position: fixed; z-index: 6; top: 14px; left: 14px; display: flex; align-items: center; gap: 8px;
+    max-width: min(28rem, calc(100% - 120px)); background: rgba(12,14,18,.92); color: #f4f7fb;
+    border-radius: 999px; padding: 6px 12px 6px 14px; }
+  .topchip .title { font-weight: 800; font-size: 26px; letter-spacing: -0.04em; text-decoration: none; cursor: pointer;
+    background: linear-gradient(135deg, #0071e3, #5856d6); -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: transparent; }
+  .topchip .status { color: #e7ebf2; font-size: 20px; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
+    min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topchip .status.alert { color: #ffd23c; font-weight: 600; }
+  .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
+  body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
+  body.app-room #reactbtn, body.app-room #reacttray { display: none !important; }
+  #gifos-build-float { top: 14px !important; right: 14px !important; bottom: auto !important; left: auto !important;
+    opacity: 1 !important; color: #e7ebf2 !important; background: rgba(12,14,18,.92); padding: 4px 10px;
+    border-radius: 999px; z-index: 6 !important; text-shadow: none !important; }
+  .bar { position: fixed; z-index: 32; left: 50%; bottom: 14px; transform: translateX(-50%);
+    display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; height: 104px; width: auto;
+    max-width: calc(100% - 16px); padding: 0 16px 0 18px; margin: 0;
+    background: rgba(255,255,255,.94); border: 0; border-radius: 32px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.28); overflow: visible; }
+  .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+    width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
+    background: #e8ecf1; color: #1d1d1f; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+  }
+  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 34px; height: 34px; }
+  .bar #mic.iconbtn, .bar #cam.iconbtn { color: #1d1d1f; border-color: transparent; }
+  .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { color: #9f1239; border-color: transparent; background: #e8ecf1; }
+  .bar #reactbtn.on, .bar #bartoggle[aria-expanded="true"] { background: #0064c8; color: #fff; }
+  .bar:not(.collapsed) .bartoggle svg { transform: none; }
+  .bar #leavebtn { width: 72px; height: 72px; min-width: 72px; min-height: 72px; margin-left: 6px; padding: 0;
+    border: 0; border-radius: 22px; background: #b61622; color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+  .bar .barmore { display: none; }
+  .bar:not(.collapsed) .barmore { display: grid; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
+    width: min(720px, calc(100vw - 24px)); grid-template-columns: repeat(4, 1fr); gap: 8px;
+    background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23; }
+  .bar:not(.collapsed) .barmore > button { min-height: 64px; height: auto; padding: 8px 6px; border: 0; border-radius: 16px;
+    background: #e8ecf1; color: #1d1d1f; font-size: 18px; font-weight: 650; white-space: normal; }
+  .bar:not(.collapsed) .barmore .blurctl { grid-column: 1 / -1; display: flex; align-items: center; min-height: 48px; gap: 8px; }
+  .bar:not(.collapsed) .barmore .blurlbl { display: inline; color: #3a3a3f; font-size: 14px; }
+  .bar:not(.collapsed) .barmore .seg { min-height: 48px; min-width: 48px; color: #1d1d1f; background: #fff; }
+  .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 122px; transform: translateX(-50%);
+    display: flex; gap: 8px; background: rgba(255,255,255,.96); border-radius: 20px; padding: 10px;
+    box-shadow: 0 10px 28px rgba(0,0,0,.25); }
+  .reacttray[hidden] { display: none !important; }
+  .reacttray button { min-width: 68px; min-height: 68px; border: 0; border-radius: 16px; background: #e8ecf1; color: #1d1d1f;
+    font-size: 18px; font-weight: 650; padding: 6px; }
+  .reacttray button.on { background: #0064c8; color: #fff; }
+  .tile .reactburst { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 5;
+    background: #fff; color: #1d1d1f; font-weight: 800; font-size: 18px; padding: 8px 14px; border-radius: 999px;
+    pointer-events: none; opacity: 0; }
+  .tile .reactburst.show { animation: reactpop 1.6s ease forwards; }
+  @keyframes reactpop { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
+  #leave-ask .name-box { background: #fff; color: #1d1d1f; }
+  #leave-ask .name-box h3 { color: #1d1d1f; font-size: 1.7rem; margin-bottom: 1rem; }
+  #leave-ask #leave-cancel { min-height: 64px; min-width: 96px; font-size: 1.2rem; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
+  #leave-ask #leave-go { min-height: 64px; min-width: 96px; font-size: 1.2rem; margin-left: 8px; background: #b61622; color: #fff; border: 0; }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
+    background: #0c0e12; display: flex; flex-direction: column; padding: 8px 8px 132px; box-sizing: border-box; }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid {
+    flex: 1 1 auto; min-height: 0; height: auto; padding: 0; gap: 6px; align-content: stretch;
+    grid-auto-rows: minmax(0, 1fr); }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile {
+    aspect-ratio: auto; height: 100%; min-height: 0; border-radius: 16px; border: 0; background: #1a1d24; }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile video { object-fit: cover; }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="0"],
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="1"] {
+    grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr); }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="2"] {
+    grid-template-columns: 1.45fr .7fr; grid-template-rows: minmax(0, 1fr); }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="3"] {
+    grid-template-columns: 1.45fr .7fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="3"] > .tile.lead {
+    grid-row: 1 / span 2; }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="4"] {
+    grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="5"] {
+    grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); }
+  body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid[data-remotes="5"] > .tile.span-bottom {
+    grid-column: 1 / -1; }
+  body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
+    position: fixed; z-index: 4; width: 294px; height: 221px; right: 28px; bottom: 140px; left: auto; top: auto;
+    border-radius: 16px; border: 2px solid #fff; aspect-ratio: auto; box-shadow: 0 12px 28px rgba(0,0,0,.45); }
+  .tile .name { font-size: 1.15rem; padding: .28rem .75rem; }
+  .tile .chips span { font-size: .95rem; }
+  @media (max-width: 700px) {
+    .topchip .title { font-size: 20px; }
+    .topchip .status { font-size: 17px; }
+    .bar { height: 88px; gap: 8px; padding: 0 10px; }
+    .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+      width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
+    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
+    .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
+    .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px); }
+    .bar:not(.collapsed) .barmore > button { min-height: 56px; font-size: 16px; }
+    .reacttray { bottom: 102px; }
+    .reacttray button { min-width: 56px; min-height: 56px; font-size: 16px; }
+    #leave-ask .name-box h3 { font-size: 1.35rem; }
+    #leave-ask #leave-cancel, #leave-ask #leave-go { min-height: 56px; font-size: 1.05rem; }
+    .tile .name { font-size: 1rem; }
+    body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
+      width: 180px; height: 240px; right: 14px; bottom: 118px; border-radius: 18px; }
+    body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="3"]) .tile.me {
+      left: 12px; right: auto; width: 134px; height: 179px; }
+    body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="5"]) .tile.me {
+      width: 138px; height: 182px; }
+  }
+  body.screen-on #feed { padding-bottom: 132px; box-sizing: border-box; background: #0c0e12; }
+  body.screen-on #grid { flex: 0 0 120px; height: 120px; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; }
+  body.screen-on #grid .tile { height: 104px; flex: 0 0 auto; width: auto; aspect-ratio: 16 / 9; }
+  @media (max-width: 700px) {
+    body.screen-on #grid { flex-basis: 92px; height: 92px; }
+    body.screen-on #grid .tile { height: 76px; }
+  }
+  body.has-app #feed { margin-bottom: 132px; }
+  body.broadcast #feed { padding-bottom: 108px; box-sizing: border-box; }
+  #joinveil { background: transparent; pointer-events: none; align-items: flex-start; justify-content: center; padding-top: 72px; z-index: 18; }
+  #joinveil .jv-box { pointer-events: auto; background: #fff; color: #1d1d1f; border-radius: 16px; padding: 1.1rem 1.3rem;
+    box-shadow: 0 12px 32px rgba(0,0,0,.28); }
+  #joinveil h3 { color: #1d1d1f; }
+  #joinveil p { color: #3a3a3f; }
+  #lobby { background: #e8ecf1; }
+  #lobby.show { display: grid; padding: 0; overflow: hidden; align-items: stretch; justify-content: stretch; }
+  .lob-preview { position: relative; min-height: 180px; background: #1a1d24; overflow: hidden; }
+  .lob-preview video { width: 100%; height: 100%; object-fit: cover; display: block; background: #1a1d24; }
+  .lob-pv-name { position: absolute; left: 16px; bottom: 16px; background: rgba(8,10,14,.78); color: #f4f7fb;
+    font-size: 15px; font-weight: 650; padding: 5px 12px; border-radius: 999px; }
+  .lob-quiet { color: #3a3a3f; font-size: 14px; line-height: 1.35; margin: 0 0 14px; text-align: center; }
+  .lobby-card { background: #fff; color: #1d1d1f; }
+  .lobby-card h1 { color: #1d1d1f; }
+  #lobby.show .lob-primary, #lobby.show .lob-action, #lob-admin-go, #lob-join-go, .lob-row button {
+    min-height: 48px; border-radius: 16px; }
+  #lobby.show .lob-primary, #lob-admin-go { background: #0064c8; border-color: transparent; color: #fff; font-weight: 700; text-align: center; }
+  #lobby.show .lob-action { background: #fff; border: 1.5px solid #8d93a0; color: #1d1d1f; text-align: center; }
+  .lob-expand input { min-height: 48px; color: #1d1d1f; background: #fff; }
+  #lob-rename { min-height: 48px; padding: 8px 12px; color: #0064c8; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; }
+  .lob-star, #lobby button.row-del { min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
+  .lob-item .li-sub { opacity: 1; color: #3a3a3f; }
+  @media (max-width: 700px) {
+    #lobby.show { grid-template-rows: minmax(140px, 1.15fr) minmax(0, 1fr); }
+    #lobby .lobby-card { max-width: none; margin: -18px 0 0; border-radius: 22px 22px 0 0; padding: 16px 16px 18px; overflow: auto; position: relative; }
+    .lob-pv-name { bottom: 28px; }
+  }
+  @media (min-width: 701px) {
+    #lobby.show { grid-template-columns: 1.35fr .8fr; }
+    #lobby .lob-preview { margin: 16px; border-radius: 20px; }
+    #lobby .lobby-card { max-width: none; margin: 16px 16px 16px 0; border-radius: 20px; padding: 28px 32px; overflow: auto; }
+  }
 </style>
 <script src="js/gifos-themes.js"></script>
 </head>
 <body>
   <div id="lobby">
+    <div class="lob-preview" id="lob-preview">
+      <video id="lob-preview-vid" autoplay muted playsinline></video>
+      <span class="lob-pv-name" id="lob-preview-name">You</span>
+    </div>
     <div class="lobby-card">
       <h1>Meeting</h1>
+      <p class="lob-quiet">You join muted. The camera stays however you set it here.</p>
       <button id="lob-open" class="lob-primary">Start a meeting<small>Open room · anyone with the link can join</small></button>
       <button id="lob-admin-btn" class="lob-action">Start a room you run<small>You're the admin: set a password, mute/blur, ban a troublemaker</small></button>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <input id="lob-admin-name" maxlength="40" placeholder="Room name (anything you like)" autocomplete="off">
         <label class="lob-pwlab">🔑 <b id="lob-admin-pass-head">Admin password</b> — yours alone — <b>do not share it</b><small id="lob-admin-pass-note">This is what puts you in charge of the room. Guests don’t need it. Anyone you give it to can run the room too.</small></label>
         <input id="lob-admin-pass" type="password" maxlength="64" placeholder="Admin password (keep to yourself)" autocomplete="new-password">
-        <label class="lob-pwlab">🎟 <b id="lob-guest-pass-head">Guest password</b> — the one you <b>do</b> share<small id="lob-guest-pass-note">Optional, but faces stay fully blurred (Max) until you set one. The Blur slider softens it. Guests type it to get in. It is not part of the link — send it to them yourself. The Password button changes it later.</small></label>
+        <label class="lob-pwlab">🎟 <b id="lob-guest-pass-head">Guest password</b> — the one you <b>do</b> share<small id="lob-guest-pass-note">Optional. Faces stay blurred until you set one, and it is not part of the link.</small></label>
         <input id="lob-guest-pass" type="password" maxlength="64" placeholder="Guest password (optional — share with guests)" autocomplete="new-password">
         <div class="lob-row"><button id="lob-admin-cancel" class="lob-ghost">Cancel</button><button id="lob-admin-go">Create &amp; enter</button></div>
         <div id="lob-admin-err" class="lob-err"></div>
@@ -1226,21 +1389,40 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div class="lob-namebar">You'll join as <b id="lob-name">…</b> · <button id="lob-rename" class="lob-link">change</button></div>
     </div>
   </div>
-  <div class="bar collapsed">
-    <button id="bartoggle" class="bartoggle" aria-expanded="false" aria-label="Show meeting controls" title="Show meeting controls">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-    </button>
+  <div class="topchip">
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
-    <button id="mic" class="iconbtn off" aria-label="Microphone" title="Your mic">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
-        <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
-    </button>
+    <span class="status" id="status">Joining…</span>
+  </div>
+  <div class="admcount" id="admcount" style="display:none"></div>
+  <div class="bar collapsed" role="toolbar" aria-label="Call controls">
     <button id="cam" class="iconbtn off" aria-label="Camera" title="Your camera">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="2" y="6" width="13" height="12" rx="2"/><path d="M15 10.5 22 7v10l-7-3.5"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
     </button>
+    <button id="mic" class="iconbtn off" aria-label="Microphone" title="Your mic">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
+        <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
+    </button>
+    <button id="reactbtn" type="button" class="iconbtn" aria-label="Reactions" aria-expanded="false" aria-pressed="false" title="Reactions">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>
+    </button>
+    <button id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button id="leavebtn" type="button" aria-label="Hang up" title="Leave the meeting. Your camera and microphone stop.">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(135 12 12)"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 3.1 2 2 0 0 1 4.1 1h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 8.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.7 2.1z"/></g></svg>
+    </button>
+    <div class="barmore" id="barmore">
+    <span class="blurctl" title="How much your own video is blurred to everyone else">
+      <span class="blurlbl">Blur</span>
+      <span id="blurseg" class="segwrap" role="group" aria-label="Blur level">
+        <button class="seg" id="blur-max" data-blur="2">Max</button>
+        <button class="seg" id="blur-min" data-blur="1">Min</button>
+        <button class="seg" id="blur-none" data-blur="0">No blur</button>
+      </span>
+    </span>
     <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
@@ -1250,22 +1432,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
     </button>
-    <span class="blurctl" title="How much your own video is blurred to everyone else">
-      <span class="blurlbl">Blur</span>
-      <span id="blurseg" class="segwrap" role="group" aria-label="Blur level">
-        <button class="seg" id="blur-max" data-blur="2">Max</button>
-        <button class="seg" id="blur-min" data-blur="1">Min</button>
-        <button class="seg" id="blur-none" data-blur="0">No blur</button>
-      </span>
-    </span>
-    <button id="leavebtn" class="off" title="Leave this meeting — your seat closes at once and your camera and mic stop">Leave</button>
-    <!-- The status line and the host-absence countdown are information, not
-         controls: a refusal, a ban, "reconnecting…", "Just you — send the
-         invite" and "this room closes in 4:59" must be readable while the
-         controls are folded away (collapsed is the default). -->
-    <span class="status" id="status">Joining…</span>
-    <div class="admcount" id="admcount" style="display:none"></div>
-    <div class="barmore" id="barmore">
     <button type="button" id="whobtn" title="Who is on this meeting — names and internet addresses">Who</button>
     <button id="invite" title="Friends join you live with one link">Invite</button>
     <button id="appbtn" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
@@ -1284,6 +1450,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="setbtn" title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
     <button id="trbtn" title="The meeting's live transcript" style="display:none">Transcript</button>
     <button id="helpbtn" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
+    </div>
+    <div id="reacttray" class="reacttray" hidden role="group" aria-label="Reactions">
+      <button type="button" id="react-hand">Hand</button>
+      <button type="button" data-burst="Clap">Clap</button>
+      <button type="button" data-burst="Yes">Yes</button>
+      <button type="button" data-burst="No">No</button>
+      <button type="button" data-burst="Laugh">Laugh</button>
     </div>
   </div>
   <div class="share" id="share">
@@ -1356,6 +1529,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <div id="ccsource" style="margin-top:.5rem;display:none"></div>
         <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span>Admins only — every device starts writing down the voices it hears. Anyone can tap CC to opt out.</span></p>
       </div>
+      <!-- VIDEO ANYWHERE: the admin's own row (buy, receipt file, hours meter). Admins only. -->
+      <div class="set-sec" id="va-row" style="display:none">
+        <b>Video Anywhere</b>
+        <p class="set-help" id="va-terms"></p>
+        <p class="set-help" id="va-have" style="display:none"></p>
+        <p class="set-help" id="va-explain" style="display:none"></p>
+        <div class="set-help" id="va-meter" style="display:none">
+          <div id="va-hours"></div>
+          <div id="va-counting"></div>
+          <div id="va-prompt" style="display:none"></div>
+        </div>
+        <p class="set-help" style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center">
+          <button id="va-buy" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Buy</button>
+          <button id="va-topup" class="seg" style="display:none;border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Top up</button>
+          <button id="va-save" class="seg" style="display:none;border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Save receipt file</button>
+          <label class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;cursor:pointer">Open receipt file<input id="va-open" type="file" accept=".gif,image/gif" style="display:none"></label>
+        </p>
+        <p class="set-help" id="va-msg" style="display:none"></p>
+      </div>
       <div id="mixpanel">
         <b>Sound mix</b>
         <label>Stage <input type="range" id="mix-stage" min="0" max="100" value="100"></label>
@@ -1369,7 +1561,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         </div>
       </div>
       <div style="display:flex;justify-content:center;margin-top:.9rem">
-        <button id="set-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Done</button>
+        <button id="set-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
       </div>
     </div>
   </div>
@@ -1382,7 +1574,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <h3>Share your screen</h3>
       <div id="share-appnote" class="share-note"></div>
       <div id="share-denied" class="share-note" style="display:none;border-left-color:#ffd23c;background:rgba(255,210,60,.08)"><b>🛡 Only this room’s admins — or people they allow — can share a screen.</b> Ask an admin to allow you: <b>Allow screen share</b> on your tile, or <b>Allow screen share</b> for the whole room. Then open this sheet again.</div>
-      <p style="font-size:.86rem">A screen share is for what an app can’t be: <b>a deck on your disk, a tool that isn’t GifOS, a window from somewhere else</b>. It takes a seat on the stage, so the whole room sees it — and everyone can see that it’s you sharing.</p>
+      <p style="font-size:.86rem">A screen share is for what an app can’t be: <b>a deck on your disk, a tool that isn’t GifOS, a window from somewhere else</b>. It shows on the stage, so the whole room sees it — and everyone can see that it’s you sharing.</p>
       <p style="font-size:.8rem;color:var(--muted,#8888aa)">Your camera pauses while you share, and comes back when you stop. Sound from the shared tab doesn’t travel — talk over it.</p>
       <div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-top:.9rem">
         <button id="share-go">Choose what to share…</button>
@@ -1524,7 +1716,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <p>Picture a stadium. You don't meet a million faces; you meet the few around you,
         and the rest is a living backdrop.</p>
         <ul class="help-list">
-          <li><b>Seat</b> — one person.</li>
           <li><b>Stage</b> — the front. Whoever steps up here is seen and heard first
           by <i>everyone</i> in the whole stadium (the reader, a speaker, a shared app).</li>
           <li><b>Row</b> — the handful of people right next to you. This is your real
@@ -1661,9 +1852,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="name-modal" role="dialog" aria-modal="true" id="left-modal" style="display:none">
     <div class="closed-box">
       <h3>You left the meeting</h3>
-      <p>Your camera and microphone are off and your seat is closed. The same link brings you back.</p>
+      <p>Your camera and microphone are off. The same link brings you back.</p>
       <button id="left-rejoin">Rejoin</button>
       <button id="left-close" style="margin-left:.5rem;background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+    </div>
+  </div>
+  <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
+    <div class="name-box">
+      <h3 id="leave-ask-title">Leave the meeting?</h3>
+      <button id="leave-cancel" type="button">Stay</button>
+      <button id="leave-go" type="button">Leave</button>
     </div>
   </div>
 
@@ -1698,9 +1896,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/mesh-identity.js"></script>
   <script src="js/mesh-wire.js"></script>
   <script src="js/mesh-media.js"></script>
+  <script src="js/meet-turn.js"></script>
+  <script src="js/meet-video-anywhere.js"></script>
   <script src="js/mesh-pipe.js"></script>
   <script src="js/relay-config.js"></script>
   <script src="js/runtime.js"></script>
+  <script src="js/meet-host.js"></script>
   <script src="js/camera-studio.js"></script>
   <script src="js/gifos-perms.js"></script>
   <script>
@@ -1732,6 +1933,32 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   (function () {
     const net = GifOS.net; // the shared transport fabric (also under runtime.js)
     const ICE_SERVERS = net.ICE_SERVERS;
+    // ---- FREE AUDIO OVER TURN: the state (rules in js/meet-turn.js) --------
+    // TURN is the last rung: a pair uses it only after the direct path and a
+    // friend have both failed, only from the end that cannot be reached
+    // directly, and in a free room only for audio, through one anchor.
+    const MT = GifOS.meetTurn;
+    let turnCred = null, turnCredRoom = null;  // the credential client (asks only after joining, only from a blocked network)
+    let turnAnchorId = null;                   // the seat this page sends its voice to, and hears the room from
+    let turnAnchorSince = 0, turnAnchorUpAt = 0, turnAnchorFails = 0, turnEverServed = false;
+    const turnDownAt = new Map();      // peer id -> since when that pair has had no working path (kept across redials)
+    const turnAnchorDead = new Map();  // peer id -> an anchor that failed is not chosen again before this time
+    const turnMixes = new Map();       // client id -> { fold, keys }: the mix-minus this page sends a client it anchors
+    const turnMixSenders = new WeakSet(); // senders carrying a mix-minus: a microphone swap never touches them
+    // ---- VIDEO ANYWHERE: the state (rules in js/meet-video-anywhere.js) ----
+    // A room whose admin presented a Video Anywhere receipt carries video
+    // across networks that block direct connections. The admin's signed
+    // launch order { receipt, ticket } travels peer to peer over the
+    // meeting's own encrypted channels; a page that dials a pair through a
+    // server shows it to the credential service for that pair.
+    const VA = GifOS.meetVA;
+    let vaOrder = null;            // the best checked launch order this page holds
+    const vaPaid = new Map();      // peer id -> { bridge, cred, orderSig }: paid credentials for a pair this page dials through a server
+    const vaChecking = new Map();  // order signature -> { at, stage, done }: being checked, or refused for good
+    let vaSigning = null, vaForceSign = false;     // the admin's launch in progress; sign again now (a top-up)
+    let vaMeter = null, vaMeterAt = 0, vaMeterBusy = false, vaUsedAtStart = null, vaMeterAsks = 0;
+    let vaTerms = null, vaTermsAt = 0, vaTermsBusy = false;
+    let vaBuying = false, vaResumed = false, vaNudged = '', vaTopupRetry = false;
     // Quality ladder: live links → per-link video constraints. adapt() passes
     // n = 1 + peers.size, the direct links, bounded by the row, not the room.
     // Upload cost grows with those links, so both resolution and each link's
@@ -1800,13 +2027,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
 
     const params = new URLSearchParams(location.hash.slice(1));
+    // A session document is srcdoc (the host page's frame-src is about: only).
+    // The hash cannot carry mb=1, so the host stamps the flag before boot.
+    if (window.__gifosMb === '1' && params.get('mb') !== '1') params.set('mb', '1');
     // The real file we're served from (/run.html at load — a pretty /meet/<room>
     // link 404-routes here; the legacy meet.html shim is DELETED, no-shims flag
     // day 2026-08-05). We
     // keep this because on prod we rewrite the address bar to the pretty path, so
     // location.pathname stops being a reliable base for building runtime URLs;
     // MEET_PATH always is.
-    const MEET_PATH = location.pathname;
+    // about:srcdoc (a meeting session) has no path of its own. Links and the
+    // address it would show are still the meeting page.
+    const MEET_PATH = location.protocol === 'about:' ? '/run.html' : location.pathname;
+    // about:srcdoc's location.origin is the string "null" even when the
+    // document is same-origin with the page that framed it.
+    const pageOrigin = () => {
+      if (location.origin && location.origin !== 'null') return location.origin;
+      try { if (window.parent && window.parent !== window && window.parent.location && window.parent.location.origin) return window.parent.location.origin; } catch (e) {}
+      return '';
+    };
     // ---- ONE RUNTIME: the entry mints the room's TRAITS (docs/one-runtime.md).
     // The link is the promise — which component is pinned is decided HERE, at
     // entry, and is immutable for the page's life:
@@ -2228,6 +2467,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const meshSeat = () => (meshNode ? meshNode.seat : null);
     const meshCoord = () => { const s = meshSeat(); return s && s.hasCoord ? s.coord : null; };
     const meshOccAt = (c) => { const s = meshSeat(); if (!s) return null; return s.occGet(net.topo.ckey(c)); };
+    // ── NETWORK-AWARE SEATING (js/mesh.js NetRoom) ──────────────────────────
+    // People on networks that cannot all reach each other are joined with the
+    // fewest relayed links: one BRIDGE per pair of groups, each with a hot
+    // STANDBY; every other link between groups is DARK (carries nothing).
+    // mesh.js decides; this block only installs the room view and reads the
+    // verdict for the relay-pool code. Nothing is installed by default, so a
+    // meeting seats exactly as before until netSeatingInstall(view) runs.
+    //   netSeatingInstall(view)  build a GifOS.mesh.NetRoom over `view` (the
+    //                            reachability tests and the pool state; the
+    //                            contract is in mesh.js) or remove it (null)
+    //   netLinks()               [{ peer, bridge, standby, dark, turnClient }]
+    //                            for my links and my bridge/standby partners
+    //   netLinkInfo(pid)         the same record for one peer, or null
+    //   netBeatTarget()          the heir I beat every 100 ms while I end a bridge, or null
+    //   netBeatFrom(pid)         a beat from bridge end pid arrived; netPulse() on a 100 ms clock
+    let netRoom = null;
+    function netSeatingKeep() { const s = meshSeat(); if (s && s.env && s.env.NET !== (netRoom || undefined)) s.env.NET = netRoom || undefined; }   // a rebuilt seat keeps the room
+    function netSeatingInstall(view) { netRoom = view ? new GifOS.mesh.NetRoom(view) : null; netSeatingKeep(); return netRoom; }
+    function netLinks() { try { const s = meshSeat(); return s && netRoom ? s.netLinks() : []; } catch (e) { return []; } }
+    function netLinkInfo(pid) { try { const s = meshSeat(); return s && netRoom && pid != null ? netRoom.linkInfo(s.id, pid) : null; } catch (e) { return null; } }
+    function netBeatTarget() { try { const s = meshSeat(); return s && netRoom ? netRoom.heirFor(s.id) : null; } catch (e) { return null; } }
+    function netBeatFrom(pid) { if (netRoom && pid != null) netRoom.beat(pid, Date.now()); }
+    function netPulse() { if (netRoom) netRoom.pulse(Date.now()); }
+    // ── end NETWORK-AWARE SEATING ───────────────────────────────────────────
     function myRowIds() {
       const c = meshCoord();
       if (!c) return myId ? [myId] : [];
@@ -4060,6 +4323,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           : '<span class="warn">🖥 sharing their screen</span>');
       }
       if (st.hand) chips.push('<span class="warn">✋ hand raised</span>');
+      if (st.bot) chips.push('<span class="botbadge">🤖 bot</span>');
       if (st.rec) chips.push('<span class="warn">⏺ recording this meeting</span>');
       if (st.scribe) chips.push('<span>✍ writing everyone down</span>');
       if (st.cc) chips.push('<span>📝 transcribing</span>');
@@ -4169,6 +4433,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       if (meTile) apply('me', meTile);
       for (const [pid, p] of peers) apply(pid, p);
+      // Once someone else is here, you leave the grid and float. The count
+      // is the other people, so one other person fills the stage.
+      const remoteTiles = [];
+      for (const [, p] of peers) if (p && p.tile) remoteTiles.push(p.tile);
+      remoteTiles.sort((a, b) => (parseFloat(a.style.order) || 0) - (parseFloat(b.style.order) || 0));
+      const nRemote = peers.size;
+      document.body.classList.toggle('has-peers', nRemote > 0);
+      if (grid) grid.setAttribute('data-remotes', String(nRemote));
+      remoteTiles.forEach((t, i) => {
+        t.classList.toggle('lead', nRemote === 3 && i === 0);
+        t.classList.toggle('span-bottom', nRemote === 5 && i === remoteTiles.length - 1);
+      });
     }
 
     // ---- who's talking: per-stream audio meters → glowing tile border --------
@@ -4756,19 +5032,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           let added = false;
           try {
             if (!p.mainA && at) { p.mainA = p.pc.addTrack(at, localStream); added = true; }
-            if (!p.mainV && vt) { p.mainV = p.pc.addTrack(vt, localStream); added = true; }
+            if (!p.mainV && vt && !p.turnAudio) { p.mainV = p.pc.addTrack(vt, localStream); added = true; }
           } catch (e) {}
           if (added) { if (p.dc && p.dc.readyState === 'open') compKick(p.id); else renegotiate(p); }
         }
         if (p.mainV) {
           // remoteParkMain: hidden-viewer dormancy — the far side told us it
           // can't see this feed right now ({k:'vis'}); park the encoder.
-          if (!cam || !vt || p.remoteParkMain) { if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {}); }
+          if (!cam || !vt || p.remoteParkMain || p.turnAudio) { if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {}); }
           else if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {});
         }
         if (p.mainA) {
-          if (staged) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
-          else if (at && p.mainA.track !== at) p.mainA.replaceTrack(at).catch(() => {});
+          // A client I anchor on the free pool hears the mix-minus on this
+          // sender instead of my microphone (my voice is in the mix).
+          const mixT = p.turnServe ? turnMixTrack(p.id) : null;
+          if (mixT) { turnMixSenders.add(p.mainA); if (p.mainA.track !== mixT) p.mainA.replaceTrack(mixT).catch(() => {}); }
+          else {
+            turnMixSenders.delete(p.mainA);
+            if (staged && !p.turnAudio) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
+            else if (at && p.mainA.track !== at) p.mainA.replaceTrack(at).catch(() => {});
+          }
         }
       }
       adapt(); // re-apply bitrate/resolution to the (possibly new) sender track
@@ -5392,22 +5675,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // data-unreached.
       const reach = typeof reachInfo === 'function' ? reachInfo() : null;
       const reachState = reach ? reach.state : null;
-      const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
-      const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
+      // 'partial' and 'heard-not-seen' add a note to the count line; every
+      // other reach state replaces the line.
+      const inlineReach = reachState === 'partial' || reachState === 'heard-not-seen';
+      const vaWait = reachState === 'heard-not-seen' ? vaWaitingNote() : ''; // Video Anywhere: a paid room before its admin's launch order
+      const partial = reachState === 'partial' ? reachNote(reach.dead) : reachState === 'heard-not-seen' ? ' · ' + (vaWait || REACH_MSG['heard-not-seen']) : '';
+      const statusText = reachState && !inlineReach ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' || reachState === 'turn-unavailable' ? '' : reachTriedSentence())
         : (n === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry' + reachTriedSentence())
         : displayCount() + ' in the meeting · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
       // of the reach states that replace the line. Tests and styling read
       // this, never the sentence.
-      const statusKind = reachState && reachState !== 'partial' ? reachState : n === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
+      const statusKind = reachState && !inlineReach ? reachState : n === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
       if (statusEl.dataset) {
         if (statusEl.dataset.kind !== statusKind) statusEl.dataset.kind = statusKind;
         const dr = reachState || '', du = reachState === 'partial' ? String(reach.dead) : '';
         if (statusEl.dataset.reach !== dr) statusEl.dataset.reach = dr;
         if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
+        const dv = vaWait ? 'waiting' : '';
+        if (statusEl.dataset.va !== dv) statusEl.dataset.va = dv;
       }
-      if (reachState && reachState !== 'partial') statusEl.classList.add('alert');
+      if (reachState && !inlineReach) statusEl.classList.add('alert');
       if (statusEl.textContent !== statusText) {
         statusEl.textContent = statusText;
         statusEl.title = statusText;
@@ -5458,8 +5747,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return msg;
     };
     // ---- REACH: why a person is locked out, or sees a poor meeting ----------
-    // Media never crosses a server: every pair is a direct connection, and a
-    // network that blocks them (common at work) leaves a tile black. The
+    // Media crosses a server only on the free audio pool's last rung (audio,
+    // through one anchor): every other pair is a direct connection or a
+    // friend, and a network that blocks them (common at work) leaves a tile
+    // black. The
     // per-tile chip says so pair by pair; this block says it for the whole
     // meeting, in one line, with what happens next. Four states, each read
     // from facts the page actually holds, never guessed:
@@ -5480,6 +5771,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       'udp-blocked': '📡 Your network blocks the direct connections this meeting needs, so you cannot join from here.',
       'cannot-reach-room': '📡 This meeting was started on a network your device cannot connect to directly. This page keeps trying and joins as soon as it can get through.',
       'outsiders-cannot-reach-me': '📡 People outside your network cannot connect to this meeting.',
+      // The free audio pool could carry these people and cannot right now
+      // (the service is down, full, or the grant ran out). Replaces the line.
+      'turn-unavailable': 'Some people here are on networks that block direct connections, so you cannot hear or see them right now. This page keeps trying.',
+      // A NOTE, not a line: added to the ordinary count line, and only on a
+      // page whose own network blocks video and that hears the meeting
+      // through its anchor. Every tile it cannot see shows an avatar.
+      'heard-not-seen': 'Many corporate networks block peer-to-peer video. Video across them needs a meeting hosted by someone with a paid Video Anywhere account.',
     };
     // The count-line note for a partial meeting (state 'partial'): appended
     // to the ordinary "N in the meeting" line with the number of people this
@@ -5557,13 +5855,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the meeting (me included), live/dead from reachCounts, stranded the
     // mesh's own "the meeting is live but unreachable" verdict (R6), atDoor
     // whether I am still asking to be let in.
+    // Two more facts, from the free audio pool: heard (this page hears the
+    // meeting through its anchor) and turn (the pool's state for this page:
+    // 'ok' and 'pending' can still carry it in; 'down' never answered;
+    // 'lost' carried it and ran out; absent or 'idle' means never asked).
     function reachStateOf(f) {
+      if (f.heard) return 'heard-not-seen';
+      const turnGone = f.turn === 'down' || f.turn === 'lost';
       if (f.probe === 'blocked') {
         // My network is the problem. If anyone reaches me, they share it:
         // the people elsewhere are the ones who cannot. Alone and seated,
         // the same is true of whoever is yet to come.
-        if (f.live > 0) return f.dead > 0 ? 'outsiders-cannot-reach-me' : null;
+        if (f.live > 0) return f.dead > 0 ? (turnGone ? 'turn-unavailable' : 'outsiders-cannot-reach-me') : null;
         if (f.n <= 1 && !f.atDoor && !f.stranded) return 'outsiders-cannot-reach-me';
+        if (f.turn === 'lost') return 'turn-unavailable';
+        if (f.turn === 'ok' || f.turn === 'pending') return null; // the pool may still carry this page in
         return 'udp-blocked';
       }
       if (f.stranded) return 'cannot-reach-room';
@@ -5578,10 +5884,623 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (atDoor) { const members = GifOS.mesh.Seat.rosterPeers(s.roster); for (const v of s.occ.values()) if (v) members.add(String(v)); isMember = (pid) => members.has(String(pid)); }
       const c = reachCounts(peers.values(), peerAway, isMember);
       const f = { probe: directPath, n: participantCount(), live: c.live, dead: c.dead,
-        stranded: !!(s && s.stranded), atDoor };
+        stranded: !!(s && s.stranded), atDoor, turn: turnReach(), heard: turnHeard() && !vaSeen() };
       f.state = reachStateOf(f);
       return f;
     }
+
+    // ---- FREE AUDIO OVER TURN: the page side (rules in js/meet-turn.js) ----
+    // Where the direct path and a friend have both failed, a page whose own
+    // network blocks direct connections asks the free audio pool for help:
+    //   1. Credentials are asked for after joining, never on the way in, and
+    //      only by a page whose network blocks direct connections. An error,
+    //      a slow answer or "unavailable" leaves the meeting as it is.
+    //   2. That page picks ONE anchor among the people it cannot reach and
+    //      dials it through TURN. A page that can be reached directly never
+    //      names a TURN server in any connection of its own.
+    //   3. The pair carries audio only: every other sender on it is parked.
+    //   4. The anchor sends back one stream, everything it hears except the
+    //      client's own voice, and passes the client's voice on to the others
+    //      the way a friend passes on media.
+    function turnServers() { return turnCred ? turnCred.servers() : null; }
+    // A peer dialled this pair through TURN (its relay candidates arrived)
+    // or I already anchor it. Only a page that cannot be reached acts on it.
+    function turnInvited(p) { return !!(p && (p.turnServe || (p.turnInvitedAt && Date.now() - p.turnInvitedAt < 60000))); }
+    // iceFor(p) → the settings for this pair's next transport. The TURN
+    // servers are added only where meetTurn.pairUsesTurn allows it.
+    function iceFor(p) {
+      const paid = vaServersFor(p); // Video Anywhere: this pair's paid credentials, when it holds them
+      const servers = paid || turnServers();
+      const use = MT.pairUsesTurn({ mine: directPath, anchor: !!p.turnAnchor, invited: turnInvited(p), haveServers: !!servers });
+      p.turnMine = use;
+      p.turnPaid = use ? !!paid : vaFarPaid(p);
+      p.turnAudio = (use || !!p.turnServe) && !p.turnPaid;
+      return MT.iceServersFor(ICE_SERVERS, servers, use);
+    }
+    // The pool's state for the reach line: credentials that never once got
+    // a pair through are no way in.
+    function turnReach() {
+      if (!turnCred) return 'idle';
+      const st = turnCred.state();
+      if (st === 'ok' && turnAnchorFails >= 3 && !turnEverServed) return 'down';
+      return st;
+    }
+    function turnHeard() {
+      const a = turnAnchorId != null ? peers.get(turnAnchorId) : null;
+      return !!(a && a.connected && a.turnMine);
+    }
+    function turnHello(p, on) {
+      if (!p || !p.dc || p.dc.readyState !== 'open') return;
+      dcSend(p, { k: 'turn-anchor', on: on ? 1 : 0 });
+      p.turnHelloDc = on ? p.dc : null;
+    }
+    // One stream each way on a free-pool pair: every sender but the one
+    // audio sender (my voice, or the mix I send an anchored client) is
+    // parked, video first of all.
+    function parkTurnSenders(p) {
+      if (!p || !p.pc || !p.turnAudio) return;
+      let senders = [];
+      try { senders = p.pc.getSenders(); } catch (e) {}
+      for (const sd of senders) if (sd !== p.mainA && sd.track) sd.replaceTrack(null).catch(() => {});
+    }
+    // Could a friend still carry this pair? (the same test the friend ask uses)
+    function friendPathFor(pid, now) {
+      const refused = relayRefusal.get(pid) || {};
+      for (const r of myConns()) if (r !== pid && (connsOf.get(r) || []).includes(pid) && !(refused[r] && now - refused[r] < 30000)) return true;
+      return false;
+    }
+    function setTurnAnchor(pid, now) {
+      const p = peers.get(pid);
+      if (!p) return;
+      turnAnchorId = pid; turnAnchorSince = now; turnAnchorUpAt = 0;
+      p.turnAnchor = true;
+      if (typeof clog === 'function') clog('turn anchor ' + String(pid).slice(0, 6));
+      newPcFor(p); // the new transport carries the pool's servers (iceFor)
+      p.lastKick = now + Math.random() * 1500;
+      sendOffer(pid, false);
+    }
+    function dropTurnAnchor(now, holdMs) {
+      const pid = turnAnchorId;
+      turnAnchorId = null; turnAnchorUpAt = 0;
+      if (pid == null) return;
+      if (holdMs) turnAnchorDead.set(pid, now + holdMs);
+      const p = peers.get(pid);
+      if (!p) return;
+      turnHello(p, false);
+      p.turnAnchor = false; p.turnHelloDc = null;
+      if (p.turnMine) newPcFor(p); // ends the pool session; the pair goes back to the direct path's retries
+      refreshOutbound();
+    }
+    // The credential client's news: a renewal restarts ICE on the pool's
+    // pairs only; an expiry with no renewal ends their sessions.
+    function onTurnCred(kind) {
+      if (kind === 'renewed') {
+        for (const [pid, p] of peers) {
+          if (!p.turnMine || !p.pc) continue;
+          let ok = false;
+          try { const cfg = p.pc.getConfiguration(); cfg.iceServers = iceFor(p); p.pc.setConfiguration(cfg); ok = true; } catch (e) {}
+          if (!ok) { newPcFor(p); sendOffer(pid, false); continue; }
+          if (p.dc && p.dc.readyState === 'open') { try { p.pc.restartIce(); } catch (e) {} renegotiate(p); }
+          else sendOffer(pid, true);
+        }
+      } else if (kind === 'expired') {
+        if (turnAnchorId != null) dropTurnAnchor(Date.now(), 0);
+        for (const p of peers.values()) if (p.turnMine && !vaServersFor(p)) newPcFor(p); // a pair on paid credentials does not use the free grant
+      }
+      updateStatus();
+    }
+    // What this page hears, as mix sources: my microphone, every person
+    // whose voice reaches me (directly or carried by a friend), and the
+    // Stage. owner is whose voice a source is.
+    function turnHeardSources() {
+      const out = [];
+      const mic = localStream && localStream.getAudioTracks()[0];
+      if (mic) out.push({ key: 'me:' + mic.id, owner: myId, stream: localStream, gain: 1 });
+      const held = (pid) => { try { const gm = modOf(pid).mute; return !!(gm && gm.on); } catch (e) { return false; } }; // "mute for everyone" holds in the mix too
+      for (const q of peers.values()) {
+        if (!q.connected || q.relayed || !q.stream || !q.stream.getAudioTracks().length) continue;
+        if (typeof mediaOk === 'function' && mediaOk(q.id) === false) continue;
+        out.push({ key: 'p:' + q.id + ':' + q.stream.id, owner: q.id, stream: q.stream, gain: held(q.id) ? 0 : 1 });
+      }
+      for (const [target, r] of relayVia) {
+        if (!r.stream || !r.stream.getAudioTracks().length) continue;
+        out.push({ key: 'r:' + target + ':' + r.stream.id, owner: target, stream: r.stream, gain: held(target) ? 0 : 1 });
+      }
+      if (stageEar && stageEar.fold && stageEar.fold.dest) out.push({ key: 'stage', owner: null, stream: stageEar.fold.dest.stream, gain: 1 });
+      return out;
+    }
+    // One mix-minus per client I anchor (one outgoing track each).
+    function syncTurnMixes() {
+      for (const [pid, mx] of [...turnMixes]) {
+        const q = peers.get(pid);
+        if (!q || !q.turnServe) { mx.fold.clear(); turnMixes.delete(pid); }
+      }
+      let src = null;
+      for (const q of peers.values()) {
+        if (!q.turnServe) continue;
+        if (!ensureAc()) return;
+        if (!src) src = turnHeardSources();
+        let mx = turnMixes.get(q.id);
+        if (!mx) { mx = { fold: MM.createAudioFold(ac), keys: new Set() }; turnMixes.set(q.id, mx); }
+        const direct = (connsOf.get(q.id) || []).filter((x) => x !== myId);
+        const want = new Map(MT.mixMinus(src, q.id, direct).map((x) => [x.key, x]));
+        for (const k of [...mx.keys]) if (!want.has(k)) { mx.fold.remove(k); mx.keys.delete(k); }
+        for (const [k, x] of want) {
+          if (!mx.keys.has(k)) { mx.fold.add(k, x.stream, x.gain); mx.keys.add(k); }
+          else if (mx.fold.setGain) mx.fold.setGain(k, x.gain);
+        }
+      }
+    }
+    function turnMixTrack(pid) { const mx = turnMixes.get(pid); return mx ? mx.fold.track() : null; }
+    // The beat's TURN pass (the sweep calls it after the pair verdicts).
+    function turnSweep(now) {
+      if (myStatus.np !== directPath) myStatus.np = directPath; // my reachability rides my status: an anchor choice reads it
+      // 1. Credentials: only a page whose network blocks direct connections,
+      // only once it has joined, and asked in the background.
+      const want = directPath === 'blocked' && !!meshNode && !!sessId && !leaving;
+      if (want && (!turnCred || turnCredRoom !== sessId)) {
+        if (turnCred) turnCred.stop();
+        turnCredRoom = sessId;
+        turnCred = MT.createCredentials({ ask: MT.askIce(window.fetch.bind(window)), room: sessId, onChange: onTurnCred });
+        turnCred.start();
+      } else if (turnCred && directPath !== 'blocked') {
+        turnCred.stop(); turnCred = null; turnCredRoom = null; // this network can be reached now: no pool
+        onTurnCred('expired');
+      }
+      // 2. How long each pair has gone without a working path.
+      for (const [pid, p] of peers) {
+        if (p.connected || p.relayed) turnDownAt.delete(pid);
+        else if (!p.absentSince && !turnDownAt.has(pid)) turnDownAt.set(pid, now);
+      }
+      for (const [pid, t] of [...turnDownAt]) if (!peers.has(pid) && now - t > 120000) turnDownAt.delete(pid);
+      for (const [pid, t] of [...turnAnchorDead]) if (t < now) turnAnchorDead.delete(pid);
+      const servers = turnServers();
+      // 3. The client side: one anchor, kept while it carries me.
+      if (directPath === 'blocked' && servers) {
+        if (turnAnchorId != null) {
+          const a = peers.get(turnAnchorId);
+          if (a && !a.turnAnchor) { a.turnAnchor = true; newPcFor(a); sendOffer(turnAnchorId, false); } // the record was rebuilt by a redial
+          if (a && a.connected) { turnAnchorUpAt = now; turnEverServed = true; turnAnchorFails = 0; }
+          const since = Math.max(turnAnchorSince, turnAnchorUpAt);
+          const limit = turnAnchorUpAt ? 20000 : 30000; // a lost anchor gets a moment to come back; a new one, time to connect
+          if (!a || a.absentSince || (!a.connected && now - since > limit)) {
+            if (!turnAnchorUpAt) turnAnchorFails++;
+            dropTurnAnchor(now, 60000);
+          }
+        }
+        if (turnAnchorId == null) {
+          const cands = [];
+          for (const [pid, p] of peers) {
+            if (p.absentSince || p.headless || !(linkTo(pid) || p.boot)) continue;
+            if (typeof isEjected === 'function' && isEjected(pid) === true) continue;
+            const st = statusOf.get(pid);
+            cands.push({ id: pid,
+              reachable: st && st.np === 'ok' ? true : st && st.np === 'blocked' ? false : null,
+              links: connsOf.has(pid) ? connsOf.get(pid).length : null,
+              deadUntil: turnAnchorDead.get(pid) || 0,
+              stage: MT.pairStage({ connected: p.connected, relayed: !!p.relayed, downMs: turnDownAt.has(pid) ? now - turnDownAt.get(pid) : 0, friendPath: friendPathFor(pid, now) }) });
+          }
+          const pick = MT.chooseAnchor(cands, null, now);
+          if (pick != null) setTurnAnchor(pick, now);
+        }
+      } else if (turnAnchorId != null) dropTurnAnchor(now, 0);
+      const anchor = turnAnchorId != null ? peers.get(turnAnchorId) : null;
+      if (anchor && anchor.dc && anchor.dc.readyState === 'open' && anchor.turnHelloDc !== anchor.dc) turnHello(anchor, true);
+      // Heard through the anchor: no friend carries anyone else to me (one stream in).
+      if (turnHeard() && !vaSeen()) for (const t of [...relayVia.keys()]) stopRelayFor(t, true);
+      // 4. Neither end reachable: a blocked page that a peer dials through
+      // TURN uses the pool for that pair too.
+      if (directPath === 'blocked' && servers) {
+        for (const [pid, p] of peers) {
+          if (!turnInvited(p) || p.turnMine || p.connected || p.turnAnchor) continue;
+          if (now - (p.turnRedialAt || 0) < 10000) continue;
+          p.turnRedialAt = now;
+          newPcFor(p); p.lastKick = now + Math.random() * 1500;
+          sendOffer(pid, false);
+        }
+      }
+      // 5. Every free-pool pair: audio only, one stream each way.
+      for (const p of peers.values()) if (p.turnAudio) parkTurnSenders(p);
+      // 6. The anchor side: one mix-minus per client, on that pair's audio sender.
+      syncTurnMixes();
+      let swap = false;
+      for (const p of peers.values()) {
+        if (p.turnServe && p.mainA) { const mt = turnMixTrack(p.id); if (mt && p.mainA.track !== mt) swap = true; }
+        if (p.turnAudio && !p.mainA && localStream && p.dc && p.dc.readyState === 'open') swap = true; // the voice sender is missing: refreshOutbound adds it
+      }
+      if (swap) refreshOutbound();
+      vaSweep(now); // Video Anywhere: paid pairs, the admin's launch and meter
+    }
+    // ---- VIDEO ANYWHERE: the page side (rules in js/meet-video-anywhere.js) ----
+    // 1. Buy: the admin buys a month from the payment service, bought for the
+    //    admin room's own public key; the receipt stays in this browser per
+    //    room, and can be saved as a receipt file.
+    // 2. Launch: the admin signs a room ticket (at most 12 hours) and sends
+    //    { receipt, ticket } to the room as an admin-signed order over the
+    //    meeting's own channels. Every page checks it; late joiners get it
+    //    from whoever they connect to. The admin signs again before the
+    //    ticket ends; after the admin leaves, video lasts until it ends.
+    // 3. Use: on a pair this page dials through a server, it shows the order
+    //    to the credential service for that pair and, with paid credentials,
+    //    the pair carries video too. Any refusal: the pair stays voice only.
+    // 4. Meter: the admin's own screen shows the hours.
+    const vaNowS = () => Math.floor(Date.now() / 1000);
+    const vaStoreKey = () => 'gifos_va_' + (av || '');        // the admin's receipt, per room verifier
+    const vaTopupsKey = () => 'gifos_va_topups_' + (av || ''); // the top-ups bought for it
+    const vaPendingKey = () => 'gifos_va_pending_' + (av || ''); // a purchase waiting for its receipt
+    const vaPaidKey = () => 'gifos_va_room_' + roomKey();     // until when this page last knew the room paid
+    function vaRead(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+    function vaWrite(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+    // The admin's own receipt for this room: { receiptJson, sig, r } or null.
+    function vaMine() {
+      if (!hasAdminRoom()) return null;
+      const w = vaRead(vaStoreKey());
+      if (!w || typeof w.receiptJson !== 'string' || typeof w.sig !== 'string') return null;
+      let r = null; try { r = JSON.parse(w.receiptJson); } catch (e) { return null; }
+      return { receiptJson: w.receiptJson, sig: w.sig, r };
+    }
+    const vaMineLive = () => { const m = vaMine(); return m && VA.checkReceipt(m.r, vaNowS()) ? m : null; };
+    // The bridge a pair is counted as. Until the seating names real bridges,
+    // a bridge is the pair itself; both ends compute the same id.
+    function vaBridge(pid) { return VA.bridgeIdFor(myId, pid); }
+    function vaOrderState() {
+      if (!vaOrder) return null;
+      const ns = vaNowS();
+      if (!VA.checkReceipt(vaOrder.r, ns)) return null;
+      return vaOrder.end - ns >= VA.MIN_LEFT_S ? 'live' : 'ended';
+    }
+    function vaRoom() {
+      if (!hasAdminRoom()) return 'free';
+      const pu = vaRead(vaPaidKey());
+      return VA.roomState({ order: vaOrderState(), paidUntil: typeof pu === 'number' ? pu : null, nowS: vaNowS() });
+    }
+    function vaServersFor(p) { const e = p && vaPaid.get(p.id); return e ? e.cred.servers() : null; }
+    function vaFarPaid(p) { return VA.farPaid({ said: !!(p && p.vaFarPaid), room: vaRoom() }); }
+    function vaSeen() { const a = turnAnchorId != null ? peers.get(turnAnchorId) : null; return !!(a && a.connected && a.turnMine && a.turnPaid); }
+    function vaPost(path, body) {
+      return fetch(MT.workerBase() + path, {
+        method: 'POST', headers: { 'content-type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(body),
+        credentials: 'omit', cache: 'no-store', mode: 'cors',
+      }).then((r) => r.json()).catch(() => null);
+    }
+    // ---- the order, peer to peer
+    // vaWhy: the last reasons an order was not kept (debug view only).
+    const vaWhy = [];
+    const vaNo = (why) => { vaWhy.push({ at: Date.now(), why }); if (vaWhy.length > 12) vaWhy.shift(); return false; };
+    async function vaTake(w, from) {
+      if (!w || typeof w.sig !== 'string' || typeof w.sp !== 'string' || w.sp.length > 8192 || !hasAdminRoom()) return vaNo('shape');
+      if (vaOrder && vaOrder.sig === w.sig) return false;
+      // One check per order at a time. A check still pending after 15 s is
+      // stuck (a network fetch that never answered): let this copy try again.
+      const pend = vaChecking.get(w.sig);
+      if (pend && (pend.done || Date.now() - pend.at < 15000)) return pend.done ? false : vaNo('pending: ' + pend.stage);
+      const job = { at: Date.now(), stage: 'admin', done: false };
+      vaChecking.set(w.sig, job);
+      if (vaChecking.size > 64) vaChecking.delete(vaChecking.keys().next().value);
+      // A finished check is final for this order, kept or refused; only a
+      // key that did not load (vaCheck removes the entry) is tried again.
+      try { return await vaCheck(w, from, job); }
+      finally { if (vaChecking.get(w.sig) === job) job.done = true; }
+    }
+    async function vaCheck(w, from, job) {
+      // The order: signed by this room's admin key (any act older than a
+      // ticket's life is refused; a replay grants nothing the ticket's end does not).
+      const o = await admVerify(w, 'va', (VA.TICKET_S + 3600) * 1000);
+      job.stage = 'receipt';
+      if (!o || !o.receipt || !o.ticket) return vaNo('admin-signature');
+      // The receipt: the payment service's signature over its exact bytes.
+      const br = GifOS.payBroker;
+      let r = null;
+      try { r = await br.verifyReceipt(String(o.receipt.receiptJson), String(o.receipt.sig)); }
+      catch (e) { if (!/does not verify/.test(String(e && e.message))) vaChecking.delete(w.sig); return vaNo('receipt: ' + String(e && e.message).slice(0, 60)); } // a key that did not load may load next time
+      job.stage = 'ticket';
+      const ns = vaNowS();
+      if (!VA.checkReceipt(r, ns) || w.pub !== r.buyerKey) return vaNo('receipt-fields'); // only the key that bought it presents it
+      // The ticket: signed by that same key, for this room, for this receipt.
+      const tk = o.ticket;
+      if (!tk || typeof tk.sp !== 'string' || tk.sp.length > 400 || typeof tk.sig !== 'string') return vaNo('ticket-shape');
+      if (!(await net.edVerify(tk.pub, tk.sig, tk.sp))) return vaNo('ticket-signature');
+      let t = null; try { t = JSON.parse(tk.sp); } catch (e) { return vaNo('ticket-json'); }
+      if (!VA.checkTicket(t, tk.pub, r, sessId, ns)) return vaNo('ticket-fields room=' + String(t && t.room).slice(0, 12) + ' sess=' + String(sessId).slice(0, 12));
+      const cand = { w, sig: w.sig, ts: +o.ts || 0, end: t.end, r, t,
+        receipt: { receiptJson: String(o.receipt.receiptJson), sig: String(o.receipt.sig) }, ticket: { sp: tk.sp, sig: tk.sig, pub: tk.pub } };
+      if (VA.better(vaOrder, cand) !== cand) return false;
+      vaOrder = cand;
+      const pu = vaRead(vaPaidKey());
+      if (!(typeof pu === 'number' && pu >= r.periodEnd)) vaWrite(vaPaidKey(), r.periodEnd);
+      if (typeof clog === 'function') clog('va order ' + (vaOrderState() || 'none') + ' until ' + t.end);
+      for (const q of peers.values()) if (q.id !== from && q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'va', w });
+      // A new order starts again every pair that stopped on a final refusal.
+      for (const [pid, e] of [...vaPaid]) if (e.cred.halted() && e.orderSig !== cand.sig) vaDrop(pid);
+      updateStatus(); vaPaintPanel(false);
+      return true;
+    }
+    function vaGreet(p) {
+      if (!p || !p.dc || p.dc.readyState !== 'open') return;
+      if (vaOrder) dcSend(p, { k: 'va', w: vaOrder.w });
+      if (p.turnMine && p.turnPaid) dcSend(p, { k: 'va-pair', paid: 1 });
+    }
+    // ---- the admin's launch
+    function vaTicketLifeS() {
+      const d = (typeof DEBUG_ON !== 'undefined' && DEBUG_ON) ? Number(window.__gifosVaTicketS) : 0; // under DEBUG a shorter ticket may be set
+      return Number.isInteger(d) && d > 0 ? d : VA.TICKET_S;
+    }
+    function vaLaunch() {
+      if (vaSigning || !amAdmin || !admKeys || !hasAdminRoom() || !sessId || !myId) return;
+      const m = vaMineLive();
+      if (!m || m.r.buyerKey !== admKeys.pubB64) return; // bought for another room's key: it cannot be presented here
+      const ns = vaNowS();
+      const mineHeld = vaOrder && vaOrder.r.tx === m.r.tx && vaOrder.t.room === sessId && vaOrder.ticket.pub === admKeys.pubB64;
+      const resignAt = Math.min(VA.RESIGN_BEFORE_S, Math.floor(vaTicketLifeS() / 2));
+      if (mineHeld && !vaForceSign && vaOrder.end - ns >= resignAt) return;
+      vaSigning = (async () => {
+        vaForceSign = false;
+        const t = VA.ticketFor(sessId, m.r, ns, vaTicketLifeS());
+        if (!t) return;
+        const sp = VA.ticketJson(t);
+        const ticket = { sp, sig: await net.edSign(admKeys.priv, sp), pub: admKeys.pubB64 };
+        const w = await admSigned('va', { receipt: { receiptJson: m.receiptJson, sig: m.sig }, ticket });
+        if (w) await vaTake(w, null);
+      })().catch(() => {}).finally(() => { vaSigning = null; });
+    }
+    // ---- paid credentials, per pair
+    function vaStart(pid, bridge) {
+      const cred = MT.createCredentials({
+        ask: MT.askIce(window.fetch.bind(window)), room: sessId, pool: 'paid',
+        extra: () => (vaOrder && vaRoom() === 'live' ? { receipt: vaOrder.receipt, ticket: vaOrder.ticket, bridge } : null),
+        halts: VA.haltsOn,
+        onChange: (kind) => { const p = peers.get(pid); if (p) vaSwitchIfChanged(pid, p, kind === 'renewed'); },
+      });
+      vaPaid.set(pid, { bridge, cred, orderSig: vaOrder ? vaOrder.sig : null });
+      cred.start();
+    }
+    function vaDrop(pid) {
+      const e = vaPaid.get(pid);
+      if (!e) return;
+      vaPaid.delete(pid);
+      e.cred.stop();
+      const p = peers.get(pid);
+      if (p) vaSwitchIfChanged(pid, p);
+    }
+    // A pair's pool follows its paid credentials (the end that dials through
+    // a server) or the far end's word plus this page's own order (the end
+    // that can be reached). A change rebuilds the pair's settings.
+    function vaSwitchIfChanged(pid, p, renewed) {
+      if (p.turnMine && !p.pc) return; // the pair's next transport reads its pool when it is built (iceFor)
+      const want = p.turnMine ? !!vaServersFor(p) : vaFarPaid(p);
+      if (want === !!p.turnPaid && !renewed) return;
+      if (p.turnMine && p.pc) {
+        let ok = false;
+        try { const cfg = p.pc.getConfiguration(); cfg.iceServers = iceFor(p); p.pc.setConfiguration(cfg); ok = true; } catch (e) {}
+        if (!ok) { newPcFor(p); sendOffer(pid, false); }
+        else if (p.dc && p.dc.readyState === 'open') { try { p.pc.restartIce(); } catch (e) {} renegotiate(p); }
+        else sendOffer(pid, true);
+        if (p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'va-pair', paid: p.turnPaid ? 1 : 0 });
+      } else {
+        p.turnPaid = want;
+        p.turnAudio = (!!p.turnMine || !!p.turnServe) && !p.turnPaid;
+      }
+      if (typeof clog === 'function') clog('va pair ' + String(pid).slice(0, 6) + (p.turnPaid ? ' video' : ' voice only'));
+      if (p.turnAudio) parkTurnSenders(p);
+      refreshOutbound();
+      updateStatus();
+    }
+    // ---- the beat
+    function vaSweep(now) {
+      if (!hasAdminRoom()) return;
+      const room = vaRoom();
+      const blocked = directPath === 'blocked';
+      for (const [pid, p] of peers) {
+        const bridge = myId ? vaBridge(pid) : '';
+        const want = VA.wantPaid({ room, blocked, onTurn: !!p.turnMine, bridge });
+        const e = vaPaid.get(pid);
+        if (e && (!want || e.bridge !== bridge)) vaDrop(pid);
+        if (want && !vaPaid.has(pid)) vaStart(pid, bridge);
+      }
+      for (const pid of [...vaPaid.keys()]) if (!peers.has(pid)) vaDrop(pid);
+      for (const [pid, p] of peers) vaSwitchIfChanged(pid, p);
+      // My status says when I am on a paid crossing: the admin's meter counts people.
+      const vb = [...peers.values()].some((p) => p.turnMine && p.turnPaid && p.connected);
+      if (vb && myStatus.vb !== 1) myStatus.vb = 1;
+      else if (!vb && myStatus.vb) delete myStatus.vb;
+      if (amAdmin) {
+        vaLaunch();
+        vaMeterTick(now);
+        vaResume();
+      }
+    }
+    // The note on a bridged seat of a paid room whose admin has not launched
+    // it: who it cannot see yet. Shown only on a seat that hears the meeting
+    // through a server and cannot see across.
+    function vaWaitingNote() {
+      if (vaRoom() !== 'waiting' || directPath !== 'blocked' || !turnHeard() || vaSeen()) return '';
+      let direct = 0;
+      for (const p of peers.values()) if (p.connected && !p.turnMine && !p.relayed) direct++;
+      return VA.waitingText(Math.max(1, participantCount() - 1 - direct));
+    }
+    // ---- the admin's meter
+    function vaOwnOrder() {
+      const m = vaMine();
+      return !!(amAdmin && admKeys && m && vaOrder && vaOrder.r.tx === m.r.tx && vaOrder.ticket.pub === admKeys.pubB64);
+    }
+    function vaPeopleOnBridges() {
+      let n = myStatus.vb ? 1 : 0;
+      for (const [pid, st] of statusOf) if (st && st.vb === 1 && peers.has(pid)) n++;
+      return n;
+    }
+    function vaMeterTick(now, force) {
+      if (!vaOwnOrder() || vaMeterBusy) return;
+      if (!force && now - vaMeterAt < VA.METER_EVERY_MS) return;
+      vaMeterBusy = true; vaMeterAt = now; vaMeterAsks++;
+      vaPost('/v1/allowance', { ticket: vaOrder.ticket, receipt: vaOrder.receipt }).then((a) => {
+        if (!a || a.unavailable || typeof a.hoursTotal !== 'number') return;
+        if (vaUsedAtStart == null) vaUsedAtStart = Number(a.hoursUsed) || 0;
+        vaMeter = { a, at: Date.now() };
+        vaPaintPanel(false);
+        const v = vaView();
+        // Once per meeting each: the top-up prompt and the zero notice, on my own line.
+        if (v && v.zero && vaNudged !== 'zero') { vaNudged = 'zero'; setStatus(VA.TEXT.zero, 10000); }
+        else if (v && v.topUp && !v.zero && !vaNudged) { vaNudged = 'topup'; setStatus(VA.TEXT.topUp, 8000); }
+      }).finally(() => { vaMeterBusy = false; });
+    }
+    function vaView() {
+      if (!vaMeter) return null;
+      let first = false; try { first = !localStorage.getItem('gifos_va_explained'); } catch (e) {}
+      return VA.meterView(vaMeter.a, { usedAtStart: vaUsedAtStart, people: vaPeopleOnBridges(), firstOpen: first });
+    }
+    // ---- buying
+    function vaSay(text) { const el = document.getElementById('va-msg'); if (!el) return; el.textContent = text || ''; el.style.display = text ? '' : 'none'; }
+    const vaApproveOk = (u) => /^https:\/\//i.test(String(u || '')) || /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//i.test(String(u || ''));
+    function vaLoadTerms() {
+      if (vaTermsBusy || Date.now() - vaTermsAt < (vaTerms ? 60000 : 15000)) return; // live terms for a minute; a failed read is tried again after 15 s, never in a loop
+      const br = GifOS.payBroker; if (!br || !br.workerBase) return;
+      vaTermsBusy = true;
+      fetch(br.workerBase() + '/gifos/terms', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b) => {
+        const t = VA.termsOf(b);
+        vaTerms = t.month ? t : null; vaTermsAt = Date.now();
+      }).catch(() => { vaTerms = null; vaTermsAt = Date.now(); }).finally(() => { vaTermsBusy = false; vaPaintPanel(false); });
+    }
+    async function vaBuy(product) {
+      if (vaBuying || !amAdmin || !admKeys || !hasAdminRoom()) return;
+      const base = product === VA.TOPUP_PRODUCT ? vaMineLive() : null;
+      if (product === VA.TOPUP_PRODUCT && !base) return;
+      const win = window.open('', '_blank'); // opened inside the click, which is what lets the browser allow it
+      vaBuying = true;
+      vaSay('Starting the PayPal checkout…');
+      try {
+        const body = { product, buyerKey: admKeys.pubB64 };
+        if (base) body.baseReceipt = { receiptJson: base.receiptJson, sig: base.sig };
+        const r = await fetch(GifOS.payBroker.workerBase() + '/gifos/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (!r.ok) throw new Error('checkout ' + r.status);
+        const co = await r.json();
+        if (!co || !co.id || !co.claim || !vaApproveOk(co.approveUrl)) throw new Error('no order');
+        const pend = { id: co.id, claim: co.claim, product, key: admKeys.pubB64, base: base ? { tx: base.r.tx, periodEnd: base.r.periodEnd } : null, at: Date.now() };
+        vaWrite(vaPendingKey(), pend); // remembered before the window leaves: a reload resumes it
+        if (win && !win.closed) win.location = co.approveUrl; else window.open(co.approveUrl, '_blank');
+        vaSay('Finish the payment in the PayPal window. Closing that window does not cancel a payment PayPal has accepted.');
+        await vaPoll(pend);
+      } catch (e) {
+        try { if (win && !win.closed) win.close(); } catch (e2) {}
+        vaSay('The purchase could not start. Nothing was charged.');
+      } finally { vaBuying = false; vaPaintPanel(false); }
+    }
+    function vaResume() {
+      if (vaResumed || vaBuying || !admKeys) return;
+      vaResumed = true;
+      const pend = vaRead(vaPendingKey());
+      if (!pend || !pend.id || pend.key !== admKeys.pubB64 || Date.now() - (pend.at || 0) > 30 * 60000) { if (pend) vaWrite(vaPendingKey(), null); return; }
+      vaBuying = true;
+      vaPoll(pend).finally(() => { vaBuying = false; vaPaintPanel(false); });
+    }
+    async function vaPoll(pend) {
+      const br = GifOS.payBroker;
+      const end = Date.now() + 10 * 60000;
+      while (Date.now() < end && !leaving) {
+        await new Promise((res) => setTimeout(res, 2500));
+        let st = null, code = 0;
+        try {
+          const rr = await fetch(br.workerBase() + '/receipt/' + encodeURIComponent(pend.id) + '?' + VA.receiptQuery(pend.claim, pend.key, pend.base), { cache: 'no-store' });
+          code = rr.status; st = await rr.json().catch(() => null);
+        } catch (e) { continue; }
+        if (code >= 400 && code < 500) { vaWrite(vaPendingKey(), null); vaSay('PayPal did not complete this payment. Nothing was charged.'); return; }
+        if (!st || st.status !== 'COMPLETED' || !st.receiptJson || !st.sig) continue;
+        let r = null;
+        try { r = await br.verifyReceipt(st.receiptJson, st.sig); } catch (e) { vaSay('The receipt did not check out. Contact support with your PayPal receipt.'); return; }
+        vaWrite(vaPendingKey(), null);
+        if (pend.product === VA.BASE_PRODUCT) {
+          if (!VA.checkReceipt(r, vaNowS()) || r.buyerKey !== pend.key) { vaSay('The receipt did not check out. Contact support with your PayPal receipt.'); return; }
+          vaWrite(vaStoreKey(), { receiptJson: st.receiptJson, sig: st.sig });
+          vaSay('Video Anywhere is on for this room. Save the receipt file to keep it if this browser is cleared.');
+          vaForceSign = true; vaLaunch();
+        } else {
+          const base = vaMineLive();
+          if (!base || !VA.checkTopup(r, base.r)) { vaSay('The top-up receipt does not match this room’s month. Contact support with your PayPal receipt.'); return; }
+          const tops = vaRead(vaTopupsKey()) || [];
+          if (!tops.some((x) => x && x.sig === st.sig)) { tops.push({ receiptJson: st.receiptJson, sig: st.sig }); vaWrite(vaTopupsKey(), tops.slice(-24)); }
+          await vaAddTopup(base, { receiptJson: st.receiptJson, sig: st.sig });
+        }
+        vaPaintPanel(false);
+        return;
+      }
+    }
+    // Adds a bought top-up to the month's hours (each top-up counts once).
+    async function vaAddTopup(base, top) {
+      const a = await vaPost('/v1/topup', { receipt: { receiptJson: base.receiptJson, sig: base.sig }, topup: top });
+      if (!a || a.unavailable) { vaSay('The top-up is paid; its hours are added when the service answers. This page keeps trying.'); vaTopupRetry = true; return false; }
+      vaTopupRetry = false;
+      vaSay('Top-up added.');
+      vaForceSign = true; vaLaunch(); // a fresh order starts again any pair that stopped at zero
+      vaMeterTick(Date.now(), true);
+      return true;
+    }
+    // ---- the receipt file
+    async function vaSaveFile() {
+      const m = vaMine(); if (!m || !GifOS.charge || !GifOS.gif) return;
+      const { label, files } = GifOS.charge.receiptFile(m.r, m.receiptJson, m.sig, { appName: 'Video Anywhere', payingTo: 'gifos.app' });
+      const bytes = await GifOS.gif.encode(files, { accent: [255, 196, 57] });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([bytes], { type: 'image/gif' }));
+      a.download = label.replace(/[^\w.\- ]+/g, '_') + '.gif';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    }
+    async function vaOpenFile(file) {
+      if (!file || !admKeys) return;
+      try {
+        const arc = await GifOS.gif.decode(new Uint8Array(await file.arrayBuffer()));
+        const raw = arc && arc.files && arc.files['receipt.json'];
+        if (!raw) { vaSay('That file is not a receipt.'); return; }
+        const w = JSON.parse(typeof raw === 'string' ? raw : new TextDecoder().decode(raw));
+        const r = await GifOS.payBroker.verifyReceipt(w.receiptJson, w.sig);
+        if (!VA.checkReceipt(r, vaNowS())) { vaSay('That receipt is not a current Video Anywhere month.'); return; }
+        if (r.buyerKey !== admKeys.pubB64) { vaSay('That receipt was bought for another room.'); return; }
+        vaWrite(vaStoreKey(), { receiptJson: w.receiptJson, sig: w.sig });
+        vaSay('Receipt restored. Video Anywhere is on for this room.');
+        vaForceSign = true; vaLaunch();
+      } catch (e) { vaSay('That file is not a receipt.'); }
+      vaPaintPanel(false);
+    }
+    // ---- the admin's row in Settings
+    const vaDate = (s) => { try { return new Date(s * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return ''; } };
+    function vaPaintPanel(opening) {
+      const row = document.getElementById('va-row');
+      if (!row) return;
+      const show = hasAdminRoom() && amAdmin;
+      row.style.display = show ? '' : 'none';
+      if (!show) return;
+      vaLoadTerms();
+      if (vaTopupRetry && !vaBuying) { const b = vaMineLive(), tops = vaRead(vaTopupsKey()) || []; if (b && tops.length) vaAddTopup(b, tops[tops.length - 1]); }
+      const set = (id, text) => { const el = document.getElementById(id); if (!el) return null; el.textContent = text || ''; el.style.display = text ? '' : 'none'; return el; };
+      const t = vaTerms && vaTerms.month;
+      const m = vaMineLive();
+      set('va-terms', t ? 'Video across networks that block direct connections: ' + t.price + ' for ' + VA.fmtHours(t.hours) + ' of video, valid ' + (t.periodDays || 30) + ' days. Hours count only while video crosses between such networks.'
+        : 'Video Anywhere cannot be bought right now.');
+      const buy = document.getElementById('va-buy');
+      if (buy) { buy.style.display = m ? 'none' : ''; buy.disabled = !t || vaBuying; buy.textContent = t ? 'Buy for ' + t.price : 'Buy'; }
+      set('va-have', m ? 'Video Anywhere is on for this room until ' + vaDate(m.r.periodEnd) + '.' : (vaMine() ? 'This room’s Video Anywhere month has ended.' : ''));
+      const save = document.getElementById('va-save'); if (save) save.style.display = vaMine() ? '' : 'none';
+      const top = document.getElementById('va-topup');
+      const tt = vaTerms && vaTerms.topup;
+      if (top) { top.style.display = m && tt ? '' : 'none'; top.disabled = vaBuying; top.textContent = tt ? 'Top up: ' + tt.price + ' for ' + VA.fmtHours(tt.hours) : 'Top up'; }
+      const v = m ? vaView() : null;
+      const meter = document.getElementById('va-meter');
+      if (meter) meter.style.display = v ? '' : 'none';
+      if (v) {
+        set('va-hours', VA.fmtHours(v.used) + ' used, ' + VA.fmtHours(v.left) + ' left' + (v.periodEnd ? '. The period ends ' + vaDate(v.periodEnd) + '.' : '.'));
+        set('va-counting', v.zero ? VA.TEXT.zero : v.countingLine);
+        set('va-prompt', v.topUp && !v.zero ? VA.TEXT.topUp : '');
+        if (meter) { meter.dataset.counting = v.counting ? String(v.people) : '0'; meter.dataset.left = String(v.left); meter.dataset.topup = v.topUp ? '1' : ''; meter.dataset.zero = v.zero ? '1' : ''; }
+        // The first time the subscriber opens the meter: one line on how hours count.
+        if (opening && v.explain) { set('va-explain', VA.TEXT.explain); try { localStorage.setItem('gifos_va_explained', '1'); } catch (e) {} }
+        else if (opening) set('va-explain', '');
+      }
+    }
+    (function wireVa() {
+      const buy = document.getElementById('va-buy'); if (buy) buy.onclick = () => vaBuy(VA.BASE_PRODUCT);
+      const top = document.getElementById('va-topup'); if (top) top.onclick = () => vaBuy(VA.TOPUP_PRODUCT);
+      const save = document.getElementById('va-save'); if (save) save.onclick = () => { vaSaveFile().catch(() => vaSay('The receipt file could not be made.')); };
+      const open = document.getElementById('va-open'); if (open) open.onchange = () => { const f = open.files && open.files[0]; open.value = ''; vaOpenFile(f); };
+    })();
     const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0, relayBoot: 0, relayFp: 0, relayIce: 0, relayName: 0, relayPassword: 0, relayUnfit: 0 }; // counters showing where heartbeats + signaling + sponsor hops actually travel; relay*: frames put on the relay by type (relayPassword counts every frame of a grant), relayUnfit: payloads that did not fit the relay's fixed size (never sent)
     const rxStats = { offer: 0, answer: 0, ice: 0, status: 0, offerRejected: 0, answerNoPeer: 0, negFail: 0, answerStale: 0, relayAccepted: {}, relayDropped: {} }; // reception mirror: what actually ARRIVED (and what was refused); relayAccepted/relayDropped: relay frames by type, dispatched vs refused (relayFrameAllowed)
     // THE RELAY LAW (gifos-net.js RELAY_TYPES; docs/meet-security.md §RELAY).
@@ -6242,7 +7161,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (meshNode && !(opts && opts.scope)) txStats.roomFlood = (txStats.roomFlood || 0) + 1; // room-wide floods I ORIGINATED (flags a message sent to everyone instead of its own section)
       if (meshNode) meshNode.gossip({ a: 1, msg }, opts); // opts: { scope: 'section', ephemeral } for the heartbeat — see THE STATUS PLANE
     }
-    const myName = () => GifOS.store.identity().name || 'Guest';
+    const myName = () => (typeof window !== 'undefined' && window.__gifosMeetName) || GifOS.store.identity().name || 'Guest';
 
     // Exactly ONE side initiates each pairing, chosen by peer-id order — the
     // same rule no matter who joined, rejoined, or reloaded first. No glare.
@@ -6310,7 +7229,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const cc = net.topo.unck(k);
       return cc.pc === c.pc && cc.r === c.r;
     }
-    const camPeer = (pid) => isRowMate(pid);
+    // A free-pool pair carries my voice whatever the seats say (its video
+    // stays parked; refreshOutbound).
+    const camPeer = (pid) => { const q = peers.get(pid) || {}; return isRowMate(pid) || !!q.turnAudio || !!q.turnPaid; }; // a Video Anywhere pair carries video too
     // ---- mesh early-probe intake (healing-laws D5) --------------------------
     // Transport death is MY first-hand evidence: when my DataChannel to a peer
     // closes, or its pc lands in a hard state ('closed', or 'failed' persisting
@@ -6386,9 +7307,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (at) { p.mainA = pc.addTrack(at, localStream); added = true; }
         // Send the blur-canvas track when any blur applies — never the raw camera.
         const vt = sentVideoTrack();
-        if (vt) { p.mainV = pc.addTrack(vt, localStream); added = true; }
+        if (vt && !p.turnAudio) { p.mainV = pc.addTrack(vt, localStream); added = true; } // a free-pool pair carries no video
         if (stageIds().includes(myId)) {
-          if (p.mainA) p.mainA.replaceTrack(null).catch(() => {});
+          if (p.mainA && !p.turnAudio) p.mainA.replaceTrack(null).catch(() => {}); // a free-pool pair keeps my voice: the Stage feed does not cross it
           if (p.mainV) p.mainV.replaceTrack(null).catch(() => {});
         }
       } else if (!localStream) {
@@ -6433,7 +7354,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try {
         for (const [jk, job] of [...mosJobs]) if (job.to === p.id) unshipMos(jk, false);
       } catch (e) { if (typeof clog === 'function') clog('newPcFor: mosaic job cleanup failed ' + String(e).slice(0, 60)); }
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      // A new transport is a new pool session: the anchored client says so
+      // again on the new channel (turnHello), and only then is it served.
+      p.turnServe = false; p.turnHelloDc = null;
+      p.vaFarPaid = false; // a new transport is a new session: the far end says again whether it is paid
+      const pc = new RTCPeerConnection({ iceServers: iceFor(p) });
       // A glare yield armed against the OLD pc must never fire at the new
       // one: its rollback would target a connection that never offered.
       try { if (p.glareTimer) clearTimeout(p.glareTimer); } catch (e) {}
@@ -7018,7 +7943,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // HELLO that would have taught B can no longer sneak over the relay.
         // Degree stays bounded: the sender dials only its own owned links, and
         // the sweeper retires any link the arithmetic ends up not wanting.
-        if (!linkTo(from) && meshKnows(from)) { rxStats.offerRejected++; return; }
+        const turnPair = !!((peers.get(from) || {}).turnAnchor || (peers.get(from) || {}).turnServe); // a free-pool anchor pair redials whatever the seats say
+        if (!linkTo(from) && meshKnows(from) && !turnPair) { rxStats.offerRejected++; return; }
         const p = makePeer(from, msg.name);
         if (!p) return; // banned seat or forger: no pair, no negotiation
         if (!linkTo(from) && !meshKnows(from)) p.boot = true; // a knocker's door, seen from the greeter: kept while it serves, never rebuilt once the knocker is seated elsewhere
@@ -7160,6 +8086,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const cands = iceCandsOf(msg);
         const p = peers.get(from);
         if (!p) { if (cands.length) parkPreIce(from, cands); return; }
+        // The far end is dialling through TURN. If this page cannot be
+        // reached either, it uses the pool for this pair too (turnSweep).
+        if (directPath === 'blocked' && !p.connected && cands.some((c) => / typ relay(?: |$)/.test(String((c && c.candidate) || c || '')))) p.turnInvitedAt = Date.now();
         for (const c of cands) {
           if (p.pc.remoteDescription) p.pc.addIceCandidate(c).catch(() => {});
           else p.pendingIce.push(c);
@@ -7387,7 +8316,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (manyDoors) clearDoorRetry(p); // the stretch above owns the pace once several doors are unanswered
       // Under the wire's four-second ask, so that ask is the redial.
       const fewDoorWait = 3500;
-      const wait = (p && p.neverUp === true) ? (manyDoors ? (p.dialWait || 5000) : fewDoorWait) : 5000;
+      // A door dialled through the free audio pool gets longer: the TURN
+      // allocation comes first, and every rebuild is a new session.
+      const wait = (p && p.turnAnchor) ? 10000 : (p && p.neverUp === true) ? (manyDoors ? (p.dialWait || 5000) : fewDoorWait) : 5000;
       if (p && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < wait && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') {
         if (!manyDoors) armDoorRetry(pid, p); // forming: its turn is not yet, but the four-second retry stays armed
         return;
@@ -7412,7 +8343,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function retireBootPairs() {
       const s = meshSeat();
       if (!s || !s.hasCoord || s.state !== 3) return;
-      for (const [pid, q] of Array.from(peers)) if (q.boot && !linkTo(pid) && meshKnows(pid)) dropPeer(pid, true); // a knocker still outside keeps its door to me
+      for (const [pid, q] of Array.from(peers)) if (q.boot && !linkTo(pid) && meshKnows(pid) && !q.turnAnchor && !q.turnServe) dropPeer(pid, true); // a knocker still outside keeps its door to me; a free-pool anchor pair keeps carrying its voice
     }
     function ensureLink(pid, name) {
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return; // never link to a forger
@@ -7701,7 +8632,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const left = Math.max(0, Math.ceil((210000 - waited) / 1000)); // reap bound, not a promise on screen
         const secs = Math.max(1, Math.ceil(waited / 1000));
         if (!veilCeilLogged) { veilCeilLogged = true; try { console.debug('seat ceiling 210s'); } catch (e) {} }
-        if (left > 0) veilSay('Finding you a seat\u2026', 'Still joining (' + secs + ' s).');
+        if (left > 0) veilSay('Joining the meeting\u2026', 'Still joining (' + secs + ' s).');
         else veilSay('This is taking longer than it ever should.', 'Check your connection, or close this tab and reopen the link. A fresh start usually clears it.');
       } else if (waited > 20000) {
         veilSay('Still trying to reach the meeting\u2026', 'Nobody is answering the door of this meeting yet. It may be your internet connection. We keep knocking, and you will be in the moment it answers.');
@@ -8969,7 +9900,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // window, so a device whose clock is wrong is never seated and, after
         // the TTL, was told the NETWORK refused it. The wire reports the signed
         // delta from a verified member's frame while I am still joining.
-        onClockSkew: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s, so the meeting cannot seat you. Set the clock, then reload.'); },
+        onClockSkew: (ms) => { const mins = Math.max(1, Math.round(Math.abs(ms) / 60000)); setStatus('\ud83d\udd50 This device\u2019s clock is ' + mins + ' minute' + (mins === 1 ? '' : 's') + (ms > 0 ? ' behind' : ' ahead of') + ' the meeting\u2019s, so you cannot join. Set the clock, then reload.'); },
         // FRAGMENT SELF-RESCUE: the wire proved the door knows members my
         // solo room view doesn't. Same clean lever as the freeze self-heal \u2014
         // a full re-entry \u2014 throttled, and only while the app agrees we look
@@ -9065,7 +9996,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             return { stage: stg, stadium: [...stad] };
           } catch (e) { return { stage: [], stadium: [] }; }
         },
-        onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} },
+        onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { netSeatingKeep(); } catch (e) {} },
         onRelayMsg: onRelayFrame,
         onBusy: showRelayBusy, // the relay's spend breaker: new joins wait, live meetings go on
         prevTree: readTreeMem(),
@@ -9478,6 +10409,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // me — and retired once both are seated with no link between them.
           const theyOutside = !meshKnows(pid);
           if (p.boot && p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed')) { dropPeer(pid, !theyOutside || rosterIds.includes(pid)); continue; } // a dead door: gone now, never rebuilt (a knocker redials); a member the roster already holds keeps its status
+          else if (p.turnAnchor || p.turnServe) { p.unlinkedSince = 0; } // a free-pool anchor pair stays while it carries a voice, whatever the seats say
           else if (p.boot && (!seatedNow || theyOutside)) { p.unlinkedSince = 0; }
           else if (p.boot && seatedNow && anyLinkOpen) { dropPeer(pid, true); continue; }
           else {
@@ -9627,7 +10559,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (rv) { const viaP = peers.get(rv.via); if (!viaP || !viaP.connected) stopRelayFor(pid, false); }
         // No direct route for a while → ask the smallest-id mutual friend to
         // forward their media to us (a volunteer TURN made of friends).
-        if (!p.connected && !p.absentSince && !relayVia.has(pid)
+        if (!p.connected && !p.absentSince && !relayVia.has(pid) && !turnHeard() // heard through a free-pool anchor: its one mixed stream carries everyone
             && p.downSince && now - p.downSince > 10000 && now - (p.relayAskAt || 0) > 10000) {
           const refused = relayRefusal.get(pid) || {};
           const cands = myConns().filter((r) => r !== pid
@@ -9662,6 +10594,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         if (p.noRoute && p.neverUp !== true && peerAway(pid)) { p.noRoute = false; updateTile(pid); }
       }
+      turnSweep(now);   // the free audio pool, last rung of the ladder (after the pairs' own verdicts)
       updateStatus(); // the reach line follows the pair verdicts just made (REACH_MSG)
       // Admin presence + the signed mod table re-derive on the beat (§9):
       // `admins` is a VIEW over signature-verified sightings, and the
@@ -9812,7 +10745,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // fresh mic reaches the room via the 'stg:' aux feed instead
           // (mySelfStream picks it up on the next sweep).
           for (const p of peers.values()) for (const sender of p.pc.getSenders()) {
-            if (auxSenders.has(sender)) continue;
+            if (auxSenders.has(sender) || turnMixSenders.has(sender)) continue;
             if (sender.track && sender.track.kind === 'audio' && na) sender.replaceTrack(na).catch(() => {});
           }
           // Mutate the SAME MediaStream rather than swapping it: its id is
@@ -9948,7 +10881,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // main sender (track null — on stage) stays parked; the stg aux feed
         // carries the fresh mic to the room instead.
         for (const p of peers.values()) for (const sender of p.pc.getSenders()) {
-          if (auxSenders.has(sender)) continue;
+          if (auxSenders.has(sender) || turnMixSenders.has(sender)) continue;
           if (sender.track && sender.track.kind === 'audio' && (!old || sender.track === old)) sender.replaceTrack(na).catch(() => {});
         }
         if (old) { try { old.stop(); } catch (e) {} localStream.removeTrack(old); }
@@ -10064,7 +10997,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       b.type = 'button';
       if (inp.id) b.id = 'pweye-' + inp.id;
       b.title = 'Show password'; b.setAttribute('aria-label', 'Show password');
-      b.style.cssText = 'position:absolute;right:.3rem;top:50%;transform:translateY(-50%);background:none;border:none;padding:.2rem;margin:0;color:var(--muted,#8888aa);cursor:pointer;line-height:0';
+      b.style.cssText = 'position:absolute;right:0;top:0;width:48px;height:48px;min-width:48px;min-height:48px;background:none;border:none;padding:0;margin:0;color:#3a3a3f;cursor:pointer;line-height:0;display:inline-flex;align-items:center;justify-content:center';
+      inp.style.minHeight = '48px';
+      inp.style.paddingRight = '52px';
       b.innerHTML = PWEYE_SVG;
       b.onclick = () => {
         const show = inp.type === 'password';
@@ -10571,9 +11506,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // itself (js/build-badge.js), where that fact belongs.
       const canonical = pretty ? prettyPath
         : MEET_PATH + '#v=' + room + avPart + (custom ? '&relay=' + encodeURIComponent(relay) : '');
-      if (location.pathname + location.hash !== canonical) history.replaceState(null, '', canonical);
-      shareUrl.value = pretty ? location.origin + prettyPath
-        : location.origin + MEET_PATH + '#v=' + room + avPart + (relay ? '&relay=' + encodeURIComponent(relay) : '');
+      // A srcdoc session cannot always retarget its address. The mesh does
+      // not depend on that; a thrown replaceState must not skip the knock.
+      try { if (location.pathname + location.hash !== canonical) history.replaceState(null, '', canonical); } catch (e) {}
+      shareUrl.value = pretty ? pageOrigin() + prettyPath
+        : pageOrigin() + MEET_PATH + '#v=' + room + avPart + (relay ? '&relay=' + encodeURIComponent(relay) : '');
       if (!params.get('v')) share.classList.add('show'); // fresh room → surface the link
       else recordMeetingInvite(room, shareUrl.value); // joined someone's link → log it in the desktop's Invites
       recordMeetHistory(room, shareUrl.value, av); // lobby's "Recent" — every room, created OR joined, in ITS OWN surface's list
@@ -10674,11 +11611,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function lobRow(e, marked) {
       return '<div class="lob-item" data-url="' + esc(e.url) + '">' +
-        '<button class="lob-star" data-star="' + esc(e.url) + '" title="' + (marked ? 'Remove bookmark' : 'Save as bookmark') + '">' + (marked ? '★' : '☆') + '</button>' +
+        '<button type="button" class="lob-star" data-star="' + esc(e.url) + '" aria-label="Save" title="' + (marked ? 'Saved' : 'Save') + '">' + (marked ? '★' : '☆') + '</button>' +
         '<div class="li-main"><span class="li-name">' + esc(e.name || SURFACE_NAME) +
           (e.av ? '<span class="li-badge">admin</span>' : '') + '</span>' +
           '<span class="li-sub">' + agoLabel(e.ts) + '</span></div>' +
-        '<button class="row-del" data-del="' + esc(e.url) + '" title="Remove from this list">' + DEL_ICON + '</button>' +
+        '<button type="button" class="row-del" data-del="' + esc(e.url) + '" title="Remove" aria-label="Remove">' + DEL_ICON + '</button>' +
       '</div>';
     }
     function renderLobbyList() {
@@ -10710,7 +11647,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!s) return null;
       let room = '', av = '', relay = '', bc = false;
       if (/[:/#?]/.test(s)) {
-        let u = null; try { u = new URL(s, location.origin); } catch (e) { u = null; }
+        // about:srcdoc reports origin "null". An absolute link must still parse;
+        // passing that string as the base makes the URL constructor throw.
+        let u = null;
+        try {
+          const base = location.origin && location.origin !== 'null' ? location.origin : undefined;
+          u = base ? new URL(s, base) : new URL(s);
+        } catch (e) { u = null; }
         if (u) {
           const pm = u.pathname.match(/\/(?:meet|join|cast)\/([a-z0-9-]{1,64})(?:\/([a-f0-9]{16,64}))?/i);
           if (pm) { room = pm[1]; av = (pm[2] || '').toLowerCase(); bc = /^\/cast\//i.test(u.pathname); }
@@ -10727,6 +11670,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (!room || !/^[a-z0-9-]{1,64}$/i.test(room)) return null;
       if (av && !/^[a-f0-9]{16,64}$/.test(av)) av = '';
+      // A bare word ("hello") is not a meeting id. Links and id.verifier
+      // still parse above. Open-room codes are 16 characters, and a named
+      // room or the lobby's bare-id check is longer than five letters.
+      if (!/[:/#?]/.test(s) && !av && /^[A-Za-z]{1,5}$/.test(room)) return null;
       // NEVER normalise the room id. It is the whole capability: the relay
       // session, token and end-to-end key are all DERIVED from this exact string
       // ("derive, don't send", gifos-net.js). joinRoom() reads it from the link
@@ -10736,7 +11683,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // people never saw each other. Only `av` is case-folded: it is a hex digest.
       return { room, av, relay, bc: bc && !!av }; // bc is only meaningful on an admin room
     }
+    function stopLobbyPreview() {
+      const vid = document.getElementById('lob-preview-vid');
+      if (!vid || !vid.srcObject) return;
+      try { vid.srcObject.getTracks().forEach((t) => t.stop()); } catch (e) {}
+      vid.srcObject = null;
+    }
+    function startLobbyPreview() {
+      const vid = document.getElementById('lob-preview-vid');
+      const name = document.getElementById('lob-preview-name');
+      if (name) name.textContent = myName();
+      if (!vid || vid.srcObject) return;
+      const md = navigator.mediaDevices;
+      if (!md || !md.getUserMedia) return;
+      md.getUserMedia({ video: true, audio: false }).then((stream) => {
+        const lob = document.getElementById('lobby');
+        if (!lob || !lob.classList.contains('show')) {
+          try { stream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+          return;
+        }
+        vid.srcObject = stream;
+      }).catch(() => {});
+    }
     function enterMeeting(hashOrUrl) {
+      stopLobbyPreview();
       // Accept a '#…' hash (minted here) or a full URL (a saved entry). A
       // hash-only change never re-runs boot on its own, so it needs an explicit
       // reload — but ONLY then: reloading while navigating to a DIFFERENT path
@@ -10772,7 +11742,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.getElementById('lob-admin-cancel').onclick = () => { document.getElementById('lob-admin').style.display = 'none'; };
       document.getElementById('lob-admin-go').onclick = async () => {
         const err = document.getElementById('lob-admin-err');
-        const chosen = slugRoom(document.getElementById('lob-admin-name').value, '');
+        const rawName = document.getElementById('lob-admin-name').value || '';
+        // slugRoom turns a blank into "room", so the empty check has to
+        // happen on what was typed. A name with no letter or digit is blank.
+        if (!/[A-Za-z0-9]/.test(rawName)) { err.textContent = 'Give your room a name.'; return; }
+        const chosen = slugRoom(rawName, '');
         const pass = (document.getElementById('lob-admin-pass').value || '').trim();
         if (!chosen) { err.textContent = 'Give your room a name.'; return; }
         if (!pass) { err.textContent = 'Set an admin password — it’s the key to your room.'; return; }
@@ -10836,7 +11810,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('lob-admin-pass').placeholder = 'Host password (keep to yourself)';
         document.getElementById('lob-admin-pass-note').textContent = 'This is what puts you in charge of the broadcast. Viewers don’t need it. Anyone you give it to can run your broadcast too.';
         document.getElementById('lob-guest-pass').placeholder = 'Viewer password (optional — share with viewers)';
-        document.getElementById('lob-guest-pass-note').textContent = 'Optional, but the picture stays fully blurred (Max) until you set one. The Blur slider softens it. Viewers type it to watch. It is not part of the link — send it to your audience yourself. The Password button changes it later.';
+        document.getElementById('lob-guest-pass-note').textContent = 'Optional. The picture stays blurred until you set one, and it is not part of the link.';
         document.getElementById('lob-join-btn').innerHTML = 'Watch a broadcast<small>Paste a broadcast link someone shared</small>';
         document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch will show up here.';
       }
@@ -10844,6 +11818,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       renderLobbyList();
       wireLobby();
       document.getElementById('lobby').classList.add('show');
+      startLobbyPreview();
     }
 
     // ---- boot ------------------------------------------------------------------
@@ -10906,6 +11881,40 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // view-only join a denied camera lands in; a viewer the host later
           // calls up gets media through lateMedia (a user gesture), exactly
           // like any view-only guest tapping the mic button.
+          if (params.get('bot') === '1') {
+            // A bot has no camera and does not speak. The sent track stays
+            // disabled, and nothing from this computer's microphone is
+            // written down: the bot's transcript is the other people (scribe).
+            myStatus.bot = true;
+            myStatus.camOff = true;
+            myStatus.muted = true;
+            const mdB = navigator.mediaDevices;
+            const gumB = (mdB && mdB.getUserMedia)
+              ? mdB.getUserMedia({ audio: true, video: false })
+              : Promise.reject(new Error('no media devices'));
+            bootGumPending = gumB.finally(() => { bootGumPending = null; });
+            bootGumPending.catch(() => {});
+            gumB.then((stream) => {
+              localStream = stream;
+              for (const tr of stream.getTracks()) tr.enabled = false;
+              const n = meTile.tile.querySelector('.note'); if (n) n.remove();
+              meTile.video.style.display = 'none';
+              meterFor('me', stream);
+              try { ensureAc(); if (ac && ac.resume) ac.resume(); } catch (e) {}
+              updateTile('me');
+              attachLocalTracks();
+              refreshOutbound();
+              broadcastStatus();
+            }, () => {
+              localStream = null;
+              myStatus.bot = true;
+              myStatus.camOff = true;
+              myStatus.muted = true;
+              updateTile('me');
+              broadcastStatus();
+            });
+            return;
+          }
           if (BROADCAST && !bcHostStored()) {
             localStream = null;
             tileNote(meTile, 'You\u2019re watching this broadcast.'); // the grid is hidden in the skin; this only shows to a stripped-URL client
@@ -11222,7 +12231,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const P = window.GifOSPreflight;
       if (P && typeof P.whenSupported === 'function') P.whenSupported(f); else f();
     };
-    if (ROOM.solo) bootSoloApp();
+    function bootMeetSession() {
+      // A session frame waits for its parent. The lobby would open a camera
+      // preview, and a hash with no room would too. Neither may run here.
+      document.body.classList.add('meet-session');
+      window.__gifosMeetBoot = true;
+    }
+    if (params.get('mb') === '1') bootMeetSession();
+    else if (ROOM.solo) bootSoloApp();
     else if (ROOM.kind === 'app') preflighted(bootAppRoom);
     else if (!params.get('v') && !params.get('app')) showLobby();
     else preflighted(bootIntoRoom);
@@ -11388,6 +12404,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // own channel).
         try { dcSend(p, { k: 'sig', msg: statusPayload() }); txStats.dcStatus++; } catch (e) {}
         if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
+        if (p.turnAnchor) turnHello(p, true); // before the media: the anchor parks its video for this pair from the start
+        vaGreet(p); // Video Anywhere: the launch order, and whether this pair is paid
         try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
         dcSend(p, { k: 'hi', chats: Array.from(chat.values()).slice(-500), trs: Array.from(trs.values()).slice(-300), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj() });
@@ -11501,6 +12519,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (m.k === 'chat') {
         if (takeChat(m.m)) {
           renderChat();
+          if (m.m && typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
           if (!chatPanel.classList.contains('open')) { unread++; chatBtn.textContent = 'Chat (' + unread + ')'; }
           // A frame the sender marked ackReq (today: only the follow-me link)
           // gets a delivery ack back over the mesh/DC — see FOLLOW-ME DELIVERY
@@ -11511,6 +12530,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // re-broadcasting on first sight made ONE chat line N floods — O(N)
           // frames per node per line, the N×N the mesh exists to prevent.
         }
+      } else if (m.k === 'bx' && typeof window !== 'undefined' && window.GifOS && GifOS.meetSession && typeof window.__gifosMeetEmit === 'function') {
+        GifOS.meetSession.takeXfer(m, window.__gifosMeetEmit);
       } else if (m.k === 'chatack') {
         // Delivery ack for an ackReq chat frame (see FOLLOW-ME DELIVERY WAIT).
         // Addressed by peer id, not re-gossiped — the flood that carried it
@@ -11658,6 +12679,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         });
       } else if (m.k === 'ck2') {
         clockSample(p.id, m.t0, m.t1, performance.now());
+      } else if (m.k === 'turn-anchor') {
+        // A person on the free audio pool chose me as their anchor, or let
+        // go. One session per person served, up to meetTurn.MAX_SERVED.
+        const on = m.on === 1;
+        if (on && !p.turnServe) {
+          let n = 0; for (const q of peers.values()) if (q.turnServe) n++;
+          if (!MT.mayServe(n, false)) { dcSend(p, { k: 'turn-anchor-no' }); return; }
+        }
+        p.turnServe = on;
+        p.turnAudio = (on || !!p.turnMine) && !p.turnPaid;
+        if (on) for (const job of [...relayJobs.values()]) if (job.requester === p.id) stopRelayJob(job.target, p.id, true); // the mix replaces every carried stream
+        if (p.turnAudio) parkTurnSenders(p);
+        syncTurnMixes(); refreshOutbound();
+      } else if (m.k === 'turn-anchor-no') {
+        if (turnAnchorId === p.id) dropTurnAnchor(Date.now(), 120000);
+      } else if (m.k === 'va') {
+        // Video Anywhere: the admin's signed launch order, passed peer to peer.
+        vaTake(m.w, p.id);
+      } else if (m.k === 'va-pair') {
+        // The far end of this pair dials it through a paid server (or stopped).
+        p.vaFarPaid = m.paid === 1;
+        p.vaPairHeard = (p.vaPairHeard || 0) + 1; // debug view: how many times the far end said it
+        vaSwitchIfChanged(p.id, p);
       } else if (m.k === 'relay-req') {
         startRelayJob(p, String(m.target || ''));
       } else if (m.k === 'relay-no') {
@@ -12439,6 +13483,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const addAux = (pc, tr, container) => {
       const t = pc.addTransceiver(tr, { streams: [container] });
       auxSenders.add(t.sender);
+      // A free-pool pair carries one audio stream each way: anything more rides parked.
+      for (const q of peers.values()) if (q.pc === pc && q.turnAudio) { t.sender.replaceTrack(null).catch(() => {}); break; }
       return t.sender;
     };
 
@@ -12503,7 +13549,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // again (drop, then the same track) restarts the encoder. Never touches
     // a parked, staged, or cam-off sender — those are supposed to be quiet.
     function kickMainVideo(p) {
-      if (!p || !p.mainV || p.remoteParkMain || myStatus.camOff || stageIds().includes(myId) || !camPeer(p.id)) return;
+      if (!p || !p.mainV || p.remoteParkMain || p.turnAudio || myStatus.camOff || stageIds().includes(myId) || !camPeer(p.id)) return;
       let vt = null; try { vt = sentVideoTrack(); } catch (e) {}
       if (!vt || vt.readyState !== 'live') return;
       const sender = p.mainV;
@@ -12686,9 +13732,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const refuse = () => dcSend(reqP, { k: 'relay-no', target });
       if ((typeof isEjected === 'function' && isEjected(target) === true)) { refuse(); return; }
       if (!tp || !tp.connected || !tp.stream || !reqP.connected || relayJobs.size >= MAX_RELAY_JOBS) { refuse(); return; }
+      if (reqP.turnAudio) { refuse(); return; } // a person on the free audio pool hears the room through one mixed stream
       const container = new MediaStream();
       const senders = [];
-      for (const tr of tp.stream.getTracks()) { try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }
+      // A voice that reached me over the free audio pool goes on as voice only.
+      // A Video Anywhere client hears the room in its anchor's mix: pass it the picture only.
+      const relayTracks = tp.turnAudio ? tp.stream.getAudioTracks() : reqP.turnPaid && reqP.turnServe ? tp.stream.getVideoTracks() : tp.stream.getTracks();
+      for (const tr of relayTracks) { try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }
       if (!senders.length) { refuse(); return; }
       relayJobs.set(key, { senders, requester: reqP.id, target });
       dcSend(reqP, { k: 'relay-stream', target, streamId: container.id });
@@ -16188,6 +17238,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintHand() {
       handBtn.classList.toggle('off', !!myStatus.hand);
       handBtn.textContent = myStatus.hand ? 'Lower hand' : 'Hand';
+      const rh = document.getElementById('react-hand');
+      if (rh) {
+        rh.textContent = myStatus.hand ? 'Lower hand' : 'Hand';
+        rh.classList.toggle('on', !!myStatus.hand);
+        rh.setAttribute('aria-pressed', myStatus.hand ? 'true' : 'false');
+      }
     }
     handBtn.onclick = () => {
       myStatus.hand = myStatus.hand ? null : Date.now();
@@ -16231,7 +17287,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (stageIds().length >= SCALE.C) {
         if (handCallNoted !== at) {
           handCallNoted = at;
-          setStatus('Called to the stage — a seat will open when someone steps down.');
+          setStatus('Called to the stage — a place will open when someone steps down.');
         }
         return;
       }
@@ -16269,7 +17325,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (Date.now() - stgLostSince < 2 * SCALE.HB) return;
       stgLostSince = 0;
       setStage(false);
-      setStatus(canStage(myId) ? 'The stage was full (' + SCALE.C + ' seats) — your step-up did not take.'
+      setStatus(canStage(myId) ? 'The stage was full (' + SCALE.C + ' people) — your step-up did not take.'
         : 'The stage is admin-granted here — your step-up did not take.');
     }
     let stgFlips = 0; // every step-up/down (test hook: a vote storm shows as a rising count)
@@ -16298,7 +17354,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (!canStage(myId)) { setStatus('Only room admins — and people they allow — can take the stage here.'); return; }
-      if (stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' seats).'); return; }
+      if (stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' people).'); return; }
       setStage(true);
     };
 
@@ -16475,7 +17531,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Already being on stage does not waive this. The stage grant and the
       // screen grant are different orders.
       if (!mayShareScreen(myId)) { setStatus('🛡 Only this room’s admins — or people they allow — can share a screen here.'); return; }
-      if (!myStatus.stg && stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' seats) — someone has to step down first.'); return; }
+      if (!myStatus.stg && stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' people) — someone has to step down first.'); return; }
       setStatus(shareRecoverMode ? 'Bringing your screen share back…' : 'Choose what to share…');
       navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: false })
         .then((s) => {
@@ -16822,6 +17878,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const nc = document.getElementById('set-name-cur'); if (nc) nc.textContent = myName();
       const car = document.getElementById('ccall-row'); if (car) car.style.display = (hasAdminRoom() && amAdmin) ? '' : 'none';
       if (typeof applyCcAll === 'function') applyCcAll();
+      vaPaintPanel(true); // Video Anywhere: the admin's own row
       setModal.style.display = 'flex';
     };
     // Your name, changeable mid-meeting: a guest who typed the room password
@@ -17157,7 +18214,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (roomSingOn()) { setStatus(singLeaderName() + ' is leading; wait for the song to end.'); return; }
       if (!stageIds().includes(myId)) {
         if (!canStage(myId)) { setStatus('Only room admins — and people they allow — can lead a song here.'); return; }
-        if (stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' seats).'); return; }
+        if (stageIds().length >= SCALE.C) { setStatus('The stage is full (' + SCALE.C + ' people).'); return; }
         myStatus.sing = Date.now();
         singSteppedUp = true; // we stepped up FOR the song — step back down with it
         setStage(true);       // broadcasts
@@ -17317,6 +18374,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       sendAll({ k: 'tr', m }, captionScope(m.byId));
       renderTranscript();
       showCaption(m.byId, m.text);
+      if (typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: m.by, text: m.text, at: m.at, scribeBy: m.scribeBy || '' } });
     }
     // THE LANGUAGE IS A CHOICE, NOT A GUESS. The engine listens for ONE
     // language and cannot detect it; navigator.language was the silent
@@ -17677,7 +18735,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function scribeOn() { return (!!myStatus.scribe || (!!myStatus.cc && !ccSourceWritesMe())) && ccEngine() === 'whisper' && whisperReady(); }
     function wspSync() {
       const want = new Set();
-      if (!wspPaused && myStatus.cc && !myStatus.muted && ccEngine() === 'whisper' && (!ccSourceId || !ccSourceWritesMe()) && whisperReady()) want.add('me');
+      if (!wspPaused && myStatus.cc && ccEngine() === 'whisper' && whisperReady() && (!ccSourceId || !ccSourceWritesMe()) && !myStatus.muted) want.add('me');
       if (!wspPaused && scribeOn()) {
         const stagers = (typeof stageIds === 'function') ? stageIds() : [];
         const stageSet = new Set(stagers);
@@ -18374,7 +19432,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // along; "match my mix" scales each bus's audio by your own fader.
     let recRec = null, recTimer = null, recDraw = null, recStart = 0, recSrcs = new Map(), recDest = null, recSink = null;
     let recMode = null, recRestart = null, recMatchMix = true, recQuality = 'std', recType = 'video/webm'; // recType = the container MediaRecorder writes; recMode = scope; recRestart = opts after a stop
-    let recStarting = false, recReloadAfterStop = false;
+    let recStarting = false, recReloadAfterStop = false, recIndWatch = null;
     const recBtn = document.getElementById('recbtn');
     const REC_QUALITY = { low: { w: 1280, h: 720, v: 1000000 }, std: { w: 1920, h: 1080, v: 3000000 }, high: { w: 1920, h: 1080, v: 6000000 } };
     // Every source I can record, grouped by BUS. Direct peers + me are live
@@ -18423,7 +19481,35 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         },
       };
     }
+    function recordingIndicatorsOk() {
+      try { updateTile('me'); } catch (e) {}
+      const tile = meTile && meTile.tile;
+      const chips = tile && tile.querySelector('.chips');
+      const text = chips ? (chips.textContent || '') : '';
+      if (text.indexOf('recording this meeting') < 0) return false;
+      if (myStatus.bot && text.indexOf('bot') < 0) return false;
+      if ((myStatus.cc || myStatus.scribe) && text.indexOf('transcribing') < 0 && text.indexOf('writing everyone down') < 0) return false;
+      return true;
+    }
     async function recOpenSink(name) {
+      // A bot session is the meeting page itself, stamped before boot. It keeps
+      // the bytes on the page. A normal meeting has no stamp and opens the picker.
+      if (window.__gifosMb === '1') {
+        const chunks = [];
+        return {
+          kind: 'ram',
+          write(blob) { chunks.push(blob); return Promise.resolve(); },
+          finish() {
+            const blob = new Blob(chunks, { type: String(recType || 'video/webm').split(';')[0] });
+            chunks.length = 0;
+            return blob.arrayBuffer().then((bytes) => {
+              window.__gifosRecHeld = { bytes: bytes, mime: blob.type, name: name };
+              return { href: URL.createObjectURL(blob), name: name, held: true };
+            });
+          },
+          abort() { chunks.length = 0; return Promise.resolve(); },
+        };
+      }
       if (typeof window.showSaveFilePicker === 'function') {
         try {
           const handle = await window.showSaveFilePicker({
@@ -18466,6 +19552,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return meetDownloadName('Recording', room, Date.now(), String(recType).indexOf('mp4') >= 0 ? 'mp4' : 'webm');
     }
     function recDeliver(saved) {
+      if (saved && saved.held) return 'held';
       if (saved && saved.href) {
         const a = document.createElement('a');
         a.href = saved.href;
@@ -18800,6 +19887,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return;
         }
         recSink = opened;
+        // The chip is the consent. Paint it and refuse to construct a
+        // MediaRecorder unless that paint is actually in the tile. A bot
+        // also needs its badge, and an already-on caption needs its chip.
+        myStatus.rec = true;
+        try { updateTile('me'); broadcastStatus(); } catch (e) {}
+        if (!recordingIndicatorsOk()) {
+          myStatus.rec = false;
+          try { updateTile('me'); broadcastStatus(); } catch (e) {}
+          setStatus('Recording stays off until the recording indicator is on screen.');
+          return;
+        }
         if (scope === 'app') {
           videoTrack = disp.getVideoTracks()[0];
           if (videoTrack) videoTrack.onended = () => { if (recRec && recRec.state !== 'inactive') { try { recRec.stop(); } catch (e) {} } };
@@ -18863,6 +19961,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           try { if (sink) saved = await sink.finish(); } catch (e) { saved = null; }
           let how = '';
           try { how = recDeliver(saved); } catch (e) { how = ''; }
+          if (typeof window !== 'undefined' && typeof window.__gifosRecStopped === 'function') {
+            const cb = window.__gifosRecStopped;
+            window.__gifosRecStopped = null;
+            try { cb(how); } catch (e) {}
+          }
           const replaced = recStarting || (recRec && recRec.state !== 'inactive');
           if (!replaced) {
             recBtn.classList.remove('on');
@@ -18890,6 +19993,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         recBtn.textContent = 'Stop 0:00';
         myStatus.rec = true;
         broadcastStatus();
+        if (recIndWatch) clearInterval(recIndWatch);
+        recIndWatch = setInterval(() => {
+          if (!recRec || recRec.state === 'inactive') { clearInterval(recIndWatch); recIndWatch = null; return; }
+          if (!recordingIndicatorsOk()) { try { recRec.stop(); } catch (e) {} }
+        }, 1000);
       } finally {
         if (!armed) {
           // Nothing is recording: release everything this attempt took — the
@@ -18904,6 +20012,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           recSrcs = new Map();
           if (made && recRec === made) { try { made.onstop = null; made.ondataavailable = null; } catch (e) {} recRec = null; }
           recDest = null; recMode = null;
+          if (myStatus.rec) {
+            myStatus.rec = false;
+            try { updateTile('me'); broadcastStatus(); } catch (e) {}
+          }
         }
         recStarting = false;
       }
@@ -18991,7 +20103,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       function apply(collapsed) {
         bar.classList.toggle('collapsed', collapsed);
         toggle.setAttribute('aria-expanded', String(!collapsed));
-        toggle.title = collapsed ? 'Show meeting controls' : 'Hide meeting controls';
+        toggle.setAttribute('aria-label', collapsed ? 'More' : 'Hide meeting controls');
+        toggle.title = collapsed ? 'More' : 'Hide meeting controls';
       }
       toggle.onclick = function () {
         const next = !bar.classList.contains('collapsed'); apply(next);
@@ -19007,12 +20120,55 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Transcript, Share screen) moves it as well. Where ResizeObserver is
       // missing the variable stays unset and everything behaves exactly as it
       // did before — the fallback is the old bug, not a broken layout.
+      // The dock sits at the bottom, so a panel that used to clear a top bar
+      // starts at the top of the page instead.
       const setBarH = () => {
-        try { document.documentElement.style.setProperty('--barh', Math.round(bar.getBoundingClientRect().height) + 'px'); } catch (e) {}
+        try { document.documentElement.style.setProperty('--barh', '0px'); } catch (e) {}
       };
       if (window.ResizeObserver) { try { new ResizeObserver(setBarH).observe(bar); } catch (e) {} }
       window.addEventListener('resize', setBarH);
       setBarH();
+    })();
+
+    (function () {
+      const btn = document.getElementById('reactbtn');
+      const tray = document.getElementById('reacttray');
+      if (!btn || !tray) return;
+      const shut = () => {
+        tray.setAttribute('hidden', '');
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('aria-pressed', 'false');
+        btn.classList.remove('on');
+      };
+      btn.onclick = () => {
+        if (tray.hasAttribute('hidden')) {
+          tray.removeAttribute('hidden');
+          btn.setAttribute('aria-expanded', 'true');
+          btn.setAttribute('aria-pressed', 'true');
+          btn.classList.add('on');
+        } else shut();
+      };
+      tray.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b) return;
+        if (b.id === 'react-hand') {
+          const hand = document.getElementById('hand');
+          if (hand) hand.click();
+          return;
+        }
+        const label = b.getAttribute('data-burst');
+        if (!label) return;
+        const tile = document.querySelector('.tile.me');
+        if (!tile) return;
+        let burst = tile.querySelector('.reactburst');
+        if (!burst) { burst = document.createElement('div'); burst.className = 'reactburst'; tile.appendChild(burst); }
+        burst.textContent = label;
+        // Restart the fade. The stylesheet owns the 1.6s, so a second tap
+        // starts the burst again without a timer in this script.
+        burst.classList.remove('show');
+        void burst.offsetWidth;
+        burst.classList.add('show');
+      });
     })();
 
     function amGloballyMuted() { const m = modOf('me').mute; return !!(m && m.on); }
@@ -19023,7 +20179,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function armMeetDialogs() {
       const modals = document.querySelectorAll('.name-modal');
       for (const el of modals) {
-        el.setAttribute('role', 'dialog');
+        if (el.getAttribute('role') !== 'alertdialog') el.setAttribute('role', 'dialog');
         el.setAttribute('aria-modal', 'true');
         const h = el.querySelector('h2, h3, h4');
         if (h) {
@@ -19154,6 +20310,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return null;
     }
     function lateMedia(kind) {
+      if (myStatus.bot) { setStatus('A bot does not use a camera or speak.'); return; }
       if (lateRefusal(kind)) { setStatus(lateRefusal(kind)); return; }
       if (lateAsk) { setStatus('Still asking for the camera and microphone\u2026'); return; }
       // THE BOOT ASK IS THE ONLY ASK (knock-first, 2026-08-05): the knock no
@@ -19574,7 +20731,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function syncModalFocus() {
       const top = topNameModal();
       if (top && top !== modalTracked) {
-        top.setAttribute('role', 'dialog');
+        if (top.getAttribute('role') !== 'alertdialog') top.setAttribute('role', 'dialog');
         top.setAttribute('aria-modal', 'true');
         modalOpener = modalOutside;
         modalTracked = top;
@@ -19610,10 +20767,51 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (b) { e.preventDefault(); b.click(); queueMicrotask(syncModalFocus); }
           return;
         }
+        const tray = document.getElementById('reacttray');
+        if (tray && !tray.hasAttribute('hidden')) {
+          e.preventDefault();
+          tray.setAttribute('hidden', '');
+          const rb = document.getElementById('reactbtn');
+          if (rb) { rb.setAttribute('aria-expanded', 'false'); rb.setAttribute('aria-pressed', 'false'); rb.classList.remove('on'); try { rb.focus(); } catch (err) {} }
+          return;
+        }
+        const barEl = document.querySelector('.bar');
+        if (barEl && !barEl.classList.contains('collapsed')) {
+          const toggle = document.getElementById('bartoggle');
+          if (toggle) { e.preventDefault(); toggle.click(); }
+          return;
+        }
         if (voteMode) setVoteMode(null);
         return;
       }
-      if (!top) return;
+      if (!top) {
+        if (e.key !== 'Tab') return;
+        const barEl = document.querySelector('.bar');
+        const tray = document.getElementById('reacttray');
+        if (!barEl) return;
+        const trayOpen = !!(tray && !tray.hasAttribute('hidden'));
+        const sheetOpen = !barEl.classList.contains('collapsed');
+        if (!trayOpen && !sheetOpen) return;
+        const nodes = [];
+        for (const n of barEl.querySelectorAll('button, a[href], input, select, textarea')) {
+          if (n.disabled) continue;
+          if (n.style && n.style.display === 'none') continue;
+          if (!sheetOpen && n.closest && n.closest('#barmore')) continue;
+          if (!trayOpen && n.closest && n.closest('#reacttray')) continue;
+          let hide = false, p = n.parentElement;
+          while (p) {
+            if ((p.hasAttribute && p.hasAttribute('hidden')) || (p.style && p.style.display === 'none')) { hide = true; break; }
+            p = p.parentElement;
+          }
+          if (!hide) nodes.push(n);
+        }
+        if (nodes.length < 2) return;
+        const first = nodes[0], last = nodes[nodes.length - 1];
+        const inside = barEl.contains(document.activeElement);
+        if (e.shiftKey && (document.activeElement === first || !inside)) { e.preventDefault(); try { last.focus(); } catch (err) {} }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); try { first.focus(); } catch (err) {} }
+        return;
+      }
       const nodes = modalFocusables(top);
       if (!nodes.length) return;
       const first = nodes[0], last = nodes[nodes.length - 1];
@@ -19624,7 +20822,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     });
     for (const el of document.querySelectorAll('.name-modal')) {
-      el.setAttribute('role', 'dialog');
+      if (el.getAttribute('role') !== 'alertdialog') el.setAttribute('role', 'dialog');
       el.setAttribute('aria-modal', 'true');
     }
     paintControls();
@@ -19971,7 +21169,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return flushing;
     }
     const leaveBtn = document.getElementById('leavebtn');
-    if (leaveBtn) leaveBtn.onclick = leaveMeeting;
+    const leaveAsk = document.getElementById('leave-ask');
+    // The button asks first. leaveMeeting() itself stays immediate so a
+    // hang-up from the OS and the test hook still leave at once.
+    if (leaveBtn) leaveBtn.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'flex'; };
+    const leaveCancel = document.getElementById('leave-cancel');
+    if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; };
+    const leaveGo = document.getElementById('leave-go');
+    if (leaveGo) leaveGo.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; leaveMeeting(); };
     const leftRejoin = document.getElementById('left-rejoin'); if (leftRejoin) leftRejoin.onclick = () => location.reload();
     const leftClose = document.getElementById('left-close'); if (leftClose) leftClose.onclick = () => { location.href = homeHref(); };
 
@@ -20878,9 +22083,146 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, 200);
     })();
 
+    // Session frame (#mb=1): the parent meet-host drives this document.
+    // Ordinary meetings never take this branch.
+    if (params.get('mb') === '1' && window.GifOS && GifOS.meetSession) {
+      window.__gifosMeetEmit = (ev) => { try { GifOS.meetSession.emit(ev); } catch (e) {} };
+      let meetJoined = false;
+      const peopleSig = { last: '' };
+      GifOS.meetSession.install({
+        join(msg) {
+          if (meetJoined) return Promise.reject(new Error('This session is already in a meeting.'));
+          const parsed = parseMeetInput((msg && (msg.link || msg.room)) || '');
+          if (!parsed) return Promise.reject(new Error('That is not a meeting link.'));
+          const rk = parsed.room + (parsed.av ? '.' + parsed.av : '');
+          if (msg && msg.password) {
+            try {
+              localStorage.setItem('gifos_vpw_' + rk, String(msg.password));
+              localStorage.setItem('gifos_vpwat_' + rk, String(Date.now()));
+            } catch (e) {}
+          }
+          if (msg && msg.link) {
+            try {
+              const base = location.origin && location.origin !== 'null' ? location.origin : undefined;
+              const u = base ? new URL(msg.link, base) : new URL(msg.link);
+              const hp = new URLSearchParams((u.hash || '').replace(/^#/, ''));
+              const rel = hp.get('relay') || u.searchParams.get('relay');
+              if (rel) localStorage.setItem('gifos_relay', rel);
+            } catch (e) {}
+          }
+          params.set('v', parsed.room);
+          if (parsed.av) params.set('av', parsed.av); else params.delete('av');
+          params.set('mb', '1');
+          if (msg && msg.bot) {
+            params.set('bot', '1');
+            myStatus.bot = true;
+            myStatus.camOff = true;
+            myStatus.muted = true;
+          } else params.delete('bot');
+          if (msg && msg.name) window.__gifosMeetName = String(msg.name).slice(0, 40);
+          return new Promise((resolve, reject) => {
+            preflighted(() => {
+              let p;
+              try { p = bootIntoRoom(); } catch (e) { reject(e); return; }
+              const done = () => {
+                meetJoined = true;
+                const linkEl = document.getElementById('share-url');
+                resolve({ room: room, link: linkEl ? linkEl.value : '' });
+              };
+              if (p && typeof p.then === 'function') p.then(done, reject);
+              else done();
+            });
+          });
+        },
+        leave() {
+          try { leaveMeeting(); } catch (e) {}
+          meetJoined = false;
+          return { ok: true };
+        },
+        startRecording() {
+          return Promise.resolve(startRec({ scope: 'all', quality: 'low', matchMix: true })).then(() => (
+            { ok: !!(recRec && recRec.state !== 'inactive'), rec: !!myStatus.rec }
+          ));
+        },
+        stopRecording() {
+          return new Promise((resolve) => {
+            if (!recRec || recRec.state === 'inactive') { resolve({ ok: true }); return; }
+            const timer = setTimeout(() => resolve({ ok: true, timeout: true }), 20000);
+            window.__gifosRecStopped = () => { clearTimeout(timer); resolve({ ok: true, held: !!window.__gifosRecHeld }); };
+            try { recRec.stop(); } catch (e) { clearTimeout(timer); resolve({ ok: false, error: String(e && e.message || e) }); }
+          });
+        },
+        getRecording() {
+          const held = window.__gifosRecHeld;
+          if (!held || !held.bytes) return { bytes: new ArrayBuffer(0), mime: '', name: '' };
+          return { bytes: held.bytes, mime: held.mime || '', name: held.name || '' };
+        },
+        sendChat(msg) {
+          const text = String((msg && msg.text) || '').slice(0, 2000);
+          if (!text) return { ok: false };
+          const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: text };
+          chat.set(m.id, m);
+          sendAll({ k: 'chat', m });
+          try { renderChat(); } catch (e) {}
+          return { ok: true, id: m.id };
+        },
+        transcribe(msg) {
+          const on = !!(msg && msg.on);
+          myStatus.cc = on;
+          myStatus.scribe = on;
+          try { if (on) localStorage.setItem('gifos_cc_engine', 'whisper'); else localStorage.removeItem('gifos_cc_engine'); } catch (e) {}
+          const cc = document.getElementById('ccbtn');
+          if (cc) cc.classList.toggle('on', on);
+          try { updateTile('me'); broadcastStatus(); syncSpeech(); } catch (e) {}
+          const chips = meTile && meTile.tile && meTile.tile.querySelector('.chips');
+          const text = chips ? chips.textContent || '' : '';
+          if (on && text.indexOf('transcribing') < 0 && text.indexOf('writing everyone down') < 0) {
+            myStatus.cc = false;
+            myStatus.scribe = false;
+            try { syncSpeech(); updateTile('me'); broadcastStatus(); } catch (e) {}
+            return { ok: false, error: 'Transcribing stays off until its indicator is on screen.' };
+          }
+          return { ok: true, cc: !!myStatus.cc, scribe: !!myStatus.scribe };
+        },
+        sendXfer(msg) {
+          const x = (msg && msg.xfer) || {};
+          const raw = x.bytes;
+          const bytes = !raw ? new Uint8Array(0) : (raw instanceof Uint8Array ? raw : new Uint8Array(raw));
+          const CHUNK = 8000;
+          const n = Math.max(1, Math.ceil(bytes.length / CHUNK) || 1);
+          const id = x.id || uid('bx');
+          const open = [];
+          for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open') open.push(p);
+          if (!open.length) return Promise.reject(new Error('No data channel yet.'));
+          for (let i = 0; i < n; i++) {
+            const slice = bytes.subarray(i * CHUNK, Math.min(bytes.length, (i + 1) * CHUNK));
+            let bin = '';
+            for (let j = 0; j < slice.length; j++) bin += String.fromCharCode(slice[j]);
+            const frame = { k: 'bx', id: id, i: i, n: n, name: x.name || 'download', mime: x.mime || 'application/octet-stream', b64: btoa(bin) };
+            for (const p of open) { try { dcSend(p, frame); } catch (e) {} }
+          }
+          return { id: id, n: n, peers: open.length };
+        }
+      });
+      setInterval(() => {
+        try { if (ac && ac.state !== 'running' && ac.resume) ac.resume(); } catch (e) {}
+        if (!meetJoined || typeof window.__gifosMeetEmit !== 'function') return;
+        const people = [{ id: myId, name: myName(), bot: !!myStatus.bot, me: true }];
+        for (const [pid, p] of peers) {
+          const st = statusOf.get(pid);
+          people.push({ id: pid, name: (p && p.name) || '', bot: !!(st && st.bot) });
+        }
+        const sig = JSON.stringify(people);
+        if (sig === peopleSig.last) return;
+        peopleSig.last = sig;
+        window.__gifosMeetEmit({ type: 'participants', people: people });
+      }, 1500);
+    }
+
     // Test hook: lets the e2e suite observe mesh + quality state.
     window.__gifosVideo = {
       participants: participantCount,
+      bot: () => !!myStatus.bot,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
       statusPeekForTest: (id) => { const st = statusOf.get(id); return st ? { stg: st.stg || 0, ageMs: Date.now() - (st.at || 0), rxAgeMs: Date.now() - (st.rx || 0) } : null; },
@@ -20971,6 +22313,70 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // 'partial' | null) with the live/dead pair counts, the people count
       // and this network's probe verdict behind it.
       reachState: () => reachInfo(),
+      // FREE AUDIO OVER TURN, this page's side, read-only: its verdict, the
+      // credential state, its anchor, whom it anchors, and per pair whether
+      // that pair's settings name a TURN server.
+      // VIDEO ANYWHERE, this page's side, read-only: the room's state, the
+      // order held, the admin's meter, and per pair whether it is paid.
+      vaState: () => {
+        const v = vaView(), row = document.getElementById('va-row');
+        return {
+          room: vaRoom(), order: vaOrder ? { state: vaOrderState(), end: vaOrder.end, ticketRoom: vaOrder.t.room, tx: vaOrder.r.tx } : null,
+          mine: !!vaMine(), mineLive: !!vaMineLive(), panel: !!(row && row.style.display !== 'none'), meterAsks: vaMeterAsks,
+          meter: vaMeter ? Object.assign({}, vaMeter.a) : null, view: v, waiting: (document.getElementById('status') || {}).dataset ? document.getElementById('status').dataset.va || '' : '',
+          onBridge: !!myStatus.vb, seen: vaSeen(), why: vaWhy.slice(),
+          pairs: [...peers.values()].map((p) => { const e = vaPaid.get(p.id); return { name: rosterNames[p.id] || p.name || null, turnPaid: !!p.turnPaid, turnAudio: !!p.turnAudio, farPaid: !!p.vaFarPaid, cred: e ? e.cred.state() : null, refusal: e ? e.cred.refusal() : null, halted: e ? e.cred.halted() : false, bridge: e ? e.bridge : null,
+            turnMine: !!p.turnMine, serve: !!p.turnServe, cam: camPeer(p.id), mainV: p.mainV ? (p.mainV.track ? p.mainV.track.kind : 'parked') : null, park: !!p.remoteParkMain,
+            mainA: p.mainA ? (p.mainA.track ? (turnMixSenders.has(p.mainA) ? 'mix' : 'mic') + ':' + p.mainA.track.readyState + ':' + (p.mainA.track.enabled ? 'on' : 'off') + ':' + (p.mainA.track.muted ? 'muted' : 'live') : 'parked') : null,
+            heardPair: p.vaPairHeard || 0, mix: turnMixes.has(p.id), ac: ac ? ac.state + '@' + ac.currentTime.toFixed(1) : null, mixHeld: !!(p.mainA && p.mainA.track && p.mainA.track === turnMixTrack(p.id)),
+            tx: (() => { try { return p.pc.getTransceivers().map((t) => (t.mid || '?') + ':' + (t.sender && t.sender.track ? t.sender.track.kind : '-') + ':' + t.direction + ':' + (t.currentDirection || '?')); } catch (x) { return null; } })() }; }),
+        };
+      },
+      vaMeterNow: () => { vaMeterTick(Date.now(), true); return true; },
+      // Transport bytes on one pair's selected path, both directions (debug).
+      wireBytes: async (name) => {
+        for (const p of peers.values()) {
+          if ((rosterNames[p.id] || p.name) !== name || !p.pc) continue;
+          let sent = 0, recv = 0;
+          try { (await p.pc.getStats()).forEach((x) => { if (x.type === 'transport') { sent += x.bytesSent || 0; recv += x.bytesReceived || 0; } }); } catch (e) { return null; }
+          return { sent, recv };
+        }
+        return null;
+      },
+      turnState: () => ({
+        probe: directPath, cred: turnCred ? turnCred.state() : 'idle', reach: turnReach(), heard: turnHeard(),
+        anchor: turnAnchorId != null ? (rosterNames[turnAnchorId] || (peers.get(turnAnchorId) || {}).name || String(turnAnchorId).slice(0, 8)) : null,
+        serving: [...peers.values()].filter((p) => p.turnServe).map((p) => rosterNames[p.id] || p.name || String(p.id).slice(0, 8)),
+        pairs: [...peers.values()].map((p) => {
+          let urls = [];
+          try { for (const sv of (p.pc && p.pc.getConfiguration().iceServers) || []) urls = urls.concat(Array.isArray(sv.urls) ? sv.urls : [sv.urls]); } catch (e) {}
+          return { name: rosterNames[p.id] || p.name || null, connected: !!p.connected, relayed: !!p.relayed, turnMine: !!p.turnMine, turnAudio: !!p.turnAudio, anchor: !!p.turnAnchor, serve: !!p.turnServe, iceUrls: urls };
+        }),
+      }),
+      // RTP counters per pair (by screen name), and the candidate types the
+      // pair's selected path uses: what crosses each connection, measured.
+      turnRtp: async () => {
+        const out = [];
+        for (const p of peers.values()) {
+          const rec = { name: rosterNames[p.id] || p.name || null, inbound: [], outbound: [], local: null, remote: null };
+          if (p.pc) {
+            try {
+              const rep = await p.pc.getStats();
+              const byId = new Map(); rep.forEach((x) => byId.set(x.id, x));
+              rep.forEach((x) => {
+                if (x.type === 'inbound-rtp') rec.inbound.push({ kind: x.kind, mid: x.mid, packets: x.packetsReceived || 0, bytes: x.bytesReceived || 0, energy: x.totalAudioEnergy || 0, frames: x.framesDecoded || 0 });
+                else if (x.type === 'outbound-rtp') rec.outbound.push({ kind: x.kind, mid: x.mid, packets: x.packetsSent || 0, bytes: x.bytesSent || 0, frames: x.framesEncoded || 0, h: x.frameHeight || 0, limit: x.qualityLimitationReason || null });
+                else if (x.type === 'transport' && x.selectedCandidatePairId) {
+                  const cp = byId.get(x.selectedCandidatePairId);
+                  if (cp) { rec.local = (byId.get(cp.localCandidateId) || {}).candidateType || null; rec.remote = (byId.get(cp.remoteCandidateId) || {}).candidateType || null; }
+                }
+              });
+            } catch (e) { rec.err = String(e).slice(0, 60); }
+          }
+          out.push(rec);
+        }
+        return out;
+      },
       // Every close code the relay socket saw in this node's life, newest
       // last ({code, at}) — a policy cut reads differently from a drop.
       relayCloses: () => { try { return meshNode ? meshNode.stats().closes : []; } catch (e) { return []; } },
@@ -22120,7 +23526,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <a href="https://gifos.app/browser-support.json">browser support</a> ·
   <a href="https://gifos.app/sitemap.xml">sitemap</a> ·
   <a href="https://github.com/nwcnwc/gifos-app">source on GitHub</a> ·
-  <a href="https://github.com/nwcnwc/gifos-app/issues/new">report a problem</a>.</p>
+  <a href="https://github.com/nwcnwc/gifos-app/issues/new">report a problem</a>. Contact: support@gifos.app.</p>
 </nav>
 </body>
 </html>
