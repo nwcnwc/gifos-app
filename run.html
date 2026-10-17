@@ -20544,6 +20544,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (video.srcObject !== stream) video.srcObject = stream;
       const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
     }
+    // A mic that was off when its stage sender was built keeps sending
+    // silence after it is switched on. Dropping that track and seating
+    // it again restarts the encoder, the same way a quiet camera is
+    // restarted. Parked senders stay parked: they have no track.
+    function kickStageMic(track) {
+      if (!track || track.kind !== 'audio' || track.readyState !== 'live' || !track.enabled) return;
+      for (const sd of stageSenders) {
+        if (!sd || sd.track !== track) continue;
+        const seat = () => sd.replaceTrack(track).catch(() => {});
+        sd.replaceTrack(null).then(seat).catch(() => {});
+      }
+    }
     // A glare rollback can leave the main video sender negotiated sendrecv,
     // track still attached, and emitting nothing. Seating the live camera
     // again (drop, then the same track) restarts the encoder. Never touches
