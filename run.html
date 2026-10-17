@@ -2559,14 +2559,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         probe, probeDone,
         reach: (a, b) => {
           if (a === b) return true;
+          const relayedBy = (x, y) => { const st = statusOf.get(x); return !!(st && Array.isArray(st.rl) && st.rl.includes(y)); };
           if (a === myId || b === myId) {
             const pid = a === myId ? b : a; const p = peers.get(pid); const age = p ? Date.now() - (p.bornAt || 0) : -1; let r = true, why = 'no-pair';
-            if (p && p.connected) { r = !pairRelayed(p); why = r ? 'up' : 'up-relayed'; }
+            if (p && p.connected) { r = !pairRelayed(p) && !relayedBy(pid, myId); why = r ? 'up' : 'up-relayed'; }   // the far end's word counts too: a pair it reaches through the relay server is relayed at my end as well
             else if (p && p.neverUp && age > PROBE_MS) { r = false; why = 'never-up'; }
             else if (p) why = 'pending:' + (p.pc ? p.pc.connectionState : 'no-pc') + ':' + age;
             if (doorWhy.size > 64) doorWhy.clear(); doorWhy.set(pid, why); return r;   // the debug view's reason for each of my own pairs' verdicts
           }
-          const relayedBy = (x, y) => { const st = statusOf.get(x); return !!(st && Array.isArray(st.rl) && st.rl.includes(y)); };
           if (relayedBy(a, b) || relayedBy(b, a)) return false;   // a pair either end reports relayed is no direct path
           const ca = connsOf.get(a), cb = connsOf.get(b);
           if ((ca && ca.includes(b)) || (cb && cb.includes(a))) return true;
