@@ -2477,7 +2477,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     //   netBeatFrom(pid)         a beat from bridge end pid arrived; netPulse() on a 100 ms clock
     let netRoom = null;
     function netSeatingKeep() { const s = meshSeat(); if (s && s.env && s.env.NET !== (netRoom || undefined)) s.env.NET = netRoom || undefined; }   // a rebuilt seat keeps the room
-    function netSeatingInstall(view) { netRoom = view ? new GifOS.mesh.NetRoom(view) : null; netSeatingKeep(); return netRoom; }
+    function netSeatingInstall(view) { netRoom = view ? new GifOS.mesh.NetRoom(view) : null; netSeatingKeep(); const s = meshSeat(); if (netRoom && s && s.hasCoord && s.glabel == null) s.glabel = s.id; return netRoom; }   // a seat taken before the view existed heads its own group
     function netLinks() { try { const s = meshSeat(); return s && netRoom ? s.netLinks() : []; } catch (e) { return []; } }
     function netLinkInfo(pid) { try { const s = meshSeat(); return s && netRoom && pid != null ? netRoom.linkInfo(s.id, pid) : null; } catch (e) { return null; } }
     function netBeatTarget() { try { const s = meshSeat(); return s && netRoom ? netRoom.heirFor(s.id) : null; } catch (e) { return null; } }
@@ -2504,14 +2504,42 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function netSeatingLiveView() {
       const me = () => meshSeat();
       const rec = (pid, st) => ({ id: pid, alive: true, state: 3, hasCoord: true, coord: st.seat, glabel: st.lab != null ? st.lab : pid, anchored: !!st.anc, sitting: new Map(), glFind: -2, lastReached: -1 });
+      // The ring as my own seat knows it before any pulse arrives: the HOME
+      // roster and my occ name the Section-1 cells and who holds them. A cell's
+      // label is its row head's when the pulse has not said otherwise.
+      const ringRecs = () => {
+        const s = me(); if (!s) return [];
+        const cells = new Map();   // ck -> pid
+        for (const e of (s.netRoster || s.roster || [])) if (e && e.v != null && e.k != null) cells.set(e.k, e.v);
+        if (s.occ) for (const [k, v] of s.occ) if (v != null && GifOS.mesh.isS1key(k) && !cells.has(k)) cells.set(k, v);
+        const out = [];
+        for (const [k, pid] of cells) {
+          if (pid === myId) continue;
+          const c = net.topo.unck(k); const st = statusOf.get(pid);
+          if (st && st.seat && typeof st.seat.pc === 'number') continue;   // its pulse speaks for it
+          const headK = net.topo.ckey({ pc: c.pc, r: c.r, i: 0 }); const head = cells.get(headK);
+          out.push({ id: pid, alive: true, state: 3, hasCoord: true, coord: c, glabel: head != null ? head : pid, anchored: false, sitting: new Map(), glFind: -2, lastReached: -1 });
+        }
+        return out;
+      };
+      // The door test's dials (rule 1): open a link to every ring member now;
+      // the seat decides from their state a few ticks later.
+      const probe = (ids) => {
+        if (!myId || !Array.isArray(ids) || !ids.length) return false;
+        let n = 0;
+        for (const id of ids) { if (!id || id === myId) continue; try { if (!peers.has(id)) makePeer(id, rosterNames[id] || null); bootDial(id); n++; } catch (e) {} }
+        return n > 0;
+      };
+      const PROBE_MS = 1500;   // a dialled pair not up after this is no direct path (the decision comes NET_PROBE ticks after the dials)
       const pairRelayed = (p) => !!(p && p.viaRelay);   // set by the pool code when a pair's selected candidate pair is relayed
       const view = {
         tick: () => { const s = me(); return s ? s.TICK : 0; },
-        seats: () => { const s = me(); const out = s ? [s] : []; for (const [pid, st] of statusOf) if (pid !== myId && st && st.seat && typeof st.seat.pc === 'number') out.push(rec(pid, st)); return out; },
-        seat: (id) => { const s = me(); if (s && id === s.id) return s; const st = statusOf.get(id); return (st && st.seat && typeof st.seat.pc === 'number') ? rec(id, st) : null; },
+        seats: () => { const s = me(); const out = s ? [s] : []; for (const [pid, st] of statusOf) if (pid !== myId && st && st.seat && typeof st.seat.pc === 'number') out.push(rec(pid, st)); for (const r of ringRecs()) out.push(r); return out; },
+        seat: (id) => { const s = me(); if (s && id === s.id) return s; const st = statusOf.get(id); if (st && st.seat && typeof st.seat.pc === 'number') return rec(id, st); return ringRecs().find((r) => r.id === id) || null; },
+        probe,
         reach: (a, b) => {
           if (a === b) return true;
-          if (a === myId || b === myId) { const p = peers.get(a === myId ? b : a); if (!p) return true; if (p.connected) return !pairRelayed(p); if (p.neverUp && p.deadSince && Date.now() - p.deadSince > 5000) return false; return true; }
+          if (a === myId || b === myId) { const p = peers.get(a === myId ? b : a); if (!p) return true; if (p.connected) return !pairRelayed(p); if (p.neverUp && Date.now() - (p.bornAt || 0) > PROBE_MS) return false; return true; }
           const ca = connsOf.get(a), cb = connsOf.get(b);
           if ((ca && ca.includes(b)) || (cb && cb.includes(a))) return true;
           return !(ca && cb);   // both maps known and neither names the other: unreachable; otherwise unknown counts as reachable
