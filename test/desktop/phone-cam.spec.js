@@ -168,3 +168,66 @@ test('a live camera that sends nothing says so before it restarts', async ({ pag
   await page.evaluate(() => { window.__gifosForceBlackCamHold = false; window.__releaseCam(); });
   await expect(mark).toBeHidden({ timeout: 8000 });
 });
+
+async function paintedCam(page, hash, color) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.setItem('gifos_appeared', '1');
+  });
+  await page.goto('/run.html#v=' + hash + '&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#leavebtn', { state: 'visible' });
+  await page.evaluate((fill) => {
+    let n = 0;
+    let release = null;
+    window.__releaseCam = () => { if (release) { const go = release; release = null; go(); } };
+    // Repaint every 100ms so the track keeps sending frames and never reads muted.
+    const stream = (paint) => {
+      const c = document.createElement('canvas');
+      c.width = 320; c.height = 180;
+      c.style.cssText = 'position:fixed;left:-4000px;top:0';
+      document.body.appendChild(c);
+      const x = c.getContext('2d');
+      const draw = () => { x.fillStyle = paint; x.fillRect(0, 0, 320, 180); };
+      draw();
+      setInterval(draw, 100);
+      return c.captureStream(10);
+    };
+    navigator.mediaDevices.getUserMedia = () => {
+      n += 1;
+      window.__gumN = n;
+      if (n === 1) return Promise.resolve(stream(fill));
+      return new Promise((res) => { release = () => res(stream('#c45b3e')); });
+    };
+  }, color);
+  await page.click('#cam');
+  await expect.poll(() => page.evaluate(() => window.__gumN || 0)).toBe(1);
+}
+
+test('a live camera that paints pure black says so before it restarts', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
+  await paintedCam(page, 'qaphonepureblack', '#000000');
+  const mark = page.locator('.tile.me .cambackmark');
+  // One 3s sample, plus slack. The re-grab waits for the third sample (~9s).
+  await expect(mark).toBeVisible({ timeout: 4500 });
+  await expect(mark).toHaveText('Camera stopped — bringing it back');
+  expect(await page.evaluate(() => window.__gumN || 0)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.__gumN || 0), { timeout: 12000 }).toBe(2);
+  const reason = await page.evaluate(() => (window.__regrabLog || []).map((r) => r.reason).pop());
+  expect(reason).toBe('blackCamWatch:dark-pixels');
+  await page.evaluate(() => window.__releaseCam());
+  await expect(mark).toBeHidden({ timeout: 8000 });
+});
+
+test('a dark room that is still painting does not flash the camera line', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
+  await paintedCam(page, 'qaphonedarkroom', '#0a0a0a');
+  const mark = page.locator('.tile.me .cambackmark');
+  // At most two samples fit in 5s, and the line must not show for either.
+  const t0 = Date.now();
+  while (Date.now() - t0 < 5000) {
+    expect(await mark.isVisible()).toBe(false);
+    await page.waitForTimeout(250);
+  }
+  expect(await page.evaluate(() => window.__gumN || 0)).toBe(1);
+});
