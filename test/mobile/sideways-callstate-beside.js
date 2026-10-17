@@ -9,7 +9,9 @@
  * whole without a scroll, names clear of Full screen. An SE's band is too
  * short for two rows of 96px faces, so it shows a full row of five, as
  * tall as the band, and "↓2" for the rest. Record and Captions are still
- * 44px, read in full, and are the thing a tap on them hits.
+ * 44px, read in full, and are the thing a tap on them hits. The "↓2" hint
+ * hangs in the fifth face's corner; a long fifth name ("Fellowship Hall
+ * iPad") ran under it, so that name now wraps clear of the hint.
  *
  * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/sideways-callstate-beside.js
  */
@@ -20,8 +22,10 @@ const { chromium, devices } = require('playwright');
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
 const NAMES = ['Pastor Dave', 'Ruth', 'Margaret Johnson', 'Lobby iPad', 'Grace', 'Tom & Linda Ruiz'];
-// [device, shot tag, faces whole with the buttons up]
-const PHONES = [['iPhone SE landscape', 'iphone-se-land', 5], ['iPhone 12 landscape', 'iphone-12-land', 7], ['Pixel 5 landscape', 'pixel-5-land', 7]];
+const LONG = ['Pastor Dave', 'Ruth', 'Margaret Johnson', 'Fellowship Hall iPad', 'Grace', 'Tom & Linda Ruiz'];
+// [device, shot tag, faces whole with the buttons up, guests]
+const PHONES = [['iPhone SE landscape', 'iphone-se-land', 5, NAMES], ['iPhone SE landscape', 'iphone-se-land-long', 5, LONG],
+  ['iPhone 12 landscape', 'iphone-12-land', 7, NAMES], ['Pixel 5 landscape', 'pixel-5-land', 7, NAMES]];
 
 function look(page) {
   return page.evaluate(() => {
@@ -37,7 +41,12 @@ function look(page) {
     const out = {
       away: document.body.classList.contains('chrome-away'), scroll: feed.scrollHeight - feed.clientHeight, tiles: [], btns: [],
       hint: hint && hint.offsetParent && getComputedStyle(hint).visibility !== 'hidden' ? hint.textContent.trim() : '',
+      hintOn: [],
     };
+    if (out.hint) {
+      const hr = R(hint);
+      for (const n of document.querySelectorAll('#feed .tile .name')) if (n.offsetParent && meet(hr, R(n))) out.hintOn.push(n.textContent.trim());
+    }
     // The part of a tile the feed shows (a scrolling feed clips its later rows).
     const clip = (r) => {
       const y0 = Math.max(r.top, fr.top), y1 = Math.min(r.bottom, fr.bottom, innerHeight - parseFloat(getComputedStyle(feed).getPropertyValue('--comfy-clip') || 0));
@@ -82,15 +91,16 @@ function look(page) {
   const browser = await chromium.launch({ headless: true });
   const bad = [];
   const shots = [];
-  for (const [dev, tag, want] of PHONES) {
-    const context = await browser.newContext(Object.assign({}, devices[dev], { hasTouch: true }));
+  for (const [dev0, tag, want, guests] of PHONES) {
+    const dev = dev0 + (guests === LONG ? ' (long names)' : '');
+    const context = await browser.newContext(Object.assign({}, devices[dev0], { hasTouch: true }));
     await context.addInitScript(() => { try { localStorage.setItem('gifos_name', 'Nathan'); } catch (e) {} });
     const page = await context.newPage();
     await page.goto(BASE + '/run.html#v=callstate-beside-' + process.pid + '-' + tag + '&debug=on', { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForSelector('#bartoggle', { timeout: 15000 });
     const skip = page.locator('#nmok');
     if (await skip.count()) await skip.tap().catch(() => {});
-    const seeded = await page.evaluate((a) => window.__gifosVideo.seedGalleryForTest({ count: a.length, names: a }), NAMES);
+    const seeded = await page.evaluate((a) => window.__gifosVideo.seedGalleryForTest({ count: a.length, names: a }), guests);
     if (!seeded || !seeded.ok) { bad.push(dev + ': could not seat the guests'); await context.close(); continue; }
     // A key press brings the call's buttons up and holds them for 6s.
     await page.keyboard.press('Shift');
@@ -104,6 +114,7 @@ function look(page) {
     const whole = a.tiles.filter((t) => t.whole);
     if (whole.length < want) bad.push(dev + ': ' + whole.length + ' faces whole with the buttons up, want ' + want + ' (' + whole.map((t) => t.name + ' ' + t.h + 'px').join(', ') + ')');
     if (want === 7 && a.scroll > 1) bad.push(dev + ': the tiles scroll ' + a.scroll + 'px');
+    if (a.hintOn.length) bad.push(dev + ': the "' + a.hint + '" hint sits on ' + a.hintOn.join(' and ') + '\'s name');
     if (want < 7 && a.hint !== '\u2193' + (7 - want)) bad.push(dev + ': ' + (7 - want) + ' faces below and the hint says "' + a.hint + '"');
     for (const t of a.tiles) {
       if (t.under) bad.push(dev + ': ' + t.name + '\'s tile is under the dock or Record/Captions');
