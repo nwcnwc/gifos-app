@@ -22,10 +22,10 @@ async function capBox(page) {
     const e = shown[0];
     const r = e.getBoundingClientRect();
     const bar = document.querySelector('.bar').getBoundingClientRect();
-    const give = document.getElementById('bc-give');
-    const g = give && !give.hidden ? give.getBoundingClientRect() : null;
+    const visit = document.getElementById('bc-visit');
+    const g = visit && !visit.hidden ? visit.getBoundingClientRect() : null;
     return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, font: parseFloat(getComputedStyle(e).fontSize), barY: bar.y,
-      giveHit: !!(g && r.left < g.right && g.left < r.right && r.top < g.bottom && g.top < r.bottom) };
+      visitHit: !!(g && r.left < g.right && g.left < r.right && r.top < g.bottom && g.top < r.bottom) };
   }, LINE);
 }
 
@@ -44,9 +44,9 @@ test('a viewer reads the host\'s words on the picture, and CC hides them', async
     const cc = h.locator('#ccbtn');
     await expect(cc).toBeVisible();
     expect(((await cc.getAttribute('title')) || '') + ' ' + (await cc.textContent())).toMatch(/viewers/i);
-    // Give rides the picture too; the words stay clear of it.
-    await h.locator('#bcgive').fill('https://give.example.org/grace');
-    await h.locator('#bcgive').dispatchEvent('change');
+    // Visit rides the picture too; the words stay clear of it.
+    await h.locator('#bcvisit').fill('https://example.com/');
+    await h.locator('#bcvisit').dispatchEvent('change');
     const link = await h.evaluate(() => {
       let p = null;
       navigator.share = (x) => { p = x; return Promise.resolve(); };
@@ -68,8 +68,8 @@ test('a viewer reads the host\'s words on the picture, and CC hides them', async
     const c = await capBox(v);
     expect(c.bottom).toBeLessThanOrEqual(c.barY);
     expect(c.font).toBeGreaterThanOrEqual(17);
-    await expect(v.locator('#bc-give')).toBeVisible();
-    expect(c.giveHit).toBe(false);
+    await expect(v.locator('#bc-visit')).toBeVisible();
+    expect(c.visitHit).toBe(false);
 
     // CC on the picture hides the words, and the next line stays hidden.
     const vcc = v.locator('#bc-cap-btn');

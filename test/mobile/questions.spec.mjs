@@ -30,7 +30,7 @@ async function bandBox(page, text) {
     };
     return { top: r.top, bottom: r.bottom, font: parseFloat(getComputedStyle(shown[0]).fontSize),
       barY: document.querySelector('.bar').getBoundingClientRect().y,
-      hits: ['#fitbtn', '#bc-give', '#bc-cap', '.topchip', '#livebadge'].filter(hit) };
+      hits: ['#fitbtn', '#bc-visit', '#bc-cap', '.topchip', '#livebadge'].filter(hit) };
   }, text);
 }
 
@@ -88,7 +88,7 @@ test('a viewer asks, votes sort the questions, and the host puts one on every pi
     expect(await v.evaluate((t) => document.getElementById('chatlog').textContent.includes(t), Q1)).toBe(false);
 
     // The host puts Q2 on the picture; the viewer reads it there, clear of
-    // Fit, Give, the captions, and the dock.
+    // Fit, Visit, the captions, and the dock.
     await h.locator('#qa-list .qrow', { hasText: Q2 }).locator('.qshow').click();
     await v.locator('#qa-close').click();
     await expect(v.locator('#qa')).toBeHidden();
