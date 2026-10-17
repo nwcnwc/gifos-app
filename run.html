@@ -1504,6 +1504,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: #fff; color: #1d1d1f; font-weight: 800; font-size: 64px; line-height: 1; padding: 14px 22px; border-radius: 999px;
     pointer-events: none; opacity: 0; }
   body.broadcast #bc-react .reactburst.show { animation: reactpop 1.6s ease forwards; }
+  #bc-reacts { display: none; }
+  body.broadcast #bc-reacts:not([hidden]) { display: flex; position: absolute; left: 0; right: 0; bottom: 148px; z-index: 6;
+    justify-content: center; gap: 8px; pointer-events: none; }
+  body.broadcast #bc-reacts .bcreact { background: #fff; color: #1d1d1f; font: 700 22px/1 system-ui, sans-serif;
+    border-radius: 999px; padding: 10px 16px; min-height: 44px; display: inline-flex; align-items: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,.35); }
   @keyframes reactpop { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
   #leave-ask .name-box { background: #fff; color: #1d1d1f; }
   #leave-ask .name-box h3 { color: #1d1d1f; font-size: 1.7rem; margin-bottom: 1rem; }
@@ -1861,6 +1867,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-name"></div></div>
     <div id="bc-stage" hidden><p id="bc-stage-line">The stage is clear.</p></div>
     <div id="bc-react" aria-hidden="true"></div>
+    <div id="bc-reacts" hidden role="status" aria-label="Audience reactions"></div>
     <div id="grid"></div>
     <div id="stadium"></div>
   </div>
@@ -13191,6 +13198,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // re-broadcasting on first sight made ONE chat line N floods — O(N)
           // frames per node per line, the N×N the mesh exists to prevent.
         }
+      } else if (m.k === 'react') {
+        // One flood from the person who clapped. The stage adds it to the
+        // count. It is not sent on again.
+        const who = p && p.id;
+        if (who && who !== myId) takeAudienceReact(m.e, who);
       } else if (m.k === 'bx' && typeof window !== 'undefined' && window.GifOS && GifOS.meetSession && typeof window.__gifosMeetEmit === 'function') {
         GifOS.meetSession.takeXfer(m, window.__gifosMeetEmit);
       } else if (m.k === 'chatack') {
@@ -21175,6 +21187,60 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setBarH();
     })();
 
+    // Audience reactions on a service. Each clap is one small frame. The stage
+    // adds them up, so a room of claps is one pill, not a pile of emojis.
+    const AUDIENCE_REACTS = ['👏', '👍', '👎', '😂'];
+    const AUDIENCE_REACT_NAME = { '👏': 'claps', '👍': 'yes', '👎': 'no', '😂': 'laughs' };
+    const audienceReactCounts = new Map();
+    const audienceReactRate = new Map();
+    let audienceReactFade = 0;
+    function takeAudienceReact(emoji, fromId) {
+      if (typeof BROADCAST === 'undefined' || !BROADCAST) return false;
+      emoji = String(emoji || '');
+      if (AUDIENCE_REACTS.indexOf(emoji) < 0) return false;
+      const who = String(fromId || 'me');
+      const now = Date.now();
+      const recent = (audienceReactRate.get(who) || []).filter((t) => now - t < 10000);
+      if (recent.length >= 6) return false;
+      recent.push(now);
+      audienceReactRate.set(who, recent);
+      if (audienceReactRate.size > 400) audienceReactRate.clear();
+      const row = audienceReactCounts.get(emoji) || { n: 0, until: 0 };
+      if (now > row.until) row.n = 0;
+      row.n += 1;
+      row.until = now + 4000;
+      audienceReactCounts.set(emoji, row);
+      paintAudienceReacts();
+      return true;
+    }
+    function paintAudienceReacts() {
+      const host = document.getElementById('bc-reacts');
+      if (!host) return;
+      const now = Date.now();
+      host.textContent = '';
+      let any = false;
+      let soon = Infinity;
+      for (let i = 0; i < AUDIENCE_REACTS.length; i++) {
+        const emoji = AUDIENCE_REACTS[i];
+        const row = audienceReactCounts.get(emoji);
+        if (!row || row.n < 1 || now > row.until) continue;
+        any = true;
+        if (row.until < soon) soon = row.until;
+        const pill = document.createElement('span');
+        pill.className = 'bcreact';
+        const n = row.n > 999 ? '999+' : String(row.n);
+        pill.textContent = emoji + ' ' + n;
+        pill.setAttribute('aria-label', n + ' ' + AUDIENCE_REACT_NAME[emoji]);
+        host.appendChild(pill);
+      }
+      host.hidden = !any;
+      clearTimeout(audienceReactFade);
+      if (soon < Infinity) audienceReactFade = setTimeout(paintAudienceReacts, Math.max(0, soon - now) + 40);
+    }
+    function sendAudienceReact(emoji) {
+      takeAudienceReact(emoji, (typeof myId !== 'undefined' && myId) || 'me');
+      try { sendAll({ k: 'react', e: emoji }, { ephemeral: true }); } catch (e) {}
+    }
     (function () {
       const btn = document.getElementById('reactbtn');
       const tray = document.getElementById('reacttray');
@@ -21227,8 +21293,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         };
         flashBurst(document.querySelector('.tile.me'));
         // A service hides the gallery, so the same clap has to land on the
-        // stage or the person who sent it never sees it.
-        if (typeof BROADCAST !== 'undefined' && BROADCAST) flashBurst(document.getElementById('bc-react'));
+        // stage or the person who sent it never sees it. The count is what
+        // everyone else sees: one pill per emoji, not one burst per person.
+        if (typeof BROADCAST !== 'undefined' && BROADCAST) {
+          flashBurst(document.getElementById('bc-react'));
+          sendAudienceReact(label);
+        }
       });
     })();
 
@@ -24207,6 +24277,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         btnShown: (() => { const b = document.getElementById('pipbtn'); return !!b && b.style.display !== 'none'; })(),
       }),
       pipEnterForTest: () => enterPip(true),
+      audienceReactForTest: (emoji, fromId) => takeAudienceReact(emoji, fromId || 'viewer'),
       // moderation SINKS (e2e-meet-mod.js): what the filmstrip would list and how
       // blurred, and a sender that defies the admin's video-off — the DOM-hacked
       // guest the receiver-side rule exists for (it only re-enables MY track).

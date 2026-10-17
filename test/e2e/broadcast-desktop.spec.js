@@ -2441,3 +2441,76 @@ test('float tells you when the stage has no picture', async ({ page }) => {
   await expect(page.locator('#status')).toContainText('Just you. Send the invite.');
   await expect(page.locator('#status')).not.toContainText('float');
 });
+
+test('a viewer clap reaches the stage as a count', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  async function pillLay() {
+    return page.evaluate(() => {
+      const host = document.getElementById('bc-reacts');
+      const pills = Array.from(host.querySelectorAll('.bcreact')).map((el) => el.textContent);
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const overlap = (a, b) => a.width > 0 && b.width > 0 && !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+      const boxes = Array.from(host.querySelectorAll('.bcreact')).map((el) => el.getBoundingClientRect());
+      const on = boxes.every((b) => b.width > 20 && b.left >= -1 && b.right <= innerWidth + 1 && b.top >= -1 && b.bottom <= innerHeight + 1);
+      const hitDock = boxes.some((b) => overlap(b, dock));
+      return { pills, on, hitDock };
+    });
+  }
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=agg' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast');
+    await page.locator('#reactbtn').click();
+    await page.locator('#reacttray button[aria-label="Clap"]').click();
+    await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 1');
+    const one = await pillLay();
+    expect(one.on, JSON.stringify(one)).toBe(true);
+    expect(one.hitDock, JSON.stringify(one)).toBe(false);
+    if (w === 1280) {
+      await page.evaluate(() => {
+        for (let i = 0; i < 11; i++) window.__gifosVideo.audienceReactForTest('👏', 'viewer-' + i);
+        window.__gifosVideo.audienceReactForTest('👍', 'viewer-yes');
+      });
+      await expect(page.locator('#bc-reacts')).toContainText('👏 12');
+      await expect(page.locator('#bc-reacts')).toContainText('👍 1');
+      const added = await page.evaluate(() => {
+        let n = 0;
+        for (let i = 0; i < 8; i++) if (window.__gifosVideo.audienceReactForTest('😂', 'same-person')) n++;
+        return n;
+      });
+      expect(added).toBe(6);
+      await expect(page.locator('#bc-reacts')).toContainText('😂 6');
+      const many = await pillLay();
+      expect(many.on, JSON.stringify(many)).toBe(true);
+      expect(many.hitDock, JSON.stringify(many)).toBe(false);
+    }
+  }
+  await page.goto('/run.html?desk=agghost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.broadcast');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+  await page.evaluate(() => {
+    for (let i = 0; i < 12; i++) window.__gifosVideo.audienceReactForTest('👏', 'watch-' + i);
+  });
+  await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 12');
+  await expect(page.locator('#bc-react .reactburst')).toHaveCount(0);
+  const hostLay = await pillLay();
+  expect(hostLay.on, JSON.stringify(hostLay)).toBe(true);
+  expect(hostLay.hitDock, JSON.stringify(hostLay)).toBe(false);
+  await page.goto('/run.html?desk=agggroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.evaluate(() => {
+    const tile = document.createElement('div');
+    tile.className = 'tile me';
+    document.getElementById('grid').appendChild(tile);
+  });
+  await page.locator('#reactbtn').click();
+  await page.locator('#reacttray button[aria-label="Clap"]').click();
+  await expect(page.locator('.tile.me .reactburst')).toHaveText('👏');
+  const stageCount = await page.locator('#bc-reacts').evaluate((el) => !el.hidden && getComputedStyle(el).display !== 'none');
+  expect(stageCount).toBe(false);
+});
