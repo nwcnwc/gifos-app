@@ -231,3 +231,17 @@ test('a dark room that is still painting does not flash the camera line', async 
   }
   expect(await page.evaluate(() => window.__gumN || 0)).toBe(1);
 });
+
+test('a dark room that is still painting never restarts the camera', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
+  await paintedCam(page, 'qaphonedarkstay', '#0a0a0a');
+  const mark = page.locator('.tile.me .cambackmark');
+  // Four 3s samples. The old watchdog re-grabbed a dim room on the third.
+  const t0 = Date.now();
+  while (Date.now() - t0 < 13000) {
+    expect(await mark.isVisible()).toBe(false);
+    await page.waitForTimeout(250);
+  }
+  expect(await page.evaluate(() => (window.__regrabLog || []).map((r) => r.reason))).toEqual([]);
+  expect(await page.evaluate(() => window.__gumN || 0)).toBe(1);
+});
