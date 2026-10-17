@@ -1504,6 +1504,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile > .blurbox, .tile .maxbtn, .tile .modbar { transition: opacity .2s ease; }
   body.dock-calm .tile > .blurbox, body.dock-calm .tile .maxbtn, body.dock-calm .tile .modbar {
     opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+  /* On a desktop a face is clean until you point at it (Zoom and Meet do
+     the same): Blur for all and Max show on the face under the pointer or
+     with keyboard focus. A blurred face keeps Unblur so the state is seen. */
+  body.desk-ptr .tile > .blurbox[aria-pressed="false"], body.desk-ptr .tile .maxbtn { opacity: 0; pointer-events: none; }
+  body.desk-ptr:not(.dock-calm) .tile:is(:hover, :focus-within, .menu) > .blurbox,
+  body.desk-ptr:not(.dock-calm) .tile:is(:hover, :focus-within, .menu) .maxbtn { opacity: 1; pointer-events: auto; }
   /* The header line and the build label go too, unless the line is saying
      something (a notice, an alert, a reach state). */
   .topchip, #gifos-build-float { transition: opacity .2s ease; }
@@ -22141,6 +22147,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // brings it back. The layout does not change, so faces never jump.
     let dockCalmMs = 5000;
     (function () {
+      document.body.classList.toggle('desk-ptr', !IS_MOBILE);
       const bar = document.querySelector('.bar');
       let lastInput = Date.now();
       const wake = () => {
