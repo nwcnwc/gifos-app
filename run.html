@@ -2706,6 +2706,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         admit: 'Herein', nobodyWaiting: 'Niemand wartet', rename: 'Umbenennen', saveName: 'Sichern',
         spotlight: 'Hervorheben', inView: 'Im Blick',
         waitSelf: 'Die Leitung lässt Sie gleich hinein', waitSelfNote: 'Sie sehen die Besprechung, sobald Sie hereingelassen werden.',
+        waitMic: 'Sie sind im Warteraum: Ihr Mikrofon geht an, sobald Sie hereingelassen werden.',
         shareTitle: 'Bildschirm teilen', shareGo: 'Auswählen, was geteilt wird…', shareCancel: 'Abbrechen',
         shareDenied: 'Nur die Leitung dieses Raums — oder wen sie erlaubt — kann einen Bildschirm teilen. Bitten Sie die Leitung, es zu erlauben, an Ihrem Feld oder für den ganzen Raum, und öffnen Sie dies dann erneut.',
         shareBody: 'Ein Bildschirm ist für das, was keine App sein kann: eine Präsentation auf Ihrem Rechner, ein Werkzeug, das nicht GifOS ist, ein Fenster von woanders. Es liegt auf der Bühne, der ganze Raum sieht es, und alle sehen, dass Sie teilen.',
@@ -2989,6 +2990,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         admit: 'Admitir', nobodyWaiting: 'Nadie espera', rename: 'Renombrar', saveName: 'Guardar',
         spotlight: 'Destacar', inView: 'En vista',
         waitSelf: 'El anfitrión te dejará entrar', waitSelfNote: 'Verás la reunión cuando te admitan.',
+        waitMic: 'Estás en la sala de espera: tu micrófono se abre cuando te admitan.',
         shareTitle: 'Compartir pantalla', shareGo: 'Elegir qué compartir…', shareCancel: 'Cancelar',
         shareDenied: 'Solo los anfitriones de esta sala — o quien ellos permitan — pueden compartir pantalla. Pide que te lo permitan, en tu recuadro o para toda la sala, y abre esto otra vez.',
         shareBody: 'Compartir pantalla es para lo que una app no puede ser: una presentación en tu disco, una herramienta que no es GifOS, una ventana de otro sitio. Se ve en el escenario, toda la sala la ve, y todos ven que eres tú.',
@@ -4935,6 +4937,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pid = self ? myId : id;
       const own = modTable[pid] || {};
       const all = modTable['*'];
+      // The waiting room is a sealed lobby: until Admit, the person waiting is
+      // a mute on every path that honours a host's mute (their own mic, each
+      // speaker, captions, the recording), whoever's page reads it.
+      if (all && all.wait && all.wait.on && pid && pid !== '*' && (self ? iAmWaiting() : isHeld(pid))) {
+        return Object.assign({}, own, { mute: { on: true, wait: true, by: '', at: +all.wait.at || 0 } });
+      }
       if (!all || pid === '*' || !hasAdminRoom()) return own;
       if (self ? (amAdmin || admins.includes(myId)) : admins.includes(pid)) return own;
       let out = own;
@@ -7622,19 +7630,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const w = (modTable['*'] || {}).wait;
       return (w && w.on) ? (+w.at || 0) : 0;
     }
+    // Held = kept off this screen AND out of every ear and mix (modOf reads it
+    // as a mute). Only the waiting page knows when it arrived, so it says so
+    // on its own beat (myStatus.wt). Before its first beat, a page that was
+    // here when the room started waiting holds anyone new; a page that came
+    // later cannot tell who is new, so it waits for the word. While I wait,
+    // everyone is held on MY screen: I see and hear no one until Admit.
     function isHeld(id) {
+      if (!waitingSince() || !id || id === myId || !peers.get(id)) return false;
+      return iAmWaiting() || peerWaits(id);
+    }
+    // The room holds this person (the composites I build follow this, not my
+    // own screen: a waiting row head still carries its row's faces).
+    function peerWaits(id) {
       const since = waitingSince();
       if (!since || !id || id === myId) return false;
       const p = peers.get(id);
-      if (!p || (p.bornAt || 0) < since) return false;
+      if (!p) return false;
+      const w = modTable['*'].wait;
+      if (w.byId && w.byId === id) return false;
+      if (hasAdminRoom() && admins.includes(id)) return false;
       const adm = (modTable[id] || {}).admit;
       if (adm && adm.on && (+adm.at || 0) >= since) return false;
-      return true;
+      const st = statusOf.get(id);
+      if (st && st.wt !== undefined) return !!st.wt;
+      return pageArrived < since && (p.bornAt || 0) >= since;
     }
     function iAmWaiting() {
       const w = (modTable['*'] || {}).wait;
       if (!w || !w.on) return false;
       if (w.byId && w.byId === myId) return false;
+      if (hasAdminRoom() && amAdmin) return false;
       if (pageArrived < (+w.at || 0) - 2000) return false;
       const adm = (modTable[myId] || {}).admit;
       if (adm && adm.on && (+adm.at || 0) >= (+w.at || 0)) return false;
@@ -7657,14 +7683,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (hostSpot(id)) { if (!st.stg) st.stg = Date.now(); st._spot = 1; }
       else if (st._spot) { st.stg = 0; st._spot = 0; }
     }
+    // The roster's Waiting list follows every hold and release: a real
+    // arrival is held while its peer is built, long after the roster painted.
+    let rosterSoon = 0;
+    function paintRosterSoon() { if (!rosterSoon) rosterSoon = setTimeout(() => { rosterSoon = 0; paintRoster(); }, 0); }
     function holdPeer(p) {
       if (!p || !p.tile) return;
+      if (!p.held) paintRosterSoon();
       p.held = true;
-      if (p.video) { try { p.video.pause(); } catch (e) {} }
+      if (p.video) {
+        // Only a person the room holds is paused: on MY waiting page the tile
+        // is just off screen, and a row head still draws its mates from it.
+        if (peerWaits(p.id)) { try { p.video.pause(); } catch (e) {} }
+        if (p.video._aud) p.video._aud.muted = true; // the voice plays here, not in the <video>
+      }
       if (p.tile.parentNode) p.tile.remove();
     }
     function releaseHeld(p) {
       if (!p) return;
+      if (p.held) paintRosterSoon();
       p.held = false;
       if (p.tile && !p.headless && !p.tile.parentNode && typeof grid !== 'undefined' && grid) grid.appendChild(p.tile);
       if (p.video) { const pr = p.video.play(); if (pr && pr.catch) pr.catch(function () {}); }
@@ -7703,8 +7740,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         applySpotlightBit(id);
         if (p && p.held && !isHeld(id)) releaseHeld(p);
       }
-      for (const p of peers.values()) if (p && isHeld(p.id)) holdPeer(p);
+      for (const p of peers.values()) {
+        if (!p) continue;
+        if (isHeld(p.id)) holdPeer(p);
+        else if (p.held) releaseHeld(p);
+      }
       paintWaitingSelf();
+      const wt = iAmWaiting() ? 1 : 0;
+      if (myStatus.wt !== wt) { myStatus.wt = wt; try { broadcastStatus(); } catch (e) {} }
+      try { applyBuses(); } catch (e) {}
     }
     function setWaitingRoom(on) {
       if (!mayHost()) return;
@@ -7772,7 +7816,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function waitingRows() {
       const rows = [];
       for (const p of peers.values()) {
-        if (!p || !isHeld(p.id)) continue;
+        if (!p || !peerWaits(p.id)) continue;
         rows.push({ id: p.id, name: hostRename(p.id) || p.name || rosterNames[p.id] || 'Guest' });
       }
       rows.sort((a, b) => String(a.name).localeCompare(String(b.name)));
@@ -9538,6 +9582,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       Object.defineProperty(st, 'raw', { value: raw });
       const scribeBit = !!(cur && cur.scribe) !== !!st.scribe;
       const shareBit = !!(cur && cur.scr) !== !!st.scr;
+      const waitBit = !cur || (cur.wt !== st.wt);
       if (typeof noteStatusFlags === 'function') noteStatusFlags(cur, st);
       if (!cur && from !== myId) scheduleNewPeerBeat(); // the first status from a person I held none for: answer with my own beat, whatever path carried theirs
       statusOf.set(from, st);
@@ -9545,6 +9590,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A share starting or stopping paints this tile now. The sharer list is
       // read live; a coalesced pass would leave the chip behind it.
       if (shareBit) { updateTile(from); if (typeof paintShare === 'function') paintShare(); }
+      // A waiting person's own word holds or releases their tile and voice.
+      if (waitBit && st.wt !== undefined && from !== myId && waitingSince() && typeof applyHostOrders === 'function') {
+        try { applyHostOrders(); updateTile(from); layout(); updateStatus(); } catch (e) {}
+      }
       // Proof of life past a departure verdict: the orders confirmGone parked
       // for this peer come back (unparkMod). notTomb lifts the tombstone on
       // this same frame, so mergeMod treats them as an ordinary target again.
@@ -15798,7 +15847,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (stageEar.fold.setGain) stageEar.fold.setGain(k2, (gm && gm.on) ? 0 : 1); // a cached older fold lacks it: held at 1, as before
       }
       stageEar.el.volume = mix.stage;
-      stageEar.el.muted = !(mix.stage > 0); // iOS ignores volume; 0 must be `muted`
+      stageEar.el.muted = iAmWaiting() || !(mix.stage > 0); // iOS ignores volume; 0 must be `muted`
     }
     // A stage source built while the sender was muted latches that silence.
     // The track often never fires `unmute` (silence frames, not a mute edge),
@@ -18018,9 +18067,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // directly-linked peer. Stream carries the audio the fold sums; el is the
       // drawImage source (a <video> or a nested composite's <canvas>).
       const srcFor = (pid, feedKey) => {
-        if (pid === myId) return { el: meTile.video, stream: selfFoldStream() };
+        // Someone in the waiting room is in no composite: no face, no voice.
+        if (pid === myId) return iAmWaiting() ? { el: null, stream: null } : { el: meTile.video, stream: selfFoldStream() };
         const f = feedKey ? mosIn.get(feedKey) : null;
         if (f) return { el: f.el, stream: f.stream };
+        if (peerWaits(pid)) return { el: null, stream: null };
         const p = peers.get(pid);
         return p ? { el: p.video, stream: p.video.srcObject } : { el: null, stream: null };
       };
@@ -19782,6 +19833,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       el._aud.muted = !!el._gmute || !(vol > 0); // group mute rides the same pipe as the faders
     }
     function applyBuses() {
+      const sealed = iAmWaiting(); // a person in the waiting room hears no one
       const stg = new Set(stageIds());
       const mates = new Set(rowMates());
       let hasStadium = false;
@@ -19796,21 +19848,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Stagers' direct tracks are muted too: their voice arrives via the
         // per-stager feeds folded at the ear — the direct link would double it.
         const bus = stg.has(pid) ? null : mates.has(pid) ? 'row' : null;
-        busVolume(p.video, bus ? mix[bus] : 0);
+        busVolume(p.video, (bus && !sealed && !isHeld(pid)) ? mix[bus] : 0);
       }
       // feed tiles (the nested mosaics): stage strip is Stage; stadium tiles
       // are The stadium.
-      for (const el of stagefeedEl.querySelectorAll('.rowtile video')) { if (el.classList.contains('stageface')) continue; busVolume(el, mix.stage); }
+      for (const el of stagefeedEl.querySelectorAll('.rowtile video')) { if (el.classList.contains('stageface')) continue; busVolume(el, sealed ? 0 : mix.stage); }
       for (const el of stadiumEl.querySelectorAll('.rowtile')) {
         const v = el.querySelector('video'); if (!v) continue;
-        busVolume(v, mix.stadium); hasStadium = true; // the only stadium-area tile now is the Stadium composite
+        busVolume(v, sealed ? 0 : mix.stadium); hasStadium = true; // the only stadium-area tile now is the Stadium composite
       }
       // Section A/V + audio are dropped; section-mates fold into the Stadium.
       // Progressive disclosure for the stadium fader.
       const stadLab = document.getElementById('mixlab-stadium');
       const stadMark = hasStadium ? '1' : '0';
       if (stadLab && stadLab.dataset.on !== stadMark) { stadLab.dataset.on = stadMark; stadLab.style.display = hasStadium ? '' : 'none'; }
-      if (stageEar) { stageEar.el.volume = mix.stage; stageEar.el.muted = !(mix.stage > 0); } // the Stage fader drives the ear fold (muted at 0: iOS ignores volume)
+      if (stageEar) { stageEar.el.volume = mix.stage; stageEar.el.muted = sealed || !(mix.stage > 0); } // the Stage fader drives the ear fold (muted at 0: iOS ignores volume)
       kickPausedAudio();
     }
     // The Settings modal: the sound mix's new home (same fader ids as when it
@@ -22436,6 +22488,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     })();
 
     function amGloballyMuted() { const m = modOf('me').mute; return !!(m && m.on); }
+    function micLockWords() {
+      const m = modOf('me').mute || {};
+      if (m.wait) return uiText('waitMic', 'You are in the waiting room: your mic opens when the host lets you in.');
+      return 'You were muted for everyone' + (m.by ? ' by ' + m.by : '') + ' — another participant has to lift it.';
+    }
 
     function focusOf(el) {
       return el.querySelector('input:not([type="hidden"]), select, textarea, button');
@@ -22495,7 +22552,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (micLabel) { if (micLabel.textContent !== micWord) micLabel.textContent = micWord; }
       if (micBtn.getAttribute('aria-label') !== micWord) micBtn.setAttribute('aria-label', micWord);
       micBtn.title = micLocked
-        ? 'Muted for everyone' + (modOf('me').mute.by ? ' by ' + modOf('me').mute.by : '') + ' — someone else has to lift it'
+        ? (modOf('me').mute.wait ? micLockWords() : 'Muted for everyone' + (modOf('me').mute.by ? ' by ' + modOf('me').mute.by : '') + ' — someone else has to lift it')
         : (muted ? 'You are muted — tap to speak' : 'Your mic is on — tap to mute');
       // camera
       camBtn.classList.toggle('off', myStatus.camOff);
@@ -22582,10 +22639,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // microphone off, even when the permission is answered after the order.
     function lateRefusal(kind) {
       if (kind === 'cam' && forcedCamOff('me')) return '📷 An admin turned your video off for the room — only they can turn it back on.';
-      if (kind === 'mic' && amGloballyMuted()) {
-        const by = modOf('me').mute.by;
-        return 'You were muted for everyone' + (by ? ' by ' + by : '') + ' — another participant has to lift it.';
-      }
+      if (kind === 'mic' && amGloballyMuted()) return micLockWords();
       return null;
     }
     function lateMedia(kind) {
@@ -22717,11 +22771,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (document.body.classList.contains('app-room') && !roomAudioOn()) { setStatus('Talk is off — only the app host can turn it on.'); return; }
       if (!localStream) return lateMedia('mic');
       const track = localStream.getAudioTracks()[0]; if (!track) return lateMedia('mic');
-      if (!track.enabled && amGloballyMuted()) {
-        const by = modOf('me').mute.by;
-        setStatus('You were muted for everyone' + (by ? ' by ' + by : '') + ' — another participant has to lift it.');
-        return;
-      }
+      if (!track.enabled && amGloballyMuted()) { setStatus(micLockWords()); return; }
       track.enabled = !track.enabled;
       myStatus.muted = !track.enabled;
       paintControls();
