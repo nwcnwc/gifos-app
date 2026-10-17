@@ -1136,27 +1136,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       min-width: 0; padding: 1px 4px; border-radius: 8px; }
     /* Upright tiles are tall enough to put "✋ hand raised" under the buttons, not between them. */
     @media (orientation: portrait) {
-      .tile.slim:not(.cam-off) .chips { top: 58px; left: 6px; right: 6px; }
+      .tile.slim:not(.short):not(.cam-off) .chips { top: 58px; left: 6px; right: 6px; }
       /* A tapped slim tile's menu opened 92px down a 153px tile, over Full
          screen and the name, with 36px buttons. It fills the tile above the
          name instead; Full screen steps aside while it is open. */
-      .tile.slim.menu .modbar { top: 6px; left: 6px; right: 6px; bottom: 52px; z-index: 7; gap: 6px;
+      .tile.slim:not(.short).menu .modbar { top: 6px; left: 6px; right: 6px; bottom: 52px; z-index: 7; gap: 6px;
         justify-content: center; overflow-y: auto; border-radius: 10px; background: rgba(10,10,15,.55); }
-      .tile.slim.menu .modbar button { box-sizing: border-box; width: 100%; min-height: 44px; padding: 2px 4px;
+      .tile.slim:not(.short).menu .modbar button { box-sizing: border-box; width: 100%; min-height: 44px; padding: 2px 4px;
         font-size: 13px; line-height: 1.1; white-space: normal; flex: 0 0 auto; background: #14141c; }
-      .tile.slim.menu > .blurbox, .tile.slim.menu .maxbtn { visibility: hidden; }
+      .tile.slim:not(.short).menu > .blurbox, .tile.slim:not(.short).menu .maxbtn { visibility: hidden; }
+      /* A short upright tile (about 100px: an SE in Safari, or the side
+         column of 7 on an SE) put a two-line name over "✋ hand raised", the
+         mute icon and Full screen. As on a sideways tile, the chips sit right
+         of Full screen; the hand is a ✋ chip there, and the name is a size
+         down so two lines clear Full screen. */
+      .tile.slim.short:not(.cam-off) .chips { right: 4px; flex-wrap: wrap; align-content: flex-start; gap: 4px; }
+      .tile.slim.short:not(.cam-off) .chips span.hand { font-size: 0; width: 22px; height: 22px; padding: 0; box-sizing: border-box;
+        display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
+      .tile.slim.short:not(.cam-off) .chips span.hand b { font-size: 13px; font-weight: normal; }
+      .tile.slim.short .name { font-size: 13px; line-height: 1.15; }
       /* An admin's menu adds Allow apps, Allow screen share and Ban: five
          buttons in a 95px box hid Mute for all above its scroll top.
          It opens as the sideways sheet instead, under Fit. */
-      body.amadmin .tile.slim.menu { outline: 3px solid #7ec8ff; outline-offset: -3px; }
+      body.amadmin .tile.slim.menu, .tile.slim.short.menu { outline: 3px solid #7ec8ff; outline-offset: -3px; }
       body.amadmin .tile.slim.menu > .blurbox, body.amadmin .tile.slim.menu .maxbtn { visibility: visible; }
-      body.amadmin .tile.slim.menu .modbar { position: fixed; top: 110px; left: 50%; right: auto; bottom: auto; transform: translateX(-50%);
+      body.amadmin .tile.slim.menu .modbar, .tile.slim.short.menu .modbar { position: fixed; top: 110px; left: 50%; right: auto; bottom: auto; transform: translateX(-50%);
         width: min(300px, calc(100vw - 24px)); max-height: calc(100vh - 122px); overflow-y: auto; box-sizing: border-box;
         display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; z-index: 20; justify-content: normal;
         border-radius: 14px; background: #0a0a0f; border: 1px solid rgba(255,255,255,.2); box-shadow: 0 6px 24px rgba(0,0,0,.6); }
-      body.amadmin .tile.slim.menu .modbar::before { content: attr(data-who); grid-column: 1 / -1; color: #eceef8; font: 700 14px/1.2 system-ui, sans-serif;
+      body.amadmin .tile.slim.menu .modbar::before, .tile.slim.short.menu .modbar::before { content: attr(data-who); grid-column: 1 / -1; color: #eceef8; font: 700 14px/1.2 system-ui, sans-serif;
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      body.amadmin .tile.slim.menu .modbar button { width: auto; font-size: 14px; padding: 2px 6px; }
+      body.amadmin .tile.slim.menu .modbar button, .tile.slim.short.menu .modbar button { width: auto; min-height: 44px; font-size: 14px; padding: 2px 6px; background: #14141c; }
     }
     /* Sideways a slim tile is about 100px tall, so the tile clipped the menu
        92px down to a sliver of Mute for all. It opens as a small sheet
@@ -1952,6 +1962,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      dot sat on its "d". The hand matters more; the dot steps aside. */
   @media (orientation: landscape) {
     body.comfy .tile.slim[data-tier="row"]:has(.chips span.warn)::after { display: none; } }
+  /* A short upright tile's chips run to its top right corner too. */
+  body.comfy .tile.slim.short:not(.cam-off)[data-tier="row"]:has(.chips span)::after { display: none; }
   body.comfy .stad-band {
     position: absolute; z-index: 4; pointer-events: none; background: rgba(12,14,18,.72);
     color: #f4f7fb; font-size: 12px; font-weight: 700; letter-spacing: .04em;
@@ -6086,7 +6098,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // A removed tile reports 0x0 once; let it go.
             if (!en.target.isConnected) { makeTile.slimObs.unobserve(en.target); return; }
             const w = en.contentRect.width;
-            if (w > 0) { en.target.classList.toggle('slim', w < 200); en.target.classList.toggle('thin', w < 116); }
+            const h = en.contentRect.height;
+            if (w > 0) { en.target.classList.toggle('slim', w < 200); en.target.classList.toggle('thin', w < 116); en.target.classList.toggle('short', w < 200 && h > 0 && h < 130); }
           }));
         }
         try { makeTile.slimObs.observe(tile); } catch (e) {}
@@ -6348,7 +6361,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           ? '<span class="warn stopshare" role="button" tabindex="0" title="Stop sharing your screen">🖥 ' + esc(uiText('stopShare', 'Stop sharing')) + '</span>'
           : '<span class="warn">🖥 ' + esc(uiText('shareTheirsChip', 'sharing their screen')) + '</span>');
       }
-      if (st.hand) chips.push('<span class="warn">✋ hand raised</span>');
+      if (st.hand) chips.push('<span class="warn hand" title="hand raised"><b>✋</b> hand raised</span>');
       if (st.lv) chips.push('<span>leaving…</span>');
       if (st.rec) chips.push('<span class="warn">⏺ recording this meeting</span>');
       // No per-person transcription chip. Captions are a local display, and

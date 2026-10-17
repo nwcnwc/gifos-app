@@ -308,13 +308,22 @@ function phoneFit(box, list, tier) {
   let h = box.h, cols = 1, tileW = box.w, rows = n;
   if (pick) { h = pick.h; cols = pick.cols; tileW = pick.tileW; rows = pick.rows; }
   else {
-    if (!(h >= minSide)) h = minSide;
-    const maxW = h * maxA;
-    // As many faces across as a legal tile allows, not the widest tiles: a
-    // sideways SE's 148px band holds five 109px faces, not three 155px ones.
-    const minW = Math.max(minSide, h * ASPECT_MIN);
-    cols = Math.max(1, Math.min(n, Math.floor(box.w / Math.max(1, Math.min(minW, box.w)))));
-    tileW = Math.min(maxW, box.w / cols);
+    // Not everyone fits: show as many whole faces as legal tiles allow and
+    // scroll the rest. As many across as a legal tile allows (a sideways SE's
+    // 148px band holds five 109px faces, not three 155px ones), and as many
+    // rows as stay >= minSide (an SE in Safari: two rows of three, not three
+    // band-tall faces).
+    let best = null;
+    for (let r = 1; box.h / r + 0.5 >= minSide || (r === 1 && !best); r++) {
+      const rh = Math.max(minSide, box.h / r);
+      const minW = Math.max(minSide, rh * ASPECT_MIN);
+      const c = Math.max(1, Math.min(n, Math.floor(box.w / Math.max(1, Math.min(minW, box.w)))));
+      const w = Math.min(rh * maxA, box.w / c);
+      const seen = Math.min(n, r * c);
+      if (!best || seen > best.seen || (seen === best.seen && w * rh > best.w * best.h)) best = { seen: seen, h: rh, cols: c, w: w };
+      if (seen === n) break;
+    }
+    h = best.h; cols = best.cols; tileW = best.w;
     rows = Math.ceil(n / cols);
   }
   const tiles = [];
