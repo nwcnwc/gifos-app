@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q61. A broadcast speaker was a small card
+
+The program was a rounded card, 304×171, parked at the top of an iPhone SE. It now fills the phone, 320×568, with square corners. The frame stays whole. “On stage” sits above the dock. The “has not started” line stays off while someone is up, and it stays when the stage is empty. A meeting speaker stays a tile. `test/mobile/broadcast-stage.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-broadcast-stage.png`. After: `test/mobile/screenshots/after/iphone-se-broadcast-stage.png`.
+
+Design: the program is the phone. Church and personal stay at 4. A viewer still cannot watch the ended service.
+
 ### Q60. A finished recording never played
 
 Stopping a recording on the phone downloaded a file and left the call where it was. The picture that was just captured never came back. On a phone that recording now plays. The picture fills the screen, a slider moves through it, and a tap pauses it. Save keeps the file. Close keeps it too, unless it was already saved. A wide screen still downloads. A viewer whose service has ended still has nothing to watch. `test/mobile/replay.spec.mjs`.
