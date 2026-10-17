@@ -531,9 +531,19 @@ Repro: `test/mobile/header-tap.js`. It failed (`room name is 162x23`), then pass
 
 Before: `qa/mobile/shots/before-header-tap-iphone-15.png`. After: `qa/mobile/shots/after-header-tap-iphone-15.png`.
 
+### 62. Full screen on a face was 28×32
+
+The corner control that opens a face was 28×32 on an iPhone 15. On an SE it also sat on David's name. A thumb misses a target that small.
+
+The control is 44px and stays on the face. The name stops before it, so it no longer covers the person.
+
+Repro: `test/mobile/tile-fullscreen.js`. It failed (`full screen is 28x32`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/tile-fullscreen.js`.
+
+Before: `qa/mobile/shots/before-tile-fullscreen-iphone-15.png`. After: `qa/mobile/shots/after-tile-fullscreen-iphone-15.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, and Reply keeps that line on the answer. The room name is a 44px tap. The full-screen control on a face is still 28×32. A sideways phone is still open.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, and Reply keeps that line on the answer. The room name and full screen are 44px taps. A sideways phone is still the open personal job.
 
 ## Personas (what was actually tried)
 

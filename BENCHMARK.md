@@ -38,10 +38,10 @@ A volunteer and an older member, a service or a small group, often a phone held 
 | Job | Score | Note |
 | --- | --- | --- |
 | Start or join from the lobby on an SE | 10 | Start a meeting is the only blue button and the only one that says Start. Room you run is the admin path, and it is not taller than Start, including at 200% text. Join stays on screen. |
-| Tap targets for someone who misses small controls | 9 | Dock grip, chat close, Send, Fit, and the room name are 44px, including on an iPhone 15. Blur for all is a 64px square, inset from the tile corner, on a phone and on the desktop. The full-screen control on a face is still 28×32. |
+| Tap targets for someone who misses small controls | 10 | Dock grip, chat close, Send, Fit, the room name, and full screen are 44px, including on an iPhone 15. Blur for all is a 64px square, inset from the tile corner, on a phone and on the desktop. Full screen stays off the name. |
 | Captions a member can find, at 200% text | 10 | The line sits above Live, in white on black, at 40px when text is 200%. A long line starts at the beginning, and the rest scrolls inside the caption. |
 | Host runs the room from the phone they already hold | 10 | Live is the wide control on the call, 64px tall when the phone is upright. Record and Captions stay on the next row. The phone sheet opens on Invite, Room password, Waiting room, and Chat. Invite is the blue one. |
-| **Audience** | **9** | The lobby shows one Start. Live is the wide control on the call. Captions, the dock, Fit, and a waiting-room list work on a phone. Tap targets are still the open job. We do not lead yet. |
+| **Audience** | **9** | The lobby shows one Start. Live is the wide control on the call. Captions, the dock, Fit, the room name, and full screen are 44px. We do not lead yet. |
 
 ## Personal
 
@@ -109,3 +109,4 @@ Family and friends. Warm, few steps, a texted link.
 50. A mention while chat is closed. `test/mobile/chat-mention-alert.js` failed (the preview was the ordinary white line "Ruth @Nathan the vote is Tuesday"), then passed. The banner turns blue and says Ruth mentioned you. A later ordinary line does not replace it. Opening chat clears it. Naming someone else stays an ordinary preview. Audience scores stay 9 / 9 / 9. Answering that line still starts a new message at the bottom. Nobody leads yet.
 51. Answer one line. `test/mobile/chat-reply.js` failed (`no Reply`), then passed. Reply on Ruth's line is 44px and stays off Send. The composer keeps her line until the answer is sent, and that answer quotes it. Cancel drops the quote. Corporate chat 9→10. Audience scores stay 9 / 9 / 9. The room name in the header is still 23px tall. Nobody leads yet.
 52. The room name was a short tap. `test/mobile/header-tap.js` failed (`room name is 162x23` on an iPhone 15, an SE, and a sideways SE), then passed. The line is 44px. A tap still opens the longer status. It does not cover Fit or a face, and the phrase is not cut off. Church tap targets stay 9. Audience scores stay 9 / 9 / 9. The full-screen control on a face is still 28×32. Nobody leads yet.
+53. Full screen on a face. `test/mobile/tile-fullscreen.js` failed (`full screen is 28x32`, and on an SE it covered David), then passed. The control is 44px and stays on the face, off the name. Church tap targets 9→10. Audience scores stay 9 / 9 / 9. A sideways phone is still the open personal job. Nobody leads yet.
