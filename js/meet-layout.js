@@ -165,7 +165,9 @@
   // top, and a phone clears Fit even at 200% text.
   function viewBox(vw, vh, opts) {
     opts = opts || {};
-    const phone = opts.phone != null ? !!opts.phone : vw < 600;
+    const landscape = vw > vh;
+    const short = landscape && vh < 420;
+    const phone = opts.phone != null ? !!opts.phone : (!landscape && vw < 700);
     // 64 clears the header pill (it sits at y=14 and is about 40px tall) so
     // the top row's chips are not drawn underneath it. The mode pill is taller.
     // When Fit sits lower (200% text) the page measures and passes opts.top.

@@ -1,0 +1,298 @@
+{
+ "hostId": "k_befee91672627c9b889e21fe600cf327f0fdc794",
+ "aId": "k_d6acbcb207e576c70682f96761bd9ec99f1e6235",
+ "bId": "k_f6111571e51e23df31ca90d2e925907f5ef97eb8",
+ "bPc": 2,
+ "toB": 79639,
+ "via": {
+  "via": "k_d6acbc",
+  "me": "k_f61115"
+ },
+ "log": [
+  {
+   "t": 12,
+   "phase": "B hears the host spare",
+   "bClaims": [
+    {
+     "rk": "stg:k_befee91672627c9b889e21fe600cf327f0fdc794",
+     "via": "k_befee91672627c9b889e21fe600cf327f0fdc794",
+     "sid": "5735d9ab-aafe-473f-874a-9a0099426ecf"
+    }
+   ]
+  },
+  {
+   "t": 14.1,
+   "phase": "relay released",
+   "bClaims": [
+    {
+     "rk": "stg:k_befee91672627c9b889e21fe600cf327f0fdc794",
+     "via": "k_befee91672627c9b889e21fe600cf327f0fdc794",
+     "sid": "5735d9ab-aafe-473f-874a-9a0099426ecf"
+    }
+   ]
+  },
+  {
+   "t": 14.2,
+   "toB": 22826,
+   "via": {
+    "via": "k_befee9",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 15.2,
+   "toB": 46069,
+   "via": {
+    "via": "k_befee9",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 16.3,
+   "toB": 53184,
+   "via": {
+    "via": "k_befee9",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 17.3,
+   "toB": 60540,
+   "via": {
+    "via": "k_befee9",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 18.4,
+   "toB": 67028,
+   "via": {
+    "via": "k_befee9",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 19.5,
+   "toB": 75642,
+   "via": {
+    "via": "k_befee9",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 20.5,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 21.6,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 22.7,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 23.7,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 24.8,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 25.9,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 27,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 28,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 29.1,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 30.1,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 31.2,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 32.2,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 33.3,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 34.4,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 35.4,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 36.5,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 37.6,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  },
+  {
+   "t": 38.7,
+   "toB": 79639,
+   "via": {
+    "via": "k_d6acbc",
+    "me": "k_f61115"
+   }
+  }
+ ],
+ "bState": {
+  "claimVia": [
+   {
+    "rk": "stg:k_befee91672627c9b889e21fe600cf327f0fdc794",
+    "via": "k_d6acbcb207e576c70682f96761bd9ec99f1e6235",
+    "sid": "a4e72b95-b6dc-4f06-94db-9138cbad54a1"
+   }
+  ],
+  "standbyVia": [
+   {
+    "rk": "stg:k_befee91672627c9b889e21fe600cf327f0fdc794",
+    "via": "k_befee91672627c9b889e21fe600cf327f0fdc794",
+    "sid": "5735d9ab-aafe-473f-874a-9a0099426ecf"
+   }
+  ],
+  "fb": [
+   {
+    "rk": "stg:k_befee91672627c9b889e21fe600cf327f0fdc794",
+    "wakeAt": 0,
+    "prefSince": 0,
+    "lastSwitch": 1792251834533,
+    "dark": false,
+    "lastAdvanceAt": 1792251853681,
+    "lastBytes": 162443,
+    "d0": -1,
+    "stdFdec": -1,
+    "flowSince": 1792251834743,
+    "q": 22,
+    "fp": 0
+   }
+  ],
+  "demand": [
+   "k_befee91672627c9b889e21fe600cf327f0fdc794|stg:k_befee91672627c9b889e21fe600cf327f0fdc794|5735d9ab-aafe-473f-874a-9a0099426ecf=i",
+   "k_d6acbcb207e576c70682f96761bd9ec99f1e6235|stg:k_befee91672627c9b889e21fe600cf327f0fdc794|a4e72b95-b6dc-4f06-94db-9138cbad54a1=w"
+  ],
+  "cands": [
+   {
+    "key": "stg:k_befee91672627c9b889e21fe600cf327f0fdc794",
+    "from": "k_befee9",
+    "want": "5735d9ab",
+    "peer": true,
+    "conn": true,
+    "own": "8e226579",
+    "incoming": [
+     "8e226579",
+     "5735d9ab"
+    ],
+    "h": 0,
+    "sb": 1,
+    "at": 1792251850418,
+    "live": true
+   },
+   {
+    "key": "stg:k_befee91672627c9b889e21fe600cf327f0fdc794",
+    "from": "k_d6acbc",
+    "want": "a4e72b95",
+    "peer": true,
+    "conn": true,
+    "own": "null",
+    "incoming": [
+     "a4e72b95"
+    ],
+    "h": 1,
+    "vp": [
+     "k_d6acbcb2"
+    ],
+    "at": 1792251852659,
+    "live": true
+   }
+  ]
+ }
+}
