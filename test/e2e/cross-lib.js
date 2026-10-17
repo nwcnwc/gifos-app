@@ -46,9 +46,11 @@ async function until(what, fn, ms) {
   throw new Error(what + ': ' + JSON.stringify(last));
 }
 
-// The host goes live from the lobby (Go live, a name, a password).
-async function goLive(hb, prefix) {
+// The host goes live from the lobby (Go live, a name, a password). setup, if
+// given, runs on the host's page before it opens (e.g. to route its sockets).
+async function goLive(hb, prefix, setup) {
   const host = await user(hb, 'Pastor Kim');
+  if (setup) await setup(host);
   await host.goto(BASE + '/run.html?desk=crosshost#bc=1');
   await host.waitForSelector('#lobby.show');
   await host.locator('#lob-admin-btn').click();
@@ -94,4 +96,4 @@ async function run(name, body) {
   process.exit(failed ? 1 : 0);
 }
 
-module.exports = { BASE, sleep, until, user, goLive, watch, run };
+module.exports = { BASE, RELAY, sleep, until, user, goLive, watch, run };

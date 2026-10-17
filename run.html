@@ -1358,6 +1358,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip .status { color: #e7ebf2; font-size: 20px; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
     min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
+  /* A service line can carry the host's viewer-password hint after the
+     quality and a reconnect note; one line cut it at 1024 and 900. On a
+     desktop it takes two lines, which still clears the room bar. */
+  @media (min-width: 701px) {
+    body.broadcast .topchip { border-radius: 24px; }
+    body.broadcast .topchip .status { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2; line-clamp: 2; line-height: 1.35; }
+  }
   /* A broadcast host who is the only person here gets Invite in the chip.
      The sentence stays. Wide screens show the same button the phone shows.
      The viewer password is never part of this link. */
