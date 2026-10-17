@@ -3730,7 +3730,7 @@ test('the chat head keeps its buttons on one row beside the title', async ({ pag
       await page.locator('#chatbtn').click();
       await expect(page.locator('#chatpanel')).toHaveClass(/open/);
       if (who === 'host') await page.evaluate(() => { document.getElementById('chatmod').style.display = ''; });
-      if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/chat-head-' + (process.env.SHOT_TAG || 'run') + '.png', clip: { x: 900, y: 0, width: 380, height: 140 } });
+      if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/chat-headrow-' + (process.env.SHOT_TAG || 'run') + '.png', clip: { x: 900, y: 0, width: 380, height: 140 } });
       const head = await page.evaluate(() => {
         const box = (e) => e.getBoundingClientRect();
         const seen = (e) => e.getClientRects().length && getComputedStyle(e).display !== 'none';
