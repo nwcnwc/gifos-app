@@ -6273,7 +6273,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let ok = false;
         try { const cfg = p.pc.getConfiguration(); cfg.iceServers = iceFor(p); p.pc.setConfiguration(cfg); ok = true; } catch (e) {}
         if (!ok) { newPcFor(p); sendOffer(pid, false); }
-        else if (p.dc && p.dc.readyState === 'open') { try { p.pc.restartIce(); } catch (e) {} renegotiate(p); }
+        else if (p.dc && p.dc.readyState === 'open') {
+          try { p.pc.restartIce(); } catch (e) {}
+          // DEBUG test runs only (window.__vaForceGlare): at the switch to voice
+          // only, hold this restart offer until the far end's own offer arrives,
+          // then send it first, so the two offers cross every run. Released
+          // after 3 s if no offer comes. Never active outside DEBUG.
+          if (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && window.__vaForceGlare && !p.turnPaid) {
+            p.vaGlareHold = true;
+            setTimeout(() => { if (p.vaGlareHold) { p.vaGlareHold = false; if (typeof clog === 'function') clog('va glare not forced: no offer came'); renegotiate(p); } }, 3000);
+          } else renegotiate(p);
+        }
         else sendOffer(pid, true);
         if (p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'va-pair', paid: p.turnPaid ? 1 : 0 });
       } else {
@@ -12855,6 +12865,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         reactRoomState(); // the password is the key to clear video
       } else if (m.k === 'roffer') {
         if (!p.pc) return; // relay-only pseudo-peer — media relay needs a channel pair
+        if (p.vaGlareHold) { // DEBUG test runs only: send the held offer first, then take theirs (see vaSwitchIfChanged)
+          p.vaGlareHold = false;
+          renegotiate(p);
+          const later = () => { if (p.makingOffer) { setTimeout(later, 2); return; } if (typeof clog === 'function') clog('va glare forced ' + String(p.id).slice(0, 6) + ' ' + p.pc.signalingState); onDc(p, dc, m, admOk); };
+          setTimeout(later, 0);
+          return;
+        }
         // Glare: if I have my own offer in flight and I'm the IMPOLITE side
         // (the pair's initiator), their offer loses — they'll roll back and
         // answer mine, then re-offer. The polite side falls through: spec'd
