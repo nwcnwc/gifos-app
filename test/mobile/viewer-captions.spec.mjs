@@ -36,7 +36,7 @@ test('a viewer reads the host\'s words on the picture, and CC hides them', async
   const ctxV = await browser.newContext({ ...opts });
   try {
     const h = await ctxH.newPage();
-    await h.goto('/run.html#bc=1&give=' + encodeURIComponent('https://give.example.org/x'), { waitUntil: 'domcontentloaded' });
+    await h.goto('/run.html#bc=1', { waitUntil: 'domcontentloaded' });
     await h.locator('#lob-admin-go').click();
     await expect(h.locator('#livebadge-txt')).toHaveText('LIVE', { timeout: 20000 });
     // The host finds captions in More, and the words say viewers read them.
@@ -44,6 +44,9 @@ test('a viewer reads the host\'s words on the picture, and CC hides them', async
     const cc = h.locator('#ccbtn');
     await expect(cc).toBeVisible();
     expect(((await cc.getAttribute('title')) || '') + ' ' + (await cc.textContent())).toMatch(/viewers/i);
+    // Give rides the picture too; the words stay clear of it.
+    await h.locator('#bcgive').fill('https://give.example.org/grace');
+    await h.locator('#bcgive').dispatchEvent('change');
     const link = await h.evaluate(() => {
       let p = null;
       navigator.share = (x) => { p = x; return Promise.resolve(); };
@@ -55,6 +58,7 @@ test('a viewer reads the host\'s words on the picture, and CC hides them', async
     await v.goto('/run.html' + new URL(link).hash, { waitUntil: 'domcontentloaded' });
     await v.locator('#nmok').click();
     await v.waitForFunction(() => !!document.querySelector('#stagefeed .rowtile'), null, { timeout: 45000 });
+    await expect(v.locator('#bc-ended')).toBeHidden({ timeout: 15000 });
 
     // The host's phone writes a sentence down; the viewer reads it.
     await h.evaluate((t) => window.__gifosVideo.addTranscript(t), LINE);
@@ -64,6 +68,7 @@ test('a viewer reads the host\'s words on the picture, and CC hides them', async
     const c = await capBox(v);
     expect(c.bottom).toBeLessThanOrEqual(c.barY);
     expect(c.font).toBeGreaterThanOrEqual(17);
+    await expect(v.locator('#bc-give')).toBeVisible();
     expect(c.giveHit).toBe(false);
 
     // CC on the picture hides the words, and the next line stays hidden.
