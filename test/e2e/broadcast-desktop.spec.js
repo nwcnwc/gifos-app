@@ -3522,7 +3522,7 @@ test('C, H and R open Chat, raise a hand and open Reactions', async ({ page }) =
     // R opens Reactions with the keyboard on the first one.
     await page.keyboard.press('r');
     await expect(page.locator('#reacttray'), who + ': R opens Reactions').toBeVisible();
-    await expect(page.locator('#reacttray button').first(), who + ': R lands on the first reaction').toBeFocused();
+    await expect(page.locator('#reacttray button:visible').first(), who + ': R lands on the first reaction').toBeFocused();
     await page.keyboard.press('Escape');
     await expect(page.locator('#reacttray'), who).toBeHidden();
     // H raises and lowers the hand where a hand can go up (a viewer, a
@@ -4112,6 +4112,12 @@ test('a service host\'s React tray has no Raise hand; a viewer\'s still does', a
         return Math.abs((t.left + t.right) / 2 - window.innerWidth / 2) <= 2 && t.left >= 0 && t.right <= window.innerWidth;
       });
       expect(centred, who + ' tray centred at ' + w).toBe(true);
+      // R lands on the first reaction this person can use.
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#reacttray')).toBeHidden();
+      await page.keyboard.press('r');
+      await expect(page.locator('#reacttray')).toBeVisible();
+      expect(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), who + ' R focus at ' + w).toBe(want[0]);
     }
   }
 });

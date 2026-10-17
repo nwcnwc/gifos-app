@@ -21653,6 +21653,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       btn.onclick = () => {
         if (tray.hasAttribute('hidden')) {
           if (bar && more && !bar.classList.contains('collapsed')) more.click();
+          // A service host answers hands and has none to raise (no dock hand,
+          // no H), so the tray leaves ✋ out for them too.
+          const rh = document.getElementById('react-hand');
+          if (rh) rh.hidden = !canRaiseHand();
           tray.removeAttribute('hidden');
           btn.setAttribute('aria-expanded', 'true');
           btn.setAttribute('aria-pressed', 'true');
@@ -21663,6 +21667,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const b = e.target.closest('button');
         if (!b) return;
         if (b.id === 'react-hand') {
+          if (!canRaiseHand()) return;
           const hand = document.getElementById('hand');
           if (hand) hand.click();
           return;
@@ -22080,7 +22085,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (k === 'c' && chatPanelOpen()) { const box = document.getElementById('chat-in'); if (box) box.focus(); }
         if (k === 'r') {
           const tray = document.getElementById('reacttray');
-          const first = tray && !tray.hasAttribute('hidden') && tray.querySelector('button');
+          const first = tray && !tray.hasAttribute('hidden') && tray.querySelector('button:not([hidden])');
           if (first) first.focus();
         }
         return;
@@ -22472,7 +22477,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!trayOpen && !sheetOpen) return;
         const nodes = [];
         for (const n of barEl.querySelectorAll('button, a[href], input, select, textarea')) {
-          if (n.disabled) continue;
+          if (n.disabled || n.hidden) continue;
           if (n.style && n.style.display === 'none') continue;
           if (n.classList && n.classList.contains('inmore')) continue;
           if (!sheetOpen && n.closest && n.closest('#barmore')) continue;
