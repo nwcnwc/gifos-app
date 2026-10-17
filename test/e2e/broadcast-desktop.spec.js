@@ -2961,6 +2961,41 @@ test('the stage label is readable on the dark stage', async ({ page }) => {
   }
 });
 
+test('the raised-hands line is readable on the dark page', async ({ page }) => {
+  // Seen across two machines: the host's line above the stage read
+  // "✋ 1 waiting:" in near-black on the dark page, and the first name in a
+  // dim blue. The session page is always dark, so the line must be light.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Pastor Sam');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const who of ['host', 'group']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const url = who === 'group'
+      ? '/run.html?desk=handqg#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=handqhost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    const line = await page.evaluate(() => window.__gifosVideo.handPeerForTest('qa-hand', 'Jordan Lee'));
+    expect(line, who).toContain('1 waiting');
+    await expect(page.locator('#handq'), who).toBeVisible();
+    const got = await page.evaluate(() => {
+      const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number).slice(0, 3);
+      const lum = (c) => { const v = c.map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+      const ratio = (a, b) => { const x = lum(a), y = lum(b); return Math.round(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)) * 10) / 10; };
+      const q = document.getElementById('handq');
+      const under = rgb(getComputedStyle(document.body).backgroundColor);
+      const s = getComputedStyle(q), n = getComputedStyle(q.querySelector('b'));
+      return { line: ratio(rgb(s.color), under), name: ratio(rgb(n.color), under), px: parseFloat(s.fontSize) };
+    });
+    if (who === 'host') { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/handq-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    expect({ who, line: got.line >= 4.5, name: got.name >= 4.5, big: got.px >= 12, ...got }).toMatchObject({ who, line: true, name: true, big: true });
+  }
+});
+
 test('the Chat icon on the dock is as large as its neighbours', async ({ page }) => {
   // Seen across two machines: on the host's and the viewer's dock the Chat
   // speech bubble was 13px, where Invite, Full screen and More are 28px.
