@@ -3758,3 +3758,62 @@ test('the chat head keeps its buttons on one row beside the title', async ({ pag
     }
   }
 });
+
+test('the chat box shows its whole placeholder beside Send', async ({ page }) => {
+  // Seen across two machines at 1280: the chat box sat between Prayer, 📎
+  // and Send in a 340px panel, about 100px of text room, so the host and
+  // every viewer read "Message ever" (and "Prayer request" lost its end).
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [1024, 720], [900, 720]]) {
+    for (const who of ['host', 'view', 'group']) {
+      await page.setViewportSize({ width: w, height: h });
+      const url = who === 'group'
+        ? '/run.html?desk=chatbox' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=chatbox' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.locator('#chatbtn').click();
+      await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+      const read = () => page.evaluate(() => {
+        const inp = document.getElementById('chat-in');
+        const cs = getComputedStyle(inp);
+        const ctx = document.createElement('canvas').getContext('2d');
+        ctx.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+        const room = inp.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        const panel = document.getElementById('chatpanel').getBoundingClientRect();
+        const ctl = {};
+        for (const e of document.querySelectorAll('#chatform button, #chat-in')) {
+          const r = e.getBoundingClientRect();
+          ctl[e.id || e.type] = { l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), b: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) };
+        }
+        return { text: inp.placeholder, need: Math.ceil(ctx.measureText(inp.placeholder).width), room: Math.floor(room),
+          panelL: Math.round(panel.left), panelR: Math.round(panel.right), ctl };
+      });
+      const check = (got, tag) => {
+        tag = who + ' at ' + w + ' ' + tag + ': ' + JSON.stringify(got);
+        expect(got.need, tag + ' whole placeholder fits').toBeLessThanOrEqual(got.room);
+        for (const [id, c] of Object.entries(got.ctl)) {
+          expect(c.l >= got.panelL && c.r <= got.panelR, tag + ' ' + id + ' inside the panel').toBe(true);
+          expect(c.h, tag + ' ' + id + ' tall enough to tap').toBeGreaterThanOrEqual(36);
+        }
+        expect(got.ctl['chat-in'].w, tag + ' box wider than Send').toBeGreaterThan(got.ctl.submit.w);
+      };
+      const plain = await read();
+      if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/chat-box-' + (process.env.SHOT_TAG || 'run') + '.png', clip: { x: 900, y: 480, width: 380, height: 240 } });
+      expect(plain.text).toBe('Message everyone…');
+      check(plain, 'plain');
+      await page.locator('#pray').click();
+      const pray = await read();
+      expect(pray.text).toBe('Prayer request…');
+      check(pray, 'prayer');
+      await page.locator('#pray').click();
+      await page.keyboard.press('Escape');
+    }
+  }
+});
