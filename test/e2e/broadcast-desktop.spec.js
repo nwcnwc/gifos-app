@@ -2984,3 +2984,73 @@ test('the Chat icon on the dock is as large as its neighbours', async ({ page })
     expect({ who, width: w, chat }).toEqual({ who, width: w, chat: invite });
   }
 });
+
+test('a clap on the stage names who clapped', async ({ page }) => {
+  // The stage pill was only a count: a host saw 👏 4 and not who. The names
+  // are the people the room already lists in Who is watching.
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  const who = page.locator('#bc-reacts .bcwho');
+  async function lay() {
+    return page.evaluate(() => {
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const overlap = (a, b) => !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+      const els = Array.from(document.querySelectorAll('#bc-reacts .bcreact, #bc-reacts .bcwho'));
+      const boxes = els.map((el) => el.getBoundingClientRect());
+      const w = document.querySelector('#bc-reacts .bcwho');
+      const cs = w && getComputedStyle(w);
+      return {
+        on: boxes.length > 0 && boxes.every((b) => b.width > 20 && b.left >= -1 && b.right <= innerWidth + 1 && b.top >= -1 && b.bottom <= innerHeight + 1),
+        dock: boxes.some((b) => overlap(b, dock)),
+        px: cs ? parseFloat(cs.fontSize) : 0,
+        color: cs ? cs.color : '',
+      };
+    });
+  }
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=clapwho' + w + '&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.live');
+    await page.evaluate(() => {
+      const v = window.__gifosVideo;
+      v.livePeerForTest('viewer-a', 'Ruth Okafor');
+      v.livePeerForTest('viewer-b', 'Sam Lee');
+      v.livePeerForTest('viewer-c', 'Jo Park');
+      v.livePeerForTest('viewer-d', 'Dee');
+      v.remoteFrameForTest('viewer-a', { k: 'react', e: '👏', id: 'who-a-' + Date.now() });
+      v.remoteFrameForTest('viewer-b', { k: 'react', e: '👏', id: 'who-b-' + Date.now() });
+    });
+    await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 2');
+    await expect(who).toHaveText('Sam Lee, Ruth Okafor');
+    await expect(page.locator('#bc-reacts .bcreact')).toHaveAttribute('aria-label', '2 claps from Sam Lee and Ruth Okafor');
+    await page.evaluate(() => {
+      const v = window.__gifosVideo;
+      v.remoteFrameForTest('viewer-c', { k: 'react', e: '👏', id: 'who-c-' + Date.now() });
+      v.remoteFrameForTest('viewer-d', { k: 'react', e: '👏', id: 'who-d-' + Date.now() });
+      v.remoteFrameForTest('viewer-d', { k: 'react', e: '👏', id: 'who-d2-' + Date.now() });
+    });
+    await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 5');
+    // one name per person, the latest first
+    await expect(who).toHaveText('Dee, Jo Park +2');
+    const l = await lay();
+    expect(l.on, JSON.stringify(l)).toBe(true);
+    expect(l.dock, JSON.stringify(l)).toBe(false);
+    expect(l.px, JSON.stringify(l)).toBeGreaterThanOrEqual(14);
+    expect(l.color, JSON.stringify(l)).toBe('rgb(255, 255, 255)');
+  }
+  // A viewer's own clap reads You.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/run.html?desk=clapwhoview#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  await page.locator('#reactbtn').click();
+  await page.locator('#reacttray button[aria-label="Clap"]').click();
+  await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 1');
+  await expect(who).toHaveText('You');
+  expect(errors).toEqual([]);
+});
