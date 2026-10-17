@@ -22532,6 +22532,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       myId: () => myId,
       // network-aware seating, as a suite sees it: the view installed, the pool the seating counts, my seat, every link's bridge/standby/dark verdict
       netSeating: () => { const s = meshSeat(); return { installed: !!netRoom, seated: netSeated(), pool: Object.assign({}, netPool), coord: s && s.hasCoord ? s.coord : null, label: s ? s.glabel : null, anchored: !!(s && s.anchored),
+        seat: s ? { state: s.state, tick: s.TICK, retryAt: s.retryAt, walkPending: !!s.walkPending, walkRounds: s.walkRounds, probeAt: s.netProbeAt, probeIds: (s.netProbeIds || []).length, glFind: s.glFind, haveRoster: !!s.haveRoster, roster: (s.netRoster || s.roster || []).length, seatTries: s.seatTries } : null,
         links: netLinks().map((l) => Object.assign({}, l, { name: rosterNames[l.peer] || (peers.get(l.peer) || {}).name || String(l.peer).slice(0, 8) })) }; },
       turnState: () => ({
         probe: directPath, cred: turnCred ? turnCred.state() : 'idle', reach: turnReach(), heard: turnHeard(),
