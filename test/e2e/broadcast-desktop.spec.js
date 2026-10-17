@@ -3273,3 +3273,52 @@ test('Tab reaches the room bar before the dock, top to bottom', async ({ page })
     expect(rec, who + ': the room bar comes before the dock (' + ids.join(' ') + ')').toBeLessThan(dock);
   }
 });
+
+test('? lists the keyboard shortcuts that work here', async ({ page }) => {
+  // M and V worked, but only a hover title said so: nothing listed the
+  // keys, and a screen reader was never told (no aria-keyshortcuts), on a
+  // service host, a viewer and a small group. Zoom and Meet list theirs.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const who of ['host', 'view', 'group']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const url = who === 'group'
+      ? '/run.html?desk=keysg#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=keys' + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    await page.locator('#chatbtn').focus();
+    await page.keyboard.press('?');
+    if (who === 'host') {
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: 'artifacts/keys-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    }
+    const sheet = page.locator('#keys-modal');
+    await expect(sheet, who + ': ? opens the list').toBeVisible();
+    await expect(page.locator('#mic'), who).toHaveAttribute('aria-keyshortcuts', 'M');
+    await expect(page.locator('#cam'), who).toHaveAttribute('aria-keyshortcuts', 'V');
+    const keys = await sheet.locator('kbd').allTextContents();
+    // A viewer has no mic or camera on the dock, so M and V are not theirs.
+    if (who === 'view') expect(keys, who).not.toContain('M');
+    else expect(keys, who).toEqual(expect.arrayContaining(['M', 'V']));
+    expect(keys, who).toEqual(expect.arrayContaining(['Esc', 'Tab', '?']));
+    // The sheet fits the window.
+    const box = await sheet.locator('.name-box').boundingBox();
+    expect(box.y, who).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height, who).toBeLessThanOrEqual(720);
+    await page.keyboard.press('Escape');
+    await expect(sheet, who + ': Escape closes the list').toBeHidden();
+    await expect(page.locator('#chatbtn'), who + ': focus returns').toBeFocused();
+    // Typing a ? in the chat stays in the chat.
+    await page.locator('#chatbtn').click();
+    await page.locator('#chat-in').fill('why');
+    await page.locator('#chat-in').press('?');
+    await expect(page.locator('#chat-in'), who).toHaveValue('why?');
+    await expect(sheet, who).toBeHidden();
+  }
+});
