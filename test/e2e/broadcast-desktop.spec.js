@@ -2825,6 +2825,42 @@ test('a viewer sees the camera-off card when the stage feed arrives after the ho
   expect(errors).toEqual([]);
 });
 
+test('a joining viewer is not told the stage is clear while the host is live', async ({ page }) => {
+  // Seen across two machines at every join: after Save the viewer's stage
+  // read "The stage is clear." until the feed came in (0.2 to 12 s), even
+  // after the host's status said they were on stage. Nothing is known yet:
+  // say it is joining, then whom it is connecting to.
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  await page.goto('/run.html?desk=joinplate#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  const plate = page.locator('#bc-stage');
+  const line = page.locator('#bc-stage-line');
+  await expect(plate).toBeVisible();
+  await page.screenshot({ path: 'artifacts/join-plate-' + (process.env.SHOT_TAG || 'run') + '.png' });
+  await expect(line, 'nobody heard yet').toHaveText('Joining the service…');
+  // The host's status lands: on stage, camera on, no picture yet.
+  const stagers = await page.evaluate(() => window.__gifosVideo.stageHostForTest('host-live', 'Pastor Kim'));
+  expect(stagers).toContain('host-live');
+  await expect(line, 'the host is on stage').toHaveText('Connecting to Pastor Kim…');
+  // The picture comes in: the plate goes.
+  await page.evaluate(() => {
+    const c = document.createElement('canvas'); c.width = 320; c.height = 180;
+    const g = c.getContext('2d'); g.fillStyle = '#345'; g.fillRect(0, 0, 320, 180);
+    window.__gifosVideo.stageStripForTest(c.captureStream(5));
+  });
+  await expect(plate).toBeHidden({ timeout: 3000 });
+  // The host steps off and the feed leaves: now the stage IS clear.
+  await page.evaluate(() => { window.__gifosVideo.stageHostForTest('host-live', 'Pastor Kim', 0); window.__gifosVideo.stageStripForTest(null); });
+  await expect(plate).toBeVisible({ timeout: 3000 });
+  await expect(line).toHaveText('The stage is clear.');
+  expect(errors).toEqual([]);
+});
+
 test('a viewer at the name card has no camera or mic on the dock', async ({ page }) => {
   // Seen across two machines: a viewer opening the link got red Video and
   // Unmute on the dock behind "This is how you'll appear", until they saved.
