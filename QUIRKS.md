@@ -6,6 +6,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 
 ## Fixed
 
+### Reactions was only an icon
+
+- **Who hits it:** anyone who does not already know the smile button opens reactions.
+- **What you saw:** Reactions was a 68px circle with no word. The other dock buttons said what they do.
+- **Repro:** `test/desktop/dock-labels.spec.js` failed before the label (`#reactbtn` had no `.dockword`).
+- **Fix:** the button says Reactions, in German Reaktionen and Spanish Reacciones, at 16px. The smile icon stays. The button matches the other dock buttons. It stays on screen at 900px.
+- **Proof:** the dock tests pass on Chromium, Firefox, and WebKit, and the German and Spanish dock lines pass on Chromium. Screenshots: `test/desktop/shots/react-label-before-1280.png`, `test/desktop/shots/react-label-after-1280.png`.
+
 ### The dock words were 12px
 
 - **Who hits it:** anyone reading Camera, Unmute, Share screen, CC, Chat, More, or Leave.
