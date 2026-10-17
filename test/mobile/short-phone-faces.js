@@ -9,7 +9,10 @@
  * though two rows of three 96px+ faces fit.
  * Now a short band shows as many whole faces as legal tiles allow (two rows
  * of three on these screens), and only the rest scroll. Every face stays at
- * least 96px on both sides and nothing lies under the dock.
+ * least 96px on both sides and nothing lies under the dock. A 99px-tall
+ * upright tile kept the tall tile's layout, so a two-line name covered
+ * "✋ hand raised" and the mute icon; on every whole face the chips, the
+ * name and Full screen must stay clear of each other.
  *
  * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/short-phone-faces.js
  */
@@ -41,7 +44,19 @@ function look(page) {
     const btns = [...document.querySelectorAll('#callstate button')].filter((b) => b.offsetParent).map((b) => b.getBoundingClientRect());
     const tiles = [...document.querySelectorAll('#feed .tile')].filter((t) => t.querySelector('.name') && t.offsetParent).map((t) => {
       const r = t.getBoundingClientRect();
+      // Chips (mute, hand), the name and Full screen must not cover each other.
+      const parts = [['the name', t.querySelector('.name')], ['Full screen', t.querySelector('.maxbtn')]];
+      t.querySelectorAll('.chips span').forEach((c) => parts.push([c.textContent.trim() || c.getAttribute('title') || c.getAttribute('aria-label') || 'an icon', c]));
+      const seen = parts.filter(([, el]) => el && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden' && getComputedStyle(el).display !== 'none')
+        .map(([what, el]) => [what, el.getBoundingClientRect()]);
+      const clash = [];
+      for (let i = 0; i < seen.length; i++) {
+        const [a, ar] = seen[i];
+        if (ar.top < r.top - 1 || ar.bottom > r.bottom + 1 || ar.left < r.left - 1 || ar.right > r.right + 1) clash.push(a + ' runs off the tile');
+        for (let j = i + 1; j < seen.length; j++) if (meet(ar, seen[j][1])) clash.push(a + ' and ' + seen[j][0] + ' overlap');
+      }
       return {
+        clash,
         name: t.querySelector('.name').textContent.trim(), w: Math.round(r.width), h: Math.round(r.height),
         whole: r.top >= fr.top - 1 && r.bottom <= Math.min(fr.bottom, clipB) + 1 && r.left >= -1 && r.right <= innerWidth + 1,
         under: [bar, ...btns].some((c) => meet(r, c)),
@@ -92,6 +107,7 @@ function look(page) {
     for (const t of got.tiles) {
       if (Math.min(t.w, t.h) < 96) bad.push(tag + ': ' + t.name + ' is ' + t.w + 'x' + t.h);
       if (t.whole && t.under) bad.push(tag + ': ' + t.name + ' lies under the dock');
+      if (t.whole) for (const c of t.clash) bad.push(tag + ': on ' + t.name + '\'s tile ' + c);
     }
     await context.close();
   }
