@@ -3053,8 +3053,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const blocking = /^(🛡|📷)/.test(String(m));
       const countEl = document.getElementById('statuscount');
       const restEl = document.getElementById('statusrest');
+      // #status is the phone's line, #statusrest the wide window's. Write
+      // both: a phone hides #statusrest, and a refusal there went unread.
       if (countEl && restEl) { countEl.textContent = ''; restEl.textContent = m; }
-      else statusEl.textContent = m;
+      statusEl.textContent = m;
       const invHold = document.getElementById('statusinvite');
       if (invHold) invHold.hidden = true;
       if (statusEl.title !== String(m)) statusEl.title = String(m);

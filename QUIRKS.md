@@ -601,9 +601,19 @@ Repro: `test/mobile/chat-find-sign.js`. It failed (`Search key leaves the keyboa
 
 Before: `qa/mobile/shots/before-chat-find-sign-land.png`. After: `qa/mobile/shots/after-chat-find-sign-land.png`, and `qa/mobile/shots/after-chat-find-iphone-se.png` (the title in portrait).
 
+### 69. A phone header never showed a message
+
+On a phone, a message in the header (No blur picked, "⛔ Only the person who runs this room can change its password.", "🛡 Wrong admin password.") never showed. setStatus wrote it only to the wide-window line, which a phone hides, so the chip kept the room name. The message was only in a title, and a phone does not show titles.
+
+setStatus now writes the phone line too. The message shows while it holds (4s, 12s for a refusal), and then the room name comes back.
+
+Repro: `test/mobile/header-message.js`. It failed 3 of 3 runs (`phone header reads "header-message", not the message`), then passed 3 of 3. `header-full.js`, `header-tap.js`, `header-count.js`, `header-invite.js` pass. The rest of test/mobile passes except `caption-on-tile.js` and `caption-read.js`, which fail the same way without this change (`iphone-se-200: no caption on the call`).
+
+Before: `qa/mobile/shots/before-header-message-pixel-7.png`. After: `qa/mobile/shots/after-header-message-pixel-7.png`, and `qa/mobile/shots/after-header-full-pixel-7.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, Reply keeps that line on the answer, and Delete takes back your own line. An address in a line is a link. The room name and full screen are 44px taps. A sideways phone shows the whole name. A chat line takes a reaction. The keyboard leaves the chat field and Send in view on a sideways SE. The chat title says when a search is cutting the log down. `header-full.js` fails: the room name is not trimmed.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, Reply keeps that line on the answer, and Delete takes back your own line. An address in a line is a link. The room name and full screen are 44px taps. A sideways phone shows the whole name. A chat line takes a reaction. The keyboard leaves the chat field and Send in view on a sideways SE. The chat title says when a search is cutting the log down. A phone header shows a message while it holds. The phone line clips a long message with no "…". `caption-on-tile.js` and `caption-read.js` fail at 200% text on an SE.
 
 ## Personas (what was actually tried)
 
