@@ -1128,6 +1128,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
              border: 0; border-radius: 22px; background: #0064c8; color: #fff; cursor: pointer;
              font: 700 1rem/1 system-ui, sans-serif; }
   #chatnew[hidden] { display: none !important; }
+  /* Find sits under the title, not in the composer, so Send stays put.
+     The field has its own edge on the white sheet. Clear appears once
+     there is something to undo. */
+  #chatfind { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border, #2a2a3f); }
+  #chatfind[hidden] { display: none !important; }
+  #chatq { flex: 1; min-width: 0; min-height: 44px; box-sizing: border-box; border-radius: 12px;
+    border: 1.5px solid #8d93a0; padding: 0 12px; font: 16px/1.2 system-ui, sans-serif;
+    background: #fff; color: #1d1d1f; }
+  #chatqclear { flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 12px;
+    background: #e8ecf1; color: #1d1d1f; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+  #chatqclear[hidden] { display: none !important; }
+  .cempty { align-self: stretch; max-width: none; background: transparent; color: #1d1d1f; font-size: 1rem; padding: 8px 4px; }
   /* Theirs is a light bubble with dark type. Mine is the blue one with
      white type. The name is the same size as the line, so 200% text
      stays readable. Neither bubble runs to the edge of the sheet. */
@@ -2015,7 +2027,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #chatform button[type=submit]:disabled { background: #e8ecf1; color: #3a3a3f; }
   }
   #chatlog, #cfiles { min-height: 0; }
-  #chathead, #chatform, #emojirow { flex-shrink: 0; }
+  #chathead, #chatfind, #chatform, #emojirow { flex-shrink: 0; }
   @media (max-width: 700px) {
     #chathead small { display: none; }
   }
@@ -2443,6 +2455,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button id="trtab" type="button" data-t="transcript">Transcript</button>
       <button id="chatmod" style="display:none" title="Silence the chat for everyone but you">Turn chat off</button>
       <button id="chatclose" type="button" aria-label="Close chat">✕</button></div>
+    <div id="chatfind" role="search">
+      <input id="chatq" type="text" placeholder="Find in chat" aria-label="Find in chat" autocomplete="off" enterkeyhint="search">
+      <button type="button" id="chatqclear" hidden>Clear</button>
+    </div>
     <div id="chatlog"></div>
     <button type="button" id="chatnew" hidden>New messages</button>
     <div id="trwrap">
@@ -15449,10 +15465,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { return new Date(n).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
       catch (e) { return ''; }
     }
+    function chatQuery() {
+      const q = document.getElementById('chatq');
+      return q ? String(q.value || '').trim().toLowerCase() : '';
+    }
+    function paintChatFind() {
+      const q = document.getElementById('chatq');
+      const clear = document.getElementById('chatqclear');
+      if (clear) clear.hidden = !(q && String(q.value || '').trim());
+    }
     function renderChat() {
       if (!chatPanelOpen() || transcriptShown()) return;
       const log = document.getElementById('chatlog');
-      const ms = Array.from(chat.values()).sort((a, b) => a.at - b.at).slice(-200); // the newest 200 are the log; older lines stay in the map for delete/history
+      const q = chatQuery();
+      const all = Array.from(chat.values()).sort((a, b) => a.at - b.at);
+      // With nothing typed, the newest 200 are the log. A search looks
+      // through the lines this browser still holds, not only the ones on screen.
+      const ms = (q
+        ? all.filter((m) => (String(m.text || '') + ' ' + String(m.by || '')).toLowerCase().indexOf(q) >= 0)
+        : all).slice(-200);
       let html = ms.map((m) => {
         const body = m.link
           ? esc(m.text) + ' <a href="' + esc(m.link) + '" style="color:inherit;font-weight:700;text-decoration:underline">Join →</a>'
@@ -15466,9 +15497,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '">' + who + body + del + '</div>';
       }).join('');
       const co = chatOffInfo();
-      if (co) html += '<div class="cmsg" style="opacity:.65"><b>🔇</b>Chat was turned off' + (co.by ? ' by ' + esc(co.by) : '') + '.' + (amAdmin ? '' : ' Only the host can post.') + '</div>';
+      if (q && !ms.length) html = '<div class="cempty" id="chatnomatch">No matches</div>';
+      else if (co && !q) html += '<div class="cmsg" style="opacity:.65"><b>🔇</b>Chat was turned off' + (co.by ? ' by ' + esc(co.by) : '') + '.' + (amAdmin ? '' : ' Only the host can post.') + '</div>';
+      paintChatFind();
       paintLog(log, html);
     }
+    (function () {
+      const q = document.getElementById('chatq');
+      const clear = document.getElementById('chatqclear');
+      if (!q || !clear) return;
+      q.addEventListener('input', () => renderChat());
+      clear.onclick = () => { q.value = ''; renderChat(); try { q.focus(); } catch (e) {} };
+    })();
     // The chat gate: repainted on every mod merge and admin-state flip. The
     // admin keeps a live input while chat is off (announcements still flow);
     // everyone else's composer locks, with the reason in the placeholder.
@@ -21902,6 +21942,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       c.style.display = showTr ? 'none' : '';
       document.getElementById('paneltitle').textContent = showTr ? 'Transcript' : 'Meeting chat';
       document.getElementById('trtab').textContent = showTr ? 'Chat' : 'Transcript';
+      const find = document.getElementById('chatfind');
+      if (find) find.hidden = !!showTr;
       if (showTr) renderTranscript(); else renderChat();
     }
     document.getElementById('trtab').onclick = () => {

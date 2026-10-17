@@ -481,9 +481,19 @@ Repro: `test/mobile/dock-labels.js`. It failed (`mic has no label`, `header Unmu
 
 Before: `qa/mobile/shots/before-dock-labels-iphone-se.png`. After: `qa/mobile/shots/after-dock-labels-iphone-se.png`. Compared with `qa/mobile/shots/after-live-meet-iphone-se.png`, the shot Nathan marked.
 
+### 57. A long chat had no way to find one line
+
+Twelve budget lines and one vote sat in the log. Nothing on the sheet could narrow it to Tuesday. Zoom, Meet, and Teams put a search field on the chat.
+
+Find in chat sits under the title. Typing a word leaves the matching lines and hides the rest. The search looks through the lines this browser still holds, not only the ones already on screen. Clear restores the log. A miss says No matches. The field is 44px and stays off Send. It hides while Transcript is open.
+
+Repro: `test/mobile/chat-find.js`. It failed (`no way to find a line`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-find.js`.
+
+Before: `qa/mobile/shots/before-chat-find-iphone-se.png`. After: `qa/mobile/shots/after-chat-find-iphone-se.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. Chat has no search.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. Chat can find a line. It still cannot mention someone so that name stands out.
 
 ## Personas (what was actually tried)
 
