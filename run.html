@@ -1137,6 +1137,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         font-size: 13px; line-height: 1.1; white-space: normal; flex: 0 0 auto; background: #14141c; }
       .tile.slim.menu > .blurbox, .tile.slim.menu .maxbtn { visibility: hidden; }
     }
+    /* Sideways a slim tile is about 100px tall, so the tile clipped the menu
+       92px down to a sliver of Mute for everyone. It opens as a small sheet
+       under the room name instead, says whose it is, and the tile is ringed. */
+    @media (orientation: landscape) {
+      .tile.slim.menu { outline: 3px solid #7ec8ff; outline-offset: -3px; }
+      .tile.slim.menu .modbar { position: fixed; top: 60px; left: 50%; right: auto; bottom: auto; transform: translateX(-50%);
+        width: min(300px, calc(100vw - 24px)); max-height: calc(100vh - 160px); overflow-y: auto; box-sizing: border-box;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; z-index: 20;
+        border-radius: 14px; background: #0a0a0f; border: 1px solid rgba(255,255,255,.2); box-shadow: 0 6px 24px rgba(0,0,0,.6); }
+      .tile.slim.menu .modbar::before { content: attr(data-who); grid-column: 1 / -1; color: #eceef8; font: 700 14px/1.2 system-ui, sans-serif;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .tile.slim.menu .modbar button { box-sizing: border-box; min-height: 44px; padding: 2px 6px; font-size: 14px; line-height: 1.1;
+        white-space: normal; background: #14141c; }
+    }
     .tile.slim .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 1px 4px; z-index: 5;
       white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
   }
@@ -6044,7 +6058,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           setMod(id, f, !(cur && cur.on));
         });
         tile.appendChild(modbar);
-        tile.addEventListener('click', () => tile.classList.toggle('menu')); // tap = menu on phones
+        tile.addEventListener('click', () => {
+          // A sideways phone opens the menu away from the tile; it names whose it is.
+          modbar.dataset.who = label.textContent;
+          modbar.setAttribute('aria-label', label.textContent);
+          tile.classList.toggle('menu'); // tap = menu on phones
+        });
         // On a slim phone tile the open menu fills the tile, so a second tap
         // there lands on Mute for everyone. A tap anywhere else closes it.
         if (!makeTile.menuOff && typeof document.addEventListener === 'function') {
