@@ -2541,9 +2541,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return n > 0;
       };
       const PROBE_MS = 4500;   // a dialled pair not up after this is no direct path (the decision comes once every dial settled, or NET_PROBE ticks after them)
-      const settled = (p) => !!(p && (p.connected || (p.pc && (p.pc.connectionState === 'failed' || p.pc.connectionState === 'closed')) || (p.neverUp && Date.now() - (p.bornAt || 0) > PROBE_MS)));
+      const settled = (p) => !!(p && ((p.connected && (p.viaRelay !== undefined || Date.now() - (p.bornAt || 0) > PROBE_MS)) || (p.pc && (p.pc.connectionState === 'failed' || p.pc.connectionState === 'closed')) || (p.neverUp && Date.now() - (p.bornAt || 0) > PROBE_MS)));
       const probeDone = (ids) => Array.isArray(ids) && ids.every((id) => id === myId || settled(peers.get(id)));
-      const pairRelayed = (p) => !!(p && p.viaRelay);   // set by the pool code when a pair's selected candidate pair is relayed
+      const pairRelayed = (p) => !!(p && (p.viaRelay || (p.viaRelay === undefined && (p.turnMine || p.turnAnchor))));   // viaRelay: the selected candidate pair's type (whoObserve); unobserved, a pair this page put TURN on counts as relayed
       const view = {
         tick: () => { const s = me(); return s ? s.TICK : 0; },
         seats: () => { const s = me(); const out = s ? [s] : []; for (const [pid, st] of statusOf) if (pid !== myId && st && st.seat && typeof st.seat.pc === 'number') out.push(rec(pid, st)); for (const r of ringRecs()) out.push(r); return out; },
@@ -7560,7 +7560,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Offer turns belong to the old pc. turnSeen/turnLegacy describe the peer and stay.
       clearTimeout(p.turnAskT); clearTimeout(p.turnOkT); clearTimeout(p.turnGivenT);
       p.turnAskT = p.turnOkT = p.turnGivenT = null; p.turnOk = p.turnGiven = p.turnWanted = false; p.offeredPend = "";
-      p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
+      p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now(); p.viaRelay = undefined; // the new transport's path is unobserved until its first stats
       p.offering = null; // an offer still minting belongs to the closed pc (sendOffer drops it)
       p.offerFp = ''; // no remote offer has landed on this pc yet (onSignal's new-pc rule)
       // A new pc gathers afresh: its first host candidate must leave at once,
@@ -7659,7 +7659,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); p.viaRelay = false; }
-        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; restoreDoorTile(p); }
+        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; restoreDoorTile(p); try { whoObserve(p.id).catch(() => {}); } catch (e) {} } // the selected path now, not at the next 15 s sweep: the door test reads it (viaRelay)
         updateStatus();
         if (p.connected) { p.altPath = false; p.tlAt = 0; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
