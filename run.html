@@ -1510,6 +1510,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.desk-ptr .tile > .blurbox[aria-pressed="false"], body.desk-ptr .tile .maxbtn { opacity: 0; pointer-events: none; }
   body.desk-ptr:not(.dock-calm) .tile:is(:hover, :focus-within, .menu) > .blurbox,
   body.desk-ptr:not(.dock-calm) .tile:is(:hover, :focus-within, .menu) .maxbtn { opacity: 1; pointer-events: auto; }
+  /* Older eyes read a face's buttons too: their words are 16px on a desktop.
+     The square grows to fit "Blur for" on one line, and the row sits beside
+     it, so a short face in a room of nine still has room for the name. */
+  body.desk-ptr .tile > .blurbox { width: 80px; height: 80px; font-size: 16px; }
+  body.desk-ptr .tile:has(> .blurbox.on) .chips { right: 104px; }
+  body.desk-ptr .tile:has(> .blurbox.on) .modbar { top: 12px; right: 104px; }
+  body.desk-ptr .tile .modbar button { font-size: 16px; }
   /* The header line and the build label go too, unless the line is saying
      something (a notice, an alert, a reach state). */
   .topchip, #gifos-build-float { transition: opacity .2s ease; }
