@@ -1468,6 +1468,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.townhall #bc-ended:not([hidden]) {
     top: calc(14px + 4.25rem + var(--inset-top, 0px));
   }
+  #bc-cal[hidden] { display: none !important; }
+  #bc-cal {
+    pointer-events: auto; display: inline-flex; align-items: center; justify-content: center;
+    min-height: 48px; padding: 10px 22px; border-radius: 16px; border: 2px solid #f4f7fb;
+    color: #f4f7fb; text-decoration: none; font: 700 1.05rem/1.1 system-ui, sans-serif;
+  }
+  /* The host's start time lives in More. Nobody else sets it. */
+  #bcwhenrow { display: none; }
+  body.broadcast.bc-host #bcwhenrow {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap;
+  }
+  #bcwhenrow input { min-height: 44px; font: inherit; border-radius: 10px; padding: 0 8px; }
   #bc-ended p {
     margin: 0; max-width: 18rem; color: #f4f7fb;
     font: 700 clamp(1.15rem, 9cqh, 1.75rem)/1.25 system-ui, sans-serif; letter-spacing: -0.02em;
@@ -2134,6 +2146,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
       <span class="blab">Float</span>
     </button>
+    <label id="bcwhenrow" title="When the service starts. The viewer link says so."><span id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
     <button id="invite" title="Friends join you live with one link">Invite</button>
     <button id="appbtn" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
     <button id="sharebtn" title="Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)" style="display:none">Share screen</button>
@@ -2197,7 +2210,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <div id="handq"></div>
   <div id="feed">
-    <div id="bc-ended" hidden><p id="bc-ended-txt"></p><button type="button" id="bc-replay" hidden>Watch</button></div>
+    <div id="bc-ended" hidden><p id="bc-ended-txt"></p><button type="button" id="bc-replay" hidden>Watch</button><a id="bc-cal" hidden>Add to calendar</a></div>
     <div id="stagefeed"></div>
     <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-name"></div></div>
     <div id="grid"></div>
@@ -2779,6 +2792,41 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       catch (e) { return false; }
     };
     if (TOWNHALL && !bcHostStored()) document.body.classList.add('th-watch');
+    if (BROADCAST && bcHostStored()) document.body.classList.add('bc-host');
+    // THE START TIME rides the link as at=<unix seconds>, set by the host in
+    // More. A church shares Sunday's link midweek: the viewer reads when to
+    // come back, and someone who opens it hours after reads that it ended.
+    // The host's phone keeps the time it set for this room.
+    const BC_AT_KEY = 'gifos_bcat_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
+    if (BROADCAST && !params.get('at') && bcHostStored()) {
+      try { const s = localStorage.getItem(BC_AT_KEY); if (s) params.set('at', s); } catch (e) {}
+    }
+    function bcStartAt() {
+      const n = Number(params.get('at'));
+      return BROADCAST && Number.isFinite(n) && n > 0 ? n * 1000 : 0;
+    }
+    // "today at 6:30 PM", "tomorrow at 9:00 AM", "Sunday at 10:00 AM", or a
+    // date past the coming week. Intl's narrow spaces read as plain spaces.
+    function bcWhenWords(ms, now) {
+      const d = new Date(ms), n = new Date(now);
+      const plain = (s) => s.replace(/[  ]/g, ' ');
+      const time = plain(d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }));
+      const day0 = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+      const days = Math.round((day0(d) - day0(n)) / 86400000);
+      const day = days === 0 ? 'today' : days === 1 ? 'tomorrow'
+        : days > 1 && days < 7 ? d.toLocaleDateString(undefined, { weekday: 'long' })
+        : plain(d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }));
+      return day + ' at ' + time;
+    }
+    // Before the time: when it starts. From 15 minutes before to 3 hours
+    // after: about to start (the host may be late). Later: it has ended.
+    function bcSchedule(now) {
+      const at = bcStartAt();
+      if (!at) return null;
+      if (now < at - 15 * 60000) return { phase: 'future', words: bcWhenWords(at, now) };
+      if (now < at + 3 * 3600000) return { phase: 'soon' };
+      return { phase: 'ended' };
+    }
     const grid = document.getElementById('grid');
     const statusEl = document.getElementById('status');
     const share = document.getElementById('share');
@@ -6840,7 +6888,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const place = TOWNHALL ? 'town hall' : (typeof BROADCAST !== 'undefined' && BROADCAST ? (params.has('st') ? 'stream' : 'service') : 'meeting');
       const watching = TOWNHALL && !hostStored;
       const bcNoun = params.has('st') ? 'stream' : 'service';
-      const bcAlone = sawCompany ? ('The ' + bcNoun + ' has ended.') : ('The ' + bcNoun + ' has not started.');
+      const sched = sawCompany ? null : bcSchedule(Date.now());
+      const bcAlone = sawCompany || (sched && sched.phase === 'ended') ? ('The ' + bcNoun + ' has ended.')
+        : sched && sched.phase === 'future' ? ('The ' + bcNoun + ' starts ' + sched.words + '.')
+        : sched ? ('The ' + bcNoun + ' is about to start.')
+        : ('The ' + bcNoun + ' has not started.');
       const aloneCore = watching ? 'The town hall has not started.' : (bcViewer ? bcAlone : 'Just you — send the invite; the link has no expiry');
       const aloneLine = aloneCore + reachTriedSentence();
       const doorLine = 'Getting you back into the ' + place + ' — waiting for the others to answer…';
@@ -6891,6 +6943,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (quietTxt && on && quietTxt.textContent !== quietLine) quietTxt.textContent = quietLine;
         const replayBtn = document.getElementById('bc-replay');
         if (replayBtn) replayBtn.hidden = !(on && bcViewer && /has ended/.test(quietLine) && viewerReplayUrl);
+        paintBcCalendar(on && bcViewer && !hallQuiet && !!sched && sched.phase === 'future');
       }
       paintLiveBadge();
     }
@@ -12291,12 +12344,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const relay = relayUrl();
       const custom = relay && relay !== window.GIFOS_RELAY;
       const avPart = (av ? '&av=' + av : '') + (BROADCAST ? '&bc=1' : '') + (TOWNHALL ? '&th=1' : '') + (BROADCAST && params.has('st') ? '&st=1' : '');
+      const atBit = BROADCAST && /^\d+$/.test(params.get('at') || '') ? params.get('at') : '';
+      const avPartAt = avPart + (atBit ? '&at=' + atBit : '');
       const pretty = /(^|\.)gifos\.app$/.test(location.hostname) && !custom;
       // A broadcast's pretty form is /cast/<room>/<V> — same 404-router
       // machinery as /meet, but the path itself carries the skin so the
       // shared link opens as a broadcast for every viewer.
       const prettyPath = (BROADCAST ? '/cast/' : '/meet/') + room + (av ? '/' + av : '');
       const prettyTown = TOWNHALL ? '?th=1' : (BROADCAST && params.has('st') ? '?st=1' : '');
+      const prettyQs = prettyTown + (atBit ? (prettyTown ? '&' : '?') + 'at=' + atBit : '');
       // A RELEASE/pinned computer runs from /versions/<x.y.z>/, but prettyPath is
       // rooted at the domain. Rewriting the address bar to it MOVED THE DOCUMENT
       // BASE off the snapshot — document.baseURI became /meet/<room>, so every
@@ -12324,13 +12380,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // from no matter what the address bar says, so the URL can stay the short
       // link people actually share. Which build you are on is shown in the page
       // itself (js/build-badge.js), where that fact belongs.
-      const canonical = pretty ? prettyPath + prettyTown
-        : MEET_PATH + '#v=' + room + avPart + (custom ? '&relay=' + encodeURIComponent(relay) : '');
+      const canonical = pretty ? prettyPath + prettyQs
+        : MEET_PATH + '#v=' + room + avPartAt + (custom ? '&relay=' + encodeURIComponent(relay) : '');
       // A srcdoc session cannot always retarget its address. The mesh does
       // not depend on that; a thrown replaceState must not skip the knock.
       try { if (location.pathname + location.search + location.hash !== canonical) history.replaceState(null, '', canonical); } catch (e) {}
-      shareUrl.value = pretty ? pageOrigin() + prettyPath + prettyTown
-        : pageOrigin() + MEET_PATH + '#v=' + room + avPart + (relay ? '&relay=' + encodeURIComponent(relay) : '');
+      shareUrl.value = pretty ? pageOrigin() + prettyPath + prettyQs
+        : pageOrigin() + MEET_PATH + '#v=' + room + avPartAt + (relay ? '&relay=' + encodeURIComponent(relay) : '');
       try { paintStreamLink(); } catch (e) {}
       if (!params.get('v')) share.classList.add('show'); // fresh room → surface the link
       else recordMeetingInvite(room, shareUrl.value); // joined someone's link → log it in the desktop's Invites
@@ -22471,7 +22527,45 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!s) return;
         raw = raw.split(encodeURIComponent(s)).join('').split(s).join('');
       });
+      // The start time the host set rides the link (hash form, or the query
+      // of a pretty /cast/ link).
+      try {
+        const u = new URL(raw, location.origin);
+        const at = BROADCAST ? String(params.get('at') || '') : '';
+        const h = new URLSearchParams(u.hash.replace(/^#/, ''));
+        if (h.has('v')) { if (at) h.set('at', at); else h.delete('at'); u.hash = h.toString(); }
+        else if (at) u.searchParams.set('at', at);
+        else u.searchParams.delete('at');
+        raw = u.toString();
+      } catch (e) {}
       return raw;
+    }
+    // A viewer early for a scheduled service gets Add to calendar: a one-event
+    // .ics with the viewer link, which a phone opens in its calendar.
+    let bcCalUrl = null, bcCalFor = '';
+    function paintBcCalendar(show) {
+      const a = document.getElementById('bc-cal');
+      if (!a) return;
+      a.hidden = !show;
+      if (!show) return;
+      const at = bcStartAt(), link = viewerShareUrl();
+      if (bcCalFor === at + link) return;
+      bcCalFor = at + link;
+      const stamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+      const esc = (s) => String(s).replace(/([\\;,])/g, '\\$1').replace(/\n/g, '\\n');
+      const noun = params.has('st') ? 'stream' : 'service';
+      const name = String(params.get('v') || '').trim();
+      const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GifOS//Broadcast//EN', 'BEGIN:VEVENT',
+        'UID:' + at + '-' + name.replace(/[^a-z0-9]/gi, '') + '@gifos.app', 'DTSTAMP:' + stamp(Date.now()),
+        'DTSTART:' + stamp(at), 'DTEND:' + stamp(at + 90 * 60000),
+        'SUMMARY:' + esc((name ? name + ' · ' : '') + 'live ' + noun),
+        'DESCRIPTION:' + esc('Watch here: ' + link), 'URL:' + link,
+        'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc('The ' + noun + ' starts in 15 minutes'), 'END:VALARM',
+        'END:VEVENT', 'END:VCALENDAR', ''].join('\r\n');
+      if (bcCalUrl) { try { URL.revokeObjectURL(bcCalUrl); } catch (e) {} }
+      bcCalUrl = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+      a.href = bcCalUrl;
+      a.download = (name || noun).replace(/[^\w.-]+/g, '-') + '.ics';
     }
     function shareMeetingLink(btn) {
       const url = viewerShareUrl();
@@ -22479,7 +22573,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const isApp = document.body.classList.contains('app-room');
       const payload = {
         title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : (typeof TOWNHALL !== 'undefined' && TOWNHALL ? 'Watch my GifOS town hall' : 'Join my GifOS meeting'),
-        text: 'Tap this link and you’re in:',
+        text: BROADCAST && bcStartAt() > Date.now()
+          ? 'Live ' + bcWhenWords(bcStartAt(), Date.now()) + '. Tap this link to watch:'
+          : 'Tap this link and you’re in:',
         url: url,
       };
       const markCopied = () => {
@@ -22513,6 +22609,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     const hdrInviteBtn = document.getElementById('hdrinvite');
     if (hdrInviteBtn) hdrInviteBtn.onclick = () => shareMeetingLink(hdrInviteBtn);
+    // The host's start time. The phone's own picker gives local time; the
+    // link carries it as unix seconds, so every viewer reads it in theirs.
+    const bcWhenIn = document.getElementById('bcwhen');
+    function paintBcWhen() {
+      const lbl = document.getElementById('bcwhen-lbl');
+      const at = bcStartAt();
+      if (lbl) lbl.textContent = at ? 'Starts ' + bcWhenWords(at, Date.now()) : 'Start time';
+      if (bcWhenIn && at && document.activeElement !== bcWhenIn) {
+        const d = new Date(at), z = (n) => String(n).padStart(2, '0');
+        bcWhenIn.value = d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + 'T' + z(d.getHours()) + ':' + z(d.getMinutes());
+      }
+    }
+    if (bcWhenIn && BROADCAST) {
+      bcWhenIn.onchange = () => {
+        const ms = bcWhenIn.value ? new Date(bcWhenIn.value).getTime() : NaN;
+        const secs = Number.isFinite(ms) ? String(Math.floor(ms / 1000)) : '';
+        if (secs) params.set('at', secs); else params.delete('at');
+        try { secs ? localStorage.setItem(BC_AT_KEY, secs) : localStorage.removeItem(BC_AT_KEY); } catch (e) {}
+        paintBcWhen();
+        try { updateStatus(); } catch (e) {}
+      };
+      paintBcWhen();
+    }
     document.getElementById('invite').onclick = () => {
       share.classList.add('show'); // keep the top copy row visible/copyable behind the sheet
       showInviteModal();
