@@ -647,6 +647,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border-top: 1px solid var(--border, #2a2a3f); }
   /* Recording options popup. */
   .rec-sec { margin: .7rem 0 .3rem; }
+  #rec-stage-only { color: inherit; font-size: .95rem; margin: .15rem 0 .35rem; }
   .rec-sec > b { display: block; font-size: .85rem; margin-bottom: .25rem; }
   .rec-opt { display: flex; gap: .5rem; align-items: flex-start; padding: .3rem .2rem; cursor: pointer; font-size: .9rem; }
   .rec-opt.inline { display: inline-flex; align-items: center; margin-right: .9rem; }
@@ -690,11 +691,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      as the room's recording captures it — never a crop. */
   #stagefeed .rowtile video { object-fit: contain; }
   .rowtile .rlabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 6px;
-    font-size: .65rem; color: var(--text, #e0e0f0); background: rgba(10,10,15,.7);
+    font-size: .65rem; color: #e0e0f0; background: rgba(10,10,15,.7);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* A shared screen's pixels do not say whose window this is. The line on
      the slide does, large enough to read while you are presenting. */
   #stagefeed .rlabel.sharelabel { font: 700 16px/1.3 system-ui, sans-serif; padding: 8px 14px; color: #fff; }
+  /* The band is always dark, so its words are always light: a light theme's
+     --text read near-black on it. The stage's label is read across a room. */
+  #stagefeed .rowtile .rlabel { font-size: .8rem; padding: 3px 8px; }
   /* On stage: the tile floats first and wears the accent — the whole room's
      eye line. The four-bus mix panel is a personal knob rack (receiver-side
      volume only — as ungovernable as any volume knob); the section and
@@ -705,9 +709,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* Zoom = pick your depth: a tapped stadium tile grows to a readable size
      (and back). The global hand queue reads as one ordered line. */
   .rowtile.zoom { grid-column: 1 / -1; }
-  #handq { display: none; padding: 6px 10px 0; font-size: .8rem; color: var(--text, #e0e0f0); }
+  /* The session page is always dark (#0c0e12), whatever the theme's --text
+     says, so the line is light on it (Q83). */
+  #handq { display: none; padding: 6px 10px 0; font-size: .8rem; color: #e6e9ef; }
   #handq.on { display: block; }
-  #handq b { color: var(--accent, #b9a5ff); }
+  #handq b { color: #8ab4ff; }
   /* Admin rooms, for the SIGNED-IN admin only: each queued name is a call-up
      button (tap = the signed stage/app grant, §SIG). Everyone else — guests,
      open rooms — sees the identical banner, inert. */
@@ -837,6 +843,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      row a broadcast does not have — a share grant must not let a viewer
      publish. Per-person mute, blur, promote, demote, and ban live on the
      stage seats, the raised-hands list, and Who. */
+  /* A service host answers hands and has none to raise (Q98, Q100); a
+     viewer's Hand moves onto the dock, so only a host's stays in More. */
+  body.broadcast:not(.notadmin) #barmore > #hand,
+  /* Nobody mixes buses in a broadcast: Stage audio is the only bus, so the
+     Sound-mix section stays hidden. Mute for what you hear lives on the room
+     bar (Sound on / Muted) and never changes anyone else's stage. The host's
+     guest-video hammers (Blur guests / Video off) moderate a row tier a
+     broadcast doesn't have — viewers bring no camera at all. */
   body.broadcast #mixpanel,
   body.broadcast #blurall,
   body.broadcast #camall,
@@ -1001,7 +1015,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .name-box button.voteopt.down .vic { background: #e0a100; }
   .name-box button.voteopt.danger { background: transparent; color: #ff5c5c; border-color: #ff5c5c; }
   .name-box button.voteopt.danger .vic { background: #ff5c5c; }
-  .name-box #vote-cancel { background: transparent; color: #c8c8d4; border: 1px solid #5a5a68; }
+  /* Cancel sits on the sheet itself, which follows the theme's surface. */
+  .name-box #vote-cancel { background: transparent; color: var(--text, #e0e0f0); border: 1px solid #8d93a0; }
   /* Descriptions derive from the theme's TEXT color (at reduced opacity), not
      --muted: on themes with a colored surface (blue!), fixed gray muted text
      lands at near-zero contrast and the popup is illegible. */
@@ -1012,6 +1027,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #share-modal #share-go { font: 700 16px/1.2 system-ui, sans-serif; }
   #vote-modal .voteopt { font-size: 16px; }
   #vote-modal .voteopt small { font-size: 15px; opacity: .85; }
+  /* The up and down options are always dark, so their hints are always light. */
+  .name-box button.voteopt:not(.danger) small { color: #b9bfcc; opacity: 1; }
   /* FULLSCREEN VIEW: one feed big + every other live feed as floating thumbs
      (right edge in landscape, bottom edge in portrait) — tap a thumb to swap
      it into the big view. Standard call UX. */
@@ -1053,6 +1070,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.broadcast #fsname .fsinitial { display: none; }
   body.broadcast #fsname .fsnm { font: 700 28px/1.3 system-ui, sans-serif; background: none;
     white-space: normal; text-align: center; max-width: 36rem; }
+  /* The stage's camera-off card, big: picture or initial, name, Camera off. */
+  #fsname .fspic, #fsname .fsnote { display: none; }
+  body.broadcast #fsname.ident .fsinitial { display: block; color: #b9bdd6; font: 700 min(144px, 22vh)/1 system-ui, sans-serif; }
+  body.broadcast #fsname.ident.pic .fsinitial { display: none; }
+  body.broadcast #fsname.ident.pic .fspic { display: block; width: min(320px, 50vh); height: min(320px, 50vh); object-fit: cover; border-radius: 1rem; }
+  body.broadcast #fsname.ident .fsnote { display: block; color: #b9bdd6; font-size: 1.1rem; }
   #fsstrip { position: absolute; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; gap: .5rem;
     padding: .55rem; overflow-y: auto; overflow-x: hidden; z-index: 2;
     background: linear-gradient(to left, rgba(0,0,0,.55), transparent); }
@@ -1138,10 +1161,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cmsg img.avchip, .trline img.avchip, .brow img.avchip { width: 1.25rem; height: 1.25rem; object-fit: cover;
     border-radius: .25rem; vertical-align: middle; margin-right: .35rem; }
   #bc-ident { display: none; }
-  body.broadcast #bc-ident.on { display: flex; position: fixed; z-index: 6; left: 50%; top: 12vh; transform: translateX(-50%);
-    flex-direction: column; align-items: center; gap: .6rem; pointer-events: none; max-width: 90vw; }
-  body.broadcast #bc-ident img { width: 256px; width: min(256px, 70vw); height: 256px; height: min(256px, 46vh); object-fit: cover; border-radius: 1rem; background: #14141f; }
-  #bc-ident-name { background: rgba(10,10,15,.72); color: #eceef8; padding: .2rem .7rem; border-radius: .4rem; font-size: .95rem; }
+  /* On the stage, between the room bar and the dock (#feed's 132px foot). */
+  body.broadcast #bc-ident.on { display: flex; position: absolute; z-index: 6; left: 0; right: 0; top: 0; bottom: 132px;
+    flex-direction: column; align-items: center; justify-content: center; gap: .6rem; pointer-events: none; padding: 16px; box-sizing: border-box; }
+  body.broadcast #bc-ident img, #bc-ident-init { width: 256px; width: min(256px, 70vw, 40vh); height: 256px; height: min(256px, 70vw, 40vh); object-fit: cover; border-radius: 1rem; background: #14141f; }
+  body.broadcast #bc-ident:not(.pic) img, body.broadcast #bc-ident.pic #bc-ident-init { display: none; }
+  #bc-ident-init { display: flex; align-items: center; justify-content: center; color: #b9bdd6; font: 700 96px/1 system-ui, sans-serif; font-size: min(96px, 16vh); }
+  #bc-ident-name { background: rgba(10,10,15,.72); color: #eceef8; padding: .2rem .7rem; border-radius: .4rem; font-size: 1.25rem; font-weight: 600; }
+  #bc-ident-note { color: #b9bdd6; font-size: .95rem; }
+  #bc-ident.me #bc-ident-note { display: none; } /* the host's own line already says Camera off */
+  /* The card is the picture: the black frame under it, its name burned in, is not. */
+  body.broadcast:has(#bc-ident.on) #stagefeed .rowtile video { visibility: hidden; }
+  body.broadcast:has(#bc-ident.on) #stagefeed .rowtile { background: #000; }
+  .tile.cam-off > video { visibility: hidden; }
   .tile.cam-off:has(> .avatar.has-img) > video { visibility: hidden; }
   /* A dark seat past the shared-canvas cap (mountPeerAvatar) shows its letter
      overlay, blurred the way the video it stands in for would be. */
@@ -1223,6 +1255,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* The corner square and the menu both say Blur for all / Unblur for all
      (qa-meet-desktop: the state reads the same from either). */
   .tile:focus-visible { outline: 3px solid #7ec8ff; outline-offset: -3px; }
+  /* Below the Blur for all square, not under it: Mute was hidden there. */
+  .tile:has(> .blurbox.on) .modbar { top: 40px; }
   .tile .modbar button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   .tile .modbar button { padding: .3rem .55rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.16);
                          background: rgba(10,10,15,.85); color: #eceef8; cursor: pointer; font-size: .68rem; }
@@ -1406,6 +1440,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                   the max-width:700px block. */
                padding-bottom: 128px; }
   #chatpanel.open { display: flex; }
+  /* Beside the call, not over it: on a wide window the room bar, header and
+     stage narrow by the panel's width (body.chatside follows the panel), as
+     Meet and Zoom do; the dock moves into the call too when it fits there.
+     A phone keeps the panel over the call. */
+  @media (min-width: 800px) {
+    body.chatside { padding-right: 340px; }
+    body.chatside .fitbtn { right: 354px; }
+    body.chatside .topchip { max-width: calc(100% - 460px); }
+    /* The dock sits in the call beside the chat (placeDock), so the composer
+       takes the band it used to keep clear. */
+    body.chatside.dockbeside #chatpanel { padding-bottom: 12px; }
+    /* The call beside the chat is 460-684px: the room bar's pills move to a
+       row under the title rather than breaking "Not / recording". */
+    body.chatside #airbar.on { flex-wrap: wrap; row-gap: 6px; padding: 6px 16px; }
+    #airkind, #airrec, #airwho, #airsound { white-space: nowrap; }
+    /* A dock wider than the call goes to the phone sizes and moves Chat,
+       Invite, Full screen, then Share into More until it fits (placeDock);
+       it used to run over the chat with End on the panel. */
+    .bar.dockslim { gap: 6px; padding: 0 10px; }
+    .bar.dockslim #cam, .bar.dockslim #mic, .bar.dockslim #reactbtn, .bar.dockslim #invite, .bar.dockslim #chatbtn, .bar.dockslim #bartoggle,
+    .bar.dockslim > #sharebtn { width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
+    .bar.dockslim #fsbtn { height: 56px; min-height: 56px; min-width: 56px; padding: 0 6px; }
+    .bar.dockslim > #stagebtn, .bar.dockslim > #hand { height: 56px; min-height: 56px; padding: 0 8px; }
+    .bar.dockslim #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; margin-left: 4px; }
+    .bar.dockslim > .inmore { display: none !important; }
+    body.chatside.dockbeside .bar:not(.collapsed) .barmore { width: max-content; min-width: min(720px, calc(100vw - 364px)); max-width: calc(100vw - 364px); }
+  }
   #chathead { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
   /* The privacy line used to sit beside the title and collapse into a narrow
      column, so "Service chat" wrapped. It takes the row under the title. */
@@ -1515,7 +1576,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .cap { position: absolute; left: 8px; right: 8px; bottom: 8px; transform: none; max-width: none;
                max-height: 42%; overflow: hidden; box-sizing: border-box;
                background: rgba(10,10,15,.82); border: 0; border-radius: 8px;
-               padding: 6px 8px; font-size: 1.25rem; line-height: 1.3; color: #fff; z-index: 3; pointer-events: none;
+               padding: 6px 8px; font-size: 1.25rem; line-height: 1.3; color: #fff; z-index: 3; pointer-events: none; }
+  /* Prayer and 📎 beside the box left it ~100px of text room in the 340px
+     panel, so it read "Message ever". On a wide window they take a small
+     row above it (the Tab order stays Prayer, 📎, box, Send). */
+  @media (min-width: 800px) {
+    #chatform { display: grid; grid-template-columns: auto auto 1fr auto; gap: .4rem; }
+    #chatform #pray { grid-area: 1 / 1; min-height: 36px; padding: .25rem .7rem; }
+    #chatform #cattach { grid-area: 1 / 2; min-height: 36px; padding: .25rem .6rem; }
+    #chatform input[type=text] { grid-area: 2 / 1 / 3 / 4; width: auto; }
+    #chatform button[type=submit] { grid-area: 2 / 4; }
+  }
+  .tile .cap { position: absolute; left: 50%; transform: translateX(-50%); bottom: 2.1rem; max-width: 92%;
+               background: rgba(10,10,15,.82); border: 1px solid var(--border, #2a2a3f); border-radius: .45rem;
+               padding: .35rem .7rem; font-size: 1.25rem; line-height: 1.35; color: #fff; z-index: 3; pointer-events: none;
                opacity: 0; transition: opacity .25s; }
   .tile .cap.show { opacity: 1; }
   /* On a phone the line is one caption above Live, not a clip on the face.
@@ -1678,6 +1752,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #appear #nmcancel { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; flex: 0 0 auto; }
   #appear #nmok { background: #0064c8; color: #fff; border: 0; min-width: 132px; font-weight: 700; }
   #appear #appear-pic { display: block; margin: -4px auto 12px; background: transparent; color: #0064c8; border: 0; min-height: 36px; font-weight: 700; }
+  .keys-list { display: grid; grid-template-columns: auto 1fr; gap: .55rem .9rem; align-items: center; margin: .6rem 0 0; }
+  .keys-list dt { text-align: right; }
+  .keys-list dd { margin: 0; color: var(--text, #e0e0f0); font-size: .95rem; }
+  .keys-list kbd { display: inline-block; min-width: 2em; padding: .15rem .45rem; border: 1px solid var(--border, #2a2a3f); border-bottom-width: 2px;
+    border-radius: .35rem; background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: 600 .9rem/1.3 ui-monospace, monospace; text-align: center; }
+  .name-box #help-keys { min-height: 44px; padding: .3rem .6rem; border: 0; background: none; color: var(--accent, #7b5cff); text-decoration: underline; }
   .name-box p { color: var(--muted, #8888aa); font-size: .85rem; margin-bottom: 1rem; }
   #adm-modal #adm-hint, #adm-modal #adm-banned-h { font-size: 16px; line-height: 1.45; }
   .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem; min-height: 48px;
@@ -1864,6 +1944,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #waitself p { margin: 0; font: 600 18px/1.35 system-ui, sans-serif; }
   /* pre, not nowrap: the rest starts with " · 360p" and a flex item drops leading spaces. */
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
+  /* A service line can carry the host's viewer-password hint after the
+     quality and a reconnect note; one line cut it at 1024 and 900. On a
+     desktop it takes two lines, which still clears the room bar. */
+  @media (min-width: 701px) {
+    body.broadcast .topchip { border-radius: 24px; }
+    body.broadcast .topchip .status { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2; line-clamp: 2; line-height: 1.35; }
+  }
   /* A broadcast host who is the only person here gets Invite in the chip.
      The sentence stays. Wide screens show the same button the phone shows.
      The viewer password is never part of this link. */
@@ -1909,10 +1997,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #airbar.group::before { background: #7dcea0; }
   #airbar.off::before { background: #8a8aa8; }
   #airbar .airacts { display: flex; align-items: center; gap: 8px; margin-left: 8px; }
-  #airrec, #airwho { appearance: none; font: 700 15px/1 system-ui, sans-serif; min-height: 36px;
+  #airwho[hidden] { display: none !important; }
+  #airrec, #airwho, body.broadcast #airsound:not([hidden]) { appearance: none; display: inline-block; font: 700 15px/1 system-ui, sans-serif; min-height: 36px;
     padding: 0 12px; border-radius: 999px; cursor: pointer; background: transparent; color: inherit;
     border: 2px solid currentColor; }
-  #airrec[aria-pressed="true"] { background: #fff; color: #b61622; border-color: #b61622; }
+  #airsound { display: none; }
+  #airrec[aria-pressed="true"], #airsound[aria-pressed="true"] { background: #fff; color: #b61622; border-color: #b61622; }
   #avstate { display: none; }
   #avstate[hidden] { display: none !important; }
   #avstate.on { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 14px;
@@ -2404,11 +2494,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: #fff; color: #1d1d1f; font-weight: 800; font-size: 32px; line-height: 1; padding: 8px 12px; border-radius: 999px;
     pointer-events: none; opacity: 0; }
   .tile .reactburst.show { animation: reactpop 1.6s ease forwards; }
+  #bc-react { display: none; }
+  body.broadcast #bc-react { display: block; position: absolute; left: 0; right: 0; top: 0; bottom: 132px; z-index: 6; pointer-events: none; }
+  body.broadcast #bc-react .reactburst { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 5;
+    background: #fff; color: #1d1d1f; font-weight: 800; font-size: 64px; line-height: 1; padding: 14px 22px; border-radius: 999px;
+    pointer-events: none; opacity: 0; }
+  body.broadcast #bc-react .reactburst.show { animation: reactpop 1.6s ease forwards; }
+  #bc-reacts { display: none; }
+  body.broadcast #bc-reacts:not([hidden]) { display: flex; position: absolute; left: 0; right: 0; bottom: 148px; z-index: 6;
+    justify-content: center; align-items: flex-end; gap: 8px; pointer-events: none; }
+  body.broadcast #bc-reacts .bcslot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  body.broadcast #bc-reacts .bcwho { background: rgba(0,0,0,.72); color: #fff; font: 600 14px/1.2 system-ui, sans-serif;
+    border-radius: 999px; padding: 4px 10px; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.broadcast #bc-reacts .bcreact { background: #fff; color: #1d1d1f; font: 700 22px/1 system-ui, sans-serif;
+    border-radius: 999px; padding: 10px 16px; min-height: 44px; display: inline-flex; align-items: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,.35); }
   @keyframes reactpop { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
   #leave-ask .name-box { background: #fff; color: #1d1d1f; }
   #leave-ask .name-box h3 { color: #1d1d1f; font-size: 1.7rem; margin-bottom: 1rem; }
   #leave-ask #leave-cancel { min-height: 64px; min-width: 96px; font-size: 1.2rem; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
   #leave-ask #leave-go { min-height: 64px; min-width: 96px; font-size: 1.2rem; margin-left: 8px; background: #b61622; color: #fff; border: 0; }
+  #leave-ask #leave-ask-note { color: #1d1d1f; font-size: 1.05rem; line-height: 1.4; margin: 0 0 1.25rem; }
+  #leave-ask:has(#leave-ask-note:not([hidden])) .name-box { max-width: 440px; }
   body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
     background: #0c0e12; display: flex; flex-direction: column; padding: 8px 8px 132px; box-sizing: border-box; }
   body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid {
@@ -2693,6 +2800,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lobby { background: #e8ecf1; }
   #lobby.show { display: grid; padding: 0; overflow: hidden; align-items: stretch; justify-content: stretch; }
   .lob-preview { position: relative; min-height: 180px; background: #1a1d24; overflow: hidden; }
+  /* The preview is only for you: the call itself opens muted and dark. */
+  .lob-pv-note { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); max-width: calc(100% - 32px);
+    padding: 7px 14px; border-radius: 999px; background: rgba(8,10,14,.78); color: #f4f7fb;
+    font-size: 15px; font-weight: 600; line-height: 1.3; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lob-preview video { width: 100%; height: 100%; object-fit: cover; display: block; background: #1a1d24; }
   .lob-pv-name { position: absolute; left: 16px; bottom: 16px; background: rgba(8,10,14,.78); color: #f4f7fb;
     font-size: 15px; font-weight: 650; padding: 5px 12px; border-radius: 999px; }
@@ -2754,7 +2865,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (min-width: 701px) {
     #lobby.show { grid-template-columns: 1.35fr .8fr; }
     #lobby .lob-preview { margin: 16px; border-radius: 20px; }
-    #lobby .lobby-card { max-width: none; margin: 16px 16px 16px 0; border-radius: 20px; padding: 28px 32px; overflow: auto; }
+    /* width:auto, not the base 100%: 100% plus the 16px margin ran the card
+       off the right edge and cut its corners square. */
+    #lobby .lobby-card { width: auto; max-width: none; margin: 16px 16px 16px 0; border-radius: 20px; padding: 28px 32px; overflow: auto; }
   }
   /* A 320px or 360px phone cannot hold 56px circles plus a 64px hang-up.
      The row was nowrap, so Hang up drew past the right edge (x=374).
@@ -2994,6 +3107,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div class="lob-preview" id="lob-preview">
       <video id="lob-preview-vid" autoplay muted playsinline></video>
       <span class="lob-pv-name" id="lob-preview-name">You</span>
+      <span class="lob-pv-note">You join muted, with the camera off</span>
     </div>
     <div class="lobby-card">
       <h1 data-t="lobTitle">Small group</h1>
@@ -3085,6 +3199,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button type="button" id="chatbadge" hidden aria-live="polite">0</button>
   </div>
   <div class="admcount" id="admcount" style="display:none"></div>
+  <!-- Room bar before the dock in the DOM so Tab runs top to bottom. -->
+  <div id="airbar" hidden>
+    <span id="airkind" role="status"></span>
+    <span class="airacts">
+      <button type="button" id="airrec" aria-pressed="false">Not recording</button>
+      <button type="button" id="airwho">1 here</button>
+      <button type="button" id="airsound" hidden aria-pressed="false">Sound on</button>
+    </span>
+  </div>
   <div class="bar collapsed" role="toolbar" aria-label="Call controls. Press ? for keyboard shortcuts">
     <button id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -3106,7 +3229,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1.1 1.4 2.4 2 4 2s2.9-.6 4-2"/><circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none"/></svg>
       <span class="docklab dockword" data-t="react">Reactions</span>
     </button>
-    <button id="fsbtn" type="button" class="iconbtn" aria-label="Full screen" title="Watch full screen. Follows whoever is speaking.">
+    <button id="fsbtn" type="button" class="iconbtn" aria-label="Full screen" aria-keyshortcuts="F" title="Watch full screen. Follows whoever is speaking.">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
       <span class="docklab dockword">Full screen</span>
     </button>
@@ -3250,7 +3373,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     </section>
     </div>
     <div id="reacttray" class="reacttray" hidden role="group" aria-label="Reactions">
-      <button type="button" id="react-hand" aria-label="Raise hand">✋</button>
+      <button type="button" id="react-hand" aria-label="Raise hand" aria-keyshortcuts="H">✋</button>
       <button type="button" data-burst="👏" aria-label="Clap">👏</button>
       <button type="button" data-burst="👍" aria-label="Yes">👍</button>
       <button type="button" data-burst="👎" aria-label="No">👎</button>
@@ -3291,24 +3414,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <div id="handq"></div>
   <p id="bc-join-note" hidden></p>
-  <div id="airbar" hidden>
-    <span id="airkind" role="status"></span>
-    <span class="airacts">
-      <button type="button" id="airrec" aria-pressed="false">Not recording</button>
-      <button type="button" id="airwho">1 here</button>
-    </span>
-  </div>
-  <div id="avstate" hidden>
-    <span id="avmic" hidden>Microphone off</span>
-    <span id="avcam" hidden>Camera off</span>
-  </div>
   <div id="feed">
     <div id="stagefeed"></div>
     <div id="stagemod" hidden aria-label="On stage"></div>
-    <div id="handraise" hidden aria-label="Raised hands"></div>
-    <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-name"></div></div>
-    <div id="bc-seats"></div>
-    <div id="bc-stage" hidden><p id="bc-stage-line">The stage is clear.</p></div>
+    <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-init" aria-hidden="true"></div><div id="bc-ident-name"></div><div id="bc-ident-note">Camera off</div></div>
+    <div id="bc-stage" hidden><p id="bc-stage-line">Joining the service…</p></div>
+    <div id="bc-react" aria-hidden="true"></div>
+    <div id="bc-reacts" hidden role="status" aria-label="Audience reactions"></div>
     <div id="grid"></div>
     <div id="stadium"></div>
   </div>
@@ -3663,6 +3775,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div style="display:flex;justify-content:center;margin-top:1rem">
         <button id="help-close" data-t="helpGot" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
       </div>
+      <p style="text-align:center;margin:.6rem 0 0;font-size:.85rem"><button type="button" id="help-keys" class="linkbtn">Keyboard shortcuts (?)</button></p>
+    </div>
+  </div>
+
+  <div class="name-modal" role="dialog" aria-modal="true" aria-labelledby="keys-title" id="keys-modal" style="display:none">
+    <div class="name-box" style="max-width:480px;text-align:left">
+      <h3 id="keys-title" style="text-align:center">Keyboard shortcuts</h3>
+      <dl id="keys-list" class="keys-list"></dl>
+      <div style="display:flex;justify-content:center;margin-top:1rem">
+        <button id="keys-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
+      </div>
     </div>
   </div>
 
@@ -3703,6 +3826,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
     <div class="name-box">
       <h3 id="leave-ask-title">Leave the meeting?</h3>
+      <p id="leave-ask-note" hidden></p>
       <button id="leave-cancel" type="button">Stay</button>
       <button id="leave-go" type="button">Leave</button>
     </div>
@@ -3973,7 +4097,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } catch (e) {}
       return false;
     }
+    // A service mute is this device only. It does not write the shared mix,
+    // so a small group still opens at the fader the person last set.
+    let serviceHeard = true;
+    function paintServiceSound() {
+      const btn = document.getElementById('airsound');
+      if (!btn) return;
+      let bc = false;
+      try { bc = typeof BROADCAST !== 'undefined' && !!BROADCAST; } catch (e) { bc = false; }
+      btn.hidden = !bc;
+      if (!bc) return;
+      const muted = !serviceHeard;
+      btn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+      btn.textContent = muted ? 'Muted' : 'Sound on';
+      btn.title = muted
+        ? 'The stage is muted on this device. Tap to hear it. Everyone else still hears it.'
+        : 'You can hear the stage. Tap to mute it on this device. Everyone else still hears it.';
+      btn.setAttribute('aria-label', muted ? 'Stage muted on this device' : 'Mute the stage on this device');
+    }
+    let headCountOverride = 0; // headCountForTest: stands in for the live count
     function roomHeadCount() {
+      if (headCountOverride > 0) return headCountOverride;
       try {
         if (typeof displayCount === 'function') {
           const n = displayCount();
@@ -3981,6 +4125,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       } catch (e) {}
       return 1;
+    }
+    // A service counts the people watching. The host and everyone on the
+    // stage are not watching, so a host alone reads 0. null off a service.
+    function serviceWatchCount() {
+      let bc = false;
+      try { bc = typeof BROADCAST !== 'undefined' && !!BROADCAST; } catch (e) { bc = false; }
+      if (!bc) return null;
+      const up = new Set();
+      try { stageIds().forEach((id) => up.add(id)); } catch (e) {}
+      try { adminsNow().forEach((id) => up.add(id)); } catch (e) {}
+      try {
+        if ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')) up.add(myId || 'me');
+      } catch (e) {}
+      return Math.max(0, roomHeadCount() - up.size);
     }
     function paintRoomTrust() {
       const rec = document.getElementById('airrec');
@@ -3994,11 +4152,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           : 'Not recording. Tap to record on this device. Everyone here will see it.';
       }
       if (who) {
-        const n = roomHeadCount();
-        who.textContent = n + ' here';
-        who.title = 'Who is here';
-        who.setAttribute('aria-label', 'Who is here, ' + n);
+        // Not joined yet, so there is nobody to count.
+        who.hidden = !!(serviceWatchCount() !== null && document.getElementById('appear-modal'));
+        const watch = serviceWatchCount();
+        const n = watch === null ? roomHeadCount() : watch;
+        const word = watch === null ? 'here' : 'watching';
+        who.textContent = n + ' ' + word;
+        who.title = 'Who is ' + word;
+        who.setAttribute('aria-label', 'Who is ' + word + ', ' + n);
       }
+      paintServiceSound();
       maybeShowRecNotice();
     }
     function recRoomWord() {
@@ -4009,7 +4172,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try {
         if (typeof myStatus !== 'undefined' && myStatus && myStatus.rec) subject = 'You are';
         else if (typeof statusOf !== 'undefined' && statusOf && statusOf.forEach) {
-          statusOf.forEach((st) => { if (!subject && st && st.rec && st.name) subject = st.name + ' is'; });
+          // A real peer's status carries no name; the roster has it.
+          statusOf.forEach((st, pid) => {
+            const name = st && st.rec ? (st.name || (typeof nameForPeer === 'function' ? nameForPeer(pid) : '')) : '';
+            if (!subject && name) subject = name + ' is';
+          });
         }
       } catch (e) {}
       const kind = recRoomWord();
@@ -4026,7 +4193,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let seen = false;
       try { seen = sessionStorage.getItem('gifos_rec_seen') === '1'; } catch (e) {}
       if (seen) { if (existing) existing.remove(); return; }
-      if (existing) return;
+      const left = document.getElementById('left-modal');
+      if (left && left.style.display === 'flex') { if (existing) existing.remove(); return; }
+      if (existing) {
+        // The recorder's name can land after their status.
+        const t = existing.querySelector('#rec-notice-title');
+        if (t && t.textContent !== recNoticeTitle()) t.textContent = recNoticeTitle();
+        return;
+      }
+      // Someone else is recording you (Zoom and Teams ask the same): staying
+      // is consent, and Leave is right there. The recorder, and a viewer who
+      // is not in a service recording, only read it.
+      let mine = false, onStage = false, host = false;
+      try { mine = !!(typeof myStatus !== 'undefined' && myStatus && myStatus.rec); } catch (e) {}
+      try { onStage = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) {}
+      try { host = (typeof bcHostStored === 'function' && !!bcHostStored()) || document.body.classList.contains('amadmin'); } catch (e) {}
+      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const ask = !mine && (!service || (onStage && !host));
       const bg = document.createElement('div');
       bg.id = 'rec-notice';
       bg.className = 'name-modal';
@@ -4035,8 +4218,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bg.setAttribute('aria-labelledby', 'rec-notice-title');
       bg.innerHTML = '<div class="name-box appear-box"><h3 id="rec-notice-title"></h3>' +
         '<p>Saved on a device in this room. The bar keeps saying Recording until it stops.</p>' +
-        '<button id="rec-notice-ok" type="button" class="appear-primary">OK</button></div>';
+        (ask
+          ? '<p>Staying means you agree to be recorded.</p><div class="appear-actions">' +
+            '<button id="rec-notice-leave" type="button" class="appear-secondary">Leave</button>' +
+            '<button id="rec-notice-ok" type="button" class="appear-primary">Stay</button></div></div>'
+          : '<button id="rec-notice-ok" type="button" class="appear-primary">OK</button></div>');
       bg.querySelector('#rec-notice-title').textContent = recNoticeTitle();
+      const leave = bg.querySelector('#rec-notice-leave');
+      if (leave) leave.onclick = () => {
+        bg.remove();
+        const btn = document.getElementById('leavebtn');
+        if (btn) btn.click();
+      };
       bg.querySelector('#rec-notice-ok').onclick = () => {
         try { sessionStorage.setItem('gifos_rec_seen', '1'); } catch (e) {}
         bg.remove();
@@ -4194,6 +4387,47 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const say = (id, text) => { const el = document.getElementById(id); if (el && text) el.textContent = text; };
       const bar = document.querySelector('.bar');
       const english = (typeof uiLang === 'function') ? uiLang() === 'en' : true;
+      // A host ends the service for everyone watching. A viewer only leaves.
+      // The room does not cut at once: admin-absence runs a silent grace, then
+      // the five-minute countdown in #admcount, then closeRoomNoHost().
+      const paintLeave = (mode) => {
+        const leave = document.getElementById('leavebtn');
+        const lab = leave && leave.querySelector('.docklab');
+        const go = document.getElementById('leave-go');
+        const note = document.getElementById('leave-ask-note');
+        const end = mode === 'end';
+        if (leave) {
+          if (end) {
+            leave.title = 'End the service. Everyone watching sees it close after you leave.';
+            leave.setAttribute('aria-label', 'End the service');
+          } else if (mode === 'watch') {
+            leave.title = 'Leave the service. Your camera and microphone stop.';
+            leave.setAttribute('aria-label', 'Leave the service');
+          } else {
+            leave.title = 'Leave the small group. Your camera and microphone stop.';
+            leave.setAttribute('aria-label', 'Leave the small group');
+          }
+        }
+        if (lab) lab.textContent = end ? 'End' : 'Leave';
+        if (go) go.textContent = end ? 'End' : 'Leave';
+        if (note) {
+          note.hidden = !end;
+          note.textContent = end ? 'Everyone watching sees a five-minute countdown after you leave, and then the room closes.' : '';
+        }
+        if (end) {
+          say('leave-ask-title', 'End the service?');
+          say('left-title', 'You ended the service');
+          say('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
+        } else if (mode === 'watch') {
+          say('leave-ask-title', 'Leave the service?');
+          say('left-title', 'You left the service');
+          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+        } else {
+          say('leave-ask-title', 'Leave the small group?');
+          say('left-title', 'You left the small group');
+          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+        }
+      };
       if (!BROADCAST) {
         if (!english) {
           // A German or Spanish device keeps the translated chrome (applyChrome).
@@ -4217,29 +4451,52 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           leave.title = 'Leave the small group. Your camera and microphone stop.';
           leave.setAttribute('aria-label', 'Leave the small group');
         }
-        say('leave-ask-title', 'Leave the small group?');
-        say('left-title', 'You left the small group');
-        say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+        say('chatprivacy', 'Private to this small group, gone when everyone leaves');
+        const chatMeet = document.getElementById('chatbtn');
+        if (chatMeet) chatMeet.title = 'Chat and share files — stays between the people on this meeting, not on a server';
+        const setMeet = document.getElementById('setbtn');
+        if (setMeet) setMeet.title = 'Meeting settings — your sound mix, timing, and the video quality your camera records';
+        const pinMeet = document.getElementById('cattach');
+        if (pinMeet) { pinMeet.title = 'Pin a file to the meeting'; pinMeet.setAttribute('aria-label', pinMeet.title); }
+        const appMeet = document.getElementById('appbtn');
+        if (appMeet) appMeet.title = 'Run an app inside this meeting — everyone here shares and interacts with it live';
+        const appTitle = document.getElementById('app-title');
+        if (appTitle) appTitle.textContent = 'Run an app in this meeting';
+        const appNote = document.getElementById('app-note');
+        if (appNote) appNote.innerHTML = 'Pick one of your apps. It runs live for <b>everyone here</b> — same state, same moves — with the meeting\'s audio, video and recording around it. Anyone can interact.';
+        const pipMeet = document.getElementById('pipbtn');
+        if (pipMeet) {
+          pipMeet.title = 'Float the meeting in a mini window — it stays on screen while you use other apps';
+          pipMeet.setAttribute('aria-label', 'Float the meeting');
+        }
+        paintLeave('group');
         const help = document.getElementById('helpbtn');
         if (help) help.title = 'How this small group works';
+        const nameLead = document.getElementById('set-name-lead');
+        if (nameLead) nameLead.textContent = 'What everyone sees on your tile:';
         const helpH = document.querySelector('#help-modal h3');
         if (helpH) helpH.textContent = 'How this small group works';
         paintWatchingSeat();
         return;
       }
       document.title = 'Service — GifOS';
-      const curTitle = document.getElementById('paneltitle');
-      if (curTitle && curTitle.textContent !== 'Transcript') curTitle.textContent = 'Service chat';
-      const leave = document.getElementById('leavebtn');
-      if (leave) {
-        leave.title = 'Leave the service. Your camera and microphone stop.';
-        leave.setAttribute('aria-label', 'Leave the service');
+      const svcTitle = document.getElementById('paneltitle');
+      if (svcTitle && svcTitle.textContent !== 'Transcript') svcTitle.textContent = 'Service chat';
+      const leaveSvc = document.getElementById('leavebtn');
+      if (leaveSvc) {
+        leaveSvc.title = 'Leave the service. Your camera and microphone stop.';
+        leaveSvc.setAttribute('aria-label', 'Leave the service');
       }
       say('leave-ask-title', 'Leave the service?');
       say('left-title', 'You left the service');
       say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+      say('chatprivacy', 'Private to this service, gone when everyone leaves');
       const help = document.getElementById('helpbtn');
       if (help) help.title = 'How this service works';
+      const nameLead = document.getElementById('set-name-lead');
+      if (nameLead) nameLead.textContent = 'What everyone sees on the stage:';
+      const setBtn = document.getElementById('setbtn');
+      if (setBtn) setBtn.title = 'Service settings — the picture you send, and the name people see on the stage.';
       const helpH = document.querySelector('#help-modal h3');
       if (helpH) helpH.textContent = 'How this service works';
       const who = document.getElementById('whobtn');
@@ -4249,7 +4506,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const whoP = document.querySelector('#who-modal .name-box p');
       if (whoP) whoP.textContent = 'There is no server in the middle storing this service. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone\u2019s internet address \u2014 nobody is anonymous. \u2713 marks an address the GifOS relay verified or this device saw directly; anything else is only what that person\u2019s device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.';
       const chat = document.getElementById('chatbtn');
-      if (chat && chat.textContent === 'Chat') chat.title = 'Chat with everyone watching — stays between the people here, not on a server';
+      if (chat) chat.title = 'Chat with everyone watching — stays between the people here, not on a server';
       const rec = document.getElementById('recbtn');
       if (rec) rec.title = 'Record this service ON YOUR DEVICE (everyone sees that you are recording)';
       const inv = document.querySelector('#inv-modal h3');
@@ -4262,10 +4519,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (pw) pw.title = 'Viewer password. Optional. It is not part of the link.';
       const files = document.querySelector('#cfiles h4');
       if (files) files.textContent = 'Files pinned to this service';
+      const pin = document.getElementById('cattach');
+      if (pin) { pin.title = 'Pin a file to this service'; pin.setAttribute('aria-label', pin.title); }
+      const appBtn = document.getElementById('appbtn');
+      if (appBtn) appBtn.title = 'Run an app on this service — everyone watching shares it and can use it.';
+      const appTitle = document.getElementById('app-title');
+      if (appTitle) appTitle.textContent = 'Run an app on this service';
+      const appNote = document.getElementById('app-note');
+      if (appNote) appNote.innerHTML = 'Pick one of your apps. It runs live for <b>everyone watching</b> — same state, same moves — around the stage. Anyone can interact.';
+      const pipBtn = document.getElementById('pipbtn');
+      if (pipBtn) {
+        pipBtn.title = 'Float the stage in a mini window. It stays on screen while you use other apps.';
+        pipBtn.setAttribute('aria-label', 'Float the stage');
+      }
+      const appHide = document.getElementById('apphide');
+      if (appHide) appHide.title = 'Hide this app on my screen only. The service keeps sharing it.';
+      const appStop = document.getElementById('appstop');
+      if (appStop && appStop.title.indexOf('meeting') !== -1) appStop.title = 'Stop sharing this app with the service';
       if (bar) bar.setAttribute('aria-label', 'Service controls');
       const shareOnDock = document.getElementById('sharebtn');
       const moreSheet = document.getElementById('barmore');
       const host = bcHostStored() || document.body.classList.contains('amadmin');
+      // A viewer is known at boot; don't wait for the join (applyAdminUi) to
+      // take the camera and mic off their dock, or the name card shows them.
+      if (!host) document.body.classList.add('notadmin');
+      paintLeave(host ? 'end' : 'watch');
       // Slides and a window are how a host fills the stage. Share sits on the
       // host dock, the same place a small group already has it. A viewer keeps
       // it in More until they are allowed to share.
@@ -4279,6 +4557,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const stage = document.getElementById('stagebtn');
         const anchor = document.getElementById('reactbtn');
         if (stage && anchor && stage.parentElement !== bar) bar.insertBefore(stage, anchor);
+        // A service host has no hand to raise, so H is not theirs.
+        for (const id of ['hand', 'react-hand']) { const h = document.getElementById(id); if (h) h.removeAttribute('aria-keyshortcuts'); }
         if (stage && !stage.querySelector('.docklab')) {
           stage.classList.add('iconbtn');
           stage.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="2.4"/><path d="M8.2 13.2c.5-1.5 1.9-2.4 3.8-2.4s3.3.9 3.8 2.4"/><path d="M4 17.5h16"/></svg><span class="docklab dockword">Step on</span>';
@@ -4300,7 +4580,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (plate) plate.hidden = false;
       const stageWatch = document.getElementById('stagefeed');
       if (stageWatch && window.MutationObserver) {
-        new MutationObserver(() => { if (typeof paintStagePlate === 'function') paintStagePlate(); }).observe(stageWatch, { childList: true });
+        // The card too, not only the plate: when the feed lands after the
+        // host's camera-off status, nothing else repaints it, and the stage
+        // stayed a bare frame (Q87). paintBroadcastIdent ends in the plate.
+        new MutationObserver(() => { if (typeof paintBroadcastIdent === 'function') paintBroadcastIdent(); }).observe(stageWatch, { childList: true });
       }
       paintWatchingSeat();
     }
@@ -5536,6 +5819,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // status gossip. The relay's roster is only the GREETER POOL now, never
     // the room; rosterIds is refreshed from the mesh each tick (renderFromOcc).
     let rosterIds = [], rosterNames = {};
+    let roomJoinedAt = 0; // when joinRoom ran (the stage plate says joining until the room is heard)
     let recSrcDirty = true, recStructSig = ''; // the recorder rebuilds its source list on a roster or stage change, not per frame
     const gossipIds = () => rosterIds.filter((id) => id !== myId);
     // The relay's OWN roster: the set of peers currently holding a relay socket
@@ -6675,7 +6959,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let pipManual = false;
     async function enterPip(manual) {
       const v = pipSource();
-      if (!v || document.pictureInPictureElement === v) return;
+      if (!v || document.pictureInPictureElement === v) {
+        // A tap with no picture used to do nothing. Auto-float on leaving the
+        // tab stays quiet: there is still nothing to show.
+        if (manual && !v && typeof BROADCAST !== 'undefined' && BROADCAST) setStatus('Nothing on the stage to float yet.');
+        return;
+      }
       pipManual = !!manual;
       try {
         if (v.requestPictureInPicture) await v.requestPictureInPicture();
@@ -7324,7 +7613,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const fsstrip = document.createElement('div'); fsstrip.id = 'fsstrip';
     const fsclose = document.createElement('button'); fsclose.id = 'fsclose'; fsclose.textContent = '✕'; fsclose.title = 'Exit full screen'; fsclose.setAttribute('aria-label', 'Exit full screen');
     const fsname = document.createElement('div'); fsname.id = 'fsname';
-    fsname.innerHTML = '<span class="fsinitial"></span><span class="fsnm"></span>';
+    fsname.innerHTML = '<img class="fspic" alt=""><span class="fsinitial"></span><span class="fsnm"></span><span class="fsnote">Camera off</span>';
     fsview.appendChild(fsmain); fsview.appendChild(fsname); fsview.appendChild(fsstrip); fsview.appendChild(fsclose);
     document.body.appendChild(fsview);
     let fsSel = null, fsTick = null, fsAutoPid = null;
@@ -7395,9 +7684,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (nm) nm.textContent = text;
       };
       const broadcastFs = typeof BROADCAST !== 'undefined' && BROADCAST;
+      // A service stage with the camera off wears its card (#bc-ident:
+      // picture or initial, name, Camera off). Full screen shows that card,
+      // not the black frame under it.
+      const ident = broadcastFs ? document.getElementById('bc-ident') : null;
+      const identOn = !!(ident && ident.classList.contains('on'));
+      const identCard = () => {
+        if (fsmain.srcObject) fsmain.srcObject = null;
+        fsmain.classList.add('dark');
+        fsBlurClass(fsmain, 0);
+        showName(true, (document.getElementById('bc-ident-name') || {}).textContent || '');
+        const img = document.getElementById('bc-ident-img');
+        const pic = fsname.querySelector('.fspic');
+        const url = ident.classList.contains('pic') && img ? img.getAttribute('src') : '';
+        if (pic) { if (url) { if (pic.getAttribute('src') !== url) pic.setAttribute('src', url); } else pic.removeAttribute('src'); }
+        fsname.classList.add('ident');
+        fsname.classList.toggle('pic', !!url);
+      };
+      fsname.classList.remove('ident', 'pic');
       if (main) {
         if (fsSel !== 'auto') fsSel = main.key; // a pin re-anchors; auto stays auto
-        if (main.dark) {
+        if (identOn) identCard();
+        else if (main.dark) {
           if (fsmain.srcObject) fsmain.srcObject = null;
           fsmain.classList.add('dark');
           fsBlurClass(fsmain, 0);
@@ -7412,7 +7720,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         fsmain.dataset.key = main.key;
       } else {
         fsmain.srcObject = null; fsmain.dataset.key = ''; fsmain.classList.remove('dark'); fsBlurClass(fsmain, 0);
-        if (broadcastFs) {
+        if (identOn) identCard();
+        else if (broadcastFs) {
           const lineEl = document.getElementById('bc-stage-line');
           showName(true, (lineEl && lineEl.textContent) || 'The stage is clear.');
           const letter = fsname.querySelector('.fsinitial');
@@ -7515,7 +7824,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.body.classList.remove('fsopen');
       fsmain.srcObject = null;
       fsmain.classList.remove('dark');
-      fsname.classList.remove('on');
+      fsname.classList.remove('on', 'ident', 'pic');
       for (const tv of fsstrip.querySelectorAll('video')) tv.srcObject = null; // no leftover sinks — decode work ends with the view
       fsstrip.textContent = ''; fsstrip.dataset.set = '';
       // Back to Full screen, as a closed sheet returns to its button (More
@@ -10058,6 +10367,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // up to three rungs and never moved when the battery state did.
       const q = lastQ || rung(linked);
       const link = (relayUp() || (meshSeat() && meshSeat().state === 3 && meshCoord() && meshCoord().pc !== 0)) ? '' : ' · reconnecting to the room…';
+      // A SERVICE VIEWER sends no video: the quality rung and the password
+      // hint are the host's business, and the room bar counts who is watching.
+      const bcWatcher = !!(BROADCAST && !(typeof bcHostStored === 'function' && bcHostStored())
+        && !document.body.classList.contains('amadmin') && !(typeof myStatus !== 'undefined' && myStatus.stg));
+      // The badge and the room bar already say watching, so a viewer's line
+      // names who is live: a host here, or failing that the first other
+      // person on the stage. Nobody known yet keeps the watching sentence.
+      let bcLiveName = '';
+      if (bcWatcher && n > 1) {
+        const nameOf = (id) => ((peers.get(id) || {}).name || rosterNames[id] || '').trim();
+        const live = admins.filter((id) => id !== myId && peers.has(id) && nameOf(id))
+          .concat(stageIds().filter((id) => id !== myId && nameOf(id)));
+        if (live.length) bcLiveName = nameOf(live[0]);
+      }
+      // A LIVE SERVICE HOST is told she is live; the room bar counts who is
+      // watching, and the password she typed to go live is the host one, so
+      // the hint names the VIEWER password (without it the broadcast stays
+      // blurred, see blurLevelFor).
+      const bcLive = !!(BROADCAST && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
       let extra = '';
       if (n > 1) {
         if (!roomPw) extra = ' · ' + uiText('unlockClear', 'faces stay soft until a password');
@@ -11864,6 +12192,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Sealed frame over this pair's DataChannel (chat, files, relay control).
     const dcSend = (p, msg) => {
       if (p && p.wireHold) return p.wireHold.then(() => dcSend(p, msg)); // DEBUG lever, see renegotiate
+      if (p && p.testTx) { p.testTx.push(msg); return Promise.resolve(); } // openLinkForTest: a channel that only records
       if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
       const dc = p.dc;
       return txm(() => net.seal(roomE2E, msg).then((env) =>
@@ -11969,6 +12298,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         refreshAvatarSurfaces();
       }).catch(() => {});
     }
+    const STAGE_HEAR_MS = 20000;
+    let platePaintT = 0;
     function paintStagePlate() {
       const el = document.getElementById('bc-stage');
       const line = document.getElementById('bc-stage-line');
@@ -11980,7 +12311,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (picture) return;
       let on = false;
       try { on = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) { on = false; }
-      line.textContent = on ? 'You are on stage. Your camera is off.' : 'The stage is clear.';
+      if (on) { line.textContent = 'You are on stage. Your camera is off.'; return; }
+      // "The stage is clear." only once it is known. Someone else on stage
+      // with no picture yet: their feed is on its way. Nobody heard from yet,
+      // before and just after joining: still joining (a silent room reads clear
+      // STAGE_HEAR_MS after joinRoom, so the line never hangs on joining).
+      const nameOf = (id) => ((peers.get(id) || {}).name || rosterNames[id] || '').trim();
+      // A host whose live status says on stage counts before the roster
+      // lists them (it lags their first status by a beat or more).
+      const others = stageIds().filter((id) => id !== myId)
+        .concat(admins.filter((id) => id !== myId && stHold(id) && (statusOf.get(id) || {}).stg));
+      if (others.length) {
+        const nm = others.map(nameOf).find((x) => x);
+        line.textContent = nm ? 'Connecting to ' + nm + '…' : 'Connecting to the stage…';
+        return;
+      }
+      // Heard means the host is known (a hosted room's first status from
+      // them can land before their host proof, when they are not yet on the
+      // stage), or in an open room anyone's status. The host knows its stage.
+      const meHost = (typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin');
+      const heard = meHost || (hasAdminRoom() ? admins.some((id) => id !== myId) : Array.from(statusOf.keys()).some((id) => id !== myId));
+      const wait = roomJoinedAt ? roomJoinedAt + STAGE_HEAR_MS - Date.now() : 1;
+      if (!heard && wait > 0) {
+        line.textContent = 'Joining the service…';
+        clearTimeout(platePaintT);
+        if (roomJoinedAt) platePaintT = setTimeout(paintStagePlate, wait + 50);
+        return;
+      }
+      line.textContent = 'The stage is clear.';
     }
     function paintBroadcastIdent() {
       const el = document.getElementById('bc-ident');
@@ -11994,7 +12352,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const isMe = pid === myId;
       const st = isMe ? myStatus : (statusOf.get(pid) || {});
       const camOn = isMe ? myStatus.camOff === false : st.camOff === false;
-      if (camOn) { el.classList.remove('on'); return; }
+      // A screen share is a picture too, camera or not.
+      if (camOn || st.scr) { el.classList.remove('on'); if (typeof paintStagePlate === 'function') paintStagePlate(); return; }
       let url = '', hash = '', name = '';
       if (isMe) {
         const a = (GifOS.store.identity() || {}).avatar;
@@ -12014,7 +12373,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (img.getAttribute('data-hash') !== hash) { img.src = url; img.setAttribute('data-hash', hash); }
         } else img.removeAttribute('src');
       }
-      el.classList.toggle('on', !!url);
+      const init = document.getElementById('bc-ident-init');
+      if (init) init.textContent = (name.trim()[0] || '').toUpperCase();
+      // No picture is still someone: on a stage frame that is black, the
+      // initial and the name stand in for it.
+      el.classList.toggle('pic', !!url);
+      el.classList.toggle('me', isMe);
+      el.classList.toggle('on', !!(url || (name && document.querySelector('#stagefeed .rowtile'))));
       if (typeof paintStagePlate === 'function') paintStagePlate();
     }
     function avatarChip(byId) {
@@ -16626,6 +16991,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + '<li>The link is all you need. Your <b>camera and microphone are not used</b> — watching asks no permissions at all.</li>'
           + '<li>The video stays <b>blurred</b> until the host sets a <b>viewer password</b>. If you’re asked for one, the host shares it separately — it’s the ticket, and it does not ride the link.</li>'
           + '<li><b>Chat</b> is live to everyone here, is not stored on any server, and is gone when the broadcast ends.</li>'
+          + '<li><b>Sound on</b> on the room bar mutes the stage on this device. Everyone else still hears it.</li>'
           + '</ul>'
           + '<h4>Speaking up</h4>'
           + '<ul class="help-list">'
@@ -16636,10 +17002,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + '<ul class="help-list">'
           + '<li>Your <b>host password</b> is yours alone — it IS your control of this broadcast. Do not send it to viewers.</li>'
           + '<li>The <b>Password</b> button sets or changes the <b>viewer password</b>: without one the broadcast stays blurred; with one, whoever you give it to sees you clear.</li>'
-          + '<li>Raised hands are a list. <b>Promote</b> calls that person onto the stage. <b>Demote</b> on their stage seat sends them back to watching, and they stop publishing.</li>'
-          + '<li>Mute, blur, and ban are on each stage seat and on each person in the raised-hands list.</li>'
-          + '<li>Chat has a <b>Turn chat off</b> switch (your messages still land) and per-message delete.</li>'
-          + '<li>A broadcast lives while its host is present: leave, and it winds down after a countdown.</li>'
+          + '<li>The hand queue floats to the top — tap a name to call them up on Stage. Revoking their grant pulls them back down.</li>'
+          + '<li>Chat has a <b>Turn chat off</b> switch (your messages still land) and per-message delete. Ban lives on each tile’s controls.</li>'
+          + '<li>A broadcast lives while its host is present. <b>End</b> it, and everyone watching sees a five-minute countdown, then the room closes.</li>'
           + '</ul>'
           + '<p>Underneath it is the same thing as a GifOS Meeting: everything goes straight between the people here, no accounts, no company keeping your video.</p>';
       } else if (ROOM.kind === 'app') {
@@ -16757,8 +17122,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     document.getElementById('whobtn').onclick = showWhoModal;
     const airWho = document.getElementById('airwho');
     if (airWho) airWho.onclick = showWhoModal;
+    const airSound = document.getElementById('airsound');
+    if (airSound) airSound.onclick = () => {
+      if (typeof BROADCAST === 'undefined' || !BROADCAST) return;
+      serviceHeard = !serviceHeard;
+      try { applyBuses(); } catch (e) {}
+      try { paintServiceSound(); } catch (e) {}
+      try {
+        setStatus(serviceHeard
+          ? 'You can hear the stage.'
+          : 'The stage is muted on this device. Everyone else still hears it.');
+      } catch (e) {}
+    };
 
     function joinRoom() {
+      roomJoinedAt = Date.now();
+      paintStagePlate();
       room = params.get('v') || shortCode();
       // A meeting has no separate join token — the link IS the capability, so the
       // room id is the whole identity. There is no &k= at all.
@@ -17185,7 +17564,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         watch.classList.remove('lob-link');
         watch.classList.add('lob-action');
         watch.innerHTML = 'Watch<small>Paste a link someone sent you</small>';
-        document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch show up here.';
+        document.getElementById('lob-empty').textContent = 'Services you start or watch show up here.';
         const watchNote = document.getElementById('lob-watch-note');
         if (watchNote) { watchNote.hidden = false; watchNote.textContent = BC_WATCH_COPY; }
       }
@@ -17874,7 +18253,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // CONTENT, so a participant with no link to anyone hears nothing until
     // its first link opens. File BODIES ride the DataChannels only (P0/P1, by
     // budget policy).
+    const sentFrames = []; // the last app frames I sent to the room (sentFramesForTest)
     function sendAll(msg, opts) { // opts: a gossip scope (captionScope) — chat, files and deletions stay room-wide
+      sentFrames.push(msg); if (sentFrames.length > 20) sentFrames.shift();
       fanOut(msg, (p) => dcSend(p, msg), opts);
     }
     // Frames that arrived without a DataChannel for this pair: mesh gossip,
@@ -18082,6 +18463,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // re-broadcasting on first sight made ONE chat line N floods — O(N)
           // frames per node per line, the N×N the mesh exists to prevent.
         }
+      } else if (m.k === 'react') {
+        // One flood from the person who clapped. The stage adds it to the
+        // count. It is not sent on again.
+        // It comes over the direct link and over the mesh, so the id drops
+        // the second copy.
+        const who = p && p.id;
+        if (who && who !== myId && audienceReactFresh(m.id)) takeAudienceReact(m.e, who);
       } else if (m.k === 'bx' && typeof window !== 'undefined' && window.GifOS && GifOS.meetSession && typeof window.__gifosMeetEmit === 'function') {
         GifOS.meetSession.takeXfer(m, window.__gifosMeetEmit);
       } else if (m.k === 'chatack') {
@@ -19028,9 +19416,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The chat gate: repainted on every mod merge and admin-state flip. The
     // admin keeps a live input while chat is off (announcements still flow);
     // everyone else's composer locks, with the reason in the placeholder.
+    let chatGateOverride = null; // chatGateForTest: { off, admin } stands in for the signed switch
     function paintChatGate() {
-      const off = !!chatOffInfo();
-      const locked = off && !amAdmin;
+      const off = chatGateOverride ? !!chatGateOverride.off : !!chatOffInfo();
+      const locked = off && !(chatGateOverride ? chatGateOverride.admin : amAdmin);
       const inp = document.getElementById('chat-in');
       inp.disabled = locked;
       const praying = document.getElementById('pray') && document.getElementById('pray').getAttribute('aria-pressed') === 'true';
@@ -19286,6 +19675,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       prayBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
       paintChatGate();
     };
+    // aria-expanded follows the panel, however it opened or closed.
+    chatBtn.setAttribute('aria-controls', 'chatpanel');
+    new MutationObserver(() => {
+      chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
+      document.body.classList.toggle('chatside', chatPanelOpen());
+      if (window.__gifosDock) window.__gifosDock.place();
+    }).observe(chatPanel, { attributes: true, attributeFilter: ['class'] });
+    chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
     chatBtn.onclick = () => {
       chatPanel.classList.toggle('open');
       try { paintChatBtn(); } catch (e) {}
@@ -23739,7 +24136,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const blocked = !myStatus.scr && !mayShareScreen(myId);
       document.getElementById('share-go').style.display = blocked ? 'none' : '';
       document.getElementById('share-denied').style.display = blocked ? '' : 'none';
-      shareSheetOpener = (document.activeElement && document.activeElement !== document.body) ? document.activeElement : shareBtn;
+      // From a key, focus goes back to Share, or to More when Share sits
+      // folded under it (a viewer's, or a dock squeezed beside the chat).
+      const shareShown = shareBtn && shareBtn.getClientRects().length;
+      shareSheetOpener = (document.activeElement && document.activeElement !== document.body) ? document.activeElement
+        : (shareShown ? shareBtn : (document.getElementById('bartoggle') || shareBtn));
       modal.style.display = 'flex';
       const focusEl = document.getElementById(shareSheetFocusId(blocked));
       if (focusEl && focusEl.focus) { try { focusEl.focus(); } catch (e) {} }
@@ -23902,6 +24303,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // is honoured everywhere; the fader range above 0 still rides volume.
       el._aud.muted = !!el._gmute || !(vol > 0); // group mute rides the same pipe as the faders
     }
+    // Service mute is a local gate on the stage bus. The saved fader stays put.
+    function heardStage() {
+      let base = 1;
+      try { base = mix.stage; } catch (e) { base = 1; }
+      try {
+        if (typeof BROADCAST !== 'undefined' && BROADCAST && !serviceHeard) return 0;
+      } catch (e) {}
+      return base;
+    }
     function applyBuses() {
       const sealed = iAmWaiting(); // a person in the waiting room hears no one
       const stg = new Set(stageIds());
@@ -23922,7 +24332,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       // feed tiles (the nested mosaics): stage strip is Stage; stadium tiles
       // are The stadium.
-      for (const el of stagefeedEl.querySelectorAll('.rowtile video')) { if (el.classList.contains('stageface')) continue; busVolume(el, sealed ? 0 : mix.stage); }
+      const stageVol = heardStage();
+      for (const el of stagefeedEl.querySelectorAll('.rowtile video')) { if (el.classList.contains('stageface')) continue; busVolume(el, stageVol); }
       for (const el of stadiumEl.querySelectorAll('.rowtile')) {
         const v = el.querySelector('video'); if (!v) continue;
         busVolume(v, sealed ? 0 : mix.stadium); hasStadium = true; // the only stadium-area tile now is the Stadium composite
@@ -23932,7 +24343,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const stadLab = document.getElementById('mixlab-stadium');
       const stadMark = hasStadium ? '1' : '0';
       if (stadLab && stadLab.dataset.on !== stadMark) { stadLab.dataset.on = stadMark; stadLab.style.display = hasStadium ? '' : 'none'; }
-      if (stageEar) { stageEar.el.volume = mix.stage; stageEar.el.muted = sealed || !(mix.stage > 0); } // the Stage fader drives the ear fold (muted at 0: iOS ignores volume)
+      if (stageEar) { stageEar.el.volume = stageVol; stageEar.el.muted = !(stageVol > 0); } // the Stage fader drives the ear fold (muted at 0: iOS ignores volume)
       kickPausedAudio();
     }
     // The Settings modal: the sound mix's new home (same fader ids as when it
@@ -25855,7 +26266,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const tile = meTile && meTile.tile;
       const chips = tile && tile.querySelector('.chips');
       const text = chips ? (chips.textContent || '') : '';
-      if (text.indexOf('recording this meeting') < 0) return false;
+      if (text.indexOf('recording this ' + recRoomWord()) < 0) return false;
       if (myStatus.bot && text.indexOf('bot') < 0) return false;
       return true;
     }
@@ -26221,7 +26632,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try {
         opts = opts || { scope: 'all', quality: recDefaultQuality(IS_MOBILE), matchMix: true };
         if (!ensureAc()) return fail('This browser cannot record sound.');
-        const scope = opts.scope || 'all';
+        let scope = opts.scope || 'all';
+        // A service is the stage. The row and the stadium are not on screen,
+        // so a recording of them would be a picture nobody is watching.
+        if (typeof BROADCAST !== 'undefined' && BROADCAST && scope !== 'app') scope = 'stage';
         recMatchMix = opts.matchMix !== false;
         recQuality = REC_QUALITY[opts.quality] ? opts.quality : recDefaultQuality(IS_MOBILE);
         const q = REC_QUALITY[recQuality];
@@ -26398,8 +26812,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // has people: the stadium needs "everything", a row records the row,
       // and an empty stage is never the default — Start used to pick it,
       // bail, and close the sheet before anyone could read why.
+      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
       const srcNow = recSources();
-      const scopeDefault = srcNow.stage.length ? 'stage' : (srcNow.stadium.length ? 'all' : (srcNow.row.length ? 'row' : 'stage'));
+      const scopeDefault = service ? 'stage' : (srcNow.stage.length ? 'stage' : (srcNow.stadium.length ? 'all' : (srcNow.row.length ? 'row' : 'stage')));
       const stageSub = srcNow.stage.length
         ? 'Just the front — the reader or speaker, verbatim. One clean feed.'
         : 'Nobody is on the stage yet.';
@@ -26623,9 +27038,51 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // serialized as the inset shorthand, which also pins top, so the dock
       // cannot move upward. A tuck is an extra downward shift in the same
       // translate, including when the grip is still centered.
+      // With the chat open beside the call (body.chatside on a wide window),
+      // the dock centres on the call, not the window, when it fits there; it
+      // used to straddle the chat's edge with End over the panel.
+      const chatPanelEl = document.getElementById('chatpanel');
+      // When the whole dock is wider than the call beside the chat, it goes to
+      // the phone sizes (.dockslim) and moves these into More, one at a time,
+      // until it fits; More shows a stand-in that presses the real button.
+      const slimOrder = ['chatbtn', 'invite', 'fsbtn', 'sharebtn'];
+      const fitBeside = (side) => {
+        bar.classList.remove('dockslim');
+        for (const id of slimOrder) { const b = document.getElementById(id); if (b) b.classList.remove('inmore'); }
+        const room = window.innerWidth - side;
+        if (side > 0 && bar.offsetWidth + 16 > room) {
+          bar.classList.add('dockslim');
+          for (const id of slimOrder) {
+            if (bar.offsetWidth + 16 <= room) break;
+            const b = document.getElementById(id);
+            if (b && b.parentElement === bar && b.getClientRects().length) b.classList.add('inmore');
+          }
+        }
+        for (const p of bar.querySelectorAll('#barmore .dockmore')) {
+          const b = document.getElementById(p.dataset.dock);
+          const on = !!(b && b.classList.contains('inmore'));
+          p.style.display = on ? '' : 'none';
+          if (!on) continue;
+          const lab = b.querySelector('.docklab');
+          p.textContent = lab ? lab.textContent : (b.getAttribute('aria-label') || p.textContent);
+          p.title = b.title;
+        }
+      };
+      for (const p of bar.querySelectorAll('#barmore .dockmore')) {
+        p.addEventListener('click', () => {
+          const b = document.getElementById(p.dataset.dock);
+          toggle.click(); // close More first, as its own items do
+          if (b) b.click();
+        });
+      }
       const placeDock = () => {
+        const side = document.body.classList.contains('chatside') && window.innerWidth >= 800 && chatPanelEl ? chatPanelEl.offsetWidth : 0;
+        fitBeside(side);
         const w = bar.offsetWidth, h = bar.offsetHeight;
-        const maxX = Math.max(0, (window.innerWidth - w) / 2 - 8);
+        const beside = side > 0 && w + 16 <= window.innerWidth - side;
+        document.body.classList.toggle('dockbeside', beside);
+        const cx = beside ? -side / 2 : 0;
+        const maxX = Math.max(0, (window.innerWidth - (beside ? side : 0) - w) / 2 - 8);
         const maxY = Math.max(0, window.innerHeight - h - 22);
         dockx = Math.max(-maxX, Math.min(maxX, dockx));
         docky = Math.max(-6, Math.min(maxY, docky));
@@ -26634,11 +27091,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bar.style.top = '';
         bar.style.bottom = '';
         const extra = tucked ? (h + Math.max(0, docky) + 40) : 0;
-        if (!extra && dockx === 0 && docky === 0) {
+        if (!extra && dockx === 0 && docky === 0 && !cx) {
           bar.style.transform = '';
           return;
         }
-        bar.style.transform = 'translateX(-50%) translate(' + dockx + 'px, ' + (-docky + extra) + 'px)';
+        bar.style.transform = 'translateX(-50%) translate(' + (cx + dockx) + 'px, ' + (-docky + extra) + 'px)';
       };
       const markTuck = (on) => {
         tucked = !!on;
@@ -26675,10 +27132,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return true;
         },
         wake() { wakeDock(); return !tucked; },
+        place: placeDock,
       };
       const nudge = (dx, dy) => { dockx += dx; docky += dy; placeDock(); };
       const resetDock = () => { dockx = 0; docky = 0; placeDock(); };
       window.addEventListener('resize', placeDock);
+      // A button that appears while the chat is open (Step on, Video for a
+      // promoted viewer) refits the dock beside it.
+      if (window.ResizeObserver) new ResizeObserver(() => { if (document.body.classList.contains('chatside')) placeDock(); }).observe(bar);
       if (grip) {
         grip.addEventListener('keydown', (e) => {
           const step = e.shiftKey ? 48 : 24;
@@ -26799,9 +27260,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         visualViewport.addEventListener('resize', () => { setBarH(); syncKb(); });
         visualViewport.addEventListener('scroll', syncKb);
       }
-      const chatPanelEl = document.getElementById('chatpanel');
-      if (chatPanelEl && window.MutationObserver) {
-        try { new MutationObserver(setBarH).observe(chatPanelEl, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
+      const chatPanelEl2 = document.getElementById('chatpanel');
+      if (chatPanelEl2 && window.MutationObserver) {
+        try { new MutationObserver(setBarH).observe(chatPanelEl2, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
       }
       setBarH();
       syncKb();
@@ -26958,6 +27419,105 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, 250);
     })();
 
+    // Audience reactions on a service. Each clap is one small frame. The stage
+    // adds them up, so a room of claps is one pill, not a pile of emojis.
+    const AUDIENCE_REACTS = ['👏', '👍', '👎', '😂'];
+    const AUDIENCE_REACT_NAME = { '👏': 'claps', '👍': 'yes', '👎': 'no', '😂': 'laughs' };
+    const audienceReactCounts = new Map();
+    const audienceReactRate = new Map();
+    let audienceReactFade = 0;
+    function takeAudienceReact(emoji, fromId) {
+      if (typeof BROADCAST === 'undefined' || !BROADCAST) return false;
+      emoji = String(emoji || '');
+      if (AUDIENCE_REACTS.indexOf(emoji) < 0) return false;
+      const who = String(fromId || 'me');
+      const now = Date.now();
+      const recent = (audienceReactRate.get(who) || []).filter((t) => now - t < 10000);
+      if (recent.length >= 6) return false;
+      recent.push(now);
+      audienceReactRate.set(who, recent);
+      if (audienceReactRate.size > 400) audienceReactRate.clear();
+      const row = audienceReactCounts.get(emoji) || { n: 0, until: 0, who: [] };
+      if (now > row.until) { row.n = 0; row.who = []; }
+      row.n += 1;
+      // Who clapped, latest first, once each. The count stays the count.
+      const mine = who === 'me' || (typeof myId !== 'undefined' && who === myId);
+      const name = mine ? 'You' : String(nameForPeer(who) || '').trim().slice(0, 40);
+      if (name) {
+        row.who = (row.who || []).filter((x) => x.id !== who);
+        row.who.unshift({ id: who, name });
+        if (row.who.length > 50) row.who.length = 50;
+      }
+      row.until = now + 4000;
+      audienceReactCounts.set(emoji, row);
+      paintAudienceReacts();
+      return true;
+    }
+    function paintAudienceReacts() {
+      const host = document.getElementById('bc-reacts');
+      if (!host) return;
+      const now = Date.now();
+      host.textContent = '';
+      let any = false;
+      let soon = Infinity;
+      for (let i = 0; i < AUDIENCE_REACTS.length; i++) {
+        const emoji = AUDIENCE_REACTS[i];
+        const row = audienceReactCounts.get(emoji);
+        if (!row || row.n < 1 || now > row.until) continue;
+        any = true;
+        if (row.until < soon) soon = row.until;
+        const slot = document.createElement('span');
+        slot.className = 'bcslot';
+        const pill = document.createElement('span');
+        pill.className = 'bcreact';
+        const n = row.n > 999 ? '999+' : String(row.n);
+        pill.textContent = emoji + ' ' + n;
+        const names = (row.who || []).map((x) => x.name);
+        let label = n + ' ' + AUDIENCE_REACT_NAME[emoji];
+        if (names.length) {
+          const more = names.length - 2;
+          label += ' from ' + (names.length === 1 ? names[0] : more > 0 ? names.slice(0, 2).join(', ') + ' and ' + more + ' other' + (more === 1 ? '' : 's') : names.join(' and '));
+        }
+        pill.setAttribute('aria-label', label);
+        slot.appendChild(pill);
+        if (names.length) {
+          const line = document.createElement('span');
+          line.className = 'bcwho';
+          line.setAttribute('aria-hidden', 'true');
+          line.textContent = names.slice(0, 2).join(', ') + (names.length > 2 ? ' +' + (names.length - 2) : '');
+          slot.appendChild(line);
+        }
+        host.appendChild(slot);
+      }
+      host.hidden = !any;
+      clearTimeout(audienceReactFade);
+      if (soon < Infinity) audienceReactFade = setTimeout(paintAudienceReacts, Math.max(0, soon - now) + 40);
+    }
+    // Clap ids already counted. A frame without an id (an older device)
+    // still counts.
+    const audienceReactSeen = new Set();
+    function audienceReactFresh(id) {
+      if (typeof id !== 'string' || !id) return true;
+      const k = id.slice(0, 64);
+      if (audienceReactSeen.has(k)) return false;
+      audienceReactSeen.add(k);
+      if (audienceReactSeen.size > 2000) audienceReactSeen.delete(audienceReactSeen.values().next().value);
+      return true;
+    }
+    function sendAudienceReact(emoji) {
+      takeAudienceReact(emoji, (typeof myId !== 'undefined' && myId) || 'me');
+      const id = uid('r');
+      audienceReactFresh(id);
+      const msg = { k: 'react', e: emoji, id };
+      try { sendAll(msg, { ephemeral: true }); } catch (e) {}
+      // The roster catches up on its own tick, so a link that just opened can
+      // be missing from it. The clap goes over that link too. The id drops
+      // the copy a peer gets both ways.
+      try {
+        const sent = new Set(gossipIds());
+        for (const p of peers.values()) if (p && p.id && !sent.has(p.id) && p.dc && p.dc.readyState === 'open') dcSend(p, msg);
+      } catch (e) {}
+    }
     (function () {
       const btn = document.getElementById('reactbtn');
       const tray = document.getElementById('reacttray');
@@ -26981,6 +27541,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       btn.onclick = () => {
         if (tray.hasAttribute('hidden')) {
           if (bar && more && !bar.classList.contains('collapsed')) more.click();
+          // A service host answers hands and has none to raise (no dock hand,
+          // no H), so the tray leaves ✋ out for them too.
+          const rh = document.getElementById('react-hand');
+          if (rh) rh.hidden = !canRaiseHand();
           tray.removeAttribute('hidden');
           btn.setAttribute('aria-expanded', 'true');
           btn.setAttribute('aria-pressed', 'true');
@@ -26991,22 +27555,32 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const b = e.target.closest('button');
         if (!b) return;
         if (b.id === 'react-hand') {
+          if (!canRaiseHand()) return;
           const hand = document.getElementById('hand');
           if (hand) hand.click();
           return;
         }
         const label = b.getAttribute('data-burst');
         if (!label) return;
-        const tile = document.querySelector('.tile.me');
-        if (!tile) return;
-        let burst = tile.querySelector('.reactburst');
-        if (!burst) { burst = document.createElement('div'); burst.className = 'reactburst'; tile.appendChild(burst); }
-        burst.textContent = label;
         // Restart the fade. The stylesheet owns the 1.6s, so a second tap
         // starts the burst again without a timer in this script.
-        burst.classList.remove('show');
-        void burst.offsetWidth;
-        burst.classList.add('show');
+        const flashBurst = (parent) => {
+          if (!parent) return;
+          let burst = parent.querySelector('.reactburst');
+          if (!burst) { burst = document.createElement('div'); burst.className = 'reactburst'; parent.appendChild(burst); }
+          burst.textContent = label;
+          burst.classList.remove('show');
+          void burst.offsetWidth;
+          burst.classList.add('show');
+        };
+        flashBurst(document.querySelector('.tile.me'));
+        // A service hides the gallery, so the same clap has to land on the
+        // stage or the person who sent it never sees it. The count is what
+        // everyone else sees: one pill per emoji, not one burst per person.
+        if (typeof BROADCAST !== 'undefined' && BROADCAST) {
+          flashBurst(document.getElementById('bc-react'));
+          sendAudienceReact(label);
+        }
       });
     })();
 
@@ -27393,11 +27967,110 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const t = e.target;
       if (t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]')) return;
       const k = (e.key || '').toLowerCase();
+      if (k === 'f') {
+        // Full screen, as Zoom and YouTube give it a key; F again closes.
+        if (!document.querySelector('.bar') || document.querySelector('#lobby.show') || topNameModal()) return;
+        const fb = document.getElementById('fsbtn');
+        if (!fb || fb.offsetParent === null) return;
+        e.preventDefault();
+        fb.click();
+        return;
+      }
+      if (k === 's') {
+        // Share, as Zoom gives it a key: wherever this person has Share (the
+        // dock, More, or More's stand-in beside the chat), never for a viewer
+        // who has not been allowed to share.
+        if (!document.querySelector('.bar') || document.querySelector('#lobby.show') || topNameModal()) return;
+        if (!shareOffered()) return;
+        e.preventDefault();
+        document.getElementById('sharebtn').click();
+        return;
+      }
+      if (k === 'c' || k === 'r' || k === 'h') {
+        // Chat, Reactions and the hand, as Zoom and Meet give them keys.
+        if (!document.querySelector('.bar') || document.querySelector('#lobby.show') || topNameModal()) return;
+        if (k === 'h') {
+          if (!canRaiseHand()) return;
+          e.preventDefault();
+          handBtn.click();
+          return;
+        }
+        const btn = document.getElementById(k === 'c' ? 'chatbtn' : 'reactbtn');
+        if (!btn || btn.offsetParent === null) return;
+        e.preventDefault();
+        btn.click();
+        // Land where the next key does something: the message box, or the
+        // first reaction (Escape closes either and comes back).
+        if (k === 'c' && chatPanelOpen()) { const box = document.getElementById('chat-in'); if (box) box.focus(); }
+        if (k === 'r') {
+          const tray = document.getElementById('reacttray');
+          const first = tray && !tray.hasAttribute('hidden') && tray.querySelector('button:not([hidden])');
+          if (first) first.focus();
+        }
+        return;
+      }
       if (k !== 'm' && k !== 'v') return;
       const btn = k === 'm' ? micBtn : camBtn;
       if (!btn || btn.offsetParent === null) return;
       e.preventDefault();
       btn.click();
+    });
+    // A service host has no hand to raise (theirs is hidden in More); a
+    // viewer has it on the dock, and anyone in a small group can raise one.
+    function canRaiseHand() {
+      if (!handBtn || handBtn.style.display === 'none') return false;
+      const svc = typeof BROADCAST !== 'undefined' && BROADCAST;
+      return !svc || !!(handBtn.parentElement && handBtn.parentElement.classList.contains('bar'));
+    }
+    // Share is offered when its button is not hidden by the room's rules;
+    // folded under More (or moved there beside the chat) still counts.
+    function shareOffered() {
+      const b = document.getElementById('sharebtn');
+      if (!b || document.body.classList.contains('app-room')) return false;
+      return b.classList.contains('inmore') || getComputedStyle(b).display !== 'none';
+    }
+    // ? lists the keys that work for this person right now (a viewer has
+    // no mic or camera on the dock, so M and V are left out).
+    const keysModal = document.getElementById('keys-modal');
+    function openKeys() {
+      const rows = [];
+      if (micBtn && micBtn.offsetParent !== null) rows.push(['M', 'Mute or unmute']);
+      if (camBtn && camBtn.offsetParent !== null) rows.push(['V', 'Turn your video on or off']);
+      const chatB = document.getElementById('chatbtn'), reactB = document.getElementById('reactbtn');
+      if (chatB && chatB.offsetParent !== null) rows.push(['C', 'Open or close the chat']);
+      if (reactB && reactB.offsetParent !== null) rows.push(['R', 'Open Reactions']);
+      if (canRaiseHand()) rows.push(['H', 'Raise or lower your hand']);
+      const fsB = document.getElementById('fsbtn');
+      if (fsB && fsB.offsetParent !== null) rows.push(['F', 'Open or close Full screen']);
+      if (shareOffered()) rows.push(['S', 'Share your screen, or stop sharing']);
+      rows.push(['Esc', 'Close a sheet or the chat, then fold More']);
+      rows.push(['Tab', 'Move through the controls, top to bottom']);
+      rows.push(['Arrows', 'On the grip: move the controls']);
+      rows.push(['?', 'Show this list']);
+      const dl = document.getElementById('keys-list');
+      dl.textContent = '';
+      for (const [k, what] of rows) {
+        const dt = document.createElement('dt'), kb = document.createElement('kbd'), dd = document.createElement('dd');
+        kb.textContent = k; dt.appendChild(kb); dd.textContent = what;
+        dl.appendChild(dt); dl.appendChild(dd);
+      }
+      keysModal.style.display = 'flex';
+      queueMicrotask(syncModalFocus);
+    }
+    document.getElementById('keys-close').onclick = () => { keysModal.style.display = 'none'; };
+    document.getElementById('help-keys').onclick = () => {
+      document.getElementById('help-modal').style.display = 'none';
+      openKeys();
+    };
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== '?' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target;
+      if (t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]')) return;
+      // Only in a call: the dock is on screen (not the lobby or a name card).
+      const dock = document.querySelector('.bar');
+      if (!dock || !dock.getClientRects().length || document.querySelector('#lobby.show') || keysModal.style.display !== 'none' || topNameModal()) return;
+      e.preventDefault();
+      openKeys();
     });
     // Flip front/back camera (mobile convention). regrabCamera does the whole
     // swap: same MediaStream identity, senders re-fed, blur pipe rebuilt.
@@ -27723,9 +28396,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       syncModalFocus();
       const top = topNameModal();
       if (e.key === 'Escape') {
-        // The full-screen view sits over everything. When the browser kept it
-        // out of real full screen, Escape reaches the page and must close the
-        // view, not fold More beneath it.
+        // The full-screen view sits over everything (z 60). When the
+        // browser kept it out of real full screen, Escape reaches the page
+        // and must close the view, not fold More beneath it.
         const fsv = document.getElementById('fsview');
         if (fsv && fsv.classList.contains('on')) {
           const x = document.getElementById('fsclose');
@@ -27743,6 +28416,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           tray.setAttribute('hidden', '');
           const rb = document.getElementById('reactbtn');
           if (rb) { rb.setAttribute('aria-expanded', 'false'); rb.setAttribute('aria-pressed', 'false'); rb.classList.remove('on'); try { rb.focus(); } catch (err) {} }
+          return;
+        }
+        // An open chat closes before More folds, as a side panel does in
+        // Meet and Zoom, and the keyboard lands back on Chat.
+        if (chatPanelOpen()) {
+          e.preventDefault();
+          closeChatToButton();
           return;
         }
         const barEl = document.querySelector('.bar');
@@ -27764,7 +28444,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!trayOpen && !sheetOpen) return;
         const nodes = [];
         for (const n of barEl.querySelectorAll('button, a[href], input, select, textarea')) {
-          if (n.disabled) continue;
+          if (n.disabled || n.hidden) continue;
           if (n.style && n.style.display === 'none') continue;
           if (n.hidden || (n.classList && n.classList.contains('inmore'))) continue;
           if (!sheetOpen && n.closest && n.closest('#barmore')) continue;
@@ -29267,7 +29947,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // WHOLE MEETING away. Same set as desktop.js SYSTEM_LAUNCHERS.
       const SYSTEM_APPS = { meet: 1, video: 1, broadcast: 1, appstore: 1 };
       const apps = (files || []).filter((f) => f.isApp && !SYSTEM_APPS[f.appId]);
-      if (!apps.length) { list.innerHTML = '<small style="color:#667">No apps on this computer yet. Make one with ＋ Add on your Home Screen, then run it in a meeting.</small>'; return; }
+      if (!apps.length) {
+        const where = (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'on this service' : 'in a meeting';
+        list.innerHTML = '<small style="color:#667">No apps on this computer yet. Make one with ＋ Add on your Home Screen, then run it ' + where + '.</small>';
+        return;
+      }
       const label = (f) => (f.name || f.appId || 'App').replace(/\.gif$/i, '');
       apps.sort((a, b) => label(a).localeCompare(label(b), undefined, { sensitivity: 'base', numeric: true }));
       list.innerHTML = '';
@@ -30612,6 +31296,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         btnShown: (() => { const b = document.getElementById('pipbtn'); return !!b && b.style.display !== 'none'; })(),
       }),
       pipEnterForTest: () => enterPip(true),
+      audienceReactForTest: (emoji, fromId) => takeAudienceReact(emoji, fromId || 'viewer'),
+      // one frame arriving from a peer, the way a DataChannel or the mesh hands it in
+      remoteFrameForTest: (from, m) => { onRemote(String(from), m); },
+      // a peer whose channel just opened, before the roster has caught up; it
+      // records the frames handed to it
+      openLinkForTest: (id) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); },
+      // a linked peer by name whose status says camera off (scr: sharing a screen)
+      stageStripForTest: (stream) => paintStageStrip(stream || null),
+      camOffPeerForTest: (id, name, scr) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); peers.get(id).name = name; rosterNames[id] = name; statusOf.set(id, { camOff: true, muted: true, scr: scr ? 1 : 0, at: Date.now() }); paintBroadcastIdent(); },
+      // a linked, recently heard peer: the status line counts it as here
+      livePeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, dc: { readyState: 'open', label: 'test' }, testTx: [] }); const p = peers.get(id); p.connected = true; p.lastHeard = Date.now(); if (name) { p.name = name; rosterNames[id] = name; } updateStatus(); return participantCount(); },
+      // a joined peer by name whose fresh status has a hand up, as the host's queue line reads it
+      handPeerForTest: (id, name) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); peers.get(id).name = name; rosterNames[id] = name; if (!rosterIds.includes(id)) rosterIds.push(id); const t = Date.now(); statusOf.set(id, { camOff: true, muted: true, hand: t, at: t, rx: t }); renderHandq(); return handqEl.textContent; },
+      chatGateForTest: (off, admin) => { chatGateOverride = { off: !!off, admin: !!admin }; paintChatGate(); return document.getElementById('chat-in').placeholder; },
+      stageHostForTest: (id, name, stg) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); peers.get(id).name = name; rosterNames[id] = name; if (!admins.includes(id)) admins.push(id); if (!rosterIds.includes(id)) rosterIds.push(id); statusOf.set(id, { camOff: false, muted: false, stg: stg === undefined ? 1 : stg, at: Date.now(), rx: Date.now() }); paintBroadcastIdent(); return stageIds().slice(); }, // a host whose status says on stage, camera on, before any feed
+      hostPeerForTest: (id) => { id = String(id); admSeen.set(id, Date.now()); if (!admins.includes(id)) admins.push(id); updateStatus(); return admins.slice(); }, // admSeen, as a verified host frame does, so the watch count leaves them out
+      linkFramesForTest: (id) => { const p = peers.get(String(id)); return p && p.testTx ? p.testTx.slice() : null; },
+      sentFramesForTest: () => sentFrames.slice(),
+      stageHearLevelForTest: () => heardStage(),
+      headCountForTest: (n) => { headCountOverride = Math.max(0, +n || 0); paintRoomTrust(); return roomHeadCount(); },
       // moderation SINKS (e2e-meet-mod.js): what the filmstrip would list and how
       // blurred, and a sender that defies the admin's video-off — the DOM-hacked
       // guest the receiver-side rule exists for (it only re-enables MY track).
@@ -31498,5 +32202,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <a href="https://github.com/nwcnwc/gifos-app">source on GitHub</a> ·
   <a href="https://github.com/nwcnwc/gifos-app/issues/new">report a problem</a>. Contact: support@gifos.app.</p>
 </nav>
+<script>
+  // The agent links are clipped to 1px, so a Tab stop on one shows no
+  // focus. Keep them in the HTML and the landmark list, out of the Tab walk.
+  document.querySelectorAll('#agent-links a').forEach((a) => a.setAttribute('tabindex', '-1'));
+</script>
 </body>
 </html>

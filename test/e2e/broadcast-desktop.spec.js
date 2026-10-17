@@ -32,7 +32,10 @@ async function openChat(page, width, height) {
 }
 
 async function composerOverlap(page) {
-  return page.evaluate(() => {
+  // Read the first painted frame: after a viewport change the dock is placed
+  // by the resize event, which fires in the next frame's rendering steps.
+  return page.evaluate(async () => {
+    await new Promise((r) => requestAnimationFrame(r));
     const bar = document.querySelector('.bar').getBoundingClientRect();
     const hit = (el) => {
       const r = el.getBoundingClientRect();
@@ -171,7 +174,8 @@ test('a broadcast host is marked Live and the room is not called a meeting', asy
   await expect(page.locator('#onair')).toHaveText('Off air');
   await expect(page.locator('#onair')).toHaveClass(/off/);
   await expect(page.locator('#leavebtn')).toHaveAttribute('title', /service/i);
-  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the service?');
+  await expect(page.locator('#leavebtn .docklab')).toHaveText('End');
+  await expect(page.locator('#leave-ask-title')).toHaveText('End the service?');
   expect((await page.locator('#leavebtn').getAttribute('title')).toLowerCase()).not.toContain('meeting');
   expect((await page.locator('#airbar').textContent()).toLowerCase()).not.toContain('small group');
   await page.locator('#bartoggle').click();
@@ -482,6 +486,8 @@ test('full screen on a service shows the stage', async ({ page }) => {
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/run.html?desk=fsstage' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('body.broadcast #onair.watch');
+    // The host is here, off the stage: the stage is known to be clear.
+    await page.evaluate(() => window.__gifosVideo.stageHostForTest('host-here', 'Pastor Kim', 0));
     await page.locator('#fsbtn').click();
     await expect(page.locator('#fsview')).toHaveClass(/on/);
     const clear = await readFs();
@@ -1223,6 +1229,36 @@ test('chat is one tap on the dock, and a prayer is its own line', async ({ page 
   await expect(lines.nth(1)).toContainText('See you after');
 });
 
+test('a service chat tip talks about the people watching', async ({ page }) => {
+  const serviceTip = 'Chat with everyone watching — stays between the people here, not on a server';
+  const meetingTip = 'Chat and share files — stays between the people on this meeting, not on a server';
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('view=1') === -1 && location.hash.indexOf('bc=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=chatip' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    const chat = page.locator('.bar > #chatbtn');
+    await expect(chat).toBeVisible();
+    await expect(chat).toHaveAttribute('title', serviceTip);
+    const lay = await page.evaluate(() => {
+      const btn = document.querySelector('.bar > #chatbtn').getBoundingClientRect();
+      const bar = document.querySelector('.bar').getBoundingClientRect();
+      return { inBar: btn.left >= bar.left - 1 && btn.right <= bar.right + 1, on: btn.right <= innerWidth + 1 && btn.bottom <= innerHeight + 1 };
+    });
+    expect(lay.inBar, JSON.stringify(lay)).toBe(true);
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+  }
+  await page.goto('/run.html?desk=chatipview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('.bar > #chatbtn')).toHaveAttribute('title', serviceTip);
+  await page.goto('/run.html?desk=chatipgroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('.bar > #chatbtn')).toHaveAttribute('title', meetingTip);
+});
+
 test('service help names Raise hand and Step off', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
@@ -1684,6 +1720,53 @@ test('a recording is a card everyone has to see', async ({ page }) => {
   await expect(page.locator('#rec-notice-title')).toHaveText('You are recording this service');
 });
 
+test('someone else recording you gets Stay or Leave, as in Zoom and Teams', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  const card = () => page.evaluate(() => {
+    const box = document.querySelector('#rec-notice .appear-box');
+    const leave = document.getElementById('rec-notice-leave');
+    const ok = document.getElementById('rec-notice-ok');
+    const r = box.getBoundingClientRect();
+    const inside = (el) => { const b = el.getBoundingClientRect(); return b.left >= r.left && b.right <= r.right && b.top >= r.top && b.bottom <= r.bottom; };
+    return {
+      text: box.innerText,
+      ok: ok.textContent,
+      leave: leave && leave.getClientRects().length ? leave.textContent : '',
+      fits: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight && inside(ok) && (!leave || !leave.getClientRects().length || inside(leave)),
+    };
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=recleave' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.group');
+    await page.evaluate(() => { try { sessionStorage.removeItem('gifos_rec_seen'); } catch (e) {} window.__gifosRoomTrust.setPeerRecording('Jordan Lee', true); });
+    await expect(page.locator('#rec-notice-title')).toHaveText('Jordan Lee is recording this small group');
+    if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/rec-leave-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    const got = await card();
+    expect({ consent: /Staying means you agree to be recorded/.test(got.text), stay: got.ok, leave: got.leave, fits: got.fits }, JSON.stringify(got))
+      .toEqual({ consent: true, stay: 'Stay', leave: 'Leave', fits: true });
+  }
+  await page.locator('#rec-notice-leave').click();
+  await expect(page.locator('#left-modal')).toBeVisible();
+  await expect(page.locator('#left-title')).toHaveText('You left the small group');
+  // The person recording, and a viewer who is not in a service recording,
+  // only read the card.
+  await page.goto('/run.html?desk=recleaveme#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.evaluate(() => { try { sessionStorage.removeItem('gifos_rec_seen'); } catch (e) {} window.__gifosRoomTrust.setRecording(true); });
+  await expect(page.locator('#rec-notice-title')).toHaveText('You are recording this small group');
+  expect(await card()).toMatchObject({ ok: 'OK', leave: '' });
+  await page.goto('/run.html?desk=recleaveview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#onair.watch');
+  await page.evaluate(() => { try { sessionStorage.removeItem('gifos_rec_seen'); } catch (e) {} window.__gifosRoomTrust.setPeerRecording('Pastor Kim', true); });
+  await expect(page.locator('#rec-notice-title')).toHaveText('Pastor Kim is recording this service');
+  expect(await card()).toMatchObject({ ok: 'OK', leave: '' });
+});
+
 test('sharing a personal call is the link and a blue Copy', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
@@ -1781,10 +1864,12 @@ test('captions and record stay readable when they are on', async ({ page }) => {
       return { cc: look(cc), rec: look(rec), pressed: cc.getAttribute('aria-pressed') };
     });
   }
+  // Captions and Record are the host's: a viewer has neither.
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
     localStorage.setItem('gifos_meet_bar', '1');
     localStorage.removeItem('gifos_cc_view'); // this screen's captions choice is remembered (qa-meet-mobile)
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
   });
   for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
     await page.setViewportSize({ width: w, height: h });
@@ -1962,6 +2047,140 @@ test('a host shares the stage from the dock', async ({ page }) => {
   expect(resized.barIn).toBe(true);
 });
 
+test('settings names the stage on a service', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=setname' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.locator('#bartoggle').click();
+    await page.locator('#setbtn').click();
+    await expect(page.locator('#set-name-lead')).toHaveText('What everyone sees on the stage:');
+    const lay = await page.evaluate(() => {
+      const lead = document.getElementById('set-name-lead').getBoundingClientRect();
+      const box = document.querySelector('#set-modal .name-box').getBoundingClientRect();
+      return {
+        lead: lead.top >= -1 && lead.bottom <= innerHeight + 1 && lead.left >= -1 && lead.right <= innerWidth + 1,
+        box: box.left >= -1 && box.right <= innerWidth + 1 && box.top >= -1,
+      };
+    });
+    expect(lay.lead, JSON.stringify(lay)).toBe(true);
+    expect(lay.box, JSON.stringify(lay)).toBe(true);
+  }
+  await page.goto('/run.html?desk=setnamegroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.locator('#bartoggle').click();
+  await page.locator('#setbtn').click();
+  await expect(page.locator('#set-name-lead')).toHaveText('What everyone sees on your tile:');
+});
+
+test('settings on a service is not called a meeting', async ({ page }) => {
+  const serviceTip = 'Service settings — the picture you send, and the name people see on the stage.';
+  const meetingTip = 'Meeting settings — your sound mix, timing, and the video quality your camera records';
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=settip' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.locator('#bartoggle').click();
+    const btn = page.locator('#setbtn');
+    await expect(btn).toBeVisible();
+    await expect(btn).toHaveAttribute('title', serviceTip);
+    const lay = await page.evaluate(() => {
+      const r = document.getElementById('setbtn').getBoundingClientRect();
+      const menu = document.getElementById('barmore').getBoundingClientRect();
+      return { inMenu: r.top >= menu.top - 1 && r.bottom <= menu.bottom + 1 && r.left >= menu.left - 1 && r.right <= menu.right + 1, on: r.left >= -1 && r.right <= innerWidth + 1 && r.top >= -1 && r.bottom <= innerHeight + 1 };
+    });
+    expect(lay.inMenu, JSON.stringify(lay)).toBe(true);
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+  }
+  await page.goto('/run.html?desk=settipgroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.locator('#bartoggle').click();
+  await expect(page.locator('#setbtn')).toHaveAttribute('title', meetingTip);
+});
+
+test('a service chat pins a file to the service', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=pin' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.locator('#chatbtn').click();
+    const pin = page.locator('#cattach');
+    await expect(pin).toBeVisible();
+    await expect(pin).toHaveAttribute('title', 'Pin a file to this service');
+    const lay = await page.evaluate(() => {
+      const r = document.getElementById('cattach').getBoundingClientRect();
+      const form = document.getElementById('chatform').getBoundingClientRect();
+      return { inForm: r.top >= form.top - 1 && r.bottom <= form.bottom + 1 && r.left >= form.left - 1, on: r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1 && r.left >= -1 };
+    });
+    expect(lay.inForm, JSON.stringify(lay)).toBe(true);
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+  }
+  await page.goto('/run.html?desk=pingroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.locator('#chatbtn').click();
+  await expect(page.locator('#cattach')).toHaveAttribute('title', 'Pin a file to the meeting');
+});
+
+test('run app and float talk about the service', async ({ page }) => {
+  const appTip = 'Run an app on this service — everyone watching shares it and can use it.';
+  const floatTip = 'Float the stage in a mini window. It stays on screen while you use other apps.';
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('view=1') === -1 && location.hash.indexOf('bc=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=appf' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.locator('#bartoggle').click();
+    await expect(page.locator('#appbtn')).toHaveAttribute('title', appTip);
+    await expect(page.locator('#pipbtn')).toHaveAttribute('title', floatTip);
+    await expect(page.locator('#pipbtn')).toHaveAttribute('aria-label', 'Float the stage');
+    await expect(page.locator('#app-title')).toHaveText('Run an app on this service');
+    await expect(page.locator('#app-note')).toContainText('everyone watching');
+    await expect(page.locator('#app-note')).toContainText('stage');
+    const note = await page.locator('#app-note').innerText();
+    expect(note.toLowerCase()).not.toContain('meeting');
+    const lay = await page.evaluate(() => {
+      const menu = document.getElementById('barmore').getBoundingClientRect();
+      const app = document.getElementById('appbtn').getBoundingClientRect();
+      const pip = document.getElementById('pipbtn').getBoundingClientRect();
+      const inside = (r) => r.width > 0 && r.top >= menu.top - 1 && r.bottom <= menu.bottom + 1 && r.left >= -1 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1;
+      document.getElementById('app-modal').style.display = 'flex';
+      const box = document.querySelector('#app-modal .name-box').getBoundingClientRect();
+      const pipOn = getComputedStyle(document.getElementById('pipbtn')).display !== 'none';
+      return {
+        app: inside(app),
+        pipOn,
+        pip: !pipOn || inside(pip),
+        card: box.left >= -1 && box.right <= innerWidth + 1 && box.top >= -1 && box.bottom <= innerHeight + 1,
+      };
+    });
+    expect(lay.app, JSON.stringify(lay)).toBe(true);
+    expect(lay.pip, JSON.stringify(lay)).toBe(true);
+    expect(lay.card, JSON.stringify(lay)).toBe(true);
+  }
+  await page.goto('/run.html?desk=appfview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#appbtn')).toHaveAttribute('title', appTip);
+  await expect(page.locator('#pipbtn')).toHaveAttribute('aria-label', 'Float the stage');
+  await page.goto('/run.html?desk=appfgroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.locator('#bartoggle').click();
+  await expect(page.locator('#appbtn')).toHaveAttribute('title', 'Run an app inside this meeting — everyone here shares and interacts with it live');
+  await expect(page.locator('#pipbtn')).toHaveAttribute('aria-label', 'Float the meeting');
+  await expect(page.locator('#app-title')).toHaveText('Run an app in this meeting');
+});
+
 test('a host steps on and off the stage from the dock', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
@@ -2061,6 +2280,8 @@ test('a service picture fills the stage and a clear stage says so', async ({ pag
     await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
     await page.goto('/run.html?desk=pic' + w + '&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#airbar.on.watch');
+    // The host is here, off the stage: the stage is known to be clear.
+    await page.evaluate(() => window.__gifosVideo.stageHostForTest('host-here', 'Pastor Kim', 0));
     const empty = await place();
     expect(empty.text).toBe('The stage is clear.');
     expect(empty.shown).toBe(true);
@@ -2246,6 +2467,8 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
   await expect(page.locator('.bar > #stagebtn')).toHaveCount(0);
   await page.locator('#bartoggle').click();
   await expect(page.locator('#barmore #stagebtn')).toHaveText('Stage');
+  // The host is here, off the stage: the stage is known to be clear.
+  await page.evaluate(() => window.__gifosVideo.stageHostForTest('host-here', 'Pastor Kim', 0));
   await expect(page.locator('#bc-stage-line')).toHaveText('The stage is clear.');
   await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
   await expect(page.locator('#airbar')).toHaveClass(/watch/);
@@ -2253,4 +2476,2238 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
   // The seat still holds the stage grant, so the lamp keeps the confirmed
   // stage-guest rule: Off air until a camera or a microphone sends.
   await expect(page.locator('#onair')).toHaveText('Off air');
+});
+
+test('a host ends the service and a viewer still leaves', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (new URLSearchParams(location.search).get('host') === '1') localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=endhost' + w + '&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast');
+    const leave = page.locator('#leavebtn');
+    await expect(leave.locator('.docklab')).toHaveText('End');
+    await expect(leave).toHaveAttribute('aria-label', 'End the service');
+    const tip = (await leave.getAttribute('title')).toLowerCase();
+    expect(tip).toContain('everyone watching');
+    expect(tip).not.toContain('meeting');
+    const lay = await page.evaluate(() => {
+      const btn = document.getElementById('leavebtn').getBoundingClientRect();
+      const lab = document.querySelector('#leavebtn .docklab').getBoundingClientRect();
+      const bar = document.querySelector('.bar').getBoundingClientRect();
+      return {
+        labIn: lab.width > 0 && lab.left >= btn.left - 1 && lab.right <= btn.right + 1 && lab.top >= btn.top - 1 && lab.bottom <= btn.bottom + 1,
+        barIn: bar.left >= -1 && bar.right <= innerWidth + 1,
+        on: btn.left >= -1 && btn.right <= innerWidth + 1 && btn.top >= -1 && btn.bottom <= innerHeight + 1,
+      };
+    });
+    expect(lay.labIn, JSON.stringify(lay)).toBe(true);
+    expect(lay.barIn, JSON.stringify(lay)).toBe(true);
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+    if (w === 1280) {
+      await page.locator('#bartoggle').click();
+      await page.locator('#helpbtn').click();
+      await expect(page.locator('#help-modal .help-scroll')).toContainText('five-minute countdown');
+      await page.locator('#help-close').click();
+      await page.locator('#bartoggle').click();
+    }
+    await leave.click();
+    const ask = page.locator('#leave-ask');
+    await expect(ask).toBeVisible();
+    await expect(page.locator('#leave-ask-title')).toHaveText('End the service?');
+    await expect(page.locator('#leave-ask-note')).toBeVisible();
+    await expect(page.locator('#leave-ask-note')).toContainText('five-minute countdown');
+    await expect(page.locator('#leave-ask-note')).not.toContainText('meeting');
+    await expect(page.locator('#leave-go')).toHaveText('End');
+    await expect(page.locator('#leave-cancel')).toHaveText('Stay');
+    const card = await page.evaluate(() => {
+      const box = document.querySelector('#leave-ask .name-box').getBoundingClientRect();
+      const note = document.getElementById('leave-ask-note').getBoundingClientRect();
+      const go = document.getElementById('leave-go').getBoundingClientRect();
+      return {
+        on: box.left >= -1 && box.right <= innerWidth + 1 && box.top >= -1 && box.bottom <= innerHeight + 1,
+        noteIn: note.width > 0 && note.top >= box.top - 1 && note.bottom <= box.bottom + 1,
+        goIn: go.top >= box.top - 1 && go.bottom <= box.bottom + 1 && go.right <= innerWidth + 1,
+      };
+    });
+    expect(card.on, JSON.stringify(card)).toBe(true);
+    expect(card.noteIn, JSON.stringify(card)).toBe(true);
+    expect(card.goIn, JSON.stringify(card)).toBe(true);
+    const colors = await page.evaluate(() => ({
+      go: getComputedStyle(document.getElementById('leave-go')).backgroundColor,
+      stay: getComputedStyle(document.getElementById('leave-cancel')).backgroundColor,
+    }));
+    expect(colors.go).toBe('rgb(182, 22, 34)');
+    expect(colors.stay).not.toBe(colors.go);
+    await page.locator('#leave-cancel').click();
+    await expect(ask).toBeHidden();
+  }
+  await page.locator('#leavebtn').click();
+  await page.locator('#leave-go').click();
+  await expect(page.locator('#left-modal')).toBeVisible();
+  await expect(page.locator('#left-title')).toHaveText('You ended the service');
+  await expect(page.locator('#left-note')).toContainText('five-minute countdown');
+  await expect(page.locator('#left-note')).toContainText('Rejoin');
+  await page.goto('/run.html?desk=endview#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.broadcast');
+  await expect(page.locator('#leavebtn .docklab')).toHaveText('Leave');
+  await expect(page.locator('#leavebtn')).toHaveAttribute('aria-label', 'Leave the service');
+  await expect(page.locator('#leave-ask-note')).toBeHidden();
+  await page.locator('#leavebtn').click();
+  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the service?');
+  await expect(page.locator('#leave-go')).toHaveText('Leave');
+  await expect(page.locator('#leave-ask-note')).toBeHidden();
+  await page.locator('#leave-go').click();
+  await expect(page.locator('#left-title')).toHaveText('You left the service');
+});
+
+test('a service recording captures the stage', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('gifos_name', 'Avery Chen'));
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=recstage' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast');
+    await page.locator('#airrec').click();
+    await expect(page.locator('#rec-options h3')).toHaveText('Record this service');
+    await expect(page.locator('#rec-stage-only')).toHaveText('Only the stage.');
+    await expect(page.locator('#rec-options')).not.toContainText('my row');
+    await expect(page.locator('#rec-options')).not.toContainText('stadium');
+    await expect(page.locator('input[name=rec-scope]:visible')).toHaveCount(0);
+    const card = await page.evaluate(() => {
+      const box = document.querySelector('#rec-options .name-box').getBoundingClientRect();
+      const start = document.getElementById('ro-start').getBoundingClientRect();
+      return {
+        on: box.left >= -1 && box.right <= innerWidth + 1 && box.top >= -1 && box.bottom <= innerHeight + 1,
+        startIn: start.top >= box.top - 1 && start.bottom <= box.bottom + 1 && start.right <= innerWidth + 1,
+      };
+    });
+    expect(card.on, JSON.stringify(card)).toBe(true);
+    expect(card.startIn, JSON.stringify(card)).toBe(true);
+    if (w === 1280) {
+      await page.locator('#ro-start').click();
+      await expect(page.locator('#rec-options')).toBeVisible();
+      await expect(page.locator('#rec-err')).toHaveText('No one is on the stage yet — nothing to record.');
+    }
+    await page.locator('#ro-cancel').click();
+    await expect(page.locator('#rec-options')).toHaveCount(0);
+  }
+  await page.goto('/run.html?desk=recstagegroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.locator('#airrec').click();
+  await expect(page.locator('#rec-options h3')).toHaveText('Record this small group');
+  await expect(page.locator('#rec-options')).toContainText('Stage + my row');
+  await expect(page.locator('#rec-options')).toContainText('Everything I see');
+  await expect(page.locator('#rec-stage-only')).toHaveCount(0);
+});
+
+test('a service reaction shows on the stage', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('gifos_name', 'Avery Chen'));
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=react' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast');
+    await page.locator('#reactbtn').click();
+    await page.locator('#reacttray button[aria-label="Clap"]').click();
+    const burst = page.locator('#bc-react .reactburst');
+    await expect(burst).toBeVisible();
+    await expect(burst).toHaveText('👏');
+    const lay = await page.evaluate(() => {
+      const b = document.querySelector('#bc-react .reactburst').getBoundingClientRect();
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const tray = document.getElementById('reacttray').getBoundingClientRect();
+      const overlap = (a, c) => a.width > 0 && c.width > 0 && !(a.right < c.left || c.right < a.left || a.bottom < c.top || c.bottom < a.top);
+      return {
+        on: b.width > 20 && b.left >= -1 && b.right <= innerWidth + 1 && b.top >= -1 && b.bottom <= innerHeight + 1,
+        dock: overlap(b, dock),
+        tray: overlap(b, tray),
+      };
+    });
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+    expect(lay.dock, JSON.stringify(lay)).toBe(false);
+    expect(lay.tray, JSON.stringify(lay)).toBe(false);
+  }
+  await page.goto('/run.html?desk=reactgroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.evaluate(() => {
+    const tile = document.createElement('div');
+    tile.className = 'tile me';
+    document.getElementById('grid').appendChild(tile);
+  });
+  await page.locator('#reactbtn').click();
+  await page.locator('#reacttray button[aria-label="Clap"]').click();
+  await expect(page.locator('.tile.me .reactburst')).toHaveText('👏');
+  const stageOn = await page.locator('#bc-react').evaluate((el) => getComputedStyle(el).display !== 'none');
+  expect(stageOn).toBe(false);
+});
+
+test('float tells you when the stage has no picture', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=floate' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast');
+    await page.locator('#bartoggle').click();
+    const pipOn = await page.locator('#pipbtn').evaluate((el) => getComputedStyle(el).display !== 'none');
+    if (pipOn) {
+      const pip = page.locator('#pipbtn');
+      const box = await pip.boundingBox();
+      expect(box.width).toBeGreaterThan(20);
+      expect(box.x).toBeGreaterThanOrEqual(-1);
+      expect(box.x + box.width).toBeLessThanOrEqual(w + 1);
+      expect(box.y).toBeGreaterThanOrEqual(-1);
+      expect(box.y + box.height).toBeLessThanOrEqual(h + 1);
+      await pip.click();
+    } else {
+      await page.evaluate(() => window.__gifosVideo.pipEnterForTest());
+    }
+    await expect(page.locator('#status')).toHaveText('Nothing on the stage to float yet.');
+    const chip = await page.evaluate(() => {
+      const st = document.getElementById('status');
+      const r = st.getBoundingClientRect();
+      return { clip: st.scrollWidth > st.clientWidth + 1, on: r.left >= -1 && r.right <= innerWidth + 1 && r.top >= -1 };
+    });
+    expect(chip.clip, JSON.stringify(chip)).toBe(false);
+    expect(chip.on, JSON.stringify(chip)).toBe(true);
+  }
+  await page.goto('/run.html?desk=floategroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('Just you') !== -1);
+  await page.evaluate(() => window.__gifosVideo.pipEnterForTest());
+  await expect(page.locator('#status')).toContainText('Just you. Send the invite.');
+  await expect(page.locator('#status')).not.toContainText('float');
+});
+
+test('a viewer clap reaches the stage as a count', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  async function pillLay() {
+    return page.evaluate(() => {
+      const host = document.getElementById('bc-reacts');
+      const pills = Array.from(host.querySelectorAll('.bcreact')).map((el) => el.textContent);
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const overlap = (a, b) => a.width > 0 && b.width > 0 && !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+      const boxes = Array.from(host.querySelectorAll('.bcreact')).map((el) => el.getBoundingClientRect());
+      const on = boxes.every((b) => b.width > 20 && b.left >= -1 && b.right <= innerWidth + 1 && b.top >= -1 && b.bottom <= innerHeight + 1);
+      const hitDock = boxes.some((b) => overlap(b, dock));
+      return { pills, on, hitDock };
+    });
+  }
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=agg' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast');
+    await page.locator('#reactbtn').click();
+    await page.locator('#reacttray button[aria-label="Clap"]').click();
+    await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 1');
+    const one = await pillLay();
+    expect(one.on, JSON.stringify(one)).toBe(true);
+    expect(one.hitDock, JSON.stringify(one)).toBe(false);
+    if (w === 1280) {
+      await page.evaluate(() => {
+        for (let i = 0; i < 11; i++) window.__gifosVideo.audienceReactForTest('👏', 'viewer-' + i);
+        window.__gifosVideo.audienceReactForTest('👍', 'viewer-yes');
+      });
+      await expect(page.locator('#bc-reacts')).toContainText('👏 12');
+      await expect(page.locator('#bc-reacts')).toContainText('👍 1');
+      const added = await page.evaluate(() => {
+        let n = 0;
+        for (let i = 0; i < 8; i++) if (window.__gifosVideo.audienceReactForTest('😂', 'same-person')) n++;
+        return n;
+      });
+      expect(added).toBe(6);
+      await expect(page.locator('#bc-reacts')).toContainText('😂 6');
+      const many = await pillLay();
+      expect(many.on, JSON.stringify(many)).toBe(true);
+      expect(many.hitDock, JSON.stringify(many)).toBe(false);
+    }
+  }
+  await page.goto('/run.html?desk=agghost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.broadcast');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+  await page.evaluate(() => {
+    for (let i = 0; i < 12; i++) window.__gifosVideo.audienceReactForTest('👏', 'watch-' + i);
+  });
+  await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 12');
+  await expect(page.locator('#bc-react .reactburst')).toHaveCount(0);
+  const hostLay = await pillLay();
+  expect(hostLay.on, JSON.stringify(hostLay)).toBe(true);
+  expect(hostLay.hitDock, JSON.stringify(hostLay)).toBe(false);
+  await page.goto('/run.html?desk=agggroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.evaluate(() => {
+    const tile = document.createElement('div');
+    tile.className = 'tile me';
+    document.getElementById('grid').appendChild(tile);
+  });
+  await page.locator('#reactbtn').click();
+  await page.locator('#reacttray button[aria-label="Clap"]').click();
+  await expect(page.locator('.tile.me .reactburst')).toHaveText('👏');
+  const stageCount = await page.locator('#bc-reacts').evaluate((el) => !el.hidden && getComputedStyle(el).display !== 'none');
+  expect(stageCount).toBe(false);
+});
+
+test('a service can mute the stage on this device', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  async function soundLay() {
+    return page.evaluate(() => {
+      const bar = document.getElementById('airbar').getBoundingClientRect();
+      const btn = document.getElementById('airsound').getBoundingClientRect();
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const overlap = (a, b) => a.width > 0 && b.width > 0 && !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+      const inside = btn.width > 20 && btn.left >= bar.left - 1 && btn.right <= bar.right + 1 && btn.top >= bar.top - 1 && btn.bottom <= bar.bottom + 1;
+      const on = btn.left >= -1 && btn.right <= innerWidth + 1 && btn.top >= -1 && btn.bottom <= innerHeight + 1;
+      return { inside, on, dock: overlap(btn, dock), w: Math.round(btn.width), h: Math.round(btn.height) };
+    });
+  }
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=sound' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.watch');
+    const btn = page.locator('#airsound');
+    await expect(btn).toBeVisible();
+    await expect(btn).toHaveText('Sound on');
+    await expect(btn).toHaveAttribute('aria-pressed', 'false');
+    await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+    const lay = await soundLay();
+    expect(lay.inside, JSON.stringify(lay)).toBe(true);
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+    expect(lay.dock, JSON.stringify(lay)).toBe(false);
+    expect(lay.h).toBeGreaterThanOrEqual(36);
+    if (w === 1280) {
+      await page.evaluate(() => {
+        const tile = document.createElement('div');
+        tile.className = 'rowtile';
+        const v = document.createElement('video');
+        v.id = 'qa-stage-vid';
+        tile.appendChild(v);
+        document.getElementById('stagefeed').appendChild(tile);
+        window.__gifosVideo.setMix('stage', 1);
+      });
+      const saved = await page.evaluate(() => localStorage.getItem('gifos_mix'));
+      await btn.click();
+      await expect(btn).toHaveText('Muted');
+      await expect(btn).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('#status')).toHaveText('The stage is muted on this device. Everyone else still hears it.');
+      await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+      const muted = await page.evaluate(() => {
+        const v = document.getElementById('qa-stage-vid');
+        return {
+          level: window.__gifosVideo.stageHearLevelForTest(),
+          mix: window.__gifosVideo.mix().stage,
+          vol: v ? v.volume : null,
+          stored: localStorage.getItem('gifos_mix'),
+        };
+      });
+      expect(muted.level).toBe(0);
+      expect(muted.mix).toBe(1);
+      expect(muted.vol).toBe(0);
+      expect(muted.stored).toBe(saved);
+      const mutedLay = await soundLay();
+      expect(mutedLay.inside, JSON.stringify(mutedLay)).toBe(true);
+      expect(mutedLay.on, JSON.stringify(mutedLay)).toBe(true);
+      expect(mutedLay.dock, JSON.stringify(mutedLay)).toBe(false);
+      await btn.click();
+      await expect(btn).toHaveText('Sound on');
+      await expect(page.locator('#status')).toHaveText('You can hear the stage.');
+      const back = await page.evaluate(() => {
+        const v = document.getElementById('qa-stage-vid');
+        return {
+          level: window.__gifosVideo.stageHearLevelForTest(),
+          vol: v ? v.volume : null,
+        };
+      });
+      expect(back.level).toBe(1);
+      expect(back.vol).toBe(1);
+      await expect(page.locator('#mixpanel')).toBeHidden();
+    }
+  }
+  await page.goto('/run.html?desk=soundhost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.live');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+  await expect(page.locator('#airsound')).toHaveText('Sound on');
+  await page.locator('#airsound').click();
+  await expect(page.locator('#airsound')).toHaveText('Muted');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+  const hostLay = await soundLay();
+  expect(hostLay.inside, JSON.stringify(hostLay)).toBe(true);
+  expect(hostLay.dock, JSON.stringify(hostLay)).toBe(false);
+  await page.goto('/run.html?desk=soundgroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await expect(page.locator('#airkind')).toHaveText('Small group');
+  const groupSound = await page.locator('#airsound').evaluate((el) => el.hidden || getComputedStyle(el).display === 'none');
+  expect(groupSound).toBe(true);
+  await expect(page.locator('#mixpanel')).toBeAttached();
+});
+
+test('a service room bar counts the people watching, not the host', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  async function whoLay() {
+    return page.evaluate(() => {
+      const bar = document.getElementById('airbar').getBoundingClientRect();
+      const who = document.getElementById('airwho').getBoundingClientRect();
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const overlap = (a, b) => a.width > 0 && b.width > 0 && !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+      const inside = who.width > 20 && who.left >= bar.left - 1 && who.right <= bar.right + 1 && who.top >= bar.top - 1 && who.bottom <= bar.bottom + 1;
+      const on = who.left >= -1 && who.right <= innerWidth + 1 && who.top >= -1 && who.bottom <= innerHeight + 1;
+      return { inside, on, dock: overlap(who, dock) };
+    });
+  }
+  const who = page.locator('#airwho');
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=watch' + w + '&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.live');
+    await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+    await expect(who).toHaveText('0 watching');
+    await expect(who).toHaveAttribute('title', 'Who is watching');
+    await expect(who).toHaveAttribute('aria-label', 'Who is watching, 0');
+    const lay = await whoLay();
+    expect(lay.inside, JSON.stringify(lay)).toBe(true);
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+    expect(lay.dock, JSON.stringify(lay)).toBe(false);
+    if (w === 1280) {
+      await page.evaluate(() => window.__gifosVideo.headCountForTest(13));
+      await expect(who).toHaveText('12 watching');
+      await page.evaluate(() => window.__gifosVideo.headCountForTest(2));
+      await expect(who).toHaveText('1 watching');
+      await who.click();
+      await expect(page.locator('#who-modal h3')).toHaveText('Who is watching');
+      await page.locator('#who-close').click();
+    }
+  }
+  await page.goto('/run.html?desk=watchviewer#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  await expect(who).toHaveText('1 watching');
+  await page.evaluate(() => window.__gifosVideo.headCountForTest(13));
+  await expect(who).toHaveText('13 watching');
+  await page.goto('/run.html?desk=watchgroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await expect(who).toHaveText('1 here');
+  await expect(who).toHaveAttribute('title', 'Who is here');
+});
+
+test('a viewer clap counts once on the host stage, however it arrives', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  await page.goto('/run.html?desk=clapview#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  await page.locator('#reactbtn').click();
+  await page.locator('#reacttray button[aria-label="Clap"]').click();
+  await page.locator('#reacttray button[aria-label="Clap"]').click();
+  await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 2');
+  const sent = await page.evaluate(() => window.__gifosVideo.sentFramesForTest().filter((m) => m.k === 'react'));
+  expect(sent.length).toBe(2);
+  expect(typeof sent[0].id, JSON.stringify(sent)).toBe('string');
+  expect(sent[0].id.length).toBeGreaterThanOrEqual(8);
+  expect(sent[0].id).not.toBe(sent[1].id);
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=claphost' + w + '&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.live');
+    await page.evaluate((frames) => {
+      // the direct copy and the mesh copy of the same two claps
+      for (const m of frames) {
+        window.__gifosVideo.remoteFrameForTest('viewer-a', m);
+        window.__gifosVideo.remoteFrameForTest('viewer-a', m);
+      }
+    }, sent);
+    await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 2');
+    await page.evaluate(() => {
+      window.__gifosVideo.remoteFrameForTest('viewer-b', { k: 'react', e: '👏', id: 'clap-b-000001' });
+      window.__gifosVideo.remoteFrameForTest('viewer-b', { k: 'react', e: '👏', id: 'clap-b-000001' });
+      window.__gifosVideo.remoteFrameForTest('viewer-c', { k: 'react', e: '👍', id: 'clap-c-000001' });
+    });
+    await expect(page.locator('#bc-reacts')).toContainText('👏 3');
+    await expect(page.locator('#bc-reacts')).toContainText('👍 1');
+    const lay = await page.evaluate(() => {
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const boxes = Array.from(document.querySelectorAll('#bc-reacts .bcreact')).map((el) => el.getBoundingClientRect());
+      const overlap = (a, b) => !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+      return {
+        on: boxes.every((b) => b.width > 20 && b.left >= -1 && b.right <= innerWidth + 1 && b.top >= -1 && b.bottom <= innerHeight + 1),
+        dock: boxes.some((b) => overlap(b, dock)),
+      };
+    });
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+    expect(lay.dock, JSON.stringify(lay)).toBe(false);
+  }
+});
+
+test('a viewer clap reaches the host the moment the link opens', async ({ page }) => {
+  // The roster catches up on its own tick. A viewer can be linked to the host
+  // and clap before the host is on the roster; that clap must still go out.
+  // A real two-browser run of the same thing: test/e2e/cross-clap.js.
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  await page.goto('/run.html?desk=clapearly#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  await page.evaluate(() => window.__gifosVideo.openLinkForTest('host-early'));
+  await page.locator('#reactbtn').click();
+  await page.locator('#reacttray button[aria-label="Clap"]').click();
+  await page.locator('#reacttray button[aria-label="Clap"]').click();
+  await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 2');
+  const got = await page.evaluate(() => window.__gifosVideo.linkFramesForTest('host-early').filter((m) => m.k === 'react'));
+  expect(got.length, JSON.stringify(got)).toBe(2);
+  expect(got[0].e).toBe('👏');
+  expect(got[0].id).not.toBe(got[1].id);
+  expect(errors).toEqual([]);
+});
+
+test('a viewer sees who is on stage when their camera is off', async ({ page }) => {
+  // Seen across two machines: the host went live with the camera off and the
+  // viewer got a black square, the name burned into its foot and half under
+  // the On stage label. The name card only came up for a profile picture.
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  await page.goto('/run.html?desk=camoffstage#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  await page.evaluate(() => {
+    const el = document.createElement('div');
+    el.className = 'rowtile';
+    el.dataset.row = 'sgs';
+    el.appendChild(document.createElement('video'));
+    document.getElementById('stagefeed').appendChild(el);
+    window.__gifosVideo.camOffPeerForTest('host-dark', 'Pastor Kim');
+  });
+  const card = page.locator('#bc-ident');
+  await expect(card).toBeVisible();
+  await expect(card).toContainText('Pastor Kim');
+  await expect(card).toContainText('Camera off');
+  const at = await page.evaluate(() => {
+    const r = (s) => document.querySelector(s).getBoundingClientRect();
+    // what the card shows: the picture or initial, the name, the note
+    const parts = Array.from(document.querySelectorAll('#bc-ident > *')).filter((e) => e.offsetParent).map((e) => e.getBoundingClientRect());
+    const card = { top: Math.min(...parts.map((b) => b.top)), bottom: Math.max(...parts.map((b) => b.bottom)) };
+    return { card, air: r('#airbar'), dock: r('.bar'), tile: r('#stagefeed .rowtile'),
+      video: getComputedStyle(document.querySelector('#stagefeed .rowtile video')).visibility,
+      under: getComputedStyle(document.querySelector('#stagefeed .rowtile')).backgroundColor };
+  });
+  // The card sits on the stage, clear of the room bar and the dock.
+  expect(at.card.top).toBeGreaterThanOrEqual(at.air.bottom - 1);
+  expect(at.card.bottom).toBeLessThanOrEqual(at.dock.top + 1);
+  expect(at.card.top).toBeGreaterThanOrEqual(at.tile.top - 1);
+  expect(at.card.bottom).toBeLessThanOrEqual(at.tile.bottom + 1);
+  // The black frame under it is not shown.
+  expect(at.video).toBe('hidden');
+  expect(at.under).toBe('rgb(0, 0, 0)');
+  // A screen share with the camera off is a picture: it shows, no card.
+  await page.evaluate(() => window.__gifosVideo.camOffPeerForTest('host-dark', 'Pastor Kim', true));
+  await expect(card).toBeHidden();
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector('#stagefeed .rowtile video')).visibility)).toBe('visible');
+  expect(errors).toEqual([]);
+});
+
+test('a viewer sees the camera-off card when the stage feed arrives after the host status', async ({ page }) => {
+  // Seen across two machines (1 run in 3): the viewer learned the host's
+  // camera was off before the stage feed came in, and the feed's tile never
+  // brought the card up, so the stage stayed a grey frame with no name.
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  await page.goto('/run.html?desk=camofflate#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  await page.evaluate(() => window.__gifosVideo.camOffPeerForTest('host-dark', 'Pastor Kim'));
+  const card = page.locator('#bc-ident');
+  await expect(page.locator('#bc-stage')).toBeVisible();
+  await page.evaluate(() => {
+    const c = document.createElement('canvas'); c.width = 320; c.height = 180;
+    const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 320, 180);
+    window.__gifosVideo.stageStripForTest(c.captureStream(5));
+  });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: 'artifacts/camoff-late-' + (process.env.SHOT_TAG || 'run') + '.png' });
+  await expect(card, 'the card comes up with the feed').toBeVisible({ timeout: 3000 });
+  await expect(card).toContainText('Pastor Kim');
+  await expect(card).toContainText('Camera off');
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector('#stagefeed .rowtile video')).visibility)).toBe('hidden');
+  // The feed leaving takes the card with it: the plate says the stage is clear.
+  await page.evaluate(() => window.__gifosVideo.stageStripForTest(null));
+  await expect(card).toBeHidden({ timeout: 3000 });
+  await expect(page.locator('#bc-stage')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('a joining viewer is not told the stage is clear while the host is live', async ({ page }) => {
+  // Seen across two machines at every join: after Save the viewer's stage
+  // read "The stage is clear." until the feed came in (0.2 to 12 s), even
+  // after the host's status said they were on stage. Nothing is known yet:
+  // say it is joining, then whom it is connecting to.
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  await page.goto('/run.html?desk=joinplate#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  const plate = page.locator('#bc-stage');
+  const line = page.locator('#bc-stage-line');
+  await expect(plate).toBeVisible();
+  await page.screenshot({ path: 'artifacts/join-plate-' + (process.env.SHOT_TAG || 'run') + '.png' });
+  await expect(line, 'nobody heard yet').toHaveText('Joining the service…');
+  // The host's status lands: on stage, camera on, no picture yet.
+  const stagers = await page.evaluate(() => window.__gifosVideo.stageHostForTest('host-live', 'Pastor Kim'));
+  expect(stagers).toContain('host-live');
+  await expect(line, 'the host is on stage').toHaveText('Connecting to Pastor Kim…');
+  // The picture comes in: the plate goes.
+  await page.evaluate(() => {
+    const c = document.createElement('canvas'); c.width = 320; c.height = 180;
+    const g = c.getContext('2d'); g.fillStyle = '#345'; g.fillRect(0, 0, 320, 180);
+    window.__gifosVideo.stageStripForTest(c.captureStream(5));
+  });
+  await expect(plate).toBeHidden({ timeout: 3000 });
+  // The host steps off and the feed leaves: now the stage IS clear.
+  await page.evaluate(() => { window.__gifosVideo.stageHostForTest('host-live', 'Pastor Kim', 0); window.__gifosVideo.stageStripForTest(null); });
+  await expect(plate).toBeVisible({ timeout: 3000 });
+  await expect(line).toHaveText('The stage is clear.');
+  expect(errors).toEqual([]);
+});
+
+test('a viewer at the name card has no camera or mic on the dock', async ({ page }) => {
+  // Seen across two machines: a viewer opening the link got red Video and
+  // Unmute on the dock behind "This is how you'll appear", until they saved.
+  // A viewer brings no camera; the host still has both.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.removeItem('gifos_appear_ok');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  await page.goto('/run.html?desk=namecard#v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#appear-modal')).toBeVisible();
+  await expect(page.locator('#appear-note')).toBeVisible();
+  await expect(page.locator('.bar #cam')).toBeHidden();
+  await expect(page.locator('.bar #mic')).toBeHidden();
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.waitForSelector('#airbar.on.watch');
+  await expect(page.locator('.bar #cam')).toBeHidden();
+  await expect(page.locator('.bar #mic')).toBeHidden();
+  await page.goto('/run.html?desk=namecardhost&host=1#v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#appear-modal')).toBeVisible();
+  await expect(page.locator('#appear-note')).toHaveCount(0);
+  // The stored key here is a stand-in that fails its check once the room
+  // joins, so read the host's dock at the card (cross-namecard.js joins a
+  // real host).
+  await expect(page.locator('.bar #cam')).toBeVisible();
+  await expect(page.locator('.bar #mic')).toBeVisible();
+});
+
+test('a viewer at the name card is told they are joining, not watching', async ({ page }) => {
+  // Seen across two machines: behind "This is how you'll appear" the viewer
+  // read "You are watching this service. · reconnecting to the room…" and
+  // "1 watching". They had not joined, nothing had dropped, and the one
+  // counted was themselves.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.removeItem('gifos_appear_ok');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  await page.goto('/run.html?desk=cardstatus#v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#appear-modal')).toBeVisible();
+  await page.waitForSelector('#airbar.on.watch');
+  const status = page.locator('#status');
+  await expect(status).toHaveText('Joining the service…');
+  await expect(page.locator('#airwho')).toBeHidden();
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.locator('#airwho')).toBeVisible();
+  await expect(page.locator('#airwho')).toHaveText(/^\d+ watching$/);
+});
+
+test('a joined viewer is told they are watching, not the video quality', async ({ page }) => {
+  // Seen across two machines: a viewer in a service with its host read
+  // "2 in this service · 720p · a password unlocks clear video". A viewer
+  // sends no video, so the quality and the password hint were host talk,
+  // and the room bar already counts who is watching.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  const status = page.locator('#status');
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=viewline' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.watch');
+    await page.waitForFunction(() => window.__gifosVideo && window.__gifosVideo.livePeerForTest);
+    const n = await page.evaluate(() => window.__gifosVideo.livePeerForTest('hostpeer', 'Pastor Sam'));
+    expect(n).toBe(2);
+    await expect(status).toContainText('You are watching this service.');
+    await expect(status).not.toContainText('in this service');
+    await expect(status).not.toContainText('720p');
+    await expect(status).not.toContainText(/\d+p\b/);
+    await expect(status).not.toContainText('password');
+    await expect(status).not.toContainText('clear video');
+    const clip = await status.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+    expect(clip).toBe(false);
+  }
+});
+
+test('a live host with viewers is told they are live, not the meeting count', async ({ page }) => {
+  // Seen across two machines: a host with one viewer read "2 in this
+  // service · 720p · a password unlocks clear video" while the room bar said
+  // "1 watching", and the host had just typed a password to go live. The
+  // count was the meeting's, and "a password" did not say which one.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Pastor Sam');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  const status = page.locator('#status');
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=hostline' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.live');
+    await page.waitForFunction(() => window.__gifosVideo && window.__gifosVideo.livePeerForTest);
+    const n = await page.evaluate(() => window.__gifosVideo.livePeerForTest('viewerpeer', 'Jordan Lee'));
+    expect(n).toBe(2);
+    if (w === 1280) { await page.waitForTimeout(500); await page.screenshot({ path: 'artifacts/host-line-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    await expect(status).toHaveText(/^You are live · \d+p\b/);
+    await expect(status).toContainText('blurred until you set a viewer password');
+    await expect(status).not.toContainText('in this service');
+    await expect(status).not.toContainText('a password unlocks');
+  }
+});
+
+test('a live host reads the whole status line at desktop widths', async ({ page }) => {
+  // Seen at 1024 and 900: "You are live · 720p · reconnecting to the room…
+  // · blurred until you set a viewer password" ended in "blurred until y…",
+  // so the one thing the host could act on, the viewer password, was cut.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Pastor Sam');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  const status = page.locator('#status');
+  for (const [w, h] of [[900, 720], [1024, 720], [1280, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=hostfit' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.live');
+    await page.waitForFunction(() => window.__gifosVideo && window.__gifosVideo.livePeerForTest);
+    await page.evaluate(() => window.__gifosVideo.livePeerForTest('viewerpeer', 'Jordan Lee'));
+    await expect(status).toContainText('blurred until you set a viewer password');
+    if (w === 900) { await page.waitForTimeout(500); await page.screenshot({ path: 'artifacts/host-fit-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    const fit = await status.evaluate((el) => {
+      const chip = el.closest('.topchip').getBoundingClientRect();
+      const bar = document.getElementById('airbar').getBoundingClientRect();
+      return { w: el.scrollWidth <= el.clientWidth + 1, h: el.scrollHeight <= el.clientHeight + 1,
+        clearOfBar: chip.bottom <= bar.top, inView: chip.right <= innerWidth };
+    });
+    expect({ width: w, ...fit }).toEqual({ width: w, w: true, h: true, clearOfBar: true, inView: true });
+  }
+});
+
+test('the stage label is readable on the dark stage', async ({ page }) => {
+  // Seen across two machines: the host's stage read "On stage" in near-black
+  // on the stage's black band at its foot, too small and too dark to read.
+  // The band is always dark, so the words on it must be light.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Pastor Sam');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const [w, h] of [[1280, 720], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=stagelabel' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.live');
+    const got = await page.evaluate(() => {
+      // the same tile paintStageStrip builds
+      const el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sgs';
+      el.appendChild(document.createElement('video'));
+      const lb = document.createElement('div'); lb.className = 'rlabel'; lb.textContent = 'On stage';
+      el.appendChild(lb);
+      document.getElementById('stagefeed').appendChild(el);
+      const s = getComputedStyle(lb);
+      const rgba = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+      const [r, g, b] = rgba(s.color);
+      const [br, bg, bb, ba = 1] = rgba(s.backgroundColor);
+      // the band over the black video
+      const under = [br * ba, bg * ba, bb * ba];
+      const lum = (c) => { const v = c.map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+      const a = lum([r, g, b]), z = lum(under);
+      return { contrast: Math.round(((Math.max(a, z) + 0.05) / (Math.min(a, z) + 0.05)) * 10) / 10, px: parseFloat(s.fontSize) };
+    });
+    if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/stage-label-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    expect({ width: w, readable: got.contrast >= 4.5, big: got.px >= 12, ...got }).toMatchObject({ width: w, readable: true, big: true });
+  }
+});
+
+test('the raised-hands line is readable on the dark page', async ({ page }) => {
+  // Seen across two machines: the host's line above the stage read
+  // "✋ 1 waiting:" in near-black on the dark page, and the first name in a
+  // dim blue. The session page is always dark, so the line must be light.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Pastor Sam');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const who of ['host', 'group']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const url = who === 'group'
+      ? '/run.html?desk=handqg#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=handqhost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    const line = await page.evaluate(() => window.__gifosVideo.handPeerForTest('qa-hand', 'Jordan Lee'));
+    expect(line, who).toContain('1 waiting');
+    await expect(page.locator('#handq'), who).toBeVisible();
+    const got = await page.evaluate(() => {
+      const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number).slice(0, 3);
+      const lum = (c) => { const v = c.map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+      const ratio = (a, b) => { const x = lum(a), y = lum(b); return Math.round(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)) * 10) / 10; };
+      const q = document.getElementById('handq');
+      const under = rgb(getComputedStyle(document.body).backgroundColor);
+      const s = getComputedStyle(q), n = getComputedStyle(q.querySelector('b'));
+      return { line: ratio(rgb(s.color), under), name: ratio(rgb(n.color), under), px: parseFloat(s.fontSize) };
+    });
+    if (who === 'host') { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/handq-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    expect({ who, lineReadable: got.line >= 4.5, nameReadable: got.name >= 4.5, big: got.px >= 12, ...got }).toMatchObject({ who, lineReadable: true, nameReadable: true, big: true });
+  }
+});
+
+test('the vote sheet is readable in a small group', async ({ page }) => {
+  // Seen across two machines: in a small group's Place a vote sheet, the hint
+  // under Vote onto stage and Vote off stage was near-black on the dark
+  // buttons, and Cancel was pale grey on the white sheet.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.setItem('gifos_appear_ok', '1');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  await page.goto('/run.html?desk=voteg#mb=1&v=sunday&av=0123456789abcdef', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on');
+  await page.evaluate(() => document.getElementById('votebtn').click());
+  await expect(page.locator('#vote-modal')).toBeVisible();
+  const got = await page.evaluate(() => {
+    const rgba = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+    const lum = (c) => { const v = c.slice(0, 3).map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+    // the first solid background behind el
+    const under = (el) => { for (let e = el; e; e = e.parentElement) { const c = rgba(getComputedStyle(e).backgroundColor); if (c.length === 3 || c[3] === 1) return c.slice(0, 3); } return [255, 255, 255]; };
+    const ratio = (el) => {
+      const c = rgba(getComputedStyle(el).color), bg = under(el);
+      let a = c.length > 3 ? c[3] : 1; for (let e = el; e; e = e.parentElement) a *= parseFloat(getComputedStyle(e).opacity);
+      const fg = c.slice(0, 3).map((x, i) => x * a + bg[i] * (1 - a));
+      const x = lum(fg), y = lum(bg); return Math.round(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)) * 10) / 10;
+    };
+    const out = {};
+    for (const b of document.querySelectorAll('#vote-modal .voteopt')) out[b.dataset.vm] = ratio(b.querySelector('small'));
+    out.cancel = ratio(document.getElementById('vote-cancel'));
+    return out;
+  });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: 'artifacts/vote-sheet-' + (process.env.SHOT_TAG || 'run') + '.png' });
+  expect({ upReadable: got.up >= 4.5, downReadable: got.down >= 4.5, kickReadable: got.kick >= 4.5, cancelReadable: got.cancel >= 4.5, ...got })
+    .toMatchObject({ upReadable: true, downReadable: true, kickReadable: true, cancelReadable: true });
+});
+
+test('the Chat icon on the dock is as large as its neighbours', async ({ page }) => {
+  // Seen across two machines: on the host's and the viewer's dock the Chat
+  // speech bubble was 13px, where Invite, Full screen and More are 28px.
+  // Chat (and prayer requests) is the one dock button a congregation uses
+  // most, and it read as a dot.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.setItem('gifos_appear_ok', '1');
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+    else localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  for (const [who, q, w, h] of [['viewer', '', 1280, 720], ['viewer', '', 1920, 1080], ['host', '&host=1', 1280, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=chaticon' + who + w + q + '#v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    await expect(page.locator('.bar #chatbtn')).toBeVisible();
+    const size = (sel) => page.locator(sel).evaluate((el) => Math.round(el.getBoundingClientRect().width));
+    const chat = await size('.bar #chatbtn svg');
+    const invite = await size('.bar #invite svg');
+    if (who === 'viewer' && w === 1280) { await page.screenshot({ path: 'artifacts/chat-icon-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    expect({ who, width: w, chat }).toEqual({ who, width: w, chat: invite });
+  }
+});
+
+test('a clap on the stage names who clapped', async ({ page }) => {
+  // The stage pill was only a count: a host saw 👏 4 and not who. The names
+  // are the people the room already lists in Who is watching.
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  const who = page.locator('#bc-reacts .bcwho');
+  async function lay() {
+    return page.evaluate(() => {
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const overlap = (a, b) => !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+      const els = Array.from(document.querySelectorAll('#bc-reacts .bcreact, #bc-reacts .bcwho'));
+      const boxes = els.map((el) => el.getBoundingClientRect());
+      const w = document.querySelector('#bc-reacts .bcwho');
+      const cs = w && getComputedStyle(w);
+      return {
+        on: boxes.length > 0 && boxes.every((b) => b.width > 20 && b.left >= -1 && b.right <= innerWidth + 1 && b.top >= -1 && b.bottom <= innerHeight + 1),
+        dock: boxes.some((b) => overlap(b, dock)),
+        px: cs ? parseFloat(cs.fontSize) : 0,
+        color: cs ? cs.color : '',
+      };
+    });
+  }
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=clapwho' + w + '&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.live');
+    await page.evaluate(() => {
+      const v = window.__gifosVideo;
+      v.livePeerForTest('viewer-a', 'Ruth Okafor');
+      v.livePeerForTest('viewer-b', 'Sam Lee');
+      v.livePeerForTest('viewer-c', 'Jo Park');
+      v.livePeerForTest('viewer-d', 'Dee');
+      v.remoteFrameForTest('viewer-a', { k: 'react', e: '👏', id: 'who-a-' + Date.now() });
+      v.remoteFrameForTest('viewer-b', { k: 'react', e: '👏', id: 'who-b-' + Date.now() });
+    });
+    await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 2');
+    await expect(who).toHaveText('Sam Lee, Ruth Okafor');
+    await expect(page.locator('#bc-reacts .bcreact')).toHaveAttribute('aria-label', '2 claps from Sam Lee and Ruth Okafor');
+    await page.evaluate(() => {
+      const v = window.__gifosVideo;
+      v.remoteFrameForTest('viewer-c', { k: 'react', e: '👏', id: 'who-c-' + Date.now() });
+      v.remoteFrameForTest('viewer-d', { k: 'react', e: '👏', id: 'who-d-' + Date.now() });
+      v.remoteFrameForTest('viewer-d', { k: 'react', e: '👏', id: 'who-d2-' + Date.now() });
+    });
+    await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 5');
+    // one name per person, the latest first
+    await expect(who).toHaveText('Dee, Jo Park +2');
+    const l = await lay();
+    expect(l.on, JSON.stringify(l)).toBe(true);
+    expect(l.dock, JSON.stringify(l)).toBe(false);
+    expect(l.px, JSON.stringify(l)).toBeGreaterThanOrEqual(14);
+    expect(l.color, JSON.stringify(l)).toBe('rgb(255, 255, 255)');
+  }
+  // A viewer's own clap reads You.
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto('/run.html?desk=clapwhoview#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  await page.locator('#reactbtn').click();
+  await page.locator('#reacttray button[aria-label="Clap"]').click();
+  await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 1');
+  await expect(who).toHaveText('You');
+  expect(errors).toEqual([]);
+});
+
+test('a joined viewer reads who is live, not watching three times', async ({ page }) => {
+  // Seen across two machines: a viewer's header read "WATCHING · You are
+  // watching this service." beside "Service · You are watching". The badge
+  // and the room bar already say watching; the line now names the host.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  const status = page.locator('#status');
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=whoislive' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.watch');
+    await page.waitForFunction(() => window.__gifosVideo && window.__gifosVideo.livePeerForTest);
+    await page.evaluate(() => {
+      const v = window.__gifosVideo;
+      v.livePeerForTest('viewer-b', 'Sam Lee');
+      v.livePeerForTest('hostpeer', 'Pastor Sam');
+      if (v.hostPeerForTest) v.hostPeerForTest('hostpeer');
+    });
+    await expect(page.locator('#onair')).toHaveText('Watching');
+    await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+    // The host is not watching: this viewer and Sam Lee are.
+    await expect(page.locator('#airwho')).toHaveText('2 watching');
+    if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/who-live-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    await expect(status).toHaveText(/^Pastor Sam is live\./);
+    await expect(status).not.toContainText('watching');
+    await expect(status).not.toContainText('Sam Lee');
+    const clip = await status.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+    expect(clip).toBe(false);
+  }
+});
+
+test('the lobby preview says you join muted with the camera off', async ({ page }) => {
+  // The preview shows your camera live, but a call opens muted with the
+  // camera off, and the card said "Turn the camera on here" with no control
+  // here. A service's list also said Broadcasts.
+  await page.addInitScript(() => { localStorage.setItem('gifos_name', 'Avery Chen'); });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    for (const bc of [false, true]) {
+      await page.setViewportSize({ width: w, height: h });
+      // A distinct query per boot: a hash-only change would not re-run boot.
+      await page.goto('/run.html?desk=lobnote' + w + (bc ? 's#bc=1' : 'g'));
+      await page.waitForSelector('#lobby.show');
+      if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/lobby-note-' + (bc ? 'service-' : 'group-') + (process.env.SHOT_TAG || 'run') + '.png' }); }
+      const note = page.locator('#lob-preview .lob-pv-note');
+      await expect(note).toBeVisible();
+      await expect(note).toHaveText('You join muted, with the camera off');
+      await expect(page.locator('#lobby .lob-quiet')).not.toContainText(/on here/);
+      const box = await page.evaluate(() => {
+        const r = (id) => document.querySelector(id).getBoundingClientRect();
+        const pv = r('#lob-preview'), n = r('#lob-preview .lob-pv-note'), nm = r('#lob-preview-name');
+        const apart = n.bottom <= nm.top || n.top >= nm.bottom || n.right <= nm.left || n.left >= nm.right;
+        return { inside: n.left >= pv.left && n.right <= pv.right && n.top >= pv.top && n.bottom <= pv.bottom, apart };
+      });
+      expect(box.inside).toBe(true);
+      expect(box.apart).toBe(true);
+      if (bc) await expect(page.locator('#lob-empty')).toHaveText('Services you start or watch show up here.');
+      else await expect(page.locator('#lob-empty')).toHaveText('Calls you start or join show up here.');
+    }
+  }
+});
+
+test('Escape closes the chat panel and returns to the Chat button', async ({ page }) => {
+  // Chat stayed open on Escape: the first press folded More, the next did
+  // nothing, and the panel kept covering the right of the stage. Meet and
+  // Zoom close a side panel on Escape.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  const panel = page.locator('#chatpanel');
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    for (const who of ['host', 'view', 'group']) {
+      await page.setViewportSize({ width: w, height: h });
+      const url = who === 'group'
+        ? '/run.html?desk=chatesc' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=chatesc' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.locator('#chatbtn').click();
+      await expect(panel).toHaveClass(/open/);
+      await page.locator('#chat-in').focus();
+      if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/chat-esc-open-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      await page.keyboard.press('Escape');
+      await expect(panel).not.toHaveClass(/open/);
+      if (w === 1280 && who === 'host') { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/chat-esc-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+      await expect(page.locator('#chatbtn')).toBeFocused();
+      await expect(page.locator('#chatbtn')).toHaveAttribute('aria-expanded', 'false');
+      // A sheet over the chat closes first, and the chat stays.
+      await page.locator('#chatbtn').click();
+      await expect(panel).toHaveClass(/open/);
+      await expect(page.locator('#chatbtn')).toHaveAttribute('aria-expanded', 'true');
+      // Beside the open chat at 900 Invite is under More (Q96).
+      if (await page.locator('#invite').isVisible()) await page.locator('#invite').click();
+      else { await page.locator('#bartoggle').click(); await page.locator('#barmore [data-dock="invite"]').click(); }
+      const sheet = page.locator('.name-modal:visible, #invite-modal:visible').first();
+      await expect(sheet).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(sheet).toBeHidden();
+      await expect(panel).toHaveClass(/open/);
+    }
+  }
+});
+
+test('the chat close and attach buttons have names, and closing returns to Chat', async ({ page }) => {
+  // The chat's close button read only "✕" and the attach button "📎" to a
+  // screen reader, and pressing the close button dropped the keyboard on
+  // the page body instead of Chat.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  const panel = page.locator('#chatpanel');
+  for (const [w, h] of [[1280, 720], [900, 720]]) {
+    for (const who of ['host', 'view', 'group']) {
+      await page.setViewportSize({ width: w, height: h });
+      const url = who === 'group'
+        ? '/run.html?desk=chatname' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=chatname' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.locator('#chatbtn').click();
+      await expect(panel).toHaveClass(/open/);
+      if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/chat-names-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      await expect(page.locator('#chatclose')).toHaveAccessibleName('Close chat');
+      await expect(page.locator('#cattach')).toHaveAccessibleName(who === 'group' ? 'Pin a file to the meeting' : 'Pin a file to this service');
+      await page.locator('#chatclose').focus();
+      await page.keyboard.press('Enter');
+      await expect(panel).not.toHaveClass(/open/);
+      await expect(page.locator('#chatbtn')).toBeFocused();
+    }
+  }
+});
+
+test('the Tab walk in a session stops only on controls you can see', async ({ page }) => {
+  // After the room bar, Tab walked through eight off-screen links meant for
+  // AI agents (llms.txt, sitemap, …): a 1px clipped box with no visible
+  // focus, on a service host, a viewer and a small group.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const who of ['host', 'view', 'group']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const url = who === 'group'
+      ? '/run.html?desk=tabwalkg#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=tabwalk' + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+    const hidden = [];
+    let dock = 0;
+    let afterBar = 0;
+    for (let i = 0; i < 30; i++) {
+      await page.keyboard.press('Tab');
+      const stop = await page.evaluate(() => {
+        const e = document.activeElement;
+        if (!e || e === document.body) return null;
+        const r = e.getBoundingClientRect();
+        // A clipped 1px box still reports a rect, so ask what is drawn at
+        // the stop's centre.
+        const x = r.left + r.width / 2, y = r.top + r.height / 2;
+        const hit = x >= 0 && y >= 0 && x < innerWidth && y < innerHeight && document.elementFromPoint(x, y);
+        const seen = !!hit && (e === hit || e.contains(hit));
+        return { id: e.id, name: (e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 30), seen };
+      });
+      if (!stop) continue;
+      if (stop.id === 'chatbtn') dock++;
+      if (!stop.seen) hidden.push(stop.name);
+      // Shoot the stop after the room bar's last button.
+      if (who === 'host' && afterBar === 1) await page.screenshot({ path: 'artifacts/tab-walk-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      if (stop.id === 'airsound' || afterBar) afterBar++;
+    }
+    expect(dock, who + ': the walk reaches the dock').toBeGreaterThan(0);
+    expect(hidden, who + ': unseen Tab stops').toEqual([]);
+  }
+});
+
+test('Tab reaches the room bar before the dock, top to bottom', async ({ page }) => {
+  // The room bar sits above the stage and the dock below it, but Tab ran
+  // the whole dock first and reached the room bar last, on a service host,
+  // a viewer and a small group.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const who of ['host', 'view', 'group']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const url = who === 'group'
+      ? '/run.html?desk=taborderg#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=taborder' + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+    const ids = [];
+    for (let i = 0; i < 18; i++) {
+      await page.keyboard.press('Tab');
+      ids.push(await page.evaluate(() => document.activeElement ? document.activeElement.id : ''));
+    }
+    if (who === 'host') await page.screenshot({ path: 'artifacts/tab-order-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    const rec = ids.indexOf('airrec'), dock = ids.indexOf('bargrip');
+    expect(rec, who + ': Tab reaches the room bar (' + ids.join(' ') + ')').toBeGreaterThan(-1);
+    expect(dock, who + ': Tab reaches the dock (' + ids.join(' ') + ')').toBeGreaterThan(-1);
+    expect(rec, who + ': the room bar comes before the dock (' + ids.join(' ') + ')').toBeLessThan(dock);
+  }
+});
+
+test('? lists the keyboard shortcuts that work here', async ({ page }) => {
+  // M and V worked, but only a hover title said so: nothing listed the
+  // keys, and a screen reader was never told (no aria-keyshortcuts), on a
+  // service host, a viewer and a small group. Zoom and Meet list theirs.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const who of ['host', 'view', 'group']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const url = who === 'group'
+      ? '/run.html?desk=keysg#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=keys' + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    await page.locator('#chatbtn').focus();
+    await page.keyboard.press('?');
+    if (who === 'host') {
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: 'artifacts/keys-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    }
+    const sheet = page.locator('#keys-modal');
+    await expect(sheet, who + ': ? opens the list').toBeVisible();
+    await expect(page.locator('#mic'), who).toHaveAttribute('aria-keyshortcuts', 'M');
+    await expect(page.locator('#cam'), who).toHaveAttribute('aria-keyshortcuts', 'V');
+    const keys = await sheet.locator('kbd').allTextContents();
+    // A viewer has no mic or camera on the dock, so M and V are not theirs.
+    if (who === 'view') expect(keys, who).not.toContain('M');
+    else expect(keys, who).toEqual(expect.arrayContaining(['M', 'V']));
+    expect(keys, who).toEqual(expect.arrayContaining(['Esc', 'Tab', '?']));
+    // The sheet fits the window.
+    const box = await sheet.locator('.name-box').boundingBox();
+    expect(box.y, who).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height, who).toBeLessThanOrEqual(720);
+    await page.keyboard.press('Escape');
+    await expect(sheet, who + ': Escape closes the list').toBeHidden();
+    await expect(page.locator('#chatbtn'), who + ': focus returns').toBeFocused();
+    // Typing a ? in the chat stays in the chat.
+    await page.locator('#chatbtn').click();
+    await page.locator('#chat-in').fill('why');
+    await page.locator('#chat-in').press('?');
+    await expect(page.locator('#chat-in'), who).toHaveValue('why?');
+    await expect(sheet, who).toBeHidden();
+  }
+  // The lobby is not a call: ? does nothing there.
+  await page.goto('/run.html?desk=keyslobby#bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#lobby.show');
+  // The ? handler opens the sheet synchronously, so no wait is needed.
+  await page.keyboard.press('?');
+  await expect(page.locator('#keys-modal'), 'lobby').toBeHidden();
+});
+
+test('C, H and R open Chat, raise a hand and open Reactions', async ({ page }) => {
+  // Only M and V acted: Chat, Raise hand and Reactions took a Tab walk
+  // through the dock, on a service host, a viewer and a small group. Zoom
+  // and Meet each give chat and raise hand a key.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const who of ['host', 'view', 'group']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const url = who === 'group'
+      ? '/run.html?desk=keys2g#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=keys2' + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+    // C opens the chat with the keyboard in the message box.
+    await page.keyboard.press('c');
+    if (who === 'host') {
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: 'artifacts/keys2-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    }
+    await expect(page.locator('#chatpanel'), who + ': C opens the chat').toHaveClass(/open/);
+    await expect(page.locator('#chat-in'), who + ': C lands in the message box').toBeFocused();
+    // Typing a c, h or r in the chat stays in the chat.
+    await page.keyboard.type('chr');
+    await expect(page.locator('#chat-in'), who).toHaveValue('chr');
+    await expect(page.locator('#reacttray'), who).toBeHidden();
+    await page.locator('#chat-in').fill('');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#chatpanel'), who + ': Escape closes the chat').not.toHaveClass(/open/);
+    // C again from the dock closes an open chat as well.
+    await page.keyboard.press('c');
+    await expect(page.locator('#chatpanel'), who).toHaveClass(/open/);
+    await page.locator('#chatbtn').focus();
+    await page.keyboard.press('c');
+    await expect(page.locator('#chatpanel'), who + ': C closes the chat').not.toHaveClass(/open/);
+    // R opens Reactions with the keyboard on the first one.
+    await page.keyboard.press('r');
+    await expect(page.locator('#reacttray'), who + ': R opens Reactions').toBeVisible();
+    await expect(page.locator('#reacttray button:visible').first(), who + ': R lands on the first reaction').toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#reacttray'), who).toBeHidden();
+    // H raises and lowers the hand where a hand can go up (a viewer, a
+    // small group); a service host has no hand to raise.
+    const hand = page.locator('#react-hand');
+    await page.keyboard.press('h');
+    if (who === 'host') await expect(hand, who + ': no hand for a host').not.toHaveAttribute('aria-pressed', 'true');
+    else {
+      await expect(hand, who + ': H raises the hand').toHaveAttribute('aria-pressed', 'true');
+      await page.keyboard.press('h');
+      await expect(hand, who + ': H lowers it').toHaveAttribute('aria-pressed', 'false');
+    }
+    // The ? list names them.
+    await page.keyboard.press('?');
+    const keys = await page.locator('#keys-modal kbd').allTextContents();
+    expect(keys, who).toEqual(expect.arrayContaining(['C', 'R']));
+    if (who === 'host') expect(keys, who).not.toContain('H');
+    else expect(keys, who).toContain('H');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#chatbtn'), who).toHaveAttribute('aria-keyshortcuts', 'C');
+    await expect(page.locator('#reactbtn'), who).toHaveAttribute('aria-keyshortcuts', 'R');
+  }
+});
+
+test('F opens Full screen, Escape closes it, and its close button is named', async ({ page }) => {
+  // Full screen took a Tab walk through the dock (Zoom and YouTube give it
+  // a key), its close button read only "✕", and when the browser kept the
+  // page out of real full screen, Escape folded More under the black view
+  // instead of closing it. Closing left the keyboard on nothing.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+    // Stand in for a browser that declines real full screen, so Escape
+    // reaches the page as it does when the view could not go full screen.
+    if (location.search.indexOf('nofs=1') !== -1) Element.prototype.requestFullscreen = function () { return Promise.reject(new Error('denied')); };
+  });
+  for (const who of ['host', 'view', 'group']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const url = who === 'group'
+      ? '/run.html?desk=fskeyg&nofs=1#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=fskey' + who + '&nofs=1' + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+    // F opens the full-screen view with the keyboard on its close button.
+    await page.keyboard.press('f');
+    if (who === 'host') {
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: 'artifacts/fskey-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    }
+    await expect(page.locator('#fsview'), who + ': F opens Full screen').toHaveClass(/on/);
+    const close = page.locator('#fsclose');
+    await expect(close, who + ': the close button is named').toHaveAccessibleName('Exit full screen');
+    await expect(close, who + ': focus moves into the view').toBeFocused();
+    // Escape closes the view (not More beneath it) and lands on Full screen.
+    const barOpen = await page.evaluate(() => !document.querySelector('.bar').classList.contains('collapsed'));
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#fsview'), who + ': Escape closes Full screen').not.toHaveClass(/on/);
+    await expect(page.locator('body'), who).not.toHaveClass(/fsopen/);
+    const barNow = await page.evaluate(() => !document.querySelector('.bar').classList.contains('collapsed'));
+    expect(barNow, who + ': Escape leaves More as it was').toBe(barOpen);
+    await expect(page.locator('#fsbtn'), who + ': focus returns to Full screen').toBeFocused();
+    // F toggles: open, then F again closes.
+    await page.keyboard.press('f');
+    await expect(page.locator('#fsview'), who).toHaveClass(/on/);
+    await page.keyboard.press('f');
+    await expect(page.locator('#fsview'), who + ': F closes Full screen').not.toHaveClass(/on/);
+    await expect(page.locator('#fsbtn'), who).toBeFocused();
+    // Typing an f in the chat stays in the chat.
+    await page.keyboard.press('c');
+    await expect(page.locator('#chat-in'), who).toBeFocused();
+    await page.keyboard.type('f');
+    await expect(page.locator('#chat-in'), who).toHaveValue('f');
+    await expect(page.locator('#fsview'), who).not.toHaveClass(/on/);
+    await page.locator('#chat-in').fill('');
+    await page.keyboard.press('Escape');
+    // The ? list names it.
+    await page.keyboard.press('?');
+    const keys = await page.locator('#keys-modal kbd').allTextContents();
+    expect(keys, who).toContain('F');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#fsbtn'), who).toHaveAttribute('aria-keyshortcuts', 'F');
+  }
+});
+
+test('S opens Share where you can share, and the ? list names it', async ({ page }) => {
+  // Share took a Tab walk through the dock: every other dock control has a
+  // key (M, V, C, R, H, F), and Zoom gives sharing one too. (A viewer the
+  // host has not allowed to share gets nothing from S; with no relay the room
+  // has no admins yet and counts as open, so cross-sharekey.js checks that.)
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  const sheet = page.locator('#share-modal');
+  for (const who of ['host', 'group', 'hostside']) {
+    const side = who === 'hostside';
+    await page.setViewportSize(side ? { width: 800, height: 720 } : { width: 1280, height: 720 });
+    const url = who === 'group'
+      ? '/run.html?desk=skeyg#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=skey' + who + '&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    if (side) {
+      // With the chat open on an 800px window, Share moves into More (Q96);
+      // S still reaches it.
+      await page.keyboard.press('c');
+      await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+      await expect(page.locator('#sharebtn'), who + ': Share is under More').toHaveClass(/inmore/);
+    }
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+    await page.keyboard.press('s');
+    if (who === 'host') {
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: 'artifacts/sharekey-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    }
+    await expect(sheet, who + ': S opens Share').toBeVisible();
+    await expect(page.locator('#share-go'), who + ': the keyboard is on the sheet').toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(sheet, who + ': Escape closes it').toBeHidden();
+    // Back on Share, or on More when Share sits under it.
+    await expect(page.locator(side ? '#bartoggle' : '#sharebtn'), who + ': focus returns').toBeFocused();
+    // Typing an s in the chat stays in the chat.
+    if (!side) {
+      await page.keyboard.press('c');
+      await expect(page.locator('#chat-in'), who).toBeFocused();
+    } else await page.locator('#chat-in').focus();
+    await page.keyboard.type('s');
+    await expect(page.locator('#chat-in'), who).toHaveValue('s');
+    await expect(sheet, who).toBeHidden();
+    await page.locator('#chat-in').fill('');
+    await page.keyboard.press('Escape');
+    // The ? list names it where it works, and Share carries the key.
+    await page.keyboard.press('?');
+    const keys = await page.locator('#keys-modal kbd').allTextContents();
+    expect(keys, who + ': ? lists S').toContain('S');
+    await expect(page.locator('#sharebtn'), who).toHaveAttribute('aria-keyshortcuts', 'S');
+    await page.keyboard.press('Escape');
+  }
+});
+
+test('Full screen of a camera-off host shows who it is, not a black screen', async ({ page }) => {
+  // Seen across two machines: with the host's camera off the stage shows an
+  // initial, the name and Camera off (Q66), but Full screen showed the black
+  // frame under that card, or "The stage is clear." while someone was on it.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+    Element.prototype.requestFullscreen = function () { return Promise.reject(new Error('denied')); };
+  });
+  await page.goto('/run.html?desk=fscamoff#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  await page.evaluate(async () => {
+    // The stage feed as it arrives with the camera off: a playing black frame.
+    const c = document.createElement('canvas'); c.width = 320; c.height = 180;
+    const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 320, 180);
+    const v = document.createElement('video'); v.muted = true; v.autoplay = true;
+    v.srcObject = c.captureStream(5);
+    setInterval(() => g.fillRect(0, 0, 320, 180), 200);
+    const el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sgs';
+    el.appendChild(v); document.getElementById('stagefeed').appendChild(el);
+    await v.play().catch(() => {});
+    await new Promise((r) => { const t = setInterval(() => { if (v.videoWidth > 0) { clearInterval(t); r(); } }, 50); });
+    window.__gifosVideo.camOffPeerForTest('host-dark', 'Pastor Kim');
+  });
+  await expect(page.locator('#bc-ident')).toBeVisible();
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  await page.keyboard.press('f');
+  await expect(page.locator('#fsview')).toHaveClass(/on/);
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: 'artifacts/fs-camoff-' + (process.env.SHOT_TAG || 'run') + '.png' });
+  const card = page.locator('#fsname');
+  await expect(card, 'Full screen names who is on stage').toBeVisible();
+  await expect(card).toContainText('Pastor Kim');
+  await expect(card).toContainText('Camera off');
+  await expect(card).not.toContainText('The stage is clear');
+  const look = await page.evaluate(() => {
+    const ini = document.querySelector('#fsname .fsinitial');
+    return {
+      frame: getComputedStyle(document.getElementById('fsmain')).visibility,
+      initial: ini && ini.offsetParent ? ini.textContent : '',
+    };
+  });
+  expect(look.frame, 'the black frame is not painted').toBe('hidden');
+  expect(look.initial, 'the initial stands in for the picture').toBe('P');
+  // A screen share with the camera off is a picture again: no card.
+  await page.evaluate(() => window.__gifosVideo.camOffPeerForTest('host-dark', 'Pastor Kim', true));
+  await expect(card).toBeHidden({ timeout: 4000 });
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('fsmain')).visibility)).toBe('visible');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#fsview')).not.toHaveClass(/on/);
+});
+
+test('the open chat sits beside the room bar and stage, not over them', async ({ page }) => {
+  // At 1280 the open chat covered the room bar's Sound on pill (host and
+  // viewer) and the Fit button (small group); at 900-1024 also the status
+  // line, Invite and the watching count, and the stage stayed centred under
+  // the panel. Meet and Zoom narrow the call beside a side panel.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [1024, 720], [900, 720]]) {
+    for (const who of ['host', 'view', 'group']) {
+      await page.setViewportSize({ width: w, height: h });
+      const url = who === 'group'
+        ? '/run.html?desk=chatside' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=chatside' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.locator('#chatbtn').click();
+      await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+      await page.waitForTimeout(300);
+      if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/chat-side-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      const under = await page.evaluate(() => {
+        const edge = document.getElementById('chatpanel').getBoundingClientRect().left;
+        const out = [];
+        const seen = (e) => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
+        for (const e of document.querySelectorAll('#airbar *, #status, #hdrinvite, #fitbtn, #bc-stage, #bc-stage-line')) {
+          if (!seen(e)) continue;
+          const r = e.getBoundingClientRect();
+          if (r.width > 1 && r.right > edge + 1) out.push((e.id || e.className) + ' ' + Math.round(r.right));
+        }
+        return { edge: Math.round(edge), out };
+      });
+      expect(under.out, who + ' at ' + w + ': nothing of the room bar, header or stage under the chat (edge ' + under.edge + ')').toEqual([]);
+      // The room bar is at most two rows beside the chat: the title, then the
+      // pills where the call is narrow (each one line, see Q95's spec).
+      const bar = await page.locator('#airbar').boundingBox();
+      expect(bar.height, who + ' at ' + w + ': room bar height').toBeLessThanOrEqual(w >= 1100 ? 60 : 88);
+      // Closing the chat gives the width back.
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#chatpanel')).not.toHaveClass(/open/);
+      expect((await page.locator('#airbar').boundingBox()).width).toBe(w);
+    }
+  }
+});
+
+test('the chat head keeps its buttons on one row beside the title', async ({ page }) => {
+  // Seen across two machines at 1280: the host's Service chat head put
+  // Transcript and Turn chat off beside the title and wrapped the close ✕
+  // alone onto a second row, and the privacy line under it began with a
+  // stray "·" left from when it sat beside the title.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [1024, 720], [900, 720]]) {
+    for (const who of ['host', 'view', 'group']) {
+      await page.setViewportSize({ width: w, height: h });
+      const url = who === 'group'
+        ? '/run.html?desk=chathead' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=chathead' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      // Read the host's head before the stand-in key is dropped at join.
+      if (who === 'host') await expect(page.locator('#chatmod')).toBeAttached();
+      await page.locator('#chatbtn').click();
+      await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+      if (who === 'host') await page.evaluate(() => { document.getElementById('chatmod').style.display = ''; });
+      if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/chat-headrow-' + (process.env.SHOT_TAG || 'run') + '.png', clip: { x: 900, y: 0, width: 380, height: 140 } });
+      const head = await page.evaluate(() => {
+        const box = (e) => e.getBoundingClientRect();
+        const seen = (e) => e.getClientRects().length && getComputedStyle(e).display !== 'none';
+        const title = box(document.getElementById('paneltitle'));
+        const panel = box(document.getElementById('chatpanel'));
+        const rows = [];
+        for (const e of document.querySelectorAll('#chathead button')) {
+          if (!seen(e)) continue;
+          const r = box(e);
+          rows.push({ id: e.id, mid: Math.round((r.top + r.bottom) / 2), right: Math.round(r.right), h: Math.round(r.height), text: e.textContent });
+        }
+        return { titleMid: Math.round((title.top + title.bottom) / 2), titleH: Math.round(title.height), panelRight: Math.round(panel.right), rows,
+          privacy: document.getElementById('chatprivacy').textContent };
+      });
+      const tag = who + ' at ' + w + ': ' + JSON.stringify(head);
+      expect(head.rows.length, tag).toBeGreaterThanOrEqual(2);
+      for (const r of head.rows) {
+        expect(Math.abs(r.mid - head.titleMid), tag + ' ' + r.id + ' on the title row').toBeLessThanOrEqual(4);
+        expect(r.right, tag + ' ' + r.id + ' inside the panel').toBeLessThanOrEqual(head.panelRight);
+        expect(r.h, tag + ' ' + r.id + ' one line').toBeLessThanOrEqual(30);
+      }
+      expect(head.titleH, tag + ' title one line').toBeLessThanOrEqual(24);
+      expect(head.privacy, tag).toMatch(/^Private to this (service|small group), gone when everyone leaves$/);
+      await page.keyboard.press('Escape');
+    }
+  }
+});
+
+test('the chat box shows its whole placeholder beside Send', async ({ page }) => {
+  // Seen across two machines at 1280: the chat box sat between Prayer, 📎
+  // and Send in a 340px panel, about 100px of text room, so the host and
+  // every viewer read "Message ever" (and "Prayer request" lost its end).
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [1024, 720], [900, 720]]) {
+    for (const who of ['host', 'view', 'group']) {
+      await page.setViewportSize({ width: w, height: h });
+      const url = who === 'group'
+        ? '/run.html?desk=chatbox' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=chatbox' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.locator('#chatbtn').click();
+      await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+      const read = () => page.evaluate(() => {
+        const inp = document.getElementById('chat-in');
+        const cs = getComputedStyle(inp);
+        const ctx = document.createElement('canvas').getContext('2d');
+        ctx.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+        const room = inp.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+        const panel = document.getElementById('chatpanel').getBoundingClientRect();
+        const ctl = {};
+        for (const e of document.querySelectorAll('#chatform button, #chat-in')) {
+          const r = e.getBoundingClientRect();
+          ctl[e.id || e.type] = { l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), b: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) };
+        }
+        return { text: inp.placeholder, need: Math.ceil(ctx.measureText(inp.placeholder).width), room: Math.floor(room),
+          panelL: Math.round(panel.left), panelR: Math.round(panel.right), ctl };
+      });
+      const check = (got, tag) => {
+        tag = who + ' at ' + w + ' ' + tag + ': ' + JSON.stringify(got);
+        expect(got.need, tag + ' whole placeholder fits').toBeLessThanOrEqual(got.room);
+        for (const [id, c] of Object.entries(got.ctl)) {
+          expect(c.l >= got.panelL && c.r <= got.panelR, tag + ' ' + id + ' inside the panel').toBe(true);
+          expect(c.h, tag + ' ' + id + ' tall enough to tap').toBeGreaterThanOrEqual(36);
+        }
+        expect(got.ctl['chat-in'].w, tag + ' box wider than Send').toBeGreaterThan(got.ctl.submit.w);
+      };
+      const plain = await read();
+      if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/chat-box-' + (process.env.SHOT_TAG || 'run') + '.png', clip: { x: 900, y: 480, width: 380, height: 240 } });
+      expect(plain.text).toBe('Message everyone…');
+      check(plain, 'plain');
+      await page.locator('#pray').click();
+      const pray = await read();
+      expect(pray.text).toBe('Prayer request…');
+      check(pray, 'prayer');
+      await page.locator('#pray').click();
+      await page.keyboard.press('Escape');
+    }
+  }
+});
+
+test('the chat-off placeholders fit the chat box', async ({ page }) => {
+  // Seen across two machines at 1280: with chat turned off, the host's box
+  // read "Chat is off for guests — you can sti" and a viewer's "Chat is off
+  // — only the host c": both run past the box's ~219px of text room.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [1024, 720], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=chatoff' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    await page.locator('#chatbtn').click();
+    await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+    for (const admin of [true, false]) {
+      const text = await page.evaluate((a) => window.__gifosVideo.chatGateForTest(true, a), admin);
+      const got = await page.evaluate(() => {
+        const inp = document.getElementById('chat-in');
+        const cs = getComputedStyle(inp);
+        const ctx = document.createElement('canvas').getContext('2d');
+        ctx.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+        return { text: inp.placeholder, disabled: inp.disabled, need: Math.ceil(ctx.measureText(inp.placeholder).width),
+          room: Math.floor(inp.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) };
+      });
+      const tag = (admin ? 'host' : 'viewer') + ' at ' + w + ': ' + JSON.stringify(got);
+      if (w === 1280) await page.screenshot({ path: 'artifacts/chat-off-' + (admin ? 'host' : 'viewer') + '-' + (process.env.SHOT_TAG || 'run') + '.png', clip: { x: 900, y: 520, width: 380, height: 200 } });
+      expect(got.text, tag).toBe(text);
+      expect(got.disabled, tag + ' locked only for guests').toBe(!admin);
+      expect(got.text, tag + ' says chat is off').toMatch(/chat is off|chat off/i);
+      expect(got.need, tag + ' whole placeholder fits').toBeLessThanOrEqual(got.room);
+    }
+  }
+});
+
+test('the lobby card keeps the same gap to the right edge as the preview has to the left', async ({ page }) => {
+  // Seen at 1280 on a service and a small group: the white card ran flush to
+  // the window's right edge, its rounded corners cut square, while the
+  // preview kept 16px on the left. width:100% plus the card's 16px margin
+  // overflowed its column, and Firefox let the lobby scroll sideways by 16px.
+  await page.addInitScript(() => { localStorage.setItem('gifos_name', 'Avery Chen'); });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [1024, 720], [900, 720], [760, 720]]) {
+    for (const bc of [false, true]) {
+      await page.setViewportSize({ width: w, height: h });
+      // A distinct query per boot: a hash-only change would not re-run boot.
+      await page.goto('/run.html?desk=lobedge' + w + (bc ? 's#bc=1' : 'g'));
+      await page.waitForSelector('#lobby.show');
+      if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/lobby-edge-' + (bc ? 'service-' : 'group-') + (process.env.SHOT_TAG || 'run') + '.png' }); }
+      const got = await page.evaluate(() => {
+        const lob = document.getElementById('lobby');
+        const pv = document.getElementById('lob-preview').getBoundingClientRect();
+        const card = document.querySelector('#lobby .lobby-card').getBoundingClientRect();
+        return { leftGap: Math.round(pv.left), rightGap: Math.round(innerWidth - card.right), between: Math.round(card.left - pv.right),
+          lobbyScroll: lob.scrollWidth - lob.clientWidth, pageScroll: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+      });
+      const tag = (bc ? 'service' : 'small group') + ' at ' + w + ': ' + JSON.stringify(got);
+      expect(got.rightGap, tag + ' right gap matches the left').toBe(got.leftGap);
+      expect(got.between, tag + ' gap between preview and card').toBe(got.leftGap);
+      expect(got.lobbyScroll, tag + ' lobby does not scroll sideways').toBeLessThanOrEqual(0);
+      expect(got.pageScroll, tag + ' page does not scroll sideways').toBeLessThanOrEqual(0);
+    }
+  }
+});
+
+test('with the chat open, the dock sits in the call beside it, not across its edge', async ({ page }) => {
+  // Seen across two machines at 1280: the host's dock ran from 204 to 1076,
+  // End sat over the open chat's edge at 940, and the panel kept an empty
+  // 128px band at its bottom for the dock. The dock is centred on the window,
+  // not on the call that now sits beside the chat.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [1024, 720], [900, 720]]) {
+    for (const who of ['host', 'view', 'group']) {
+      await page.setViewportSize({ width: w, height: h });
+      const url = who === 'group'
+        ? '/run.html?desk=dockside' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=dockside' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.mouse.move(w / 3, h / 2);
+      await page.locator('#chatbtn').click();
+      await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+      await page.waitForTimeout(300);
+      if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/dock-side-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      const got = await page.evaluate(() => {
+        const edge = document.getElementById('chatpanel').getBoundingClientRect().left;
+        const d = document.querySelector('.bar').getBoundingClientRect();
+        const send = document.getElementById('chatsend') || document.querySelector('#chatpanel button[type="submit"]');
+        return { edge: Math.round(edge), dockLeft: Math.round(d.left), dockRight: Math.round(d.right), dockWidth: Math.round(d.width),
+          sendBottom: send ? Math.round(send.getBoundingClientRect().bottom) : -1, h: innerHeight };
+      });
+      const tag = who + ' at ' + w + ': ' + JSON.stringify(got);
+      if (got.dockWidth + 16 <= got.edge) {
+        // It fits in the call: it sits there, centred, clear of the chat,
+        // and the chat's composer takes the band the dock used to cover.
+        expect(got.dockRight, tag + ' dock clear of the chat').toBeLessThanOrEqual(got.edge - 8);
+        expect(Math.abs((got.dockLeft + got.dockRight) / 2 - got.edge / 2), tag + ' dock centred in the call').toBeLessThanOrEqual(2);
+        expect(got.sendBottom, tag + ' composer at the panel bottom').toBeGreaterThanOrEqual(got.h - 24);
+      } else {
+        // Too wide for the call beside the chat: it floats over the chat's
+        // bottom band, and the composer stays above it.
+        expect(got.sendBottom, tag + ' composer above the dock').toBeLessThanOrEqual(got.h - 104 - 14);
+      }
+      // Closing the chat puts the dock back in the window's middle.
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#chatpanel')).not.toHaveClass(/open/);
+      const d = await page.locator('.bar').boundingBox();
+      expect(Math.abs(d.x + d.width / 2 - w / 2), who + ' at ' + w + ' dock back in the middle').toBeLessThanOrEqual(2);
+    }
+  }
+});
+
+test('with the chat open, the room bar keeps each pill and its title on one line', async ({ page }) => {
+  // Seen at 900 with the chat open: the call beside it is 560px, and the room
+  // bar broke "Service · You are watching" over two lines and every pill in
+  // two ("Not / recording", "1 / watching", "Sound / on").
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const w of [900, 800, 1024, 1280]) {
+    for (const who of ['view', 'host', 'group']) {
+      await page.setViewportSize({ width: w, height: 720 });
+      const url = who === 'group'
+        ? '/run.html?desk=airwrap' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=airwrap' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.mouse.move(w / 3, 360);
+      await page.locator('#chatbtn').click();
+      await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+      const got = await page.evaluate(async () => {
+        await new Promise((r) => requestAnimationFrame(r));
+        const bar = document.getElementById('airbar').getBoundingClientRect();
+        const kind = document.getElementById('airkind');
+        const out = { kindH: Math.round(kind.getBoundingClientRect().height), kindLine: Math.round(parseFloat(getComputedStyle(kind).lineHeight)),
+          barLeft: Math.round(bar.left), barRight: Math.round(bar.right), barBottom: Math.round(bar.bottom), pills: {} };
+        for (const id of ['airrec', 'airwho', 'airsound']) {
+          const e = document.getElementById(id);
+          if (!e || !e.offsetWidth) continue;
+          const r = e.getBoundingClientRect();
+          const t = document.createRange();
+          t.selectNodeContents(e);
+          const lines = new Set(Array.from(t.getClientRects()).filter((x) => x.width > 0).map((x) => Math.round(x.top))).size;
+          out.pills[id] = { lines, left: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), over: e.scrollWidth - e.clientWidth };
+        }
+        const av = document.getElementById('avstate');
+        out.below = av && av.offsetHeight ? Math.round(av.getBoundingClientRect().top) : out.barBottom;
+        return out;
+      });
+      if (w === 900 && who === 'view') await page.screenshot({ path: 'artifacts/airbar-wrap-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      const tag = who + ' at ' + w + ': ' + JSON.stringify(got);
+      expect(got.kindH, tag + ' title on one line').toBeLessThanOrEqual(got.kindLine + 2);
+      for (const [id, p] of Object.entries(got.pills)) {
+        expect(p.lines, tag + ' ' + id + ' on one line').toBe(1);
+        expect(p.over, tag + ' ' + id + ' whole').toBeLessThanOrEqual(0);
+        expect(p.left >= got.barLeft && p.right <= got.barRight && p.bottom <= got.barBottom, tag + ' ' + id + ' inside the bar').toBe(true);
+      }
+      expect(got.barBottom, tag + ' bar above the mute line').toBeLessThanOrEqual(got.below);
+    }
+  }
+});
+
+test('with the chat open on a small window, the dock fits in the call and the rest is under More', async ({ page }) => {
+  // Seen across two machines at 900: the host's dock (872px) was wider than
+  // the call beside the open chat (560px), so Chat, Share, More and End sat
+  // over the chat panel; a viewer's dock ran across the edge at 800.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const [w, h] of [[900, 720], [800, 720], [1024, 768]]) {
+    for (const who of ['host', 'view', 'group']) {
+      await page.setViewportSize({ width: w, height: h });
+      const url = who === 'group'
+        ? '/run.html?desk=dockfit' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=dockfit' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.mouse.move(w / 3, h / 2);
+      const shown = () => page.evaluate(() => [...document.querySelector('.bar').children]
+        .filter((e) => e.tagName === 'BUTTON' && e.getClientRects().length).map((e) => e.id));
+      const full = await shown();
+      await page.locator('#chatbtn').click();
+      await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+      if (w === 900 && who === 'host') await page.screenshot({ path: 'artifacts/dock-fit-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      const got = await page.evaluate(() => {
+        const edge = document.getElementById('chatpanel').getBoundingClientRect().left;
+        const d = document.querySelector('.bar').getBoundingClientRect();
+        return { edge: Math.round(edge), dockLeft: Math.round(d.left), dockRight: Math.round(d.right) };
+      });
+      const tag = who + ' at ' + w + ': ' + JSON.stringify(got);
+      expect(got.dockLeft, tag + ' dock inside the window').toBeGreaterThanOrEqual(8);
+      expect(got.dockRight, tag + ' dock clear of the chat').toBeLessThanOrEqual(got.edge - 8);
+      expect(Math.abs((got.dockLeft + got.dockRight) / 2 - got.edge / 2), tag + ' dock centred in the call').toBeLessThanOrEqual(2);
+      // Video, Unmute, the stage and hand buttons, More and End/Leave stay.
+      const slim = await shown();
+      for (const id of ['cam', 'mic', 'stagebtn', 'hand', 'bartoggle', 'leavebtn']) {
+        if (full.includes(id)) expect(slim, tag + ' keeps ' + id).toContain(id);
+      }
+      // Whatever left the dock is in More, with its name, inside the call.
+      const gone = full.filter((id) => !slim.includes(id));
+      await page.locator('#bartoggle').click();
+      const more = await page.evaluate((gone) => {
+        const sheet = document.getElementById('barmore').getBoundingClientRect();
+        const items = gone.map((id) => {
+          const p = document.querySelector('#barmore [data-dock="' + id + '"]');
+          return p && p.getClientRects().length ? p.textContent.trim() : null;
+        });
+        return { left: Math.round(sheet.left), right: Math.round(sheet.right), items };
+      }, gone);
+      expect(more.items.every(Boolean), tag + ' moved ' + JSON.stringify(gone) + ' into More ' + JSON.stringify(more)).toBe(true);
+      expect(more.left, tag + ' More inside the window ' + JSON.stringify(more)).toBeGreaterThanOrEqual(0);
+      expect(more.right, tag + ' More clear of the chat ' + JSON.stringify(more)).toBeLessThanOrEqual(got.edge);
+      await page.locator('#bartoggle').click();
+      // Closing the chat brings the whole dock back.
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#chatpanel')).not.toHaveClass(/open/);
+      expect(await shown(), who + ' at ' + w + ' whole dock back').toEqual(full);
+    }
+  }
+});
+
+test('the small group lobby says muted once: the preview says it, the card does not repeat it', async ({ page }) => {
+  // Seen at 1280: the preview read "You join muted, with the camera off" and
+  // the card under Small group read "You come in muted. Turn the camera on
+  // from the call...", the same news twice a hand apart. Zoom and Meet say it
+  // once, on the preview.
+  await page.addInitScript(() => { localStorage.setItem('gifos_name', 'Avery Chen'); });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=lobmuted' + w + 'g');
+    await page.waitForSelector('#lobby.show');
+    if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/lobby-muted-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    const note = page.locator('#lob-preview .lob-pv-note');
+    await expect(note).toBeVisible();
+    await expect(note).toHaveText('You join muted, with the camera off');
+    const quiet = page.locator('#lobby .lob-quiet');
+    await expect(quiet).toBeVisible();
+    await expect(quiet).not.toContainText(/muted/i);
+    // The card still says where the mic and camera come on.
+    await expect(quiet).toContainText(/from the call/);
+    const oneLine = await quiet.evaluate((el) => el.getBoundingClientRect().height <= parseFloat(getComputedStyle(el).lineHeight) * 1.5);
+    expect(oneLine, 'card line fits on one line at ' + w).toBe(true);
+  }
+});
+
+test('a service host\'s React tray has no Raise hand; a viewer\'s still does', async ({ page }) => {
+  // Seen at 1280: the host's React tray opened on ✋ Raise hand, and pressing
+  // it raised the host's own hand (the tray button turned blue) at a service
+  // where the host is the one who answers hands. The host's dock and H key
+  // already leave the hand out; the tray must too.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', location.search.indexOf('host=1') !== -1 ? 'Pastor Kim' : 'Jordan Lee');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const who of ['host', 'viewer']) {
+    for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.goto('/run.html?desk=reactnohand' + who + w + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.locator('#reactbtn').click();
+      await expect(page.locator('#reacttray')).toBeVisible();
+      if (who === 'host' && w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/react-nohand-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+      const labels = await page.locator('#reacttray button').evaluateAll((bs) => bs.filter((b) => b.getClientRects().length).map((b) => b.getAttribute('aria-label')));
+      const want = who === 'host' ? ['Clap', 'Yes', 'No', 'Laugh'] : ['Raise hand', 'Clap', 'Yes', 'No', 'Laugh'];
+      expect(labels, who + ' tray at ' + w).toEqual(want);
+      // The tray stays centred over the React button's dock.
+      const centred = await page.evaluate(() => {
+        const t = document.getElementById('reacttray').getBoundingClientRect();
+        return Math.abs((t.left + t.right) / 2 - window.innerWidth / 2) <= 2 && t.left >= 0 && t.right <= window.innerWidth;
+      });
+      expect(centred, who + ' tray centred at ' + w).toBe(true);
+      // R lands on the first reaction this person can use.
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#reacttray')).toBeHidden();
+      await page.keyboard.press('r');
+      await expect(page.locator('#reacttray')).toBeVisible();
+      expect(await page.evaluate(() => document.activeElement.getAttribute('aria-label')), who + ' R focus at ' + w).toBe(want[0]);
+    }
+  }
+});
+
+test('Float in the More sheet reads at the size of Who, Stage and Settings', async ({ page }) => {
+  // Seen at 1920 on a viewer's More sheet: Float was a 13px label pressed
+  // against its icon, beside 18px Who / Stage / Settings / Help.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  for (const [desk, url] of [['viewer', SESSION], ['host', HOST_SESSION]]) {
+    for (const [w, h] of [[1920, 1080], [1280, 720], [900, 720]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.goto(url.replace('desk=', 'desk=morefloat' + desk + w));
+      await page.waitForSelector('body.broadcast.meet-session #mic .docklab');
+      await page.locator('#bartoggle').click();
+      await expect(page.locator('#barmore')).toBeVisible();
+      const hasFloat = await page.evaluate(() => 'documentPictureInPicture' in window);
+      // No mini window (Firefox): Float must not be offered at all.
+      if (!hasFloat) { await expect(page.locator('#pipbtn')).toBeHidden(); continue; }
+      await expect(page.locator('#barmore #pipbtn')).toBeVisible();
+      if (desk === 'viewer' && w === 1920) await page.screenshot({ path: 'artifacts/more-float-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      const got = await page.evaluate(() => {
+        const who = getComputedStyle(document.getElementById('whobtn'));
+        const btn = document.getElementById('pipbtn');
+        const lab = btn.querySelector('.blab'), svg = btn.querySelector('svg');
+        const l = getComputedStyle(lab), lr = lab.getBoundingClientRect(), sr = svg.getBoundingClientRect(), br = btn.getBoundingClientRect();
+        return {
+          whoSize: who.fontSize, labSize: l.fontSize, whoWeight: who.fontWeight, labWeight: l.fontWeight,
+          gap: Math.round(lr.left - sr.right),
+          centred: Math.abs((Math.min(sr.left, lr.left) + Math.max(sr.right, lr.right)) / 2 - (br.left + br.right) / 2) <= 2,
+        };
+      });
+      const where = desk + ' at ' + w + ' ' + JSON.stringify(got);
+      expect(got.labSize, where).toBe(got.whoSize);
+      expect(Number(got.labWeight), where).toBeGreaterThanOrEqual(Number(got.whoWeight));
+      expect(got.gap, where).toBeGreaterThanOrEqual(6);
+      expect(got.centred, where).toBe(true);
+    }
+  }
+});
+
+test('a service host\'s More sheet has no Hand; a viewer raises one from the dock', async ({ page }) => {
+  // Seen at 1280: after Q98 took ✋ out of the host's React tray, the host's
+  // More sheet still offered Hand, and pressing it raised the host's own
+  // hand at their own service (it read Lower hand and went out on the
+  // host's status). A small group keeps its Hand.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', location.search.indexOf('host=1') !== -1 ? 'Pastor Kim' : 'Jordan Lee');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const who of ['host', 'viewer', 'group']) {
+    for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+      await page.setViewportSize({ width: w, height: h });
+      const hash = who === 'group' ? '#mb=1&v=standup' : '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto('/run.html?desk=morehand' + who + w + (who === 'host' ? '&host=1' : '') + hash, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('body.meet-session #mic .docklab');
+      await page.locator('#bartoggle').click();
+      await expect(page.locator('#barmore')).toBeVisible();
+      if (who === 'host' && w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/more-hand-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+      const sheetHand = await page.locator('#barmore #hand').evaluateAll((bs) => bs.filter((b) => b.getClientRects().length).length);
+      const dockHand = await page.locator('.bar > #hand').evaluateAll((bs) => bs.filter((b) => b.getClientRects().length).length);
+      const where = who + ' at ' + w;
+      if (who === 'host') {
+        expect(sheetHand + dockHand, where + ': no Hand anywhere').toBe(0);
+      } else if (who === 'viewer') {
+        expect({ sheetHand, dockHand }, where).toEqual({ sheetHand: 0, dockHand: 1 });
+      } else {
+        expect(sheetHand + dockHand, where + ': a small group keeps a Hand').toBe(1);
+      }
+    }
+  }
+});
+
+test('the Blur row in the More sheet reads at the sheet\'s size', async ({ page }) => {
+  // Seen at 1280 on a live host's More sheet: the Blur row was a 14px grey
+  // word and 11px Max / Min / No blur in 48px boxes, at the top of a sheet
+  // of 18px buttons. A small group's host has the same row.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Pastor Kim');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const [desk, url] of [['host', HOST_SESSION], ['group', MEET_SESSION]]) {
+    for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.goto(url.replace('desk=', 'desk=moreblur' + desk + w));
+      await page.waitForSelector('body.meet-session #mic .docklab');
+      await page.locator('#bartoggle').click();
+      await expect(page.locator('#barmore .blurctl')).toBeVisible();
+      if (desk === 'host' && w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/more-blur-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+      const got = await page.evaluate(() => {
+        const px = (el) => parseFloat(getComputedStyle(el).fontSize);
+        const sheet = document.getElementById('barmore');
+        const btn = sheet.querySelector(':scope > button:not([hidden])');
+        const lbl = sheet.querySelector('.blurlbl');
+        const segs = Array.from(sheet.querySelectorAll('.seg')).filter((s) => s.getClientRects().length);
+        const sr = sheet.getBoundingClientRect();
+        return {
+          btn: px(btn), lbl: px(lbl), lblWeight: Number(getComputedStyle(lbl).fontWeight),
+          seg: Math.min(...segs.map(px)), segH: Math.min(...segs.map((s) => Math.round(s.getBoundingClientRect().height))),
+          fits: segs.every((s) => { const r = s.getBoundingClientRect(); return r.right <= sr.right && s.scrollWidth <= s.clientWidth; }),
+          segs: segs.length,
+        };
+      });
+      const where = desk + ' at ' + w + ' ' + JSON.stringify(got);
+      expect(got.segs, where).toBe(3);
+      expect(got.lbl, where + ': Blur reads like the sheet').toBe(got.btn);
+      expect(got.lblWeight, where).toBeGreaterThanOrEqual(600);
+      expect(got.seg, where + ': Max / Min / No blur readable').toBeGreaterThanOrEqual(16);
+      expect(got.segH, where).toBeGreaterThanOrEqual(48);
+      expect(got.fits, where).toBe(true);
+    }
+  }
+});
+
+test('Allow screen share in the More sheet stays on one line', async ({ page }) => {
+  // Seen at 1280 on a live host's More sheet: "Allow screen share" broke
+  // over two lines ("Allow screen / share") in its 168px box while every
+  // other button read on one. "Stop guest shares" (the on state) did too.
+  // The button shows only for a room admin after the join, so the spec shows
+  // it by hand; cross-moreshare.js checks a real live host.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Pastor Kim');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const [desk, url] of [['host', HOST_SESSION], ['group', MEET_SESSION]]) {
+    for (const [w, h, chat] of [[1280, 720], [1920, 1080], [900, 720], [800, 720], [1280, 720, true]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.goto(url.replace('desk=', 'desk=moreshare' + desk + w + (chat ? 'chat' : '')));
+      await page.waitForSelector('body.meet-session #mic .docklab');
+      if (chat) { await page.locator('#chatbtn').click(); await expect(page.locator('#chatpanel')).toBeVisible(); }
+      await page.locator('#bartoggle').click();
+      await expect(page.locator('#barmore .blurctl')).toBeVisible();
+      await page.evaluate(() => { document.getElementById('shareall').style.display = ''; });
+      for (const label of ['Allow screen share', 'Stop guest shares']) {
+        await page.evaluate((t) => { document.getElementById('shareall').textContent = t; }, label);
+        await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+        if (desk === 'host' && w === 1280 && !chat && label[0] === 'A') await page.screenshot({ path: 'artifacts/more-share-' + (process.env.SHOT_TAG || 'run') + '.png' });
+        const got = await page.evaluate(() => {
+          const sheet = document.getElementById('barmore');
+          const lines = (b) => {
+            const tops = new Set();
+            for (const n of b.childNodes) if (n.nodeType === 3 && n.textContent.trim()) {
+              const r = document.createRange(); r.selectNodeContents(n);
+              for (const x of r.getClientRects()) tops.add(Math.round(x.top));
+            }
+            for (const s of b.querySelectorAll('.blab')) for (const x of s.getClientRects()) tops.add(Math.round(x.top));
+            return tops.size;
+          };
+          const btns = Array.from(sheet.querySelectorAll(':scope > button')).filter((b) => b.getClientRects().length);
+          const sr = sheet.getBoundingClientRect();
+          const cp = document.getElementById('chatpanel');
+          const edge = cp && cp.getClientRects().length ? cp.getBoundingClientRect().left : innerWidth;
+          return {
+            wrapped: btns.filter((b) => lines(b) > 1).map((b) => b.textContent.trim()),
+            widths: Array.from(new Set(btns.map((b) => Math.round(b.getBoundingClientRect().width)))),
+            sheetInside: sr.left >= 0 && sr.right <= edge + 0.5,
+            sheet: [Math.round(sr.left), Math.round(sr.right), Math.round(edge)],
+          };
+        });
+        const where = desk + ' at ' + w + (chat ? ' with chat' : '') + ' "' + label + '" ' + JSON.stringify(got);
+        expect(got.wrapped, where).toEqual([]);
+        expect(got.widths.length, where + ': the buttons keep one width').toBe(1);
+        expect(got.sheetInside, where).toBe(true);
+      }
+    }
+  }
+});
+
+test('the recording chip on a tile names the small group, not a meeting', async ({ page }) => {
+  // Seen on two machines (rec-leave-cross-after.png): while one person
+  // records a small group, their tile chip read "recording this meeting",
+  // under a card and a room bar that say "small group". The chip names the
+  // same room word as the card. A tile needs a real call (an mb=1 page never
+  // joins), so this one opens a call from the lobby on a relay that is not
+  // there; cross-recchip.js reads the chip on a real peer's tile.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_relay', 'ws://127.0.0.1:9');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=recchip' + w);
+    await page.waitForSelector('#lobby.show');
+    await page.locator('#lob-open').click();
+    await page.getByRole('button', { name: 'Save' }).click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.tile.me');
+    await page.evaluate(() => window.__gifosRoomTrust.setRecording(true));
+    await page.locator('#rec-notice-ok').click();
+    // The Record sheet's Start repaints my tile (recordingIndicatorsOk); the
+    // trust hook does not, so a tile repaint stands in for it.
+    await page.evaluate(() => window.__gifosVideo.markBotForTest(false));
+    const chip = page.locator('.tile.me .chips .warn', { hasText: '⏺' });
+    await expect(chip).toHaveCount(1);
+    if (w === 1280) await page.screenshot({ path: 'artifacts/rec-chip-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    await expect(chip, 'at ' + w).toHaveText('⏺ recording this small group');
+    await expect(page.locator('#airrec')).toHaveText('Recording');
+  }
+});
+
+test('Fit sits in the header, clear of every tile and its controls', async ({ page }) => {
+  // Seen on two machines (rec-chip-cross-after.png): in a small group at 1280
+  // the Fit pill hung over the top-right tile, on its "Blur for all" button
+  // and its dot. Zoom keeps View in the top bar, above the faces. A tile needs
+  // a real call (an mb=1 page never joins), so this opens a call from the
+  // lobby on a relay that is not there; cross-fithdr.js reads a peer's tile.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_relay', 'ws://127.0.0.1:9');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=fithdr' + w);
+    await page.waitForSelector('#lobby.show');
+    await page.locator('#lob-open').click();
+    await page.getByRole('button', { name: 'Save' }).click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.tile.me');
+    await page.mouse.move(w / 2, h / 2);
+    await expect(page.locator('#fitbtn')).toBeVisible();
+    if (w === 1280) await page.screenshot({ path: 'artifacts/fit-header-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    const got = await page.evaluate(async () => {
+      await new Promise((r) => requestAnimationFrame(r));
+      const box = (el) => el.getBoundingClientRect();
+      const hit = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0;
+      const fit = box(document.getElementById('fitbtn'));
+      const shown = (sel) => Array.from(document.querySelectorAll(sel)).filter((e) => e.getClientRects().length);
+      const build = document.getElementById('gifos-build-float');
+      return {
+        fit: [Math.round(fit.left), Math.round(fit.top), Math.round(fit.right), Math.round(fit.bottom)],
+        tiles: shown('.tile').filter((t) => hit(fit, box(t))).map((t) => t.className),
+        chip: hit(fit, box(document.querySelector('.topchip'))),
+        build: !!build && hit(fit, box(build)),
+        buildOnChip: !!build && hit(box(build), box(document.querySelector('.topchip'))),
+        inside: fit.left >= 0 && fit.right <= innerWidth && fit.top >= 0,
+      };
+    });
+    const where = 'at ' + w + ' ' + JSON.stringify(got);
+    expect(got.tiles, where).toEqual([]);
+    expect(got.chip, where).toBe(false);
+    expect(got.build, where).toBe(false);
+    expect(got.buildOnChip, where).toBe(false);
+    expect(got.inside, where).toBe(true);
+  }
+});
+
+test('a tile\'s hover menu sits clear of its "Blur for all" box', async ({ context }) => {
+  // Seen on two machines (fit-header-cross-after.png): hovering a peer's tile
+  // at 1280 opened the menu (Mute, Blur) at the tile's top right, under the
+  // "Blur for all" box, which sits above it, so Mute was hidden and the click
+  // landed on Blur for all. Zoom's hover menu never sits under another
+  // control. The box is built here as paintTileChrome builds it (an mb=1 page
+  // never joins); cross-tilemenu.js hovers a real peer's tile.
+  await context.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    // A fresh page per width: a second goto to the same #hash url does not reload.
+    const page = await context.newPage();
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto(MEET_SESSION);
+    await page.waitForSelector('body.meet-session #grid');
+    await page.evaluate(() => {
+      window.__gifosVideo.guestTileForTest('Jordan Lee');
+      const tile = document.querySelector('.tile[data-peer="qa-guest"]');
+      const box = document.createElement('button');
+      box.type = 'button';
+      box.className = 'blurbox on';
+      box.textContent = 'Blur for all';
+      tile.appendChild(box);
+    });
+    const tile = page.locator('.tile[data-peer="qa-guest"]');
+    await tile.hover();
+    await expect(tile.locator('[data-mod="mute"]')).toBeVisible();
+    if (w === 1280) await page.screenshot({ path: 'artifacts/tile-menu-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    const got = await page.evaluate(async () => {
+      await new Promise((r) => requestAnimationFrame(r));
+      const t = document.querySelector('.tile[data-peer="qa-guest"]');
+      const blur = t.querySelector(':scope > .blurbox').getBoundingClientRect();
+      const tb = t.getBoundingClientRect();
+      const hit = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0;
+      return Array.from(t.querySelectorAll('.modbar button')).filter((b) => b.getClientRects().length).map((b) => {
+        const r = b.getBoundingClientRect();
+        const top = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+        return { name: b.textContent, onTop: top === b, underBlur: hit(r, blur), inTile: r.bottom <= tb.bottom && r.top >= tb.top };
+      });
+    });
+    const where = 'at ' + w + ' ' + JSON.stringify(got);
+    expect(got.length, where).toBeGreaterThanOrEqual(2);
+    for (const b of got) {
+      expect(b.onTop, where).toBe(true);
+      expect(b.underBlur, where).toBe(false);
+      expect(b.inTile, where).toBe(true);
+    }
+  }
 });
