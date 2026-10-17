@@ -451,9 +451,19 @@ Repro: `test/mobile/chat-sheet.js`. It failed (`Ruth's bubble matches the sheet`
 
 Before: `qa/mobile/shots/before-chat-sheet-iphone-se.png`. After: `qa/mobile/shots/after-chat-sheet-iphone-se.png`.
 
+### 54. Send was the same white as the page
+
+On the white chat sheet, Send and the paperclip were both white. The word Send was there, and the control had no edge.
+
+Send is the blue button, white type, 44px. The paperclip and emoji stay a gray key.
+
+Repro: `test/mobile/chat-send.js`. It failed (`Send is rgb(255, 255, 255)`, the paperclip had no edge), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-send.js`.
+
+Before: `qa/mobile/shots/before-chat-send-iphone-se.png`. After: `qa/mobile/shots/after-chat-send-iphone-se.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. Send is the same gray as the paperclip.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A chat line that arrives while you are reading older ones has no way back down.
 
 ## Personas (what was actually tried)
 

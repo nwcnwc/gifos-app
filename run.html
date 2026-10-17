@@ -1826,6 +1826,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-width: 700px), (max-height: 500px) {
     #chatpanel { background: #fff; color: #1d1d1f; border-left-color: #e4e4ea; }
     #chathead, #chatform, #trfoot, #cfiles { border-color: #e4e4ea; }
+    /* Send is the blue action. The paperclip and emoji stay a gray key,
+       so they still have an edge on the white page. */
+    #chatform button { background: #e8ecf1; color: #1d1d1f; border-color: transparent; }
+    #chatform button[type=submit] { background: #0064c8; color: #fff; }
+    #chatform button[type=submit]:disabled { background: #e8ecf1; color: #3a3a3f; }
   }
   #chatlog, #cfiles { min-height: 0; }
   #chathead, #chatform, #emojirow { flex-shrink: 0; }
