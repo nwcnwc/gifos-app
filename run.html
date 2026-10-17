@@ -1793,7 +1793,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
       <span class="dockword" data-t="shareScreen">Share screen</span>
     </button>
-    <button id="ccdock" type="button" aria-pressed="false" aria-label="Captions" data-ti="ccTip" title="Show or hide captions on your screen. This meeting is written down either way.">
+    <button id="ccdock" type="button" aria-pressed="false" aria-label="Captions" aria-keyshortcuts="Alt+K" data-ti="ccTip" title="Show or hide captions on your screen. This meeting is written down either way.">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 12h3M7 15h5M14 15h3"/></svg>
       <span class="dockword">CC</span>
     </button>
@@ -1821,9 +1821,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <section class="moregroup">
       <h4 data-t="people">People</h4>
       <div class="morerow">
-        <button type="button" id="whobtn" data-t="who" data-ti="whoTip" title="Who is on this meeting — names and internet addresses">Who</button>
+        <button type="button" id="whobtn" data-t="who" data-ti="whoTip" aria-keyshortcuts="Alt+W" title="Who is on this meeting — names and internet addresses">Who</button>
         <button id="hand" data-t="hand" aria-keyshortcuts="Alt+H" title="Raise your hand — raised hands float to the top">Hand</button>
-        <button id="invite" data-t="invite" data-ti="invTip" title="Friends join you live with one link">Invite</button>
+        <button id="invite" data-t="invite" data-ti="invTip" aria-keyshortcuts="Alt+I" title="Friends join you live with one link">Invite</button>
         <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
@@ -1840,18 +1840,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <section class="moregroup">
       <h4 data-t="share">Share</h4>
       <div class="morerow">
-        <button id="appbtn" data-t="runApp" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
+        <button id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
       </div>
     </section>
     <section class="moregroup">
       <h4 data-t="room">Room</h4>
       <div class="morerow">
-        <button id="votebtn" data-t="vote" data-ti="voteTip" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
-        <button id="pwbtn" data-t="password" data-ti="pwTip" title="Lock this room with a password">Password</button>
-        <button id="stagebtn" data-t="stage" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
-        <button id="recbtn" data-t="record" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
+        <button id="votebtn" data-t="vote" data-ti="voteTip" aria-keyshortcuts="Alt+U" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
+        <button id="pwbtn" data-t="password" data-ti="pwTip" aria-keyshortcuts="Alt+L" title="Lock this room with a password">Password</button>
+        <button id="stagebtn" data-t="stage" aria-keyshortcuts="Alt+G" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
+        <button id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
         <button id="ccbtn" type="button" aria-pressed="false" data-t="captions" data-ti="ccTip" title="Show or hide captions on your screen. This meeting is written down either way.">Captions</button>
-        <button id="setbtn" data-t="settings" title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
+        <button id="setbtn" data-t="settings" aria-keyshortcuts="Alt+," title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
       </div>
     </section>
     <section class="moregroup">
@@ -1867,8 +1867,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <h4 data-t="help">Help</h4>
       <div class="morerow">
         <button id="keysbtn" data-t="keys" type="button" title="Keyboard shortcuts">Keys</button>
-        <button id="helpbtn" data-t="help" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
-        <button id="trbtn" data-t="transcript" title="The meeting's live transcript">Transcript</button>
+        <button id="helpbtn" data-t="help" aria-keyshortcuts="Alt+/" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
+        <button id="trbtn" data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript">Transcript</button>
       </div>
     </section>
     </div>
@@ -2283,6 +2283,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <li><kbd>Alt+H</kbd> <span data-t="keyHand">Raise or lower your hand</span></li>
         <li><kbd>Alt+F</kbd> <span data-t="keyView">Fit everyone or scroll</span></li>
         <li><kbd>Alt+Q</kbd> <span data-t="keyLeave">Leave the meeting</span></li>
+        <li><kbd>Alt+W</kbd> <span data-t="keyWho">Who is here</span></li>
+        <li><kbd>Alt+I</kbd> <span data-t="keyInvite">Invite</span></li>
+        <li><kbd>Alt+Y</kbd> <span data-t="keyApp">Run app</span></li>
+        <li><kbd>Alt+U</kbd> <span data-t="keyVote">Vote</span></li>
+        <li><kbd>Alt+L</kbd> <span data-t="keyLock">Password</span></li>
+        <li><kbd>Alt+G</kbd> <span data-t="keyStage">Stage</span></li>
+        <li><kbd>Alt+R</kbd> <span data-t="keyRecord">Record</span></li>
+        <li><kbd>Alt+K</kbd> <span data-t="keyCaptions">Show or hide captions</span></li>
+        <li><kbd>Alt+,</kbd> <span data-t="keySettings">Settings</span></li>
+        <li><kbd>Alt+T</kbd> <span data-t="keyTranscript">Transcript</span></li>
+        <li><kbd>Alt+/</kbd> <span data-t="keyHelp">Help</span></li>
         <li><kbd>?</kbd> <span data-t="keyList">Show or hide this list</span></li>
       </ul>
       <button id="shortcut-cancel" type="button" data-t="rosterClose">Close</button>
@@ -2738,6 +2749,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bcEmpty: 'Sendungen, die Sie starten oder schauen, stehen hier.',
         shortcutTitle: 'Tastatur', keyMic: 'Stumm oder an', keyCam: 'Kamera an oder aus',
         keyChat: 'Chat auf oder zu', keyShare: 'Bildschirm teilen oder beenden', keyHand: 'Hand heben oder senken', keyView: 'Alle zeigen oder scrollen', keyLeave: 'Besprechung verlassen', keyList: 'Diese Liste zeigen oder schließen',
+        keyWho: 'Wer ist hier', keyInvite: 'Einladen', keyApp: 'App starten', keyVote: 'Abstimmung', keyLock: 'Passwort', keyStage: 'Bühne', keyRecord: 'Aufnahme', keyCaptions: 'Untertitel auf diesem Bildschirm', keySettings: 'Einstellungen', keyTranscript: 'Protokoll', keyHelp: 'Hilfe',
         helpTitle: 'So funktioniert diese Besprechung', helpGot: 'Verstanden',
         bcHelpTitle: 'So funktioniert diese Sendung', appHelpTitle: 'So funktioniert dieser App-Raum',
         screenNameTitle: 'Ihr Name', screenNameNote: 'Die anderen in der Besprechung sehen ihn.', save: 'Speichern',
@@ -2935,6 +2947,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bcEmpty: 'Las transmisiones que empieces o veas aparecen aquí.',
         shortcutTitle: 'Teclado', keyMic: 'Silenciar o activar', keyCam: 'Cámara activada o no',
         keyChat: 'Abrir o cerrar el chat', keyShare: 'Compartir o dejar de compartir', keyHand: 'Levantar o bajar la mano', keyView: 'Ver a todos o desplazar', keyLeave: 'Salir de la reunión', keyList: 'Mostrar u ocultar esta lista',
+        keyWho: 'Quién está', keyInvite: 'Invitar', keyApp: 'Abrir app', keyVote: 'Votar', keyLock: 'Contraseña', keyStage: 'Escenario', keyRecord: 'Grabar', keyCaptions: 'Subtítulos en tu pantalla', keySettings: 'Ajustes', keyTranscript: 'Transcripción', keyHelp: 'Ayuda',
         helpTitle: 'Así funciona esta reunión', helpGot: 'Entendido',
         bcHelpTitle: 'Así funciona esta transmisión', appHelpTitle: 'Así funciona esta sala de app',
         screenNameTitle: 'Tu nombre', screenNameNote: 'Las demás personas de la reunión lo ven.', save: 'Guardar',
@@ -22885,7 +22898,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; try { releaseLeaveAsk(); } catch (e) {} };
     const leaveGo = document.getElementById('leave-go');
     if (leaveGo) leaveGo.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; leaveMeeting(); };
-    // Keyboard: Alt+A mic, Alt+V camera, Alt+S share, Alt+C chat, Alt+H hand, Alt+F view, Alt+Q leave confirm.
+    // Keyboard: Alt+A mic, Alt+V camera, Alt+S share, Alt+C chat, Alt+K captions,
+    // Alt+H hand, Alt+F view, Alt+Q leave confirm, and the rest of More
+    // (Who, Invite, Run app, Vote, Password, Stage, Record, Settings, Transcript, Help).
     // ? lists them. None of these fire while a field has the caret, and the
     // Alt chords stay quiet under a dialog. The physical key (e.code) is
     // what matters, so a non-US layout still hits the same keys.
@@ -22924,7 +22939,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (!e.altKey || e.shiftKey || shortcutTyping(e) || shortcutBlocked()) return;
-      const id = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn' }[e.code];
+      const id = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'invite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', Slash: 'helpbtn' }[e.code];
       if (!id) return;
       const btn = document.getElementById(id);
       // A control inside More is still a shortcut while the sheet is folded.

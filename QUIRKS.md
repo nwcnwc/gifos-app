@@ -6,6 +6,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 
 ## Fixed
 
+### Invite, settings, and the rest of More needed the pointer
+
+- **Who hits it:** a keyboard user who can already mute, share, and leave, and still has to open More for Who, Invite, or Settings.
+- **What you saw:** the shortcut list stopped at Alt+Q. Who, Invite, Run app, Vote, Password, Stage, Record, captions, Settings, Transcript, and Help had no key.
+- **Repro:** `test/desktop/shortcuts.spec.js` — “the rest of More has a key” failed before the chords (`#whobtn` had no `aria-keyshortcuts`).
+- **Fix:** Alt+W Who, Alt+I Invite, Alt+Y Run app, Alt+U Vote, Alt+L Password, Alt+G Stage, Alt+R Record, Alt+K captions, Alt+, Settings, Alt+T Transcript, Alt+/ Help. They work while More is closed. They stay quiet while you are typing and while a dialog is open. The list names them, including German and Spanish. The sheet scrolls on a short window. Host bulk tools still have no key.
+- **Proof:** the shortcut tests pass on Chromium, Firefox, and WebKit. Alt+I opens Invite. Alt+, opens Settings. Screenshots: `test/desktop/shots/more-keys-before-1280.png`, `test/desktop/shots/more-keys-after-1280.png`.
+
 ### The dock said Mic, and a second Unmute would duplicate it
 
 - **Who hits it:** someone who joined muted, which is the default, looking for how to speak. Nathan flagged a header Unmute pill on the phone that copies the dock mic.
@@ -352,7 +360,7 @@ With no saved confirmation for this session, joining shows how you will appear: 
 
 ### More sheet is a dense grid of mixed labels
 
-Who, Invite, and Hand sit under People. Chat is on the dock. Vote, Password, Stage, Record, Captions, and Settings sit under Room. Captions is also on the dock. Run app is under Share. Keys and Help are under Help. Host tools stay hidden until there is a host. “Turn video off” matches the other labels. The list is still long.
+Who, Invite, and Hand sit under People. Chat is on the dock. Vote, Password, Stage, Record, Captions, and Settings sit under Room. Captions is also on the dock. Run app is under Share. Keys and Help are under Help. Each of those has a key. Host tools stay hidden until there is a host, and those bulk tools still have no key. “Turn video off” matches the other labels. The list is still long.
 
 ### Run app is still English
 

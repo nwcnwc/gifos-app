@@ -106,6 +106,38 @@ test('alt shortcuts run the dock and skip the keys while typing', async ({ page 
   await expect(page.locator('#left-modal')).toBeHidden();
 });
 
+test('the rest of More has a key', async ({ page }) => {
+  await boot(page);
+  const chords = [
+    ['whobtn', 'Alt+W'], ['invite', 'Alt+I'], ['appbtn', 'Alt+Y'], ['votebtn', 'Alt+U'],
+    ['pwbtn', 'Alt+L'], ['stagebtn', 'Alt+G'], ['recbtn', 'Alt+R'], ['ccdock', 'Alt+K'],
+    ['setbtn', 'Alt+,'], ['helpbtn', 'Alt+/'], ['trbtn', 'Alt+T'],
+  ];
+  for (const [id, chord] of chords) {
+    expect(await page.getAttribute('#' + id, 'aria-keyshortcuts'), id).toBe(chord);
+  }
+  await page.evaluate(() => {
+    for (const id of ['whobtn', 'invite', 'appbtn', 'votebtn', 'pwbtn', 'stagebtn', 'recbtn', 'ccdock', 'setbtn', 'helpbtn', 'trbtn']) {
+      const el = document.getElementById(id);
+      el.dataset.hits = '0';
+      el.addEventListener('click', (ev) => {
+        el.dataset.hits = String((+el.dataset.hits || 0) + 1);
+        ev.stopImmediatePropagation();
+        ev.preventDefault();
+      }, true);
+    }
+  });
+  const presses = ['Alt+w', 'Alt+i', 'Alt+y', 'Alt+u', 'Alt+l', 'Alt+g', 'Alt+r', 'Alt+k', 'Alt+Comma', 'Alt+Slash', 'Alt+t'];
+  for (const key of presses) await page.keyboard.press(key);
+  for (const [id] of chords) expect(await hits(page, id), id).toBe('1');
+  expect(await page.evaluate(() => document.querySelector('.bar').classList.contains('collapsed'))).toBe(true);
+  await page.keyboard.press('?');
+  const text = await page.locator('#shortcutsheet').innerText();
+  for (const phrase of ['Alt+W', 'Alt+I', 'Alt+Y', 'Alt+U', 'Alt+L', 'Alt+G', 'Alt+R', 'Alt+K', 'Alt+,', 'Alt+/', 'Alt+T', 'Invite', 'Settings', 'Who is here']) {
+    expect(text).toContain(phrase);
+  }
+});
+
 test.describe('German shortcuts', () => {
   test.use({ locale: 'de-DE' });
   test('the share key is named in German', async ({ page }) => {
@@ -117,8 +149,29 @@ test.describe('German shortcuts', () => {
     await expect(sheet).toContainText('Bildschirm teilen oder beenden');
     await expect(sheet).toContainText('Hand heben oder senken');
     await expect(sheet).toContainText('Alle zeigen oder scrollen');
+    await expect(sheet).toContainText('Wer ist hier');
+    await expect(sheet).toContainText('Einladen');
+    await expect(sheet).toContainText('Einstellungen');
+    await expect(sheet).toContainText('Untertitel auf diesem Bildschirm');
     await expect(sheet).not.toContainText('Share or stop sharing');
     await expect(sheet).not.toContainText('Raise or lower your hand');
     await expect(sheet).not.toContainText('Fit everyone or scroll');
+    await expect(sheet).not.toContainText('Who is here');
+    await expect(sheet).not.toContainText('Settings');
+  });
+});
+
+test.describe('Spanish shortcuts', () => {
+  test.use({ locale: 'es-MX' });
+  test('the invite key is named in Spanish', async ({ page }) => {
+    await boot(page);
+    await page.keyboard.press('?');
+    const sheet = page.locator('#shortcutsheet');
+    await expect(sheet).toBeVisible();
+    await expect(sheet).toContainText('Invitar');
+    await expect(sheet).toContainText('Ajustes');
+    await expect(sheet).toContainText('Quién está');
+    await expect(sheet).not.toContainText('Who is here');
+    await expect(sheet).not.toContainText('Settings');
   });
 });
