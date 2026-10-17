@@ -21690,7 +21690,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let frames = null; try { frames = p.video && p.video.getVideoPlaybackQuality ? p.video.getVideoPlaybackQuality().totalVideoFrames : null; } catch (e) {}
         return { id: p.id, name: rosterNames[p.id] || p.name || null, blocked: !!(p.tile && p.tile.classList.contains('va-blocked')),
           message: !!(el && p.tile.classList.contains('va-blocked') && el.querySelector('p') && el.querySelector('p').textContent.length > 0),
-          button: b && !b.hidden ? { kind: b.dataset.kind, price: b.dataset.price } : null, frames, facts: vaTileFacts(p, Date.now()) };
+          button: b && !b.hidden ? { kind: b.dataset.kind, price: b.dataset.price } : null, frames, facts: vaTileFacts(p, Date.now()),
+          media: (() => { // which tracks the tile plays, and which m-line each came in on
+            try {
+              const so = p.video && p.video.srcObject;
+              const rx = new Map(); if (p.pc) for (const t of p.pc.getTransceivers()) if (t.receiver && t.receiver.track) rx.set(t.receiver.track.id, t.mid);
+              return { paused: !!(p.video && p.video.paused), ready: p.video ? p.video.readyState : null, streamIsPeer: !!(so && p.stream && so === p.stream), relayed: !!relayVia.get(p.id),
+                tracks: so && so.getTracks ? so.getTracks().map((t) => ({ kind: t.kind, mid: rx.has(t.id) ? rx.get(t.id) : null, state: t.readyState, muted: t.muted, enabled: t.enabled })) : null };
+            } catch (e) { return { err: String(e).slice(0, 60) }; }
+          })() };
       }),
 
       // Transport bytes on one pair's selected path, both directions (debug).
