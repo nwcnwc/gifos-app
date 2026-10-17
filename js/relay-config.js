@@ -24,3 +24,9 @@ window.GIFOS_RELAY = 'wss://relay.gifos.app';
 // runs (a local test relay) are kept.
 window.GIFOS_RELAY_ATTEST_KEYS = Object.assign({
 }, window.GIFOS_RELAY_ATTEST_KEYS || {});
+
+// The relay's JOIN CHECK (relay lockdown): the Cloudflare Turnstile SITE key
+// (public, not a secret) of the widget whose secret the relay holds as
+// TURNSTILE_SECRET. Empty: the page answers the relay's proof of work
+// instead. A test page sets it first (or localStorage 'gifos_turnstile_sitekey').
+window.GIFOS_TURNSTILE_SITEKEY = window.GIFOS_TURNSTILE_SITEKEY || '';

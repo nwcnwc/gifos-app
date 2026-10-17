@@ -273,16 +273,31 @@
     const ipProofFor = () => (identity && net.edSign
       ? net.edSign(identity.priv, JSON.stringify({ v: 1, act: 'ipatt', sid: opts.sid, peer: identity.peerId })).then((s) => { ipp = s || ''; }, () => {})
       : Promise.resolve());
+    // THE JOIN TICKET (relay lockdown, gifos-net.js relayTicket): a join token
+    // minted at the relay's /t after a person check, then the room's rejoin
+    // token, for THIS room and THIS device tag. The upgrade carries it as
+    // &jt=; a relay that issues none is joined without one.
+    const ticket = net.relayTicket ? net.relayTicket({ relayBase, sid: opts.sid, onBusy: () => { if (opts.onBusy) { try { opts.onBusy(); } catch (e) {} } } }) : null;
+    const devOfUrl = (extra) => { const m = /[&?]dev=([^&]*)/.exec(extra); return m ? decodeURIComponent(m[1]) : (devTag || ''); };
     const makeUrl = () => {
       const extra = opts.urlParams ? String(opts.urlParams() || '') : '';
+      if (!devTag && !/[&?]dev=/.test(extra)) devTag = net.randHex(8); // one tag per page, so the ticket and the upgrade name the same device
+      const jt = ticket ? ticket.token(devOfUrl(extra)) : '';
       return relayBase + '/s/' + opts.sid
         + '?role=mesh&token=' + encodeURIComponent(opts.tok || '')
         + '&peer=' + encodeURIComponent(peer)
         + '&gk=' + encodeURIComponent(seat.genKey || myKey)
         + (rs ? '&rs=' + rs : '')
-        + (/[&?]dev=/.test(extra) ? '' : '&dev=' + encodeURIComponent(devTag || net.randHex(8)))
+        + (/[&?]dev=/.test(extra) ? '' : '&dev=' + encodeURIComponent(devTag))
         + (ipp && identity ? '&pk=' + encodeURIComponent(identity.pubB64) + '&ipp=' + encodeURIComponent(ipp) : '')
-        + extra;
+        + extra
+        + (jt ? '&jt=' + encodeURIComponent(jt) : '');
+    };
+    const prepareTicket = () => {
+      if (!ticket) return Promise.resolve();
+      const extra = opts.urlParams ? String(opts.urlParams() || '') : '';
+      if (!devTag && !/[&?]dev=/.test(extra)) devTag = net.randHex(8);
+      return ticket.prepare(devOfUrl(extra));
     };
 
     // deliver(to, m): the raw transport step — DataChannel first, sealed relay
@@ -544,6 +559,9 @@
       sock = net.steadySocket(makeUrl, {
         onClose: (code) => { relayCloses.push({ code, at: Date.now() }); if (relayCloses.length > RELAY_CLOSES_KEPT) relayCloses.shift(); },
         onDuty: () => !stopped,
+        prepare: prepareTicket,
+        onTokenRefused: () => { if (ticket) ticket.drop(); },
+        onBusy: () => { if (opts.onBusy) { try { opts.onBusy(); } catch (e) {} } },
       });
       lastRelayRx = Date.now(); // fresh socket starts its idle clock now
       // EVERY (re)connect: if I am a seated Section-1 greeter, my pool entry
@@ -556,6 +574,7 @@
         if (stopped) return;
         lastRelayRx = Date.now();
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (m.t === 'joined' && m.rt && ticket) ticket.setRejoin(m.rt); // reconnects and reloads of this tab need no new person check
         if (m.t === 'greeters') { onGreeters(m); return; }
         if (m.t === 'peer') {
           // THE SHAPE GATE: a listed type in the clear and one fixed sealed
@@ -695,9 +714,21 @@
       if (iAmInsideTheRoom()) return false;             // I am inside — use the mesh
       if (m.t !== 'WHOHOME' && m.t !== 'FIND' && !(m.t === 'HOME' && !m.roster)) return false;  // entry asks only
       if (entryDelivered(to, m)) return true;
-      pendingEntry.set(to + '|' + m.t, { to, m, at: Date.now() });
+      const e = { to, m, at: Date.now(), handed: false };
+      handOnce(e);
+      pendingEntry.set(to + '|' + m.t, e);
       askDial(to);
       return true;
+    }
+    // No channel to that greeter yet: still hand the ask, once, to a channel
+    // I hold (sendDC's forward). A member on the far end forwards it and the
+    // answer comes back the same way, so a greeter I may never reach directly
+    // (a pair that cannot connect) still answers at once instead of being
+    // waited out as dark. The ask stays pending and keeps dialing, for when
+    // the channel I hold leads only to another knocker.
+    function handOnce(e) {
+      if (e.handed || typeof opts.dcOpen !== 'function' || !opts.sendDC) return;
+      try { e.handed = !!opts.sendDC(e.to, e.m, peer); } catch (x) {}
     }
     function askDial(to) {
       const now = Date.now();
@@ -715,7 +746,7 @@
       for (const [k, e] of pendingEntry) {
         if (now - e.at > ENTRY_WAIT_MS) { pendingEntry.delete(k); continue; }
         if (entryDelivered(e.to, e.m)) pendingEntry.delete(k);
-        else askDial(e.to);
+        else { handOnce(e); askDial(e.to); }
       }
     }
 
@@ -1039,6 +1070,11 @@
         }
         if (iAmAGreeter() && sock && !sock.rejected) {
           const nowMs = Date.now();
+          // A zombie reads OPEN. A registration sent into a socket that is down
+          // (refused 4015 by a stopped relay, reconnecting) proves nothing, and
+          // rebuilding it would restart steadySocket's backoff at 0.5 s: seated
+          // pages knocked a stopped relay every ~3 s instead of on the 15 s leash.
+          if (regPendingAt && sock.state !== 'up') regPendingAt = 0;
           if (regPendingAt && nowMs - regPendingAt > 12000) {
             // a registration the relay never answered ⇒ zombie socket:
             // rebuild it (the fresh socket's onopen re-registers).
@@ -1154,6 +1190,13 @@
       // when its switch is on.
       RAW_SOCKET_SEND_FOR_TEST(obj) { if (stopped) return { err: 'stopped' }; if (!sock) makeSock(); if (sock.rejected) return { err: 'rejected' }; sock.send(obj); return { ok: true }; },
       relayUp() { return !!(sock && sock.state === 'up'); },
+      // The free TURN pool's ticket for this room and device (gifos-net.js
+      // relayTicket.turnTicket; run.html turnSweep asks with it).
+      turnTicket() {
+        if (!ticket) return Promise.resolve('');
+        const extra = opts.urlParams ? String(opts.urlParams() || '') : '';
+        return ticket.turnTicket(devOfUrl(extra));
+      },
       // The network came back after a dark spell: read the door again now
       // (re-register as a door, or ask for the list), so a change made while
       // I was away — a new room password above all — shows at once (R6).
@@ -1164,7 +1207,7 @@
       // holding the new password can't decrypt any greeter blob (R6 reads as
       // "wrong password") until every greeter's E3 re-knock… which would also
       // have used the stale key, locking them out until a reload.
-      setKey(k) { if (k) { if (k !== roomKey) { oldKeys.unshift(roomKey); if (oldKeys.length > 4) oldKeys.length = 4; keySetAt = Date.now(); } roomKey = k; sealedSoloRuns = 0; /* the counter means "sealed replies under MY CURRENT key" — evidence gathered under the old key must not fire a challenge past a re-key */ try { if (sock && sock.rejected) sock.kick(); } catch (e) {} /* credential change: the ONE sanctioned re-arm of a policy-rejected socket */ try { if (seat && seat.hasCoord && seat.state === 3 && seat.coord.pc === 0) env.knock(peer, seat.genKey || myKey); } catch (e) {} } },
+      setKey(k) { if (k) { if (k !== roomKey) { oldKeys.unshift(roomKey); if (oldKeys.length > 4) oldKeys.length = 4; keySetAt = Date.now(); lockedFired = false; /* a new key re-arms the door challenge: a seated page re-keys in place (no new node), and a later change it misses must still ask */ } roomKey = k; sealedSoloRuns = 0; /* the counter means "sealed replies under MY CURRENT key" — evidence gathered under the old key must not fire a challenge past a re-key */ try { if (sock && sock.rejected) sock.kick(); } catch (e) {} /* credential change: the ONE sanctioned re-arm of a policy-rejected socket */ try { if (seat && seat.hasCoord && seat.state === 3 && seat.coord.pc === 0) env.knock(peer, seat.genKey || myKey); } catch (e) {} } },
       stats() { return { peer, state: seat ? seat.state : 0, coord: (seat && seat.hasCoord) ? { pc: seat.coord.pc, r: seat.coord.r, i: seat.coord.i } : null, stranded: !!(seat && seat.stranded), tick: env.TICK, relayRefused, relayUnsent, pendingEntry: pendingEntry.size, closes: relayCloses.slice() }; },
       // Greeter-list forensics: ring of recent onGreeters outcomes (listLen /
       // open / founded / action). See greeterTrace push in onGreeters.
