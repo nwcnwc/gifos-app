@@ -6459,6 +6459,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.removeEventListener('visibilitychange', syncMetro);
         if (metroOff) { metroOff(); metroOff = null; }
       };
+      // A camera grabbed again feeds this same canvas, so the track the room
+      // receives never ends (and a staged feed keeps its id). Until the new
+      // camera paints, the canvas holds the last frame.
+      pipe.swapSource = (cam2) => {
+        if (blurPipe !== pipe) return false;
+        let t2 = cam2, c2 = false;
+        try { t2 = cam2.clone(); c2 = true; } catch (e) { t2 = cam2; }
+        if (pipe.rvfc && src.cancelVideoFrameCallback) { try { src.cancelVideoFrameCallback(pipe.rvfc); } catch (e) {} }
+        if (pipe.cloned && pipe.srcTrack) { try { pipe.srcTrack.stop(); } catch (e) {} }
+        pipe.srcTrack = t2; pipe.cloned = c2; pipe.camId = cam2.id; pipe.failed = 0;
+        src.srcObject = new MediaStream([t2]);
+        src.play().catch(() => {});
+        if (src.requestVideoFrameCallback) pipe.rvfc = src.requestVideoFrameCallback(onFrame);
+        return true;
+      };
       paint();
       return pipe.track;
     }
@@ -12379,7 +12394,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (nv) localStream.addTrack(nv);
           if (na) localStream.addTrack(na);
           meterFor('me', localStream);
-          stopBlurPipe();   // the old blur canvas read the dead camera track
+          // The blur canvas reads the new camera in place; without one, fall
+          // back to a fresh pipe.
+          if (!(nv && blurPipe && blurPipe.track && blurPipe.track.readyState === 'live' && blurPipe.swapSource && blurPipe.swapSource(nv))) stopBlurPipe();
           refreshOutbound(); // rebuild the (blurred or raw) sender AND the WYSIWYG self-view
           if (death) showCamBack(false);
         }).catch(() => { camGrabbing = false; if (death) showCamBack('fail'); });
