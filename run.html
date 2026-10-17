@@ -1483,6 +1483,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lyrics-next { margin-top: 8px; min-height: 44px; border: 0; border-radius: 12px; background: #0064c8; color: #fff;
     font: 700 16px/1 system-ui, sans-serif; cursor: pointer; padding: 0 16px; }
   #lyrics-next.secondary { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
+  /* The booth's own song: typed here, one line per line, kept for this room
+     on this computer. Song reads it; nothing extra is sent to the room. */
+  #song-edit { min-height: 44px; border-radius: 12px; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0;
+    font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+  #songedit { display: none; position: fixed; z-index: 25; left: 290px; right: 14px; bottom: 128px;
+    max-width: 640px; max-height: calc(100vh - 18vh - 128px - 220px); min-height: 0;
+    flex-direction: column; gap: 8px; padding: 16px 18px 14px; box-sizing: border-box;
+    background: #fff; color: #1d1d1f; border-radius: 20px; box-shadow: 0 16px 40px rgba(0,0,0,.28); }
+  #songedit.open { display: flex; }
+  body.songedit #lyrics.open { display: none; }
+  #songedit h3 { margin: 0; font: 700 16px/1.2 system-ui, sans-serif; color: #3a3a3f; }
+  #songedit p { margin: 0; font: 400 16px/1.35 system-ui, sans-serif; color: #3a3a3f; }
+  #song-text { flex: 1 1 auto; min-height: 88px; resize: vertical; box-sizing: border-box; width: 100%;
+    padding: 8px 10px; border: 1.5px solid #8d93a0; border-radius: 10px; color: #1d1d1f; background: #fff;
+    font: 500 16px/1.4 system-ui, sans-serif; }
+  #songedit .songedit-row { display: flex; gap: 8px; }
+  #songedit .songedit-row button { min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px;
+    background: #0064c8; color: #fff; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+  #songedit .songedit-row button.secondary { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
   @media (max-width: 1000px) {
     body.broadcast.rundown #onair[data-state="off"] {
       left: 290px; transform: none; width: min(400px, calc(100vw - 306px));
@@ -1831,6 +1850,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <ol id="rundown-list"></ol>
     <p id="rundown-end"></p>
     <button type="button" id="rundown-next">Next</button>
+    <button type="button" id="song-edit" class="secondary">Song words</button>
+  </aside>
+  <aside id="songedit" aria-labelledby="songedit-title">
+    <h3 id="songedit-title">Song words</h3>
+    <p id="songedit-note">One line per line. Song reads them in order.</p>
+    <textarea id="song-text" rows="8" spellcheck="false" aria-labelledby="songedit-title" aria-describedby="songedit-note"></textarea>
+    <div class="songedit-row">
+      <button type="button" id="song-save">Save</button>
+      <button type="button" id="song-cancel" class="secondary">Cancel</button>
+    </div>
   </aside>
   <aside id="lyrics" aria-label="Lyrics">
     <p class="ly-k" id="lyrics-program-k">Program</p>
@@ -2842,6 +2871,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         rdWelcome: 'Begrüßung', rdSong: 'Lied', rdPrayer: 'Gebet', rdScripture: 'Schrift',
         rdMessage: 'Predigt', rdClosing: 'Segen',
         lyProgram: 'Programm', lyPreview: 'Vorschau', lyNext: 'Nächste Zeile',
+        songWords: 'Liedtext', songNote: 'Eine Zeile pro Zeile. Lied liest sie der Reihe nach.', songSave: 'Speichern', songCancel: 'Abbrechen',
         setTitle: 'Einstellungen', setVideo: 'Videoqualität',
         setVideoHelp: 'Was Ihre eigene Kamera aufnimmt und sendet. Automatisch passt sich der Größe des Raums und Ihrem Akku an. Eine feste Wahl bleibt stehen.',
         setAuto: 'Automatisch', setName: 'Ihr Name',
@@ -3124,6 +3154,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         rdWelcome: 'Bienvenida', rdSong: 'Canción', rdPrayer: 'Oración', rdScripture: 'Lectura',
         rdMessage: 'Mensaje', rdClosing: 'Cierre',
         lyProgram: 'Programa', lyPreview: 'Vista previa', lyNext: 'Siguiente línea',
+        songWords: 'Letra', songNote: 'Una línea por renglón. Canción las lee en orden.', songSave: 'Guardar', songCancel: 'Cancelar',
         setTitle: 'Ajustes', setVideo: 'Calidad de video',
         setVideoHelp: 'Lo que graba y envía tu propia cámara. Automático se adapta al tamaño de la sala y a tu batería. Una elección fija se queda.',
         setAuto: 'Automático', setName: 'Tu nombre',
@@ -7405,7 +7436,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       el.classList.toggle('open', !!host);
       document.body.classList.toggle('rundown', !!host);
       try { paintLyrics(); } catch (e) {}
-      if (!host) return;
+      if (!host) {
+        const se = document.getElementById('songedit');
+        if (se) se.classList.remove('open');
+        document.body.classList.remove('songedit');
+        return;
+      }
+      try { paintSongWords(); } catch (e) {}
       const at = rundownAt();
       const ended = at >= RUNDOWN_STEPS.length;
       const title = document.getElementById('rundown-title');
@@ -7452,18 +7489,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Only the Program / Preview labels follow the device language.
     // The index lives in this tab. It is not sent to the room as data; the
     // current line is painted onto the outgoing camera (paintLyricOnAir).
-    const LYRIC_LINES = [
+    const HYMN_LINES = [
       'Amazing grace, how sweet the sound',
       'That saved a wretch like me',
       'I once was lost, but now am found',
       'Was blind, but now I see.',
     ];
+    // The booth's own song replaces the hymn: one line per line, blank lines
+    // dropped. Kept per room on this computer, so it can be typed before the
+    // service. Empty goes back to the hymn.
+    function songStoreKey() { return 'gifos_song_' + (params.get('v') || ''); }
+    function songLinesFrom(text) {
+      return String(text || '').split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').trim().slice(0, 120)).filter(Boolean).slice(0, 200);
+    }
+    function songLines() {
+      let own = [];
+      try { own = songLinesFrom(localStorage.getItem(songStoreKey())); } catch (e) {}
+      return own.length ? own : HYMN_LINES;
+    }
     function lyricStoreKey() { return 'gifos_lyric_' + (params.get('v') || ''); }
     function lyricAt() {
       let n = 0;
       try { n = parseInt(sessionStorage.getItem(lyricStoreKey()) || '0', 10); } catch (e) {}
       if (!isFinite(n) || n < 0) n = 0;
-      if (n >= LYRIC_LINES.length) n = LYRIC_LINES.length - 1;
+      const len = songLines().length;
+      if (n >= len) n = len - 1;
       return n;
     }
     function setLyricAt(n) {
@@ -7475,7 +7525,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // The line the room sees on the booth's camera, or '' outside Song.
     function lyricOnAir() {
-      try { return lyricSongOn() ? (LYRIC_LINES[lyricAt()] || '') : ''; } catch (e) { return ''; }
+      try { return lyricSongOn() ? (songLines()[lyricAt()] || '') : ''; } catch (e) { return ''; }
     }
     let lyricAirWas = false;
     function paintLyrics() {
@@ -7487,17 +7537,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       el.classList.toggle('open', song);
       document.body.classList.toggle('lyrics', song);
       if (!song) return;
+      const lines = songLines();
       const at = lyricAt();
-      const last = at >= LYRIC_LINES.length - 1;
+      const last = at >= lines.length - 1;
       const progK = document.getElementById('lyrics-program-k');
       const prog = document.getElementById('lyrics-program');
       const prevK = document.getElementById('lyrics-preview-k');
       const prev = document.getElementById('lyrics-preview');
       const btn = document.getElementById('lyrics-next');
       if (progK) progK.textContent = uiText('lyProgram', 'Program');
-      if (prog && prog.textContent !== LYRIC_LINES[at]) prog.textContent = LYRIC_LINES[at];
+      if (prog && prog.textContent !== lines[at]) prog.textContent = lines[at];
       if (prevK) prevK.textContent = uiText('lyPreview', 'Preview');
-      const nxt = last ? '' : (LYRIC_LINES[at + 1] || '');
+      const nxt = last ? '' : (lines[at + 1] || '');
       if (prev && prev.textContent !== nxt) prev.textContent = nxt;
       if (btn) {
         btn.classList.toggle('secondary', last);
@@ -7508,9 +7559,58 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const lyricsNext = document.getElementById('lyrics-next');
     if (lyricsNext) lyricsNext.onclick = () => {
       const at = lyricAt();
-      setLyricAt(at >= LYRIC_LINES.length - 1 ? 0 : at + 1);
+      setLyricAt(at >= songLines().length - 1 ? 0 : at + 1);
       paintLyrics();
     };
+    function paintSongWords() {
+      const b = document.getElementById('song-edit');
+      if (b) b.textContent = uiText('songWords', 'Song words');
+      const t = document.getElementById('songedit-title');
+      if (t) t.textContent = uiText('songWords', 'Song words');
+      const n = document.getElementById('songedit-note');
+      if (n) n.textContent = uiText('songNote', 'One line per line. Song reads them in order.');
+      const sv = document.getElementById('song-save');
+      if (sv) sv.textContent = uiText('songSave', 'Save');
+      const cn = document.getElementById('song-cancel');
+      if (cn) cn.textContent = uiText('songCancel', 'Cancel');
+    }
+    function openSongWords(open) {
+      const el = document.getElementById('songedit');
+      if (!el) return;
+      el.classList.toggle('open', open);
+      document.body.classList.toggle('songedit', open);
+      if (open) {
+        paintSongWords();
+        const t = document.getElementById('song-text');
+        if (t) { t.value = songLines().join('\n'); try { t.focus(); } catch (e) {} }
+      } else {
+        const b = document.getElementById('song-edit');
+        if (b) { try { b.focus(); } catch (e) {} }
+      }
+    }
+    const songEdit = document.getElementById('song-edit');
+    if (songEdit) { paintSongWords(); songEdit.onclick = () => openSongWords(true); }
+    const songSave = document.getElementById('song-save');
+    if (songSave) songSave.onclick = () => {
+      const t = document.getElementById('song-text');
+      const lines = songLinesFrom(t ? t.value : '');
+      try {
+        if (lines.length) localStorage.setItem(songStoreKey(), lines.join('\n'));
+        else localStorage.removeItem(songStoreKey());
+      } catch (e) {}
+      setLyricAt(0);
+      openSongWords(false);
+      paintLyrics();
+    };
+    const songCancel = document.getElementById('song-cancel');
+    if (songCancel) songCancel.onclick = () => openSongWords(false);
+    const songBox = document.getElementById('songedit');
+    if (songBox) songBox.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      openSongWords(false);
+    });
     const pageArrived = Date.now();
     function mayHost() {
       return !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);

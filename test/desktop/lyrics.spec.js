@@ -307,7 +307,7 @@ test('the booth enters its own song and Song reads it', async ({ page, browserNa
   expect(song.coversDock).toBe(false);
   expect(song.coversRundown).toBe(false);
   // The room sees the booth's own line, not the built-in hymn.
-  await expect.poll(() => page.evaluate(() => window.__painted.join(' | ')), { timeout: 10000 }).toContain('Holy, holy, holy!');
+  await expect.poll(() => page.evaluate(() => window.__painted.join(' | '))).toContain('Holy, holy, holy!');
   expect(await page.evaluate(() => window.__painted.join(' | '))).not.toContain('Amazing');
   await page.screenshot({ path: 'test/desktop/shots/own-song-1280.png' });
 
