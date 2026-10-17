@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q62. An ended service had nothing to watch
+
+The stage said “The service has ended.” and stopped there. A viewer who watched the stage now gets Watch on that screen. It plays the picture they just saw, filling the phone, and Close leaves the file where it is. A stream says the same thing. A service that has not started has no Watch. The host still uses Record. `test/mobile/viewer-replay.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-viewer-replay.png`. After: `test/mobile/screenshots/after/iphone-se-viewer-replay.png`.
+
+Design: what you watched is still there. Church and personal stay at 4. Someone who arrives after it ended still has nothing to watch. The town hall host still sees the room as a gallery.
+
 ### Q61. A broadcast speaker was a small card
 
 The program was a rounded card, 304×171, parked at the top of an iPhone SE. It now fills the phone, 320×568, with square corners. The frame stays whole. “On stage” sits above the dock. The “has not started” line stays off while someone is up, and it stays when the stage is empty. A meeting speaker stays a tile. `test/mobile/broadcast-stage.spec.mjs`.

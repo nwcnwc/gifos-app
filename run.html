@@ -1424,11 +1424,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #bc-ended[hidden] { display: none !important; }
   body.broadcast #bc-ended:not([hidden]),
   body.townhall #bc-ended:not([hidden]) {
-    display: flex; position: fixed; z-index: 4; left: 24px; right: 24px;
+    display: flex; flex-direction: column; gap: 16px; position: fixed; z-index: 4; left: 24px; right: 24px;
     top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px));
     bottom: calc(108px + var(--inset-bottom, 0px));
     align-items: center; justify-content: center; margin: 0; padding: 0;
     pointer-events: none; text-align: center;
+  }
+  #bc-replay[hidden] { display: none !important; }
+  #bc-replay {
+    pointer-events: auto; min-height: 56px; min-width: 8rem; padding: 12px 28px; margin: 0;
+    border: 0; border-radius: 16px; background: #0064c8; color: #fff; cursor: pointer;
+    font: 700 1.15rem/1 system-ui, sans-serif;
   }
   body.townhall #bc-ended:not([hidden]) {
     top: calc(14px + 4.25rem + var(--inset-top, 0px));
@@ -2133,7 +2139,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <div id="handq"></div>
   <div id="feed">
-    <div id="bc-ended" hidden><p id="bc-ended-txt"></p></div>
+    <div id="bc-ended" hidden><p id="bc-ended-txt"></p><button type="button" id="bc-replay" hidden>Watch</button></div>
     <div id="stagefeed"></div>
     <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-name"></div></div>
     <div id="grid"></div>
@@ -2732,6 +2738,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // empty, is watching an ending. A fresh visit is a service that has not
     // started. The mark lives for this tab, so next week's visit starts clean.
     let broadcastSawCompany = false;
+    let viewerReplayUrl = null;
+    let viewerReplayRec = null;
+    let viewerReplayStreamId = null;
     // A message that STOPS someone (🛡 a refusal, 📷 an admin's video-off) is
     // the one message that must be read: it holds 12s and wears the warn
     // colour. Ordinary notices keep the 4s beat. An explicit hold wins.
@@ -6822,6 +6831,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.body.classList.toggle('bc-quiet', on);
         const quietTxt = document.getElementById('bc-ended-txt');
         if (quietTxt && on && quietTxt.textContent !== quietLine) quietTxt.textContent = quietLine;
+        const replayBtn = document.getElementById('bc-replay');
+        if (replayBtn) replayBtn.hidden = !(on && bcViewer && /has ended/.test(quietLine) && viewerReplayUrl);
       }
       paintLiveBadge();
     }
@@ -16853,7 +16864,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!stream) {
         if (el) { for (const v of el.querySelectorAll('video')) { try { v.pause(); v.srcObject = null; } catch (e) {} releaseAudio(v); } el.remove(); }
         stageViewNow = null;
-        compOf.delete('sgs'); recSrcDirty = true; return;
+        compOf.delete('sgs'); recSrcDirty = true;
+        finishViewerReplay();
+        return;
       }
       if (!el) {
         el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sgs';
@@ -16877,6 +16890,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       compOf.set('sgs', { via: 'stage', streamId: stream.id, stream, names: stageIds(), el: v });
       recSrcDirty = true;
+      armViewerReplay(stream);
     }
     // (Channel Se — the C×C Section composite — was DROPPED to free its cross-link
     // budget for the Stadium/Stage cross-link redundancy. Section-mates now fold
@@ -20623,10 +20637,50 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (typeof saved.drop === 'function') { try { Promise.resolve(saved.drop()).catch(() => {}); } catch (e) {} }
       }, 60000);
     }
+    function viewerMayReplay() {
+      return typeof BROADCAST !== 'undefined' && BROADCAST && typeof bcHostStored === 'function' && !bcHostStored();
+    }
+    function finishViewerReplay() {
+      const rec = viewerReplayRec;
+      if (rec && rec.state !== 'inactive') { try { rec.stop(); } catch (e) {} }
+    }
+    function armViewerReplay(stream) {
+      if (!viewerMayReplay() || !stream) return;
+      const vt = stream.getVideoTracks && stream.getVideoTracks().find((t) => t.readyState === 'live');
+      if (!vt) return;
+      if (viewerReplayRec && viewerReplayRec.state === 'recording' && viewerReplayStreamId === stream.id) return;
+      finishViewerReplay();
+      if (typeof MediaRecorder === 'undefined') return;
+      const recStream = new MediaStream([vt]);
+      const aud = stream.getAudioTracks ? stream.getAudioTracks() : [];
+      for (const t of aud) if (t.readyState === 'live') recStream.addTrack(t);
+      let mime = '';
+      try {
+        if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) mime = 'video/webm;codecs=vp8';
+        else if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('video/webm')) mime = 'video/webm';
+      } catch (e) {}
+      let rec;
+      try { rec = mime ? new MediaRecorder(recStream, { mimeType: mime }) : new MediaRecorder(recStream); }
+      catch (e) { return; }
+      const chunks = [];
+      rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      rec.onstop = () => {
+        if (viewerReplayRec === rec) { viewerReplayRec = null; viewerReplayStreamId = null; }
+        if (!chunks.length) return;
+        const blob = new Blob(chunks, { type: String(rec.mimeType || 'video/webm').split(';')[0] });
+        if (!blob.size) return;
+        if (viewerReplayUrl) { try { URL.revokeObjectURL(viewerReplayUrl); } catch (e2) {} }
+        viewerReplayUrl = URL.createObjectURL(blob);
+        try { updateStatus(); } catch (e2) {}
+      };
+      try { rec.start(400); viewerReplayRec = rec; viewerReplayStreamId = stream.id; }
+      catch (e) { viewerReplayRec = null; }
+    }
     function showRecReplay(saved) {
       const old = document.getElementById('rec-replay');
       if (old) old.remove();
       const already = !!(saved && saved.saved);
+      const watch = !!(saved && saved.watch);
       const bg = document.createElement('div');
       bg.id = 'rec-replay';
       bg.className = 'rec-replay';
@@ -20661,14 +20715,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else vid.pause();
       });
       if (already) saveBtn.hidden = true;
-      else saveBtn.onclick = keep;
-      bg.querySelector('#rec-replay-close').onclick = () => {
+      else saveBtn.onclick = () => {
+        if (watch) { recDownload(saved); saveBtn.textContent = 'Saved'; return; }
         keep();
+      };
+      bg.querySelector('#rec-replay-close').onclick = () => {
+        if (!watch) keep();
         try { vid.pause(); } catch (e) {}
         vid.removeAttribute('src');
         try { vid.load(); } catch (e) {}
         bg.remove();
-        recRelease(saved);
+        if (!watch) recRelease(saved);
       };
       const play = vid.play();
       if (play && play.catch) play.catch(() => {});
@@ -20687,6 +20744,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return '';
     }
+    const replayWatch = document.getElementById('bc-replay');
+    if (replayWatch) replayWatch.onclick = () => {
+      if (!viewerReplayUrl) return;
+      const noun = (typeof params !== 'undefined' && params.has('st')) ? 'stream' : 'service';
+      showRecReplay({ href: viewerReplayUrl, name: noun + '.webm', watch: true });
+    };
     function resumeReload() {
       const REC_SAVE_MAX_MS = 20000;
       // Stash before the reload, then drop the share so peers are not left
@@ -23545,6 +23608,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       participants: participantCount,
       shareInvite: () => shareMeetingLink(document.getElementById('hdrinvite')),
       showReplayForTest: (href, name, saved) => recDeliver({ href: href, name: name || '', saved: !!saved }),
+      noteViewerReplayForTest: (href) => {
+        if (viewerReplayUrl && viewerReplayUrl !== href) { try { URL.revokeObjectURL(viewerReplayUrl); } catch (e) {} }
+        viewerReplayUrl = href || null;
+        try { updateStatus(); } catch (e) {}
+        const btn = document.getElementById('bc-replay');
+        return !!(btn && !btn.hidden);
+      },
+      armViewerReplayForTest: (stream) => { armViewerReplay(stream); return !!(viewerReplayRec && viewerReplayRec.state === 'recording'); },
+      finishViewerReplayForTest: () => new Promise((resolve) => {
+        const rec = viewerReplayRec;
+        if (!rec || rec.state === 'inactive') { resolve(!!viewerReplayUrl); return; }
+        const prev = rec.onstop;
+        rec.onstop = () => { try { if (prev) prev(); } catch (e) {} resolve(!!viewerReplayUrl); };
+        try { rec.stop(); } catch (e) { resolve(false); }
+      }),
       markJoinedForTest: (id) => {
         const pid = String(id || 'peer').slice(0, 80);
         if (pid && !rosterIds.includes(pid)) rosterIds.push(pid);
