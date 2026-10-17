@@ -2696,7 +2696,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         trDownload: 'Protokoll laden',
         muteGuests: 'Gäste stumm', unmuteGuests: 'Gäste laut', blurGuests: 'Weichzeichnen', unblurGuests: 'Schärfen', videoOff: 'Video aus', videoOn: 'Video an',
         allowShare: 'Freigeben', stopShares: 'Freigabe aus',
-        inMeeting: 'im Meeting', justYou: 'Nur Sie', backIn: 'Wieder dabei',
+        inMeeting: 'im Meeting', justYou: 'Nur Sie', backIn: 'Wieder dabei', waitHere: 'Im Warteraum',
         away: 'Weg', stillHere: 'Sie sind noch dabei',
         unlockClear: 'Gesichter weich bis zum Passwort',
         onAir: 'Auf Sendung', offAir: 'Nicht live', watching: 'Live',
@@ -2980,7 +2980,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         trDownload: 'Descargar transcripción',
         muteGuests: 'Silenciar invitados', unmuteGuests: 'Activar invitados', blurGuests: 'Difuminar', unblurGuests: 'Quitar desenfoque', videoOff: 'Apagar video', videoOn: 'Encender video',
         allowShare: 'Permitir pantalla', stopShares: 'Parar pantallas',
-        inMeeting: 'en la reunión', justYou: 'Solo tú', backIn: 'Volviendo',
+        inMeeting: 'en la reunión', justYou: 'Solo tú', backIn: 'Volviendo', waitHere: 'En la sala de espera',
         away: 'Fuera', stillHere: 'Sigues en la llamada',
         unlockClear: 'caras suaves hasta una contraseña',
         onAir: 'Al aire', offAir: 'Fuera del aire', watching: 'En vivo',
@@ -5877,10 +5877,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const [pid, p] of peers) apply(pid, p);
       // Once someone else is here, you leave the grid and float. The count
       // is the other people, so one other person fills the stage.
+      // A person held in the waiting room is off this screen: no space for them.
       const remoteTiles = [];
-      for (const [, p] of peers) if (p && p.tile) remoteTiles.push(p.tile);
+      for (const [, p] of peers) if (p && p.tile && !p.held) remoteTiles.push(p.tile);
       remoteTiles.sort((a, b) => (parseFloat(a.style.order) || 0) - (parseFloat(b.style.order) || 0));
-      const nRemote = peers.size;
+      let nRemote = 0;
+      for (const [, p] of peers) if (!(p && p.held)) nRemote++;
       document.body.classList.toggle('has-peers', nRemote > 0);
       if (grid) grid.setAttribute('data-remotes', String(nRemote));
       remoteTiles.forEach((t, i) => {
@@ -5893,9 +5895,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // People hidden from the row are the stadium. Stagers stay in the row
     // while comfy is on (their direct tile is the face; the strip is not).
     function comfyStadRoster() {
+      // While I wait I see no one; a held person is no one's face here.
+      if (iAmWaiting()) return [];
       const shown = {};
       if (myId) shown[myId] = true;
       for (const [pid, p] of peers) {
+        if (p && p.held) { shown[pid] = true; continue; }
         if (!p || p.headless || !p.tile) continue;
         if (p.tile.style.display !== 'none') shown[pid] = true;
       }
@@ -5948,7 +5953,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             speaker: !myStatus.bot && !!(speakingOf && speakingOf.get && speakingOf.get('me')), pz: 'peer:me' });
         }
         for (const [pid, p] of peers) {
-          if (!p || !p.tile || p.headless || p.tile.style.display === 'none') continue;
+          if (!p || !p.tile || p.headless || p.held || p.tile.style.display === 'none') continue;
           const st = statusOf.get(pid) || {};
           const si = stg.indexOf(pid);
           const bot = !!st.bot;
@@ -7322,6 +7327,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let restText = '';
       if (reachState && reachState !== 'partial') {
         restText = REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence()) + tail;
+      } else if (shown === 1 && iAmWaiting()) {
+        // A person in the waiting room is not alone and has no one to invite.
+        countText = uiText('waitHere', 'In the waiting room');
+        restText = tail;
       } else if (shown === 1) {
         countText = atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you');
         // Alone, the old sentence is a button: one click copies the link and
@@ -7351,7 +7360,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (restEl.textContent !== restText) restEl.textContent = restText;
         const invBtn = document.getElementById('statusinvite');
         if (invBtn) {
-          const showInv = shown === 1 && !atDoor && !(reachState && reachState !== 'partial');
+          const showInv = shown === 1 && !atDoor && !iAmWaiting() && !(reachState && reachState !== 'partial');
           invBtn.hidden = !showInv;
           if (!showInv) delete invBtn.dataset.copied;
           else if (!invBtn.dataset.copied) {
@@ -7683,10 +7692,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (hostSpot(id)) { if (!st.stg) st.stg = Date.now(); st._spot = 1; }
       else if (st._spot) { st.stg = 0; st._spot = 0; }
     }
-    // The roster's Waiting list follows every hold and release: a real
-    // arrival is held while its peer is built, long after the roster painted.
+    // The roster's Waiting list and the faces follow every hold and release: a
+    // real arrival is held while its peer is built, long after both painted.
     let rosterSoon = 0;
-    function paintRosterSoon() { if (!rosterSoon) rosterSoon = setTimeout(() => { rosterSoon = 0; paintRoster(); }, 0); }
+    function paintRosterSoon() { if (!rosterSoon) rosterSoon = setTimeout(() => { rosterSoon = 0; paintRoster(); try { layout(); } catch (e) {} }, 0); }
     function holdPeer(p) {
       if (!p || !p.tile) return;
       if (!p.held) paintRosterSoon();
