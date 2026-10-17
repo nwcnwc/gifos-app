@@ -1582,6 +1582,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   #chatpreview b { flex: 0 1 auto; max-width: 42%; font-weight: 700; }
   #chatpreview span { flex: 1 1 auto; min-width: 0; font-weight: 500; }
+  /* A mention of you is not the same white card as any other line. */
+  #chatpreview.mention { background: #0064c8; color: #fff; }
+  #chatpreview.mention b, #chatpreview.mention span { color: #fff; }
+  #chatpreview.mention b { max-width: 58%; }
   #chatbadge {
     flex: 0 0 auto;
     min-width: 44px; min-height: 44px; padding: 0 12px;
@@ -14414,6 +14418,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const FILE_PART = 32768;
     let unread = 0;
     let lastChatLine = null;
+    let mentionAlert = null;
+    function messageMentionsMe(text) {
+      const name = String(myName() || '').trim();
+      if (!name) return false;
+      const safe = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp('(?:^|\\s)@' + safe + '(?=$|[\\s.,!?;:])', 'i').test(String(text || ''));
+    }
     function paintChatBadge() {
       const b = document.getElementById('chatbadge');
       const note = document.getElementById('chatnote');
@@ -14425,9 +14436,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const inCall = !(lob && lob.classList.contains('show'));
       const open = !!(chatPanel && chatPanel.classList.contains('open'));
       const show = inCall && unread > 0 && !open;
-      if (by) by.textContent = lastChatLine ? lastChatLine.by : '';
-      if (txt) txt.textContent = lastChatLine ? lastChatLine.text : '';
-      if (preview && lastChatLine) preview.setAttribute('aria-label', lastChatLine.by + ' said ' + lastChatLine.text + '. Open chat.');
+      const mention = !!(mentionAlert && !open);
+      if (preview) preview.classList.toggle('mention', mention);
+      if (mention) {
+        if (by) by.textContent = mentionAlert.by + ' mentioned you';
+        if (txt) txt.textContent = mentionAlert.text;
+        if (preview) preview.setAttribute('aria-label', mentionAlert.by + ' mentioned you. ' + mentionAlert.text + '. Open chat.');
+      } else {
+        if (by) by.textContent = lastChatLine ? lastChatLine.by : '';
+        if (txt) txt.textContent = lastChatLine ? lastChatLine.text : '';
+        if (preview && lastChatLine) preview.setAttribute('aria-label', lastChatLine.by + ' said ' + lastChatLine.text + '. Open chat.');
+      }
       b.textContent = unread > 99 ? '99+' : String(Math.max(0, unread));
       b.setAttribute('aria-label', 'Chat, ' + unread + (unread === 1 ? ' new message' : ' new messages'));
       b.hidden = !show;
@@ -14440,7 +14459,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function countClosedChat(m) {
       if (m) lastChatLine = { by: String(m.by || 'Someone').slice(0, 40), text: String(m.text || '').slice(0, 160) };
-      if (chatPanel && chatPanel.classList.contains('open')) return;
+      const open = !!(chatPanel && chatPanel.classList.contains('open'));
+      // A mention of this person stays on the call until they open chat.
+      // A later line must not hide it. Naming someone else is an ordinary preview.
+      if (m && !open && m.byId !== myId && messageMentionsMe(m.text)) {
+        mentionAlert = { by: lastChatLine.by, text: lastChatLine.text };
+      }
+      if (open) return;
       unread++;
       paintChatBadge();
     }
@@ -15752,7 +15777,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // renderChat skips while the transcript tab is shown, and the transcript
       // is not painted while the panel is closed: paint the tab that shows.
       if (chatPanel.classList.contains('open')) {
-        unread = 0; chatBtn.textContent = 'Chat';
+        unread = 0;
+        mentionAlert = null;
+        chatBtn.textContent = 'Chat';
         paintChatBadge();
         // The More sheet floats over the composer. Fold it so the field is the next tap.
         const barEl = document.querySelector('.bar');

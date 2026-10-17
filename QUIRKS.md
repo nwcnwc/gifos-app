@@ -501,9 +501,19 @@ Repro: `test/mobile/chat-mention.js`. It failed (`no one to mention`), then pass
 
 Before: `qa/mobile/shots/before-chat-mention-iphone-se.png`. After: `qa/mobile/shots/after-chat-mention-iphone-se.png`.
 
+### 59. A mention while chat was closed looked like any other line
+
+Ruth wrote @Nathan the vote is Tuesday while the sheet was closed. The preview stayed a white card of the latest line. Naming David did the same thing. A later "See you Sunday" would have replaced it. Zoom, Meet, and Teams call the named person back.
+
+The banner turns blue and says Ruth mentioned you, with the line under that. A later ordinary line leaves it there. Opening chat clears it. A mention of someone else stays the ordinary white preview. @Nathaniel does not match Nathan.
+
+Repro: `test/mobile/chat-mention-alert.js`. It failed (`the preview does not say you were mentioned`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-mention-alert.js`.
+
+Before: `qa/mobile/shots/before-chat-mention-alert-iphone-se.png`. After: `qa/mobile/shots/after-chat-mention-alert-iphone-se.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. Chat can find a line, and @ offers the people on the call. A mention while the sheet is closed still does not call that person back.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat now says who mentioned you. Answering that line still starts a new message at the bottom, so the mention and the answer do not stay together. Church tap targets and a sideways phone are still open.
 
 ## Personas (what was actually tried)
 
