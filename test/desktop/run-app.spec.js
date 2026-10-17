@@ -88,3 +88,45 @@ test('a running app\'s bar is clear of the header, Fit, and the build label', as
   expect(got.barIds.some((id) => id === 'appgif' || id === 'appname')).toBe(true);
   expect(got.covered).toEqual([]);
 });
+
+// With an app running, the faces are a 180px strip under it. The self tile's
+// "Muted" and "Camera off" words were cut at the tile's edge ("Camera"), and a
+// view-only note (no camera found) ran as unreadable text behind the chips and
+// the name. Every chip must sit whole inside its tile, and any note text shown
+// must fit inside the tile too.
+test('a running app\'s face strip shows each face\'s marks whole, with no cut text', async ({ page }) => {
+  await boot(page);
+  await page.setInputFiles('#app-file-input', 'apps/2048/2048.gif');
+  await page.waitForFunction(() => document.body.classList.contains('has-app'), null, { timeout: 30000 });
+  await page.keyboard.press('Escape');
+  // The faces become a strip a moment after the app mounts: wait for it.
+  await page.waitForFunction(() => {
+    const t = document.querySelector('.tile.me');
+    return t && t.querySelector('.chips span.ico') && t.getBoundingClientRect().width <= 200;
+  });
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const got = await page.evaluate(() => {
+    const tile = document.querySelector('.tile.me');
+    const t = tile.getBoundingClientRect();
+    const inside = (r) => r.left >= t.left - 0.5 && r.right <= t.right + 0.5 && r.top >= t.top - 0.5 && r.bottom <= t.bottom + 0.5;
+    const cut = [];
+    for (const el of tile.querySelectorAll('.chips > span, .name')) {
+      if (!el.getClientRects().length) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width === 0) continue;
+      const clipped = el.scrollWidth > el.clientWidth + 1;
+      if (!inside(r) || clipped) cut.push((el.dataset.icon || el.className) + ' ' + Math.round(r.left) + '-' + Math.round(r.right) + ' of ' + Math.round(t.left) + '-' + Math.round(t.right));
+    }
+    const note = tile.querySelector('.note');
+    let noteCut = false;
+    if (note && note.getClientRects().length && getComputedStyle(note).visibility !== 'hidden') {
+      const r = note.getBoundingClientRect();
+      noteCut = !inside(r) || note.scrollHeight > note.clientHeight + 1;
+    }
+    return { cut, noteCut, tileW: Math.round(t.width) };
+  });
+  await page.screenshot({ path: 'test/desktop/shots/app-strip-1280.png', clip: { x: 0, y: 420, width: 640, height: 300 } });
+  expect(got.tileW).toBeLessThanOrEqual(200);
+  expect(got.cut).toEqual([]);
+  expect(got.noteCut).toBe(false);
+});
