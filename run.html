@@ -6319,14 +6319,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // service's live terms. Paying unblocks the picture where it is: the order,
     // the paid credentials and the pair switch run with nobody rejoining.
     // Frames counted on the tile's own video element; the message lies over
-    // it without hiding it, so the count keeps running underneath.
+    // it without hiding it, so the count keeps running underneath. A picture
+    // is live when the count rose at two separate readings within 10 s, the
+    // last within 5 s. One frame is not a picture: a new source shows its
+    // first frame and the count starts again from zero.
     function vaPictureLive(p, now) {
-      const f = p.vaFrames || (p.vaFrames = { n: -1, liveAt: 0 });
+      const f = p.vaFrames || (p.vaFrames = { n: -1, rises: [] });
       let n = -1;
       try { const q = p.video && p.video.srcObject && p.video.getVideoPlaybackQuality ? p.video.getVideoPlaybackQuality() : null; if (q) n = q.totalVideoFrames; } catch (e) {}
-      if (n > f.n && f.n >= 0) f.liveAt = now;
+      if (n < f.n) f.rises = [];                       // a new source: its count starts again
+      else if (n > f.n && f.n >= 0) { f.rises.push(now); if (f.rises.length > 2) f.rises.shift(); }
       f.n = n;
-      return now - f.liveAt < 5000;
+      const r = f.rises;
+      return r.length === 2 && now - r[1] < 5000 && now - r[0] < 10000;
     }
     function vaTileFacts(p, now) {
       const st = statusOf.get(p.id) || {};
@@ -21670,7 +21675,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       vaTiles: () => [...peers.values()].map((p) => {
         const el = p.vaBlockEl, b = el && el.querySelector('button');
         let frames = null; try { frames = p.video && p.video.getVideoPlaybackQuality ? p.video.getVideoPlaybackQuality().totalVideoFrames : null; } catch (e) {}
-        return { name: rosterNames[p.id] || p.name || null, blocked: !!(p.tile && p.tile.classList.contains('va-blocked')),
+        return { id: p.id, name: rosterNames[p.id] || p.name || null, blocked: !!(p.tile && p.tile.classList.contains('va-blocked')),
           message: !!(el && p.tile.classList.contains('va-blocked') && el.querySelector('p') && el.querySelector('p').textContent.length > 0),
           button: b && !b.hidden ? { kind: b.dataset.kind, price: b.dataset.price } : null, frames, facts: vaTileFacts(p, Date.now()) };
       }),
