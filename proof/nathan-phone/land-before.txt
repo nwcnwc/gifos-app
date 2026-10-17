@@ -1,0 +1,3 @@
+FAIL
+pixel-7-land: sheet covers the header (top 24, chip 58)
+wide-360: sheet covers the header (top 24, chip 58)

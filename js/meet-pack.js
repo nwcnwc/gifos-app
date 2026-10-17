@@ -10,7 +10,7 @@
   GifOS.meetPack = api;
 })(typeof window !== 'undefined' ? window : globalThis, function () {
 'use strict';
-const MIN_SIDE = { phone: 64, other: 80 };   // smallest short side we allow in a gallery
+const MIN_SIDE = { phone: 96, other: 80 };   // smallest short side we allow in a gallery
 // Orientation conversion tuning (rev 2). keep = share of the source kept on the cropped axis.
 //   keep >= FREE       : free (faces are tracked/centred)
 //   KMIN <= keep < FREE: allowed conversion (16:9 -> 3:5 portrait keeps 0.34), value falls linearly to FLOOR_Q
@@ -44,7 +44,11 @@ function fitArea(cw, ch, a) { // useful face area of an a-aspect picture shown i
 }
 // Tile shape limits (rev 3, Nathan 11:38 PM: "this skinny slice would be annoying").
 // 0.44 not 0.5: a single person filling a portrait phone (408x911 = 0.448) must stay legal.
-const ASPECT_MIN = 0.44, ASPECT_MAX = 2.4;
+// On a phone, a tile also must not be a wide squash. 1.05 keeps a 2x2
+// (about 0.88) and a big tile beside smaller ones, and drops the 1-1-2
+// strip whose bottom row was 73px. Desktop keeps the wider limit.
+const ASPECT_MIN = 0.44, ASPECT_MAX = 2.4, PHONE_ASPECT_MAX = 1.05;
+function aspectMax(phone) { return phone ? PHONE_ASPECT_MAX : ASPECT_MAX; }
 // Lines are dealt as evenly as possible, SHORTER lines first, so a lone tile
 // (usually you / the first person) leads: 5 in 3 rows = 1-2-2.
 function rowCounts(N, r) {
@@ -73,13 +77,13 @@ function cellsFor(box, N, dir, r, sizing) {
   });
   return { counts, cells };
 }
-function candidates(box, aspects, all) {
-  const N = aspects.length, out = [];
+function candidates(box, aspects, all, phone) {
+  const N = aspects.length, out = [], maxA = aspectMax(phone);
   for (const dir of ['rows', 'cols']) for (let r = 1; r <= N; r++) for (const sizing of ['equal', 'aspect']) {
     // prune: lines whose typical tile is >3x outside the shape limits can never be valid
     const along = dir === 'rows' ? box.h : box.w, across = dir === 'rows' ? box.w : box.h;
     const tt = dir === 'rows' ? (across / Math.ceil(N / r)) / (along / r) : (along / r) / (across / Math.ceil(N / r));
-    if (!all && !T.legacyRows && (tt < ASPECT_MIN / 3 || tt > ASPECT_MAX * 3)) continue;
+    if (!all && !T.legacyRows && (tt < ASPECT_MIN / 3 || tt > maxA * 3)) continue;
     const uniform = rowCounts(N, r).every((k, _, c) => k === c[0]);
     if (sizing === 'aspect' && uniform) continue;          // identical to 'equal'
     if (T.legacyRows && (dir === 'cols' || sizing === 'aspect')) continue; // rev 2 (before/after only)
@@ -88,7 +92,7 @@ function candidates(box, aspects, all) {
     let skinny = 1;
     cells.forEach((c, i) => {
       score += fitArea(c.w, c.h, aspects[i]); minShort = Math.min(minShort, c.w, c.h);
-      const t = c.w / c.h; viol = Math.max(viol, t < ASPECT_MIN ? ASPECT_MIN / t : t > ASPECT_MAX ? t / ASPECT_MAX : 1);
+      const t = c.w / c.h; viol = Math.max(viol, t < ASPECT_MIN ? ASPECT_MIN / t : t > maxA ? t / maxA : 1);
       if (t < ASPECT_MIN) skinny = Math.max(skinny, ASPECT_MIN / t);
     });
     out.push({ dir, r, sizing, counts, cells, score, minShort, viol, skinny });
@@ -101,11 +105,11 @@ function median(xs) { const s = xs.slice().sort((a, b) => a - b); return s.lengt
 // (if none, the least-violating ones), then minSide, then best score.
 // Ties (within TIE): prevRows, plain rows over columns, equal over aspect
 // sizing, tile shape closest to the median source, fewer lines.
-function chooseRows(box, aspects, prevRows, minSide) {
+function chooseRows(box, aspects, prevRows, minSide, phone) {
   const N = aspects.length; if (!N || box.w <= 0 || box.h <= 0) return null;
   const med = median(aspects);
-  let cands = candidates(box, aspects);
-  if (!cands.length) cands = candidates(box, aspects, true);
+  let cands = candidates(box, aspects, false, phone);
+  if (!cands.length) cands = candidates(box, aspects, true, phone);
   const vmin = T.legacyRows ? Infinity : Math.min(...cands.map(c => c.viol));
   cands = cands.filter(c => c.viol <= Math.max(1, vmin) + 1e-9);
   // A tile narrower than a portrait phone (w/h < 0.44) is never the pick when
@@ -122,7 +126,7 @@ function chooseRows(box, aspects, prevRows, minSide) {
 }
 
 function packRegion(box, aspects, opts = {}) {
-  const pick = chooseRows(box, aspects, opts.prevRows, opts.minSide);
+  const pick = chooseRows(box, aspects, opts.prevRows, opts.minSide, opts.phone);
   if (!pick) return { rows: 0, rects: [] };
   const rects = pick.cells.map((c, i) => {
     const a = aspects[i], t = c.w / c.h, keep = Math.min(t / a, a / t);
@@ -283,10 +287,10 @@ function layout(people, stage, opts) {
         const parts = splitBoxes(box, side, f);
         const strip = side ? parts.gb.w : parts.gb.h;
         if (strip + 0.5 < floor) continue;
-        const g = chooseRows(parts.gb, gA);
+        const g = chooseRows(parts.gb, gA, null, null, phone);
         if (!g) continue;
-        const st = stageScore(parts.sb, stageList);
-        const sv = stageViol(parts.sb, stageList), bad = Math.max(sv, g.viol);
+        const st = stageScore(parts.sb, stageList, phone);
+        const sv = stageViol(parts.sb, stageList, phone), bad = Math.max(sv, g.viol);
         const val = st * (stageList.some(s => s.share) ? 8 : 4) + g.score - (g.minShort < (phone ? FIT_FLOOR.phone : FIT_FLOOR.other) ? 1e15 : 0) - (bad > 1 ? 1e18 * bad : 0);
         if (!best || val > best.val * (1 + 1e-9)) best = { val: val, sb: parts.sb, gb: parts.gb };
       }
@@ -299,7 +303,7 @@ function layout(people, stage, opts) {
       out.strip = { edge: side ? 'side' : 'bottom', floor: floor, size: side ? galBox.w : galBox.h };
     }
     out.regions.stage = stageBox;
-    for (const t of placeStage(stageBox, stageList)) out.tiles.push({ ...t, region: 'stage', quality: 'hi' });
+    for (const t of placeStage(stageBox, stageList, phone)) out.tiles.push({ ...t, region: 'stage', quality: 'hi' });
   }
   if (mode === 'stageOnly' && stageList.length) { out.overflow = gallery.length; out.paged = false; out.gallery = resolveGallery(opts.gallery); return out; }
   const galleryMode = resolveGallery(opts.gallery);
@@ -342,7 +346,10 @@ function packTiers(box, gallery, me, opts, phone) {
   if (!stad.length || !row.length) {
     const list = row.length ? row : stad, tier = row.length ? 'row' : 'stad';
     if (mode === 'scroll') return scrollStad(box, list, [], phone, box.y, 0, tier);
-    const p = packRegion(box, list.map(t => t.aspect), { prevRows: opts.prevRows });
+    const p = packRegion(box, list.map(t => t.aspect), { prevRows: opts.prevRows, phone: phone });
+    // A short landscape phone cannot hold a legal tile if the grid is stretched
+    // across the whole box. Cap the shape and let a later row scroll.
+    if (phone && box.w > box.h && p && (p.viol > 1 || p.minShort < MIN_SIDE.phone)) return phoneFit(box, list, tier);
     return { tiles: emit(list, p.rects, tier), rows: p.rows, split: tier === 'row' ? 1 : 0, contentH: box.h, minShort: p.minShort, tooSmall: p.minShort < (phone ? FIT_FLOOR.phone : FIT_FLOOR.other) };
   }
   if (mode === 'scroll') {
@@ -351,7 +358,7 @@ function packTiers(box, gallery, me, opts, phone) {
     // and it never takes more than 62% of the screen.
     const okH = (h) => {
       if (!(h > 48)) return false;
-      const c = chooseRows({ x: box.x, y: box.y, w: box.w, h: h }, row.map(t => t.aspect));
+      const c = chooseRows({ x: box.x, y: box.y, w: box.w, h: h }, row.map(t => t.aspect), null, null, phone);
       return !!(c && c.viol <= 1);
     };
     const maxH = box.h * 0.62;
@@ -366,13 +373,13 @@ function packTiers(box, gallery, me, opts, phone) {
       }
       if (!picked) rh = maxH;
     }
-    const rp = packRegion({ x: box.x, y: box.y, w: box.w, h: rh }, row.map(t => t.aspect));
+    const rp = packRegion({ x: box.x, y: box.y, w: box.w, h: rh }, row.map(t => t.aspect), { phone: phone });
     return scrollStad(box, stad, emit(row, rp.rects, 'row'), phone, box.y + rh, rp.rows);
   }
   let best = null;
   for (let i = 20; i <= 85; i++) {
     const f = i / 100, rb = { x: box.x, y: box.y, w: box.w, h: box.h * f }, sb = { x: box.x, y: box.y + rb.h, w: box.w, h: box.h - rb.h };
-    const rc = chooseRows(rb, row.map(t => t.aspect)), sc = chooseRows(sb, stad.map(t => t.aspect));
+    const rc = chooseRows(rb, row.map(t => t.aspect), null, null, phone), sc = chooseRows(sb, stad.map(t => t.aspect), null, null, phone);
     if (!rc || !sc) continue;
     // tier ratio = row short side / stadium short side; must sit in [1.5, 2.5]
     const ratio = rc.minShort / Math.max(1e-9, sc.minShort);
@@ -382,13 +389,65 @@ function packTiers(box, gallery, me, opts, phone) {
     if (!best || val > best.val) best = { val, f, rb, sb };
   }
   if (best.val < -1e17) { // no band split gives legal tile shapes: one shared grid (row first), quality still differs
-    const all = [...row, ...stad], p = packRegion(box, all.map(t => t.aspect), { prevRows: opts.prevRows });
+    const all = [...row, ...stad], p = packRegion(box, all.map(t => t.aspect), { prevRows: opts.prevRows, phone: phone });
+    if (phone && box.w > box.h && p && (p.viol > 1 || p.minShort < MIN_SIDE.phone)) {
+      const laid = phoneFit(box, all, 'row');
+      laid.tiles.forEach((t, i) => { t.tier = i < row.length ? 'row' : 'stad'; });
+      laid.merged = true;
+      return laid;
+    }
     return { tiles: all.map((q, i) => ({ id: q.id, ...p.rects[i], tier: i < row.length ? 'row' : 'stad' })), rows: p.rows, split: null, merged: true, contentH: box.h, minShort: p.minShort, tooSmall: p.minShort < (phone ? FIT_FLOOR.phone : FIT_FLOOR.other) };
   }
-  const rp = packRegion(best.rb, row.map(t => t.aspect), { prevRows: opts.prevRows });
-  const sp = packRegion(best.sb, stad.map(t => t.aspect));
+  const rp = packRegion(best.rb, row.map(t => t.aspect), { prevRows: opts.prevRows, phone: phone });
+  const sp = packRegion(best.sb, stad.map(t => t.aspect), { phone: phone });
   const minShort = Math.min(rp.minShort, sp.minShort);
   return { tiles: [...emit(row, rp.rects, 'row'), ...emit(stad, sp.rects, 'stad')], rows: rp.rows + '+' + sp.rows, split: best.f, contentH: box.h, minShort, tooSmall: minShort < (phone ? FIT_FLOOR.phone : FIT_FLOOR.other) };
+}
+// A short phone box cannot be stretched into a strip. Prefer a legal grid
+// that keeps every face on this screen. Scroll only when the minimum tile
+// cannot hold them all.
+function phoneFit(box, list, tier) {
+  const n = list.length;
+  const maxA = aspectMax(true);
+  const minSide = MIN_SIDE.phone;
+  let pick = null;
+  for (let rows = 1; rows <= n; rows++) {
+    const cols = Math.ceil(n / rows);
+    const h = box.h / rows;
+    if (h + 0.5 < minSide) continue;
+    const maxW = h * maxA;
+    const minW = Math.min(maxW, h * ASPECT_MIN);
+    const equalW = box.w / cols;
+    let tileW = 0;
+    if (equalW >= minW && equalW <= maxW) tileW = equalW;
+    else if (equalW > maxW && cols * maxW <= box.w + 0.5) tileW = maxW;
+    else continue;
+    if (Math.min(tileW, h) + 0.5 < minSide) continue;
+    const area = tileW * h;
+    if (!pick || area > pick.area) pick = { rows: rows, cols: cols, h: h, tileW: tileW, area: area };
+  }
+  let h = box.h, cols = 1, tileW = box.w, rows = n;
+  if (pick) { h = pick.h; cols = pick.cols; tileW = pick.tileW; rows = pick.rows; }
+  else {
+    if (!(h >= minSide)) h = minSide;
+    const maxW = h * maxA;
+    cols = Math.max(1, Math.min(n, Math.floor(box.w / Math.max(1, Math.min(maxW, box.w)))));
+    tileW = Math.min(maxW, box.w / cols);
+    rows = Math.ceil(n / cols);
+  }
+  const tiles = [];
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / cols), c = i % cols;
+    const inRow = r === rows - 1 ? n - r * cols : cols;
+    const x0 = box.x + (box.w - inRow * tileW) / 2;
+    const a = list[i].aspect || (16 / 9), t = tileW / h, keep = Math.min(t / a, a / t);
+    tiles.push({
+      id: list[i].id, x: x0 + c * tileW, y: box.y + r * h, w: tileW, h: h, tier: tier,
+      fit: keep >= keepNeeded(t, a) ? 'cover' : 'contain', objPos: a < t ? '50% 40%' : '50% 50%',
+    });
+  }
+  const minShort = Math.min(tileW, h);
+  return { tiles, rows: rows, split: tier === 'row' ? 1 : 0, contentH: rows * h, minShort: minShort, tooSmall: minShort < FIT_FLOOR.phone };
 }
 // Scroll: columns = most that keep the short side >= SCROLL_MIN at the
 // median aspect; the region is as tall as it needs to be.
@@ -396,7 +455,7 @@ function scrollStad(box, stad, rowTiles, phone, y0, rowRows, tier) {
   const min = phone ? SCROLL_MIN.phone : SCROLL_MIN.other, a = median(stad.map(t => t.aspect));
   // tile h = (W/c)/a must be >= min and W/c >= min
   const c = Math.max(1, Math.min(stad.length, Math.floor(box.w / Math.max(min, min * a))));
-  const r = Math.ceil(stad.length / c), ta = Math.max(ASPECT_MIN, Math.min(ASPECT_MAX, a));
+  const r = Math.ceil(stad.length / c), ta = Math.max(ASPECT_MIN, Math.min(aspectMax(phone), a));
   // every scroll row keeps the same tile shape: a shorter row gets taller tiles
   const counts = rowCounts(stad.length, r);
   const tiles = rowTiles.slice(); let i = 0, y = y0;
@@ -410,38 +469,38 @@ function scrollStad(box, stad, rowTiles, phone, y0, rowRows, tier) {
 // Stage: screen share gets priority. Share alone -> whole stage. Share + k
 // videos -> share takes 75% along the long axis, the videos pack the rest.
 // No share -> pack all stage videos.
-function stageParts(sb, stage) {
+function stageParts(sb, stage, phone) {
   const share = stage.find(s => s.share), vids = stage.filter(s => !s.share);
   if (!share || !vids.length) return [[sb, share ? [share] : vids]];
   const wide = sb.w >= sb.h;
   // share gets 75%, or the closest fraction in 60..85% that leaves legal tile shapes for the videos
   const rest = f => wide ? { x: 0, y: 0, w: sb.w * (1 - f), h: sb.h } : { x: 0, y: 0, w: sb.w, h: sb.h * (1 - f) };
   let f = 0.75;
-  for (const g of [0.75, 0.7, 0.8, 0.65, 0.85, 0.6]) { const c = chooseRows(rest(g), vids.map(v => v.aspect)); if (c && c.viol <= 1) { f = g; break; } }
+  for (const g of [0.75, 0.7, 0.8, 0.65, 0.85, 0.6]) { const c = chooseRows(rest(g), vids.map(v => v.aspect), null, null, phone); if (c && c.viol <= 1) { f = g; break; } }
   const a = wide ? { x: sb.x, y: sb.y, w: sb.w * f, h: sb.h } : { x: sb.x, y: sb.y, w: sb.w, h: sb.h * f };
   const b = wide ? { x: sb.x + a.w, y: sb.y, w: sb.w - a.w, h: sb.h } : { x: sb.x, y: sb.y + a.h, w: sb.w, h: sb.h - a.h };
   return [[a, [share]], [b, vids]];
 }
-function placeStage(sb, stage) {
+function placeStage(sb, stage, phone) {
   const out = [];
-  for (const [bx, items] of stageParts(sb, stage)) {
-    const p = packRegion(bx, items.map(s => s.aspect));
+  for (const [bx, items] of stageParts(sb, stage, phone)) {
+    const p = packRegion(bx, items.map(s => s.aspect), { phone: phone });
     items.forEach((s, i) => out.push({ id: s.id, share: !!s.share, ...p.rects[i], fit: s.share ? 'contain' : p.rects[i].fit }));
   }
   return out;
 }
-function stageViol(sb, stage) {
+function stageViol(sb, stage, phone) {
   let v = 1;
-  for (const [bx, items] of stageParts(sb, stage)) { if (items.length === 1 && items[0].share) continue; const c = chooseRows(bx, items.map(i => i.aspect)); if (c) v = Math.max(v, c.viol); }
+  for (const [bx, items] of stageParts(sb, stage, phone)) { if (items.length === 1 && items[0].share) continue; const c = chooseRows(bx, items.map(i => i.aspect), null, null, phone); if (c) v = Math.max(v, c.viol); }
   return v;
 }
-function stageScore(sb, stage) {
+function stageScore(sb, stage, phone) {
   let s = 0;
-  for (const [bx, items] of stageParts(sb, stage)) {
+  for (const [bx, items] of stageParts(sb, stage, phone)) {
     if (items.length === 1 && items[0].share) { // a share is shown whole (contain): score only the pixels it really uses
       const a = items[0].aspect, t = bx.w / bx.h; s += bx.w * bx.h * Math.min(t / a, a / t); continue;
     }
-    const c = chooseRows(bx, items.map(i => i.aspect)); s += c ? c.score : 0;
+    const c = chooseRows(bx, items.map(i => i.aspect), null, null, phone); s += c ? c.score : 0;
   }
   return s;
 }

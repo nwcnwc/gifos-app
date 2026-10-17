@@ -153,13 +153,8 @@ function bindClock(w) {
     check('whisperForTest exposes inFlight, behind, paused, lastLatencyMs and model',
       !!hook && ['inFlight', 'behind', 'paused', 'lastLatencyMs', 'model'].every((k) => hook[0].indexOf(k) >= 0),
       hook ? hook[0].slice(0, 180) : 'missing');
-    check('the tile chip can say transcription is behind or paused',
-      html.indexOf('Transcription paused') > 0 && html.indexOf('Transcription behind, skipping old audio') > 0);
-    check('a tile does not wear a transcribing badge',
-      html.indexOf("📝 ' + ccLiveLabel") < 0 && html.indexOf('📝 transcribing') < 0);
-    check('own voice is written down without the CC switch',
-      html.indexOf("if (job.id === 'me') { addTranscriptLine(text, job.at); }") > 0
-      && html.indexOf("if (job.id === 'me') { if (myStatus.cc) addTranscriptLine") < 0);
+    check('the tile chip can say captions are behind or paused',
+      html.indexOf('Captions paused') > 0 && html.indexOf('Captions behind, skipping old audio') > 0);
 
     // ---- model: 4 cores is tiny; an override wins; a bigger machine is base ----
     setCores(4);
@@ -216,12 +211,12 @@ function bindClock(w) {
     check('the queue stays busy until the provider answers', w.api.q.busy === true && w.inFlight === 1,
       JSON.stringify({ busy: w.api.q.busy, inFlight: w.inFlight }));
     check('slowness does not pause Whisper', w.api.paused() === false, w.api.paused());
-    check('Whisper does not give up while the chip still says transcribing',
-      !(w.api.paused() && chip === 'transcribing'), JSON.stringify({ paused: w.api.paused(), chip: chip }));
-    check('a slow call is shown as behind, not as plain transcribing',
-      chip.indexOf('Transcription behind') >= 0 && chip.indexOf('transcribing') < 0, chip);
-    check('the status line says transcription is skipping old audio',
-      w.statuses.some((s) => s.indexOf('Transcription behind, skipping old audio') >= 0), w.statuses.join(' | '));
+    check('Whisper does not give up while the chip still says Captions',
+      !(w.api.paused() && (chip === 'transcribing' || chip === 'Captions')), JSON.stringify({ paused: w.api.paused(), chip: chip }));
+    check('a slow call is shown as behind, not as plain Captions',
+      chip.indexOf('Captions behind') >= 0 && chip !== 'Captions' && chip.indexOf('transcribing') < 0, chip);
+    check('the status line says captions are skipping old audio',
+      w.statuses.some((s) => s.indexOf('Captions behind, skipping old audio') >= 0), w.statuses.join(' | '));
     // The provider finally answers, later than the warm timeout.
     w.calls[0].resolve('one');
     await flush();
@@ -266,9 +261,9 @@ function bindClock(w) {
     quiet.api.giveUp();
     const qChip = quiet.api.chip();
     check('with no SpeechRecognition, give-up does not start browser captions', quiet.syncs === 0, quiet.syncs);
-    check('…and the chip says transcription is paused', qChip.indexOf('Transcription paused') >= 0 && qChip !== 'transcribing', qChip);
-    check('…and the status says transcription is paused',
-      quiet.statuses.some((s) => s.indexOf('Transcription paused') >= 0), quiet.statuses.join(' | '));
+    check('…and the chip says captions are paused', qChip.indexOf('Captions paused') >= 0 && qChip !== 'Captions' && qChip !== 'transcribing', qChip);
+    check('…and the status says captions are paused',
+      quiet.statuses.some((s) => s.indexOf('Captions paused') >= 0), quiet.statuses.join(' | '));
     if (prevWindow === undefined) delete global.window; else global.window = prevWindow;
 
     // ---- optional remote endpoint: POST pcm, read JSON {text} ----

@@ -159,17 +159,25 @@
     return { rects: emit(list, use, 'stad'), crowd: crowd, band: crowd ? { text: 'Stadium · ' + stad.length, x: (use[0] ? use[0].x : b.x) + 6, y: (use[0] ? use[0].y : b.y) + 6 } : band, tier: null };
   }
 
-  // Content box under the top chip and above the control dock. Names on the
-  // last row stay readable. Phone with the mode pill needs a taller top inset.
+  // Content box under the top chip and above the dock. opts.bottom is the
+  // measured dock band (innerHeight - bar.top) when the page has one; the
+  // dock constant stands in otherwise. Phone with the mode pill needs a taller
+  // top, and a phone clears Fit even at 200% text.
   function viewBox(vw, vh, opts) {
     opts = opts || {};
     const phone = opts.phone != null ? !!opts.phone : vw < 600;
     // 64 clears the header pill (it sits at y=14 and is about 40px tall) so
     // the top row's chips are not drawn underneath it. The mode pill is taller.
-    const top = opts.top != null ? opts.top : (phone && opts.pill ? 92 : 64);
+    // When Fit sits lower (200% text) the page measures and passes opts.top.
+    // A portrait phone starts under Fit (120, 140 with the mode pill, qa-meet-mobile);
+    // a short landscape phone keeps the band for the strip.
+    const top = opts.top != null ? opts.top : (phone ? (vh < 500 ? (opts.pill ? 92 : 64) : (opts.pill ? 140 : 120)) : 64);
+    const bottom = Math.max(0, +opts.bottom || 0);
     // Dock: 88px pill + 14px bottom inset on a phone, 104px + 14px on a desk,
     // plus a few pixels so a name chip is not tucked under the bar.
-    const dock = opts.dock != null ? opts.dock : (phone ? 112 : 128);
+    // A measured band (even 0, when the chrome is tucked away) is the truth;
+    // the constants stand in only when nothing was measured.
+    const dock = opts.dock != null ? opts.dock : (opts.bottom != null ? bottom : (phone ? 112 : 128));
     const pad = phone ? 2 : 4;
     return {
       x: pad,
@@ -373,23 +381,10 @@
     const modeIn = opts.mode || 'gallery';
     const mode = modeIn === 'auto' ? 'gallery' : modeIn;
     // Input order, not hand/stage rank. A raised hand is a badge. Self is
-    // pulled to the front by the packer. Bots are a small corner tile.
-    const ordered = opts.tiles || [];
-    const bots = ordered.filter((t) => t.bot);
-    const tiles = ordered.filter((t) => !t.bot);
-    function withBots(g) {
-      if (!g || !bots.length) return g;
-      const bw = phone ? 72 : 96;
-      const bh = 72;
-      const extra = bots.map((b, i) => ({
-        id: b.id, tier: 'bot',
-        x: box.x + Math.max(0, box.w - bw),
-        y: Math.max(box.y, box.y + box.h - bh - i * bh),
-        w: Math.min(bw, box.w), h: Math.min(bh, box.h),
-      }));
-      g.rects = (g.rects || []).concat(extra);
-      return g;
-    }
+    // pulled to the front by the packer. A bot is a person in that same
+    // grid: a full tile wearing the bot badge, not a smaller box.
+    const tiles = opts.tiles || [];
+    function withBots(g) { return g; }
     const selfSpec = normalizeSelf(opts.self != null ? opts.self : (opts.selfView != null ? opts.selfView : null));
     const stageSelf = !!(opts.stageSelf || opts.swapSelf || selfSpec.onStage);
     let me = null;

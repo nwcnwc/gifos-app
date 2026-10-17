@@ -1,0 +1,2 @@
+FAIL Captions is on because someone else is writing; captions view is not off (null); bot tile has a transcription chip ("B bot notes 📝 Captions 🤖 bot Blur for all"); a transcript line showed captions while CC is off
+{"trShown":true,"callOn":true,"mine":false,"view":null,"me":"N Nathan (you)","bot":"B bot notes 📝 Captions 🤖 bot Blur for all","bar":true}

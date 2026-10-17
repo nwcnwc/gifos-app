@@ -1,0 +1,2 @@
+FAIL no clock time on Ruth; no clock time on my line
+{"want":"10:41 AM","mine":{"text":"Nathan I will send the notes.","font":16,"nameFont":16,"when":"","whenFont":0,"whenColor":"","whenBg":"rgb(0, 100, 200)","whenShown":false},"ruth":{"text":"Ruth The deck is in the thread.","font":16,"nameFont":16,"when":"","whenFont":0,"whenColor":"","whenBg":"rgb(232, 236, 241)","whenShown":false}}

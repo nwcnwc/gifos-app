@@ -1,0 +1,2 @@
+FAIL Send is rgb(255, 255, 255); the paperclip has no edge (rgb(255, 255, 255))
+{"label":"Send","bg":"rgb(255, 255, 255)","fg":"rgb(29, 29, 31)","h":44,"clipBg":"rgb(255, 255, 255)","clipFg":"rgb(29, 29, 31)"}

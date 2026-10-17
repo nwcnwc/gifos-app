@@ -1,0 +1,2 @@
+FAIL No blur is not the selected segment (wait true, bg rgb(255, 255, 255)); No blur selected fill is rgb(255, 255, 255) / rgb(29, 29, 31)
+{"status":"No blur picked — turn your camera on to be ready for clear video.","wish":0,"feed":1,"cam":true,"min":{"sel":false,"wait":false,"pressed":"false","bg":"rgb(255, 255, 255)","color":"rgb(29, 29, 31)"},"none":{"sel":false,"wait":true,"pressed":"true","bg":"rgb(255, 255, 255)","color":"rgb(29, 29, 31)"}}

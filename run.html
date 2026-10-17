@@ -19,7 +19,7 @@
 <meta http-equiv="Content-Security-Policy" content="frame-src about:">
 <meta name="referrer" content="same-origin">
 <meta name="robots" content="noindex">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0a0a0f">
 <!-- First paint is dark GROUND, immediately: the real theme gate lives ~400
@@ -508,7 +508,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 <script src="js/sw-register.js" defer></script>
 <script src="js/build.js" defer></script>
 <script src="js/build-badge.js" defer></script>
-<script>/* Global UI text size (Settings → Text size). Scales the meeting chrome; applied early, live across tabs. */(function(){function ap(){try{var s=parseFloat(localStorage.getItem('gifos_ui_scale'))||1;s=Math.max(0.2,Math.min(3,s));document.documentElement.style.fontSize=(s===1?'':(16*s).toFixed(2)+'px');}catch(e){}}ap();try{window.addEventListener('storage',function(e){if(!e||e.key==='gifos_ui_scale')ap();});}catch(e){}})();</script>
+<script>/* Global UI text size (Settings → Text size). Scales the meeting chrome; applied early, live across tabs. */(function(){function ap(){try{var s=parseFloat(localStorage.getItem('gifos_ui_scale'))||1;s=Math.max(0.2,Math.min(3,s));document.documentElement.style.fontSize=(s===1?'':(16*s).toFixed(2)+'px');document.documentElement.classList.toggle('ui-large',s>=1.5);}catch(e){}}ap();try{window.addEventListener('storage',function(e){if(!e||e.key==='gifos_ui_scale')ap();});}catch(e){}})();</script>
 <title>Meeting — GifOS</title>
 <!-- Link-preview card for texted / posted invites. og:url is deliberately OMITTED
      so scrapers use the actual fetched URL and keep the invite's subdomain (the
@@ -657,6 +657,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      later in the sheet) so radios/checkboxes stay small and native, not full-width. */
   .name-box .rec-opt input { width: 16px; min-width: 16px; height: 16px; flex: none; padding: 0; margin: .18rem 0 0; border: none; background: none; }
   .name-box .rec-opt.inline input { margin: 0; }
+  /* Record: the choice is a sentence, Start stays on screen, and the
+     other capture options scroll behind it. Start is the only blue button. */
+  .name-box.rec-box {
+    display: flex; flex-direction: column; text-align: left; overflow: hidden;
+    width: min(440px, calc(100vw - 24px)); max-width: none;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    padding: 16px 16px 12px; border: 0; border-radius: 20px;
+    background: #fff; color: #1d1d1f;
+  }
+  .name-box.rec-box h3 { color: #1d1d1f; font-size: 1.25rem; line-height: 1.2; margin: 0 0 6px; }
+  .name-box.rec-box p { margin: 0 0 8px; }
+  .name-box.rec-box .rec-note { color: #3a3a3f; font-size: 1rem; line-height: 1.3; }
+  .name-box.rec-box #rec-now { color: #1d1d1f; font-size: 1rem; font-weight: 700; line-height: 1.3; }
+  .name-box.rec-box .rec-scroll { overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+  .name-box.rec-box .rec-sec > b { color: #1d1d1f; font-size: 1rem; }
+  .name-box.rec-box .rec-opt { font-size: 1rem; min-height: 44px; color: #1d1d1f; }
+  .name-box.rec-box .rec-opt small { color: #3a3a3f; }
+  .name-box.rec-box #rec-err { color: #b61622; font-size: 1rem; }
+  .name-box.rec-box .rec-actions { display: flex; gap: 12px; flex: 0 0 auto; padding-top: 12px; }
+  .name-box.rec-box .rec-actions button { flex: 1 1 0; font-size: 1rem; line-height: 1.2; min-height: 44px; padding: 8px 12px; }
+  @media (max-width: 700px) {
+    .name-box.rec-box .rec-opt small,
+    .name-box.rec-box .rec-scroll > p { display: none; }
+    .name-box.rec-box .rec-actions { flex-direction: column; }
+    /* At a large text size the device note would take the room Start needs. */
+    html.ui-large .name-box.rec-box .rec-note { display: none; }
+  }
   #stagefeed .rowtile { width: 100%; }
   .rowtile video { width: 100%; height: 100%; object-fit: cover; background: #000; }
   /* Stage feeds are verbatim cameras: show the FULL broadcast frame, exactly
@@ -933,7 +960,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #votebanner button { padding: .25rem .8rem; border-radius: .4rem; border: 1px solid var(--accent, #7b5cff);
     background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; font: inherit; }
   #votebtn { display: none; }
-  body.canvote #votebtn { display: inline-block; }
+  body.canvote #votebtn { display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .name-box button.voteopt { display: block; width: 100%; text-align: left; margin-bottom: .5rem; padding: .7rem .85rem;
     border-radius: 14px; border: 1px solid #3a3a4a; background: #16161f; color: #f4f7fb; cursor: pointer; font: inherit; }
   .name-box button.voteopt:hover { border-color: #8d93a0; }
@@ -1081,6 +1108,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.broadcast #bc-ident img { width: 256px; width: min(256px, 70vw); height: 256px; height: min(256px, 46vh); object-fit: cover; border-radius: 1rem; background: #14141f; }
   #bc-ident-name { background: rgba(10,10,15,.72); color: #eceef8; padding: .2rem .7rem; border-radius: .4rem; font-size: .95rem; }
   .tile.cam-off:has(> .avatar.has-img) > video { visibility: hidden; }
+  /* A dark seat past the shared-canvas cap (mountPeerAvatar) shows its letter
+     overlay, blurred the way the video it stands in for would be. */
+  .tile.cam-off .avatar.rides-off { display: flex; }
+  .tile:has(> video.blur1) .avatar.rides-off { filter: blur(11px) saturate(.9); }
+  .tile:has(> video.blur2) .avatar.rides-off { filter: blur(26px) saturate(.75); }
   .tile .chips { position: absolute; top: 6px; left: 6px; right: 6px; display: flex; flex-direction: row;
                  flex-wrap: nowrap; gap: 3px; align-items: center; z-index: 3; pointer-events: none; overflow: hidden; }
   .tile:has(> .blurbox.on) .chips { right: 96px; }
@@ -1090,6 +1122,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .chips span.ico { width: 22px; height: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
                           font-size: 0; line-height: 0; border-radius: 6px; flex: 0 0 auto; }
   .tile .chips span.ico svg { width: 14px; height: 14px; display: block; }
+  /* Blur for all is a 64px square, inset from the corner. The edge has to
+     read on a light wall, a dark room, and a busy picture: a thin light
+     border, a soft dark shadow, and a frosted fill. "Blur" and "for all"
+     are two lines so the label stays inside the square. */
+  .tile > .blurbox { position: absolute; top: 12px; right: 12px; z-index: 6; display: none;
+                     box-sizing: border-box; width: 64px; height: 64px; min-width: 44px; min-height: 44px;
+                     padding: 4px; border: 1px solid rgba(255,255,255,.82); border-radius: 6px; cursor: pointer;
+                     background: rgba(255,255,255,.46); color: #1a1c20;
+                     /* No backdrop-filter: a dozen of them (one per tile) stop WebKit's rendering
+                        updates for good, so the frost is a plain translucent fill. */
+                     box-shadow: 0 1px 5px rgba(0,0,0,.42);
+                     font: 700 13px/1.1 system-ui, sans-serif; white-space: pre-line;
+                     text-align: center; align-items: center; justify-content: center; flex-direction: column; }
   .tile .awaymark { display: none; }
   .tile.away > .awaymark {
     display: flex; align-items: center; justify-content: center;
@@ -1188,6 +1233,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .maxbtn { position: absolute; right: .4rem; bottom: .4rem; z-index: 4; padding: .15rem .5rem;
                   border-radius: .4rem; border: 1px solid rgba(255,255,255,.16); background: rgba(10,10,15,.85);
                   color: #eceef8; cursor: pointer; font-size: .75rem; }
+  /* On a phone the corner control was 28×32 and sat on the name. 44px, and
+     the name stops before it. */
+  @media (max-width: 700px), (max-height: 500px) {
+    .tile .maxbtn { box-sizing: border-box; width: 44px; height: 44px; min-width: 44px; min-height: 44px;
+      padding: 0; right: 8px; bottom: 8px; display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.15rem; border-radius: 12px; }
+    /* `body.comfy .tile .name` below sets its own cap; the phone cap must outrank it. */
+    .tile .name, html body.comfy .tile .name { max-width: calc(100% - 60px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; }
+  }
   .tile.cam-off .maxbtn { display: none; }
   .tile.focus { grid-column: 1 / -1; aspect-ratio: 16 / 9; }
   /* chat + pinned files panel (pure P2P — DataChannels, no server anywhere) */
@@ -1217,10 +1271,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #chatprivacy { order: 1; flex: 1 0 100%; margin: 0; line-height: 1.35; }
   #chathead button { margin-left: auto; padding: .2rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   #chatprivacy { font-size: 16px; color: #e4e7ee; }
-  #chatlog { flex: 1; overflow-y: auto; padding: .6rem; display: flex; flex-direction: column; gap: .35rem; font-size: .85rem; }
-  .cmsg { background: var(--surface, #14141f); border: 1px solid #22223a; border-radius: .5rem; padding: .3rem .55rem; max-width: 94%; align-self: flex-start; overflow-wrap: anywhere; }
-  .cmsg.mine { align-self: flex-end; background: var(--surface, #17222e); border-color: var(--accent, #223448); }
-  .cmsg b { color: #7b9cff; font-size: .7rem; display: block; }
+  /* A short landscape phone keeps the chat head to one row. */
+  @media (max-height: 500px) and (orientation: landscape) { #chatprivacy { display: none !important; } }
   .cmsg.prayer { background: #241833; border-color: #c9a6ff; }
   .cmsg .praytag { margin-left: .35rem; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #e7d6ff; }
   #pray[aria-pressed="true"] { background: #5c3d8a; color: #fff; border-color: #5c3d8a; }
@@ -1228,6 +1280,68 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar #chatbtn .chatcount { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px;
     border-radius: 99px; background: #b61622; color: #fff; font-size: 10px; font-weight: 800; line-height: 16px; }
   .bar #chatbtn .chatcount[hidden] { display: none; }
+  #chatlog { flex: 1; overflow-y: auto; padding: .6rem; display: flex; flex-direction: column; gap: 8px; font-size: 1rem; }
+  #chatnew { align-self: center; flex: 0 0 auto; margin: 0 12px 8px; min-height: 44px; padding: 0 16px;
+             border: 0; border-radius: 22px; background: #0064c8; color: #fff; cursor: pointer;
+             font: 700 1rem/1 system-ui, sans-serif; }
+  #chatnew[hidden] { display: none !important; }
+  /* Find sits under the title, not in the composer, so Send stays put.
+     The field has its own edge on the white sheet. Clear appears once
+     there is something to undo. */
+  #chatfind { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border, #2a2a3f); }
+  #chatfind[hidden] { display: none !important; }
+  #chatq { flex: 1; min-width: 0; min-height: 44px; box-sizing: border-box; border-radius: 12px;
+    border: 1.5px solid #8d93a0; padding: 0 12px; font: 16px/1.2 system-ui, sans-serif;
+    background: #fff; color: #1d1d1f; }
+  #chatqclear { flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 12px;
+    background: #e8ecf1; color: #1d1d1f; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+  #chatqclear[hidden] { display: none !important; }
+  .cempty { align-self: stretch; max-width: none; background: transparent; color: #1d1d1f; font-size: 1rem; padding: 8px 4px; }
+  .cmsg .cmention { color: #0064c8; font-weight: 800; }
+  .cmsg.mine .cmention { color: #ffe08a; }
+  .cmsg a.clink { color: #0064c8; font-weight: 700; text-decoration: underline; overflow-wrap: anywhere; }
+  .cmsg.mine a.clink { color: #ffe08a; }
+  #chatmentions { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 0; max-height: 148px; overflow-y: auto; }
+  #chatmentions[hidden] { display: none !important; }
+  #chatmentions button { min-height: 44px; border: 0; border-radius: 12px; background: #e8ecf1; color: #1d1d1f;
+    font: 700 16px/1.2 system-ui, sans-serif; text-align: left; padding: 0 12px; cursor: pointer; }
+  /* Theirs is a light bubble with dark type. Mine is the blue one with
+     white type. The name is the same size as the line, so 200% text
+     stays readable. Neither bubble runs to the edge of the sheet. */
+  .cmsg { background: #e8ecf1; color: #1d1d1f; border: 0; border-radius: 16px; padding: 10px 12px; max-width: 78%; align-self: flex-start; overflow-wrap: anywhere; font-size: 1rem; line-height: 1.35; }
+  .cmsg.mine { align-self: flex-end; background: #0064c8; color: #fff; }
+  .cmsg b { color: inherit; font-size: 1rem; font-weight: 700; display: block; margin: 0 0 2px; }
+  /* A reply keeps the line it answers. The quote is a strip inside the
+     bubble. Reply is its own control, 44px, so it is not the same as Send. */
+  .cmsg .cquote { display: block; margin: 2px 0 6px; padding: 4px 8px; border: 0; border-left: 3px solid #0064c8;
+    border-radius: 8px; background: #fff; color: #1d1d1f; }
+  .cmsg .cquote b { display: block; margin: 0; font-size: .875rem; font-weight: 700; color: inherit; }
+  .cmsg .cquote span { display: block; font-size: 1rem; line-height: 1.35; }
+  .cmsg.mine .cquote { background: rgba(0, 0, 0, .18); color: #fff; border-left-color: #fff; }
+  .cmsg .creply, .cmsg .cdel { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+    min-width: 44px; min-height: 44px; margin: 8px 8px 0 0; padding: 0 12px; border: 1.5px solid #c5cad3; border-radius: 12px;
+    background: #fff; color: #0064c8; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+  /* A reaction is one tap on a line. React opens five, each 44px.
+     What people picked sits on the line with a count; yours is outlined. */
+  .cmsg .creact, .cmsg .cpick, .cmsg .cchip { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+    min-width: 44px; min-height: 44px; margin: 8px 8px 0 0; padding: 0 12px; border: 1.5px solid #c5cad3; border-radius: 12px;
+    background: #fff; color: #0064c8; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+  .cmsg .cpick { padding: 0; font-size: 22px; }
+  .cmsg .cchip { gap: 6px; color: #1d1d1f; }
+  .cmsg .cchip[aria-pressed="true"] { border: 2.5px solid #0064c8; background: #e6f0fb; }
+  .cmsg .cpicks, .cmsg .cchips, .cmsg .cacts { display: flex; flex-wrap: wrap; }
+  #chatreply { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; margin: 0 12px; padding: 8px 0 0; }
+  #chatreply[hidden] { display: none !important; }
+  #chatreply .chatreply-body { flex: 1; min-width: 0; border-left: 3px solid #0064c8; padding: 2px 8px; }
+  #chatreply b { display: block; margin: 0; font: 700 1rem/1.2 system-ui, sans-serif; color: inherit; }
+  #chatreply span { display: block; font: 400 1rem/1.3 system-ui, sans-serif; color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #chatreply-x { flex: 0 0 auto; box-sizing: border-box; min-width: 44px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 12px;
+    background: #e8ecf1; color: #1d1d1f; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+  /* The clock sits beside the name. Same ink as the line, so it stays
+     readable on the light bubble and on the blue one. */
+  .cwho { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin: 0 0 2px; }
+  .cwho b { display: inline; margin: 0; }
+  .cmsg .cwhen { color: inherit; font-size: .875rem; font-weight: 600; white-space: nowrap; }
   #cfiles { border-top: 1px solid var(--border, #2a2a3f); padding: .45rem .7rem; max-height: 34%; overflow-y: auto; }
   #cfiles[hidden] { display: none !important; }
   #cfiles h4 { font-size: .72rem; color: var(--muted, #8888aa); margin-bottom: .3rem; }
@@ -1236,15 +1350,42 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cfile small { color: #667; }
   .cfile button { padding: .1rem .45rem; border-radius: .35rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; font-size: .72rem; }
   #chatform { display: flex; gap: .4rem; padding: .5rem .6rem; border-top: 1px solid var(--border, #2a2a3f); min-width: 0; }
-  #chatform input[type=text] { flex: 1 1 auto; width: 0; min-width: 0; min-height: 44px; padding: .4rem .6rem; border-radius: 12px; border: 1.5px solid #8d93a0; background: #fff; color: #1d1d1f; font: inherit; font-size: 16px; }
+  #chatform input[type=text] { flex: 1 1 auto; width: 0; min-width: 0; min-height: 44px; padding: .4rem .6rem; border-radius: 12px; border: 1.5px solid #8d93a0; background: #fff; color: #1d1d1f; font: inherit; font-size: 1rem; } /* 1rem: 16px, and it grows with a large text setting */
   #pray { flex: none; }
+  #pray .pray-ico { display: none; }
+  /* On a phone Prayer is its hands, so the message field keeps its width at any text size. */
+  @media (max-width: 700px) {
+    #pray, #cattach { width: 44px; min-width: 44px; min-height: 44px; padding: 0; font-size: 1.25rem; line-height: 1; }
+    #chatform button[type=submit] { min-width: 44px; padding: .4rem .5rem; }
+    #pray .pray-ico { display: inline; }
+    #pray .pray-word { display: none; }
+    #chatform { gap: .25rem; }
+  }
   #chatform button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   #chatform button[type=submit] { background: #0064c8; color: #fff; border: 0; min-height: 44px; min-width: 72px; border-radius: 12px; font-weight: 700; }
-  .tile .cap { position: absolute; left: 50%; transform: translateX(-50%); bottom: 2.1rem; max-width: 92%;
-               background: rgba(10,10,15,.82); border: 1px solid var(--border, #2a2a3f); border-radius: .45rem;
-               padding: .35rem .7rem; font-size: 1.25rem; line-height: 1.35; color: #fff; z-index: 3; pointer-events: none;
+  .tile .cap { position: absolute; left: 8px; right: 8px; bottom: 8px; transform: none; max-width: none;
+               max-height: 42%; overflow: hidden; box-sizing: border-box;
+               background: rgba(10,10,15,.82); border: 0; border-radius: 8px;
+               padding: 6px 8px; font-size: 1.25rem; line-height: 1.3; color: #fff; z-index: 3; pointer-events: none;
                opacity: 0; transition: opacity .25s; }
   .tile .cap.show { opacity: 1; }
+  /* On a phone the line is one caption above Live, not a clip on the face.
+     A long line starts at the top and the rest scrolls inside the caption. */
+  #livecap {
+    display: none; position: fixed; z-index: 30;
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    bottom: calc(var(--dockh, 108px) + var(--stateh, 0px) + 8px);
+    max-height: 4.6em; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    box-sizing: border-box; padding: 8px 12px; border-radius: 12px;
+    background: rgba(10,10,15,.92); color: #fff;
+    font: 700 1.25rem/1.35 system-ui, sans-serif;
+  }
+  #livecap.show { display: block; }
+  body.chrome-away #livecap { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  @media (max-width: 700px), (max-height: 500px) {
+    .tile .cap { display: none !important; }
+  }
   /* A share that died in a freeze reload. One tap, high contrast, wraps on a phone. */
   #reshare-back { display: none; position: fixed; left: 50%; bottom: 4.6rem; transform: translateX(-50%);
                   z-index: 80; max-width: 92vw; width: max-content; box-sizing: border-box;
@@ -1256,8 +1397,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #reshare-go { font-size: 1rem; line-height: 1.2; padding: .5rem .85rem; border-radius: .45rem; border: 0;
                 background: #2436d6; color: #fff; cursor: pointer; }
   #recbtn.on { border-color: #ff5c5c; color: #ff9c9c; }
-  /* CC selected is a filled blue button, the same mark as on a phone.
-     A green edge on a grey button was too easy to miss. */
   #ccbtn.on, #ccdock.on { background: #0064c8; color: #fff; border-color: transparent; }
   .trline { font-size: .82rem; padding: .15rem 0; overflow-wrap: anywhere; }
   .trline b { color: #7b9cff; margin-right: .35rem; }
@@ -1438,6 +1577,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #who-list { max-height: 55vh; max-height: 55dvh; }
   #adm-banned, #who-list { overflow-y: auto; text-align: left; font-size: .8rem; }
   #adm-banned .brow, #who-list .brow { display: flex; align-items: center; gap: .5rem; padding: .25rem 0; border-bottom: 1px solid var(--surface, #1c1c2b); }
+  /* People is a name list, the same job as Zoom, Meet, Teams, and FaceTime.
+     Addresses stay in the download, not on the sheet. */
+  #who-modal .name-box { background: #fff; color: #1d1d1f; border: 0; border-radius: 20px;
+    width: min(420px, calc(100vw - 24px)); }
+  #who-modal h3 { color: #1d1d1f; font-size: 1.35rem; }
+  #who-modal .who-lead { color: #3a3a3f; font-size: 1rem; margin: 0 0 8px; }
+  #who-list .who-h { margin-top: 10px; font-weight: 700; font-size: 0.85rem; color: #3a3a3f; }
+  #who-list .brow { min-height: 44px; padding: 8px 0; border-bottom: 1px solid #e4e7ee; font-size: 1rem; }
+  #who-list .who-name { flex: 1; min-width: 0; font-size: 1rem; font-weight: 650; color: #1d1d1f; }
+  #who-list .who-state { font-size: 1rem; color: #3a3a3f; text-align: right; }
+  #who-modal #who-dl, #who-modal #who-close {
+    background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; min-height: 44px; min-width: 44px; }
   #adm-banned .brow button { padding: .15rem .5rem; font-size: .72rem; border-radius: .35rem;
                              border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   /* ---- the front-door lobby (cold open only) ---- */
@@ -1503,62 +1654,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     outline: 3px solid #0064c8; outline-offset: 2px;
   }
   .topchip { position: fixed; z-index: 6; top: 14px; left: 14px; display: flex; align-items: center; gap: 8px;
-    width: max-content; max-width: calc(100vw - 140px); background: rgba(12,14,18,.92); color: #f4f7fb;
+    width: max-content; max-width: calc(100vw - 110px); background: rgba(12,14,18,.92); color: #f4f7fb; /* 110: Fit is 64 wide at right 14 and sits lower */
     border-radius: 999px; padding: 6px 12px 6px 14px; }
   .topchip .title { font-weight: 800; font-size: 26px; letter-spacing: -0.04em; text-decoration: none; cursor: pointer;
     background: linear-gradient(135deg, #0071e3, #5856d6); -webkit-background-clip: text; background-clip: text;
-    -webkit-text-fill-color: transparent; color: transparent; flex: 0 0 auto; }
-  .topchip .status { color: #e7ebf2; font-size: 20px; margin: 0; flex: 1 1 auto; min-width: 0;
-    min-height: 1.3em; display: flex; align-items: center; overflow: hidden; white-space: nowrap; }
-  .topchip #statuscount { flex: 0 0 auto; white-space: nowrap; background: transparent; border: 0; color: inherit;
-    font: inherit; padding: 0; cursor: pointer; text-align: left; }
-  .topchip #statusinvite { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
-    min-height: 40px; margin-left: 10px; padding: 0 14px; border: 0; border-radius: 999px;
-    background: #0064c8; color: #fff; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
-  .topchip #statusinvite[hidden] { display: none !important; }
-  #roster { display: none; position: fixed; z-index: 30; top: 14px; right: 14px; bottom: 128px;
-    width: min(320px, calc(100vw - 28px)); background: #fff; color: #1d1d1f; border-radius: 20px;
-    box-shadow: 0 16px 40px rgba(0,0,0,.28); flex-direction: column; overflow: hidden; }
-  #roster.open { display: flex; }
-  #roster .roster-head { display: flex; align-items: center; gap: 8px; padding: 14px 14px 8px; }
-  #roster h3 { margin: 0; flex: 1; font: 700 20px/1.2 system-ui, sans-serif; }
-  #roster-close { min-height: 40px; border: 0; border-radius: 12px; background: #e8ecf1; color: #1d1d1f;
-    font: 700 15px/1 system-ui, sans-serif; padding: 0 12px; cursor: pointer; }
-  #roster-find { margin: 0 14px 8px; min-height: 44px; border-radius: 12px; border: 1px solid #c5cad3;
-    padding: 0 12px; font: 16px/1.2 system-ui, sans-serif; color: #1d1d1f; background: #fff; }
-  #roster-list { overflow: auto; flex: 1; min-height: 0; }
-  .roster-row { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 14px;
-    border-top: 1px solid #e8ecf1; font: 600 16px/1.3 system-ui, sans-serif; }
-  .roster-row .nm { flex: 1; min-width: 0; white-space: normal; }
-  .roster-row .flags { flex: 0 0 auto; color: #3a3a3f; font-weight: 650; font-size: 14px; }
-  .roster-row .mutebtn { flex: 0 0 auto; min-height: 40px; min-width: 76px; border-radius: 12px;
-    border: 1.5px solid #8d93a0; background: #fff; color: #1d1d1f; font: 700 15px/1 system-ui, sans-serif;
-    padding: 0 10px; cursor: pointer; }
-  .roster-row .mutebtn.on { background: #0064c8; border-color: transparent; color: #fff; }
-  .roster-row { flex-wrap: wrap; }
-  #roster-host { display: flex; align-items: center; gap: 8px; padding: 0 14px 8px;
-    font: 600 16px/1.2 system-ui, sans-serif; }
-  #roster-host[hidden] { display: none; }
-  #roster-host button { min-height: 40px; min-width: 64px; border-radius: 12px;
-    border: 1.5px solid #8d93a0; background: #fff; color: #1d1d1f;
-    font: 700 15px/1 system-ui, sans-serif; padding: 0 12px; cursor: pointer; }
-  #roster-host button.on { background: #0064c8; border-color: transparent; color: #fff; }
-  .roster-waithead, .roster-empty { padding: 8px 14px; color: #3a3a3f; font: 700 16px/1.3 system-ui, sans-serif; }
-  .roster-row .acts { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 100%; }
-  .roster-row .acts button, .roster-row .admitbtn {
-    min-height: 40px; border-radius: 12px; border: 1.5px solid #8d93a0; background: #fff;
-    color: #1d1d1f; font: 700 15px/1 system-ui, sans-serif; padding: 0 10px; cursor: pointer;
-  }
-  .roster-row .spotbtn.on, .roster-row .admitbtn { background: #0064c8; border-color: transparent; color: #fff; }
-  .roster-row .renamebox { flex: 1 1 140px; min-width: 0; min-height: 40px; border-radius: 12px;
-    border: 1px solid #c5cad3; padding: 0 10px; font: 16px/1.2 system-ui, sans-serif; color: #1d1d1f; }
-  #waitself { display: none; position: fixed; z-index: 28; left: 50%; top: 18vh; transform: translateX(-50%);
-    width: min(440px, calc(100vw - 32px)); padding: 28px 28px 24px; background: #fff; color: #1d1d1f;
-    border-radius: 22px; box-shadow: 0 16px 40px rgba(0,0,0,.28); text-align: center; }
-  #waitself.on { display: block; }
-  #waitself h3 { margin: 0 0 8px; font: 700 28px/1.2 system-ui, sans-serif; }
-  #waitself p { margin: 0; font: 600 18px/1.35 system-ui, sans-serif; }
-  .topchip #statusrest { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    -webkit-text-fill-color: transparent; color: transparent; }
+  .topchip .status { color: #e7ebf2; font-size: 20px; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
+    min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    border: 0; background: transparent; padding: 0; font-family: inherit; font-weight: inherit;
+    text-align: left; cursor: pointer; appearance: none; -webkit-appearance: none; }
+  /* A wide window lays the count and the rest side by side so the rest keeps
+     its own width (it is the line tests measure); a phone truncates the chip. */
+  @media (min-width: 701px) and (min-height: 501px) { .topchip .status { display: flex; align-items: center; } }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
   /* A broadcast host who is the only person here gets Invite in the chip.
      The sentence stays. Wide screens show the same button the phone shows.
@@ -1567,7 +1674,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     display: none; flex: 0 0 auto; box-sizing: border-box;
     min-width: 44px; min-height: 44px; height: 44px; margin: 0 0 0 4px; padding: 0 14px;
     border: 0; border-radius: 999px; background: #0064c8; color: #fff; cursor: pointer;
-    font: 700 16px/1 system-ui, sans-serif; white-space: nowrap;
+    font: 700 1rem/1 system-ui, sans-serif; white-space: nowrap;
     align-items: center; justify-content: center;
   }
   #hdrinvite[hidden] { display: none !important; }
@@ -1659,16 +1766,146 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lyrics-next { margin-top: 8px; min-height: 44px; border: 0; border-radius: 12px; background: #0064c8; color: #fff;
     font: 700 16px/1 system-ui, sans-serif; cursor: pointer; padding: 0 16px; }
   #lyrics-next.secondary { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
-  .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
-    border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
-    background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 14px/1.2 system-ui, sans-serif; }
+  /* Phone chrome from qa-meet-mobile: the status sheet, the 44px chip, Fit as a
+     44px target, the Live/Record/Captions band and the chat preview. */
+  #status-full .name-box {
+    background: #fff; color: #1d1d1f; text-align: left;
+    width: min(22rem, calc(100vw - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+  }
+  #status-full .name-box p {
+    color: #1d1d1f; font-size: 1.05rem; line-height: 1.45; margin: 0 0 16px;
+    white-space: normal; overflow: visible; text-overflow: clip;
+  }
+  #status-full #status-full-close {
+    background: #0064c8; color: #fff; border: 0; min-height: 48px; min-width: 96px; font-size: 1rem;
+  }
+  @media (max-width: 700px), (max-height: 500px) {
+    /* The room name is the tap that opens the rest of the status.
+       Padding made that hit 23px. The chip itself is the 44px target. */
+    .topchip { min-height: 44px; padding-top: 0; padding-bottom: 0; align-items: stretch; }
+    .topchip .title, .topchip button#status { display: inline-flex; align-items: center; min-height: 44px; box-sizing: border-box; }
+    .topchip[data-invite="1"] { padding-right: 0; }
+    .topchip[data-invite="1"] #hdrinvite:not([hidden]) { display: inline-flex; }
+  }
+  .fitbtn { position: fixed; z-index: 6; top: calc(58px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); min-width: 44px; min-height: 44px;
+    border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer;
+    background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 1rem/1.2 system-ui, sans-serif; }
+  /* Live, Record, and Captions sit on the call, above the dock, so a
+     producer does not open More to see them. Live is the only red mark
+     until recording starts. Captions turns blue, not red. */
+  #callstate {
+    position: fixed; z-index: 31;
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    bottom: calc(var(--dockh, 108px) + 8px);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  }
+  #callstate[hidden] { display: none !important; }
+  /* The call-state band and the chat preview are phone chrome: a desktop has
+     the CC and Chat dock buttons, the room bar, and the booth cards there. */
+  @media (min-width: 701px) and (min-height: 501px) { #callstate, #chatnote { display: none !important; } }
+  @media (max-width: 700px), (max-height: 500px) { .bar #fsbtn, .bar #ccdock { display: none !important; } }
+  /* A 320px phone: Video, Mic, React, More and Leave fit in one row (qa-meet-mobile). */
+  /* These two bands repeat the phone pass's sizes with body in the selector so
+     they outrank the 700px block that follows them in the sheet. */
+  @media (max-width: 400px) and (min-width: 381px) {
+    body .bar { gap: 4px; padding: 0 4px; }
+  }
+  @media (max-width: 380px) {
+    body .bar { gap: 3px; padding: 0 4px; max-width: calc(100vw - 8px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); height: 76px; }
+    body .bar #cam, body .bar #mic, body .bar #reactbtn, body .bar #bartoggle { width: 46px; min-width: 44px; height: 58px; min-height: 44px; padding: 4px 1px 3px; }
+    body .bar .docklab { font-size: 10px; }
+    body .bar #cam svg, body .bar #mic svg, body .bar #reactbtn svg, body .bar #bartoggle svg { width: 20px; height: 20px; }
+    body .bar #bargrip { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+    body .bar #leavebtn { width: 48px; min-width: 44px; height: 58px; min-height: 44px; margin-left: 0; padding: 4px 1px 3px; }
+    body .bar #leavebtn svg { width: 20px; height: 20px; }
+  }
+  #barmore #chatbtn .chatcount { display: none; }
+  /* The phone's first More row: Invite is the blue action. */
+  .moregroup.phone-first h4 { display: none; }
+  #barmore .phone-first #invite { background: #0064c8; color: #fff; }
+  @media (max-width: 700px), (max-height: 500px) { #lobby.show { overflow-y: auto; -webkit-overflow-scrolling: touch; } }
+  body.solo-app #callstate { display: none !important; }
+  #call-live, #call-rec, #call-cc {
+    min-height: 44px; min-width: 44px; padding: 8px 12px; border-radius: 999px;
+    font: 700 1rem/1.15 system-ui, sans-serif;
+    display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
+  }
+  #call-live { background: #b61622; color: #fff; }
+  #call-live::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff; margin-right: 8px; }
+  /* LIVE is the Broadcast skin (one host live on the Stage). A regular
+     meeting does not wear it. Record and Captions stay on the call. */
+  body:not(.broadcast) #call-live { display: none !important; }
+  #call-rec, #call-cc {
+    background: rgba(12,14,18,.92); color: #f4f7fb; border: 1.5px solid #c5cad3; cursor: pointer;
+  }
+  #call-rec.on { background: #b61622; color: #fff; border-color: transparent; }
+  #call-cc.on { background: #0064c8; color: #fff; border-color: transparent; }
+  /* On a phone Live is the control a volunteer can see from a stand.
+     Sideways, it takes the rest of the one row so the faces keep their
+     height. Upright, it is its own band, taller than More. */
+  @media (max-width: 700px) {
+    #call-live { flex: 1 1 auto; font-size: 1.25rem; justify-content: flex-start; padding-left: 16px; }
+  }
+  @media (max-width: 700px) and (min-height: 520px) {
+    #callstate { row-gap: 4px; }
+    #call-live { flex: 1 0 100%; min-height: 64px; justify-content: center; padding-left: 12px; }
+    #call-rec, #call-cc { flex: 1 1 0; }
+  }
+  /* At 200% text the buttons are already large. A 64px floor on top of
+     that pushed the faces into a wide strip. Keep the full-width band. */
+  html.ui-large #call-live { min-height: 44px; font-size: 1rem; }
+  /* Unread chat sits on the call, above Live, while More is closed.
+     The line is the white banner. The count is the blue pill. */
+  #chatnote {
+    position: fixed; z-index: 31;
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    bottom: calc(var(--dockh, 108px) + var(--stateh, 0px) + 16px);
+    display: flex; align-items: stretch; gap: 8px;
+  }
+  #chatnote[hidden] { display: none !important; }
+  body.solo-app #chatnote { display: none !important; }
+  #chatpreview {
+    flex: 1 1 auto; min-width: 0; min-height: 44px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border: 0; border-radius: 16px; cursor: pointer;
+    background: #fff; color: #1d1d1f;
+    font: 1rem/1.25 system-ui, sans-serif; text-align: left;
+    box-shadow: 0 6px 16px rgba(0,0,0,.28); overflow: hidden;
+  }
+  #chatpreview b, #chatpreview span {
+    font-size: 1rem; color: #1d1d1f;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #chatpreview b { flex: 0 1 auto; max-width: 42%; font-weight: 700; }
+  #chatpreview span { flex: 1 1 auto; min-width: 0; font-weight: 500; }
+  /* A mention of you is not the same white card as any other line. */
+  #chatpreview.mention { background: #0064c8; color: #fff; }
+  #chatpreview.mention b, #chatpreview.mention span { color: #fff; }
+  #chatpreview.mention b { max-width: 58%; }
+  #chatbadge {
+    flex: 0 0 auto;
+    min-width: 44px; min-height: 44px; padding: 0 12px;
+    border: 0; border-radius: 999px; cursor: pointer;
+    background: #0064c8; color: #fff;
+    font: 700 1rem/1 system-ui, sans-serif;
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 16px rgba(0,0,0,.35);
+  }
+  #chatbadge[hidden] { display: none !important; }
   body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
   body.app-room #reactbtn, body.app-room #reacttray { display: none !important; }
-  #gifos-build-float { top: 14px !important; right: 14px !important; bottom: auto !important; left: auto !important;
-    opacity: 1 !important; color: #e7ebf2 !important; background: rgba(12,14,18,.92); padding: 4px 10px;
-    border-radius: 999px; z-index: 6 !important; text-shadow: none !important; }
+  /* The build name used to be a solid chip in the corner, beside Fit, and
+     Fit hung down onto the top face. Fit shares the header row. The build
+     name is a faint line under that row, not a second button. */
+  #gifos-build-float { top: calc(58px + env(safe-area-inset-top, 0px)) !important; left: calc(14px + env(safe-area-inset-left, 0px)) !important;
+    right: auto !important; bottom: auto !important;
+    opacity: 0.55 !important; color: #c5cad3 !important; background: transparent !important; padding: 0 !important;
+    border-radius: 0 !important; font-size: 11px !important; line-height: 1.2 !important;
+    z-index: 6 !important; text-shadow: none !important; pointer-events: none !important; }
   .bar { position: fixed; z-index: 32; left: 50%; bottom: 14px; transform: translateX(-50%);
     display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; height: 104px; width: auto;
     max-width: calc(100% - 16px); padding: 0 16px 0 18px; margin: 0;
@@ -1727,7 +1964,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #left-rejoin { background: #0064c8; color: #fff; border: 0; }
   #left-close { margin-left: 12px; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
   .bar .barmore { display: none; }
-  .bar:not(.collapsed) .barmore { display: flex; flex-direction: column; gap: 12px; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
+  .bar:not(.collapsed) .barmore { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
     width: min(720px, calc(100vw - 24px));
     max-height: calc(100vh - 146px); max-height: calc(100dvh - 146px); overflow-x: hidden; overflow-y: auto;
     background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23;
@@ -1742,7 +1979,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore,
   body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore * { pointer-events: none !important; }
   .bar:not(.collapsed) .barmore .morerow > button { min-height: 64px; height: auto; padding: 8px 6px; border: 0; border-radius: 16px;
-    background: #e8ecf1; color: #1d1d1f; font-size: 18px; font-weight: 650; white-space: normal; }
+    background: #e8ecf1; color: #1d1d1f; font-size: 1.125rem; font-weight: 650; white-space: normal; }
   /* The old on-colors were written for a dark bar. On this light sheet they
      turn Captions and Record pale, so the pressed state uses the blue button. */
   .bar:not(.collapsed) #barmore #ccbtn.on,
@@ -1809,26 +2046,45 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar > #hand .dockface { font-size: 22px; }
     .bar #fsbtn { width: auto; min-width: 56px; padding: 0 6px; }
     .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #chatbtn svg, .bar #ccdock svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
-    .bar #bargrip { height: 40px; width: 18px; }
+    .bar #bargrip { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
     .bar:not(.collapsed) .barmore { bottom: 102px; width: calc(100vw - 24px); }
-    .bar:not(.collapsed) .barmore .morerow { grid-template-columns: repeat(3, 1fr); }
-    #chatpanel { padding-bottom: 112px; } /* dock is 88px tall under 700px */
-    .bar:not(.collapsed) .barmore .morerow > button { min-height: 56px; font-size: 16px; }
+    .bar:not(.collapsed) .barmore .morerow { grid-template-columns: repeat(2, 1fr); }
+    #chatpanel { padding-bottom: 0; } /* a phone panel stops above the dock (bottom), it does not pad */
+    .bar:not(.collapsed) .barmore .morerow > button { min-height: 56px; font-size: 1rem; }
     .reacttray { bottom: 102px; }
     .reacttray button { min-width: 56px; min-height: 56px; font-size: 26px; }
     .bar #reactbtn .dockface { font-size: 22px; }
     #leave-ask .name-box h3 { font-size: 1.35rem; }
     #leave-ask #leave-cancel, #leave-ask #leave-go { min-height: 56px; font-size: 1.05rem; }
     .tile .name { font-size: 1rem; }
+    /* Sideways tiles are about 105px wide. A 1rem name beside a 44px
+       Full screen button was capped to 45px, so Ruth read as Ru.
+       The name takes the bottom of the tile. Full screen and Blur
+       sit on the top corners and stay 44px. */
+    @media (max-height: 500px) and (orientation: landscape) {
+      .tile .maxbtn { top: 8px; left: 8px; right: auto; bottom: auto; }
+      .tile > .blurbox { width: 44px; height: 44px; min-width: 44px; min-height: 44px; top: 8px; right: 8px; padding: 2px; font-size: 10px; line-height: 1.05; }
+      .tile:not(.cam-off) .chips { left: 56px; right: 56px; }
+      .tile .name, html body.comfy .tile .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); font-size: .75rem; padding: 1px 4px; z-index: 5; }
+    }
+    /* The phone pass pinned a fixed self tile here; the adjustable self-view
+       (meet-selfview-stage, newer) places you instead. */
   }
-  /* Comfy: every face on screen, tiles touch, the dock floats over them.
-     The long :not chain is what the older gallery rule uses; matching it
-     is what lets these win. Padding is zeroed so the dock does not reserve
-     a band (the packer already insets the grid by ≤4px). */
+  /* Fit sits on the next row when the phone is upright, so the chip can
+     use the width and the room name can sit beside the count. */
+  @media (max-width: 700px) and (min-height: 520px) {
+    .topchip { max-width: calc(100% - 28px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
+  }
+  /* Comfy: every face on screen, tiles touch. The long :not chain is what
+     the older gallery rule uses; matching it is what lets these win.
+     Padding stays zero. The dock band is a content-box inset in viewBox
+     (innerHeight - bar.top), so the packer itself is unchanged. */
   body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
     position: fixed; inset: 0; overflow: hidden; padding: 0 !important; margin: 0;
     display: block; background: #0d0f14; z-index: 1; }
+  body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll {
+    overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   body.comfy #grid, body.comfy #stadium, body.comfy #stagefeed, body.comfy #stadfaces {
     position: static; display: block; padding: 0; margin: 0; gap: 0; overflow: visible;
     height: auto; background: transparent; border: 0; }
@@ -1879,6 +2135,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     bottom: 112px; background: linear-gradient(to bottom, rgba(12,14,18,0), rgba(12,14,18,.92)); }
   @media (min-width: 701px) {
     body.comfy.gallery-scroll #feed.can-scroll::after { bottom: 128px; }
+  }
   /* Gallery keeps the stage strip playing (PiP can aim it) but off the mosaic.
      A stage mode adds .show-stage and places that strip itself. */
   body.comfy:not(.show-stage) #stagefeed {
@@ -1889,9 +2146,52 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     position: absolute; left: -12px; top: 0; width: 4px; height: 4px; opacity: 0;
     pointer-events: none; overflow: hidden; }
   .bar #bargrip {
-    width: 22px; height: 48px; padding: 0; border: 0; border-radius: 8px; background: transparent;
-    color: #8d93a0; cursor: grab; touch-action: none; flex: 0 0 auto;
+    width: 44px; height: 44px; min-width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 12px; background: #e8ecf1;
+    color: #3a3a3f; cursor: grab; touch-action: none; flex: 0 0 auto;
     display: inline-flex; align-items: center; justify-content: center; }
+  .bar #bargrip svg { width: 24px; height: 24px; }
+  /* Waiting room: a host list above the dock. Admit is the only blue
+     action. Not now stays white so the two choices are not the same button. */
+  #waitbtn[aria-pressed="true"] { background: #0064c8; color: #fff; }
+  /* The waiting room is the host's switch. */
+  #waitlist {
+    position: fixed; z-index: 40;
+    left: calc(12px + env(safe-area-inset-left, 0px));
+    right: calc(12px + env(safe-area-inset-right, 0px));
+    bottom: calc(var(--dockh, 108px) + 8px);
+    max-height: calc(100dvh - var(--dockh, 108px) - 80px - env(safe-area-inset-top, 0px));
+    overflow-y: auto; overscroll-behavior: contain;
+    background: #fff; color: #1d1d1f; border-radius: 18px; padding: 12px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.32);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  #waitlist[hidden] { display: none !important; }
+  /* A knocker the relay has not seated. Covers the call so the waiting
+     person sees no tiles, roster, or chat. */
+  #waitdoor {
+    position: fixed; z-index: 70; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; padding: 24px; text-align: center;
+    background: #f4f6f8; color: #1d1d1f;
+  }
+  #waitdoor[hidden] { display: none !important; }
+  #waitdoor h1 { margin: 0; font: 700 1.35rem/1.3 system-ui, sans-serif; }
+  #waitdoor p { margin: 0; max-width: 28rem; font: 400 1rem/1.4 system-ui, sans-serif; }
+  #waitdoor-leave {
+    min-width: 44px; min-height: 44px; padding: 8px 18px; border-radius: 999px;
+    border: 1.5px solid #8d93a0; background: #fff; color: #1d1d1f;
+    font: 700 1rem/1.2 system-ui, sans-serif; cursor: pointer;
+  }
+  .wait-head { font-weight: 800; font-size: 1.05rem; line-height: 1.3; }
+  .wait-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .wait-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-weight: 650; font-size: 1rem; }
+  .wait-admit, .wait-no {
+    flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 8px 12px; border-radius: 12px;
+    font-weight: 700; font-size: 1rem; cursor: pointer;
+  }
+  .wait-admit { background: #0064c8; color: #fff; border: 0; }
+  .wait-no { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
   .bar #bargrip:active { cursor: grabbing; }
   body.screen-on #feed { padding-bottom: 132px; box-sizing: border-box; background: #0c0e12; }
   body.screen-on #grid { flex: 0 0 120px; height: 120px; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; }
@@ -1924,21 +2224,273 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      the guest password, and they still open in place. */
   #lobby.show #lob-admin-btn.lob-link,
   #lobby.show #lob-join-btn.lob-link { display: block; width: 100%; min-height: 44px; margin: 0 0 2px;
-    color: #0064c8; font-weight: 700; font-size: 16px; text-align: center; text-decoration: underline;
+    color: #0064c8; font-weight: 700; font-size: 1rem; text-align: center; text-decoration: underline;
     background: transparent; border: 0; }
+  /* A phone lobby scrolls, its links keep 8px between them, and at a large
+     text size the title and the Start subtitle give the three doors the room. */
+  @media (max-width: 700px), (max-height: 500px) {
+    #lobby.show { overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    #lobby.show #lob-admin-btn.lob-link, #lobby.show #lob-join-btn.lob-link { margin: 0 0 8px; }
+    html.ui-large #lobby h1 { font-size: 40px; line-height: 1.1; }
+    html.ui-large #lob-open small { display: none; }
+  }
   .lob-expand input { min-height: 48px; color: #1d1d1f; background: #fff; }
-  #lob-rename { min-height: 48px; padding: 8px 12px; color: #0064c8; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; }
+  .lob-appear { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; padding: 8px;
+    background: #f4f7fb; border-radius: 16px; }
+  /* On a phone tall enough to show the camera, the preview sits on that
+     picture instead of pushing Start, the admin action, and Join down. */
+  @media (min-height: 431px) {
+    #lobby.show .lob-appear { position: fixed; z-index: 36; left: 12px; right: 12px;
+      top: calc(12px + env(safe-area-inset-top, 0px)); margin: 0; width: auto;
+      background: rgba(255,255,255,.96); box-shadow: 0 8px 24px rgba(0,0,0,.28); }
+    #lobby.show .lob-pv-name { display: none; }
+  }
+  @media (min-width: 701px) and (min-height: 431px) {
+    #lobby.show .lob-appear { right: auto; width: min(440px, 42vw); left: 28px; top: 28px; }
+  }
+  .lob-appear-kicker { color: #3a3a3f; font-size: 13px; font-weight: 650; line-height: 1.2; }
+  .lob-appear-text { flex: 1; min-width: 0; }
+  .lob-appear-text b { display: block; color: #1d1d1f; font-size: 1.05rem; line-height: 1.25;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #lob-rename { flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 8px 14px; border-radius: 12px;
+    background: #fff; border: 1.5px solid #8d93a0; color: #1d1d1f; font-weight: 700; font-size: 1rem;
+    text-decoration: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
   .lob-star, #lobby button.row-del { min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
   .lob-item .li-sub { opacity: 1; color: #3a3a3f; }
   @media (max-width: 700px) {
     #lobby.show { grid-template-rows: minmax(140px, 1.15fr) minmax(0, 1fr); }
     #lobby .lobby-card { max-width: none; margin: -18px 0 0; border-radius: 22px 22px 0 0; padding: 16px 16px 18px; overflow: auto; position: relative; }
     .lob-pv-name { bottom: 28px; }
+    /* The line under each action is an essay. At 200% text it pushed Join
+       off an SE. The button title is the action, and the padding stays a
+       fixed 10px so the label can grow without leaving the screen. */
+    #lobby .lob-actions small { display: none; }
+    #lobby.show .lob-actions .lob-primary,
+    #lobby.show .lob-actions .lob-action { padding: 10px 12px; margin-bottom: 8px; }
   }
   @media (min-width: 701px) {
     #lobby.show { grid-template-columns: 1.35fr .8fr; }
     #lobby .lob-preview { margin: 16px; border-radius: 20px; }
     #lobby .lobby-card { max-width: none; margin: 16px 16px 16px 0; border-radius: 20px; padding: 28px 32px; overflow: auto; }
+  }
+  /* A 320px or 360px phone cannot hold 56px circles plus a 64px hang-up.
+     The row was nowrap, so Hang up drew past the right edge (x=374).
+     44px is the floor for a thumb. The glyphs are the same icons, smaller. */
+  /* 381–392px cannot hold 56px circles, a 64px hang-up, and a 44px grip
+     at the 6px gap used up to 700px. Tighten only that band. */
+  @media (max-width: 392px) and (min-width: 381px) {
+    .bar { gap: 4px; padding: 0 4px; }
+  }
+  @media (max-width: 380px) {
+    .bar { gap: 3px; padding: 0 4px; max-width: calc(100vw - 8px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); height: 76px; }
+    .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+      width: 46px; min-width: 44px; height: 58px; min-height: 44px; padding: 4px 1px 3px; }
+    .bar .dockword { font-size: 10px; }
+    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg { width: 20px; height: 20px; }
+    .bar #bargrip { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
+    .bar #leavebtn { width: 48px; min-width: 44px; height: 58px; min-height: 44px; margin-left: 0; padding: 4px 1px 3px; }
+    .bar #leavebtn svg { width: 20px; height: 20px; }
+  }
+  /* The people count opens the roster on a wide window. A phone keeps the
+     one status line (room name and count) and the Invite button. */
+  .topchip #statuscount { flex: 0 0 auto; white-space: nowrap; background: transparent; border: 0; color: inherit;
+    font: inherit; padding: 0; cursor: pointer; text-align: left; }
+  .topchip #statusinvite { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+    min-height: 44px; margin-left: 8px; padding: 0 14px; border: 0; border-radius: 999px;
+    background: #0064c8; color: #fff; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+  .topchip #statusinvite[hidden] { display: none !important; }
+  .topchip #statusrest { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* A phone keeps the count and the sentence too; Invite is the chip's button there (hdrinvite). */
+  @media (max-width: 700px), (max-height: 500px) {
+    .topchip #statusinvite { display: none !important; }
+  }
+  @media (min-width: 701px) and (min-height: 501px) {
+    .topchip button#status { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  }
+  #roster { display: none; position: fixed; z-index: 30; top: 14px; right: 14px; bottom: 128px;
+    width: min(320px, calc(100vw - 28px)); background: #fff; color: #1d1d1f; border-radius: 20px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.28); flex-direction: column; overflow: hidden; }
+  #roster.open { display: flex; }
+  #roster .roster-head { display: flex; align-items: center; gap: 8px; padding: 14px 14px 8px; }
+  #roster h3 { margin: 0; flex: 1; font: 700 20px/1.2 system-ui, sans-serif; }
+  #roster-close { min-height: 44px; border: 0; border-radius: 12px; background: #e8ecf1; color: #1d1d1f;
+    font: 700 15px/1 system-ui, sans-serif; padding: 0 12px; cursor: pointer; }
+  #roster-find { margin: 0 14px 8px; min-height: 44px; border-radius: 12px; border: 1px solid #c5cad3;
+    padding: 0 12px; font: 16px/1.2 system-ui, sans-serif; color: #1d1d1f; background: #fff; }
+  #roster-list { overflow: auto; flex: 1; min-height: 0; }
+  .roster-row { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 14px;
+    border-top: 1px solid #e8ecf1; font: 600 16px/1.3 system-ui, sans-serif; flex-wrap: wrap; }
+  .roster-row .nm { flex: 1; min-width: 0; }
+  .roster-row .flags { flex: 0 0 auto; color: #3a3a3f; font-weight: 650; font-size: 14px; }
+  .roster-row .mutebtn, .roster-row .acts button, .roster-row .admitbtn {
+    flex: 0 0 auto; min-height: 40px; min-width: 64px; border-radius: 12px;
+    border: 1.5px solid #8d93a0; background: #fff; color: #1d1d1f;
+    font: 700 15px/1 system-ui, sans-serif; padding: 0 10px; cursor: pointer; }
+  .roster-row .mutebtn.on, .roster-row .spotbtn.on, .roster-row .admitbtn { background: #0064c8; border-color: transparent; color: #fff; }
+  .roster-row .acts { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 100%; }
+  #roster-host { display: flex; align-items: center; gap: 8px; padding: 0 14px 8px; font: 600 16px/1.2 system-ui, sans-serif; }
+  #roster-host[hidden] { display: none; }
+  #roster-host button { min-height: 40px; min-width: 64px; border-radius: 12px; border: 1.5px solid #8d93a0; background: #fff; color: #1d1d1f; font: 700 15px/1 system-ui, sans-serif; padding: 0 12px; cursor: pointer; }
+  #roster-host button.on { background: #0064c8; border-color: transparent; color: #fff; }
+  .roster-waithead, .roster-empty { padding: 8px 14px; color: #3a3a3f; font: 700 16px/1.3 system-ui, sans-serif; }
+  #waitself { display: none; position: fixed; z-index: 28; left: 50%; top: 18vh; transform: translateX(-50%);
+    width: min(440px, calc(100vw - 32px)); padding: 28px 28px 24px; background: #fff; color: #1d1d1f;
+    border-radius: 22px; box-shadow: 0 16px 40px rgba(0,0,0,.28); text-align: center; }
+  #waitself.on { display: block; }
+  /* The More sheet is anchored above the dock and used to grow upward with
+     overflow visible. In landscape its top sat above the screen (SE: y=-194)
+     and Password could not be scrolled to. Cap it and scroll inside. */
+  .bar:not(.collapsed) .barmore {
+    max-height: calc(100dvh - 160px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    pointer-events: auto;
+  }
+  /* Chat used to run under the dock (z-index 30 vs 32), so the field could
+     not be tapped. End the panel at the dock, and again above the keyboard. */
+  /* The live row is also z-index 31 and shares this band. The open sheet
+     has to paint over it or Live steals the tap on the message field.
+     The keyboard covers the dock, so the inset is the larger of the two,
+     not the sum. A sum pushed the field off the top of a sideways phone. */
+  #chatpanel.open {
+    top: 0; z-index: 31; overflow: clip; min-height: 0;
+    bottom: max(var(--dockh, 108px), var(--kb, 0px));
+  }
+  /* The desktop pads the panel for a floating dock; a phone stops above it instead. */
+  #chatpanel, #chatpanel.open { padding-bottom: 0; }
+  /* The light theme paints the sheet with the same gray as someone else's
+     bubble, so their line had no edge. A phone chat is a white page.
+     The gray bubble and the blue one stay. */
+  @media (max-width: 700px), (max-height: 500px) {
+    #chatpanel { background: #fff; color: #1d1d1f; border-left-color: #e4e4ea; }
+    #chathead, #chatform, #trfoot, #cfiles { border-color: #e4e4ea; }
+    /* Send is the blue action. The paperclip and emoji stay a gray key,
+       so they still have an edge on the white page. */
+    #chatform button { background: #e8ecf1; color: #1d1d1f; border-color: transparent; }
+    #chatform button[type=submit] { background: #0064c8; color: #fff; }
+    #chatform button[type=submit]:disabled { background: #e8ecf1; color: #3a3a3f; }
+  }
+  #chatlog, #cfiles { min-height: 0; }
+  #chathead, #chatfind, #chatmentions, #chatreply, #chatform, #emojirow { flex-shrink: 0; }
+  @media (max-width: 700px) {
+    #chathead small { display: none; }
+  }
+  /* Sideways, the keyboard leaves about 120px. Files and the extra
+     header padding were pushing Close off the top when the field focused. */
+  @media (max-height: 430px) {
+    #cfiles { display: none; }
+    #chathead, #chatform { padding: 4px 8px; }
+    /* One header line: the title shortens before the row wraps into the 120px the keys leave. */
+    #chathead { flex-wrap: nowrap; }
+    #chathead #paneltitle { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #chathead button { flex-shrink: 0; }
+    #chatlog { padding: 4px; }
+    /* Find in chat took 60 of the 120px a sideways keyboard leaves, and
+       pushed the field and Send under the keys. It steps aside while the
+       keyboard is up for something else, and stays while you search. */
+    html.kb-up #chatfind:not(:focus-within) { display: none; }
+  }
+  #chat-in { min-height: 44px; }
+  #chatclose, #cattach, #cemoji, #chatform button[type=submit] { min-width: 44px; min-height: 44px; }
+  /* Emoji stays in the sheet, above the field, so a phone without an
+     emoji keyboard can still drop one in. The row scrolls sideways. */
+  #emojirow { display: flex; gap: 6px; overflow-x: auto; padding: 8px 8px 0; }
+  #emojirow[hidden] { display: none !important; }
+  #emojirow button {
+    flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 0 6px;
+    border: 0; border-radius: 12px; background: #e8ecf1; color: #1d1d1f;
+    font-size: 1.25rem; line-height: 1; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  #cemoji { width: 44px; padding: 0; font-size: 1.25rem; line-height: 1; }
+  /* More labels were 16px even when Settings text size was 200% (root 32px). */
+  .bar:not(.collapsed) .barmore > button,
+  .bar:not(.collapsed) .barmore .seg,
+  .bar:not(.collapsed) .barmore .blurlbl { font-size: 1rem; }
+  /* Invite is the one blue action in the sheet. The others stay gray. */
+  .bar:not(.collapsed) .barmore > #invite { background: #0064c8; color: #fff; }
+  /* Notch and home indicator. env() is 0 until viewport-fit=cover, which
+     the viewport meta sets. The dock was 14px from the layout bottom, on
+     top of a 34px home indicator, and the name chip sat at y=14 under a
+     47px notch. */
+  .bar { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
+  .topchip { top: calc(14px + env(safe-area-inset-top, 0px)); left: calc(14px + env(safe-area-inset-left, 0px)); }
+  .fitbtn { top: calc(58px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); }
+  /* On a short landscape phone the chip and Fit share one row, so the
+     faces can start higher. Portrait keeps Fit under the chip. */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .fitbtn { top: calc(14px + env(safe-area-inset-top, 0px)); }
+  }
+  .bar:not(.collapsed) .barmore {
+    bottom: calc(122px + env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 160px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+  .reacttray { bottom: calc(122px + env(safe-area-inset-bottom, 0px)); }
+  @media (max-width: 700px) {
+    .bar:not(.collapsed) .barmore { bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
+    .reacttray { bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
+  }
+  /* A phone was opening More over the faces: 13 equal buttons on an iPhone 15.
+     The first screen is the four the sheet already leads with. Two rows are
+     14px of padding, two 56px buttons, and the 8px gap, written in rem so
+     the rows grow with the text size. Everything else scrolls. */
+  @media (max-width: 700px) {
+    .bar:not(.collapsed) .barmore { max-height: 9.25rem; }
+  }
+  /* Sideways, a width over 700px skipped the phone cap and the sheet grew
+     up over the header (top 24, chip bottom 58). The sheet is anchored on
+     the dock, so a top edge would be measured from the dock, not the screen.
+     Cap the height to the band under the header instead. The rows scroll. */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .bar:not(.collapsed) .barmore {
+      max-height: calc(100dvh - 58px - 122px - 14px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+      min-height: 0;
+      overflow-y: auto;
+    }
+  }
+  /* A narrow sideways phone anchors the sheet 102px up, not 122. The wide
+     cap used 122 and cut the second row (Waiting room and Chat) off an SE. */
+  @media (max-height: 500px) and (orientation: landscape) and (max-width: 700px) {
+    .bar:not(.collapsed) .barmore { max-height: 9.25rem; }
+  }
+  @media (min-width: 381px) {
+    .bar { max-width: calc(100% - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
+  }
+  /* A quiet call tucks Live, Record, Captions, and the dock, the way a
+     phone call does. A tap brings the same controls back. Header and Fit stay.
+     The slide uses !important so a dragged dock (inline transform:none) still goes. */
+  /* Opacity only: a key nudge of the dock must land on the next frame (placeDock). */
+  .bar, #callstate { transition: opacity .22s ease; }
+  body.chrome-away .bar {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  body.chrome-away .bar:not([data-barfree="1"]) {
+    transform: translateX(-50%) translateY(calc(100% + 28px)) !important;
+  }
+  body.chrome-away .bar[data-barfree="1"] {
+    transform: translateY(calc(100% + 28px)) !important;
+  }
+  body.chrome-away #callstate {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(16px);
+  }
+  /* The preview was taking more than half of a short phone, so Join a link
+     sat below the fold (SE portrait bottom 661 on a 568px screen, and in
+     landscape the first action was already off screen). */
+  @media (max-width: 700px) and (max-height: 640px) {
+    #lobby.show { grid-template-rows: minmax(72px, 16vh) minmax(0, 1fr); }
+  }
+  @media (max-height: 430px) {
+    #lobby.show { grid-template-rows: minmax(0, 1fr); }
+    #lob-preview { display: none; }
+    #lobby .lob-quiet { display: none; }
+    #lobby .lobby-card { margin-top: 0; border-radius: 0; }
+    #lobby .lobby-card h1 { margin: 0 0 8px; font-size: 1.35rem; }
+    .lob-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; align-items: stretch; }
+    .lob-actions .lob-primary, .lob-actions .lob-action { margin-bottom: 0; min-height: 44px; height: 100%; }
   }
 </style>
 <script src="js/gifos-themes.js"></script>
@@ -2017,6 +2569,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button type="button" id="lyrics-next">Next line</button>
   </aside>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" aria-label="Gallery" aria-keyshortcuts="Alt+F" title="Fit everyone on one screen. Press to scroll the room instead. Alt+F switches.">▦ Fit</button>
+  <div id="livecap"></div>
+  <div id="callstate" hidden>
+    <span id="call-live" role="status">Live</span>
+    <button type="button" id="call-rec" aria-pressed="false">Record</button>
+    <button type="button" id="call-cc" aria-pressed="false" title="Show or hide captions on this screen">Captions</button>
+  </div>
+  <div id="chatnote" hidden>
+    <button type="button" id="chatpreview"><b id="chatpreview-by"></b><span id="chatpreview-txt"></span></button>
+    <button type="button" id="chatbadge" hidden aria-live="polite">0</button>
+  </div>
   <div class="admcount" id="admcount" style="display:none"></div>
   <div class="bar collapsed" role="toolbar" aria-label="Call controls. Press ? for keyboard shortcuts">
     <button id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
@@ -2159,6 +2721,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button id="blurall" data-t="blurGuests" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
         <button id="camall" data-t="videoOff" title="Turn video OFF for every guest at once (admins) — stronger than blur" style="display:none">Turn Video off</button>
         <button id="shareall" data-t="allowShare" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
+    <button id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them" style="display:none">Waiting room</button>
         <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
       </div>
     </section>
@@ -2178,6 +2741,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button type="button" data-burst="👎" aria-label="No">👎</button>
       <button type="button" data-burst="😂" aria-label="Laugh">😂</button>
     </div>
+  </div>
+  <div id="waitlist" hidden role="region" aria-label="Waiting room"></div>
+  <div id="waitdoor" hidden role="status">
+    <h1>Waiting for the host</h1>
+    <p>You'll join when the host lets you in. This meeting can't see or hear you yet.</p>
+    <button type="button" id="waitdoor-leave">Leave</button>
   </div>
   <div class="share" id="share">
     <span class="hint">Send this link to friends — opening it brings them right in:</span>
@@ -2336,18 +2905,44 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button id="trtab" style="margin-left:auto"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
       <button id="chatmod" style="display:none" title="Silence the chat for everyone but you">Turn chat off</button>
       <button id="chatclose" type="button" aria-label="Close chat">✕</button></div>
+    <div id="chatfind" role="search">
+      <input id="chatq" type="text" placeholder="Find in chat" aria-label="Find in chat" autocomplete="off" enterkeyhint="search">
+      <button type="button" id="chatqclear" hidden>Clear</button>
+    </div>
     <div id="chatlog"></div>
+    <button type="button" id="chatnew" hidden>New messages</button>
     <div id="trwrap">
       <div id="trlog"><small data-t="trEmpty" style="color:#667">This meeting is written down. Lines appear here under each name. Anyone here can read or download them.</small></div>
       <div id="trfoot"><button id="trdl" type="button" data-t="trDownload">Download transcript</button></div>
     </div>
     <div id="cfiles" hidden><h4>Files pinned to this meeting</h4><div id="cfilelist"></div></div>
+    <div id="emojirow" hidden role="group" aria-label="Emoji">
+      <button type="button" data-emoji="😀">😀</button>
+      <button type="button" data-emoji="😂">😂</button>
+      <button type="button" data-emoji="❤️">❤️</button>
+      <button type="button" data-emoji="👍">👍</button>
+      <button type="button" data-emoji="🙏">🙏</button>
+      <button type="button" data-emoji="🎉">🎉</button>
+      <button type="button" data-emoji="😢">😢</button>
+      <button type="button" data-emoji="👋">👋</button>
+      <button type="button" data-emoji="✅">✅</button>
+      <button type="button" data-emoji="🔥">🔥</button>
+    </div>
+    <div id="chatmentions" hidden role="listbox" aria-label="People"></div>
+    <div id="chatreply" hidden>
+      <div class="chatreply-body">
+        <b id="chatreply-by"></b>
+        <span id="chatreply-txt"></span>
+      </div>
+      <button type="button" id="chatreply-x">Cancel</button>
+    </div>
     <form id="chatform">
-      <button type="button" id="pray" aria-pressed="false" title="Mark messages as prayer requests">Prayer</button>
+      <button type="button" id="pray" aria-pressed="false" title="Mark messages as prayer requests" aria-label="Prayer"><span class="pray-ico" aria-hidden="true">🙏</span><span class="pray-word">Prayer</span></button>
       <button type="button" id="cattach" title="Pin a file to the meeting">📎</button>
       <input type="file" id="cfile-in" multiple style="display:none">
-      <input type="text" id="chat-in" data-ph="chatPlaceholder" placeholder="Message everyone…" autocomplete="off" maxlength="2000">
-      <button type="submit" data-t="send">Send</button>
+      <button type="button" id="cemoji" aria-label="Emoji" aria-expanded="false" title="Emoji">😊</button>
+      <input type="text" id="chat-in" placeholder="Message everyone…" autocomplete="off" maxlength="2000">
+      <button type="submit">Send</button>
     </form>
   </div>
 
@@ -2416,12 +3011,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="who-modal" style="display:none">
     <div class="name-box" style="max-width:480px;text-align:left">
-      <h3 data-t="whoTitle">Who is on this meeting</h3>
+      <h3 data-t="whoTitle">People</h3>
       <p class="who-lead" data-t="whoLead">There is no server in the middle storing this meeting. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone's internet address — nobody is anonymous. ✓ marks an address the GifOS relay verified or this device saw directly; anything else is only what that person's device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.</p>
       <div id="who-list"></div>
       <div style="display:flex;gap:.5rem;justify-content:center;margin-top:.8rem">
         <button id="who-dl" data-t="whoDl">Download this list</button>
-        <button id="who-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+        <button id="who-close" data-t="rosterClose">Close</button>
       </div>
     </div>
   </div>
@@ -2581,6 +3176,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button id="left-close" type="button">Close</button>
     </div>
   </div>
+  <div class="name-modal" id="status-full" style="display:none" aria-labelledby="status-full-text">
+    <div class="name-box">
+      <p id="status-full-text"></p>
+      <button type="button" id="status-full-close">Close</button>
+    </div>
+  </div>
   <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
     <div class="name-box">
       <h3 id="leave-ask-title">Leave the meeting?</h3>
@@ -2634,6 +3235,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/gifos-update.js"></script>
   <script src="js/gifos-net.js"></script>
   <script src="js/mesh.js"></script>
+  <script src="js/relay-admit.js"></script>
   <script src="js/mesh-identity.js"></script>
   <script src="js/mesh-wire.js"></script>
   <script src="js/mesh-media.js"></script>
@@ -2929,7 +3531,67 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintWatchingSeat() {
       document.body.classList.toggle('bc-watching', bcWatchingViewer());
     }
+    // A phone dock holds Video, Mic, React, More and Leave (qa-meet-mobile):
+    // the desktop's Invite, Chat and Share move into the More rows there, and
+    // the dock's Full screen and CC buttons hide (CC stays in More).
+    function phoneLayout() {
+      try { return window.matchMedia('(max-width: 700px), (max-height: 500px)').matches; } catch (e) { return false; }
+    }
+    function placeDockForWidth() {
+      const bar = document.querySelector('.bar');
+      const more = document.getElementById('barmore');
+      if (!bar || !more) return;
+      const rows = more.querySelectorAll('.moregroup .morerow');
+      const people = rows[0] || null, shareRow = rows[1] || null;
+      const phone = phoneLayout();
+      const put = (id, row, before) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (phone) { if (row && el.parentElement !== row) row.appendChild(el); }
+        else if (el.parentElement !== bar) {
+          const anchor = document.getElementById(before);
+          if (anchor && anchor.parentElement === bar) bar.insertBefore(el, anchor); else bar.insertBefore(el, document.getElementById('bartoggle'));
+        }
+      };
+      if (!(typeof BROADCAST !== 'undefined' && BROADCAST)) put('sharebtn', shareRow, 'bartoggle');
+      // A phone's More leads with Invite, Room password, Record and Chat (one
+      // thumb row, qa-meet-mobile); the grouped rows follow. A wide screen
+      // keeps Invite and Chat on the dock and the rest in their rows.
+      const rowOf = (key) => { const h = more.querySelector('.moregroup h4[data-t="' + key + '"]'); return h ? h.parentElement.querySelector('.morerow') : null; };
+      let first = more.querySelector('.moregroup.phone-first');
+      if (phone) {
+        if (!first) {
+          first = document.createElement('section');
+          first.className = 'moregroup phone-first';
+          first.innerHTML = '<h4 data-t="call">Call</h4><div class="morerow"></div>';
+          more.insertBefore(first, more.firstChild);
+        }
+        const row = first.querySelector('.morerow');
+        ['invite', 'pwbtn', 'recbtn', 'chatbtn', 'waitbtn'].forEach((id) => { const el = document.getElementById(id); if (el && el.parentElement !== row) row.appendChild(el); });
+      } else {
+        put('invite', people, 'fsbtn');
+        put('chatbtn', people, 'ccdock');
+        const roomRow = rowOf('room'), hostRow = rowOf('host');
+        const pw = document.getElementById('pwbtn'), rec = document.getElementById('recbtn'), wait = document.getElementById('waitbtn');
+        if (roomRow) {
+          const stage = document.getElementById('stagebtn'), cc = document.getElementById('ccbtn');
+          if (pw && pw.parentElement !== roomRow) roomRow.insertBefore(pw, stage && stage.parentElement === roomRow ? stage : null);
+          if (rec && rec.parentElement !== roomRow) roomRow.insertBefore(rec, cc && cc.parentElement === roomRow ? cc : null);
+        }
+        if (roomRow && wait && wait.parentElement !== roomRow) roomRow.appendChild(wait);
+        if (first) first.remove();
+      }
+      // Plain words a volunteer knows (qa-meet-mobile) on a phone; the short
+      // labels, and their translations, on a wide screen.
+      const words = phone
+        ? { whobtn: 'People', pwbtn: 'Room password', votebtn: 'Vote on someone' }
+        : { whobtn: uiText('who', 'Who'), pwbtn: uiText('password', 'Password'), votebtn: uiText('vote', 'Vote') };
+      Object.keys(words).forEach((id) => { const el = document.getElementById(id); if (el && el.textContent !== words[id]) el.textContent = words[id]; });
+      try { paintStage(); } catch (e) {}
+    }
+    window.addEventListener('resize', () => { try { placeDockForWidth(); } catch (e) {} });
     function paintBroadcastChrome() {
+      try { placeDockForWidth(); } catch (e) {}
       const pill = document.getElementById('onair');
       const say = (id, text) => { const el = document.getElementById(id); if (el && text) el.textContent = text; };
       const bar = document.querySelector('.bar');
@@ -2948,7 +3610,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const whoMeet = document.getElementById('whobtn');
         if (whoMeet) whoMeet.title = 'Who is here — names and internet addresses';
         const whoMeetH = document.querySelector('#who-modal h3');
-        if (whoMeetH) whoMeetH.textContent = 'Who is here';
+        if (whoMeetH && !phoneLayout()) whoMeetH.textContent = 'Who is here';
         if (bar) bar.setAttribute('aria-label', 'Small group controls');
         const curTitle = document.getElementById('paneltitle');
         if (curTitle && curTitle.textContent !== 'Transcript') curTitle.textContent = 'Small group chat';
@@ -3009,7 +3671,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Slides and a window are how a host fills the stage. Share sits on the
       // host dock, the same place a small group already has it. A viewer keeps
       // it in More until they are allowed to share.
-      if (shareOnDock && moreSheet && bar) {
+      if (shareOnDock && moreSheet && bar && !phoneLayout()) {
         if (host) {
           const moreBtn = document.getElementById('bartoggle');
           if (shareOnDock.parentElement !== bar && moreBtn) bar.insertBefore(shareOnDock, moreBtn);
@@ -3182,6 +3844,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const blocking = /^(🛡|📷)/.test(String(m));
       const countEl = document.getElementById('statuscount');
       const restEl = document.getElementById('statusrest');
+      // #status is the phone's line, #statusrest the wide window's. Write
+      // both: a phone hides #statusrest, and a refusal there went unread.
+      // The count and the rest are children of #status: writing the span's own
+      // text would delete them (and Invite) for good.
       if (countEl && restEl) { countEl.textContent = ''; restEl.textContent = m; }
       else statusEl.textContent = m;
       const invHold = document.getElementById('statusinvite');
@@ -3193,7 +3859,44 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (holdChip) delete holdChip.dataset.invite;
       const holdInvite = document.getElementById('hdrinvite');
       if (holdInvite) holdInvite.hidden = true;
+      try { paintStatusSheet(); } catch (e) {}
     };
+    // The chip is one line. The title holds the whole sentence (a refusal,
+    // "No blur picked…", or "4 in the meeting · 180p …"). A tap opens it.
+    function statusMessage() {
+      const title = (statusEl.getAttribute('title') || '').trim();
+      const text = (statusEl.textContent || '').trim();
+      return (title && title.length >= text.length) ? title : (text || title);
+    }
+    function paintStatusSheet() {
+      const el = document.getElementById('status-full');
+      const p = document.getElementById('status-full-text');
+      if (!el || !p || el.style.display === 'none') return;
+      p.textContent = statusMessage();
+    }
+    function openStatusSheet() {
+      const el = document.getElementById('status-full');
+      const p = document.getElementById('status-full-text');
+      if (!el || !p) return;
+      p.textContent = statusMessage();
+      el.style.display = 'flex';
+      statusEl.setAttribute('aria-expanded', 'true');
+    }
+    function closeStatusSheet() {
+      const el = document.getElementById('status-full');
+      if (el) el.style.display = 'none';
+      statusEl.setAttribute('aria-expanded', 'false');
+    }
+    // The count opens the roster and Invite shares the link; the rest of the
+    // line opens the full status sheet (qa-meet-mobile).
+    statusEl.addEventListener('click', (e) => {
+      if (e.target && e.target.closest && e.target.closest('#statusinvite')) return;
+      // On a wide screen the count opens the roster; on a phone the whole chip opens the sheet.
+      if (!phoneLayout() && e.target && e.target.closest && e.target.closest('#statuscount')) return;
+      e.preventDefault(); openStatusSheet();
+    });
+    const statusFullClose = document.getElementById('status-full-close');
+    if (statusFullClose) statusFullClose.onclick = () => closeStatusSheet();
     const uid = (p) => p + '_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
     // The one standard row-delete glyph (see button.row-del in the styles).
     const DEL_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
@@ -3757,6 +4460,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         };
         input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
       });
+      const finish = () => {
+        dlg.bg.remove();
+        try { refreshAllTiles(); broadcastStatus(); pushLeaf(); paintLobbyAppear(); } catch (e) {}
+      };
+      const save = () => {
+        const v = dlg.input.value.trim();
+        if (v !== (GifOS.store.identity().name || '')) GifOS.store.setName(v);
+        finish();
+      };
+      const clear = () => {
+        dlg.input.value = '';
+        GifOS.store.setName('');
+        try { GifOS.store.setAvatar(null); } catch (e) {}
+        finish();
+      };
+      dlg.bg.querySelector('#nmok').onclick = save;
+      dlg.bg.querySelector('#nmcancel').onclick = clear;
+      dlg.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+      return Promise.resolve(GifOS.store.identity());
     }
 
     // ---- everyone's live status + room moderation ------------------------------
@@ -3817,7 +4539,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let ccOthers = 0, anyScribeStatus = 0;
     function noteStatusFlags(prev, next) {
       const wasCc = !!(prev && prev.cc), nowCc = !!(next && next.cc);
-      if (wasCc !== nowCc) ccOthers += nowCc ? 1 : -1;
+      if (wasCc !== nowCc) {
+        ccOthers += nowCc ? 1 : -1;
+        try { if (typeof paintCallState === 'function') paintCallState(); } catch (e) {}
+        try { if (typeof refreshTrBtn === 'function') refreshTrBtn(); } catch (e) {}
+      }
       const wasSc = !!(prev && prev.scribe), nowSc = !!(next && next.scribe);
       if (wasSc !== nowSc) anyScribeStatus += nowSc ? 1 : -1;
       if (ccOthers < 0) ccOthers = 0;
@@ -4015,6 +4741,121 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let relaySocketed = new Set();
     let relayRosterScope = 'full';
     let doorAnswerAt = 0;           // a dark return's {t:'who'} pull is pending: its roster answers the door's knockers once (answerDoor)  // 'door' ⇒ relaySocketed holds only the greeters (see the roster handler)
+    let holdDoor = false;           // waiting room: do not auto-answer the door; the host admits from the list. Gate: node test/unit/wait-room.js
+    let atWaitDoor = false;         // this page is the knocker, held by the relay, not seated
+    const waitDeclined = new Set();
+    const waitAdmitted = new Set(); // host pressed Admit: the next WHOHOME may be answered
+    const waitQueue = new Map();
+    function waitPaint() {
+      const list = document.getElementById('waitlist');
+      const btn = document.getElementById('waitbtn');
+      if (btn) btn.setAttribute('aria-pressed', holdDoor ? 'true' : 'false');
+      // The host's switch; in an open room (no admin) anyone can hold the door, as with mute and blur.
+      let mayHold = false; try { mayHold = amAdmin || !hasAdminRoom(); } catch (e) { mayHold = false; }
+      if (btn) btn.style.display = mayHold ? '' : 'none';
+      document.body.classList.toggle('hold-door', holdDoor);
+      if (!list) return;
+      list.textContent = '';
+      if (!waitQueue.size) { list.hidden = true; return; }
+      list.hidden = false;
+      const head = document.createElement('div');
+      head.className = 'wait-head';
+      head.textContent = waitQueue.size === 1 ? '1 person waiting' : (waitQueue.size + ' people waiting');
+      list.appendChild(head);
+      for (const [id, name] of waitQueue) {
+        const row = document.createElement('div');
+        row.className = 'wait-row';
+        const nm = document.createElement('span');
+        nm.className = 'wait-name';
+        nm.textContent = name || 'Someone waiting';
+        const admit = document.createElement('button');
+        admit.type = 'button';
+        admit.className = 'wait-admit';
+        admit.textContent = 'Admit';
+        admit.addEventListener('click', () => { try { meetWait.admit(id); } catch (e) {} });
+        const no = document.createElement('button');
+        no.type = 'button';
+        no.className = 'wait-no';
+        no.textContent = 'Not now';
+        no.addEventListener('click', () => { try { meetWait.decline(id); } catch (e) {} });
+        row.appendChild(nm);
+        row.appendChild(admit);
+        row.appendChild(no);
+        list.appendChild(row);
+      }
+    }
+    function closeMoreForWait() {
+      const bar = document.querySelector('.bar');
+      const toggle = document.getElementById('bartoggle');
+      if (bar) bar.classList.add('collapsed');
+      if (toggle) {
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-label', 'More');
+        toggle.title = 'More';
+      }
+    }
+    const meetWait = {
+      hold(on) {
+        if (hasAdminRoom() && !amAdmin) return holdDoor;
+        holdDoor = !!on;
+        if (holdDoor) closeMoreForWait();
+        waitPaint();
+        // Admin rooms tell the relay. The relay is what keeps a knocker
+        // unseated; this page's list is only the host's view of that.
+        if (hasAdminRoom() && amAdmin) {
+          const bit = holdDoor ? '1' : '0';
+          admSigned('waitroom', { on: bit }).then((w) => { if (w) relaySendObj({ t: 'waitroom', on: bit, w }); });
+        }
+        return holdDoor;
+      },
+      note(id, name) {
+        id = String(id || '');
+        if (!id || id === myId || waitDeclined.has(id) || waitAdmitted.has(id)) return false;
+        waitQueue.set(id, String(name || '').trim().slice(0, 40) || 'Someone waiting');
+        waitPaint();
+        return true;
+      },
+      admit(id) {
+        id = String(id || '');
+        waitQueue.delete(id);
+        waitDeclined.delete(id);
+        if (id) waitAdmitted.add(id);
+        waitPaint();
+        // An admin room does not hand over HOME on this socket. The relay
+        // mints a token, the knocker reconnects, and only then is WHOHOME
+        // answered (doorHeld is false for an admitted id).
+        if (hasAdminRoom() && amAdmin) {
+          admSigned('admit', { id: id }).then((w) => { if (w) relaySendObj({ t: 'admit', id: id, w }); });
+        } else {
+          try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor([id]); } catch (e) {}
+        }
+        return true;
+      },
+      decline(id) {
+        id = String(id || '');
+        waitQueue.delete(id);
+        waitAdmitted.delete(id);
+        if (id) waitDeclined.add(id);
+        waitPaint();
+        if (hasAdminRoom() && amAdmin) {
+          admSigned('deny', { id: id }).then((w) => { if (w) relaySendObj({ t: 'deny', id: id, w }); });
+        }
+        return true;
+      },
+      holding() { return holdDoor; },
+      // True while this id must not receive HOME. Fail closed if the
+      // waiting room is on and they have not been admitted.
+      blocks(id) { return holdDoor && !waitAdmitted.has(String(id || '')); },
+      waiting(on) {
+        atWaitDoor = !!on;
+        const el = document.getElementById('waitdoor');
+        if (el) el.hidden = !atWaitDoor;
+        document.body.classList.toggle('wait-door', atWaitDoor);
+        return atWaitDoor;
+      },
+      atDoor() { return atWaitDoor; },
+    };
+    try { (window.GifOS = window.GifOS || {}).meetWait = meetWait; } catch (e) {}
     let pendingDoorGrant = null;    // an admin re-grant waiting on a pulled full list
     // Peers the relay answered {t:'nosock'} for, and when. Under a 'door' roster
     // this — not absence from the list — is what "unreachable by relay" means.
@@ -6214,12 +7055,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return { tile, video, label, avatar, chips, cap, modbar, voteBtn };
     }
 
-    // Engine words for a stall. They stay off the tiles: a meeting is always
-    // transcribed, so nobody wears a "transcribing" badge.
+    // What the tile says. Captions and transcribing are one thing. The chip
+    // uses the word Captions, including when Whisper is paused or behind.
     function ccLiveLabel(st) {
-      if (st && st.ccst === 'paused') return 'Transcription paused';
-      if (st && st.ccst === 'behind') return 'Transcription behind, skipping old audio';
-      return 'transcribing';
+      if (st && st.ccst === 'paused') return 'Captions paused';
+      if (st && st.ccst === 'behind') return 'Captions behind, skipping old audio';
+      return 'Captions';
+    }
+    // Captions are one room state. The button is on when anyone here is
+    // writing the room down, not only when this phone turned it on.
+    function roomCaptionOn() {
+      if (myStatus.cc) return true;
+      for (const st of statusOf.values()) if (st && st.cc) return true;
+      return false;
+    }
+    function captionWriterName() {
+      if (myStatus.cc) { try { return myName(); } catch (e) { return 'You'; } }
+      for (const [id, st] of statusOf) {
+        if (!st || !st.cc) continue;
+        try { if (typeof displayName === 'function') return displayName(id) || 'Someone'; } catch (e) {}
+        try { if (typeof rosterNames !== 'undefined' && rosterNames[id]) return rosterNames[id]; } catch (e2) {}
+        return 'Someone';
+      }
+      return '';
     }
     // Open rooms: anyone may blur anyone else. Admin rooms: only an admin.
     // Never yourself (setMod refuses myId). The corner box is that power,
@@ -6269,9 +7127,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       let on = false, by = '';
       try { const m = modOf(id).blur; on = !!(m && m.on); by = (m && m.by) || ''; } catch (e) {}
-      const label = on ? 'Unblur' : 'Blur for all';
+      const label = on ? 'Unblur' : 'Blur\nfor all';
       box.className = 'blurbox on';
       if (box.textContent !== label) box.textContent = label;
+      box.setAttribute('aria-label', on ? 'Unblur' : 'Blur for all');
       box.setAttribute('aria-pressed', on ? 'true' : 'false');
       const tip = on ? ('Blurred for everyone' + (by ? ' by ' + by : '')) : 'Blur for all';
       if (box.title !== tip) box.title = tip;
@@ -6374,7 +7233,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (st.hand) chips.push('<span class="warn">✋ hand raised</span>');
       if (st.lv) chips.push('<span>leaving…</span>');
       if (st.rec) chips.push('<span class="warn">⏺ recording this meeting</span>');
-      if (st.scribe) chips.push('<span>✍ writing everyone down</span>');
+      // No per-person transcription chip. Captions are a local display, and
+      // every browser is already writing its own voice.
       // Status icons only: a muted mic, a camera-off glyph. No icon when the
       // camera is on. Blur is the picture itself, never a badge. A bot has
       // neither a mic nor a camera.
@@ -6587,14 +7447,49 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           meta.video._comfyRz = true;
           meta.video.addEventListener('resize', () => { try { layout(); } catch (e) {} });
         }
-        const phone = window.innerWidth < 600;
+        const vwNow = window.innerWidth, vhNow = window.innerHeight;
+        const shortLand = vhNow < 500 && vwNow > vhNow && vwNow < 900;
+        const phone = vwNow < 600 || shortLand;
+        let topInset = 0;
+        if (shortLand) {
+          let below = 0;
+          const fitEl = document.getElementById('fitbtn');
+          const chipEl = document.querySelector('.topchip');
+          if (chipEl) below = Math.max(below, chipEl.getBoundingClientRect().bottom);
+          if (fitEl) below = Math.max(below, fitEl.getBoundingClientRect().bottom);
+          if (below > 0) topInset = Math.ceil(below + 8);
+        }
         let holdMs = 2500;
         try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}
+        let bottom = 0;
+        try {
+          // Tucked chrome is off the call. Measuring the sliding dock would
+          // keep the empty band, so a quiet call uses only the home indicator.
+          const away = document.body.classList.contains('chrome-away');
+          if (!away) {
+            const bar = document.querySelector('.bar');
+            if (bar) bottom = Math.max(0, window.innerHeight - bar.getBoundingClientRect().top);
+            const state = document.getElementById('callstate');
+            if (state && !state.hidden && state.getClientRects().length) {
+              const sr = state.getBoundingClientRect();
+              const vis = getComputedStyle(state).visibility;
+              if (sr.height > 2 && vis !== 'hidden') bottom = Math.max(bottom, window.innerHeight - sr.top);
+            }
+          } else {
+            const probe = document.getElementById('gifos-safe-b');
+            if (probe) bottom = probe.offsetHeight || 0;
+          }
+          const note = document.getElementById('chatnote');
+          if (note && !note.hidden && note.getClientRects().length) {
+            const nr = note.getBoundingClientRect();
+            if (nr.height > 2) bottom = Math.max(bottom, window.innerHeight - nr.top);
+          }
+        } catch (e) {}
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: faces, video: meta.video, cols: cols,
           orderKey: roster.length + ':' + roster.join(','), holdMs: holdMs,
           vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: myId || 'me',
-          pill: document.body.classList.contains('has-pill'),
+          pill: document.body.classList.contains('has-pill'), bottom: bottom, top: topInset,
           mode: window.__meetViewMode || 'gallery',
           swapSelf: !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage)),
           self: window.__meetSelf || 'tile',
@@ -7206,21 +8101,54 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!tr || tr.readyState !== 'live' || !tr.enabled || tr.muted) return null;
       return tr;
     }
+    // One canvas stream per letter, shared by every dark seat with that
+    // letter, and never more than AV_PIPE_CAP live at once. The canvas only
+    // depends on the letter, so sharing loses nothing, and a big room does
+    // not hold one canvas stream per dark seat. Past the cap a seat shows
+    // its letter overlay instead, under the same blur.
+    const AV_PIPE_CAP = 6;
+    const avPipes = new Map(); // letter -> { key, canvas, stream, track, refs }
+    function acquireAvPipe(key, name) {
+      let p = avPipes.get(key);
+      if (p && p.track && p.track.readyState === 'live') { p.refs++; return p; }
+      if (p) avPipes.delete(key);
+      if (avPipes.size >= AV_PIPE_CAP) return null;
+      const canvas = document.createElement('canvas');
+      paintAvatarCanvas(canvas, name, 0);
+      const stream = canvas.captureStream(0);
+      const track = stream.getVideoTracks()[0];
+      if (!track) return null;
+      p = { key, canvas, stream, track, refs: 1 };
+      avPipes.set(key, p);
+      return p;
+    }
+    function releaseAvPipe(p) {
+      if (!p) return;
+      p.refs--;
+      if (p.refs > 0) return;
+      avPipes.delete(p.key);
+      try { p.track.stop(); } catch (e) {}
+    }
     function clearPeerAvatar(t) {
       if (!t) return;
-      if (t._avPipe) { try { t._avPipe.track.stop(); } catch (e) {} t._avPipe = null; }
+      if (t._avPipe) { releaseAvPipe(t._avPipe); t._avPipe = null; }
       t._avatarRiding = false;
+      if (t.avatar && t.avatar.classList) t.avatar.classList.remove('rides-off');
     }
     function mountPeerAvatar(t, name) {
       const key = nameInitial(name);
-      if (!t._avPipe || t._avPipe.key !== key || !t._avPipe.track || t._avPipe.track.readyState !== 'live') {
-        if (t._avPipe) { try { t._avPipe.track.stop(); } catch (e) {} }
-        const canvas = document.createElement('canvas');
-        paintAvatarCanvas(canvas, name, 0);
-        const stream = canvas.captureStream(0);
-        const track = stream.getVideoTracks()[0];
-        t._avPipe = { key, canvas, stream, track };
+      if (t._avPipe && (t._avPipe.key !== key || !t._avPipe.track || t._avPipe.track.readyState !== 'live')) {
+        releaseAvPipe(t._avPipe); t._avPipe = null;
       }
+      if (!t._avPipe) t._avPipe = acquireAvPipe(key, name);
+      if (!t._avPipe) {
+        // No slot: the letter overlay stands in for the ridden video.
+        t._avatarRiding = false;
+        if (t.video.srcObject) t.video.srcObject = null;
+        if (t.avatar && t.avatar.classList) t.avatar.classList.add('rides-off');
+        return;
+      }
+      if (t.avatar && t.avatar.classList) t.avatar.classList.remove('rides-off');
       t._avatarRiding = true;
       showAvatarTrack(t.video, t._avPipe.stream, t._avPipe.track);
     }
@@ -7441,6 +8369,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // it may be displayed and may never gate behaviour, so the bitrate ladder and
     // every other decision keep reading participantCount().
     function displayCount() { return roomPastSection() ? Math.max(participantCount(), roomDig().n) : participantCount(); }
+    // Faces the page itself has put on screen (me, plus each real peer tile).
+    // A cloned tile is not a person and is not in this set. The header uses
+    // this so the count matches the room you can see; it never gates quality.
+    function facesOnScreen() {
+      let n = 0;
+      const seen = new Set();
+      const take = (id, el) => {
+        if (!id || seen.has(id) || !el || !el.isConnected || el.style.display === 'none') return;
+        seen.add(id);
+        n++;
+      };
+      try { if (meTile && meTile.tile) take('me', meTile.tile); } catch (e) {}
+      for (const [pid, p] of peers) take(pid, p && p.tile);
+      return n;
+    }
+    function headerCount() { return Math.max(displayCount(), facesOnScreen()); }
     // BATTERY TIERS (Nathan 2026-07-26): encode watts are the meeting's
     // biggest phone cost, so quality follows the battery — ON BATTERY at all
     // sends one rung lighter, under 50% two rungs, under 25% three rungs and
@@ -7988,7 +8932,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const n = Math.max(linked, seen, displayCount());
       let heldN = 0;
       try { for (const p of peers.values()) if (p && isHeld(p.id)) heldN++; } catch (e) {}
-      const shown = Math.max(1, n - heldN);
       // THE LABEL MUST NAME WHAT WE ACTUALLY SEND (2026-07-29, Nathan: "it says
       // 480p, I unplugged, it still says 480p"). rung(n) is only the HEADCOUNT
       // baseline; adapt() then pushes it down by the power tier (a phone is
@@ -8032,6 +8975,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const reach = typeof reachInfo === 'function' ? reachInfo() : null;
       const reachState = reach ? reach.state : null;
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
+      // shown is the room you can see: the count, or the faces on the wall (qa-meet-desktop).
+      const shown = headerCount();
       const tail = partial + link + savedLock + extra;
       let countText = '';
       let restText = '';
@@ -8057,6 +9002,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         restText = ' · ' + q.label + reachTriedSentence() + tail;
       }
       const statusText = countText + restText;
+      const detail = statusText;
+      // A phone chip names the room and the count (qa-meet-mobile); the whole
+      // sentence is the status sheet a tap opens, and the title.
+      const roomLabel = String((params.get('v') || '')).replace(/\s+/g, ' ').trim();
+      let phoneDetail = detail;
+      if (phoneLayout() && !BROADCAST && !(reachState && reachState !== 'partial')) {
+        const head = roomLabel ? roomLabel + ' · ' : '';
+        phoneDetail = head + (shown <= 1 ? countText : shown + ' ' + uiText('inMeeting', 'in the meeting')) + restText;
+        countText = head + (shown <= 1 ? (atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you')) : shown + ' in call');
+        restText = '';
+      }
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
       // of the reach states that replace the line. Tests and styling read
@@ -8068,13 +9024,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const hostHere = typeof BROADCAST !== 'undefined' && BROADCAST
         && (((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
       const hostAlone = !!(hostHere && statusKind === 'alone');
+      // On a phone, anyone alone gets the Invite button beside the chip (qa-meet-mobile).
+      const phoneAlone = statusKind === 'alone' && window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
+      const inviteChip = hostAlone || phoneAlone;
       const chip = statusEl.closest('.topchip');
       if (chip) {
-        if (hostAlone) chip.dataset.invite = '1';
+        if (inviteChip) chip.dataset.invite = '1';
         else delete chip.dataset.invite;
       }
       const hdrInvite = document.getElementById('hdrinvite');
-      if (hdrInvite) hdrInvite.hidden = !hostAlone;
+      if (hdrInvite) hdrInvite.hidden = !inviteChip;
+      const statusShown = statusText;
+      const shownDetail = phoneDetail;
       if (statusEl.dataset) {
         if (statusEl.dataset.kind !== statusKind) statusEl.dataset.kind = statusKind;
         const dr = reachState || '', du = reachState === 'partial' ? String(reach.dead) : '';
@@ -8082,27 +9043,32 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
       }
       if (reachState && reachState !== 'partial') statusEl.classList.add('alert');
+      if (statusEl.title !== shownDetail) statusEl.title = shownDetail;
       const countEl = document.getElementById('statuscount');
       const restEl = document.getElementById('statusrest');
+      const deskInvite = document.getElementById('statusinvite');
       if (countEl && restEl) {
         if (countEl.textContent !== countText) countEl.textContent = countText;
         if (restEl.textContent !== restText) restEl.textContent = restText;
-        const invBtn = document.getElementById('statusinvite');
-        if (invBtn) {
-          const showInv = shown === 1 && !atDoor && !(reachState && reachState !== 'partial');
-          invBtn.hidden = !showInv;
-          if (!showInv) delete invBtn.dataset.copied;
-          else if (!invBtn.dataset.copied) {
-            const label = uiText('invite', 'Invite');
-            if (invBtn.textContent !== label) invBtn.textContent = label;
-          }
-        }
-      } else if (statusEl.textContent !== statusText) {
-        statusEl.textContent = statusText;
       }
-      if (statusEl.title !== statusText) statusEl.title = statusText;
+      if (deskInvite) {
+        // One Invite: the chip's button wins, and a service viewer has no link to send.
+        const deskAlone = statusKind === 'alone' && !inviteChip && !BROADCAST;
+        deskInvite.hidden = !deskAlone;
+        if (!deskAlone) { delete deskInvite.dataset.copied; if (deskInvite.textContent) deskInvite.textContent = ''; }
+        else if (!deskInvite.dataset.copied) {
+          const label = uiText('invite', 'Invite');
+          if (deskInvite.textContent !== label) deskInvite.textContent = label;
+        }
+      }
+      paintStatusSheet();
       try { paintOnAir(); } catch (e) {}
     }
+    try {
+      const hdrMq = window.matchMedia('(max-width: 700px), (max-height: 500px)');
+      if (hdrMq.addEventListener) hdrMq.addEventListener('change', () => { try { updateStatus(); } catch (e) {} });
+    } catch (e) {}
+
     function stagePersonLive(id) {
       if (!id) return false;
       if (id === myId) return myStatus.camOff === false;
@@ -8565,7 +9531,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
       if (open) paintRoster();
     }
-    document.getElementById('statuscount').onclick = () => toggleRoster();
+    const statusCountBtn = document.getElementById('statuscount');
+    if (statusCountBtn) statusCountBtn.onclick = () => { if (!phoneLayout()) toggleRoster(); };
     // One click while you are the only person here: the link is copied, and
     // where the browser can share, the share sheet opens too. This is not the
     // More → Invite sheet.
@@ -8585,8 +9552,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!statusInvite.hidden) statusInvite.textContent = uiText('invite', 'Invite');
       }, 2000);
     };
-    document.getElementById('roster-close').onclick = () => toggleRoster(false);
-    document.getElementById('roster-find').addEventListener('input', () => paintRoster());
+    const rosterClose = document.getElementById('roster-close');
+    if (rosterClose) rosterClose.onclick = () => toggleRoster(false);
+    const rosterFind = document.getElementById('roster-find');
+    if (rosterFind) rosterFind.addEventListener('input', () => paintRoster());
 
     // ---- mesh plumbing ---------------------------------------------------------
     // EVERY content frame — signaling gossip over the relay AND everything on
@@ -10810,7 +11779,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         late.hiLate = setTimeout(() => {
           if (peers.get(pid) !== late || (late.dc && late.dc.readyState === 'open')) return;
           if (!lateHiSender(myId, targetLinkIds(pid))) return;
-          deliverLateHi(pid, { k: 'hi', chats: Array.from(chat.values()).slice(-200), trs: Array.from(trs.values()).slice(-100), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj() });
+          deliverLateHi(pid, { k: 'hi', chats: Array.from(chat.values()).slice(-200), trs: Array.from(trs.values()).slice(-100), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
         }, 20000);
       }
       p.absentSince = 0;
@@ -11179,6 +12148,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       for (const [pid] of statusOf) if (pid !== myId && stHold(pid) && notTomb(pid)) ids.add(pid);
       rosterIds = Array.from(ids);
+      // A pocketed phone blocks clear video for up to a minute, then drops
+      // out of this set. Repaint then, or No blur stays pending after the
+      // room has already gone clear.
+      const rosterSig = rosterIds.slice().sort().join('\n');
+      if (rosterSig !== renderFromOcc.rosterSig) {
+        renderFromOcc.rosterSig = rosterSig;
+        try { reactRoomState(); } catch (e) {}
+      }
       for (const pid of rosterIds) {
         // A peer carrying MY device id is a stale session of my own device —
         // never a real guest. Drop it instead of drawing a second "me" tile.
@@ -11997,6 +12974,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn();
       if (typeof updateCamAllBtn === 'function') updateCamAllBtn();
       paintChatGate(); renderChat(); // signing in as admin grows the chat toggle + per-line deletes
+      try { waitPaint(); } catch (e) {}
       try { paintBroadcastRole(); } catch (e) {}
       refreshOutbound(); // admin presence changes what clears
       if (typeof paintBroadcastChrome === 'function') paintBroadcastChrome();
@@ -12215,6 +13193,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         oldKeys: (prevRoomE2E && prevRoomE2E !== roomE2E) ? [prevRoomE2E] : [],   // a door blob this key opens is behind me, not ahead (mesh-wire R6)
         excluded: isEjected, // ejected forgers: their mesh frames never reach the seat
         urlParams: () => '&pw=' + encodeURIComponent(pwProof) + '&dev=' + encodeURIComponent(myDevHash),
+        doorHeld: (id) => { try { return meetWait.blocks(id); } catch (e) { return false; } },
+        onDoor: (kind, frame) => {
+          if (kind === 'unseated') {
+            meetWait.waiting(true);
+            const denied = frame && frame.t === 'denied';
+            const h = document.querySelector('#waitdoor h1');
+            const p = document.querySelector('#waitdoor p');
+            if (h) h.textContent = denied ? 'Not admitted' : 'Waiting for the host';
+            if (p) p.textContent = denied
+              ? 'The host didn\u2019t let you in. You are not in the meeting.'
+              : 'You\u2019ll join when the host lets you in. This meeting can\u2019t see or hear you yet.';
+            setStatus(denied ? 'The host didn\u2019t let you in.' : 'Waiting for the host to let you in.');
+          } else if (kind === 'seated') {
+            meetWait.waiting(false);
+          }
+        },
         sendDC: meshSendDC,
         // Entry asks are delivered only on a channel to the greeter they name.
         // meshSendDC also returns true for a dump onto some other peer; the
@@ -12470,8 +13464,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A DOOR BACK FROM DARK answers the sockets still knocking at it (mesh.js
         // answerDoor): once per dark return, on the full list
         // the return pulled; a member's socket is skipped by the seat.
-        if (doorAnswerAt && Date.now() - doorAnswerAt < 15000 && relayRosterScope === 'full') { doorAnswerAt = 0; try { const s = meshSeat(); if (s && s.answerDoor) s.answerDoor(Array.from(relaySocketed).filter((id) => id !== myId)); } catch (e) {} }
-        if (doorRoundPending && relayRosterScope === 'full') { doorRoundPending = false; try { const s = meshSeat(); if (s && s.doorRound) s.doorRound(Array.from(relaySocketed).filter((id) => id !== myId)); } catch (e) {} }   // the door round's list (doorRoundBeat)
+        if (doorAnswerAt && Date.now() - doorAnswerAt < 15000 && relayRosterScope === 'full' && !atWaitDoor) {
+          doorAnswerAt = 0;
+          const ids = Array.from(relaySocketed).filter((id) => id !== myId);
+          try {
+            const s = meshSeat();
+            if (holdDoor) {
+              const members = new Set();
+              try { if (s) for (const v of s.occ.values()) if (v) members.add(v); } catch (e2) {}
+              for (const id of ids) {
+                if (members.has(id) || waitDeclined.has(id)) continue;
+                meetWait.note(id, rosterNames[id] || 'Someone waiting');
+              }
+            } else if (s && s.answerDoor) s.answerDoor(ids.filter((id) => !waitDeclined.has(id)));
+          } catch (e) {}
+        }
+        if (doorRoundPending && relayRosterScope === 'full' && !atWaitDoor) { doorRoundPending = false; try { const s = meshSeat(); if (s && s.doorRound) s.doorRound(Array.from(relaySocketed).filter((id) => id !== myId)); } catch (e) {} }   // the door round's list (doorRoundBeat). A knocker the relay is holding does not found a room from that list.
         if (relayRosterScope === 'full' && pendingDoorGrant) { const g = pendingDoorGrant; pendingDoorGrant = null; g(); }
         roomBan = m.ban || []; // admins[] comes from VERIFIED signatures (adminsNow, \u00a79), never the relay
         Object.assign(devOf, m.devs || {}); // MERGE (absence grace keeps tiles whose Ban button must work)
@@ -13584,6 +14592,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       inp.focus();
     }
     document.getElementById('pwbtn').onclick = () => showPwModal(false);
+    document.getElementById('waitbtn').onclick = () => {
+      if (hasAdminRoom() && !amAdmin) { setStatus('Only an admin can turn the waiting room on.'); return; }
+      meetWait.hold(!holdDoor);
+    };
+    document.getElementById('waitdoor-leave').onclick = () => { location.href = MEET_PATH; };
     document.getElementById('pw-cancel').onclick = () => {
       if (pwModal.dataset.mode === 'join') { location.href = MEET_PATH; return; }
       pwModal.style.display = 'none';
@@ -13824,11 +14837,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       else if (!r.here) out.push(uiText('whoLeftAt', 'left') + ' ' + hhmm(r.last));
       return out;
     }
+    function whoFaceState(r) {
+      if (r.ejected) return 'Removed';
+      if (!r.here) return 'Left';
+      const st = r.me ? myStatus : (statusOf.get(r.pid) || {});
+      const bits = [];
+      if (st.muted) bits.push('Muted');
+      if (st.camOff && !st.scr) bits.push('Camera off');
+      return bits.join(', ');
+    }
     function showWhoModal() {
       const opening = whoModal.style.display !== 'flex';
       const list = document.getElementById('who-list');
       list.innerHTML = '';
       const rows = whoRows();
+      if (phoneLayout() && !BROADCAST) {
+        // A phone opens People as a list of names and what each one is doing
+        // (qa-meet-mobile). The address list stays on a wide screen, where the
+        // download for the police lives too.
+        const h3 = whoModal.querySelector('h3'); if (h3) h3.textContent = 'People';
+        const lead = whoModal.querySelector('.who-lead'); if (lead) lead.textContent = 'Everyone on this call.';
+        for (const r of rows.filter((x) => x.here && !x.ejected)) {
+          const row = document.createElement('div'); row.className = 'brow';
+          const nm = document.createElement('span'); nm.className = 'who-name'; nm.textContent = r.name + (r.me ? ' (you)' : '');
+          const state = document.createElement('span'); state.className = 'who-state';
+          try { state.textContent = whoFaceState(r); } catch (e) { state.textContent = ''; }
+          row.appendChild(nm); row.appendChild(state); list.appendChild(row);
+        }
+        whoModal.style.display = 'flex';
+        if (opening) whoObserve().then(() => whoRefresh());
+        return;
+      }
       const bcHere = (r) => !r.me && r.here && !r.ejected;
       const groups = BROADCAST ? [
         { k: 'me', test: (r) => r.me },
@@ -13850,9 +14889,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           list.appendChild(h);
         }
         for (const r of inG) {
-          const row = document.createElement('div'); row.className = 'brow'; row.dataset.group = g.k;
+          const row = document.createElement('div'); row.className = 'brow';
           if (!r.here) row.style.opacity = '.65';
-          const nm = document.createElement('span'); nm.style.flex = '1'; nm.textContent = r.name;
+          const nm = document.createElement('span'); nm.className = 'who-name'; nm.textContent = r.name;
           const whoAv = r.me ? (GifOS.store.identity().avatar) : ((peers.get(r.pid) && peers.get(r.pid).avatarUrl) ? { url: peers.get(r.pid).avatarUrl, hash: peers.get(r.pid).avatarHash } : null);
           if (whoAv && whoAv.url) {
             const img = document.createElement('img');
@@ -13890,7 +14929,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
           list.appendChild(row);
         }
-      }
+      };
       whoModal.style.display = 'flex';
       if (opening) whoObserve().then(() => whoRefresh()); // what my links see right now, not 15 s ago
     }
@@ -14939,9 +15978,119 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       chat.delete(id);
       return true;
     }
+    // The author can take back their own line. The tomb records who.
+    // A frame is accepted only from that person, and it does not cover
+    // a line someone else wrote under the same id.
+    function applyOwnDelete(id, authorId) {
+      if (!id || !authorId) return false;
+      const prev = chatTombs.get(id);
+      if (prev && !prev.ownBy) return false;
+      if (prev && prev.ownBy && prev.ownBy !== authorId) return false;
+      const cur = chat.get(id);
+      if (cur && cur.byId !== authorId) return false;
+      chatTombs.set(id, { ownBy: authorId });
+      if (cur) chat.delete(id);
+      return true;
+    }
     const MAX_FILE = 25 * 1024 * 1024;
     const FILE_PART = 32768;
     let unread = 0;
+    let lastChatLine = null;
+    let mentionAlert = null;
+    let pendingReply = null;
+    // Reactions: one emoji from a short list, per person, per line.
+    // A frame counts only from the person it names (like taking back a line).
+    const REACTS = ['👍', '❤️', '😂', '🙏', '👏'];
+    const chatReacts = new Map(); // line id -> Map(emoji -> Set(byId))
+    let reactOpen = null; // the line whose picker is open
+    function takeReact(id, e, byId, on) {
+      if (!id || !byId || REACTS.indexOf(e) < 0) return false;
+      id = String(id).slice(0, 80);
+      let per = chatReacts.get(id);
+      if (!per) {
+        if (!on) return false;
+        if (!chat.has(id) && chatReacts.size >= 500) return false;
+        per = new Map(); chatReacts.set(id, per);
+      }
+      let who = per.get(e);
+      if (on) {
+        if (!who) { who = new Set(); per.set(e, who); }
+        if (who.has(byId)) return false;
+        who.add(byId);
+      } else {
+        if (!who || !who.delete(byId)) return false;
+        if (!who.size) per.delete(e);
+      }
+      return true;
+    }
+    function myReactsObj() { // what I picked, replayed to a newcomer
+      const o = {};
+      for (const [id, per] of chatReacts) {
+        const es = [];
+        for (const [e, who] of per) if (who.has(myId)) es.push(e);
+        if (es.length) o[id] = es;
+      }
+      return o;
+    }
+    function paintReply() {
+      const bar = document.getElementById('chatreply');
+      if (!bar) return;
+      bar.hidden = !pendingReply;
+      const by = document.getElementById('chatreply-by');
+      const txt = document.getElementById('chatreply-txt');
+      if (by) by.textContent = pendingReply ? pendingReply.by : '';
+      if (txt) txt.textContent = pendingReply ? pendingReply.text : '';
+    }
+    function messageMentionsMe(text) {
+      const name = String(myName() || '').trim();
+      if (!name) return false;
+      const safe = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp('(?:^|\\s)@' + safe + '(?=$|[\\s.,!?;:])', 'i').test(String(text || ''));
+    }
+    function paintChatBadge() {
+      const b = document.getElementById('chatbadge');
+      const note = document.getElementById('chatnote');
+      const by = document.getElementById('chatpreview-by');
+      const txt = document.getElementById('chatpreview-txt');
+      const preview = document.getElementById('chatpreview');
+      if (!b || !note) return;
+      const lob = document.getElementById('lobby');
+      const inCall = !(lob && lob.classList.contains('show'));
+      const open = !!(chatPanel && chatPanel.classList.contains('open'));
+      const show = inCall && unread > 0 && !open;
+      const mention = !!(mentionAlert && !open);
+      if (preview) preview.classList.toggle('mention', mention);
+      if (mention) {
+        if (by) by.textContent = mentionAlert.by + ' mentioned you';
+        if (txt) txt.textContent = mentionAlert.text;
+        if (preview) preview.setAttribute('aria-label', mentionAlert.by + ' mentioned you. ' + mentionAlert.text + '. Open chat.');
+      } else {
+        if (by) by.textContent = lastChatLine ? lastChatLine.by : '';
+        if (txt) txt.textContent = lastChatLine ? lastChatLine.text : '';
+        if (preview && lastChatLine) preview.setAttribute('aria-label', lastChatLine.by + ' said ' + lastChatLine.text + '. Open chat.');
+      }
+      b.textContent = unread > 99 ? '99+' : String(Math.max(0, unread));
+      b.setAttribute('aria-label', 'Chat, ' + unread + (unread === 1 ? ' new message' : ' new messages'));
+      b.hidden = !show;
+      note.hidden = !show;
+      const key = (note.hidden ? '0' : '1') + ':' + note.offsetWidth + ':' + note.offsetHeight;
+      if (key !== paintChatBadge.key) {
+        paintChatBadge.key = key;
+        try { layout(); } catch (e) {}
+      }
+    }
+    function countClosedChat(m) {
+      if (m) lastChatLine = { by: String(m.by || 'Someone').slice(0, 40), text: String(m.text || '').slice(0, 160) };
+      const open = !!(chatPanel && chatPanel.classList.contains('open'));
+      // A mention of this person stays on the call until they open chat.
+      // A later line must not hide it. Naming someone else is an ordinary preview.
+      if (m && !open && m.byId !== myId && messageMentionsMe(m.text)) {
+        mentionAlert = { by: lastChatLine.by, text: lastChatLine.text };
+      }
+      if (open) return;
+      unread++;
+      paintChatBadge();
+    }
 
     const chatPanel = document.getElementById('chatpanel');
     const chatBtn = document.getElementById('chatbtn');
@@ -15086,7 +16235,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
         try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
-        dcSend(p, { k: 'hi', chats: Array.from(chat.values()).slice(-500), trs: Array.from(trs.values()).slice(-300), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj() });
+        dcSend(p, { k: 'hi', chats: Array.from(chat.values()).slice(-500), trs: Array.from(trs.values()).slice(-300), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
         // THE MOMENT A CHANNEL EXISTS is the moment the stage pulls can finally
         // travel. Everything below was silently impossible a millisecond ago:
         // sgaFan delivers only to peers whose DC is already OPEN, so a
@@ -15189,10 +16338,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const id in m.ctombs || {}) {
           if (chatTombs.has(id)) continue;
           const w = m.ctombs[id];
+          if (w && w.ownBy && p && p.id === w.ownBy) { if (applyOwnDelete(id, w.ownBy)) renderChat(); continue; }
           admVerify(w, 'cdel', Infinity).then((o) => { if (o && o.id === id && applyCdel(id, w)) renderChat(); });
         }
+        let reacted = false;
+        if (p && p.id && m.reacts && typeof m.reacts === 'object') {
+          for (const id in m.reacts) {
+            const es = m.reacts[id];
+            if (Array.isArray(es)) es.slice(0, REACTS.length).forEach((e) => { if (takeReact(id, e, p.id, true)) reacted = true; });
+          }
+        }
         (m.metas || []).forEach((meta) => takeMeta(meta, p));
-        if (freshChats.length) renderChat();
+        if (freshChats.length || reacted) renderChat();
         renderFiles();
       } else if (m.k === 'av') {
         takeAvatar(p, m);
@@ -15200,7 +16357,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (takeChat(m.m)) {
           renderChat();
           if (m.m && typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
-          if (!chatPanel.classList.contains('open')) { unread++; paintChatCount(); }
+          countClosedChat(m.m);
+          if (!chatPanel.classList.contains('open')) paintChatCount();
           // A frame the sender marked ackReq (today: only the follow-me link)
           // gets a delivery ack back over the mesh/DC — see FOLLOW-ME DELIVERY
           // WAIT. Ordinary chat carries none: this is not a read receipt.
@@ -15217,11 +16375,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Addressed by peer id, not re-gossiped — the flood that carried it
         // already reached every member, admin included.
         recvChatAck(m);
+      } else if (m.k === 'creact') {
+        // Only the person who reacted can put on or take off their reaction.
+        if (p && p.id && m.by === p.id && takeReact(m.id, m.e, m.by, !!m.on)) renderChat();
       } else if (m.k === 'cdel') {
-        // A signed admin chat-delete: verify, tomb, repaint, gossip onward on
-        // first sight (the tomb is the dedupe). Receiver-enforced like every
-        // moderation — an unverified delete simply never lands anywhere honest.
-        if (m.w && m.id && !chatTombs.has(m.id)) {
+        // The author may take their own line back. That frame is accepted
+        // only from their channel. Anyone else's copy is ignored.
+        // A signed admin delete still verifies, and an unverified one
+        // never lands anywhere honest.
+        if (m.own && m.id && !m.w && p && p.id === m.own) {
+          if (applyOwnDelete(m.id, m.own)) renderChat();
+        } else if (m.w && m.id && !chatTombs.has(m.id)) {
           admVerify(m.w, 'cdel', Infinity).then((o) => {
             if (o && o.id === m.id && applyCdel(m.id, m.w)) renderChat(); // one flood from its author — never re-broadcast (see chat)
           });
@@ -15775,7 +16939,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (let i = 0; i < old.length - max; i++) map.delete(old[i][0]);
     }
     function takeChat(m, backfill) { // backfill: a 'hi' replay — bounded by its frame, not by the live limiter
-      if (!m || !m.id || chat.has(m.id) || chatTombs.has(m.id)) return false;
+      if (!m || !m.id || chat.has(m.id)) return false;
+      const kept = chatTombs.get(m.id);
+      if (kept && (!kept.ownBy || m.byId === kept.ownBy)) return false;
       if (!backfill && m.byId !== myId && !chatRateOk(m.byId)) return false;
       // While the admin's chat-off stands, only a verified admin's NEW lines
       // land — receiver-enforced, so a DOM-hacked sender is still unheard by
@@ -15786,7 +16952,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // `link`, when present, renders as a "Join →" button — validate it is an
       // http(s) URL (never javascript:/data:) so a peer can't inject a live link.
       const link = (typeof m.link === 'string' && /^https?:\/\//i.test(m.link)) ? m.link.slice(0, 400) : undefined;
-      chat.set(m.id, { id: m.id, by: String(m.by || '?').slice(0, 40), byId: m.byId, at: m.at || 0, text: String(m.text || '').slice(0, 2000), link, prayer: m.prayer ? 1 : 0 });
+      let reply;
+      if (m.reply && typeof m.reply === 'object' && !Array.isArray(m.reply)) {
+        const id = String(m.reply.id || '').slice(0, 80);
+        const by = String(m.reply.by || '').slice(0, 40);
+        const text = String(m.reply.text || '').slice(0, 160);
+        if (id && text) reply = { id: id, by: by, text: text };
+      }
+      chat.set(m.id, { id: m.id, by: String(m.by || '?').slice(0, 40), byId: m.byId, at: m.at || 0, text: String(m.text || '').slice(0, 2000), link, reply, prayer: m.prayer ? 1 : 0 });
       trimMap(chat, CHAT_MAX);
       return true;
     }
@@ -15945,35 +17118,163 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // A reader who scrolled up stays there. The log used to jump to the bottom
     // on every line. A hidden panel is not rebuilt; opening it paints once.
+    function paintChatNew(stick) {
+      const b = document.getElementById('chatnew');
+      if (b) b.hidden = !!stick;
+    }
     function paintLog(log, html) {
       if (!log) return;
       const stick = logNearBottom(log);
       const prev = log.scrollTop;
       log.innerHTML = html;
       log.scrollTop = stick ? log.scrollHeight : prev;
+      if (log.id === 'chatlog') paintChatNew(stick);
     }
     function chatPanelOpen() { return !!(chatPanel && chatPanel.classList.contains('open')); }
     function transcriptShown() {
       const w = document.getElementById('trwrap');
       return !!(w && w.classList.contains('show'));
     }
+    function chatWhen(at) {
+      const n = Number(at);
+      if (!n) return '';
+      try { return new Date(n).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+      catch (e) { return ''; }
+    }
+    function chatPeople() {
+      const names = [];
+      const seen = new Set();
+      const add = (n) => {
+        const s = String(n || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+        const key = s.toLowerCase();
+        if (!s || seen.has(key)) return;
+        seen.add(key);
+        names.push(s);
+      };
+      try {
+        for (const p of peers.values()) if (p && !p.headless && p.id !== myId) add(p.name);
+      } catch (e) {}
+      names.sort((a, b) => a.localeCompare(b));
+      return names;
+    }
+    function linkifyEscaped(escaped) {
+      return String(escaped || '').replace(/https?:\/\/[^\s<"]+/gi, (raw) => {
+        let url = raw;
+        let trail = '';
+        const end = url.match(/[),.;!?]+$/);
+        if (end) { trail = end[0]; url = url.slice(0, -trail.length); }
+        if (!/^https?:\/\//i.test(url) || url.length < 8) return raw;
+        return '<a class="clink" href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>' + trail;
+      });
+    }
+    function withMentions(text) {
+      let html = linkifyEscaped(esc(text));
+      const names = chatPeople().slice().sort((a, b) => b.length - a.length);
+      for (const name of names) {
+        const token = esc('@' + name);
+        if (html.indexOf(token) < 0) continue;
+        html = html.split(/(<[^>]+>)/).map((part) => {
+          if (part.charAt(0) === '<') return part;
+          return part.split(token).join('<b class="cmention">' + token + '</b>');
+        }).join('');
+      }
+      return html;
+    }
+    function mentionToken(value, caret) {
+      const upto = String(value || '').slice(0, caret);
+      const m = upto.match(/(?:^|\s)@([^\s@]*)$/);
+      if (!m) return null;
+      return { query: m[1].toLowerCase(), start: upto.length - m[1].length - 1 };
+    }
+    function paintMentions() {
+      const box = document.getElementById('chatmentions');
+      const inp = document.getElementById('chat-in');
+      if (!box || !inp) return;
+      const caret = inp.selectionStart == null ? inp.value.length : inp.selectionStart;
+      const tok = mentionToken(inp.value, caret);
+      if (!tok) { box.hidden = true; box.textContent = ''; return; }
+      const people = chatPeople().filter((n) => n.toLowerCase().indexOf(tok.query) >= 0).slice(0, 6);
+      if (!people.length) { box.hidden = true; box.textContent = ''; return; }
+      box.hidden = false;
+      box.textContent = '';
+      for (const name of people) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.setAttribute('role', 'option');
+        b.textContent = name;
+        box.appendChild(b);
+      }
+    }
+    function chatQuery() {
+      const q = document.getElementById('chatq');
+      return q ? String(q.value || '').trim().toLowerCase() : '';
+    }
+    function paintChatFind() {
+      const q = document.getElementById('chatq');
+      const clear = document.getElementById('chatqclear');
+      const text = q ? String(q.value || '').trim() : '';
+      if (clear) clear.hidden = !text;
+      // Sideways, Find steps aside while the keyboard is up. The title is
+      // still on screen, so it says the log is cut down.
+      const title = document.getElementById('paneltitle');
+      if (title && !transcriptShown()) title.textContent = text ? 'Lines with “' + text + '”' : (BROADCAST ? 'Service chat' : uiText('chatTitle', 'Small group chat'));
+    }
     function renderChat() {
       if (!chatPanelOpen() || transcriptShown()) return;
       const log = document.getElementById('chatlog');
-      const ms = Array.from(chat.values()).sort((a, b) => a.at - b.at).slice(-200); // the newest 200 are the log; older lines stay in the map for delete/history
+      const q = chatQuery();
+      const all = Array.from(chat.values()).sort((a, b) => a.at - b.at);
+      // With nothing typed, the newest 200 are the log. A search looks
+      // through the lines this browser still holds, not only the ones on screen.
+      const ms = (q
+        ? all.filter((m) => (String(m.text || '') + ' ' + String(m.by || '')).toLowerCase().indexOf(q) >= 0)
+        : all).slice(-200);
       let html = ms.map((m) => {
         const body = m.link
-          ? esc(m.text) + ' <a href="' + esc(m.link) + '" style="color:#8ab4ff;font-weight:600">Join →</a>'
-          : esc(m.text);
+          ? withMentions(m.text) + ' <a href="' + esc(m.link) + '" style="color:inherit;font-weight:700;text-decoration:underline">Join →</a>'
+          : withMentions(m.text);
         // The signed-in admin moderates line by line: the standard row-delete
         // glyph mints a signed 'cdel' (see the #chatlog click delegate).
         const del = amAdmin ? '<button class="row-del" data-cdel="' + esc(m.id) + '" title="Delete this message for everyone">' + DEL_ICON + '</button>' : '';
-        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + (m.prayer ? ' prayer' : '') + '"><b>' + (typeof avatarChip === 'function' ? (avatarChip(m.byId) || '') : '') + esc(m.by) + (m.prayer ? ' <span class="praytag">Prayer</span>' : '') + '</b>' + body + del + '</div>';
+        const when = chatWhen(m.at);
+        const stamp = when ? '<small class="cwhen">' + esc(when) + '</small>' : '';
+        const who = '<span class="cwho"><b>' + (typeof avatarChip === 'function' ? (avatarChip(m.byId) || '') : '') + esc(m.by) + (m.prayer ? ' <span class="praytag">Prayer</span>' : '') + '</b>' + stamp + '</span>';
+        const quote = (m.reply && m.reply.text)
+          ? '<blockquote class="cquote"><b>' + esc(m.reply.by || '') + '</b><span>' + esc(m.reply.text) + '</span></blockquote>'
+          : '';
+        const attr = String(m.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        const replyBtn = '<button type="button" class="creply" data-reply="' + attr + '">Reply</button>';
+        const ownDel = m.byId === myId ? '<button type="button" class="cdel" data-own-del="' + attr + '">Delete</button>' : '';
+        const per = chatReacts.get(m.id);
+        const chips = per && per.size
+          ? '<div class="cchips">' + REACTS.filter((e) => per.has(e)).map((e) => {
+            const who = per.get(e);
+            const mineR = who.has(myId);
+            return '<button type="button" class="cchip" data-react-chip="' + e + '" data-react-id="' + attr + '" aria-pressed="' + mineR + '" aria-label="' + e + ' ' + who.size + (mineR ? ', yours' : '') + '">' + e + '<span>' + who.size + '</span></button>';
+          }).join('') + '</div>'
+          : '';
+        // Your own line keeps Reply and Delete on one row; React is for theirs.
+        const reactBtn = m.byId === myId ? '' : '<button type="button" class="creact" data-react-open="' + attr + '" aria-expanded="' + (reactOpen === m.id) + '">React</button>';
+        const picks = reactOpen === m.id
+          ? '<div class="cpicks">' + REACTS.map((e) => '<button type="button" class="cpick" data-react-pick="' + e + '" data-react-id="' + attr + '" aria-label="React ' + e + '">' + e + '</button>').join('') + '</div>'
+          : '';
+        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + (m.prayer ? ' prayer' : '') + '">' + who + quote + body + chips + '<div class="cacts">' + replyBtn + reactBtn + ownDel + '</div>' + del + picks + '</div>';
       }).join('');
       const co = chatOffInfo();
-      if (co) html += '<div class="cmsg" style="opacity:.65"><b>🔇</b>Chat was turned off' + (co.by ? ' by ' + esc(co.by) : '') + '.' + (amAdmin ? '' : ' Only the host can post.') + '</div>';
+      if (q && !ms.length) html = '<div class="cempty" id="chatnomatch">No matches</div>';
+      else if (co && !q) html += '<div class="cmsg" style="opacity:.65"><b>🔇</b>Chat was turned off' + (co.by ? ' by ' + esc(co.by) : '') + '.' + (amAdmin ? '' : ' Only the host can post.') + '</div>';
+      paintChatFind();
       paintLog(log, html);
     }
+    (function () {
+      const q = document.getElementById('chatq');
+      const clear = document.getElementById('chatqclear');
+      if (!q || !clear) return;
+      q.addEventListener('input', () => renderChat());
+      // The Search key ends the search and drops the keyboard; the filter stays.
+      q.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); q.blur(); } });
+      clear.onclick = () => { q.value = ''; renderChat(); try { q.focus(); } catch (e) {} };
+    })();
     // The chat gate: repainted on every mod merge and admin-state flip. The
     // admin keeps a live input while chat is off (announcements still flow);
     // everyone else's composer locks, with the reason in the placeholder.
@@ -15996,7 +17297,57 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setMod('*', 'chat', !chatOffInfo());
       paintChatGate(); renderChat();
     };
+    document.getElementById('chatlog').addEventListener('scroll', () => {
+      const log = document.getElementById('chatlog');
+      if (logNearBottom(log)) paintChatNew(true);
+    });
+    document.getElementById('chatnew').onclick = () => {
+      const log = document.getElementById('chatlog');
+      log.scrollTop = log.scrollHeight;
+      paintChatNew(true);
+    };
     document.getElementById('chatlog').addEventListener('click', (e) => {
+      const replyBtn = e.target.closest('[data-reply]');
+      if (replyBtn) {
+        const id = replyBtn.getAttribute('data-reply');
+        const src = id ? chat.get(id) : null;
+        if (!src) return;
+        pendingReply = { id: String(src.id).slice(0, 80), by: String(src.by || '').slice(0, 40), text: String(src.text || '').slice(0, 160) };
+        paintReply();
+        const inp = document.getElementById('chat-in');
+        if (inp && inp.focus) inp.focus();
+        return;
+      }
+      const rOpen = e.target.closest('[data-react-open]');
+      if (rOpen) {
+        const id = rOpen.getAttribute('data-react-open');
+        reactOpen = reactOpen === id ? null : id;
+        renderChat();
+        return;
+      }
+      const rTap = e.target.closest('[data-react-pick], [data-react-chip]');
+      if (rTap) {
+        const id = rTap.getAttribute('data-react-id');
+        const em = rTap.getAttribute('data-react-pick') || rTap.getAttribute('data-react-chip');
+        if (!id || !chat.has(id)) return;
+        const per = chatReacts.get(id);
+        const on = !(per && per.get(em) && per.get(em).has(myId));
+        reactOpen = null;
+        if (takeReact(id, em, myId, on)) sendAll({ k: 'creact', id: id, e: em, on: on, by: myId });
+        renderChat();
+        return;
+      }
+      const ownDel = e.target.closest('[data-own-del]');
+      if (ownDel) {
+        const id = ownDel.getAttribute('data-own-del');
+        const src = id ? chat.get(id) : null;
+        if (!src || src.byId !== myId) return;
+        if (applyOwnDelete(id, myId)) {
+          sendAll({ k: 'cdel', id: id, own: myId });
+          renderChat();
+        }
+        return;
+      }
       const b = e.target.closest('[data-cdel]'); if (!b) return;
       const id = b.getAttribute('data-cdel');
       if (!amAdmin || chatTombs.has(id)) return;
@@ -16053,6 +17404,42 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else emit(null);
       }
     });
+    (function () {
+      const row = document.getElementById('emojirow');
+      const btn = document.getElementById('cemoji');
+      const inp = document.getElementById('chat-in');
+      if (!row || !btn || !inp) return;
+      let caret = { start: 0, end: 0 };
+      const remember = () => {
+        caret = {
+          start: inp.selectionStart == null ? inp.value.length : inp.selectionStart,
+          end: inp.selectionEnd == null ? inp.value.length : inp.selectionEnd,
+        };
+      };
+      inp.addEventListener('input', remember);
+      inp.addEventListener('keyup', remember);
+      inp.addEventListener('mouseup', remember);
+      inp.addEventListener('select', remember);
+      inp.addEventListener('focusout', remember);
+      btn.onclick = () => {
+        const open = row.hidden;
+        row.hidden = !open;
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      };
+      row.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b || inp.disabled) return;
+        const emoji = b.getAttribute('data-emoji');
+        if (!emoji) return;
+        const start = Math.max(0, Math.min(caret.start, inp.value.length));
+        const end = Math.max(start, Math.min(caret.end, inp.value.length));
+        inp.value = inp.value.slice(0, start) + emoji + inp.value.slice(end);
+        const pos = start + emoji.length;
+        caret = { start: pos, end: pos };
+        inp.focus();
+        try { inp.setSelectionRange(pos, pos); } catch (err) {}
+      });
+    })();
     document.getElementById('chatform').addEventListener('submit', (e) => {
       e.preventDefault();
       if (chatOffInfo() && !amAdmin) { setStatus('The host has turned chat off.'); return; }
@@ -16062,11 +17449,43 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const prayBtn = document.getElementById('pray');
       const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text };
       if (prayBtn && prayBtn.getAttribute('aria-pressed') === 'true') m.prayer = 1;
+      if (pendingReply) m.reply = { id: pendingReply.id, by: pendingReply.by, text: pendingReply.text };
       chat.set(m.id, m);
       sendAll({ k: 'chat', m });
       inp.value = '';
+      // A search would hide the line you just sent.
+      const q = document.getElementById('chatq');
+      if (q) q.value = '';
+      pendingReply = null;
+      paintReply();
+      paintMentions();
       renderChat();
     });
+    document.getElementById('chatreply-x').onclick = () => {
+      pendingReply = null;
+      paintReply();
+    };
+    (function () {
+      const inp = document.getElementById('chat-in');
+      const box = document.getElementById('chatmentions');
+      if (!inp || !box) return;
+      const refresh = () => paintMentions();
+      inp.addEventListener('input', refresh);
+      inp.addEventListener('keyup', refresh);
+      inp.addEventListener('click', refresh);
+      box.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b || inp.disabled) return;
+        const name = b.textContent || '';
+        const caret = inp.selectionStart == null ? inp.value.length : inp.selectionStart;
+        const tok = mentionToken(inp.value, caret);
+        if (!tok || !name) return;
+        inp.value = inp.value.slice(0, tok.start) + '@' + name + ' ' + inp.value.slice(caret);
+        const pos = tok.start + name.length + 2;
+        try { inp.focus(); inp.setSelectionRange(pos, pos); } catch (err) {}
+        paintMentions();
+      });
+    })();
     document.getElementById('cattach').onclick = () => {
       if (!roomPw) { setStatus('Set a room password before sharing files — files are only allowed in password-protected meetings.'); return; }
       document.getElementById('cfile-in').click();
@@ -16088,9 +17507,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     });
     function paintChatCount() {
       const n = chatBtn.querySelector('.chatcount');
+      // The badge rides the dock button; in More (a phone) the count is #chatbadge.
+      const docked = !!(chatBtn.parentElement && chatBtn.parentElement.classList.contains('bar'));
       if (n) {
-        if (unread > 0) { n.hidden = false; n.textContent = unread > 9 ? '9+' : String(unread); }
-        else n.hidden = true;
+        if (unread > 0 && docked) { n.hidden = false; n.textContent = unread > 9 ? '9+' : String(unread); }
+        else { n.hidden = true; n.textContent = ''; }
       }
       chatBtn.setAttribute('aria-label', unread ? 'Chat, ' + unread + ' new' : 'Chat');
     }
@@ -16107,6 +17528,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // is not painted while the panel is closed: paint the tab that shows.
       if (chatPanel.classList.contains('open')) {
         unread = 0; paintChatCount(); if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles();
+        try { mentionAlert = null; paintChatBadge(); } catch (e) {}
         try { paintChatBtn(); } catch (e) {}
         // The More sheet floats above the chat (the dock's stacking context).
         // Leave it open and the conversation is hidden behind a grid of buttons.
@@ -16124,6 +17546,49 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     };
     document.getElementById('chatclose').onclick = () => { chatPanel.classList.remove('open'); try { paintChatBtn(); } catch (e) {} };
+    document.getElementById('chatbadge').onclick = () => { if (chatBtn) chatBtn.click(); };
+    document.getElementById('chatpreview').onclick = () => { if (chatBtn) chatBtn.click(); };
+    window.__gifosChat = {
+      note: function (o) {
+        const msg = {
+          id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+          by: String((o && o.by) || 'Someone').slice(0, 40),
+          byId: 'qa-peer',
+          at: (o && typeof o.at === 'number' && o.at > 0) ? o.at : Date.now(),
+          text: String((o && o.text) || '').slice(0, 2000),
+        };
+        if (!takeChat(msg)) return unread;
+        renderChat();
+        countClosedChat(msg);
+        return unread;
+      },
+      // A data-channel frame as it arrives from that peer's channel.
+      frame: function (fromId, m) { onDc({ id: String(fromId) }, null, m); },
+      // A reaction as a peer's frame would land it.
+      react: function (o) {
+        const want = String((o && o.text) || '');
+        const line = Array.from(chat.values()).reverse().find((m) => String(m.text || '').indexOf(want) >= 0);
+        if (!line || !takeReact(line.id, o && o.e, String((o && o.byId) || 'qa-peer'), !(o && o.on === false))) return false;
+        renderChat();
+        return true;
+      },
+      pin: function (o) {
+        const f = {
+          id: 'qa' + Date.now().toString(36),
+          name: String((o && o.name) || 'file').slice(0, 120),
+          size: 24000,
+          mime: 'application/pdf',
+          by: String((o && o.by) || 'Someone').slice(0, 40),
+          byId: 'qa-peer',
+          at: Date.now(),
+          bytes: new Uint8Array([1]),
+        };
+        if (o && o.locked && !roomPw) roomPw = 'qa';
+        files.set(f.id, f);
+        renderFiles();
+        return f.id;
+      },
+    };
 
     // ---- peer relay: a mutual friend forwards media between blocked pairs ----
     // When B and C can't reach each other but both reach A, B asks A (the
@@ -20070,7 +21535,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         stageBtn.setAttribute('aria-label', on ? 'Step off the stage' : 'Step on the stage');
         stageBtn.title = on ? 'Step off the stage. The room stops seeing you.' : 'Step onto the stage. The room sees and hears you.';
       } else if (!dockedNow) {
-        stageBtn.textContent = on ? 'Step down' : 'Stage';
+        stageBtn.textContent = phoneLayout() ? (on ? 'Step off stage' : 'Step on stage') : (on ? 'Step down' : 'Stage');
       }
       stageBtn.style.display = (!hasAdminRoom() || amAdmin || hostHere || (modOf(myId).app && modOf(myId).app.on) || myStatus.stg) ? '' : 'none';
       if (typeof paintStagePlate === 'function') paintStagePlate();
@@ -20735,6 +22200,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // repaint locally and go out to peers. setAvatar/setName notify; this does not write back.
     if (GifOS.store.onIdentity) GifOS.store.onIdentity(() => {
       try { paintMyAvatarPreview(); } catch (e) {}
+      try { paintLobbyAppear(); } catch (e) {}
       const nc = document.getElementById('set-name-cur'); if (nc) nc.textContent = myName();
       try { refreshAllTiles(); } catch (e) {}
       try { if (myId) { broadcastStatus(); pushLeaf(); } } catch (e) {}
@@ -21206,12 +22672,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return true;
     }
     let ccShow = false;
+    try { ccShow = localStorage.getItem('gifos_cc_view') === '1'; } catch (e) {} // this screen's own choice (qa-meet-mobile)
     function hideCaptions() {
       const nodes = document.querySelectorAll('.tile .cap.show');
       for (let i = 0; i < nodes.length; i++) nodes[i].classList.remove('show');
     }
     function showCaption(byId, text) {
       if (!ccShow) return;
+      const bar = document.getElementById('livecap');
+      if (bar) {
+        let name = '';
+        try {
+          if (byId === myId) name = myName();
+          else { const p = peers.get(byId); name = (p && p.name) || ''; }
+        } catch (e) {}
+        bar.textContent = (name ? name + '. ' : '') + String(text || '');
+        bar.classList.add('show');
+        bar.scrollTop = 0;
+        clearTimeout(bar._hide);
+        bar._hide = setTimeout(() => bar.classList.remove('show'), 6000);
+      }
       const t = byId === myId ? meTile : peers.get(byId);
       if (!t || !t.cap) return;
       t.cap.textContent = text;
@@ -21227,7 +22707,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const lines = trBlocks();
       const html = lines.length
         ? lines.map((l) => '<div class="trline"><b>' + (typeof avatarChip === 'function' ? (avatarChip(l.byId) || '') : '') + esc(l.by) + '</b>' + esc(l.text) + (l.scribeBy ? ' <small style="color:var(--muted,#8888aa)">✍ ' + esc(l.scribeBy) + '</small>' : '') + '</div>').join('')
-        : '<small style="color:#667">' + esc(uiText('trEmpty', 'This meeting is written down. Lines appear here under each name. Anyone here can read or download them.')) + '</small>';
+        : '<small data-t="trEmpty" style="color:#667">' + esc(uiText('trEmpty', 'This meeting is being written down. Lines gather here under each speaker\'s name. Anyone here can open this and download it.')) + '</small>';
       paintLog(log, html);
     }
     // CAPTIONS FOLLOW THE EAR (2026-10-03). A caption line was a room-wide
@@ -21515,9 +22995,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return 'base';
     }
     function wspChipLabel() {
-      if (wspPaused) return 'Transcription paused';
-      if (wspQ.behind) return 'Transcription behind, skipping old audio';
-      return 'transcribing';
+      if (wspPaused) return 'Captions paused';
+      if (wspQ.behind) return 'Captions behind, skipping old audio';
+      return 'Captions';
     }
     // Real utterances are stamped Date.now() (~1e12). A unit lift's placeholder
     // (at: 1234) is not wall-clock and must not be treated as half an hour old.
@@ -21539,7 +23019,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           wspQ.items.splice(i, 1);
           wspQ.dropped++;
           if (typeof wspMarkBehind === 'function') wspMarkBehind();
-          setStatus('Transcription behind, skipping old audio', 8000);
+          setStatus('Captions behind, skipping old audio', 8000);
         }
       }
       const cap = WSP_BACKLOG + 2 * Math.max(0, wspCaps.size - 1);
@@ -21549,7 +23029,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           wspQ.items.splice(i, 1);
           wspQ.dropped++;
           if (typeof wspMarkBehind === 'function') wspMarkBehind();
-          setStatus('Transcription behind, skipping old audio', 8000);
+          setStatus('Captions behind, skipping old audio', 8000);
         }
       }
       const job = { id: w.id, chunks, at, rate: rate || w.rate, keep: !!keep, stage: !!w.stageSid };
@@ -21591,7 +23071,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const hasSr = hasWindow && (window.SpeechRecognition || window.webkitSpeechRecognition);
       try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
       try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
-      if (hasWindow && !hasSr) { setStatus('Transcription paused', 10000); return; }
+      if (hasWindow && !hasSr) { setStatus('Captions paused', 10000); return; }
       try { syncSpeech(); } catch (e) {}
       setStatus('Whisper captions stalled — browser captions are on.', 10000);
     }
@@ -21702,7 +23182,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         if (typeof wspMarkBehind === 'function') wspMarkBehind();
         else wspQ.behind = true;
-        setStatus('Transcription behind, skipping old audio', 8000);
+        setStatus('Captions behind, skipping old audio', 8000);
       }, softMs);
       let hardTimer = setTimeout(() => {
         hardTimer = null;
@@ -21749,7 +23229,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function scribeOn() { return (!!myStatus.scribe || (!!myStatus.cc && !ccSourceWritesMe())) && ccEngine() === 'whisper' && whisperReady(); }
     function wspSync() {
       const want = new Set();
-      if (!wspPaused && !myStatus.muted && ccEngine() === 'whisper' && whisperReady() && (!ccSourceId || !ccSourceWritesMe())) want.add('me');
+      if (!wspPaused && (myStatus.cc || ownVoiceWanted()) && ccEngine() === 'whisper' && whisperReady() && (!ccSourceId || !ccSourceWritesMe()) && !myStatus.muted) want.add('me');
       if (!wspPaused && scribeOn()) {
         const stagers = (typeof stageIds === 'function') ? stageIds() : [];
         const stageSet = new Set(stagers);
@@ -22077,13 +23557,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // captioning device past it. Tapping CC on and off again opts out until
     // the section's captions stop.
     var ccFillOptOut = false, ccFillSaid = false, ccFillOn = false;
-    function ccFilling() { return !myStatus.cc && !ccFillOptOut && !speechGaveUp && ccOthers > 0; }
+    function ccFilling() { return false; } // a peer's captions do not start or stop this browser
     function ccvPublish() {
       const ids = new Set();
-      if (myStatus.cc || myStatus.scribe || ccFilling()) {
+      if (myStatus.cc || ccFilling() || ownVoiceWanted()) {
         for (const id of ccMix.ins.keys()) ids.add(id === 'me' ? myId : id);
         for (const id of wspCaps.keys()) ids.add(id === 'me' ? myId : id);
         if (speech && !speech.input && !myStatus.muted) ids.add(myId);
+        if (ownVoiceWanted() && typeof myId !== 'undefined' && myId) ids.add(myId);
       }
       if (!myStatus.muted && (wspCaps.has('me') || (speech && !speech.input))) ids.add(myId);
       const next = Array.from(ids).filter(Boolean).sort();
@@ -22308,11 +23789,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof myStatus !== 'undefined' && myStatus && !wspPaused) myStatus.ccst = 'paused';
       try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
       try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
-      try { setStatus('Transcription paused'); } catch (e) {}
+      try { setStatus('Captions paused'); } catch (e) {}
     }
-    function syncSpeech() { // own voice is written whenever this browser is unmuted; a scribe still writes the room
+    // Each browser writes its own voice whenever it is unmuted. CC does not
+    // start or stop that. A chosen scribe who already hears me is the exception.
+    function ownVoiceWanted() {
+      if (!myStatus || myStatus.muted) return false;
+      try { if (typeof ccSourceWritesMe === 'function' && ccSourceWritesMe()) return false; } catch (e) {}
+      return true;
+    }
+    var ownVoiceArmed = false;
+    function syncSpeech() { // own voice is written while I am unmuted; CC only shows the lines here
+      ownVoiceArmed = ownVoiceWanted();
       paintWspChip(); // the way back shows the moment Whisper is chosen; the 250 ms tick keeps it in step
-      const mine = !myStatus.muted;
+      const mine = !myStatus.muted && (myStatus.cc || ownVoiceWanted());
       const hearRoom = !!(myStatus.cc || myStatus.scribe);
       ccSrcDirect = ccSourceWritesMe();
       if (ccSrcDirect) { // the chosen scribe hears me directly: no engine of my own
@@ -22321,7 +23811,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         wspStop('me'); wspSync();
         return;
       }
-      if ((mine || hearRoom) && ccEngine() === 'whisper' && !wspPaused && whisperReady()) {
+      if ((myStatus.cc || ownVoiceWanted()) && ccEngine() === 'whisper' && !wspPaused && whisperReady()) {
         // Whisper cuts each voice on its own capture (wspSync): mine while
         // unmuted, and every voice I hear first-hand when I am the scribe.
         if (!mine || wspCaps.has('me') || startWhisper()) {
@@ -22338,8 +23828,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       wspStop('me'); wspSync();
       const filling = ccFilling();
       ccFillOn = filling;
-      if (!mine && !hearRoom && !filling) { if (speechRunning()) stopSpeech(); ccvPublish(); return; }
-      if (filling && !ccFillSaid) { ccFillSaid = true; setStatus('Captions are on in this meeting — this device also writes down the voices only it hears.', 8000); }
+      if (!myStatus.cc && !filling && !ownVoiceWanted()) { if (speechRunning()) stopSpeech(); ccvPublish(); return; }
+      if (filling && !ccFillSaid) { ccFillSaid = true; setStatus('Captions are on in this meeting — this device also writes down the voices only it hears. Tap CC twice to opt out.', 8000); }
       if (typeof browserCaptionsMissing === 'function' && browserCaptionsMissing()) {
         if (speechRunning()) stopSpeech();
         if (mine || hearRoom || filling) noteNoBrowserSpeech();
@@ -22361,29 +23851,52 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!meToo && speechRunning()) stopSpeech();
       ccvPublish();
     }
-    function paintCcButtons() {
+    // CC only shows or hides captions on this screen. The More button, the dock
+    // button and the phone's call-state button are one switch.
+    function paintCcView() {
       const on = !!ccShow;
-      const ids = ['ccbtn', 'ccdock'];
-      for (let i = 0; i < ids.length; i++) {
-        const b = document.getElementById(ids[i]);
-        if (!b) continue;
-        b.classList.toggle('on', on);
-        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      const ccBtn = document.getElementById('ccbtn');
+      const ccDock = document.getElementById('ccdock');
+      const cc = document.getElementById('call-cc');
+      if (ccBtn) {
+        ccBtn.classList.toggle('on', on);
+        ccBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+      if (ccDock) {
+        ccDock.classList.toggle('on', on);
+        ccDock.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+      if (cc) {
+        cc.classList.toggle('on', on);
+        cc.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+      if (!on) {
+        const bar = document.getElementById('livecap');
+        if (bar) bar.classList.remove('show');
+        const caps = document.querySelectorAll('.tile .cap.show');
+        for (let i = 0; i < caps.length; i++) caps[i].classList.remove('show');
       }
     }
-    function toggleCaptions() {
+    function paintCcButtons() { paintCcView(); }
+    document.getElementById('ccbtn').onclick = () => {
       ccShow = !ccShow;
       ccByOrder = false;
       if (!ccShow && typeof ccAllInfo === 'function' && ccAllInfo()) ccOptOutAt = Date.now();
-      paintCcButtons();
-      if (!ccShow) hideCaptions();
-    }
-    document.getElementById('ccbtn').onclick = toggleCaptions;
+      try { localStorage.setItem('gifos_cc_view', ccShow ? '1' : '0'); } catch (e) {}
+      paintCcView();
+      if (!ccShow) return;
+      const lines = trBlocks();
+      const last = lines.length ? lines[lines.length - 1] : null;
+      if (last) showCaption(last.byId, last.text);
+    };
     const ccDockBtn = document.getElementById('ccdock');
-    if (ccDockBtn) ccDockBtn.onclick = toggleCaptions;
-    // CAPTIONS FOR EVERYONE. Transcription is already on. An admin's room-wide
-    // 'cc' order only shows the lines on each screen. Tapping CC off afterwards
-    // hides them on that screen until the admin issues a new order.
+    if (ccDockBtn) ccDockBtn.onclick = () => document.getElementById('ccbtn').click();
+    // CAPTIONS FOR EVERYONE. Each person had to find CC alone, and one never
+    // did. An admin's room-wide 'cc' order (pseudo-target '*', the same signed
+    // table as the chat switch) turns captions on for every unmuted device at
+    // once. It is a request, not a hammer: tapping CC off afterwards opts that
+    // device out until the admin issues a NEW order; turning the order off
+    // stops only the devices the order started.
     var ccOptOutAt = 0, ccByOrder = false;
     function ccAllInfo() { const m = modTable['*'] && modTable['*'].cc; return (m && m.on) ? m : null; }
     function applyCcAll() {
@@ -22401,7 +23914,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     (function wireCcAll() {
       const btn = document.getElementById('ccall'); if (!btn) return;
-      btn.onclick = () => { setMod('*', 'cc', !ccAllInfo()); applyCcAll(); };
+      btn.onclick = () => { setStatus('Captions are only on your screen. The transcript is already on for everyone.'); };
     })();
     function setPanelView(showTr) {
       const w = document.getElementById('trwrap'), c = document.getElementById('chatlog');
@@ -22409,6 +23922,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       c.style.display = showTr ? 'none' : '';
       document.getElementById('paneltitle').innerHTML = showTr ? (AI_SPARK_SVG + 'Transcript') : (BROADCAST ? 'Service chat' : 'Small group chat');
       document.getElementById('trtab').innerHTML = showTr ? 'Chat' : (AI_SPARK_SVG + 'Transcript');
+      const find = document.getElementById('chatfind');
+      if (find) find.hidden = !!showTr;
       if (showTr) renderTranscript(); else renderChat();
     }
     document.getElementById('trtab').onclick = () => {
@@ -22426,6 +23941,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const btn = document.getElementById('trbtn');
       if (btn) btn.style.display = '';
     }
+    refreshTrBtn();
     // Every meeting download (transcript, recording) is filed as
     // <YYYY_MM_DD>_<Room>_gifos_<Kind>.<ext>: the LOCAL date the meeting (or
     // recording) started, then the room's name. Only the name is passed in —
@@ -22520,8 +24036,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function ccIndicatorOn(text) {
       text = String(text || '');
-      return text.indexOf('transcribing') >= 0 || text.indexOf('writing everyone down') >= 0
-        || text.indexOf('Transcription paused') >= 0 || text.indexOf('Transcription behind') >= 0;
+      return text.indexOf('Captions') >= 0 || text.indexOf('transcribing') >= 0
+        || text.indexOf('writing everyone down') >= 0
+        || text.indexOf('Transcription paused') >= 0 || text.indexOf('Captions paused') >= 0
+        || text.indexOf('Transcription behind') >= 0 || text.indexOf('Captions behind') >= 0;
     }
     function recordingIndicatorsOk() {
       try { updateTile('me'); } catch (e) {}
@@ -22533,7 +24051,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const text = chips ? (chips.textContent || '') : '';
       if (text.indexOf('recording this meeting') < 0) return false;
       if (myStatus.bot && text.indexOf('bot') < 0) return false;
-      if ((myStatus.cc || myStatus.scribe) && !ccIndicatorOn(text)) return false;
       return true;
     }
     async function recOpenSink(name) {
@@ -23083,9 +24600,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const opt = (val, name, ttl, sub) => '<label class="rec-opt"><input type="radio" name="' + name + '" value="' + val + '"' + (val === scopeDefault ? ' checked' : '') + '> <span><b>' + ttl + '</b><small>' + sub + '</small></span></label>';
       const qDef = recDefaultQuality(IS_MOBILE);
       const qRadio = (val, label) => '<label class="rec-opt inline"><input type="radio" name="rec-q" value="' + val + '"' + (qDef === val ? ' checked' : '') + '> ' + label + '</label>';
-      bg.innerHTML = '<div class="name-box" style="max-width:470px;text-align:left">' +
+      const scopeLine = (v) => v === 'stage' ? 'This records the stage.'
+        : v === 'row' ? 'This records you and the people with you.'
+        : v === 'app' ? 'This records the shared app as well.'
+        : 'This records everyone you can see.';
+      bg.innerHTML = '<div class="name-box rec-box">' +
         '<h3>Record this ' + (BROADCAST ? 'service' : 'small group') + '</h3>' +
-        '<p>Saved on this device only. Everyone here will see that this ' + (BROADCAST ? 'service' : 'small group') + ' is being recorded.</p>' +
+        '<p class="rec-note">Saved on this device only. Everyone here will see that this ' + (BROADCAST ? 'service' : 'small group') + ' is being recorded.</p>' +
+        '<p id="rec-now">' + scopeLine(scopeDefault) + '</p>' +
+        '<div class="rec-scroll">' +
         '<div class="rec-sec"><b>What to capture</b>' +
         opt('stage', 'rec-scope', 'The stage', stageSub) +
         opt('row', 'rec-scope', 'Stage + my row', 'The stage plus the people right around you.') +
@@ -23096,13 +24619,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         qRadio('low', 'Low · 720p') +
         qRadio('std', 'Standard · 1080p') +
         qRadio('high', 'High · 1080p') +
-        (IS_MOBILE ? '<p style="color:#889;font-size:.8rem;margin:.2rem 0 0">On a phone, 720p is the default. 1080p is drawn on the processor and fills memory fast.</p>' : '') +
+        (IS_MOBILE ? '<p>On a phone, 720p is the default. 1080p is drawn on the processor and fills memory fast.</p>' : '') +
         '</div>' +
         '<label class="rec-opt inline" style="margin-top:.3rem"><input type="checkbox" id="rec-matchmix" checked> Match my sound mix (record what I hear)</label>' +
-        '<p id="rec-err" hidden style="color:#ff8a8a;font-size:.9rem;margin:.6rem 0 0"></p>' +
-        '<div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.9rem">' +
-        '<button id="ro-cancel" type="button" class="appear-secondary">Cancel</button><button id="ro-start" type="button" class="appear-primary">Start recording</button></div></div>';
+        '</div>' +
+        '<p id="rec-err" hidden></p>' +
+        '<div class="rec-actions">' +
+        '<button id="ro-start" class="appear-primary" type="button">Start recording</button>' +
+        '<button id="ro-cancel" class="appear-secondary" type="button">Cancel</button></div></div>';
       document.body.appendChild(bg);
+      const paintScope = () => {
+        const picked = bg.querySelector('input[name=rec-scope]:checked');
+        const line = bg.querySelector('#rec-now');
+        if (line && picked) line.textContent = scopeLine(picked.value);
+      };
+      bg.querySelectorAll('input[name=rec-scope]').forEach((el) => { el.addEventListener('change', paintScope); });
       const close = openModal(bg, () => { if (bg.parentNode) bg.remove(); });
       bg.querySelector('#ro-cancel').onclick = () => close();
       bg.querySelector('#ro-start').onclick = async () => {
@@ -23154,9 +24685,51 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     };
     const airRecBtn = document.getElementById('airrec');
     if (airRecBtn) airRecBtn.onclick = () => recBtn.click();
+    let callStateBox = '';
+    function paintCallState() {
+      const row = document.getElementById('callstate');
+      const rec = document.getElementById('call-rec');
+      const cc = document.getElementById('call-cc');
+      const ccBtn = document.getElementById('ccbtn');
+      const lob = document.getElementById('lobby');
+      if (!row || !rec || !cc) return;
+      const inCall = !(lob && lob.classList.contains('show'));
+      const away = document.body.classList.contains('chrome-away');
+      row.hidden = !inCall;
+      const stateH = (!away && inCall && row.offsetHeight) ? row.offsetHeight : 0;
+      document.documentElement.style.setProperty('--stateh', stateH + 'px');
+      if (!inCall) return;
+      const recOn = recBtn.classList.contains('on') || (recBtn.textContent || '').indexOf('Stop') === 0;
+      rec.classList.toggle('on', recOn);
+      rec.setAttribute('aria-pressed', recOn ? 'true' : 'false');
+      rec.textContent = recOn ? 'Recording' : 'Record';
+      if (typeof paintCcView === 'function') paintCcView();
+      else if (ccBtn) {
+        const ccOn = !!ccShow;
+        ccBtn.classList.toggle('on', ccOn);
+        cc.setAttribute('aria-pressed', ccOn ? 'true' : 'false');
+      }
+      try { if (typeof refreshTrBtn === 'function') refreshTrBtn(); } catch (e) {}
+      const key = row.offsetHeight + ':' + (row.hidden ? '0' : '1');
+      if (key !== callStateBox) {
+        callStateBox = key;
+        try { layout(); } catch (e) {}
+      }
+    }
+    document.getElementById('call-rec').onclick = () => { try { recBtn.click(); } catch (e) {} };
+    document.getElementById('call-cc').onclick = () => { const b = document.getElementById('ccbtn'); if (b) b.click(); };
+    const callStateWatch = new MutationObserver(() => { try { paintCallState(); } catch (e) {} });
+    callStateWatch.observe(recBtn, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true, characterData: true });
+    const ccWatch = document.getElementById('ccbtn');
+    if (ccWatch) callStateWatch.observe(ccWatch, { attributes: true, attributeFilter: ['class'] });
+    const lobWatch = document.getElementById('lobby');
+    if (lobWatch) callStateWatch.observe(lobWatch, { attributes: true, attributeFilter: ['class'] });
+    paintCallState();
 
     // ---- controls: mic + camera (traffic-light icons), blur (3-way slider) -----
     const micBtn = document.getElementById('mic');
+    const unmuteBtn = document.getElementById('unmute');
+    const showcamBtn = document.getElementById('showcam');
     const camBtn = document.getElementById('cam');
     const blurSeg = document.getElementById('blurseg');
     const blurSegs = Array.from(blurSeg.querySelectorAll('.seg'));
@@ -23305,9 +24878,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // did before — the fallback is the old bug, not a broken layout.
       // The dock sits at the bottom, so a panel that used to clear a top bar
       // starts at the top of the page instead.
+      let lastDock = -1;
+      let dockShown = -1;
+      function safeBottomPx() {
+        let probe = document.getElementById('gifos-safe-b');
+        if (!probe) {
+          probe = document.createElement('div');
+          probe.id = 'gifos-safe-b';
+          probe.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);pointer-events:none;visibility:hidden';
+          document.body.appendChild(probe);
+        }
+        return probe.offsetHeight || 0;
+      }
       const setBarH = () => {
         try {
           document.documentElement.style.setProperty('--barh', '0px');
+          const away = document.body.classList.contains('chrome-away');
+          let dock;
+          if (away) {
+            dock = safeBottomPx();
+          } else {
+            const r = bar.getBoundingClientRect();
+            const measured = Math.max(0, Math.round(window.innerHeight - r.top));
+            // While the dock slides back, the rect is short. Keep the last full height.
+            if (dockShown < 0 || measured >= dockShown - 2) dockShown = measured;
+            dock = dockShown;
+          }
+          document.documentElement.style.setProperty('--dockh', dock + 'px');
+          if (dock !== lastDock) {
+            lastDock = dock;
+            try { layout(); } catch (e2) {}
+          }
           const panel = document.getElementById('chatpanel');
           const br = bar.getBoundingClientRect();
           let clear = 0;
@@ -23319,13 +24920,130 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           document.documentElement.style.setProperty('--dock-clear', clear + 'px');
         } catch (e) {}
       };
+      // iOS keeps the layout viewport tall and overlays the keyboard.
+      // visualViewport is the part still visible. --kb is that covered band.
+      const syncKb = () => {
+        try {
+          const vv = window.visualViewport;
+          const kb = vv ? Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)) : 0;
+          document.documentElement.style.setProperty('--kb', kb + 'px');
+          document.documentElement.classList.toggle('kb-up', kb > 0);
+        } catch (e) {}
+      };
+      window.__gifosKb = { sync: syncKb };
       if (window.ResizeObserver) { try { new ResizeObserver(setBarH).observe(bar); } catch (e) {} }
+      window.addEventListener('resize', () => { setBarH(); syncKb(); try { paintCallState(); } catch (e) {} });
+      if (window.visualViewport) {
+        visualViewport.addEventListener('resize', () => { setBarH(); syncKb(); });
+        visualViewport.addEventListener('scroll', syncKb);
+      }
       const chatPanelEl = document.getElementById('chatpanel');
       if (chatPanelEl && window.MutationObserver) {
         try { new MutationObserver(setBarH).observe(chatPanelEl, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
       }
-      window.addEventListener('resize', setBarH);
       setBarH();
+      syncKb();
+
+      // FaceTime-style quiet. The power idle (IDLE_MS) is the camera, not the
+      // controls. This one only tucks Live, Record, Captions, and the dock on
+      // a phone, and a tap brings them back. More, chat, a tray, a waiting
+      // list, or a dialog holds them up.
+      const CHROME_IDLE_MS = 6000;
+      let chromeTimer = 0;
+      let swallowClick = false;
+      function phoneCall() {
+        return window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
+      }
+      function callOpen() {
+        const lob = document.getElementById('lobby');
+        return !(lob && lob.classList.contains('show'));
+      }
+      function chromeHeld() {
+        if (!callOpen() || !phoneCall()) return true;
+        if (bar && !bar.classList.contains('collapsed')) return true;
+        const chat = document.getElementById('chatpanel');
+        if (chat && chat.classList.contains('open')) return true;
+        const tray = document.getElementById('reacttray');
+        if (tray && !tray.hasAttribute('hidden')) return true;
+        const wait = document.getElementById('waitlist');
+        if (wait && !wait.hasAttribute('hidden') && wait.getClientRects().length) return true;
+        const modals = document.querySelectorAll('.name-modal');
+        for (let i = 0; i < modals.length; i++) {
+          if (modals[i].style.display === 'none') continue;
+          const cs = getComputedStyle(modals[i]);
+          if (cs.display !== 'none' && cs.visibility !== 'hidden') return true;
+        }
+        return false;
+      }
+      function showChrome() {
+        const was = document.body.classList.contains('chrome-away');
+        document.body.classList.remove('chrome-away');
+        if (was) {
+          try { paintCallState(); } catch (e) {}
+          setBarH();
+        }
+        armChrome();
+      }
+      function hideChrome() {
+        if (chromeTimer) clearTimeout(chromeTimer);
+        chromeTimer = 0;
+        if (chromeHeld() || document.body.classList.contains('chrome-away')) return;
+        document.body.classList.add('chrome-away');
+        try { paintCallState(); } catch (e) {}
+        setBarH();
+      }
+      function armChrome() {
+        if (chromeTimer) clearTimeout(chromeTimer);
+        chromeTimer = 0;
+        if (chromeHeld() || document.body.classList.contains('chrome-away')) return;
+        chromeTimer = setTimeout(hideChrome, CHROME_IDLE_MS);
+      }
+      function syncChrome() {
+        if (chromeHeld()) {
+          if (chromeTimer) clearTimeout(chromeTimer);
+          chromeTimer = 0;
+          if (document.body.classList.contains('chrome-away')) showChrome();
+          return;
+        }
+        if (!document.body.classList.contains('chrome-away')) armChrome();
+      }
+      document.addEventListener('pointerdown', (e) => {
+        if (!callOpen() || !phoneCall()) return;
+        if (!document.body.classList.contains('chrome-away')) return;
+        const t = e.target;
+        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist')) {
+          showChrome();
+          return;
+        }
+        swallowClick = true;
+        showChrome();
+        try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
+      }, true);
+      document.addEventListener('click', (e) => {
+        if (!swallowClick) return;
+        swallowClick = false;
+        try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
+      }, true);
+      document.addEventListener('click', () => { try { syncChrome(); } catch (e) {} });
+      document.addEventListener('keydown', () => {
+        if (document.body.classList.contains('chrome-away')) showChrome();
+        else syncChrome();
+      });
+      bar.addEventListener('transitionend', (e) => {
+        if (e.propertyName !== 'transform' && e.propertyName !== 'opacity') return;
+        if (!document.body.classList.contains('chrome-away')) setBarH();
+      });
+      const watchChrome = (el, filter) => {
+        if (!el || !window.MutationObserver) return;
+        new MutationObserver(() => { try { syncChrome(); } catch (e) {} }).observe(el, { attributes: true, attributeFilter: filter });
+      };
+      watchChrome(document.getElementById('lobby'), ['class']);
+      watchChrome(bar, ['class']);
+      watchChrome(document.getElementById('chatpanel'), ['class']);
+      watchChrome(document.getElementById('reacttray'), ['hidden']);
+      watchChrome(document.getElementById('waitlist'), ['hidden']);
+      window.__gifosChrome = { ms: CHROME_IDLE_MS, idle: hideChrome, show: showChrome, safeBottom: safeBottomPx };
+      syncChrome();
     })();
 
     (function () {
@@ -23450,19 +25168,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The filled segment follows the blur that is actually on the feed
       // (forced blur, room password, consent). The local wish is the fallback
       // when this function is lifted without blurLevelFor in scope.
-      let lvl = blurLevel(myStatus.blur);
-      try {
-        // A source-lift stubs a missing blurLevelFor as a function that
-        // returns nothing. Only a numeric answer is the real blur rule.
-        if (typeof blurLevelFor === 'function') {
-          const eff = blurLevelFor('me');
-          if (typeof eff === 'number') lvl = blurLevel(eff);
-        }
-      } catch (e) {}
+      // The filled segment is the choice this person made (qa-meet-mobile). The
+      // feed can still be Min: the camera is off, or someone else is not ready.
+      // Painting that feed level left Min selected while the header said
+      // "No blur picked". The header says why clear video is not on yet.
+      const lvl = blurLevel(myStatus.blur);
       for (const seg of blurSegs) {
         const segOn = +seg.dataset.blur === lvl;
+        seg.classList.remove('wait');
         seg.classList.toggle('sel', segOn);
         seg.setAttribute('aria-pressed', segOn ? 'true' : 'false');
+        if (seg.title === 'Chosen. Clear video shows when everyone here is ready.') seg.title = '';
       }
       paintShare();
       try { paintOnAir(); } catch (e) {}
@@ -23725,6 +25441,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // attached and emitting nothing (kickMainVideo), audio side.
       if (track.enabled) kickStageMic(track);
     };
+    if (unmuteBtn) unmuteBtn.onclick = () => micBtn.onclick();
     function kickStageMic(track) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (!track || track.kind !== 'audio' || track.readyState !== 'live' || !track.enabled) return;
@@ -25738,28 +27455,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           } catch (e) {}
           return { ok: true, id: m.id };
         },
-        transcribe(msg) {
-          const on = !!(msg && msg.on);
-          myStatus.cc = on;
-          myStatus.scribe = on;
-          if (on) {
-            wspPaused = false;
-            wspQ.stalls = 0;
-            wspQ.behind = false;
-            delete myStatus.ccst;
-          } else if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst;
-          try { if (on) localStorage.setItem('gifos_cc_engine', 'whisper'); else localStorage.removeItem('gifos_cc_engine'); } catch (e) {}
-          try { updateTile('me'); broadcastStatus(); syncSpeech(); } catch (e) {}
-          const chips = meTile && meTile.tile && meTile.tile.querySelector('.chips');
-          const text = chips ? chips.textContent || '' : '';
-          if (on && !ccIndicatorOn(text)) {
-            myStatus.cc = false;
-            myStatus.scribe = false;
-            try { syncSpeech(); updateTile('me'); broadcastStatus(); } catch (e) {}
-            return { ok: false, error: 'Transcribing stays off until its indicator is on screen.' };
-          }
-          const caption = (myStatus.cc || myStatus.scribe) ? ccLiveLabel(myStatus) : '';
-          return { ok: true, cc: !!myStatus.cc, scribe: !!myStatus.scribe, caption: caption };
+        transcribe() {
+          // Transcription is already on for this meeting. This does not light
+          // a tile, and it does not change anyone else's captions.
+          try { syncSpeech(); } catch (e) {}
+          return { ok: true, cc: false, scribe: false, always: true, view: !!ccShow };
         },
         sendXfer(msg) {
           const x = (msg && msg.xfer) || {};
@@ -26079,7 +27779,35 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { updateStatus(); } catch (e) {}
         return participantCount();
       },
+      // Real peer records, the same ones the grid and the header count.
+      // A test or a QA page uses this instead of cloning tiles the room
+      // does not know about.
+      presentPeers: (people) => {
+        const list = Array.isArray(people) ? people : [];
+        for (const person of list) {
+          const id = String(person && person.id || '').slice(0, 80);
+          const name = String(person && person.name || 'Someone').slice(0, 40);
+          if (!id || id === myId || id === 'me') continue;
+          rosterNames[id] = name;
+          if (!rosterIds.includes(id)) rosterIds.push(id);
+          let p = peers.get(id);
+          if (!p) p = makePeer(id, name);
+          if (!p) continue;
+          p.name = name;
+          p.lastHeard = Date.now();
+          p.meshRxAt = Date.now();
+          if (p.label) p.label.textContent = name;
+          if (p.avatar) {
+            const letter = nameInitial(name);
+            try { if (typeof setTileLetter === 'function') setTileLetter(p.avatar, letter); else p.avatar.textContent = letter; } catch (e) { p.avatar.textContent = letter; }
+          }
+        }
+        try { layout(); } catch (e) {}
+        try { updateStatus(); } catch (e) {}
+        return { n: headerCount(), peers: peers.size };
+      },
       bot: () => !!myStatus.bot,
+      ccOn: () => !!myStatus.cc,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
       statusPeekForTest: (id) => { const st = statusOf.get(id); return st ? { stg: st.stg || 0, ageMs: Date.now() - (st.at || 0), rxAgeMs: Date.now() - (st.rx || 0) } : null; },
@@ -27057,6 +28785,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       },
       whisperForTest: () => ({ engine: ccEngine(), live: !!wsp, ready: whisperReady(), queue: wspQ.items.length, sent: wspQ.sent, dropped: wspQ.dropped, rate: wsp ? wsp.rate : 0, captures: Array.from(wspCaps.keys()), scribe: scribeOn(), source: ccSourceId, inFlight: !!wspQ.busy, behind: !!wspQ.behind, paused: !!wspPaused, lastLatencyMs: wspQ.lastLatencyMs || 0, model: wspModel(), scribes: ccScribes().map((x) => x.id) }),
       whisperFeedForTest: (f32, rate, forId) => { const w = wspCaps.get(forId || 'me'); if (!w) return false; wspEnqueue(w, [Float32Array.from(f32)], Date.now(), rate || 16000, true); return true; },
+      ccViewOn: () => !!ccShow,
+      ownVoice: () => ({ wanted: !!ownVoiceArmed, cc: !!myStatus.cc, muted: !!myStatus.muted }),
       scribeForTest: (on) => { myStatus.scribe = !!on; broadcastStatus(); syncSpeech(); },
       ccSourceForTest: (id) => { ccSourceId = id || null; syncSpeech(); scribeWatch(); },
       installWhisperForTest: () => installWhisper(true),
@@ -27374,7 +29104,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // departure verdict to miss. Nothing in a 4-browser room can age an entry
       // past the holdover on demand, so hand the sweep exactly the shape it
       // exists for, plus a FRESH one it must leave alone.
-      _ghostStatus: (id, ageMs) => { const t = Date.now() - (ageMs | 0); statusOf.set(id, { muted: true, camOff: true, blur: 0, at: t, rx: t }); return statusOf.has(id); },
+      _ghostStatus: (id, ageMs, extra) => {
+        const t = Date.now() - (ageMs | 0);
+        const st = { muted: true, camOff: true, blur: 0, at: t, rx: t };
+        if (extra && typeof extra === 'object') {
+          if (extra.away) st.away = true;
+          if (extra.bot) st.bot = true;
+          if (extra.cc) st.cc = true;
+          if (extra.scribe) st.scribe = true;
+          if (typeof extra.blur === 'number') st.blur = extra.blur;
+          if (extra.camOff === false) st.camOff = false;
+        }
+        statusOf.set(id, st);
+        if (st.bot || st.cc) {
+          try { updateTile(id); } catch (e) {}
+          try { layout(); } catch (e) {}
+          try { if (typeof paintCallState === 'function') paintCallState(); } catch (e) {}
+          try { if (typeof refreshTrBtn === 'function') refreshTrBtn(); } catch (e) {}
+        }
+        return statusOf.has(id);
+      },
       // SCALE FAULT INJECTION (scale audit V2/V3, test/browser/e2e-status-map.js):
       // stuff `statusOf` with N synthetic strangers, exactly as a room-wide
       // status flood at scale would. Nothing else is touched — the point is to

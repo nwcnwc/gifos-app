@@ -1,0 +1,2 @@
+FAIL no full-message sheet
+{"chip":{"text":"No blur picked — turn your camera on to be ready for clear video.","title":"No blur picked — turn your camera on to be ready for clear video.","cut":true,"tag":"SPAN"},"sheet":{"missing":true}}

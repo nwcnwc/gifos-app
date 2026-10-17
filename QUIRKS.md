@@ -242,353 +242,635 @@ A recording card names who is recording, and the bar stays Recording (Q22). Trus
 
 # Desktop Meet UI quirks
 
-Role-play pass on the desktop meeting (`run.html`) at 1280×720, 1920×1080, a 2560×1440 display at 1.5×, and a 900px window, including a live shrink. Same room, four simulated participants (canvas video on Chromium and Firefox; initials on WebKit, which kills the tab if a tile plays `captureStream`). Browsers: Chromium, Firefox, WebKit.
+---
 
-Personas in progress: consultant with a screen share, keyboard-only power user, host of a large room, someone tabbing away on a slow laptop, a non-English locale.
+<!-- release/0.9.23: the phone Meet quirks from cursor/qa-meet-mobile follows. -->
+
+# Meet mobile quirks
+
+Branch `cursor/qa-meet-mobile`, measured against `run.html` on release/0.9.23.
+Playwright Chromium, touch, fake camera/mic. Devices: iPhone SE (320×568 and landscape), iPhone 15, Pixel 7, a 360×740 Android phone, portrait and landscape.
+
+Shots from the first pass live in `qa/mobile/shots/before-*.png`. The probe that produced the numbers is re-runnable with `NODE_PATH=/tmp/qa-pw/node_modules node qa/mobile/audit.js` while `python3 -m http.server 8765` serves the repo. `qa/mobile/audit.js` is the persona walk; the geometry numbers below were confirmed with a second pass over the same page.
+
+Gallery packing, the self-view/stage placement, and the reactions icon are left alone. Other people own those.
 
 ## Fixed
 
-### The dock said Mic, and a second Unmute would duplicate it
-
-- **Who hits it:** someone who joined muted, which is the default, looking for how to speak. Nathan flagged a header Unmute pill on the phone that copies the dock mic.
-- **What you saw:** the dock word was Mic. Desktop had no header pill, so the only control still named the object, not the action.
-- **Repro:** `test/desktop/dock-labels.spec.js` expected Unmute and got Mic. The same test refuses `#unmute` and `#showcam`.
-- **Fix:** while you are muted the dock says Unmute. While you are live it says Mute. German: Ton an / Stumm. Spanish: Activar / Silenciar. The icon stays on the button. There is no header Unmute and no header Camera.
-- **Proof:** the dock and locale tests pass on Chromium, Firefox, and WebKit. At 900px Camera, Unmute, Share screen, CC, Chat, More, and Leave all stay on screen. Screenshots: `test/desktop/shots/unmute-dock-before-1280.png`, `test/desktop/shots/unmute-after-1280-dock.png`, `test/desktop/shots/unmute-live-1280-dock.png`, `test/desktop/shots/unmute-after-900.png`.
+### 1. Hang up is off the screen on a narrow phone
 
-### The gallery view needed the pointer
-
-- **Who hits it:** someone switching between fitting every face and scrolling larger faces, without reaching for the corner button.
-- **What you saw:** Fit sat at the top right with no shortcut. The list had Alt+H and not this.
-- **Repro:** `test/desktop/shortcuts.spec.js` requires `aria-keyshortcuts="Alt+F"` on `#fitbtn`. Before the chord, that attribute was empty.
-- **Fix:** Alt+F switches Fit and Scroll. The same button still does it with the pointer. The list says so, including “Alle zeigen oder scrollen” and “Ver a todos o desplazar”. The gallery geometry is unchanged.
-- **Proof:** the shortcut tests pass on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/view-key-before-1280.png`, `test/desktop/shots/view-key-after-1280.png`, `test/desktop/shots/view-key-scroll-1280.png`.
+iPhone SE portrait and the 360px Android phone. The dock is `flex-wrap: nowrap` with a max width, and the buttons refuse to shrink (`min-width: 56px`, leave `64px`). The bar's scroll width was 366px. On the SE the bar was only 304px wide, so Hang up started at x=310 and ended at x=374, past the 320px edge. On the 360px phone it ended at x=374. The drag grip was 22×48.
 
-### Raising a hand needed the pointer
-
-- **Who hits it:** a keyboard user who wants a hand up without opening More.
-- **What you saw:** Alt+A, Alt+V, Alt+S, Alt+C, and Alt+Q were on the list. Hand was only the button under More.
-- **Repro:** `test/desktop/shortcuts.spec.js` now requires `aria-keyshortcuts="Alt+H"` on `#hand` and a raised hand from that chord while the bar is collapsed.
-- **Fix:** Alt+H raises or lowers your hand. The shortcut list says so, including “Hand heben oder senken” and “Levantar o bajar la mano”. A control inside More still answers its key while the sheet is folded. A button hidden on its own, such as Share for a broadcast viewer, stays quiet.
-- **Proof:** the shortcut tests pass on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/hand-key-before-1280.png`, `test/desktop/shots/hand-key-after-1280.png`, `test/desktop/shots/hand-key-raised-1280.png`.
+Repro: `test/mobile/dock-fits.js`. It failed with `leavebtn off screen (right 374)` and `bargrip is 22x48` on both phones, then passed after the fix: grip and the round controls are 44px, Hang up is 52×52, all inside the viewport. Below 380px the row tightens. The icon artwork is unchanged. iPhone 15 and Pixel 7 stay on the larger row, which already fit.
 
-### Chat took two clicks
-
-- **Who hits it:** anyone who wants the conversation, on a mouse, the way Zoom, Meet, and Teams put Chat on the main bar.
-- **What you saw:** Chat lived under More. The dock had no Chat button, so the panel took two clicks. Alt+C already opened it.
-- **Repro:** `test/desktop/chat-dock.spec.js` — “chat opens from the dock in one click” failed before the move (`#chatbtn` was inside More and had no size while the bar was collapsed).
-- **Fix:** Chat sits on the dock, with the word on the button. One click opens the panel and turns the button blue. Closing it clears that blue. A new message while the panel is shut shows the count on the word, not by replacing the icon. More no longer has a second Chat button.
-- **Proof:** the chat and dock tests pass on Chromium, Firefox, and WebKit, including a 900px window where Camera, Chat, and Leave all stay on screen. Screenshots: `test/desktop/shots/chat-one-before-1280.png`, `test/desktop/shots/chat-one-after-1280.png`, `test/desktop/shots/chat-one-open-1280.png`.
+Before: `qa/mobile/shots/before-grandparent-call.png`. After: `qa/mobile/shots/after-dock-iphone-se.png`, `qa/mobile/shots/after-dock-android-360.png`.
 
-### CC started transcription and hid who was writing it on the tile
-
-- **Who hits it:** anyone who wanted the words of the meeting, and anyone looking at a face that said “transcribing”.
-- **What you saw:** CC was a grey button in More. Turning it on turned the letters pale green, and that person’s tile grew a “transcribing” chip. The transcript stayed hidden until someone did that. Turning CC off stopped the writing.
-- **Repro:** `test/desktop/captions.spec.js` failed before the fix (no `#ccdock`). `node test/unit/whisper-stall.js` still passes, and it now refuses a tile that says “transcribing”.
-- **Fix:** every browser writes down its own voice while it is unmuted. Chat always has Transcript, and Download transcript saves the file. CC, on the dock and in More, only shows or hides the lines on this screen. On, it is a blue button (`#0064c8`) with white letters and `aria-pressed`. A tile does not say who is transcribing. German More says Untertitel. Spanish says Subtítulos.
-- **Proof:** the desktop test passes on Chromium, Firefox, and WebKit. The whisper stall gate passes (32). Screenshots: `test/desktop/shots/cc-before-1280.png`, `test/desktop/shots/cc-chip-before-1280.png`, `test/desktop/shots/cc-dock-on-1280.png`, `test/desktop/shots/cc-chip-after-1280.png`, `test/desktop/shots/cc-transcript-after-1280.png`.
+Fit was 59×32 then. It is 44px now (quirk 8).
 
-### Chat composer sits under the dock, and the privacy line is crushed
-
-- **Who hits it:** anyone opening Chat from a window about 1140px wide or narrower. The consultant’s laptop at a 900px window, and a live resize from 1400 down through 1100.
-- **What you saw:** the message field and the paperclip ran underneath the white control dock, so the start of the field could not be clicked. “private to this meeting…” was squeezed into a ~110px column beside Transcript and Close. The More sheet stayed open on top of the conversation, because the sheet stacks with the dock, above the chat.
-- **Repro:** `test/desktop/chat-dock.spec.js` failed on Chromium before the fix (`smallWide` false at 900; composer overlapped the dock at 1100 while shrinking).
-- **Fix:** the chat panel’s bottom clears the dock only where they share horizontal space (`--dock-clear`, remeasured on resize and when chat opens). The privacy line takes its own row. Opening chat folds the More sheet without changing the saved “keep More open” preference. Close has an accessible name.
-- **Proof:** the same test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/chat-dock-before-900.png`, `test/desktop/shots/chat-dock-after-900.png`.
+### 2. Landscape More sheet hangs off the top and does not scroll
 
-### Dock controls are icon-only
-
-- **Who hits it:** a keyboard user, and an older volunteer, looking at Mic, Camera, More, and Leave.
-- **What you saw:** four circles and a red hang-up. The names lived in `title`, so they appeared only on hover. Reactions stays an icon; that control belongs to another owner.
-- **Repro:** `test/desktop/dock-labels.spec.js` failed on Chromium before the fix (`dockword` missing on `#mic`).
-- **Fix:** Mic, Camera, More, and Leave each show a word inside the button. Opening More changes that word to Hide, including when chat folds the sheet. The buttons grow just enough to hold the word (dock about 482px, still inside a 900px window). The reactions SVG is unchanged.
-- **Proof:** the same test passes on Chromium, Firefox, and WebKit, and the chat-dock tests still pass. Screenshots: `test/desktop/shots/dock-labels-before-1280.png`, `test/desktop/shots/dock-labels-after-1280.png`, `test/desktop/shots/dock-labels-after-900.png`.
+iPhone SE landscape (568×320). The sheet was `bottom: 102px`, about 398px tall, `overflow-y: visible`. Its top was at y=-194. Blur, Who, Float, Invite, Run app, Share screen, and Password were entirely above the screen. Same failure on iPhone 15, Pixel 7, and 360px landscape: Invite sat above the screen.
 
-### No keyboard shortcuts for mute, camera, chat, and leave
-
-- **Who hits it:** a keyboard-only power user running mute, camera, chat, and leave.
-- **What you saw:** those actions were pointer-only. Titles did not list a chord, and there was no shortcut list.
-- **Repro:** `test/desktop/shortcuts.spec.js` failed before the fix (no `aria-keyshortcuts` on `#mic`).
-- **Fix:** Alt+A mic, Alt+V camera, Alt+C chat, Alt+Q the leave confirm. The physical key is used, so a non-US layout still hits them. They do nothing while the caret is in a field, and nothing while a dialog is open. `?` opens a white list at 18px. More also has a Keys button. The dock’s accessible name mentions `?`.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshot: `test/desktop/shots/shortcuts-after-1280.png`. Share, hand, and the gallery view still have no chord.
+Repro: `test/mobile/more-sheet-fits.js`. It failed (`sheet top -194`, `overflow-y visible`, Password and Invite not reachable), then passed. The sheet is capped with `max-height: calc(100dvh - 160px)` and `overflow-y: auto`, so those controls scroll into the screen. Wide landscape uses a taller dock offset, which is why 160px rather than the narrow-phone gap.
 
-### More sheet covers the vote and runs off a short window
-
-- **Who hits it:** someone voting a person onto the stage, and anyone opening More on a short laptop window (480px tall).
-- **What you saw:** after picking “Vote onto stage” the white grid stayed open and covered every face. Clicks passed through, so the targets were invisible. At 480px the sheet started 22px above the window.
-- **Repro:** `test/desktop/more-sheet.spec.js` failed before the fix (remote tiles overlapped the sheet; at 480px the sheet top was negative).
-- **Fix:** entering a vote folds the sheet without changing the saved “keep More open” preference. The sheet’s height is capped to the space above the dock and scrolls inside that cap.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/more-vote-before-1280.png`, `test/desktop/shots/more-vote-after-1280.png`, `test/desktop/shots/more-short-before-480.png`, `test/desktop/shots/more-short-after-480.png`.
+Before: `qa/mobile/shots/before-host-more-land.png`. After: `qa/mobile/shots/after-more-iphone-se-land.png` (scrolled to Password).
 
-### Tile moderation is hover-only
-
-- **Who hits it:** a keyboard host who needs Mute for everyone on someone else’s tile.
-- **What you saw:** `.modbar` was `display: none` until hover. The tile was not a tab stop. On a camera-off tile the full-screen button is hidden too, so there was no way in.
-- **Repro:** `test/desktop/tile-keys.spec.js` failed before the fix (no `tabindex` on a remote tile).
-- **Fix:** a remote tile is a tab stop. Focusing it shows the same moderation bar hover already showed, including Mute, and Tab reaches that button. The gallery geometry is unchanged.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/tile-keys-before-1280.png` (bar hidden), `test/desktop/shots/tile-keys-after-1280.png` (bar open from the keyboard).
+### 3. Chat composer sits under the dock
 
-### Header said Just you while four people were on screen
-
-- **Who hits it:** anyone in a room whose faces are up before each call has connected, and anyone reading the header on a laptop.
-- **What you saw:** five tiles, and the pill said “Just you — send the invite…”. When the count was right, “5 in the meeting” shared one line with the quality and the password note, and the line ended in an ellipsis.
-- **Repro:** `test/desktop/people-count.spec.js` failed before the fix (no `#statuscount`; the line was “Just you” with five tiles).
-- **Fix:** the label counts every face on the wall, and it will not go below the mesh count. “5 in the meeting” is its own phrase and does not shrink. The quality and password notes follow it and may ellipsize.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/people-count-before-1280.png`, `test/desktop/shots/people-count-after-1280.png`.
+iPhone SE portrait. Chat was a full-width panel (`z-index: 30`) pinned to `bottom: 0`. The dock is `z-index: 32` and covered y=466–554. The message field occupied y=526–560. Playwright's tap on `#chat-in` timed out: "div.bar intercepts pointer events". Send was 34px tall. Close was 23px. Attach was 41×34. The More sheet stayed open over the panel. `--kb` was ignored.
 
-### Screen-name step was a blank field and two identical buttons
-
-- **Who hits it:** anyone joining before this session has confirmed how they look.
-- **What you saw:** an empty name field, no picture, and Not now and Continue in the same blue, touching each other. A GifOS name and avatar already on the computer were ignored.
-- **Repro:** `test/desktop/appear.spec.js` failed before the fix (no `#appear`, the field was empty).
-- **Fix:** the card says “This is how you'll appear”, prefills the GifOS name, shows the avatar (or an initial), and updates the preview as you type. Join is the blue primary. Not now is a white secondary, with space between them. Change picture is a separate text button. The knock waits until you choose. A session that already confirmed does not ask again.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/appear-before-1280.png`, `test/desktop/shots/appear-after-1280.png`.
+Repro: `test/mobile/chat-above-dock.js`. It failed on the tap, the sizes, the open sheet, and a 240px keyboard. It passes now. Opening chat folds More. The panel ends at `--dockh` (measured from the top of the dock) plus `--kb` from `visualViewport`. Close, attach, the field, and Send are at least 44px. On the SE the field bottom is y=474 and the dock starts at y=482.
 
-### The lobby, help, and shortcut list were English
-
-- **Who hits it:** a German or Spanish device, before the call and inside Help or `?`.
-- **What you saw:** “Meeting”, “How this meeting works”, and “Keyboard shortcuts”, after the dock had already been translated.
-- **Repro:** `test/desktop/locale-long.spec.js` is the lock. A `de-DE` lobby now says “Besprechung”, help says “kein Größenlimit”, and the shortcut list says “Tastatur”.
-- **Fix:** German and Spanish cover the lobby card, the meeting help, the broadcast and app help, and the shortcut list. English stays in the markup as the fallback. Settings stay English.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/locale-lobby-before-1280.png`, `test/desktop/shots/locale-lobby-de-1280.png`, `test/desktop/shots/locale-lobby-es-1280.png`, `test/desktop/shots/locale-help-de-1280.png`, `test/desktop/shots/locale-keys-de-1280.png`.
+Before: `qa/mobile/shots/before-chat-dock.png`. After: `qa/mobile/shots/after-chat-keyboard.png` (keyboard band set to 240px).
 
-### A large room had no roster
-
-- **Who hits it:** a host with twenty people on the wall, trying to find who has a hand up.
-- **What you saw:** the header said “21 in the meeting” and the tiles were the only list. Who still opens addresses, which is not a roll call.
-- **Repro:** `test/desktop/roster.spec.js` failed before the fix (no `#roster`).
-- **Fix:** the count is a button. It opens a white list of every face the header counts, with search, Hand, and Muted. Names wrap. The list scrolls and stops above the dock. Close puts it away.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/roster-before-1280.png`, `test/desktop/shots/roster-after-1280.png`, `test/desktop/shots/roster-after-900.png`.
+### 4. Lobby hides Join on a small phone
 
-### The roster could not mute anyone
-
-- **Who hits it:** a host in a large room who needs to mute one person for everyone.
-- **What you saw:** Avery Chen’s row said “Muted” for their own mic, and there was no button. Mute for everyone lived on the tile, which is easy to miss once twenty faces are up.
-- **Repro:** `test/desktop/roster-mute.spec.js` failed before the fix (Avery’s row had no `.mutebtn`).
-- **Fix:** every other person has Mute on their row. It is the same room-wide mute as the tile. Mute is white. Unmute is the blue one, and the row says “For everyone” instead of their own “Muted”. Your own row has no button. In an admin room a guest sees no buttons. An open room can still mute, which is the rule the tiles already used.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the twenty-person roster still passes. Screenshots: `test/desktop/shots/roster-mute-before-1280.png`, `test/desktop/shots/roster-mute-after-1280.png`, `test/desktop/shots/roster-mute-after-on-1280.png`.
+Cold open, no room in the link. The preview took `minmax(140px, 1.15fr)`.
 
-### A broadcast never said whether you were on air
-
-- **Who hits it:** the person running a church service, standing at the booth.
-- **What you saw:** a dark page, “Joining the broadcast…”, and the same dock as a meeting. Nothing said the room could not see you, and nothing turned red when the camera went live.
-- **Repro:** `test/desktop/on-air.spec.js` failed before the fix (no `#onair`).
-- **Fix:** a broadcast shows a white Off air card until a picture is live. The host’s card names them and says to turn the camera on. On air is a red pill with their name, and it does not cover the dock. Watching someone else says Live, not On air. A normal meeting does not wear the lamp.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/on-air-before-1280.png`, `test/desktop/shots/on-air-after-off-1280.png`, `test/desktop/shots/on-air-after-host-1280.png`, `test/desktop/shots/on-air-after-on-1280.png`.
+- iPhone SE portrait: preview was 304px. Join a link sat at y=579–661, below the 568px screen.
+- iPhone SE landscape: Start was already below y=320.
+- 360×740 portrait: the three actions fit. Change-name scrolls into the card.
 
-### A broadcast had no order of service
-
-- **Who hits it:** the volunteer running a church service from the booth.
-- **What you saw:** Off air and On air, and nothing that said Welcome, then Song, then the message. The order lived on a paper.
-- **Repro:** `test/desktop/rundown.spec.js` failed before the fix (no `#rundown`).
-- **Fix:** the host sees Order of service: Welcome, Song, Prayer, Scripture, Message, Closing. Now is the large line. Next walks it. On the last step the button says Done, then the card says Ended and Start over. The place stays for this tab. A viewer does not see the card. It sits above the dock and does not cover the off-air card. A normal meeting does not show it.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the on-air test still passes. Screenshots: `test/desktop/shots/rundown-before-1280.png`, `test/desktop/shots/rundown-after-1280.png`, `test/desktop/shots/rundown-after-song-1280.png`, `test/desktop/shots/rundown-after-900.png`.
+Repro: `test/mobile/lobby-join-visible.js`. It failed (`lob-join-btn` bottom 661, landscape `lob-open` bottom 325), then passed. Under 640px tall the preview is at most 16vh. Under 430px tall the preview hides so the actions fill the screen, and Join scrolls into the card.
 
-### Settings stayed English
-
-- **Who hits it:** a German or Spanish device, opening Settings from More.
-- **What you saw:** the dock and the help were already translated, and the dialog still said “Settings”, “Video quality”, “Your name”, “Sound mix”, and “Conversation”.
-- **Repro:** `test/desktop/settings-locale.spec.js` failed before the fix (a `de-DE` dialog said “Settings”).
-- **Fix:** German and Spanish cover the settings title, video quality, name and picture, captions, sound mix, timing, and Close. English stays in the markup. Who, Share, and Vote are still English.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the earlier locale test still passes. An English device still says “Settings”. Screenshots: `test/desktop/shots/settings-before-1280.png`, `test/desktop/shots/settings-after-de-1280.png`, `test/desktop/shots/settings-after-es-1280.png`.
+Before: the cold lobby was not shot in the first pass. After: `qa/mobile/shots/after-lobby-iphone-se.png`, `qa/mobile/shots/after-lobby-iphone-se-land.png`.
 
-### Stepping away was a tiny chip
-
-- **Who hits it:** someone on a personal call who flips to another tab, and the friend who stays.
-- **What you saw:** the only signal was an 11px “stepped away” chip on the tile, easy to miss, and coming back said nothing. The call was still there. It did not feel like it.
-- **Repro:** `test/desktop/staying.spec.js` failed before the fix (no `.awaymark`, no `#still`).
-- **Fix:** a friend who steps away gets a white Away on their tile, large enough to read, clear of their name and the dock. Coming back shows Still in the call. Tap it and it goes. It does not cover the dock. A hidden tab does not show that line until you return.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/staying-before-1280.png`, `test/desktop/shots/staying-after-away-1280.png`, `test/desktop/shots/staying-after-back-1280.png`. A phone that kills the camera, and picture-in-picture, were not walked here.
+### 5. 200% text size does not enlarge the controls
 
-### Chrome was English only
-
-- **Who hits it:** anyone whose device is set to German or Spanish.
-- **What you saw:** the join card, the dock, More, the people count, and chat all stayed in English.
-- **Repro:** `test/desktop/locale.spec.js` failed before the fix (a `de-DE` browser still said “This is how you'll appear” and “Join”).
-- **Fix:** German and Spanish cover the join card, the dock (including Weniger / Menos while More is open), the More rows and their actions, the people count, the password note on that line, and the chat title, privacy line, composer, and files note. `html lang` follows the device. English stays in the markup as the fallback. Help essays, the settings body, the lobby, and the shortcut list stay English.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/locale-before-join-1280.png`, `test/desktop/shots/locale-after-join-de-1280.png`, `test/desktop/shots/locale-after-more-de-1280.png`, `test/desktop/shots/locale-after-join-es-1280.png`, `test/desktop/shots/locale-after-chat-de-1280.png`.
+`gifos_ui_scale=2` sets the root to 32px. More-sheet labels stayed `font-size: 16px` (`#ccbtn` measured 16px on both an SE and a 360px phone).
 
-### A shared slide had no Stop, and the stage could stay blank
-
-- **Who hits it:** a consultant putting a slide in front of a client.
-- **What you saw:** Share screen sits in More, then a sheet that leads with “use Run app instead.” After the picker, the stage could stay empty until the mesh had a seat (a fast look saw no slide at all). The only stop on the picture was a 15px chip on the thumbnail: “you are sharing your screen — tap to stop.”
-- **Repro:** `test/desktop/share-demo.spec.js` failed before the fix (`#stagefeed .stagestop` was missing, so the stop text was empty). WebKit is skipped; a canvas capture closes that tab.
-- **Fix:** the slide is painted as soon as the capture starts, without waiting for a mesh seat. Stop sharing is a red button on the slide (16px, 40px tall). Tapping it clears the slide and the More row says Share screen again. The sheet and the More path are unchanged.
-- **Proof:** the test passes on Chromium and Firefox. The slide was on screen in about 60ms, 1262×458, object-fit contain, above the dock. Screenshots: `test/desktop/shots/share-before-sheet-1280.png`, `test/desktop/shots/share-after-live-1280.png`.
+Repro: `test/mobile/text-scale-controls.js`. It failed (`ccbtn font 16px` and the same for Password, Record, Help, Stage), then passed. Those labels, the blur segments, and the Blur caption are `1rem`, so at 200% they are 32px. The sheet still scrolls them on screen, and Hang up stays on screen.
 
-### A client could not read whose screen was on stage
-
-- **Who hits it:** someone presenting a deck, and everyone looking at that stage.
-- **What you saw:** the line on the slide said “Your screen — on stage” at 10px. The share step’s title was 19px and Choose what to share was 13px, under a 13px note about Run app.
-- **Repro:** `test/desktop/share-demo.spec.js` requires the stage line and the Choose button at 16px, and the title at 22px or more.
-- **Fix:** the stage line is 16px. The share step title is 24px, the app note is 16px, and Choose what to share is 16px on the blue button. Stop sharing is unchanged. The path is still More, then the sheet, then the picker.
-- **Proof:** the test passes on Chromium and Firefox. WebKit skips the canvas capture. Screenshots: `test/desktop/shots/share-sheet-before-1280.png`, `test/desktop/shots/share-sheet-after-1280.png`, `test/desktop/shots/share-label-before-1280.png`, `test/desktop/shots/share-label-after-1280.png`.
-
-### Share screen was More, then a sheet, then the picker
-
-- **Who hits it:** a consultant who wants the deck up in front of a client.
-- **What you saw:** Share screen sat inside More. The next step was a sheet about Run app, and only then the browser’s picker.
-- **Repro:** `test/desktop/share-demo.spec.js` failed before the fix (`#sharebtn` was inside `#barmore`). WebKit skips the canvas capture.
-- **Fix:** Share screen is a labeled button on the dock, next to More. One click opens the picker. A second click, the red button on the slide, or the thumbnail stops it. Run app stays in More. The dock stayed on screen down to a 900px window (the button is 97px wide; the dock is 591px at 1280).
-- **Proof:** the test passes on Chromium and Firefox, and the dock-word test passes on all three browsers. Screenshots: `test/desktop/shots/dock-share-before-1280.png`, `test/desktop/shots/dock-share-after-1280.png`.
-
-### Starting a share left the menu on top of the slide
-
-- **Who hits it:** a consultant who just put a deck on the stage for a client.
-- **What you saw:** More stayed open over the faces and the bottom of the slide. On your own thumbnail the yellow line was clipped to a fragment (“on stage” took the row) and a click did not land, because that row ignores clicks.
-- **Repro:** `test/desktop/share-demo.spec.js` failed before the fix (the bar was still open after the slide had pixels). WebKit is skipped; a canvas capture closes that tab.
-- **Fix:** once the capture is actually showing, More folds. The saved “keep More open” choice is not rewritten. The thumbnail says Stop sharing, the same words as the button on the slide, and that chip takes the click. The path to start is still More, then the sheet, then the picker.
-- **Proof:** the test passes on Chromium and Firefox. The chip measured 118px inside a 171px row. Screenshots: `test/desktop/shots/share-menu-before-1280.png`, `test/desktop/shots/share-menu-after-1280.png`.
-
-### The host roster could mute, and nothing else
-
-- **Who hits it:** a host of a large room, looking for a waiting room, a rename, and a way to put one person in front.
-- **What you saw:** each other person had Mute. There was no switch for a waiting room, no Admit, no Rename, and no Spotlight.
-- **Repro:** `test/desktop/host-roster.spec.js` failed before the fix (no `#roster-wait-toggle`). WebKit skips the walk that plays a canvas capture. A guest in an admin room is covered on WebKit too.
-- **Fix:** Waiting room is a switch on the roster. Someone who arrives after it is on comes off the wall and sits under Waiting, with Admit. Rename edits their name on the tile. Spotlight marks them on stage and puts that tile first. A guest in an admin room does not see these. The person waiting is off the wall; this is not yet a sealed lobby that cuts every audio path.
-- **Proof:** the test passes on Chromium and Firefox, and the roster mute tests still pass on all three browsers. Screenshots: `test/desktop/shots/host-roster-before-1280.png`, `test/desktop/shots/host-roster-after-wait-1280.png`, `test/desktop/shots/host-roster-after-spot-1280.png`.
-
-### Who, Share, and Vote stayed English
-
-- **Who hits it:** a German or Spanish device, opening Who, Share, or Vote.
-- **What you saw:** the dock and Settings were already in that language. These three sheets still said “Who is on this meeting”, “Share your screen”, and “Place a vote”.
-- **Repro:** `test/desktop/sheets-locale.spec.js` failed before the fix (a `de-DE` Who sheet said “Who is on this meeting”).
-- **Fix:** German and Spanish cover the Who title, the explanation, the group headings, the address lines, and Download. They cover the Share title, the app note, the two explanations, Choose, and Cancel. They cover Vote’s three choices and the line that appears while you are tapping faces. English stays in the markup. The file you download for the police stays English. Password, Invite, and Run app are still English.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the earlier locale test and the English share demo still pass. Screenshots: `test/desktop/shots/sheets-before-who-1280.png`, `test/desktop/shots/sheets-before-share-1280.png`, `test/desktop/shots/sheets-before-vote-1280.png`, `test/desktop/shots/sheets-after-who-de-1280.png`, `test/desktop/shots/sheets-after-share-de-1280.png`, `test/desktop/shots/sheets-after-vote-de-1280.png`.
-
-### Who, Share, and Vote still spoke English after you used them
-
-- **Who hits it:** a German or Spanish device, hovering Who, Share, or Vote, or reading the line after a share starts or a vote lands.
-- **What you saw:** the sheets were already in that language. The button tips still said “Who is on this meeting”, “Show the whole room”, and “Vote someone onto the stage”. The line after sharing or voting was English.
-- **Repro:** `test/desktop/sheets-locale.spec.js` now requires the German and Spanish tips.
-- **Fix:** those tips follow the device. So do “you are sharing”, “screen share stopped”, “vote recorded”, and “vote withdrawn”. The file you download for the police stays English. The Password and Invite sheets stay English.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the English share demo still passes. Screenshot: `test/desktop/shots/sheets-tips-de-1280.png`.
-
-### The slide still said “Your screen” on a German device
-
-- **Who hits it:** a German or Spanish device, once a screen is on the stage, and anyone whose share died when they came back to the tab.
-- **What you saw:** the sheets and the tips were already in that language. The line on the slide still said “Your screen — on stage”. The thumbnail still said “on stage”. Coming back showed “Your screen share stopped when you came back” and “Share again”.
-- **Repro:** `test/desktop/share-demo.spec.js` failed before the fix (a `de-DE` stage line was “Your screen — on stage”). `test/desktop/sheets-locale.spec.js` failed on the return card. WebKit skips the canvas capture.
-- **Fix:** the stage line, the “on stage” chip, and “sharing their screen” follow the device. So does the card that offers to share again, and the status line that uses the same sentence. English stays in the markup. The Password and Invite sheets stay English. The Who download for the police stays English.
-- **Proof:** the stage-line test passes on Chromium and Firefox. The sheet test passes on all three. Screenshots: `test/desktop/shots/share-de-before-1280.png` (the English line), `test/desktop/shots/share-de-after-1280.png`, `test/desktop/shots/reshare-de-1280.png`.
-
-### A phone that kills the camera said nothing
-
-- **Who hits it:** someone on a phone whose system takes the camera while the call is in the background, then comes back.
-- **What you saw:** the track had ended and the page did start the camera again, but the tile stayed blank and the line still read as if the camera were fine. Nothing on the picture said it had stopped.
-- **Repro:** `test/desktop/phone-cam.spec.js` failed before the fix (no `.cambackmark`). WebKit skips the canvas capture. The walk is a 390×844 phone.
-- **Fix:** while the camera is being brought back, the self tile says “Camera stopped — bringing it back”, large enough to read, inside the tile, clear of the name and the dock. When the new camera is live, the line goes. If the grab fails, the line says to tap Camera.
-- **Proof:** the test passes on Chromium and Firefox, and the staying test still passes. Screenshots: `test/desktop/shots/phone-before-390.png`, `test/desktop/shots/phone-after-stopped-390.png`, `test/desktop/shots/phone-after-back-390.png`. A camera that stays “live” but sends black still waits on the existing watchdog before this line appears.
-
-### A live camera that sends nothing stayed quiet
-
-- **Who hits it:** a phone whose camera stays “live” but delivers no frames, the usual way a system takes the camera without ending the track.
-- **What you saw:** the tile stayed blank for about nine seconds, until the restart. Nothing said the camera had stopped.
-- **Repro:** `test/desktop/phone-cam.spec.js` (“a live camera that sends nothing”). The line is up while the camera has not been asked for again. WebKit skips the canvas capture.
-- **Fix:** the first quiet sample says “Camera stopped — bringing it back” on the self tile. The restart still waits for three samples, so a dark room that is actually painting does not flash the line or restart the camera. German and Spanish cover the restart line.
-- **Proof:** the test passes on Chromium and Firefox. Screenshots: `test/desktop/shots/phone-black-before-390.png`, `test/desktop/shots/phone-black-after-390.png`.
-
-### A camera that dies while you are looking stayed dead
-
-- **Who hits it:** a phone that takes the camera for a call or another app while the meeting stays on screen. The tab never goes to the background, so coming back never runs.
-- **What you saw:** the track had ended. Four seconds later the picture was still frozen, the line never appeared, and the camera was not asked for again.
-- **Repro:** `test/desktop/phone-cam.spec.js` (“while you are still looking”) failed before the fix (no `.cambackmark` after 7s, and the page was not hidden). WebKit skips the canvas capture. The walk is 390×844.
-- **Fix:** the same watch that notices a silent camera now notices an ended one, on the next sample, while the page is open. It says “Camera stopped — bringing it back” and grabs again. A grab already in flight is not started twice. Three tries, then it stops. A dark room that is still painting is unchanged.
-- **Proof:** the test passes on Chromium and Firefox, and the earlier phone tests still pass. The line was 20px and 193px wide, inside the tile, with the page still visible. Screenshots: `test/desktop/shots/phone-visible-before-390.png`, `test/desktop/shots/phone-visible-after-390.png`.
-
-### A church song had no words, and no next line
-
-- **Who hits it:** a volunteer running a service, on the Song step, who needs the line they are on and the line that comes after it.
-- **What you saw:** the order of service said Song. There was no lyric, no Program, and no Preview.
-- **Repro:** `test/desktop/lyrics.spec.js` failed before the fix (no `#lyrics`). A normal meeting and a broadcast viewer are covered too.
-- **Fix:** while the order of service is on Song, the booth shows Program (the line to read now, 32px) and Preview (the next line, 18px). Next line walks the verse. The last line has an empty preview and Start over. Program, Preview, and Next line follow German and Spanish. The verse itself stays as written. A viewer does not see the card. The words are not drawn on the outgoing picture, and they are not sent to the other booth.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the order-of-service test still passes. Screenshots: `test/desktop/shots/lyrics-before-song-1280.png`, `test/desktop/shots/lyrics-after-song-1280.png`, `test/desktop/shots/lyrics-after-last-1280.png`, `test/desktop/shots/lyrics-after-de-1280.png`.
-
-### Program and Preview were labeled too small to trust
-
-- **Who hits it:** a volunteer at the booth, during Song, choosing which line to read.
-- **What you saw:** the lines were large, but the words Program and Preview were 13px. Easy to sing the next line.
-- **Repro:** `test/desktop/lyrics.spec.js` requires both labels at 16px, the current line at 28px or more, and the next line smaller.
-- **Fix:** Program and Preview are 16px. The current line stays 32px and the next line stays smaller. A viewer still does not see the card. The words are still not drawn on the outgoing picture.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/lyrics-labels-before-1280.png`, `test/desktop/shots/lyrics-labels-after-1280.png`.
-
-### On a short window the lyric card covered Off air
-
-- **Who hits it:** a volunteer on a short laptop window, about 600px tall, during Song, still off air.
-- **What you saw:** the lyric card climbed up from the dock and covered the bottom of Off air. The line to read and the on-air state were one stack.
-- **Repro:** `test/desktop/lyrics.spec.js` failed before the fix at 1100×600 (`coversAir` was true). The program line stayed 32px.
-- **Fix:** the card stops under Off air and scrolls. Program stays 32px and Preview stays smaller. At 1280×720 the card is still the full height, with no scroll. The words are still not on the outgoing picture.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. At 1100×600 the card top was 328 and Off air ended at 300. Screenshots: `test/desktop/shots/lyrics-short-before-1100.png`, `test/desktop/shots/lyrics-short-after-1100.png`.
-
-- **Who hits it:** anyone who taps a face and catches the blur control by mistake.
-- **What you saw:** “Blur for all” was an 83×32 tab flush with the top-right corner of the tile.
-- **Repro:** `test/desktop/blur-tile.spec.js` failed before the fix (the button was 83×32 and flush with the corner).
-- **Fix:** it is a 64px square, 12px in from that corner, floating over the video. The name, full screen, and the tile menu stay at least 12px away. The words are still “Blur for all”. The same sizes are on the phone build.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/blur-before-1280.png`, `test/desktop/shots/blur-after-1280.png`.
-
-### The join step said Not now and Join
-
-- **Who hits it:** someone opening a meeting link, looking at the name and picture they will show.
-- **What you saw:** Not now kept the prefilled name. Join was the word for keeping it. Neither said what happened to the picture.
-- **Repro:** `test/desktop/appear.spec.js`. Clear removes the stored name and picture. Save leaves both.
-- **Fix:** Clear is the outline and blanks the name and the picture, then closes. Save is the solid blue button and keeps what is on the screen. German says Leeren and Speichern. Spanish says Limpiar and Guardar. The lobby’s own Join button is unchanged.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the locale tests still pass. Screenshots: `test/desktop/shots/join-before-1280.png`, `test/desktop/shots/join-after-1280.png`.
-
-### Alone, the header only told you to send the invite
-
-- **Who hits it:** someone who just opened a room and is the only person in it.
-- **What you saw:** the header said “Just you — send the invite; the link has no expiry”. Nothing there copied the link. Invite was still inside More.
-- **Repro:** `test/desktop/alone-invite.spec.js` failed before the fix (no `#statusinvite`).
-- **Fix:** while you are alone, Invite sits in the header. One click copies the link and, where the browser can share, opens share. The button says Copied. It does not open the longer Invite sheet, and it does not open the roster. When someone else is here, the button goes away. German says Einladen. The join card’s heading stays “This is how you’ll appear”. That card does not carry a second line, “This is how you’ll appear in the meeting.”
-- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the people-count test still passes. The button was 75×40 and blue. Screenshots: `test/desktop/shots/alone-invite-before-1280.png`, `test/desktop/shots/alone-invite-after-1280.png`.
-
-### The in-call line talked like a product
-
-- **Who hits it:** someone on a personal call, reading the line next to the people count.
-- **What you saw:** with other people here it said “a password unlocks clear video”. German said “Passwort für klares Video”. Spanish said “contraseña para video nítido”.
-- **Repro:** `test/desktop/locale.spec.js` failed before the fix (the line was “a password unlocks clear video”).
-- **Fix:** the line says “faces stay soft until a password”. German: “Gesichter weich bis zum Passwort”. Spanish: “caras suaves hasta una contraseña”. At 900px the settled line is fully on screen. The dock is still a product.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/warm-before-1280.png`, `test/desktop/shots/warm-after-1280.png`.
-
-### The chat privacy line was 12px
-
-- **Who hits it:** an older volunteer opening chat, trying to read why the messages disappear.
-- **What you saw:** the line under Meeting chat was 12px: “· private to this meeting, gone when everyone leaves”. At 16px that sentence wrapped onto two lines.
-- **Repro:** `test/desktop/chat-dock.spec.js` failed before the fix (the line was 12px).
-- **Fix:** the line is 16px and one line: “Private. Gone when everyone leaves.” German: “Nur hier. Weg, wenn alle gehen.” Spanish: “Solo aquí. Se borra cuando salen.” It stays inside the panel at 900px and does not cover Close. Reactions is still an icon.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/chat-priv-before-1280.png`, `test/desktop/shots/chat-priv-after-1280.png`.
-
-### Share still needed the pointer
-
-- **Who hits it:** someone presenting in a corporate call, who already uses Alt+A and Alt+V and expects the same for the screen.
-- **What you saw:** Share screen was one dock button. The shortcut list had mic, camera, chat, and leave. Nothing started a share from the keyboard.
-- **Repro:** `test/desktop/shortcuts.spec.js` failed before the fix (`#sharebtn` had no `aria-keyshortcuts`).
-- **Fix:** Alt+S clicks Share screen. The same key stops a share that is already up. The shortcut list names it, in German and Spanish too. It stays quiet while you are typing, and it does nothing when the button is hidden. Hand and view still need the pointer.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/share-key-before-1280.png`, `test/desktop/shots/share-key-after-1280.png`.
-
-### Password and Invite stayed English
-
-- **Who hits it:** a German or Spanish device, opening Password or Invite.
-- **What you saw:** the button already said Passwort or Contraseña. The sheet still said “Room password” and “Share this meeting”. The tip still said “Lock this room with a password”. The form that makes a room you run still said “Room name”.
-- **Repro:** `test/desktop/pw-inv-locale.spec.js` failed before the fix (a `de-DE` Password tip was “Lock this room with a password”).
-- **Fix:** the password sheet, the locked-door words, the eye, and the invite sheet follow the device, including Copy, the warning, and the room-name form. The button tips follow too. English stays in the markup. Joining, leaving, and creating a room behave as before. Run app stays English. The Who download for the police stays English.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/pw-inv-before-pw-de-1280.png`, `test/desktop/shots/pw-inv-before-inv-de-1280.png`, `test/desktop/shots/pw-inv-after-pw-de-1280.png`, `test/desktop/shots/pw-inv-after-inv-de-1280.png`.
-
-### More was one unlabeled wall
-
-- **Who hits it:** a volunteer opening More and hunting for Chat or Vote.
-- **What you saw:** one grid of equal buttons, with no groups.
-- **Repro:** `test/desktop/more-groups.spec.js` failed before the fix (no People / Room / Help headings).
-- **Fix:** People, Share, Room, and Help are labeled rows. Host stays hidden until a host control is actually shown. “Turn video off” uses the same capitalization as the other labels.
-- **Proof:** the test passes on Chromium, Firefox, and WebKit, and the vote and short-window tests still pass. Screenshots: `test/desktop/shots/more-groups-before-1280.png`, `test/desktop/shots/more-groups-after-1280.png`.
+Before: `qa/mobile/shots/before-lowvision-more.png`. After: `qa/mobile/shots/after-text-scale-more.png`.
+
+### 7. Words a volunteer will not know
+
+The captions control said "CC". The people list said "Who". The first probe read those strings on every phone.
+
+Repro: `test/mobile/plain-words.js`. It requires the visible words Captions and People, each at least 44px. It passes. The ids are unchanged (`#ccbtn`, `#whobtn`). "Captions" still fits the landscape sheet (`more-sheet-fits.js`) and still grows at 200% (`text-scale-controls.js`).
+
+### 6. No safe-area insets
+
+The viewport meta was `width=device-width, initial-scale=1.0, interactive-widget=resizes-content`. The dock used `bottom: 14px` and the name chip `top: 14px`. With a 47px notch and a 34px home indicator (Chrome safe-area override), the chip sat at y=14 and the dock ended at y=645 on a 659px iPhone 15, 20px onto the indicator. Landscape put the dock on the bottom edge too.
+
+Repro: `test/mobile/safe-area.js`. It failed on the meta, the chip, the dock, and hang up, then passed. The meta is `viewport-fit=cover`. Chip, Fit, dock, More sheet, and the reaction tray use `env(safe-area-inset-*)`. On that iPhone 15 the chip is at y=61 and the dock ends at y=611, above the indicator line at 625.
+
+After: `qa/mobile/shots/after-safe-area-iphone-15.png`.
+
+### 8. Fit is a 32px target
+
+`#fitbtn` was `min-height: 32px` and `font: 700 14px`. On an SE and a 360px phone it measured 59×32, and at 200% text the label stayed 14px. Tapping it switches the label to Scroll, which is wider, so both words have to clear the name chip.
+
+Repro: `test/mobile/fit-target.js`. It failed (`Fit is 59x32`, and `Fit font 14px at 200%`), then passed. The control is at least 44×44, `font-size: 1rem`, on screen, and it does not cover the name chip or the dock in either word. At 200% the label is 32px.
+
+Before: `qa/mobile/shots/before-fit-iphone-se.png`. After: `qa/mobile/shots/after-fit-iphone-se.png`.
+
+### 9. Header says "Just you" while other people are on screen
+
+The chip used the long sentence `Just you — send the invite; the link has no expiry · reconnecting to the room…`. On an iPhone 15 that line is cut to `Just you — s…`. The four faces in the first shots were cloned tiles, not peers, so the count stayed 1. A cloned tile is not someone in the room.
+
+Repro: `test/mobile/header-count.js`. It failed (`header "Just you — send the invite…"`, `clipped`, count 1, four names on screen), then passed. The header reads the real peer tiles and says `4 in call`, and that phrase fits in the chip. The longer sentence stays on the tooltip. QA seeding goes through `__gifosVideo.presentPeers`, the same peer records the grid uses.
+
+Before: `qa/mobile/shots/before-header-count.png`. After: `qa/mobile/shots/after-header-count.png`.
+
+### 10. Join step ignored the system name and picture
+
+A stored GifOS name skipped the join step. A first visit showed an empty field and seeded `Guest NNNN` behind the user's back. Continue and Not now were the same purple, with no gap. The lobby said "You'll join as … · change" in small type and never showed the system picture.
+
+Repro: `test/mobile/appear-preview.js`. It failed (no "This is how you'll appear", no picture, empty field, join skipped when a name was already stored), then passed. The field opens with the system name, or `Guest NNNN` on a first visit. The system picture is in the preview. Continue is blue. Not now is white with a gray border, 12px away, and both are at least 44px. Not now keeps the stored name. On the lobby the same preview sits on the camera so Start, the admin action, and Join stay on screen.
+
+Before: `qa/mobile/shots/before-appear-lobby.png`, `qa/mobile/shots/before-appear-name.png`. After: `qa/mobile/shots/after-appear-lobby.png`, `qa/mobile/shots/after-appear-name.png`.
+
+### 11. The dock covered the bottom row of faces
+
+On an iPhone 15 with four people, David and Sam's tiles ran to y=659 while the dock started at y=557. The same overlap was on an SE (tiles to 568, dock at 482) and a 360×740 phone (Sam to 740, dock at 654). The content box was `vh - top`. The packer was not the problem; it filled the box it was given, and that box ran under the controls.
+
+Repro: `test/mobile/dock-clears-faces.js`. It failed with those bottoms, then passed. `viewBox` now takes a measured bottom inset (`innerHeight - bar.top`) and the gallery packer is unchanged. Each face ends at or above the dock and stays at least 48px tall.
+
+Before: `qa/mobile/shots/before-dock-faces-iphone-15.png`. After: `qa/mobile/shots/after-dock-faces-iphone-15.png`.
+
+### 12. The drag grip was 22×48 on a normal phone
+
+The 44px grip rule only applied under 380px. A later `.bar #bargrip` rule set 22×48, so an iPhone 15 and a Pixel 7 both measured 22×48. The mark was also `#8d93a0` on white.
+
+Repro: `test/mobile/grip-target.js`. It failed (`bargrip is 22x48`), then passed. The grip is 44×44 on iPhone 15 and Pixel 7, the icon is `#3a3a3f` on an `#e8ecf1` plate, and Hang up stays inside the screen. Below 393px the row gap tightens so the wider grip does not push Hang up off.
+
+Before: `qa/mobile/shots/before-grip-iphone-15.png`. After: `qa/mobile/shots/after-grip-iphone-15.png`.
+
+### 13. No waiting-room admit list
+
+A host could set a password, record, and step on stage. There was no list of people at the door, and no Admit control. That is the job Zoom and a church volunteer panel both put on the phone.
+
+Repro: `test/mobile/wait-list.js`. It failed (`no Waiting room button`) on an iPhone 15 and an SE in landscape, then passed. Waiting room is off until the host turns it on, so a dark return still answers the door. When it is on, Ruth and David show above the dock. Admit is blue, Not now is white with a gray border, both at least 44px, 8px apart. Admit removes Ruth and asks the existing door answer to let her in. Not now removes David and hides the list when it is empty. The mesh admission protocol is unchanged.
+
+Before: `qa/mobile/shots/before-wait-iphone-15.png`. After: `qa/mobile/shots/after-wait-iphone-15.png`.
+
+### 14. More said Password, Vote, and Stage
+
+Those three words do not say what a host is about to do. Password could be an account. Vote could be a poll. Stage could be a view. The longer meaning lived only on the button title, which a phone does not show.
+
+Repro: `test/mobile/host-words.js`. It failed (`Password`, `Vote`, `Stage`, and `Step down` once you were on stage) on an iPhone 15, an SE, and a 360px phone at 200% text, then passed. The controls say Room password, Vote on someone, and Step on stage. On stage, the same button says Step off stage. The phone sheet is two columns so the phrases fit inside the button, including at 32px type. Each control stays at least 44px and scrolls into view.
+
+Before: `qa/mobile/shots/before-host-words-iphone-15.png`. After: `qa/mobile/shots/after-host-words-iphone-15.png`.
+
+### 15. Landscape More hid Invite and Room password
+
+On an SE held sideways the sheet is 160px tall. Blur took the first row, then People and Float, so Invite ended at y=236 while the sheet ended at y=204. Room password, Waiting room, and Chat were further down. An iPhone 15 showed Invite and still cut off Room password. A 740px-wide landscape phone uses four columns and still clipped Room password by a few pixels.
+
+Repro: `test/mobile/landscape-first.js`. It failed with those bottoms, then passed. Invite, Room password, Waiting room, and Chat are the first four controls, so they sit on the first screen with no scroll on an SE, an iPhone 15, and a 360×740 phone in landscape. Blur, People, and Record follow, and the sheet still scrolls to them.
+
+Before: `qa/mobile/shots/before-landscape-first-se.png`. After: `qa/mobile/shots/after-landscape-first-se.png`.
+
+### 16. Record and Captions lived only inside More
+
+A producer could not see that the call was live, or that someone was recording, without opening More. The tile chip said "recording this meeting" in small type on the face. StreamYard, Restream, and YouTube keep a live and record state on the call itself.
+
+Repro: `test/mobile/call-state.js`. It failed (`no live/record state on the call`) on an iPhone 15, an SE, and a 360px phone at 200% text, then passed. Live, Record, and Captions sit above the dock. Live is red with white type. Record stays quiet until it is on, then it says Recording in the same red. Captions turns blue, so it is not the same mark as Live. Each is at least 44px, the words fit at 32px type, and they do not cover the header or the dock. Tapping Captions turns captions on. Tapping Record opens the record sheet. The faces still end above that row. The More buttons are still there.
+
+Before: `qa/mobile/shots/before-call-state-iphone-15.png`. After: `qa/mobile/shots/after-call-state-iphone-15.png`.
+
+### 17. Landscape lobby hid Join
+
+On an SE held sideways the card is 320px tall. Start a meeting and Start a room you run fit. Join a link started at y=311 and ended at y=378, so almost the whole button was below the screen. You could scroll to it. A grandparent who turned the phone did not see the thing the text told them to tap.
+
+Repro: `test/mobile/lobby-join-visible.js`. It failed (`lob-join-btn off screen (bottom 378)`), then passed. In that short landscape the three actions sit in one row. Start stays the only blue button. Join is on screen, at least 44px, and the explanation under each label still fits. Portrait is unchanged.
+
+Before: `qa/mobile/shots/before-lobby-join-land.png`. After: `qa/mobile/shots/after-lobby-iphone-se-land.png`.
+
+### 18. Unread chat is only a label inside More
+
+An incoming line did `Chat (2)` on the More button. With the sheet closed, the call showed no count. The live row also sat on top of the message field (both y=430–474 on an SE), so a tap on the field hit Live.
+
+Repro: `test/mobile/chat-badge.js`. It failed (`no on-call unread count`) on an iPhone 15, an SE, and a 360px phone at 200% text, then passed. The count is a blue pill above Live, at least 44px, and the number grows with the text size. It does not cover the header, Fit, Live, or the dock. Tapping it opens chat and clears the count. More still says Chat. The open chat sheet paints over the live row, so the field takes the tap again (`chat-above-dock.js`).
+
+Before: `qa/mobile/shots/before-chat-badge-iphone-15.png`. After: `qa/mobile/shots/after-chat-badge-iphone-15.png`.
+
+### 19. A new line did not show what was said
+
+The count arrived on the call, and the words stayed inside chat. With the sheet closed you could see "2" and not the sentence.
+
+Repro: `test/mobile/chat-preview.js`. It failed (`no message preview`), then passed on an iPhone 15, an SE, and a 360px phone at 200% text. The latest line sits in a white banner beside the count, above Live. The sender and the text are 1rem, dark on white. Tapping the banner opens chat and clears both. Four faces end above the banner.
+
+Before: `qa/mobile/shots/before-chat-preview-iphone-15.png`. After: `qa/mobile/shots/after-chat-preview-iphone-15.png`.
+
+### 20. No emoji control on the phone composer
+
+The field had attach and Send. A phone in this test has no system emoji keyboard, so there was no way to drop in a 👍 or a 🙏.
+
+Repro: `test/mobile/chat-emoji.js`. It failed (`no emoji control`), then passed on an iPhone 15, an SE, and a 360px phone at 200% text. Emoji opens a row of 44px characters above the field. Tapping 👍 writes it into the field and does not send. The row stays above the dock.
+
+Before: `qa/mobile/shots/before-chat-emoji-iphone-15.png`. After: `qa/mobile/shots/after-chat-emoji-iphone-15.png`.
+
+### 21. Send slid off the screen beside Emoji
+
+The field refuses to shrink below its placeholder, so adding the emoji button pushed Send to x=382 on an SE (the screen is 320) and to x=435 on an iPhone 15.
+
+Repro: `test/mobile/chat-above-dock.js` now requires Send on screen. It failed (`send off screen (right 382)`), then passed. The field may shrink. Send stays inside the screen.
+
+### 22. Chat bubbles were small, dark, and the same color
+
+Body type was .85rem (13.6px). The name was .7rem in #7b9cff, contrast 2.61 on the bubble. Mine and theirs both used the surface color, so your line did not read as yours. A long line used 94% of the sheet.
+
+Repro: `test/mobile/chat-bubbles.js`. It failed on the font, the name contrast, the shared color, and the long bubble width, then passed on an iPhone 15, an SE, and a 360px phone at 200% text. Theirs is a light bubble with dark type. Mine is blue with white type. The name is 1rem. A long line wraps inside 78% of the sheet.
+
+Before: `qa/mobile/shots/before-chat-bubbles-iphone-15.png`. After: `qa/mobile/shots/after-chat-bubbles-iphone-15.png`.
+
+### 23. The keyboard was added on top of the dock
+
+`--kb` came from the visible viewport, and the sheet inset was the dock plus that band. On a sideways SE the two together left almost no sheet, and focusing the field scrolled Close off the top. The field type was still .85rem.
+
+Repro: `test/mobile/chat-keyboard.js`. It failed (inset 0, field under the keyboard line, Close off screen in landscape), then passed. The sheet ends at the larger of the dock and the keyboard. Landscape hides the file list so the field and Close stay on screen. The field is 1rem.
+
+Before: `qa/mobile/shots/before-chat-keyboard-land.png`. After: `qa/mobile/shots/after-chat-keyboard-land.png`.
+
+### 24. Four faces squeezed into a short bottom row
+
+On an iPhone 15 the grid was 1, 1, 2. Pat and Ruth were 389×176 strips. David and Sam were 195×88. On an SE the bottom pair was 158×73. Every tile was about 2.2 times as wide as it was tall.
+
+Repro: `test/mobile/see-everyone.js`. It failed (`David is 195x88`, `3 rows`), then passed. On a phone a tile may not be a wide squash. Four people are two rows of two, each tile taller than 140px on an iPhone 15 and 120px on an SE, and the shape stays between a portrait phone and a square. Desktop packing is unchanged.
+
+Before: `qa/mobile/shots/before-see-everyone-iphone-15.png`. After: `qa/mobile/shots/after-see-everyone-iphone-15.png`.
+
+### 25. Fit sat on a face, and the build tag looked like a button
+
+Fit was at y=58–102 while the top-right tile started at y=64, so it covered the corner of that face. The build name was a solid dark pill in the same corner.
+
+Repro: `test/mobile/call-calm.js`. It failed (`Fit covers a face`, `build tag looks like a button`), then passed. Faces start below Fit. The build name is a faint line under the header, with no fill. Fit still clears the header and stays 44px.
+
+Before: `qa/mobile/shots/before-call-calm-iphone-15.png`. After: `qa/mobile/shots/after-call-calm-iphone-15.png`.
+
+### 26. Live, Record, Captions, and the dock stay on the call
+
+On an iPhone 15 the dock and the Live row stayed up for the whole call, covering the bottom of the faces. FaceTime tucks those controls until you tap.
+
+Repro: `test/mobile/chrome-idle.js`. It failed (`chrome stays up when idle`), then passed on an iPhone 15 and an SE. The controls start on screen. After the quiet moment, Hang up does not take a tap, the faces grow into that band, and a tap brings Live, Record, Captions, and Hang up back at 44px. More, chat, the reaction tray, the waiting list, and a dialog hold the controls up. This is separate from the camera idle timer.
+
+Before: `qa/mobile/shots/before-chrome-idle-iphone-15.png`. After: `qa/mobile/shots/after-chrome-idle-iphone-15.png`, `qa/mobile/shots/after-chrome-back-iphone-15.png`.
+
+### 27. More covers the call with a wall of equal buttons
+
+On an iPhone 15, More was 13 buttons from y=44, over the name and the faces. Invite was the same gray as Room password. An SE showed 12.
+
+Repro: `test/mobile/more-calm.js`. It failed (`13 buttons on the first screen`, sheet top 44), then passed on an iPhone 15 and an SE. The first screen is Invite, Room password, Waiting room, and Chat. Invite is the blue one. The rest scroll. The name stays clear.
+
+Before: `qa/mobile/shots/before-more-calm-iphone-15.png`. After: `qa/mobile/shots/after-more-calm-iphone-15.png`.
+
+### 28. Blur for all is a small tab on the tile corner
+
+On a phone and on the desktop the per-tile control was 83×32, flush with the top-right corner (`top: 0; right: 0`). A tap meant for the video hit it.
+
+Repro: `test/mobile/blur-tile.js`. It passes on an iPhone 15, an SE, and a 1280×800 desktop. The button is a 64px square, 12px in from the corner, over the video. The name, full screen, and the tile menu stay at least 12px away. The label is still "Blur for all".
+
+Before: `qa/mobile/shots/before-blur-tile-iphone-15.png`, `qa/mobile/shots/before-blur-tile-desktop.png`. After: `qa/mobile/shots/after-blur-tile-iphone-15.png`, `qa/mobile/shots/after-blur-tile-desktop.png`.
+
+### 29. The join step said Not now and Continue
+
+Not now closed the step and kept the name. Continue was the word for keeping it. Neither said what happened to the picture.
+
+Repro: `test/mobile/appear-preview.js`. The buttons say Clear and Save. Save is the solid blue one and Clear is the outline. Save leaves the stored name and picture. Clear removes both and closes the step.
+
+Before: `qa/mobile/shots/before-join-clear-iphone-se.png`. After: `qa/mobile/shots/after-join-save-iphone-se.png`.
+
+### 30. A sideways phone squashed every face into a strip
+
+Four people on an iPhone SE held sideways were one row of 141×46 tiles (aspect 3.07). On an iPhone 15 sideways the bottom pair was 130×60 (aspect 2.19). The content box was only as tall as the gap between Fit and Live, and a wide phone was packed with the desktop shape limit.
+
+Fit now shares the name-chip row on a short landscape phone, so the faces start higher. A landscape phone that cannot hold a legal tile by stretching the grid keeps every tile inside the portrait-phone shape (short side at least 96, aspect at most 1.05) and centers that row. A further row grows downward and the feed scrolls. Portrait phones stay two rows of two. Desktop 1280×800 packing is unchanged. `test/mobile/sideways-tiles.js`.
+
+Before: `qa/mobile/shots/before-sideways-tiles-iphone-se.png`, `qa/mobile/shots/before-sideways-tiles-iphone-15.png`. After: `qa/mobile/shots/after-sideways-tiles-iphone-se.png`, `qa/mobile/shots/after-sideways-tiles-iphone-15.png`.
+
+### 31. At 200% text the lobby hid Join
+
+On an iPhone SE with the text size at 200%, Join a link ended at y=986 on a 568px screen. The admin action ended at 772. Sideways, all three actions ended at 539 on a 320px screen. The essay under each button was the height.
+
+Repro: `test/mobile/lobby-large-text.js`. On a phone the essay is hidden and the padding stays 10px, so the title can grow and Start, the room you run, and Join stay on screen. Start stays the only blue button. A wide screen still shows the essay.
+
+Before: `qa/mobile/shots/before-lobby-200-iphone-se-200.png`, `qa/mobile/shots/before-lobby-200-iphone-se-land-200.png`. After: `qa/mobile/shots/after-lobby-200-iphone-se-200.png`, `qa/mobile/shots/after-lobby-200-iphone-se-land-200.png`.
+
+### 32. A caption line grew off the face
+
+On an iPhone SE the line "The Lord is my shepherd…" was 283px tall on a 155px face and started at y=-42. At 200% text it was 618px tall on a 236px face and started at y=-329. The words left the screen.
+
+Repro: `test/mobile/caption-on-tile.js`. The line is anchored to the bottom of the face, capped at 42% of the tile, and stays 1.25rem so it is 40px at 200% text.
+
+Before: `qa/mobile/shots/before-caption-tile-iphone-se-200.png`. After: `qa/mobile/shots/after-caption-tile-iphone-se-200.png`.
+
+### 33. Start recording sat below the fold
+
+On an iPhone SE, Start recording ended at y=758 on a 568px screen. Sideways it ended at 603 on a 320px screen. At 200% text it ended at 1865. The button was the same color as Cancel, at 13px.
+
+Repro: `test/mobile/record-start.js`. The sheet says what will be recorded, in one sentence. Start recording is the blue button and stays on screen. Cancel is the outline. The other choices scroll above those buttons. On a phone the essays under the choices are hidden.
+
+Before: `qa/mobile/shots/before-record-start-iphone-se.png`. After: `qa/mobile/shots/after-record-start-iphone-se.png`.
+
+### 34. At 200% text three of four faces left the screen
+
+On an iPhone SE and an iPhone 15 with the text size at 200%, Live and the dock left a short box. The packer made one column of large tiles. Ruth, David, and Sam started under Live and continued off the screen.
+
+Repro: `test/mobile/large-text-faces.js`. When every face can sit in the box at a portrait-phone shape, they do, above Live. A sideways phone that only has room for one row still uses that row.
+
+Before: `qa/mobile/shots/before-large-text-faces-iphone-se.png`. After: `qa/mobile/shots/after-large-text-faces-iphone-se.png`.
+
+### 35. A long caption was cut off on the face
+
+The line sat in the bottom 42% of one tile with the overflow hidden. On a phone the rest of the sentence could not be read. At 200% text the same line had previously grown off the top of the screen.
+
+Repro: `test/mobile/caption-read.js`. The caption is one block above Live, white on black, at 1.25rem. It shows the start of the line. When the line is longer than the block, the rest scrolls inside it. It does not cover Live or the dock.
+
+Before: `qa/mobile/shots/before-caption-read-iphone-se-200.png`. After: `qa/mobile/shots/after-caption-read-iphone-se-200.png`.
+
+### 36. A texted link joins muted with no word for it
+
+The lobby says you join muted. A link skips that page. The mic is a slashed icon and the dock has no words, so a first call looks broken.
+
+Repro: `test/mobile/join-unmute.js`. It failed (`no Unmute a person can read` on an SE, at 200% text, and sideways), then passed. Unmute is blue, 44px, and 1rem. It sits in the header band, clear of the faces and of Fit. A tap turns the mic on and the button goes away. It stays when Live and the dock tuck.
+
+Before: `qa/mobile/shots/before-join-unmute-iphone-se.png`. After: `qa/mobile/shots/after-join-unmute-iphone-se.png`.
+
+### 37. Live was a small chip beside Record and Captions
+
+On a phone Live was 72×44. More is 56px on an iPhone 15. From a stand, a volunteer could not see that the room was on.
+
+Repro: `test/mobile/live-stands-out.js`. It failed (SE Live 44px tall and 72px wide; sideways Live 72px wide), then passed. Upright, Live is its own band, 64px tall and the width of the row. Record and Captions share the next row. Sideways, Live takes the rest of the one row, so the faces keep their height. The word stays Live. At 200% text the band stays full width without growing the row past the faces.
+
+Before: `qa/mobile/shots/before-live-stands-out-iphone-se.png`, `qa/mobile/shots/before-live-stands-out-iphone-se-land.png`. After: `qa/mobile/shots/after-live-stands-out-iphone-se.png`, `qa/mobile/shots/after-live-stands-out-iphone-se-land.png`.
+
+### 38. The header counted people and never named the room
+
+A manager between meetings read "4 in call" or "Just you". The room id was only in the link.
+
+Repro: `test/mobile/header-count.js`. It failed (`header "4 in call"`), then passed. Four peers read `header-count · 4 in call`, and the phrase fits on an SE and an iPhone 15 without covering Fit. On a sideways phone the chip stops short of Unmute.
+
+Before: `qa/mobile/shots/before-room-name-iphone-15.png`. After: `qa/mobile/shots/after-room-name-iphone-15.png`.
+
+### 39. The lobby's admin button looked like the way to start
+
+"Start a meeting" and "Start a room you run" both began with Start. At 200% text the admin label wrapped until that button was 102px and the blue Start was 62px. A volunteer would tap the bigger one.
+
+Repro: `test/mobile/lobby-which-start.js`. It failed, then passed on an SE, at 200% text, and sideways. The admin button says Room you run. It is not blue, and it is not taller than Start a meeting. Join a link stays on screen.
+
+Before: `qa/mobile/shots/before-lobby-which-start-iphone-se.png`, `qa/mobile/shots/before-lobby-which-start-iphone-se-200.png`. After: `qa/mobile/shots/after-lobby-which-start-iphone-se.png`, `qa/mobile/shots/after-lobby-which-start-iphone-se-200.png`.
+
+### 40. The camera is off and nothing says so
+
+A texted link joins with the camera off. The self view is a letter. The dock camera is a slash with no words, so a first call looks like the face is broken. The picture stays on the video feed. There is no second avatar layer.
+
+Repro: `test/mobile/camera-words.js`. It failed (`no Camera a person can read`), then passed on an SE, at 200% text, and sideways. Unmute is the word while the mic is off. After that, the same slot says Camera until the camera is on. A tap turns it on. The button stays when the dock tucks, and it does not cover a face.
+
+Before: `qa/mobile/shots/before-camera-words-iphone-se.png`. After: `qa/mobile/shots/after-camera-words-iphone-se.png`.
+
+### 41. Alone, the header told you to send the invite
+
+The chip said "sunday · Just you". The tooltip was "Just you — send the invite; the link has no expiry". That is a sentence, not a control.
+
+Repro: `test/mobile/header-invite.js`. On a phone, alone, the header is the room name and an Invite button. The button is at least 44px, the word grows at 200%, and it stays inside the chip without covering Fit, Unmute, or Camera. A phone with a share sheet gets that sheet and the meeting link. Otherwise the link is copied. With other people here the button is gone and the header is "sunday · 4 in call". Wide screens keep the sentence. `.topchip[data-invite="1"]` and `__gifosVideo.shareInvite` are the hook for the desktop header.
+
+Before: `qa/mobile/shots/before-header-invite-iphone-se.png`. After: `qa/mobile/shots/after-header-invite-iphone-se.png`.
+
+### 42. No blur snapped back to Min, then started on its own after a minute
+
+In a password meeting the header said "You are ready for clear video…" and Min stayed selected. The tap landed on No blur. The button was not disabled. The choice was saved as 0. The segment then painted the feed level, and the room rule keeps that feed at Min until everyone is ready, so the control jumped back to Min.
+
+Repro: `test/mobile/blur-none.js`. It failed (`No blur did not stay selected (min true, none false)`, feed blur 1, header "You are ready for clear video — it shows when everyone here is (camera on, No blur: 1 of 2)."), then passed. The choice stays on No blur. The feed stays Min until the room is ready. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/blur-none.js`.
+
+Before: `qa/mobile/shots/before-blur-none-pixel-7.png`. After: `qa/mobile/shots/after-blur-none-pixel-7.png`.
+
+About a minute later the same tap started working with no second press. There is no segmentation-model fetch on this path. Blur is the canvas pipe. The minute is `HOLDOVER_MS` (60s): an away or still-connected peer who has not consented stays in the roster, so the feed stays at Min while the header already says you are ready. When that status ages out, the peer drops and clear video starts on its own. The control shows the choice the whole time. It does not wait for that minute.
+
+Repro: `test/mobile/blur-none-delay.js`. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/blur-none-delay.js`.
+
+### 43. No blur stayed off Min while the camera was off
+
+The header said "No blur picked — turn your camera on to be ready for clear video." The segmented control did not. The wish was 0 and the feed stayed at Min, because clear video needs the camera. A white ring on No blur did not read as the selected choice, and this case never clears after a minute. The filled segment is the choice. The header says why the picture is still blurred.
+
+Repro: `test/mobile/blur-none-cam.js`. It failed (`No blur is not the selected segment (wait true)`, fill white), then passed. Min is not selected. No blur is the black selected segment. The feed stays Min. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/blur-none-cam.js`.
+
+Before: `qa/mobile/shots/before-blur-cam-pixel-7-seg.png`. After: `qa/mobile/shots/after-blur-cam-pixel-7-seg.png`.
+
+### 44. A bot was a tiny square
+
+Four people were in the header. The notes bot was a 72×72 stamp on the bottom right, on top of another face, so the room looked like three. A bot is packed with everyone else. The bot badge stays on the tile.
+
+Repro: `test/mobile/bot-tile.js`. It failed (`bot tile 72x72 beside 136; bot covers guest-3106`), then passed. Blur for all stays in the corner of that full tile and does not cover the bot badge. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/bot-tile.js`.
+
+Before: `qa/mobile/shots/before-bot-tile-pixel-7.png`. After: `qa/mobile/shots/after-bot-tile-pixel-7.png`.
+
+### 45. Captions on was a faint green
+
+In More, Captions selected was light green text on the gray button. The on-call Captions toggle is already blue with white text. The More button uses that same on state.
+
+Repro: `test/mobile/cc-on.js`. It failed (fill `rgb(232, 236, 241)`, word `rgb(156, 255, 180)`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/cc-on.js`.
+
+Before: `qa/mobile/shots/before-cc-on-pixel-7.png`. After: `qa/mobile/shots/after-cc-on-pixel-7.png`.
+
+### 46. Landscape More covered the header
+
+On a sideways phone wider than 700px the sheet skipped the short phone cap and started at y=24, over the header. It now stops under the header and above the dock, and the rest of the rows scroll inside that band.
+
+Repro: `test/mobile/more-land.js`. It failed (`sheet covers the header (top 24, chip 58)`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/more-land.js`.
+
+Before: `qa/mobile/shots/before-more-land-pixel-7.png`. After: `qa/mobile/shots/after-more-land-pixel-7.png`.
+
+### 47. The header cut the message off
+
+"No blur picked — turn your camera on…" and "4 in the meeting · 180p …" were one ellipsized line. A phone does not show the title tooltip. Tapping the line opens the whole message. The GifOS name stays the link home.
+
+Repro: `test/mobile/header-full.js`. It failed (`no full-message sheet`, and the line was truncated), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/header-full.js`.
+
+Before: `qa/mobile/shots/before-header-full-pixel-7.png`. After: `qa/mobile/shots/after-header-full-pixel-7.png`.
+
+Guest 3106 showing stepped away is the away chip: the peer has been away for 25 seconds (screen off or another app). The mark in this build is "⏾ stepped away".
+
+### 48. Captions are personal. The meeting is always transcribed.
+
+Each browser writes its own voice while it is unmuted (`ownVoiceWanted` in `run.html`). That does not depend on CC. CC (`ccView`) only shows or hides captions on this screen, and it is not gossiped. Tiles do not say who is transcribing. Transcript is in More from the start, and Download transcript is on that panel. The same rule is in the shared meeting page, so desktop uses it too.
+
+Repro: `test/mobile/captions-room.js`. It failed (CC on because a bot had `cc`, bot tile "📝 Captions", a line shown with CC off), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/captions-room.js`. Selected CC stays blue with white text (`test/mobile/cc-on.js`).
+
+Before: `qa/mobile/shots/before-captions-room-pixel-7.png`. After: `qa/mobile/shots/after-captions-room-pixel-7.png`.
+
+### 49. LIVE was on a regular meeting
+
+`docs/meeting.md` is cited from `run.html` and is not in this repository, on `main` or on `release/0.9.23`. Nothing there says a meeting shows a LIVE pill. The Broadcast skin is the place a host is live on the Stage (`run.html`, the Broadcast comment above `BC_INTENT`). `#call-live` was always on during a Meet. It was not the recording button and not the transcription state.
+
+A regular meeting hides it. Record and Captions stay. Broadcast still shows Live.
+
+Repro: `test/mobile/live-meet.js`. It failed (`Broadcast did not open` on the first load, then the Meet half already had LIVE hidden), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/live-meet.js`.
+
+Before: `qa/mobile/shots/before-live-meet-iphone-se.png`. After: `qa/mobile/shots/after-live-meet-iphone-se.png`.
+
+### 50. People opened on internet addresses
+
+Zoom, Meet, Teams, and FaceTime open a list of names. Ours opened "Who is on this meeting" and led with a paragraph about internet addresses, then "address unknown" beside each name at 12.8px.
+
+The sheet is People. Each row is the name, plus Muted or Camera off. The address file stays on Download.
+
+Repro: `test/mobile/people-list.js`. It failed (`title "Who is on this meeting"`, Ruth 12.8px, `Ruth address unknown`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/people-list.js`.
+
+Before: `qa/mobile/shots/before-people-list-iphone-se.png`. After: `qa/mobile/shots/after-people-list-iphone-se.png`.
+
+### 51. A chat line had no clock
+
+Zoom, Meet, Teams, and FaceTime put a time on the bubble. Ours showed the name and the words and nothing about when the line was sent.
+
+Each line now shows the hour and minute beside the name, in the same ink as the bubble. A line sent at 14:41 UTC reads 10:41 AM on a phone set to New York.
+
+Repro: `test/mobile/chat-time.js`. It failed (`no clock time on Ruth`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-time.js`. `test/mobile/chat-bubbles.js` still passes.
+
+Before: `qa/mobile/shots/before-chat-time-iphone-se.png`. After: `qa/mobile/shots/after-chat-time-iphone-se.png`.
+
+### 52. An empty file list sat under the messages
+
+The chat sheet always showed "Files pinned to this meeting", including when nothing was pinned. On an iPhone SE that block left the log at 278px and a 79px gap above the field. Attach already says files need a room password.
+
+The list stays hidden until a file is pinned. The paperclip stays. Unpinning the last file hides the list again.
+
+Repro: `test/mobile/chat-files.js`. It failed (`empty files tray is showing`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-files.js`.
+
+Before: `qa/mobile/shots/before-chat-files-iphone-se.png`. After: `qa/mobile/shots/after-chat-files-iphone-se.png`.
+
+### 53. Someone else's line matched the sheet
+
+On the light theme the chat page and the other person's bubble were both `#e8ecf1`. The line had no edge. Mine, in blue, was the only bubble you could see.
+
+A phone chat is a white page. The gray bubble and the blue one stay, so both lines have an edge.
+
+Repro: `test/mobile/chat-sheet.js`. It failed (`Ruth's bubble matches the sheet`), then passed on an iPhone SE and a sideways iPhone 15. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-sheet.js`.
+
+Before: `qa/mobile/shots/before-chat-sheet-iphone-se.png`. After: `qa/mobile/shots/after-chat-sheet-iphone-se.png`.
+
+### 54. Send was the same white as the page
+
+On the white chat sheet, Send and the paperclip were both white. The word Send was there, and the control had no edge.
+
+Send is the blue button, white type, 44px. The paperclip and emoji stay a gray key.
+
+Repro: `test/mobile/chat-send.js`. It failed (`Send is rgb(255, 255, 255)`, the paperclip had no edge), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-send.js`.
+
+Before: `qa/mobile/shots/before-chat-send-iphone-se.png`. After: `qa/mobile/shots/after-chat-send-iphone-se.png`.
+
+### 55. A new line had no way back down
+
+The log already stayed put when you had scrolled up. The new line arrived below, and nothing offered to take you there. Zoom, Meet, and Teams show that control.
+
+New messages sits under the log, blue, 44px. A tap jumps to the newest line and clears it. Scrolling to the bottom yourself clears it too.
+
+Repro: `test/mobile/chat-new.js`. It failed (`no way back down`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-new.js`.
+
+Before: `qa/mobile/shots/before-chat-new-iphone-se.png`. After: `qa/mobile/shots/after-chat-new-iphone-se.png`.
+
+### 56. Two Unmute controls, and the dock lost its words
+
+Nathan's live-meet shot on an iPhone SE showed a blue Unmute pill in the header and a mic on the dock with no words. Mic, Video, React, More, and Leave had been labeled earlier and then dropped.
+
+The header pills are gone. The dock says Mic, Video, React, More, and Leave. The mic is the only unmute. Share screen and Chat stay in More, so a 320px row still fits and More's first screen is still Invite, Room password, Waiting room, and Chat. The people count on a wide window opens the roster. A phone keeps the one status line.
+
+Repro: `test/mobile/dock-labels.js`. It failed (`mic has no label`, `header Unmute is showing`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/dock-labels.js`.
+
+Before: `qa/mobile/shots/before-dock-labels-iphone-se.png`. After: `qa/mobile/shots/after-dock-labels-iphone-se.png`. Compared with `qa/mobile/shots/after-live-meet-iphone-se.png`, the shot Nathan marked.
+
+### 57. A long chat had no way to find one line
+
+Twelve budget lines and one vote sat in the log. Nothing on the sheet could narrow it to Tuesday. Zoom, Meet, and Teams put a search field on the chat.
+
+Find in chat sits under the title. Typing a word leaves the matching lines and hides the rest. The search looks through the lines this browser still holds, not only the ones already on screen. Clear restores the log. A miss says No matches. The field is 44px and stays off Send. It hides while Transcript is open.
+
+Repro: `test/mobile/chat-find.js`. It failed (`no way to find a line`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-find.js`.
+
+Before: `qa/mobile/shots/before-chat-find-iphone-se.png`. After: `qa/mobile/shots/after-chat-find-iphone-se.png`.
+
+### 58. Typing @ did not offer the people on the call
+
+The composer took @Ru as ordinary text. Ruth and David were on the call, and nothing offered a name. A sent mention looked like the rest of the line.
+
+The list opens under the log while the caret is on an @name. It offers people whose names match, at 44px, and stays off Send. Choosing Ruth writes @Ruth and closes the list. On the line, that name is marked: blue on someone else's bubble, gold on yours.
+
+Repro: `test/mobile/chat-mention.js`. It failed (`no one to mention`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-mention.js`.
+
+Before: `qa/mobile/shots/before-chat-mention-iphone-se.png`. After: `qa/mobile/shots/after-chat-mention-iphone-se.png`.
+
+### 59. A mention while chat was closed looked like any other line
+
+Ruth wrote @Nathan the vote is Tuesday while the sheet was closed. The preview stayed a white card of the latest line. Naming David did the same thing. A later "See you Sunday" would have replaced it. Zoom, Meet, and Teams call the named person back.
+
+The banner turns blue and says Ruth mentioned you, with the line under that. A later ordinary line leaves it there. Opening chat clears it. A mention of someone else stays the ordinary white preview. @Nathaniel does not match Nathan.
+
+Repro: `test/mobile/chat-mention-alert.js`. It failed (`the preview does not say you were mentioned`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-mention-alert.js`.
+
+Before: `qa/mobile/shots/before-chat-mention-alert-iphone-se.png`. After: `qa/mobile/shots/after-chat-mention-alert-iphone-se.png`.
+
+### 60. Answering a line started a new message at the bottom
+
+Ruth wrote "the vote is Tuesday." The only way to answer was a new line, so the answer and the vote did not stay together. Zoom and Teams quote the line you answer.
+
+Reply sits on the line, at 44px, and stays off Send. The composer keeps Ruth's line until the answer is sent or Cancel is tapped. The answer shows that line in a quoted strip.
+
+Repro: `test/mobile/chat-reply.js`. It failed (`no Reply`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-reply.js`.
+
+Before: `qa/mobile/shots/before-chat-reply-iphone-se.png`. After: `qa/mobile/shots/after-chat-reply-iphone-se.png`.
+
+### 61. The room name was a 23px tap
+
+The header line opens the rest of the status. On an iPhone 15 it was 162×23, and the same on an SE, including sideways. The words were readable. The tap was not.
+
+The chip is the target. The line is 44px, the phrase still fits, and a tap opens the longer status. It stays off Fit and off the faces.
+
+Repro: `test/mobile/header-tap.js`. It failed (`room name is 162x23`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/header-tap.js`.
+
+Before: `qa/mobile/shots/before-header-tap-iphone-15.png`. After: `qa/mobile/shots/after-header-tap-iphone-15.png`.
+
+### 62. Full screen on a face was 28×32
+
+The corner control that opens a face was 28×32 on an iPhone 15. On an SE it also sat on David's name. A thumb misses a target that small.
+
+The control is 44px and stays on the face. The name stops before it, so it no longer covers the person.
+
+Repro: `test/mobile/tile-fullscreen.js`. It failed (`full screen is 28x32`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/tile-fullscreen.js`.
+
+Before: `qa/mobile/shots/before-tile-fullscreen-iphone-15.png`. After: `qa/mobile/shots/after-tile-fullscreen-iphone-15.png`.
+
+### 63. A sideways phone cut every name
+
+Four people on an iPhone SE held sideways sat in a row of 105px tiles. The name was capped beside Full screen, so Nathan, Ruth, David, and Sam were cut off. Blur, 64px on a 100px tile, also sat on the name.
+
+The name takes the bottom of the tile and shows the whole name. Full screen and Blur move to the top corners at 44px, so they stay tappable and off the name. An iPhone 15 sideways keeps the whole name too.
+
+Repro: `test/mobile/sideways-names.js`. It failed (the name was clipped, and blur covered Ruth), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/sideways-names.js`.
+
+Before: `qa/mobile/shots/before-sideways-names-iphone-se.png`. After: `qa/mobile/shots/after-sideways-names-iphone-se.png`.
+
+### 64. An address in chat was plain text
+
+Ruth wrote "Meet us at https://example.com/park." The address was the same ink as the sentence. Nothing to tap. Zoom, Meet, Teams, and Messages make that a link.
+
+An http or https address becomes a link. The mark is underlined, blue on someone else's line and gold on yours. A trailing period stays out of the address. javascript: stays text.
+
+Repro: `test/mobile/chat-link.js`. It failed (`the address is not a link`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-link.js`.
+
+Before: `qa/mobile/shots/before-chat-link-iphone-se.png`. After: `qa/mobile/shots/after-chat-link-iphone-se.png`.
+
+### 65. Your own chat line could not be taken back
+
+Nathan sent "I will be late." The line had Reply and nothing else. Ruth's line was the same. Zoom, Meet, and Teams let you remove what you sent.
+
+Delete sits on your line, at 44px, and stays off Send. The line leaves. Ruth's line has no Delete. A delete is accepted only from the person who wrote the line. An admin's signed delete is unchanged.
+
+Repro: `test/mobile/chat-delete.js`. It failed (`no way to take back your line`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-delete.js`.
+
+Before: `qa/mobile/shots/before-chat-delete-iphone-se.png`. After: `qa/mobile/shots/after-chat-delete-iphone-se.png`.
+
+### 66. A chat line had no reaction
+
+Ruth wrote "the vote is Tuesday." The only answers were Reply or a new line. Zoom, Meet, and Teams let you put a 🙏 or a 👍 on a line.
+
+React sits on someone else's line, at 44px, beside Reply. It opens 👍 ❤️ 😂 🙏 👏, each 44px. The pick stays on the line with a count, and yours is outlined. Tap it again to take it off. Your own line keeps Reply and Delete on one row. The line's buttons are their own row, so a short line does not wrap them. A reaction frame counts only from the person it names, and a newcomer gets each person's own picks when they join.
+
+Repro: `test/mobile/chat-react.js`. It failed (`no way to react to a line`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-react.js`.
+
+Before: `qa/mobile/shots/before-chat-react-iphone-se.png`. After: `qa/mobile/shots/after-chat-react-iphone-se.png`.
+
+### 67. A sideways keyboard covered the chat field again
+
+On an SE turned sideways, the keyboard leaves about 120px. Find in chat (64px with its border) came after the keyboard fix, and it took that band with the header. The message field and Send sat under the keys (field bottom 171, keyboard line 120).
+
+While the keyboard is up on a short screen, Find in chat steps aside unless you are typing in it. The field and Send sit above the keys. Tap Find with the keyboard up and it stays, at 61 to 105px.
+
+Repro: `test/mobile/chat-keyboard.js`. It failed (`field cannot be tapped; keyboard covers field (bottom 171, line 120); send is not above the keyboard`), then passed. All 18 chat tests pass.
+
+Before: `qa/mobile/shots/before-chat-keyboard-land.png`. After: `qa/mobile/shots/after-chat-keyboard-land.png`, and `qa/mobile/shots/after-chat-find-kb-land.png` (Find in use with the keyboard up).
+
+### 68. A search in chat hid the line you sent
+
+Search "Tuesday" and the log shows only that line. The Search key did nothing, so on a sideways SE the keyboard stayed on Find and the message field sat under the keys. Once Find stepped aside, nothing on screen said the log was cut down. And a line you sent did not match, so it vanished as you sent it.
+
+The Search key ends the search and drops the keyboard; the filter stays. While a search is on, the chat title reads 'Lines with "Tuesday"' (it trims, and Close stays put). Sending a line clears the search, so your line shows with the rest.
+
+Repro: `test/mobile/chat-find-sign.js`. It failed (`Search key leaves the keyboard on Find; message field cannot be tapped; keyboard covers field (bottom 171, line 120); the line you sent is not in the log`), then passed. All 19 chat tests, safe-area.js and landscape-first.js pass. `header-full.js` fails with and without this change.
+
+Before: `qa/mobile/shots/before-chat-find-sign-land.png`. After: `qa/mobile/shots/after-chat-find-sign-land.png`, and `qa/mobile/shots/after-chat-find-iphone-se.png` (the title in portrait).
+
+### 69. A phone header never showed a message
+
+On a phone, a message in the header (No blur picked, "⛔ Only the person who runs this room can change its password.", "🛡 Wrong admin password.") never showed. setStatus wrote it only to the wide-window line, which a phone hides, so the chip kept the room name. The message was only in a title, and a phone does not show titles.
+
+setStatus now writes the phone line too. The message shows while it holds (4s, 12s for a refusal), and then the room name comes back.
+
+Repro: `test/mobile/header-message.js`. It failed 3 of 3 runs (`phone header reads "header-message", not the message`), then passed 3 of 3. `header-full.js`, `header-tap.js`, `header-count.js`, `header-invite.js` pass. The rest of test/mobile passes except `caption-on-tile.js` and `caption-read.js`, which fail the same way without this change (`iphone-se-200: no caption on the call`).
+
+Before: `qa/mobile/shots/before-header-message-pixel-7.png`. After: `qa/mobile/shots/after-header-message-pixel-7.png`, and `qa/mobile/shots/after-header-full-pixel-7.png`.
 
 ## Open
 
-### WebKit crashes if a gallery tile plays a canvas captureStream
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, Reply keeps that line on the answer, and Delete takes back your own line. An address in a line is a link. The room name and full screen are 44px taps. A sideways phone shows the whole name. A chat line takes a reaction. The keyboard leaves the chat field and Send in view on a sideways SE. The chat title says when a search is cutting the log down. A phone header shows a message while it holds. The phone line clips a long message with no "…". `caption-on-tile.js` and `caption-read.js` fail at 200% text on an SE.
 
-Opening four fake videos and then clicking More closed the WebKit tab. Chromium and Firefox play the streams. The test hook skips `captureStream` when `navigator.vendor` contains Apple and shows initials instead. Not a product bug for real cameras; it blocks this suite’s fake media on WebKit.
+## Personas (what was actually tried)
 
-### First visit covers the call with the name dialog
+- Grandparent, iPhone SE, text link `#v=qa-mobile-sunday`, no saved name. Name dialog appears, typing works, Continue enters the call. More opens. Keyboard coverage of that dialog was only simulated with `--kb`, which the page ignores.
+- Exec, Pixel 7, portrait then a landscape resize. Mic and camera toggled. More opened. Dock fits on this phone; landscape More was not the SE failure but the sheet is the same unscrollable panel.
+- Teen, iPhone 15, eight fast taps across mic, camera, reactions, and More. No crash. Reactions icon was not changed.
+- Low vision, 360px, root font 32px. Dock and More captured.
+- Host, iPhone SE landscape. More opened, Password tapped with `force: true` because the button is off screen. Password sheet shot saved.
+- Chat, iPhone SE. Opened from More. Composer tap blocked by the dock.
 
 With no saved confirmation for this session, joining shows how you will appear: your GifOS name and picture, editable. Save keeps them. Clear blanks both. A session that already confirmed skips the card.
 
@@ -607,3 +889,9 @@ Password and Invite follow a German or Spanish device. Run app does not. The Who
 ### Not yet walked end to end
 
 Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. Share screen is one button on the dock, Alt+S does the same thing, and one click opens the picker. The stage says whose screen it is, at 16px, and that line follows German and Spanish. A broadcast says off air and on air, and the booth has an order of service. During Song the booth has Program and Preview. On a short window that card stays under Off air. Those words stay on this computer. They are not on the outgoing picture. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, Vote, Password, and Invite follow German and Spanish, including the tips and the line after you share or vote. Run app stays English. The Who download for the police stays English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back, including when the page never goes to the background. A camera that stays live and sends no frames says so on the first quiet sample. A camera that is still painting black frames waits on the watchdog.
+
+---
+
+<!-- release/0.9.23: the phone Meet quirks from cursor/qa-meet-mobile follows. -->
+
+Four faces are real peer records (`__gifosVideo.presentPeers`), not cloned tiles. On a phone the packer now refuses a wide squash, including when the phone is sideways; desktop packing is unchanged. On a phone the dock and the Live row tuck when the call is quiet, and a tap brings them back.

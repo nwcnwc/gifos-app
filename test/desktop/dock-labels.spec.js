@@ -76,7 +76,7 @@ test('dock words stay inside their buttons when the window narrows', async ({ pa
   for (const w of [1600, 1280, 1100, 900]) {
     await page.setViewportSize({ width: w, height: 800 });
     await page.waitForTimeout(200);
-    for (const id of ['mic', 'cam', 'sharebtn', 'bartoggle', 'leavebtn']) {
+    for (const id of ['mic', 'cam', 'reactbtn', 'bartoggle', 'leavebtn']) {
       const box = await wordBox(page, id);
       expect(box.inside, id + ' at ' + w).toBe(true);
       expect(box.onScreen, id + ' at ' + w).toBe(true);

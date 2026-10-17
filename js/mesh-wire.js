@@ -132,6 +132,10 @@
     const dropDeep = opts.dropDeepSocket !== false;
     const ident = GifOS.meshIdentity || null;
     let stopped = false, lockedFired = false, strandedFired = false, rejFired = false;
+    // Waiting room (relay-admit.js). A `wait` frame holds the seat off the
+    // greeter list so an empty list cannot mint. The admit token is presented
+    // on the next connect, once, then dropped.
+    let waitingHold = false, admitTok = '', admitPresented = false;
     let sock = null, deepSince = -1, wasNetDark = false, netDarkAt = 0;   // netDarkAt: wall clock of the offline edge (the dark span is an absence — see tick())
     let lastTickAt = 0, workerClock = false;   // wall clock of the last tick run; workerClock: the tick timer is a Worker (the wall-time clock applies: see tick())
     const TICK_CATCHUP = 4, TICK_FREEZE_MS = 10000;
@@ -282,6 +286,7 @@
         + (rs ? '&rs=' + rs : '')
         + (/[&?]dev=/.test(extra) ? '' : '&dev=' + encodeURIComponent(devTag || net.randHex(8)))
         + (ipp && identity ? '&pk=' + encodeURIComponent(identity.pubB64) + '&ipp=' + encodeURIComponent(ipp) : '')
+        + (admitTok ? '&admit=' + encodeURIComponent(admitTok) : '')
         + extra;
     };
 
@@ -340,6 +345,12 @@
       tnSalt: (() => { try { const b = new Uint32Array(2); crypto.getRandomValues(b); return b[0].toString(36) + b[1].toString(36); } catch (e) { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); } })(),
       TICK: 0,
       HEALING: true,
+      // Waiting room (relay-admit.js). The page says whether this knocker
+      // is still held. No function: the door answers, as before.
+      doorHeld(id) {
+        if (typeof opts.doorHeld !== 'function') return false;
+        try { return !!opts.doorHeld(id); } catch (e) { return true; }
+      },
       // Q2: pack the tree upward (deep leaves atomically move to shallower
       // occupied rows). Roadmap §3 / law T. GIFOS_COMPACTION=false is the
       // browser twin of the sim's `compacton 0` — the sim's own pinned-coord
@@ -536,6 +547,20 @@
     // a page can tell a socket the relay CUT from one the network dropped.
     const relayCloses = [];
     const RELAY_CLOSES_KEPT = 64;
+    // The relay minted an admit token for THIS socket. Drop the current
+    // connection and open another that presents it. One presentation: a
+    // later `wait` clears the flag so a rejected token is not retried raw.
+    function presentAdmit(tok) {
+      if (!tok || !/^[A-Za-z0-9_.-]{16,128}$/.test(tok)) return;
+      admitTok = tok;
+      admitPresented = false;
+      waitingHold = true;
+      try {
+        const raw = sock && sock._raw && sock._raw();
+        if (raw && raw.readyState <= 1) raw.close();
+      } catch (e) {}
+      setTimeout(() => { try { if (sock && sock.kick) sock.kick(); } catch (e) {} }, 0);
+    }
     function makeSock() {
       // A live meeting has to stay reachable while the page is hidden, so a
       // dropped relay retries on the short cap. The patient cap is for a
@@ -551,12 +576,42 @@
       // The URL CONNECT knock re-seeds the genesis key but carries no sealed
       // address, so without this the pool stays empty until E3 (100-200s):
       // exactly the window the tear drill founds a second meeting in.
-      sock.onopen = () => { if (!stopped && iAmAGreeter()) reregister('reconnect'); };
+      sock.onopen = () => {
+        if (admitTok) admitPresented = true; // this connect is the one that presents the token
+        if (!stopped && iAmAGreeter()) reregister('reconnect');
+      };
       sock.onmessage = (ev) => {
         if (stopped) return;
         lastRelayRx = Date.now();
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
-        if (m.t === 'greeters') { onGreeters(m); return; }
+        if (m.t === 'greeters' || m.t === 'wait' || m.t === 'locked' || m.t === 'denied' || m.t === 'admit-tok') {
+          const verdict = (GifOS.relayAdmit && GifOS.relayAdmit.clientDoor)
+            ? GifOS.relayAdmit.clientDoor(m, { waitingHold: waitingHold, admitPresented: admitPresented, state: seat ? seat.state : 0, badPassword: lockedFired })
+            : (m.t === 'greeters' ? 'seat' : 'other');
+          // A bad password is the lock prompt, not the waiting room, and it
+          // must not stick a hold that would refuse the corrected proof.
+          if (m.t === 'locked') { fireLocked(); return; }
+          if (m.t === 'wait' || m.t === 'denied') {
+            waitingHold = true;
+            admitPresented = false;
+            if (opts.onDoor) { try { opts.onDoor('unseated', m); } catch (e) {} }
+            return;
+          }
+          if (m.t === 'greeters' && verdict === 'unseated') {
+            // not onGreeters: an empty list here would mint a founder
+            if (!lockedFired && opts.onDoor) { try { opts.onDoor('unseated', m); } catch (e) {} }
+            return;
+          }
+          if (m.t === 'admit-tok') {
+            if (verdict === 'reconnect') presentAdmit(m.tok);
+            return;
+          }
+          if (admitPresented) { admitTok = ''; waitingHold = false; admitPresented = false; }
+          onGreeters(m);
+          if (opts.onDoor) { try { opts.onDoor('seated', m); } catch (e) {} }
+          return;
+        }
+        if (m.t === 'peer' && waitingHold && !(seat && seat.state === 3)) return; // no bootstrap while the relay is holding us
         if (m.t === 'peer') {
           // THE SHAPE GATE: a listed type in the clear and one fixed sealed
           // size (gifos-net.js relayFrameOk), or the frame is counted and

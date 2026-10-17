@@ -1,0 +1,2 @@
+FAIL bot tile 72x72 beside 136; bot covers guest-3106
+{"n":4,"status":"bot-tile · 4 in call","nodes":[{"id":"me","x":2,"y":120,"w":272,"h":497,"badge":""},{"id":"host-test","x":274,"y":120,"w":136,"h":248.5,"badge":""},{"id":"guest-3106","x":274,"y":368.5,"w":136,"h":248.5,"badge":""},{"id":"notes-7597fb","x":338,"y":545,"w":72,"h":72,"badge":"🤖 bot"}],"vh":839,"vw":412}

@@ -1769,6 +1769,7 @@ test('captions and record stay readable when they are on', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
     localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.removeItem('gifos_cc_view'); // this screen's captions choice is remembered (qa-meet-mobile)
   });
   for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
     await page.setViewportSize({ width: w, height: h });

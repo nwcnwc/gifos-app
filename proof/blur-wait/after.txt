@@ -1,0 +1,2 @@
+PASS blur none delay
+EXIT:0
