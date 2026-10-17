@@ -74,9 +74,26 @@ function look(page) {
         if (el === line && line.classList.contains('open') && cw.indexOf('the face of') === 0) continue;
         if (el === line && line.classList.contains('open') && cw === 'the stage') continue;
         const cr = ce.getBoundingClientRect();
+        // A desktop share's stage starts under the whole header (its own
+        // layout); a button in that header is no worse than the header.
+        const link = document.querySelector('.topchip a.title');
+        if (el.closest('.topchip') && cw === 'the stage' && link && over(link.getBoundingClientRect(), cr)) continue;
         if (over(r, cr)) out.push(what + ' (' + box(r) + ') runs over ' + cw + ' (' + box(cr) + ')');
       }
       if (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1) out.push(what + ' cuts its words "' + el.textContent.trim() + '"');
+      // Every run of words must read on what is under it (4.5:1).
+      const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+      const lum = (c) => { const [r0, g0, b0] = c.slice(0, 3).map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * r0 + 0.7152 * g0 + 0.0722 * b0; };
+      const solid = (c) => c.length === 3 || (c.length > 3 && c[3] > 0.5);
+      for (const t of [el, ...el.querySelectorAll('*')]) {
+        if (!t.childNodes.length || ![...t.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
+        let bg = null;
+        for (let a = t; a && !bg; a = a.parentElement) { const c = rgb(getComputedStyle(a).backgroundColor); if (solid(c)) bg = c; }
+        if (!bg) bg = [12, 14, 18];
+        const l1 = lum(rgb(getComputedStyle(t).color)), l2 = lum(bg);
+        const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+        if (ratio < 4.5) out.push(what + ' is hard to read: "' + t.textContent.trim().slice(0, 30) + '" ' + getComputedStyle(t).color + ' on rgb(' + bg.slice(0, 3).join(',') + ')');
+      }
       return r;
     };
     const lineSeen = seen(line) && !coveredBy(line);
@@ -136,6 +153,9 @@ async function run(browser, dev, tag, vp, bad) {
         return document.body.classList.contains('screen-on') && v && v.videoWidth > 0;
       }, null, { timeout: 15000 }).then(() => true, () => false);
       if (!up) { bad.push(tag + ': the shared screen never reached the stage'); continue; }
+      // "Reaching the meeting…" over the stage is the room not yet reached.
+      const seated = await page.waitForFunction(() => !document.getElementById('joinveil'), null, { timeout: 15000 }).then(() => true, () => false);
+      if (!seated) { bad.push(tag + ': never reached the meeting'); continue; }
     }
     await page.keyboard.press('Shift');
     await page.waitForTimeout(1500);

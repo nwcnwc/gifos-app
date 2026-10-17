@@ -710,6 +710,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      button (tap = the signed stage/app grant, §SIG). Everyone else — guests,
      open rooms — sees the identical banner, inert. */
   body.admroom.amadmin #handq .hq { text-decoration: underline; cursor: pointer; }
+  /* In a call the faces box is fixed over the whole page, so the queue line
+     at the top sat under it (nobody saw it), and during a phone share it
+     showed through under the room name. In those views the header chip
+     carries a "✋ 1" button, and the line opens under the header. */
+  #hdrhand { display: none; flex: 0 0 auto; box-sizing: border-box; align-items: center; justify-content: center;
+    min-width: 44px; min-height: 44px; height: 44px; margin: 0 0 0 4px; padding: 0 12px;
+    border: 0; border-radius: 999px; background: #2b2f38; color: #fff; cursor: pointer;
+    font: 700 1rem/1 system-ui, sans-serif; white-space: nowrap; }
+  #hdrhand .hw { margin-left: .3em; }
+  body.comfy #hdrhand.on, body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #hdrhand.on { display: inline-flex; }
+  body.comfy #handq.on:not(.open), body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #handq.on:not(.open) { display: none; }
+  body.comfy #handq.open, body.screen-on #handq.open {
+    position: fixed; z-index: 34; top: calc(106px + var(--gtop, 0px));
+    left: calc(14px + env(safe-area-inset-left, 0px)); max-width: calc(100% - 28px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    box-sizing: border-box; padding: 10px 14px; border-radius: 16px; background: rgba(12,14,18,.96);
+    color: #f4f7fb; font-size: 1rem; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+  body.comfy #handq.open b, body.screen-on #handq.open b { color: #ffd23c; }
+  @media (max-width: 700px), (max-height: 500px) {
+    #hdrhand .hw { display: none; }
+  }
+  /* Sideways, Fit shares the header row, so the line opens right under it. */
+  @media (max-height: 500px) and (orientation: landscape) {
+    body.comfy #handq.open, body.screen-on #handq.open { top: calc(62px + var(--gtop, 0px)); }
+  }
   /* The Settings modal sections (video quality, and the sound mix that used
      to float as its own Mix panel — same element ids, new home). */
   .set-sec { display: flex; flex-direction: column; gap: .45rem; font-size: .8rem; margin-bottom: .9rem; }
@@ -2486,6 +2510,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <span id="statusrest"></span>
     <button type="button" id="statusinvite" hidden>Invite</button>
     <button type="button" id="hdrinvite" hidden title="Copy the link or share it">Invite</button>
+    <button type="button" id="hdrhand" aria-expanded="false" aria-controls="handq"></button>
   </div>
   <aside id="roster" aria-label="People">
     <div class="roster-head"><h3 id="roster-title">People</h3><button type="button" id="roster-close">Close</button></div>
@@ -13141,6 +13166,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const seg = (e, i) => '<span class="hq" data-id="' + esc(e.i) + '">'
         + (i === 0 ? '<b>' + esc(e.n) + '</b>' : esc(e.n)) + '</span>';
       const tot = handTotal(q), shown = Math.min(q.length, 8);
+      paintHandBtn(q, tot);
       // The full stage is a fact about the queue, said once after the count.
       const html = !q.length ? ''
         : '✋ ' + tot + ' waiting' + (stageFull ? ' (stage full)' : '') + ': ' + q.slice(0, 8).map(seg).join(', ') + (tot > shown ? ', +' + (tot - shown) : '');
@@ -13148,6 +13174,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       handqHtml = html;
       handqEl.innerHTML = html;
     }
+    // The header's "✋ 1" stands for the line where the call covers it.
+    const hdrHandEl = document.getElementById('hdrhand');
+    let hdrHandSays = '';
+    function paintHandBtn(q, tot) {
+      hdrHandEl.classList.toggle('on', q.length > 0);
+      if (!q.length) setHandqOpen(false);
+      const says = q.length ? tot + '|' + q[0].n : '';
+      if (says === hdrHandSays) return;
+      hdrHandSays = says;
+      hdrHandEl.innerHTML = q.length ? '✋ ' + tot + '<span class="hw">waiting</span>' : '';
+      hdrHandEl.setAttribute('aria-label', q.length ? tot + ' waiting with a hand up: ' + q.slice(0, 8).map((e) => e.n).join(', ') : '');
+    }
+    function setHandqOpen(on) {
+      handqEl.classList.toggle('open', !!on);
+      hdrHandEl.setAttribute('aria-expanded', on ? 'true' : 'false');
+    }
+    hdrHandEl.addEventListener('click', () => setHandqOpen(!handqEl.classList.contains('open')));
+    // A tap anywhere else puts the line away (names inside stay tappable).
+    document.addEventListener('pointerdown', (e) => {
+      if (!handqEl.classList.contains('open')) return;
+      if (handqEl.contains(e.target) || hdrHandEl.contains(e.target)) return;
+      setHandqOpen(false);
+    }, true);
     // ADMIN rooms, signed-in admins only: tapping a queued name CALLS THEM UP —
     // the tap issues the same individually-signed mod-table 'app' grant that
     // gates apps and the Stage (§SIG; setMod refuses non-admins locally, and
