@@ -2827,7 +2827,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (plate) plate.hidden = false;
       const stageWatch = document.getElementById('stagefeed');
       if (stageWatch && window.MutationObserver) {
-        new MutationObserver(() => { if (typeof paintStagePlate === 'function') paintStagePlate(); }).observe(stageWatch, { childList: true });
+        // The card too, not only the plate: when the feed lands after the
+        // host's camera-off status, nothing else repaints it, and the stage
+        // stayed a bare frame (Q87). paintBroadcastIdent ends in the plate.
+        new MutationObserver(() => { if (typeof paintBroadcastIdent === 'function') paintBroadcastIdent(); }).observe(stageWatch, { childList: true });
       }
     }
     // The HOST is whoever holds this room's stored admin key — known before
