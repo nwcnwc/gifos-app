@@ -3852,3 +3852,32 @@ test('the chat-off placeholders fit the chat box', async ({ page }) => {
     }
   }
 });
+
+test('the lobby card keeps the same gap to the right edge as the preview has to the left', async ({ page }) => {
+  // Seen at 1280 on a service and a small group: the white card ran flush to
+  // the window's right edge, its rounded corners cut square, while the
+  // preview kept 16px on the left. width:100% plus the card's 16px margin
+  // overflowed its column, and Firefox let the lobby scroll sideways by 16px.
+  await page.addInitScript(() => { localStorage.setItem('gifos_name', 'Avery Chen'); });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [1024, 720], [900, 720], [760, 720]]) {
+    for (const bc of [false, true]) {
+      await page.setViewportSize({ width: w, height: h });
+      // A distinct query per boot: a hash-only change would not re-run boot.
+      await page.goto('/run.html?desk=lobedge' + w + (bc ? 's#bc=1' : 'g'));
+      await page.waitForSelector('#lobby.show');
+      if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/lobby-edge-' + (bc ? 'service-' : 'group-') + (process.env.SHOT_TAG || 'run') + '.png' }); }
+      const got = await page.evaluate(() => {
+        const lob = document.getElementById('lobby');
+        const pv = document.getElementById('lob-preview').getBoundingClientRect();
+        const card = document.querySelector('#lobby .lobby-card').getBoundingClientRect();
+        return { leftGap: Math.round(pv.left), rightGap: Math.round(innerWidth - card.right), between: Math.round(card.left - pv.right),
+          lobbyScroll: lob.scrollWidth - lob.clientWidth, pageScroll: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+      });
+      const tag = (bc ? 'service' : 'small group') + ' at ' + w + ': ' + JSON.stringify(got);
+      expect(got.rightGap, tag + ' right gap matches the left').toBe(got.leftGap);
+      expect(got.between, tag + ' gap between preview and card').toBe(got.leftGap);
+      expect(got.lobbyScroll, tag + ' lobby does not scroll sideways').toBeLessThanOrEqual(0);
+      expect(got.pageScroll, tag + ' page does not scroll sideways').toBeLessThanOrEqual(0);
+    }
+  }
+});
