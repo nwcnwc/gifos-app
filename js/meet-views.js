@@ -377,19 +377,25 @@
     const contentH = lay.contentH || (lay.box ? lay.box.h : 0);
     const need = (lay.box ? lay.box.y : 0) + contentH;
     const overflows = !!(lay.box && contentH > lay.box.h + 1);
-    // A gallery that scrolls ends where the dock band starts: tiles past it
-    // are scrolled to, never painted under the call's buttons (a sideways
-    // phone with the buttons up has a 100px band for seven people).
-    if (feed.style && feed.style.setProperty) feed.style.setProperty('--comfy-clip', overflows ? Math.max(0, (+opts.vh || 0) - lay.box.y - lay.box.h) + 'px' : '0px');
+    // A gallery that scrolls ends at the box, or below its first row when
+    // that row is taller than the band (it shows whole, over the empty part
+    // of the Record row, 3d2dd16). Rows that start past it are scrolled to, never
+    // painted under the call's buttons: a sideways SE with the buttons up
+    // has a 100px band for seven people.
+    let clipY = 0, past = 0;
+    if (overflows) {
+      clipY = lay.box.y + lay.box.h;
+      for (let i = 0; i < lay.rects.length; i++) {
+        const r = lay.rects[i];
+        if (r.y <= lay.box.y + 1) clipY = Math.max(clipY, r.y + r.h);
+      }
+      for (let i = 0; i < lay.rects.length; i++) if (lay.rects[i].y >= clipY - 1) past++;
+    }
+    if (feed.style && feed.style.setProperty) feed.style.setProperty('--comfy-clip', overflows ? Math.max(0, (+opts.vh || 0) - clipY) + 'px' : '0px');
     if (feed.classList) feed.classList.toggle('comfy-scroll', overflows);
     let band = lay.band;
-    if (overflows && !band) {
-      const edge = lay.box.y + lay.box.h + 1;
-      let past = 0;
-      for (let i = 0; i < lay.rects.length; i++) if (lay.rects[i].y + lay.rects[i].h > edge) past++;
-      // Short, in the bottom right corner, where a tile has no name or button.
-      if (past) band = { text: '\u2193' + past, label: past + ' more below, scroll down', x: lay.box.x + lay.box.w - 4, y: lay.box.y + lay.box.h - 4, end: true };
-    }
+    // Short, in the bottom right corner, where a tile has no name or button.
+    if (past && !band) band = { text: '\u2193' + past, label: past + ' more below, scroll down', x: lay.box.x + lay.box.w - 4, y: clipY - 4, end: true };
     placeBand(feed, band);
     if (overflows) {
       if (!spacer) {
