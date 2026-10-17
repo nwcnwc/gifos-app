@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q68. Someone who missed the service could not be sent it
+
+The phone replay had Save and Close. Save put a file in Downloads, and getting that file to the church group meant leaving the app to find it. The replay now leads with Share. It hands the video file to the phone's share sheet, so the host, or a viewer who watched, sends the service to whoever missed it in one tap. The file is ready before the tap, because a share sheet only opens inside it. On an iPhone SE, Share, Save, and Close are 89×48, 91×48, and 91×48 in one row. At a 32px root they wrap to two rows, Close 288×48 under the other two, ending at y=552 of 568. After a send, Close does not download a second copy, and Save still saves. A phone that cannot share a file keeps Save and Close. A wide screen still downloads. `test/mobile/replay-share.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-replay-share.png`. After: `test/mobile/screenshots/after/iphone-se-replay-share.png`.
+
+Design: the replay goes where the people who missed it already are. Church and personal stay at 4. Someone who opens the link after the service ended still reads that it has not started, and the host only has a file to send if they tapped Record.
+
 ### Q67. A large text size hid the quiet sentence under the dock
 
 At a 32px root on an iPhone SE, “The service has not started.” was 56px type in four lines. Two of those lines started at y=343 and y=413, under a dock that starts at y=350. The sentence now fits in two lines at 36.8px, ending at y=335, above the dock. The chip still carries the same words. A meeting is unchanged. `test/mobile/broadcast-ended.spec.mjs`.

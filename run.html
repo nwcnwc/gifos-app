@@ -658,8 +658,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      later in the sheet) so radios/checkboxes stay small and native, not full-width. */
   .name-box .rec-opt input { width: 16px; min-width: 16px; height: 16px; flex: none; padding: 0; margin: .18rem 0 0; border: none; background: none; }
   .name-box .rec-opt.inline input { margin: 0; }
-  /* A phone recording plays back on the picture. Save keeps the file.
-     Close keeps it too, unless it was already saved. */
+  /* A phone recording plays back on the picture. Share hands the file to
+     the phone's share sheet, so whoever missed it can watch. Save keeps the
+     file. Close keeps it too, unless it was already saved or sent. */
   .rec-replay { position: fixed; inset: 0; z-index: 70; background: #0c0e12; }
   .rec-replay video {
     position: absolute; inset: 0; width: 100%; height: 100%;
@@ -678,12 +679,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #rec-replay-scrub {
     width: 100%; height: 44px; margin: 0; accent-color: #0064c8;
   }
-  .rec-replay-actions { display: flex; gap: 8px; }
+  .rec-replay-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .rec-replay-actions button {
     flex: 1 1 0; min-height: 48px; border-radius: 16px;
     font: inherit; font-weight: 700; cursor: pointer;
   }
   #rec-replay-save { background: #0064c8; color: #fff; border: 0; }
+  #rec-replay-share { background: #0064c8; color: #fff; border: 0; }
+  #rec-replay-share[hidden] { display: none; }
+  .rec-replay-actions.can-share #rec-replay-save { background: transparent; color: #f4f7fb; border: 1.5px solid #8d93a0; }
   #rec-replay-close { background: transparent; color: #f4f7fb; border: 1.5px solid #8d93a0; }
   #stagefeed .rowtile { width: 100%; }
   .rowtile video { width: 100%; height: 100%; object-fit: cover; background: #000; }
@@ -20788,6 +20792,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         '<div class="rec-replay-bar">' +
         '<input id="rec-replay-scrub" type="range" min="0" max="1000" value="0" aria-label="Replay position">' +
         '<div class="rec-replay-actions">' +
+        '<button type="button" id="rec-replay-share" hidden>Share</button>' +
         '<button type="button" id="rec-replay-save">Save</button>' +
         '<button type="button" id="rec-replay-close">Close</button>' +
         '</div></div>';
@@ -20798,6 +20803,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       vid.src = saved.href;
       let kept = already;
       const keep = () => { if (kept) return; kept = true; recDownload(saved); };
+      // The file is ready before the tap: a share sheet only opens inside
+      // the tap, and Safari's tap does not outlast a fetch.
+      const shareBtn = bg.querySelector('#rec-replay-share');
+      let shareFile = null;
+      let sent = false;
+      if (navigator.share && navigator.canShare) {
+        fetch(saved.href).then((r) => r.blob()).then((blob) => {
+          if (!bg.isConnected || !blob.size) return;
+          const name = saved.name || recFileName();
+          const f = new File([blob], name, { type: String(blob.type || 'video/webm').split(';')[0] });
+          let ok = false;
+          try { ok = navigator.canShare({ files: [f] }); } catch (e) {}
+          if (!ok) return;
+          shareFile = f;
+          shareBtn.hidden = false;
+          shareBtn.parentNode.classList.add('can-share');
+        }).catch(() => {});
+      }
+      shareBtn.onclick = () => {
+        if (!shareFile) return;
+        Promise.resolve(navigator.share({ files: [shareFile], title: 'Replay' })).then(() => {
+          // Sent is kept: Close does not download a second copy.
+          sent = true;
+        }).catch((e) => {
+          if (e && e.name === 'AbortError') return;
+          keep();
+        });
+      };
       vid.addEventListener('timeupdate', () => {
         if (!vid.duration || !isFinite(vid.duration)) return;
         scrub.value = String(Math.round(vid.currentTime / vid.duration * 1000));
@@ -20816,7 +20849,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         keep();
       };
       bg.querySelector('#rec-replay-close').onclick = () => {
-        if (!watch) keep();
+        if (!watch && !sent) keep();
         try { vid.pause(); } catch (e) {}
         vid.removeAttribute('src');
         try { vid.load(); } catch (e) {}
