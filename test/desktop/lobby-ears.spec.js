@@ -102,3 +102,60 @@ test('a person in the waiting room hears no one and no one hears them, until Adm
     await G.b.close().catch(() => {});
   }
 });
+
+// A person held in the waiting room is off every screen but their own, so no
+// screen may leave room for them. Jordan (host) is alone in the room while
+// Mina and Theo wait: Jordan's own face keeps the size it had alone, and each
+// waiting page shows only its own face, at that same size, with no one else's
+// name. Before: each held person still took a column on every screen.
+test('people in the waiting room take no space on any screen', async ({ browserName }) => {
+  test.skip(browserName === 'webkit', 'no fake camera/microphone in Playwright WebKit');
+  test.setTimeout(240000);
+  const room = 'qalobbyroom' + Date.now().toString(36);
+  const hash = '#v=' + room + '&debug=on';
+  const H = await open(browserName, 'Jordan Lee');
+  const G1 = await open(browserName, 'Mina Park');
+  const G2 = await open(browserName, 'Theo Grant');
+  const screenOf = (page) => page.evaluate(() => {
+    const r = (el) => { const b = el.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) }; };
+    const me = document.querySelector('#feed .tile.me');
+    const others = [...document.querySelectorAll('#feed .tile:not(.me), #stadfaces > *')]
+      .filter((el) => el.isConnected && el.style.display !== 'none' && el.getBoundingClientRect().width > 0);
+    return { me: me ? r(me) : null, others: others.map((el) => (el.querySelector('.name') || el).textContent.trim()),
+      remotes: (document.getElementById('grid') || {}).dataset ? document.getElementById('grid').dataset.remotes : null };
+  });
+  try {
+    await H.page.goto(URL0 + '/run.html' + hash, { waitUntil: 'domcontentloaded' });
+    await H.page.waitForSelector('#leavebtn', { state: 'visible', timeout: 60000 });
+    await H.page.evaluate(() => document.getElementById('statuscount').click());
+    const toggle = H.page.locator('#roster-wait-toggle');
+    await toggle.click();
+    await expect(toggle).toHaveText('On');
+    await H.page.evaluate(() => { const c = document.querySelector('#roster .close, #roster-close'); if (c) c.click(); });
+    await H.page.waitForTimeout(1500);
+    const alone = await screenOf(H.page);
+
+    for (const G of [G1, G2]) {
+      await G.page.goto(URL0 + '/run.html' + hash, { waitUntil: 'domcontentloaded' });
+      await G.page.waitForSelector('#leavebtn', { state: 'visible', timeout: 60000 });
+      await expect(G.page.locator('#waitself')).toBeVisible({ timeout: 90000 });
+    }
+    // Both arrivals are held on the host's screen (the host's Waiting list has them).
+    await expect.poll(() => H.page.evaluate(() => (window.__gifosVideo.earsForTest().peers || []).filter((p) => p.held).length), { timeout: 60000 }).toBe(2);
+    await H.page.waitForTimeout(2500);
+    const host = await screenOf(H.page), g1 = await screenOf(G1.page), g2 = await screenOf(G2.page);
+    await H.page.screenshot({ path: path.join(SHOTS, `lobby-room-${PHASE}-host-1280.png`) });
+    await G2.page.screenshot({ path: path.join(SHOTS, `lobby-room-${PHASE}-guest-1280.png`) });
+    const same = (a, b) => !!(a && b && Math.abs(a.x - b.x) <= 2 && Math.abs(a.y - b.y) <= 2 && Math.abs(a.w - b.w) <= 2 && Math.abs(a.h - b.h) <= 2);
+    expect({ hostKeepsAloneSize: same(host.me, alone.me), hostOthers: host.others, hostRemotes: host.remotes, alone: alone.me, host: host.me })
+      .toMatchObject({ hostKeepsAloneSize: true, hostOthers: [], hostRemotes: '0' });
+    expect({ guest1AloneSize: same(g1.me, alone.me), guest1Others: g1.others, guest1Remotes: g1.remotes, g1: g1.me })
+      .toMatchObject({ guest1AloneSize: true, guest1Others: [], guest1Remotes: '0' });
+    expect({ guest2AloneSize: same(g2.me, alone.me), guest2Others: g2.others, guest2Remotes: g2.remotes, g2: g2.me })
+      .toMatchObject({ guest2AloneSize: true, guest2Others: [], guest2Remotes: '0' });
+  } finally {
+    await H.b.close().catch(() => {});
+    await G1.b.close().catch(() => {});
+    await G2.b.close().catch(() => {});
+  }
+});
