@@ -2499,6 +2499,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     //                 bridge is decided before a pool exists.
     //   socketOpen    a peer whose status pulse reached me within 60 s.
     let netPool = { level: 0, cred: false };
+    const netSeated = () => { const s = meshSeat(); return !!(netRoom && s && s.hasCoord && s.state === 3); };
     function netSeatingPool(level, credOk) { netPool = { level: level | 0, cred: !!credOk }; if (netRoom) netRoom.topoChanged(); }
     function netSeatingLiveView() {
       const me = () => meshSeat();
@@ -5940,13 +5941,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function turnServers() { return turnCred ? turnCred.servers() : null; }
     // A peer dialled this pair through TURN (its relay candidates arrived)
     // or I already anchor it. Only a page that cannot be reached acts on it.
-    function turnInvited(p) { return !!(p && (p.turnServe || (p.turnInvitedAt && Date.now() - p.turnInvitedAt < 60000))); }
+    function turnInvited(p) { return !!(p && (p.turnServe || p.turnStandby || (p.turnInvitedAt && Date.now() - p.turnInvitedAt < 60000))); }   // turnStandby: the seating's standby pair, dialled ahead of time by its relay end
     // iceFor(p) → the settings for this pair's next transport. The TURN
     // servers are added only where meetTurn.pairUsesTurn allows it.
     function iceFor(p) {
       const paid = vaServersFor(p); // Video Anywhere: this pair's paid credentials, when it holds them
       const servers = paid || turnServers();
-      const use = MT.pairUsesTurn({ mine: directPath, anchor: !!p.turnAnchor, invited: turnInvited(p), haveServers: !!servers });
+      // Network-aware seating: once this page sits in a room with a view, a
+      // pair carries TURN only where the seating names it a bridge or its
+      // standby (groups - 1 relayed links), and the standby's relay end puts
+      // TURN on it ahead of time. Unseated, or with no view, the pool rules
+      // alone decide, as before.
+      const li = netSeated() ? netLinkInfo(p.id) : null;
+      const named = !!(li && (li.bridge || li.standby));
+      let use = MT.pairUsesTurn({ mine: directPath, anchor: !!p.turnAnchor || (named && li.turnClient), invited: turnInvited(p), haveServers: !!servers });
+      if (netSeated() && !named) use = false;
       p.turnMine = use;
       p.turnPaid = use ? !!paid : vaFarPaid(p);
       p.turnAudio = (use || !!p.turnServe) && !p.turnPaid;
@@ -6090,6 +6099,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const [pid, t] of [...turnDownAt]) if (!peers.has(pid) && now - t > 120000) turnDownAt.delete(pid);
       for (const [pid, t] of [...turnAnchorDead]) if (t < now) turnAnchorDead.delete(pid);
       const servers = turnServers();
+      // 2b. The seating's view of the pool: up when this page or any peer
+      // holds credentials, down when this page's own asks fail and nobody
+      // reports a grant, unknown otherwise (counted as up: no seat is refused
+      // on a guess). Video crosses only in a live paid room.
+      { const mine = turnCred ? turnCred.state() : 'idle';
+        let peerOk = false, peerDown = false;
+        for (const st of statusOf.values()) { if (!st) continue; if (st.tp === 'ok') peerOk = true; else if (st.tp === 'down') peerDown = true; }
+        const down = !peerOk && (mine === 'down' || (mine === 'idle' && peerDown));
+        const level = down ? 0 : (typeof vaRoom === 'function' && vaRoom() === 'live' ? 1 : 2);
+        if (netPool.level !== level || netPool.cred !== !down) netSeatingPool(level, !down);
+        const tp = directPath === 'blocked' ? turnReach() : null;
+        if (tp) { if (myStatus.tp !== tp) myStatus.tp = tp; } else if (myStatus.tp) delete myStatus.tp; }
+      // 2c. The seating names this page's bridge: its far end is the anchor,
+      // whatever the pool rules would have picked; a standby pair is dialled
+      // through TURN ahead of time; every other pair stays off the pool.
+      if (netSeated()) {
+        const links = netLinks();
+        const br = links.find((l) => l.bridge && l.turnClient && peers.has(l.peer));
+        for (const p of peers.values()) { const sb = links.find((l) => l.standby && l.turnClient && l.peer === p.id); if (!!p.turnStandby !== !!sb) { p.turnStandby = !!sb; if (p.turnStandby && !p.connected && !p.turnMine) { newPcFor(p); p.lastKick = now + Math.random() * 1500; sendOffer(p.id, false); } } }
+        if (br && turnAnchorId !== br.peer) { if (turnAnchorId != null) dropTurnAnchor(now, 0); if (directPath === 'blocked' && servers && !((turnAnchorDead.get(br.peer) || 0) > now)) setTurnAnchor(br.peer, now); }   // a bridge end that just failed keeps its dead hold; the seating's own heal moves the bridge
+        else if (!br && turnAnchorId != null) dropTurnAnchor(now, 0);
+      }
       // 3. The client side: one anchor, kept while it carries me.
       if (directPath === 'blocked' && servers) {
         if (turnAnchorId != null) {
@@ -6103,7 +6134,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             dropTurnAnchor(now, 60000);
           }
         }
-        if (turnAnchorId == null) {
+        if (turnAnchorId == null && !netSeated()) {
           const cands = [];
           for (const [pid, p] of peers) {
             if (p.absentSince || p.headless || !(linkTo(pid) || p.boot)) continue;
@@ -6177,7 +6208,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const vaMineLive = () => { const m = vaMine(); return m && VA.checkReceipt(m.r, vaNowS()) ? m : null; };
     // The bridge a pair is counted as. Until the seating names real bridges,
     // a bridge is the pair itself; both ends compute the same id.
-    function vaBridge(pid) { return VA.bridgeIdFor(myId, pid); }
+    function vaBridge(pid) { const li = netSeated() ? netLinkInfo(pid) : null; return (li && li.bridge) || VA.bridgeIdFor(myId, pid); }   // the seating's bridge id when it names one (both ends compute the same), else the pair's
     function vaOrderState() {
       if (!vaOrder) return null;
       const ns = vaNowS();
@@ -7383,7 +7414,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // again on the new channel (turnHello), and only then is it served.
       p.turnServe = false; p.turnHelloDc = null;
       p.vaFarPaid = false; // a new transport is a new session: the far end says again whether it is paid
-      const pc = new RTCPeerConnection({ iceServers: iceFor(p) });
+      const pcCfg = { iceServers: iceFor(p) };
+      if (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && typeof window.__gifosIcePolicyFor === 'function') { try { const pol = window.__gifosIcePolicyFor(p.id, p.name); if (pol === 'relay') pcCfg.iceTransportPolicy = 'relay'; } catch (e) {} }   // a test's network model: a pair to another network gathers relay candidates only
+      const pc = new RTCPeerConnection(pcCfg);
       // A glare yield armed against the OLD pc must never fire at the new
       // one: its rollback would target a connection that never offered.
       try { if (p.glareTimer) clearTimeout(p.glareTimer); } catch (e) {}
@@ -7490,7 +7523,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // deadSince: how long this transport has been in a HARD state — the
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
-        if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
+        if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); p.viaRelay = false; }
         else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; restoreDoorTile(p); }
         updateStatus();
         if (p.connected) { p.altPath = false; p.tlAt = 0; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
@@ -9240,6 +9273,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           stats.forEach((r) => { if (r.type === 'transport' && r.selectedCandidatePairId && !pair) pair = stats.get(r.selectedCandidatePairId) || null; });
           if (!pair) stats.forEach((r) => { if (!pair && r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded' && r.selected !== false) pair = r; });
           const c = pair && stats.get(pair.remoteCandidateId);
+          { const lc = pair && stats.get(pair.localCandidateId); p.viaRelay = !!(pair && ((lc && lc.candidateType === 'relay') || (c && c.candidateType === 'relay'))); }   // network-aware seating: a pair whose selected path runs through a relay is no direct reach
           const addr = c && (c.address || c.ip);
           if (!addr) return;
           const e = whoEntry(pid); if (!e) return;
@@ -21622,6 +21656,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         return null;
       },
+      myId: () => myId,
+      // network-aware seating, as a suite sees it: the view installed, the pool the seating counts, my seat, every link's bridge/standby/dark verdict
+      netSeating: () => { const s = meshSeat(); return { installed: !!netRoom, seated: netSeated(), pool: Object.assign({}, netPool), coord: s && s.hasCoord ? s.coord : null, label: s ? s.glabel : null, anchored: !!(s && s.anchored),
+        links: netLinks().map((l) => Object.assign({}, l, { name: rosterNames[l.peer] || (peers.get(l.peer) || {}).name || String(l.peer).slice(0, 8) })) }; },
       turnState: () => ({
         probe: directPath, cred: turnCred ? turnCred.state() : 'idle', reach: turnReach(), heard: turnHeard(),
         anchor: turnAnchorId != null ? (rosterNames[turnAnchorId] || (peers.get(turnAnchorId) || {}).name || String(turnAnchorId).slice(0, 8)) : null,
