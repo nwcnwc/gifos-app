@@ -32,4 +32,4 @@ Corporate, church, and personal are 4.0. None lead. A 5 would mean that audience
 
 ## Next gap
 
-None of these are a 5. A town hall can still show a meeting’s gallery. FaceTime is one tap, and that tap is the whole screen. YouTube and StreamYard still have the replay.
+None of these are a 5. A speaker on a town hall stage is still a meeting tile. FaceTime is one tap, and that tap is the whole screen. YouTube and StreamYard still have the replay.
