@@ -1517,6 +1517,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.desk-ptr .tile:has(> .blurbox.on) .chips { right: 104px; }
   body.desk-ptr .tile:has(> .blurbox.on) .modbar { top: 12px; right: 104px; }
   body.desk-ptr .tile .modbar button { font-size: 16px; }
+  /* A raised hand is read from across the room: chip words are 16px too. */
+  body.desk-ptr .tile .chips span:not(.ico) { font-size: 16px; }
   /* The header line and the build label go too, unless the line is saying
      something (a notice, an alert, a reach state). */
   .topchip, #gifos-build-float { transition: opacity .2s ease; }
