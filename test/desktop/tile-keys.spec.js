@@ -9,26 +9,21 @@ async function boot(page) {
   await page.waitForSelector('#grid .tile:not(.me)');
 }
 
-test('keyboard focus reaches mute on a remote tile', async ({ page }) => {
+// 0.9.23b: per-person controls live in the tile's control window. A tile
+// takes keyboard focus, Enter opens its window, and Tab walks its controls.
+test('keyboard focus reaches a remote tile and Enter opens its controls', async ({ page }) => {
   await boot(page);
   const tile = page.locator('#grid .tile:not(.me)').first();
   await expect(tile).toHaveAttribute('tabindex', '0');
-  const hidden = await tile.locator('.modbar').evaluate((el) => getComputedStyle(el).display);
-  expect(hidden).toBe('none');
   await tile.focus();
-  const shown = await tile.locator('.modbar').evaluate((el) => getComputedStyle(el).display);
-  expect(shown).toBe('flex');
-  const inside = await tile.evaluate((t) => {
-    const b = t.querySelector('.modbar button[data-mod="mute"]');
-    const tr = t.getBoundingClientRect();
-    const br = b.getBoundingClientRect();
-    return br.width > 8 && br.height > 8 && br.left >= tr.left - 1 && br.right <= tr.right + 1 && br.top >= tr.top - 1 && br.bottom <= tr.bottom + 1;
-  });
-  expect(inside).toBe(true);
-  let landed = '';
-  for (let i = 0; i < 4 && landed !== 'mute'; i++) {
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#tilewin')).toBeVisible();
+  const seen = [];
+  for (let i = 0; i < 8; i++) {
     await page.keyboard.press('Tab');
-    landed = await page.evaluate(() => (document.activeElement && document.activeElement.getAttribute('data-mod')) || '');
+    seen.push(await page.evaluate(() => { const a = document.activeElement; return a && a.closest('#tilewin') ? (a.textContent || a.getAttribute('aria-label') || a.type || '').trim() : ''; }));
   }
-  expect(landed).toBe('mute');
+  expect(seen).toContain('Pin');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#tilewin')).toBeHidden();
 });

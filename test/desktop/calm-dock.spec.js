@@ -73,50 +73,46 @@ test('the dock stays while More is open or the pointer rests on it', async ({ pa
   expect((await idleThenRead(page, 2000)).calm).toBe(false);
 });
 
-test('alone, or with a big room, the dock stays', async ({ page }) => {
+// 0.9.23b: alone keeps the dock (Invite); every room of two or more is calm.
+test('alone the dock stays; a big room goes calm too', async ({ page }) => {
   await boot(page, 0);
   expect((await idleThenRead(page, 2000)).calm).toBe(false);
   await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 7 }));
   await page.waitForFunction(() => document.querySelectorAll('#feed .tile').length >= 8);
-  expect((await idleThenRead(page, 2000)).calm).toBe(false);
+  await page.mouse.move(640, 200);
+  expect((await idleThenRead(page, 2000)).calm).toBe(true);
 });
 
-// Calm means faces only: the per-tile buttons (Blur for all, Max, and the hover
-// row) go with the dock, even with the pointer resting on a face. Names stay.
-test('a quiet small call hides the tile buttons and keeps the names', async ({ page }) => {
+// Calm means faces only: per-person buttons never sit on a tile (they live in
+// the tile's control window), and the badges go with the dock. Names stay.
+test('a quiet small call keeps the names and shows no tile buttons', async ({ page }) => {
   await boot(page, 2);
-  await page.waitForSelector('#feed .tile > .blurbox.on');
   const read = () => page.evaluate(() => {
     const shown = (el) => {
       if (!el) return false;
       const cs = getComputedStyle(el);
       const r = el.getBoundingClientRect();
-      return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.05 && r.width > 1;
+      let op = 1;
+      for (let x = el; x && x.nodeType === 1; x = x.parentElement) op *= Number(getComputedStyle(x).opacity);
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && op > 0.05 && r.width > 1;
     };
     const tiles = [...document.querySelectorAll('#feed .tile:not(.me)')];
-    const hovered = tiles.find((t) => t.matches(':hover'));
     return {
-      hovered: !!hovered,
       blur: tiles.filter((t) => shown(t.querySelector(':scope > .blurbox'))).length,
-      mod: tiles.filter((t) => shown(t.querySelector('.modbar'))).length,
+      mod: tiles.filter((t) => shown(t.querySelector('.modbar button:not([hidden])'))).length,
+      chips: tiles.filter((t) => shown(t.querySelector(':scope > .chips span'))).length,
       names: tiles.filter((t) => shown(t.querySelector('.name'))).length,
       n: tiles.length,
     };
   });
   const awake = await read();
-  expect(awake.hovered).toBe(true);
-  expect(awake.blur).toBeGreaterThan(0);
-  expect((await idleThenRead(page, 2000)).calm).toBe(true);
-  // Let the fade finish before reading.
-  await page.waitForTimeout(1000);
+  expect(awake.blur + awake.mod).toBe(0);
+  expect((await idleThenRead(page, 3500)).calm).toBe(true);
+  await page.waitForTimeout(800);
   const quiet = await read();
   await page.screenshot({ path: 'test/desktop/shots/calm-tiles-after-1280.png' });
-  expect(quiet.hovered).toBe(true);
-  expect(quiet.blur).toBe(0);
-  expect(quiet.mod).toBe(0);
+  expect(quiet.blur + quiet.mod + quiet.chips).toBe(0);
   expect(quiet.names).toBe(quiet.n);
-  await page.mouse.move(660, 220);
-  await expect.poll(async () => (await read()).blur).toBeGreaterThan(0);
 });
 
 // Calm is a room, not a product: the header line (logo, count, resolution) and

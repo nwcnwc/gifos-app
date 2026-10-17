@@ -98,16 +98,21 @@ async function quiet(page) {
   await page.waitForFunction(() => Date.now() - window.__fsChangeAt > 250);
 }
 
+// 0.9.23b: Full screen takes the whole page (the meeting as laid out).
+// Only an engine with no element full screen gets the in-page view.
 async function openedUp(page) {
-  await page.waitForFunction(() => document.getElementById('fsview').classList.contains('on'));
-  await page.waitForFunction(() => document.fullscreenElement === document.getElementById('fsview'), null, { timeout: 1500 }).catch(() => {});
+  await page.waitForFunction(() => document.fullscreenElement === document.documentElement || document.getElementById('fsview').classList.contains('on'));
   await quiet(page);
 }
 
 async function closedOut(page) {
-  await page.waitForFunction(() => !document.getElementById('fsview').classList.contains('on'));
-  await page.waitForFunction(() => !document.fullscreenElement);
+  await page.waitForFunction(() => !document.fullscreenElement && !document.getElementById('fsview').classList.contains('on'));
   await quiet(page);
+}
+
+async function closeIt(page) {
+  if (await page.evaluate(() => document.getElementById('fsview').classList.contains('on'))) await page.click('#fsclose');
+  else await page.evaluate(() => document.exitFullscreen());
 }
 
 // (a) + (b) + (c) in a Meet room of four (me and three), at one size.
@@ -124,18 +129,9 @@ async function meetCase(page, width, height, shot) {
 
   await pressControl(page, controls[0]);
   await openedUp(page);
-  await page.waitForFunction(() => document.querySelectorAll('#fsstrip .fsthumb').length >= 3);
-  const open = await viewState(page);
-  const pick = open.thumbs.find((k) => k.startsWith('peer:') && k !== open.main);
-  expect(pick, 'a person in the strip').toBeTruthy();
-  await page.click('#fsstrip .fsthumb[data-key="' + pick + '"]');
-  await page.waitForFunction((k) => document.getElementById('fsmain').dataset.key === k, pick);
-  const other = (await viewState(page)).thumbs.find((k) => k.startsWith('peer:') && k !== pick);
-  await page.click('#fsstrip .fsthumb[data-key="' + other + '"]');
-  await page.waitForFunction((k) => document.getElementById('fsmain').dataset.key === k, other);
-
-  // ✕ closes it.
-  await page.click('#fsclose');
+  // The meeting stays laid out as it was: every face is still on the page.
+  expect(await page.evaluate(() => document.querySelectorAll('#feed .tile[data-comfy="1"]').length)).toBeGreaterThanOrEqual(4);
+  await closeIt(page);
   await closedOut(page);
 
   // F opens it and F again closes it; Escape closes it too.
@@ -145,7 +141,7 @@ async function meetCase(page, width, height, shot) {
   await closedOut(page);
   await page.keyboard.press('f');
   await openedUp(page);
-  await page.keyboard.press('Escape');
+  await closeIt(page);
   await closedOut(page);
   expect((await viewState(page)).on).toBe(false);
 }
@@ -169,6 +165,6 @@ test('Broadcast desktop: one Full screen button on the dock, none on a face', as
   expect({ onTiles, controls }).toEqual({ onTiles: [], controls: ['fsbtn'] });
   await page.click('#fsbtn');
   await openedUp(page);
-  await page.click('#fsclose');
+  await closeIt(page);
   await closedOut(page);
 });
