@@ -1528,7 +1528,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.broadcast #bc-react .reactburst.show { animation: reactpop 1.6s ease forwards; }
   #bc-reacts { display: none; }
   body.broadcast #bc-reacts:not([hidden]) { display: flex; position: absolute; left: 0; right: 0; bottom: 148px; z-index: 6;
-    justify-content: center; gap: 8px; pointer-events: none; }
+    justify-content: center; align-items: flex-end; gap: 8px; pointer-events: none; }
+  body.broadcast #bc-reacts .bcslot { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  body.broadcast #bc-reacts .bcwho { background: rgba(0,0,0,.72); color: #fff; font: 600 14px/1.2 system-ui, sans-serif;
+    border-radius: 999px; padding: 4px 10px; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   body.broadcast #bc-reacts .bcreact { background: #fff; color: #1d1d1f; font: 700 22px/1 system-ui, sans-serif;
     border-radius: 999px; padding: 10px 16px; min-height: 44px; display: inline-flex; align-items: center;
     box-shadow: 0 8px 20px rgba(0,0,0,.35); }
@@ -21321,9 +21324,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       recent.push(now);
       audienceReactRate.set(who, recent);
       if (audienceReactRate.size > 400) audienceReactRate.clear();
-      const row = audienceReactCounts.get(emoji) || { n: 0, until: 0 };
-      if (now > row.until) row.n = 0;
+      const row = audienceReactCounts.get(emoji) || { n: 0, until: 0, who: [] };
+      if (now > row.until) { row.n = 0; row.who = []; }
       row.n += 1;
+      // Who clapped, latest first, once each. The count stays the count.
+      const mine = who === 'me' || (typeof myId !== 'undefined' && who === myId);
+      const name = mine ? 'You' : String(nameForPeer(who) || '').trim().slice(0, 40);
+      if (name) {
+        row.who = (row.who || []).filter((x) => x.id !== who);
+        row.who.unshift({ id: who, name });
+        if (row.who.length > 50) row.who.length = 50;
+      }
       row.until = now + 4000;
       audienceReactCounts.set(emoji, row);
       paintAudienceReacts();
@@ -21342,12 +21353,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!row || row.n < 1 || now > row.until) continue;
         any = true;
         if (row.until < soon) soon = row.until;
+        const slot = document.createElement('span');
+        slot.className = 'bcslot';
         const pill = document.createElement('span');
         pill.className = 'bcreact';
         const n = row.n > 999 ? '999+' : String(row.n);
         pill.textContent = emoji + ' ' + n;
-        pill.setAttribute('aria-label', n + ' ' + AUDIENCE_REACT_NAME[emoji]);
-        host.appendChild(pill);
+        const names = (row.who || []).map((x) => x.name);
+        let label = n + ' ' + AUDIENCE_REACT_NAME[emoji];
+        if (names.length) {
+          const more = names.length - 2;
+          label += ' from ' + (names.length === 1 ? names[0] : more > 0 ? names.slice(0, 2).join(', ') + ' and ' + more + ' other' + (more === 1 ? '' : 's') : names.join(' and '));
+        }
+        pill.setAttribute('aria-label', label);
+        slot.appendChild(pill);
+        if (names.length) {
+          const line = document.createElement('span');
+          line.className = 'bcwho';
+          line.setAttribute('aria-hidden', 'true');
+          line.textContent = names.slice(0, 2).join(', ') + (names.length > 2 ? ' +' + (names.length - 2) : '');
+          slot.appendChild(line);
+        }
+        host.appendChild(slot);
       }
       host.hidden = !any;
       clearTimeout(audienceReactFade);
