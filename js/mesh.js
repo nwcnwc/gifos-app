@@ -635,6 +635,15 @@
       if (!st.hasCoord || ck(st.coord) !== k) return true; // requeued/moved
       return false;
     }
+    // Dark to me: my channel to it died (D5 pending), or it missed two 8-tick
+    // beats after I had heard it. Never my own cell; a mate I never heard is
+    // not dark (it may be newly seated).
+    darkMate(k) {
+      if (this.hasCoord && ck(this.coord) === k) return false;
+      if (this.translost.has(k)) return true;
+      const it = this.live.get(k);
+      return it !== undefined && this.TICK - it > 16;
+    }
     admitterReachable(k) {
       const x = this.occGet(k); if (x == null || x === this.id) return false;
       // A standing D5 observation (my channel to it died, the probe is out)
@@ -2123,9 +2132,17 @@
             // its admitter within a couple of D1 beats; a frontier seat reading
             // a gossip gap may not inherit admission authority.
             if (!this.cellReserved(ck(adm)) && this.fhEver.has(ck(adm)) && rowLive[adm.r]) {
+              // ...past a mate gone dark to me in a one-row room. When the
+              // head leaves while its heir's radio is off (no close, so the
+              // heir stays listed), a FIND handed to the heir is lost, and
+              // every greeter refuses until the goodbye heal fills the head,
+              // tens of seconds later. The next live mate seats the free
+              // chair instead; a later PLACE from the heir finds the seeker
+              // already seated and is ignored.
+              const oneRow = this.oneRowRoom();
               for (let dj = 1; dj < C(); dj++) {
                 const d = { pc: 0, r: adm.r, i: dj };
-                if (this.cellReserved(ck(d)) && !this.occIsPhantom(ck(d))) { adm = d; break; }
+                if (this.cellReserved(ck(d)) && !this.occIsPhantom(ck(d)) && !(oneRow && this.darkMate(ck(d)))) { adm = d; break; }
               }
             }
             // S1 column-clique admission: only when primary was known (s1seen)
