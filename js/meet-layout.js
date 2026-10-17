@@ -406,7 +406,8 @@
     };
     let stage = [];
     if (mode === 'speaker') {
-      const pick = tiles.filter((t) => stageSelf || !t.me);
+      // A bot is never the focused speaker; you only when you put yourself there.
+      const pick = tiles.filter((t) => (stageSelf || !t.me) && !t.bot);
       const speaker = pick.filter((t) => t.speaker)[0] || pick.filter((t) => t.tier !== 'stad')[0] || pick[0];
       if (speaker) stage = [{ id: speaker.id, aspect: aspectOf(speaker), share: !!speaker.share }];
     } else if (mode === 'stageGallery' || mode === 'stageOnly') {
