@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q65. A raised hand was hidden under OFF AIR
+
+The hand line sat at the top of an iPhone SE, 24px tall, in 12.8px type. A name was 31×18. The OFF AIR banner is 44px and covered it, so the tap landed on the banner. The line now sits under the chip. The name is 117×44, and that name is the tap. The friend-link card moves below the line, starting at y=204. A town hall host still reaches Invite. A meeting keeps the line in the page. Who can be called up is unchanged. `test/mobile/hand-queue.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-hands.png`. After: `test/mobile/screenshots/after/iphone-se-hands.png`.
+
+Design: a raised hand is a tap on the phone. Church stays at 4. Someone who arrives after a service has ended still cannot watch it.
+
 ### Q64. An empty town hall was the invite sentence on a dark stage
 
 A town hall host alone on an iPhone SE read “Just you — send the invite; the link has no expiry” in the chip. The stage was dark, and Invite was not there. The stage now says “The town hall has not started.” The chip names the room and offers a blue Invite, 75×44. The shared link carries `th=1` and leaves the password out. A wide screen keeps the invite sentence and hides the button. A watcher does not get Invite. A meeting still asks its host to send the invite. The camera stays on the dock. A speaker still fills the stage, and the sentence steps aside. `test/mobile/town-hall-join.spec.mjs`.

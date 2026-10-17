@@ -710,6 +710,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      button (tap = the signed stage/app grant, §SIG). Everyone else — guests,
      open rooms — sees the identical banner, inert. */
   body.admroom.amadmin #handq .hq { text-decoration: underline; cursor: pointer; }
+  /* On a phone the broadcast banner covers this line (it sat at y=0, 24px,
+     under a 44px OFF AIR). Park it under the chip so a name is a tap.
+     Who can be called up does not change: the same admin tap still grants. */
+  @media (max-width: 700px), (max-height: 500px) {
+    body.broadcast #handq.on,
+    body.townhall #handq.on {
+      display: block; position: fixed; z-index: 5;
+      left: 8px; right: 8px; margin: 0; padding: 8px 12px;
+      font-size: 1.0625rem; line-height: 1.2; color: #f4f7fb;
+      background: rgba(12,14,18,.92); border-radius: 16px;
+      pointer-events: auto;
+    }
+    body.broadcast #handq.on { top: calc(var(--banner-h) + 8px + 4.25rem + 8px + var(--inset-top, 0px)); }
+    body.townhall #handq.on { top: calc(14px + 4.25rem + 8px + var(--inset-top, 0px)); }
+    body.broadcast #handq.on .hq,
+    body.townhall #handq.on .hq {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 44px; min-height: 44px; margin: 4px 2px; padding: 0 12px;
+      border-radius: 999px; background: rgba(255,255,255,.14); vertical-align: middle;
+    }
+  }
   /* The Settings modal sections (video quality, and the sound mix that used
      to float as its own Mix panel — same element ids, new home). */
   .set-sec { display: flex; flex-direction: column; gap: .45rem; font-size: .8rem; margin-bottom: .9rem; }
@@ -6896,7 +6917,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const chip = document.querySelector('.topchip');
       const bar = document.querySelector('.bar');
       const chipBottom = chip ? chip.getBoundingClientRect().bottom : 0;
-      const top = Math.ceil(chipBottom + 8);
+      let top = Math.ceil(chipBottom + 8);
+      const hands = document.getElementById('handq');
+      if (hands && hands.classList.contains('on')) {
+        const hr = hands.getBoundingClientRect();
+        if (hr.height > 0 && hr.bottom + 8 > top) top = Math.ceil(hr.bottom + 8);
+      }
       const barTop = bar ? bar.getBoundingClientRect().top : window.innerHeight;
       const limit = (barTop > top + 48 && barTop < window.innerHeight) ? barTop : window.innerHeight;
       if (onAir) {
@@ -11378,6 +11404,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (html === handqHtml) return;
       handqHtml = html;
       handqEl.innerHTML = html;
+      try { paintStreamLink(); } catch (e) {}
     }
     // ADMIN rooms, signed-in admins only: tapping a queued name CALLS THEM UP —
     // the tap issues the same individually-signed mod-table 'app' grant that
@@ -18137,6 +18164,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       paintHand();
       broadcastStatus();
       layout();
+      renderHandq();
     };
     // AUTO-LOWER (docs/meeting.md, the hand queue): the moment MY id enters
     // the Stage set — self step-up or an admin's call-up — my raised hand has
@@ -24358,7 +24386,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       handqShown: () => handqEl.classList.contains('on'),
       handqText: () => handqEl.textContent,
       handRaised: () => !!myStatus.hand,
-      raiseHand: (on) => { myStatus.hand = on ? Date.now() : null; paintHand(); broadcastStatus(); layout(); },
+      raiseHand: (on) => { myStatus.hand = on ? Date.now() : null; paintHand(); broadcastStatus(); layout(); renderHandq(); },
       // exact raise stamp — lets tests force a same-millisecond tie and assert the id tie-break
       raiseHandAtForTest: (t) => { myStatus.hand = +t || Date.now(); paintHand(); broadcastStatus(); layout(); },
       // a GUEST's forged grant, injected past setMod's local guard — every
