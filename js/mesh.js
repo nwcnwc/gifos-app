@@ -2357,9 +2357,14 @@
       // E2's first-hand HELLO yield.
       const src = [];
       // FINDLEAF sources must be first-hand live — phantoms swallow FINDLEAF.
-      for (const rc of this.rosterCells()) { const x = this.occGet(ck(rc)); if (x != null && x !== this.id && this.firstHandLive(ck(rc))) src.push(x); }
-      if (hole.pc === this.coord.pc && hole.r === this.coord.r) { for (const m of topo.rowMates(this.coord)) { if (ck(m) === ck(hole)) continue; if (!(this.kidful.has(ck(m)) && this.kidful.get(ck(m)))) continue; const x = this.occGet(ck(m)); if (x != null && x !== this.id && this.firstHandLive(ck(m))) src.push(x); } }
-      if (hole.pc === 0 && this.coord.pc === 0) { for (const e of this.s1Roster()) if (e.v !== this.id && e.k !== ck(hole) && this.firstHandLive(e.k)) src.push(e.v); }
+      // ...and, in a one-row room, not gone dark to me: a mate whose radio
+      // went off (no close) stays first-hand live for 60 ticks, swallowed the
+      // FINDLEAF for the head a dark heir left, and healTry held the retry 45.
+      const oneRow = this.oneRowRoom();
+      const srcLive = (k) => this.firstHandLive(k) && !(oneRow && this.darkMate(k));
+      for (const rc of this.rosterCells()) { const x = this.occGet(ck(rc)); if (x != null && x !== this.id && srcLive(ck(rc))) src.push(x); }
+      if (hole.pc === this.coord.pc && hole.r === this.coord.r) { for (const m of topo.rowMates(this.coord)) { if (ck(m) === ck(hole)) continue; if (!(this.kidful.has(ck(m)) && this.kidful.get(ck(m)))) continue; const x = this.occGet(ck(m)); if (x != null && x !== this.id && srcLive(ck(m))) src.push(x); } }
+      if (hole.pc === 0 && this.coord.pc === 0) { for (const e of this.s1Roster()) if (e.v !== this.id && e.k !== ck(hole) && srcLive(e.k)) src.push(e.v); }
       // Immediate LEFT-PACK designee: subtree first; after repeated FINDLEAF
       // misses (healTry aged ≥90), scooch even with children so S1 cannot
       // stay short forever after mass kill.
@@ -4427,11 +4432,16 @@
           // are seats yielding a contested cell, where a second healer from
           // column 2 fought the arbiters (two-ring.js split heal 984 -> 2008
           // ticks with the goodbye rule unscoped).
+          // The goodbye skips the wait when the head's healer at column 1 has
+          // gone dark to me: it will not heal, and the room sat headless for
+          // the whole wait (a head thawed from a freeze said goodbye while its
+          // heir's radio was off; the head chair stayed empty 21 s).
           if (this.coord.i >= 2) {
             const hc = { pc: 0, r: this.coord.r, i: 0 }; const hk = ck(hc);
             if (this.occGet(hk) == null && this.firstHandLive(lk) && this.occGet(ck(topo.down(hc))) == null) {
               const lost = this.TICK - this.translost.get(hk) > EARLY_HOLD + HEAD_HEIR_WAIT && this.translostConfirmed(hk);
-              const bye = this.byeAt.has(hk) && this.TICK - this.byeAt.get(hk) > HEAD_HEIR_WAIT && this.oneRowRoom();
+              const heirWait = this.darkMate(ck({ pc: 0, r: this.coord.r, i: 1 })) ? 0 : HEAD_HEIR_WAIT;
+              const bye = this.byeAt.has(hk) && this.TICK - this.byeAt.get(hk) > heirWait && this.oneRowRoom();
               if (lost || bye) this.heal(hc);
             }
           }
