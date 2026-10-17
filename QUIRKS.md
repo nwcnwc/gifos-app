@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q60. A finished recording never played
+
+Stopping a recording on the phone downloaded a file and left the call where it was. The picture that was just captured never came back. On a phone that recording now plays. The picture fills the screen, a slider moves through it, and a tap pauses it. Save keeps the file. Close keeps it too, unless it was already saved. A wide screen still downloads. A viewer whose service has ended still has nothing to watch. `test/mobile/replay.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-replay.png`. After: `test/mobile/screenshots/after/iphone-se-replay.png`.
+
+Design: the recording is something you can watch. Church and personal stay at 4. A viewer still cannot watch the ended service.
+
 ### Q59. Go live was a white sheet under the picture
 
 The camera filled 320×504 of an iPhone SE, and a white bar sat under it with Go live. The picture now fills the phone, 320×568. Go live is a button on that picture, and a tap on the picture is that same button. Sunday morning and Friday night stay on the picture. More still opens Watch and the host key. The host key is still minted. A short landscape keeps the strip so Go live stays on the screen. `test/mobile/action-buttons.spec.mjs`, `test/mobile/create-one-password.spec.mjs`.

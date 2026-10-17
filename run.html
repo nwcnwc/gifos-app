@@ -658,6 +658,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      later in the sheet) so radios/checkboxes stay small and native, not full-width. */
   .name-box .rec-opt input { width: 16px; min-width: 16px; height: 16px; flex: none; padding: 0; margin: .18rem 0 0; border: none; background: none; }
   .name-box .rec-opt.inline input { margin: 0; }
+  /* A phone recording plays back on the picture. Save keeps the file.
+     Close keeps it too, unless it was already saved. */
+  .rec-replay { position: fixed; inset: 0; z-index: 70; background: #0c0e12; }
+  .rec-replay video {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain; background: #0c0e12;
+  }
+  .rec-replay-title {
+    position: absolute; top: calc(12px + var(--inset-top, 0px)); left: 16px; z-index: 1; margin: 0;
+    color: #f4f7fb; background: rgba(8, 10, 14, .78); border-radius: 999px;
+    padding: 8px 14px; font: 700 1.05rem/1.2 system-ui, sans-serif;
+  }
+  .rec-replay-bar {
+    position: absolute; left: 16px; right: 16px; z-index: 1;
+    bottom: calc(16px + var(--inset-bottom, 0px));
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  #rec-replay-scrub {
+    width: 100%; height: 44px; margin: 0; accent-color: #0064c8;
+  }
+  .rec-replay-actions { display: flex; gap: 8px; }
+  .rec-replay-actions button {
+    flex: 1 1 0; min-height: 48px; border-radius: 16px;
+    font: inherit; font-weight: 700; cursor: pointer;
+  }
+  #rec-replay-save { background: #0064c8; color: #fff; border: 0; }
+  #rec-replay-close { background: transparent; color: #f4f7fb; border: 1.5px solid #8d93a0; }
   #stagefeed .rowtile { width: 100%; }
   .rowtile video { width: 100%; height: 100%; object-fit: cover; background: #000; }
   /* Stage feeds are verbatim cameras: show the FULL broadcast frame, exactly
@@ -20559,20 +20586,83 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function recFileName() {
       return meetDownloadName('Recording', room, Date.now(), String(recType).indexOf('mp4') >= 0 ? 'mp4' : 'webm');
     }
+    function recOnPhone() {
+      return window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
+    }
+    function recDownload(saved) {
+      const a = document.createElement('a');
+      a.href = saved.href;
+      a.download = saved.name || recFileName();
+      a.click();
+    }
+    function recRelease(saved) {
+      setTimeout(() => {
+        try { URL.revokeObjectURL(saved.href); } catch (e) {}
+        if (typeof saved.drop === 'function') { try { Promise.resolve(saved.drop()).catch(() => {}); } catch (e) {} }
+      }, 60000);
+    }
+    function showRecReplay(saved) {
+      const old = document.getElementById('rec-replay');
+      if (old) old.remove();
+      const already = !!(saved && saved.saved);
+      const bg = document.createElement('div');
+      bg.id = 'rec-replay';
+      bg.className = 'rec-replay';
+      bg.setAttribute('role', 'dialog');
+      bg.setAttribute('aria-modal', 'true');
+      bg.setAttribute('aria-label', 'Replay');
+      bg.innerHTML = '<p class="rec-replay-title">Replay</p>' +
+        '<video id="rec-replay-vid" playsinline></video>' +
+        '<div class="rec-replay-bar">' +
+        '<input id="rec-replay-scrub" type="range" min="0" max="1000" value="0" aria-label="Replay position">' +
+        '<div class="rec-replay-actions">' +
+        '<button type="button" id="rec-replay-save">Save</button>' +
+        '<button type="button" id="rec-replay-close">Close</button>' +
+        '</div></div>';
+      document.body.appendChild(bg);
+      const vid = bg.querySelector('video');
+      const scrub = bg.querySelector('#rec-replay-scrub');
+      const saveBtn = bg.querySelector('#rec-replay-save');
+      vid.src = saved.href;
+      let kept = already;
+      const keep = () => { if (kept) return; kept = true; recDownload(saved); };
+      vid.addEventListener('timeupdate', () => {
+        if (!vid.duration || !isFinite(vid.duration)) return;
+        scrub.value = String(Math.round(vid.currentTime / vid.duration * 1000));
+      });
+      scrub.addEventListener('input', () => {
+        if (!vid.duration || !isFinite(vid.duration)) return;
+        vid.currentTime = (Number(scrub.value) / 1000) * vid.duration;
+      });
+      vid.addEventListener('click', () => {
+        if (vid.paused) { const p = vid.play(); if (p && p.catch) p.catch(() => {}); }
+        else vid.pause();
+      });
+      if (already) saveBtn.hidden = true;
+      else saveBtn.onclick = keep;
+      bg.querySelector('#rec-replay-close').onclick = () => {
+        keep();
+        try { vid.pause(); } catch (e) {}
+        vid.removeAttribute('src');
+        try { vid.load(); } catch (e) {}
+        bg.remove();
+        recRelease(saved);
+      };
+      const play = vid.play();
+      if (play && play.catch) play.catch(() => {});
+    }
     function recDeliver(saved) {
       if (saved && saved.held) return 'held';
-      if (saved && saved.href) {
-        const a = document.createElement('a');
-        a.href = saved.href;
-        a.download = saved.name || recFileName();
-        a.click();
-        setTimeout(() => {
-          URL.revokeObjectURL(a.href);
-          if (typeof saved.drop === 'function') { try { Promise.resolve(saved.drop()).catch(() => {}); } catch (e) {} }
-        }, 60000);
-        return 'download';
+      if (saved && saved.href && recOnPhone()) {
+        showRecReplay(saved);
+        return saved.saved ? 'saved' : 'replay';
       }
       if (saved && saved.saved) { setStatus('Recording saved.'); return 'saved'; }
+      if (saved && saved.href) {
+        recDownload(saved);
+        recRelease(saved);
+        return 'download';
+      }
       return '';
     }
     function resumeReload() {
@@ -23432,6 +23522,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     window.__gifosVideo = {
       participants: participantCount,
       shareInvite: () => shareMeetingLink(document.getElementById('hdrinvite')),
+      showReplayForTest: (href, name, saved) => recDeliver({ href: href, name: name || '', saved: !!saved }),
       markJoinedForTest: (id) => {
         const pid = String(id || 'peer').slice(0, 80);
         if (pid && !rosterIds.includes(pid)) rosterIds.push(pid);
