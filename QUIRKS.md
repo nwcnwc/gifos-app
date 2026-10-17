@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q70. A shared link never said when, and an old link said "has not started"
+
+A church shares Sunday's link midweek. A viewer who opened it on Wednesday read "The service has not started." and nothing about when to come back. Someone who opened it on Monday read the same thing. Resi, BoxCast, and YouTube Live all show the start time on the watch page. The host now sets a start time in More, in the phone's own date and time picker, and More reads "Starts Sunday at 10:00 AM". The viewer link carries it as `at=<unix seconds>`, and Invite's text says "Live Sunday at 10:00 AM." On Wednesday the viewer reads "The service starts Sunday at 10:00 AM." in their own time zone, with Add to calendar under it, 48px tall and above the dock. That opens an .ics with the link and a 15-minute alarm. The same day reads "today at 6:30 PM", and the next day reads "tomorrow". From 15 minutes before the time until 3 hours after, it reads "The service is about to start.", in case the host is late. After that, someone who opens the link reads "The service has ended." A link without a time is unchanged. The host's phone keeps the time for that room. `test/mobile/service-time.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-service-time.png`. After: `test/mobile/screenshots/after/iphone-se-service-time.png`.
+
+Design: the link says when to come, and an old link says that it is over. Church stays at 4: this matches a church desk's watch page, and does not beat it. Someone who arrives after it ended still cannot watch it unless someone sends them the file (Q68).
+
 ### Q69. A service was kept only if the host remembered Record
 
 Go live put the host on the stage, and nothing was kept. On Leave, an iPhone SE read “You left the meeting”, and there was nothing to send to whoever missed it. Resi and BoxCast keep every service without a tap. Go live now keeps the stage the same way. It starts once the host is on the stage, with the recording chip everyone already sees, and Record reads Stop 0:00. The file goes to the phone's own storage, so no save picker opens. On Leave the replay fills the phone, with Share, Save, and Close in one row, and Share hands the file to the share sheet. A stream is kept the same way. A viewer's page records nothing. Stop still stops, and it does not start again. The strip on the stage carries no sound, so the host's own voice is mixed in. `test/mobile/host-keep.spec.mjs`.
