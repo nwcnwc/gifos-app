@@ -1498,6 +1498,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: #fff; color: #1d1d1f; font-weight: 800; font-size: 32px; line-height: 1; padding: 8px 12px; border-radius: 999px;
     pointer-events: none; opacity: 0; }
   .tile .reactburst.show { animation: reactpop 1.6s ease forwards; }
+  #bc-react { display: none; }
+  body.broadcast #bc-react { display: block; position: absolute; left: 0; right: 0; top: 0; bottom: 132px; z-index: 6; pointer-events: none; }
+  body.broadcast #bc-react .reactburst { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 5;
+    background: #fff; color: #1d1d1f; font-weight: 800; font-size: 64px; line-height: 1; padding: 14px 22px; border-radius: 999px;
+    pointer-events: none; opacity: 0; }
+  body.broadcast #bc-react .reactburst.show { animation: reactpop 1.6s ease forwards; }
   @keyframes reactpop { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
   #leave-ask .name-box { background: #fff; color: #1d1d1f; }
   #leave-ask .name-box h3 { color: #1d1d1f; font-size: 1.7rem; margin-bottom: 1rem; }
@@ -1854,6 +1860,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div id="stagemod" hidden aria-label="On stage"></div>
     <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-name"></div></div>
     <div id="bc-stage" hidden><p id="bc-stage-line">The stage is clear.</p></div>
+    <div id="bc-react" aria-hidden="true"></div>
     <div id="grid"></div>
     <div id="stadium"></div>
   </div>
@@ -21202,16 +21209,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         const label = b.getAttribute('data-burst');
         if (!label) return;
-        const tile = document.querySelector('.tile.me');
-        if (!tile) return;
-        let burst = tile.querySelector('.reactburst');
-        if (!burst) { burst = document.createElement('div'); burst.className = 'reactburst'; tile.appendChild(burst); }
-        burst.textContent = label;
         // Restart the fade. The stylesheet owns the 1.6s, so a second tap
         // starts the burst again without a timer in this script.
-        burst.classList.remove('show');
-        void burst.offsetWidth;
-        burst.classList.add('show');
+        const flashBurst = (parent) => {
+          if (!parent) return;
+          let burst = parent.querySelector('.reactburst');
+          if (!burst) { burst = document.createElement('div'); burst.className = 'reactburst'; parent.appendChild(burst); }
+          burst.textContent = label;
+          burst.classList.remove('show');
+          void burst.offsetWidth;
+          burst.classList.add('show');
+        };
+        flashBurst(document.querySelector('.tile.me'));
+        // A service hides the gallery, so the same clap has to land on the
+        // stage or the person who sent it never sees it.
+        if (typeof BROADCAST !== 'undefined' && BROADCAST) flashBurst(document.getElementById('bc-react'));
       });
     })();
 

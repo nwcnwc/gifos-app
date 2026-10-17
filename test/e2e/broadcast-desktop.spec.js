@@ -2360,3 +2360,43 @@ test('a service recording captures the stage', async ({ page }) => {
   await expect(page.locator('#rec-options')).toContainText('Everything I see');
   await expect(page.locator('#rec-stage-only')).toHaveCount(0);
 });
+
+test('a service reaction shows on the stage', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('gifos_name', 'Avery Chen'));
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=react' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast');
+    await page.locator('#reactbtn').click();
+    await page.locator('#reacttray button[aria-label="Clap"]').click();
+    const burst = page.locator('#bc-react .reactburst');
+    await expect(burst).toBeVisible();
+    await expect(burst).toHaveText('👏');
+    const lay = await page.evaluate(() => {
+      const b = document.querySelector('#bc-react .reactburst').getBoundingClientRect();
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const tray = document.getElementById('reacttray').getBoundingClientRect();
+      const overlap = (a, c) => a.width > 0 && c.width > 0 && !(a.right < c.left || c.right < a.left || a.bottom < c.top || c.bottom < a.top);
+      return {
+        on: b.width > 20 && b.left >= -1 && b.right <= innerWidth + 1 && b.top >= -1 && b.bottom <= innerHeight + 1,
+        dock: overlap(b, dock),
+        tray: overlap(b, tray),
+      };
+    });
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+    expect(lay.dock, JSON.stringify(lay)).toBe(false);
+    expect(lay.tray, JSON.stringify(lay)).toBe(false);
+  }
+  await page.goto('/run.html?desk=reactgroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.evaluate(() => {
+    const tile = document.createElement('div');
+    tile.className = 'tile me';
+    document.getElementById('grid').appendChild(tile);
+  });
+  await page.locator('#reactbtn').click();
+  await page.locator('#reacttray button[aria-label="Clap"]').click();
+  await expect(page.locator('.tile.me .reactburst')).toHaveText('👏');
+  const stageOn = await page.locator('#bc-react').evaluate((el) => getComputedStyle(el).display !== 'none');
+  expect(stageOn).toBe(false);
+});
