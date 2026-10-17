@@ -1217,6 +1217,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .name-box { background: var(--surface, #14141f); border: 1px solid var(--border, #2a2a3f); border-radius: .8rem; padding: 1.6rem; max-width: 340px; text-align: center;
     max-height: calc(100vh - 2rem); max-height: calc(100dvh - 2rem); overflow-y: auto; }
   .name-box h3 { margin-bottom: .5rem; }
+  .keys-list { display: grid; grid-template-columns: auto 1fr; gap: .55rem .9rem; align-items: center; margin: .6rem 0 0; }
+  .keys-list dt { text-align: right; }
+  .keys-list dd { margin: 0; color: var(--text, #e0e0f0); font-size: .95rem; }
+  .keys-list kbd { display: inline-block; min-width: 2em; padding: .15rem .45rem; border: 1px solid var(--border, #2a2a3f); border-bottom-width: 2px;
+    border-radius: .35rem; background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: 600 .9rem/1.3 ui-monospace, monospace; text-align: center; }
+  .name-box #help-keys { min-height: 44px; padding: .3rem .6rem; border: 0; background: none; color: var(--accent, #7b5cff); text-decoration: underline; }
   .name-box p { color: var(--muted, #8888aa); font-size: .85rem; margin-bottom: 1rem; }
   .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem; min-height: 48px;
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
@@ -1781,13 +1787,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
-    <button id="cam" class="iconbtn off" aria-label="Start video" title="Camera off — tap to turn on. Shortcut: V">
+    <button id="cam" class="iconbtn off" aria-label="Start video" aria-keyshortcuts="V" title="Camera off — tap to turn on. Shortcut: V">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="2" y="6" width="13" height="12" rx="2"/><path d="M15 10.5 22 7v10l-7-3.5"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
       <span class="docklab">Video</span>
     </button>
-    <button id="mic" class="iconbtn off" aria-label="Unmute" title="You are muted — tap to speak. Shortcut: M">
+    <button id="mic" class="iconbtn off" aria-label="Unmute" aria-keyshortcuts="M" title="You are muted — tap to speak. Shortcut: M">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
@@ -2227,6 +2233,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       </div>
       <div style="display:flex;justify-content:center;margin-top:1rem">
         <button id="help-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
+      </div>
+      <p style="text-align:center;margin:.6rem 0 0;font-size:.85rem"><button type="button" id="help-keys" class="linkbtn">Keyboard shortcuts (?)</button></p>
+    </div>
+  </div>
+
+  <div class="name-modal" role="dialog" aria-modal="true" aria-labelledby="keys-title" id="keys-modal" style="display:none">
+    <div class="name-box" style="max-width:480px;text-align:left">
+      <h3 id="keys-title" style="text-align:center">Keyboard shortcuts</h3>
+      <dl id="keys-list" class="keys-list"></dl>
+      <div style="display:flex;justify-content:center;margin-top:1rem">
+        <button id="keys-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
       </div>
     </div>
   </div>
@@ -21855,6 +21872,42 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!btn || btn.offsetParent === null) return;
       e.preventDefault();
       btn.click();
+    });
+    // ? lists the keys that work for this person right now (a viewer has
+    // no mic or camera on the dock, so M and V are left out).
+    const keysModal = document.getElementById('keys-modal');
+    function openKeys() {
+      const rows = [];
+      if (micBtn && micBtn.offsetParent !== null) rows.push(['M', 'Mute or unmute']);
+      if (camBtn && camBtn.offsetParent !== null) rows.push(['V', 'Turn your video on or off']);
+      rows.push(['Esc', 'Close a sheet or the chat, then fold More']);
+      rows.push(['Tab', 'Move through the controls, top to bottom']);
+      rows.push(['Arrows', 'On the grip: move the controls']);
+      rows.push(['?', 'Show this list']);
+      const dl = document.getElementById('keys-list');
+      dl.textContent = '';
+      for (const [k, what] of rows) {
+        const dt = document.createElement('dt'), kb = document.createElement('kbd'), dd = document.createElement('dd');
+        kb.textContent = k; dt.appendChild(kb); dd.textContent = what;
+        dl.appendChild(dt); dl.appendChild(dd);
+      }
+      keysModal.style.display = 'flex';
+      queueMicrotask(syncModalFocus);
+    }
+    document.getElementById('keys-close').onclick = () => { keysModal.style.display = 'none'; };
+    document.getElementById('help-keys').onclick = () => {
+      document.getElementById('help-modal').style.display = 'none';
+      openKeys();
+    };
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== '?' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target;
+      if (t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]')) return;
+      // Only in a call: the dock is on screen (not the lobby or a name card).
+      const dock = document.querySelector('.bar');
+      if (!dock || !dock.getClientRects().length || document.querySelector('#lobby.show') || keysModal.style.display !== 'none' || topNameModal()) return;
+      e.preventDefault();
+      openKeys();
     });
     // Flip front/back camera (mobile convention). regrabCamera does the whole
     // swap: same MediaStream identity, senders re-fed, blur pipe rebuilt.

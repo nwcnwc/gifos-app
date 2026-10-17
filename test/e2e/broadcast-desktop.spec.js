@@ -3321,4 +3321,10 @@ test('? lists the keyboard shortcuts that work here', async ({ page }) => {
     await expect(page.locator('#chat-in'), who).toHaveValue('why?');
     await expect(sheet, who).toBeHidden();
   }
+  // The lobby is not a call: ? does nothing there.
+  await page.goto('/run.html?desk=keyslobby#bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#lobby.show');
+  // The ? handler opens the sheet synchronously, so no wait is needed.
+  await page.keyboard.press('?');
+  await expect(page.locator('#keys-modal'), 'lobby').toBeHidden();
 });
