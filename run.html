@@ -6770,8 +6770,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // up to three rungs and never moved when the battery state did.
       const q = lastQ || rung(n);
       const link = (relayUp() || (meshSeat() && meshSeat().state === 3 && meshCoord() && meshCoord().pc !== 0)) ? '' : ' · reconnecting to the room…';
+      // A SERVICE VIEWER sends no video: the quality rung and the password
+      // hint are the host's business, and the room bar counts who is watching.
+      const bcWatcher = !!(BROADCAST && !(typeof bcHostStored === 'function' && bcHostStored())
+        && !document.body.classList.contains('amadmin') && !(typeof myStatus !== 'undefined' && myStatus.stg));
       let extra = '';
-      if (n > 1) {
+      if (n > 1 && !bcWatcher) {
         if (!roomPw) extra = ' · a password unlocks clear video';
         else if (hasAdminRoom() && admins.length === 0) extra = ' · no admin here — everyone stays blurred';
         else if (!adminPresent() && !allConsent()) {
@@ -6812,6 +6816,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const statusText = atCard ? (bcHostStored() ? 'Going live…' : 'Joining the service…')
         : reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
         : (n === 1 ? (atDoor ? 'Getting you back into the ' + (BROADCAST ? 'service' : 'small group') + ' — waiting for the others to answer…' : (BROADCAST ? ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin') ? 'You are live. Send the link.' : ((typeof myStatus !== 'undefined' && myStatus.stg) ? 'You are on stage.' : 'You are watching this service.')) : 'Just you. Send the invite.') + reachTriedSentence())
+        : bcWatcher ? 'You are watching this service.' + reachTriedSentence()
         : displayCount() + ' in this ' + (BROADCAST ? 'service' : 'small group') + ' · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
