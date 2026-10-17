@@ -2483,6 +2483,8 @@
       this.coord = this.oldCoord; this.tn = this.oldTn; this.estAt = this.oldEstAt; this.nbrAt = this.TICK; this.pp = this.oldPp; this.oldPp = null; this.admBy = this.oldAdmBy; this.oldAdmBy = null;
       this.occ = this.holdOcc || new Map(); this.s1seen = this.holdSeen || new Map(); this.cousins = this.holdCous || new Map();
       this.occ.set(this.oldCk, this.id);
+      // my stamp for the cell I give back was for whoever I heard there (me, a rival), not for the snapshot's occupant: a gossip echo of a departed seat in the snapshot plus my own stamp read as hearing it (test/mesh/rollback-live-stamp.js)
+      if (this.live.has(newCk) && this.liveBy.get(newCk) !== this.occ.get(newCk)) { this.live.delete(newCk); this.liveBy.delete(newCk); this.heardSince.delete(newCk); }
       this.oldNbrIds = []; this.holdOcc = null; this.holdSeen = null; this.holdCous = null;
       this.healOnly.delete(newCk); this.healTry.set(newCk, this.TICK); this.healAt = this.TICK; // pace any re-attempt at that hole
       this.lastAck = this.TICK; this.lastPhone = this.TICK - 100;  // fresh grace; re-announce
