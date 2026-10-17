@@ -10496,8 +10496,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // media path for a while → say so on the tile instead of silent black.
         // A peer who merely STEPPED AWAY (phone locked, other app) is not a
         // firewall problem — their tile says away, never 'firewall'.
+        if (!p.connected) doorTileBack(p); // a parked door that is now a seat neighbour returns to the grid
         if (p.connected) { p.downSince = 0; restoreDoorTile(p); if (p.noRoute) { p.noRoute = false; updateTile(pid); } }
-        else doorTileBack(p);
         else if (!p.absentSince) {
           if (!p.downSince) p.downSince = now;
           // A pair that never once connected is unreachable, not away (see
