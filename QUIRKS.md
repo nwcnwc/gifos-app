@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q66. A viewer had to hunt for Hand
+
+The join line says a viewer is seen only if they raise a hand. On an iPhone SE the dock was React, More, and Leave, and Hand was a 0×0 control inside More. Hand now sits on the dock, 44×44, before React, with Leave still inside the screen at x=214. A tap raises the hand and the button reads Lower. A town hall watcher gets the same dock. A meeting, a host, and a person called on stage keep Hand in More. `test/mobile/hand-dock.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-hand-dock.png`. After: `test/mobile/screenshots/after/iphone-se-hand-dock.png`.
+
+Design: the action the screen asked for is on the dock. Church and corporate stay at 4. Someone who arrives after a service has ended still cannot watch it.
+
 ### Q65. A raised hand was hidden under OFF AIR
 
 The hand line sat at the top of an iPhone SE, 24px tall, in 12.8px type. A name was 31×18. The OFF AIR banner is 44px and covered it, so the tap landed on the banner. The line now sits under the chip. The name is 117×44, and that name is the tap. The friend-link card moves below the line, starting at y=204. A town hall host still reaches Invite. A meeting keeps the line in the page. Who can be called up is unchanged. `test/mobile/hand-queue.spec.mjs`.
