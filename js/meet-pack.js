@@ -73,6 +73,36 @@ function cellsFor(box, N, dir, r, sizing) {
   });
   return { counts, cells };
 }
+function scoreCells(cells, aspects) {
+  let score = 0, minShort = Infinity, viol = 0, minA = Infinity, maxA = 0;
+  cells.forEach((c, i) => {
+    score += fitArea(c.w, c.h, aspects[i]); minShort = Math.min(minShort, c.w, c.h);
+    const t = c.w / c.h; viol = Math.max(viol, t < ASPECT_MIN ? ASPECT_MIN / t : t > ASPECT_MAX ? t / ASPECT_MAX : 1);
+    const area = c.w * c.h; minA = Math.min(minA, area); maxA = Math.max(maxA, area);
+  });
+  // A layout that makes one face several times another loses, even when it
+  // fills the box. Equal tiles keep their score.
+  if (!T.legacyRows && maxA > 0) score *= minA / maxA;
+  return { score, minShort, viol };
+}
+// Equal tiles. A short row is centered instead of stretched. The block sits
+// in the middle when a shape limit keeps it from filling an edge.
+function sameCells(box, N, cols) {
+  const rows = Math.ceil(N / cols);
+  let tw = box.w / cols, th = box.h / rows, a = tw / th;
+  if (a > ASPECT_MAX) tw = th * ASPECT_MAX;
+  else if (a < ASPECT_MIN) th = tw / ASPECT_MIN;
+  const gridW = tw * cols, gridH = th * rows;
+  const ox = box.x + (box.w - gridW) / 2, oy = box.y + (box.h - gridH) / 2;
+  const cells = [], counts = [];
+  for (let r = 0; r < rows; r++) {
+    const k = r === rows - 1 ? N - r * cols : cols;
+    counts.push(k);
+    const rowX = ox + (cols - k) * tw / 2;
+    for (let c = 0; c < k; c++) cells.push({ x: rowX + c * tw, y: oy + r * th, w: tw, h: th, row: r, col: c });
+  }
+  return { counts, cells };
+}
 function candidates(box, aspects, all) {
   const N = aspects.length, out = [];
   for (const dir of ['rows', 'cols']) for (let r = 1; r <= N; r++) for (const sizing of ['equal', 'aspect']) {
@@ -84,12 +114,13 @@ function candidates(box, aspects, all) {
     if (sizing === 'aspect' && uniform) continue;          // identical to 'equal'
     if (T.legacyRows && (dir === 'cols' || sizing === 'aspect')) continue; // rev 2 (before/after only)
     const { counts, cells } = cellsFor(box, N, dir, r, sizing);
-    let score = 0, minShort = Infinity, viol = 0;
-    cells.forEach((c, i) => {
-      score += fitArea(c.w, c.h, aspects[i]); minShort = Math.min(minShort, c.w, c.h);
-      const t = c.w / c.h; viol = Math.max(viol, t < ASPECT_MIN ? ASPECT_MIN / t : t > ASPECT_MAX ? t / ASPECT_MAX : 1);
-    });
-    out.push({ dir, r, sizing, counts, cells, score, minShort, viol });
+    out.push({ dir, r, sizing, counts, cells, ...scoreCells(cells, aspects) });
+  }
+  if (!T.legacyRows) {
+    for (let cols = 1; cols <= N; cols++) {
+      const { counts, cells } = sameCells(box, N, cols);
+      out.push({ dir: 'rows', r: Math.ceil(N / cols), sizing: 'same', counts, cells, ...scoreCells(cells, aspects) });
+    }
   }
   return out;
 }
@@ -97,8 +128,9 @@ function median(xs) { const s = xs.slice().sort((a, b) => a - b); return s.lengt
 
 // Pick: only candidates whose every tile is inside [ASPECT_MIN, ASPECT_MAX]
 // (if none, the least-violating ones), then minSide, then best score.
-// Ties (within TIE): prevRows, plain rows over columns, equal over aspect
-// sizing, tile shape closest to the median source, fewer lines.
+// Score already prefers equal tile areas. Ties (within TIE): prevRows,
+// plain rows over columns, equal over aspect sizing, tile shape closest
+// to the median source, fewer lines.
 function chooseRows(box, aspects, prevRows, minSide) {
   const N = aspects.length; if (!N || box.w <= 0 || box.h <= 0) return null;
   const med = median(aspects);

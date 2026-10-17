@@ -159,8 +159,10 @@
     return { rects: emit(list, use, 'stad'), crowd: crowd, band: crowd ? { text: 'Stadium · ' + stad.length, x: (use[0] ? use[0].x : b.x) + 6, y: (use[0] ? use[0].y : b.y) + 6 } : band, tier: null };
   }
 
-  // Content box under the top chip. The dock floats over the tiles, so it
-  // does not reserve a band. Phone with the mode pill needs a taller inset.
+  // Content box under the top chip and above the dock. Names sit on the
+  // bottom edge of a tile, so the gallery stops where the dock starts.
+  // The dock is 104px tall and 14px off the bottom, 88px tall at 700px and
+  // under. Phone with the mode pill needs a taller top inset.
   function viewBox(vw, vh, opts) {
     opts = opts || {};
     const phone = opts.phone != null ? !!opts.phone : vw < 600;
@@ -168,11 +170,12 @@
     // the top row's chips are not drawn underneath it. The mode pill is taller.
     const top = opts.top != null ? opts.top : (phone && opts.pill ? 92 : 64);
     const pad = phone ? 2 : 4;
+    const dock = opts.bottom != null ? opts.bottom : (vw <= 700 ? 102 : 118);
     return {
       x: pad,
       y: top,
       w: Math.max(1, vw - pad * 2),
-      h: Math.max(1, vh - top),
+      h: Math.max(1, vh - top - dock),
       phone: phone,
     };
   }

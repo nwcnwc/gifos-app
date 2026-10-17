@@ -1612,10 +1612,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="5"]) .tile.me {
       width: 138px; height: 182px; }
   }
-  /* Comfy: every face on screen, tiles touch, the dock floats over them.
-     The long :not chain is what the older gallery rule uses; matching it
-     is what lets these win. Padding is zeroed so the dock does not reserve
-     a band (the packer already insets the grid by ≤4px). */
+  /* Comfy: every face on screen, tiles the same size, the gallery stops
+     above the dock so a name is not covered. The long :not chain is what
+     the older gallery rule uses; matching it is what lets these win.
+     Padding stays zero. The packer insets the bottom by the dock. */
   body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
     position: fixed; inset: 0; overflow: hidden; padding: 0 !important; margin: 0;
     display: block; background: #0d0f14; z-index: 1; }
