@@ -3,3 +3,5 @@ _*
 # How long a published app file stays good.
 !_headers
 .DS_Store
+node_modules/
+test-results/

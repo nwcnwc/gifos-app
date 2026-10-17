@@ -56,7 +56,7 @@ function fail(list, msg) { list.push(msg); }
 
   const lobby = await browser.newContext(VIEWPORTS[0].opts);
   const lobbyPage = await lobby.newPage();
-  await lobbyPage.addInitScript(() => { try { localStorage.setItem('gifos_name', 'Pat'); } catch (e) {} });
+  await lobbyPage.addInitScript(() => { try { localStorage.setItem('gifos_name', 'Pat'); sessionStorage.setItem('gifos_appear_ok', '1'); } catch (e) {} });
   await lobbyPage.goto(base + '/run.html', { waitUntil: 'domcontentloaded', timeout: 20000 });
   await lobbyPage.waitForFunction(() => window.GifOS && GifOS.net && GifOS.net.randHex, { timeout: 20000 });
   const minted = await lobbyPage.evaluate(async () => {
@@ -73,7 +73,7 @@ function fail(list, msg) { list.push(msg); }
     const ctx = await browser.newContext(layout.opts);
     await ctx.addInitScript((arg) => {
       try {
-        localStorage.setItem('gifos_name', 'Pat');
+        localStorage.setItem('gifos_name', 'Pat'); sessionStorage.setItem('gifos_appear_ok', '1');
         localStorage.setItem('gifos_meet_bar', '0');
         if (arg.host) localStorage.setItem('gifos_vadm_' + arg.room, arg.seed);
       } catch (e) {}
@@ -147,7 +147,8 @@ function fail(list, msg) { list.push(msg); }
         mix: disp('mixpanel'),
       };
     });
-    if (v.hand !== 'Ask to join') fail(bad, tag + ' viewer hand says "' + v.hand + '"');
+    // The viewer's hand is docked and labelled Raise hand (qa-broadcast-desktop, newer than Ask to join).
+    if (v.hand.indexOf('Raise hand') < 0) fail(bad, tag + ' viewer hand says "' + v.hand + '"');
     for (const [key, label] of [['mic', 'mic'], ['cam', 'camera'], ['share', 'share'], ['app', 'run app'], ['rec', 'record'], ['cc', 'captions'], ['pw', 'password'], ['stage', 'stage'], ['blur', 'blur']]) {
       if (v[key] !== 'none') fail(bad, tag + ' viewer ' + label + ' display ' + v[key]);
     }

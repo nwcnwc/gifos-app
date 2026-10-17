@@ -25,8 +25,12 @@ function button(id) {
 
 const react = button('reactbtn');
 check('reactions button is in the page', react.length > 0);
-check('reactions button is a face', react.indexOf('circle cx="12" cy="12" r="9"') >= 0 && react.indexOf(SMILE) >= 0);
-check('reactions button has two eyes', (react.match(/circle cx="(?:9|15)" cy="10"/g) || []).length === 2);
+// The dock paints the face as the smiling emoji (qa-broadcast-desktop, newer
+// than the svg smiley); an svg smiley with two eyes is the other accepted face.
+const svgFace = react.indexOf('circle cx="12" cy="12" r="9"') >= 0 && react.indexOf(SMILE) >= 0;
+const emojiFace = react.indexOf('class="dockface"') >= 0 && react.indexOf('\u{1F60A}') >= 0;
+check('reactions button is a face', svgFace || emojiFace);
+check('reactions button has two eyes', emojiFace || (react.match(/circle cx="(?:9|15)" cy="10"/g) || []).length === 2);
 check('reactions button does not use the sparkle', react.indexOf(SPARK) < 0 && react.indexOf('M12 2l') < 0);
 
 const tr = button('trbtn');

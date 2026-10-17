@@ -126,7 +126,7 @@ const PROBE = `(sel) => {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   await ctx.addInitScript((arg) => {
     try {
-      localStorage.setItem('gifos_name', 'Ada');
+      localStorage.setItem('gifos_name', 'Ada'); sessionStorage.setItem('gifos_appear_ok', '1');
       localStorage.setItem('gifos_vadm_' + arg.room + '.' + arg.av, arg.seed);
     } catch (e) {}
   }, { room, av: minted.av, seed: minted.seed });
@@ -211,7 +211,7 @@ const PROBE = `(sel) => {
 
   const viewer = await (async () => {
     const vctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-    await vctx.addInitScript(() => { try { localStorage.setItem('gifos_name', 'Ada'); } catch (e) {} });
+    await vctx.addInitScript(() => { try { localStorage.setItem('gifos_name', 'Ada'); sessionStorage.setItem('gifos_appear_ok', '1'); } catch (e) {} });
     const vp = await vctx.newPage();
     await vp.goto(base + '/run.html' + hash + '&bc=1', { waitUntil: 'domcontentloaded', timeout: 20000 });
     await vp.waitForSelector('.tile.me', { timeout: 20000, state: 'attached' });

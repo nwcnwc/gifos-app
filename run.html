@@ -742,6 +742,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      controls. Meet's row hammers stay off every role. */
   body.bot-eyes #mic, body.bot-eyes #cam, body.bot-eyes #flipcam { display: none !important; }
   body.broadcast #grid, body.broadcast #stadium { display: none !important; }
+  body.broadcast #feed { display: flex; flex-direction: column; overflow: hidden; }
+  body.broadcast #stagefeed:not(:empty) { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 8px; }
+  body.broadcast #stagefeed .rowtile { width: 100%; height: 100%; max-height: 100%; min-height: 0; aspect-ratio: auto; }
+  #bc-stage { display: none; }
+  body.broadcast #bc-stage:not([hidden]) { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  body.broadcast #bc-stage p { margin: 0; max-width: 36rem; text-align: center; color: #f4f7fb; font: 700 28px/1.3 system-ui, sans-serif; }
+  body.broadcast:has(#stagefeed:not(:empty)) #bc-stage,
+  body.broadcast:has(#bc-ident.on) #bc-stage { display: none !important; }
   body.broadcast #stagefeed .rowtile { max-height: 76vh; }
   body.broadcast.bc-viewer #mic,
   body.broadcast.bc-viewer #cam,
@@ -968,6 +976,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #fsname .fsnm { font-size: 1.35rem; background: rgba(10,10,15,.72); color: #eceef8;
     padding: .3rem .9rem; border-radius: .45rem; max-width: min(28rem, 86vw);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* A service is one stage. Full screen shows that picture, not a speaker strip. */
+  body.broadcast #fsstrip { display: none !important; }
+  body.broadcast #fsname .fsinitial { display: none; }
+  body.broadcast #fsname .fsnm { font: 700 28px/1.3 system-ui, sans-serif; background: none;
+    white-space: normal; text-align: center; max-width: 36rem; }
   #fsstrip { position: absolute; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; gap: .5rem;
     padding: .55rem; overflow-y: auto; overflow-x: hidden; z-index: 2;
     background: linear-gradient(to left, rgba(0,0,0,.55), transparent); }
@@ -1082,9 +1095,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .modbar { position: absolute; right: .4rem; top: .4rem; display: none; flex-direction: column;
                   gap: .3rem; z-index: 4; }
   .tile:hover .modbar, .tile.menu .modbar, .tile:focus-within .modbar { display: flex; }
-  .tile .modbar button { padding: .3rem .55rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.16);
-                         background: rgba(10,10,15,.85); color: #eceef8; cursor: pointer; font-size: .68rem; }
+  .tile:focus-visible { outline: 3px solid #8ec8ff; outline-offset: 3px; }
+  .tile .modbar button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .tile .modbar button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.16);
+                         background: rgba(10,10,15,.85); color: #eceef8; cursor: pointer; font-size: .85rem;
+                         white-space: nowrap; }
   .tile .modbar button:hover { border-color: var(--accent2, #ff5caa); }
+  /* Broadcast hides the gallery, so the host's guest tools live on the stage. */
+  #stagemod { display: none; }
+  body.broadcast #feed { position: relative; }
+  body.broadcast #stagemod.on { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    position: absolute; z-index: 7; left: 12px; top: 12px; right: 12px; max-width: calc(100% - 24px); }
+  body.broadcast.admroom.notadmin #stagemod { display: none !important; }
+  #stagemod .stagekicker { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #ffd0d4; }
+  #stagemod .stagecard { display: flex; align-items: center; gap: 8px; max-width: 100%;
+    background: rgba(12,14,18,.92); color: #f4f7fb; border-radius: 14px; padding: 8px 10px; }
+  #stagemod .stagecard:focus-visible { outline: 3px solid #8ec8ff; outline-offset: 3px; }
+  #stagemod .stagename { font-weight: 700; max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #stagemod .modbar { display: flex; flex-direction: row; gap: 6px; position: static; }
+  #stagemod .modbar button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.2);
+    background: rgba(255,255,255,.12); color: #fff; cursor: pointer; font-size: .85rem; white-space: nowrap; }
+  #stagemod .modbar button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   .tile.noroute { opacity: .8; border-style: dashed; }
   /* live audio → glowing border (never while muted) */
   .tile.speaking { border-color: #5cff7b; box-shadow: 0 0 0 2px #5cff7b, 0 0 18px rgba(92,255,123,.4); }
@@ -1107,23 +1138,42 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      bar's measured height (set below; 0 where ResizeObserver is missing, which
      is exactly the old behaviour). */
   #chatpanel { position: fixed; right: 0; top: var(--barh, 0px); bottom: 0; width: min(340px, 100vw); z-index: 30;
-               background: var(--bg, #101018); border-left: 1px solid var(--border, #2a2a3f); display: none; flex-direction: column; }
+               background: var(--bg, #101018); border-left: 1px solid var(--border, #2a2a3f); display: none; flex-direction: column;
+               /* The dock is a fixed bottom bar (104px + 14px, plus a gap). On a
+                  900px window it covers the attach button and the message field.
+                  The composer sits above that band. The short-dock size is in
+                  the max-width:700px block. */
+               padding-bottom: 128px; }
   #chatpanel.open { display: flex; }
-  #chathead { display: flex; align-items: center; gap: .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
+  #chathead { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
+  /* The privacy line used to sit beside the title and collapse into a narrow
+     column, so "Service chat" wrapped. It takes the row under the title. */
+  #paneltitle { flex: none; white-space: nowrap; line-height: 1.2; }
+  #chatprivacy { order: 1; flex: 1 0 100%; margin: 0; line-height: 1.35; }
   #chathead button { margin-left: auto; padding: .2rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   #chatlog { flex: 1; overflow-y: auto; padding: .6rem; display: flex; flex-direction: column; gap: .35rem; font-size: .85rem; }
   .cmsg { background: var(--surface, #14141f); border: 1px solid #22223a; border-radius: .5rem; padding: .3rem .55rem; max-width: 94%; align-self: flex-start; overflow-wrap: anywhere; }
   .cmsg.mine { align-self: flex-end; background: var(--surface, #17222e); border-color: var(--accent, #223448); }
   .cmsg b { color: #7b9cff; font-size: .7rem; display: block; }
+  .cmsg.prayer { background: #241833; border-color: #c9a6ff; }
+  .cmsg .praytag { margin-left: .35rem; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #e7d6ff; }
+  #pray[aria-pressed="true"] { background: #5c3d8a; color: #fff; border-color: #5c3d8a; }
+  .bar #chatbtn { position: relative; }
+  .bar #chatbtn .chatcount { position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px;
+    border-radius: 99px; background: #b61622; color: #fff; font-size: 10px; font-weight: 800; line-height: 16px; }
+  .bar #chatbtn .chatcount[hidden] { display: none; }
   #cfiles { border-top: 1px solid var(--border, #2a2a3f); padding: .45rem .7rem; max-height: 34%; overflow-y: auto; }
+  #cfiles[hidden] { display: none !important; }
   #cfiles h4 { font-size: .72rem; color: var(--muted, #8888aa); margin-bottom: .3rem; }
   .cfile { display: flex; align-items: center; gap: .45rem; font-size: .78rem; padding: .18rem 0; }
   .cfile .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cfile small { color: #667; }
   .cfile button { padding: .1rem .45rem; border-radius: .35rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; font-size: .72rem; }
-  #chatform { display: flex; gap: .4rem; padding: .5rem .6rem; border-top: 1px solid var(--border, #2a2a3f); }
-  #chatform input[type=text] { flex: 1; padding: .4rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; font-size: .85rem; }
+  #chatform { display: flex; gap: .4rem; padding: .5rem .6rem; border-top: 1px solid var(--border, #2a2a3f); min-width: 0; }
+  #chatform input[type=text] { flex: 1 1 auto; width: 0; min-width: 0; min-height: 44px; padding: .4rem .6rem; border-radius: 12px; border: 1.5px solid #8d93a0; background: #fff; color: #1d1d1f; font: inherit; font-size: 16px; }
+  #pray { flex: none; }
   #chatform button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
+  #chatform button[type=submit] { background: #0064c8; color: #fff; border: 0; min-height: 44px; min-width: 72px; border-radius: 12px; font-weight: 700; }
   .tile .cap { position: absolute; left: 50%; transform: translateX(-50%); bottom: 2.1rem; max-width: 92%;
                background: rgba(10,10,15,.82); border: 1px solid var(--border, #2a2a3f); border-radius: .45rem;
                padding: .35rem .7rem; font-size: 1.25rem; line-height: 1.35; color: #fff; z-index: 3; pointer-events: none;
@@ -1222,6 +1272,35 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem; min-height: 48px;
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
   .name-box button { padding: .5rem 1.4rem; min-height: 48px; border-radius: .5rem; border: 1px solid var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; }
+  .appear-box { background: #fff; color: #1d1d1f; max-width: 400px; }
+  .appear-box h3 { color: #1d1d1f; font-size: 1.35rem; }
+  .appear-box p { color: #3a3a3f; }
+  #appear-note { margin: 0 0 14px; font-size: 1rem; line-height: 1.4; color: #1d1d1f; }
+  .appear-face { width: 96px; height: 96px; margin: 0 auto 14px; border-radius: 50%; background: #1a1d24; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 700; overflow: hidden; }
+  .appear-face img, .lob-face img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .appear-file { display: inline-flex; align-items: center; justify-content: center; margin: 0 0 14px; color: #0064c8; font-weight: 700; cursor: pointer; }
+  .appear-actions { display: flex; gap: 12px; justify-content: flex-end; }
+  .name-box button.appear-primary { background: #0064c8; color: #fff; border: 0; min-width: 112px; }
+  .name-box button.appear-secondary { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; min-width: 112px; }
+  /* Invite is the same white card as Save. Copy is the blue action. */
+  #inv-modal .appear-box { max-width: 440px; text-align: left; }
+  #inv-modal .appear-box p { font-size: 1rem; line-height: 1.4; color: #3a3a3f; margin: 0 0 12px; }
+  #inv-modal .inv-link { display: flex; gap: 12px; align-items: center; margin: 0 0 16px; }
+  #inv-modal .appear-box input { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
+  #inv-modal .inv-link input { flex: 1; min-width: 0; margin: 0; }
+  #inv-modal .name-box button.inv-more { display: block; margin: 14px 0 0; background: none; border: 0; color: #0064c8;
+    min-height: 0; min-width: 0; padding: 8px 0; font-weight: 700; text-decoration: underline; cursor: pointer; }
+  #inv-modal .lob-pwlab, #inv-modal .lob-pwlab b { color: #1d1d1f; }
+  #inv-modal .lob-pwlab small { color: #3a3a3f; }
+  #inv-modal .inv-check { display: flex; gap: 8px; align-items: flex-start; color: #1d1d1f; margin: 0 0 12px; font-size: 1rem; }
+  #inv-modal .inv-check input { width: 18px; min-width: 18px; height: 18px; flex: none; margin: 3px 0 0; padding: 0; }
+  .lob-appear { margin-top: 16px; text-align: left; }
+  .lob-appear-k { font-size: 13px; font-weight: 700; color: #3a3a3f; margin-bottom: 8px; }
+  .lob-appear-row { display: flex; align-items: center; gap: 12px; }
+  .lob-face { width: 64px; height: 64px; flex: none; border-radius: 50%; border: 0; padding: 0; background: #1a1d24; color: #fff;
+    font-size: 26px; font-weight: 700; overflow: hidden; cursor: pointer; }
+  #lob-name-in { flex: 1; min-height: 48px; border-radius: 12px; border: 1.5px solid #8d93a0; padding: 0 12px; font: inherit; color: #1d1d1f; background: #fff; }
   /* Help: a longer, scrollable panel — same modal chrome, room to breathe. */
   .help-box { width: 92vw; }
   .help-scroll { max-height: 70vh; overflow-y: auto; padding-right: .4rem; }
@@ -1326,7 +1405,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     outline: 3px solid #0064c8; outline-offset: 2px;
   }
   .topchip { position: fixed; z-index: 6; top: 14px; left: 14px; display: flex; align-items: center; gap: 8px;
-    max-width: min(28rem, calc(100% - 120px)); background: rgba(12,14,18,.92); color: #f4f7fb;
+    max-width: calc(100% - 120px); background: rgba(12,14,18,.92); color: #f4f7fb;
     border-radius: 999px; padding: 6px 12px 6px 14px; }
   .topchip .title { font-weight: 800; font-size: 26px; letter-spacing: -0.04em; text-decoration: none; cursor: pointer;
     background: linear-gradient(135deg, #0071e3, #5856d6); -webkit-background-clip: text; background-clip: text;
@@ -1334,6 +1413,60 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip .status { color: #e7ebf2; font-size: 20px; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
     min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
+  /* A broadcast host who is the only person here gets Invite in the chip.
+     The sentence stays. Wide screens show the same button the phone shows.
+     The viewer password is never part of this link. */
+  #hdrinvite {
+    display: none; flex: 0 0 auto; box-sizing: border-box;
+    min-width: 44px; min-height: 44px; height: 44px; margin: 0 0 0 4px; padding: 0 14px;
+    border: 0; border-radius: 999px; background: #0064c8; color: #fff; cursor: pointer;
+    font: 700 16px/1 system-ui, sans-serif; white-space: nowrap;
+    align-items: center; justify-content: center;
+  }
+  #hdrinvite[hidden] { display: none !important; }
+  body.broadcast .topchip[data-invite="1"] { padding-top: 0; padding-bottom: 0; padding-right: 0; min-height: 44px; }
+  body.broadcast .topchip[data-invite="1"] #hdrinvite:not([hidden]) { display: inline-flex; }
+  /* On air. Hosts wear Live (filled red, the same signal YouTube and a
+     church stream use). Viewers wear Watching. Hidden outside a broadcast.
+     [hidden] wins so a meeting never shows an empty pill. */
+  #onair[hidden] { display: none !important; }
+  #onair:not([hidden]) { display: inline-flex; align-items: center; gap: 6px; flex: none;
+    font-weight: 800; font-size: 13px; letter-spacing: .06em; text-transform: uppercase;
+    border-radius: 999px; padding: 3px 8px 3px 7px; line-height: 1.2; }
+  #onair.live { background: #b61622; color: #fff; }
+  #onair.watch { background: #e8ecf1; color: #1d1d1f; }
+  #onair.live::before, #onair.watch::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  #onair.live::before { background: #fff; }
+  #onair.watch::before { background: #0064c8; }
+  /* The pill is easy to miss. This bar names the room and, for a service, whether you are on air. */
+  #airbar { display: none; }
+  #airbar[hidden] { display: none !important; }
+  #airbar.on { display: flex; align-items: center; justify-content: center; gap: 10px;
+    margin-top: 104px; min-height: 52px; padding: 0 16px; text-align: center;
+    font: 800 22px/1.2 system-ui, sans-serif; }
+  #airbar.live { background: #b61622; color: #fff; }
+  #airbar.watch { background: #e8ecf1; color: #1d1d1f; }
+  #airbar.group { background: #143024; color: #e7f6ec; }
+  #airbar.off { background: #2a2a3f; color: #e0e0f0; }
+  #airbar.live::before, #airbar.watch::before, #airbar.group::before {
+    content: ''; width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  #airbar.live::before { background: #fff; }
+  #airbar.watch::before { background: #0064c8; }
+  #airbar.group::before { background: #7dcea0; }
+  #airbar.off::before { background: #8a8aa8; }
+  #airbar .airacts { display: flex; align-items: center; gap: 8px; margin-left: 8px; }
+  #airrec, #airwho { appearance: none; font: 700 15px/1 system-ui, sans-serif; min-height: 36px;
+    padding: 0 12px; border-radius: 999px; cursor: pointer; background: transparent; color: inherit;
+    border: 2px solid currentColor; }
+  #airrec[aria-pressed="true"] { background: #fff; color: #b61622; border-color: #b61622; }
+  #avstate { display: none; }
+  #avstate[hidden] { display: none !important; }
+  #avstate.on { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 14px;
+    min-height: 44px; padding: 8px 16px; background: #3a1014; color: #fff;
+    font: 800 18px/1.2 system-ui, sans-serif; }
+  #avstate span { display: inline-flex; align-items: center; gap: 8px; }
+  #avstate span[hidden] { display: none !important; }
+  #avstate span::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #ffb4b4; flex: none; }
   .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
     border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 14px/1.2 system-ui, sans-serif; }
@@ -1349,28 +1482,71 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     max-width: calc(100% - 16px); padding: 0 16px 0 18px; margin: 0;
     background: rgba(255,255,255,.94); border: 0; border-radius: 32px;
     box-shadow: 0 10px 30px rgba(0,0,0,.28); overflow: visible; }
-  .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+  /* Idle tuck is a transform written by placeDock. No transition: a key nudge
+     has to land on the next frame, and a transition would leave the old place. */
+  .bar.tucked { pointer-events: none; }
+  /* Fit is a gallery control. It leaves with the dock on a quiet small group.
+     A service is one stage, so Fit is not shown there. */
+  body.dock-idle #fitbtn { transform: translateY(calc(-100% - 70px)); pointer-events: none; }
+  body.broadcast #fitbtn { display: none !important; }
+  .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #fsbtn, .bar #chatbtn, .bar #bartoggle {
     width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
-    background: #e8ecf1; color: #1d1d1f; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+    background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
+    font-size: 11px; font-weight: 700; line-height: 1; letter-spacing: 0;
   }
-  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 34px; height: 34px; }
-  .bar #mic.iconbtn, .bar #cam.iconbtn { color: #1d1d1f; border-color: transparent; }
-  .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { color: #9f1239; border-color: transparent; background: #e8ecf1; }
+  .bar .docklab { display: block; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
+  .bar #fsbtn { width: auto; min-width: 68px; padding: 0 8px; }
+  .bar #fsbtn .docklab { max-width: none; }
+  .bar #reactbtn .dockface { font-size: 26px; line-height: 1; pointer-events: none; }
+  /* Off is a filled red button, on is filled green — the same read as Zoom
+     and Meet, not a small slash on a gray circle. */
+  .bar #mic.iconbtn:not(.off), .bar #cam.iconbtn:not(.off) { background: #146c36; color: #fff; }
+  .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { background: #b61622; color: #fff; border-color: transparent; }
+  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 28px; height: 28px; }
+  .bar > #sharebtn { width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
+    background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
+    font-size: 11px; font-weight: 700; line-height: 1; }
+  .bar > #sharebtn svg { width: 28px; height: 28px; }
+  .bar > #sharebtn.on { background: #b3402f; color: #fff; }
+  .bar > #stagebtn { width: auto; min-width: 68px; height: 68px; min-height: 68px; padding: 0 12px; border: 0; border-radius: 50%;
+    background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
+    font-size: 11px; font-weight: 700; line-height: 1; }
+  .bar > #stagebtn .docklab { max-width: none; }
+  .bar > #stagebtn svg { width: 28px; height: 28px; }
+  .bar > #stagebtn.on { background: #b61622; color: #fff; }
+  .bar > #hand { width: auto; min-width: 68px; height: 68px; min-height: 68px; padding: 0 12px; border: 0; border-radius: 50%;
+    background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
+    font-size: 11px; font-weight: 700; line-height: 1; }
+  .bar > #hand .docklab { max-width: none; }
+  .bar > #hand .dockface { font-size: 26px; line-height: 1; pointer-events: none; }
+  .bar > #hand.on { background: #0064c8; color: #fff; }
   .bar #reactbtn.on, .bar #bartoggle[aria-expanded="true"] { background: #0064c8; color: #fff; }
   .bar:not(.collapsed) .bartoggle svg { transform: none; }
   .bar #leavebtn { width: 72px; height: 72px; min-width: 72px; min-height: 72px; margin-left: 6px; padding: 0;
-    border: 0; border-radius: 22px; background: #b61622; color: #fff; display: inline-flex; align-items: center; justify-content: center; }
+    border: 0; border-radius: 22px; background: #b61622; color: #fff; display: inline-flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 1px; font-size: 11px; font-weight: 700; line-height: 1; }
+  #left-modal .name-box { background: #fff; color: #1d1d1f; max-width: 420px; }
+  #left-modal h3 { color: #1d1d1f; font-size: 1.7rem; margin-bottom: .6rem; }
+  #left-modal p { color: #3a3a3f; font-size: 1rem; line-height: 1.4; margin: 0 0 1.1rem; }
+  #left-rejoin, #left-close { min-height: 64px; min-width: 120px; font-size: 1.2rem; border-radius: 12px; cursor: pointer; }
+  #left-rejoin { background: #0064c8; color: #fff; border: 0; }
+  #left-close { margin-left: 12px; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
   .bar .barmore { display: none; }
   .bar:not(.collapsed) .barmore { display: grid; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
     width: min(720px, calc(100vw - 24px)); grid-template-columns: repeat(4, 1fr); gap: 8px;
     background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23;
-    pointer-events: none; }
+    pointer-events: none;
+    max-height: calc(100vh - 140px); max-height: calc(100dvh - 140px); overflow-y: auto; }
   .bar:not(.collapsed) .barmore > * { pointer-events: auto; }
   /* Stage voting: the More sheet floats over the gallery; let .votedot receive taps. */
   body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore,
   body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore * { pointer-events: none !important; }
   .bar:not(.collapsed) .barmore > button { min-height: 64px; height: auto; padding: 8px 6px; border: 0; border-radius: 16px;
     background: #e8ecf1; color: #1d1d1f; font-size: 18px; font-weight: 650; white-space: normal; }
+  /* The old on-colors were written for a dark bar. On this light sheet they
+     turn Captions and Record pale, so the pressed state uses the blue button. */
+  .bar:not(.collapsed) #barmore > #ccbtn.on,
+  .bar:not(.collapsed) #barmore > #recbtn.on { background: #0064c8; color: #fff; border-color: transparent; }
   .bar:not(.collapsed) .barmore .blurctl { grid-column: 1 / -1; display: flex; align-items: center; min-height: 48px; gap: 8px; }
   .bar:not(.collapsed) .barmore .blurlbl { display: inline; color: #3a3a3f; font-size: 14px; }
   .bar:not(.collapsed) .barmore .seg { min-height: 48px; min-width: 48px; color: #1d1d1f; background: #fff; }
@@ -1382,10 +1558,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     box-shadow: 0 10px 28px rgba(0,0,0,.25); }
   .reacttray[hidden] { display: none !important; }
   .reacttray button { min-width: 68px; min-height: 68px; border: 0; border-radius: 16px; background: #e8ecf1; color: #1d1d1f;
-    font-size: 18px; font-weight: 650; padding: 6px; }
+    font-size: 30px; font-weight: 650; padding: 6px; line-height: 1; }
   .reacttray button.on { background: #0064c8; color: #fff; }
   .tile .reactburst { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 5;
-    background: #fff; color: #1d1d1f; font-weight: 800; font-size: 18px; padding: 8px 14px; border-radius: 999px;
+    background: #fff; color: #1d1d1f; font-weight: 800; font-size: 32px; line-height: 1; padding: 8px 12px; border-radius: 999px;
     pointer-events: none; opacity: 0; }
   .tile .reactburst.show { animation: reactpop 1.6s ease forwards; }
   @keyframes reactpop { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
@@ -1423,15 +1599,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .topchip .title { font-size: 20px; }
     .topchip .status { font-size: 17px; }
     .bar { height: 88px; gap: 8px; padding: 0 10px; }
-    .bar #cam, .bar #mic, .bar #reactbtn, .bar #bartoggle {
+    .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #fsbtn, .bar #chatbtn, .bar #bartoggle {
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
-    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
+    .bar > #sharebtn { width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
+    .bar > #sharebtn svg { width: 26px; height: 26px; }
+    .bar > #stagebtn { height: 56px; min-height: 56px; padding: 0 8px; }
+    .bar > #stagebtn svg { width: 22px; height: 22px; }
+    .bar > #hand { height: 56px; min-height: 56px; padding: 0 8px; }
+    .bar > #hand .dockface { font-size: 22px; }
+    .bar #fsbtn { width: auto; min-width: 56px; padding: 0 6px; }
+    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #chatbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
     .bar #bargrip { height: 40px; width: 18px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
     .bar:not(.collapsed) .barmore { bottom: 102px; grid-template-columns: repeat(3, 1fr); width: calc(100vw - 24px); }
+    #chatpanel { padding-bottom: 112px; } /* dock is 88px tall under 700px */
     .bar:not(.collapsed) .barmore > button { min-height: 56px; font-size: 16px; }
     .reacttray { bottom: 102px; }
-    .reacttray button { min-width: 56px; min-height: 56px; font-size: 16px; }
+    .reacttray button { min-width: 56px; min-height: 56px; font-size: 26px; }
+    .bar #reactbtn .dockface { font-size: 22px; }
     #leave-ask .name-box h3 { font-size: 1.35rem; }
     #leave-ask #leave-cancel, #leave-ask #leave-go { min-height: 56px; font-size: 1.05rem; }
     .tile .name { font-size: 1rem; }
@@ -1515,7 +1700,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.screen-on #grid .tile { height: 76px; }
   }
   body.has-app #feed { margin-bottom: 132px; }
-  body.broadcast #feed { padding-bottom: 108px; box-sizing: border-box; }
+  body.broadcast #feed { padding-bottom: 132px; box-sizing: border-box; }
   #joinveil { background: transparent; pointer-events: none; align-items: flex-start; justify-content: center; padding-top: 72px; z-index: 18; }
   #joinveil .jv-box { pointer-events: auto; background: #fff; color: #1d1d1f; border-radius: 16px; padding: 1.1rem 1.3rem;
     box-shadow: 0 12px 32px rgba(0,0,0,.28); }
@@ -1534,6 +1719,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     min-height: 48px; border-radius: 16px; }
   #lobby.show .lob-primary, #lob-admin-go { background: #0064c8; border-color: transparent; color: #fff; font-weight: 700; text-align: center; }
   #lobby.show .lob-action { background: #fff; border: 1.5px solid #8d93a0; color: #1d1d1f; text-align: center; }
+  /* A small group has one door. Host and Join are the same kind of link as
+     the guest password, and they still open in place. */
+  #lobby.show #lob-admin-btn.lob-link,
+  #lobby.show #lob-join-btn.lob-link { display: block; width: 100%; min-height: 44px; margin: 0 0 2px;
+    color: #0064c8; font-weight: 700; font-size: 16px; text-align: center; text-decoration: underline;
+    background: transparent; border: 0; }
   .lob-expand input { min-height: 48px; color: #1d1d1f; background: #fff; }
   #lob-rename { min-height: 48px; padding: 8px 12px; color: #0064c8; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; }
   .lob-star, #lobby button.row-del { min-width: 48px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; }
@@ -1558,20 +1749,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span class="lob-pv-name" id="lob-preview-name">You</span>
     </div>
     <div class="lobby-card">
-      <h1>Meeting</h1>
-      <p class="lob-quiet">You join muted. The camera stays however you set it here.</p>
-      <button id="lob-open" class="lob-primary">Start a meeting<small>Open room · anyone with the link can join</small></button>
-      <button id="lob-admin-btn" class="lob-action">Start a room you run<small>You're the admin: set a password, mute/blur, ban a troublemaker</small></button>
+      <h1>Small group</h1>
+      <p class="lob-quiet">You come in muted. Turn the camera on here if you want to be seen.</p>
+      <button id="lob-open" class="lob-primary">Start a call<small>Anyone with the link can join</small></button>
+      <button type="button" id="lob-admin-btn" class="lob-link">Host this call</button>
       <div id="lob-admin" class="lob-expand" style="display:none">
-        <input id="lob-admin-name" maxlength="40" placeholder="Room name (anything you like)" autocomplete="off">
-        <label class="lob-pwlab">🔑 <b id="lob-admin-pass-head">Admin password</b> — yours alone — <b>do not share it</b><small id="lob-admin-pass-note">This is what puts you in charge of the room. Guests don’t need it. Anyone you give it to can run the room too.</small></label>
-        <input id="lob-admin-pass" type="password" maxlength="64" placeholder="Admin password (keep to yourself)" autocomplete="new-password">
-        <label class="lob-pwlab">🎟 <b id="lob-guest-pass-head">Guest password</b> — the one you <b>do</b> share<small id="lob-guest-pass-note">Optional. Faces stay blurred until you set one, and it is not part of the link.</small></label>
-        <input id="lob-guest-pass" type="password" maxlength="64" placeholder="Guest password (optional — share with guests)" autocomplete="new-password">
-        <div class="lob-row"><button id="lob-admin-cancel" class="lob-ghost">Cancel</button><button id="lob-admin-go">Create &amp; enter</button></div>
+        <input id="lob-admin-name" maxlength="40" placeholder="Name this call" autocomplete="off">
+        <label class="lob-pwlab">🔑 <b id="lob-admin-pass-head">Host password</b> — only you<small id="lob-admin-pass-note">Do not share it. Guests do not need it, and it is not part of the link.</small></label>
+        <input id="lob-admin-pass" type="password" maxlength="64" placeholder="Host password" autocomplete="new-password">
+        <button type="button" id="lob-guest-more" class="lob-link" aria-expanded="false">Add a password for guests</button>
+        <div id="lob-guest-extra" style="display:none">
+          <label class="lob-pwlab">🎟 <b id="lob-guest-pass-head">Guest password</b> — the one you share<small id="lob-guest-pass-note">Optional. It is not part of the link.</small></label>
+          <input id="lob-guest-pass" type="password" maxlength="64" placeholder="Guest password (optional)" autocomplete="new-password">
+        </div>
+        <div class="lob-row"><button id="lob-admin-cancel" class="lob-ghost">Cancel</button><button id="lob-admin-go">Start</button></div>
         <div id="lob-admin-err" class="lob-err"></div>
       </div>
-      <button id="lob-join-btn" class="lob-action">Join a link<small>Paste an invite link or meeting id someone sent you</small></button>
+      <button type="button" id="lob-join-btn" class="lob-link">Join a link</button>
       <div id="lob-join" class="lob-expand" style="display:none">
         <input id="lob-join-in" placeholder="Paste link or meeting id" autocomplete="off">
         <p id="lob-watch-note" class="lob-watch-note" hidden></p>
@@ -1581,14 +1775,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div class="lob-sep"></div>
       <div class="lob-hist-h">Recent &amp; saved</div>
       <div id="lob-list"></div>
-      <div id="lob-empty" class="lob-empty">Meetings you start or join will show up here.</div>
-      <div class="lob-namebar">You'll join as <b id="lob-name">…</b> · <button id="lob-rename" class="lob-link">change</button></div>
+      <div id="lob-empty" class="lob-empty">Calls you start or join show up here.</div>
+      <div class="lob-appear">
+        <div class="lob-appear-k">This is how you'll appear</div>
+        <div class="lob-appear-row">
+          <button type="button" id="lob-face" class="lob-face" aria-label="Change your picture"></button>
+          <input id="lob-name-in" maxlength="40" autocomplete="nickname" aria-label="Your name" placeholder="Your name">
+        </div>
+        <input id="lob-face-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden>
+        <b id="lob-name" hidden>…</b>
+      </div>
     </div>
   </div>
   <div class="topchip">
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <span class="status" id="status">Joining…</span>
+    <button type="button" id="hdrinvite" hidden title="Share the viewer link">Invite</button>
   </div>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" aria-label="Gallery" title="Fit everyone on one screen. Press to scroll the room instead.">▦ Fit</button>
   <div class="admcount" id="admcount" style="display:none"></div>
@@ -1596,25 +1799,47 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
-    <button id="cam" class="iconbtn off" aria-label="Camera" title="Your camera">
+    <button id="cam" class="iconbtn off" aria-label="Start video" title="Camera off — tap to turn on. Shortcut: V">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="2" y="6" width="13" height="12" rx="2"/><path d="M15 10.5 22 7v10l-7-3.5"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
+      <span class="docklab">Video</span>
     </button>
-    <button id="mic" class="iconbtn off" aria-label="Microphone" title="Your mic">
+    <button id="mic" class="iconbtn off" aria-label="Unmute" title="You are muted — tap to speak. Shortcut: M">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
+      <span class="docklab">Unmute</span>
     </button>
     <!-- Smiley, on purpose. The sparkle (AI_SPARK_SVG) is only for AI: the transcript and the note bot. -->
     <button id="reactbtn" type="button" class="iconbtn" aria-label="Reactions" aria-expanded="false" aria-pressed="false" title="Reactions">
-      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1.1 1.4 2.4 2 4 2s2.9-.6 4-2"/><circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none"/></svg>
+      <span class="dockface" aria-hidden="true">😊</span>
+      <span class="docklab">React</span>
+    </button>
+    <button id="invite" type="button" class="iconbtn" aria-label="Invite" title="Friends join you live with one link">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.6 19.2c.7-2.8 2.8-4.4 5.4-4.4s4.7 1.6 5.4 4.4"/><path d="M18 8.5v5.5M15.2 11.2h5.6"/></svg>
+      <span class="docklab">Invite</span>
+    </button>
+    <button id="fsbtn" type="button" class="iconbtn" aria-label="Full screen" title="Watch full screen. Follows whoever is speaking.">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      <span class="docklab">Full screen</span>
+    </button>
+    <button id="chatbtn" type="button" class="iconbtn" aria-label="Chat" title="Chat and share files — stays between the people on this meeting, not on a server">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>
+      <span class="docklab">Chat</span>
+      <span class="chatcount" hidden></span>
+    </button>
+    <button id="sharebtn" type="button" class="iconbtn" aria-label="Share screen" title="Show the whole room a window, a tab or your desktop. To share a GifOS app, use Run app." style="display:none">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+      <span class="docklab">Share</span>
     </button>
     <button id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
+      <span class="docklab">More</span>
     </button>
-    <button id="leavebtn" type="button" aria-label="Hang up" title="Leave the meeting. Your camera and microphone stop.">
-      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(135 12 12)"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 3.1 2 2 0 0 1 4.1 1h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 8.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.7 2.1z"/></g></svg>
+    <button id="leavebtn" type="button" aria-label="Leave" title="Leave. Your camera and microphone stop.">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(135 12 12)"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 3.1 2 2 0 0 1 4.1 1h3a2 2 0 0 1 2 1.7c.1 1 .3 1.9.6 2.8a2 2 0 0 1-.5 2.1L8.1 8.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.5 2.8.6a2 2 0 0 1 1.7 2.1z"/></g></svg>
+      <span class="docklab">Leave</span>
     </button>
     <div class="barmore" id="barmore">
     <span class="blurctl" title="How much your own video is blurred to everyone else">
@@ -1678,9 +1903,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
       <span class="blab">Float</span>
     </button>
-    <button id="invite" title="Friends join you live with one link">Invite</button>
     <button id="appbtn" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
-    <button id="sharebtn" title="Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)" style="display:none">Share screen</button>
     <button id="blurall" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
     <button id="camall" title="Turn video OFF for every guest at once (admins) — stronger than blur" style="display:none">Turn Video off</button>
     <button id="shareall" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
@@ -1688,20 +1911,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="votebtn" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
     <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
     <button id="hand" title="Raise your hand — raised hands float to the top">Hand</button>
-    <button id="chatbtn" title="Chat and share files — stays between the people on this meeting, not on a server">Chat</button>
     <button id="recbtn" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
-    <button id="ccbtn" type="button" aria-pressed="false" title="Show or hide captions on your screen. This meeting is written down either way.">CC</button>
+    <button id="ccbtn" type="button" aria-pressed="false" title="Show or hide captions on your screen. This meeting is written down either way.">Captions</button>
     <button id="stagebtn" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
     <button id="setbtn" title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
     <button id="trbtn" title="The meeting's live transcript"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
     <button id="helpbtn" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
     </div>
     <div id="reacttray" class="reacttray" hidden role="group" aria-label="Reactions">
-      <button type="button" id="react-hand">Hand</button>
-      <button type="button" data-burst="Clap">Clap</button>
-      <button type="button" data-burst="Yes">Yes</button>
-      <button type="button" data-burst="No">No</button>
-      <button type="button" data-burst="Laugh">Laugh</button>
+      <button type="button" id="react-hand" aria-label="Raise hand">✋</button>
+      <button type="button" data-burst="👏" aria-label="Clap">👏</button>
+      <button type="button" data-burst="👍" aria-label="Yes">👍</button>
+      <button type="button" data-burst="👎" aria-label="No">👎</button>
+      <button type="button" data-burst="😂" aria-label="Laugh">😂</button>
     </div>
   </div>
   <div class="share" id="share">
@@ -1732,10 +1954,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <div id="handq"></div>
   <p id="bc-join-note" hidden></p>
+  <div id="airbar" hidden>
+    <span id="airkind" role="status"></span>
+    <span class="airacts">
+      <button type="button" id="airrec" aria-pressed="false">Not recording</button>
+      <button type="button" id="airwho">1 here</button>
+    </span>
+  </div>
+  <div id="avstate" hidden>
+    <span id="avmic" hidden>Microphone off</span>
+    <span id="avcam" hidden>Camera off</span>
+  </div>
   <div id="feed">
     <div id="stagefeed"></div>
+    <div id="stagemod" hidden aria-label="On stage"></div>
     <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-name"></div></div>
     <div id="bc-seats"></div>
+    <div id="bc-stage" hidden><p id="bc-stage-line">The stage is clear.</p></div>
     <div id="grid"></div>
     <div id="stadium"></div>
   </div>
@@ -1780,7 +2015,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           </div>
         </div>
         <div id="ccsource" style="margin-top:.5rem;display:none"></div>
-        <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span id="ccall-note">Admins only — every device starts writing down the voices it hears. Anyone can tap CC to opt out.</span></p>
+        <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span id="ccall-note">Admins only — every device starts writing down the voices it hears. Anyone can tap Captions to opt out.</span></p>
       </div>
       <div id="mixpanel">
         <b>Sound mix</b>
@@ -1843,17 +2078,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <input type="file" id="app-file-input" accept="image/gif,.gif" style="display:none">
 
   <div id="chatpanel">
-    <div id="chathead"><span id="paneltitle">Meeting chat</span> <small style="color:#667;font-weight:400">· private to this meeting, gone when everyone leaves</small>
+    <div id="chathead"><span id="paneltitle">Meeting chat</span> <small id="chatprivacy" style="color:#667;font-weight:400">· private to this meeting, gone when everyone leaves</small>
       <button id="trtab" style="margin-left:auto"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
       <button id="chatmod" style="display:none" title="Silence the chat for everyone but you">Turn chat off</button>
       <button id="chatclose">✕</button></div>
     <div id="chatlog"></div>
     <div id="trwrap">
-      <div id="trlog"><small style="color:#667">Tap CC in the bar and your device writes down everyone it hears — the lines gather here under each speaker's name, on every device in the meeting.</small></div>
+      <div id="trlog"><small style="color:#667">Tap Captions in the bar and your device writes down everyone it hears — the lines gather here under each speaker's name, on every device in the meeting.</small></div>
       <div id="trfoot"><button id="trdl">Download transcript</button></div>
     </div>
-    <div id="cfiles"><h4>Files pinned to this meeting</h4><div id="cfilelist"><small style="color:#667">No files yet — attach one below.</small></div></div>
+    <div id="cfiles" hidden><h4>Files pinned to this meeting</h4><div id="cfilelist"></div></div>
     <form id="chatform">
+      <button type="button" id="pray" aria-pressed="false" title="Mark messages as prayer requests">Prayer</button>
       <button type="button" id="cattach" title="Pin a file to the meeting">📎</button>
       <input type="file" id="cfile-in" multiple style="display:none">
       <input type="text" id="chat-in" placeholder="Message everyone…" autocomplete="off" maxlength="2000">
@@ -1862,7 +2098,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="inv-modal" style="display:none">
-    <div class="name-box" style="max-width:440px;text-align:left">
+    <div class="name-box appear-box">
       <h3>Share this meeting</h3>
       <div id="inv-body"></div>
     </div>
@@ -2084,11 +2320,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     </div>
   </div>
   <div class="name-modal" role="dialog" aria-modal="true" id="left-modal" style="display:none">
-    <div class="closed-box">
-      <h3>You left the meeting</h3>
-      <p>Your camera and microphone are off. The same link brings you back.</p>
-      <button id="left-rejoin">Rejoin</button>
-      <button id="left-close" style="margin-left:.5rem;background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+    <div class="name-box">
+      <h3 id="left-title">You left</h3>
+      <p id="left-note">Your camera and microphone are off.</p>
+      <button id="left-rejoin" type="button">Rejoin</button>
+      <button id="left-close" type="button">Close</button>
     </div>
   </div>
   <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
@@ -2303,6 +2539,221 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const BROADCAST = BC_INTENT && !!params.get('v') && /^[a-f0-9]{16,64}$/.test((params.get('av') || '').toLowerCase());
     const BC_WATCH_COPY = 'Watching the service. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.';
     if (BROADCAST) document.body.classList.add('broadcast');
+    // The lobby is renamed when you arrive wanting a broadcast. The room used
+    // to keep saying "meeting" on the chat, the leave dialog, and Help, and
+    // nothing told a host they were on air. Paint that chrome once the host
+    // key helper exists (just below) and again whenever admin state changes.
+    function someoneRecording() {
+      try {
+        if (typeof myStatus !== 'undefined' && myStatus && myStatus.rec) return true;
+        if (typeof statusOf !== 'undefined' && statusOf && typeof statusOf.forEach === 'function') {
+          let on = false;
+          statusOf.forEach((st) => { if (st && st.rec) on = true; });
+          return on;
+        }
+      } catch (e) {}
+      return false;
+    }
+    function roomHeadCount() {
+      try {
+        if (typeof displayCount === 'function') {
+          const n = displayCount();
+          if (n > 0) return n;
+        }
+      } catch (e) {}
+      return 1;
+    }
+    function paintRoomTrust() {
+      const rec = document.getElementById('airrec');
+      const who = document.getElementById('airwho');
+      const on = someoneRecording();
+      if (rec) {
+        rec.setAttribute('aria-pressed', on ? 'true' : 'false');
+        rec.textContent = on ? 'Recording' : 'Not recording';
+        rec.title = on
+          ? 'Recording on this device. Everyone here can see it. Tap to stop.'
+          : 'Not recording. Tap to record on this device. Everyone here will see it.';
+      }
+      if (who) {
+        const n = roomHeadCount();
+        who.textContent = n + ' here';
+        who.title = 'Who is here';
+        who.setAttribute('aria-label', 'Who is here, ' + n);
+      }
+      maybeShowRecNotice();
+    }
+    function recRoomWord() {
+      return (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'service' : 'small group';
+    }
+    function recNoticeTitle() {
+      let subject = '';
+      try {
+        if (typeof myStatus !== 'undefined' && myStatus && myStatus.rec) subject = 'You are';
+        else if (typeof statusOf !== 'undefined' && statusOf && statusOf.forEach) {
+          statusOf.forEach((st) => { if (!subject && st && st.rec && st.name) subject = st.name + ' is'; });
+        }
+      } catch (e) {}
+      const kind = recRoomWord();
+      return subject ? (subject + ' recording this ' + kind) : ('This ' + kind + ' is being recorded');
+    }
+    function maybeShowRecNotice() {
+      const on = someoneRecording();
+      const existing = document.getElementById('rec-notice');
+      if (!on) {
+        try { sessionStorage.removeItem('gifos_rec_seen'); } catch (e) {}
+        if (existing) existing.remove();
+        return;
+      }
+      let seen = false;
+      try { seen = sessionStorage.getItem('gifos_rec_seen') === '1'; } catch (e) {}
+      if (seen) { if (existing) existing.remove(); return; }
+      if (existing) return;
+      const bg = document.createElement('div');
+      bg.id = 'rec-notice';
+      bg.className = 'name-modal';
+      bg.setAttribute('role', 'dialog');
+      bg.setAttribute('aria-modal', 'true');
+      bg.setAttribute('aria-labelledby', 'rec-notice-title');
+      bg.innerHTML = '<div class="name-box appear-box"><h3 id="rec-notice-title"></h3>' +
+        '<p>Saved on a device in this room. The bar keeps saying Recording until it stops.</p>' +
+        '<button id="rec-notice-ok" type="button" class="appear-primary">OK</button></div>';
+      bg.querySelector('#rec-notice-title').textContent = recNoticeTitle();
+      bg.querySelector('#rec-notice-ok').onclick = () => {
+        try { sessionStorage.setItem('gifos_rec_seen', '1'); } catch (e) {}
+        bg.remove();
+      };
+      document.body.appendChild(bg);
+    }
+    function paintAirKind(cls, text) {
+      const air = document.getElementById('airbar');
+      const kind = document.getElementById('airkind');
+      if (!air || !kind) return;
+      air.hidden = false;
+      air.className = 'on ' + cls;
+      kind.textContent = text;
+      paintRoomTrust();
+    }
+    // The full-width bar names the room and the seat. Its colour follows the
+    // lamp: live only while a camera or a microphone is actually sending.
+    function paintBroadcastAir() {
+      if (typeof BROADCAST === 'undefined' || !BROADCAST) return;
+      const role = bcRoleSafe();
+      const sending = bcSendingSafe();
+      let onStage = false;
+      try { onStage = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) { onStage = false; }
+      if (role === 'host') paintAirKind(sending ? 'live' : 'off', sending ? 'Service · You are live' : 'Service · You are off air');
+      else if (role === 'stage' || onStage) paintAirKind(sending ? 'live' : 'off', 'Service · You are on stage');
+      else paintAirKind('watch', 'Service · You are watching');
+      try { paintOnAir(); } catch (e) {}
+      if (typeof updateStatus === 'function') { try { updateStatus(); } catch (e) {} }
+    }
+    function paintBroadcastChrome() {
+      const pill = document.getElementById('onair');
+      const say = (id, text) => { const el = document.getElementById(id); if (el && text) el.textContent = text; };
+      const bar = document.querySelector('.bar');
+      if (!BROADCAST) {
+        document.title = 'Small group — GifOS';
+        if (pill) { pill.hidden = true; pill.className = ''; }
+        paintAirKind('group', 'Small group');
+        const whoMeet = document.getElementById('whobtn');
+        if (whoMeet) whoMeet.title = 'Who is here — names and internet addresses';
+        const whoMeetH = document.querySelector('#who-modal h3');
+        if (whoMeetH) whoMeetH.textContent = 'Who is here';
+        if (bar) bar.setAttribute('aria-label', 'Small group controls');
+        const curTitle = document.getElementById('paneltitle');
+        if (curTitle && curTitle.textContent !== 'Transcript') curTitle.textContent = 'Small group chat';
+        say('chatprivacy', '· private to this small group, gone when everyone leaves');
+        const leave = document.getElementById('leavebtn');
+        if (leave) {
+          leave.title = 'Leave the small group. Your camera and microphone stop.';
+          leave.setAttribute('aria-label', 'Leave the small group');
+        }
+        say('leave-ask-title', 'Leave the small group?');
+        say('left-title', 'You left the small group');
+        say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+        const help = document.getElementById('helpbtn');
+        if (help) help.title = 'How this small group works';
+        const helpH = document.querySelector('#help-modal h3');
+        if (helpH) helpH.textContent = 'How this small group works';
+        return;
+      }
+      document.title = 'Service — GifOS';
+      const curTitle = document.getElementById('paneltitle');
+      if (curTitle && curTitle.textContent !== 'Transcript') curTitle.textContent = 'Service chat';
+      say('chatprivacy', '· private to this service, gone when everyone leaves');
+      const leave = document.getElementById('leavebtn');
+      if (leave) {
+        leave.title = 'Leave the service. Your camera and microphone stop.';
+        leave.setAttribute('aria-label', 'Leave the service');
+      }
+      say('leave-ask-title', 'Leave the service?');
+      say('left-title', 'You left the service');
+      say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+      const help = document.getElementById('helpbtn');
+      if (help) help.title = 'How this service works';
+      const helpH = document.querySelector('#help-modal h3');
+      if (helpH) helpH.textContent = 'How this service works';
+      const who = document.getElementById('whobtn');
+      if (who) who.title = 'Who is watching — names and internet addresses';
+      const whoH = document.querySelector('#who-modal h3');
+      if (whoH) whoH.textContent = 'Who is watching';
+      const whoP = document.querySelector('#who-modal .name-box p');
+      if (whoP) whoP.textContent = 'There is no server in the middle storing this service. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone\u2019s internet address \u2014 nobody is anonymous. \u2713 marks an address the GifOS relay verified or this device saw directly; anything else is only what that person\u2019s device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.';
+      const chat = document.getElementById('chatbtn');
+      if (chat && chat.textContent === 'Chat') chat.title = 'Chat with everyone watching — stays between the people here, not on a server';
+      const rec = document.getElementById('recbtn');
+      if (rec) rec.title = 'Record this service ON YOUR DEVICE (everyone sees that you are recording)';
+      const inv = document.querySelector('#inv-modal h3');
+      if (inv) inv.textContent = 'Share this service';
+      const inviteBtn = document.getElementById('invite');
+      if (inviteBtn) inviteBtn.title = 'Invite someone to this service — one link';
+      const fsDockBtn = document.getElementById('fsbtn');
+      if (fsDockBtn) fsDockBtn.title = 'Watch the stage full screen.';
+      const pw = document.getElementById('pwbtn');
+      if (pw) pw.title = 'Viewer password. Optional. It is not part of the link.';
+      const files = document.querySelector('#cfiles h4');
+      if (files) files.textContent = 'Files pinned to this service';
+      if (bar) bar.setAttribute('aria-label', 'Service controls');
+      const shareOnDock = document.getElementById('sharebtn');
+      const moreSheet = document.getElementById('barmore');
+      const host = bcHostStored() || document.body.classList.contains('amadmin');
+      // Slides and a window are how a host fills the stage. Share sits on the
+      // host dock, the same place a small group already has it. A viewer keeps
+      // it in More until they are allowed to share.
+      if (shareOnDock && moreSheet && bar) {
+        if (host) {
+          const moreBtn = document.getElementById('bartoggle');
+          if (shareOnDock.parentElement !== bar && moreBtn) bar.insertBefore(shareOnDock, moreBtn);
+        } else if (shareOnDock.parentElement !== moreSheet) moreSheet.appendChild(shareOnDock);
+      }
+      if (host && bar) {
+        const stage = document.getElementById('stagebtn');
+        const anchor = document.getElementById('reactbtn');
+        if (stage && anchor && stage.parentElement !== bar) bar.insertBefore(stage, anchor);
+        if (stage && !stage.querySelector('.docklab')) {
+          stage.classList.add('iconbtn');
+          stage.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="2.4"/><path d="M8.2 13.2c.5-1.5 1.9-2.4 3.8-2.4s3.3.9 3.8 2.4"/><path d="M4 17.5h16"/></svg><span class="docklab">Step on</span>';
+          stage.setAttribute('aria-label', 'Step on the stage');
+        }
+      } else if (bar) {
+        const hand = document.getElementById('hand');
+        const anchor = document.getElementById('reactbtn');
+        if (hand && anchor && hand.parentElement !== bar) bar.insertBefore(hand, anchor);
+        if (hand && !hand.querySelector('.docklab')) {
+          hand.classList.add('iconbtn');
+          hand.innerHTML = '<span class="dockface" aria-hidden="true">\u270B</span><span class="docklab">Raise hand</span>';
+          hand.setAttribute('aria-label', 'Raise hand');
+          hand.setAttribute('aria-pressed', 'false');
+        }
+      }
+      paintBroadcastAir();
+      const plate = document.getElementById('bc-stage');
+      if (plate) plate.hidden = false;
+      const stageWatch = document.getElementById('stagefeed');
+      if (stageWatch && window.MutationObserver) {
+        new MutationObserver(() => { if (typeof paintStagePlate === 'function') paintStagePlate(); }).observe(stageWatch, { childList: true });
+      }
+    }
     // The HOST is whoever holds this room's stored admin key — known before
     // any network exists, which is what lets the boot skip the viewer's
     // camera ask entirely (below) while the host boots like a meeting.
@@ -2353,16 +2804,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!myStatus.muted && live('audio')) return true;
       return false;
     }
+    // bcRole reads admin state that is declared further down. The chrome
+    // painter runs before that, so a role asked for too early falls back to
+    // the stored host key.
+    function bcRoleSafe() {
+      try { return bcRole(); } catch (e) { return !BROADCAST ? 'meet' : (bcHostStored() ? 'host' : 'viewer'); }
+    }
+    function bcSendingSafe() {
+      try { return bcSending(); } catch (e) { return false; }
+    }
+    // The lamp (confirmed design): a viewer reads Watching; a host or a stage
+    // guest who is sending a camera or a microphone reads Live, and one who
+    // is not reads Off air. Meetings hide the lamp.
     function paintOnAir() {
       const el = document.getElementById('onair');
       if (!el) return;
       if (!BROADCAST) { el.hidden = true; return; }
-      const role = bcRole();
+      const role = bcRoleSafe();
       let kind = 'off', words = 'Off air';
       if (role === 'viewer') { kind = 'watch'; words = 'Watching'; }
-      else if (bcSending()) { kind = 'live'; words = 'Live'; }
+      else if (bcSendingSafe()) { kind = 'live'; words = 'Live'; }
       el.hidden = false;
       el.className = kind;
+      el.setAttribute('role', 'status');
       const w = el.querySelector('.words');
       if (w && w.textContent !== words) w.textContent = words;
       el.setAttribute('aria-label', words);
@@ -2400,6 +2864,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { refreshOutbound(); } catch (e) {}
       } finally { bcSeatLock = false; }
     }
+    paintBroadcastChrome();
     const grid = document.getElementById('grid');
     const statusEl = document.getElementById('status');
     const share = document.getElementById('share');
@@ -2423,6 +2888,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (statusEl.title !== String(m)) statusEl.title = String(m);
       statusEl.classList.toggle('alert', blocking || !!hold);
       statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
+      const holdChip = statusEl.closest('.topchip');
+      if (holdChip) delete holdChip.dataset.invite;
+      const holdInvite = document.getElementById('hdrinvite');
+      if (holdInvite) holdInvite.hidden = true;
     };
     const uid = (p) => p + '_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
     // The one standard row-delete glyph (see button.row-del in the styles).
@@ -2441,38 +2910,86 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const avInboxes = new Map(); // peer id -> avatar chunk inbox (gifos-avatar.js)
     const ABSENT_GRACE = 12000; // BACKSTOP ONLY: roster-absent AND link-down this long → tile drops. Announced (D2) and probe-confirmed (D5) departures remove the tile event-driven, within a beat (see departSweep/confirmGone).
 
-    // ---- screen name (same identity the rest of GifOS uses) ----------------
-    // The knock does not wait on this picker. A stored name resolves at once.
-    // A first visit is seeded with Guest NNNN so joinRoom can run, and the
-    // picker stays up. Continue replaces that name and gossips it the same
-    // way Settings → Change does. Not now keeps the seed.
+    // The knock waits for this preview. A stored GifOS name and picture are
+    // filled in, and the person can change both before they join. Save keeps
+    // what is shown. Clear blanks the name and the picture.
+    function paintAppearFace(el, name, avatar) {
+      if (!el) return;
+      el.textContent = '';
+      if (avatar && avatar.url) {
+        const img = document.createElement('img');
+        img.alt = '';
+        img.src = avatar.url;
+        el.appendChild(img);
+        return;
+      }
+      const ch = Array.from(String(name || ''))[0];
+      el.textContent = ch ? ch.toUpperCase() : '\u2022';
+    }
+    function applyAvatarFile(file) {
+      if (!file || !window.GifOS || !GifOS.avatar) return Promise.resolve(null);
+      return GifOS.avatar.prepareFile(file).then(async (res) => {
+        if (!res || !res.ok) return null;
+        let mime = res.mime, b64 = res.b64, hash = res.hash;
+        if (!b64 && res.bytes) {
+          b64 = GifOS.avatar.toB64(res.bytes);
+          hash = await GifOS.avatar.hashBytes(res.bytes);
+        }
+        if (!b64 || !hash) return null;
+        return GifOS.store.setAvatar({ mime: mime, hash: hash, b64: b64 });
+      }).catch(() => null);
+    }
     function ensureName() {
-      const me = GifOS.store.identity();
-      if (me.name) return Promise.resolve(me);
-      const seed = 'Guest ' + (1000 + Math.floor(Math.random() * 9000));
-      GifOS.store.setName(seed);
+      let seen = false;
+      try { seen = sessionStorage.getItem('gifos_appear_ok') === '1'; } catch (e) {}
+      const me0 = GifOS.store.identity();
+      if (seen && me0.name) return Promise.resolve(me0);
+      let seed = me0.name;
+      if (!seed) {
+        seed = 'Guest ' + (1000 + Math.floor(Math.random() * 9000));
+        GifOS.store.setName(seed);
+      }
       const bg = document.createElement('div'); bg.className = 'name-modal';
+      bg.id = 'appear-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
-      bg.innerHTML = '<div class="name-box"><h3>Pick a screen name</h3>' +
-        '<p>The name people see on your tile. You can change it later under Settings.</p>' +
-        '<input id="nm" name="nickname" maxlength="40" placeholder="Your name" autocomplete="nickname">' +
-        '<button id="nmcancel" type="button">Not now</button>' +
-        '<button id="nmok">Continue</button></div>';
+      bg.setAttribute('aria-labelledby', 'appear-title');
+      const appearViewer = (typeof BROADCAST !== 'undefined' && BROADCAST) && !(typeof bcHostStored === 'function' && bcHostStored());
+      if (appearViewer) bg.setAttribute('aria-describedby', 'appear-note');
+      bg.innerHTML = '<div class="name-box appear-box"><h3 id="appear-title">This is how you\'ll appear</h3>' +
+        (appearViewer ? '<p id="appear-note">Only seen if you raise your hand and are promoted to the stage.</p>' : '') +
+        '<div class="appear-face" id="appear-face"></div>' +
+        '<input id="nm" name="nickname" maxlength="40" autocomplete="nickname" aria-label="Your name">' +
+        '<label class="appear-file">Change picture<input id="appear-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden></label>' +
+        '<div class="appear-actions"><button id="nmcancel" type="button" class="appear-secondary">Clear</button>' +
+        '<button id="nmok" type="button" class="appear-primary">Save</button></div></div>';
       document.body.appendChild(bg);
-      const input = bg.querySelector('#nm'); input.focus();
-      const done = (keep) => {
-        let v = keep ? seed : input.value.trim();
-        if (!v) v = seed;
-        const changed = v !== seed;
-        if (changed) GifOS.store.setName(v);
-        bg.remove();
-        if (!changed) return;
-        try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}
-      };
-      bg.querySelector('#nmok').onclick = () => done(false);
-      bg.querySelector('#nmcancel').onclick = () => done(true);
-      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(false); });
-      return Promise.resolve(GifOS.store.identity());
+      const input = bg.querySelector('#nm');
+      input.value = seed;
+      const face = bg.querySelector('#appear-face');
+      const paint = () => paintAppearFace(face, input.value.trim(), GifOS.store.identity().avatar);
+      paint();
+      input.addEventListener('input', paint);
+      bg.querySelector('#appear-file').addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        applyAvatarFile(file).then(() => paint());
+      });
+      input.focus();
+      return new Promise((resolve) => {
+        const save = () => {
+          GifOS.store.setName(input.value.trim());
+          try { sessionStorage.setItem('gifos_appear_ok', '1'); } catch (e) {}
+          bg.remove();
+          try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}
+          resolve(GifOS.store.identity());
+        };
+        bg.querySelector('#nmok').onclick = save;
+        bg.querySelector('#nmcancel').onclick = () => {
+          input.value = '';
+          try { GifOS.store.setName(''); GifOS.store.setAvatar(null); } catch (e) {}
+          paint();
+        };
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+      });
     }
 
     // ---- everyone's live status + room moderation ------------------------------
@@ -2513,6 +3030,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // gate by test/unit/meet-join-max-blur.js.
     try { localStorage.removeItem('gifos_blur'); } catch (e) {}
     const myStatus = { muted: true, camOff: true, blur: 2, hand: null, rec: false, cc: false, pwEp: 0, scr: 0, scribe: false };
+    window.__gifosRoomTrust = {
+      setRecording(on) {
+        myStatus.rec = !!on;
+        try { paintRoomTrust(); } catch (e) {}
+      },
+      setPeerRecording(name, on) {
+        try {
+          if (on) statusOf.set('qa-rec', { rec: true, name: name || '' });
+          else statusOf.delete('qa-rec');
+        } catch (e) {}
+        try { paintRoomTrust(); } catch (e) {}
+      },
+    };
     const statusOf = new Map();  // peerId -> { muted, camOff, blur, scr }
     // How many OTHER seats' held statuses advertise captions or a scribe.
     // refreshTrBtn and the scribe interval read the counts. They do not scan
@@ -4091,6 +4621,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       finally { passMemo = null; }
       layout();
       if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn(); if (typeof updateCamAllBtn === 'function') updateCamAllBtn(); if (typeof updateShareAllBtn === 'function') updateShareAllBtn();
+      try { paintStageMod(); } catch (e) {}
+      try { paintRoomTrust(); } catch (e) {}
     }
     // ============================ THE BLUR RULE ==============================
     // ONE rule, computed identically on every device from shared state, drives
@@ -4364,6 +4896,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (v.classList.contains('stageface')) continue;
         if (pipReady(v)) out.push({ key: 'stage:' + ((v.closest('.rowtile') || {}).dataset || {}).row, label: 'On stage', v });
       }
+      if (typeof BROADCAST !== 'undefined' && BROADCAST) return out;
       for (const [pid, p] of peers) {
         if (!p.connected) continue;
         // Every connected peer is listed. A dark one (camera off, admin
@@ -4401,6 +4934,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (letter) letter.textContent = ch ? ch.toUpperCase() : '\u2022';
         if (nm) nm.textContent = text;
       };
+      const broadcastFs = typeof BROADCAST !== 'undefined' && BROADCAST;
       if (main) {
         if (fsSel !== 'auto') fsSel = main.key; // a pin re-anchors; auto stays auto
         if (main.dark) {
@@ -4416,7 +4950,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           showName(false);
         }
         fsmain.dataset.key = main.key;
-      } else { fsmain.srcObject = null; fsmain.dataset.key = ''; fsmain.classList.remove('dark'); fsBlurClass(fsmain, 0); showName(false); }
+      } else {
+        fsmain.srcObject = null; fsmain.dataset.key = ''; fsmain.classList.remove('dark'); fsBlurClass(fsmain, 0);
+        if (broadcastFs) {
+          const lineEl = document.getElementById('bc-stage-line');
+          showName(true, (lineEl && lineEl.textContent) || 'The stage is clear.');
+          const letter = fsname.querySelector('.fsinitial');
+          if (letter) letter.textContent = '';
+        } else showName(false);
+      }
       // Thumbs are kept BY KEY: a refresh moves and updates a playing thumb
       // and never tears one down while its feed stays. The big feed is not
       // also a thumb (one live sink per feed), and every thumb is a keyboard
@@ -4431,16 +4973,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         el.onkeydown = (e) => { if (e.key !== 'Enter' && e.key !== ' ') return; e.preventDefault(); act(); };
       };
       let auto = have.get('auto');
-      if (!auto) {
+      if (!broadcastFs && !auto) {
         auto = document.createElement('div');
         auto.className = 'fsthumb fsauto'; auto.dataset.key = 'auto';
         auto.innerHTML = '<span class="fsautoglyph">🗣</span><span class="fslbl">Follow speaker</span>';
         asButton(auto, 'Follow speaker', () => { fsSel = 'auto'; fsAutoPid = null; fsRefresh(); });
       }
-      const keep = new Set(['auto']);
+      const keep = new Set(broadcastFs ? [] : ['auto']);
       const place = (th, pos) => { if (fsstrip.children[pos] !== th) fsstrip.insertBefore(th, fsstrip.children[pos] || null); };
-      place(auto, 0);
-      let pos = 1;
+      let pos = 0;
+      if (!broadcastFs && auto) { place(auto, 0); pos = 1; }
       for (const s of thumbs) {
         keep.add(s.key);
         let th = have.get(s.key);
@@ -4514,6 +5056,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (document.fullscreenElement === fsview) document.exitFullscreen().catch(() => {});
     }
     fsclose.onclick = () => closeFsView();
+    const fsDock = document.getElementById('fsbtn');
+    if (fsDock) fsDock.onclick = () => {
+      if (document.body.classList.contains('fsopen')) closeFsView();
+      else openFsView('auto');
+    };
     document.addEventListener('fullscreenchange', () => {
       if (!document.fullscreenElement && fsview.classList.contains('on')) closeFsView();
     });
@@ -4559,6 +5106,115 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (pid === myId) return myName() || '\u2026';
       return rosterNames[pid] || (peers.get(pid) || {}).name || '\u2026';
     }
+    const MODBAR_HTML = '<button data-mod="mute" aria-label="Mute for everyone">Mute</button><button data-mod="blur" aria-label="Blur for everyone">Blur</button>'
+      + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage">Apps</button>'
+      + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share">Share</button>'
+      + '<button class="banbtn" data-adm="ban" title="Ban this person&#39;s device from the room" aria-label="Ban this device">Ban</button>';
+    // A BAN NAMES A DEVICE, so the tag must be one the RELAY attested
+    // (roster / peer-join). A tag a peer merely asserts in its own
+    // status may be somebody else's: banning the impostor would ban
+    // the victim. Unattested ⇒ ask the door once, and say so.
+    function wireModbar(modbar, id) {
+      modbar.addEventListener('click', (e) => {
+        const t = e.target && e.target.closest ? e.target.closest('button') : e.target;
+        if (!t || !modbar.contains(t)) return;
+        if (t.dataset.adm === 'ban') {
+          e.stopPropagation();
+          const dev = devRelay.has(id) ? devOf[id] : '';
+          if (window.__banDebug) console.error('[banclick]', id, dev, amAdmin, relayUp());
+          if (!amAdmin) return;
+          if (!dev) { relaySendObj({ t: 'who' }); setStatus('🛡 The door has not vouched for this person' + String.fromCharCode(39) + 's device yet — try Ban again in a moment.'); return; }
+          rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
+          admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); }); // no name, no by: the relay carries a device tag and the order's author id
+          return;
+        }
+        const f = t.dataset.mod;
+        if (!f) return;
+        e.stopPropagation();
+        const cur = modOf(id)[f];
+        setMod(id, f, !(cur && cur.on));
+        try { paintStageMod(); } catch (err) {}
+      });
+    }
+    function paintModbarButtons(modbar, id) {
+      if (!modbar || !modbar.children || modbar.children.length < 2) return;
+      let mod;
+      try { mod = modOf(id); } catch (e) { return; }
+      const gMute = mod.mute && mod.mute.on, gBlur = mod.blur && mod.blur.on;
+      const appOn = !!(mod.app && mod.app.on);
+      modbar.children[0].textContent = gMute ? 'Unmute' : 'Mute';
+      modbar.children[0].setAttribute('aria-label', gMute ? 'Unmute for everyone' : 'Mute for everyone');
+      modbar.children[1].textContent = gBlur ? 'Unblur' : 'Blur';
+      modbar.children[1].setAttribute('aria-label', gBlur ? 'Unblur for everyone' : 'Blur for everyone');
+      if (modbar.children[2]) {
+        modbar.children[2].textContent = appOn ? 'Revoke' : 'Apps';
+        modbar.children[2].setAttribute('aria-label', appOn ? 'Revoke apps & stage' : 'Allow apps & stage');
+      }
+      for (const b of modbar.children) {
+        if (!b.getAttribute || b.getAttribute('data-mod') !== 'share') continue;
+        const shareOn = !!(mod.share && mod.share.on);
+        b.textContent = shareOn ? 'Stop' : 'Share';
+        b.setAttribute('aria-label', shareOn ? 'Revoke screen share' : 'Allow screen share');
+      }
+    }
+    // Guests the stage strip should name even before the mesh has a seat
+    // (a host rehearsal, and the desktop test). Real stage seats come from stageIds().
+    const stageModExtra = new Set();
+    function stageModList() {
+      const ids = [], seen = new Set();
+      const push = (id) => {
+        if (!id || id === myId || id === 'me' || seen.has(id)) return;
+        seen.add(id); ids.push(id);
+      };
+      try { (stageIds() || []).forEach(push); } catch (e) {}
+      stageModExtra.forEach(push);
+      return ids;
+    }
+    function paintStageMod() {
+      const el = document.getElementById('stagemod');
+      if (!el) return;
+      const broadcast = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const host = broadcast && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin'));
+      const blocked = document.body.classList.contains('admroom') && document.body.classList.contains('notadmin');
+      const ids = (!broadcast || !host || blocked) ? [] : stageModList();
+      if (!ids.length) { el.classList.remove('on'); el.hidden = true; return; }
+      el.hidden = false;
+      el.classList.add('on');
+      if (!el.querySelector('.stagekicker')) {
+        const k = document.createElement('span');
+        k.className = 'stagekicker';
+        k.textContent = 'On stage';
+        el.appendChild(k);
+      }
+      const keep = new Set(ids);
+      for (const card of el.querySelectorAll('.stagecard')) if (!keep.has(card.dataset.peer)) card.remove();
+      for (const id of ids) {
+        let card = null;
+        for (const c of el.querySelectorAll('.stagecard')) if (c.dataset.peer === id) card = c;
+        if (!card) {
+          card = document.createElement('div');
+          card.className = 'stagecard';
+          card.dataset.peer = id;
+          card.tabIndex = 0;
+          card.setAttribute('role', 'group');
+          const name = document.createElement('span');
+          name.className = 'stagename';
+          const bar = document.createElement('div');
+          bar.className = 'modbar';
+          bar.innerHTML = MODBAR_HTML;
+          wireModbar(bar, id);
+          card.appendChild(name);
+          card.appendChild(bar);
+          el.appendChild(card);
+        }
+        const nm = rosterNames[id] || (peers.get(id) || {}).name || 'Guest';
+        const nameEl = card.querySelector('.stagename');
+        if (nameEl && nameEl.textContent !== nm) nameEl.textContent = nm;
+        const aria = nm + '. Guest controls.';
+        if (card.getAttribute('aria-label') !== aria) card.setAttribute('aria-label', aria);
+        paintModbarButtons(card.querySelector('.modbar'), id);
+      }
+    }
     function makeTile(id, name, isMe, headless) {
       const tile = document.createElement('div');
       tile.className = 'tile' + (isMe ? ' me' : '');
@@ -4596,6 +5252,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       tile.appendChild(maxbtn);
       let modbar = null, voteBtn = null;
       if (!isMe) {
+        tile.tabIndex = 0;
+        tile.setAttribute('role', 'group');
+        tile.setAttribute('aria-label', (name || 'Guest') + '. Guest controls.');
         // The vote TARGET (non-admin rooms): hidden until the bar's Vote menu
         // arms a mode — then it's the green dot / red ✕ centered on the tile.
         voteBtn = document.createElement('button');
@@ -4605,31 +5264,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         tile.appendChild(voteBtn);
         modbar = document.createElement('div');
         modbar.className = 'modbar';
-        modbar.innerHTML = '<button data-mod="mute" aria-label="Mute for everyone"></button><button data-mod="blur" aria-label="Blur for everyone"></button>'
-          + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage"></button>'
-          + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share"></button>'
-          + '<button class="banbtn" data-adm="ban" title="Ban this person&#39;s device from the room" aria-label="Ban this device">Ban</button>';
-        modbar.addEventListener('click', (e) => {
-          if (e.target.dataset.adm === 'ban') {
-            e.stopPropagation();
-            // A BAN NAMES A DEVICE, so the tag must be one the RELAY attested
-            // (roster / peer-join). A tag a peer merely asserts in its own
-            // status may be somebody else's: banning the impostor would ban
-            // the victim. Unattested ⇒ ask the door once, and say so.
-            const dev = devRelay.has(id) ? devOf[id] : '';
-            if (window.__banDebug) console.error('[banclick]', id, dev, amAdmin, relayUp());
-            if (!amAdmin) return;
-            if (!dev) { relaySendObj({ t: 'who' }); setStatus('🛡 The door has not vouched for this person' + String.fromCharCode(39) + 's device yet — try Ban again in a moment.'); return; }
-            rememberBanName(dev, (peers.get(id) || {}).name || rosterNames[id] || '');
-            admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); }); // no name, no by: the relay carries a device tag and the order's author id
-            return;
-          }
-          const f = e.target.dataset.mod;
-          if (!f) return;
-          e.stopPropagation();
-          const cur = modOf(id)[f];
-          setMod(id, f, !(cur && cur.on));
-        });
+        modbar.innerHTML = MODBAR_HTML;
+        wireModbar(modbar, id);
         tile.appendChild(modbar);
         tile.addEventListener('click', () => tile.classList.toggle('menu')); // tap = menu on phones
       }
@@ -4855,20 +5491,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // never silences the meeting by pausing it.
         t.video._gmute = !!gMute;
         if (t.video._aud) t.video._aud.muted = !!gMute;
-        if (t.modbar) {
-          const muteLabel = gMute ? 'Unmute for everyone' : 'Mute for everyone';
-          const blurLabel = gBlur ? 'Unblur for everyone' : 'Blur for everyone';
-          const appLabel = (mod.app && mod.app.on) ? 'Revoke apps & stage' : 'Allow apps & stage';
-          t.modbar.children[0].textContent = muteLabel; t.modbar.children[0].setAttribute('aria-label', muteLabel);
-          t.modbar.children[1].textContent = blurLabel; t.modbar.children[1].setAttribute('aria-label', blurLabel);
-          t.modbar.children[2].textContent = appLabel; t.modbar.children[2].setAttribute('aria-label', appLabel);
-          for (const b of t.modbar.children) {
-            if (!b.getAttribute || b.getAttribute('data-mod') !== 'share') continue;
-            const shareOn = !!(mod.share && mod.share.on);
-            const shareLabel = shareOn ? 'Revoke screen share' : 'Allow screen share';
-            b.textContent = shareLabel; b.setAttribute('aria-label', shareLabel);
-          }
-        }
+        if (t.modbar) paintModbarButtons(t.modbar, id);
       } else if (gMute && localStream && !(typeof outgoingHeld !== 'undefined' && outgoingHeld)) {
         // the group muted ME: cut the source too, not just everyone's speakers
         const a = localStream.getAudioTracks()[0];
@@ -6443,13 +7066,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const reachState = reach ? reach.state : null;
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
       const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
-        : (n === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry' + reachTriedSentence())
-        : displayCount() + ' in the meeting · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
+        : (n === 1 ? (atDoor ? 'Getting you back into the ' + (BROADCAST ? 'service' : 'small group') + ' — waiting for the others to answer…' : (BROADCAST ? ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin') ? (bcSendingSafe() ? 'You are live. Send the link.' : 'You are off air. Send the link.') : ((typeof myStatus !== 'undefined' && myStatus.stg) ? 'You are on stage.' : 'You are watching this service.')) : 'Just you. Send the invite.') + reachTriedSentence())
+        : displayCount() + ' in this ' + (BROADCAST ? 'service' : 'small group') + ' · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
       // of the reach states that replace the line. Tests and styling read
       // this, never the sentence.
       const statusKind = reachState && reachState !== 'partial' ? reachState : n === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
+      // A broadcast host who is the only person here gets Invite beside the
+      // sentence, at every width. The sentence stays. The viewer password is
+      // never part of the link this button shares.
+      const hostHere = typeof BROADCAST !== 'undefined' && BROADCAST
+        && (((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
+      const hostAlone = !!(hostHere && statusKind === 'alone');
+      const chip = statusEl.closest('.topchip');
+      if (chip) {
+        if (hostAlone) chip.dataset.invite = '1';
+        else delete chip.dataset.invite;
+      }
+      const hdrInvite = document.getElementById('hdrinvite');
+      if (hdrInvite) hdrInvite.hidden = !hostAlone;
       if (statusEl.dataset) {
         if (statusEl.dataset.kind !== statusKind) statusEl.dataset.kind = statusKind;
         const dr = reachState || '', du = reachState === 'partial' ? String(reach.dead) : '';
@@ -6461,6 +7097,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         statusEl.textContent = statusText;
         statusEl.title = statusText;
       }
+      try { paintRoomTrust(); } catch (e) {}
     }
 
     // ---- mesh plumbing ---------------------------------------------------------
@@ -7369,6 +8006,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         refreshAvatarSurfaces();
       }).catch(() => {});
     }
+    function paintStagePlate() {
+      const el = document.getElementById('bc-stage');
+      const line = document.getElementById('bc-stage-line');
+      if (!el || !line) return;
+      if (typeof BROADCAST === 'undefined' || !BROADCAST) { el.hidden = true; return; }
+      const ident = document.getElementById('bc-ident');
+      const picture = !!document.querySelector('#stagefeed .rowtile') || !!(ident && ident.classList.contains('on'));
+      el.hidden = picture;
+      if (picture) return;
+      let on = false;
+      try { on = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) { on = false; }
+      line.textContent = on ? 'You are on stage. Your camera is off.' : 'The stage is clear.';
+    }
     function paintBroadcastIdent() {
       const el = document.getElementById('bc-ident');
       if (!el) return;
@@ -7402,6 +8052,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } else img.removeAttribute('src');
       }
       el.classList.toggle('on', !!url);
+      if (typeof paintStagePlate === 'function') paintStagePlate();
     }
     function avatarChip(byId) {
       let url = '', hash = '';
@@ -9855,6 +10506,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       paintChatGate(); renderChat(); // signing in as admin grows the chat toggle + per-line deletes
       try { paintBroadcastRole(); } catch (e) {}
       refreshOutbound(); // admin presence changes what clears
+      if (typeof paintBroadcastChrome === 'function') paintBroadcastChrome();
     }
 
     const pwKey = () => 'gifos_vpw_' + roomKey();
@@ -11373,12 +12025,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // ---- room password UI: one modal, two moods -------------------------------
     const pwModal = document.getElementById('pw-modal');
     function showPwModal(locked) {
-      document.getElementById('pw-title').textContent = locked ? 'This room is locked' : 'Room password';
-      document.getElementById('pw-hint').textContent = locked
-        ? 'Enter the room password to join the meeting.'
-        : hasAdminRoom()
-          ? 'Only the admin can set or change it. It reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.'
-          : 'Anyone in the meeting can set or change it. It reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.';
+      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+      document.getElementById('pw-title').textContent = service ? 'Viewer password' : (locked ? 'This room is locked' : 'Room password');
+      document.getElementById('pw-hint').textContent = service
+        ? (locked
+          ? 'Enter the viewer password to see the stage clearly.'
+          : 'Optional. It is not part of the link. People can still watch, and the stage stays blurred until it is set.')
+        : (locked
+          ? 'Enter the room password to join the meeting.'
+          : hasAdminRoom()
+            ? 'Only the admin can set or change it. It reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.'
+            : 'Anyone in the meeting can set or change it. It reaches everyone here instantly, and new joiners must enter it. Leave empty to remove the lock.');
       document.getElementById('pw-cur-row').style.display = locked ? 'none' : 'flex';
       document.getElementById('pw-cur').value = roomPw;
       pwEyeHide(document.getElementById('pw-cur')); // every open starts hidden — the eye reveals on demand
@@ -11741,10 +12398,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const hs = document.querySelector('#help-modal .help-scroll');
       const hb = document.getElementById('helpbtn');
       if (BROADCAST) {
-        hb.title = 'How this broadcast works — the Stage, the viewer password, raising your hand';
-        h3.textContent = 'How this broadcast works';
+        hb.title = 'How this service works — the Stage, the viewer password, raising your hand';
+        h3.textContent = 'How this service works';
         hs.innerHTML =
-          '<p class="help-lead">This is a <b>live broadcast</b>: one host (and anyone they call up) on the <b>Stage</b>, and an <b>unlimited audience</b> watching. Two viewers or two million, it runs the same — every phone talks only to a handful of neighbors, and the show reaches everyone.</p>'
+          '<p class="help-lead">This is a <b>service</b>: one host (and anyone they call up) on the <b>Stage</b>, and everyone else watching. Two people or a full room, it runs the same — every phone talks only to a handful of neighbors, and the service reaches everyone.</p>'
           + '<h4>Watching</h4>'
           + '<ul class="help-list">'
           + '<li>The link is all you need. Your <b>camera and microphone are not used</b> — watching asks no permissions at all.</li>'
@@ -11753,8 +12410,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + '</ul>'
           + '<h4>Speaking up</h4>'
           + '<ul class="help-list">'
-          + '<li>Tap <b>Ask to join</b> to ask for the Stage. The host can call you up — your own phone then asks for your camera and mic (your choice to grant), and you join the host on Stage for the whole room.</li>'
-          + '<li>Stepping down is yours to do at any time; the host can also revoke the Stage.</li>'
+          + '<li>Tap <b>Raise hand</b> to ask for the Stage. The host can call you up — your own phone then asks for your camera and mic (your choice to grant), and you join the host on Stage for the whole room.</li>'
+          + '<li><b>Step off</b> is yours to do at any time; the host can also take the Stage back.</li>'
           + '</ul>'
           + '<h4>For the host</h4>'
           + '<ul class="help-list">'
@@ -11846,6 +12503,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     };
     document.getElementById('whobtn').onclick = showWhoModal;
+    const airWho = document.getElementById('airwho');
+    if (airWho) airWho.onclick = showWhoModal;
 
     function joinRoom() {
       room = params.get('v') || shortCode();
@@ -12122,6 +12781,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function enterMeeting(hashOrUrl) {
       stopLobbyPreview();
+      try {
+        const typed = document.getElementById('lob-name-in');
+        if (typed && typed.value.trim()) GifOS.store.setName(typed.value.trim());
+        if (document.getElementById('lobby').classList.contains('show')) sessionStorage.setItem('gifos_appear_ok', '1');
+      } catch (e) {}
       // Accept a '#…' hash (minted here) or a full URL (a saved entry). A
       // hash-only change never re-runs boot on its own, so it needs an explicit
       // reload — but ONLY then: reloading while navigating to a DIFFERENT path
@@ -12144,7 +12808,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         '<input id="nm2" maxlength="40" autocomplete="off"><button id="nm2cancel" type="button">Cancel</button><button id="nm2ok">Save</button></div>';
       document.body.appendChild(bg);
       const input = bg.querySelector('#nm2'); input.value = cur; input.focus();
-      const done = () => { const v = input.value.trim(); if (v) GifOS.store.setName(v); bg.remove(); const ln = document.getElementById('lob-name'); if (ln) ln.textContent = myName(); if (after) after(); };
+      const done = () => { const v = input.value.trim(); if (v) GifOS.store.setName(v); bg.remove(); if (typeof paintLobbyAppear === 'function') paintLobbyAppear(); if (after) after(); };
       bg.querySelector('#nm2ok').onclick = done;
       bg.querySelector('#nm2cancel').onclick = () => bg.remove();
       input.addEventListener('keydown', (e) => { if (e.key === 'Enter') done(); });
@@ -12164,8 +12828,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const chosen = slugRoom(rawName, '');
         const pass = (document.getElementById('lob-admin-pass').value || '').trim();
         if (!chosen) { err.textContent = 'Give your room a name.'; return; }
-        if (!pass) { err.textContent = 'Set an admin password — it’s the key to your room.'; return; }
-        const go = document.getElementById('lob-admin-go'); go.disabled = true; go.textContent = 'Creating…';
+        if (!pass) { err.textContent = 'Set a host password. It stays with you, not in the link.'; return; }
+        const go = document.getElementById('lob-admin-go');
+        if (!go.dataset.label) go.dataset.label = go.textContent;
+        go.disabled = true; go.textContent = 'Creating…';
         try {
           const K = await deriveAdminKey(chosen, pass);
           const V = (await net.edKeysFromSeedHex(K)).verifier; // V commits to the PUBLIC key (§9)
@@ -12180,9 +12846,32 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const guest = (document.getElementById('lob-guest-pass').value || '').trim();
           if (guest) { try { localStorage.setItem('gifos_vpw_' + chosen + '.' + V, guest); localStorage.setItem('gifos_vpwat_' + chosen + '.' + V, String(Date.now())); } catch (e) {} } // stamp the store's clock (§LOCK expiry)
           enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' : ''));
-        } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = 'Create & enter'; }
+        } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = go.dataset.label || 'Start'; }
       };
       document.getElementById('lob-join-btn').onclick = () => { toggle('lob-join'); document.getElementById('lob-admin').style.display = 'none'; const i = document.getElementById('lob-join-in'); if (document.getElementById('lob-join').style.display !== 'none') i.focus(); };
+      const nameIn = document.getElementById('lob-name-in');
+      if (nameIn) nameIn.addEventListener('change', () => {
+        const v = nameIn.value.trim();
+        if (v) GifOS.store.setName(v);
+        paintLobbyAppear();
+      });
+      const faceBtn = document.getElementById('lob-face');
+      const faceFile = document.getElementById('lob-face-file');
+      if (faceBtn && faceFile) {
+        faceBtn.onclick = () => faceFile.click();
+        faceFile.addEventListener('change', () => {
+          const file = faceFile.files && faceFile.files[0];
+          applyAvatarFile(file).then(() => paintLobbyAppear());
+        });
+      }
+      const guestMore = document.getElementById('lob-guest-more');
+      if (guestMore) guestMore.onclick = () => {
+        const extra = document.getElementById('lob-guest-extra');
+        const open = extra.style.display === 'none';
+        extra.style.display = open ? '' : 'none';
+        guestMore.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (open) document.getElementById('lob-guest-pass').focus();
+      };
       document.getElementById('lob-join-cancel').onclick = () => { document.getElementById('lob-join').style.display = 'none'; };
       const doJoin = () => {
         const err = document.getElementById('lob-join-err');
@@ -12194,7 +12883,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.getElementById('lob-join-in').addEventListener('keydown', (e) => { if (e.key === 'Enter') doJoin(); });
       document.getElementById('lob-admin-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-guest-pass').focus(); });
       document.getElementById('lob-guest-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('lob-admin-go').click(); });
-      document.getElementById('lob-rename').onclick = renameFlow;
       document.getElementById('lob-list').addEventListener('click', (e) => {
         const star = e.target.closest('[data-star]');
         if (star) { e.stopPropagation(); toggleBookmark(star.getAttribute('data-star')); return; }
@@ -12211,27 +12899,45 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (item) enterMeeting(item.getAttribute('data-url'));
       });
     }
+    function paintLobbyAppear() {
+      const me = GifOS.store.identity();
+      const input = document.getElementById('lob-name-in');
+      if (input && document.activeElement !== input) input.value = me.name || '';
+      paintAppearFace(document.getElementById('lob-face'), input ? input.value : me.name, me.avatar);
+      const legacy = document.getElementById('lob-name');
+      if (legacy) legacy.textContent = me.name || '…';
+    }
     function showLobby() {
-      document.title = (BC_INTENT ? 'Broadcast' : 'Meeting') + ' — GifOS';
+      document.title = (BC_INTENT ? 'Service' : 'Small group') + ' — GifOS';
       // The Broadcast app opens THIS page with #bc=1 and no room: same lobby,
       // reworded — no open rooms (a broadcast without a host is nothing), and
       // creating one mints the same admin room with &bc=1 riding the link.
       if (BC_INTENT) {
-        document.querySelector('#lobby h1').textContent = 'Broadcast';
+        document.querySelector('#lobby h1').textContent = 'Service';
+        const quiet = document.querySelector('#lobby .lob-quiet');
+        if (quiet) quiet.textContent = 'You host. People watch with the link.';
         document.getElementById('lob-open').style.display = 'none';
-        document.getElementById('lob-admin-btn').innerHTML = 'Start broadcasting<small>You go live on the Stage; anyone with the link watches and chats</small>';
+        const start = document.getElementById('lob-admin-btn');
+        start.classList.remove('lob-action', 'lob-link');
+        start.classList.add('lob-primary');
+        start.innerHTML = 'Go live<small>A host password keeps you in charge</small>';
+        document.getElementById('lob-admin-go').textContent = 'Go live';
         document.getElementById('lob-admin-pass-head').textContent = 'Host password';
+        document.getElementById('lob-admin-pass').placeholder = 'Host password';
+        document.getElementById('lob-admin-pass-note').textContent = 'Only you. People watching do not need it.';
+        document.getElementById('lob-guest-more').textContent = 'Add a password for viewers';
         document.getElementById('lob-guest-pass-head').textContent = 'Viewer password';
-        document.getElementById('lob-admin-pass').placeholder = 'Host password (keep to yourself)';
-        document.getElementById('lob-admin-pass-note').textContent = 'This is what puts you in charge of the broadcast. Viewers don’t need it. Anyone you give it to can run your broadcast too.';
-        document.getElementById('lob-guest-pass').placeholder = 'Viewer password (optional — share with viewers)';
-        document.getElementById('lob-guest-pass-note').textContent = 'Optional. The picture stays blurred until you set one, and it is not part of the link.';
-        document.getElementById('lob-join-btn').innerHTML = 'Watch a broadcast<small>Paste a broadcast link someone shared</small>';
-        document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch will show up here.';
+        document.getElementById('lob-guest-pass').placeholder = 'Viewer password (optional)';
+        document.getElementById('lob-guest-pass-note').textContent = 'Optional. It is not part of the link.';
+        const watch = document.getElementById('lob-join-btn');
+        watch.classList.remove('lob-link');
+        watch.classList.add('lob-action');
+        watch.innerHTML = 'Watch<small>Paste a link someone sent you</small>';
+        document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch show up here.';
         const watchNote = document.getElementById('lob-watch-note');
         if (watchNote) { watchNote.hidden = false; watchNote.textContent = BC_WATCH_COPY; }
       }
-      document.getElementById('lob-name').textContent = myName();
+      paintLobbyAppear();
       renderLobbyList();
       wireLobby();
       document.getElementById('lobby').classList.add('show');
@@ -12269,11 +12975,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           updateTile('me');
           joinRoom();
           updateStatus();
+          document.title = BROADCAST ? 'Service — GifOS' : 'Small group — GifOS';
           if (BROADCAST) {
-            document.title = 'Broadcast — GifOS';
             const hint = document.querySelector('.share .hint');
             if (hint) hint.textContent = 'Share this link — anyone who opens it is watching:';
-            if (!bcHostStored()) setStatus('Joining the broadcast…');
+            if (!bcHostStored()) setStatus('Joining the service…');
             else {
               // The HOST auto-steps onto the Stage: a broadcast page's whole
               // point, and the Stage is where their camera reaches the room.
@@ -12287,7 +12993,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               setTimeout(() => {
                 if (!bcStageWant) return;
                 bcStageWant = false;
-                if (!myStatus.stg) setStatus('Could not step onto the Stage — tap Stage.');
+                if (!myStatus.stg) setStatus('Could not step onto the stage — tap Step on.');
               }, 30000);
             }
           }
@@ -12938,7 +13644,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (takeChat(m.m)) {
           renderChat();
           if (m.m && typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
-          if (!chatPanel.classList.contains('open')) { unread++; chatBtn.textContent = 'Chat (' + unread + ')'; }
+          if (!chatPanel.classList.contains('open')) { unread++; paintChatCount(); }
           // A frame the sender marked ackReq (today: only the follow-me link)
           // gets a delivery ack back over the mesh/DC — see FOLLOW-ME DELIVERY
           // WAIT. Ordinary chat carries none: this is not a read receipt.
@@ -13524,7 +14230,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // `link`, when present, renders as a "Join →" button — validate it is an
       // http(s) URL (never javascript:/data:) so a peer can't inject a live link.
       const link = (typeof m.link === 'string' && /^https?:\/\//i.test(m.link)) ? m.link.slice(0, 400) : undefined;
-      chat.set(m.id, { id: m.id, by: String(m.by || '?').slice(0, 40), byId: m.byId, at: m.at || 0, text: String(m.text || '').slice(0, 2000), link });
+      chat.set(m.id, { id: m.id, by: String(m.by || '?').slice(0, 40), byId: m.byId, at: m.at || 0, text: String(m.text || '').slice(0, 2000), link, prayer: m.prayer ? 1 : 0 });
       trimMap(chat, CHAT_MAX);
       return true;
     }
@@ -13706,7 +14412,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The signed-in admin moderates line by line: the standard row-delete
         // glyph mints a signed 'cdel' (see the #chatlog click delegate).
         const del = amAdmin ? '<button class="row-del" data-cdel="' + esc(m.id) + '" title="Delete this message for everyone">' + DEL_ICON + '</button>' : '';
-        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '"><b>' + (typeof avatarChip === 'function' ? (avatarChip(m.byId) || '') : '') + esc(m.by) + '</b>' + body + del + '</div>';
+        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + (m.prayer ? ' prayer' : '') + '"><b>' + (typeof avatarChip === 'function' ? (avatarChip(m.byId) || '') : '') + esc(m.by) + (m.prayer ? ' <span class="praytag">Prayer</span>' : '') + '</b>' + body + del + '</div>';
       }).join('');
       const co = chatOffInfo();
       if (co) html += '<div class="cmsg" style="opacity:.65"><b>🔇</b>Chat was turned off' + (co.by ? ' by ' + esc(co.by) : '') + '.' + (amAdmin ? '' : ' Only the host can post.') + '</div>';
@@ -13720,8 +14426,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const locked = off && !amAdmin;
       const inp = document.getElementById('chat-in');
       inp.disabled = locked;
+      const praying = document.getElementById('pray') && document.getElementById('pray').getAttribute('aria-pressed') === 'true';
       inp.placeholder = locked ? 'Chat is off — only the host can post.'
-        : (off ? 'Chat is off for guests — you can still post.' : 'Message everyone…');
+        : (off ? 'Chat is off for guests — you can still post.' : (praying ? 'Prayer request…' : 'Message everyone…'));
       document.querySelector('#chatform button[type="submit"]').disabled = locked;
       document.getElementById('cattach').disabled = locked;
       const b = document.getElementById('chatmod');
@@ -13745,12 +14452,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       });
     });
     function renderFiles() {
+      const wrap = document.getElementById('cfiles');
       const el = document.getElementById('cfilelist');
-      // Files are only allowed in a PASSWORD-PROTECTED meeting: an open room anyone
-      // can wander into shouldn't leak shared files. No password → no files.
-      if (!roomPw) { el.innerHTML = '<small style="color:#889">🔒 Set a room password (the Password button) to share files here. Files are off in open rooms.</small>'; return; }
+      // Files are only allowed in a PASSWORD-PROTECTED meeting. The attach
+      // button says so. An empty list does not sit between the messages and Send.
       const fs = Array.from(files.values()).sort((a, b) => a.at - b.at);
-      el.innerHTML = fs.length ? fs.map((f) => {
+      if (!fs.length) { wrap.hidden = true; el.innerHTML = ''; return; }
+      wrap.hidden = false;
+      el.innerHTML = fs.map((f) => {
         const mine = (f.byId && f.byId === myId) || (!f.byId && f.by === myName());
         // The button follows the receive rule (fdelAllowed): an open room takes
         // anyone's unpin (attributed); an admin room takes the owner's or an admin's.
@@ -13758,8 +14467,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return '<div class="cfile" data-f="' + esc(f.id) + '"><span class="nm">' + esc(f.name) + '</span><small>' + fmtSize(f.size) + ' · ' + esc(f.by || '?') + '</small>'
           + (f.bytes ? '<button data-dl="' + esc(f.id) + '">⬇</button>' : '<small>receiving…</small>')
           + unpin + '</div>';
-      }).join('')
-        : '<small style="color:#667">No files yet — attach one below.</small>';
+      }).join('');
     }
     document.getElementById('cfilelist').addEventListener('click', (e) => {
       const dl = e.target.dataset.dl, del = e.target.dataset.del;
@@ -13795,7 +14503,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const inp = document.getElementById('chat-in');
       const text = inp.value.trim();
       if (!text) return;
+      const prayBtn = document.getElementById('pray');
       const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text };
+      if (prayBtn && prayBtn.getAttribute('aria-pressed') === 'true') m.prayer = 1;
       chat.set(m.id, m);
       sendAll({ k: 'chat', m });
       inp.value = '';
@@ -13820,11 +14530,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       e.target.value = '';
     });
+    function paintChatCount() {
+      const n = chatBtn.querySelector('.chatcount');
+      if (n) {
+        if (unread > 0) { n.hidden = false; n.textContent = unread > 9 ? '9+' : String(unread); }
+        else n.hidden = true;
+      }
+      chatBtn.setAttribute('aria-label', unread ? 'Chat, ' + unread + ' new' : 'Chat');
+    }
+    const prayBtn = document.getElementById('pray');
+    if (prayBtn) prayBtn.onclick = () => {
+      const on = prayBtn.getAttribute('aria-pressed') !== 'true';
+      prayBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      paintChatGate();
+    };
     chatBtn.onclick = () => {
       chatPanel.classList.toggle('open');
       // renderChat skips while the transcript tab is shown, and the transcript
       // is not painted while the panel is closed: paint the tab that shows.
-      if (chatPanel.classList.contains('open')) { unread = 0; chatBtn.textContent = 'Chat'; if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles(); }
+      if (chatPanel.classList.contains('open')) { unread = 0; paintChatCount(); if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles(); }
     };
     document.getElementById('chatclose').onclick = () => chatPanel.classList.remove('open');
 
@@ -16381,7 +17105,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!stream) {
         if (el) { for (const v of el.querySelectorAll('video')) { try { v.pause(); v.srcObject = null; } catch (e) {} releaseAudio(v); } el.remove(); }
         stageViewNow = null;
-        compOf.delete('sgs'); recSrcDirty = true; return;
+        compOf.delete('sgs'); recSrcDirty = true;
+        if (typeof paintStagePlate === 'function') paintStagePlate();
+        return;
       }
       if (!el) {
         el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sgs';
@@ -16405,6 +17131,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       compOf.set('sgs', { via: 'stage', streamId: stream.id, stream, names: stageIds(), el: v });
       recSrcDirty = true;
+      if (typeof paintStagePlate === 'function') paintStagePlate();
     }
     // (Channel Se — the C×C Section composite — was DROPPED to free its cross-link
     // budget for the Stadium/Stage cross-link redundancy. Section-mates now fold
@@ -17634,15 +18361,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // ---- hand raise: float to the top in the order hands went up --------------
     const handBtn = document.getElementById('hand');
     function paintHand() {
-      handBtn.classList.toggle('off', !!myStatus.hand);
-      const ask = BROADCAST && bcRole() === 'viewer';
-      const handLabel = myStatus.hand ? 'Lower hand' : (ask ? 'Ask to join' : 'Hand');
-      handBtn.textContent = handLabel;
+      const up = !!myStatus.hand;
+      const docked = handBtn.parentElement && handBtn.parentElement.classList.contains('bar');
+      const lab = handBtn.querySelector('.docklab');
+      if (docked && lab) {
+        handBtn.classList.toggle('on', up);
+        lab.textContent = up ? 'Lower hand' : 'Raise hand';
+        handBtn.setAttribute('aria-label', up ? 'Lower hand' : 'Raise hand');
+        handBtn.setAttribute('aria-pressed', up ? 'true' : 'false');
+      } else {
+        handBtn.classList.toggle('off', up);
+        handBtn.textContent = up ? 'Lower hand' : 'Hand';
+      }
+      // A broadcast viewer's hand asks the host for the stage (confirmed design).
+      let ask = false;
+      try { ask = BROADCAST && bcRole() === 'viewer'; } catch (e) { ask = false; }
       if (ask) handBtn.title = 'Ask the host to invite you on stage';
-      else if (!myStatus.hand) handBtn.title = 'Raise your hand — raised hands float to the top';
+      else if (!up) handBtn.title = 'Raise your hand — raised hands float to the top';
       const rh = document.getElementById('react-hand');
       if (rh) {
-        rh.textContent = handLabel;
+        rh.textContent = '✋';
+        rh.setAttribute('aria-label', myStatus.hand ? 'Lower hand' : 'Raise hand');
         rh.classList.toggle('on', !!myStatus.hand);
         rh.setAttribute('aria-pressed', myStatus.hand ? 'true' : 'false');
       }
@@ -17704,10 +18443,36 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // enforcement lives in every receiver's stageIds() filter.
     const stageBtn = document.getElementById('stagebtn');
     function paintStage() {
-      const on = !!myStatus.stg && stageIds().includes(myId);
+      const claimed = !!myStatus.stg;
+      const seated = claimed && stageIds().includes(myId);
+      const on = (typeof BROADCAST !== 'undefined' && BROADCAST) ? claimed : seated;
       stageBtn.classList.toggle('on', on);
-      stageBtn.textContent = on ? 'Step down' : 'Stage';
-      stageBtn.style.display = (!hasAdminRoom() || amAdmin || (modOf(myId).app && modOf(myId).app.on) || myStatus.stg) ? '' : 'none';
+      const hostHere = (typeof BROADCAST !== 'undefined' && BROADCAST) && ((typeof bcHostStored === 'function' && bcHostStored()) || amAdmin);
+      const promoted = (typeof BROADCAST !== 'undefined' && BROADCAST) && (!!myStatus.stg || !!(modOf(myId).app && modOf(myId).app.on));
+      if (promoted && !hostHere) {
+        const bar = document.querySelector('.bar');
+        const anchor = document.getElementById('reactbtn');
+        if (bar && anchor && stageBtn.parentElement !== bar) bar.insertBefore(stageBtn, anchor);
+        if (!stageBtn.querySelector('.docklab')) {
+          stageBtn.classList.add('iconbtn');
+          stageBtn.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="2.4"/><path d="M8.2 13.2c.5-1.5 1.9-2.4 3.8-2.4s3.3.9 3.8 2.4"/><path d="M4 17.5h16"/></svg><span class="docklab">Step off</span>';
+        }
+      } else if (!hostHere && stageBtn.parentElement && stageBtn.parentElement.classList.contains('bar')) {
+        const more = document.getElementById('barmore');
+        if (more) more.appendChild(stageBtn);
+      }
+      const dockedNow = stageBtn.parentElement && stageBtn.parentElement.classList.contains('bar');
+      const labNow = stageBtn.querySelector('.docklab');
+      if (dockedNow && labNow) {
+        labNow.textContent = on ? 'Step off' : 'Step on';
+        stageBtn.setAttribute('aria-label', on ? 'Step off the stage' : 'Step on the stage');
+        stageBtn.title = on ? 'Step off the stage. The room stops seeing you.' : 'Step onto the stage. The room sees and hears you.';
+      } else if (!dockedNow) {
+        stageBtn.textContent = on ? 'Step down' : 'Stage';
+      }
+      stageBtn.style.display = (!hasAdminRoom() || amAdmin || hostHere || (modOf(myId).app && modOf(myId).app.on) || myStatus.stg) ? '' : 'none';
+      if (typeof paintStagePlate === 'function') paintStagePlate();
+      if (typeof paintBroadcastAir === 'function') paintBroadcastAir();
       // Broadcast roles own the seat class. Meet still marks a stage grant
       // the old way; a broadcast viewer must not inherit it.
       if (BROADCAST) {
@@ -17837,10 +18602,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!shareBtn) return;
       const on = !!myStatus.scr;
       shareBtn.classList.toggle('on', on);
-      shareBtn.textContent = on ? 'Stop sharing' : 'Share screen';
-      shareBtn.title = on
-        ? 'You are sharing your screen with the meeting — tap to stop'
-        : 'Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)';
+      const sharingLabel = on ? 'Stop sharing' : 'Share screen';
+      const docked = shareBtn.parentElement && shareBtn.parentElement.classList.contains('bar');
+      const shareLab = shareBtn.querySelector('.docklab');
+      if (docked && shareLab) {
+        shareLab.textContent = on ? 'Stop' : 'Share';
+        shareBtn.setAttribute('aria-label', sharingLabel);
+      } else {
+        shareBtn.textContent = sharingLabel;
+        shareBtn.setAttribute('aria-label', sharingLabel);
+      }
+      shareBtn.title = (typeof BROADCAST !== 'undefined' && BROADCAST)
+        ? (on ? 'You are sharing your screen on the stage. Tap to stop.' : 'Show the stage a window, a tab, or your desktop.')
+        : (on
+          ? 'You are sharing your screen with the meeting — tap to stop'
+          : 'Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)');
       // FEATURE DETECTION, NEVER A UA CHECK (the preflight's rule). A phone
       // browser without getDisplayMedia used to HIDE the button, and the
       // first customer meeting read that as "there is no share button at
@@ -18816,7 +19592,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const lines = trBlocks();
       const html = lines.length
         ? lines.map((l) => '<div class="trline"><b>' + (typeof avatarChip === 'function' ? (avatarChip(l.byId) || '') : '') + esc(l.by) + '</b>' + esc(l.text) + (l.scribeBy ? ' <small style="color:var(--muted,#8888aa)">✍ ' + esc(l.scribeBy) + '</small>' : '') + '</div>').join('')
-        : '<small style="color:#667">Tap CC in the bar and your device writes down everyone it hears — the lines gather here under each speaker\'s name, on every device in the meeting.</small>';
+        : '<small style="color:#667">Tap Captions in the bar and your device writes down everyone it hears — the lines gather here under each speaker\'s name, on every device in the meeting.</small>';
       paintLog(log, html);
     }
     // CAPTIONS FOLLOW THE EAR (2026-10-03). A caption line was a room-wide
@@ -19979,7 +20755,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (ccShow || ccOptOutAt >= (m.at || 0)) return;
       ccShow = true; ccByOrder = true;
       paintCcButtons();
-      setStatus((m.by || 'An admin') + ' turned captions on for your screen. Tap CC to hide them.', 8000);
+      setStatus((m.by || 'An admin') + ' turned captions on for your screen. Tap Captions to hide them.', 8000);
     }
     (function wireCcAll() {
       const btn = document.getElementById('ccall'); if (!btn) return;
@@ -19989,7 +20765,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const w = document.getElementById('trwrap'), c = document.getElementById('chatlog');
       w.classList.toggle('show', showTr);
       c.style.display = showTr ? 'none' : '';
-      document.getElementById('paneltitle').innerHTML = showTr ? (AI_SPARK_SVG + 'Transcript') : 'Meeting chat';
+      document.getElementById('paneltitle').innerHTML = showTr ? (AI_SPARK_SVG + 'Transcript') : (BROADCAST ? 'Service chat' : 'Small group chat');
       document.getElementById('trtab').innerHTML = showTr ? 'Chat' : (AI_SPARK_SVG + 'Transcript');
       if (showTr) renderTranscript(); else renderChat();
     }
@@ -20106,6 +20882,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function recordingIndicatorsOk() {
       try { updateTile('me'); } catch (e) {}
+      try { paintRoomTrust(); } catch (e) {}
+      const airRec = document.getElementById('airrec');
+      if (!airRec || airRec.textContent !== 'Recording' || airRec.offsetParent === null) return false;
       const tile = meTile && meTile.tile;
       const chips = tile && tile.querySelector('.chips');
       const text = chips ? (chips.textContent || '') : '';
@@ -20316,7 +21095,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       const stg = new Set(stageIds()), mates = new Set(rowMates());
       const g = { stage: [], row: [], stadium: [] };
-      g.row.push({ key: 'me', video: meTile.video, label: myName() + ' (you)', bus: 'row', blur: 0, stream: localStream, me: true, camOff: seatDark(myStatus) });
+      if (meTile && meTile.video) g.row.push({ key: 'me', video: meTile.video, label: myName() + ' (you)', bus: 'row', blur: 0, stream: localStream, me: true, camOff: seatDark(myStatus) });
       for (const [pid, p] of peers) {
         const st = statusOf.get(pid) || {};
         const src = { key: pid, video: p.video, label: p.name || '…', blur: blurLevelFor(pid), stream: p.video.srcObject,
@@ -20518,7 +21297,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { updateTile('me'); broadcastStatus(); } catch (e) {}
         if (!recordingIndicatorsOk()) {
           myStatus.rec = false;
-          try { updateTile('me'); broadcastStatus(); } catch (e) {}
+          try { updateTile('me'); broadcastStatus(); paintRoomTrust(); } catch (e) {}
           return fail('Recording stays off until the recording indicator is on screen.');
         }
         if (scope === 'app') {
@@ -20594,7 +21373,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             recBtn.classList.remove('on');
             recBtn.textContent = 'Record';
             myStatus.rec = false;
-            try { broadcastStatus(); } catch (e) {}
+            try { broadcastStatus(); paintRoomTrust(); } catch (e) {}
           }
           if (recReloadAfterStop) {
             recReloadAfterStop = false;
@@ -20616,6 +21395,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         recBtn.textContent = 'Stop 0:00';
         myStatus.rec = true;
         broadcastStatus();
+        try { paintRoomTrust(); } catch (e) {}
         if (recIndWatch) clearInterval(recIndWatch);
         recIndWatch = setInterval(() => {
           if (!recRec || recRec.state === 'inactive') { clearInterval(recIndWatch); recIndWatch = null; return; }
@@ -20637,7 +21417,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           recDest = null; recMode = null;
           if (myStatus.rec) {
             myStatus.rec = false;
-            try { updateTile('me'); broadcastStatus(); } catch (e) {}
+            try { updateTile('me'); broadcastStatus(); paintRoomTrust(); } catch (e) {}
           }
         }
         recStarting = false;
@@ -20661,8 +21441,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const qDef = recDefaultQuality(IS_MOBILE);
       const qRadio = (val, label) => '<label class="rec-opt inline"><input type="radio" name="rec-q" value="' + val + '"' + (qDef === val ? ' checked' : '') + '> ' + label + '</label>';
       bg.innerHTML = '<div class="name-box" style="max-width:470px;text-align:left">' +
-        '<h3>Record this meeting</h3>' +
-        '<p style="color:#889;font-size:.85rem">Saved to YOUR device only — everyone sees the ⏺ while you record. Blur and mute are baked in.</p>' +
+        '<h3>Record this ' + (BROADCAST ? 'service' : 'small group') + '</h3>' +
+        '<p>Saved on this device only. Everyone here will see that this ' + (BROADCAST ? 'service' : 'small group') + ' is being recorded.</p>' +
         '<div class="rec-sec"><b>What to capture</b>' +
         opt('stage', 'rec-scope', 'The stage', stageSub) +
         opt('row', 'rec-scope', 'Stage + my row', 'The stage plus the people right around you.') +
@@ -20678,7 +21458,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         '<label class="rec-opt inline" style="margin-top:.3rem"><input type="checkbox" id="rec-matchmix" checked> Match my sound mix (record what I hear)</label>' +
         '<p id="rec-err" hidden style="color:#ff8a8a;font-size:.9rem;margin:.6rem 0 0"></p>' +
         '<div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.9rem">' +
-        '<button id="ro-cancel" class="lob-ghost">Cancel</button><button id="ro-start">Start recording</button></div></div>';
+        '<button id="ro-cancel" type="button" class="appear-secondary">Cancel</button><button id="ro-start" type="button" class="appear-primary">Start recording</button></div></div>';
       document.body.appendChild(bg);
       const close = openModal(bg, () => { if (bg.parentNode) bg.remove(); });
       bg.querySelector('#ro-cancel').onclick = () => close();
@@ -20729,6 +21509,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       showRecOptions();
     };
+    const airRecBtn = document.getElementById('airrec');
+    if (airRecBtn) airRecBtn.onclick = () => recBtn.click();
 
     // ---- controls: mic + camera (traffic-light icons), blur (3-way slider) -----
     const micBtn = document.getElementById('mic');
@@ -20743,8 +21525,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       function apply(collapsed) {
         bar.classList.toggle('collapsed', collapsed);
         toggle.setAttribute('aria-expanded', String(!collapsed));
-        toggle.setAttribute('aria-label', collapsed ? 'More' : 'Hide meeting controls');
-        toggle.title = collapsed ? 'More' : 'Hide meeting controls';
+        const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+        const surface = service ? 'service' : 'small group';
+        bar.setAttribute('aria-label', service ? 'Service controls' : 'Small group controls');
+        toggle.setAttribute('aria-label', collapsed ? 'More' : 'Hide ' + surface + ' controls');
+        toggle.title = collapsed ? 'More' : 'Hide ' + surface + ' controls';
       }
       toggle.onclick = function () {
         const next = !bar.classList.contains('collapsed'); apply(next);
@@ -20752,6 +21537,119 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       let saved = null; try { saved = localStorage.getItem('gifos_meet_bar'); } catch (e) {}
       apply(saved === null ? true : saved !== '0'); // default: collapsed
+      const grip = document.getElementById('bargrip');
+      let dockx = 0, docky = 0, tucked = false, idleTimer = 0, idleMs = 8000;
+      // A small group tucks the dock once the call sits quiet. A service keeps
+      // it: volunteers need the large controls without hunting for them.
+      const personalCall = () => !(typeof BROADCAST !== 'undefined' && BROADCAST);
+      const dockBusy = () => {
+        if (!bar.classList.contains('collapsed')) return true;
+        const tray = document.getElementById('reacttray');
+        if (tray && !tray.hasAttribute('hidden')) return true;
+        const ae = document.activeElement;
+        if (ae && ae !== document.body && ae !== document.documentElement) {
+          if (bar.contains(ae)) return true;
+          const tag = (ae.tagName || '').toLowerCase();
+          if (tag === 'input' || tag === 'textarea' || tag === 'select' || ae.isContentEditable) return true;
+        }
+        for (const el of document.querySelectorAll('.name-modal')) {
+          if (el.style.display !== 'none') return true;
+        }
+        return false;
+      };
+      // Two translates, not one calc() and not left/bottom. Mixing a % and a
+      // length inside translateX() is dropped. Setting left and bottom is
+      // serialized as the inset shorthand, which also pins top, so the dock
+      // cannot move upward. A tuck is an extra downward shift in the same
+      // translate, including when the grip is still centered.
+      const placeDock = () => {
+        const w = bar.offsetWidth, h = bar.offsetHeight;
+        const maxX = Math.max(0, (window.innerWidth - w) / 2 - 8);
+        const maxY = Math.max(0, window.innerHeight - h - 22);
+        dockx = Math.max(-maxX, Math.min(maxX, dockx));
+        docky = Math.max(-6, Math.min(maxY, docky));
+        bar.style.left = '';
+        bar.style.right = '';
+        bar.style.top = '';
+        bar.style.bottom = '';
+        const extra = tucked ? (h + Math.max(0, docky) + 40) : 0;
+        if (!extra && dockx === 0 && docky === 0) {
+          bar.style.transform = '';
+          return;
+        }
+        bar.style.transform = 'translateX(-50%) translate(' + dockx + 'px, ' + (-docky + extra) + 'px)';
+      };
+      const markTuck = (on) => {
+        tucked = !!on;
+        bar.classList.toggle('tucked', tucked);
+        document.body.classList.toggle('dock-idle', tucked);
+        if (tucked) bar.setAttribute('aria-hidden', 'true');
+        else bar.removeAttribute('aria-hidden');
+        placeDock();
+      };
+      const scheduleIdle = () => {
+        clearTimeout(idleTimer);
+        if (!personalCall()) return;
+        idleTimer = setTimeout(() => {
+          if (!personalCall() || dockBusy()) { scheduleIdle(); return; }
+          markTuck(true);
+        }, idleMs);
+      };
+      const wakeDock = () => {
+        if (tucked) markTuck(false);
+        scheduleIdle();
+      };
+      window.addEventListener('pointerdown', wakeDock, true);
+      window.addEventListener('pointermove', wakeDock, true);
+      window.addEventListener('keydown', wakeDock, true);
+      window.addEventListener('focusin', wakeDock, true);
+      scheduleIdle();
+      window.__gifosDock = {
+        get idleMs() { return idleMs; },
+        setIdle(ms) { idleMs = ms; scheduleIdle(); },
+        tuck() {
+          if (!personalCall() || dockBusy()) return false;
+          clearTimeout(idleTimer);
+          markTuck(true);
+          return true;
+        },
+        wake() { wakeDock(); return !tucked; },
+      };
+      const nudge = (dx, dy) => { dockx += dx; docky += dy; placeDock(); };
+      const resetDock = () => { dockx = 0; docky = 0; placeDock(); };
+      window.addEventListener('resize', placeDock);
+      if (grip) {
+        grip.addEventListener('keydown', (e) => {
+          const step = e.shiftKey ? 48 : 24;
+          if (e.key === 'ArrowLeft') { e.preventDefault(); nudge(-step, 0); }
+          else if (e.key === 'ArrowRight') { e.preventDefault(); nudge(step, 0); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); nudge(0, step); }
+          else if (e.key === 'ArrowDown') { e.preventDefault(); nudge(0, -step); }
+        });
+        grip.addEventListener('dblclick', (e) => { e.preventDefault(); resetDock(); });
+        let drag = null, lastTap = 0;
+        grip.addEventListener('pointerdown', (e) => {
+          if (e.button != null && e.button !== 0) return;
+          try { grip.setPointerCapture(e.pointerId); } catch (err) {}
+          drag = { x: e.clientX, y: e.clientY, dockx: dockx, docky: docky, moved: false };
+        });
+        grip.addEventListener('pointermove', (e) => {
+          if (!drag) return;
+          const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+          if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+          dockx = drag.dockx; docky = drag.docky;
+          nudge(dx, -dy);
+        });
+        grip.addEventListener('pointerup', () => {
+          if (!drag) return;
+          const moved = drag.moved;
+          drag = null;
+          const now = Date.now();
+          if (!moved && now - lastTap < 400) { resetDock(); lastTap = 0; }
+          else if (!moved) lastTap = now;
+        });
+        grip.addEventListener('pointercancel', () => { drag = null; });
+      }
       // Publish the bar's own height so the fixed overlays that hang from the
       // top (the chat panel) can start BELOW it instead of on top of it. It has
       // to be measured, not assumed: the bar wraps, and collapsing it changes
@@ -20774,14 +21672,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const btn = document.getElementById('reactbtn');
       const tray = document.getElementById('reacttray');
       if (!btn || !tray) return;
+      const bar = document.querySelector('.bar');
+      const more = document.getElementById('bartoggle');
       const shut = () => {
         tray.setAttribute('hidden', '');
         btn.setAttribute('aria-expanded', 'false');
         btn.setAttribute('aria-pressed', 'false');
         btn.classList.remove('on');
       };
+      // Both popovers share the same slot above the dock. Opening one closes the other.
+      if (more && more.onclick) {
+        const openMore = more.onclick;
+        more.onclick = function (ev) {
+          if (bar && bar.classList.contains('collapsed')) shut();
+          return openMore.call(this, ev);
+        };
+      }
       btn.onclick = () => {
         if (tray.hasAttribute('hidden')) {
+          if (bar && more && !bar.classList.contains('collapsed')) more.click();
           tray.removeAttribute('hidden');
           btn.setAttribute('aria-expanded', 'true');
           btn.setAttribute('aria-pressed', 'true');
@@ -20864,13 +21773,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       micBtn.classList.toggle('off', muted);
       micBtn.classList.toggle('locked', micLocked);
       micBtn.setAttribute('aria-pressed', muted ? 'false' : 'true');
+      micBtn.setAttribute('aria-label', micLocked ? 'Muted for everyone' : (muted ? 'Unmute' : 'Mute'));
+      const micLab = micBtn.querySelector('.docklab');
+      if (micLab) micLab.textContent = micLocked ? 'Muted' : (muted ? 'Unmute' : 'Mute');
       micBtn.title = micLocked
         ? 'Muted for everyone' + (modOf('me').mute.by ? ' by ' + modOf('me').mute.by : '') + ' — someone else has to lift it'
-        : (muted ? 'You are muted — tap to speak' : 'Your mic is on — tap to mute');
+        : (muted ? 'You are muted — tap to speak. Shortcut: M' : 'Your mic is on — tap to mute. Shortcut: M');
       // camera
       camBtn.classList.toggle('off', myStatus.camOff);
       camBtn.setAttribute('aria-pressed', myStatus.camOff ? 'false' : 'true');
-      camBtn.title = myStatus.camOff ? 'Camera off — tap to turn on' : 'Camera on — tap to turn off';
+      camBtn.setAttribute('aria-label', myStatus.camOff ? 'Start video' : 'Stop video');
+      const camLab = camBtn.querySelector('.docklab');
+      if (camLab) camLab.textContent = 'Video';
+      camBtn.title = myStatus.camOff ? 'Camera off — tap to turn on. Shortcut: V' : 'Camera on — tap to turn off. Shortcut: V';
       // The filled segment follows the blur that is actually on the feed
       // (forced blur, room password, consent). The local wish is the fallback
       // when this function is lifted without blurLevelFor in scope.
@@ -20890,6 +21805,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       paintShare();
       try { paintOnAir(); } catch (e) {}
+      try { paintBroadcastAir(); } catch (e) {}
+      paintAvState();
+    }
+    function paintAvState() {
+      const bar = document.getElementById('avstate');
+      const mic = document.getElementById('avmic');
+      const cam = document.getElementById('avcam');
+      if (!bar || !mic || !cam) return;
+      const watching = typeof BROADCAST !== 'undefined' && BROADCAST && !(bcHostStored() || document.body.classList.contains('amadmin'));
+      let muted = false, camOff = false, locked = false;
+      try {
+        if (!watching && typeof myStatus !== 'undefined' && myStatus) {
+          muted = !!myStatus.muted;
+          camOff = !!myStatus.camOff;
+          if (typeof amGloballyMuted === 'function' && amGloballyMuted()) { muted = true; locked = true; }
+        }
+      } catch (e) {}
+      mic.hidden = !muted;
+      cam.hidden = !camOff;
+      mic.textContent = locked ? 'Muted for everyone' : 'Microphone off';
+      cam.textContent = 'Camera off';
+      const show = muted || camOff;
+      bar.hidden = !show;
+      bar.className = show ? 'on' : '';
+    }
+    if (window.__gifosRoomTrust) {
+      window.__gifosRoomTrust.setDevices = (muted, camOff) => {
+        myStatus.muted = !!muted;
+        myStatus.camOff = !!camOff;
+        paintControls();
+      };
     }
 
     // A tap on a dead mic/cam button is the ONE moment we can ask again: a
@@ -21142,6 +22088,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       reactRoomState();  // camera on/off changes your consent
       updateMediaSession();
     };
+    // M and V match the desktop habit (Meet uses different chords; the letter
+    // under a thumb is what a volunteer remembers). Never while typing.
+    document.addEventListener('keydown', (e) => {
+      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target;
+      if (t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]')) return;
+      const k = (e.key || '').toLowerCase();
+      if (k !== 'm' && k !== 'v') return;
+      const btn = k === 'm' ? micBtn : camBtn;
+      if (!btn || btn.offsetParent === null) return;
+      e.preventDefault();
+      btn.click();
+    });
     // Flip front/back camera (mobile convention). regrabCamera does the whole
     // swap: same MediaStream identity, senders re-fed, blur pipe rebuilt.
     document.getElementById('flipcam').onclick = () => {
@@ -21504,63 +22463,60 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // button is now sign-in + bans, and shows only inside an admin room.
     const invModal = document.getElementById('inv-modal');
     let closeInvModal = () => { invModal.style.display = 'none'; };
-    const surfaceBtn = 'background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)';
     function armCopiedLabel(btn, later) {
       btn.textContent = 'Copied ✓';
       later(() => { if (btn.textContent === 'Copied ✓') btn.textContent = 'Copy'; }, 2000);
     }
     function linkRowHtml() {
-      return '<div style="display:flex;gap:.5rem;margin:.6rem 0"><input id="inv-url" readonly value="' + esc(shareUrl.value) + '" style="flex:1;min-width:0"><button id="inv-copy">Copy</button><button id="inv-share" style="display:none">Share…</button></div>';
+      return '<div class="inv-link"><input id="inv-url" readonly value="' + esc(shareUrl.value) + '"><button id="inv-copy" type="button" class="appear-primary">Copy</button><button id="inv-share" type="button" class="appear-secondary" style="display:none">Share</button></div>';
     }
     function showInviteModal() {
       const body = document.getElementById('inv-body');
       const others = Math.max(0, displayCount() - 1);
       const ppl = others > 1 ? 'people' : 'person';
       // Same copy modal everywhere you can mint a link. An APP room gets its own
-      // copy: "mute/blur" and "create a room you control" are meeting concepts,
-      // meaningless for a shared app — so we don't show them here.
+      // copy: a room you run is a meeting idea, so an app does not offer it.
       const isApp = document.body.classList.contains('app-room');
-      // Say which thing you are sharing — a broadcast is not a meeting.
       document.querySelector('#inv-modal h3').textContent =
-        isApp ? 'Share this app' : BROADCAST ? 'Share this broadcast' : 'Share this meeting';
+        isApp ? 'Share this app' : BROADCAST ? 'Share this service' : 'Share this small group';
+      const closeRow = '<div class="appear-actions"><button id="inv-done" type="button" class="appear-secondary">Close</button></div>';
       if (isApp) {
-        body.innerHTML =
-          '<p style="color:#aab">Anyone with this link joins you <b>live inside this app</b>, and the link has no expiry.</p>' +
-          linkRowHtml() +
-          '<div style="display:flex;justify-content:flex-end;margin-top:.9rem"><button id="inv-done" style="' + surfaceBtn + '">Close</button></div>';
-      } else if (hasAdminRoom()) {
-        body.innerHTML =
-          // The old line here said the admin password "is never in the link". A
-          // password FINGERPRINT is in the link (the verifier — it is what makes
-          // this a room you run), so the sentence was both untrue and more detail
-          // than anyone wants. What a person actually needs to know: the link lets
-          // people IN, it does not hand them the room.
-          '<p style="color:#aab"><b>You run this room.</b> The link is safe to send to anyone — it lets people join, it does not let them run the room. Your admin password is what does that, so keep it to yourself.</p>' +
-          linkRowHtml() +
-          '<div style="display:flex;justify-content:flex-end;margin-top:.4rem"><button id="inv-done">Done</button></div>';
+        body.innerHTML = '<p>Send this link. They join you live inside this app.</p>' + linkRowHtml() + closeRow;
+      } else if (hasAdminRoom() || BROADCAST) {
+        // A service is a hosted room even before the verifier is stored.
+        // The link lets people in. It does not hand them the host password.
+        const host = !BROADCAST
+          || document.body.classList.contains('amadmin')
+          || (typeof bcHostStored === 'function' && bcHostStored());
+        const line = BROADCAST
+          ? (host
+            ? 'Send this link. People who open it are watching. The host password stays with you.'
+            : 'Send this link. People who open it are watching.')
+          : 'Send this link. People who open it can join. The host password stays with you.';
+        body.innerHTML = '<p>' + line + '</p>' + linkRowHtml() + closeRow;
       } else {
         body.innerHTML =
-          '<p style="color:#aab">Anyone with this link can join, and the link carries no expiry. <b>No one is in charge</b> — anyone here can mute or blur anyone.</p>' +
+          '<p>Send this link. Anyone who opens it joins you.</p>' +
           linkRowHtml() +
-          '<div style="border-top:1px solid var(--border,#2a2a3f);margin:.9rem 0 .7rem"></div>' +
-          '<div id="inv-adm-collapsed"><p style="color:#aab;margin-bottom:.5rem">Want a room <b>you</b> run — a password, global mute/blur, and the power to ban a troublemaker?</p>' +
-            '<button id="inv-mkadm" style="' + surfaceBtn + '">Create a room you control →</button></div>' +
+          closeRow +
+          '<button id="inv-mkadm" type="button" class="inv-more">A room you run</button>' +
           '<div id="inv-adm-open" style="display:none">' +
-            '<div style="background:rgba(255,180,60,.12);border:1px solid rgba(255,180,60,.4);border-radius:.5rem;padding:.6rem .7rem;font-size:.85rem;margin-bottom:.7rem">This makes a <b>new, separate room</b> that you run — so <b>name it anything you like</b>. ' +
-              (others ? 'The ' + others + ' ' + ppl + ' here won\'t move automatically, so leave the box ticked to drop the new link into this room\'s chat and they can follow you over.' : 'You\'ll switch to it now.') + '</div>' +
-            '<input id="inv-adm-room" maxlength="40" placeholder="Room name (anything you like)" autocomplete="off" value="' + esc(room) + '" style="width:100%;box-sizing:border-box;margin-bottom:.5rem">' +
-            '<label class="lob-pwlab">🔑 <b>Admin password</b> — yours alone — <b>do not share it</b><small>This is what puts you in charge of the room. Guests don’t need it. Anyone you give it to can run the room too.</small></label>' +
-            '<input id="inv-adm-pass" type="password" maxlength="64" placeholder="Admin password (keep to yourself)" autocomplete="new-password" style="width:100%;box-sizing:border-box;margin-bottom:.6rem">' +
-            '<label class="lob-pwlab">🎟 <b>Guest password</b> — the one you <b>do</b> share<small>Optional, but faces stay fully blurred (Max) until you set one. The Blur slider softens it. Guests type it to get in. It is not part of the link — send it to them yourself.</small></label>' +
-            '<input id="inv-adm-guest" type="password" maxlength="64" placeholder="Guest password (optional — share with guests)" autocomplete="new-password" style="width:100%;box-sizing:border-box;margin-bottom:.6rem">' +
-            (others ? '<label style="display:flex;gap:.5rem;align-items:flex-start;cursor:pointer;margin-bottom:.7rem;font-size:.9rem"><input type="checkbox" id="inv-adm-post" checked style="margin-top:.2rem"><span>Post the new link to this room\'s chat so the ' + others + ' ' + ppl + ' here can follow me over.</span></label>' : '') +
-            '<div style="display:flex;gap:.5rem;justify-content:flex-end"><button id="inv-adm-back" style="' + surfaceBtn + '">Back</button><button id="inv-adm-go">Create &amp; switch</button></div>' +
-          '</div>' +
-          '<div style="display:flex;justify-content:flex-end;margin-top:.9rem"><button id="inv-done" style="' + surfaceBtn + '">Close</button></div>';
+            '<p>This makes a new room that you run. Name it, then set a host password only you know.</p>' +
+            (others
+              ? '<p>The ' + others + ' ' + ppl + ' here stay in this room. Leave the box ticked to drop the new link in chat so they can follow.</p>'
+              : '<p>You will switch to it now.</p>') +
+            '<input id="inv-adm-room" maxlength="40" placeholder="Name this room" autocomplete="off" value="' + esc(room) + '">' +
+            '<label class="lob-pwlab"><b>Host password</b><small>Only you. People who join do not need it.</small></label>' +
+            '<input id="inv-adm-pass" type="password" maxlength="64" placeholder="Host password" autocomplete="new-password">' +
+            '<label class="lob-pwlab"><b>Guest password</b><small>Optional. It is not part of the link.</small></label>' +
+            '<input id="inv-adm-guest" type="password" maxlength="64" placeholder="Guest password (optional)" autocomplete="new-password">' +
+            (others ? '<label class="inv-check"><input type="checkbox" id="inv-adm-post" checked><span>Drop the new link in chat so they can follow.</span></label>' : '') +
+            '<div class="appear-actions"><button id="inv-adm-back" type="button" class="appear-secondary">Back</button><button id="inv-adm-go" type="button" class="appear-primary">Create and switch</button></div>' +
+          '</div>';
       }
       const copyBtn = document.getElementById('inv-copy');
       const shareInviteBtn = document.getElementById('inv-share');
-      const inviteSharePayload = () => ({ title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : 'Join my GifOS meeting', text: 'Tap this link and you’re in:', url: shareUrl.value });
+      const inviteSharePayload = () => ({ title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS service' : 'Join my GifOS small group', text: 'Tap this link and you’re in:', url: shareUrl.value });
       if (shareInviteBtn && navigator.share) {
         shareInviteBtn.style.display = '';
         shareInviteBtn.onclick = () => { navigator.share(inviteSharePayload()).catch(() => {}); };
@@ -21574,15 +22530,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const done = document.getElementById('inv-done');
       if (done) done.onclick = () => closeInvModal();
       const mk = document.getElementById('inv-mkadm');
+      const copyLooksPrimary = (on) => {
+        if (!copyBtn) return;
+        copyBtn.classList.toggle('appear-primary', on);
+        copyBtn.classList.toggle('appear-secondary', !on);
+      };
       if (mk) mk.onclick = () => {
-        document.getElementById('inv-adm-collapsed').style.display = 'none';
+        mk.style.display = 'none';
+        if (done) done.style.display = 'none';
         document.getElementById('inv-adm-open').style.display = '';
+        copyLooksPrimary(false);
         document.getElementById('inv-adm-pass').focus();
       };
       const back = document.getElementById('inv-adm-back');
       if (back) back.onclick = () => {
         document.getElementById('inv-adm-open').style.display = 'none';
-        document.getElementById('inv-adm-collapsed').style.display = '';
+        if (mk) mk.style.display = '';
+        if (done) done.style.display = '';
+        copyLooksPrimary(true);
       };
       const go = document.getElementById('inv-adm-go');
       if (go) go.onclick = async () => {
@@ -21598,7 +22563,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try {
           await createAdminRoom(chosen, pass, post, guest);
         } catch (err) {
-          go.disabled = false; go.textContent = 'Create & switch';
+          go.disabled = false; go.textContent = 'Create and switch';
           invModal.style.display = 'flex';
           setStatus('Could not create the room (' + ((err && err.name) || 'Error') + ').');
         }
@@ -21713,6 +22678,81 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       location.reload(); // load the new admin room fresh — I arrive as its admin
     }
 
+    // The viewer link only. A password, if the room has one, stays out of the
+    // link and out of the words next to it. A phone with a share sheet gets
+    // that sheet. Otherwise the link is copied. Same path as the phone Invite.
+    function viewerShareUrl() {
+      let raw = (shareUrl && shareUrl.value) || '';
+      const named = (typeof room === 'string' && room) ? room : (params.get('v') || '');
+      if (!raw && named) {
+        const avBit = (params.get('av') || '').toLowerCase();
+        raw = location.origin + location.pathname + '#v=' + encodeURIComponent(named) + (avBit ? '&av=' + avBit : '') + (BROADCAST ? '&bc=1' : '') + (BROADCAST && params.has('st') ? '&st=1' : '');
+      }
+      if (!raw) return '';
+      const dropKeys = ['pw', 'password', 'guest', 'vpw', 'guestpw', 'pass'];
+      const drop = (sp) => { dropKeys.forEach((k) => sp.delete(k)); };
+      try {
+        const u = new URL(raw, location.origin);
+        drop(u.searchParams);
+        if (u.hash) {
+          const p = new URLSearchParams(u.hash.replace(/^#/, ''));
+          drop(p);
+          u.hash = p.toString();
+        }
+        raw = u.toString();
+      } catch (e) {}
+      const secrets = [];
+      try {
+        if (typeof roomPw === 'string' && roomPw) secrets.push(roomPw);
+        const stored = localStorage.getItem('gifos_vpw_' + (params.get('v') || '') + '.' + ((params.get('av') || '').toLowerCase()));
+        if (stored) secrets.push(stored);
+      } catch (e) {}
+      secrets.forEach((s) => {
+        if (!s) return;
+        raw = raw.split(encodeURIComponent(s)).join('').split(s).join('');
+      });
+      return raw;
+    }
+    function shareMeetingLink(btn) {
+      const url = viewerShareUrl();
+      if (!url) return;
+      const isApp = document.body.classList.contains('app-room');
+      const payload = {
+        title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : 'Join my GifOS meeting',
+        text: 'Tap this link and you’re in:',
+        url: url,
+      };
+      const markCopied = () => {
+        if (!btn) return;
+        const prev = btn.getAttribute('data-label') || 'Invite';
+        btn.textContent = 'Copied';
+        setTimeout(() => { if (btn.textContent === 'Copied') btn.textContent = prev; }, 1600);
+      };
+      const copy = () => {
+        try {
+          if (shareUrl) {
+            const prev = shareUrl.value;
+            shareUrl.value = url;
+            shareUrl.focus();
+            shareUrl.select();
+            document.execCommand('copy');
+            shareUrl.value = prev;
+          }
+        } catch (e) {}
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).catch(() => {});
+        markCopied();
+      };
+      if (typeof navigator.share === 'function') {
+        navigator.share(payload).catch((err) => {
+          if (err && err.name === 'AbortError') return;
+          copy();
+        });
+        return;
+      }
+      copy();
+    }
+    const hdrInviteBtn = document.getElementById('hdrinvite');
+    if (hdrInviteBtn) hdrInviteBtn.onclick = () => shareMeetingLink(hdrInviteBtn);
     document.getElementById('invite').onclick = () => {
       share.classList.add('show'); // keep the top copy row visible/copyable behind the sheet
       showInviteModal();
@@ -21837,9 +22877,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     const leaveBtn = document.getElementById('leavebtn');
     const leaveAsk = document.getElementById('leave-ask');
-    // The button asks first. leaveMeeting() itself stays immediate so a
-    // hang-up from the OS and the test hook still leave at once.
-    if (leaveBtn) leaveBtn.onclick = () => { try { holdLeaveAsk(); } catch (e) {} if (leaveAsk) leaveAsk.style.display = 'flex'; };
+    // A small group leaves on the red button. leaveMeeting() is already
+    // immediate, which is what a hang-up and the test hook use. A service
+    // still asks: you are live, and Stay puts the microphone back.
+    if (leaveBtn) leaveBtn.onclick = () => {
+      if (typeof BROADCAST !== 'undefined' && BROADCAST) {
+        try { holdLeaveAsk(); } catch (e) {}
+        if (leaveAsk) leaveAsk.style.display = 'flex';
+        return;
+      }
+      leaveMeeting();
+    };
     const leaveCancel = document.getElementById('leave-cancel');
     if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; try { releaseLeaveAsk(); } catch (e) {} };
     const leaveGo = document.getElementById('leave-go');
@@ -23120,6 +24168,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Test hook: lets the e2e suite observe mesh + quality state.
     window.__gifosVideo = {
       participants: participantCount,
+      shareInvite: () => shareMeetingLink(document.getElementById('hdrinvite')),
+      markJoinedForTest: (id) => {
+        const pid = String(id || 'peer').slice(0, 80);
+        if (pid && !rosterIds.includes(pid)) rosterIds.push(pid);
+        try { updateStatus(); } catch (e) {}
+        return participantCount();
+      },
       bot: () => !!myStatus.bot,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
@@ -23843,6 +24898,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       raiseHand: (on) => { myStatus.hand = on ? Date.now() : null; paintHand(); broadcastStatus(); layout(); },
       // exact raise stamp — lets tests force a same-millisecond tie and assert the id tie-break
       raiseHandAtForTest: (t) => { myStatus.hand = +t || Date.now(); paintHand(); broadcastStatus(); layout(); },
+      guestTileForTest: (name) => { const made = makeTile('qa-guest', name || 'Jordan Lee', false, false); return made.tile.dataset.peer; },
+      stageGuestForTest: (name) => {
+        const id = 'qa-guest';
+        const nm = name || 'Jordan Lee';
+        rosterNames[id] = nm;
+        stageModExtra.add(id);
+        paintStageMod();
+        return id;
+      },
+      ensureNameForTest: () => ensureName(),
       // a GUEST's forged grant, injected past setMod's local guard — every
       // receiver must refuse it (§SIG: only the SIGNED table is ever merged)
       forgeModForTest: (target, field) => {

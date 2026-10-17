@@ -51,7 +51,7 @@ function enabledLive(probe) {
 
   const lobby = await browser.newContext(desktop);
   const lobbyPage = await lobby.newPage();
-  await lobbyPage.addInitScript(() => { try { localStorage.setItem('gifos_name', 'Pat'); } catch (e) {} });
+  await lobbyPage.addInitScript(() => { try { localStorage.setItem('gifos_name', 'Pat'); sessionStorage.setItem('gifos_appear_ok', '1'); } catch (e) {} });
   await lobbyPage.goto(base + '/run.html#bc=1', { waitUntil: 'domcontentloaded', timeout: 20000 });
   await lobbyPage.waitForFunction(() => window.GifOS && GifOS.net && GifOS.net.edKeysFromSeedHex, { timeout: 20000 });
   await lobbyPage.click('#lob-join-btn');
@@ -81,7 +81,7 @@ function enabledLive(probe) {
     const ctx = await browser.newContext(layout);
     await ctx.addInitScript((arg) => {
       try {
-        localStorage.setItem('gifos_name', 'Pat');
+        localStorage.setItem('gifos_name', 'Pat'); sessionStorage.setItem('gifos_appear_ok', '1');
         localStorage.setItem('gifos_meet_bar', '0');
         if (arg.host) localStorage.setItem('gifos_vadm_' + arg.room, arg.seed);
       } catch (e) {}
@@ -148,10 +148,11 @@ function enabledLive(probe) {
       const before = await viewer.page.evaluate(() => (window.__bcMedia || { gum: 0, display: 0 }));
       await viewer.page.click('#hand');
       const raised = (await viewer.page.locator('#hand').textContent() || '').trim();
-      if (raised !== 'Lower hand') fail(bad, 'viewer raise leaves the hand as "' + raised + '"');
+      // The docked hand carries a glyph before its label (qa-broadcast-desktop).
+      if (raised.indexOf('Lower hand') < 0) fail(bad, 'viewer raise leaves the hand as "' + raised + '"');
       await viewer.page.click('#hand');
       const lowered = (await viewer.page.locator('#hand').textContent() || '').trim();
-      if (lowered !== 'Ask to join') fail(bad, 'viewer lower leaves the hand as "' + lowered + '"');
+      if (lowered.indexOf('Raise hand') < 0) fail(bad, 'viewer lower leaves the hand as "' + lowered + '"');
       await viewer.page.evaluate(() => {
         document.getElementById('mic').click();
         document.getElementById('cam').click();
@@ -168,10 +169,11 @@ function enabledLive(probe) {
   const host = await openRole(desktop, true);
   await host.page.waitForFunction(() => {
     const b = document.getElementById('stagebtn');
-    return b && (b.textContent || '').trim() === 'Step down';
+    return b && /Step (down|off)/.test((b.textContent || '').trim());
   }, { timeout: 8000 }).catch(() => {});
   const stepped = (await host.page.locator('#stagebtn').textContent().catch(() => '') || '').trim();
-  if (stepped !== 'Step down') fail(bad, 'host is not on stage after the admin key ("' + stepped + '")');
+  // On the dock the host's stage control reads Step off / Step on (qa-broadcast-desktop).
+  if (!/Step (down|off)/.test(stepped)) fail(bad, 'host is not on stage after the admin key ("' + stepped + '")');
   const hostFeeds = await feedHidden(host.page);
   if (hostFeeds.grid !== 'none' || hostFeeds.stadium !== 'none') fail(bad, 'host still shows grid or stadium');
   const quiet = await host.page.evaluate(() => {
@@ -185,10 +187,10 @@ function enabledLive(probe) {
   const gumBeforeStep = quiet.gum;
   await host.page.click('#stagebtn');
   const down = (await host.page.locator('#stagebtn').textContent() || '').trim();
-  if (down !== 'Stage') fail(bad, 'host step-down left the button as "' + down + '"');
+  if (down !== 'Stage' && !/Step on/.test(down)) fail(bad, 'host step-down left the button as "' + down + '"');
   await host.page.click('#stagebtn');
   const up = (await host.page.locator('#stagebtn').textContent() || '').trim();
-  if (up !== 'Step down') fail(bad, 'host step-up left the button as "' + up + '"');
+  if (!/Step (down|off)/.test(up)) fail(bad, 'host step-up left the button as "' + up + '"');
   const afterStep = await host.page.evaluate(() => {
     const probe = window.__gifosVideo.broadcastProbe();
     return { probe, gum: (window.__bcMedia || { gum: 0 }).gum };
