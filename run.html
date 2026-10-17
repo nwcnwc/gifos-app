@@ -1169,8 +1169,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cmsg .cquote b { display: block; margin: 0; font-size: .875rem; font-weight: 700; color: inherit; }
   .cmsg .cquote span { display: block; font-size: 1rem; line-height: 1.35; }
   .cmsg.mine .cquote { background: rgba(0, 0, 0, .18); color: #fff; border-left-color: #fff; }
-  .cmsg .creply { display: flex; align-items: center; justify-content: center; box-sizing: border-box;
-    min-width: 44px; min-height: 44px; margin: 8px 0 0; padding: 0 12px; border: 1.5px solid #c5cad3; border-radius: 12px;
+  .cmsg .creply, .cmsg .cdel { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+    min-width: 44px; min-height: 44px; margin: 8px 8px 0 0; padding: 0 12px; border: 1.5px solid #c5cad3; border-radius: 12px;
     background: #fff; color: #0064c8; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
   #chatreply { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; margin: 0 12px; padding: 8px 0 0; }
   #chatreply[hidden] { display: none !important; }
@@ -14462,6 +14462,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       chat.delete(id);
       return true;
     }
+    // The author can take back their own line. The tomb records who.
+    // A frame is accepted only from that person, and it does not cover
+    // a line someone else wrote under the same id.
+    function applyOwnDelete(id, authorId) {
+      if (!id || !authorId) return false;
+      const prev = chatTombs.get(id);
+      if (prev && !prev.ownBy) return false;
+      if (prev && prev.ownBy && prev.ownBy !== authorId) return false;
+      const cur = chat.get(id);
+      if (cur && cur.byId !== authorId) return false;
+      chatTombs.set(id, { ownBy: authorId });
+      if (cur) chat.delete(id);
+      return true;
+    }
     const MAX_FILE = 25 * 1024 * 1024;
     const FILE_PART = 32768;
     let unread = 0;
@@ -14776,6 +14790,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const id in m.ctombs || {}) {
           if (chatTombs.has(id)) continue;
           const w = m.ctombs[id];
+          if (w && w.ownBy && p && p.id === w.ownBy) { if (applyOwnDelete(id, w.ownBy)) renderChat(); continue; }
           admVerify(w, 'cdel', Infinity).then((o) => { if (o && o.id === id && applyCdel(id, w)) renderChat(); });
         }
         (m.metas || []).forEach((meta) => takeMeta(meta, p));
@@ -14805,10 +14820,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // already reached every member, admin included.
         recvChatAck(m);
       } else if (m.k === 'cdel') {
-        // A signed admin chat-delete: verify, tomb, repaint, gossip onward on
-        // first sight (the tomb is the dedupe). Receiver-enforced like every
-        // moderation — an unverified delete simply never lands anywhere honest.
-        if (m.w && m.id && !chatTombs.has(m.id)) {
+        // The author may take their own line back. That frame is accepted
+        // only from their channel. Anyone else's copy is ignored.
+        // A signed admin delete still verifies, and an unverified one
+        // never lands anywhere honest.
+        if (m.own && m.id && !m.w && p && p.id === m.own) {
+          if (applyOwnDelete(m.id, m.own)) renderChat();
+        } else if (m.w && m.id && !chatTombs.has(m.id)) {
           admVerify(m.w, 'cdel', Infinity).then((o) => {
             if (o && o.id === m.id && applyCdel(m.id, m.w)) renderChat(); // one flood from its author — never re-broadcast (see chat)
           });
@@ -15362,7 +15380,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (let i = 0; i < old.length - max; i++) map.delete(old[i][0]);
     }
     function takeChat(m, backfill) { // backfill: a 'hi' replay — bounded by its frame, not by the live limiter
-      if (!m || !m.id || chat.has(m.id) || chatTombs.has(m.id)) return false;
+      if (!m || !m.id || chat.has(m.id)) return false;
+      const kept = chatTombs.get(m.id);
+      if (kept && (!kept.ownBy || m.byId === kept.ownBy)) return false;
       if (!backfill && m.byId !== myId && !chatRateOk(m.byId)) return false;
       // While the admin's chat-off stands, only a verified admin's NEW lines
       // land — receiver-enforced, so a DOM-hacked sender is still unheard by
@@ -15658,8 +15678,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const quote = (m.reply && m.reply.text)
           ? '<blockquote class="cquote"><b>' + esc(m.reply.by || '') + '</b><span>' + esc(m.reply.text) + '</span></blockquote>'
           : '';
-        const replyBtn = '<button type="button" class="creply" data-reply="' + String(m.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '">Reply</button>';
-        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '">' + who + quote + body + replyBtn + del + '</div>';
+        const attr = String(m.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        const replyBtn = '<button type="button" class="creply" data-reply="' + attr + '">Reply</button>';
+        const ownDel = m.byId === myId ? '<button type="button" class="cdel" data-own-del="' + attr + '">Delete</button>' : '';
+        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '">' + who + quote + body + replyBtn + ownDel + del + '</div>';
       }).join('');
       const co = chatOffInfo();
       if (q && !ms.length) html = '<div class="cempty" id="chatnomatch">No matches</div>';
@@ -15714,6 +15736,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         paintReply();
         const inp = document.getElementById('chat-in');
         if (inp && inp.focus) inp.focus();
+        return;
+      }
+      const ownDel = e.target.closest('[data-own-del]');
+      if (ownDel) {
+        const id = ownDel.getAttribute('data-own-del');
+        const src = id ? chat.get(id) : null;
+        if (!src || src.byId !== myId) return;
+        if (applyOwnDelete(id, myId)) {
+          sendAll({ k: 'cdel', id: id, own: myId });
+          renderChat();
+        }
         return;
       }
       const b = e.target.closest('[data-cdel]'); if (!b) return;
