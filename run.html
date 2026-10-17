@@ -1726,6 +1726,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     /* The room name and the count share the header row with Fit.
        Unmute sits in the gap between them, and the chip stops short of it. */
     .topchip { max-width: calc(100% - 12rem - 48px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
+    /* No Unmute in the gap: the chip runs up to Fit (room for "▦ Scroll"). */
+    body:not(:has(#unmute:not([hidden]), #showcam:not([hidden]))) .topchip {
+      max-width: calc(100% - 5rem - 60px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
     #unmute, #showcam {
       top: calc(14px + var(--gtop));
       left: auto;
@@ -1984,8 +1987,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       width: 138px; height: 182px; }
   }
   /* Fit sits on the next row when the phone is upright, so the chip can
-     use the width and the room name can sit beside the count. */
-  @media (max-width: 700px) and (min-height: 520px) {
+     use the width and the room name can sit beside the count. Any upright
+     height: an SE in Safari (320x460) kept the 140px cap and showed "h…". */
+  @media (max-width: 700px) and (orientation: portrait) {
     .topchip { max-width: calc(100% - 28px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
   }
   /* Comfy: every face on screen, tiles touch. The long :not chain is what
