@@ -61,3 +61,67 @@ test('Blur for all is a square inset from the tile corner', async ({ page }) => 
     expect(b.mod).toBeGreaterThanOrEqual(12);
   }
 });
+
+// Zoom and Meet keep a face clean until you point at it. A dark Blur for all
+// square and a Max button on every face is a product, not a room: on a
+// desktop they show on the face under the pointer or with keyboard focus,
+// and a face that is already blurred keeps its Unblur so the state is seen.
+test('Blur for all shows only on the face you point at', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.setItem('gifos_appeared', '1');
+  });
+  await page.goto('/run.html#v=qablurhover&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#leavebtn', { state: 'visible' });
+  // Five faces: a busy room, so calm never hides anything here.
+  await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4, connected: true }));
+  await page.waitForFunction(() => document.querySelectorAll('#feed .tile:not(.me) > .blurbox.on').length >= 4);
+  const read = () => page.evaluate(() => {
+    const shown = (el) => {
+      if (!el) return false;
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.95
+        && cs.pointerEvents !== 'none' && r.width > 1;
+    };
+    const tiles = [...document.querySelectorAll('#feed .tile:not(.me)')];
+    return tiles.map((t) => ({
+      hover: t.matches(':hover'),
+      blur: shown(t.querySelector(':scope > .blurbox')),
+      max: shown(t.querySelector('.maxbtn')),
+      name: shown(t.querySelector('.name')),
+      pressed: (t.querySelector(':scope > .blurbox') || {}).getAttribute?.('aria-pressed'),
+    }));
+  });
+  // Pointer off the faces: no face carries the square or Max; names stay.
+  await page.mouse.move(2, 2);
+  await page.waitForTimeout(400);
+  const away = await read();
+  await page.screenshot({ path: 'test/desktop/shots/blur-hover-after-1280.png' });
+  expect(away.filter((t) => t.hover).length).toBe(0);
+  expect(away.filter((t) => t.blur).length).toBe(0);
+  expect(away.filter((t) => t.max).length).toBe(0);
+  expect(away.every((t) => t.name)).toBe(true);
+  // Point at one face: that face, and only that face, offers Blur for all.
+  const first = page.locator('#feed .tile:not(.me)').first();
+  const fb = await first.boundingBox();
+  await page.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
+  await page.waitForTimeout(400);
+  const over = await read();
+  expect(over[0].hover).toBe(true);
+  expect(over[0].blur).toBe(true);
+  expect(over.slice(1).filter((t) => t.blur).length).toBe(0);
+  // Blur it, then leave: the blurred face keeps Unblur in view.
+  await first.locator(':scope > .blurbox').click();
+  await expect.poll(async () => (await read())[0].pressed).toBe('true');
+  await page.mouse.move(2, 2);
+  await page.waitForTimeout(400);
+  const after = await read();
+  expect(after[0].blur).toBe(true);
+  expect(after.slice(1).filter((t) => t.blur).length).toBe(0);
+  // Keyboard: focus on a face's button shows it.
+  await page.locator('#feed .tile:not(.me)').nth(1).locator(':scope > .blurbox').focus();
+  await page.waitForTimeout(400);
+  expect((await read())[1].blur).toBe(true);
+});
