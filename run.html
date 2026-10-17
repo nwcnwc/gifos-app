@@ -13461,6 +13461,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!p) return;
       if (p.rollbackRebuild) {
         p.rollbackRebuild = false;
+        // At most one rebuild per pair per 30 s. A rollback inside the window
+        // is rebuilt once, at the window's end, and only if the connection
+        // it damaged is still the pair's: offers that keep crossing never loop.
+        const t = Date.now(), wait = 30000 - (t - (p.rollbackRebuiltAt || 0));
+        if (wait > 0) {
+          if (!p.rollbackTimer) {
+            const pc0 = p.pc;
+            if (typeof clog === 'function') clog('rollback on a live pair ' + String(p.id).slice(0, 6) + ': rebuild deferred ' + Math.round(wait / 1000) + 's');
+            p.rollbackTimer = setTimeout(() => {
+              p.rollbackTimer = null;
+              if (p.pc !== pc0 || !peers.has(p.id)) return; // replaced meanwhile: nothing left to cure
+              p.rollbackRebuiltAt = Date.now();
+              if (typeof clog === 'function') clog('rollback on a live pair ' + String(p.id).slice(0, 6) + ': deferred rebuild');
+              newPcFor(p); sendOffer(p.id, false);
+            }, wait);
+          }
+          return;
+        }
+        p.rollbackRebuiltAt = t;
         if (typeof clog === 'function') clog('rollback on a live pair ' + String(p.id).slice(0, 6) + ': rebuild');
         newPcFor(p); sendOffer(p.id, false);
         return;
