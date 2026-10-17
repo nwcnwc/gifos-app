@@ -1502,7 +1502,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   #hdrinvite[hidden] { display: none !important; }
   @media (max-width: 700px), (max-height: 500px) {
-    .topchip[data-invite="1"] { padding-top: 0; padding-bottom: 0; padding-right: 0; min-height: 44px; }
+    /* The room name is the tap that opens the rest of the status.
+       Padding made that hit 23px. The chip itself is the 44px target. */
+    .topchip { min-height: 44px; padding-top: 0; padding-bottom: 0; align-items: stretch; }
+    .topchip .title, .topchip button#status { display: inline-flex; align-items: center; min-height: 44px; box-sizing: border-box; }
+    .topchip[data-invite="1"] { padding-right: 0; }
     .topchip[data-invite="1"] #hdrinvite:not([hidden]) { display: inline-flex; }
   }
   .fitbtn { position: fixed; z-index: 6; top: calc(58px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); min-width: 44px; min-height: 44px;

@@ -521,9 +521,19 @@ Repro: `test/mobile/chat-reply.js`. It failed (`no Reply`), then passed. Gate: `
 
 Before: `qa/mobile/shots/before-chat-reply-iphone-se.png`. After: `qa/mobile/shots/after-chat-reply-iphone-se.png`.
 
+### 61. The room name was a 23px tap
+
+The header line opens the rest of the status. On an iPhone 15 it was 162×23, and the same on an SE, including sideways. The words were readable. The tap was not.
+
+The chip is the target. The line is 44px, the phrase still fits, and a tap opens the longer status. It stays off Fit and off the faces.
+
+Repro: `test/mobile/header-tap.js`. It failed (`room name is 162x23`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/header-tap.js`.
+
+Before: `qa/mobile/shots/before-header-tap-iphone-15.png`. After: `qa/mobile/shots/after-header-tap-iphone-15.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, and Reply keeps that line on the answer. The room name in the header is still 23px tall, so the tap that opens the rest of the status is easy to miss. A sideways phone is still open.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, and Reply keeps that line on the answer. The room name is a 44px tap. The full-screen control on a face is still 28×32. A sideways phone is still open.
 
 ## Personas (what was actually tried)
 
