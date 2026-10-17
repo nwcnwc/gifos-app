@@ -6,6 +6,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 
 ## Fixed
 
+### A dead camera took about 9 seconds to come back
+
+- **Who hits it:** anyone whose camera stays live but goes pure black or stops sending frames, often after another app takes the lens.
+- **What you saw:** Camera stopped — bringing it back on your tile, then a black picture for the room until the restart, 7.4 to 8.9 seconds after the camera died.
+- **Repro:** `test/desktop/phone-cam.spec.js` (“a desktop camera that goes pure black…” and “…that stops sending frames is grabbed again within a few seconds”) failed before the fix on Chromium and Firefox. It was grabbed again after 7.3 to 8.9 seconds against a 5.5 second limit (711029f).
+- **Fix:** the watchdog samples the self-view every second instead of every three seconds. It grabs the camera again once it has been black or silent for about three more seconds, so a one-second hiccup is left alone. A dim room that is still sending frames still never counts. A track that has ended is still tried every three seconds, so three failed grabs still take about 9 seconds before the fail line.
+- **Proof:** the repro passes, and the desktop suite passes, 182/182 on Chromium and Firefox. Measured over five runs each at 1280: base 8.9 s (pure black) and 7.4 s (no frames), fix 3.9 s and 3.4 s. WebKit is skipped because a canvas capture closes its tab.
+
 ### A quiet family call still showed buttons on every face
 
 - **Who hits it:** two to four people talking on a desktop, with the pointer resting on someone's face.
