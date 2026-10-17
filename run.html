@@ -2871,6 +2871,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         barLeadingStatus: '🧩 Sie leiten die App — nur Ihre Änderungen an den gemeinsamen Reglern bleiben.',
         barCommunalStatus: '🧩 Gemeinsame Steuerung — jeder hier kann die geteilte App steuern.',
         fullScreen: 'Vollbild', leaveFullScreen: 'Vollbild beenden',
+        tileControls: 'Steuerung für diese Person.', handChip: 'Hand gehoben', leavingChip: 'geht…', recChip: 'nimmt dieses Meeting auf', scribeChip: 'schreibt alle mit', stopShareTip: 'Ihre Bildschirmfreigabe beenden',
         stealData: '+ Daten', stealDataTip: 'Die App und alles, was jetzt darin ist',
         stealJoined: 'wie ich kam', stealJoinedTip: 'Die App und der Raum, wie er war, als Sie kamen',
         stealApp: 'nur die App', stealAppTip: 'Eine saubere Kopie — nur die App, keine Daten des Raums',
@@ -3162,6 +3163,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         barLeadingStatus: '🧩 Diriges la app — solo tus cambios en los controles compartidos se quedan.',
         barCommunalStatus: '🧩 Control entre todos — cualquiera aquí puede manejar la app compartida.',
         fullScreen: 'Pantalla completa', leaveFullScreen: 'Salir de pantalla completa',
+        tileControls: 'Controles para esta persona.', handChip: 'mano levantada', leavingChip: 'saliendo…', recChip: 'grabando esta reunión', scribeChip: 'anotando a todos', stopShareTip: 'Dejar de compartir tu pantalla',
         stealData: '+ datos', stealDataTip: 'La app y todo lo que hay ahora',
         stealJoined: 'como entré', stealJoinedTip: 'La app y la sala como estaban cuando entraste',
         stealApp: 'solo la app', stealAppTip: 'Una copia limpia — solo la app, sin los datos de la sala',
@@ -5564,7 +5566,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!isMe) {
         tile.tabIndex = 0;
         tile.setAttribute('role', 'group');
-        tile.setAttribute('aria-label', (name || 'Participant') + '. Controls for this person.');
+        tile.setAttribute('aria-label', (name || uiText('rosterPerson', 'Participant')) + '. ' + uiText('tileControls', 'Controls for this person.'));
       }
       const video = document.createElement('video');
       video.autoplay = true; video.playsInline = true;
@@ -5582,8 +5584,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // other live feed as tappable floating thumbs. Esc / ✕ exits. iOS
       // Safari can only fullscreen a <video>, so it gets the native one.
       const maxbtn = document.createElement('button');
-      maxbtn.className = 'maxbtn'; maxbtn.textContent = '⛶'; maxbtn.title = 'Full screen';
-      maxbtn.setAttribute('aria-label', 'Full screen');
+      maxbtn.className = 'maxbtn'; maxbtn.textContent = '⛶'; maxbtn.title = uiText('fullScreen', 'Full screen');
+      maxbtn.setAttribute('aria-label', maxbtn.title);
       maxbtn.addEventListener('click', (e) => {
         e.stopPropagation();
         if (fsSkipDark(tile)) return;
@@ -5716,8 +5718,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const t = isMe ? meTile : peers.get(id);
       if (!t) return;
       if (!isMe && t.tile) {
-        const who = (t.label && t.label.textContent) || 'Participant';
-        const al = who + '. Controls for this person.';
+        const who = (t.label && t.label.textContent) || uiText('rosterPerson', 'Participant');
+        const al = who + '. ' + uiText('tileControls', 'Controls for this person.');
         if (t.tile.getAttribute('aria-label') !== al) t.tile.setAttribute('aria-label', al);
       }
       reactStats.tiles++;
@@ -5725,7 +5727,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // once, before the entry prompt's Continue or a Settings → Change, and
       // a label set only at makeTile stayed "Guest NNNN" for the whole call.
       if (isMe && t.label) {
-        const want = myName() + ' (you)';
+        const want = myName() + ' ' + uiText('whoYou', '(you)');
         if (t.label.textContent !== want) {
           t.label.textContent = want;
           // Inline on purpose: meet-own-name.js runs updateTile alone, and the
@@ -5791,21 +5793,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // binding is not in scope, and a lifted call must not abort the repaint.
       if ((isMe ? st.scr : (typeof sharingScreen === 'function' && sharingScreen(id))) && (isMe || !(typeof shareBlocked === 'function' && shareBlocked(id)))) {
         chips.push(isMe
-          ? '<span class="warn stopshare" role="button" tabindex="0" title="Stop sharing your screen">🖥 ' + esc(uiText('stopShare', 'Stop sharing')) + '</span>'
+          ? '<span class="warn stopshare" role="button" tabindex="0" title="' + esc(uiText('stopShareTip', 'Stop sharing your screen')) + '">🖥 ' + esc(uiText('stopShare', 'Stop sharing')) + '</span>'
           : '<span class="warn">🖥 ' + esc(uiText('shareTheirsChip', 'sharing their screen')) + '</span>');
       }
-      if (st.hand) chips.push('<span class="warn">✋ hand raised</span>');
-      if (st.lv) chips.push('<span>leaving…</span>');
-      if (st.rec) chips.push('<span class="warn">⏺ recording this meeting</span>');
-      if (st.scribe) chips.push('<span>✍ writing everyone down</span>');
+      if (st.hand) chips.push('<span class="warn">✋ ' + esc(uiText('handChip', 'hand raised')) + '</span>');
+      if (st.lv) chips.push('<span>' + esc(uiText('leavingChip', 'leaving…')) + '</span>');
+      if (st.rec) chips.push('<span class="warn">⏺ ' + esc(uiText('recChip', 'recording this meeting')) + '</span>');
+      if (st.scribe) chips.push('<span>✍ ' + esc(uiText('scribeChip', 'writing everyone down')) + '</span>');
       // Status icons only: a muted mic, a camera-off glyph. No icon when the
       // camera is on. Blur is the picture itself, never a badge. A bot has
       // neither a mic nor a camera.
       if (!st.bot && gMute) chips.push(statusIco('mic-off', 'muted for everyone by ' + (mod.mute.by || 'someone')));
-      else if (!st.bot && st.muted) chips.push(statusIco('mic-off', 'muted'));
+      else if (!st.bot && st.muted) chips.push(statusIco('mic-off', uiText('muted', 'muted')));
       const bl = blurLevelFor(id);
       if (!st.bot && gCam) chips.push(statusIco('cam-off', 'video off for everyone by ' + (mod.cam.by || 'someone')));
-      else if (!st.bot && st.camOff) chips.push(statusIco('cam-off', 'camera off'));
+      else if (!st.bot && st.camOff) chips.push(statusIco('cam-off', uiText('camOffChip', 'camera off')));
       if (hasAdminRoom() && mod.app && mod.app.on && !admins.includes(id)) chips.push('<span>🧩 may run apps — allowed by ' + esc(mod.app.by) + '</span>');
       // The chip names a per-person allow only. A room-wide allow covers
       // everyone and would chip every tile; modOf would not tell them apart.
@@ -13869,7 +13871,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return v;
       }, () => { roomStateSettled = true; return false; });
       return ensureName().then(() => {
-          meTile = makeTile('me', myName() + ' (you)', true);
+          meTile = makeTile('me', myName() + ' ' + uiText('whoYou', '(you)'), true);
           updateTile('me');
           joinRoom();
           updateStatus();
@@ -14085,7 +14087,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.body.classList.add('app-room');
       try { refreshAudioBtn(); } catch (e) {}
       return ensureName().then(() => {
-        meTile = makeTile('me', myName() + ' (you)', true);
+        meTile = makeTile('me', myName() + ' ' + uiText('whoYou', '(you)'), true);
         tileNote(meTile, 'This is an app room — no camera until you join the call (banner or the camera button).');
         updateTile('me');
         const j = ROOM.join;
