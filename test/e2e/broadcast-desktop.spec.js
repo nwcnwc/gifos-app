@@ -3844,7 +3844,7 @@ test('the chat-off placeholders fit the chat box', async ({ page }) => {
           room: Math.floor(inp.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) };
       });
       const tag = (admin ? 'host' : 'viewer') + ' at ' + w + ': ' + JSON.stringify(got);
-      if (w === 1280) await page.screenshot({ path: 'artifacts/chat-off-' + (admin ? 'host' : 'viewer') + '-' + (process.env.SHOT_TAG || 'run') + '.png', clip: { x: 900, y: 600, width: 380, height: 120 } });
+      if (w === 1280) await page.screenshot({ path: 'artifacts/chat-off-' + (admin ? 'host' : 'viewer') + '-' + (process.env.SHOT_TAG || 'run') + '.png', clip: { x: 900, y: 520, width: 380, height: 200 } });
       expect(got.text, tag).toBe(text);
       expect(got.disabled, tag + ' locked only for guests').toBe(!admin);
       expect(got.text, tag + ' says chat is off').toMatch(/chat is off|chat off/i);

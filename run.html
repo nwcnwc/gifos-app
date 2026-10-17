@@ -14219,8 +14219,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const inp = document.getElementById('chat-in');
       inp.disabled = locked;
       const praying = document.getElementById('pray') && document.getElementById('pray').getAttribute('aria-pressed') === 'true';
-      inp.placeholder = locked ? 'Chat is off — only the host can post.'
-        : (off ? 'Chat is off for guests — you can still post.' : (praying ? 'Prayer request…' : 'Message everyone…'));
+      // Short enough for the desktop box beside Send (~219px); the whole
+      // reason rides on the title.
+      inp.placeholder = locked ? 'Chat is off for now'
+        : (off ? 'Chat is off for guests' : (praying ? 'Prayer request…' : 'Message everyone…'));
+      inp.title = locked ? 'Chat is off — only the host can post.' : (off ? 'Chat is off for guests — you can still post.' : '');
       document.querySelector('#chatform button[type="submit"]').disabled = locked;
       document.getElementById('cattach').disabled = locked;
       const b = document.getElementById('chatmod');
