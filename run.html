@@ -5843,13 +5843,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         applyAvatarFile(file).then(() => paint());
       });
       input.focus();
-      return new Promise((resolve) => {
+      {
         const save = () => {
           GifOS.store.setName(input.value.trim());
           try { sessionStorage.setItem('gifos_appear_ok', '1'); sessionStorage.setItem('gifos_appeared', '1'); } catch (e) {}
           bg.remove();
           try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}
-          resolve(GifOS.store.identity());
         };
         bg.querySelector('#nmok').onclick = save;
         // Clear blanks the name and the picture, then closes (qa-meet-desktop).
@@ -5860,10 +5859,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           try { sessionStorage.setItem('gifos_appear_ok', '1'); sessionStorage.setItem('gifos_appeared', '1'); } catch (e) {}
           bg.remove();
           try { refreshAllTiles(); broadcastStatus(); pushLeaf(); } catch (e) {}
-          resolve(GifOS.store.identity());
         };
         input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
-      });
+      }
+      // The knock does not wait on the card: the seeded or stored name goes
+      // now, and Save or Clear re-announce the one chosen.
+      return Promise.resolve(GifOS.store.identity());
     }
 
     // Broadcast glance state. The status sentence still carries the detail.
