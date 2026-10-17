@@ -2842,3 +2842,32 @@ test('a viewer at the name card is told they are joining, not watching', async (
   await expect(page.locator('#airwho')).toBeVisible();
   await expect(page.locator('#airwho')).toHaveText(/^\d+ watching$/);
 });
+
+test('a joined viewer is told they are watching, not the video quality', async ({ page }) => {
+  // Seen across two machines: a viewer in a service with its host read
+  // "2 in this service · 720p · a password unlocks clear video". A viewer
+  // sends no video, so the quality and the password hint were host talk,
+  // and the room bar already counts who is watching.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  const status = page.locator('#status');
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=viewline' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.watch');
+    await page.waitForFunction(() => window.__gifosVideo && window.__gifosVideo.livePeerForTest);
+    const n = await page.evaluate(() => window.__gifosVideo.livePeerForTest('hostpeer', 'Pastor Sam'));
+    expect(n).toBe(2);
+    await expect(status).toContainText('You are watching this service.');
+    await expect(status).not.toContainText('in this service');
+    await expect(status).not.toContainText('720p');
+    await expect(status).not.toContainText(/\d+p\b/);
+    await expect(status).not.toContainText('password');
+    await expect(status).not.toContainText('clear video');
+    const clip = await status.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+    expect(clip).toBe(false);
+  }
+});
