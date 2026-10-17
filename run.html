@@ -12296,15 +12296,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       probe.width = 32; probe.height = 18;
       const pctx = probe.getContext('2d', { willReadFrequently: true });
       let darkTicks = 0, revives = 0, lastPainted = 0, endedTries = 0;
+      // 0 = picture, 1 = dark, 2 = pure black. A dark room still has sensor
+      // noise above 2; a camera that lost its frames paints exact zeros.
       const dark = () => {
         const v = meTile && meTile.video;
-        if (!v || !v.videoWidth) return true; // no frames yet IS the symptom
+        if (!v || !v.videoWidth) return 1; // no frames yet IS the symptom
         try {
           pctx.drawImage(v, 0, 0, 32, 18);
           const d = pctx.getImageData(0, 0, 32, 18).data;
-          for (let i = 0; i < d.length; i += 4) if (d[i] > 12 || d[i + 1] > 12 || d[i + 2] > 12) return false;
-          return true;
-        } catch (e) { return false; } // can't sample — assume fine, never loop
+          let top = 0;
+          for (let i = 0; i < d.length; i += 4) {
+            const m = Math.max(d[i], d[i + 1], d[i + 2]);
+            if (m > 12) return 0;
+            if (m > top) top = m;
+          }
+          return top <= 2 ? 2 : 1;
+        } catch (e) { return 0; } // can't sample — assume fine, never loop
       };
       setInterval(() => {
         if (!localStream || myStatus.camOff || document.hidden) return;
@@ -12340,12 +12347,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const painting = !!(blurPipe && blurPipe.painted > lastPainted);
         lastPainted = blurPipe ? blurPipe.painted : 0;
         // A phone that keeps the track "live" but sends no frames is the
-        // common kill. Say so on the tile at the first quiet sample. The
-        // re-grab still waits for three samples, so a dark room that is
-        // actually painting does not restart the camera or flash the line.
+        // common kill, and one that paints exact black is the other. Say so
+        // on the tile at the first such sample. The re-grab still waits for
+        // three samples, and a dark room that is still painting does not
+        // flash the line.
         const silent = window.__gifosForceBlackCamHold === true || (judge.muted && !painting);
-        if (silent || dark()) {
-          if (silent) showCamBack(true);
+        const shade = silent ? 0 : dark();
+        if (silent || shade) {
+          if (silent || shade === 2) showCamBack(true);
           if (++darkTicks >= 3 && revives < 3) {
             darkTicks = 0; revives++;
             setStatus(uiText('camBlack', 'Your camera was sending black video — restarting it…'));
