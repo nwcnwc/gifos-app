@@ -7509,7 +7509,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const turnPair = !!((peers.get(from) || {}).turnAnchor || (peers.get(from) || {}).turnServe); // a free-pool anchor pair redials whatever the seats say
         if (!linkTo(from) && meshKnows(from) && !turnPair) { rxStats.offerRejected++; return; }
         const p = makePeer(from, msg.name);
-        if (p && !linkTo(from) && !meshKnows(from)) p.boot = true; // a knocker's door, seen from the greeter: kept while it serves, never rebuilt once the knocker is seated elsewhere
+        if (p && !linkTo(from) && !meshKnows(from)) {
+          p.boot = true; // a knocker's door, seen from the greeter: kept while it serves, never rebuilt once the knocker is seated elsewhere
+          // ...unless I am the one knocking (a greeter dialled me back): then it
+          // is my door, closed by me once I am seated, like the ones I dial
+          const ms = meshSeat(); if (!(ms && ms.hasCoord && ms.state === 3)) p.bootOut = true;
+        }
         // A fresh offer onto a LONG-DEAD local pc negotiates into a corpse:
         // the tunnel-return stall (behavior battery 06c, 2026-07-26) — the
         // evicted side's zombie ate the returning offers until the vouch
@@ -7878,7 +7883,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // renegotiation of a corpse.
       if (p && p.pc) { newPcFor(p); if (p.neverUp === true && manyDoors) p.dialWait = Math.min(DOOR_REDIAL_CAP, (p.dialWait || 5000) * 2); }
       sendOffer(pid, false);
-      const q = peers.get(pid); if (q) { q.boot = true; if (!manyDoors) armDoorRetry(pid, q); } // the door I came in by: retired once a seat's own link is open (retireBootPairs), unless the arithmetic names it
+      const q = peers.get(pid); if (q) { q.boot = true; q.bootOut = true; if (!manyDoors) armDoorRetry(pid, q); } // the door I came in by: retired once a seat's own link is open (retireBootPairs), unless the arithmetic names it; bootOut = I knocked through it
     }
     // The bootstrap channel to a greeter has done its work once I am seated
     // and a link the arithmetic names is open: a seat holds its bounded
@@ -7887,7 +7892,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function retireBootPairs() {
       const s = meshSeat();
       if (!s || !s.hasCoord || s.state !== 3) return;
-      for (const [pid, q] of Array.from(peers)) if (q.boot && !linkTo(pid) && meshKnows(pid) && !q.turnAnchor && !q.turnServe) dropPeer(pid, true); // a knocker still outside keeps its door to me; a free-pool anchor pair keeps carrying its voice
+      for (const [pid, q] of Array.from(peers)) if (q.boot && !linkTo(pid) && (meshKnows(pid) || q.bootOut) && !q.turnAnchor && !q.turnServe) dropPeer(pid, true); // a knocker still outside keeps its door to me; a door I knocked through goes wherever its greeter sits; a free-pool anchor pair keeps carrying its voice
     }
     function ensureLink(pid, name) {
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return; // never link to a forger
@@ -9843,6 +9848,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const theyOutside = !meshKnows(pid);
           if (p.boot && p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed')) { dropPeer(pid, !theyOutside || rosterIds.includes(pid)); continue; } // a dead door: gone now, never rebuilt (a knocker redials); a member the roster already holds keeps its status
           else if (p.turnAnchor || p.turnServe) { p.unlinkedSince = 0; } // a free-pool anchor pair stays while it carries a voice, whatever the seats say
+          // A door I knocked through is mine to close once I am seated: its
+          // greeter is seated somewhere my occupancy need not hold (Section 1
+          // when I sit deep), so theyOutside says nothing about it. Kept, it
+          // was a pc with video from every late joiner to every Section-1
+          // seat, a front seat's load growing with the room (bw-ladder N=32).
+          else if (p.boot && p.bootOut && seatedNow && anyLinkOpen) { dropPeer(pid, true); continue; }
           else if (p.boot && (!seatedNow || theyOutside)) { p.unlinkedSince = 0; }
           else if (p.boot && seatedNow && anyLinkOpen) { dropPeer(pid, true); continue; }
           else {
