@@ -13256,8 +13256,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (m.k === 'react') {
         // One flood from the person who clapped. The stage adds it to the
         // count. It is not sent on again.
+        // It comes over the direct link and over the mesh, so the id drops
+        // the second copy.
         const who = p && p.id;
-        if (who && who !== myId) takeAudienceReact(m.e, who);
+        if (who && who !== myId && audienceReactFresh(m.id)) takeAudienceReact(m.e, who);
       } else if (m.k === 'bx' && typeof window !== 'undefined' && window.GifOS && GifOS.meetSession && typeof window.__gifosMeetEmit === 'function') {
         GifOS.meetSession.takeXfer(m, window.__gifosMeetEmit);
       } else if (m.k === 'chatack') {
@@ -21302,9 +21304,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       clearTimeout(audienceReactFade);
       if (soon < Infinity) audienceReactFade = setTimeout(paintAudienceReacts, Math.max(0, soon - now) + 40);
     }
+    // Clap ids already counted. A frame without an id (an older device)
+    // still counts.
+    const audienceReactSeen = new Set();
+    function audienceReactFresh(id) {
+      if (typeof id !== 'string' || !id) return true;
+      const k = id.slice(0, 64);
+      if (audienceReactSeen.has(k)) return false;
+      audienceReactSeen.add(k);
+      if (audienceReactSeen.size > 2000) audienceReactSeen.delete(audienceReactSeen.values().next().value);
+      return true;
+    }
     function sendAudienceReact(emoji) {
       takeAudienceReact(emoji, (typeof myId !== 'undefined' && myId) || 'me');
-      try { sendAll({ k: 'react', e: emoji }, { ephemeral: true }); } catch (e) {}
+      const id = uid('r');
+      audienceReactFresh(id);
+      try { sendAll({ k: 'react', e: emoji, id }, { ephemeral: true }); } catch (e) {}
     }
     (function () {
       const btn = document.getElementById('reactbtn');
