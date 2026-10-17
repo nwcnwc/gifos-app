@@ -273,3 +273,37 @@ test('a desktop camera that stops sending frames is grabbed again within a few s
   await page.evaluate(() => { window.__gifosForceBlackCamHold = false; window.__releaseCam(); });
   await expect(page.locator('.tile.me .cambackmark')).toBeHidden({ timeout: 8000 });
 });
+
+// A grab used to stop the blur canvas and start a new one, so the track the
+// room receives ended and was replaced (and a staged feed got a new id). The
+// room should keep the same picture track and see the fresh camera on it.
+test('a camera grabbed again keeps the same picture track for the room', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
+  await paintedCam(page, 'qadesksametrack', '#000000', 1280);
+  await expect.poll(() => page.evaluate(() => {
+    const v = document.querySelector('.tile.me video');
+    const t = v && v.srcObject && v.srcObject.getVideoTracks()[0];
+    if (t && t.kind === 'video' && t.readyState === 'live') window.__sentBefore = t;
+    return !!window.__sentBefore;
+  })).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.__gumN || 0), { timeout: 12000 }).toBe(2);
+  await page.evaluate(() => window.__releaseCam());
+  await expect(page.locator('.tile.me .cambackmark')).toBeHidden({ timeout: 8000 });
+  // The fresh camera paints red; wait for it to reach the self-view, which
+  // shows exactly the track that is sent.
+  await expect.poll(() => page.evaluate(() => {
+    const v = document.querySelector('.tile.me video');
+    if (!v || !v.videoWidth) return 0;
+    const c = document.createElement('canvas');
+    c.width = 8; c.height = 8;
+    const x = c.getContext('2d');
+    x.drawImage(v, 0, 0, 8, 8);
+    return x.getImageData(4, 4, 1, 1).data[0];
+  }), { timeout: 8000 }).toBeGreaterThan(120);
+  const same = await page.evaluate(() => {
+    const v = document.querySelector('.tile.me video');
+    const t = v.srcObject.getVideoTracks()[0];
+    return { same: t === window.__sentBefore, state: window.__sentBefore.readyState };
+  });
+  expect(same).toEqual({ same: true, state: 'live' });
+});
