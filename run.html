@@ -6185,6 +6185,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // and anyone the mate hears directly. In a row that holds both ends of a
     // pair nothing changes (each row mate hears the others directly).
     const bridgeFeeds = new Map();   // row mate -> { fold, keys }: at most one row
+    const dbgFoldMeters = new WeakMap();   // fold -> analyser, for the debug view only (made on first read)
     function bridgeCrossRow() { for (const p of peers.values()) if ((p.turnAnchor || p.turnServe) && p.connected && !isRowMate(p.id)) return true; return false; }
     function syncBridgeFeeds() {
       const on = bridgeCrossRow(); const mates = on ? new Set(rowMates()) : new Set();
@@ -22616,10 +22617,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // the mixes this page sends: its uplink to its anchor, one mix-minus per client, one feed per row mate (source keys by owner name), and whether each sender carries it
         mixes: (() => { const nm = (id) => rosterNames[id] || String(id).slice(0, 8); const keys = (ks) => [...ks].map((k) => { const m = /^(?:p|r):([^:]+):/.exec(k); return m ? nm(m[1]) : k.split(':')[0]; });
           const sent = (pid, t) => { const q = peers.get(pid); return !!(q && q.mainA && t && q.mainA.track === t); };
+          const mid = (pid) => { const q = peers.get(pid); try { const tr = q && q.pc && q.mainA ? q.pc.getTransceivers().find((x) => x.sender === q.mainA) : null; return tr ? tr.mid : null; } catch (e) { return null; } };
+          const lvl = (fold) => { try { if (!ac || !fold || !fold.dest) return null; let an = dbgFoldMeters.get(fold); if (!an) { an = ac.createAnalyser(); an.fftSize = 2048; ac.createMediaStreamSource(fold.dest.stream).connect(an); dbgFoldMeters.set(fold, an); } const b = new Float32Array(an.fftSize); an.getFloatTimeDomainData(b); let e = 0; for (const x of b) e += x * x; return Math.round(Math.sqrt(e / b.length) * 1e4) / 1e4; } catch (e) { return null; } };
           const a = turnAnchorId != null ? turnAnchorId : null;
-          return { up: turnUp ? { to: a != null ? nm(a) : null, keys: keys(turnUp.keys), sent: a != null && sent(a, turnUpTrack()) } : null,
-            serve: [...turnMixes].map(([pid, mx]) => ({ to: nm(pid), keys: keys(mx.keys), sent: sent(pid, turnMixTrack(pid)) })),
-            feeds: [...bridgeFeeds].map(([pid, fd]) => ({ to: nm(pid), keys: keys(fd.keys), sent: sent(pid, bridgeFeedTrack(pid)) })) }; })(),
+          return { up: turnUp ? { to: a != null ? nm(a) : null, keys: keys(turnUp.keys), sent: a != null && sent(a, turnUpTrack()), mid: a != null ? mid(a) : null, level: lvl(turnUp.fold) } : null,
+            serve: [...turnMixes].map(([pid, mx]) => ({ to: nm(pid), keys: keys(mx.keys), sent: sent(pid, turnMixTrack(pid)), mid: mid(pid), level: lvl(mx.fold) })),
+            feeds: [...bridgeFeeds].map(([pid, fd]) => ({ to: nm(pid), keys: keys(fd.keys), sent: sent(pid, bridgeFeedTrack(pid)), mid: mid(pid), level: lvl(fd.fold) })) }; })(),
         pairs: [...peers.values()].map((p) => {
           let urls = [];
           try { for (const sv of (p.pc && p.pc.getConfiguration().iceServers) || []) urls = urls.concat(Array.isArray(sv.urls) ? sv.urls : [sv.urls]); } catch (e) {}
