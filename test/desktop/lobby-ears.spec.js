@@ -73,11 +73,14 @@ test('a person in the waiting room hears no one and no one hears them, until Adm
       const hm = peerOf(h, /Mina/), gj = peerOf(g, /Jordan/);
       const hostHearsGuest = !!(hm && hm.audible);
       const guestHearsHost = !!(gj && gj.audible);
-      return { ok: !!hm && !!gj && !hostHearsGuest && !guestHearsHost && !g.micSends, minaHeld: !!(hm && hm.held), hostHearsGuest, guestHearsHost, guestMicSends: g.micSends, guestWaiting: g.waiting, sawGuest: !!hm, sawHost: !!gj };
+      // Both voices must be wired (a live track on the element), else "not
+      // heard" only means the link is not up yet.
+      const wired = !!(hm && hm.wired && gj && gj.wired);
+      return { ok: wired && !hostHearsGuest && !guestHearsHost && !g.micSends, wired, minaHeld: !!(hm && hm.held), hostHearsGuest, guestHearsHost, guestMicSends: g.micSends, guestWaiting: g.waiting };
     }, 30000);
     await H.page.screenshot({ path: path.join(SHOTS, `lobby-ears-${PHASE}-host-1280.png`) });
     await G.page.screenshot({ path: path.join(SHOTS, `lobby-ears-${PHASE}-guest-1280.png`) });
-    expect(sealed).toMatchObject({ ok: true, minaHeld: true, hostHearsGuest: false, guestHearsHost: false, guestMicSends: false, guestWaiting: true });
+    expect(sealed).toMatchObject({ ok: true, wired: true, minaHeld: true, hostHearsGuest: false, guestHearsHost: false, guestMicSends: false, guestWaiting: true });
     // The host can see who is waiting, and admit them.
     await expect(H.page.locator('#roster-waitlist .roster-row', { hasText: 'Mina Park' })).toBeVisible({ timeout: 30000 });
 
