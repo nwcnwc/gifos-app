@@ -2871,3 +2871,29 @@ test('a joined viewer is told they are watching, not the video quality', async (
     expect(clip).toBe(false);
   }
 });
+
+test('a live host with viewers is told they are live, not the meeting count', async ({ page }) => {
+  // Seen across two machines: a host with one viewer read "2 in this
+  // service · 720p · a password unlocks clear video" while the room bar said
+  // "1 watching", and the host had just typed a password to go live. The
+  // count was the meeting's, and "a password" did not say which one.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Pastor Sam');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  const status = page.locator('#status');
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=hostline' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.live');
+    await page.waitForFunction(() => window.__gifosVideo && window.__gifosVideo.livePeerForTest);
+    const n = await page.evaluate(() => window.__gifosVideo.livePeerForTest('viewerpeer', 'Jordan Lee'));
+    expect(n).toBe(2);
+    if (w === 1280) { await page.waitForTimeout(500); await page.screenshot({ path: 'artifacts/host-line-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    await expect(status).toHaveText(/^You are live · \d+p\b/);
+    await expect(status).toContainText('blurred until you set a viewer password');
+    await expect(status).not.toContainText('in this service');
+    await expect(status).not.toContainText('a password unlocks');
+  }
+});
