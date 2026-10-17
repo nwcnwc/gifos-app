@@ -551,9 +551,19 @@ Repro: `test/mobile/sideways-names.js`. It failed (the name was clipped, and blu
 
 Before: `qa/mobile/shots/before-sideways-names-iphone-se.png`. After: `qa/mobile/shots/after-sideways-names-iphone-se.png`.
 
+### 64. An address in chat was plain text
+
+Ruth wrote "Meet us at https://example.com/park." The address was the same ink as the sentence. Nothing to tap. Zoom, Meet, Teams, and Messages make that a link.
+
+An http or https address becomes a link. The mark is underlined, blue on someone else's line and gold on yours. A trailing period stays out of the address. javascript: stays text.
+
+Repro: `test/mobile/chat-link.js`. It failed (`the address is not a link`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-link.js`.
+
+Before: `qa/mobile/shots/before-chat-link-iphone-se.png`. After: `qa/mobile/shots/after-chat-link-iphone-se.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, and Reply keeps that line on the answer. The room name and full screen are 44px taps. A sideways phone shows the whole name. Chat is still the open personal job.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, and Reply keeps that line on the answer. An address in a line is a link. The room name and full screen are 44px taps. A sideways phone shows the whole name. You still cannot take back your own chat line.
 
 ## Personas (what was actually tried)
 

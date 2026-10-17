@@ -1150,6 +1150,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cempty { align-self: stretch; max-width: none; background: transparent; color: #1d1d1f; font-size: 1rem; padding: 8px 4px; }
   .cmsg .cmention { color: #0064c8; font-weight: 800; }
   .cmsg.mine .cmention { color: #ffe08a; }
+  .cmsg a.clink { color: #0064c8; font-weight: 700; text-decoration: underline; overflow-wrap: anywhere; }
+  .cmsg.mine a.clink { color: #ffe08a; }
   #chatmentions { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 0; max-height: 148px; overflow-y: auto; }
   #chatmentions[hidden] { display: none !important; }
   #chatmentions button { min-height: 44px; border: 0; border-radius: 12px; background: #e8ecf1; color: #1d1d1f;
@@ -15576,13 +15578,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       names.sort((a, b) => a.localeCompare(b));
       return names;
     }
+    function linkifyEscaped(escaped) {
+      return String(escaped || '').replace(/https?:\/\/[^\s<"]+/gi, (raw) => {
+        let url = raw;
+        let trail = '';
+        const end = url.match(/[),.;!?]+$/);
+        if (end) { trail = end[0]; url = url.slice(0, -trail.length); }
+        if (!/^https?:\/\//i.test(url) || url.length < 8) return raw;
+        return '<a class="clink" href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>' + trail;
+      });
+    }
     function withMentions(text) {
-      let html = esc(text);
+      let html = linkifyEscaped(esc(text));
       const names = chatPeople().slice().sort((a, b) => b.length - a.length);
       for (const name of names) {
         const token = esc('@' + name);
         if (html.indexOf(token) < 0) continue;
-        html = html.split(token).join('<b class="cmention">' + token + '</b>');
+        html = html.split(/(<[^>]+>)/).map((part) => {
+          if (part.charAt(0) === '<') return part;
+          return part.split(token).join('<b class="cmention">' + token + '</b>');
+        }).join('');
       }
       return html;
     }
