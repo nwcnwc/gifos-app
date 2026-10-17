@@ -7398,7 +7398,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // anything was added (the caller renegotiates over the channel).
     function enableMedia(p) {
       if (!p || !p.pc || p.mediaOn) return false;
-      p.mediaOn = true;
+      p.mediaOn = true; p.mediaAt = Date.now(); // when this connection's media was put on (the rollback rebuild reads it)
       const pc = p.pc, carryCam = camPeer(p.id) && !p.headless;
       let added = false;
       if (localStream && carryCam) {
@@ -12960,7 +12960,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // its tiles stop presenting frames while their tracks keep decoding.
           // A reseat revives the senders; nothing on this pc revives the sinks.
           // So the pair is rebuilt once the answer has gone out (the NEW-PC RULE).
-          if (p.connected && p.mediaOn) p.rollbackRebuild = true;
+          // Only a pair whose media has been on for 5 s: the first media
+          // negotiation of a fresh connection (a rebuild's own crossing offers)
+          // has nothing to revive.
+          if (p.connected && p.mediaOn && Date.now() - (p.mediaAt || 0) > 5000) p.rollbackRebuild = true;
         }
         // A NEWER OFFER SUPERSEDES ONE I HELD. They rolled the held one back
         // to send this, so it describes a state they no longer have. Applying
