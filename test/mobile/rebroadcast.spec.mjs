@@ -25,7 +25,15 @@ async function joinViewer(browser, opts, baseURL, link) {
   const v = await c.newPage();
   await v.goto('/run.html' + link, { waitUntil: 'domcontentloaded' });
   await v.locator('#nmok').click();
-  await v.waitForFunction(() => { const e = document.querySelector('#stagefeed .rowtile video'); return !!e && e.currentTime > 0.5; }, null, { timeout: 60000 });
+  try {
+    await v.waitForFunction(() => { const e = document.querySelector('#stagefeed .rowtile video'); return !!e && e.currentTime > 0.5; }, null, { timeout: 60000 });
+  } catch (err) {
+    // Say what the viewer had, so a miss names its stage.
+    const st = await v.evaluate(() => ({ status: document.getElementById('status').textContent, badge: document.getElementById('livebadge-txt').textContent,
+      tiles: document.querySelectorAll('#stagefeed .rowtile').length, via: window.__gifosVideo.stageViaForTest ? window.__gifosVideo.stageViaForTest() : null,
+      t: (document.querySelector('#stagefeed .rowtile video') || {}).currentTime })).catch((e) => String(e));
+    throw new Error('viewer never played the stage: ' + JSON.stringify(st));
+  }
   return { c, v };
 }
 
@@ -45,18 +53,28 @@ async function advancing(v, ms) {
 // offset is beep minus flash, paired to the nearest flash, in ms.
 async function avOffsets(v, ms) {
   return v.evaluate((ms) => new Promise((done) => {
-    const e = document.querySelector('#stagefeed .rowtile video');
-    const s = window.__gifosVideo.stageFeedForTest();
-    const a = s && s.getAudioTracks()[0];
-    if (!a) { done({ audio: false }); return; }
+    // Follow what the viewer is shown: the fan-out may move this phone to
+    // another relayer mid-window, which brings a new element or track.
+    const s0 = window.__gifosVideo.stageFeedForTest();
+    if (!(s0 && s0.getAudioTracks()[0])) { done({ audio: false }); return; }
     const ac = new AudioContext();
     ac.resume();
     const an = ac.createAnalyser(); an.fftSize = 256;
-    ac.createMediaStreamSource(new MediaStream([a])).connect(an);
+    let a = null, src = null, rebinds = -1;
+    const bindAudio = () => {
+      const s = window.__gifosVideo.stageFeedForTest();
+      const t = s && s.getAudioTracks()[0];
+      if (!t || t === a) return;
+      try { if (src) src.disconnect(); } catch (x) {}
+      a = t; rebinds++;
+      src = ac.createMediaStreamSource(new MediaStream([a])); src.connect(an);
+    };
+    bindAudio();
     const buf = new Float32Array(an.fftSize);
     const beeps = [], flashes = [];
-    let loud = false, bright = false, peak = 0;
+    let loud = false, bright = false, peak = 0, polls = 0;
     const iv = setInterval(() => {
+      if (++polls % 60 === 0) bindAudio();
       an.getFloatTimeDomainData(buf);
       let r = 0; for (const x of buf) r += x * x; r = Math.sqrt(r / buf.length);
       peak = Math.max(peak, r);
@@ -65,17 +83,27 @@ async function avOffsets(v, ms) {
     }, 4);
     const cv = document.createElement('canvas'); cv.width = 8; cv.height = 8;
     const g = cv.getContext('2d', { willReadFrequently: true });
-    const frame = (now) => {
-      g.drawImage(e, 0, 0, 8, 8);
-      const d = g.getImageData(0, 0, 8, 8).data;
-      let l = 0; for (let i = 0; i < d.length; i += 4) l += d[i]; l /= 64;
-      if (!bright && l > 160) flashes.push(now);
-      bright = l > 100;
-      e.requestVideoFrameCallback(frame);
+    let e = null, vRebinds = -1;
+    const watch = () => {
+      const cur = document.querySelector('#stagefeed .rowtile video');
+      if (!cur || cur === e) return;
+      e = cur; vRebinds++;
+      const el = cur;
+      const frame = (now) => {
+        if (el !== e) return;
+        g.drawImage(el, 0, 0, 8, 8);
+        const d = g.getImageData(0, 0, 8, 8).data;
+        let l = 0; for (let i = 0; i < d.length; i += 4) l += d[i]; l /= 64;
+        if (!bright && l > 160) flashes.push(now);
+        bright = l > 100;
+        el.requestVideoFrameCallback(frame);
+      };
+      el.requestVideoFrameCallback(frame);
     };
-    e.requestVideoFrameCallback(frame);
+    watch();
+    const wv = setInterval(watch, 250);
     setTimeout(() => {
-      clearInterval(iv); ac.close();
+      clearInterval(iv); clearInterval(wv); ac.close();
       const off = [];
       for (const b of beeps) {
         let best = null;
@@ -83,7 +111,7 @@ async function avOffsets(v, ms) {
         if (best !== null && Math.abs(best) < 500) off.push(Math.round(best));
       }
       off.sort((x, y) => x - y);
-      done({ audio: true, peak, beeps: beeps.length, flashes: flashes.length, off, median: off.length ? off[off.length >> 1] : null });
+      done({ audio: true, rebinds, vRebinds, peak, beeps: beeps.length, flashes: flashes.length, off, median: off.length ? off[off.length >> 1] : null });
     }, ms);
   }), ms);
 }
@@ -201,7 +229,8 @@ test('the host rebroadcasts the last service after it ends, and Stop ends it aga
     await h.goto('/run.html#bc=1', { waitUntil: 'domcontentloaded' });
     await h.locator('#lob-admin-go').click();
     await expect(h.locator('#recbtn')).toHaveText(/^Stop /, { timeout: 20000 });
-    await h.waitForTimeout(8000);
+    // Long enough that it is still playing when the late arrival is in.
+    await h.waitForTimeout(30000);
     const link = await h.evaluate(() => location.hash);
     await h.locator('#leavebtn').click();
     await h.locator('#leave-go').click();
@@ -215,6 +244,7 @@ test('the host rebroadcasts the last service after it ends, and Stop ends it aga
     await rb.click();
     await expect(h.locator('#rec-replay')).toHaveCount(0);
     await expect(h.locator('#rb-now')).toContainText('Last service', { timeout: 10000 });
+    await expect(h.locator('#rb-now')).toContainText(/ \/ 0:(2|3)\d/, { timeout: 10000 });
     await expect(h.locator('#livebadge-txt')).toHaveText('PRERECORDED');
 
     // Someone who missed it opens the link and sees it playing.

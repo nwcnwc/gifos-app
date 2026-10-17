@@ -1429,6 +1429,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #livebadge[data-state="off"] { background: #3a3a3f; color: #fff; }
   #livebadge[data-state="watching"] { background: #0b6b3a; color: #fff; }
   #livebadge[data-state="reconnecting"] { background: #8a5a00; color: #fff; }
+  #livebadge[data-state="pre"] { background: #4b3a8f; color: #fff; }
   .topchip .title { font-weight: 800; font-size: 1.625rem; letter-spacing: -0.04em; text-decoration: none; cursor: pointer;
     background: linear-gradient(135deg, #0071e3, #5856d6); -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent; color: transparent; }
@@ -1486,8 +1487,46 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   #bcgiverow input { min-height: 44px; min-width: 12rem; font: inherit; border-radius: 10px; padding: 0 8px; }
   /* Give rides the picture, right side, clear of the dock. On the screen
-     that says the service ended it joins Watch in the middle. */
+     that says the service ended it sits under the sentence. */
   #bc-give[hidden] { display: none !important; }
+  /* A rebroadcast (Q77) is never LIVE. Viewers read Prerecorded on the
+     picture, under the banner on the left, clear of Fit on the right. */
+  #bc-pre[hidden] { display: none !important; }
+  #bc-pre {
+    position: fixed; z-index: 5; margin: 0; left: calc(14px + var(--inset-left, 0px));
+    top: calc(var(--banner-h, 0px) + 8px + 2.75rem + var(--inset-top, 0px));
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; box-sizing: border-box;
+    border-radius: 999px; background: #4b3a8f; color: #fff;
+    font: 700 min(1.05rem, 22px)/1.2 system-ui, sans-serif; letter-spacing: .02em;
+  }
+  body:not(.broadcast) #rbbtn, body:not(.bc-host) #rbbtn { display: none; }
+  /* The host's rebroadcast: what is playing, where it is, Pause and Stop,
+     above the dock. The stream link row steps aside while it plays. */
+  body.rb-on #bc-link { display: none !important; }
+  #rb-now {
+    position: fixed; z-index: 8; left: calc(12px + var(--inset-left, 0px)); right: calc(12px + var(--inset-right, 0px));
+    bottom: calc(var(--dock-clear, 108px) + 4px); max-width: 520px; margin: 0 auto;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px; box-sizing: border-box;
+    border-radius: 16px; background: rgba(12,14,18,.9); color: #f4f7fb; box-shadow: 0 0 0 1.5px #4b3a8f;
+  }
+  #rb-now-txt { flex: 1 1 12rem; min-width: 0; margin: 0; font: 600 min(1rem, 22px)/1.3 system-ui, sans-serif; overflow-wrap: anywhere; }
+  #rb-now button { flex: 0 0 auto; min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: 12px;
+    font: inherit; font-weight: 700; cursor: pointer; background: transparent; color: #f4f7fb; border: 1.5px solid #8d93a0; }
+  #rb-now #rb-stop { background: #b61622; border-color: transparent; color: #fff; }
+  .rb-sheet { position: fixed; inset: 0; z-index: 72; background: rgba(0,0,0,.6); display: flex; align-items: flex-end; justify-content: center; }
+  .rb-card { width: 100%; max-width: 440px; box-sizing: border-box; background: #fff; color: #1d1d1f;
+    border-radius: 18px 18px 0 0; padding: 16px 16px calc(16px + var(--inset-bottom, 0px)); display: flex; flex-direction: column; gap: 10px;
+    max-height: 100%; overflow: auto; }
+  .rb-card p { margin: 0; }
+  .rb-card .rb-title { font: 700 1.15rem/1.2 system-ui, sans-serif; }
+  .rb-card .rb-why { font-size: .95rem; line-height: 1.35; color: #3a3a3f; }
+  .rb-card button, .rb-card label { min-height: 48px; border-radius: 16px; font: inherit; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 0 16px; text-align: center; }
+  #rb-last, #rb-file-btn { background: #0064c8; color: #fff; border: 0; }
+  #rb-cancel { background: transparent; color: #1d1d1f; border: 1.5px solid #8d93a0; }
+  #rb-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  #rec-replay-rebroadcast { background: transparent; color: #f4f7fb; border: 1.5px solid #8d93a0; }
+  #rec-replay-rebroadcast[hidden] { display: none; }
   #bc-give {
     position: fixed; z-index: 5; right: calc(14px + var(--inset-right, 0px));
     bottom: calc(var(--dock-clear, 108px) + 4px);
@@ -2253,6 +2292,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
     <button id="chatbtn" title="Chat and share files — stays between the people on this meeting, not on a server">Chat</button>
     <button id="recbtn" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
+    <button id="rbbtn" title="Play the last service, or a video, into the broadcast. Viewers see Prerecorded.">Rebroadcast</button>
     <button id="ccbtn" title="Live captions: your device writes down everyone it hears in this meeting and shares the lines with the meeting's transcript">CC</button>
     <button id="stagebtn" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
     <button id="setbtn" title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
@@ -2300,6 +2340,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <div id="handq"></div>
   <div id="feed">
+    <p id="bc-pre" hidden>Prerecorded</p>
     <div id="bc-ended" hidden><p id="bc-ended-txt"></p><a id="bc-cal" hidden>Add to calendar</a></div>
     <a id="bc-give" hidden target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span id="bc-give-txt">Give</span></a>
     <div id="bc-q" hidden aria-live="polite"><i id="bc-q-pad"></i><i id="bc-q-fit"></i><b id="bc-q-by"></b><p id="bc-q-txt"></p></div>
@@ -3198,7 +3239,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // camOff alone, which would have hidden the tile, skipped it for
     // PiP/full-screen and dropped it from the composite at exactly the moment
     // it carried the thing the room came to look at.
-    const seatDark = (st) => !!(st && st.camOff && !st.scr);
+    const seatDark = (st) => !!(st && st.camOff && !st.scr && !st.rb);
+    // The host's rebroadcast (Q77) and the host's kept copy of the service
+    // that just ended. Declared here because the badge reads them early.
+    let rbNow = null;
+    let bcLastService = null;
     // The live getDisplayMedia capture while I am sharing, and whether *this*
     // share is what put me on the Stage (so stopping it steps me back down and
     // a share started by someone already on stage leaves them there). Declared
@@ -4762,7 +4807,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // where that promise is enforced).
     //
     // Nothing else. No room-wide guest blur, no floors, no pinning.
-    const consents = (st) => !!st && blurLevel(st.blur) === 0 && (!st.camOff || !!st.scr);
+    const consents = (st) => !!st && blurLevel(st.blur) === 0 && (!st.camOff || !!st.scr || !!st.rb);
     const adminPresent = () => hasAdminRoom() && admins.length > 0;
     // Clear video is a ROOM-WIDE unanimity, so it MUST be tallied over shared
     // state (rosterIds = occ ∪ fresh status gossip), NOT over `peers` — my
@@ -6262,6 +6307,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // and sharing a screen with the camera off is the normal case — bailing
       // first would have silently dropped the share 20 seconds in, which is
       // exactly the shape of the stage-voice bug (see mySelfStream).
+      // A rebroadcast (Q77) is a source swap too, and like a screen it is
+      // not a face: no blur. It wins while it plays.
+      const rbv = rbNow && rbNow.v;
+      if (rbv && rbv.readyState === 'live') { stopBlurPipe(); return rbv; }
       const scr = screenStream && screenStream.getVideoTracks()[0];
       // THE GRANT IS THE GATE ON THE BYTES, not only on the button. Every
       // outbound video sender reads this function. A client that armed a
@@ -7091,8 +7140,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const linkDown = /reconnecting|Joining the broadcast|Connection trouble|Could not join|Getting you back/i.test(text) || reachDown;
       const host = typeof bcHostStored === 'function' && bcHostStored();
       const picture = myStatus && !myStatus.camOff;
+      // A rebroadcast is never LIVE (Q77): the host's own, or one on the
+      // stage this viewer is watching.
+      const pre = host ? !!(rbNow && rbNow.v) : (!joining && !alone && bcPreInRoom());
       let state, label, aria;
-      if (host && picture && linkDown) { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
+      if (pre) { state = 'pre'; label = 'PRERECORDED'; aria = 'Prerecorded, not live'; }
+      else if (host && picture && linkDown) { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
       else if (host && picture) { state = 'live'; label = 'LIVE'; aria = 'You are live'; }
       else if (host) { state = 'off'; label = 'OFF AIR'; aria = 'You are off air'; }
       else if (joining || alone || document.body.classList.contains('bc-quiet')) { state = 'off'; label = 'OFF AIR'; aria = 'The broadcast is off air'; }
@@ -7102,9 +7155,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const t = document.getElementById('livebadge-txt');
       if (t && t.textContent !== label) t.textContent = label;
       if (b.getAttribute('aria-label') !== aria) b.setAttribute('aria-label', aria);
+      const pe = document.getElementById('bc-pre');
+      if (pe) {
+        const on = !!(pre && !host && document.querySelector('#stagefeed .rowtile'));
+        if (pe.hidden === on) pe.hidden = !on;
+        // Under the chip, which wraps to two lines on a narrow phone.
+        const chip = on && statusEl.closest('.topchip');
+        const top = chip && chip.getClientRects().length ? Math.round(chip.getBoundingClientRect().bottom + 8) + 'px' : '';
+        if (pe.style.top !== top) pe.style.top = top;
+      }
       paintStreamLink();
     }
 
+    // Someone on the stage says they are playing a recording (Q77).
+    function bcPreInRoom() {
+      try { for (const id of stageIds()) { const st = statusOf.get(id); if (st && st.rb) return true; } } catch (e) {}
+      return false;
+    }
     // The host's stage carries the friend link. Off air it sits under the
     // title. On air it is a row above the dock, so the picture stays the stage.
     // Viewers never see it.
@@ -15381,7 +15448,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let selfShipMemo = null;
     const mySelfStream = () => {
       const v = sentVideoTrack();
-      const a = (localStream && localStream.getAudioTracks()[0]) || null;
+      // A rebroadcast's sound comes from the same element as its picture. A
+      // clip with no sound sends none, not the host's mic.
+      const a = (rbNow && rbNow.v) ? (rbNow.a || null) : ((localStream && localStream.getAudioTracks()[0]) || null);
       if (!v && !a) return null;   // nothing to broadcast — no feed to ship
       if (!selfShipMemo || selfShipMemo.v !== v || selfShipMemo.a !== a) {
         // WHICH track moved? Rebuilding this memo mints a new MediaStream id,
@@ -18999,6 +19068,241 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const t = document.activeElement;
       if (t && t.classList && t.classList.contains('stopshare')) { e.preventDefault(); stopScreenShare(); }
     });
+    // ---- REBROADCAST (Q77) ----------------------------------------------
+    // No mid-service catch-up, and nobody pulls a file off a phone (Q76).
+    // The host plays the last service, or any video, INTO the stage feed: a
+    // source swap like a screen share (sentVideoTrack, mySelfStream), so it
+    // rides the same fan-out down the relay tree as the live picture and the
+    // host's upload does not grow with the audience. Viewers see whatever is
+    // playing now, marked Prerecorded, with nothing to seek or save.
+    //
+    // One <video> feeds both tracks, so they stay together. Its own capture
+    // carries picture and sound where the browser has one: measured on
+    // Chromium, its sound lands with the picture, while the same sound sent
+    // through Web Audio arrived ~90 ms late. Without a capture (Safari) a
+    // canvas draws the picture and Web Audio takes the sound. The tracks are made once at start
+    // and kept until Stop: a new track mints a new stage stream id and
+    // re-ships down every relayer (see selfShipMemo). Pause holds the same
+    // tracks; the picture just stops changing.
+    const rbBtn = document.getElementById('rbbtn');
+    const rbNoun = () => (params.has('st') ? 'stream' : 'service');
+    function rbFmt(sec) {
+      const t = Math.max(0, Math.floor(sec || 0));
+      const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, x = t % 60;
+      return (h ? h + ':' + String(m).padStart(2, '0') : String(m)) + ':' + String(x).padStart(2, '0');
+    }
+    function rbTitle(name) {
+      const t = String(name || '').replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[\s_]+/g, ' ').trim();
+      return (t || 'Video').slice(0, 48);
+    }
+    // A phone's own recording has no length written in it until the end is
+    // read; seeking past the end makes the browser find it.
+    function rbLength(vid) {
+      return new Promise((done) => {
+        if (isFinite(vid.duration)) { done(); return; }
+        const fin = () => {
+          if (!isFinite(vid.duration)) return;
+          vid.removeEventListener('durationchange', fin);
+          clearTimeout(cap);
+          vid.currentTime = 0;
+          done();
+        };
+        const cap = setTimeout(() => { vid.removeEventListener('durationchange', fin); try { vid.currentTime = 0; } catch (e) {} done(); }, 4000);
+        vid.addEventListener('durationchange', fin);
+        try { vid.currentTime = 1e101; } catch (e) { fin(); }
+      });
+    }
+    const rbCap = (vid) => vid.captureStream || vid.mozCaptureStream || null;
+    // Picture and sound from the playing element's own capture.
+    function rbTracks(r) {
+      try {
+        const s = rbCap(r.vid).call(r.vid);
+        const v = s.getVideoTracks()[0] || null;
+        if (v) { r.v = v; r.a = s.getAudioTracks()[0] || null; return; }
+      } catch (e) {}
+      r.v = rbCanvas(r);
+    }
+    // Without a capture: a canvas drawn from the element frame by frame.
+    function rbCanvas(r) {
+      const vid = r.vid;
+      const cv = document.createElement('canvas');
+      cv.width = vid.videoWidth || 640; cv.height = vid.videoHeight || 360;
+      const g = cv.getContext('2d');
+      if (!g || !cv.captureStream) return null;
+      const step = () => {
+        if (rbNow !== r) return;
+        try { g.drawImage(vid, 0, 0, cv.width, cv.height); } catch (e) {}
+        if (vid.requestVideoFrameCallback) vid.requestVideoFrameCallback(step); else requestAnimationFrame(step);
+      };
+      step();
+      return cv.captureStream(30).getVideoTracks()[0] || null;
+    }
+    function rbDrop(r) {
+      try { r.vid.pause(); } catch (e) {}
+      try { if (r.v) r.v.stop(); } catch (e) {}
+      try { if (r.a) r.a.stop(); } catch (e) {}
+      try { r.vid.removeAttribute('src'); r.vid.load(); } catch (e) {}
+      try { if (r.url) URL.revokeObjectURL(r.url); } catch (e) {}
+      try { if (r.actx) r.actx.close(); } catch (e) {}
+    }
+    // o: { blob (or a promise of one), title, last, saved }. Called inside
+    // the tap, so the sound can start without another one.
+    async function rbStart(o) {
+      if (rbNow || !BROADCAST || !bcHostStored()) return;
+      if (myStatus.scr) stopScreenShare('a rebroadcast is starting');
+      const vid = document.createElement('video');
+      vid.playsInline = true; vid.preload = 'auto';
+      const r = rbNow = { vid, title: o.title, last: !!o.last, saved: o.saved || null, v: null, a: null, actx: null, url: '', starting: true };
+      // The capture still carries the sound of a muted element, so the
+      // host's phone stays quiet and its mic hears nothing back.
+      if (rbCap(vid)) vid.muted = true;
+      else try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        r.actx = new AC();
+        const dst = r.actx.createMediaStreamDestination();
+        r.actx.createMediaElementSource(vid).connect(dst);
+        r.a = dst.stream.getAudioTracks()[0] || null;
+        const pr = r.actx.resume(); if (pr && pr.catch) pr.catch(() => {});
+      } catch (e) {}
+      paintRb();
+      try {
+        const blob = await o.blob;
+        if (rbNow !== r) return;
+        r.url = URL.createObjectURL(blob);
+        vid.src = r.url;
+        await new Promise((ok, no) => {
+          vid.addEventListener('loadedmetadata', ok, { once: true });
+          vid.addEventListener('error', () => no(new Error('unplayable')), { once: true });
+        });
+        await rbLength(vid);
+        await vid.play();
+        if (rbNow !== r) return;
+        if (rbCap(vid)) rbTracks(r); else r.v = rbCanvas(r);
+        if (!r.v) throw new Error('no picture');
+      } catch (e) {
+        if (rbNow === r) { rbNow = null; rbDrop(r); paintRb(); }
+        setStatus('That video can’t be played here. Pick another file.', 8000);
+        return;
+      }
+      // From the ended screen (Q72): lift the hold the Leave left, without
+      // the mic or camera, and put the seat back on the stage.
+      r.wasEnded = !!(bcSeeding && myStatus.bcend);
+      if (outgoingHeld) releaseLeaveAsk();
+      myStatus.bcend = 0;
+      myStatus.rb = Date.now();
+      r.starting = false;
+      vid.addEventListener('ended', () => { if (rbNow === r) rbStop('ended'); });
+      vid.addEventListener('timeupdate', paintRbNow);
+      vid.addEventListener('pause', paintRbNow);
+      vid.addEventListener('play', paintRbNow);
+      if (!myStatus.stg) { r.steppedUp = true; setStage(true); }
+      refreshOutbound();
+      if (!r.steppedUp) broadcastStatus();
+      refreshAllTiles();
+      paintRb();
+      setStatus('Rebroadcasting ' + (r.last ? 'the last ' + rbNoun() : r.title) + '. Viewers see Prerecorded.', 6000);
+    }
+    function rbStop(why) {
+      const r = rbNow;
+      if (!r) return;
+      rbNow = null;
+      myStatus.rb = 0;
+      rbDrop(r);
+      if (r.steppedUp || r.wasEnded) { try { if (myStatus.stg) setStage(false); } catch (e) {} }
+      refreshOutbound();
+      if (r.wasEnded) {
+        // Back to the ended screen: nothing sent, the seat says it ended.
+        holdLeaveAsk();
+        leaving = false; leavingForAsk = false; myStatus.lv = 0;
+        myStatus.bcend = Date.now();
+      }
+      broadcastStatus();
+      refreshAllTiles();
+      paintRb();
+      try { paintControls(); } catch (e) {}
+      setStatus(why === 'ended' ? 'The rebroadcast finished.' : 'Rebroadcast stopped.', 6000);
+      if (r.wasEnded && r.saved) showRecReplay(r.saved);
+    }
+    // Quietly, for Leave: no sheet, no status line.
+    function rbQuit() {
+      const r = rbNow;
+      if (!r) return;
+      rbNow = null;
+      myStatus.rb = 0;
+      rbDrop(r);
+      paintRb();
+    }
+    function rbToggle() {
+      const r = rbNow;
+      if (!r || r.starting) return;
+      if (r.vid.paused) { const p = r.vid.play(); if (p && p.catch) p.catch(() => {}); }
+      else r.vid.pause();
+      paintRbNow();
+    }
+    function paintRbNow() {
+      const r = rbNow;
+      const t = document.getElementById('rb-now-txt');
+      if (!r || !t) return;
+      const len = isFinite(r.vid.duration) ? ' / ' + rbFmt(r.vid.duration) : '';
+      const line = 'Prerecorded · ' + r.title + ' · ' + (r.starting ? 'starting…' : rbFmt(r.vid.currentTime) + len);
+      if (t.textContent !== line) t.textContent = line;
+      const pb = document.getElementById('rb-pause');
+      const w = (r.vid.paused && !r.starting) ? 'Resume' : 'Pause';
+      if (pb && pb.textContent !== w) pb.textContent = w;
+    }
+    function paintRb() {
+      document.body.classList.toggle('rb-on', !!rbNow);
+      let bar = document.getElementById('rb-now');
+      if (!rbNow) { if (bar) bar.remove(); }
+      else if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'rb-now';
+        bar.setAttribute('role', 'region');
+        bar.setAttribute('aria-label', 'Rebroadcast');
+        bar.innerHTML = '<p id="rb-now-txt"></p><button type="button" id="rb-pause">Pause</button><button type="button" id="rb-stop">Stop</button>';
+        document.body.appendChild(bar);
+        bar.querySelector('#rb-pause').onclick = rbToggle;
+        bar.querySelector('#rb-stop').onclick = () => rbStop();
+      }
+      paintRbNow();
+      try { paintLiveBadge(); } catch (e) {}
+    }
+    // The host's choice: the service that just ended, or a file.
+    function openRbSheet() {
+      if (rbNow) return;
+      const old = document.getElementById('rb-sheet');
+      if (old) old.remove();
+      const bg = document.createElement('div');
+      bg.id = 'rb-sheet';
+      bg.className = 'rb-sheet';
+      bg.setAttribute('role', 'dialog');
+      bg.setAttribute('aria-modal', 'true');
+      bg.setAttribute('aria-label', 'Rebroadcast');
+      bg.innerHTML = '<div class="rb-card"><p class="rb-title">Rebroadcast</p>' +
+        '<p class="rb-why">Plays a video into the broadcast for everyone watching. Viewers see Prerecorded and can’t skip or save it.</p>' +
+        (bcLastService ? '<button type="button" id="rb-last">Last ' + rbNoun() + '</button>' : '') +
+        '<label id="rb-file-btn">Choose a video<input type="file" id="rb-file" accept="video/*"></label>' +
+        '<button type="button" id="rb-cancel">Cancel</button></div>';
+      document.body.appendChild(bg);
+      const close = () => bg.remove();
+      bg.addEventListener('click', (e) => { if (e.target === bg) close(); });
+      bg.querySelector('#rb-cancel').onclick = close;
+      const last = bg.querySelector('#rb-last');
+      if (last) last.onclick = () => { close(); rbStart({ blob: bcLastService.blob, title: 'Last ' + rbNoun(), last: true }); };
+      const file = bg.querySelector('#rb-file');
+      file.onchange = () => {
+        const f = file.files && file.files[0];
+        if (!f) return;
+        close();
+        rbStart({ blob: f, title: rbTitle(f.name) });
+      };
+    }
+    if (rbBtn) rbBtn.onclick = () => {
+      const bt = document.getElementById('bartoggle');
+      if (bt && bt.getAttribute('aria-expanded') === 'true') bt.click();
+      if (rbNow) { rbStop(); return; }
+      openRbSheet();
+    };
     // THE SHEET THAT PREFERS THE APP PIN. It is not a nag screen: it is the
     // one moment where the person can still be told that the thing they are
     // about to do the expensive way has a better way, before a picker opens.
@@ -21180,6 +21484,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         '<div class="rec-replay-actions">' +
         '<button type="button" id="rec-replay-share" hidden>Share</button>' +
         '<button type="button" id="rec-replay-save">Save</button>' +
+        '<button type="button" id="rec-replay-rebroadcast" hidden>Rebroadcast</button>' +
         '<button type="button" id="rec-replay-close">Close</button>' +
         '</div></div>';
       document.body.appendChild(bg);
@@ -21231,6 +21536,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       });
       if (already) saveBtn.hidden = true;
       else saveBtn.onclick = () => keep();
+      // The host plays it into the room again (Q77). The sheet comes back
+      // when the rebroadcast stops, so Save and Close still wait here.
+      const rbB = bg.querySelector('#rec-replay-rebroadcast');
+      if (BROADCAST && bcHostStored()) {
+        rbB.hidden = false;
+        rbB.onclick = () => {
+          const blob = fetch(saved.href).then((r) => r.blob());
+          try { vid.pause(); } catch (e) {}
+          vid.removeAttribute('src');
+          try { vid.load(); } catch (e) {}
+          bg.remove();
+          rbStart({ blob: blob, title: 'Last ' + rbNoun(), last: true, saved: saved });
+        };
+      }
       bg.querySelector('#rec-replay-close').onclick = () => {
         if (!sent) keep();
         try { vid.pause(); } catch (e) {}
@@ -21245,6 +21564,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function recDeliver(saved) {
       if (saved && saved.held) return 'held';
+      // The host's kept service is what Rebroadcast > Last service plays.
+      if (saved && saved.href && BROADCAST && bcHostStored()) {
+        const blob = fetch(saved.href).then((r) => r.blob());
+        blob.catch(() => {});
+        bcLastService = { blob: blob, name: saved.name || '' };
+      }
       if (saved && saved.href && bcSeeding) {
         saved.seed = true;
         showRecReplay(saved);
@@ -23148,6 +23473,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       leaveMeeting();
     }
     function leaveMeeting() {
+      // Leave ends a rebroadcast too; the clip must not keep playing behind
+      // the ended screen.
+      if (rbNow) rbQuit();
       if (!bcSeeding && bcSeedOnLeave()) return endServiceKeepSeat();
       const flushing = stopLocalCapture();
       sendMeshLeave();
@@ -24587,6 +24915,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // folded per-stager audio. -1 = no ear/no stream. The 2026-07-29 bar:
       // a room must HEAR its stage, not merely hold the feed (held keys and
       // "active" fan jobs stayed green through a fully silent stage).
+      rebroadcastStreamForTest: () => (rbNow && rbNow.v ? new MediaStream([rbNow.v, rbNow.a].filter(Boolean)) : null),
+      stageViaForTest: () => { for (const [k, f] of mosIn) if (k.indexOf('stg:') === 0 && k !== 'stg:' + myId) return { via: String(f.via).slice(0, 8), me: String(myId).slice(0, 8) }; return null; },
+      rebroadcastForTest: () => (rbNow ? { pos: rbNow.vid.currentTime, len: rbNow.vid.duration, paused: rbNow.vid.paused, title: rbNow.title, sending: !!rbNow.v } : null),
+      // The stage feed this phone receives (stream with picture and sound).
+      stageFeedForTest: () => { for (const [k, f] of mosIn) if (k.indexOf('stg:') === 0 && k !== 'stg:' + myId && f.stream) return f.stream; return null; },
       stageEarLevel: (ms) => new Promise((resolve) => {
         if (!stageEar || !stageEar.el.srcObject || !ac) return resolve(-1);
         if (ac.state !== 'running') { try { ac.resume(); } catch (e) {} }
