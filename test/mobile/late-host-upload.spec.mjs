@@ -6,9 +6,12 @@
 //     rreq → rgo → roffer → ranswer for good, per late arrival),
 //   - the host sends media on a bounded number of links (the stage fan-out's
 //     first hops), not one per joiner,
-//   - the host's outbound-rtp bytes/s with 6 joiners stays within 1.5× of 1,
+//   - the host's outbound-rtp bytes/s with 6 joiners stays within two
+//     copies (×1.25) of what 1 joiner costs,
 //   - every joiner sees the stage picture advancing.
-// Data-channel bytes per second are recorded beside it (trace.json).
+// Data-channel bytes per second are recorded beside it (trace.json), not
+// asserted: the status heartbeat floods the sender's section, so it grows
+// until the section is full (C² seats) and stays flat after (Q78).
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import { viewerBrowsers, PC_TAP } from './rebroadcast-lib.mjs';
@@ -116,7 +119,10 @@ test('a late arrival never adds host upload', async ({ browser, baseURL }, info)
       expect(w.neg, `host still renegotiating with ${w.joiners} joiners`).toBeLessThanOrEqual(MAX_NEG_IN_WINDOW);
       expect(w.mediaLinks, `host sends media on ${w.mediaLinks} links with ${w.joiners} joiners`).toBeLessThanOrEqual(MAX_MEDIA_LINKS);
     }
-    expect(waves[2].rtpBps, `host media ${waves[0].rtpBps} B/s with 1 joiner, ${waves[2].rtpBps} with 6`).toBeLessThanOrEqual(waves[0].rtpBps * 1.5);
+    // The host's own stage feed goes to at most two seats live (STG-DIRECT);
+    // everyone else is fed down the tree. So 6 joiners cost at most two
+    // copies of what 1 joiner costs, and 600 would cost the same.
+    expect(waves[2].rtpBps, `host media ${waves[0].rtpBps} B/s with 1 joiner, ${waves[2].rtpBps} with 6`).toBeLessThanOrEqual(waves[0].rtpBps * MAX_MEDIA_LINKS * 1.25);
   } finally {
     await ctxH.close();
     for (const c of ctxs) await c.close().catch(() => {});
