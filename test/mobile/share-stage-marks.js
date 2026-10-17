@@ -50,6 +50,22 @@ function look(page) {
       if (!inside(r, scr)) out.push(what + ' (' + box(r) + ') runs off the screen');
       if (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1) out.push(what + ' cuts its words "' + el.textContent.trim() + '"');
       if (what === 'Stop sharing' && (r.height < 30 || r.width < 30)) out.push('Stop sharing is too small to tap (' + box(r) + ')');
+      // Its words must read: compare the text colour with whatever paints
+      // under it (its own background, else the first thing beneath it).
+      const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+      const lum = (c) => { const [r0, g0, b0] = c.slice(0, 3).map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * r0 + 0.7152 * g0 + 0.0722 * b0; };
+      let bg = rgb(cs.backgroundColor);
+      if (!(bg.length > 3 ? bg[3] > 0.5 : bg.length === 3)) {
+        bg = [0, 0, 0];
+        for (const e of document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2)) {
+          if (e === el || el.contains(e)) continue;
+          const c = rgb(getComputedStyle(e).backgroundColor);
+          if (c.length === 3 || (c.length > 3 && c[3] > 0.5)) { bg = c; break; }
+        }
+      }
+      const l1 = lum(rgb(cs.color)), l2 = lum(bg);
+      const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+      if (ratio < 4.5) out.push(what + ' is hard to read: ' + cs.color + ' on rgb(' + bg.slice(0, 3).join(',') + ')');
     }
     // The picture must not shrink to a stamp to make the room.
     if (w < sr.width * 0.4 && h < sr.height * 0.6) out.push('the slide shrank to ' + box(slide) + ' in a stage of ' + box(sr));

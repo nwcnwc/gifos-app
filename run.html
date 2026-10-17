@@ -1436,6 +1436,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: #b61622; color: #fff; font: 700 16px/1 system-ui, sans-serif;
     cursor: pointer;
   }
+  /* A phone's stage is small (about 300x110 on an SE in Safari): drawn on
+     the slide, the share line covered the words being read and Stop sharing
+     sat on the title. placeStageMarks moves both off the picture, into the
+     side bars a 16:9 slide leaves (.mk-side) or into a row under it
+     (.mk-bar). */
+  #stagefeed .rowtile.mk-side .stagestop, #stagefeed .rowtile.mk-bar .stagestop {
+    min-height: 32px; padding: 0 10px; font-size: 14px; }
+  #stagefeed .rowtile.mk-side .stagestop { top: 6px; right: 6px; }
+  #stagefeed .rowtile.mk-side .rlabel.sharelabel { right: auto; width: var(--mkw, 40%); background: none;
+    white-space: normal; overflow-wrap: break-word; font-size: 14px; padding: 6px 8px; }
+  #stagefeed .rowtile.mk-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) auto; align-items: center; background: #000; }
+  #stagefeed .rowtile.mk-bar video { grid-column: 1 / -1; grid-row: 1; height: 100%; min-height: 0; }
+  #stagefeed .rowtile.mk-bar .rlabel.sharelabel { position: static; grid-column: 1; grid-row: 2; background: none;
+    white-space: normal; font-size: 13px; line-height: 1.25; padding: 4px 8px; }
+  #stagefeed .rowtile.mk-bar .stagestop { position: static; grid-column: 2; grid-row: 2; margin: 3px 4px 3px 0; }
   .share-note { border: 1px solid var(--border, #2a2a3f); border-left: 3px solid #6f7bd4;
     background: rgba(111,123,212,.10); border-radius: .45rem; padding: .55rem .7rem;
     font-size: .84rem; line-height: 1.4; margin: .2rem 0 .7rem; }
@@ -19013,6 +19029,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!selfStageSt || selfStageSt.getVideoTracks()[0] !== vt) selfStageSt = new MediaStream([vt]);
       return selfStageSt;
     }
+    // On a phone, keep the share line and Stop sharing off the slide: in the
+    // side bars when the slide leaves them wide enough, else in a row under
+    // the picture. Bigger screens keep them on the slide's edge.
+    const stageMarksMq = window.matchMedia('(max-width: 700px), (max-height: 500px)');
+    function placeStageMarks(el) {
+      if (!el || !el.isConnected) return;
+      const v = el.querySelector('video'), lb = el.querySelector('.rlabel'), stop = el.querySelector('.stagestop');
+      const want = stageMarksMq.matches && document.body.classList.contains('screen-on') &&
+        lb && lb.classList.contains('sharelabel') && v && v.videoWidth > 0 && v.videoHeight > 0;
+      el.classList.remove('mk-side', 'mk-bar');
+      if (!want) return;
+      const W = el.clientWidth, H = el.clientHeight;
+      if (W < 40 || H < 40) return;
+      const side = (W - H * (v.videoWidth / v.videoHeight)) / 2;
+      if (side >= 96) {
+        el.style.setProperty('--mkw', Math.floor(side) + 'px');
+        el.classList.add('mk-side');
+        const fits = lb.scrollWidth <= lb.clientWidth + 1 && lb.offsetHeight <= H - (stop ? 0 : 4) &&
+          (!stop || (stop.offsetWidth + 10 <= side && stop.offsetTop + stop.offsetHeight <= H - lb.offsetHeight));
+        if (fits) return;
+        el.classList.remove('mk-side');
+      }
+      el.classList.add('mk-bar');
+    }
     // The Stage strip: one wide tile at the top of the stage feed.
     function paintStageStrip(stream) {
       let el = stagefeedEl.querySelector('[data-row="sgs"]');
@@ -19026,6 +19066,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const v = document.createElement('video'); v.muted = true; v.autoplay = true; v.setAttribute('playsinline', '');
         const lb = document.createElement('div'); lb.className = 'rlabel'; lb.textContent = uiText('stageLabel', 'On stage');
         el.appendChild(v); el.appendChild(lb); stagefeedEl.appendChild(el); trackAspect(el, v);
+        const again = () => placeStageMarks(el);
+        v.addEventListener('resize', again); v.addEventListener('loadedmetadata', again);
+        if (window.ResizeObserver) new ResizeObserver(() => requestAnimationFrame(again)).observe(el);
       }
       const v = el.querySelector('video');
       if (v.srcObject !== stream) { v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
@@ -19065,6 +19108,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const word = uiText('stopShare', 'Stop sharing');
         if (stop.textContent !== word) stop.textContent = word;
       } else if (stop) stop.remove();
+      placeStageMarks(el);
       compOf.set('sgs', { via: 'stage', streamId: stream.id, stream, names: stageIds(), el: v });
       recSrcDirty = true;
     }
