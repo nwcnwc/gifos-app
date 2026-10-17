@@ -22611,6 +22611,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         probe: directPath, cred: turnCred ? turnCred.state() : 'idle', reach: turnReach(), heard: turnHeard(),
         anchor: turnAnchorId != null ? (rosterNames[turnAnchorId] || (peers.get(turnAnchorId) || {}).name || String(turnAnchorId).slice(0, 8)) : null,
         serving: [...peers.values()].filter((p) => p.turnServe).map((p) => rosterNames[p.id] || p.name || String(p.id).slice(0, 8)),
+        // the mixes this page sends: its uplink to its anchor, one mix-minus per client, one feed per row mate (source keys by owner name), and whether each sender carries it
+        mixes: (() => { const nm = (id) => rosterNames[id] || String(id).slice(0, 8); const keys = (ks) => [...ks].map((k) => { const m = /^(?:p|r):([^:]+):/.exec(k); return m ? nm(m[1]) : k.split(':')[0]; });
+          const sent = (pid, t) => { const q = peers.get(pid); return !!(q && q.mainA && t && q.mainA.track === t); };
+          const a = turnAnchorId != null ? turnAnchorId : null;
+          return { up: turnUp ? { to: a != null ? nm(a) : null, keys: keys(turnUp.keys), sent: a != null && sent(a, turnUpTrack()) } : null,
+            serve: [...turnMixes].map(([pid, mx]) => ({ to: nm(pid), keys: keys(mx.keys), sent: sent(pid, turnMixTrack(pid)) })),
+            feeds: [...bridgeFeeds].map(([pid, fd]) => ({ to: nm(pid), keys: keys(fd.keys), sent: sent(pid, bridgeFeedTrack(pid)) })) }; })(),
         pairs: [...peers.values()].map((p) => {
           let urls = [];
           try { for (const sv of (p.pc && p.pc.getConfiguration().iceServers) || []) urls = urls.concat(Array.isArray(sv.urls) ? sv.urls : [sv.urls]); } catch (e) {}
