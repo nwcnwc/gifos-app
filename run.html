@@ -7576,6 +7576,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       doorOffGrid.add(p.id);
       if (p.tile && p.tile.parentNode) p.tile.remove();
     }
+    // A parked door that became a seat neighbour belongs on the grid again,
+    // even though its pair never connects (a person whose network blocks
+    // direct connections is heard through a friend, and their tile carries
+    // the explanation). Runs on the beat, for every peer.
+    function doorTileBack(p) {
+      if (p && doorOffGrid.has(p.id) && linkTo(p.id)) restoreDoorTile(p);
+    }
     function restoreDoorTile(p) {
       if (!p || !doorOffGrid.has(p.id)) return;
       doorOffGrid.delete(p.id);
@@ -7591,7 +7598,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // agree from the start.
       if (!name && rosterNames[peerId]) name = rosterNames[peerId];
       const t = makeTile(peerId, name, false, headless);
-      if (!headless && doorOffGrid.has(peerId) && t.tile.parentNode) t.tile.remove(); // grace already took this name off the grid
+      if (!headless && doorOffGrid.has(peerId) && !linkTo(peerId) && t.tile.parentNode) t.tile.remove(); // grace already took this name off the grid (a seat neighbour is not a door)
       const p = { id: peerId, pc: null, tile: t.tile, video: t.video, label: t.label, avatar: t.avatar, chips: t.chips, cap: t.cap, modbar: t.modbar, voteBtn: t.voteBtn,
         name, headless: !!headless, connected: false, pendingIce: [], absentSince: 0, lastKick: 0, lastHeard: Date.now(), bornAt: Date.now(), incoming: [], neverUp: true }; // neverUp: no transport ever connected — such a pair is dead, never merely away (reachCounts)
       peers.set(peerId, p);
@@ -10490,6 +10497,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A peer who merely STEPPED AWAY (phone locked, other app) is not a
         // firewall problem — their tile says away, never 'firewall'.
         if (p.connected) { p.downSince = 0; restoreDoorTile(p); if (p.noRoute) { p.noRoute = false; updateTile(pid); } }
+        else doorTileBack(p);
         else if (!p.absentSince) {
           if (!p.downSince) p.downSince = now;
           // A pair that never once connected is unreachable, not away (see
