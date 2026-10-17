@@ -4,7 +4,8 @@
  * the 44px Full screen button, so "Ruth" read "R…" and "Margaret Johnson"
  * read "M…". An usher can't tell who is who.
  * Every name on a call tile reads in full and stays clear of Full screen
- * and Blur for all, which stay 44px targets on the tile.
+ * and Blur for all, which stay 44px targets on the tile. A "✋ hand raised"
+ * chip reads in full too, not squeezed between the two buttons.
  *
  * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/portrait-tile-names.js
  */
@@ -31,6 +32,11 @@ async function tiles(page) {
       id: t.dataset.peer, tile: box(t), name: n ? n.textContent : '', nameBox: box(n),
       cut: n ? (n.scrollWidth > n.clientWidth + 1 || n.scrollHeight > n.clientHeight + 1) : true,
       max: box(t.querySelector('.maxbtn')), blur: box(t.querySelector(':scope > .blurbox.on')),
+      chips: Array.from(t.querySelectorAll('.chips span:not(.ico)')).filter((c) => c.getClientRects().length).map((c) => {
+        const r = c.getBoundingClientRect();
+        const cr = c.parentNode.getBoundingClientRect();
+        return { text: c.textContent, cut: r.right > cr.right + 1 || c.scrollWidth > c.clientWidth + 1 };
+      }),
     };
   }));
 }
@@ -50,7 +56,8 @@ async function tiles(page) {
   if (await skip.count()) await skip.tap().catch(() => {});
   const bad = [];
 
-  for (const names of [['Ruth', 'Margaret Johnson'], ['Ruth', 'Margaret Johnson', 'Pastor David Lee']]) {
+  // Three first: a first seed raises the third seat's hand, a re-seed doesn't.
+  for (const names of [['Ruth', 'Margaret Johnson', 'Pastor David Lee'], ['Ruth', 'Margaret Johnson']]) {
     const seeded = await page.evaluate((a) => window.__gifosVideo.seedGalleryForTest({ count: a.length, names: a }), names);
     if (!seeded || !seeded.ok) { bad.push('could not seat ' + names.join(', ')); continue; }
     await page.waitForTimeout(300);
@@ -64,6 +71,7 @@ async function tiles(page) {
       if (hit(t.nameBox, t.blur)) bad.push(tag + ': the name sits under Blur for all');
       if (t.max && (t.max.w < 44 || t.max.h < 44)) bad.push(tag + ': Full screen is ' + Math.round(t.max.w) + 'x' + Math.round(t.max.h));
       if (t.max && t.blur && hit(t.max, t.blur)) bad.push(tag + ': Full screen and Blur for all overlap');
+      t.chips.filter((c) => c.cut).forEach((c) => bad.push(tag + ': "' + c.text + '" is cut'));
       if (t.max && (t.max.x < t.tile.x || t.max.x + t.max.w > t.tile.x + t.tile.w + 1)) bad.push(tag + ': Full screen leaves the tile');
     }
     const me = all.find((x) => x.id === 'me');
