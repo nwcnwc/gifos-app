@@ -3300,7 +3300,9 @@ test('Escape closes the chat panel and returns to the Chat button', async ({ pag
       await page.locator('#chatbtn').click();
       await expect(panel).toHaveClass(/open/);
       await expect(page.locator('#chatbtn')).toHaveAttribute('aria-expanded', 'true');
-      await page.locator('#invite').click();
+      // Beside the open chat at 900 Invite is under More (Q96).
+      if (await page.locator('#invite').isVisible()) await page.locator('#invite').click();
+      else { await page.locator('#bartoggle').click(); await page.locator('#barmore [data-dock="invite"]').click(); }
       const sheet = page.locator('.name-modal:visible, #invite-modal:visible').first();
       await expect(sheet).toBeVisible();
       await page.keyboard.press('Escape');
