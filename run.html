@@ -2498,7 +2498,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     //   reach(a, b)   my own pairs: the transport's word (a connected pair that
     //                 is not relayed; a pair that never came up after a full
     //                 dial is unreachable). Other pairs: the connectivity each
-    //                 peer gossips with its status; unknown pairs count as
+    //                 peer gossips with its status, less the pairs either end
+    //                 reports relayed (st.rl); unknown pairs count as
     //                 reachable (no bridge is built on a guess).
     //   stun(id)      my own direct-path probe; a peer's as its pulse says.
     //   seats()       my own seat, plus a bounded record per peer whose pulse
@@ -2512,6 +2513,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const doorWhy = new Map();   // peer -> why my last reach verdict for our pair was what it was (the debug view's door test)
     const netSeated = () => { const s = meshSeat(); return !!(netRoom && s && s.hasCoord && s.state === 3); };
     function netSeatingPool(level, credOk) { netPool = { level: level | 0, cred: !!credOk }; if (netRoom) netRoom.topoChanged(); }
+    const netPairRelayed = (p) => !!(p && (p.viaRelay || (p.viaRelay === undefined && (p.turnMine || p.turnAnchor))));   // viaRelay: the selected candidate pair's type (whoObserve); unobserved, a pair this page put TURN on counts as relayed
+    // My connected pairs that run through a relay server, for my status
+    // (st.rl): a relayed pair joins two networks, it does not make them one,
+    // so another page's view never reads it as a direct path.
+    function netRelayedPeers() { const out = []; for (const [pid, p] of peers) if (p && p.connected && netPairRelayed(p)) out.push(pid); return out.sort(); }
+    function netStatusRelayed() { const rl = netRelayedPeers(); if (rl.length) { if (String(myStatus.rl || '') !== String(rl)) myStatus.rl = rl; } else if (myStatus.rl) delete myStatus.rl; }   // refreshed with every status I send, so st.rl and the conns beside it agree
     function netSeatingLiveView() {
       const me = () => meshSeat();
       const rec = (pid, st) => ({ id: pid, alive: true, state: 3, hasCoord: true, coord: st.seat, glabel: st.lab != null ? st.lab : pid, anchored: !!st.anc, sitting: new Map(), glFind: -2, lastReached: -1 });
@@ -2544,7 +2551,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const PROBE_MS = 4500;   // a dialled pair not up after this is no direct path (the decision comes once every dial settled, or NET_PROBE ticks after them)
       const settled = (p) => !!(p && ((p.connected && (p.viaRelay !== undefined || Date.now() - (p.bornAt || 0) > PROBE_MS)) || (p.pc && (p.pc.connectionState === 'failed' || p.pc.connectionState === 'closed')) || (p.neverUp && Date.now() - (p.bornAt || 0) > PROBE_MS)));
       const probeDone = (ids) => Array.isArray(ids) && ids.every((id) => id === myId || settled(peers.get(id)));
-      const pairRelayed = (p) => !!(p && (p.viaRelay || (p.viaRelay === undefined && (p.turnMine || p.turnAnchor))));   // viaRelay: the selected candidate pair's type (whoObserve); unobserved, a pair this page put TURN on counts as relayed
+      const pairRelayed = netPairRelayed;
       const view = {
         tick: () => { const s = me(); return s ? s.TICK : 0; },
         seats: () => { const s = me(); const out = s ? [s] : []; for (const [pid, st] of statusOf) if (pid !== myId && st && st.seat && typeof st.seat.pc === 'number') out.push(rec(pid, st)); for (const r of ringRecs()) out.push(r); return out; },
@@ -2559,6 +2566,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             else if (p) why = 'pending:' + (p.pc ? p.pc.connectionState : 'no-pc') + ':' + age;
             if (doorWhy.size > 64) doorWhy.clear(); doorWhy.set(pid, why); return r;   // the debug view's reason for each of my own pairs' verdicts
           }
+          const relayedBy = (x, y) => { const st = statusOf.get(x); return !!(st && Array.isArray(st.rl) && st.rl.includes(y)); };
+          if (relayedBy(a, b) || relayedBy(b, a)) return false;   // a pair either end reports relayed is no direct path
           const ca = connsOf.get(a), cb = connsOf.get(b);
           if ((ca && ca.includes(b)) || (cb && cb.includes(a))) return true;
           return !(ca && cb);   // both maps known and neither names the other: unreachable; otherwise unknown counts as reachable
@@ -2755,7 +2764,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let pulseHalt = false; // test hook: simulates a throttled phone's silent pulse gaps
     // My status pulse as one frame: what every beat carries, and what a pair
     // gets the moment its channel opens (wireDc onopen).
-    const statusPayload = () => ({ kind: 'status', s: myStatus, conns: myConns(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined });
+    const statusPayload = () => (netStatusRelayed(), { kind: 'status', s: myStatus, conns: myConns(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined });
     function broadcastStatus(answer) {
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
@@ -6237,7 +6246,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const level = down ? 0 : (typeof vaRoom === 'function' && vaRoom() === 'live' ? 1 : 2);
         if (netPool.level !== level || netPool.cred !== !down) netSeatingPool(level, !down);
         const tp = directPath === 'blocked' ? turnReach() : null;
-        if (tp) { if (myStatus.tp !== tp) myStatus.tp = tp; } else if (myStatus.tp) delete myStatus.tp; }
+        if (tp) { if (myStatus.tp !== tp) myStatus.tp = tp; } else if (myStatus.tp) delete myStatus.tp;
+        netStatusRelayed(); }
       // 2c. The seating names this page's bridge: its far end is the anchor,
       // whatever the pool rules would have picked; a standby pair is dialled
       // through TURN ahead of time; every other pair stays off the pool.
