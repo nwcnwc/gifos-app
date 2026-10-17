@@ -12599,12 +12599,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else { const fs = pwFramesOf(retainedGrant); if (fs) for (const f of fs) relaySendSealed(pid, f.k, f, prevRoomE2E); }
       });
     }
+    // DEBUG ONLY: plaintext bytes put on DataChannels, by message kind (mesh
+    // frames by type, gossip by what it carries) — dcTally() in the test hooks.
+    const dcTallyMap = {};
+    function dcTally(msg) {
+      try {
+        let k = String(msg.k || '?');
+        const m = msg.m || msg.msg;
+        if (m && typeof m === 'object') {
+          k += ':' + String(m.t || m.k || m.kind || '?');
+          const g = m.g || m.msg || m.p;
+          if (g && typeof g === 'object' && (g.t || g.k || g.kind || g.msg)) k += ':' + String(g.t || g.k || g.kind || (g.msg && (g.msg.t || g.msg.k)) || '?');
+        }
+        const e = dcTallyMap[k] || (dcTallyMap[k] = { n: 0, b: 0 });
+        e.n++; e.b += JSON.stringify(msg).length;
+      } catch (e) {}
+    }
     // Sealed frame over this pair's DataChannel (chat, files, relay control).
     const dcSend = (p, msg) => {
       if (p && p.wireHold) return p.wireHold.then(() => dcSend(p, msg)); // DEBUG lever, see renegotiate
       if (p && p.testTx) { p.testTx.push(msg); return Promise.resolve(); } // openLinkForTest: a channel that only records
       if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
       const dc = p.dc;
+      if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
       return txm(() => net.seal(roomE2E, msg).then((env) =>
         net.sendChunked(env, (piece, str) => { txKindAdd(msg, str.length); try { dc.send(str); } catch (e) {} })));
     };
@@ -13216,6 +13233,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { if (p.doorRetry) clearTimeout(p.doorRetry); } catch (e) {}
       p.doorRetry = 0;
       if (p.bootOut) doorsShut.set(peerId, Date.now()); // a door I knocked through, closed by me
+      if (p.boot && typeof clog === 'function') clog('door-drop ' + String(peerId).slice(0, 6) + ' out=' + !!p.bootOut);
       if (p.boot && p.neverUp === true && !linkTo(peerId)) doorOffGrid.add(p.id); // a seatless door stays off the grid; a neighbour can still be relayed
       try { p.pc.close(); } catch (e) {}
       releaseAudio(p.video);
@@ -13647,6 +13665,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // knock at me it stayed open for good (seven on one front seat at a
           // large room size). It is still my door, and the sweeper closes it again.
           else if (Date.now() - (doorsShut.get(from) || 0) < DOOR_SHUT_MS) p.bootOut = true;
+          if (typeof clog === 'function') clog('door-in ' + String(from).slice(0, 6) + ' out=' + !!p.bootOut + ' new=' + !p.pc + ' age=' + Math.round((Date.now() - (p.bornAt || 0)) / 1000));
         }
         // A fresh offer onto a LONG-DEAD local pc negotiates into a corpse:
         // the tunnel-return stall (behavior battery 06c, 2026-07-26) — the
@@ -14040,6 +14059,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // muted (e2e-sixth-audio). The polite side only asks.
       if (iInitiate(pid)) sendOffer(pid, false);
       else { const q0 = makePeer(pid, null); if (q0) askDial(pid, q0); }
+      if (typeof clog === 'function') clog('door-out ' + String(pid).slice(0, 6));
       const q = peers.get(pid); if (q) { q.boot = true; q.bootOut = true; if (!manyDoors) armDoorRetry(pid, q); } // the door I came in by: retired once a seat's own link is open (retireBootPairs), unless the arithmetic names it
     }
     // The bootstrap channel to a greeter has done its work once I am seated
@@ -33080,6 +33100,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       pinnedFiles: () => Array.from(files.values()).map((f) => ({ name: f.name, size: f.size, have: !!f.bytes })),
       // File-plane forensics: the tombstone map + per-peer channel truth, so a
       // lost one-shot fdel is attributable to ONE hop from the test harness.
+      dcTally: () => JSON.parse(JSON.stringify(dcTallyMap)), // DEBUG: DataChannel bytes by kind since load
       fileState: () => ({
         files: Array.from(files.keys()),
         tombs: Object.keys(tombObj()),
