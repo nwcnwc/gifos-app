@@ -125,3 +125,70 @@ test('Blur for all shows only on the face you point at', async ({ page }) => {
   await page.waitForTimeout(400);
   expect((await read())[1].blur).toBe(true);
 });
+
+// A face that is already blurry needs no Blur for all. Already blurry means
+// the sender's own announced blur (Min or Max) or a host's blur for all; a
+// soft low-bitrate picture does not count. A host-blurred face keeps Unblur
+// in view, and the offer comes back when the sender turns their blur off.
+test('Blur for all hides on a face that is already blurred', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.setItem('gifos_appeared', '1');
+  });
+  await page.goto('/run.html#v=qablurdone&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#leavebtn', { state: 'visible' });
+  await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4, connected: true }));
+  await page.waitForFunction(() => document.querySelectorAll('#feed .tile:not(.me) > .blurbox.on').length >= 4);
+  // Avery blurs their own face (Max), Luis picks Min, Sam is blurred for all.
+  await page.evaluate(() => {
+    window.__gifosVideo.setPeerBlurForTest('Avery Chen', 2);
+    window.__gifosVideo.setPeerBlurForTest('Luis Ortega', 1);
+  });
+  const tileOf = (name) => page.locator('#feed .tile:not(.me)').filter({ has: page.locator('.name', { hasText: name }) });
+  const sam = tileOf('Sam Okonkwo');
+  const sb = await sam.boundingBox();
+  await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2);
+  await sam.locator(':scope > .blurbox').click();
+  await expect(sam.locator(':scope > .blurbox')).toHaveAttribute('aria-pressed', 'true');
+  // Read one face under the pointer and with its menu open (the phone tap).
+  const look = async (name) => {
+    const t = tileOf(name);
+    const b = await t.boundingBox();
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await page.waitForTimeout(350);
+    return t.evaluate((tile) => {
+      tile.classList.add('menu');
+      const shown = (el) => {
+        if (!el) return false;
+        const cs = getComputedStyle(el);
+        const r = el.getBoundingClientRect();
+        return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.95 && r.width > 1;
+      };
+      const box = tile.querySelector(':scope > .blurbox');
+      const every = tile.querySelector('.modbar [data-mod="blur"]');
+      const out = {
+        box: shown(box) ? box.textContent.trim() : '',
+        every: shown(every) ? every.textContent.trim() : '',
+      };
+      tile.classList.remove('menu');
+      return out;
+    });
+  };
+  const avery = await look('Avery Chen');
+  const luis = await look('Luis Ortega');
+  const samNow = await look('Sam Okonkwo');
+  const priya = await look('Priya Shah');
+  await page.screenshot({ path: 'test/desktop/shots/blur-done-after-1280.png' });
+  // Own blur on: no Blur for all, no Blur for everyone.
+  expect(avery).toEqual({ box: '', every: '' });
+  expect(luis).toEqual({ box: '', every: '' });
+  // Blurred for all by a host: Unblur stays, no second Blur offer.
+  expect(samNow.box).toBe('Unblur');
+  expect(samNow.every).toBe('Unblur for everyone');
+  // A clear face still offers both.
+  expect(priya).toEqual({ box: 'Blur for all', every: 'Blur for everyone' });
+  // Avery turns their blur off: the offer comes back.
+  await page.evaluate(() => window.__gifosVideo.setPeerBlurForTest('Avery Chen', 0));
+  expect(await look('Avery Chen')).toEqual({ box: 'Blur for all', every: 'Blur for everyone' });
+});

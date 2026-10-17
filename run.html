@@ -24623,6 +24623,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         return { ok: false };
       },
+      // A seeded face announces its own blur choice (0 none, 1 min, 2 max).
+      setPeerBlurForTest: (name, level) => {
+        for (const p of peers.values()) {
+          if (!p || p.name !== name) continue;
+          const st = statusOf.get(p.id) || {};
+          st.blur = level | 0;
+          statusOf.set(p.id, st);
+          try { updateTile(p.id); } catch (e) {}
+          return { ok: true, blur: st.blur };
+        }
+        return { ok: false };
+      },
       setTabHiddenForTest: (hidden) => {
         try { Object.defineProperty(document, 'hidden', { configurable: true, get: () => !!hidden }); } catch (e) {}
         document.dispatchEvent(new Event('visibilitychange'));
