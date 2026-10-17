@@ -25821,6 +25821,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Test hook: lets the e2e suite observe mesh + quality state.
     window.__gifosVideo = {
       seedGalleryForTest: (spec) => seedGalleryForTest(spec),
+      // A seat whose device never sent a name (joined from a link, no name typed).
+      clearNameForTest: (id) => {
+        const p = DEBUG_ON && peers.get(id);
+        if (!p || !p.qa) return false;
+        p.name = '';
+        delete rosterNames[id];
+        if (p.label) p.label.textContent = '…';
+        try { paintRoster(); } catch (e) {}
+        return true;
+      },
       arriveGuestForTest: (spec) => arriveGuestForTest(spec),
       markPeerAwayForTest: (name, on) => {
         for (const p of peers.values()) {
