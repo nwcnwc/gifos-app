@@ -7666,6 +7666,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // re-knocking underneath, and the veil lifts the instant the seat lands.
     // (Sits UNDER the password modal: typing the password IS joining.)
     let joinVeilEl = null, unseatedSince = 0, veilCeilLogged = false;
+    let relayBusyAt = 0; // the relay's last "very busy" (showRelayBusy), so the veil says that, not "your connection"
     setInterval(() => {
       if (!room || typeof meshSeat !== 'function') return;
       const s = meshSeat();
@@ -7691,7 +7692,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // console.debug notes the 210 s reap bound once. After that bound
       // the veil says the wait has run long. With the relay down, the
       // door line after 20 s is the message.
-      if (waited > 8000 && relayUp()) {
+      // THE RELAY IS VERY BUSY (showRelayBusy, renewed by every 4015): the
+      // door is not silent and the network is fine, so say what it said.
+      if (joinVeilEl.dataset) { const k = now - relayBusyAt < 40000 ? 'busy' : ''; if (joinVeilEl.dataset.kind !== k) joinVeilEl.dataset.kind = k; }
+      if (now - relayBusyAt < 40000) {
+        veilSay(net.BUSY_TEXT.replace(/, please try again later$/, ''), 'Please try again later. We keep trying, and you will be in the moment it lets new people in.');
+      } else if (waited > 8000 && relayUp()) {
         const left = Math.max(0, Math.ceil((210000 - waited) / 1000)); // reap bound, not a promise on screen
         const secs = Math.max(1, Math.ceil(waited / 1000));
         if (!veilCeilLogged) { veilCeilLogged = true; try { console.debug('seat ceiling 210s'); } catch (e) {} }
@@ -9072,6 +9078,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // and the socket keeps trying on its slow leash. Say so in the relay's own
     // words, held so the ambient line does not eat it between tries.
     function showRelayBusy() {
+      relayBusyAt = Date.now();
       setStatus('\u23f3 ' + net.BUSY_TEXT, 20000);
       if (statusEl.dataset) statusEl.dataset.kind = 'busy';
     }
