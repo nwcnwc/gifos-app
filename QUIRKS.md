@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q57. A town hall watcher filled the phone with their own tile
+
+The gallery gave a watcher a meeting tile of themselves, 316×504 on an iPhone SE, while the stage sat off screen. The watcher’s room is now the stage. Their tile is gone. The stage says “The town hall has not started.” The host still has the gallery, and still keeps the camera. A meeting still shows the gallery. `test/mobile/town-hall-join.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-town-hall-gallery.png`. After: `test/mobile/screenshots/after/iphone-se-town-hall-gallery.png`.
+
+Design: a watcher looks at the stage. Corporate stays at 4. A speaker on that stage is still a meeting tile.
+
 ### Q56. A town hall viewer got a meeting’s camera and mic
 
 Opening a town hall put Camera, Flip, and Unmute on the dock, then Blur, Run app, Share screen, Password, and Record in More. A watcher now gets React, More, and Leave. Hand, Chat, and Admin sign-in stay. The host, who holds the room key, keeps the camera and the mic. A stage grant puts the watcher’s camera and mic back. A meeting is unchanged. `test/mobile/town-hall-join.spec.mjs`.

@@ -743,6 +743,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.townhall.th-watch #sharebtn,
   body.townhall.th-watch #pwbtn,
   body.townhall.th-watch #recbtn { display: none !important; }
+  /* The watcher's room is the stage. Their own meeting tile does not fill
+     the phone. The host still has the gallery. */
+  body.townhall.th-watch #grid,
+  body.townhall.th-watch #stadium { display: none !important; }
   #appbar { display: flex; align-items: center; gap: .5rem; padding: .25rem .6rem;
     background: var(--surface, #14141f); border-bottom: 1px solid var(--border, #2a2a3f); font-size: .85rem; }
   #appbar #appname { font-weight: 700; }
@@ -1391,18 +1395,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* A broadcast viewer with an empty stage gets the sentence on the stage.
      OFF AIR stays the banner. The chip carries the same sentence. */
   #bc-ended[hidden] { display: none !important; }
-  body.broadcast #bc-ended:not([hidden]) {
+  body.broadcast #bc-ended:not([hidden]),
+  body.townhall #bc-ended:not([hidden]) {
     display: flex; position: fixed; z-index: 4; left: 24px; right: 24px;
     top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px));
     bottom: calc(108px + var(--inset-bottom, 0px));
     align-items: center; justify-content: center; margin: 0; padding: 0;
     pointer-events: none; text-align: center;
   }
+  body.townhall #bc-ended:not([hidden]) {
+    top: calc(14px + 4.25rem + var(--inset-top, 0px));
+  }
   #bc-ended p {
     margin: 0; max-width: 18rem; color: #f4f7fb;
     font: 700 1.75rem/1.25 system-ui, sans-serif; letter-spacing: -0.02em;
   }
-  body.broadcast.bc-quiet #fitbtn { display: none; }
+  body.broadcast.bc-quiet #fitbtn, body.townhall.bc-quiet #fitbtn { display: none; }
   @media (max-height: 500px) {
     body.broadcast #bc-ended:not([hidden]) {
       top: calc(var(--banner-h) + 8px + 2.75rem + var(--inset-top, 0px));
@@ -1661,6 +1669,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     position: absolute !important; left: -16px !important; top: 0 !important;
     width: 4px !important; height: 4px !important; overflow: hidden !important;
     opacity: 0 !important; pointer-events: none !important; margin: 0 !important; padding: 0 !important; }
+  body.townhall.th-watch #stagefeed {
+    position: relative !important; left: auto !important; top: auto !important;
+    width: 100% !important; height: auto !important; opacity: 1 !important;
+    pointer-events: auto !important; overflow: visible !important;
+  }
   body.comfy #stadium .rowtile.stad-src {
     position: absolute; left: -12px; top: 0; width: 4px; height: 4px; opacity: 0;
     pointer-events: none; overflow: hidden; }
@@ -6712,11 +6725,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (statusEl.title !== shown) statusEl.title = shown;
       const quiet = document.getElementById('bc-ended');
       if (quiet) {
-        const on = bcViewer && statusKind === 'alone';
+        const hallQuiet = typeof TOWNHALL !== 'undefined' && TOWNHALL && !hostStored && statusKind === 'alone';
+        const on = (bcViewer && statusKind === 'alone') || hallQuiet;
+        const quietLine = hallQuiet ? aloneCore : bcAlone;
         quiet.hidden = !on;
         document.body.classList.toggle('bc-quiet', on);
         const quietTxt = document.getElementById('bc-ended-txt');
-        if (quietTxt && on && quietTxt.textContent !== bcAlone) quietTxt.textContent = bcAlone;
+        if (quietTxt && on && quietTxt.textContent !== quietLine) quietTxt.textContent = quietLine;
       }
       paintLiveBadge();
     }

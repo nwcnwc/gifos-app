@@ -17,6 +17,8 @@ test('a town hall joiner lands in the town hall', async ({ page }) => {
     const display = await page.locator('#' + id).evaluate((el) => getComputedStyle(el).display);
     expect(display, id).toBe('none');
   }
+  await expect(page.locator('.tile.me')).toBeHidden();
+  await expect(page.locator('#bc-ended-txt')).toHaveText('The town hall has not started.');
   await expect(page.locator('#reactbtn')).toBeVisible();
   await expect(page.locator('#bartoggle')).toBeVisible();
   await expect(page.locator('#hand')).toBeAttached();
@@ -45,6 +47,9 @@ test('a town hall host still confirms how they appear', async ({ page }) => {
   await expect(page.locator('body')).not.toHaveClass(/th-watch/);
   const cam = await page.locator('#cam').evaluate((el) => getComputedStyle(el).display);
   expect(cam).not.toBe('none');
+  await page.locator('#nmok').click();
+  await expect(page.locator('.tile.me')).toBeVisible();
+  await expect(page.locator('#bc-ended')).toBeHidden();
 });
 
 test('a meeting joiner still lands in the meeting', async ({ page }) => {
