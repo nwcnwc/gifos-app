@@ -51,3 +51,26 @@ test('four people in the room are not "Just you", and the count is not cut off',
   expect(narrow.clipped).toBe(false);
   expect(narrow.onScreen).toBe(true);
 });
+
+// The rest of the header line starts with " · 360p" in its own flex item; a
+// flex item drops leading white space, so the count ran into the dot.
+test('the header line keeps a space between the count and the dot', async ({ page }) => {
+  await boot(page, 1280, 720);
+  const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4, connected: false }));
+  expect(seeded && seeded.ok).toBe(true);
+  await expect(page.locator('#statusrest')).toContainText('·');
+  const gap = await page.evaluate(() => {
+    const count = document.getElementById('statuscount');
+    const rest = document.getElementById('statusrest');
+    const textOf = (el) => [...el.childNodes].find((n) => n.nodeType === 3);
+    const cr = document.createRange();
+    cr.selectNodeContents(textOf(count));
+    const rt = textOf(rest);
+    const i = rt.data.indexOf('·');
+    const dr = document.createRange();
+    dr.setStart(rt, i); dr.setEnd(rt, i + 1);
+    return { gap: dr.getBoundingClientRect().left - cr.getBoundingClientRect().right, font: parseFloat(getComputedStyle(rest).fontSize) };
+  });
+  // A space is about a quarter of the font size; the bare dot sat flush.
+  expect(gap.gap).toBeGreaterThanOrEqual(gap.font * 0.2);
+});
