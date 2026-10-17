@@ -2700,7 +2700,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         away: 'Weg', stillHere: 'Sie sind noch dabei',
         unlockClear: 'Gesichter weich bis zum Passwort',
         onAir: 'Auf Sendung', offAir: 'Nicht live', watching: 'Live',
-        rosterPeople: 'Personen', you: 'Sie', muted: 'Stumm', rosterClose: 'Schließen', rosterFind: 'Name suchen',
+        rosterPeople: 'Personen', rosterPerson: 'Person', you: 'Sie', muted: 'Stumm', rosterClose: 'Schließen', rosterFind: 'Name suchen',
         muteForAll: 'Stumm', unmuteForAll: 'Ton an', forEveryone: 'Für alle',
         waitRoom: 'Warteraum', waitOn: 'An', waitOff: 'Aus', waitHeading: 'Warten',
         admit: 'Herein', nobodyWaiting: 'Niemand wartet', rename: 'Umbenennen', saveName: 'Sichern',
@@ -2984,7 +2984,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         away: 'Fuera', stillHere: 'Sigues en la llamada',
         unlockClear: 'caras suaves hasta una contraseña',
         onAir: 'Al aire', offAir: 'Fuera del aire', watching: 'En vivo',
-        rosterPeople: 'personas', you: 'tú', muted: 'En silencio', rosterClose: 'Cerrar', rosterFind: 'Buscar un nombre',
+        rosterPeople: 'personas', rosterPerson: 'persona', you: 'tú', muted: 'En silencio', rosterClose: 'Cerrar', rosterFind: 'Buscar un nombre',
         muteForAll: 'Silenciar', unmuteForAll: 'Activar', forEveryone: 'Para todos',
         waitRoom: 'Sala de espera', waitOn: 'Sí', waitOff: 'No', waitHeading: 'Esperando',
         admit: 'Admitir', nobodyWaiting: 'Nadie espera', rename: 'Renombrar', saveName: 'Guardar',
@@ -7839,7 +7839,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const all = rosterRows();
       const rows = all.filter((r) => !q || String(r.name).toLowerCase().indexOf(q) >= 0);
       const title = document.getElementById('roster-title');
-      if (title) title.textContent = all.length + ' ' + uiText('rosterPeople', 'people');
+      if (title) title.textContent = all.length + ' ' + (all.length === 1 ? uiText('rosterPerson', 'person') : uiText('rosterPeople', 'people'));
       const close = document.getElementById('roster-close');
       if (close) close.textContent = uiText('rosterClose', 'Close');
       if (find) {
