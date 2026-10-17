@@ -3611,6 +3611,72 @@ test('F opens Full screen, Escape closes it, and its close button is named', asy
   }
 });
 
+test('S opens Share where you can share, and the ? list names it', async ({ page }) => {
+  // Share took a Tab walk through the dock: every other dock control has a
+  // key (M, V, C, R, H, F), and Zoom gives sharing one too. A viewer who may
+  // not share has no Share, so S must do nothing for them.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  const sheet = page.locator('#share-modal');
+  for (const who of ['host', 'group', 'view', 'hostside']) {
+    const side = who === 'hostside';
+    await page.setViewportSize(side ? { width: 900, height: 720 } : { width: 1280, height: 720 });
+    const url = who === 'group'
+      ? '/run.html?desk=skeyg#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=skey' + who + (who === 'view' ? '' : '&host=1') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    if (side) {
+      // With the chat open beside a 900px call, Share moves into More (Q96);
+      // S still reaches it.
+      await page.keyboard.press('c');
+      await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+      await expect(page.locator('#sharebtn'), who + ': Share is under More').toHaveClass(/inmore/);
+    }
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+    await page.keyboard.press('s');
+    if (who === 'host') {
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: 'artifacts/sharekey-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    }
+    if (who === 'view') {
+      await page.waitForTimeout(300);
+      await expect(sheet, who + ': no Share for a viewer, so S does nothing').toBeHidden();
+    } else {
+      await expect(sheet, who + ': S opens Share').toBeVisible();
+      await expect(page.locator('#share-go'), who + ': the keyboard is on the sheet').toBeFocused();
+      await page.keyboard.press('Escape');
+      await expect(sheet, who + ': Escape closes it').toBeHidden();
+      // Back on Share, or on More when Share sits under it.
+      await expect(page.locator(side ? '#bartoggle' : '#sharebtn'), who + ': focus returns').toBeFocused();
+    }
+    // Typing an s in the chat stays in the chat.
+    if (!side) {
+      await page.keyboard.press('c');
+      await expect(page.locator('#chat-in'), who).toBeFocused();
+    } else await page.locator('#chat-in').focus();
+    await page.keyboard.type('s');
+    await expect(page.locator('#chat-in'), who).toHaveValue('s');
+    await expect(sheet, who).toBeHidden();
+    await page.locator('#chat-in').fill('');
+    await page.keyboard.press('Escape');
+    // The ? list names it where it works, and Share carries the key.
+    await page.keyboard.press('?');
+    const keys = await page.locator('#keys-modal kbd').allTextContents();
+    if (who === 'view') expect(keys, who).not.toContain('S');
+    else {
+      expect(keys, who + ': ? lists S').toContain('S');
+      await expect(page.locator('#sharebtn'), who).toHaveAttribute('aria-keyshortcuts', 'S');
+    }
+    await page.keyboard.press('Escape');
+  }
+});
+
 test('Full screen of a camera-off host shows who it is, not a black screen', async ({ page }) => {
   // Seen across two machines: with the host's camera off the stage shows an
   // initial, the name and Camera off (Q66), but Full screen showed the black
