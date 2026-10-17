@@ -2925,3 +2925,38 @@ test('a live host reads the whole status line at desktop widths', async ({ page 
     expect({ width: w, ...fit }).toEqual({ width: w, w: true, h: true, clearOfBar: true, inView: true });
   }
 });
+
+test('the stage label is readable on the dark stage', async ({ page }) => {
+  // Seen across two machines: the host's stage read "On stage" in near-black
+  // on the stage's black band at its foot, too small and too dark to read.
+  // The band is always dark, so the words on it must be light.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Pastor Sam');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const [w, h] of [[1280, 720], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=stagelabel' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.live');
+    const got = await page.evaluate(() => {
+      // the same tile paintStageStrip builds
+      const el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sgs';
+      el.appendChild(document.createElement('video'));
+      const lb = document.createElement('div'); lb.className = 'rlabel'; lb.textContent = 'On stage';
+      el.appendChild(lb);
+      document.getElementById('stagefeed').appendChild(el);
+      const s = getComputedStyle(lb);
+      const rgba = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+      const [r, g, b] = rgba(s.color);
+      const [br, bg, bb, ba = 1] = rgba(s.backgroundColor);
+      // the band over the black video
+      const under = [br * ba, bg * ba, bb * ba];
+      const lum = (c) => { const v = c.map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+      const a = lum([r, g, b]), z = lum(under);
+      return { contrast: Math.round(((Math.max(a, z) + 0.05) / (Math.min(a, z) + 0.05)) * 10) / 10, px: parseFloat(s.fontSize) };
+    });
+    if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/stage-label-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    expect({ width: w, readable: got.contrast >= 4.5, big: got.px >= 12, ...got }).toMatchObject({ width: w, readable: true, big: true });
+  }
+});
