@@ -14217,6 +14217,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       prayBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
       paintChatGate();
     };
+    // aria-expanded follows the panel, however it opened or closed.
+    chatBtn.setAttribute('aria-controls', 'chatpanel');
+    new MutationObserver(() => chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false'))
+      .observe(chatPanel, { attributes: true, attributeFilter: ['class'] });
+    chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
     chatBtn.onclick = () => {
       chatPanel.classList.toggle('open');
       // renderChat skips while the transcript tab is shown, and the transcript
@@ -22144,6 +22149,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           tray.setAttribute('hidden', '');
           const rb = document.getElementById('reactbtn');
           if (rb) { rb.setAttribute('aria-expanded', 'false'); rb.setAttribute('aria-pressed', 'false'); rb.classList.remove('on'); try { rb.focus(); } catch (err) {} }
+          return;
+        }
+        // An open chat closes before More folds, as a side panel does in
+        // Meet and Zoom, and the keyboard lands back on Chat.
+        if (chatPanelOpen()) {
+          e.preventDefault();
+          chatPanel.classList.remove('open');
+          try { chatBtn.focus(); } catch (err) {}
           return;
         }
         const barEl = document.querySelector('.bar');
