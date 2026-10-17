@@ -19386,7 +19386,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           .then(() => {
             dcSend(p, { k: 'ranswer', sdp: p.pc.localDescription });
             if (typeof clog === 'function') clog('ranswer→' + String(p.id).slice(0, 6));
-            afterNeg(p);
+            afterNeg(p, true);
           })
           .catch((e) => { if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140)); maybeRebuildNeg(p, e); });
         // Firefox offers carry o=mozilla. Applying one while our own offer is
