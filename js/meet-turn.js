@@ -15,6 +15,11 @@
  *   - One anchor. A TURN client sends its voice once, to one anchor, and
  *     receives one stream back: everything the anchor hears, minus the
  *     client's own voice.
+ *   - One bridge per blocked network (networkBridge). People on one network
+ *     reach each other directly; only one of them uses the pool for the
+ *     whole network and sends its anchor the network's voices, and the
+ *     others hear the room through it. A room of S networks that cannot
+ *     reach each other holds at most S-1 TURN links.
  *   - Off the join path. Credentials are asked for after joining, and only
  *     once a pair has failed its direct path (poolNeeded); an error, a
  *     timeout or an "unavailable" answer all mean "no TURN", and the meeting
@@ -119,6 +124,49 @@
       || ((b.links || 0) - (a.links || 0))
       || (String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0));
     return pool[0].id;
+  }
+
+  // networkBridge(f) → { bridge, bridges } for a page whose own network
+  // blocks direct connections: bridge is the one page on my network (the
+  // blocked pages I reach directly, through each other) that may use the
+  // free pool for it; bridges holds the bridge of every blocked network this
+  // page knows of. f = { me, ids, blocked(id), conns(id), turn(id), holds(id) }
+  //   ids      every page this page knows (me included)
+  //   blocked  that page's own network blocks direct connections
+  //   conns    the pages it is connected to (gossiped; TURN pairs included)
+  //   turn     the pages it holds a TURN pair with (gossiped), whose link is
+  //            not a direct one and so does not join two networks
+  //   holds    that page bridges its network now (gossiped)
+  // The bridge is the lowest id among the network's pages that bridge it
+  // now, else its lowest id: a page joining later never takes the role from
+  // a working bridge, and when the bridge leaves the next one takes over on
+  // its own, with no message.
+  function networkBridge(f) {
+    const ids = (f && f.ids) || [];
+    const blocked = (id) => !!(f.blocked && f.blocked(id));
+    const list = (fn, id) => { const v = fn ? fn(id) : null; return Array.isArray(v) ? v : []; };
+    const known = new Set(ids.filter(blocked));
+    const turnOf = new Map(); for (const id of known) turnOf.set(id, new Set(list(f.turn, id)));
+    const nbrs = new Map(); for (const id of known) nbrs.set(id, new Set());
+    for (const a of known) for (const b of list(f.conns, a)) {
+      if (b === a || !known.has(b)) continue;
+      if (turnOf.get(a).has(b) || turnOf.get(b).has(a)) continue; // a TURN pair joins no networks
+      nbrs.get(a).add(b); nbrs.get(b).add(a);
+    }
+    const lower = (a, b) => (String(a) < String(b) ? a : b);
+    const seen = new Set(), bridges = new Set();
+    let bridge = null;
+    for (const start of known) {
+      if (seen.has(start)) continue;
+      const group = [start]; seen.add(start);
+      for (let i = 0; i < group.length; i++) for (const n of nbrs.get(group[i])) if (!seen.has(n)) { seen.add(n); group.push(n); }
+      let low = null, lowLinked = null;
+      for (const id of group) { low = low == null ? id : lower(low, id); if (f.holds && f.holds(id)) lowLinked = lowLinked == null ? id : lower(lowLinked, id); }
+      const b = lowLinked != null ? lowLinked : low;
+      bridges.add(b);
+      if (group.includes(f.me)) bridge = b;
+    }
+    return { bridge, bridges };
   }
 
   // mixMinus(sources, clientId, direct) → the sources an anchor mixes for one
@@ -333,7 +381,7 @@
 
   const api = {
     ICE_URL, DEFAULT_WORKER, WORKER_KEY, workerBase, POOL, FETCH_TIMEOUT_MS, RETRY_MAX_MS, P0_MS, P1_MS, MAX_SERVED,
-    reachable, pairStage, poolNeeded, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, mayServe,
+    reachable, pairStage, poolNeeded, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, mayServe, networkBridge,
     retryDelayMs, parseIce, createCredentials, askIce, freeTicket, TICKET_CREDS,
   };
   const GifOS = (root.GifOS = root.GifOS || {});

@@ -1945,6 +1945,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const turnDownAt = new Map();      // peer id -> since when that pair has had no working path (kept across redials)
     const turnAnchorDead = new Map();  // peer id -> an anchor that failed is not chosen again before this time
     const turnMixes = new Map();       // client id -> { fold, keys }: the mix-minus this page sends a client it anchors
+    let turnUp = null;                 // { fold, keys }: the mix a network's bridge sends its anchor (its voice and its network's)
+    let turnBridging = false;          // this page bridges its blocked network now (rides my status as tb)
     const turnMixSenders = new WeakSet(); // senders carrying a mix-minus: a microphone swap never touches them
     // ---- VIDEO ANYWHERE: the state (rules in js/meet-video-anywhere.js) ----
     // A room whose admin presented a Video Anywhere receipt carries video
@@ -5046,7 +5048,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (p.mainA) {
           // A client I anchor on the free pool hears the mix-minus on this
           // sender instead of my microphone (my voice is in the mix).
-          const mixT = p.turnServe ? turnMixTrack(p.id) : null;
+          // My anchor hears my network's voices with mine, when I bridge it.
+          const mixT = p.turnServe ? turnMixTrack(p.id) : p.turnAnchor ? turnUpTrack() : null;
           if (mixT) { turnMixSenders.add(p.mainA); if (p.mainA.track !== mixT) p.mainA.replaceTrack(mixT).catch(() => {}); }
           else {
             turnMixSenders.delete(p.mainA);
@@ -5903,6 +5906,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     //   4. The anchor sends back one stream, everything it hears except the
     //      client's own voice, and passes the client's voice on to the others
     //      the way a friend passes on media.
+    //   5. One page per blocked network does this for the whole network (its
+    //      bridge, meetTurn.networkBridge): it sends the anchor its network's
+    //      voices in one mix, and its neighbours hear the room through it by
+    //      friend carry, so S networks that cannot reach each other hold at
+    //      most S-1 TURN links.
     function turnServers() { return turnCred ? turnCred.servers() : null; }
     // A peer dialled this pair through TURN (its relay candidates arrived)
     // or I already anchor it. Only a page that cannot be reached acts on it.
@@ -6033,9 +6041,49 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     function turnMixTrack(pid) { const mx = turnMixes.get(pid); return mx ? mx.fold.track() : null; }
+    // The bridge's uplink: on its anchor pair a network's bridge sends what
+    // it hears on its own network (its voice and its neighbours'), never
+    // what came from the anchor's side, so the room hears the whole network
+    // through one TURN link. Nobody else on my network: my microphone alone.
+    function syncTurnUpMix() {
+      const a = turnAnchorId != null ? peers.get(turnAnchorId) : null;
+      const drop = () => { if (turnUp) { turnUp.fold.clear(); turnUp = null; } };
+      if (!a || !a.turnAnchor) { drop(); return; }
+      if (!ensureAc()) return;
+      const want = new Map(MT.mixMinus(turnHeardSources(), a.id, (connsOf.get(a.id) || []).filter((x) => x !== myId)).map((x) => [x.key, x]));
+      if (![...want.values()].some((x) => x.owner !== myId)) { drop(); return; }
+      if (!turnUp) turnUp = { fold: MM.createAudioFold(ac), keys: new Set() };
+      for (const k of [...turnUp.keys]) if (!want.has(k)) { turnUp.fold.remove(k); turnUp.keys.delete(k); }
+      for (const [k, x] of want) {
+        if (!turnUp.keys.has(k)) { turnUp.fold.add(k, x.stream, x.gain); turnUp.keys.add(k); }
+        else if (turnUp.fold.setGain) turnUp.fold.setGain(k, x.gain);
+      }
+    }
+    function turnUpTrack() { return turnUp ? turnUp.fold.track() : null; }
     // The beat's TURN pass (the sweep calls it after the pair verdicts).
     function turnSweep(now) {
       if (myStatus.np !== directPath) myStatus.np = directPath; // my reachability rides my status: an anchor choice reads it
+      // My TURN pairs ride my status too: they join no networks, so the
+      // bridge choice below leaves them out of who reaches whom directly.
+      const myTl = []; for (const [pid, p] of peers) if (p.turnAnchor || p.turnServe || (p.turnMine && p.connected)) myTl.push(pid);
+      myTl.sort();
+      if (myTl.length) { if ((myStatus.tl || []).join(',') !== myTl.join(',')) myStatus.tl = myTl; } else if (myStatus.tl) delete myStatus.tl;
+      if (turnBridging) myStatus.tb = 1; else if (myStatus.tb) delete myStatus.tb;
+      // One bridge per blocked network (MT.networkBridge): the others on my
+      // network reach me directly and hear the room through it, so they ask
+      // the pool for nothing and anchor nobody.
+      const net = directPath === 'blocked' ? MT.networkBridge({ me: myId, ids: [myId, ...peers.keys()],
+        blocked: (id) => (id === myId ? true : (statusOf.get(id) || {}).np === 'blocked'),
+        conns: (id) => (id === myId ? myConns() : connsOf.get(id)),
+        turn: (id) => (id === myId ? myTl : (statusOf.get(id) || {}).tl),
+        holds: (id) => (id === myId ? turnBridging : !!(statusOf.get(id) || {}).tb) }) : null;
+      const isBridge = !net || net.bridge === myId;
+      // A bridge carries the room to a few neighbours only (MAX_RELAY_JOBS:
+      // its upload stays bounded): a page it refused uses the pool itself,
+      // and keeps its anchor once it has one (no flapping as the refusal ages).
+      let spill = !isBridge && turnAnchorId != null;
+      if (!isBridge && net.bridge != null) for (const ref of relayRefusal.values()) if (ref[net.bridge] && now - ref[net.bridge] < 30000) spill = true;
+      const usePool = isBridge || spill;
       // 1. How long each pair has gone without a working path.
       for (const [pid, p] of peers) {
         if (p.connected || p.relayed) turnDownAt.delete(pid);
@@ -6055,7 +6103,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (want && !keep) {
         const stages = []; let invited = false;
         for (const [pid, p] of peers) { if (!anchorable(pid, p)) continue; if (turnInvited(p)) invited = true; stages.push(stageOf(pid, p)); }
-        want = MT.poolNeeded(stages, invited);
+        want = MT.poolNeeded(usePool ? stages : [], invited); // a dial through TURN is answered whoever bridges
       }
       if (want && !keep) {
         if (turnCred) turnCred.stop();
@@ -6071,7 +6119,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       const servers = turnServers();
       // 3. The client side: one anchor, kept while it carries me.
-      if (directPath === 'blocked' && servers) {
+      if (directPath === 'blocked' && servers && usePool) {
         if (turnAnchorId != null) {
           const a = peers.get(turnAnchorId);
           if (a && !a.turnAnchor) { a.turnAnchor = true; newPcFor(a); sendOffer(turnAnchorId, false); } // the record was rebuilt by a redial
@@ -6094,10 +6142,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               deadUntil: turnAnchorDead.get(pid) || 0,
               stage: stageOf(pid, p) });
           }
-          const pick = MT.chooseAnchor(cands, null, now);
+          // Nobody reachable to anchor on: the bridges link to each other,
+          // each to a lower one, and the lowest (the root) waits to be
+          // dialled, so S blocked networks make S-1 links and no loop.
+          let pool = cands;
+          if (!cands.some((c) => c.reachable === true && c.stage === 'turn')) pool = cands.filter((c) => net.bridges.has(c.id) && c.id !== net.bridge && (spill || String(c.id) < String(myId)));
+          const pick = MT.chooseAnchor(pool, null, now);
           if (pick != null) setTurnAnchor(pick, now);
         }
       } else if (turnAnchorId != null) dropTurnAnchor(now, 0);
+      let serving = false; for (const p of peers.values()) if (p.turnServe) serving = true;
+      turnBridging = isBridge && directPath === 'blocked' && (turnAnchorId != null || serving);
       const anchor = turnAnchorId != null ? peers.get(turnAnchorId) : null;
       if (anchor && anchor.dc && anchor.dc.readyState === 'open' && anchor.turnHelloDc !== anchor.dc) turnHello(anchor, true);
       // Heard through the anchor: no friend carries anyone else to me (one stream in).
@@ -6117,9 +6172,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const p of peers.values()) if (p.turnAudio) parkTurnSenders(p);
       // 6. The anchor side: one mix-minus per client, on that pair's audio sender.
       syncTurnMixes();
+      syncTurnUpMix(); // 7. A network's bridge: its network's voices up to its anchor, on that pair's audio sender
       let swap = false;
       for (const p of peers.values()) {
         if (p.turnServe && p.mainA) { const mt = turnMixTrack(p.id); if (mt && p.mainA.track !== mt) swap = true; }
+        if (p.turnAnchor && p.mainA) { const ut = turnUpTrack(); if (ut ? p.mainA.track !== ut : turnMixSenders.has(p.mainA)) swap = true; }
         if (p.turnAudio && !p.mainA && localStream && p.dc && p.dc.readyState === 'open') swap = true; // the voice sender is missing: refreshOutbound adds it
       }
       if (swap) refreshOutbound();
