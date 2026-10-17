@@ -1672,6 +1672,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     color: #f4f7fb; font-size: 12px; font-weight: 700; letter-spacing: .04em;
     padding: 3px 8px; border-radius: 999px; }
   body.comfy .tile[data-tier="bot"] { z-index: 5; border-radius: 12px; overflow: hidden; }
+  /* Desktop gallery: a gutter between faces (meet-views.js) and soft corners. */
+  body.comfy.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-gutter="1"],
+  body.comfy .stadface[data-gutter="1"] { border-radius: 10px; overflow: hidden; }
   /* Gallery keeps the stage strip playing (PiP can aim it) but off the mosaic.
      A stage mode adds .show-stage and places that strip itself. */
   body.comfy:not(.show-stage) #stagefeed {

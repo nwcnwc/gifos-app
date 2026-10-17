@@ -6,6 +6,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 
 ## Fixed
 
+### Gallery tiles touched, with no gutter
+
+- **Who hits it:** anyone in a desktop gallery of two or more, most of all a company call that compares us with Zoom or Meet.
+- **What you saw:** faces butted edge to edge with square corners, so the wall read as one picture cut into pieces and a name strip ran up against the next face.
+- **Repro:** `test/desktop/gallery-pack.spec.js` (“faces have a gutter between them and soft corners”) failed before the fix on Chromium and Firefox. With five faces at 1280 the gap was 0 (acd2fc6).
+- **Fix:** on desktop each packed cell gives up 4px on every side, so faces have an 8px gutter, and a tile has 10px corners. Every tile is still the same size, a short row is still centered, and names still sit above the dock. A phone stays edge to edge.
+- **Proof:** the repro passes at 1280 with five and seven faces and at 900 with seven, on Chromium and Firefox. At 1280 the five tiles are each 416×261 with 8px between them. Screenshots: `test/desktop/shots/gallery-gutter-before-1280.png`, `test/desktop/shots/gallery-gutter-after-1280.png`.
+
 ### A dead camera took about 9 seconds to come back
 
 - **Who hits it:** anyone whose camera stays live but goes pure black or stops sending frames, often after another app takes the lens.
