@@ -4429,3 +4429,48 @@ test('the recording chip on a tile names the small group, not a meeting', async 
     await expect(page.locator('#airrec')).toHaveText('Recording');
   }
 });
+
+test('Fit sits in the header, clear of every tile and its controls', async ({ page }) => {
+  // Seen on two machines (rec-chip-cross-after.png): in a small group at 1280
+  // the Fit pill hung over the top-right tile, on its "Blur for all" button
+  // and its dot. Zoom keeps View in the top bar, above the faces. A tile needs
+  // a real call (an mb=1 page never joins), so this opens a call from the
+  // lobby on a relay that is not there; cross-fithdr.js reads a peer's tile.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_relay', 'ws://127.0.0.1:9');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=fithdr' + w);
+    await page.waitForSelector('#lobby.show');
+    await page.locator('#lob-open').click();
+    await page.getByRole('button', { name: 'Save' }).click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.tile.me');
+    await page.mouse.move(w / 2, h / 2);
+    await expect(page.locator('#fitbtn')).toBeVisible();
+    if (w === 1280) await page.screenshot({ path: 'artifacts/fit-header-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    const got = await page.evaluate(async () => {
+      await new Promise((r) => requestAnimationFrame(r));
+      const box = (el) => el.getBoundingClientRect();
+      const hit = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0;
+      const fit = box(document.getElementById('fitbtn'));
+      const shown = (sel) => Array.from(document.querySelectorAll(sel)).filter((e) => e.getClientRects().length);
+      const build = document.getElementById('gifos-build-float');
+      return {
+        fit: [Math.round(fit.left), Math.round(fit.top), Math.round(fit.right), Math.round(fit.bottom)],
+        tiles: shown('.tile').filter((t) => hit(fit, box(t))).map((t) => t.className),
+        chip: hit(fit, box(document.querySelector('.topchip'))),
+        build: !!build && hit(fit, box(build)),
+        buildOnChip: !!build && hit(box(build), box(document.querySelector('.topchip'))),
+        inside: fit.left >= 0 && fit.right <= innerWidth && fit.top >= 0,
+      };
+    });
+    const where = 'at ' + w + ' ' + JSON.stringify(got);
+    expect(got.tiles, where).toEqual([]);
+    expect(got.chip, where).toBe(false);
+    expect(got.build, where).toBe(false);
+    expect(got.buildOnChip, where).toBe(false);
+    expect(got.inside, where).toBe(true);
+  }
+});
