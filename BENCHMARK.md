@@ -24,7 +24,7 @@ Competitors this is held against: Zoom, Google Meet, Microsoft Teams, FaceTime, 
 | Warm, short, trustworthy copy | 4 | 4 | 4 | FaceTime |
 | **Audience average** | **4.0** | **4.0** | **4.0** | |
 
-Hang up stays on screen (Q1). Chat sits above the dock, including under a keyboard (Q2). A broadcast state is a full-width banner above the status sentence (Q14). Create & enter stays in the card while the room fields scroll (Q4). More scrolls inside a short landscape screen (Q3). The chip and the dock clear a notch and a home indicator (Q7). The status line and the chip title grow with the root text size (Q6, Q13). Flip sits on the phone dock (Q5b). Create asks for one host password (Q12). The dock gap is at least 8px (Q10). Save is the only filled join action, and Clear blanks the name and the picture in the form (Q31).
+Hang up stays on screen (Q1). A tall phone names Camera, Flip, Unmute, React, More, and Leave on the dock. Unmute is that mic button (Q55). Chat sits above the dock, including under a keyboard (Q2). A broadcast state is a full-width banner above the status sentence (Q14). Create & enter stays in the card while the room fields scroll (Q4). More scrolls inside a short landscape screen (Q3). The chip and the dock clear a notch and a home indicator (Q7). The status line and the chip title grow with the root text size (Q6, Q13). Flip sits on the phone dock (Q5b). Create asks for one host password (Q12). The dock gap is at least 8px (Q10). Save is the only filled join action, and Clear blanks the name and the picture in the form (Q31).
 
 The host key is part of the room. It is minted and stored. These scores leave it out.
 

@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q55. The phone dock had no words
+
+Camera, Flip, the mic, React, More, and Leave were icons. A tall phone now prints the word on each one: Camera, Flip, Unmute, React, More, Leave. The mic is the only Unmute. When the mic is on, that same word becomes Mute. A broadcast viewer’s mic stays hidden, so they do not get an Unmute. A short landscape keeps the thin strip of marks and hides the words. `test/mobile/dock-labels.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-dock-labels.png`. After: `test/mobile/screenshots/after/iphone-se-dock-labels.png`.
+
+Design: one word on the control, and one Unmute. Church, corporate, and personal stay at 4.
+
 ### Q54. A viewer alone was told to send the invite
 
 A church viewer who opened a quiet service, and a friend who opened a quiet stream, read “Just you — send the invite; the link has no expiry.” That line is the host’s. The stage now says “The service has not started.” or “The stream has not started.” The chip says the same thing, and the banner stays OFF AIR. Once this tab has seen someone else in the room and the room is empty again, the stage says “The service has ended.” or “The stream has ended.” A host who is alone still gets Invite. A town hall viewer still reads that the hall has not started. A meeting still gets the invite line. `test/mobile/broadcast-ended.spec.mjs`.
