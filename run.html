@@ -1511,6 +1511,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     position: static; pointer-events: auto; min-height: 48px; padding: 10px 22px;
     background: transparent; box-shadow: none; border: 2px solid #f4f7fb; border-radius: 16px;
   }
+  /* Captions ride the picture above Give, clear of the dock: the host's
+     phone writes down what it hears and every viewer reads it here. CC
+     hides or brings back the words; it stays while they are hidden. */
+  #bc-cap[hidden], body.bc-quiet #bc-cap { display: none !important; }
+  #bc-cap {
+    position: fixed; z-index: 5; pointer-events: none;
+    left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px));
+    bottom: calc(var(--dock-clear, 108px) + 4px + clamp(44px, 2.75rem, 56px) + 8px);
+    display: flex; align-items: flex-end; gap: 8px;
+  }
+  #bc-cap-btn {
+    pointer-events: auto; flex: 0 0 auto; min-width: 44px; min-height: 44px; padding: 0 10px;
+    border: 0; border-radius: 10px; background: rgba(12,14,18,.82); color: #f4f7fb;
+    font: 800 min(1rem, 20px)/1 system-ui, sans-serif; box-shadow: 0 0 0 1.5px rgba(244,247,251,.55);
+  }
+  #bc-cap-btn[aria-pressed="false"] { opacity: .7; text-decoration: line-through; }
+  #bc-cap-txt {
+    margin: 0; flex: 1 1 auto; min-width: 0; max-height: 4.2em; overflow: hidden;
+    padding: 6px 10px; border-radius: 10px; background: rgba(0,0,0,.8); color: #fff;
+    font: 600 clamp(18px, 1.125rem, 28px)/1.35 system-ui, sans-serif;
+  }
+  #bc-cap-txt:empty, #bc-cap.off #bc-cap-txt { display: none; }
   #bc-ended p {
     margin: 0; max-width: 18rem; color: #f4f7fb;
     font: 700 clamp(1.15rem, 9cqh, 1.75rem)/1.25 system-ui, sans-serif; letter-spacing: -0.02em;
@@ -2244,6 +2266,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div id="feed">
     <div id="bc-ended" hidden><p id="bc-ended-txt"></p><button type="button" id="bc-replay" hidden>Watch</button><a id="bc-cal" hidden>Add to calendar</a></div>
     <a id="bc-give" hidden target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span id="bc-give-txt">Give</span></a>
+    <div id="bc-cap" hidden><button type="button" id="bc-cap-btn" aria-pressed="true" aria-label="Captions" title="Show or hide the captions">CC</button><p id="bc-cap-txt" aria-live="polite"></p></div>
     <div id="stagefeed"></div>
     <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-name"></div></div>
     <div id="grid"></div>
@@ -19511,7 +19534,40 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       trimMap(trs, CHAT_MAX);
       return true;
     }
+    // A broadcast has no tiles to caption: the Stage is one picture. The
+    // newest words go on the band over it (#bc-cap), on every phone.
+    const BC_CAP_KEY = 'gifos_bccap';
+    let bcCapT = 0;
+    function bcCapOn() { try { return localStorage.getItem(BC_CAP_KEY) !== 'off'; } catch (e) { return true; } }
+    function paintBcCapBtn() {
+      const box = document.getElementById('bc-cap'), btn = document.getElementById('bc-cap-btn');
+      if (!box || !btn) return;
+      const on = bcCapOn();
+      box.classList.toggle('off', !on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+    function showBcCaption(text) {
+      const box = document.getElementById('bc-cap'), txt = document.getElementById('bc-cap-txt');
+      if (!box || !txt) return;
+      let t = String(text || '').trim();
+      if (t.length > 140) { t = t.slice(-140); t = '… ' + t.slice(t.indexOf(' ') + 1); } // the newest words, from a word
+      txt.textContent = t;
+      box.hidden = false;
+      paintBcCapBtn();
+      clearTimeout(bcCapT);
+      bcCapT = setTimeout(() => { txt.textContent = ''; }, 8000);
+    }
+    if (BROADCAST) {
+      const btn = document.getElementById('bc-cap-btn');
+      if (btn) btn.onclick = () => {
+        try { localStorage.setItem(BC_CAP_KEY, bcCapOn() ? 'off' : 'on'); } catch (e) {}
+        paintBcCapBtn();
+      };
+      const cc = document.getElementById('ccbtn');
+      if (cc) cc.title = 'Captions for viewers: your phone writes down what it hears, and every viewer reads it on the picture';
+    }
     function showCaption(byId, text) {
+      if (BROADCAST) showBcCaption(text);
       const t = byId === myId ? meTile : peers.get(byId);
       if (!t || !t.cap) return;
       t.cap.textContent = text;
