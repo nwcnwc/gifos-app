@@ -14531,11 +14531,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // phone shows the conversation instead of a row of buttons per line.
     let lineOpen = null;
     // Who reacted, by name: a phone has no hover, so the open line says it.
-    // Someone who left is still named by a line they wrote.
+    // Someone who left is still named by the name they had when they
+    // reacted, or by a line they wrote.
+    const reactNames = new Map(); // byId -> name when their reaction landed
     function reactorName(byId) {
       if (byId === myId) return 'You';
       const n = typeof nameForPeer === 'function' ? nameForPeer(byId) : '';
       if (n) return n;
+      if (reactNames.has(byId)) return reactNames.get(byId);
       for (const m of chat.values()) if (m.byId === byId && m.by) return m.by;
       return 'Someone';
     }
@@ -14559,6 +14562,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!who) { who = new Set(); per.set(e, who); }
         if (who.has(byId)) return false;
         who.add(byId);
+        const nm = byId !== myId && typeof nameForPeer === 'function' ? nameForPeer(byId) : '';
+        if (nm && (reactNames.has(byId) || reactNames.size < 500)) reactNames.set(byId, nm);
       } else {
         if (!who || !who.delete(byId)) return false;
         if (!who.size) per.delete(e);
