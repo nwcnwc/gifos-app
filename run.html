@@ -10136,17 +10136,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // keeps the stage the same way, with the recording chip everyone sees,
     // and Leave hands the replay over. Once per page, so a Stop stays stopped.
     let bcKept = false;
+    const bcKeepLog = []; // read by keepPeekForTest
     function bcKeepService() {
       if (bcKept || !BROADCAST || !bcHostStored()) return;
       bcKept = true;
       const until = Date.now() + 30000;
       const tick = () => {
+        bcKeepLog.push({ t: Date.now(), leaving: !!leaving, rec: !!(recRec && recRec.state !== 'inactive'), starting: !!recStarting, stg: !!myStatus.stg });
         if (leaving || (recRec && recRec.state !== 'inactive') || recStarting) return;
         if (!myStatus.stg || !recScopeSources('program').stage.length) {
           if (Date.now() < until) setTimeout(tick, 500);
           return;
         }
         startRec({ scope: 'program', quality: recDefaultQuality(IS_MOBILE), matchMix: false, keep: true }).then((err) => {
+          bcKeepLog.push({ t: Date.now(), err: err || '' });
           if (typeof err === 'string' && err && Date.now() < until) setTimeout(tick, 1000);
         }, () => {});
       };
@@ -23795,6 +23798,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return participantCount();
       },
       bot: () => !!myStatus.bot,
+      keepPeekForTest: () => ({ kept: bcKept, log: bcKeepLog.slice(-12) }),
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
       statusPeekForTest: (id) => { const st = statusOf.get(id); return st ? { stg: st.stg || 0, ageMs: Date.now() - (st.at || 0), rxAgeMs: Date.now() - (st.rx || 0) } : null; },

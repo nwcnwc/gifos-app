@@ -34,7 +34,8 @@ test('Go live keeps the service, and Leave hands the host the replay', async ({ 
   await phoneShare(page);
   await goLive(page, 'bc=1');
   // Kept without a tap, and everyone sees the recording chip.
-  await page.waitForFunction(() => /recording this meeting/.test((document.querySelector('.tile.me .chips') || document.querySelector('.chips') || {}).textContent || ''), null, { timeout: 10000 });
+  await page.waitForFunction(() => /recording this meeting/.test((document.querySelector('.tile.me .chips') || document.querySelector('.chips') || {}).textContent || ''), null, { timeout: 10000 })
+    .catch(async (e) => { console.log('KEEP', JSON.stringify(await page.evaluate(() => ({ peek: window.__gifosVideo.keepPeekForTest(), chips: [...document.querySelectorAll('.chips')].map((c) => c.textContent) })))); throw e; });
   await expect(page.locator('#recbtn')).toHaveText(/^Stop /);
   await page.waitForTimeout(1500);
   await page.locator('#leavebtn').click();
