@@ -6709,10 +6709,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else { const fs = pwFramesOf(retainedGrant); if (fs) for (const f of fs) relaySendSealed(pid, f.k, f, prevRoomE2E); }
       });
     }
+    // DEBUG ONLY: plaintext bytes put on DataChannels, by message kind (mesh
+    // frames by type, gossip by what it carries) — dcTally() in the test hooks.
+    const dcTallyMap = {};
+    function dcTally(msg) {
+      try {
+        let k = String(msg.k || '?');
+        const m = msg.m || msg.msg;
+        if (m && typeof m === 'object') {
+          k += ':' + String(m.t || m.k || m.kind || '?');
+          const g = m.g || m.msg || m.p;
+          if (g && typeof g === 'object' && (g.t || g.k || g.kind || g.msg)) k += ':' + String(g.t || g.k || g.kind || (g.msg && (g.msg.t || g.msg.k)) || '?');
+        }
+        const e = dcTallyMap[k] || (dcTallyMap[k] = { n: 0, b: 0 });
+        e.n++; e.b += JSON.stringify(msg).length;
+      } catch (e) {}
+    }
     // Sealed frame over this pair's DataChannel (chat, files, relay control).
     const dcSend = (p, msg) => {
       if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
       const dc = p.dc;
+      if (typeof clog === 'function') dcTally(msg); // DEBUG: what the channel bytes are
       return txm(() => net.seal(roomE2E, msg).then((env) =>
         net.sendChunked(env, (piece, str) => { try { dc.send(str); } catch (e) {} })));
     };
@@ -7108,6 +7125,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       clearTimeout(p.hiLate);
       try { if (p.doorRetry) clearTimeout(p.doorRetry); } catch (e) {}
       p.doorRetry = 0;
+      if (p.boot && typeof clog === 'function') clog('door-drop ' + String(peerId).slice(0, 6) + ' out=' + !!p.bootOut);
       if (p.boot && p.neverUp === true && !linkTo(peerId)) doorOffGrid.add(p.id); // a seatless door stays off the grid; a neighbour can still be relayed
       try { p.pc.close(); } catch (e) {}
       releaseAudio(p.video);
@@ -7520,6 +7538,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // ...unless I am the one knocking (a greeter dialled me back): then it
           // is my door, closed by me once I am seated, like the ones I dial
           const ms = meshSeat(); if (!(ms && ms.hasCoord && ms.state === 3)) p.bootOut = true;
+          if (typeof clog === 'function') clog('door-in ' + String(from).slice(0, 6) + ' out=' + !!p.bootOut + ' new=' + !p.pc + ' age=' + Math.round((Date.now() - (p.bornAt || 0)) / 1000));
         }
         // A fresh offer onto a LONG-DEAD local pc negotiates into a corpse:
         // the tunnel-return stall (behavior battery 06c, 2026-07-26) — the
@@ -7889,6 +7908,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // renegotiation of a corpse.
       if (p && p.pc) { newPcFor(p); if (p.neverUp === true && manyDoors) p.dialWait = Math.min(DOOR_REDIAL_CAP, (p.dialWait || 5000) * 2); }
       sendOffer(pid, false);
+      if (typeof clog === 'function') clog('door-out ' + String(pid).slice(0, 6));
       const q = peers.get(pid); if (q) { q.boot = true; q.bootOut = true; if (!manyDoors) armDoorRetry(pid, q); } // the door I came in by: retired once a seat's own link is open (retireBootPairs), unless the arithmetic names it; bootOut = I knocked through it
     }
     // The bootstrap channel to a greeter has done its work once I am seated
@@ -21955,6 +21975,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       pinnedFiles: () => Array.from(files.values()).map((f) => ({ name: f.name, size: f.size, have: !!f.bytes })),
       // File-plane forensics: the tombstone map + per-peer channel truth, so a
       // lost one-shot fdel is attributable to ONE hop from the test harness.
+      dcTally: () => JSON.parse(JSON.stringify(dcTallyMap)), // DEBUG: DataChannel bytes by kind since load
       fileState: () => ({
         files: Array.from(files.keys()),
         tombs: Object.keys(tombObj()),
