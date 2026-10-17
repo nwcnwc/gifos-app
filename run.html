@@ -24155,6 +24155,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         name = name || (rec && rec.name && rec.name.replace(/\.gif$/i, '')) || 'App';
         appMode = 'host'; appKey = null;
         showAppPane(name, ROOM.appPinned ? 'you host it' : '· you are hosting it for the meeting');
+        // Run app lives in the More sheet; left open it is a grid of buttons
+        // over the app. Fold it without rewriting the saved preference.
+        const barEl = document.querySelector('.bar');
+        const toggle = document.getElementById('bartoggle');
+        if (barEl && toggle && !barEl.classList.contains('collapsed')) {
+          barEl.classList.add('collapsed');
+          toggle.setAttribute('aria-expanded', 'false');
+          toggle.setAttribute('aria-label', uiText('more', 'More'));
+          toggle.title = uiText('more', 'More');
+          const word = toggle.querySelector('.dockword');
+          if (word) word.textContent = uiText('more', 'More');
+        }
         if (rec && rec.bytes) setAppGif(rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes), name);
         const ctl = await GifOS.runtime.boot(appMountEl, fileId, null);
         appHostCtl = ctl; // Save/snapshot chrome (one-runtime)
