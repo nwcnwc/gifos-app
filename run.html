@@ -2544,6 +2544,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const curTitle = document.getElementById('paneltitle');
         if (curTitle && curTitle.textContent !== 'Transcript') curTitle.textContent = 'Small group chat';
         say('chatprivacy', '· private to this small group, gone when everyone leaves');
+        const chatMeet = document.getElementById('chatbtn');
+        if (chatMeet) chatMeet.title = 'Chat and share files — stays between the people on this meeting, not on a server';
         const leave = document.getElementById('leavebtn');
         if (leave) {
           leave.title = 'Leave the small group. Your camera and microphone stop.';
@@ -2585,7 +2587,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const whoP = document.querySelector('#who-modal .name-box p');
       if (whoP) whoP.textContent = 'There is no server in the middle storing this service. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone\u2019s internet address \u2014 nobody is anonymous. \u2713 marks an address the GifOS relay verified or this device saw directly; anything else is only what that person\u2019s device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.';
       const chat = document.getElementById('chatbtn');
-      if (chat && chat.textContent === 'Chat') chat.title = 'Chat with everyone watching — stays between the people here, not on a server';
+      if (chat) chat.title = 'Chat with everyone watching — stays between the people here, not on a server';
       const rec = document.getElementById('recbtn');
       if (rec) rec.title = 'Record this service ON YOUR DEVICE (everyone sees that you are recording)';
       const inv = document.querySelector('#inv-modal h3');

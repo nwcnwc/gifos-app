@@ -1046,6 +1046,36 @@ test('chat is one tap on the dock, and a prayer is its own line', async ({ page 
   await expect(lines.nth(1)).toContainText('See you after');
 });
 
+test('a service chat tip talks about the people watching', async ({ page }) => {
+  const serviceTip = 'Chat with everyone watching — stays between the people here, not on a server';
+  const meetingTip = 'Chat and share files — stays between the people on this meeting, not on a server';
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('view=1') === -1 && location.hash.indexOf('bc=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=chatip' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    const chat = page.locator('.bar > #chatbtn');
+    await expect(chat).toBeVisible();
+    await expect(chat).toHaveAttribute('title', serviceTip);
+    const lay = await page.evaluate(() => {
+      const btn = document.querySelector('.bar > #chatbtn').getBoundingClientRect();
+      const bar = document.querySelector('.bar').getBoundingClientRect();
+      return { inBar: btn.left >= bar.left - 1 && btn.right <= bar.right + 1, on: btn.right <= innerWidth + 1 && btn.bottom <= innerHeight + 1 };
+    });
+    expect(lay.inBar, JSON.stringify(lay)).toBe(true);
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+  }
+  await page.goto('/run.html?desk=chatipview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('.bar > #chatbtn')).toHaveAttribute('title', serviceTip);
+  await page.goto('/run.html?desk=chatipgroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('.bar > #chatbtn')).toHaveAttribute('title', meetingTip);
+});
+
 test('service help names Raise hand and Step off', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
