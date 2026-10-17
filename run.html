@@ -1936,6 +1936,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.comfy .tile[data-tier="row"]::after {
     content: ''; position: absolute; top: 8px; right: 8px; width: 8px; height: 8px;
     border-radius: 50%; background: #7b5cff; z-index: 3; pointer-events: none; }
+  /* A slim sideways tile's "✋ hand raised" runs into this corner, and the
+     dot sat on its "d". The hand matters more; the dot steps aside. */
+  @media (orientation: landscape) {
+    body.comfy .tile.slim[data-tier="row"]:has(.chips span.warn)::after { display: none; } }
   body.comfy .stad-band {
     position: absolute; z-index: 4; pointer-events: none; background: rgba(12,14,18,.72);
     color: #f4f7fb; font-size: 12px; font-weight: 700; letter-spacing: .04em;

@@ -35,16 +35,19 @@ function look(page) {
       const n = t.querySelector('.name');
       if (!n || !t.offsetParent) continue;
       const d = getComputedStyle(t, '::after');
-      if (d.content === 'none' || d.display === 'none' || d.visibility === 'hidden' || +d.opacity === 0) continue;
-      const w = parseFloat(d.width), h = parseFloat(d.height);
-      if (!(w > 0 && h > 0)) continue;
       const tr = t.getBoundingClientRect();
+      const w = parseFloat(d.width), h = parseFloat(d.height);
+      const hand = /hand/i.test((t.querySelector('.chips') || {}).textContent || '');
+      if (d.content === 'none' || d.display === 'none' || d.visibility === 'hidden' || +d.opacity === 0 || !(w > 0 && h > 0)) {
+        out.push({ name: n.textContent.trim(), w: Math.round(tr.width), h: Math.round(tr.height), hits: [], hand });
+        continue;
+      }
       const top = tr.top + t.clientTop + parseFloat(d.top), right = tr.left + t.clientLeft + t.clientWidth - parseFloat(d.right);
       const dot = { left: right - w, right, top, bottom: top + h };
       const parts = [...t.querySelectorAll('.chips span')].map((c) => [c.textContent.trim() || c.className, c])
         .concat([['Full screen', t.querySelector('.maxbtn')], ['Blur', t.querySelector(':scope > .blurbox')], ['name', n]]);
       const hits = parts.map(([label, el]) => [label, shown(el)]).filter(([, r]) => r && meet(dot, r)).map(([label]) => label);
-      out.push({ name: n.textContent.trim(), w: Math.round(tr.width), h: Math.round(tr.height), hits });
+      out.push({ name: n.textContent.trim(), w: Math.round(tr.width), h: Math.round(tr.height), hits, hand });
     }
     return out;
   });
@@ -63,7 +66,7 @@ async function run(browser, dev, tag, bad) {
   if (!seeded || !seeded.ok) { bad.push(tag + ': could not seat the guests'); await context.close(); return; }
   await page.waitForTimeout(900);
   const tiles = await look(page);
-  if (!tiles.some((t) => t.name === 'Margaret Johnson')) bad.push(tag + ': no dot on Margaret Johnson\'s tile to check');
+  if (!tiles.some((t) => t.name === 'Margaret Johnson' && t.hand)) bad.push(tag + ': no "✋ hand raised" on Margaret Johnson\'s tile to check');
   for (const t of tiles) {
     if (t.hits.length) bad.push(tag + ': the dot on ' + t.name + ' (' + t.w + 'x' + t.h + ') covers ' + t.hits.map((x) => '"' + x + '"').join(', '));
   }
