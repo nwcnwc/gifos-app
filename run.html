@@ -1105,6 +1105,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                   the max-width:700px block. */
                padding-bottom: 128px; }
   #chatpanel.open { display: flex; }
+  /* Beside the call, not over it: on a wide window the room bar, header and
+     stage narrow by the panel's width (body.chatside follows the panel), as
+     Meet and Zoom do; the dock already floats above the panel's bottom band.
+     A phone keeps the panel over the call. */
+  @media (min-width: 800px) {
+    body.chatside { padding-right: 340px; }
+    body.chatside .fitbtn { right: 354px; }
+    body.chatside .topchip { max-width: calc(100% - 460px); }
+  }
   #chathead { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
   /* The privacy line used to sit beside the title and collapse into a narrow
      column, so "Service chat" wrapped. It takes the row under the title. */
@@ -14313,8 +14322,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     };
     // aria-expanded follows the panel, however it opened or closed.
     chatBtn.setAttribute('aria-controls', 'chatpanel');
-    new MutationObserver(() => chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false'))
-      .observe(chatPanel, { attributes: true, attributeFilter: ['class'] });
+    new MutationObserver(() => {
+      chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
+      document.body.classList.toggle('chatside', chatPanelOpen());
+    }).observe(chatPanel, { attributes: true, attributeFilter: ['class'] });
     chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
     chatBtn.onclick = () => {
       chatPanel.classList.toggle('open');
