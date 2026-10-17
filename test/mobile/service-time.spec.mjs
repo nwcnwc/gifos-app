@@ -16,8 +16,15 @@ function roomUrl(name, at) {
 }
 const fresh = (p) => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
+// The clock starts at Wednesday noon and keeps running, so the page's own
+// timers (the status hold) still expire.
+async function startClock(page) {
+  await page.clock.install({ time: NOW });
+  await page.clock.resume();
+}
+
 async function openViewer(page, url) {
-  await page.clock.setFixedTime(NOW);
+  await startClock(page);
   await page.goto(url, { waitUntil: 'domcontentloaded' });
   await page.locator('#nmok').click();
   await page.locator('#bc-ended').waitFor({ state: 'visible' });
@@ -82,7 +89,7 @@ test('the host sets Sunday at 10:00 AM in More, and Invite shares it', async ({ 
   await page.addInitScript(([r, av]) => {
     localStorage.setItem('gifos_vadm_' + r + '.' + av, 'stored-host-key');
   }, [room, AV]);
-  await page.clock.setFixedTime(NOW);
+  await startClock(page);
   await page.goto(roomUrl(room), { waitUntil: 'domcontentloaded' });
   await page.locator('#hdrinvite').waitFor({ state: 'visible' });
   await page.locator('#bartoggle').click();
