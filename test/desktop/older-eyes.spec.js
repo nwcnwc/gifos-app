@@ -192,3 +192,69 @@ test('the hand raised chip on a face is 16px', async ({ context }) => {
     await page.close();
   }
 });
+
+// The mute and camera marks on a face were bare 14px icons: an older member
+// could not tell a muted mic from a camera that is off without hovering for
+// the tip. On a desktop each mark says its word beside the icon, at 16px,
+// whole, inside the face and clear of the name, in a room of five and nine,
+// and in German too. Phones keep the icon alone.
+async function faceMarks(page, count, tag) {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.setItem('gifos_appeared', '1');
+  });
+  await page.goto('/run.html#v=qaeyesmarks' + tag + '&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#mic', { state: 'visible' });
+  await page.evaluate((n) => window.__gifosVideo.seedGalleryForTest({ count: n, connected: true }), count);
+  await page.waitForFunction((n) => document.querySelectorAll('#feed .tile:not(.me) > .blurbox.on').length >= n, count);
+  await page.waitForFunction(() => document.querySelector('#feed .chips [data-icon="mic-off"]') && document.querySelector('#feed .chips [data-icon="cam-off"]'));
+  await page.mouse.move(640, 300);
+  await page.waitForTimeout(400);
+  return page.evaluate(() => [...document.querySelectorAll('#feed .tile .chips [data-icon]')].filter((m) => m.closest('.tile').getClientRects().length).map((m) => {
+    const tile = m.closest('.tile');
+    const tb = tile.getBoundingClientRect();
+    const mb = m.getBoundingClientRect();
+    const row = m.parentElement.getBoundingClientRect();
+    const name = tile.querySelector('.name');
+    const nb = name && name.getClientRects().length ? name.getBoundingClientRect() : null;
+    const word = (m.innerText || '').trim();
+    const over = nb && Math.max(0, Math.min(mb.right, nb.right) - Math.max(mb.left, nb.left)) * Math.max(0, Math.min(mb.bottom, nb.bottom) - Math.max(mb.top, nb.top)) > 1;
+    return {
+      who: (tile.classList.contains('me') ? 'me' : (name && name.textContent || '').trim()) + ' ' + m.getAttribute('data-icon'),
+      word,
+      font: word ? parseFloat(getComputedStyle([...m.querySelectorAll('*')].find((el) => (el.innerText || '').trim() === word) || m).fontSize) : 0,
+      whole: mb.right <= row.right + 1 && mb.left >= row.left - 1 && m.scrollWidth <= m.clientWidth + 1,
+      inside: mb.left >= tb.left - 1 && mb.right <= tb.right + 1 && mb.top >= tb.top - 1 && mb.bottom <= tb.bottom + 1,
+      clearOfName: !over,
+    };
+  }));
+}
+
+test('the mute and camera marks on a face say their word at 16px', async ({ context }) => {
+  for (const count of [4, 8]) {
+    const page = await context.newPage();
+    const marks = await faceMarks(page, count, String(count));
+    if (count === 4) await page.screenshot({ path: 'test/desktop/shots/face-marks-after-1280.png' });
+    const want = { 'mic-off': 'Muted', 'cam-off': 'Camera off' };
+    expect(marks.length, 'room of ' + (count + 1)).toBeGreaterThanOrEqual(2);
+    for (const m of marks) {
+      const kind = m.who.split(' ').pop();
+      expect({ who: m.who, word: m.word, bigEnough: m.font >= 16, whole: m.whole, inside: m.inside, clearOfName: m.clearOfName }, 'room of ' + (count + 1))
+        .toEqual({ who: m.who, word: want[kind], bigEnough: true, whole: true, inside: true, clearOfName: true });
+    }
+    await page.close();
+  }
+});
+
+test.describe('in German', () => {
+  test.use({ locale: 'de-DE' });
+  test('the mute and camera marks on a face say their word', async ({ page }) => {
+    const marks = await faceMarks(page, 4, 'de');
+    const want = { 'mic-off': 'Stumm', 'cam-off': 'Kamera aus' };
+    for (const m of marks) {
+      const kind = m.who.split(' ').pop();
+      expect({ who: m.who, word: m.word, bigEnough: m.font >= 16, whole: m.whole }).toEqual({ who: m.who, word: want[kind], bigEnough: true, whole: true });
+    }
+  });
+});
