@@ -1,7 +1,6 @@
 /*
- * A texted link joins with the camera off. The self view is a letter, and
- * the dock camera is a slash with no words. After Unmute, the same header
- * slot says Camera until the camera is on. It stays when the dock tucks.
+ * A texted link joins with the camera off. The dock says Video. There is
+ * no header Camera pill. A tap on that dock button turns the camera on.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/camera-words.js
  */
@@ -52,8 +51,8 @@ function overlaps(a, b) {
       { id: 'peer-sam', name: 'Sam' },
     ]);
     await page.waitForTimeout(300);
-    const unmute = page.locator('#unmute');
-    if (await unmute.count() && await unmute.isVisible().catch(() => false)) await unmute.tap();
+    const mic = page.locator('#mic');
+    if (await mic.count() && await mic.isVisible().catch(() => false)) await mic.tap();
     await page.waitForTimeout(300);
     const read = () => page.evaluate(() => {
       const box = (el) => {
@@ -75,8 +74,11 @@ function overlaps(a, b) {
       }).filter((t) => t.shown);
       const cam = document.getElementById('cam');
       const mic = document.getElementById('mic');
+      const word = cam && cam.querySelector('.dockword');
       return {
-        camWord: box(document.getElementById('showcam')),
+        camWord: box(cam),
+        word: word ? (word.textContent || '').trim() : '',
+        headerCam: box(document.getElementById('showcam')),
         unmute: box(document.getElementById('unmute')),
         camOff: !!(cam && cam.classList.contains('off')),
         micOff: !!(mic && mic.classList.contains('off')),
@@ -93,31 +95,27 @@ function overlaps(a, b) {
     const bad = [];
     const c = info.camWord;
     if (info.micOff) bad.push('still muted');
-    if (!c || c.hidden) bad.push('no Camera a person can read');
+    if (info.headerCam && !info.headerCam.hidden) bad.push('header Camera is showing');
+    if (info.unmute && !info.unmute.hidden) bad.push('header Unmute is showing');
+    if (!c || c.hidden) bad.push('no Video a person can read');
     else {
-      if (c.text !== 'Camera') bad.push('button says "' + c.text + '"');
-      if (c.h < 44 || c.w < 44) bad.push('Camera is ' + Math.round(c.w) + 'x' + Math.round(c.h));
-      if (c.font < phone.minFont) bad.push('Camera font ' + c.font + 'px');
-      if (c.bg !== 'rgb(0, 100, 200)') bad.push('Camera color ' + c.bg);
-      if (c.top < -1 || c.bottom > info.vh + 1 || c.left < -1 || c.right > info.vw + 1) bad.push('Camera is off screen');
+      if (info.word !== 'Video') bad.push('dock says "' + info.word + '"');
+      if (c.h < 44 || c.w < 44) bad.push('Video is ' + Math.round(c.w) + 'x' + Math.round(c.h));
+      if (c.top < -1 || c.bottom > info.vh + 1 || c.left < -1 || c.right > info.vw + 1) bad.push('Video is off screen');
       if (!info.camOff) bad.push('camera is already on');
-      if (info.unmute && !info.unmute.hidden) bad.push('Unmute is still up beside Camera');
-      for (const other of [info.fit, info.chip, info.state, info.dock]) {
-        if (overlaps(c, other)) bad.push('Camera covers ' + (other && other.text ? other.text.slice(0, 24) : 'chrome'));
-      }
-      if (info.tiles.some((t) => overlaps(c, t))) bad.push('Camera covers a face');
-    }
-    if (phone.name === 'iphone-se' && bad.length) {
-      await page.screenshot({ path: path.join(SHOTS, 'before-camera-words-iphone-se.png') });
+      if (info.tiles.some((t) => overlaps(c, t))) bad.push('Video covers a face');
     }
     if (bad.length) {
       failures.push(phone.name + ': ' + bad.join('; '));
       await context.close();
       continue;
     }
-    if (phone.name === 'iphone-se') {
-      await page.screenshot({ path: path.join(SHOTS, 'after-camera-words-iphone-se.png') });
-    }
+    await page.locator('#cam').tap();
+    await page.waitForTimeout(400);
+    const after = await read();
+    if (after.camOff) bad.push('tap left the camera off');
+    if (after.headerCam && !after.headerCam.hidden) bad.push('header Camera appeared after the camera came on');
+    if (after.word !== 'Video') bad.push('dock dropped the Video label');
     const tucked = await page.evaluate(() => {
       const api = window.__gifosChrome;
       if (!api || typeof api.idle !== 'function') return false;
@@ -127,15 +125,7 @@ function overlaps(a, b) {
     await page.waitForTimeout(280);
     const quiet = await read();
     if (!tucked) bad.push('chrome idle hook missing');
-    else if (!quiet.camWord || quiet.camWord.hidden) bad.push('Camera tucked away with the dock');
-    else if (quiet.tiles.some((t) => overlaps(quiet.camWord, t))) bad.push('Camera covers a face while the dock is tucked');
-    if (quiet.camWord && !quiet.camWord.hidden) {
-      await page.locator('#showcam').tap();
-      await page.waitForTimeout(400);
-      const after = await read();
-      if (after.camOff) bad.push('tap left the camera off');
-      if (after.camWord && !after.camWord.hidden) bad.push('Camera stayed after the camera came on');
-    }
+    else if (quiet.headerCam && !quiet.headerCam.hidden) bad.push('header Camera appeared while the dock was tucked');
     if (bad.length) failures.push(phone.name + ': ' + bad.join('; '));
     else console.log('PASS', phone.name);
     await context.close();

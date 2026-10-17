@@ -25,11 +25,11 @@ Polished, efficient, trustworthy. A manager on a phone between meetings.
 
 | Job | Score | Note |
 | --- | --- | --- |
-| End the call, mute, camera, on a 360px phone | 10 | Hang up, Unmute, and Camera are words a person can read. On a phone Live and the dock tuck when the call is quiet and come back on a tap. Camera stays up while the camera is off. |
+| End the call, mute, camera, on a 360px phone | 10 | The dock says Mic, Video, React, More, and Leave. The mic is the only unmute control. On a phone Live and the dock tuck when the call is quiet and come back on a tap. |
 | Host: password, record, captions, stage, in landscape | 10 | Live, Record, and Captions are on the call. Record says what it will capture, and Start recording stays on screen, including at 200% text. Room password, Vote on someone, and Step on stage stay in More. Waiting room admits from a list. |
 | Chat or check names without losing the controls | 9 | People is a name list. Each chat line shows the time it was sent. The log is not an empty file tray. Someone else's bubble sits on a white page. Send is the blue button. A new line while you are reading older ones offers a way back down. Chat search is still the open job. |
 | Looks trustworthy (nothing cut off, type scales) | 10 | The header says the room and the count, and the phrase fits. At 200% text four faces stay above Live. Recording is a separate red state. When the call is quiet the faces use the space the dock was holding. |
-| **Audience** | **9** | The header names the room. Hang up, Unmute, and Camera are words. Landscape host tools, the live state, captions, and a waiting-room list are in good shape. Chat is still the open job. We do not lead yet. |
+| **Audience** | **9** | The header names the room. The dock says Mic, Video, React, More, and Leave, and there is one unmute control. Landscape host tools, the live state, captions, and a waiting-room list are in good shape. Chat is still the open job. We do not lead yet. |
 
 ## Church
 
@@ -49,11 +49,11 @@ Family and friends. Warm, few steps, a texted link.
 
 | Job | Score | Note |
 | --- | --- | --- |
-| Open a texted link and pick a name | 10 | The join step opens with the GifOS name and picture. Save keeps them and is the solid blue button. Clear blanks both and is the outline. The call says Unmute, then Camera, until each is on. |
+| Open a texted link and pick a name | 10 | The join step opens with the GifOS name and picture. Save keeps them and is the solid blue button. Clear blanks both and is the outline. The dock says Mic and Video. There is no second Unmute in the header. |
 | See everyone and hang up on a small phone | 10 | Four faces are two rows of two, near a portrait-phone shape, and Fit no longer sits on a face. Live, Record, Captions, and the dock tuck when the call is quiet. A tap brings Hang up back. |
 | Send a chat line | 9 | The latest line and the count sit on the call. Emoji inserts into the field. Theirs is a light bubble and mine is blue, at 1rem, with the time beside the name. |
 | Turn the phone sideways | 9 | Four faces stay near a portrait-phone shape, and Fit shares the header row. Invite, Room password, Waiting room, and Chat are on the first screen of More. |
-| **Audience** | **9** | The link says Unmute, and the name step, hang up, and the grid are in good shape. Chat and a sideways phone are still the open jobs. The dock tucks the way a phone call does. Fit and the name chip stay. We do not lead yet. |
+| **Audience** | **9** | The dock says Mic and Video, and the name step, hang up, and the grid are in good shape. Chat and a sideways phone are still the open jobs. The dock tucks the way a phone call does. Fit and the name chip stay. We do not lead yet. |
 
 ## Cycle
 
@@ -103,3 +103,4 @@ Family and friends. Warm, few steps, a texted link.
 44. Someone else's bubble matched the sheet. `test/mobile/chat-sheet.js` failed (`Ruth's bubble matches the sheet (rgb(232, 236, 241))`), then passed on an iPhone SE and a sideways iPhone 15. The page is white. The gray bubble and the blue one stay. Audience scores stay 9 / 9 / 9. Send is still the same gray as the paperclip. Nobody leads yet.
 45. Send matched the page. `test/mobile/chat-send.js` failed (`Send is rgb(255, 255, 255)`, paperclip had no edge), then passed. Send is blue with white type, 44px. The paperclip is a gray key. Audience scores stay 9 / 9 / 9. A line that arrives while you are reading older ones still has no way back down. Nobody leads yet.
 46. No way back down. `test/mobile/chat-new.js` failed (`no way back down`), then passed. Reading older lines stays put. A new line shows New messages, 44px, blue. A tap lands on that line and clears the control. Audience scores stay 9 / 9 / 9. Searching the log is still the open chat job. Nobody leads yet.
+47. One unmute, and the dock says what it is. `test/mobile/dock-labels.js` failed on the live-meet shot (header Unmute plus an unlabeled mic, and no Mic / Video / React / More / Leave), then passed on an iPhone SE. The header Unmute and Camera pills are gone. The mic on the dock is the only unmute. Share and Chat stay in More so the SE row still fits. The desktop roster, order of service, lyrics, and off-air lamp came across with the Meet desktop branch. Audience scores stay 9 / 9 / 9. Nobody leads yet.

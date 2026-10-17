@@ -49,8 +49,10 @@ async function measure(page) {
     const status = document.getElementById('status');
     const chipEl = document.querySelector('.topchip');
     const fit = document.getElementById('fitbtn').getBoundingClientRect();
-    const unmute = document.getElementById('unmute').getBoundingClientRect();
-    const showcam = document.getElementById('showcam').getBoundingClientRect();
+    const unmuteEl = document.getElementById('unmute');
+    const showcamEl = document.getElementById('showcam');
+    const unmute = unmuteEl ? unmuteEl.getBoundingClientRect() : { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
+    const showcam = showcamEl ? showcamEl.getBoundingClientRect() : { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
     const b = btn.getBoundingClientRect();
     const chip = chipEl.getBoundingClientRect();
     const st = status.getBoundingClientRect();

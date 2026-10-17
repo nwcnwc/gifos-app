@@ -1,9 +1,7 @@
 /*
- * A texted link never shows the lobby line "You join muted." The mic is a
- * slashed icon with no words, so a first call looks broken. While you are
- * muted the call shows Unmute: blue, at least 44px, 1rem, on screen, and
- * clear of the faces, Fit, and the dock. A tap turns the mic on and the
- * button goes away. It stays up when Live and the dock tuck.
+ * A texted link joins muted. The only unmute control is the dock mic,
+ * labeled Mic, at least 44px, and on screen. There is no header Unmute.
+ * A tap turns the mic on. When the dock tucks, a second Unmute does not appear.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/join-unmute.js
  */
@@ -73,8 +71,11 @@ function overlaps(a, b) {
         return { top: b.top, bottom: b.bottom, left: b.left, right: b.right, w: b.width, h: b.height, shown: b.width > 8 && b.height > 8 };
       }).filter((t) => t.shown);
       const mic = document.getElementById('mic');
+      const word = mic && mic.querySelector('.dockword');
       return {
         unmute: box(document.getElementById('unmute')),
+        mic: box(mic),
+        word: word ? (word.textContent || '').trim() : '',
         micOff: !!(mic && mic.classList.contains('off')),
         fit: box(document.getElementById('fitbtn')),
         chip: box(document.querySelector('.topchip')),
@@ -87,31 +88,27 @@ function overlaps(a, b) {
     });
     const info = await read();
     const bad = [];
-    const u = info.unmute;
-    if (!u || u.hidden) bad.push('no Unmute a person can read');
+    const u = info.mic;
+    if (info.unmute && !info.unmute.hidden) bad.push('header Unmute is showing');
+    if (!u || u.hidden) bad.push('no Mic a person can read');
     else {
-      if (u.text !== 'Unmute') bad.push('button says "' + u.text + '"');
-      if (u.h < 44 || u.w < 44) bad.push('Unmute is ' + Math.round(u.w) + 'x' + Math.round(u.h));
-      if (u.font < phone.minFont) bad.push('Unmute font ' + u.font + 'px');
-      if (u.bg !== 'rgb(0, 100, 200)') bad.push('Unmute color ' + u.bg);
-      if (u.top < -1 || u.bottom > info.vh + 1 || u.left < -1 || u.right > info.vw + 1) bad.push('Unmute is off screen');
+      if (info.word !== 'Mic') bad.push('dock says "' + info.word + '"');
+      if (u.h < 44 || u.w < 44) bad.push('Mic is ' + Math.round(u.w) + 'x' + Math.round(u.h));
+      if (u.top < -1 || u.bottom > info.vh + 1 || u.left < -1 || u.right > info.vw + 1) bad.push('Mic is off screen');
       if (!info.micOff) bad.push('mic is already on');
-      for (const other of [info.fit, info.chip, info.state, info.dock]) {
-        if (overlaps(u, other)) bad.push('Unmute covers ' + (other && other.text ? other.text.slice(0, 24) : 'chrome'));
-      }
-      if (info.tiles.some((t) => overlaps(u, t))) bad.push('Unmute covers a face');
-    }
-    if (phone.name === 'iphone-se' && bad.length) {
-      await page.screenshot({ path: path.join(SHOTS, 'before-join-unmute-iphone-se.png') });
+      if (info.tiles.some((t) => overlaps(u, t))) bad.push('Mic covers a face');
     }
     if (bad.length) {
       failures.push(phone.name + ': ' + bad.join('; '));
       await context.close();
       continue;
     }
-    if (phone.name === 'iphone-se') {
-      await page.screenshot({ path: path.join(SHOTS, 'after-join-unmute-iphone-se.png') });
-    }
+    await page.locator('#mic').tap();
+    await page.waitForTimeout(400);
+    const after = await read();
+    if (after.micOff) bad.push('tap left the mic muted');
+    if (after.unmute && !after.unmute.hidden) bad.push('header Unmute appeared after the mic came on');
+    if (after.word !== 'Mic') bad.push('dock dropped the Mic label');
     const tucked = await page.evaluate(() => {
       const api = window.__gifosChrome;
       if (!api || typeof api.idle !== 'function') return false;
@@ -121,15 +118,7 @@ function overlaps(a, b) {
     await page.waitForTimeout(280);
     const quiet = await read();
     if (!tucked) bad.push('chrome idle hook missing');
-    else if (!quiet.unmute || quiet.unmute.hidden) bad.push('Unmute tucked away with the dock');
-    else if (quiet.tiles.some((t) => overlaps(quiet.unmute, t))) bad.push('Unmute covers a face while the dock is tucked');
-    if (quiet.unmute && !quiet.unmute.hidden) {
-      await page.locator('#unmute').tap();
-      await page.waitForTimeout(400);
-      const after = await read();
-      if (after.micOff) bad.push('tap left the mic muted');
-      if (after.unmute && !after.unmute.hidden) bad.push('Unmute stayed after the mic came on');
-    }
+    else if (quiet.unmute && !quiet.unmute.hidden) bad.push('header Unmute appeared while the dock was tucked');
     if (bad.length) failures.push(phone.name + ': ' + bad.join('; '));
     else console.log('PASS', phone.name);
     await context.close();

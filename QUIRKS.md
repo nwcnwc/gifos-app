@@ -471,6 +471,16 @@ Repro: `test/mobile/chat-new.js`. It failed (`no way back down`), then passed. G
 
 Before: `qa/mobile/shots/before-chat-new-iphone-se.png`. After: `qa/mobile/shots/after-chat-new-iphone-se.png`.
 
+### 56. Two Unmute controls, and the dock lost its words
+
+Nathan's live-meet shot on an iPhone SE showed a blue Unmute pill in the header and a mic on the dock with no words. Mic, Video, React, More, and Leave had been labeled earlier and then dropped.
+
+The header pills are gone. The dock says Mic, Video, React, More, and Leave. The mic is the only unmute. Share screen and Chat stay in More, so a 320px row still fits and More's first screen is still Invite, Room password, Waiting room, and Chat. The people count on a wide window opens the roster. A phone keeps the one status line.
+
+Repro: `test/mobile/dock-labels.js`. It failed (`mic has no label`, `header Unmute is showing`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/dock-labels.js`.
+
+Before: `qa/mobile/shots/before-dock-labels-iphone-se.png`. After: `qa/mobile/shots/after-dock-labels-iphone-se.png`. Compared with `qa/mobile/shots/after-live-meet-iphone-se.png`, the shot Nathan marked.
+
 ## Open
 
 The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. Chat has no search.
