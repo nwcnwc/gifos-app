@@ -1070,6 +1070,11 @@
         }
         if (iAmAGreeter() && sock && !sock.rejected) {
           const nowMs = Date.now();
+          // A zombie reads OPEN. A registration sent into a socket that is down
+          // (refused 4015 by a stopped relay, reconnecting) proves nothing, and
+          // rebuilding it would restart steadySocket's backoff at 0.5 s: seated
+          // pages knocked a stopped relay every ~3 s instead of on the 15 s leash.
+          if (regPendingAt && sock.state !== 'up') regPendingAt = 0;
           if (regPendingAt && nowMs - regPendingAt > 12000) {
             // a registration the relay never answered ⇒ zombie socket:
             // rebuild it (the fresh socket's onopen re-registers).

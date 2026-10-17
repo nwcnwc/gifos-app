@@ -207,7 +207,10 @@
     const kick = (force) => {
       if (closed || (s.rejected && !force)) return; // a policy-rejected socket stays down until the app re-arms it
       if (force) s.rejected = 0;
-      if (preparing || (ws && ws.readyState <= 1)) return;
+      // A socket still held is in flight: CONNECTING, OPEN, or CLOSING with its
+      // close event to come (which schedules). Kicking a CLOSING one reset the
+      // backoff each time a frame was sent into a 4015 the relay had just sent.
+      if (preparing || ws) return;
       if (timer) { clearTimeout(timer); timer = null; }
       attempt = 0;
       connect();
