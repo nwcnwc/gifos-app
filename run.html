@@ -1395,7 +1395,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #waitself.on { display: block; }
   #waitself h3 { margin: 0 0 8px; font: 700 28px/1.2 system-ui, sans-serif; }
   #waitself p { margin: 0; font: 600 18px/1.35 system-ui, sans-serif; }
-  .topchip #statusrest { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* pre, not nowrap: the rest starts with " · 360p" and a flex item drops leading spaces. */
+  .topchip #statusrest { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
   /* Broadcast confidence lamp. Off air is a card the booth can read.
      On air is a red pill. Live means you are watching, not transmitting. */
