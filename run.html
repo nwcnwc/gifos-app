@@ -6788,6 +6788,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // hint are the host's business, and the room bar counts who is watching.
       const bcWatcher = !!(BROADCAST && !(typeof bcHostStored === 'function' && bcHostStored())
         && !document.body.classList.contains('amadmin') && !(typeof myStatus !== 'undefined' && myStatus.stg));
+      // The badge and the room bar already say watching, so a viewer's line
+      // names who is live: a host here, or failing that the first other
+      // person on the stage. Nobody known yet keeps the watching sentence.
+      let bcLiveName = '';
+      if (bcWatcher && n > 1) {
+        const nameOf = (id) => ((peers.get(id) || {}).name || rosterNames[id] || '').trim();
+        const live = admins.filter((id) => id !== myId && peers.has(id) && nameOf(id))
+          .concat(stageIds().filter((id) => id !== myId && nameOf(id)));
+        if (live.length) bcLiveName = nameOf(live[0]);
+      }
       // A LIVE SERVICE HOST is told she is live; the room bar counts who is
       // watching, and the password she typed to go live is the host one, so
       // the hint names the VIEWER password (without it the broadcast stays
@@ -6835,7 +6845,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const statusText = atCard ? (bcHostStored() ? 'Going live…' : 'Joining the service…')
         : reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
         : (n === 1 ? (atDoor ? 'Getting you back into the ' + (BROADCAST ? 'service' : 'small group') + ' — waiting for the others to answer…' : (BROADCAST ? ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin') ? 'You are live. Send the link.' : ((typeof myStatus !== 'undefined' && myStatus.stg) ? 'You are on stage.' : 'You are watching this service.')) : 'Just you. Send the invite.') + reachTriedSentence())
-        : bcWatcher ? 'You are watching this service.' + reachTriedSentence()
+        : bcWatcher ? (bcLiveName ? bcLiveName + ' is live.' : 'You are watching this service.') + reachTriedSentence()
         : bcLive ? 'You are live · ' + q.label + reachTriedSentence()
         : displayCount() + ' in this ' + (BROADCAST ? 'service' : 'small group') + ' · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
