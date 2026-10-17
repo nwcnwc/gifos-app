@@ -4121,3 +4121,42 @@ test('a service host\'s React tray has no Raise hand; a viewer\'s still does', a
     }
   }
 });
+
+test('Float in the More sheet reads at the size of Who, Stage and Settings', async ({ page }) => {
+  // Seen at 1920 on a viewer's More sheet: Float was a 13px label pressed
+  // against its icon, beside 18px Who / Stage / Settings / Help.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  for (const [desk, url] of [['viewer', SESSION], ['host', HOST_SESSION]]) {
+    for (const [w, h] of [[1920, 1080], [1280, 720], [900, 720]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.goto(url.replace('desk=', 'desk=morefloat' + desk + w));
+      await page.waitForSelector('body.broadcast.meet-session #mic .docklab');
+      await page.locator('#bartoggle').click();
+      await expect(page.locator('#barmore')).toBeVisible();
+      const hasFloat = await page.evaluate(() => 'documentPictureInPicture' in window);
+      // No mini window (Firefox): Float must not be offered at all.
+      if (!hasFloat) { await expect(page.locator('#pipbtn')).toBeHidden(); continue; }
+      await expect(page.locator('#barmore #pipbtn')).toBeVisible();
+      if (desk === 'viewer' && w === 1920) await page.screenshot({ path: 'artifacts/more-float-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      const got = await page.evaluate(() => {
+        const who = getComputedStyle(document.getElementById('whobtn'));
+        const btn = document.getElementById('pipbtn');
+        const lab = btn.querySelector('.blab'), svg = btn.querySelector('svg');
+        const l = getComputedStyle(lab), lr = lab.getBoundingClientRect(), sr = svg.getBoundingClientRect(), br = btn.getBoundingClientRect();
+        return {
+          whoSize: who.fontSize, labSize: l.fontSize, whoWeight: who.fontWeight, labWeight: l.fontWeight,
+          gap: Math.round(lr.left - sr.right),
+          centred: Math.abs((Math.min(sr.left, lr.left) + Math.max(sr.right, lr.right)) / 2 - (br.left + br.right) / 2) <= 2,
+        };
+      });
+      const where = desk + ' at ' + w + ' ' + JSON.stringify(got);
+      expect(got.labSize, where).toBe(got.whoSize);
+      expect(Number(got.labWeight), where).toBeGreaterThanOrEqual(Number(got.whoWeight));
+      expect(got.gap, where).toBeGreaterThanOrEqual(6);
+      expect(got.centred, where).toBe(true);
+    }
+  }
+});
