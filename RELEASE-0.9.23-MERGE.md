@@ -121,7 +121,38 @@ test was skipped and no existing time bound was loosened.
 
 ## Round 2 — the active branches moved while round 1 ran
 
-FILL_ROUND2
+Round 1 was committed as 2743bd1 and pushed. Nathan paused the job at 22:09
+PDT on 16 Oct until the QA loops finished their queued items, and lifted the
+pause at 01:23 PDT on 17 Oct with a steering note (no Co-Authored-By lines,
+keep cursor/stale-peer-ui, fold turn-video-anywhere into 0.9.24, leave
+relay-lockdown and workers-turnstile alone).
+
+| branch | tip merged | commit | notes |
+|---|---|---|---|
+| cursor/meetbot-081f-merged | c483f78 | 09dd77d | bot voice on every main audio sender, speaking outline, bot as a gallery tile. Layout hunks kept this tree's viewBox/self-view packer; the speaking-frame CSS joined the float self-view rules. test/unit/meet-bot-voice.js got BROADCAST/bcRole and TURN-mix stubs in its lifted world. |
+| cursor/stale-peer-ui | 1966f9b | FILL_SPU | frozen-peer fixes on top of the 0.9.24 TURN commits (so release/0.9.23 now carries js/meet-turn.js and the free-audio pool, as the steering asked). js/mesh.js: s1told map kept with bindOcc; the s1keys loop gained `!this.s1Told(k)`. run.html: Reconnecting chip + this tree's paintAwayMark; `reconnecting` tile class; displayCount floors at 1 + shownPeerCount and headerCount still takes the faces on the wall; updateStatus keeps the phone/Broadcast chrome and gains the inline `heard-not-seen` note and `turn-unavailable`; kickMain skips `p.turnAudio`. A private test path was dropped from a mesh.js comment (public repo). |
+
+FILL_ROUND2B
+
+### gifos test repo (nwcnwc/gifos, private)
+
+Fresh clone under the job folder with `../gifos-app` linked to this checkout.
+- release/0.9.23: merged cursor/stale-peer-ui (0cb3b12e) and adapted its two
+  lifted-world repros to the merged page (43abdcf1: banned-seat set, link
+  params, chip children `#statuscount`, headerCount/facesOnScreen lifted).
+  Pushed.
+- release/0.9.24: merged cursor/stale-peer-ui (1176f393; test/sim/mesh.cpp
+  kept the NETSEAT greeter pick and added the s1Told guard), carried the same
+  test adaptation (afd19af2), merged origin/turn-video-anywhere 233fcc31
+  (0eb14619, clean). Pushed.
+- Repro results against this app tree: meet-ghost-tomb 12/12,
+  meet-stale-peer-count 22/22, test/mesh frozen-roster-echo 11/11,
+  frozen-roster-heal-echo 13/13, frozen-roster-owner-echo 9/9,
+  head-bye-dark-heir 17/17, rollback-live-stamp 13/13. The sim builds; the
+  quick ladder (N=20, 300) prints the same numbers on the branch tip alone,
+  including its "still grows at the top" line, which the full N=20000 ladder
+  decides and was not run here.
+- cursor/stale-peer-ui is kept in both repos (clawbox loops still push to it).
 
 ## release/0.9.24
 

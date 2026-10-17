@@ -392,6 +392,12 @@
       this.hasCoord = false; this.coord = { pc: 0, r: 0, i: 0 };
       this.occ = new Map(); this.live = new Map(); this.s1seen = new Map();
       this.bindOcc(this.occ);
+      // s1told: S1 cells whose s1seen stamp came from a heal/PLACE nbrs LISTING
+      // (take), not a sighting. It still counts as fresh for the one-place
+      // guards, but I never hand it out as recently seen (s1Roster, S1SYNC)
+      // until I hear it myself or gossip carries its age
+      // Valid while equal to s1seen.
+      this.s1told = new Map();
       // liveBy: WHO I last heard first-hand at a cell (liveMark's id). A
       // cell's `live` stamp outlasts an occupancy change (gossip, a hint, a
       // PONG row can rewrite occ under it), so a question about a SEAT's
@@ -709,7 +715,8 @@
     // a seat can be in exactly ONE place: never store MYSELF at a coord I do not
     // hold (stale self-claims circulating back made invisible zombies)
     setOcc(k, v) { if (v === this.id && (!this.hasCoord || k !== ck(this.coord))) return; if (this.occ.get(k) !== v) { this.tlForget(k, 'occ-change→' + (v == null ? 'null' : String(v).slice(0, 6))); this.born.set(k, this.LT()); this.pairAt.set(k, this.TICK); } this.occ.set(k, v); }
-    noteS1(k) { if (isS1key(k)) this.s1seen.set(k, this.TICK); }
+    noteS1(k) { if (isS1key(k)) { this.s1seen.set(k, this.TICK); this.s1told.delete(k); } }
+    s1Told(k) { const t = this.s1told.get(k); return t !== undefined && t === this.s1seen.get(k); }
     s1Fresh(k) { const it = this.s1seen.get(k); return it !== undefined && this.TICK - it < 120 && this.occ.has(k); }
     // A three-state helpers (empty / sitting-down / seated)
     softSitting(k) {
@@ -1381,6 +1388,7 @@
       if (!(n > 0)) return;
       for (const [k, t] of this.live) this.live.set(k, t - n);
       for (const [k, t] of this.s1seen) this.s1seen.set(k, t - n);
+      for (const [k, t] of this.s1told) this.s1told.set(k, t - n);
       for (const [k, p] of this.pongBy) this.pongBy.set(k, { id: p.id, at: p.at - n });   // a link-proven PONG is first-hand hearing too (heardAt)
       this.rookSeenAt -= n;
       // ...and so does the last proven neighbour frame (nbrAt): the gap WAS n
@@ -1537,7 +1545,7 @@
     // Do I know any Section-1 seat beside the hole k (an arbiter a claim on k
     // would reach)? A cousin, or a home cell in my view.
     knowsRing(k) { for (const [kk, v] of this.cousins) if (isS1key(kk) && kk !== k && v != null && v !== this.id) return true; for (const [kk, v] of this.occ) if (kk !== k && isS1key(kk) && v != null && v !== this.id) return true; return false; }
-    s1Roster() { const out = []; if (this.hasCoord && this.coord.pc === 0) out.push({ k: ck(this.coord), v: this.id }); for (const [k, v] of this.occ) if (isS1key(k) && v !== this.id && this.s1Fresh(k) && !this.translost.has(k)) out.push({ k, v }); return out; }
+    s1Roster() { const out = []; if (this.hasCoord && this.coord.pc === 0) out.push({ k: ck(this.coord), v: this.id }); for (const [k, v] of this.occ) if (isS1key(k) && v !== this.id && this.s1Fresh(k) && !this.translost.has(k) && !this.s1Told(k)) out.push({ k, v }); return out; }
 
     // ---- S4 identity hook (seam) --------------------------------------------
     // verifyFill(msg): is this occupancy-changing frame (PLACE / CLAIM /
@@ -1807,7 +1815,7 @@
       // owner, and the admitter itself (wherever it sits) — nothing else, so a
       // signed PLACE cannot fill my view with cells of its choosing.
       { const ok = new Set(topo.ownedLinks(c).map(ck)); const oc = ownerCoordOf(c); if (oc) ok.add(ck(oc)); let adm = owner != null;
-        for (const kv of (Array.isArray(nbrs) ? nbrs : [])) { if (!kv || kv.v == null || !cellKeyOk(kv.k)) continue; if (!ok.has(kv.k)) { if (!adm || kv.v !== owner) continue; adm = false; } if (!this.occ.has(kv.k)) { this.setOcc(kv.k, kv.v); this.noteS1(kv.k); } } }
+        for (const kv of (Array.isArray(nbrs) ? nbrs : [])) { if (!kv || kv.v == null || !cellKeyOk(kv.k)) continue; if (!ok.has(kv.k)) { if (!adm || kv.v !== owner) continue; adm = false; } if (!this.occ.has(kv.k)) { this.setOcc(kv.k, kv.v); this.noteS1(kv.k); if (kv.v !== owner && isS1key(kv.k)) this.s1told.set(kv.k, this.TICK); } } }   // a listing is no sighting: only the admitter (its signed PLACE in hand) is just seen; the rest stay fresh for the one-place guards but off my room list (s1told) — a healer into a frozen seat's link handed it out again (test/mesh/frozen-roster-heal-echo.js)
       this.drainAt = 0; this.seatTries = 0; this.seatedAt = this.TICK; this.rookSeenAt = this.TICK; this.estAt = this.TICK; this.nbrAt = this.TICK; this.pendY = null; this.challTo = null; this.lateY = null;
       // § G: a seat change re-parents me — new aggregator, new scope, new child
       // row. Every digest relationship starts over, including G4's grace
@@ -2496,9 +2504,14 @@
       // E2's first-hand HELLO yield.
       const src = [];
       // FINDLEAF sources must be first-hand live — phantoms swallow FINDLEAF.
-      for (const rc of this.rosterCells()) { const x = this.occGet(ck(rc)); if (x != null && x !== this.id && this.firstHandLive(ck(rc))) src.push(x); }
-      if (hole.pc === this.coord.pc && hole.r === this.coord.r) { for (const m of topo.rowMates(this.coord)) { if (ck(m) === ck(hole)) continue; if (!(this.kidful.has(ck(m)) && this.kidful.get(ck(m)))) continue; const x = this.occGet(ck(m)); if (x != null && x !== this.id && this.firstHandLive(ck(m))) src.push(x); } }
-      if (hole.pc === 0 && this.coord.pc === 0) { for (const e of this.s1Roster()) if (e.v !== this.id && e.k !== ck(hole) && this.firstHandLive(e.k)) src.push(e.v); }
+      // ...and, in a one-row room, not gone dark to me: a mate whose radio
+      // went off (no close) stays first-hand live for 60 ticks, swallowed the
+      // FINDLEAF for the head a dark heir left, and healTry held the retry 45.
+      const oneRow = this.oneRowRoom();
+      const srcLive = (k) => this.firstHandLive(k) && !(oneRow && this.darkMate(k));
+      for (const rc of this.rosterCells()) { const x = this.occGet(ck(rc)); if (x != null && x !== this.id && srcLive(ck(rc))) src.push(x); }
+      if (hole.pc === this.coord.pc && hole.r === this.coord.r) { for (const m of topo.rowMates(this.coord)) { if (ck(m) === ck(hole)) continue; if (!(this.kidful.has(ck(m)) && this.kidful.get(ck(m)))) continue; const x = this.occGet(ck(m)); if (x != null && x !== this.id && srcLive(ck(m))) src.push(x); } }
+      if (hole.pc === 0 && this.coord.pc === 0) { for (const e of this.s1Roster()) if (e.v !== this.id && e.k !== ck(hole) && srcLive(e.k)) src.push(e.v); }
       // Immediate LEFT-PACK designee: subtree first; after repeated FINDLEAF
       // misses (healTry aged ≥90), scooch even with children so S1 cannot
       // stay short forever after mass kill.
@@ -2639,6 +2652,8 @@
       this.coord = this.oldCoord; this.tn = this.oldTn; this.estAt = this.oldEstAt; this.nbrAt = this.TICK; this.pp = this.oldPp; this.oldPp = null; this.admBy = this.oldAdmBy; this.oldAdmBy = null;
       this.bindOcc(this.holdOcc || new Map()); this.s1seen = this.holdSeen || new Map(); this.cousins = this.holdCous || new Map();
       this.occ.set(this.oldCk, this.id);
+      // my stamp for the cell I give back was for whoever I heard there (me, a rival), not for the snapshot's occupant: a gossip echo of a departed seat in the snapshot plus my own stamp read as hearing it (test/mesh/rollback-live-stamp.js)
+      if (this.live.has(newCk) && this.liveBy.get(newCk) !== this.occ.get(newCk)) { this.live.delete(newCk); this.liveBy.delete(newCk); this.heardSince.delete(newCk); }
       this.oldNbrIds = []; this.holdOcc = null; this.holdSeen = null; this.holdCous = null;
       this.healOnly.delete(newCk); this.healTry.set(newCk, this.TICK); this.healAt = this.TICK; // pace any re-attempt at that hole
       this.lastAck = this.TICK; this.lastPhone = this.TICK - 100;  // fresh grace; re-announce
@@ -3345,7 +3360,7 @@
     s1Sync() {
       const TICK = this.TICK;
       const ent = [{ k: ck(this.coord), v: this.id, age: 0, ch: this.occGet(ck(topo.down(this.coord))), ba: this.born.has(ck(this.coord)) ? Math.max(0, this.LT() - this.born.get(ck(this.coord))) : 0 }]; // carry MY heir, and my claim's AGE (C5 + G0b: no tick crosses a link)
-      for (const k of this.s1keys) { const v = this.occ.get(k); if (v != null && v !== this.id) { const it = this.s1seen.get(k); if (it !== undefined && TICK - it < 120) ent.push({ k, v, age: TICK - it, ch: this.childOf.has(k) ? this.childOf.get(k) : null, ba: this.born.has(k) ? Math.max(0, this.LT() - this.born.get(k)) : -1 }); } }
+      for (const k of this.s1keys) { const v = this.occ.get(k); if (v != null && v !== this.id && !this.s1Told(k)) { const it = this.s1seen.get(k); if (it !== undefined && TICK - it < 120) ent.push({ k, v, age: TICK - it, ch: this.childOf.has(k) ? this.childOf.get(k) : null, ba: this.born.has(k) ? Math.max(0, this.LT() - this.born.get(k)) : -1 }); } }
       // W7: sync over the whole rook neighbourhood — every live row-mate AND
       // column-mate (heads included) — keeping the full C^2 home roster
       // consistent across the richly-meshed section.
@@ -4225,8 +4240,8 @@
             // by phase). With the entry's own freshness kept, every hop ages
             // the echo and the first-hand root outruns it within a few beats.
             let took = false;
-            if (seen > curSeen + 8 || (seen >= curSeen - 8 && cur != null && eid < cur && (ba < 0 || ba <= 600))) { this.s1seen.set(kk, seen); took = true; if (cur !== eid) { this.setOcc(kk, eid); this.born.set(kk, ba >= 0 ? eb : this.LT()); } }
-            else if (cur == null && seen > -999) { this.s1seen.set(kk, seen); this.setOcc(kk, eid); this.born.set(kk, ba >= 0 ? eb : this.LT()); took = true; }
+            if (seen > curSeen + 8 || (seen >= curSeen - 8 && cur != null && eid < cur && (ba < 0 || ba <= 600))) { this.s1seen.set(kk, seen); this.s1told.delete(kk); took = true; if (cur !== eid) { this.setOcc(kk, eid); this.born.set(kk, ba >= 0 ? eb : this.LT()); } }
+            else if (cur == null && seen > -999) { this.s1seen.set(kk, seen); this.s1told.delete(kk); this.setOcc(kk, eid); this.born.set(kk, ba >= 0 ? eb : this.LT()); took = true; }
             // A SEAT IS IN ONE PLACE (sim twin): the entry I just took is the
             // newest word on where eid sits, so an OLDER hint of eid at another
             // home cell I do not hear first-hand is the cell it left. With the
@@ -4358,7 +4373,7 @@
           // hint left row-mates anchorless — ancDead — and a 45% churn
           // drained 52 of 76 survivors, c-sweep C=5 seed 1).
           if (this.linkIs(m, pid) && m.oCk != null && m.owner != null && m.owner !== this.id && m.owner !== pid) { const oc = ownerCoordOf(m.coord); const K = oc ? ck(oc) : null;
-            if (K != null && K !== pk && m.oCk === K && this.ownedLinkCell(K) && this.occGet(K) === pid && !this.firstHandLive(K)) { this.setOcc(K, m.owner); this.noteS1(K); } }
+            if (K != null && K !== pk && m.oCk === K && this.ownedLinkCell(K) && this.occGet(K) === pid && !this.firstHandLive(K)) { this.setOcc(K, m.owner); this.noteS1(K); if (isS1key(K)) this.s1told.set(K, this.TICK); } }   // its word, not a sighting: off my room list (s1told)
           if (!this.ownedLinkCell(pk)) return;
           if (m.yp === 1 && this.ppValid(m)) this.ppNote(pk, pid, m.pp.sig, m.ppfrom);   // PP: an arbiter's hearing PONG presents its proof (a note, never liveness)
           else if (m.yp === 1 && m.ppok === undefined && m.pp && m.pp.sig != null) this.ppNote(pk, pid, m.pp.sig, null, m.pp);   // ...or one the wire left unchecked (it verifies lazily): noted PENDING, so the YIELD behind this PONG can ask for the verdict (arbOk -> ppSigned -> ppAsk) instead of finding no note at all (behavior 14a: the returning head never held the row-mate's HELLO, only its hearing PONG)
@@ -4385,9 +4400,9 @@
           // Its owner cell is a fact of the topology, not of its word; its row
           // is ITS row (at most C cells); cousins are capped (W, 4C).
           const oc = ownerCoordOf(m.coord);
-          if (m.owner != null && oc && m.oCk === ck(oc) && this.occGet(m.oCk) !== m.owner) { this.setOcc(m.oCk, m.owner); this.noteS1(m.oCk); }
+          if (m.owner != null && oc && m.oCk === ck(oc) && this.occGet(m.oCk) !== m.owner) { this.setOcc(m.oCk, m.owner); this.noteS1(m.oCk); if (isS1key(m.oCk)) this.s1told.set(m.oCk, this.TICK); }   // ...but the owner it names is its word, not my sighting: off my room list (s1told) until heard or aged by gossip — a seat whose up link froze kept naming it, and the phoner re-listed the corpse (test/mesh/frozen-roster-owner-echo.js)
           // ...and never MY OWN cell under another id: a listing is not a challenge (a mate that left-packed into a freed cell got its head's beat-old row, listing the leaver there, and held the leaver at its own seat — forged-frames X7). A genuine rival is settled by the arbiter's YIELD, never by a row list.
-          if (Array.isArray(m.row)) for (const e of m.row.slice(0, C())) { const c = e && cellKeyOk(e.k); if (!c || c.pc !== m.coord.pc || c.r !== m.coord.r || e.v == null) continue; if (e.k === ck(this.coord) && e.v !== this.id) continue; if (this.occGet(e.k) !== e.v) { if (this.liveElsewhere(e.v, e.k)) continue; if (this.occGet(e.k) != null && this.firstHandLive(e.k)) continue; this.setOcc(e.k, e.v); } this.noteS1(e.k); if (e.age != null) this.childOf.set(e.k, e.age); }   // ...nor a seat I hear FIRST-HAND here or at another cell: a listing never moves a live neighbour (one place; behavior 14a: a returning head's stale row listed the real head one cell over). The same listing, after a dark spell, put a departed id back in a chair the row had already filled (chaos seed 32 #3, drk-tprd3: Ivo's 0/0.2 became k_083f again on Hana's wake).
+          if (Array.isArray(m.row)) for (const e of m.row.slice(0, C())) { const c = e && cellKeyOk(e.k); if (!c || c.pc !== m.coord.pc || c.r !== m.coord.r || e.v == null) continue; if (e.k === ck(this.coord) && e.v !== this.id) continue; if (this.occGet(e.k) !== e.v) { if (this.liveElsewhere(e.v, e.k)) continue; if (this.occGet(e.k) != null && this.firstHandLive(e.k)) continue; this.setOcc(e.k, e.v); this.noteS1(e.k); } if (e.age != null) this.childOf.set(e.k, e.age); }   // ...nor a seat I hear FIRST-HAND here or at another cell: a listing never moves a live neighbour (one place; behavior 14a: a returning head's stale row listed the real head one cell over). The same listing, after a dark spell, put a departed id back in a chair the row had already filled (chaos seed 32 #3, drk-tprd3: Ivo's 0/0.2 became k_083f again on Hana's wake). A listing that changes nothing is no sighting: re-stamping it fresh made every row-mate gossip a frozen mate as just seen, and S1SYNC carried that back to the head (test/mesh/frozen-roster-echo.js).
           if (Array.isArray(m.nbrs)) for (const kv of m.nbrs.slice(0, 4 * C())) { if (!kv || !cellKeyOk(kv.k) || kv.v == null) continue; if (!this.cousins.has(kv.k) && this.cousins.size >= 4 * C()) continue; this.cousins.set(kv.k, kv.v); } // W: learn the heirs at my future owned-links for relay-free promote-up
           // MY HEAD'S ROW IS THE ROW (deep rows). The head's PONG lists its
           // first-hand row; a row cell I hold that it does not list, and that I
@@ -4688,11 +4703,16 @@
           // are seats yielding a contested cell, where a second healer from
           // column 2 fought the arbiters (two-ring.js split heal 984 -> 2008
           // ticks with the goodbye rule unscoped).
+          // The goodbye skips the wait when the head's healer at column 1 has
+          // gone dark to me: it will not heal, and the room sat headless for
+          // the whole wait (a head thawed from a freeze said goodbye while its
+          // heir's radio was off; the head chair stayed empty 21 s).
           if (this.coord.i >= 2) {
             const hc = { pc: 0, r: this.coord.r, i: 0 }; const hk = ck(hc);
             if (this.occGet(hk) == null && this.firstHandLive(lk) && this.occGet(ck(topo.down(hc))) == null) {
               const lost = this.TICK - this.translost.get(hk) > EARLY_HOLD + HEAD_HEIR_WAIT && this.translostConfirmed(hk);
-              const bye = this.byeAt.has(hk) && this.TICK - this.byeAt.get(hk) > HEAD_HEIR_WAIT && this.oneRowRoom();
+              const heirWait = this.darkMate(ck({ pc: 0, r: this.coord.r, i: 1 })) ? 0 : HEAD_HEIR_WAIT;
+              const bye = this.byeAt.has(hk) && this.TICK - this.byeAt.get(hk) > heirWait && this.oneRowRoom();
               if (lost || bye) this.heal(hc);
             }
           }

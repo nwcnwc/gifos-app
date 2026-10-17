@@ -73,6 +73,8 @@ function world() {
     sentVideoTrack: () => null, stopBlurPipe() {},
     // The merged refreshOutbound asks the Broadcast role first; a meeting bot is in a meeting.
     BROADCAST: false, bcRole: () => 'host',
+    // No free-pool anchor in this world: no mix-minus sender ever replaces the voice.
+    turnMixSenders: new WeakSet(), turnMixTrack: () => null,
     paintControls() {}, broadcastStatus() { w.beats++; }, rememberBotSpoken() {},
     Blob: function () {}, URL: { createObjectURL: () => 'blob:x', revokeObjectURL() {} },
     Audio: FakeAudio, window: { AudioContext: FakeCtx },
