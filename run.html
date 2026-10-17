@@ -832,6 +832,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      strip-cell face is positioned by left/top, and a scale would move it. */
   .stagefacebox video.blur1 { filter: blur(11px) saturate(.9); }
   .stagefacebox video.blur2 { filter: blur(26px) saturate(.75); }
+  #muteall.on { border-color: #ff5c5c; color: #ff9c9c; background: #2a1010; }
   #blurall.on { border-color: #ffb86c; color: #ffd23c; background: #2a1f10; }
   #camall.on { border-color: #ff5c5c; color: #ff9c9c; background: #2a1010; }
   /* Admin-absence countdown: an admin room only lives while its host is here. */
@@ -1962,6 +1963,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <section class="moregroup extra">
       <h4 data-t="host">Host</h4>
       <div class="morerow">
+        <button id="muteall" data-t="muteGuests" aria-keyshortcuts="Alt+M" title="Mute every guest at once (admins). Only an admin can lift it, for one guest from their tile or for all with the same button." style="display:none">Mute guests</button>
         <button id="blurall" data-t="blurGuests" aria-keyshortcuts="Alt+B" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
         <button id="camall" data-t="videoOff" aria-keyshortcuts="Alt+X" title="Turn video off for every guest at once (admins) — stronger than blur" style="display:none">Turn video off</button>
         <button id="shareall" data-t="allowShare" aria-keyshortcuts="Alt+P" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
@@ -2398,6 +2400,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <li><kbd>Alt+,</kbd> <span data-t="keySettings">Settings</span></li>
         <li><kbd>Alt+T</kbd> <span data-t="keyTranscript">Transcript</span></li>
         <li><kbd>Alt+/</kbd> <span data-t="keyHelp">Help</span></li>
+        <li class="hostkey" hidden><kbd>Alt+M</kbd> <span data-t="keyMuteAll">Mute or unmute every guest</span></li>
         <li class="hostkey" hidden><kbd>Alt+B</kbd> <span data-t="keyBlurAll">Blur or unblur every guest</span></li>
         <li class="hostkey" hidden><kbd>Alt+X</kbd> <span data-t="keyCamAll">Turn every guest’s video off or on</span></li>
         <li class="hostkey" hidden><kbd>Alt+P</kbd> <span data-t="keyShareAll">Let guests share their screen, or stop them</span></li>
@@ -2691,7 +2694,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         captions: 'Untertitel', ccTip: 'Untertitel nur auf diesem Bildschirm',
         trEmpty: 'Dieses Treffen wird mitgeschrieben. Die Zeilen stehen hier unter dem Namen. Jeder kann sie lesen oder herunterladen.',
         trDownload: 'Protokoll laden',
-        blurGuests: 'Weichzeichnen', unblurGuests: 'Schärfen', videoOff: 'Video aus', videoOn: 'Video an',
+        muteGuests: 'Gäste stumm', unmuteGuests: 'Gäste laut', blurGuests: 'Weichzeichnen', unblurGuests: 'Schärfen', videoOff: 'Video aus', videoOn: 'Video an',
         allowShare: 'Freigeben', stopShares: 'Freigabe aus',
         inMeeting: 'im Meeting', justYou: 'Nur Sie', backIn: 'Wieder dabei',
         away: 'Weg', stillHere: 'Sie sind noch dabei',
@@ -2941,7 +2944,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bcEmpty: 'Sendungen, die Sie starten oder schauen, stehen hier.',
         shortcutTitle: 'Tastatur', keyMic: 'Stumm oder an', keyCam: 'Kamera an oder aus',
         keyChat: 'Chat auf oder zu', keyShare: 'Bildschirm teilen oder beenden', keyHand: 'Hand heben oder senken', keyView: 'Alle zeigen oder scrollen', keyLeave: 'Besprechung verlassen', keyList: 'Diese Liste zeigen oder schließen',
-        keyWho: 'Wer ist hier', keyBlurAll: 'Alle Gäste weichzeichnen oder schärfen', keyCamAll: 'Video aller Gäste aus oder an', keyShareAll: 'Gästen das Teilen erlauben oder beenden', keyInvite: 'Einladen', keyApp: 'App starten', keyVote: 'Abstimmung', keyLock: 'Passwort', keyStage: 'Bühne', keyRecord: 'Aufnahme', keyCaptions: 'Untertitel auf diesem Bildschirm', keySettings: 'Einstellungen', keyTranscript: 'Protokoll', keyHelp: 'Hilfe',
+        keyWho: 'Wer ist hier', keyMuteAll: 'Alle Gäste stumm oder laut schalten', keyBlurAll: 'Alle Gäste weichzeichnen oder schärfen', keyCamAll: 'Video aller Gäste aus oder an', keyShareAll: 'Gästen das Teilen erlauben oder beenden', keyInvite: 'Einladen', keyApp: 'App starten', keyVote: 'Abstimmung', keyLock: 'Passwort', keyStage: 'Bühne', keyRecord: 'Aufnahme', keyCaptions: 'Untertitel auf diesem Bildschirm', keySettings: 'Einstellungen', keyTranscript: 'Protokoll', keyHelp: 'Hilfe',
         helpTitle: 'So funktioniert diese Besprechung', helpGot: 'Verstanden',
         bcHelpTitle: 'So funktioniert diese Sendung', appHelpTitle: 'So funktioniert dieser App-Raum',
         screenNameTitle: 'Ihr Name', screenNameNote: 'Die anderen in der Besprechung sehen ihn.', save: 'Speichern',
@@ -2974,7 +2977,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         captions: 'Subtítulos', ccTip: 'Subtítulos solo en tu pantalla',
         trEmpty: 'Esta reunión se transcribe. Las líneas quedan aquí, con el nombre. Cualquiera puede leerlas o descargarlas.',
         trDownload: 'Descargar transcripción',
-        blurGuests: 'Difuminar', unblurGuests: 'Quitar desenfoque', videoOff: 'Apagar video', videoOn: 'Encender video',
+        muteGuests: 'Silenciar invitados', unmuteGuests: 'Activar invitados', blurGuests: 'Difuminar', unblurGuests: 'Quitar desenfoque', videoOff: 'Apagar video', videoOn: 'Encender video',
         allowShare: 'Permitir pantalla', stopShares: 'Parar pantallas',
         inMeeting: 'en la reunión', justYou: 'Solo tú', backIn: 'Volviendo',
         away: 'Fuera', stillHere: 'Sigues en la llamada',
@@ -3224,7 +3227,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bcEmpty: 'Las transmisiones que empieces o veas aparecen aquí.',
         shortcutTitle: 'Teclado', keyMic: 'Silenciar o activar', keyCam: 'Cámara activada o no',
         keyChat: 'Abrir o cerrar el chat', keyShare: 'Compartir o dejar de compartir', keyHand: 'Levantar o bajar la mano', keyView: 'Ver a todos o desplazar', keyLeave: 'Salir de la reunión', keyList: 'Mostrar u ocultar esta lista',
-        keyWho: 'Quién está', keyBlurAll: 'Difuminar o enfocar a todos los invitados', keyCamAll: 'Apagar o encender el video de los invitados', keyShareAll: 'Permitir o parar que los invitados compartan pantalla', keyInvite: 'Invitar', keyApp: 'Abrir app', keyVote: 'Votar', keyLock: 'Contraseña', keyStage: 'Escenario', keyRecord: 'Grabar', keyCaptions: 'Subtítulos en tu pantalla', keySettings: 'Ajustes', keyTranscript: 'Transcripción', keyHelp: 'Ayuda',
+        keyWho: 'Quién está', keyMuteAll: 'Silenciar o activar a todos los invitados', keyBlurAll: 'Difuminar o enfocar a todos los invitados', keyCamAll: 'Apagar o encender el video de los invitados', keyShareAll: 'Permitir o parar que los invitados compartan pantalla', keyInvite: 'Invitar', keyApp: 'Abrir app', keyVote: 'Votar', keyLock: 'Contraseña', keyStage: 'Escenario', keyRecord: 'Grabar', keyCaptions: 'Subtítulos en tu pantalla', keySettings: 'Ajustes', keyTranscript: 'Transcripción', keyHelp: 'Ayuda',
         helpTitle: 'Así funciona esta reunión', helpGot: 'Entendido',
         bcHelpTitle: 'Así funciona esta transmisión', appHelpTitle: 'Así funciona esta sala de app',
         screenNameTitle: 'Tu nombre', screenNameNote: 'Las demás personas de la reunión lo ven.', save: 'Guardar',
@@ -4935,7 +4938,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!all || pid === '*' || !hasAdminRoom()) return own;
       if (self ? (amAdmin || admins.includes(myId)) : admins.includes(pid)) return own;
       let out = own;
-      for (const f of ['blur', 'cam', 'share']) { // room-wide hammers; mute and app stay per-target. share is a grant (on = may), blur and cam are blocks (on = stopped)
+      for (const f of ['mute', 'blur', 'cam', 'share']) { // room-wide hammers; app stays per-target. share is a grant (on = may), mute, blur and cam are blocks (on = stopped)
         const w = all[f];
         if (w && typeof w === 'object' && (!own[f] || (+w.at || 0) > (+own[f].at || 0))) {
           if (out === own) out = Object.assign({}, own);
@@ -5021,7 +5024,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { updateTile('me', true); for (const pid of peers.keys()) updateTile(pid, true); }
       finally { passMemo = null; }
       layout();
-      if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn(); if (typeof updateCamAllBtn === 'function') updateCamAllBtn(); if (typeof updateShareAllBtn === 'function') updateShareAllBtn();
+      if (typeof updateMuteAllBtn === 'function') updateMuteAllBtn(); if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn(); if (typeof updateCamAllBtn === 'function') updateCamAllBtn(); if (typeof updateShareAllBtn === 'function') updateShareAllBtn();
     }
     // ============================ THE BLUR RULE ==============================
     // ONE rule, computed identically on every device from shared state, drives
@@ -11339,6 +11342,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Vote-off only exists where there is no admin to ban bad actors.
       document.body.classList.toggle('canvote', !hasAdmin);
       renderBanned();
+      if (typeof updateMuteAllBtn === 'function') updateMuteAllBtn();
       if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn();
       if (typeof updateCamAllBtn === 'function') updateCamAllBtn();
       paintChatGate(); renderChat(); // signing in as admin grows the chat toggle + per-line deletes
@@ -22867,6 +22871,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       updateCamAllBtn();
       setStatus(on ? 'Turned every guest\'s video off.' : 'Guests may turn their video back on.');
     };
+    // "Mute guests" (admin) — ONE room-wide order, modTable['*'].mute. Every
+    // receiver drops a muted guest's voice (modOf), and an honest guest's mic
+    // locks until an admin lifts it, for one guest from the tile or for all here.
+    const muteAllBtn = document.getElementById('muteall');
+    function allGuestsMuted() { return modAllOn('mute'); }
+    function updateMuteAllBtn() {
+      muteAllBtn.style.display = amAdmin ? '' : 'none';
+      if (!amAdmin) return;
+      const on = allGuestsMuted();
+      muteAllBtn.classList.toggle('on', on);
+      muteAllBtn.textContent = on ? uiText('unmuteGuests', 'Unmute guests') : uiText('muteGuests', 'Mute guests');
+    }
+    muteAllBtn.onclick = () => {
+      if (!amAdmin) return;
+      const on = !allGuestsMuted();
+      setMod('*', 'mute', on);       // one entry, one flood, whatever the room's size
+      updateMuteAllBtn();
+      setStatus(on ? 'Muted every guest.' : 'Guests may unmute again.');
+    };
     // "Allow screen share" (admin) — ONE room-wide grant, modTable['*'].share.
     // Off until the admin turns it on. A per-tile share order still wins when
     // it is later, so one guest can be stopped while the room is allowed, or
@@ -23520,14 +23543,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (!e.altKey || e.shiftKey || shortcutTyping(e) || shortcutBlocked()) return;
-      const id = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'invite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', Slash: 'helpbtn', KeyB: 'blurall', KeyX: 'camall', KeyP: 'shareall' }[e.code];
+      const id = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'invite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', Slash: 'helpbtn', KeyM: 'muteall', KeyB: 'blurall', KeyX: 'camall', KeyP: 'shareall' }[e.code];
       if (!id) return;
       const btn = document.getElementById(id);
       // A control inside More is still a shortcut while the sheet is folded.
       // A button hidden on its own (a viewer who cannot share) stays quiet.
       if (!btn || (getComputedStyle(btn).display === 'none' && !btn.closest('#barmore'))) return;
       // The host's room-wide tools are hidden for a guest, and their keys with them.
-      if (/^(blurall|camall|shareall)$/.test(id) && btn.style.display === 'none') return;
+      if (/^(muteall|blurall|camall|shareall)$/.test(id) && btn.style.display === 'none') return;
       e.preventDefault();
       btn.click();
     });
