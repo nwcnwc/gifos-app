@@ -6417,12 +6417,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const stale = job.senders.some((sd) => sd.track && (sd.track.readyState === 'ended' || !cur.includes(sd.track)));
         const wantsPicture = !tp.turnAudio && tp.stream.getVideoTracks().length > 0 && !job.senders.some((sd) => sd.track && sd.track.kind === 'video');
         if (!stale && !wantsPicture) continue;
+        // Rebuild only from something live: right after the person's connection
+        // to me is replaced, the old tracks have ended and the new ones have not
+        // arrived; tearing the carry down then left the requester holding an
+        // empty one.
+        if (!tp.connected || !cur.some((t) => t.readyState === 'live')) continue;
         if (now - (job.vaRebuiltAt || 0) < 10000) continue;
         if (typeof clog === 'function') clog('carry ' + String(job.target).slice(0, 6) + '>' + String(job.requester).slice(0, 6) + ' rebuilt: ' + (stale ? 'its tracks ended' : 'the picture is back'));
         stopRelayJob(job.target, job.requester, false);
         startRelayJob(rq, job.target);
         const nj = relayJobs.get(job.target + '>' + job.requester);
         if (nj) nj.vaRebuiltAt = now;
+        else dcSend(rq, { k: 'relay-end', target: job.target }); // it could not start again: the requester drops the old carry and asks again
       }
     }
     // The note on a bridged seat of a paid room whose admin has not launched
