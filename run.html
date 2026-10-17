@@ -1575,6 +1575,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (min-width: 800px) {
     .bar:not(.collapsed) .barmore > .iconbtn { gap: 8px; }
     .bar:not(.collapsed) .barmore > .iconbtn .blab { display: inline; font-size: inherit; font-weight: inherit; margin-top: 0; }
+    /* The Blur row reads at the sheet's size too, not as a 14px word and 11px choices (Q101). */
+    .bar:not(.collapsed) .barmore .blurctl { gap: 12px; padding-left: 4px; }
+    .bar:not(.collapsed) .barmore .blurlbl { color: #1d1d1f; font-size: 18px; font-weight: 650; }
+    .bar:not(.collapsed) .barmore .segwrap { border-color: #c5ccd6; border-radius: 12px; }
+    .bar:not(.collapsed) .barmore .seg { padding: 0 16px; font-size: 16px; font-weight: 600; }
   }
   .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 122px; transform: translateX(-50%);
     display: flex; gap: 8px; background: rgba(255,255,255,.96); border-radius: 20px; padding: 10px;
