@@ -10488,6 +10488,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             }).catch(() => {});
           }
         } else p.sinkProbe = null;
+        // A FROZEN SINK AND A SILENT SENDER. After offers cross on a pair that
+        // already carries media, the same rollback family leaves the pair half
+        // dead in two more ways (measured on the browser test box, the paid
+        // pair after a top-up): the tile's element froze at readyState 4 while
+        // its track kept decoding, and a live, enabled main sender put no byte
+        // on the wire. Sampled every 4 s; the cheap cure first (reattach the
+        // element, reseat the track), a rebuild if it does not take.
+        if (p.connected && p.pc && !document.hidden && mediaOk(pid) !== false && now - (p.stallAt || 0) >= 4000) { p.stallAt = now; checkStalls(pid, p, now); }
         // Direct route recovered → drop any friend-relay for this peer.
         if (p.connected && relayVia.has(pid)) stopRelayFor(pid, true);
         // Our relayer for this peer vanished → fall back and re-elect.
@@ -13448,6 +13456,76 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const seat = () => sender.replaceTrack(vt).catch(() => {});
       if (sender.track !== vt) { seat(); return; }
       sender.replaceTrack(null).then(seat).catch(() => {});
+    }
+    // stallVerdicts(prev, cur) → what a 4 s pair sample says. prev/cur =
+    //   { sent: { <mid>: bytesSent }, live: { <mid>: true } (main senders with a
+    //     live, enabled track on a negotiated send direction), fd: frames decoded
+    //     on the m-line the tile plays, shown: frames the tile's element presented }
+    // → { silent: [mid…] (no byte left in 4 s), frozen: true|false (3+ frames
+    //     decoded, none presented) }. Pure: the sweeper does the measuring.
+    function stallVerdicts(prev, cur) {
+      const out = { silent: [], frozen: false };
+      if (!prev || !cur) return out;
+      for (const mid of Object.keys(cur.live || {})) {
+        if (!(prev.live || {})[mid]) continue; // the sender must have been live for the whole window
+        if (prev.sent[mid] == null || cur.sent[mid] == null) continue;
+        if (cur.sent[mid] - prev.sent[mid] <= 0) out.silent.push(mid);
+      }
+      if (prev.fd != null && cur.fd != null && prev.shown != null && cur.shown != null && cur.fd - prev.fd >= 3 && cur.shown === prev.shown) out.frozen = true;
+      return out;
+    }
+    // One sample of a pair, then the cures: a silent main sender is reseated
+    // (its track dropped and put back), a frozen tile has its stream attached
+    // again; if the same fault is back within 20 s the pair is rebuilt (the
+    // far side takes the new fingerprint as a new pc).
+    function checkStalls(pid, p, now) {
+      const pc = p.pc;
+      let tx = []; try { tx = pc.getTransceivers(); } catch (e) { return; }
+      const mains = [p.mainA, p.mainV].filter(Boolean);
+      const live = {}, kindOf = {};
+      for (const t of tx) {
+        if (!t.mid || !mains.includes(t.sender)) continue;
+        const tr = t.sender.track;
+        if (tr && tr.readyState === 'live' && tr.enabled && String(t.currentDirection || '').indexOf('send') >= 0) { live[t.mid] = true; kindOf[t.mid] = t.sender; }
+      }
+      const plays = !p.relayed && p.stream && p.video && p.video.srcObject === p.stream && !p.video.paused && p.video.readyState >= 2;
+      const vtr = plays ? p.stream.getVideoTracks()[0] : null;
+      let shown = null; try { if (vtr && p.video.getVideoPlaybackQuality) shown = p.video.getVideoPlaybackQuality().totalVideoFrames; } catch (e) {}
+      const playMid = vtr ? ((tx.find((t) => t.receiver && t.receiver.track === vtr) || {}).mid || null) : null;
+      pc.getStats().then((st) => {
+        if (p.pc !== pc) return;
+        const sent = {}; let fd = null;
+        st.forEach((x) => {
+          if (x.type === 'outbound-rtp' && x.mid != null) sent[x.mid] = (sent[x.mid] || 0) + (x.bytesSent || 0);
+          if (x.type === 'inbound-rtp' && x.kind === 'video' && playMid != null && x.mid === playMid) fd = x.framesDecoded || 0;
+        });
+        const cur = { sent, live, fd: playMid != null ? fd : null, shown: playMid != null ? shown : null, pc };
+        const prev = p.stallPrev && p.stallPrev.pc === pc ? p.stallPrev : null;
+        p.stallPrev = cur;
+        const v = stallVerdicts(prev, cur);
+        const t = Date.now();
+        const again = (key) => t - (p[key] || 0) < 20000;
+        if ((v.silent.length && again('silentFixAt')) || (v.frozen && again('frozenFixAt'))) {
+          if (t - (p.sinkRebuiltAt || 0) < 30000) return;
+          p.sinkRebuiltAt = t; p.stallPrev = null;
+          if (typeof clog === 'function') clog('stall ' + String(pid).slice(0, 6) + (v.frozen ? ' frozen tile' : ' silent ' + v.silent.join(',')) + ' again: rebuild');
+          newPcFor(p); sendOffer(pid, false);
+          return;
+        }
+        for (const mid of v.silent) {
+          const sd = kindOf[mid], tr = sd && sd.track;
+          if (!tr) continue;
+          p.silentFixAt = t;
+          if (typeof clog === 'function') clog('stall ' + String(pid).slice(0, 6) + ' silent ' + tr.kind + ' mid ' + mid + ': reseat');
+          sd.replaceTrack(null).then(() => (sd.track === null ? sd.replaceTrack(tr) : null)).catch(() => {});
+        }
+        if (v.frozen) {
+          p.frozenFixAt = t;
+          if (typeof clog === 'function') clog('stall ' + String(pid).slice(0, 6) + ' frozen tile: reattach');
+          const so = p.video.srcObject; p.video.srcObject = null; p.video.srcObject = so;
+          const pr = p.video.play(); if (pr && pr.catch) pr.catch(() => {});
+        }
+      }).catch(() => {});
     }
     function afterNeg(p) {
       if (!p) return;
