@@ -94,7 +94,15 @@ test('a late arrival never adds host upload', async ({ browser, baseURL }, info)
       }
       // Every joiner, new and old, sees the stage picture advancing.
       for (const v of viewers) {
-        await v.waitForFunction(() => { const e = document.querySelector('#stagefeed .rowtile video'); return !!e && e.currentTime > 0.5; }, null, { timeout: 60000 });
+        const seen = await v.waitForFunction(() => { const e = document.querySelector('#stagefeed .rowtile video'); return !!e && e.currentTime > 0.5; }, null, { timeout: 60000 }).then(() => true, () => false);
+        if (!seen) {
+          // Why it stalled: every seat's claims, announcers and hot jobs.
+          const dump = async (pg) => pg.evaluate(() => { const m = window.__gifosVideo.mosaic(); const e = document.querySelector('#stagefeed .rowtile video'); return { m, video: e ? { t: e.currentTime, w: e.videoWidth, rs: e.readyState } : null, links: window.__gifosVideo.meshLinks(), stage: window.__gifosVideo.stageIds() }; }).catch((e) => String(e));
+          const stall = { joiner: viewers.indexOf(v), of: viewers.length, host: await dump(h), joiners: [] };
+          for (const w of viewers) stall.joiners.push(await dump(w));
+          fs.writeFileSync(info.outputPath('stall.json'), JSON.stringify({ stall, waves, trace }, null, 1));
+          throw new Error(`joiner ${viewers.indexOf(v) + 1} of ${viewers.length} never saw the stage picture (stall.json)`);
+        }
       }
       await h.waitForTimeout(SETTLE_MS);
       const n0 = await negCount(h);
