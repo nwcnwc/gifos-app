@@ -15111,6 +15111,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (iInitiate(p.id) && p.turnGiven) { p.renegAgain = true; return; } // their turn is out: mine waits for their offer
       if (p.makingOffer || p.pc.signalingState !== 'stable') { p.renegAgain = true; return; }
       p.makingOffer = true;
+      // This offer carries every change made so far, so nothing is owed
+      // after its answer. Left set, afterNeg re-offered on every answer and
+      // a polite side looped rreq → rgo → roffer → ranswer for good (Q78).
+      p.renegAgain = false;
       preferHwVideo(p.pc); // renegotiations add fresh m-lines (folds, stg, relay jobs) — they must inherit the preference
       p.pc.createOffer()
         .then((o) => { if (p.pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return p.pc.setLocalDescription(o); })
@@ -17452,8 +17456,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // ACTIVE whenever the room extends beyond my row: section-mates in other
       // rows (Section channel), deep members (Stadium), or stagers (Stage).
       // A room that IS just my row costs nothing here — the row mesh shows it.
+      // A BROADCAST never renders the row grid or the stadium (see the
+      // body.broadcast CSS), so its row bands are upload nobody watches: past
+      // one row the host shipped its band (a fold + composite) over a direct
+      // link to each late arrival. Only the Stage lane below runs there; it
+      // rides the relay tree (Q78).
       const beyondRowRaw = (() => {
-        if (!s || !c) return false;
+        if (!s || !c || BROADCAST) return false;
         for (const [k, v] of s.occ) { if (v === myId) continue; const cc = net.topo.unck(k); if (cc.pc !== c.pc || cc.r !== c.r) return true; }
         return false;
       })();

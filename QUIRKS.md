@@ -16,6 +16,25 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q78. Each late arrival added host upload: a renegotiation loop and a row band per joiner
+
+Two causes, both per late arrival, both on the host:
+
+1. A renegotiation loop that never stopped. Offers on a link take turns (35a979e): the polite side (the smaller peer id) asks (`rreq`), the initiator says go (`rgo`), the polite side offers. `renegotiate()` set `renegAgain` when it had to ask, and the offer it sent once the turn came never cleared it. So after every answer, `afterNeg` saw `renegAgain` and asked again: rreq → rgo → roffer → ranswer, for good, about 7 offer/answer pairs a second per polite joiner. The host answered every one and the pair traded 160-520 KB/s on the channel. Ids are random, so a run looped only when a joiner drew an id below the host's: the "2 of 4 runs" in the first sighting. Fix: an offer clears `renegAgain` when it starts, because it carries every change made up to then. A change made while the offer is in flight still sets it again.
+2. Row bands nobody watches. Past one row (C = 5 seats), `reconcileMosaic` treated the room as "beyond my row" and the host built its row band (an audio fold and a composite) and shipped it over a direct link to each late arrival past the row. A broadcast never renders the row grid or the stadium (`body.broadcast #grid, #stadium { display: none }`), so this was upload to nowhere: at 6 joiners the host sent media on 5 links. Fix: in a broadcast, `beyondRow` is false; only the Stage lane runs, and it reaches late arrivals down the relay tree.
+
+`test/mobile/late-host-upload.spec.mjs` puts the host on this machine and late joiners on two other fleet machines (`BC_VIEW_WS`), in waves of 1, then 3, then 6. To force the trigger, it re-mints peer ids so the host's id is high and every joiner's is low, so each joiner is the polite side. After each wave settles (20 s), over 10 s it asserts: at most 2 host offers and answers, at most 2 host links carrying media, and host outbound-rtp at 6 joiners within two copies (×1.25) of 1 joiner. The stage feed goes live to at most two seats (STG-DIRECT). It also asserts that every joiner's stage picture is advancing. It writes `trace.json` with the host's rtp and channel bytes once a second.
+
+| | offers+answers / 10 s (1, 3, 6 joiners) | host media links at 6 | host rtp KB/s (1 → 6) | host channel KB/s (1, 3, 6) |
+|---|---|---|---|---|
+| Before (45197fe), 4 profiles, 4/4 fail | 72-95, 116-182, 90-148 | 5 | 7.0-9.1 → 18.2-21.1 | 162-208, 261-407, 333-519 |
+| | (pixel-7 ran before ids were forced: 0 at 1 joiner, the first joiner drew the higher id) | | | (1.3 at 1) |
+| After, 4 profiles, 4/4 pass | 0, 0, 0 | 2 | 7.1-7.3 → 14.4-15.9 | 1.0-1.4, 6.7-9.1, 20.9-26.4 |
+
+Open part: the host's channel bytes still grow with joiners, by about 3 KB/s each. That is the status heartbeat. It floods the sender's section (`scope: 'section'`), and the host's section holds up to C² = 25 seats. So the growth stops at 25 members and stays flat after, by design, but up to there one node's upload is proportional to the room. Not fixed here. A broadcast could keep a viewer's beat to its own row, because nobody shows a viewer tile.
+
+Before: `test/mobile/screenshots/before/*-late-host-upload-{host,joiner,trace}.*`. After: `test/mobile/screenshots/after/*-late-host-upload-*`.
+
 ### Q77. A late arrival had nothing to watch, and a church had no way to replay the service live
 
 With the late-arrival pull gone (Q76), someone who opened the link after the end read only that it ended, and a church that streams the 9:00 service again at 11:00, or plays a prerecorded sermon, had no way to do it. Resi and BoxCast do this with a simulated live. Now the host has Rebroadcast in More, and on the replay sheet after Leave. It plays "Last service" (the copy Go live kept, Q69) or any video file the host picks into the broadcast. It is a source swap like a screen share: the playing video's own capture becomes the stage feed's picture and sound (`sentVideoTrack`, `mySelfStream`), so it rides the same stage fan-out down the relay tree as a live service. The tracks are made once at start and kept until Stop, so the stage stream id does not churn. The host sees a line above the dock, "Prerecorded · Last service · 0:42 / 31:05", with Pause (Resume) and Stop. The host's badge reads PRERECORDED, never LIVE. A viewer reads PRERECORDED in the banner and Prerecorded on the picture, and sees whatever is playing now, with no scrub, no seek and no save. Stop goes back to where the host was: the camera if live, or the ended screen and the replay sheet if it started there, so a late arrival reads "The service has ended." again. Leave ends a rebroadcast too.
