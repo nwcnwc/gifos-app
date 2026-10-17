@@ -965,6 +965,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                          background: rgba(10,10,15,.85); color: #eceef8; cursor: pointer; font-size: .68rem; }
   .tile .modbar button:hover { border-color: var(--accent2, #ff5caa); }
   .tile.noroute { opacity: .8; border-style: dashed; }
+  .tile.reconnecting > video { opacity: .35; }
   /* live audio → glowing border (never while muted) */
   .tile.speaking { border-color: #5cff7b; box-shadow: 0 0 0 2px #5cff7b, 0 0 18px rgba(92,255,123,.4); }
   /* per-tile maximize: the focused feed spans the full row, others wrap below */
@@ -4224,7 +4225,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const mod = modOf(id);
       const gMute = mod.mute && mod.mute.on, gBlur = mod.blur && mod.blur.on, gCam = mod.cam && mod.cam.on;
       const chips = [];
-      if (!isMe && peerAway(id, 25000)) chips.push('<span>⏾ stepped away</span>');
+      // A silent peer (peerReconnecting) is still counted; its tile says so.
+      const reconnecting = !isMe && typeof peerReconnecting === 'function' && peerReconnecting(id) === true;
+      if (reconnecting) chips.push('<span class="warn">⟳ Reconnecting…</span>');
+      else if (!isMe && peerAway(id, 25000)) chips.push('<span>⏾ stepped away</span>');
       // Not verified myself: everyone holds my media.
       if (isMe && (typeof keysTrusted === 'function' && keysTrusted() === true) && !myIpAttV) chips.push('<span class="warn">\u26a0 the relay has not verified you yet \u2014 others cannot see or hear you until it does. If this stays, update GifOS.</span>');
       if ((typeof attestOn === 'function' && attestOn() === true) && !isMe && !(typeof isEjected === 'function' && isEjected(id) === true)) {
@@ -4297,6 +4301,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const chipHtml = chips.join('');
       if (t.chipsHtml !== chipHtml) { t.chipsHtml = chipHtml; t.chips.innerHTML = chipHtml; reactStats.chipWrites++; }
       t.tile.classList.toggle('noroute', !isMe && !!t.noRoute);
+      t.tile.classList.toggle('reconnecting', reconnecting);
       t.tile.classList.toggle('cam-off', seatDark(st) || !!gCam || (!isMe && typeof shareBlocked === 'function' && !!shareBlocked(id))); // admin video-off, and an unpermitted screen claim, hide the tile on every receiver; a permitted share is not a dark seat
       t.video.classList.remove('blur1', 'blur2');
       // The ME tile already SHOWS the pre-blurred outbound pixels (WYSIWYG), so
@@ -5025,10 +5030,50 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function participantCount() {
       return Math.max(leafCount(), knownTotal() || 0);
     }
+    // A TILE ON THE GRID IS A PERSON IN THE COUNT. The relay frees a seat only
+    // when its socket closes, so a frozen browser (sockets open, nothing sent)
+    // is pruned by each client on its own clock, and its tile stays until
+    // dropPeer. The roster and occ gossip drop such a peer sooner and can
+    // flap while they settle, so a header read from them alone can disagree
+    // with the faces on screen. The header counts every tile on the grid, a
+    // silent peer's tile says it is reconnecting, and dropPeer removes the
+    // tile and updates the header in one step.
+    const PEER_SILENT_MS = 30000; // the count's own freshness window (knownTotal)
+    // When this peer itself last sent anything: any sealed frame, a mesh
+    // frame, or a status (statuses come only from their author). Only real
+    // frames move it, so silence is a steady verdict, not a gossip flap.
+    function peerHeardAt(p) {
+      const st = statusOf.get(p.id);
+      return Math.max(p.lastHeard || 0, p.meshRxAt || 0, (st && st.rx) || 0);
+    }
+    function peerReconnecting(pid) {
+      const p = peers.get(pid);
+      return !!(p && !p.headless && Date.now() - peerHeardAt(p) > PEER_SILENT_MS);
+    }
+    function shownPeerCount() {
+      let n = 0;
+      for (const p of peers.values()) if (p && !p.headless && p.tile && p.tile.parentNode) n++;
+      return n;
+    }
+    // Repaint a tile whose reconnecting verdict changed (rides the sweep).
+    function presenceSweep() {
+      let changed = false;
+      for (const [pid, p] of peers) {
+        const r = peerReconnecting(pid);
+        if (!!p.reconnecting === r) continue;
+        p.reconnecting = r; changed = true;
+        updateTile(pid);
+      }
+      if (changed) updateStatus();
+    }
     // The count people SEE. Past one section it is the fold's n — a LABEL (G2):
     // it may be displayed and may never gate behaviour, so the bitrate ladder and
-    // every other decision keep reading participantCount().
-    function displayCount() { return roomPastSection() ? Math.max(participantCount(), roomDig().n) : participantCount(); }
+    // every other decision keep reading participantCount(). It is never fewer
+    // than the faces on the grid (me + shownPeerCount).
+    function displayCount() {
+      const n = roomPastSection() ? Math.max(participantCount(), roomDig().n) : participantCount();
+      return Math.max(n, 1 + shownPeerCount());
+    }
     // BATTERY TIERS (Nathan 2026-07-26): encode watts are the meeting's
     // biggest phone cost, so quality follows the battery — ON BATTERY at all
     // sends one rung lighter, under 50% two rungs, under 25% three rungs and
@@ -5600,6 +5645,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // whose only partner was in a tunnel that the meeting had emptied. Say
       // what is happening: we are getting back in, waiting on the others.
       const seat0 = meshSeat(), atDoor = !!(seat0 && (seat0.state === 1 || seat0.state === 2));
+      // Alone means no other face on the grid either (displayCount).
+      const shown = displayCount();
       // REACH (see REACH_MSG): a network that blocks direct connections
       // rewrites the line — locked out, or unreachable, is the one thing a
       // person must read — and a partly reachable meeting gets its honest
@@ -5613,13 +5660,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const inlineReach = reachState === 'partial' || reachState === 'heard-not-seen';
       const partial = reachState === 'partial' ? reachNote(reach.dead) : reachState === 'heard-not-seen' ? ' · ' + REACH_MSG['heard-not-seen'] : '';
       const statusText = reachState && !inlineReach ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' || reachState === 'turn-unavailable' ? '' : reachTriedSentence())
-        : (n === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry' + reachTriedSentence())
-        : displayCount() + ' in the meeting · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
+        : (shown === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry' + reachTriedSentence())
+        : shown + ' in the meeting · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
       // of the reach states that replace the line. Tests and styling read
       // this, never the sentence.
-      const statusKind = reachState && !inlineReach ? reachState : n === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
+      const statusKind = reachState && !inlineReach ? reachState : shown === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
       if (statusEl.dataset) {
         if (statusEl.dataset.kind !== statusKind) statusEl.dataset.kind = statusKind;
         const dr = reachState || '', du = reachState === 'partial' ? String(reach.dead) : '';
@@ -7079,6 +7126,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       adapt();
       reactRoomState(); // a departure can complete the room's agreement to go clear
       fsRefreshIfOpen();
+      if (typeof updateStatus === 'function') updateStatus(); // the header follows the tile in the same call
     }
 
     // Prefer H.264 for outgoing video. With no preference set, Chrome↔Chrome
@@ -9701,6 +9749,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // to setInterval where no Worker can be made.
     GifOS.meshMedia.workerClock(2000, () => {
       const now = Date.now();
+      presenceSweep();
       // §LOCK, the two verdicts only a POPULATED room can hand down:
       //  - the open-key probe got me in and there are other people here, so the
       //    room is genuinely open and the password I remembered under its NAME
