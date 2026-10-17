@@ -24372,6 +24372,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // a peer whose channel just opened, before the roster has caught up; it
       // records the frames handed to it
       openLinkForTest: (id) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); },
+      // a linked peer by name whose status says camera off (scr: sharing a screen)
+      camOffPeerForTest: (id, name, scr) => { id = String(id); if (!peers.has(id)) peers.set(id, { id, connected: false, dc: { readyState: 'open', label: 'test' }, testTx: [] }); peers.get(id).name = name; rosterNames[id] = name; statusOf.set(id, { camOff: true, muted: true, scr: scr ? 1 : 0, at: Date.now() }); paintBroadcastIdent(); },
       linkFramesForTest: (id) => { const p = peers.get(String(id)); return p && p.testTx ? p.testTx.slice() : null; },
       sentFramesForTest: () => sentFrames.slice(),
       stageHearLevelForTest: () => heardStage(),
