@@ -4398,3 +4398,34 @@ test('Allow screen share in the More sheet stays on one line', async ({ page }) 
     }
   }
 });
+
+test('the recording chip on a tile names the small group, not a meeting', async ({ page }) => {
+  // Seen on two machines (rec-leave-cross-after.png): while one person
+  // records a small group, their tile chip read "recording this meeting",
+  // under a card and a room bar that say "small group". The chip names the
+  // same room word as the card. A tile needs a real call (an mb=1 page never
+  // joins), so this one opens a call from the lobby on a relay that is not
+  // there; cross-recchip.js reads the chip on a real peer's tile.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_relay', 'ws://127.0.0.1:9');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=recchip' + w);
+    await page.waitForSelector('#lobby.show');
+    await page.locator('#lob-open').click();
+    await page.getByRole('button', { name: 'Save' }).click({ timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('.tile.me');
+    await page.evaluate(() => window.__gifosRoomTrust.setRecording(true));
+    await page.locator('#rec-notice-ok').click();
+    // The Record sheet's Start repaints my tile (recordingIndicatorsOk); the
+    // trust hook does not, so a tile repaint stands in for it.
+    await page.evaluate(() => window.__gifosVideo.markBotForTest(false));
+    const chip = page.locator('.tile.me .chips .warn', { hasText: '⏺' });
+    await expect(chip).toHaveCount(1);
+    if (w === 1280) await page.screenshot({ path: 'artifacts/rec-chip-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    await expect(chip, 'at ' + w).toHaveText('⏺ recording this small group');
+    await expect(page.locator('#airrec')).toHaveText('Recording');
+  }
+});
