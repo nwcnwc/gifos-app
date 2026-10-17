@@ -942,6 +942,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.broadcast #fsname .fsinitial { display: none; }
   body.broadcast #fsname .fsnm { font: 700 28px/1.3 system-ui, sans-serif; background: none;
     white-space: normal; text-align: center; max-width: 36rem; }
+  /* The stage's camera-off card, big: picture or initial, name, Camera off. */
+  #fsname .fspic, #fsname .fsnote { display: none; }
+  body.broadcast #fsname.ident .fsinitial { display: block; color: #b9bdd6; font: 700 min(144px, 22vh)/1 system-ui, sans-serif; }
+  body.broadcast #fsname.ident.pic .fsinitial { display: none; }
+  body.broadcast #fsname.ident.pic .fspic { display: block; width: min(320px, 50vh); height: min(320px, 50vh); object-fit: cover; border-radius: 1rem; }
+  body.broadcast #fsname.ident .fsnote { display: block; color: #b9bdd6; font-size: 1.1rem; }
   #fsstrip { position: absolute; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; gap: .5rem;
     padding: .55rem; overflow-y: auto; overflow-x: hidden; z-index: 2;
     background: linear-gradient(to left, rgba(0,0,0,.55), transparent); }
@@ -4828,7 +4834,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const fsstrip = document.createElement('div'); fsstrip.id = 'fsstrip';
     const fsclose = document.createElement('button'); fsclose.id = 'fsclose'; fsclose.textContent = '✕'; fsclose.title = 'Exit full screen'; fsclose.setAttribute('aria-label', 'Exit full screen');
     const fsname = document.createElement('div'); fsname.id = 'fsname';
-    fsname.innerHTML = '<span class="fsinitial"></span><span class="fsnm"></span>';
+    fsname.innerHTML = '<img class="fspic" alt=""><span class="fsinitial"></span><span class="fsnm"></span><span class="fsnote">Camera off</span>';
     fsview.appendChild(fsmain); fsview.appendChild(fsname); fsview.appendChild(fsstrip); fsview.appendChild(fsclose);
     document.body.appendChild(fsview);
     let fsSel = null, fsTick = null, fsAutoPid = null;
@@ -4900,9 +4906,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (nm) nm.textContent = text;
       };
       const broadcastFs = typeof BROADCAST !== 'undefined' && BROADCAST;
+      // A service stage with the camera off wears its card (#bc-ident:
+      // picture or initial, name, Camera off). Full screen shows that card,
+      // not the black frame under it.
+      const ident = broadcastFs ? document.getElementById('bc-ident') : null;
+      const identOn = !!(ident && ident.classList.contains('on'));
+      const identCard = () => {
+        if (fsmain.srcObject) fsmain.srcObject = null;
+        fsmain.classList.add('dark');
+        fsBlurClass(fsmain, 0);
+        showName(true, (document.getElementById('bc-ident-name') || {}).textContent || '');
+        const img = document.getElementById('bc-ident-img');
+        const pic = fsname.querySelector('.fspic');
+        const url = ident.classList.contains('pic') && img ? img.getAttribute('src') : '';
+        if (pic) { if (url) { if (pic.getAttribute('src') !== url) pic.setAttribute('src', url); } else pic.removeAttribute('src'); }
+        fsname.classList.add('ident');
+        fsname.classList.toggle('pic', !!url);
+      };
+      fsname.classList.remove('ident', 'pic');
       if (main) {
         if (fsSel !== 'auto') fsSel = main.key; // a pin re-anchors; auto stays auto
-        if (main.dark) {
+        if (identOn) identCard();
+        else if (main.dark) {
           if (fsmain.srcObject) fsmain.srcObject = null;
           fsmain.classList.add('dark');
           fsBlurClass(fsmain, 0);
@@ -4917,7 +4942,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         fsmain.dataset.key = main.key;
       } else {
         fsmain.srcObject = null; fsmain.dataset.key = ''; fsmain.classList.remove('dark'); fsBlurClass(fsmain, 0);
-        if (broadcastFs) {
+        if (identOn) identCard();
+        else if (broadcastFs) {
           const lineEl = document.getElementById('bc-stage-line');
           showName(true, (lineEl && lineEl.textContent) || 'The stage is clear.');
           const letter = fsname.querySelector('.fsinitial');
@@ -5016,7 +5042,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.body.classList.remove('fsopen');
       fsmain.srcObject = null;
       fsmain.classList.remove('dark');
-      fsname.classList.remove('on');
+      fsname.classList.remove('on', 'ident', 'pic');
       for (const tv of fsstrip.querySelectorAll('video')) tv.srcObject = null; // no leftover sinks — decode work ends with the view
       fsstrip.textContent = ''; fsstrip.dataset.set = '';
       // Back to Full screen, as a closed sheet returns to its button. While
