@@ -53,3 +53,38 @@ test.describe('Spanish Run app', () => {
     await expect(sheet).not.toContainText('Choose a GIF file');
   });
 });
+
+// An app running in a meeting puts its bar along the top of the page, where the
+// header pill (GifOS · Just you · Invite), Fit, and the build label also sit:
+// they covered the app's picture and name, Stop app, and Full screen. Every
+// control on the app bar must be clear of the header pieces, and every header
+// piece still on screen must stay clear of the bar.
+test('a running app\'s bar is clear of the header, Fit, and the build label', async ({ page }) => {
+  await boot(page);
+  await page.setInputFiles('#app-file-input', 'apps/2048/2048.gif');
+  await page.waitForFunction(() => document.body.classList.contains('has-app'), null, { timeout: 30000 });
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => document.getElementById('appstop').getClientRects().length > 0);
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const read = () => page.evaluate(() => {
+    const shown = (el) => {
+      if (!el || !el.getClientRects().length) return false;
+      const cs = getComputedStyle(el);
+      return cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0;
+    };
+    const box = (el) => { const r = el.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; };
+    const meet = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+    const heads = [document.querySelector('.topchip'), document.getElementById('fitbtn'),
+      document.getElementById('gifos-build-float'), document.getElementById('handq')]
+      .filter(shown).map((el) => ({ id: el.id || el.className, box: box(el) }));
+    const bar = [...document.querySelectorAll('#appbar > *')].filter((el) => shown(el) && el.getBoundingClientRect().width > 0);
+    const covered = [];
+    for (const el of bar) for (const h of heads) if (meet(box(el), h.box)) covered.push((el.id || el.className) + ' under ' + h.id);
+    return { covered, barIds: bar.map((el) => el.id || el.className) };
+  });
+  const got = await read();
+  await page.screenshot({ path: 'test/desktop/shots/app-head-1280.png' });
+  expect(got.barIds).toEqual(expect.arrayContaining(['appstop']));
+  expect(got.barIds.some((id) => id === 'appgif' || id === 'appname')).toBe(true);
+  expect(got.covered).toEqual([]);
+});
