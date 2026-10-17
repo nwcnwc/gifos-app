@@ -209,6 +209,30 @@ async function faceMarks(page, count, tag) {
   await page.evaluate((n) => window.__gifosVideo.seedGalleryForTest({ count: n, connected: true }), count);
   await page.waitForFunction((n) => document.querySelectorAll('#feed .tile:not(.me) > .blurbox.on').length >= n, count);
   await page.waitForFunction(() => document.querySelector('#feed .chips [data-icon="mic-off"]') && document.querySelector('#feed .chips [data-icon="cam-off"]'));
+  // Point at each face that has a mark: its buttons (Mute and Blur for
+  // everyone, Blur for all) must not cover the words.
+  const covered = [];
+  const faces = page.locator('#feed .tile:not(.me):has(.chips [data-icon])');
+  for (let i = 0; i < await faces.count(); i++) {
+    const fb = await faces.nth(i).boundingBox();
+    if (!fb) continue;
+    await page.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
+    await page.waitForTimeout(400);
+    covered.push(...await faces.nth(i).evaluate((tile) => {
+      const seen = (el) => { const cs = getComputedStyle(el); return el.getClientRects().length && cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.5; };
+      const btns = [...tile.querySelectorAll(':scope > .blurbox, .modbar button, .maxbtn')].filter(seen);
+      const out = [];
+      for (const m of tile.querySelectorAll('.chips [data-icon]')) {
+        const mb = m.getBoundingClientRect();
+        for (const el of btns) {
+          const r = el.getBoundingClientRect();
+          if (Math.max(0, Math.min(mb.right, r.right) - Math.max(mb.left, r.left)) * Math.max(0, Math.min(mb.bottom, r.bottom) - Math.max(mb.top, r.top)) > 1) out.push((m.innerText || m.getAttribute('data-icon')).trim() + ' under ' + el.textContent.trim());
+        }
+      }
+      return out;
+    }));
+  }
+  expect(covered, 'marks under a pointed face\'s buttons').toEqual([]);
   await page.mouse.move(640, 300);
   await page.waitForTimeout(400);
   return page.evaluate(() => [...document.querySelectorAll('#feed .tile .chips [data-icon]')].filter((m) => m.closest('.tile').getClientRects().length).map((m) => {
