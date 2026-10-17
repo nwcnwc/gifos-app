@@ -2666,3 +2666,54 @@ test('a service room bar counts the people watching, not the host', async ({ pag
   await expect(who).toHaveText('1 here');
   await expect(who).toHaveAttribute('title', 'Who is here');
 });
+
+test('a viewer clap counts once on the host stage, however it arrives', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  await page.goto('/run.html?desk=clapview#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  await page.locator('#reactbtn').click();
+  await page.locator('#reacttray button[aria-label="Clap"]').click();
+  await page.locator('#reacttray button[aria-label="Clap"]').click();
+  await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 2');
+  const sent = await page.evaluate(() => window.__gifosVideo.sentFramesForTest().filter((m) => m.k === 'react'));
+  expect(sent.length).toBe(2);
+  expect(typeof sent[0].id, JSON.stringify(sent)).toBe('string');
+  expect(sent[0].id.length).toBeGreaterThanOrEqual(8);
+  expect(sent[0].id).not.toBe(sent[1].id);
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=claphost' + w + '&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.live');
+    await page.evaluate((frames) => {
+      // the direct copy and the mesh copy of the same two claps
+      for (const m of frames) {
+        window.__gifosVideo.remoteFrameForTest('viewer-a', m);
+        window.__gifosVideo.remoteFrameForTest('viewer-a', m);
+      }
+    }, sent);
+    await expect(page.locator('#bc-reacts .bcreact')).toHaveText('👏 2');
+    await page.evaluate(() => {
+      window.__gifosVideo.remoteFrameForTest('viewer-b', { k: 'react', e: '👏', id: 'clap-b-000001' });
+      window.__gifosVideo.remoteFrameForTest('viewer-b', { k: 'react', e: '👏', id: 'clap-b-000001' });
+      window.__gifosVideo.remoteFrameForTest('viewer-c', { k: 'react', e: '👍', id: 'clap-c-000001' });
+    });
+    await expect(page.locator('#bc-reacts')).toContainText('👏 3');
+    await expect(page.locator('#bc-reacts')).toContainText('👍 1');
+    const lay = await page.evaluate(() => {
+      const dock = document.querySelector('.bar').getBoundingClientRect();
+      const boxes = Array.from(document.querySelectorAll('#bc-reacts .bcreact')).map((el) => el.getBoundingClientRect());
+      const overlap = (a, b) => !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+      return {
+        on: boxes.every((b) => b.width > 20 && b.left >= -1 && b.right <= innerWidth + 1 && b.top >= -1 && b.bottom <= innerHeight + 1),
+        dock: boxes.some((b) => overlap(b, dock)),
+      };
+    });
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+    expect(lay.dock, JSON.stringify(lay)).toBe(false);
+  }
+});

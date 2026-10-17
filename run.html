@@ -13053,7 +13053,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // CONTENT, so a participant with no link to anyone hears nothing until
     // its first link opens. File BODIES ride the DataChannels only (P0/P1, by
     // budget policy).
+    const sentFrames = []; // the last app frames I sent to the room (sentFramesForTest)
     function sendAll(msg, opts) { // opts: a gossip scope (captionScope) — chat, files and deletions stay room-wide
+      sentFrames.push(msg); if (sentFrames.length > 20) sentFrames.shift();
       fanOut(msg, (p) => dcSend(p, msg), opts);
     }
     // Frames that arrived without a DataChannel for this pair: mesh gossip,
@@ -24341,6 +24343,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }),
       pipEnterForTest: () => enterPip(true),
       audienceReactForTest: (emoji, fromId) => takeAudienceReact(emoji, fromId || 'viewer'),
+      // one frame arriving from a peer, the way a DataChannel or the mesh hands it in
+      remoteFrameForTest: (from, m) => { onRemote(String(from), m); },
+      sentFramesForTest: () => sentFrames.slice(),
       stageHearLevelForTest: () => heardStage(),
       headCountForTest: (n) => { headCountOverride = Math.max(0, +n || 0); paintRoomTrust(); return roomHeadCount(); },
       // moderation SINKS (e2e-meet-mod.js): what the filmstrip would list and how
