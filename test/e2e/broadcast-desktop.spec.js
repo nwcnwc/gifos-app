@@ -3530,3 +3530,55 @@ test('F opens Full screen, Escape closes it, and its close button is named', asy
     await expect(page.locator('#fsbtn'), who).toHaveAttribute('aria-keyshortcuts', 'F');
   }
 });
+
+test('Full screen of a camera-off host shows who it is, not a black screen', async ({ page }) => {
+  // Seen across two machines: with the host's camera off the stage shows an
+  // initial, the name and Camera off (Q66), but Full screen showed the black
+  // frame under that card, or "The stage is clear." while someone was on it.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+    Element.prototype.requestFullscreen = function () { return Promise.reject(new Error('denied')); };
+  });
+  await page.goto('/run.html?desk=fscamoff#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  await page.evaluate(async () => {
+    // The stage feed as it arrives with the camera off: a playing black frame.
+    const c = document.createElement('canvas'); c.width = 320; c.height = 180;
+    const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 320, 180);
+    const v = document.createElement('video'); v.muted = true; v.autoplay = true;
+    v.srcObject = c.captureStream(5);
+    setInterval(() => g.fillRect(0, 0, 320, 180), 200);
+    const el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sgs';
+    el.appendChild(v); document.getElementById('stagefeed').appendChild(el);
+    await v.play().catch(() => {});
+    await new Promise((r) => { const t = setInterval(() => { if (v.videoWidth > 0) { clearInterval(t); r(); } }, 50); });
+    window.__gifosVideo.camOffPeerForTest('host-dark', 'Pastor Kim');
+  });
+  await expect(page.locator('#bc-ident')).toBeVisible();
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  await page.keyboard.press('f');
+  await expect(page.locator('#fsview')).toHaveClass(/on/);
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: 'artifacts/fs-camoff-' + (process.env.SHOT_TAG || 'run') + '.png' });
+  const card = page.locator('#fsname');
+  await expect(card, 'Full screen names who is on stage').toBeVisible();
+  await expect(card).toContainText('Pastor Kim');
+  await expect(card).toContainText('Camera off');
+  await expect(card).not.toContainText('The stage is clear');
+  const look = await page.evaluate(() => {
+    const ini = document.querySelector('#fsname .fsinitial');
+    return {
+      frame: getComputedStyle(document.getElementById('fsmain')).visibility,
+      initial: ini && ini.offsetParent ? ini.textContent : '',
+    };
+  });
+  expect(look.frame, 'the black frame is not painted').toBe('hidden');
+  expect(look.initial, 'the initial stands in for the picture').toBe('P');
+  // A screen share with the camera off is a picture again: no card.
+  await page.evaluate(() => window.__gifosVideo.camOffPeerForTest('host-dark', 'Pastor Kim', true));
+  await expect(card).toBeHidden({ timeout: 4000 });
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('fsmain')).visibility)).toBe('visible');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#fsview')).not.toHaveClass(/on/);
+});
