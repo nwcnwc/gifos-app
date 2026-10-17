@@ -466,7 +466,7 @@
       this.glabel = null; this.glFind = NET_OFF; this.anchored = false; this.lastReached = -1; this.netRoster = null;
       this.glHead = null;          // the coord of the head my walk reached: my FIND names it, so the greeter routes there (no room scan)
       this.walkRounds = 0; this.walkPending = false;   // the walk's rounds past the ring (one signaling round trip each); the FIND waits them out
-      this.bcDead = 0;             // refusals saying my group has no room under its head (its child row is another network's); three make me head a second subnet
+      this.bcDead = 0; this.bcDeadAt = -1;   // refusals saying my group has no room under its head (its child row is another network's); three of them over NET_DEAD_WAIT ticks make me head a second subnet
       this.ringMixed = false;      // my ring test saw a seat I do not reach (more than one network in this room)
       this.darkLeft = new Map();   // cell -> the peer whose knock at my door said it left that cell (held across a dark link)
       this.roster = []; this.haveRoster = false; this.lastGreeters = [];
@@ -1752,7 +1752,7 @@
       this.pp = (owner != null && pp && pp.sig != null) ? { ck: ck(c), s4: pp } : null; this.ppAskAt = -1; this.admBy = null;   // admBy: set by the PLACE intake (the verified signer), never by take
       this.rowGen = 0; this.rowLedgerLast = ''; this.rowGenSeen = null;   // V7b: a new seat's row ledger starts at generation 0 (its first beats delete nothing at the owner)
       this.tn = this.tnSalt + '.' + (++this.tnSeq);   // a new tenancy (see emit)
-      if (this.env.NET) { if (this.glabel == null) this.glabel = this.id; this.anchored = this.env.NET.anchorOk() && this.glFind === NET_NONE && c.i !== 0; this.bcDead = 0; this.env.NET.topoChanged(); }
+      if (this.env.NET) { if (this.glabel == null) this.glabel = this.id; this.anchored = this.env.NET.anchorOk() && this.glFind === NET_NONE && c.i !== 0; this.bcDead = 0; this.bcDeadAt = -1; this.env.NET.topoChanged(); }
       this.coord = c; this.hasCoord = true; this.state = 3; this.joinStart = -1; this.stranded = false; this.reAsk = false; this.reJoin = false; this.noroomSeen = 0; this.rowLedgerAt = -1; // seated: any deferred entry retry is moot; T7: the NOROOM evidence dies; V7: a new seat holds no child-row ledger yet with the attempt it belonged to
       // A: self-confirm sitting-down → seated (only the joiner upgrades).
       this.confirmSeated(ck(c), this.id);
@@ -3722,7 +3722,7 @@
         // scattered away from the funnel and deep sections filled row 1 before
         // row 0 (H7 dense-fill broken; sim hchain E + c-sweep, 2026-07-29). A
         // corpse answers NOTHING, so its mark stands — corpse-avoid untouched.
-        case 'NOROOM': if (this.state === 2) { if ((m.nd | 0) >= SPREAD_MINDEPTH) this.noroomSeen++; if (this.env.NET && netLab(this.glFind) && m.nd === NET_DEAD && ++this.bcDead >= 3) { this.glFind = NET_NONE; this.glabel = this.id; this.glHead = null; this.env.NET.splits++; } /* my group has no room under its head (its child row is another network's), three times: I head a second subnet of my group (one more bridge) */ if (this.triedSilent && m.id != null) this.triedSilent.delete(m.id); if (this.triedSilent && this.lastAsked != null) this.triedSilent.delete(this.lastAsked); this.retryAt = TICK; if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t != null) { this.askSeat(t); return; } } this.seatTries = 0; this.join(); } return;
+        case 'NOROOM': if (this.state === 2) { if ((m.nd | 0) >= SPREAD_MINDEPTH) this.noroomSeen++; if (this.env.NET && netLab(this.glFind) && m.nd === NET_DEAD && this.bcDeadAt < 0) this.bcDeadAt = TICK; if (this.env.NET && netLab(this.glFind) && m.nd === NET_DEAD && ++this.bcDead >= 3 && TICK - this.bcDeadAt >= NET_DEAD_WAIT) { this.glFind = NET_NONE; this.glabel = this.id; this.glHead = null; this.env.NET.splits++; } /* my group has no room under its head (its child row is another network's), three times over NET_DEAD_WAIT ticks: I head a second subnet of my group (one more bridge; a refusal a heal or a move lifts sooner costs none) */ if (this.triedSilent && m.id != null) this.triedSilent.delete(m.id); if (this.triedSilent && this.lastAsked != null) this.triedSilent.delete(this.lastAsked); this.retryAt = TICK; if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t != null) { this.askSeat(t); return; } } this.seatTries = 0; this.join(); } return;
         case 'HELLO': {
           // A HELLO is FIRST-HAND: its sender (m.id) is speaking on a link it
           // holds to me, claiming coord m.ck — it sets first-hand liveness.
@@ -4691,6 +4691,7 @@
   const NET_SINGLE = true;   // with a relay pool, a seeker that reaches nobody takes a free cell under a seated row head (its anchor), never a whole empty row
   const NET_BEAT_MS = 100;   // a bridge end beats its heir this often; three missed beats switch the bridge to the standby
   const NET_ROUND = 4;       // ticks one walk round costs (a signaling round trip through the door and the mesh)
+  const NET_DEAD_WAIT = 300;    // ticks a labelled seeker is refused by its own head before it heads a second subnet (a dead end lasts; a refusal a heal or a move lifts clears sooner)
   const NET_HEAL_SETTLE = 12;   // ticks a healed bridge-end cell must hold its new seat before the standby hands the bridge back
   const NET_DEAD = 254;      // a NOROOM's nd: the seeker's own group has no room under its head (the head's child row is another network's)
   const netLab = (gl) => gl != null && gl !== NET_NONE && gl !== NET_OFF;
