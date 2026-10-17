@@ -1465,12 +1465,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     overflow: hidden; container-type: size;
     pointer-events: none; text-align: center;
   }
-  #bc-replay[hidden] { display: none !important; }
-  #bc-replay {
-    pointer-events: auto; min-height: 56px; min-width: 8rem; padding: 12px 28px; margin: 0;
-    border: 0; border-radius: 16px; background: #0064c8; color: #fff; cursor: pointer;
-    font: 700 1.15rem/1 system-ui, sans-serif;
-  }
   body.townhall #bc-ended:not([hidden]) {
     top: calc(14px + 4.25rem + var(--inset-top, 0px));
   }
@@ -2306,7 +2300,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <div id="handq"></div>
   <div id="feed">
-    <div id="bc-ended" hidden><p id="bc-ended-txt"></p><button type="button" id="bc-replay" hidden>Watch</button><a id="bc-cal" hidden>Add to calendar</a></div>
+    <div id="bc-ended" hidden><p id="bc-ended-txt"></p><a id="bc-cal" hidden>Add to calendar</a></div>
     <a id="bc-give" hidden target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span id="bc-give-txt">Give</span></a>
     <div id="bc-q" hidden aria-live="polite"><i id="bc-q-pad"></i><i id="bc-q-fit"></i><b id="bc-q-by"></b><p id="bc-q-txt"></p></div>
     <div id="bc-cap" hidden><button type="button" id="bc-cap-btn" aria-pressed="true" aria-label="Captions" title="Show or hide the captions">CC</button><p id="bc-cap-txt" aria-live="polite"></p></div>
@@ -2967,13 +2961,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // empty, is watching an ending. A fresh visit is a service that has not
     // started. The mark lives for this tab, so next week's visit starts clean.
     let broadcastSawCompany = false;
-    let viewerReplayUrl = null;
-    let viewerReplayBlob = null; // the bytes behind viewerReplayUrl, handed to a late arrival
-    // A late arrival hears who in the room holds the replay (k:'rpl') and
-    // pulls it from one of them (rplw/rplc). Once it lands it holds it too.
-    const lateReplay = { srcs: new Map(), from: null, parts: null, got: 0, total: 0, size: 0, mime: '', t: null, open: false };
-    let viewerReplayRec = null;
-    let viewerReplayStreamId = null;
     // A message that STOPS someone (🛡 a refusal, 📷 an admin's video-off) is
     // the one message that must be read: it holds 12s and wears the warn
     // colour. Ordinary notices keep the 4s beat. An explicit hold wins.
@@ -7023,10 +7010,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const aloneCore = watching ? 'The town hall has not started.' : (bcViewer ? bcAlone : 'Just you — send the invite; the link has no expiry');
       const aloneLine = aloneCore + reachTriedSentence();
       const doorLine = 'Getting you back into the ' + place + ' — waiting for the others to answer…';
-      // Someone here holds the replay and nothing is on the stage: the people
-      // still connected (a host serving it, other latecomers) are not in a
-      // service. The chip says it ended, the same as the quiet line.
-      const bcEndedHere = !!(bcViewer && ((viewerReplayUrl && sawCompany) || lateReplay.srcs.size) && !document.querySelector('#stagefeed .rowtile'));
+      // The host ended the service and its seat stays (Q72) with nothing on
+      // the stage: the people still connected are not in a service. The chip
+      // says it ended, the same as the quiet line. Nothing is offered to
+      // watch: a whole-file pull grows one phone's upload with the audience.
+      const bcEndedHere = !!(bcViewer && bcEndedInRoom() && !document.querySelector('#stagefeed .rowtile'));
       const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
         : (n === 1 ? (atDoor ? doorLine : aloneLine)
         : bcEndedHere ? 'The ' + bcNoun + ' has ended.'
@@ -7067,17 +7055,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (quiet) {
         const hallQuiet = typeof TOWNHALL !== 'undefined' && TOWNHALL && statusKind === 'alone';
         const stageLive = !!document.querySelector('#stagefeed .rowtile');
-        // Someone in the room holds the replay: the service ended, even when
-        // other viewers are still here.
-        const replayHere = !!(bcViewer && ((viewerReplayUrl && sawCompany) || lateReplay.srcs.size));
-        const on = ((bcViewer && (statusKind === 'alone' || (replayHere && statusKind === 'meeting'))) || hallQuiet) && !stageLive;
-        const quietLine = hallQuiet ? 'The town hall has not started.' : replayHere ? ('The ' + bcNoun + ' has ended.') : bcAlone;
+        // The host's seat says the service ended: it ended, even when other
+        // viewers are still here.
+        const on = ((bcViewer && (statusKind === 'alone' || (bcEndedHere && statusKind === 'meeting'))) || hallQuiet) && !stageLive;
+        const quietLine = hallQuiet ? 'The town hall has not started.' : bcEndedHere ? ('The ' + bcNoun + ' has ended.') : bcAlone;
         quiet.hidden = !on;
         document.body.classList.toggle('bc-quiet', on);
         const quietTxt = document.getElementById('bc-ended-txt');
         if (quietTxt && on && quietTxt.textContent !== quietLine) quietTxt.textContent = quietLine;
-        const replayBtn = document.getElementById('bc-replay');
-        if (replayBtn) replayBtn.hidden = !(on && bcViewer && /has ended/.test(quietLine) && replayHere);
         paintBcCalendar(on && bcViewer && !hallQuiet && !!sched && sched.phase === 'future');
         paintBcGive(bcViewer, on && !hallQuiet);
       }
@@ -7328,7 +7313,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return f;
     }
     const txStats = { relayStatus: 0, dcStatus: 0, relaySig: 0, dcSig: 0, fwdSig: 0, fwdMesh: 0, doorSig: 0, hopFwd: 0, hopRelay: 0, nosock: 0, relayBoot: 0, relayFp: 0, relayIce: 0, relayName: 0, relayPassword: 0, relayUnfit: 0 }; // counters showing where heartbeats + signaling + sponsor hops actually travel; relay*: frames put on the relay by type (relayPassword counts every frame of a grant), relayUnfit: payloads that did not fit the relay's fixed size (never sent)
-    const rxStats = { offer: 0, answer: 0, ice: 0, status: 0, offerRejected: 0, answerNoPeer: 0, negFail: 0, answerStale: 0, relayAccepted: {}, relayDropped: {} }; // reception mirror: what actually ARRIVED (and what was refused); relayAccepted/relayDropped: relay frames by type, dispatched vs refused (relayFrameAllowed)
+    const rxStats = { offer: 0, answer: 0, ice: 0, status: 0, offerRejected: 0, answerNoPeer: 0, negFail: 0, answerStale: 0, relayAccepted: {}, relayDropped: {}, dcKinds: {} }; // reception mirror: what actually ARRIVED (and what was refused); relayAccepted/relayDropped: relay frames by type, dispatched vs refused (relayFrameAllowed); dcKinds: opened channel frames by k
     // THE RELAY LAW (gifos-net.js RELAY_TYPES; docs/meet-security.md §RELAY).
     // The relay carries a fixed list of message types between members, each
     // with its type in the clear and a sealed payload of ONE fixed size, 128
@@ -13594,7 +13579,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
         dcSend(p, { k: 'hi', chats: Array.from(chat.values()).slice(-500), trs: Array.from(trs.values()).slice(-300), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj() });
-        try { offerReplay(p); } catch (e) {}
         // THE MOMENT A CHANNEL EXISTS is the moment the stage pulls can finally
         // travel. Everything below was silently impossible a millisecond ago:
         // sgaFan delivers only to peers whose DC is already OPEN, so a
@@ -13637,7 +13621,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
         m = meshDefrag(m, 'dc|' + p.id); if (!m) return;
         const take = (held) => rxm(() => net.open(roomE2E, m).then((inner) => {
-          if (inner && inner.k) { onDc(p, dc, inner); return; }
+          if (inner && inner.k) { const dk = rxStats.dcKinds; const kk = String(inner.k).slice(0, 16); dk[kk] = (dk[kk] || 0) + 1; onDc(p, dc, inner); return; }
           if (!inner && !held && holdForRekey(take)) return; // sealed under the key my re-key is still deriving (rekeyHeld)
           return healStaleFrom(p.id, m); // §LOCK: a previous-key frame is the staleness signal — see healStaleFrom
         }));
@@ -13773,14 +13757,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // asker leaves the wanters list, so no stop entry outlives its pump.
         if (m.id && p && p.filePump && p.filePump[m.id]) (p.fcStop = p.fcStop || new Set()).add(m.id);
         else if (m.id && p) { const f = files.get(m.id); if (f && f.wanters) f.wanters = f.wanters.filter((w) => w !== p && !(w && w.id === p.id)); }
-      } else if (m.k === 'rpl') {
-        takeReplayOffer(p, m);
-      } else if (m.k === 'rplw') {
-        if (BROADCAST) sendReplayOver(p);
-      } else if (m.k === 'rplx') {
-        if (p && p.rplPump) { p.rplPump.stop = true; p.rplPump = null; }
-      } else if (m.k === 'rplc') {
-        takeReplayChunk(p, m);
       } else if (m.k === 'fdel') {
         // One flood from its author, never re-broadcast (see chat). An admin
         // room takes the order from a signed fdel, or from the owner unpinning
@@ -17347,7 +17323,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (el) { for (const v of el.querySelectorAll('video')) { try { v.pause(); v.srcObject = null; } catch (e) {} releaseAudio(v); } el.remove(); }
         stageViewNow = null;
         compOf.delete('sgs'); recSrcDirty = true;
-        finishViewerReplay();
         return;
       }
       if (!el) {
@@ -17372,7 +17347,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       compOf.set('sgs', { via: 'stage', streamId: stream.id, stream, names: stageIds(), el: v });
       recSrcDirty = true;
-      armViewerReplay(stream);
     }
     // (Channel Se — the C×C Section composite — was DROPPED to free its cross-link
     // budget for the Stadium/Stage cross-link redundancy. Section-mates now fold
@@ -21188,48 +21162,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (typeof saved.drop === 'function') { try { Promise.resolve(saved.drop()).catch(() => {}); } catch (e) {} }
       }, 60000);
     }
-    function viewerMayReplay() {
-      return typeof BROADCAST !== 'undefined' && BROADCAST && typeof bcHostStored === 'function' && !bcHostStored();
-    }
-    function finishViewerReplay() {
-      const rec = viewerReplayRec;
-      if (rec && rec.state !== 'inactive') { try { rec.stop(); } catch (e) {} }
-    }
-    function armViewerReplay(stream) {
-      if (!viewerMayReplay() || !stream) return;
-      const vt = stream.getVideoTracks && stream.getVideoTracks().find((t) => t.readyState === 'live');
-      if (!vt) return;
-      if (viewerReplayRec && viewerReplayRec.state === 'recording' && viewerReplayStreamId === stream.id) return;
-      finishViewerReplay();
-      if (typeof MediaRecorder === 'undefined') return;
-      const recStream = new MediaStream([vt]);
-      const aud = stream.getAudioTracks ? stream.getAudioTracks() : [];
-      for (const t of aud) if (t.readyState === 'live') recStream.addTrack(t);
-      let mime = '';
-      try {
-        if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) mime = 'video/webm;codecs=vp8';
-        else if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported('video/webm')) mime = 'video/webm';
-      } catch (e) {}
-      let rec;
-      try { rec = mime ? new MediaRecorder(recStream, { mimeType: mime }) : new MediaRecorder(recStream); }
-      catch (e) { return; }
-      const chunks = [];
-      rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-      rec.onstop = () => {
-        if (viewerReplayRec === rec) { viewerReplayRec = null; viewerReplayStreamId = null; }
-        if (!chunks.length) return;
-        const blob = new Blob(chunks, { type: String(rec.mimeType || 'video/webm').split(';')[0] });
-        if (!blob.size) return;
-        setViewerReplay(blob);
-      };
-      try { rec.start(400); viewerReplayRec = rec; viewerReplayStreamId = stream.id; }
-      catch (e) { viewerReplayRec = null; }
-    }
     function showRecReplay(saved) {
       const old = document.getElementById('rec-replay');
       if (old) old.remove();
       const already = !!(saved && saved.saved);
-      const watch = !!(saved && saved.watch);
       const bg = document.createElement('div');
       bg.id = 'rec-replay';
       bg.className = 'rec-replay';
@@ -21239,7 +21175,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bg.innerHTML = '<p class="rec-replay-title">Replay</p>' +
         '<video id="rec-replay-vid" playsinline></video>' +
         '<div class="rec-replay-bar">' +
-        (saved && saved.seed ? '<p id="rec-replay-seed" class="rec-replay-seed">The ' + ((typeof params !== 'undefined' && params.has('st')) ? 'stream' : 'service') + ' has ended. Anyone who opens the link while this stays open can watch it.</p>' : '') +
+        (saved && saved.seed ? '<p id="rec-replay-seed" class="rec-replay-seed">The ' + ((typeof params !== 'undefined' && params.has('st')) ? 'stream' : 'service') + ' has ended.</p>' : '') +
         '<input id="rec-replay-scrub" type="range" min="0" max="1000" value="0" aria-label="Replay position">' +
         '<div class="rec-replay-actions">' +
         '<button type="button" id="rec-replay-share" hidden>Share</button>' +
@@ -21294,17 +21230,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else vid.pause();
       });
       if (already) saveBtn.hidden = true;
-      else saveBtn.onclick = () => {
-        if (watch) { recDownload(saved); saveBtn.textContent = 'Saved'; return; }
-        keep();
-      };
+      else saveBtn.onclick = () => keep();
       bg.querySelector('#rec-replay-close').onclick = () => {
-        if (!watch && !sent) keep();
+        if (!sent) keep();
         try { vid.pause(); } catch (e) {}
         vid.removeAttribute('src');
         try { vid.load(); } catch (e) {}
         bg.remove();
-        if (!watch) recRelease(saved);
+        recRelease(saved);
         if (saved && saved.seed) leaveSeededService();
       };
       const play = vid.play();
@@ -21315,7 +21248,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (saved && saved.href && bcSeeding) {
         saved.seed = true;
         showRecReplay(saved);
-        fetch(saved.href).then((r) => r.blob()).then((blob) => { if (bcSeeding && blob.size) setViewerReplay(blob, saved.href); }).catch(() => {});
         return 'replay';
       }
       if (saved && saved.href && recOnPhone()) {
@@ -21330,115 +21262,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return '';
     }
-    // Holding the replay makes this phone a source for anyone who arrives
-    // after the end: tell every open link once it lands.
-    function setViewerReplay(blob, url) {
-      if (viewerReplayUrl && viewerReplayUrl !== url) { try { URL.revokeObjectURL(viewerReplayUrl); } catch (e) {} }
-      viewerReplayBlob = blob || null;
-      viewerReplayUrl = blob ? (url || URL.createObjectURL(blob)) : null;
-      if (blob) for (const pid of gossipIds()) { const q = peers.get(pid); if (q) offerReplay(q); }
-      try { updateStatus(); } catch (e) {}
-    }
-    function offerReplay(p) {
-      const b = viewerReplayBlob;
-      if (!b || !b.size || !BROADCAST || !p || !p.dc || p.dc.readyState !== 'open') return;
-      dcSend(p, { k: 'rpl', size: b.size, mime: String(b.type || 'video/webm').split(';')[0] });
-    }
-    function takeReplayOffer(p, m) {
-      if (!viewerMayReplay() || viewerReplayUrl || !p || !p.id) return;
-      const size = Math.floor(+m.size || 0);
-      if (!(size > 0 && size <= 4 * 1024 * 1024 * 1024)) return;
-      const had = lateReplay.srcs.size;
-      lateReplay.srcs.set(p.id, { size, mime: /^video\/[\w.+-]+$/.test(String(m.mime)) ? String(m.mime) : 'video/webm' });
-      if (!had) { try { updateStatus(); } catch (e) {} }
-    }
-    // One source at a time, in order. 8 s with no new chunk is a stalled
-    // source: ask the next one. With none left, the button says so.
-    function pullLateReplay() {
-      clearTimeout(lateReplay.t);
-      const btn = document.getElementById('bc-replay');
-      let next = null;
-      for (const [pid, info] of lateReplay.srcs) {
-        const q = peers.get(pid);
-        if (!q || !q.dc || q.dc.readyState !== 'open') { lateReplay.srcs.delete(pid); continue; }
-        if (pid !== lateReplay.from) { next = [pid, info]; break; }
-      }
-      if (!next && lateReplay.from && lateReplay.srcs.has(lateReplay.from) && !lateReplay.got) next = [lateReplay.from, lateReplay.srcs.get(lateReplay.from)];
-      if (lateReplay.from && (!next || next[0] !== lateReplay.from)) { const old = peers.get(lateReplay.from); if (old) dcSend(old, { k: 'rplx' }); }
-      if (!next) {
-        lateReplay.from = null; lateReplay.parts = null;
-        if (btn) { btn.disabled = false; btn.textContent = 'Watch'; }
-        setStatus('Nobody here has the replay now. Try again in a minute.');
-        try { updateStatus(); } catch (e) {}
-        return;
-      }
-      const [pid, info] = next;
-      lateReplay.from = pid;
-      lateReplay.size = info.size;
-      lateReplay.mime = info.mime;
-      lateReplay.total = Math.max(1, Math.ceil(info.size / FILE_PART));
-      lateReplay.parts = new Array(lateReplay.total);
-      lateReplay.got = 0;
-      if (btn) { btn.disabled = true; btn.textContent = 'Getting it…'; }
-      dcSend(peers.get(pid), { k: 'rplw' });
-      armLateReplay();
-    }
-    function armLateReplay() {
-      clearTimeout(lateReplay.t);
-      lateReplay.t = setTimeout(pullLateReplay, 8000);
-    }
-    function takeReplayChunk(p, m) {
-      const L = lateReplay;
-      if (!L.parts || !p || p.id !== L.from) return;
-      const seq = m.seq | 0;
-      if (seq < 0 || seq >= L.total || L.parts[seq] || typeof m.b !== 'string') return;
-      L.parts[seq] = partOfB64(m.b);
-      L.got++;
-      armLateReplay();
-      const btn = document.getElementById('bc-replay');
-      if (L.got < L.total) {
-        if (btn) btn.textContent = 'Getting it… ' + Math.floor(L.got / L.total * 100) + '%';
-        return;
-      }
-      clearTimeout(L.t);
-      const blob = new Blob(L.parts, { type: L.mime });
-      L.parts = null; L.from = null;
-      if (btn) { btn.disabled = false; btn.textContent = 'Watch'; }
-      if (blob.size !== L.size) { L.srcs.delete(p.id); setStatus('That copy of the replay was broken. Tap Watch to try again.'); try { updateStatus(); } catch (e) {} return; }
-      L.srcs.clear();
-      setViewerReplay(blob);
-      if (L.open) { L.open = false; openViewerReplay(); }
-    }
-    // The source side: slice the held file and pump it with the same
-    // backpressure as a pinned file. rplx, or a closed channel, stops it.
-    function sendReplayOver(p) {
-      const blob = viewerReplayBlob;
-      if (!blob || !blob.size || !p || p.rplPump) return;
-      const total = Math.max(1, Math.ceil(blob.size / FILE_PART));
-      let seq = 0;
-      const pump = p.rplPump = { stop: false };
-      const step = () => {
-        if (pump.stop || p.rplPump !== pump || !p.dc || p.dc.readyState !== 'open' || seq >= total) { if (p.rplPump === pump) p.rplPump = null; return; }
-        if ((p.dc.bufferedAmount || 0) > (1 << 20)) { setTimeout(step, 40); return; }
-        const n = seq++;
-        blob.slice(n * FILE_PART, (n + 1) * FILE_PART).arrayBuffer()
-          .then((ab) => dcSendFile(p, { k: 'rplc', seq: n, b: b64ofPart(new Uint8Array(ab)) }))
-          .then(() => setTimeout(step, 0), () => { if (p.rplPump === pump) p.rplPump = null; });
-      };
-      step();
-    }
-    function openViewerReplay() {
-      if (!viewerReplayUrl) return;
-      const noun = (typeof params !== 'undefined' && params.has('st')) ? 'stream' : 'service';
-      showRecReplay({ href: viewerReplayUrl, name: noun + '.webm', watch: true });
-    }
-    const replayWatch = document.getElementById('bc-replay');
-    if (replayWatch) replayWatch.onclick = () => {
-      if (viewerReplayUrl) { openViewerReplay(); return; }
-      if (!lateReplay.srcs.size || lateReplay.parts) return;
-      lateReplay.open = true;
-      pullLateReplay();
-    };
     function resumeReload() {
       const REC_SAVE_MAX_MS = 20000;
       // Stash before the reload, then drop the share so peers are not left
@@ -23293,9 +23116,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // A host whose service is being kept (Q69) ends it with Leave, but the
     // seat stays: the replay sheet is the last thing open, and while it is,
-    // anyone who opens the link pulls the kept file from this phone (Q72).
-    // Close on that sheet is the real leave.
+    // anyone who opens the link reads that the service ended (Q72). Nobody
+    // pulls the kept file from this phone (Q76). Close is the real leave.
     let bcSeeding = false;
+    // The host's seat that ended its service says so on its status pulse.
+    function bcEndedInRoom() {
+      for (const st of statusOf.values()) if (st && st.bcend) return true;
+      return false;
+    }
     function bcSeedOnLeave() {
       return !!(BROADCAST && bcKept && bcHostStored() && recRec && recRec.state !== 'inactive');
     }
@@ -23305,6 +23133,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { if (myStatus.stg) setStage(false); } catch (e) {}
       try { if (localStream) localStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
       myStatus.muted = true; myStatus.camOff = true;
+      myStatus.bcend = Date.now();
       // The outgoing hold from the confirm stays, so nothing is sent. The
       // leaving latch comes down so new links are still answered.
       leaving = false; leavingForAsk = false; myStatus.lv = 0;
@@ -23316,8 +23145,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function leaveSeededService() {
       if (!bcSeeding) return;
       bcSeeding = false;
-      // Not revoked here: Close may have just handed this URL to a download.
-      viewerReplayBlob = null; viewerReplayUrl = null;
       leaveMeeting();
     }
     function leaveMeeting() {
@@ -24458,22 +24285,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       participants: participantCount,
       shareInvite: () => shareMeetingLink(document.getElementById('hdrinvite')),
       showReplayForTest: (href, name, saved) => recDeliver({ href: href, name: name || '', saved: !!saved }),
-      noteViewerReplayForTest: (href) => {
-        if (!href) { setViewerReplay(null); return false; }
-        return fetch(href).then((r) => r.blob()).then((blob) => {
-          setViewerReplay(blob, href);
-          const btn = document.getElementById('bc-replay');
-          return !!(btn && !btn.hidden);
-        });
-      },
-      armViewerReplayForTest: (stream) => { armViewerReplay(stream); return !!(viewerReplayRec && viewerReplayRec.state === 'recording'); },
-      finishViewerReplayForTest: () => new Promise((resolve) => {
-        const rec = viewerReplayRec;
-        if (!rec || rec.state === 'inactive') { resolve(!!viewerReplayUrl); return; }
-        const prev = rec.onstop;
-        rec.onstop = () => { try { if (prev) prev(); } catch (e) {} resolve(!!viewerReplayUrl); };
-        try { rec.stop(); } catch (e) { resolve(false); }
-      }),
       markJoinedForTest: (id) => {
         const pid = String(id || 'peer').slice(0, 80);
         if (pid && !rosterIds.includes(pid)) rosterIds.push(pid);
@@ -24581,7 +24392,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Every close code the relay socket saw in this node's life, newest
       // last ({code, at}) — a policy cut reads differently from a drop.
       relayCloses: () => { try { return meshNode ? meshNode.stats().closes : []; } catch (e) { return []; } },
-      rxStats: () => Object.assign({}, rxStats), // reception mirror (offers/answers/ice arrived, offers refused)
+      rxStats: () => JSON.parse(JSON.stringify(rxStats)), // reception mirror (offers/answers/ice arrived, offers refused)
       relayUp: () => relayUp(), // does my mesh node hold a live relay socket right now?
       // Event-driven departures (D2/D5 → UI): the confirmed-gone tombstones.
       departed: () => Array.from(meshGone, ([pid, at]) => ({ id: String(pid).slice(0, 8), at })),

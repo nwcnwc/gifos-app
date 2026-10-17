@@ -1,10 +1,8 @@
 import { test, expect } from '@playwright/test';
 
-// Someone who missed the service gets it from a person who has it. On a
-// phone the replay sheet hands the video file to the share sheet, so the
-// host or a viewer can send it to the church group in one tap.
-
-const AV = '0123456789abcdef0123456789abcdef';
+// Someone who missed the service gets it from the host. On a phone the
+// replay sheet hands the video file to the share sheet, so the host can
+// send it to the church group in one tap.
 
 // The phone's share sheet. It records what it was handed.
 async function phoneShare(page, { files = true } = {}) {
@@ -91,29 +89,6 @@ test('the host sends the service recording from the replay', async ({ page }) =>
   await page.locator('#rec-replay-close').click();
   await expect(page.locator('#rec-replay')).toHaveCount(0);
   expect(downloaded).toBe(false);
-});
-
-test('a viewer sends the ended service to someone who missed it', async ({ page }) => {
-  await phoneShare(page);
-  const room = 'shr' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  await page.goto('/run.html#v=' + room + '&av=' + AV + '&bc=1', { waitUntil: 'domcontentloaded' });
-  await page.locator('#nmok').click();
-  await page.waitForFunction(() => /has not started/.test(document.getElementById('status').textContent || ''));
-  await page.evaluate(() => {
-    window.__gifosVideo.markJoinedForTest('host-ruth');
-    window.__gifosVideo.markLeftForTest('host-ruth');
-  });
-  await expect(page.locator('#bc-ended-txt')).toHaveText('The service has ended.');
-  const href = await clip(page);
-  await page.evaluate((url) => window.__gifosVideo.noteViewerReplayForTest(url), href);
-  await page.locator('#bc-replay').click();
-  const share = page.locator('#rec-replay-share');
-  await expect(share).toBeVisible();
-  await share.click();
-  await page.waitForFunction(() => window.__shared.length === 1);
-  const sent = await page.evaluate(() => window.__shared[0]);
-  expect(sent.name).toBe('service.webm');
-  expect(sent.size).toBeGreaterThan(0);
 });
 
 test('a phone that cannot share a file keeps Save and Close', async ({ page }) => {
