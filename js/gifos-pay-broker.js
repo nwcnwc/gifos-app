@@ -1113,5 +1113,8 @@
     // storage of its own.
     purse, maxAmountFor, setMaxAmount, fmtUsd, entScope,
     DEFAULT_MAX, WORKER_KEY, POLICY_KEY,
+    // GifOS's own products (Video Anywhere in a meeting) buy through the same
+    // service and check their receipts against the same key.
+    workerBase, verifyReceipt,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

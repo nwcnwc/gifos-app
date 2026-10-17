@@ -42,15 +42,23 @@
   const GifOS = (root.GifOS = root.GifOS || {});
 
   // ---- WebRTC availability + ICE --------------------------------------------
-  // No TURN server anywhere: P1 (a friend) and P2 (the relay, for control
-  // classes only) are the fallbacks. Media gets a friend or nothing.
+  // These are the only servers every connection starts with: STUN, which
+  // tells a page its public address and relays nothing. P1 (a friend) and
+  // P2 (the relay, for control classes only) are the fallbacks for media and
+  // control; the free audio pool (js/meet-turn.js) is the last one.
   const ICE_SERVERS = [
     { urls: 'stun:stun.cloudflare.com:3478' },
     { urls: 'stun:stun.l.google.com:19302' },
-    // NO TURN — EVER. GifOS media goes peer-to-peer, NEVER through a server
-    // (the meeting footer's promise). When a direct path fails, media relays
-    // through a MUTUAL FRIEND's browser (P1 friend-relay: relayVia / relay-req
-    // in run.html, {t:'fwd'} in gifos-net) — a peer, not a server.
+    // NO UNCAPPED TURN IN A FREE ROOM. GifOS media goes peer-to-peer: when a
+    // direct path fails, it goes through a MUTUAL FRIEND's browser (P1
+    // friend-relay: relayVia / relay-req in run.html, {t:'fwd'} here), a
+    // peer, not a server. TURN is only the last resort, after both of those
+    // have failed for a pair; audio only; only through GifOS's own servers,
+    // whose short-lived credentials come from the credential service; and
+    // every session on them has a per-session bandwidth cap that audio fits
+    // and video does not. Never add a TURN server to this list: this list
+    // is used by every pair, and a server here would carry anyone's media,
+    // video included, with no cap and no last-resort rule.
   ];
   const hasP2P = () => typeof root.RTCPeerConnection === 'function';
 
