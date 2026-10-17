@@ -4086,7 +4086,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let pipManual = false;
     async function enterPip(manual) {
       const v = pipSource();
-      if (!v || document.pictureInPictureElement === v) return;
+      if (!v || document.pictureInPictureElement === v) {
+        // A tap with no picture used to do nothing. Auto-float on leaving the
+        // tab stays quiet: there is still nothing to show.
+        if (manual && !v && typeof BROADCAST !== 'undefined' && BROADCAST) setStatus('Nothing on the stage to float yet.');
+        return;
+      }
       pipManual = !!manual;
       try {
         if (v.requestPictureInPicture) await v.requestPictureInPicture();

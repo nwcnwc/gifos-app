@@ -2400,3 +2400,44 @@ test('a service reaction shows on the stage', async ({ page }) => {
   const stageOn = await page.locator('#bc-react').evaluate((el) => getComputedStyle(el).display !== 'none');
   expect(stageOn).toBe(false);
 });
+
+test('float tells you when the stage has no picture', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=floate' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast');
+    await page.locator('#bartoggle').click();
+    const pipOn = await page.locator('#pipbtn').evaluate((el) => getComputedStyle(el).display !== 'none');
+    if (pipOn) {
+      const pip = page.locator('#pipbtn');
+      const box = await pip.boundingBox();
+      expect(box.width).toBeGreaterThan(20);
+      expect(box.x).toBeGreaterThanOrEqual(-1);
+      expect(box.x + box.width).toBeLessThanOrEqual(w + 1);
+      expect(box.y).toBeGreaterThanOrEqual(-1);
+      expect(box.y + box.height).toBeLessThanOrEqual(h + 1);
+      await pip.click();
+    } else {
+      await page.evaluate(() => window.__gifosVideo.pipEnterForTest());
+    }
+    await expect(page.locator('#status')).toHaveText('Nothing on the stage to float yet.');
+    const chip = await page.evaluate(() => {
+      const st = document.getElementById('status');
+      const r = st.getBoundingClientRect();
+      return { clip: st.scrollWidth > st.clientWidth + 1, on: r.left >= -1 && r.right <= innerWidth + 1 && r.top >= -1 };
+    });
+    expect(chip.clip, JSON.stringify(chip)).toBe(false);
+    expect(chip.on, JSON.stringify(chip)).toBe(true);
+  }
+  await page.goto('/run.html?desk=floategroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('Just you') !== -1);
+  await page.evaluate(() => window.__gifosVideo.pipEnterForTest());
+  await expect(page.locator('#status')).toContainText('Just you. Send the invite.');
+  await expect(page.locator('#status')).not.toContainText('float');
+});
