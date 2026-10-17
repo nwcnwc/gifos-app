@@ -149,3 +149,36 @@ test('starting an app folds the More sheet off the app', async ({ page }) => {
   await page.screenshot({ path: 'test/desktop/shots/app-more-1280.png' });
   expect(got).toEqual({ moreShown: false, expanded: 'false', word: 'More' });
 });
+
+// Older eyes: with an app running in a meeting on a desktop, every word on the
+// app bar is 16px or more. Help and the "you are hosting it" line were
+// 12.5px beside 16px Stop app and Invite.
+test('every word on a running app\'s bar is 16px or more', async ({ page }) => {
+  await boot(page);
+  await page.setInputFiles('#app-file-input', 'apps/2048/2048.gif');
+  await page.waitForFunction(() => document.body.classList.contains('has-app'), null, { timeout: 30000 });
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => document.getElementById('apphelp').getClientRects().length > 0);
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const got = await page.evaluate(() => {
+    const shown = (el) => {
+      if (!el || !el.getClientRects().length) return false;
+      const cs = getComputedStyle(el);
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0;
+    };
+    const bar = document.getElementById('appbar');
+    const words = [...bar.children].filter((el) => shown(el) && (el.textContent || '').trim())
+      .map((el) => ({ id: el.id || el.className, text: el.textContent.trim().slice(0, 40), px: parseFloat(getComputedStyle(el).fontSize) }));
+    const small = words.filter((w) => w.px < 16).map((w) => w.id + ' ' + w.px + 'px "' + w.text + '"');
+    const btns = [...bar.querySelectorAll('button')].filter(shown).map((b) => b.getBoundingClientRect());
+    return {
+      ids: words.map((w) => w.id), small,
+      offRight: btns.filter((r) => r.right > innerWidth + 1).length,
+      barH: bar.getBoundingClientRect().height,
+    };
+  });
+  await page.screenshot({ path: 'test/desktop/shots/app-bigwords-1280.png' });
+  expect(got.ids).toEqual(expect.arrayContaining(['apphelp', 'appstop']));
+  expect(got.small).toEqual([]);
+  expect(got.offRight).toBe(0);
+});
