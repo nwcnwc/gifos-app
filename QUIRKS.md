@@ -8,6 +8,10 @@ Personas: church volunteer starting a broadcast, late viewer on a shared link, f
 
 Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
+## Design rules
+
+- There cannot be any possibility in our design for growth of a single node's bandwidth in direct proportion to users. Any feature where one node's (host, viewer, relay, peer) upload or download scales with the number of users is rejected; fan out instead.
+
 ## Open
 
 ## Fixed
