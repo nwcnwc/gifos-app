@@ -6,6 +6,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 
 ## Fixed
 
+### A quiet family call still showed buttons on every face
+
+- **Who hits it:** two to four people talking on a desktop, with the pointer resting on someone's face.
+- **What you saw:** the dock faded, but each face kept a Blur for all square and a Max button, and the face under the pointer kept Mute for everyone and Blur for everyone.
+- **Repro:** `test/desktop/calm-dock.spec.js` "hides the tile buttons" failed before the fix on Chromium and Firefox: Blur for all was still shown on 2 tiles once calm.
+- **Fix:** calm hides Blur for all, Max, and the hover row with the dock. Names and mute marks stay. Keyboard focus on a tile, or an open tile menu, keeps the call from going calm.
+- **Proof:** the test passes on Chromium and Firefox; full desktop suite 176/176. Screenshots: `test/desktop/shots/calm-tiles-before-1280.png`, `test/desktop/shots/calm-tiles-after-1280.png`.
+
 ### A quiet family call still showed the whole dock
 
 - **Who hits it:** two to four people talking on a desktop, with nobody touching the mouse.

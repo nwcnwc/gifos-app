@@ -1498,7 +1498,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* A quiet small call fades the dock (and Fit) so only faces are left. Coming
      back is quick; going away is slow, so it never feels like a flicker. */
   body.dock-calm .bar, body.dock-calm .fitbtn { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
-  @media (prefers-reduced-motion: reduce) { .bar, body.dock-calm .bar, body.dock-calm .fitbtn { transition: none; } }
+  /* Calm is faces only: the tile buttons go too, even under a resting pointer.
+     Names and the mute chips stay. */
+  .tile > .blurbox, .tile .maxbtn, .tile .modbar { transition: opacity .2s ease; }
+  body.dock-calm .tile > .blurbox, body.dock-calm .tile .maxbtn, body.dock-calm .tile .modbar {
+    opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+  @media (prefers-reduced-motion: reduce) { .bar, body.dock-calm .bar, body.dock-calm .fitbtn,
+    .tile > .blurbox, .tile .maxbtn, .tile .modbar { transition: none !important; } }
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
     width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
     background: #e8ecf1; color: #1d1d1f; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
@@ -22141,6 +22147,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!bar.classList.contains('collapsed')) return true; // More is open
         // A clicked button keeps focus, so only keyboard focus holds the dock.
         if (bar.matches(':hover') || bar.querySelector(':focus-visible')) return true;
+        // Keyboard focus on a tile or its buttons keeps them (calm hides tile buttons too).
+        if (document.querySelector('#feed :focus-visible, #feed .tile.menu')) return true;
         if (bar.querySelector('[aria-expanded="true"], .on:not(#ccdock)')) return true;
         const chat = document.getElementById('chatpanel');
         if (chat && chat.classList.contains('open')) return true;
