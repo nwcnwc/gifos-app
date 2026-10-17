@@ -1127,6 +1127,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       .tile.thin:has(> .blurbox.on) .maxbtn { top: 64px; left: auto; right: 8px; }
       .tile.thin:has(> .blurbox.on):not(.cam-off) .chips { right: 56px; }
       .tile.thin:has(> .blurbox.on) .name { font-size: .85rem; line-height: 1.15; }
+      /* A tapped slim tile's menu opened 92px down a 153px tile, over Full
+         screen and the name, with 36px buttons. It fills the tile above the
+         name instead; Full screen and Blur for all step aside while it is
+         open (Blur for everyone is in it). */
+      .tile.slim.menu .modbar { top: 6px; left: 6px; right: 6px; bottom: 52px; z-index: 7; gap: 6px;
+        justify-content: center; overflow-y: auto; border-radius: 10px; background: rgba(10,10,15,.55); }
+      .tile.slim.menu .modbar button { box-sizing: border-box; width: 100%; min-height: 44px; padding: 2px 4px;
+        font-size: 13px; line-height: 1.1; white-space: normal; flex: 0 0 auto; background: #14141c; }
+      .tile.slim.menu > .blurbox, .tile.slim.menu .maxbtn { visibility: hidden; }
     }
     .tile.slim .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 1px 4px; z-index: 5;
       white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
@@ -6036,6 +6045,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         });
         tile.appendChild(modbar);
         tile.addEventListener('click', () => tile.classList.toggle('menu')); // tap = menu on phones
+        // On a slim phone tile the open menu fills the tile, so a second tap
+        // there lands on Mute for everyone. A tap anywhere else closes it.
+        if (!makeTile.menuOff && typeof document.addEventListener === 'function') {
+          makeTile.menuOff = true;
+          document.addEventListener('click', (e) => {
+            document.querySelectorAll('.tile.menu').forEach((t) => { if (!t.contains(e.target)) t.classList.remove('menu'); });
+          }, true);
+        }
       }
       // Headless (uplink-only) peers keep the full tile machinery — video
       // element, meters, chips — but never enter the grid: a fellow delegate

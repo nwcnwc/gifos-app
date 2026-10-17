@@ -45,12 +45,13 @@ const CASES = [
         const tile = el.closest('.tile');
         const tb = tile.getBoundingClientRect();
         const b = box(el);
+        const text = (el.innerText || '').replace(/\s+/g, ' ').trim();
         tile.classList.add('menu');
         const mod = tile.querySelector('.modbar');
         const name = tile.querySelector('.name');
         const max = tile.querySelector('.maxbtn');
         return {
-          text: (el.innerText || '').replace(/\s+/g, ' ').trim(),
+          text,
           w: b.w, h: b.h,
           topGap: b.top - tb.top,
           rightGap: tb.right - b.right,
@@ -86,7 +87,11 @@ const CASES = [
         const tile = el.closest('.tile');
         tile.classList.add('menu');
         const a = box(el);
+        // A slim phone tile's open menu fills the tile and Blur for all
+        // steps aside; the menu must offer the same Blur then.
+        const menuBlur = Array.from(tile.querySelectorAll('.modbar button')).some((b) => box(b) && /^(Blur|Unblur) for everyone$/.test(b.textContent));
         return {
+          hidden: !a && !menuBlur,
           name: gap(a, box(tile.querySelector('.name'))),
           max: gap(a, box(tile.querySelector('.maxbtn'))),
           mod: gap(a, box(tile.querySelector('.modbar'))),
@@ -94,6 +99,7 @@ const CASES = [
       });
     });
     for (const c of clear) {
+      if (c.hidden) bad.push('the open menu hides Blur for all and offers no Blur');
       if (c.name < 12) bad.push('name is ' + Math.round(c.name) + 'px from Blur for all');
       if (c.max < 12) bad.push('full screen is ' + Math.round(c.max) + 'px from Blur for all');
       if (c.mod < 12) bad.push('the tile menu is ' + Math.round(c.mod) + 'px from Blur for all');

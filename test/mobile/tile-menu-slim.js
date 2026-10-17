@@ -105,10 +105,12 @@ function hit(a, b) {
       shot = true;
       await page.screenshot({ path: path.join(SHOTS, (bad.length ? 'before' : 'after') + '-tile-menu-slim-iphone-se.png') });
     }
-    // A second tap closes it.
-    await page.touchscreen.tap(spot.x, spot.y);
+    // A tap off the tile closes it. A second tap on the tile would land on
+    // a button now that the menu fills it.
+    const me = await page.locator('.tile.me').boundingBox();
+    await page.touchscreen.tap(me.x + me.width / 2, me.y + me.height / 2);
     await page.waitForTimeout(200);
-    if (await tile.evaluate((t) => t.classList.contains('menu'))) bad.push(tag + ': a second tap did not close the menu');
+    if (await tile.evaluate((t) => t.classList.contains('menu'))) bad.push(tag + ': a tap off the tile did not close the menu');
   }
 
   await context.close();
