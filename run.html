@@ -2559,7 +2559,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         probe, probeDone,
         reach: (a, b) => {
           if (a === b) return true;
-          const relayedBy = (x, y) => { const st = statusOf.get(x); return !!(st && Array.isArray(st.rl) && st.rl.includes(y)); };
+          const relayedBy = (x, y) => { const st = statusOf.get(x); return !!(st && ((Array.isArray(st.rl) && st.rl.includes(y)) || (Array.isArray(st.tl) && st.tl.includes(y)))); };   // st.rl: its relayed pairs; st.tl: its relay-pool pairs (the pool code's own list)
           if (a === myId || b === myId) {
             const pid = a === myId ? b : a; const p = peers.get(pid); const age = p ? Date.now() - (p.bornAt || 0) : -1; let r = true, why = 'no-pair';
             if (p && p.connected) { r = !pairRelayed(p) && !relayedBy(pid, myId); why = r ? 'up' : 'up-relayed'; }   // the far end's word counts too: a pair it reaches through the relay server is relayed at my end as well

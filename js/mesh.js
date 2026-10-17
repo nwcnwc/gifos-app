@@ -5056,7 +5056,10 @@
     seatOf(id) { return id == null ? null : this.o.seat(id); }
     seatedLive(id) { const s = this.seatOf(id); return !!s && s.alive && s.state === 3 && s.hasCoord; }
     groupOf(id) { return id == null || !this.o.groupOf ? null : this.o.groupOf(id); }
-    reach(a, b) { return a === b || !!this.o.reach(a, b); }
+    // A page on a blocked network reaches nobody outside it, so a pair with
+    // one blocked end and one that is not is never direct, whatever a view's
+    // connection gossip says (a pair through the relay pool is connected too).
+    reach(a, b) { if (a === b) return true; if (this.o.stun && this.stun(a) !== this.stun(b)) return false; return !!this.o.reach(a, b); }
     stun(id) { return !this.o.stun || !!this.o.stun(id); }
     labelOf(id) { if (!this.seatedLive(id)) return null; const s = this.seatOf(id); return s.glabel != null ? s.glabel : s.id; }   // a seated seat with no label yet (seated before the view existed) is its own group's first member
     anchoredAt(id) { const s = this.seatOf(id); return !!s && !!s.anchored; }
