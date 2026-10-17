@@ -6103,6 +6103,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const isMe = id === 'me';
       const t = isMe ? meTile : peers.get(id);
       if (!t) return;
+      // A connected seat has sent its offer or answer, and a name rides on
+      // those, so one still without a name has none: say "Guest", as People
+      // does. "…" stays only while the pair is still connecting.
+      if (!isMe && t.label && t.connected && !hostRename(id) && !t.name && !rosterNames[id] && t.label.textContent === '\u2026') {
+        t.label.textContent = 'Guest';
+        if (t.avatar) {
+          if (typeof setTileLetter === 'function') setTileLetter(t.avatar, 'G');
+          else t.avatar.textContent = 'G';
+        }
+      }
       if (!isMe && t.tile) {
         const who = (t.label && t.label.textContent) || 'Participant';
         const al = who + '. Controls for this person.';
@@ -9609,7 +9619,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
-        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; restoreDoorTile(p); }
+        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
         if (p.connected) { p.altPath = false; p.tlAt = 0; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
@@ -25829,6 +25839,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         p.name = '';
         delete rosterNames[id];
         if (p.label) p.label.textContent = '…';
+        try { updateTile(id); } catch (e) {} // the next status pass
         try { paintRoster(); } catch (e) {}
         return true;
       },
