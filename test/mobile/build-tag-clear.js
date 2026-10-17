@@ -1,6 +1,6 @@
 /*
- * A church call on a sideways phone. The faint build name ("v0.8.5 · build
- * 4321" on a real deploy) sits under the header row at y=58, and on a
+ * A church call on a sideways phone. The faint build name ("edge · build
+ * 43210" on a real deploy) sits under the header row at y=58, and on a
  * sideways phone the faces start at y=66, so it runs across the first two
  * faces: over your own tile and Pastor Dave's mute chip (SE, iPhone 12 and
  * Pixel 5, with 3 or 7 on the call, buttons up or tucked away).
@@ -17,8 +17,9 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
 const NAMES = ['Pastor Dave', 'Ruth', 'Margaret Johnson', 'Lobby iPad', 'Grace', 'Tom & Linda Ruiz'];
 const PHONES = [['iPhone SE landscape', 'iphone-se-land'], ['iPhone 12 landscape', 'iphone-12-land'],
   ['Pixel 5 landscape', 'pixel-5-land'], ['iPhone SE', 'iphone-se'], ['Pixel 5', 'pixel-5']];
-// A deployed snapshot names its version and build; the dev checkout only says "edge".
-const BUILD_JS = 'window.GIFOS_VERSION = "0.8.5"; window.GIFOS_BUILD = 4321;';
+// A deployed edge names its build; the dev checkout only says "edge". (An old
+// snapshot version would raise the update banner over the header.)
+const BUILD_JS = 'window.GIFOS_BUILD = 43210;';
 
 function look(page) {
   return page.evaluate(() => {
@@ -31,8 +32,9 @@ function look(page) {
     const what = (el) => {
       const t = el.closest('#feed .tile');
       if (t) return 'the face of ' + ((t.querySelector('.name') || {}).textContent || '?').trim();
-      const b = el.closest('button, a, input, .topchip, .bar, #callstate, .chips span');
-      return b ? (b.id || b.className || b.tagName) : null;
+      // Only the bare backdrop may lie under (or over) the tag.
+      if (el === document.documentElement || el === document.body || el.id === 'feed' || el.id === 'grid') return null;
+      return (el.id ? '#' + el.id : el.tagName.toLowerCase() + (el.className ? '.' + String(el.className).split(' ')[0] : '')) + ' "' + (el.textContent || '').trim().slice(0, 24) + '"';
     };
     // Sample a grid over the tag; it has pointer-events: none, so this reads what lies under it.
     const hits = new Set();
@@ -72,7 +74,7 @@ async function run(browser, dev, tag, count, bad) {
   const awayShot = await page.screenshot();
   for (const [state, s] of [['buttons up', up], ['buttons away', away]]) {
     if (s.gone) { bad.push(label + ', ' + state + ': ' + s.gone); continue; }
-    if (s.text.indexOf('0.8.5') < 0 || s.text.indexOf('4321') < 0) bad.push(label + ', ' + state + ': the build tag reads "' + s.text + '"');
+    if (s.text.indexOf('43210') < 0) bad.push(label + ', ' + state + ': the build tag reads "' + s.text + '"');
     if (s.hits.length) bad.push(label + ', ' + state + ': "' + s.text + '" at ' + s.box + ' lies over ' + s.hits.join(', '));
   }
   const pre = bad.length > was ? 'before' : 'after';

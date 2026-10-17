@@ -1755,6 +1755,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     opacity: 0.55 !important; color: #c5cad3 !important; background: transparent !important; padding: 0 !important;
     border-radius: 0 !important; font-size: 11px !important; line-height: 1.2 !important;
     z-index: 6 !important; text-shadow: none !important; pointer-events: none !important; }
+  /* A sideways phone's faces start at y=66, so the line under the header
+     ran across the first two faces. It sits in the strip above the header
+     instead, which stays clear with the buttons up or away. */
+  @media (max-height: 500px) and (orientation: landscape) {
+    #gifos-build-float { top: env(safe-area-inset-top, 0px) !important; }
+  }
   .bar { position: fixed; z-index: 32; left: 50%; bottom: 14px; transform: translateX(-50%);
     display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; height: 104px; width: auto;
     max-width: calc(100% - 16px); padding: 0 16px 0 18px; margin: 0;
