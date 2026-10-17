@@ -6409,9 +6409,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function vaRefreshCarries(now) {
       for (const job of [...relayJobs.values()]) {
         const tp = peers.get(job.target), rq = peers.get(job.requester);
-        if (!tp || !rq || !tp.stream || tp.turnAudio || rq.turnAudio) continue;
-        if (!tp.stream.getVideoTracks().length || job.senders.some((sd) => sd.track && sd.track.kind === 'video')) continue;
+        if (!tp || !rq || !tp.stream || rq.turnAudio) continue;
+        // A carry whose tracks are not the person's current tracks (their
+        // connection to me was replaced, and the old one's tracks ended) is
+        // rebuilt from the current ones.
+        const cur = tp.stream.getTracks();
+        const stale = job.senders.some((sd) => sd.track && (sd.track.readyState === 'ended' || !cur.includes(sd.track)));
+        const wantsPicture = !tp.turnAudio && tp.stream.getVideoTracks().length > 0 && !job.senders.some((sd) => sd.track && sd.track.kind === 'video');
+        if (!stale && !wantsPicture) continue;
         if (now - (job.vaRebuiltAt || 0) < 10000) continue;
+        if (typeof clog === 'function') clog('carry ' + String(job.target).slice(0, 6) + '>' + String(job.requester).slice(0, 6) + ' rebuilt: ' + (stale ? 'its tracks ended' : 'the picture is back'));
         stopRelayJob(job.target, job.requester, false);
         startRelayJob(rq, job.target);
         const nj = relayJobs.get(job.target + '>' + job.requester);
