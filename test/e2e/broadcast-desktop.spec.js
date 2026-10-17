@@ -2821,3 +2821,24 @@ test('a viewer at the name card has no camera or mic on the dock', async ({ page
   await expect(page.locator('.bar #cam')).toBeVisible();
   await expect(page.locator('.bar #mic')).toBeVisible();
 });
+
+test('a viewer at the name card is told they are joining, not watching', async ({ page }) => {
+  // Seen across two machines: behind "This is how you'll appear" the viewer
+  // read "You are watching this service. · reconnecting to the room…" and
+  // "1 watching". They had not joined, nothing had dropped, and the one
+  // counted was themselves.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.removeItem('gifos_appear_ok');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  await page.goto('/run.html?desk=cardstatus#v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#appear-modal')).toBeVisible();
+  await page.waitForSelector('#airbar.on.watch');
+  const status = page.locator('#status');
+  await expect(status).toHaveText('Joining the service…');
+  await expect(page.locator('#airwho')).toBeHidden();
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.locator('#airwho')).toBeVisible();
+  await expect(page.locator('#airwho')).toHaveText(/^\d+ watching$/);
+});
