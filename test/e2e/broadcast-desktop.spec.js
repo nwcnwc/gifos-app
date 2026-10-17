@@ -4195,3 +4195,45 @@ test('a service host\'s More sheet has no Hand; a viewer raises one from the doc
     }
   }
 });
+
+test('the Blur row in the More sheet reads at the sheet\'s size', async ({ page }) => {
+  // Seen at 1280 on a live host's More sheet: the Blur row was a 14px grey
+  // word and 11px Max / Min / No blur in 48px boxes, at the top of a sheet
+  // of 18px buttons. A small group's host has the same row.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Pastor Kim');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const [desk, url] of [['host', HOST_SESSION], ['group', MEET_SESSION]]) {
+    for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.goto(url.replace('desk=', 'desk=moreblur' + desk + w));
+      await page.waitForSelector('body.meet-session #mic .docklab');
+      await page.locator('#bartoggle').click();
+      await expect(page.locator('#barmore .blurctl')).toBeVisible();
+      if (desk === 'host' && w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/more-blur-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+      const got = await page.evaluate(() => {
+        const px = (el) => parseFloat(getComputedStyle(el).fontSize);
+        const sheet = document.getElementById('barmore');
+        const btn = sheet.querySelector(':scope > button:not([hidden])');
+        const lbl = sheet.querySelector('.blurlbl');
+        const segs = Array.from(sheet.querySelectorAll('.seg')).filter((s) => s.getClientRects().length);
+        const sr = sheet.getBoundingClientRect();
+        return {
+          btn: px(btn), lbl: px(lbl), lblWeight: Number(getComputedStyle(lbl).fontWeight),
+          seg: Math.min(...segs.map(px)), segH: Math.min(...segs.map((s) => Math.round(s.getBoundingClientRect().height))),
+          fits: segs.every((s) => { const r = s.getBoundingClientRect(); return r.right <= sr.right && s.scrollWidth <= s.clientWidth; }),
+          segs: segs.length,
+        };
+      });
+      const where = desk + ' at ' + w + ' ' + JSON.stringify(got);
+      expect(got.segs, where).toBe(3);
+      expect(got.lbl, where + ': Blur reads like the sheet').toBe(got.btn);
+      expect(got.lblWeight, where).toBeGreaterThanOrEqual(600);
+      expect(got.seg, where + ': Max / Min / No blur readable').toBeGreaterThanOrEqual(16);
+      expect(got.segH, where).toBeGreaterThanOrEqual(48);
+      expect(got.fits, where).toBe(true);
+    }
+  }
+});
