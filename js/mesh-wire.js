@@ -273,16 +273,31 @@
     const ipProofFor = () => (identity && net.edSign
       ? net.edSign(identity.priv, JSON.stringify({ v: 1, act: 'ipatt', sid: opts.sid, peer: identity.peerId })).then((s) => { ipp = s || ''; }, () => {})
       : Promise.resolve());
+    // THE JOIN TICKET (relay lockdown, gifos-net.js relayTicket): a join token
+    // minted at the relay's /t after a person check, then the room's rejoin
+    // token, for THIS room and THIS device tag. The upgrade carries it as
+    // &jt=; a relay that issues none is joined without one.
+    const ticket = net.relayTicket ? net.relayTicket({ relayBase, sid: opts.sid, onBusy: () => { if (opts.onBusy) { try { opts.onBusy(); } catch (e) {} } } }) : null;
+    const devOfUrl = (extra) => { const m = /[&?]dev=([^&]*)/.exec(extra); return m ? decodeURIComponent(m[1]) : (devTag || ''); };
     const makeUrl = () => {
       const extra = opts.urlParams ? String(opts.urlParams() || '') : '';
+      if (!devTag && !/[&?]dev=/.test(extra)) devTag = net.randHex(8); // one tag per page, so the ticket and the upgrade name the same device
+      const jt = ticket ? ticket.token(devOfUrl(extra)) : '';
       return relayBase + '/s/' + opts.sid
         + '?role=mesh&token=' + encodeURIComponent(opts.tok || '')
         + '&peer=' + encodeURIComponent(peer)
         + '&gk=' + encodeURIComponent(seat.genKey || myKey)
         + (rs ? '&rs=' + rs : '')
-        + (/[&?]dev=/.test(extra) ? '' : '&dev=' + encodeURIComponent(devTag || net.randHex(8)))
+        + (/[&?]dev=/.test(extra) ? '' : '&dev=' + encodeURIComponent(devTag))
         + (ipp && identity ? '&pk=' + encodeURIComponent(identity.pubB64) + '&ipp=' + encodeURIComponent(ipp) : '')
-        + extra;
+        + extra
+        + (jt ? '&jt=' + encodeURIComponent(jt) : '');
+    };
+    const prepareTicket = () => {
+      if (!ticket) return Promise.resolve();
+      const extra = opts.urlParams ? String(opts.urlParams() || '') : '';
+      if (!devTag && !/[&?]dev=/.test(extra)) devTag = net.randHex(8);
+      return ticket.prepare(devOfUrl(extra));
     };
 
     // deliver(to, m): the raw transport step — DataChannel first, sealed relay
@@ -544,6 +559,9 @@
       sock = net.steadySocket(makeUrl, {
         onClose: (code) => { relayCloses.push({ code, at: Date.now() }); if (relayCloses.length > RELAY_CLOSES_KEPT) relayCloses.shift(); },
         onDuty: () => !stopped,
+        prepare: prepareTicket,
+        onTokenRefused: () => { if (ticket) ticket.drop(); },
+        onBusy: () => { if (opts.onBusy) { try { opts.onBusy(); } catch (e) {} } },
       });
       lastRelayRx = Date.now(); // fresh socket starts its idle clock now
       // EVERY (re)connect: if I am a seated Section-1 greeter, my pool entry
@@ -556,6 +574,7 @@
         if (stopped) return;
         lastRelayRx = Date.now();
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (m.t === 'joined' && m.rt && ticket) ticket.setRejoin(m.rt); // reconnects and reloads of this tab need no new person check
         if (m.t === 'greeters') { onGreeters(m); return; }
         if (m.t === 'peer') {
           // THE SHAPE GATE: a listed type in the clear and one fixed sealed

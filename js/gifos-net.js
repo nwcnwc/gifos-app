@@ -81,7 +81,15 @@
     // cut, a crowd code, a plain network drop) instead of only that it did.
     const CLOSES_KEPT = 32;
     const onClose = sockOpts && typeof sockOpts.onClose === 'function' ? sockOpts.onClose : null;
-    let ws = null, closed = false, attempt = 0, timer = null, slow = false, stableTimer = null, bornTimer = null, slowTimer = null;
+    // sockOpts.prepare() (optional, a Promise) runs before every connect, so
+    // makeUrl() can carry what it fetched: the relay join ticket (relayTicket).
+    // It gets PREP_MS; past that the attempt goes without it.
+    const prep = sockOpts && typeof sockOpts.prepare === 'function' ? sockOpts.prepare : null;
+    const onBusy = sockOpts && typeof sockOpts.onBusy === 'function' ? sockOpts.onBusy : null;
+    const onTokenRefused = sockOpts && typeof sockOpts.onTokenRefused === 'function' ? sockOpts.onTokenRefused : null;
+    const PREP_MS = 20000;
+    let ws = null, closed = false, attempt = 0, timer = null, slow = false, stableTimer = null, bornTimer = null, slowTimer = null, preparing = false;
+    s.busy = false; // the relay's spend breaker said "very busy" (4015) and no socket has stayed open since
     const queue = [];
     const STABLE_MS = 5000; // how long a socket must stay open before the backoff resets
     // Close-code policy — the relay is BILLED for every wake, so reconnects are
@@ -94,7 +102,10 @@
     // password, deliberate re-join) re-arms. CROWD codes (full / rate-limited /
     // no host yet) keep retrying on a longer leash.
     const FATAL_CLOSES = [1008, 4000, 4001, 4003, 4004, 4007, 4008, 4009, 4010, 4011, 4012, 4013, 4014]; // 4013: no key proof; 4014: a frame outside the relay's message types — update GifOS
-    const SLOW_CLOSES = [1011, 1013];
+    const SLOW_CLOSES = [1011, 1013, 4015]; // 4015: the relay's spend breaker is tripped; it lets new joins in again on its own
+    // Join-ticket codes (relay lockdown): 4016 the token failed (expired, other
+    // room or device), 4017 another socket holds it. Not final: the ticket is
+    // dropped (onTokenRefused) and the next attempt mints a fresh one.
     const setState = (st) => {
       if (s.state === st) return;
       s.state = st;
@@ -103,6 +114,17 @@
       if (s.onstate) s.onstate(st);
     };
     function connect() {
+      if (closed || preparing) return;
+      if (!prep) { open(); return; }
+      preparing = true;
+      let done = false;
+      const go = () => { if (done) return; done = true; clearTimeout(pt); preparing = false; if (!closed) open(); };
+      const pt = setTimeout(go, PREP_MS);
+      let p;
+      try { p = Promise.resolve(prep()); } catch (e) { p = Promise.resolve(); }
+      p.then(go, go);
+    }
+    function open() {
       if (closed) return;
       let sock;
       try { sock = new WebSocket(makeUrl()); } catch (e) { schedule(); return; }
@@ -135,7 +157,7 @@
         // retried every ~0.5s forever, each retry a billed wake. Only a socket
         // that STAYS open earns the reset.
         clearTimeout(stableTimer);
-        stableTimer = setTimeout(() => { if (ws === sock) { attempt = 0; slow = false; } }, STABLE_MS);
+        stableTimer = setTimeout(() => { if (ws === sock) { attempt = 0; slow = false; s.busy = false; } }, STABLE_MS);
         setState('up');
         for (const frame of queue.splice(0)) { try { sock.send(frame); } catch (e) { /* re-dropped */ } }
         if (s.onopen) s.onopen();
@@ -150,8 +172,13 @@
         s.closes.push({ code: code == null ? 0 : code, at: Date.now() });
         if (s.closes.length > CLOSES_KEPT) s.closes.shift();
         if (onClose) { try { onClose(code == null ? 0 : code); } catch (e) {} }
-        if (FATAL_CLOSES.indexOf(code) >= 0) s.rejected = code;
+        // 4010 "this relay needs a join token" is final for a page with no
+        // ticket machine; one with prepare() mints and tries again.
+        const needsToken = code === 4010 && prep && /join token/.test(String((ev && ev.reason) || ''));
+        if (code === 4016 || code === 4017 || needsToken) { if (onTokenRefused) { try { onTokenRefused(code); } catch (e) {} } slow = slow || needsToken; }
+        else if (FATAL_CLOSES.indexOf(code) >= 0) s.rejected = code;
         else if (SLOW_CLOSES.indexOf(code) >= 0) slow = true;
+        if (code === 4015) { s.busy = true; if (onBusy) { try { onBusy(); } catch (e) {} } }
         setState('down');
         schedule();
       };
@@ -180,7 +207,7 @@
     const kick = (force) => {
       if (closed || (s.rejected && !force)) return; // a policy-rejected socket stays down until the app re-arms it
       if (force) s.rejected = 0;
-      if (ws && ws.readyState <= 1) return;
+      if (preparing || (ws && ws.readyState <= 1)) return;
       if (timer) { clearTimeout(timer); timer = null; }
       attempt = 0;
       connect();
@@ -223,6 +250,122 @@
     connect();
     (root.__gifosConns = root.__gifosConns || []).push(s);
     return s;
+  }
+
+  // ---- the relay join ticket (relay lockdown) -------------------------------
+  // The relay lets a socket in on a JOIN TOKEN (?jt=): GET /t?sid=&dev= on
+  // the relay's own host, after a person check (a Cloudflare Turnstile answer
+  // when the page has a site key, else a proof of work), returns a token for
+  // this room and this device that lives 3 minutes. The room then hands a
+  // REJOIN token in {t:'joined', rt} (12 hours) that lets this tab reconnect,
+  // or reload, with no new check; it is the one entry the relay's spend
+  // breaker lets through while it is tripped. Kept in sessionStorage per room,
+  // so it dies with the tab like the peer id it rides beside.
+  //   prepare(dev) → Promise: a token is ready (or there is none to get).
+  //   token(dev)   → the token to put on the next upgrade, or ''.
+  // A relay with tokens off (404), a refused or failed mint, or no network:
+  // no token, and the upgrade goes without one, as before tokens existed.
+  // Busy (503): opts.onBusy(), no person check, and the next look waits 30 s.
+  // One mint in flight at a time: a timer, a kick and a reconnect share it.
+  const BUSY_TEXT = 'GifOS is very busy right now, please try again later';
+  const TOKEN_SLACK_MS = 20000; // a token this close to expiry is not sent
+  function tokenExp(t) {
+    try {
+      const p = String(t).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const o = JSON.parse(atob(p + '='.repeat((4 - (p.length % 4)) % 4)));
+      return { e: Number(o.e) || 0, d: String(o.d || '') };
+    } catch (e) { return { e: 0, d: '' }; }
+  }
+  function leadingZeroBits(buf) {
+    let n = 0;
+    for (const b of new Uint8Array(buf)) { if (b === 0) { n += 8; continue; } return n + Math.clz32(b) - 24; }
+    return n;
+  }
+  // The relay's proof of work: SHA-256("gifos-pow:v1:<sid>:<dev>:<pts>:<pow>")
+  // with `bits` leading zero bits. Batched so the digests overlap; ~1.6 s for
+  // the default 18 bits on a laptop.
+  async function solvePow(sid, dev, pts, bits) {
+    const pre = 'gifos-pow:v1:' + sid + ':' + dev + ':' + pts + ':';
+    for (let i = 0; ; i += 256) {
+      const tries = [];
+      for (let j = 0; j < 256; j++) tries.push(root.crypto.subtle.digest('SHA-256', enc(pre + (i + j).toString(36))));
+      const ds = await Promise.all(tries);
+      for (let j = 0; j < 256; j++) if (leadingZeroBits(ds[j]) >= bits) return (i + j).toString(36);
+      if (i > (1 << 26)) return ''; // never spin forever on a relay asking for silly work
+    }
+  }
+  // One Turnstile answer. The widget sits in a hidden box; the site key comes
+  // from relay-config.js (GIFOS_TURNSTILE_SITEKEY). '' when it cannot run.
+  let turnstileP = null;
+  function turnstileApi() {
+    if (root.turnstile) return Promise.resolve(root.turnstile);
+    if (turnstileP) return turnstileP;
+    turnstileP = new Promise((resolve) => {
+      if (typeof document === 'undefined') return resolve(null);
+      const s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      s.async = true;
+      s.onload = () => resolve(root.turnstile || null);
+      s.onerror = () => { turnstileP = null; resolve(null); };
+      document.head.appendChild(s);
+    });
+    return turnstileP;
+  }
+  function turnstileAnswer(siteKey) {
+    return turnstileApi().then((ts) => new Promise((resolve) => {
+      if (!ts) return resolve('');
+      let box = document.getElementById('gifos-turnstile');
+      if (!box) { box = document.createElement('div'); box.id = 'gifos-turnstile'; box.style.cssText = 'position:fixed;bottom:8px;right:8px;z-index:99999'; document.body.appendChild(box); }
+      let id = null, done = false;
+      const finish = (a) => { if (done) return; done = true; clearTimeout(t); try { if (id != null) ts.remove(id); } catch (e) {} resolve(a || ''); };
+      const t = setTimeout(() => finish(''), 60000); // an interactive check nobody answers
+      try {
+        id = ts.render(box, { sitekey: siteKey, appearance: 'interaction-only', callback: finish, 'error-callback': () => finish(''), 'expired-callback': () => finish('') });
+      } catch (e) { finish(''); }
+    }), () => '');
+  }
+  function relayTicket(o) {
+    const httpBase = String(o.relayBase || '').replace(/^ws/, 'http').replace(/\/+$/, '');
+    const key = 'gifos_rt:' + o.sid;
+    const fetchFn = o.fetch || ((u) => root.fetch(u, { cache: 'no-store', credentials: 'omit' }));
+    let jt = '', rt = '', offUntil = 0, busyUntil = 0, inflight = null;
+    try { rt = (root.sessionStorage && root.sessionStorage.getItem(key)) || ''; } catch (e) { rt = ''; }
+    const live = (t, dev) => { if (!t) return false; const x = tokenExp(t); return x.d === dev && x.e - Date.now() > TOKEN_SLACK_MS; };
+    const token = (dev) => (live(rt, dev) ? rt : live(jt, dev) ? jt : '');
+    const sitekey = () => { try { return String(root.GIFOS_TURNSTILE_SITEKEY || (root.localStorage && root.localStorage.getItem('gifos_turnstile_sitekey')) || ''); } catch (e) { return String(root.GIFOS_TURNSTILE_SITEKEY || ''); } };
+    const getJson = (q) => fetchFn(httpBase + '/t?sid=' + encodeURIComponent(o.sid) + '&dev=' + encodeURIComponent(q.dev) + (q.extra || ''))
+      .then((r) => r.json().catch(() => ({})).then((j) => ({ status: r.status, j })));
+    async function mint(dev) {
+      // A first ask with no answer is cheap (no room object, no person check)
+      // and says what this relay wants: off (404), busy (503), or which check.
+      let r = await getJson({ dev });
+      if (r.status === 404) { offUntil = Date.now() + 10 * 60000; return; }
+      if (r.status === 503) { busyUntil = Date.now() + 30000; if (o.onBusy) { try { o.onBusy(); } catch (e) {} } return; }
+      if (r.status === 200 && r.j && r.j.jt) { jt = r.j.jt; return; }
+      if (r.status !== 403 || !r.j) return;
+      const sk = sitekey();
+      let extra = '';
+      if (r.j.turnstile && sk) { const a = await turnstileAnswer(sk); if (a) extra = '&cft=' + encodeURIComponent(a); }
+      if (!extra && r.j.powBits > 0) { const pts = Date.now(); const pow = await solvePow(o.sid, dev, pts, r.j.powBits); if (pow) extra = '&pts=' + pts + '&pow=' + pow; }
+      if (!extra) return;
+      r = await getJson({ dev, extra });
+      if (r.status === 200 && r.j && r.j.jt) jt = r.j.jt;
+      else if (r.status === 503) { busyUntil = Date.now() + 30000; if (o.onBusy) { try { o.onBusy(); } catch (e) {} } }
+    }
+    const prepare = (dev) => {
+      if (!httpBase || !dev || token(dev) || Date.now() < offUntil || Date.now() < busyUntil) return Promise.resolve();
+      if (!inflight) inflight = mint(dev).catch(() => {}).then(() => { inflight = null; });
+      return inflight;
+    };
+    const setRejoin = (t) => {
+      if (typeof t !== 'string' || !t || t.length > 1024) return;
+      rt = t;
+      try { if (root.sessionStorage) root.sessionStorage.setItem(key, t); } catch (e) {}
+    };
+    // The relay refused what we sent (4016 bad, 4017 in use): both go, and
+    // the next connect mints a fresh one.
+    const drop = () => { jt = ''; rt = ''; try { if (root.sessionStorage) root.sessionStorage.removeItem(key); } catch (e) {} };
+    return { prepare, token, setRejoin, drop, busy: () => Date.now() < busyUntil };
   }
 
   // ---- transport fragmentation ----------------------------------------------
@@ -858,7 +1001,7 @@
     RELAY_TYPES, RELAY_PLAIN_BYTES, RELAY_IV_B64_LEN, RELAY_CT_B64_LEN, RELAY_MAX_FRAME_LEN, RELAY_SHAPES, relayFrameOk, relayVerbOk, fitsFixed, sansPad, sealFixed, relayNameFit,
     bootOf, bootOk, fpOk, sdpOfBoot, iceOf, candOfIce,
     ICE_SERVERS, hasP2P, holdSessionLock,
-    steadySocket,
+    steadySocket, relayTicket, solvePow, BUSY_TEXT,
     FRAG_PART, FRAG_BUDGET, sendChunked, chunk, pumpChannel, makeDefrag,
     shortCode, randHex, sha256hex, sha256hexOfBytes, keyId, keyVerifier,
     deriveMeet, deriveMeetKey, meetPwProof, mintGenesisKey,

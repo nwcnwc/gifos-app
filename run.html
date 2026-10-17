@@ -15,8 +15,11 @@
      the runtime's bridge with none of the app CSP (site/js/runtime.js,
      clientShim / mountApp): this policy makes every non-about: target a
      refused navigation, in the browser, before any script runs. Guarded by
-     test/browser/e2e-app-frame-navigate.js. -->
-<meta http-equiv="Content-Security-Policy" content="frame-src about:">
+     test/browser/e2e-app-frame-navigate.js. The one other source is the
+     relay join check's Cloudflare Turnstile widget (gifos-net.js
+     relayTicket): an app frame sent there stays in its sandbox, and the
+     page there is Cloudflare's challenge, not anything an app can write. -->
+<meta http-equiv="Content-Security-Policy" content="frame-src about: https://challenges.cloudflare.com">
 <meta name="referrer" content="same-origin">
 <meta name="robots" content="noindex">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
@@ -9058,10 +9061,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         },
         onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} },
         onRelayMsg: onRelayFrame,
+        onBusy: showRelayBusy, // the relay's spend breaker: new joins wait, live meetings go on
         prevTree: readTreeMem(),
       });
       updateStatus(); applyAdminUi();
       });
+    }
+    // THE RELAY IS VERY BUSY (its spend breaker, close 4015 or a 503 from the
+    // join-token mint): it lets nobody new in until it recovers on its own,
+    // and the socket keeps trying on its slow leash. Say so in the relay's own
+    // words, held so the ambient line does not eat it between tries.
+    function showRelayBusy() {
+      setStatus('\u23f3 ' + net.BUSY_TEXT, 20000);
+      if (statusEl.dataset) statusEl.dataset.kind = 'busy';
     }
     // App-level relay frames the wire does not consume. The roster here is the
     // GREETER POOL, never the room \u2014 it drives door moderation only.
@@ -9266,6 +9278,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       else if (m.t === 'error') {
         pwLog('relay-error: ' + String(m.error || '?').slice(0, 60));
+        if (m.busy) { showRelayBusy(); return; }
         // Password gate is handled by the wire (onLocked / R6 sealing); bans
         // and vote-offs land here. No walk \u2014 the session cap is the greeter
         // pool\u2019s, and newcomers drop their socket after seating anyway.
