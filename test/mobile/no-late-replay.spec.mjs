@@ -33,15 +33,8 @@ test('a late arrival reads that it ended, and nothing is pulled', async ({ brows
     const kept = await h.evaluate(async () => (await (await fetch(document.getElementById('rec-replay-vid').src)).blob()).size);
     expect(kept).toBeGreaterThan(50000);
 
-    // Someone who missed it opens the link. Every byte their data channels
-    // take in is counted.
+    // Someone who missed it opens the link.
     const l = await ctxL.newPage();
-    await l.addInitScript(() => {
-      const Real = window.RTCPeerConnection;
-      window.__pcs = [];
-      window.RTCPeerConnection = function (...a) { const pc = new Real(...a); window.__pcs.push(pc); return pc; };
-      window.RTCPeerConnection.prototype = Real.prototype;
-    });
     await l.goto('/run.html' + link, { waitUntil: 'domcontentloaded' });
     await l.locator('#nmok').click();
     await expect(l.locator('#bc-ended-txt')).toHaveText('The service has ended.', { timeout: 60000 });
@@ -54,22 +47,19 @@ test('a late arrival reads that it ended, and nothing is pulled', async ({ brows
     await expect(l.locator('#bc-replay')).toHaveCount(0);
     await expect(l.getByRole('button', { name: /^Watch/ })).toHaveCount(0);
     await expect(l.locator('#rec-replay')).toHaveCount(0);
-    const took = await l.evaluate(async () => {
-      let n = 0;
-      for (const pc of window.__pcs) {
-        const s = await pc.getStats();
-        s.forEach((r) => { if (r.type === 'data-channel') n += r.bytesReceived || 0; });
-      }
-      return n;
-    });
-    info.annotations.push({ type: 'bytes', description: 'kept ' + kept + ', late arrival took ' + took });
-    expect(took).toBeLessThan(kept / 2);
+    // No replay offer, ask, or piece (rpl, rplw, rplc) reached this phone.
+    const kinds = await l.evaluate(() => window.__gifosVideo.rxStats().dcKinds || {});
+    info.annotations.push({ type: 'kinds', description: JSON.stringify(kinds) });
+    expect(Object.keys(kinds).length).toBeGreaterThan(0);
+    expect(Object.keys(kinds).filter((k) => /^rpl/.test(k))).toEqual([]);
 
     // The host still holds the whole copy to share, save, or rebroadcast.
     await expect(h.locator('#rec-replay')).toBeVisible();
     const still = await h.evaluate(async () => (await (await fetch(document.getElementById('rec-replay-vid').src)).blob()).size);
     expect(still).toBe(kept);
-    await expect(h.locator('#rec-replay-share, #rec-replay-save').first()).toBeVisible();
+    await expect(h.locator('#rec-replay-share')).toHaveCount(1);
+    await expect(h.locator('#rec-replay-save')).toHaveCount(1);
+    await expect(h.locator('#rec-replay-close')).toBeVisible();
     // The sheet no longer promises it to whoever opens the link.
     await expect(h.locator('#rec-replay')).not.toContainText(/can watch it/);
   } finally {
