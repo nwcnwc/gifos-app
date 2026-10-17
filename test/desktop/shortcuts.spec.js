@@ -244,3 +244,60 @@ test('a guest does not see or fire the host keys', async ({ page }) => {
   expect(await sheetFits(page)).toMatchObject({ ok: true });
   expect(await sheet.innerText()).not.toContain('Blur or unblur every guest');
 });
+
+// Mute guests: one room-wide signed order (modTable['*'].mute), like Blur
+// guests and Video off, so the host's send is one entry whatever the room's
+// size. A guest's mic locks ("Muted", someone else has to lift it) and the
+// same key lifts it for everyone.
+test('a host mutes every guest by key, and lifts it', async ({ browser, browserName }) => {
+  test.skip(browserName === 'webkit', 'desktop keys run Chromium + Firefox here');
+  test.setTimeout(150000);
+  const room = 'qamuteall' + Date.now().toString(36);
+  const open = async (name) => {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const page = await ctx.newPage();
+    await page.addInitScript((n) => { localStorage.setItem('gifos_name', n); sessionStorage.setItem('gifos_appeared', '1'); }, name);
+    return { ctx, page };
+  };
+  const H = await open('Jordan Lee');
+  const G = await open('Avery Chen');
+  try {
+    await H.page.goto('/run.html', { waitUntil: 'domcontentloaded' });
+    await H.page.click('#lob-admin-btn');
+    await H.page.fill('#lob-admin-name', room);
+    await H.page.fill('#lob-admin-pass', 'qa-admin-' + room);
+    await H.page.click('#lob-admin-go');
+    await H.page.waitForFunction(() => /av=/.test(location.hash), null, { timeout: 30000 });
+    await H.page.waitForSelector('#leavebtn', { state: 'visible', timeout: 60000 });
+    const hash = await H.page.evaluate(() => location.hash);
+    await G.page.goto('/run.html' + hash, { waitUntil: 'domcontentloaded' });
+    await G.page.waitForSelector('#leavebtn', { state: 'visible', timeout: 60000 });
+    await H.page.waitForFunction(() => [...document.querySelectorAll('#feed .tile:not(.me) .name')].some((n) => /Avery/.test(n.textContent)), null, { timeout: 90000 });
+    await G.page.waitForFunction(() => [...document.querySelectorAll('#feed .tile:not(.me) .name')].some((n) => /Jordan/.test(n.textContent)), null, { timeout: 90000 });
+    await expect(G.page.locator('#mic')).not.toHaveClass(/\blocked\b/);
+
+    await H.page.keyboard.press('Alt+m');
+    await expect(H.page.locator('#muteall')).toHaveText('Unmute guests');
+    expect(await H.page.getAttribute('#muteall', 'aria-keyshortcuts')).toBe('Alt+M');
+    // More stays folded: the key works without the pointer.
+    expect(await H.page.evaluate(() => document.querySelector('.bar').classList.contains('collapsed'))).toBe(true);
+    await expect(G.page.locator('#mic')).toHaveClass(/\blocked\b/, { timeout: 30000 });
+    await expect(G.page.locator('#mic')).toHaveAttribute('aria-label', 'Muted');
+    // The guest cannot lift it.
+    await G.page.keyboard.press('Alt+a');
+    await expect(G.page.locator('#mic')).toHaveClass(/\blocked\b/);
+
+    await H.page.keyboard.press('Alt+m');
+    await expect(H.page.locator('#muteall')).toHaveText('Mute guests');
+    await expect(G.page.locator('#mic')).not.toHaveClass(/\blocked\b/, { timeout: 30000 });
+
+    await H.page.keyboard.press('?');
+    const sheet = H.page.locator('#shortcutsheet');
+    await expect(sheet.locator('li', { hasText: 'Alt+M' })).toBeVisible();
+    await expect(sheet).toContainText('Mute or unmute every guest');
+    expect(await sheetFits(H.page)).toMatchObject({ ok: true });
+  } finally {
+    await H.ctx.close().catch(() => {});
+    await G.ctx.close().catch(() => {});
+  }
+});
