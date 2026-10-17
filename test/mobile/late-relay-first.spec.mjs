@@ -100,3 +100,55 @@ test('a late arrival waits for its relay, not the host\'s spare copy', async ({ 
     await vb.close();
   }
 });
+
+// The wait is not a wall: when no relay ever comes (A holds its relay for the
+// whole test), the late arrival's picture still runs and keeps running past
+// the wait (the host's spare is claimable once it is over).
+test('with no relay, a late arrival still gets the host\'s spare copy', async ({ browser, baseURL }, info) => {
+  test.setTimeout(240000);
+  const opts = info.project.use;
+  const vb = await viewerBrowsers(browser);
+  const ctxH = await browser.newContext({ ...opts, permissions: ['camera', 'microphone'] });
+  const ctxs = [];
+  try {
+    const h = await ctxH.newPage();
+    await h.goto('/run.html#bc=1&debug=1', { waitUntil: 'domcontentloaded' });
+    await h.locator('#lob-admin-go').click();
+    await expect(h.locator('#recbtn')).toHaveText(/^Stop /, { timeout: 20000 });
+    await h.waitForTimeout(3000);
+    const link = (await h.evaluate(() => location.hash)).replace(/&?debug=1/, '');
+    const hostId = await h.evaluate(() => window.__gifosVideo.stageIds()[0]);
+    const join = async (i, debug) => {
+      const c = await vb.pick(i).newContext({ ...opts, baseURL });
+      ctxs.push(c);
+      const v = await c.newPage();
+      await v.goto('/run.html' + link + (debug ? '&debug=1' : ''), { waitUntil: 'domcontentloaded' });
+      await v.locator('#nmok').click({ timeout: 5000 }).catch(() => {});
+      return v;
+    };
+    const a = await join(0, true);
+    expect(await sees(a, 60000), 'A sees the stage').toBe(true);
+    await expect.poll(() => stgVia(a).then((x) => x && x.via), { timeout: 30000 }).toBe(hostId.slice(0, 8));
+    await a.evaluate(() => window.__gifosVideo.holdRelayForTest(600000));
+    const b = await join(1, false);
+    const host8 = hostId.slice(0, 8);
+    await b.waitForFunction((h8) => window.__gifosVideo.mosaic().cands.some((c) => c.from === h8 && c.key.indexOf('stg:') === 0 && c.live), host8, { timeout: 60000 });
+    const t = Date.now();
+    const seen = await sees(b, 25000);
+    console.log(`[${info.project.name}] no relay: late arrival's picture ${seen} after ${((Date.now() - t) / 1000).toFixed(1)}s, via ${(await stgVia(b) || {}).via} (host ${host8})`);
+    // Past the wait, still running: no seat is left dark by waiting.
+    await b.waitForTimeout(10000);
+    const t1 = await b.evaluate(() => document.querySelector('#stagefeed .rowtile video').currentTime);
+    await b.waitForTimeout(3000);
+    const t2 = await b.evaluate(() => document.querySelector('#stagefeed .rowtile video').currentTime);
+    const claims = await b.evaluate(() => window.__gifosVideo.mosaic().claimVia.map((c) => c.rk.slice(0, 12) + '<' + String(c.via).slice(0, 8))).catch(() => null);
+    console.log(`[${info.project.name}] no relay, 13 s on: picture ${t1.toFixed(1)} → ${t2.toFixed(1)} s, claims ${JSON.stringify(claims)}`);
+    await b.screenshot({ path: info.outputPath('no-relay-joiner.png') });
+    expect(seen, 'the late arrival\'s picture runs').toBe(true);
+    expect(t2 - t1, 'and keeps running past the wait').toBeGreaterThan(1.5);
+  } finally {
+    await ctxH.close();
+    for (const c of ctxs) await c.close().catch(() => {});
+    await vb.close();
+  }
+});

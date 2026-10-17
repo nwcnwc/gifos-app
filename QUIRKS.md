@@ -14,6 +14,26 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Open
 
+### Q80. A late arrival that heard the host's spare copy before its relay pulled a full copy from the host
+
+Q79's open part 2, now reproducible on demand. The host sends its stage feed live to two seats only (STG-DIRECT). Every other neighbour gets the host's copy as a parked spare (`sb:1`) and should watch a one-hop relay from a direct seat. But a late arrival's link to the host and its link to the relaying seat come up in a race. When the host's spare is heard first, it is the only candidate, so `claimRedun` makes it the first claim. The no-primary seed also asks for it hot: it ranks copies by raw hop count, and the spare's `h: 0` beats any relay. The host then feeds that late arrival a full copy until failback moves it to the relay. That happens to every late arrival that loses the race: in `late-host-upload` the host sent media on 2 links with 3 joiners in one row (where it has one direct seat) about 1 wave in 3, and on a 3rd link at 6 joiners.
+
+`test/mobile/late-relay-first.spec.mjs` forces the race. The host is on this machine and the joiners are on two other fleet machines. Joiner A is the host's direct seat. A starts no new relay (`holdRelayForTest`, debug only) until joiner B already hears the host's spare, then 2 s more. The test counts the host's bytes on B's link for 30 s after B joins and asserts at most 15 KB (about 2 s of one copy). It also asserts that B ends on A's relay and that B's picture advances. A second case holds A's relay for good: B's picture must still run, and keep running past any wait.
+
+| | host → late arrival in 30 s | late arrival watches |
+|---|---|---|
+| c3cb7a8 (today), iphone-se: 2/2 fail | 79.6 KB, 90.6 KB (the spare claimed at once; 34 KB before the relay was even released) | host, then the relay ~8.5 s after it came |
+| Fix tried (not shipped), 4 profiles + 2× iphone-se: 6/6 pass | 0 B every run | the relay |
+
+The fix tried: a newcomer holds the first claim of the stager's `sb:1` spare for up to 6 s while it waits for a relay. Any other copy that arrives meanwhile wins. The no-primary seed skips the spare during the wait and ranks stage copies like `prefCand` (`stgRank`). The spare is still claimed when no relay comes (the second case passed, 2/2). It is not shipped because `rebroadcast.spec.mjs` regressed on it. With the joiners on two other machines: before 8/8 pass, with the fix 5/8. One failure was a mid-rebroadcast joiner getting 3 frames in 3 s instead of more than 20. The other two (pixel-7) were RECONNECTING and "outside your network" states. Likely cause, not verified: a newcomer on a fresh relay waits for a keyframe that comes down the pipe lane late, while the host's fresh copy started at once. So the spare was hiding how slowly a relayed copy starts. The next step is to make a fresh relay start fast (a keyframe on claim), then wait for it.
+
+The `late-host-upload` gate is also red for reasons outside this race. Over 16 runs, before and with the fix, the same kinds of failure showed up:
+- A late arrival never gets a seat: no coordinate and no links for 60 s, sometimes as the only joiner.
+- The status-beat ratio check reads a low 1-joiner baseline (560 B/s instead of ~840).
+- A relay hiccup wakes the spares of its children for ~7 s, then they fail back. That is the standby doing its job, bounded by the relay's children.
+
+Before: `test/mobile/screenshots/before/*-late-relay-first-*`.
+
 ## Fixed
 
 ### Q79. A broadcast host passed on every viewer's heartbeat
@@ -31,7 +51,7 @@ Now a broadcast viewer (not the host, not on the Stage) sends its beat only on i
 
 Open parts, both on the host at 6 joiners, both seen before this change too:
 1. Mesh `ROUTE` probes (S1 liveness probes of rook cells routed through the tree) add 3.0-4.5 KB/s on the host at 6 joiners (3.5-9.4 before), and `S1SYNC` grows with the section's occupancy. Both are mesh control traffic capped at C² seats, but they still grow with users up to there.
-2. Sometimes (3 of 10 after runs, 1 of 3 before) the host feeds the stage straight to a third joiner (three joiners report `via` = host; a third link at 1.9-4.0 KB/s), past the stage feed's two direct seats (STG-DIRECT). Q78's media-link check catches it; it is not reproducible on demand yet.
+2. Sometimes (3 of 10 after runs, 1 of 3 before) the host feeds the stage straight to a third joiner (three joiners report `via` = host; a third link at 1.9-4.0 KB/s), past the stage feed's two direct seats (STG-DIRECT). Q78's media-link check catches it; it is not reproducible on demand yet. Reproduced in Q80 (open): a late arrival that hears the host's spare before its relay takes the spare.
 
 Before: `test/mobile/screenshots/before/*-host-beat-*`. After: `test/mobile/screenshots/after/*-host-beat-*`.
 
