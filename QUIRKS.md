@@ -6,6 +6,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 
 ## Fixed
 
+### A volunteer opening More got the whole room
+
+- **Who hits it:** a church volunteer, or anyone older, who only wants to raise a hand, invite someone, or read Help.
+- **What you saw:** More was four headings and fourteen buttons: Who, Hand, Invite, Float, Run app, Vote, Password, Stage, Record, Captions, Settings, Keys, Help, Transcript. The sheet was 536px tall.
+- **Repro:** `test/desktop/more-groups.spec.js` — “More opens to Hand, Invite, and Help” failed before the fold (there was no All tools button).
+- **Fix:** More opens to Hand, Invite, and Help, with blur above them. All tools opens the rest, and Fewer tools puts it away. German: Alle Funktionen / Weniger Funktionen. Spanish: Todas las funciones / Menos funciones. The choice stays for this tab. The keys still reach a control that is folded.
+- **Proof:** the More, locale, settings, and shortcut tests pass on Chromium, Firefox, and WebKit. The short sheet is 230px. Screenshots: `test/desktop/shots/more-short-before-1280.png`, `test/desktop/shots/more-short-after-1280.png`, `test/desktop/shots/more-short-open-1280.png`.
+
 ### Invite, settings, and the rest of More needed the pointer
 
 - **Who hits it:** a keyboard user who can already mute, share, and leave, and still has to open More for Who, Invite, or Settings.
@@ -360,7 +368,7 @@ With no saved confirmation for this session, joining shows how you will appear: 
 
 ### More sheet is a dense grid of mixed labels
 
-Who, Invite, and Hand sit under People. Chat is on the dock. Vote, Password, Stage, Record, Captions, and Settings sit under Room. Captions is also on the dock. Run app is under Share. Keys and Help are under Help. Each of those has a key. Host tools stay hidden until there is a host, and those bulk tools still have no key. “Turn video off” matches the other labels. The list is still long.
+More opens to Hand, Invite, and Help. All tools shows Who, Run app, Vote, Password, Stage, Record, Captions, Settings, Keys, and Transcript. Captions is also on the dock. Each of those has a key, including while All tools is folded. Host tools stay hidden until there is a host, and those bulk tools still have no key. The full list, once opened, is still long.
 
 ### Run app is still English
 

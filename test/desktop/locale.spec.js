@@ -20,6 +20,8 @@ test.describe('German', () => {
     await expect(page.locator('#leavebtn .dockword')).toHaveText('Ende');
     await expect(page.locator('#bartoggle .dockword')).toHaveText('Mehr');
     await page.click('#bartoggle');
+    await expect(page.locator('#moretools')).toHaveText('Alle Funktionen');
+    await expect(page.locator('#hand')).toHaveText('Hand');
     await expect(page.locator('#barmore .moregroup h4').first()).toHaveText('Leute');
     await expect(page.locator('#whobtn')).toHaveText('Wer');
     await expect(page.locator('#votebtn')).toHaveText('Abstimmung');
@@ -58,6 +60,7 @@ test.describe('Spanish', () => {
     await expect(page.locator('#cam .dockword')).toHaveText('Cámara');
     await expect(page.locator('#bartoggle .dockword')).toHaveText('Más');
     await page.click('#bartoggle');
+    await expect(page.locator('#moretools')).toHaveText('Todas las funciones');
     await expect(page.locator('#whobtn')).toHaveText('Quién');
     await expect(page.locator('#pwbtn')).toHaveText('Contraseña');
     await expect(page.locator('#setbtn')).toHaveText('Ajustes');

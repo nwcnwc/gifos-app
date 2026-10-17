@@ -11,23 +11,44 @@ async function boot(page) {
   await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4 }));
 }
 
-test('More is grouped into labeled rows', async ({ page }) => {
+test('More opens to Hand, Invite, and Help', async ({ page }) => {
   await boot(page);
   await page.click('#bartoggle');
-  const info = await page.evaluate(() => {
-    const groupOf = (id) => {
+  const closed = await page.evaluate(() => {
+    const shown = (id) => {
       const el = document.getElementById(id);
-      const g = el && el.closest('.moregroup');
-      const h = g && g.querySelector('h4');
-      return h ? h.textContent.trim() : '';
+      if (!el) return false;
+      const cs = getComputedStyle(el);
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && el.getClientRects().length > 0;
     };
     const heads = [...document.querySelectorAll('#barmore .moregroup h4')]
       .filter((h) => getComputedStyle(h.closest('.moregroup')).display !== 'none')
       .map((h) => h.textContent.trim());
-    return { heads: heads, chat: groupOf('chatbtn'), help: groupOf('helpbtn'), vote: groupOf('votebtn') };
+    return {
+      heads,
+      hand: shown('hand'),
+      invite: shown('invite'),
+      help: shown('helpbtn'),
+      tools: (document.querySelector('#moretools') || {}).textContent || '',
+      buried: ['whobtn', 'appbtn', 'votebtn', 'pwbtn', 'stagebtn', 'recbtn', 'ccbtn', 'setbtn', 'keysbtn', 'trbtn'].filter(shown),
+    };
   });
-  expect(info.heads).toEqual(['People', 'Share', 'Room', 'Help']);
-  expect(info.chat).toBe('People');
-  expect(info.help).toBe('Help');
-  expect(info.vote).toBe('Room');
+  expect(closed.hand).toBe(true);
+  expect(closed.invite).toBe(true);
+  expect(closed.help).toBe(true);
+  expect(closed.tools.trim()).toBe('All tools');
+  expect(closed.heads).toEqual([]);
+  expect(closed.buried).toEqual([]);
+  await page.click('#moretools');
+  const open = await page.evaluate(() => {
+    const heads = [...document.querySelectorAll('#barmore .moregroup h4')]
+      .filter((h) => getComputedStyle(h.closest('.moregroup')).display !== 'none')
+      .map((h) => h.textContent.trim());
+    const vote = document.getElementById('votebtn');
+    const g = vote && vote.closest('.moregroup');
+    return { heads, vote: g && g.querySelector('h4') ? g.querySelector('h4').textContent.trim() : '', word: document.getElementById('moretools').textContent.trim() };
+  });
+  expect(open.heads).toEqual(['People', 'Share', 'Room', 'Help']);
+  expect(open.vote).toBe('Room');
+  expect(open.word).toBe('Fewer tools');
 });

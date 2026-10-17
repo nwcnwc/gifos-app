@@ -97,6 +97,7 @@ test('alt shortcuts run the dock and skip the keys while typing', async ({ page 
   await page.keyboard.press('Escape');
   await expect(sheet).toBeHidden();
   await page.click('#bartoggle');
+  await page.click('#moretools');
   await page.click('#keysbtn');
   await expect(sheet).toBeVisible();
 

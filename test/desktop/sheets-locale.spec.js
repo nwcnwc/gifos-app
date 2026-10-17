@@ -12,7 +12,10 @@ async function boot(page) {
 }
 
 async function openMore(page, id) {
-  if (!(await page.locator(id).isVisible())) await page.click('#bartoggle');
+  if (!(await page.locator(id).isVisible())) {
+    if (!(await page.locator('#barmore').isVisible())) await page.click('#bartoggle');
+    if (!(await page.locator(id).isVisible())) await page.click('#moretools');
+  }
   await page.click(id);
 }
 

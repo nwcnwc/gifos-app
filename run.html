@@ -1519,6 +1519,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     pointer-events: none; }
   .bar:not(.collapsed) .barmore > * { pointer-events: auto; }
   .bar:not(.collapsed) .barmore .moregroup { display: flex; flex-direction: column; gap: 6px; }
+  /* A volunteer sees Hand, Invite, and Help. The rest waits under All tools. */
+  .bar:not(.collapsed) .barmore:not(.tools-open) .moregroup.extra { display: none; }
+  .bar:not(.collapsed) .barmore .yourow { grid-template-columns: repeat(3, 1fr); }
+  .bar:not(.collapsed) .barmore #moretools { min-height: 64px; border: 1.5px solid #8d93a0; border-radius: 16px;
+    background: #fff; color: #1d1d1f; font: 700 18px/1.2 system-ui, sans-serif; cursor: pointer; }
   .bar:not(.collapsed) .barmore .moregroup:not(:has(.morerow > button:not([style*="display:none"]):not([style*="display: none"]))) { display: none; }
   .bar:not(.collapsed) .barmore .moregroup h4 { margin: 0; padding: 0 4px; font: 700 12px/1.2 system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: #5c6370; }
   .bar:not(.collapsed) .barmore .morerow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
@@ -1818,12 +1823,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button class="seg" id="blur-none" data-blur="0" data-t="noBlur">No blur</button>
       </span>
     </span>
-    <section class="moregroup">
+    <div class="morerow yourow">
+      <button id="hand" data-t="hand" aria-keyshortcuts="Alt+H" title="Raise your hand — raised hands float to the top">Hand</button>
+      <button id="invite" data-t="invite" data-ti="invTip" aria-keyshortcuts="Alt+I" title="Friends join you live with one link">Invite</button>
+      <button id="helpbtn" data-t="help" aria-keyshortcuts="Alt+/" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
+    </div>
+    <button type="button" id="moretools" aria-expanded="false" data-t="moreTools">All tools</button>
+    <section class="moregroup extra">
       <h4 data-t="people">People</h4>
       <div class="morerow">
         <button type="button" id="whobtn" data-t="who" data-ti="whoTip" aria-keyshortcuts="Alt+W" title="Who is on this meeting — names and internet addresses">Who</button>
-        <button id="hand" data-t="hand" aria-keyshortcuts="Alt+H" title="Raise your hand — raised hands float to the top">Hand</button>
-        <button id="invite" data-t="invite" data-ti="invTip" aria-keyshortcuts="Alt+I" title="Friends join you live with one link">Invite</button>
         <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
@@ -1837,13 +1846,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         </button>
       </div>
     </section>
-    <section class="moregroup">
+    <section class="moregroup extra">
       <h4 data-t="share">Share</h4>
       <div class="morerow">
         <button id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
       </div>
     </section>
-    <section class="moregroup">
+    <section class="moregroup extra">
       <h4 data-t="room">Room</h4>
       <div class="morerow">
         <button id="votebtn" data-t="vote" data-ti="voteTip" aria-keyshortcuts="Alt+U" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
@@ -1854,7 +1863,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button id="setbtn" data-t="settings" aria-keyshortcuts="Alt+," title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
       </div>
     </section>
-    <section class="moregroup">
+    <section class="moregroup extra">
       <h4 data-t="host">Host</h4>
       <div class="morerow">
         <button id="blurall" data-t="blurGuests" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
@@ -1863,11 +1872,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
       </div>
     </section>
-    <section class="moregroup">
+    <section class="moregroup extra">
       <h4 data-t="help">Help</h4>
       <div class="morerow">
         <button id="keysbtn" data-t="keys" type="button" title="Keyboard shortcuts">Keys</button>
-        <button id="helpbtn" data-t="help" aria-keyshortcuts="Alt+/" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
         <button id="trbtn" data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript">Transcript</button>
       </div>
     </section>
@@ -2561,6 +2569,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const UI_TEXT = {
       de: {
         mic: 'Mikro', unmute: 'Ton an', mute: 'Stumm', micHeld: 'Stumm', cam: 'Kamera', more: 'Mehr', hide: 'Weniger', leave: 'Ende',
+        moreTools: 'Alle Funktionen', fewerTools: 'Weniger Funktionen',
         hideControls: 'Steuerungen ausblenden',
         appearTitle: 'So sehen Sie aus', screenName: 'Name', notNow: 'Nicht jetzt', join: 'Beitreten',
         appearClear: 'Leeren', appearSave: 'Speichern', changePic: 'Bild ändern',
@@ -2759,6 +2768,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       },
       es: {
         mic: 'Micro', unmute: 'Activar', mute: 'Silenciar', micHeld: 'Mudo', cam: 'Cámara', more: 'Más', hide: 'Menos', leave: 'Salir',
+        moreTools: 'Todas las funciones', fewerTools: 'Menos funciones',
         hideControls: 'Ocultar controles',
         appearTitle: 'Así te verán', screenName: 'Nombre', notNow: 'Ahora no', join: 'Entrar',
         appearClear: 'Limpiar', appearSave: 'Guardar', changePic: 'Cambiar foto',
@@ -21777,6 +21787,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       let saved = null; try { saved = localStorage.getItem('gifos_meet_bar'); } catch (e) {}
       apply(saved === null ? true : saved !== '0'); // default: collapsed
+      const toolsBtn = document.getElementById('moretools');
+      function paintTools() {
+        if (!toolsBtn) return;
+        const open = bar.querySelector('#barmore').classList.contains('tools-open');
+        const word = open ? uiText('fewerTools', 'Fewer tools') : uiText('moreTools', 'All tools');
+        if (toolsBtn.textContent !== word) toolsBtn.textContent = word;
+        toolsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+      if (toolsBtn) {
+        toolsBtn.onclick = () => {
+          const sheet = document.getElementById('barmore');
+          sheet.classList.toggle('tools-open');
+          try { sessionStorage.setItem('gifos_more_tools', sheet.classList.contains('tools-open') ? '1' : ''); } catch (e) {}
+          paintTools();
+        };
+        try { if (sessionStorage.getItem('gifos_more_tools') === '1') document.getElementById('barmore').classList.add('tools-open'); } catch (e) {}
+        paintTools();
+      }
       // Publish the bar's own height so the fixed overlays that hang from the
       // top (the chat panel) can start BELOW it instead of on top of it. It has
       // to be measured, not assumed: the bar wraps, and collapsing it changes

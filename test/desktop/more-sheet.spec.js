@@ -11,6 +11,7 @@ async function boot(page, width, height) {
 test('starting a vote puts the More sheet away so faces stay visible', async ({ page }) => {
   await boot(page, 1280, 720);
   await page.click('#bartoggle');
+  await page.click('#moretools');
   await page.click('#votebtn');
   await page.click('#vote-modal .voteopt.up');
   await expect(page.locator('#votebanner')).toBeVisible();
