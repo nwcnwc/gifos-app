@@ -2897,3 +2897,31 @@ test('a live host with viewers is told they are live, not the meeting count', as
     await expect(status).not.toContainText('a password unlocks');
   }
 });
+
+test('a live host reads the whole status line at desktop widths', async ({ page }) => {
+  // Seen at 1024 and 900: "You are live · 720p · reconnecting to the room…
+  // · blurred until you set a viewer password" ended in "blurred until y…",
+  // so the one thing the host could act on, the viewer password, was cut.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Pastor Sam');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  const status = page.locator('#status');
+  for (const [w, h] of [[900, 720], [1024, 720], [1280, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=hostfit' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.live');
+    await page.waitForFunction(() => window.__gifosVideo && window.__gifosVideo.livePeerForTest);
+    await page.evaluate(() => window.__gifosVideo.livePeerForTest('viewerpeer', 'Jordan Lee'));
+    await expect(status).toContainText('blurred until you set a viewer password');
+    if (w === 900) { await page.waitForTimeout(500); await page.screenshot({ path: 'artifacts/host-fit-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    const fit = await status.evaluate((el) => {
+      const chip = el.closest('.topchip').getBoundingClientRect();
+      const bar = document.getElementById('airbar').getBoundingClientRect();
+      return { w: el.scrollWidth <= el.clientWidth + 1, h: el.scrollHeight <= el.clientHeight + 1,
+        clearOfBar: chip.bottom <= bar.top, inView: chip.right <= innerWidth };
+    });
+    expect({ width: w, ...fit }).toEqual({ width: w, w: true, h: true, clearOfBar: true, inView: true });
+  }
+});
