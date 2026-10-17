@@ -105,3 +105,8 @@ body.broadcast #bc-join-note { display: none !important; }
 /* Broadcast calm: the status bar fades with the dock; the on-air lamp stays. */
 #airbar { transition: opacity .8s ease; }
 body.broadcast.dock-calm #airbar, body.broadcast.chrome-away #airbar { opacity: 0; pointer-events: none; }
+/* You are always in your own Row: the old Tile / Float / Strip / Hide
+   choice and its size and edge rows are retired. */
+#selfctl, #selfsize, #selfedge, #selfcorner { display: none !important; }
+/* Pop-ups share one look with the tile window: rounded, soft shadow. */
+.name-modal .name-box { border-radius: 16px; box-shadow: 0 18px 48px rgba(0,0,0,.45); }
