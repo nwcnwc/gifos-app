@@ -1140,6 +1140,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: #e8ecf1; color: #1d1d1f; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
   #chatqclear[hidden] { display: none !important; }
   .cempty { align-self: stretch; max-width: none; background: transparent; color: #1d1d1f; font-size: 1rem; padding: 8px 4px; }
+  .cmsg .cmention { color: #0064c8; font-weight: 800; }
+  .cmsg.mine .cmention { color: #ffe08a; }
+  #chatmentions { flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 0; max-height: 148px; overflow-y: auto; }
+  #chatmentions[hidden] { display: none !important; }
+  #chatmentions button { min-height: 44px; border: 0; border-radius: 12px; background: #e8ecf1; color: #1d1d1f;
+    font: 700 16px/1.2 system-ui, sans-serif; text-align: left; padding: 0 12px; cursor: pointer; }
   /* Theirs is a light bubble with dark type. Mine is the blue one with
      white type. The name is the same size as the line, so 200% text
      stays readable. Neither bubble runs to the edge of the sheet. */
@@ -2027,7 +2033,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #chatform button[type=submit]:disabled { background: #e8ecf1; color: #3a3a3f; }
   }
   #chatlog, #cfiles { min-height: 0; }
-  #chathead, #chatfind, #chatform, #emojirow { flex-shrink: 0; }
+  #chathead, #chatfind, #chatmentions, #chatform, #emojirow { flex-shrink: 0; }
   @media (max-width: 700px) {
     #chathead small { display: none; }
   }
@@ -2478,6 +2484,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button type="button" data-emoji="✅">✅</button>
       <button type="button" data-emoji="🔥">🔥</button>
     </div>
+    <div id="chatmentions" hidden role="listbox" aria-label="People"></div>
     <form id="chatform">
       <button type="button" id="cattach" title="Pin a file to the meeting">📎</button>
       <input type="file" id="cfile-in" multiple style="display:none">
@@ -15465,6 +15472,57 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { return new Date(n).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
       catch (e) { return ''; }
     }
+    function chatPeople() {
+      const names = [];
+      const seen = new Set();
+      const add = (n) => {
+        const s = String(n || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+        const key = s.toLowerCase();
+        if (!s || seen.has(key)) return;
+        seen.add(key);
+        names.push(s);
+      };
+      try {
+        for (const p of peers.values()) if (p && !p.headless && p.id !== myId) add(p.name);
+      } catch (e) {}
+      names.sort((a, b) => a.localeCompare(b));
+      return names;
+    }
+    function withMentions(text) {
+      let html = esc(text);
+      const names = chatPeople().slice().sort((a, b) => b.length - a.length);
+      for (const name of names) {
+        const token = esc('@' + name);
+        if (html.indexOf(token) < 0) continue;
+        html = html.split(token).join('<b class="cmention">' + token + '</b>');
+      }
+      return html;
+    }
+    function mentionToken(value, caret) {
+      const upto = String(value || '').slice(0, caret);
+      const m = upto.match(/(?:^|\s)@([^\s@]*)$/);
+      if (!m) return null;
+      return { query: m[1].toLowerCase(), start: upto.length - m[1].length - 1 };
+    }
+    function paintMentions() {
+      const box = document.getElementById('chatmentions');
+      const inp = document.getElementById('chat-in');
+      if (!box || !inp) return;
+      const caret = inp.selectionStart == null ? inp.value.length : inp.selectionStart;
+      const tok = mentionToken(inp.value, caret);
+      if (!tok) { box.hidden = true; box.textContent = ''; return; }
+      const people = chatPeople().filter((n) => n.toLowerCase().indexOf(tok.query) >= 0).slice(0, 6);
+      if (!people.length) { box.hidden = true; box.textContent = ''; return; }
+      box.hidden = false;
+      box.textContent = '';
+      for (const name of people) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.setAttribute('role', 'option');
+        b.textContent = name;
+        box.appendChild(b);
+      }
+    }
     function chatQuery() {
       const q = document.getElementById('chatq');
       return q ? String(q.value || '').trim().toLowerCase() : '';
@@ -15486,8 +15544,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         : all).slice(-200);
       let html = ms.map((m) => {
         const body = m.link
-          ? esc(m.text) + ' <a href="' + esc(m.link) + '" style="color:inherit;font-weight:700;text-decoration:underline">Join →</a>'
-          : esc(m.text);
+          ? withMentions(m.text) + ' <a href="' + esc(m.link) + '" style="color:inherit;font-weight:700;text-decoration:underline">Join →</a>'
+          : withMentions(m.text);
         // The signed-in admin moderates line by line: the standard row-delete
         // glyph mints a signed 'cdel' (see the #chatlog click delegate).
         const del = amAdmin ? '<button class="row-del" data-cdel="' + esc(m.id) + '" title="Delete this message for everyone">' + DEL_ICON + '</button>' : '';
@@ -15646,8 +15704,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       chat.set(m.id, m);
       sendAll({ k: 'chat', m });
       inp.value = '';
+      paintMentions();
       renderChat();
     });
+    (function () {
+      const inp = document.getElementById('chat-in');
+      const box = document.getElementById('chatmentions');
+      if (!inp || !box) return;
+      const refresh = () => paintMentions();
+      inp.addEventListener('input', refresh);
+      inp.addEventListener('keyup', refresh);
+      inp.addEventListener('click', refresh);
+      box.addEventListener('click', (e) => {
+        const b = e.target.closest('button');
+        if (!b || inp.disabled) return;
+        const name = b.textContent || '';
+        const caret = inp.selectionStart == null ? inp.value.length : inp.selectionStart;
+        const tok = mentionToken(inp.value, caret);
+        if (!tok || !name) return;
+        inp.value = inp.value.slice(0, tok.start) + '@' + name + ' ' + inp.value.slice(caret);
+        const pos = tok.start + name.length + 2;
+        try { inp.focus(); inp.setSelectionRange(pos, pos); } catch (err) {}
+        paintMentions();
+      });
+    })();
     document.getElementById('cattach').onclick = () => {
       if (!roomPw) { setStatus('Set a room password before sharing files — files are only allowed in password-protected meetings.'); return; }
       document.getElementById('cfile-in').click();

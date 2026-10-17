@@ -491,9 +491,19 @@ Repro: `test/mobile/chat-find.js`. It failed (`no way to find a line`), then pas
 
 Before: `qa/mobile/shots/before-chat-find-iphone-se.png`. After: `qa/mobile/shots/after-chat-find-iphone-se.png`.
 
+### 58. Typing @ did not offer the people on the call
+
+The composer took @Ru as ordinary text. Ruth and David were on the call, and nothing offered a name. A sent mention looked like the rest of the line.
+
+The list opens under the log while the caret is on an @name. It offers people whose names match, at 44px, and stays off Send. Choosing Ruth writes @Ruth and closes the list. On the line, that name is marked: blue on someone else's bubble, gold on yours.
+
+Repro: `test/mobile/chat-mention.js`. It failed (`no one to mention`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-mention.js`.
+
+Before: `qa/mobile/shots/before-chat-mention-iphone-se.png`. After: `qa/mobile/shots/after-chat-mention-iphone-se.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. Chat can find a line. It still cannot mention someone so that name stands out.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. Chat can find a line, and @ offers the people on the call. A mention while the sheet is closed still does not call that person back.
 
 ## Personas (what was actually tried)
 
