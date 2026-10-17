@@ -1481,6 +1481,10 @@ function render(){
   const i=myIdx(g), role=i>=0?g.deal[i]:null, n=g.ids.length;
   if(g.phase==='night'){
     const done=acts(g).length, mine=i>=0?actOf(g,i):true;
+    // Two taps, and a neighbour's action redraws the screen between them.
+    // The selection has to outlive that redraw or the second tap starts over
+    // and dawn never comes.
+    if(tmRound!==g.round||mine){ tmRound=g.round; tmSel=[]; }
     let html='<div class="card center"><h2>Night falls — total silence</h2><div class="muted">Do your night action below. Nobody talks until dawn.</div></div>'
       +'<div class="role"><div class="muted" style="color:#888">Hold to peek — your secret role</div><div class="r" id="r">·····</div></div>';
     if(i<0){ html+='<div class="card center"><div class="muted">You\\'re watching this one.</div></div>'; }

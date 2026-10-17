@@ -20697,7 +20697,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const age = p.rebuiltAt ? (Date.now() - p.rebuiltAt) : 0;
       if (!extPoison && p.dc && p.dc.readyState === 'open' && age > 15000) return;
       const now = Date.now();
-      if (p.rebuildNegAt && now - p.rebuildNegAt < 20000) return;
+      if (p.rebuildNegAt && now - p.rebuildNegAt < 8000) return;
       p.rebuildNegAt = now;
       try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
     }
