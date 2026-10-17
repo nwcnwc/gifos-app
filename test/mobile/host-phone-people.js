@@ -39,6 +39,8 @@ const phones = [
     const bad = [];
     const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 2, names: ['Ruth', 'Lobby iPad'] }));
     if (!seeded || !seeded.ok) bad.push('could not seat Ruth and the lobby iPad');
+    // Ruth seats muted; People offers no Mute for someone already muted.
+    await page.evaluate(() => window.__gifosVideo.setPeerStatusForTest('qa1', { muted: false }));
     await page.waitForTimeout(150);
     await page.locator('#status').tap();
     await page.waitForTimeout(80);

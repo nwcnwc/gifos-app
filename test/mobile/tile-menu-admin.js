@@ -36,6 +36,9 @@ async function run(browser, dev, av, tagShot, bad) {
 
   const names = ['Ruth', 'Margaret Johnson'];
   const seeded = await page.evaluate((a) => window.__gifosVideo.seedGalleryForTest({ count: a.length, names: a }), names);
+  // Ruth seats muted, and a muted guest's menu has no Mute for everyone
+  // (host-tile-controls.js). Unmute her so the menu holds every button.
+  await page.evaluate(() => window.__gifosVideo.setPeerStatusForTest('qa1', { muted: false }));
   if (!seeded || !seeded.ok) bad.push(dev + ': could not seat ' + names.join(', '));
   // This phone holds the room's admin key, so it signs in as the admin.
   const admin = await page.waitForFunction(() => document.body.classList.contains('amadmin'), null, { timeout: 10000 }).then(() => true, () => false);

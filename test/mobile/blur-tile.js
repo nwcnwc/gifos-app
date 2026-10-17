@@ -1,6 +1,7 @@
 /*
- * Blur for all is a square on the tile, at least 44px, inset from the
- * corner so a tap on the video does not hit it. Phone and desktop.
+ * Blur for everyone is a square on the tile, at least 44px, inset from the
+ * corner so a tap on the video does not hit it. Phone and desktop. A slim
+ * phone tile has no room for the words; there it is in the tap menu.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/blur-tile.js
  */
@@ -35,7 +36,7 @@ const CASES = [
       { id: 'peer-ruth', name: 'Ruth' },
       { id: 'peer-david', name: 'David' },
     ]);
-    await page.waitForSelector('.blurbox', { timeout: 5000 });
+    await page.waitForSelector('.blurbox', { state: 'attached', timeout: 5000 });
     const info = await page.evaluate(() => {
       const box = (el) => {
         const b = el.getBoundingClientRect();
@@ -46,12 +47,13 @@ const CASES = [
         const tb = tile.getBoundingClientRect();
         const b = box(el);
         const text = (el.innerText || '').replace(/\s+/g, ' ').trim();
+        const shown = getComputedStyle(el).display !== 'none' && b.w > 2;
         tile.classList.add('menu');
         const mod = tile.querySelector('.modbar');
         const name = tile.querySelector('.name');
         const max = tile.querySelector('.maxbtn');
         return {
-          text,
+          text, shown,
           w: b.w, h: b.h,
           topGap: b.top - tb.top,
           rightGap: tb.right - b.right,
@@ -65,7 +67,8 @@ const CASES = [
     const bad = [];
     if (info.length < 1) bad.push('no blur button');
     for (const b of info) {
-      if (b.text !== 'Blur for all') bad.push('says "' + b.text + '"');
+      if (!b.shown) continue; // in the menu instead, checked below
+      if (b.text !== 'Blur for everyone') bad.push('says "' + b.text + '"');
       if (b.w < 44 || b.h < 44) bad.push('is ' + Math.round(b.w) + 'x' + Math.round(b.h));
       if (Math.abs(b.w - b.h) > 1) bad.push('not square (' + Math.round(b.w) + 'x' + Math.round(b.h) + ')');
       if (b.topGap < 8 || b.rightGap < 8) bad.push('flush with the corner (inset ' + Math.round(b.topGap) + ',' + Math.round(b.rightGap) + ')');
@@ -87,8 +90,7 @@ const CASES = [
         const tile = el.closest('.tile');
         tile.classList.add('menu');
         const a = box(el);
-        // A slim phone tile's open menu fills the tile and Blur for all
-        // steps aside; the menu must offer the same Blur then.
+        // A slim phone tile shows no chip; its menu must offer the same Blur.
         const menuBlur = Array.from(tile.querySelectorAll('.modbar button')).some((b) => box(b) && /^(Blur|Unblur) for everyone$/.test(b.textContent));
         return {
           hidden: !a && !menuBlur,
@@ -99,10 +101,10 @@ const CASES = [
       });
     });
     for (const c of clear) {
-      if (c.hidden) bad.push('the open menu hides Blur for all and offers no Blur');
-      if (c.name < 12) bad.push('name is ' + Math.round(c.name) + 'px from Blur for all');
-      if (c.max < 12) bad.push('full screen is ' + Math.round(c.max) + 'px from Blur for all');
-      if (c.mod < 12) bad.push('the tile menu is ' + Math.round(c.mod) + 'px from Blur for all');
+      if (c.hidden) bad.push('the open menu hides Blur for everyone and offers no Blur');
+      if (c.name < 12) bad.push('name is ' + Math.round(c.name) + 'px from Blur for everyone');
+      if (c.max < 12) bad.push('full screen is ' + Math.round(c.max) + 'px from Blur for everyone');
+      if (c.mod < 12) bad.push('the tile menu is ' + Math.round(c.mod) + 'px from Blur for everyone');
     }
     if (bad.length) failures.push(phone.name + ': ' + bad.join('; '));
     else console.log('PASS', phone.name);

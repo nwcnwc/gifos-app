@@ -16,12 +16,12 @@ async function boot(page, hash) {
 
 test('a host mutes someone for everyone from the roster', async ({ page }) => {
   await boot(page, 'v=qamute&debug=on');
-  const avery = page.locator('.roster-row', { hasText: 'Avery Chen' });
-  const mute = avery.locator('.mutebtn');
-  await expect(mute).toHaveText('Mute');
+  const sam = page.locator('.roster-row', { hasText: 'Sam Okonkwo' });
+  const mute = sam.locator('.mutebtn');
+  await expect(mute).toHaveText('Mute for everyone');
   await expect(page.locator('.roster-row', { hasText: 'Jordan Lee' }).locator('.mutebtn')).toHaveCount(0);
   const fit = await page.evaluate(() => {
-    const row = Array.from(document.querySelectorAll('.roster-row')).find((el) => /Avery Chen/.test(el.textContent));
+    const row = Array.from(document.querySelectorAll('.roster-row')).find((el) => /Sam Okonkwo/.test(el.textContent));
     const btn = row.querySelector('.mutebtn');
     const name = row.querySelector('.nm');
     const rb = row.getBoundingClientRect();
@@ -45,13 +45,13 @@ test('a host mutes someone for everyone from the roster', async ({ page }) => {
   expect(fit.coversDock).toBe(false);
 
   await mute.click();
-  await expect(mute).toHaveText('Unmute');
+  await expect(mute).toHaveText('Unmute for everyone');
   await expect(mute).toHaveClass(/on/);
-  await expect(avery).toContainText('For everyone');
+  await expect(sam).toContainText('For everyone');
   const onBg = await mute.evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(onBg).not.toBe(fit.bg);
   await mute.click();
-  await expect(mute).toHaveText('Mute');
+  await expect(mute).toHaveText('Mute for everyone');
   await expect(page.locator('#roster.open')).toBeVisible();
 });
 

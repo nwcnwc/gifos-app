@@ -1082,7 +1082,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile > .blurbox { position: absolute; top: 12px; right: 12px; z-index: 6; display: none;
                      box-sizing: border-box; width: 64px; height: 64px; min-width: 44px; min-height: 44px;
                      padding: 4px; border: 0; border-radius: 12px; cursor: pointer;
-                     background: rgba(10,10,15,.78); color: #fff; font: 700 12px/1.15 system-ui, sans-serif;
+                     background: rgba(10,10,15,.78); color: #fff; font: 700 11px/1.1 system-ui, sans-serif;
                      text-align: center; align-items: center; justify-content: center; }
   .tile > .blurbox.on { display: flex; }
   .tile:has(> .blurbox.on) .modbar { top: 92px; right: 12px; }
@@ -1092,7 +1092,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.meet-session #lobby { display: none !important; }
   .tile .modbar { position: absolute; right: .4rem; top: .4rem; display: none; flex-direction: column;
                   gap: .3rem; z-index: 4; }
-  .tile:hover .modbar, .tile.menu .modbar, .tile:focus-within .modbar { display: flex; }
+  .tile.menu .modbar, .tile:focus-within .modbar { display: flex; }
+  /* A phone keeps :hover on the last spot tapped, so a closed tile showed
+     its whole menu beside tiles that showed only Blur. Hover opens it only
+     where there is a real pointer. */
+  @media (hover: hover) { .tile:hover .modbar { display: flex; } }
+  .tile .modbar button[hidden] { display: none !important; }
+  /* Blur for everyone is on the corner chip; the menu has it only where
+     the chip is not shown (slim phone tiles), so no tile offers it twice. */
+  .tile:has(> .blurbox.on) .modbar [data-mod="blur"] { display: none; }
   .tile:focus-visible { outline: 3px solid #7ec8ff; outline-offset: -3px; }
   .tile .modbar button { padding: .3rem .55rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.16);
                          background: rgba(10,10,15,.85); color: #eceef8; cursor: pointer; font-size: .68rem; }
@@ -1116,21 +1124,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        puts Full screen and Blur on the top corners and gives the name the
        bottom, on two lines if it needs them. */
     .tile.slim .maxbtn { top: 8px; left: 8px; right: auto; bottom: auto; }
-    .tile.slim > .blurbox { width: 44px; height: 44px; min-width: 44px; min-height: 44px; top: 8px; right: 8px; padding: 2px; font-size: 10px; line-height: 1.05; }
+    /* "Blur for everyone" can't fit a 44px chip ("everyone" alone is 42px
+       at 9px). On a slim tile it lives in the tap menu, beside Mute for
+       everyone, the same on every tile. */
+    .tile.slim > .blurbox { display: none !important; }
+    .tile.slim:has(> .blurbox.on) .modbar [data-mod="blur"] { display: inline-block; }
     .tile.slim:not(.cam-off) .chips { left: 56px; right: 56px; }
     /* Upright tiles are tall enough to put "✋ hand raised" under the buttons, not between them. */
     @media (orientation: portrait) {
       .tile.slim:not(.cam-off) .chips { top: 58px; left: 6px; right: 6px; }
-      /* Under 116px (.thin) two 44px buttons can't sit side by side with
-         12px between. With Blur for all up, Full screen goes under it and
-         the name takes a tighter line so two lines still clear it. */
-      .tile.thin:has(> .blurbox.on) .maxbtn { top: 64px; left: auto; right: 8px; }
-      .tile.thin:has(> .blurbox.on):not(.cam-off) .chips { right: 56px; }
-      .tile.thin:has(> .blurbox.on) .name { font-size: .85rem; line-height: 1.15; }
       /* A tapped slim tile's menu opened 92px down a 153px tile, over Full
          screen and the name, with 36px buttons. It fills the tile above the
-         name instead; Full screen and Blur for all step aside while it is
-         open (Blur for everyone is in it). */
+         name instead; Full screen steps aside while it is open. */
       .tile.slim.menu .modbar { top: 6px; left: 6px; right: 6px; bottom: 52px; z-index: 7; gap: 6px;
         justify-content: center; overflow-y: auto; border-radius: 10px; background: rgba(10,10,15,.55); }
       .tile.slim.menu .modbar button { box-sizing: border-box; width: 100%; min-height: 44px; padding: 2px 4px;
@@ -1854,8 +1859,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        sit on the top corners and stay 44px. */
     @media (max-height: 500px) and (orientation: landscape) {
       .tile .maxbtn { top: 8px; left: 8px; right: auto; bottom: auto; }
-      .tile > .blurbox { width: 44px; height: 44px; min-width: 44px; min-height: 44px; top: 8px; right: 8px; padding: 2px; font-size: 10px; line-height: 1.05; }
-      .tile:not(.cam-off) .chips { left: 56px; right: 56px; }
+      .tile > .blurbox { width: 64px; height: 44px; min-width: 44px; min-height: 44px; top: 8px; right: 8px; padding: 2px; font-size: 10px; line-height: 1.05; }
+      .tile:not(.cam-off) .chips { left: 56px; right: 76px; }
       .tile .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); font-size: .75rem; padding: 1px 4px; z-index: 5; }
       /* One line cut "Margaret Johnson" (and "Nathan (you)" in Safari's
          wider font). The name takes a second line; the 44px buttons end
@@ -6171,12 +6176,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       let on = false, by = '';
       try { const m = modOf(id).blur; on = !!(m && m.on); by = (m && m.by) || ''; } catch (e) {}
-      const label = on ? 'Unblur' : 'Blur\nfor all';
+      // One wording for this control everywhere: the menu says the same.
+      const words = on ? 'Unblur for everyone' : 'Blur for everyone';
+      const label = (on ? 'Unblur' : 'Blur') + '\nfor\neveryone';
       box.className = 'blurbox on';
       if (box.textContent !== label) box.textContent = label;
-      box.setAttribute('aria-label', on ? 'Unblur' : 'Blur for all');
+      box.setAttribute('aria-label', words);
       box.setAttribute('aria-pressed', on ? 'true' : 'false');
-      const tip = on ? ('Blurred for everyone' + (by ? ' by ' + by : '')) : 'Blur for all';
+      const tip = words + (on && by ? ' (blurred by ' + by + ')' : '');
       if (box.title !== tip) box.title = tip;
     }
     // Repaint one tile's overlay: mute/camera icons (attributed when the
@@ -6364,6 +6371,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const blurLabel = gBlur ? 'Unblur for everyone' : 'Blur for everyone';
           const appLabel = (mod.app && mod.app.on) ? 'Revoke apps & stage' : 'Allow apps & stage';
           t.modbar.children[0].textContent = muteLabel; t.modbar.children[0].setAttribute('aria-label', muteLabel);
+          // Already muted by their own hand (their announced status): nothing
+          // to mute. Muted for everyone, it stays, as the way to lift it.
+          t.modbar.children[0].hidden = !gMute && !!st.muted;
           t.modbar.children[1].textContent = blurLabel; t.modbar.children[1].setAttribute('aria-label', blurLabel);
           t.modbar.children[2].textContent = appLabel; t.modbar.children[2].setAttribute('aria-label', appLabel);
           for (const b of t.modbar.children) {
@@ -8343,13 +8353,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           f.textContent = flags.join(' · ');
           row.appendChild(f);
         }
-        const mayMute = !r.me && !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
+        // As on the tile: no Mute for someone already muted by their own hand.
+        const mayMute = !r.me && !(r.muted && !r.roomMute) && !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
         if (mayMute) {
           const b = document.createElement('button');
           b.type = 'button';
           b.className = 'mutebtn' + (r.roomMute ? ' on' : '');
-          b.textContent = r.roomMute ? uiText('unmuteForAll', 'Unmute') : uiText('muteForAll', 'Mute');
-          b.setAttribute('aria-label', (r.roomMute ? uiText('unmuteForAll', 'Unmute') : uiText('muteForAll', 'Mute')) + ' ' + r.name);
+          const words = r.roomMute ? uiText('unmuteForAll', 'Unmute for everyone') : uiText('muteForAll', 'Mute for everyone');
+          b.textContent = words;
+          b.setAttribute('aria-label', words + ': ' + r.name);
           b.onclick = () => {
             let on = false;
             try { const cur = modOf(r.id).mute; on = !(cur && cur.on); } catch (e) { on = true; }

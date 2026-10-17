@@ -38,6 +38,9 @@ function hit(a, b) {
 
   const names = ['Ruth', 'Margaret Johnson'];
   const seeded = await page.evaluate((a) => window.__gifosVideo.seedGalleryForTest({ count: a.length, names: a }), names);
+  // Ruth seats muted, and a muted guest's menu has no Mute for everyone
+  // (host-tile-controls.js). Unmute her so the menu holds every button.
+  await page.evaluate(() => window.__gifosVideo.setPeerStatusForTest('qa1', { muted: false }));
   if (!seeded || !seeded.ok) bad.push('could not seat ' + names.join(', '));
   await page.waitForTimeout(400);
 

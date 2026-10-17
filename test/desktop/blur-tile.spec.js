@@ -12,7 +12,7 @@ async function boot(page) {
   await page.waitForSelector('.tile > .blurbox');
 }
 
-test('Blur for all is a square inset from the tile corner', async ({ page }) => {
+test('Blur for everyone is a square inset from the tile corner', async ({ page }) => {
   await boot(page);
   const info = await page.evaluate(() => {
     function gap(a, b) {
@@ -48,7 +48,7 @@ test('Blur for all is a square inset from the tile corner', async ({ page }) => 
   });
   expect(info.length).toBeGreaterThanOrEqual(1);
   for (const b of info) {
-    expect(b.text).toBe('Blur for all');
+    expect(b.text).toBe('Blur for everyone');
     expect(b.w).toBeGreaterThanOrEqual(44);
     expect(b.h).toBeGreaterThanOrEqual(44);
     expect(Math.abs(b.w - b.h)).toBeLessThanOrEqual(1);
