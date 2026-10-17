@@ -26121,6 +26121,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { paintRoster(); } catch (e) {}
         return true;
       },
+      // A seat's route and vote chips: reached via someone, can't connect, a
+      // remove vote in progress (votes: [have, need]).
+      setPeerNetForTest: (id, spec) => {
+        const p = DEBUG_ON && peers.get(id);
+        if (!p || !p.qa) return false;
+        const s = spec || {};
+        if ('relayed' in s) p.relayed = s.relayed || null;
+        if ('noRoute' in s) p.noRoute = !!s.noRoute;
+        if (s.votes) { devOf[id] = devOf[id] || ('qadev-' + id); voteTally[devOf[id]] = s.votes[0]; voteNeed = s.votes[1]; }
+        try { refreshAllTiles(); } catch (e) {}
+        return true;
+      },
       // Lock or open the room on this page only (memory: no store, no door),
       // to see what a password changes on the tiles.
       setRoomPwForTest: (pw) => {
