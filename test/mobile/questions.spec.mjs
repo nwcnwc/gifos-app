@@ -99,7 +99,11 @@ test('a viewer asks, votes sort the questions, and the host puts one on every pi
     expect(b.font).toBeGreaterThanOrEqual(17);
     expect(b.hits).toEqual([]);
     // The asker's name rides with it.
-    await expect(v.locator('#bc-q')).toContainText(/Guest|Viewer|\w/);
+    await expect(v.locator('#bc-q')).toContainText(/asks/);
+    // At large type it still clears Fit, the chip, and the dock.
+    await v.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
+    await expect.poll(async () => { const x = await bandBox(v, Q2); return x && x.hits.length === 0 && x.bottom <= x.barY; }, { timeout: 5000 }).toBe(true);
+    await v.evaluate(() => { document.documentElement.style.fontSize = ''; });
 
     // Taken down: the picture is clear again.
     await h.locator('#qa-list .qrow', { hasText: Q2 }).locator('.qshow').click();

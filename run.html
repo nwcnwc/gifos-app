@@ -1533,6 +1533,47 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     font: 600 clamp(18px, 1.125rem, 28px)/1.35 system-ui, sans-serif;
   }
   #bc-cap-txt:empty, #bc-cap.off #bc-cap-txt { display: none; }
+  /* The question the host put up rides the top of the picture, under the
+     chip and Fit (placeQaBand measures them), on every phone. */
+  #bc-q[hidden], body.bc-quiet #bc-q { display: none !important; }
+  #bc-q {
+    position: fixed; z-index: 5; pointer-events: none; top: 120px;
+    left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px));
+    padding: 8px 12px; border-radius: 12px; background: rgba(12,14,18,.86); color: #f4f7fb;
+    border-left: 4px solid #ffd166;
+  }
+  #bc-q b { display: block; font: 700 clamp(14px, .875rem, 20px)/1.2 system-ui, sans-serif; color: #ffd166; }
+  #bc-q p { margin: 2px 0 0; max-height: 5.5em; overflow: hidden; font: 600 var(--qfs, clamp(18px, 1.125rem, 26px))/1.35 system-ui, sans-serif; }
+  #bc-q.clip { pointer-events: auto; cursor: pointer; }
+  #bc-q.clip p { -webkit-mask-image: linear-gradient(#000 calc(100% - 1.2em), transparent); mask-image: linear-gradient(#000 calc(100% - 1.2em), transparent); }
+  #bc-q-pad, #bc-q-fit { float: right; width: 0; height: 0; }
+  #bc-q-fit { clear: right; }
+  body:not(.broadcast):not(.townhall) #qabtn { display: none !important; }
+  #qa {
+    position: fixed; right: var(--inset-right, 0px); top: var(--inset-top, 0px); bottom: var(--dock-clear, 108px);
+    width: min(360px, calc(100vw - var(--inset-left, 0px) - var(--inset-right, 0px))); z-index: 31;
+    display: flex; flex-direction: column; background: var(--bg, #101018); color: var(--text, #e0e0f0);
+    border-left: 1px solid var(--border, #2a2a3f); border-radius: 0 0 0 14px;
+  }
+  #qa[hidden] { display: none; }
+  #qa-head { display: flex; align-items: center; flex-wrap: wrap; gap: .2rem .5rem; padding: .45rem .6rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; font-size: 1.1rem; }
+  #qa-head small { order: 3; flex: 1 0 100%; font-size: .875rem; font-weight: 400; color: var(--muted, #c5c8dc); }
+  #qa-close { margin-left: auto; min-width: 44px; min-height: 44px; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: inherit; font-size: 1.1rem; }
+  #qa-list { flex: 1; min-height: 0; overflow-y: auto; padding: .6rem; display: flex; flex-direction: column; gap: .5rem; }
+  .qrow { display: flex; align-items: flex-start; gap: .5rem; padding: .45rem; border-radius: .6rem; background: var(--surface, #14141f); border: 1px solid #22223a; }
+  .qrow.shown { border-color: #ffd166; }
+  .qbody { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .qbody p { margin: 0; font-size: 1rem; line-height: 1.35; }
+  .qbody small { color: var(--muted, #c5c8dc); font-size: .8rem; }
+  .qvote, .qshow { flex: 0 0 auto; min-width: 48px; min-height: 44px; padding: 0 .5rem; border-radius: .5rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); font: 700 1rem/1 system-ui, sans-serif; }
+  .qvote[aria-pressed="true"] { background: #0064c8; border-color: #0064c8; color: #fff; }
+  .qshow { background: #ffd166; border-color: #ffd166; color: #14141f; }
+  .qshow[aria-pressed="true"] { background: transparent; color: #ffd166; }
+  .qrow .qdel { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
+  .qempty { margin: .5rem 0; color: var(--muted, #c5c8dc); }
+  #qa-form { display: flex; gap: .4rem; padding: .5rem .6rem; border-top: 1px solid var(--border, #2a2a3f); }
+  #qa-in { flex: 1; min-width: 0; min-height: 44px; padding: .4rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: inherit; font: inherit; font-size: 1rem; }
+  #qa-ask { min-width: 64px; min-height: 44px; border-radius: .4rem; border: 0; background: #0064c8; color: #fff; font: 700 1rem/1 system-ui, sans-serif; }
   #bc-ended p {
     margin: 0; max-width: 18rem; color: #f4f7fb;
     font: 700 clamp(1.15rem, 9cqh, 1.75rem)/1.25 system-ui, sans-serif; letter-spacing: -0.02em;
@@ -2215,6 +2256,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span class="docklab">Hand</span>
       <span class="handword">Hand</span>
     </button>
+    <button id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
     <button id="chatbtn" title="Chat and share files — stays between the people on this meeting, not on a server">Chat</button>
     <button id="recbtn" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
     <button id="ccbtn" title="Live captions: your device writes down everyone it hears in this meeting and shares the lines with the meeting's transcript">CC</button>
@@ -2266,6 +2308,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div id="feed">
     <div id="bc-ended" hidden><p id="bc-ended-txt"></p><button type="button" id="bc-replay" hidden>Watch</button><a id="bc-cal" hidden>Add to calendar</a></div>
     <a id="bc-give" hidden target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span id="bc-give-txt">Give</span></a>
+    <div id="bc-q" hidden aria-live="polite"><i id="bc-q-pad"></i><i id="bc-q-fit"></i><b id="bc-q-by"></b><p id="bc-q-txt"></p></div>
     <div id="bc-cap" hidden><button type="button" id="bc-cap-btn" aria-pressed="true" aria-label="Captions" title="Show or hide the captions">CC</button><p id="bc-cap-txt" aria-live="polite"></p></div>
     <div id="stagefeed"></div>
     <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-name"></div></div>
@@ -2392,6 +2435,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <input type="text" id="chat-in" placeholder="Message everyone…" autocomplete="off" maxlength="2000">
       <button type="submit">Send</button>
     </form>
+  </div>
+
+  <div id="qa" role="dialog" aria-labelledby="qa-title" hidden>
+    <div id="qa-head"><span id="qa-title">Questions</span><small>Most votes on top. The host can put one on the picture.</small><button type="button" id="qa-close" aria-label="Close questions">✕</button></div>
+    <div id="qa-list"></div>
+    <form id="qa-form"><input type="text" id="qa-in" placeholder="Ask the host…" autocomplete="off" maxlength="280" aria-label="Your question"><button type="submit" id="qa-ask">Ask</button></form>
   </div>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="inv-modal" style="display:none">
@@ -13402,7 +13451,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function applyCdel(id, w) {
       if (!id || chatTombs.has(id)) return false;
       chatTombs.set(id, w);
+      const wasQa = isQaLine(chat.get(id));
       chat.delete(id);
+      if (wasQa) qaChanged();
       return true;
     }
     const MAX_FILE = 25 * 1024 * 1024;
@@ -13649,12 +13700,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           admVerify(w, 'cdel', Infinity).then((o) => { if (o && o.id === id && applyCdel(id, w)) renderChat(); });
         }
         (m.metas || []).forEach((meta) => takeMeta(meta, p));
-        if (freshChats.length) renderChat();
+        if (freshChats.length) { renderChat(); if (freshChats.some(isQaLine)) qaChanged(); }
         renderFiles();
       } else if (m.k === 'av') {
         takeAvatar(p, m);
       } else if (m.k === 'chat') {
-        if (takeChat(m.m)) {
+        const took = takeChat(m.m);
+        if (took && isQaLine(chat.get(m.m.id))) qaChanged(); // a question or a vote: the Questions sheet, never the chat badge
+        else if (took) {
           renderChat();
           if (m.m && typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: m.m.text, by: m.m.by, byId: m.m.byId, at: m.m.at });
           if (!chatPanel.classList.contains('open')) { unread++; chatBtn.textContent = 'Chat (' + unread + ')'; }
@@ -14246,15 +14299,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // land — receiver-enforced, so a DOM-hacked sender is still unheard by
       // everyone honest. Lines from BEFORE the switch stay: turning chat off
       // silences the room, it doesn't censor its history (delete does that).
+      // A question or a vote is not chat: the host who turns chat off still
+      // takes questions (the Questions sheet is its own, and cdel still deletes).
+      const qa = qaFields(m);
       const co = chatOffInfo();
-      if (co && (m.at || 0) > co.at && !admins.includes(m.byId)) return false;
+      if (co && !qa.q && !qa.qv && (m.at || 0) > co.at && !admins.includes(m.byId)) return false;
       // `link`, when present, renders as a "Join →" button — validate it is an
       // http(s) URL (never javascript:/data:) so a peer can't inject a live link.
       const link = (typeof m.link === 'string' && /^https?:\/\//i.test(m.link)) ? m.link.slice(0, 400) : undefined;
-      chat.set(m.id, { id: m.id, by: String(m.by || '?').slice(0, 40), byId: m.byId, at: m.at || 0, text: String(m.text || '').slice(0, 2000), link });
+      chat.set(m.id, Object.assign({ id: m.id, by: String(m.by || '?').slice(0, 40), byId: m.byId, at: m.at || 0, text: String(m.text || '').slice(0, 2000), link }, qa));
       trimMap(chat, CHAT_MAX);
       return true;
     }
+    // Questions ride the chat's carrier (one flood, 'hi' backfill to a late
+    // arrival) as lines the chat log skips: q is a question, qv a vote for
+    // one (qx takes it back), qs the host's signed order to show one on the
+    // picture ('' takes it down). Only these fields cross; nothing else does.
+    function qaFields(m) {
+      const o = {};
+      const okId = (x) => typeof x === 'string' && x.length < 80;
+      if (m.q === 1) o.q = 1;
+      if (okId(m.qv) && m.qv) { o.qv = m.qv; if (m.qx === 1) o.qx = 1; }
+      if (okId(m.qs) && m.w && typeof m.w === 'object' && typeof m.w.sp === 'string' && typeof m.w.sig === 'string' && typeof m.w.pub === 'string') {
+        o.qs = m.qs; o.w = { sp: m.w.sp.slice(0, 600), sig: m.w.sig, pub: m.w.pub };
+      }
+      return o;
+    }
+    function isQaLine(m) { return !!(m && (m.q || m.qv || m.qs != null)); }
     function takeTomb(id, t) {
       if (!id || !t || tombs.has(id)) return false;
       tombs.set(id, t);
@@ -14425,7 +14496,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function renderChat() {
       if (!chatPanelOpen() || transcriptShown()) return;
       const log = document.getElementById('chatlog');
-      const ms = Array.from(chat.values()).sort((a, b) => a.at - b.at).slice(-200); // the newest 200 are the log; older lines stay in the map for delete/history
+      const ms = Array.from(chat.values()).filter((m) => !isQaLine(m)).sort((a, b) => a.at - b.at).slice(-200); // the newest 200 are the log; older lines stay in the map for delete/history
       let html = ms.map((m) => {
         const body = m.link
           ? esc(m.text) + ' <a href="' + esc(m.link) + '" style="color:#8ab4ff;font-weight:600">Join →</a>'
@@ -14554,6 +14625,174 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (chatPanel.classList.contains('open')) { unread = 0; chatBtn.textContent = 'Chat'; if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles(); }
     };
     document.getElementById('chatclose').onclick = () => chatPanel.classList.remove('open');
+
+    // ---- questions: ask, vote, and the host shows one on the picture --------
+    // A hundred people watching can't all raise a hand, and chat buries the
+    // question everybody wants asked. Anyone asks; everyone votes; the most
+    // votes sit on top; the host (the room's admin) puts one on every
+    // viewer's picture with a signed order, so nobody else can.
+    const qaPanel = document.getElementById('qa');
+    const qaBtn = document.getElementById('qabtn');
+    const qaShowOk = new Map(); // line id -> { qid, ts } once its admin signature checked out
+    function qaList() {
+      const qs = new Map();
+      for (const m of chat.values()) if (m.q && m.text) qs.set(m.id, { id: m.id, text: m.text, by: m.by, byId: m.byId, at: m.at, votes: 0, mine: false });
+      const last = new Map(); // voter|qid -> newest vote line
+      for (const m of chat.values()) {
+        if (!m.qv || !qs.has(m.qv)) continue;
+        const k = m.byId + '|' + m.qv, o = last.get(k);
+        if (!o || o.at < m.at) last.set(k, m);
+      }
+      for (const v of last.values()) {
+        if (v.qx) continue;
+        const q = qs.get(v.qv); q.votes++;
+        if (v.byId === myId) q.mine = true;
+      }
+      return Array.from(qs.values()).sort((a, b) => (b.votes - a.votes) || (a.at - b.at));
+    }
+    function qaShownId() {
+      let best = null;
+      for (const [id, o] of qaShowOk) { if (!chat.has(id)) continue; if (!best || o.ts > best.ts) best = o; }
+      return best && best.qid ? best.qid : '';
+    }
+    function qaCheckShows() {
+      for (const m of chat.values()) {
+        if (m.qs == null || qaShowOk.has(m.id) || m.qsChecking) continue;
+        m.qsChecking = true;
+        admVerify(m.w, 'qshow', Infinity).then((o) => {
+          if (o && o.qid === m.qs) { qaShowOk.set(m.id, { qid: m.qs, ts: +o.ts || 0 }); paintQaBand(); renderQa(); }
+        });
+      }
+    }
+    function qaChanged() { qaCheckShows(); renderQa(); paintQaBand(); }
+    function placeQaBand() {
+      const band = document.getElementById('bc-q');
+      if (!band || band.hidden) return;
+      // Under the chip, above the dock, Give and the captions, and around
+      // Fit (wherever it sits on this phone): the text wraps beside Fit, and
+      // at large type on a small phone it steps down to 18px to fit.
+      const rectOf = (sel) => {
+        const el = document.querySelector(sel);
+        if (!el || el.hidden || !el.getClientRects().length) return null;
+        const r = el.getBoundingClientRect();
+        return r.width && r.height ? r : null;
+      };
+      let top = 12;
+      for (const sel of ['.topchip', '#livebadge', '#bc-link']) { const r = rectOf(sel); if (r && r.top < innerHeight / 2) top = Math.max(top, Math.ceil(r.bottom) + 8); }
+      let floor = innerHeight; // the dock's own top, not --dock-clear: that lags a type-size change by a frame
+      for (const sel of ['.bar', '#bc-give', '#bc-cap-txt', '#bc-cap-btn']) { const r = rectOf(sel); if (r && r.top > top) floor = Math.min(floor, r.top); }
+      floor -= 8;
+      const fit = rectOf('#fitbtn');
+      const pad = document.getElementById('bc-q-pad'), gap = document.getElementById('bc-q-fit'), txt = document.getElementById('bc-q-txt');
+      band.style.top = top + 'px';
+      band.style.removeProperty('--qfs'); txt.style.maxHeight = '';
+      pad.style.height = gap.style.height = gap.style.width = '0px';
+      const wrapFit = () => {
+        if (!fit) return;
+        const b = band.getBoundingClientRect();
+        if (fit.left >= b.right || fit.right <= b.left || fit.top >= b.bottom || fit.bottom <= b.top) return;
+        const inTop = b.top + parseFloat(getComputedStyle(band).paddingTop);
+        pad.style.height = Math.max(0, Math.floor(fit.top - inTop) - 4) + 'px';
+        gap.style.height = Math.ceil(fit.bottom - Math.max(fit.top, inTop) + 8) + 'px';
+        gap.style.width = Math.ceil(b.right - fit.left + 8 - parseFloat(getComputedStyle(band).paddingRight)) + 'px';
+      };
+      wrapFit();
+      for (const fs of ['22px', '20px', '18px']) {
+        if (band.getBoundingClientRect().bottom <= floor) break;
+        band.style.setProperty('--qfs', fs);
+        pad.style.height = gap.style.height = gap.style.width = '0px';
+        wrapFit();
+      }
+      const over = band.getBoundingClientRect().bottom - floor;
+      if (over > 0) txt.style.maxHeight = Math.max(24, txt.getBoundingClientRect().height - over) + 'px';
+      // Cut short (or capped at five lines): the words fade out, and a tap
+      // opens Questions, where the whole question reads.
+      band.classList.toggle('clip', txt.scrollHeight > txt.clientHeight + 1);
+    }
+    function paintQaBand() {
+      const band = document.getElementById('bc-q');
+      if (!band) return;
+      const qid = qaShownId(), m = qid && chat.get(qid);
+      if (!m || !m.q || !(BROADCAST || TOWNHALL)) { band.hidden = true; return; }
+      document.getElementById('bc-q-by').textContent = m.by + ' asks';
+      document.getElementById('bc-q-txt').textContent = m.text;
+      band.hidden = false;
+      placeQaBand();
+    }
+    window.addEventListener('resize', () => { try { placeQaBand(); } catch (e) {} });
+    if (window.ResizeObserver) {
+      try {
+        const ro = new ResizeObserver(() => { try { placeQaBand(); } catch (e) {} });
+        for (const sel of ['.topchip', '#fitbtn', '.bar']) { const el = document.querySelector(sel); if (el) ro.observe(el); }
+      } catch (e) {}
+    }
+    function renderQa() {
+      const n = qaList().length;
+      if (qaBtn) qaBtn.textContent = n ? 'Questions (' + n + ')' : 'Questions';
+      if (!qaPanel || qaPanel.hidden) return;
+      const list = document.getElementById('qa-list');
+      const shown = qaShownId();
+      const qs = qaList();
+      list.innerHTML = qs.length ? qs.map((q) => {
+        const on = q.id === shown;
+        return '<div class="qrow' + (on ? ' shown' : '') + '" data-q="' + esc(q.id) + '">'
+          + '<button type="button" class="qvote" aria-pressed="' + (q.mine ? 'true' : 'false') + '" aria-label="Vote for this question, ' + q.votes + ' votes" title="Vote this up">▲ <span>' + q.votes + '</span></button>'
+          + '<div class="qbody"><p>' + esc(q.text) + '</p><small>' + esc(q.by) + (on ? ' · on the picture' : '') + '</small></div>'
+          + (amAdmin ? '<button type="button" class="qshow" aria-pressed="' + (on ? 'true' : 'false') + '" title="' + (on ? 'Take it off the picture' : 'Put it on every viewer\'s picture') + '">' + (on ? 'Hide' : 'Show') + '</button>'
+            + '<button type="button" class="row-del qdel" title="Remove this question for everyone">' + DEL_ICON + '</button>' : '')
+          + '</div>';
+      }).join('') : '<p class="qempty">No questions yet. Ask one below, and vote up the ones you want answered.</p>';
+    }
+    function qaSend(m) {
+      chat.set(m.id, m);
+      sendAll({ k: 'chat', m });
+      qaChanged();
+    }
+    function qaOpen(open) {
+      if (!qaPanel) return;
+      qaPanel.hidden = !open;
+      if (open) {
+        const bar = document.querySelector('.bar');
+        if (bar && !bar.classList.contains('collapsed')) { const t = document.getElementById('bartoggle'); if (t) t.click(); }
+        chatPanel.classList.remove('open');
+        renderQa();
+      }
+    }
+    if (qaBtn) qaBtn.onclick = () => qaOpen(qaPanel.hidden);
+    document.getElementById('bc-q').onclick = () => qaOpen(true);
+    document.getElementById('qa-close').onclick = () => qaOpen(false);
+    document.getElementById('qa-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const inp = document.getElementById('qa-in');
+      const text = inp.value.trim().slice(0, 280);
+      if (!text) return;
+      qaSend({ id: uid('m'), by: myName(), byId: myId, at: Date.now(), text, q: 1 });
+      inp.value = '';
+    });
+    document.getElementById('qa-list').addEventListener('click', (e) => {
+      const row = e.target.closest('.qrow'); if (!row) return;
+      const qid = row.getAttribute('data-q');
+      if (e.target.closest('.qvote')) {
+        const q = qaList().find((x) => x.id === qid); if (!q) return;
+        const v = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: '', qv: qid };
+        if (q.mine) v.qx = 1;
+        qaSend(v);
+      } else if (e.target.closest('.qshow') && amAdmin) {
+        const next = qaShownId() === qid ? '' : qid;
+        admSigned('qshow', { qid: next }).then((w) => {
+          if (!w) return;
+          const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: '', qs: next, w };
+          qaShowOk.set(m.id, { qid: next, ts: JSON.parse(w.sp).ts });
+          qaSend(m);
+        });
+      } else if (e.target.closest('.qdel') && amAdmin && !chatTombs.has(qid)) {
+        admSigned('cdel', { id: qid }).then((w) => {
+          if (!w) return;
+          applyCdel(qid, w);
+          sendAll({ k: 'cdel', id: qid, w });
+        });
+      }
+    });
 
     // ---- peer relay: a mutual friend forwards media between blocked pairs ----
     // When B and C can't reach each other but both reach A, B asks A (the
