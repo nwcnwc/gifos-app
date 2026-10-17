@@ -15750,7 +15750,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                 if (members.has(id) || waitDeclined.has(id)) continue;
                 meetWait.note(id, rosterNames[id] || 'Someone waiting');
               }
-            } else if (s && s.answerDoor) s.answerDoor(ids.filter((id) => !waitDeclined.has(id)));
+            } else if (s && s.answerDoor) {
+              s.answerDoor(ids.filter((id) => !waitDeclined.has(id)));
+              // The one HOME above is easy to lose: the knocker's WHOHOME during
+              // the dark never arrived, and nothing retries it. Open the door
+              // channel now, or the next ask is a whole retry later (fix-drk).
+              const members = new Set();
+              try { for (const v of s.occ.values()) if (v) members.add(v); } catch (e2) {}
+              let n = 0;
+              for (const id of ids) { if (n >= 8) break; if (members.has(id) || waitDeclined.has(id)) continue; n++; try { bootDial(id); } catch (e3) {} }
+            }
           } catch (e) {}
         }
         if (doorRoundPending && relayRosterScope === 'full' && !atWaitDoor) { doorRoundPending = false; try { const s = meshSeat(); if (s && s.doorRound) s.doorRound(Array.from(relaySocketed).filter((id) => id !== myId)); } catch (e) {} }   // the door round's list (doorRoundBeat). A knocker the relay is holding does not found a room from that list.
