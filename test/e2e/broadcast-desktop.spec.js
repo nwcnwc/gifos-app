@@ -3697,9 +3697,10 @@ test('the open chat sits beside the room bar and stage, not over them', async ({
         return { edge: Math.round(edge), out };
       });
       expect(under.out, who + ' at ' + w + ': nothing of the room bar, header or stage under the chat (edge ' + under.edge + ')').toEqual([]);
-      // The room bar still reads on one line beside the chat.
+      // The room bar is at most two rows beside the chat: the title, then the
+      // pills where the call is narrow (each one line, see Q95's spec).
       const bar = await page.locator('#airbar').boundingBox();
-      expect(bar.height, who + ' at ' + w + ': room bar height').toBeLessThanOrEqual(60);
+      expect(bar.height, who + ' at ' + w + ': room bar height').toBeLessThanOrEqual(w >= 1100 ? 60 : 88);
       // Closing the chat gives the width back.
       await page.keyboard.press('Escape');
       await expect(page.locator('#chatpanel')).not.toHaveClass(/open/);

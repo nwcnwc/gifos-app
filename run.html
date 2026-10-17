@@ -1116,6 +1116,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     /* The dock sits in the call beside the chat (placeDock), so the composer
        takes the band it used to keep clear. */
     body.chatside.dockbeside #chatpanel { padding-bottom: 12px; }
+    /* The call beside the chat is 460-684px: the room bar's pills move to a
+       row under the title rather than breaking "Not / recording". */
+    body.chatside #airbar.on { flex-wrap: wrap; row-gap: 6px; padding: 6px 16px; }
+    #airkind, #airrec, #airwho, #airsound { white-space: nowrap; }
   }
   #chathead { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
   /* The privacy line used to sit beside the title and collapse into a narrow
