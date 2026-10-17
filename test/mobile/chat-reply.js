@@ -66,6 +66,9 @@ function overlaps(a, b) {
       vw: window.innerWidth,
     };
   });
+  // A line's buttons show once you tap the line (chat-dense).
+  await page.locator('#chatlog .cmsg', { hasText: 'vote is Tuesday' }).locator('.cbody').tap();
+  await page.waitForTimeout(40);
   const info = await read();
   const bad = [];
   const onScreen = (el, name) => {

@@ -1,6 +1,7 @@
 /*
  * A notes bot is a person in the room. The header counts them. The tile
- * must be a full face like the others, with the bot badge kept.
+ * must be a full face like the others, with the bot badge kept, and no
+ * Blur for all (there is no face to blur).
  *
  * Gate: NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/bot-tile.js
  */
@@ -89,12 +90,9 @@ function overlaps(a, b) {
       const hit = overlaps(bot, o);
       if (hit > bot.w * bot.h * 0.15) bad.push('bot covers ' + o.id);
     }
-    if (!bot.blur || !bot.blur.on) bad.push('Blur for all is missing on the bot');
-    else {
-      const cover = overlaps(bot.blur, bot);
-      if (cover > bot.w * bot.h * 0.35) bad.push('Blur for all covers the bot tile');
-      if (bot.badgeBox && overlaps(bot.blur, bot.badgeBox) > 4) bad.push('Blur for all covers the bot badge');
-    }
+    // A bot has no camera, so its tile is never clear and offers no Blur
+    // for all (host-tile-blur-states.js: no blur control on a soft tile).
+    if (bot.blur && bot.blur.on) bad.push('a bot, with no face to blur, offers Blur for all');
   }
   const shot = bad.length ? 'before-bot-tile-pixel-7.png' : 'after-bot-tile-pixel-7.png';
   await page.screenshot({ path: path.join(SHOTS, shot) });

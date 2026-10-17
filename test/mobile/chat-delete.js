@@ -61,6 +61,9 @@ function overlaps(a, b) {
       vw: window.innerWidth,
     };
   });
+  // A line's buttons show once you tap the line (chat-dense).
+  await page.locator('#chatlog .cmsg.mine .cbody').tap();
+  await page.waitForTimeout(40);
   const info = await read();
   const bad = [];
   if (info.ruthDel) bad.push('Ruth\'s line can be deleted');

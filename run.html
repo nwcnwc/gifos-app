@@ -1111,6 +1111,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* A dark seat past the shared-canvas cap (mountPeerAvatar) shows its letter
      overlay, blurred the way the video it stands in for would be. */
   .tile.cam-off .avatar.rides-off { display: flex; }
+  .tile.cam-off:has(> .avatar.rides-off) > video { visibility: hidden; }
   .tile:has(> video.blur1) .avatar.rides-off { filter: blur(11px) saturate(.9); }
   .tile:has(> video.blur2) .avatar.rides-off { filter: blur(26px) saturate(.75); }
   .tile .chips { position: absolute; top: 6px; left: 6px; right: 6px; display: flex; flex-direction: row;
@@ -1162,7 +1163,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile > .blurbox { position: absolute; top: 12px; right: 12px; z-index: 6; display: none;
                      box-sizing: border-box; width: 64px; height: 64px; min-width: 44px; min-height: 44px;
                      padding: 4px; border: 0; border-radius: 12px; cursor: pointer;
-                     background: rgba(10,10,15,.78); color: #fff; font: 700 12px/1.15 system-ui, sans-serif;
+                     background: rgba(10,10,15,.78); color: #fff; font: 700 11px/1.1 system-ui, sans-serif;
                      text-align: center; align-items: center; justify-content: center; }
   .tile > .blurbox.on { display: flex; }
   .tile:has(> .blurbox.on) .modbar { top: 92px; right: 12px; }
@@ -1179,12 +1180,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.meet-session #lobby { display: none !important; }
   .tile .modbar { position: absolute; right: .4rem; top: .4rem; display: none; flex-direction: column;
                   gap: .3rem; z-index: 4; }
-  .tile:hover .modbar, .tile.menu .modbar, .tile:focus-within .modbar { display: flex; }
-  .tile:focus-visible { outline: 3px solid #8ec8ff; outline-offset: 3px; }
+  .tile.menu .modbar, .tile:focus-within .modbar { display: flex; }
+  /* A phone keeps :hover on the last spot tapped, so a closed tile showed
+     its whole menu beside tiles that showed only Blur. Hover opens it only
+     where there is a real pointer. */
+  @media (hover: hover) { .tile:hover .modbar { display: flex; } }
+  .tile .modbar button[hidden] { display: none !important; }
+  /* Blur for all is on the corner chip; the menu has it only where
+     the chip is not shown (slim phone tiles), so no tile offers it twice. */
+  .tile:has(> .blurbox.on) .modbar [data-mod="blur"] { display: none; }
+  .tile:focus-visible { outline: 3px solid #7ec8ff; outline-offset: -3px; }
   .tile .modbar button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-  .tile .modbar button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.16);
-                         background: rgba(10,10,15,.85); color: #eceef8; cursor: pointer; font-size: .85rem;
-                         white-space: nowrap; }
+  .tile .modbar button { padding: .3rem .55rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.16);
+                         background: rgba(10,10,15,.85); color: #eceef8; cursor: pointer; font-size: .68rem; }
   .tile .modbar button:hover { border-color: var(--accent2, #ff5caa); }
   /* Broadcast hides the gallery, so the host's guest tools live on the stage. */
   #stagemod { display: none; }
@@ -1242,6 +1250,85 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       font-size: 1.15rem; border-radius: 12px; }
     /* `body.comfy .tile .name` below sets its own cap; the phone cap must outrank it. */
     .tile .name, html body.comfy .tile .name { max-width: calc(100% - 60px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; }
+    /* An upright SE's side tiles are about 105px wide, so the name beside
+       Full screen read "R…". A tile under 200px (.slim, set in makeTile)
+       puts Full screen and Blur on the top corners and gives the name the
+       bottom, on two lines if it needs them. */
+    .tile.slim .maxbtn { top: 8px; left: 8px; right: auto; bottom: auto; }
+    /* "Blur for everyone" can't fit a 44px chip ("everyone" alone is 42px
+       at 9px). On a slim tile it lives in the tap menu, beside Mute for
+       everyone, the same on every tile. */
+    .tile.slim > .blurbox { display: none !important; }
+    .tile.slim:has(> .blurbox.on) .modbar [data-mod="blur"] { display: inline-block; }
+    .tile.slim:not(.cam-off) .chips { left: 56px; right: 56px; }
+    /* "✋ hand raised" is 121px at a phone's chip size; a 105px tile cut it
+       to "✋ hand rais". On a slim tile it wraps, a size down. */
+    .tile.slim .chips span.warn { white-space: normal; text-align: center; font-size: 12px; line-height: 1.15;
+      min-width: 0; padding: 1px 4px; border-radius: 8px; }
+    /* Upright tiles are tall enough to put "✋ hand raised" under the buttons, not between them. */
+    @media (orientation: portrait) {
+      .tile.slim:not(.short):not(.cam-off) .chips { top: 58px; left: 6px; right: 6px; }
+      /* A tapped slim tile's menu opened 92px down a 153px tile, over Full
+         screen and the name, with 36px buttons. It fills the tile above the
+         name instead; Full screen steps aside while it is open. */
+      .tile.slim:not(.short).menu .modbar { top: 6px; left: 6px; right: 6px; bottom: 52px; z-index: 7; gap: 6px;
+        justify-content: center; overflow-y: auto; border-radius: 10px; background: rgba(10,10,15,.55); }
+      .tile.slim:not(.short).menu .modbar button { box-sizing: border-box; width: 100%; min-height: 44px; padding: 2px 4px;
+        font-size: 13px; line-height: 1.1; white-space: normal; flex: 0 0 auto; background: #14141c; }
+      .tile.slim:not(.short).menu > .blurbox, .tile.slim:not(.short).menu .maxbtn { visibility: hidden; }
+      /* A short upright tile (about 100px: an SE in Safari, or the side
+         column of 7 on an SE) put a two-line name over "✋ hand raised", the
+         mute icon and Full screen. As on a sideways tile, the chips sit right
+         of Full screen; the hand is a ✋ chip there, and the name is a size
+         down so two lines clear Full screen. */
+      .tile.slim.short:not(.cam-off) .chips { right: 4px; flex-wrap: wrap; align-content: flex-start; gap: 4px; }
+      .tile.slim.short:not(.cam-off) .chips span.hand { font-size: 0; width: 22px; height: 22px; padding: 0; box-sizing: border-box;
+        display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
+      .tile.slim.short:not(.cam-off) .chips span.hand b { font-size: 13px; font-weight: normal; }
+      .tile.slim.short .name { font-size: 13px; line-height: 1.15; }
+      /* An admin's menu adds Allow apps, Allow screen share and Ban: five
+         buttons in a 95px box hid Mute for all above its scroll top.
+         It opens as the sideways sheet instead, under Fit. */
+      body.amadmin .tile.slim.menu, .tile.slim.short.menu { outline: 3px solid #7ec8ff; outline-offset: -3px; }
+      body.amadmin .tile.slim.menu > .blurbox, body.amadmin .tile.slim.menu .maxbtn { visibility: visible; }
+      body.amadmin .tile.slim.menu .modbar, .tile.slim.short.menu .modbar { position: fixed; top: 110px; left: 50%; right: auto; bottom: auto; transform: translateX(-50%);
+        width: min(300px, calc(100vw - 24px)); max-height: calc(100vh - 122px); overflow-y: auto; box-sizing: border-box;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; z-index: 20; justify-content: normal;
+        border-radius: 14px; background: #0a0a0f; border: 1px solid rgba(255,255,255,.2); box-shadow: 0 6px 24px rgba(0,0,0,.6); }
+      body.amadmin .tile.slim.menu .modbar::before, .tile.slim.short.menu .modbar::before { content: attr(data-who); grid-column: 1 / -1; color: #eceef8; font: 700 14px/1.2 system-ui, sans-serif;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      body.amadmin .tile.slim.menu .modbar button, .tile.slim.short.menu .modbar button { width: auto; min-height: 44px; font-size: 14px; padding: 2px 6px; background: #14141c; }
+    }
+    /* Sideways a slim tile is about 100px tall, so the tile clipped the menu
+       92px down to a sliver of Mute for all. It opens as a small sheet
+       under the room name instead, says whose it is, and the tile is ringed. */
+    @media (orientation: landscape) {
+      /* Between Full screen and the Blur corner (56px each side) a 105px
+         tile had no room, so a raised hand never showed. Blur is in the
+         menu here, so the chips take the whole right of Full screen, above
+         the name (which starts 62px down). */
+      .tile.slim:not(.cam-off) .chips { right: 4px; flex-wrap: wrap; align-content: flex-start; }
+      .tile.slim .chips span.warn { font-size: 11px; padding: 1px 2px; }
+      .tile.slim.menu .modbar { position: fixed; top: 60px; left: 50%; right: auto; bottom: auto; transform: translateX(-50%);
+        width: min(300px, calc(100vw - 24px)); max-height: calc(100vh - 160px); overflow-y: auto; box-sizing: border-box;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; z-index: 20;
+        border-radius: 14px; background: #0a0a0f; border: 1px solid rgba(255,255,255,.2); box-shadow: 0 6px 24px rgba(0,0,0,.6); }
+      .tile.slim.menu .modbar::before { content: attr(data-who); grid-column: 1 / -1; color: #eceef8; font: 700 14px/1.2 system-ui, sans-serif;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .tile.slim.menu .modbar button { box-sizing: border-box; min-height: 44px; padding: 2px 6px; font-size: 14px; line-height: 1.1;
+        white-space: normal; background: #14141c; }
+      /* An admin's five buttons ran the sheet down under Record/Captions and
+         the dock, which painted over Allow apps and Ban (the sheet lives in
+         the call strip, under them). Three across with the name first, it is
+         two rows, and it sits right, clear of Record/Captions on the left. */
+      body.amadmin .tile.slim.menu .modbar { left: auto; right: calc(12px + env(safe-area-inset-right, 0px)); transform: none;
+        width: min(420px, calc(100vw - 236px)); grid-template-columns: repeat(3, 1fr); padding: 4px; }
+      body.amadmin .tile.slim.menu .modbar::before { grid-column: auto; align-self: center; white-space: normal;
+        overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+      body.amadmin .tile.slim.menu .modbar button { font-size: 13px; padding: 2px 4px; }
+    }
+    .tile.slim .name, html body.comfy .tile.slim .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 1px 4px; z-index: 5;
+      white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
   }
   .tile.cam-off .maxbtn { display: none; }
   .tile.focus { grid-column: 1 / -1; aspect-ratio: 16 / 9; }
@@ -1330,7 +1417,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cmsg .cpick { padding: 0; font-size: 22px; }
   .cmsg .cchip { gap: 6px; color: #1d1d1f; }
   .cmsg .cchip[aria-pressed="true"] { border: 2.5px solid #0064c8; background: #e6f0fb; }
+  .cmsg.mine .cchip[aria-pressed="true"] { border-color: #1d1d1f; }
   .cmsg .cpicks, .cmsg .cchips, .cmsg .cacts { display: flex; flex-wrap: wrap; }
+  .cmsg .cwhorx { margin: 8px 0 0; font: 400 1rem/1.35 system-ui, sans-serif; }
+  .cmsg .cwhorx span { display: block; }
+  .cmsg[data-line] { cursor: pointer; }
+  .cmsg[aria-expanded="true"] { box-shadow: 0 0 0 2px #0064c8; }
+  .cmsg.mine[aria-expanded="true"] { box-shadow: 0 0 0 2px #1d1d1f; }
   #chatreply { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; margin: 0 12px; padding: 8px 0 0; }
   #chatreply[hidden] { display: none !important; }
   #chatreply .chatreply-body { flex: 1; min-width: 0; border-left: 3px solid #0064c8; padding: 2px 8px; }
@@ -1654,6 +1747,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, .seg:focus-visible {
     outline: 3px solid #0064c8; outline-offset: 2px;
   }
+  /* What is pinned to the top of a call (the header chip, Fit, Unmute, the
+     build name, the lobby's notice) starts below the notch and below the
+     "new version" bar, which floats over the top of the page (js/gifos-update.js)
+     and used to cover the room name, a phone's only way into People.
+     run.html sets --updh to the bar's height while it shows. */
+  :root { --gtop: max(env(safe-area-inset-top, 0px), var(--updh, 0px)); }
   .topchip { position: fixed; z-index: 6; top: 14px; left: 14px; display: flex; align-items: center; gap: 8px;
     width: max-content; max-width: calc(100vw - 110px); background: rgba(12,14,18,.92); color: #f4f7fb; /* 110: Fit is 64 wide at right 14 and sits lower */
     border-radius: 999px; padding: 6px 12px 6px 14px; }
@@ -1667,6 +1766,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* A wide window lays the count and the rest side by side so the rest keeps
      its own width (it is the line tests measure); a phone truncates the chip. */
   @media (min-width: 701px) and (min-height: 501px) { .topchip .status { display: flex; align-items: center; } }
+  /* A phone chip is one block line, so a long message ends in an ellipsis
+     (text-overflow draws nothing on an inline or a flex box). */
+  @media (max-width: 700px), (max-height: 500px) {
+    .topchip .status { display: block; }
+    /* The box that holds the line draws the ellipsis: inline-block, clipped. */
+    .topchip #statusrest { display: inline-block; max-width: 100%; vertical-align: bottom; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
   /* A broadcast host who is the only person here gets Invite in the chip.
      The sentence stays. Wide screens show the same button the phone shows.
@@ -1780,6 +1886,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #status-full #status-full-close {
     background: #0064c8; color: #fff; border: 0; min-height: 48px; min-width: 96px; font-size: 1rem;
   }
+  /* A phone hides the "3 in the meeting" count, so People (Rename, Mute,
+     Spotlight, the waiting room) opens from here. */
+  #status-full .status-full-acts { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+  #status-full #status-full-people {
+    background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; min-height: 48px; min-width: 96px; font-size: 1rem;
+  }
   @media (max-width: 700px), (max-height: 500px) {
     /* The room name is the tap that opens the rest of the status.
        Padding made that hit 23px. The chip itself is the 44px target. */
@@ -1788,9 +1900,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .topchip[data-invite="1"] { padding-right: 0; }
     .topchip[data-invite="1"] #hdrinvite:not([hidden]) { display: inline-flex; }
   }
-  .fitbtn { position: fixed; z-index: 6; top: calc(58px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); min-width: 44px; min-height: 44px;
+  .fitbtn { position: fixed; z-index: 6; top: calc(58px + var(--gtop)); right: calc(14px + env(safe-area-inset-right, 0px)); min-width: 44px; min-height: 44px;
     border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 1rem/1.2 system-ui, sans-serif; }
+  /* A texted link skips the lobby, so "You join muted" is never seen.
+     Unmute sits in the header band (tiles already start below Fit) and
+     stays when Live and the dock tuck. Muted is the call, not chrome.
+     Once the mic is on, the same slot says Camera while the camera is off.
+     The picture stays on the video feed. This is not a second avatar. */
+  #unmute, #showcam {
+    position: fixed; z-index: 7;
+    top: calc(58px + var(--gtop));
+    left: calc(14px + env(safe-area-inset-left, 0px));
+    min-width: 44px; min-height: 44px; padding: 8px 16px; border: 0; border-radius: 999px;
+    background: #0064c8; color: #fff; cursor: pointer;
+    font: 700 1rem/1.15 system-ui, sans-serif;
+  }
+  #unmute[hidden], #showcam[hidden] { display: none !important; }
+  @media (max-height: 500px) and (orientation: landscape) {
+    /* The room name and the count share the header row with Fit.
+       Unmute sits in the gap between them, and the chip stops short of it. */
+    .topchip { max-width: calc(100% - 12rem - 48px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
+    #unmute, #showcam {
+      top: calc(14px + var(--gtop));
+      left: auto;
+      right: calc(5rem + 24px + env(safe-area-inset-right, 0px));
+      transform: none;
+    }
+  }
   /* Live, Record, and Captions sit on the call, above the dock, so a
      producer does not open More to see them. Live is the only red mark
      until recording starts. Captions turns blue, not red. */
@@ -1800,7 +1937,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     right: calc(8px + env(safe-area-inset-right, 0px));
     bottom: calc(var(--dockh, 108px) + 8px);
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    /* The row is full width; sideways its empty part lies over the tiles'
+       names. Only its buttons take taps. */
+    pointer-events: none;
   }
+  #callstate > * { pointer-events: auto; }
   #callstate[hidden] { display: none !important; }
   /* The call-state band and the chat preview are phone chrome: a desktop has
      the CC and Chat dock buttons, the room bar, and the booth cards there. */
@@ -1826,6 +1967,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .moregroup.phone-first h4 { display: none; }
   #barmore .phone-first #invite { background: #0064c8; color: #fff; }
   @media (max-width: 700px), (max-height: 500px) { #lobby.show { overflow-y: auto; -webkit-overflow-scrolling: touch; } }
+  /* Sideways, a row above the dock cost the faces 52px of a 320px screen
+     while the room beside the dock sat empty. There Record and Captions
+     stand in a column left of the dock, bottoms level (paintCallState). */
+  #callstate.beside {
+    right: auto; bottom: var(--csb, 14px);
+    flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 4px;
+  }
+  /* The dock steps right when the column needs the room (--dockshift). */
+  body .bar { margin-left: var(--dockshift, 0px); }
+  /* The sheet hangs off the dock; it stays put when the dock steps right, so its
+     last column (Help) does not leave the screen on a sideways SE. */
+  #barmore { margin-left: calc(-1 * var(--dockshift, 0px)); }
   body.solo-app #callstate { display: none !important; }
   #call-live, #call-rec, #call-cc {
     min-height: 44px; min-width: 44px; padding: 8px 12px; border-radius: 999px;
@@ -1885,6 +2038,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #chatpreview.mention { background: #0064c8; color: #fff; }
   #chatpreview.mention b, #chatpreview.mention span { color: #fff; }
   #chatpreview.mention b { max-width: 58%; }
+  /* Who reacted is what the note is for; the line gives way first. */
+  #chatpreview.reacted b { flex-shrink: 0; max-width: 58%; }
   #chatbadge {
     flex: 0 0 auto;
     min-width: 44px; min-height: 44px; padding: 0 12px;
@@ -1902,11 +2057,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* The build name used to be a solid chip in the corner, beside Fit, and
      Fit hung down onto the top face. Fit shares the header row. The build
      name is a faint line under that row, not a second button. */
-  #gifos-build-float { top: calc(58px + env(safe-area-inset-top, 0px)) !important; left: calc(14px + env(safe-area-inset-left, 0px)) !important;
+  #gifos-build-float { top: calc(58px + var(--gtop)) !important; left: calc(14px + env(safe-area-inset-left, 0px)) !important;
     right: auto !important; bottom: auto !important;
     opacity: 0.55 !important; color: #c5cad3 !important; background: transparent !important; padding: 0 !important;
     border-radius: 0 !important; font-size: 11px !important; line-height: 1.2 !important;
     z-index: 6 !important; text-shadow: none !important; pointer-events: none !important; }
+  /* A sideways phone's faces start at y=66, so the line under the header
+     ran across the first two faces. It sits in the strip above the header
+     instead, which stays clear with the buttons up or away. */
+  @media (max-height: 500px) and (orientation: landscape) {
+    #gifos-build-float { top: var(--gtop) !important; }
+  }
   .bar { position: fixed; z-index: 32; left: 50%; bottom: 14px; transform: translateX(-50%);
     display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; height: 104px; width: auto;
     max-width: calc(100% - 16px); padding: 0 16px 0 18px; margin: 0;
@@ -2065,9 +2226,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        sit on the top corners and stay 44px. */
     @media (max-height: 500px) and (orientation: landscape) {
       .tile .maxbtn { top: 8px; left: 8px; right: auto; bottom: auto; }
-      .tile > .blurbox { width: 44px; height: 44px; min-width: 44px; min-height: 44px; top: 8px; right: 8px; padding: 2px; font-size: 10px; line-height: 1.05; }
-      .tile:not(.cam-off) .chips { left: 56px; right: 56px; }
+      .tile > .blurbox { width: 64px; height: 44px; min-width: 44px; min-height: 44px; top: 8px; right: 8px; padding: 2px; font-size: 10px; line-height: 1.05; }
+      .tile:not(.cam-off) .chips { left: 56px; right: 76px; }
       .tile .name, html body.comfy .tile .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); font-size: .75rem; padding: 1px 4px; z-index: 5; }
+      /* One line cut "Margaret Johnson" (and "Nathan (you)" in Safari's
+         wider font). The name takes a second line; the 44px buttons end
+         52px down a 100px tile, so two lines still clear them. */
+      .tile .name, html body.comfy .tile .name { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
     }
     /* The phone pass pinned a fixed self tile here; the adjustable self-view
        (meet-selfview-stage, newer) places you instead. */
@@ -2085,7 +2250,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     position: fixed; inset: 0; overflow: hidden; padding: 0 !important; margin: 0;
     display: block; background: #0d0f14; z-index: 1; }
   body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll {
-    overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    /* Ends at the dock band (meet-views sets it): no tile under the buttons. */
+    bottom: var(--comfy-clip, 0px); }
   body.comfy #grid, body.comfy #stadium, body.comfy #stagefeed, body.comfy #stadfaces {
     position: static; display: block; padding: 0; margin: 0; gap: 0; overflow: visible;
     height: auto; background: transparent; border: 0; }
@@ -2128,10 +2295,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     max-width: calc(100% - .8rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   body.comfy .tile:not(.speaking), body.comfy .stadface:not(.speaking) {
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+  body.comfy .tile[data-tier="row"]::after {
+    content: ''; position: absolute; top: 8px; right: 8px; width: 8px; height: 8px;
+    border-radius: 50%; background: #7b5cff; z-index: 3; pointer-events: none; }
+  /* A slim sideways tile's "✋ hand raised" runs into this corner, and the
+     dot sat on its "d". The hand matters more; the dot steps aside. */
+  @media (orientation: landscape) {
+    body.comfy .tile.slim[data-tier="row"]:has(.chips span.warn)::after { display: none; } }
+  /* A short upright tile's chips run to its top right corner too. */
+  body.comfy .tile.slim.short:not(.cam-off)[data-tier="row"]:has(.chips span)::after { display: none; }
   body.comfy .stad-band {
     position: absolute; z-index: 4; pointer-events: none; background: rgba(12,14,18,.72);
     color: #f4f7fb; font-size: 12px; font-weight: 700; letter-spacing: .04em;
-    padding: 3px 8px; border-radius: 999px; }
+    padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+  /* The face under "↓2" keeps its name out of the hint's corner (meet-views). */
+  body.comfy .tile.by-hint .name { max-width: calc(100% - 14px - var(--hintw, 40px)) !important;
+    white-space: normal; overflow-wrap: anywhere; }
   body.comfy .tile[data-tier="bot"] { z-index: 5; border-radius: 12px; overflow: hidden; }
   /* Scroll is a manual gallery choice. Fit stays one screen (overflow hidden
      above). Scroll grows downward; it is not a pager and it is not applied
@@ -2250,7 +2429,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      picture instead of pushing Start, the admin action, and Join down. */
   @media (min-height: 431px) {
     #lobby.show .lob-appear { position: fixed; z-index: 36; left: 12px; right: 12px;
-      top: calc(12px + env(safe-area-inset-top, 0px)); margin: 0; width: auto;
+      top: calc(12px + var(--gtop)); margin: 0; width: auto;
       background: rgba(255,255,255,.96); box-shadow: 0 8px 24px rgba(0,0,0,.28); }
     #lobby.show .lob-pv-name { display: none; }
   }
@@ -2316,7 +2495,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (min-width: 701px) and (min-height: 501px) {
     .topchip button#status { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); }
   }
-  #roster { display: none; position: fixed; z-index: 30; top: 14px; right: 14px; bottom: 128px;
+  /* Above the Record/Captions row (31) and the dock (32), which painted over its foot. */
+  #roster { display: none; position: fixed; z-index: 33; top: 14px; right: 14px; bottom: 128px;
     width: min(320px, calc(100vw - 28px)); background: #fff; color: #1d1d1f; border-radius: 20px;
     box-shadow: 0 16px 40px rgba(0,0,0,.28); flex-direction: column; overflow: hidden; }
   #roster.open { display: flex; }
@@ -2327,6 +2507,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #roster-find { margin: 0 14px 8px; min-height: 44px; border-radius: 12px; border: 1px solid #c5cad3;
     padding: 0 12px; font: 16px/1.2 system-ui, sans-serif; color: #1d1d1f; background: #fff; }
   #roster-list { overflow: auto; flex: 1; min-height: 0; }
+  /* A sideways phone: ending at the dock left the list 0px tall. Cover the
+     dock (Close is in the panel) and scroll the whole panel. */
+  @media (max-height: 500px) {
+    #roster { top: 8px; bottom: 8px; overflow-y: auto; }
+    #roster-list { flex: none; overflow: visible; }
+    #roster .roster-head { position: sticky; top: 0; z-index: 1; background: #fff; }
+  }
   .roster-row { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 14px;
     border-top: 1px solid #e8ecf1; font: 600 16px/1.3 system-ui, sans-serif; flex-wrap: wrap; }
   .roster-row .nm { flex: 1; min-width: 0; }
@@ -2423,12 +2610,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      top of a 34px home indicator, and the name chip sat at y=14 under a
      47px notch. */
   .bar { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
-  .topchip { top: calc(14px + env(safe-area-inset-top, 0px)); left: calc(14px + env(safe-area-inset-left, 0px)); }
-  .fitbtn { top: calc(58px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); }
+  .topchip { top: calc(14px + var(--gtop)); left: calc(14px + env(safe-area-inset-left, 0px)); }
+  .fitbtn { top: calc(58px + var(--gtop)); right: calc(14px + env(safe-area-inset-right, 0px)); }
   /* On a short landscape phone the chip and Fit share one row, so the
      faces can start higher. Portrait keeps Fit under the chip. */
   @media (max-height: 500px) and (orientation: landscape) {
-    .fitbtn { top: calc(14px + env(safe-area-inset-top, 0px)); }
+    .fitbtn { top: calc(14px + var(--gtop)); }
   }
   .bar:not(.collapsed) .barmore {
     bottom: calc(122px + env(safe-area-inset-bottom, 0px));
@@ -2486,6 +2673,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     pointer-events: none;
     transform: translateY(16px);
   }
+  body.chrome-away #callstate > * { pointer-events: none; }
   /* The preview was taking more than half of a short phone, so Join a link
      sat below the fold (SE portrait bottom 661 on a 568px screen, and in
      landscape the first action was already off screen). */
@@ -2552,7 +2740,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="topchip">
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
-    <span class="status" id="status"><button type="button" id="statuscount" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest"></span><button type="button" id="statusinvite" hidden>Invite</button></span>
+    <span class="status" id="status"><button type="button" id="statuscount" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span><button type="button" id="statusinvite" hidden>Invite</button></span>
     <button type="button" id="hdrinvite" hidden title="Share the viewer link">Invite</button>
   </div>
   <aside id="roster" aria-label="People">
@@ -3188,7 +3376,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="name-modal" id="status-full" style="display:none" aria-labelledby="status-full-text">
     <div class="name-box">
       <p id="status-full-text"></p>
-      <button type="button" id="status-full-close">Close</button>
+      <div class="status-full-acts">
+        <button type="button" id="status-full-people" data-t="people" aria-controls="roster">People</button>
+        <button type="button" id="status-full-close">Close</button>
+      </div>
     </div>
   </div>
   <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
@@ -3847,6 +4038,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     paintBroadcastChrome();
     const grid = document.getElementById('grid');
     const statusEl = document.getElementById('status');
+    // The text lives in an inner span: a phone makes the button a flex box
+    // for its 44px tap, and "…" is never drawn on a flex box (or on a
+    // WebKit button), so a long message was cut mid-word.
+    const writeStatus = (t) => {
+      let span = statusEl.querySelector('.statustext');
+      if (!span) { span = document.createElement('span'); span.className = 'statustext'; statusEl.replaceChildren(span); }
+      span.textContent = t;
+    };
     const share = document.getElementById('share');
     const shareUrl = document.getElementById('share-url');
     // ONE rule, ONE sentence: the password button's own guard and the door's
@@ -3919,6 +4118,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     });
     const statusFullClose = document.getElementById('status-full-close');
     if (statusFullClose) statusFullClose.onclick = () => closeStatusSheet();
+    const statusFullPeople = document.getElementById('status-full-people');
+    if (statusFullPeople) statusFullPeople.onclick = () => { closeStatusSheet(); toggleRoster(true); };
     const uid = (p) => p + '_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
     // The one standard row-delete glyph (see button.row-del in the styles).
     const DEL_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
@@ -6166,7 +6367,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The room-wide chat switch is the admin's alone, and only means
       // anything where there IS an admin to sign it.
       if ((field === 'chat' || field === 'cc') && (!hasAdminRoom() || !amAdmin)) return;
-      if (hasAdminRoom() && !amAdmin) { setStatus('🛡 Only this room' + String.fromCharCode(39) + 's admins can ' + (field === 'mute' ? 'mute' : 'blur') + ' someone for everyone.'); return; }
+      if (hasAdminRoom() && !amAdmin) { setStatus('🛡 Only this room' + String.fromCharCode(39) + 's admins can ' + (field === 'mute' ? 'mute' : 'blur') + ' someone for all.'); return; }
       const mine = modTable[target] = modTable[target] || {};
       mine[field] = { on, by: myName(), byId: myId, at: Date.now() };
       // In an admin room the table travels with the admin's signature, and a
@@ -6764,9 +6965,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (pid === myId) return myName() || '\u2026';
       return rosterNames[pid] || (peers.get(pid) || {}).name || '\u2026';
     }
-    const MODBAR_HTML = '<button data-mod="mute" aria-label="Mute for everyone">Mute</button><button data-mod="blur" aria-label="Blur for everyone">Blur</button>'
-      + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage">Apps</button>'
-      + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share">Share</button>'
+    // A host's per-person controls say "for all" (hostWords, below).
+    const MODBAR_HTML = '<button data-mod="mute" aria-label="Mute for all">Mute for all</button><button data-mod="blur" aria-label="Blur for all">Blur for all</button>'
+      + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage">Allow apps & stage</button>'
+      + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share">Allow screen share</button>'
       + '<button class="banbtn" data-adm="ban" title="Ban this person&#39;s device from the room" aria-label="Ban this device">Ban</button>';
     // A BAN NAMES A DEVICE, so the tag must be one the RELAY attested
     // (roster / peer-join). A tag a peer merely asserts in its own
@@ -6809,19 +7011,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { mod = modOf(id); } catch (e) { return; }
       const gMute = mod.mute && mod.mute.on, gBlur = mod.blur && mod.blur.on;
       const appOn = !!(mod.app && mod.app.on);
-      modbar.children[0].textContent = gMute ? 'Unmute' : 'Mute';
-      modbar.children[0].setAttribute('aria-label', gMute ? 'Unmute for everyone' : 'Mute for everyone');
-      modbar.children[1].textContent = gBlur ? 'Unblur' : 'Blur';
-      modbar.children[1].setAttribute('aria-label', gBlur ? 'Unblur for everyone' : 'Blur for everyone');
+      const st = (typeof statusOf !== 'undefined' && statusOf.get(id)) || {};
+      const muteLabel = hostWords('mute', gMute);
+      const blurLabel = hostWords('blur', gBlur);
+      modbar.children[0].textContent = muteLabel; modbar.children[0].setAttribute('aria-label', muteLabel);
+      // Already muted by their own hand (their announced status): nothing
+      // to mute. Muted for everyone, it stays, as the way to lift it.
+      modbar.children[0].hidden = !gMute && !!st.muted;
+      modbar.children[1].textContent = blurLabel; modbar.children[1].setAttribute('aria-label', blurLabel);
+      // Already soft (their own blur, or no password yet): nothing to blur.
+      modbar.children[1].hidden = !blurOffer(id);
       if (modbar.children[2]) {
-        modbar.children[2].textContent = appOn ? 'Revoke' : 'Apps';
-        modbar.children[2].setAttribute('aria-label', appOn ? 'Revoke apps & stage' : 'Allow apps & stage');
+        const appLabel = appOn ? 'Revoke apps & stage' : 'Allow apps & stage';
+        modbar.children[2].textContent = appLabel;
+        modbar.children[2].setAttribute('aria-label', appLabel);
       }
       for (const b of modbar.children) {
         if (!b.getAttribute || b.getAttribute('data-mod') !== 'share') continue;
         const shareOn = !!(mod.share && mod.share.on);
-        b.textContent = shareOn ? 'Stop' : 'Share';
-        b.setAttribute('aria-label', shareOn ? 'Revoke screen share' : 'Allow screen share');
+        const shareLabel = shareOn ? 'Revoke screen share' : 'Allow screen share';
+        b.textContent = shareLabel;
+        b.setAttribute('aria-label', shareLabel);
       }
     }
     // Guests the stage strip should name even before the mesh has a seat
@@ -7051,6 +7261,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         openFsView(isMe ? 'me' : 'peer:' + id);
       });
       tile.appendChild(maxbtn);
+      if (window.ResizeObserver) {
+        if (!makeTile.slimObs) {
+          makeTile.slimObs = new ResizeObserver((list) => list.forEach((en) => {
+            // A removed tile reports 0x0 once; let it go.
+            if (!en.target.isConnected) { makeTile.slimObs.unobserve(en.target); return; }
+            const w = en.contentRect.width;
+            const h = en.contentRect.height;
+            if (w > 0) { en.target.classList.toggle('slim', w < 200); en.target.classList.toggle('thin', w < 116); en.target.classList.toggle('short', w < 200 && h > 0 && h < 130); }
+          }));
+        }
+        try { makeTile.slimObs.observe(tile); } catch (e) {}
+      }
       let modbar = null, voteBtn = null;
       if (!isMe) {
         tile.tabIndex = 0;
@@ -7068,7 +7290,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         modbar.innerHTML = MODBAR_HTML;
         wireModbar(modbar, id);
         tile.appendChild(modbar);
-        tile.addEventListener('click', () => tile.classList.toggle('menu')); // tap = menu on phones
+        tile.addEventListener('click', () => {
+          // A sideways phone opens the menu away from the tile; it names whose it is.
+          modbar.dataset.who = label.textContent;
+          modbar.setAttribute('aria-label', label.textContent);
+          tile.classList.toggle('menu'); // tap = menu on phones
+        });
+        // On a slim phone tile the open menu fills the tile, so a second tap
+        // there lands on Mute for everyone. A tap anywhere else closes it.
+        if (!makeTile.menuOff && typeof document.addEventListener === 'function') {
+          makeTile.menuOff = true;
+          document.addEventListener('click', (e) => {
+            document.querySelectorAll('.tile.menu').forEach((t) => { if (!t.contains(e.target)) t.classList.remove('menu'); });
+          }, true);
+        }
       }
       // Headless (uplink-only) peers keep the full tile machinery — video
       // element, meters, chips — but never enter the grid: a fellow delegate
@@ -7111,6 +7346,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The four-point sparkle. Reactions use a smiley. This mark is only for
     // AI: the transcript controls and the note bot's tile badge.
     const AI_SPARK_SVG = '<svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>';
+    // A host's per-person controls say "for all", the same words on every
+    // tile, menu, sheet, chip, tooltip and People row (Nathan, 2026-10-16).
+    function hostWords(field, on) {
+      if (field === 'mute') return on ? uiText('unmuteForAll', 'Unmute for all') : uiText('muteForAll', 'Mute for all');
+      return on ? uiText('unblurForAll', 'Unblur for all') : uiText('blurForAll', 'Blur for all');
+    }
+    // Which blur control a guest's tile offers, from explicit state only
+    // (the password, the signed orders, their announced blur), never from
+    // the picture. 'unblur' while blurred for all in a room that can be
+    // clear; 'blur' while the tile is clear; '' while it is soft anyway:
+    // their own blur, or no password yet (faces stay soft room-wide, which
+    // no one tile can change).
+    function blurOffer(id) {
+      if (!roomPw) return '';
+      const m = modOf(id).blur;
+      if (m && m.on) return 'unblur';
+      return blurLevelFor(id) === 0 ? 'blur' : '';
+    }
     function paintTileChrome(t, id, isMe, st) {
       if (!t || !t.tile || typeof t.tile.querySelector !== 'function') return;
       if (typeof document === 'undefined' || !document || typeof document.createElement !== 'function') return;
@@ -7147,14 +7400,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         });
         tile.appendChild(box);
       }
-      let on = false, by = '';
-      try { const m = modOf(id).blur; on = !!(m && m.on); by = (m && m.by) || ''; } catch (e) {}
-      const label = on ? 'Unblur' : 'Blur\nfor all';
-      box.className = 'blurbox on';
+      let on = false, by = '', offer = '';
+      try { const m = modOf(id).blur; on = !!(m && m.on); by = (m && m.by) || ''; offer = blurOffer(id); } catch (e) {}
+      // One wording for this control everywhere: the menu says the same.
+      const words = hostWords('blur', on);
+      const label = words.replace(/ /g, '\n');
+      box.className = offer ? 'blurbox on' : 'blurbox';
       if (box.textContent !== label) box.textContent = label;
-      box.setAttribute('aria-label', on ? 'Unblur' : 'Blur for all');
+      box.setAttribute('aria-label', words);
       box.setAttribute('aria-pressed', on ? 'true' : 'false');
-      const tip = on ? ('Blurred for everyone' + (by ? ' by ' + by : '')) : 'Blur for all';
+      const tip = words + (on && by ? ' (blurred by ' + by + ')' : '');
       if (box.title !== tip) box.title = tip;
     }
     // Repaint one tile's overlay: mute/camera icons (attributed when the
@@ -7173,6 +7428,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const isMe = id === 'me';
       const t = isMe ? meTile : peers.get(id);
       if (!t) return;
+      // A connected seat has sent its offer or answer, and a name rides on
+      // those, so one still without a name has none: say "Guest", as People
+      // does. "…" stays only while the pair is still connecting.
+      if (!isMe && t.label && t.connected && !hostRename(id) && !t.name && !rosterNames[id] && t.label.textContent === '\u2026') {
+        t.label.textContent = 'Guest';
+        if (t.avatar) {
+          if (typeof setTileLetter === 'function') setTileLetter(t.avatar, 'G');
+          else t.avatar.textContent = 'G';
+        }
+      }
       if (!isMe && t.tile) {
         const who = (t.label && t.label.textContent) || 'Participant';
         const al = who + '. Controls for this person.';
@@ -7255,7 +7520,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           ? '<span class="warn stopshare" role="button" tabindex="0" title="Stop sharing your screen">🖥 ' + esc(uiText('stopShare', 'Stop sharing')) + '</span>'
           : '<span class="warn">🖥 ' + esc(uiText('shareTheirsChip', 'sharing their screen')) + '</span>');
       }
-      if (st.hand) chips.push('<span class="warn">✋ hand raised</span>');
+      if (st.hand) chips.push('<span class="warn hand" title="hand raised"><b>✋</b> hand raised</span>');
       if (st.lv) chips.push('<span>leaving…</span>');
       if (st.rec) chips.push('<span class="warn">⏺ recording this meeting</span>');
       // No per-person transcription chip. Captions are a local display, and
@@ -7263,10 +7528,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Status icons only: a muted mic, a camera-off glyph. No icon when the
       // camera is on. Blur is the picture itself, never a badge. A bot has
       // neither a mic nor a camera.
-      if (!st.bot && gMute) chips.push(statusIco('mic-off', 'muted for everyone by ' + (mod.mute.by || 'someone')));
+      if (!st.bot && gMute) chips.push(statusIco('mic-off', 'muted for all by ' + (mod.mute.by || 'someone')));
       else if (!st.bot && st.muted) chips.push(statusIco('mic-off', 'muted'));
       const bl = blurLevelFor(id);
-      if (!st.bot && gCam) chips.push(statusIco('cam-off', 'video off for everyone by ' + (mod.cam.by || 'someone')));
+      if (!st.bot && gCam) chips.push(statusIco('cam-off', 'video off for all by ' + (mod.cam.by || 'someone')));
       else if (!st.bot && st.camOff) chips.push(statusIco('cam-off', 'camera off'));
       if (hasAdminRoom() && mod.app && mod.app.on && !admins.includes(id)) chips.push('<span>🧩 may run apps — allowed by ' + esc(mod.app.by) + '</span>');
       // The chip names a per-person allow only. A room-wide allow covers
@@ -7420,6 +7685,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return { n: n | 0, cols: cols | 0, video: video, srcEl: srcEl };
     }
     let comfyBusy = false;
+    // Where the call's buttons stood last, per screen size, so the faces
+    // keep their places while the buttons are tucked away.
+    let comfyUpBottom = { key: '', v: 0 };
     function applyComfy() {
       if (comfyBusy) return;
       const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
@@ -7477,45 +7745,55 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const shortLand = vhNow < 500 && vwNow > vhNow && vwNow < 900;
         const phone = vwNow < 600 || shortLand;
         let topInset = 0;
-        if (shortLand) {
+        // The "new version" bar moves the header down by --updh; the faces
+        // start under the moved header, never under the bar.
+        const updH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--updh')) || 0;
+        if (shortLand || updH > 0) {
           let below = 0;
           const fitEl = document.getElementById('fitbtn');
           const chipEl = document.querySelector('.topchip');
           if (chipEl) below = Math.max(below, chipEl.getBoundingClientRect().bottom);
           if (fitEl) below = Math.max(below, fitEl.getBoundingClientRect().bottom);
-          if (below > 0) topInset = Math.ceil(below + 8);
+          // Upright keeps meet-layout's 120 (Fit at 200% text) when it is lower.
+          if (below > 0) topInset = shortLand ? Math.ceil(below + 8) : Math.max(120, Math.ceil(below + 18));
         }
         let holdMs = 2500;
         try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}
-        let bottom = 0;
+        let bottom = 0, holdBottom = 0;
         try {
           // Tucked chrome is off the call. Measuring the sliding dock would
           // keep the empty band, so a quiet call uses only the home indicator.
           const away = document.body.classList.contains('chrome-away');
           if (!away) {
+            // Where the dock and Record/Captions rest, not where their slide
+            // back has got to: a fixed box's offsetTop skips its transform.
+            const restTop = (el) => getComputedStyle(el).position === 'fixed' ? el.offsetTop : el.getBoundingClientRect().top;
             const bar = document.querySelector('.bar');
-            if (bar) bottom = Math.max(0, window.innerHeight - bar.getBoundingClientRect().top);
+            if (bar) bottom = Math.max(0, window.innerHeight - restTop(bar));
             const state = document.getElementById('callstate');
             if (state && !state.hidden && state.getClientRects().length) {
               const sr = state.getBoundingClientRect();
               const vis = getComputedStyle(state).visibility;
-              if (sr.height > 2 && vis !== 'hidden') bottom = Math.max(bottom, window.innerHeight - sr.top);
+              if (sr.height > 2 && vis !== 'hidden') bottom = Math.max(bottom, window.innerHeight - restTop(state));
             }
+            comfyUpBottom = { key: vwNow + 'x' + vhNow, v: bottom };
           } else {
             const probe = document.getElementById('gifos-safe-b');
             if (probe) bottom = probe.offsetHeight || 0;
+            if (comfyUpBottom.key === vwNow + 'x' + vhNow) holdBottom = comfyUpBottom.v;
           }
           const note = document.getElementById('chatnote');
           if (note && !note.hidden && note.getClientRects().length) {
             const nr = note.getBoundingClientRect();
             if (nr.height > 2) bottom = Math.max(bottom, window.innerHeight - nr.top);
           }
+          if (holdBottom) holdBottom = Math.max(holdBottom, bottom);
         } catch (e) {}
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: faces, video: meta.video, cols: cols,
           orderKey: roster.length + ':' + roster.join(','), holdMs: holdMs,
           vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: myId || 'me',
-          pill: document.body.classList.contains('has-pill'), bottom: bottom, top: topInset,
+          pill: document.body.classList.contains('has-pill'), bottom: bottom, holdBottom: holdBottom, top: topInset,
           mode: window.__meetViewMode || 'gallery',
           swapSelf: !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage)),
           self: window.__meetSelf || 'tile',
@@ -7557,6 +7835,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (comfyResizeT) clearTimeout(comfyResizeT);
       comfyResizeT = setTimeout(() => { comfyResizeT = 0; try { layout(); } catch (e) {} }, 150);
     });
+    // The "new version" bar (js/gifos-update.js) floats over the top of the
+    // page. While it shows, --updh holds its height, so the header, Fit and
+    // the faces move down under it (--gtop in the CSS), and back up once it
+    // is dismissed. The bar is added to <body> on the first check.
+    (function () {
+      let updWas = -1, updSeen = null;
+      const sync = () => {
+        const bar = document.getElementById('update-bar');
+        if (bar && bar !== updSeen) {
+          updSeen = bar;
+          new MutationObserver(sync).observe(bar, { attributes: true, attributeFilter: ['style', 'class'] });
+          if (window.ResizeObserver) new ResizeObserver(sync).observe(bar);
+        }
+        const h = bar && bar.style.display !== 'none' ? Math.ceil(bar.getBoundingClientRect().height) : 0;
+        if (h === updWas) return;
+        updWas = h;
+        document.documentElement.style.setProperty('--updh', h + 'px');
+        try { layout(); } catch (e) {}
+      };
+      const watchBody = new MutationObserver(() => { if (document.getElementById('update-bar')) { watchBody.disconnect(); sync(); } });
+      watchBody.observe(document.body, { childList: true });
+      sync();
+    })();
 
     // ---- who's talking: per-stream audio meters → glowing tile border --------
     let ac = null;
@@ -8166,7 +8467,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (t._avPipe && (t._avPipe.key !== key || !t._avPipe.track || t._avPipe.track.readyState !== 'live')) {
         releaseAvPipe(t._avPipe); t._avPipe = null;
       }
-      if (!t._avPipe) t._avPipe = acquireAvPipe(key, name);
+      // A phone shows the letter overlay itself: a short tile keeps a whole
+      // initial clear of the name and chips (a phone QA rule).
+      if (!t._avPipe && !phoneLayout()) t._avPipe = acquireAvPipe(key, name);
       if (!t._avPipe) {
         // No slot: the letter overlay stands in for the ridden video.
         t._avatarRiding = false;
@@ -8192,6 +8495,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { vt = sentVideoTrack(); } catch (e) {}
         if (dark && !vt) vt = avatarOutboundTrack(myName(), blurLevelFor('me') | 0);
         if (vt) showAvatarTrack(t.video, (vt === (avatarPipe && avatarPipe.track) ? avatarPipe.stream : new MediaStream([vt])), vt);
+        // My own tile on a phone shows the letter overlay too; the baked track still goes out.
+        if (t.avatar && t.avatar.classList) t.avatar.classList.toggle('rides-off', !!(dark && phoneLayout()));
         return;
       }
       if (!dark) {
@@ -9550,7 +9855,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const flags = [];
         if (r.stage) flags.push(uiText('onAir', 'On air'));
         if (r.hand) flags.push(uiText('hand', 'Hand'));
-        if (r.roomMute) flags.push(uiText('forEveryone', 'For everyone'));
+        if (r.roomMute) flags.push(uiText('forEveryone', 'For all'));
         else if (r.muted) flags.push(uiText('muted', 'Muted'));
         if (flags.length) {
           const f = document.createElement('span');
@@ -9558,13 +9863,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           f.textContent = flags.join(' · ');
           row.appendChild(f);
         }
-        const mayMute = !r.me && !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
+        // As on the tile: no Mute for someone already muted by their own hand.
+        const mayMute = !r.me && !(r.muted && !r.roomMute) && !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
         if (mayMute) {
           const b = document.createElement('button');
           b.type = 'button';
           b.className = 'mutebtn' + (r.roomMute ? ' on' : '');
-          b.textContent = r.roomMute ? uiText('unmuteForAll', 'Unmute') : uiText('muteForAll', 'Mute');
-          b.setAttribute('aria-label', (r.roomMute ? uiText('unmuteForAll', 'Unmute') : uiText('muteForAll', 'Mute')) + ' ' + r.name);
+          const words = hostWords('mute', r.roomMute);
+          b.textContent = words;
+          b.setAttribute('aria-label', words + ': ' + r.name);
           b.onclick = () => {
             let on = false;
             try { const cur = modOf(r.id).mute; on = !(cur && cur.on); } catch (e) { on = true; }
@@ -11182,7 +11489,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
-        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; restoreDoorTile(p); }
+        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
         updateStatus();
         if (p.connected) { p.altPath = false; p.tlAt = 0; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
@@ -15093,7 +15400,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // moved to Invite), so there are just two moods: sign in, or manage.
       if (amAdmin) {
         setup.style.display = 'none'; panel.style.display = '';
-        document.getElementById('adm-hint').textContent = 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for everyone, and ban devices. Anyone who knows the admin password can open Admin and sign in too.';
+        document.getElementById('adm-hint').textContent = 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for all, and ban devices. Anyone who knows the admin password can open Admin and sign in too.';
         renderBanned();
       } else {
         setup.style.display = ''; panel.style.display = 'none';
@@ -16366,12 +16673,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let unread = 0;
     let lastChatLine = null;
     let mentionAlert = null;
+    // Someone reacted to your line while chat was closed: the call says so.
+    // It is not a new message, so the count stays as it was.
+    let reactAlert = null;
     let pendingReply = null;
     // Reactions: one emoji from a short list, per person, per line.
     // A frame counts only from the person it names (like taking back a line).
     const REACTS = ['👍', '❤️', '😂', '🙏', '👏'];
     const chatReacts = new Map(); // line id -> Map(emoji -> Set(byId))
     let reactOpen = null; // the line whose picker is open
+    // A line's Reply/React/Delete show only once you tap that line, so a
+    // phone shows the conversation instead of a row of buttons per line.
+    let lineOpen = null;
+    // Who reacted, by name: a phone has no hover, so the open line says it.
+    // Someone who left is still named by the name they had when they
+    // reacted, or by a line they wrote.
+    const reactNames = new Map(); // byId -> name when their reaction landed
+    function reactorName(byId) {
+      if (byId === myId) return 'You';
+      const n = typeof nameForPeer === 'function' ? nameForPeer(byId) : '';
+      if (n) return n;
+      if (reactNames.has(byId)) return reactNames.get(byId);
+      for (const m of chat.values()) if (m.byId === byId && m.by) return m.by;
+      // No name at all: People calls them Guest, so the line does too.
+      return 'Guest';
+    }
+    function reactorNames(who) {
+      const ids = Array.from(who);
+      // You first, then in the order they reacted.
+      ids.sort((a, b) => (b === myId) - (a === myId));
+      return ids.map(reactorName).join(', ');
+    }
     function takeReact(id, e, byId, on) {
       if (!id || !byId || REACTS.indexOf(e) < 0) return false;
       id = String(id).slice(0, 80);
@@ -16386,11 +16718,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!who) { who = new Set(); per.set(e, who); }
         if (who.has(byId)) return false;
         who.add(byId);
+        const nm = byId !== myId && typeof nameForPeer === 'function' ? nameForPeer(byId) : '';
+        if (nm && (reactNames.has(byId) || reactNames.size < 500)) reactNames.set(byId, nm);
       } else {
         if (!who || !who.delete(byId)) return false;
         if (!who.size) per.delete(e);
       }
       return true;
+    }
+    function noteReactToMe(id, e, on) {
+      const line = chat.get(String(id));
+      if (!on || !line || line.byId !== myId) return;
+      if (chatPanel && chatPanel.classList.contains('open')) return;
+      const per = chatReacts.get(line.id);
+      const who = new Set(per && per.get(e) ? per.get(e) : []);
+      who.delete(myId);
+      if (!who.size) return;
+      // The call has room for two names; a third and on are "+2".
+      const names = reactorNames(who).split(', ');
+      const short = names.length > 2 ? names[0] + ' +' + (names.length - 1) : names.join(', ');
+      reactAlert = { by: names.join(', '), short: short, e: e, text: String(line.text || '').slice(0, 160) };
+      paintChatBadge();
     }
     function myReactsObj() { // what I picked, replayed to a newcomer
       const o = {};
@@ -16426,13 +16774,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const lob = document.getElementById('lobby');
       const inCall = !(lob && lob.classList.contains('show'));
       const open = !!(chatPanel && chatPanel.classList.contains('open'));
-      const show = inCall && unread > 0 && !open;
+      const show = inCall && (unread > 0 || !!reactAlert) && !open;
       const mention = !!(mentionAlert && !open);
       if (preview) preview.classList.toggle('mention', mention);
+      if (preview) preview.classList.toggle('reacted', !mention && !!reactAlert && !open);
       if (mention) {
         if (by) by.textContent = mentionAlert.by + ' mentioned you';
         if (txt) txt.textContent = mentionAlert.text;
         if (preview) preview.setAttribute('aria-label', mentionAlert.by + ' mentioned you. ' + mentionAlert.text + '. Open chat.');
+      } else if (reactAlert && !open) {
+        if (by) by.textContent = reactAlert.e + ' ' + reactAlert.short;
+        if (txt) txt.textContent = reactAlert.text;
+        if (preview) preview.setAttribute('aria-label', reactAlert.by + ' reacted ' + reactAlert.e + ' to ' + reactAlert.text + '. Open chat.');
       } else {
         if (by) by.textContent = lastChatLine ? lastChatLine.by : '';
         if (txt) txt.textContent = lastChatLine ? lastChatLine.text : '';
@@ -16440,7 +16793,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       b.textContent = unread > 99 ? '99+' : String(Math.max(0, unread));
       b.setAttribute('aria-label', 'Chat, ' + unread + (unread === 1 ? ' new message' : ' new messages'));
-      b.hidden = !show;
+      b.hidden = !show || unread < 1;
       note.hidden = !show;
       const key = (note.hidden ? '0' : '1') + ':' + note.offsetWidth + ':' + note.offsetHeight;
       if (key !== paintChatBadge.key) {
@@ -16449,7 +16802,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     function countClosedChat(m) {
-      if (m) lastChatLine = { by: String(m.by || 'Someone').slice(0, 40), text: String(m.text || '').slice(0, 160) };
+      if (m) { lastChatLine = { by: String(m.by || 'Someone').slice(0, 40), text: String(m.text || '').slice(0, 160) }; reactAlert = null; }
       const open = !!(chatPanel && chatPanel.classList.contains('open'));
       // A mention of this person stays on the call until they open chat.
       // A later line must not hide it. Naming someone else is an ordinary preview.
@@ -16747,7 +17100,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         recvChatAck(m);
       } else if (m.k === 'creact') {
         // Only the person who reacted can put on or take off their reaction.
-        if (p && p.id && m.by === p.id && takeReact(m.id, m.e, m.by, !!m.on)) renderChat();
+        if (p && p.id && m.by === p.id && takeReact(m.id, m.e, m.by, !!m.on)) { renderChat(); noteReactToMe(m.id, m.e, !!m.on); }
       } else if (m.k === 'cdel') {
         // The author may take their own line back. That frame is accepted
         // only from their channel. Anyone else's copy is ignored.
@@ -17635,21 +17988,36 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           ? '<div class="cchips">' + REACTS.filter((e) => per.has(e)).map((e) => {
             const who = per.get(e);
             const mineR = who.has(myId);
-            return '<button type="button" class="cchip" data-react-chip="' + e + '" data-react-id="' + attr + '" aria-pressed="' + mineR + '" aria-label="' + e + ' ' + who.size + (mineR ? ', yours' : '') + '">' + e + '<span>' + who.size + '</span></button>';
+            return '<button type="button" class="cchip" data-react-chip="' + e + '" data-react-id="' + attr + '" aria-pressed="' + mineR + '" aria-label="' + e + ' ' + who.size + ': ' + esc(reactorNames(who)) + '">' + e + '<span>' + who.size + '</span></button>';
           }).join('') + '</div>'
           : '';
-        // Your own line keeps Reply and Delete on one row; React is for theirs.
-        const reactBtn = m.byId === myId ? '' : '<button type="button" class="creact" data-react-open="' + attr + '" aria-expanded="' + (reactOpen === m.id) + '">React</button>';
+        // Your own line takes a reaction too ("👍 if Tuesday works").
+        const reactBtn = '<button type="button" class="creact" data-react-open="' + attr + '" aria-expanded="' + (reactOpen === m.id) + '">React</button>';
+        const open = lineOpen === m.id || reactOpen === m.id;
+        const whoR = open && per && per.size
+          ? '<div class="cwhorx">' + REACTS.filter((e) => per.has(e)).map((e) => '<span>' + e + ' ' + esc(reactorNames(per.get(e))) + '</span>').join('') + '</div>'
+          : '';
+        const acts = open ? '<div class="cacts">' + replyBtn + reactBtn + ownDel + '</div>' : '';
         const picks = reactOpen === m.id
           ? '<div class="cpicks">' + REACTS.map((e) => '<button type="button" class="cpick" data-react-pick="' + e + '" data-react-id="' + attr + '" aria-label="React ' + e + '">' + e + '</button>').join('') + '</div>'
           : '';
-        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + (m.prayer ? ' prayer' : '') + '">' + who + quote + body + chips + '<div class="cacts">' + replyBtn + reactBtn + ownDel + '</div>' + del + picks + '</div>';
+        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + (m.prayer ? ' prayer' : '') + '" data-line="' + attr + '" tabindex="0" aria-expanded="' + open + '" title="Tap for Reply and React">' + who + quote + '<span class="cbody">' + body + '</span>' + chips + whoR + acts + del + picks + '</div>';
       }).join('');
       const co = chatOffInfo();
       if (q && !ms.length) html = '<div class="cempty" id="chatnomatch">No matches</div>';
       else if (co && !q) html += '<div class="cmsg" style="opacity:.65"><b>🔇</b>Chat was turned off' + (co.by ? ' by ' + esc(co.by) : '') + '.' + (amAdmin ? '' : ' Only the host can post.') + '</div>';
       paintChatFind();
       paintLog(log, html);
+      // A tapped last line grows by its buttons; keep them in the log.
+      if (lineOpen) {
+        const el = Array.from(log.querySelectorAll('.cmsg[data-line]')).find((x) => x.getAttribute('data-line') === lineOpen);
+        if (el && el.scrollIntoView) try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+      }
+    }
+    function toggleLine(id) {
+      lineOpen = lineOpen === id ? null : id;
+      if (reactOpen && reactOpen !== lineOpen) reactOpen = null;
+      renderChat();
     }
     (function () {
       const q = document.getElementById('chatq');
@@ -17686,6 +18054,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const log = document.getElementById('chatlog');
       if (logNearBottom(log)) paintChatNew(true);
     });
+    document.getElementById('chatlog').addEventListener('keydown', (e) => {
+      if ((e.key !== 'Enter' && e.key !== ' ') || !e.target.matches || !e.target.matches('.cmsg[data-line]')) return;
+      e.preventDefault();
+      const id = e.target.getAttribute('data-line');
+      toggleLine(id);
+      const el = Array.from(document.querySelectorAll('#chatlog .cmsg[data-line]')).find((x) => x.getAttribute('data-line') === id);
+      if (el) try { el.focus(); } catch (err) {}
+    });
     document.getElementById('chatnew').onclick = () => {
       const log = document.getElementById('chatlog');
       log.scrollTop = log.scrollHeight;
@@ -17718,6 +18094,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const per = chatReacts.get(id);
         const on = !(per && per.get(em) && per.get(em).has(myId));
         reactOpen = null;
+        lineOpen = null;
         if (takeReact(id, em, myId, on)) sendAll({ k: 'creact', id: id, e: em, on: on, by: myId });
         renderChat();
         return;
@@ -17733,7 +18110,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         return;
       }
-      const b = e.target.closest('[data-cdel]'); if (!b) return;
+      const b = e.target.closest('[data-cdel]');
+      if (!b) {
+        // A tap on the words (not a link) shows or hides that line's buttons.
+        const line = e.target.closest('.cmsg[data-line]');
+        if (line && !e.target.closest('a, button')) toggleLine(line.getAttribute('data-line'));
+        return;
+      }
       const id = b.getAttribute('data-cdel');
       if (!amAdmin || chatTombs.has(id)) return;
       admSigned('cdel', { id }).then((w) => {
@@ -17913,7 +18296,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // is not painted while the panel is closed: paint the tab that shows.
       if (chatPanel.classList.contains('open')) {
         unread = 0; paintChatCount(); if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles();
-        try { mentionAlert = null; paintChatBadge(); } catch (e) {}
+        try { mentionAlert = null; reactAlert = null; paintChatBadge(); } catch (e) {}
         try { paintChatBtn(); } catch (e) {}
         // The More sheet floats above the chat (the dock's stacking context).
         // Leave it open and the conversation is hidden behind a grid of buttons.
@@ -25075,6 +25458,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const airRecBtn = document.getElementById('airrec');
     if (airRecBtn) airRecBtn.onclick = () => recBtn.click();
     let callStateBox = '';
+    // A sideways phone puts Record and Captions in a column left of the dock
+    // and steps the dock right if the column needs the room. Live (a
+    // broadcast) makes the column taller than the dock, and a dragged dock
+    // is where its owner put it; both keep the row, as does a screen too
+    // narrow for column and dock. Measured from offset boxes, which ignore
+    // the slide of a tucking dock. Returns how far the column rises above
+    // the dock's top, or -1 for the row.
+    function placeCallState(row) {
+      const root = document.documentElement;
+      const bar = document.querySelector('.bar');
+      const vw = window.innerWidth, vh = window.innerHeight;
+      const want = !!bar && vh < 500 && vw > vh && bar.dataset.barfree !== '1'
+        && !document.body.classList.contains('broadcast');
+      const fall = () => {
+        row.classList.remove('beside');
+        if (root.style.getPropertyValue('--dockshift') !== '0px') root.style.setProperty('--dockshift', '0px');
+        return -1;
+      };
+      if (!want) return fall();
+      row.classList.add('beside');
+      const barW = bar.offsetWidth, barH = bar.offsetHeight;
+      const barBottom = vh - (bar.offsetTop + barH);
+      // Centered: the dock's own left before any shift.
+      const barLeft = (vw - barW) / 2;
+      const colRight = row.offsetLeft + row.offsetWidth;
+      const shift = Math.max(0, Math.ceil(colRight + 8 - barLeft));
+      if (barLeft + shift + barW > vw - 8) return fall();
+      root.style.setProperty('--dockshift', shift + 'px');
+      root.style.setProperty('--csb', Math.max(0, Math.round(barBottom)) + 'px');
+      return Math.max(0, row.offsetHeight - barH);
+    }
     function paintCallState() {
       const row = document.getElementById('callstate');
       const rec = document.getElementById('call-rec');
@@ -25085,7 +25499,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const inCall = !(lob && lob.classList.contains('show'));
       const away = document.body.classList.contains('chrome-away');
       row.hidden = !inCall;
-      const stateH = (!away && inCall && row.offsetHeight) ? row.offsetHeight : 0;
+      const over = inCall ? placeCallState(row) : -1;
+      // Beside the dock, only the part above the dock's top stacks under
+      // captions and the chat line.
+      const stateH = (!away && inCall && row.offsetHeight) ? (over >= 0 ? over : row.offsetHeight) : 0;
       document.documentElement.style.setProperty('--stateh', stateH + 'px');
       if (!inCall) return;
       const recOn = recBtn.classList.contains('on') || (recBtn.textContent || '').indexOf('Stop') === 0;
@@ -25099,7 +25516,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         cc.setAttribute('aria-pressed', ccOn ? 'true' : 'false');
       }
       try { if (typeof refreshTrBtn === 'function') refreshTrBtn(); } catch (e) {}
-      const key = row.offsetHeight + ':' + (row.hidden ? '0' : '1');
+      const key = row.offsetHeight + ':' + (row.hidden ? '0' : '1') + ':' + over;
       if (key !== callStateBox) {
         callStateBox = key;
         try { layout(); } catch (e) {}
@@ -25320,7 +25737,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } catch (e) {}
       };
       window.__gifosKb = { sync: syncKb };
-      if (window.ResizeObserver) { try { new ResizeObserver(setBarH).observe(bar); } catch (e) {} }
+      // A wider dock can push Record/Captions back into their row (placeCallState).
+      if (window.ResizeObserver) { try { new ResizeObserver(() => { setBarH(); try { paintCallState(); } catch (e2) {} }).observe(bar); } catch (e) {} }
       window.addEventListener('resize', () => { setBarH(); syncKb(); try { paintCallState(); } catch (e) {} });
       if (window.visualViewport) {
         visualViewport.addEventListener('resize', () => { setBarH(); syncKb(); });
@@ -25545,8 +25963,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const micLab = micBtn.querySelector('.docklab');
       if (micLab && micLab.textContent !== micWord) micLab.textContent = micWord;
       micBtn.title = micLocked
-        ? 'Muted for everyone' + (modOf('me').mute.by ? ' by ' + modOf('me').mute.by : '') + ' — someone else has to lift it'
+        ? 'Muted for all' + (modOf('me').mute.by ? ' by ' + modOf('me').mute.by : '') + ' — someone else has to lift it'
         : (muted ? 'You are muted — tap to speak. Shortcut: M' : 'Your mic is on — tap to mute. Shortcut: M');
+      if (unmuteBtn) {
+        const lob = document.getElementById('lobby');
+        const inCall = !(lob && lob.classList.contains('show'));
+        unmuteBtn.hidden = !inCall || !muted;
+      }
       // camera
       camBtn.classList.toggle('off', myStatus.camOff);
       camBtn.setAttribute('aria-pressed', myStatus.camOff ? 'false' : 'true');
@@ -25668,7 +26091,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (kind === 'cam' && forcedCamOff('me')) return '📷 An admin turned your video off for the room — only they can turn it back on.';
       if (kind === 'mic' && amGloballyMuted()) {
         const by = modOf('me').mute.by;
-        return 'You were muted for everyone' + (by ? ' by ' + by : '') + ' — another participant has to lift it.';
+        return 'You were muted for all' + (by ? ' by ' + by : '') + ' — another participant has to lift it.';
       }
       return null;
     }
@@ -25815,7 +26238,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const track = localStream.getAudioTracks()[0]; if (!track) return lateMedia('mic');
       if (!track.enabled && amGloballyMuted()) {
         const by = modOf('me').mute.by;
-        setStatus('You were muted for everyone' + (by ? ' by ' + by : '') + ' — another participant has to lift it.');
+        setStatus('You were muted for all' + (by ? ' by ' + by : '') + ' — another participant has to lift it.');
         return;
       }
       track.enabled = !track.enabled;
@@ -25931,7 +26354,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           ? (amAdmin ? 'Set one with the Password button.' : 'Only this room’s admin can set one.')
           : 'Anyone here can set one with the Password button.'));
       } else if (blocked) {
-        setStatus('Someone in the room has blurred you for everyone — you stay blurred until that is lifted.');
+        setStatus('Someone in the room has blurred you for all — you stay blurred until that is lifted.');
       } else if (myStatus.camOff) {
         setStatus('No blur picked — turn your camera on to be ready for clear video.');
       } else if (hasAdminRoom() && !adminPresent()) {
@@ -28142,7 +28565,36 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Test hook: lets the e2e suite observe mesh + quality state.
     window.__gifosVideo = {
       seedGalleryForTest: (spec) => seedGalleryForTest(spec),
+      // A seat whose device never sent a name (joined from a link, no name typed).
+      clearNameForTest: (id) => {
+        const p = DEBUG_ON && peers.get(id);
+        if (!p || !p.qa) return false;
+        p.name = '';
+        delete rosterNames[id];
+        if (p.label) p.label.textContent = '…';
+        try { updateTile(id); } catch (e) {} // the next status pass
+        try { paintRoster(); } catch (e) {}
+        return true;
+      },
       arriveGuestForTest: (spec) => arriveGuestForTest(spec),
+      // A seat announcing a new status (mic muted, own blur), as its pulse lands it.
+      setPeerStatusForTest: (id, patch) => {
+        const p = DEBUG_ON && peers.get(id);
+        if (!p || !p.qa) return false;
+        const now = Date.now();
+        statusOf.set(id, Object.assign({}, statusOf.get(id) || {}, patch || {}, { at: now, rx: now }));
+        try { updateTile(id); } catch (e) {}
+        try { paintRoster(); } catch (e) {}
+        return true;
+      },
+      // Lock or open the room on this page only (memory: no store, no door),
+      // to see what a password changes on the tiles.
+      setRoomPwForTest: (pw) => {
+        if (!DEBUG_ON) return false;
+        roomPw = String(pw || '');
+        try { reactRoomState(); } catch (e) {}
+        return true;
+      },
       markPeerAwayForTest: (name, on) => {
         for (const p of peers.values()) {
           if (!p || p.name !== name) continue;

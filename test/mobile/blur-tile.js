@@ -1,10 +1,12 @@
 /*
  * Blur for all is a square on the tile, at least 44px, inset from the
- * corner so a tap on the video does not hit it. Phone and desktop.
+ * corner so a tap on the video does not hit it. Phone and desktop. A slim
+ * phone tile has no room for the words; there it is in the tap menu.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/blur-tile.js
  */
 const { chromium, devices } = require('playwright');
+const { clearRoom } = require('./lib/clear-room');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 
@@ -24,18 +26,17 @@ const CASES = [
     const context = await browser.newContext(phone.device);
     await context.addInitScript(() => { try { localStorage.setItem('gifos_name', 'Pat'); } catch (e) {} });
     const page = await context.newPage();
-    await page.goto(BASE + '/run.html#v=blur-tile-' + phone.name, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.goto(BASE + '/run.html#v=blur-tile-' + phone.name + '-' + process.pid + '&debug=on', { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForSelector('#leavebtn', { timeout: 15000 });
     const skip = page.locator('#nmok');
     if (await skip.count()) {
       if (phone.tap) await skip.tap().catch(() => {});
       else await skip.click().catch(() => {});
     }
-    await page.evaluate((people) => window.__gifosVideo.presentPeers(people), [
-      { id: 'peer-ruth', name: 'Ruth' },
-      { id: 'peer-david', name: 'David' },
-    ]);
-    await page.waitForSelector('.blurbox', { timeout: 5000 });
+    await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 2, names: ['Ruth', 'David'] }));
+    // Blur for all shows only on a clear face: lock the room, faces clear.
+    if (!(await clearRoom(page, ['qa1', 'qa2']))) failures.push(phone.name + ': the faces never cleared in a locked room');
+    await page.waitForSelector('.blurbox', { state: 'attached', timeout: 5000 });
     const info = await page.evaluate(() => {
       const box = (el) => {
         const b = el.getBoundingClientRect();
@@ -45,12 +46,14 @@ const CASES = [
         const tile = el.closest('.tile');
         const tb = tile.getBoundingClientRect();
         const b = box(el);
+        const text = (el.innerText || '').replace(/\s+/g, ' ').trim();
+        const shown = getComputedStyle(el).display !== 'none' && b.w > 2;
         tile.classList.add('menu');
         const mod = tile.querySelector('.modbar');
         const name = tile.querySelector('.name');
         const max = tile.querySelector('.maxbtn');
         return {
-          text: (el.innerText || '').replace(/\s+/g, ' ').trim(),
+          text, shown,
           w: b.w, h: b.h,
           topGap: b.top - tb.top,
           rightGap: tb.right - b.right,
@@ -64,6 +67,7 @@ const CASES = [
     const bad = [];
     if (info.length < 1) bad.push('no blur button');
     for (const b of info) {
+      if (!b.shown) continue; // in the menu instead, checked below
       if (b.text !== 'Blur for all') bad.push('says "' + b.text + '"');
       if (b.w < 44 || b.h < 44) bad.push('is ' + Math.round(b.w) + 'x' + Math.round(b.h));
       if (Math.abs(b.w - b.h) > 1) bad.push('not square (' + Math.round(b.w) + 'x' + Math.round(b.h) + ')');
@@ -86,7 +90,10 @@ const CASES = [
         const tile = el.closest('.tile');
         tile.classList.add('menu');
         const a = box(el);
+        // A slim phone tile shows no chip; its menu must offer the same Blur.
+        const menuBlur = Array.from(tile.querySelectorAll('.modbar button')).some((b) => box(b) && /^(Blur|Unblur) for all$/.test(b.textContent));
         return {
+          hidden: !a && !menuBlur,
           name: gap(a, box(tile.querySelector('.name'))),
           max: gap(a, box(tile.querySelector('.maxbtn'))),
           mod: gap(a, box(tile.querySelector('.modbar'))),
@@ -94,6 +101,7 @@ const CASES = [
       });
     });
     for (const c of clear) {
+      if (c.hidden) bad.push('the open menu hides Blur for all and offers no Blur');
       if (c.name < 12) bad.push('name is ' + Math.round(c.name) + 'px from Blur for all');
       if (c.max < 12) bad.push('full screen is ' + Math.round(c.max) + 'px from Blur for all');
       if (c.mod < 12) bad.push('the tile menu is ' + Math.round(c.mod) + 'px from Blur for all');

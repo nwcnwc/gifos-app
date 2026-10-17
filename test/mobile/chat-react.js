@@ -59,6 +59,9 @@ function overlaps(a, b) {
     };
   });
   const onScreen = (b, info) => b.top >= -1 && b.bottom <= info.vh + 1 && b.left >= -1 && b.right <= info.vw + 1;
+  // A line's buttons show once you tap the line (chat-dense).
+  await page.locator('#chatlog .cmsg', { hasText: 'vote is Tuesday' }).locator('.cbody').tap();
+  await page.waitForTimeout(40);
   const info = await read();
   const bad = [];
   const r = info.react;
@@ -110,8 +113,8 @@ function overlaps(a, b) {
       // and a newcomer's 'hi' replays only that person's picks.
       const wire = await page.evaluate(() => {
         const c = window.__gifosChat;
-        const line = Array.from(document.querySelectorAll('#chatlog [data-react-open]'))[0];
-        const id = line && line.getAttribute('data-react-open');
+        const line = Array.from(document.querySelectorAll('#chatlog .cmsg[data-line]'))[0];
+        const id = line && line.getAttribute('data-line');
         c.frame('qa-ruth', { k: 'creact', id: id, e: '👍', on: true, by: 'qa-ruth' });
         c.frame('qa-ruth', { k: 'creact', id: id, e: '👏', on: true, by: 'qa-esther' });
         c.frame('qa-ann', { k: 'hi', reacts: { [id]: ['❤️', 'nope'] } });

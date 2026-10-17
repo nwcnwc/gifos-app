@@ -293,14 +293,47 @@
       feed.appendChild(el);
     }
     el.textContent = band.text || '';
+    if (band.label) el.setAttribute('aria-label', band.label); else el.removeAttribute('aria-label');
     el.style.position = 'absolute';
     el.style.left = band.x + 'px';
     el.style.top = band.y + 'px';
+    // An end band hangs from its point (the box's bottom right) instead.
+    el.style.transform = band.end ? 'translate(-100%, -100%)' : '';
     el.style.zIndex = '4';
   }
 
   let stadSeen = { key: '', at: 0 };
   let stadTimer = 0;
+
+  // The call's buttons tucked away: keep the rows and columns laid out for
+  // the band above them and stretch the rows into the taller box, so no face
+  // jumps to a new place each time the buttons go or come back. Rows grow
+  // only as far as a legal tile shape, and shrink (never under the phone's
+  // smallest side) when that lets rows that were scrolled to fit on screen.
+  function holdRows(lay, box, byId, phone) {
+    const Pack = GifOS.meetPack;
+    const from = lay.box;
+    if (!Pack || !from || !lay.rects.length) return lay;
+    const contentH = lay.contentH || from.h;
+    const minSide = phone ? 96 : 80;
+    let k = box.h / Math.max(1, contentH);
+    let floor = 0;
+    for (let i = 0; i < lay.rects.length; i++) {
+      const r = lay.rects[i];
+      if (!(r.h > 0)) continue;
+      k = Math.min(k, r.w / r.h / Pack.ASPECT_MIN);
+      floor = Math.max(floor, Math.min(r.h, minSide) / r.h);
+    }
+    k = Math.max(k, floor);
+    const rects = lay.rects.map((r) => {
+      const h = r.h * k;
+      const t = byId[r.id];
+      const a = t && t.aspect > 0 ? t.aspect : 16 / 9;
+      const crop = Pack.cropFor(a, r.w / h);
+      return Object.assign({}, r, { y: box.y + (r.y - from.y) * k, h: h, fit: crop && crop.contain ? 'contain' : 'cover' });
+    });
+    return Object.assign({}, lay, { rects: rects, box: box, contentH: contentH * k });
+  }
 
   function applyCrop(video, crop) {
     if (!video) return;
@@ -360,20 +393,27 @@
       phone: !!opts.phone, pill: !!opts.pill, bottom: Math.max(0, +opts.bottom || 0),
       top: opts.top > 0 ? opts.top : undefined,
     });
-    const lay = ML.layoutFor({
+    // opts.holdBottom: where the tucked-away buttons stood (phone gallery).
+    const hold = !!opts.phone && (opts.mode || 'gallery') === 'gallery' && opts.gallery !== 'scroll' &&
+      +opts.holdBottom > Math.max(0, +opts.bottom || 0);
+    const byId = {};
+    for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
+    let lay = ML.layoutFor({
       mode: opts.mode || 'gallery',
       tiles: tiles,
-      box: box,
+      box: hold ? ML.viewBox(opts.vw || 1, opts.vh || 1, {
+        phone: true, pill: !!opts.pill, bottom: +opts.holdBottom,
+        top: opts.top > 0 ? opts.top : undefined,
+      }) : box,
       phone: !!opts.phone,
       swapSelf: !!opts.swapSelf,
       self: opts.self != null ? opts.self : (opts.selfView || 'tile'),
       gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit',
     });
-    const byId = {};
     for (let i = 0; i < tiles.length; i++) {
-      byId[tiles[i].id] = tiles[i];
       if (tiles[i].me || tiles[i].id === 'me') markSelf(tiles[i].el, lay.self);
     }
+    if (hold && !lay.crowd) lay = holdRows(lay, box, byId, true);
     const used = [];
     let crowdEl = feed.querySelector('#stadcrowd');
     if (lay.crowd) {
@@ -403,7 +443,6 @@
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i].el && used.indexOf(tiles[i].el) < 0) parkEl(tiles[i].el);
     }
-    placeBand(feed, lay.band);
     // Absolute tiles do not grow scrollHeight. A 1px spacer does, so Scroll
     // can move through the stadium without a pager.
     let spacer = feed.querySelector('#comfyspacer');
@@ -411,7 +450,48 @@
     const need = (lay.box ? lay.box.y : 0) + contentH;
     const overflows = !!(lay.box && contentH > lay.box.h + 1);
     const tail = overflows ? Math.max(0, (+opts.vh || 0) - lay.box.y - lay.box.h) : 0;
+    // A gallery that scrolls ends at the box, or below its first row when
+    // that row is taller than the band (it shows whole, over the empty part
+    // of the Record row, 3d2dd16). Rows that start past it are scrolled to, never
+    // painted under the call's buttons: a sideways SE with the buttons up
+    // has a 100px band for seven people.
+    let clipY = 0, past = 0;
+    if (overflows) {
+      clipY = lay.box.y + lay.box.h;
+      for (let i = 0; i < lay.rects.length; i++) {
+        const r = lay.rects[i];
+        if (r.y <= lay.box.y + 1) clipY = Math.max(clipY, r.y + r.h);
+      }
+      for (let i = 0; i < lay.rects.length; i++) if (lay.rects[i].y >= clipY - 1) past++;
+    }
+    if (feed.style && feed.style.setProperty) feed.style.setProperty('--comfy-clip', overflows ? Math.max(0, (+opts.vh || 0) - clipY) + 'px' : '0px');
     if (feed.classList) { feed.classList.toggle('can-scroll', overflows); feed.classList.toggle('comfy-scroll', overflows); }
+    let band = lay.band;
+    // Short, in the bottom right corner, where a tile has no name or button.
+    if (past && !band) band = { text: '\u2193' + past, label: past + ' more below, scroll down', x: lay.box.x + lay.box.w - 4, y: clipY - 4, end: true };
+    placeBand(feed, band);
+    // The hint hangs in the last face's bottom right corner, where a wide
+    // name ("Lobby iPad" on a 109px tile) ran under it. That tile's name
+    // keeps clear of it and wraps instead.
+    let hintEl = null, hintW = 0;
+    if (past && band && band.end) {
+      const hb = (feed.ownerDocument || document).getElementById('stadband');
+      hintW = hb ? hb.offsetWidth : 0;
+      let best = null;
+      for (let i = 0; i < lay.rects.length; i++) {
+        const r = lay.rects[i];
+        if (r.y >= clipY - 1 || r.y + r.h < clipY - 1) continue;
+        if (!best || r.x + r.w > best.x + best.w) best = r;
+      }
+      const t = best && byId[best.id];
+      if (t && t.el && best.x + best.w >= band.x - 1) hintEl = t.el;
+    }
+    for (let i = 0; i < used.length; i++) {
+      const el = used[i];
+      if (!el || !el.classList) continue;
+      el.classList.toggle('by-hint', el === hintEl);
+      if (el === hintEl && el.style && el.style.setProperty) el.style.setProperty('--hintw', hintW + 'px');
+    }
     if (overflows) {
       if (!spacer) {
         spacer = (feed.ownerDocument || document).createElement('div');
@@ -422,7 +502,7 @@
       spacer.style.left = '0';
       spacer.style.top = '0';
       spacer.style.width = '1px';
-      spacer.style.height = (need + tail) + 'px';
+      spacer.style.height = need + 'px';
       spacer.style.pointerEvents = 'none';
     } else if (spacer && spacer.remove) spacer.remove();
     const shadeItems = [];

@@ -514,8 +514,8 @@ test('guest moderation tools are in the keyboard tab order', async ({ page }) =>
   const shown = await tile.locator('.modbar').evaluate((el) => getComputedStyle(el).display);
   expect(shown).toBe('flex');
   const mute = tile.locator('[data-mod="mute"]');
-  await expect(mute).toHaveText('Mute');
-  await expect(mute).toHaveAttribute('aria-label', 'Mute for everyone');
+  await expect(mute).toHaveText('Mute for all');
+  await expect(mute).toHaveAttribute('aria-label', 'Mute for all');
   const fits = await mute.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1);
   expect(fits).toBe(true);
   for (let i = 0; i < 4; i++) {
@@ -976,7 +976,7 @@ test('a broadcast host moderates guests on the stage', async ({ page }) => {
     await expect(card).toHaveAttribute('aria-label', /Jordan Lee/);
     const mute = card.locator('[data-mod="mute"]');
     await expect(mute).toBeVisible();
-    await expect(mute).toHaveText('Mute');
+    await expect(mute).toHaveText('Mute for all');
     const fits = await mute.evaluate((el) => el.scrollWidth <= el.clientWidth + 1 && el.scrollHeight <= el.clientHeight + 1);
     expect(fits).toBe(true);
     const place = await page.evaluate(() => {
@@ -1005,7 +1005,7 @@ test('a broadcast host moderates guests on the stage', async ({ page }) => {
     }
     await expect(mute).toBeFocused();
     await mute.click();
-    await expect(mute).toHaveText('Unmute');
+    await expect(mute).toHaveText('Unmute for all');
   }
   await page.evaluate(() => document.body.classList.add('amadmin', 'admroom'));
   const card = page.locator('#stagemod .stagecard[data-peer="qa-guest"]');
