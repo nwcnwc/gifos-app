@@ -2992,7 +2992,7 @@ test('the raised-hands line is readable on the dark page', async ({ page }) => {
       return { line: ratio(rgb(s.color), under), name: ratio(rgb(n.color), under), px: parseFloat(s.fontSize) };
     });
     if (who === 'host') { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/handq-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
-    expect({ who, line: got.line >= 4.5, name: got.name >= 4.5, big: got.px >= 12, ...got }).toMatchObject({ who, line: true, name: true, big: true });
+    expect({ who, lineReadable: got.line >= 4.5, nameReadable: got.name >= 4.5, big: got.px >= 12, ...got }).toMatchObject({ who, lineReadable: true, nameReadable: true, big: true });
   }
 });
 

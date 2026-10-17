@@ -679,9 +679,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* Zoom = pick your depth: a tapped stadium tile grows to a readable size
      (and back). The global hand queue reads as one ordered line. */
   .rowtile.zoom { grid-column: 1 / -1; }
-  #handq { display: none; padding: 6px 10px 0; font-size: .8rem; color: var(--text, #e0e0f0); }
+  /* The session page is always dark (#0c0e12), whatever the theme's --text
+     says, so the line is light on it (Q83). */
+  #handq { display: none; padding: 6px 10px 0; font-size: .8rem; color: #e6e9ef; }
   #handq.on { display: block; }
-  #handq b { color: var(--accent, #b9a5ff); }
+  #handq b { color: #8ab4ff; }
   /* Admin rooms, for the SIGNED-IN admin only: each queued name is a call-up
      button (tap = the signed stage/app grant, §SIG). Everyone else — guests,
      open rooms — sees the identical banner, inert. */
