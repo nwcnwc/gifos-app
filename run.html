@@ -24855,6 +24855,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return { ok: true, ended: !vt || vt.readyState === 'ended', n: stopped.length };
       },
       participants: participantCount,
+      // What this page can hear and send: each peer's companion audio (the
+      // element that actually plays their voice) and my own mic. Read-only.
+      earsForTest: () => {
+        const live = (s) => !!(s && s.getAudioTracks && s.getAudioTracks().some((t) => t.readyState === 'live'));
+        const out = [];
+        for (const p of peers.values()) {
+          if (!p || p.qa) continue;
+          const a = p.video && p.video._aud;
+          out.push({ name: p.name || '', held: !!p.held, audible: !!(a && live(a.srcObject) && !a.muted && a.volume > 0 && !a.paused) });
+        }
+        const mic = localStream && localStream.getAudioTracks()[0];
+        return { peers: out, micSends: !!(mic && mic.readyState === 'live' && mic.enabled && !myStatus.muted), waiting: iAmWaiting() };
+      },
       setDockCalmMsForTest: (ms) => { dockCalmMs = Math.max(0, ms | 0); return { ok: true }; },
       statusNoticeForTest: (m) => { setStatus(String(m)); return { ok: true }; },
       bot: () => !!myStatus.bot,
