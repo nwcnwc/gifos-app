@@ -1450,8 +1450,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.townhall #bc-ended:not([hidden]) {
     display: flex; flex-direction: column; gap: 16px; position: fixed; z-index: 4; left: 24px; right: 24px;
     top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px));
-    bottom: calc(108px + var(--inset-bottom, 0px));
+    bottom: calc(var(--dock-clear, 108px) + var(--inset-bottom, 0px));
     align-items: center; justify-content: center; margin: 0; padding: 0;
+    overflow: hidden; container-type: size;
     pointer-events: none; text-align: center;
   }
   #bc-replay[hidden] { display: none !important; }
@@ -1465,7 +1466,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   #bc-ended p {
     margin: 0; max-width: 18rem; color: #f4f7fb;
-    font: 700 1.75rem/1.25 system-ui, sans-serif; letter-spacing: -0.02em;
+    font: 700 clamp(1.15rem, 9cqh, 1.75rem)/1.25 system-ui, sans-serif; letter-spacing: -0.02em;
   }
   body.broadcast.bc-quiet #fitbtn, body.townhall.bc-quiet #fitbtn { display: none; }
   @media (max-height: 500px) {

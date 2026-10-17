@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q67. A large text size hid the quiet sentence under the dock
+
+At a 32px root on an iPhone SE, “The service has not started.” was 56px type in four lines. Two of those lines started at y=343 and y=413, under a dock that starts at y=350. The sentence now fits in two lines at 36.8px, ending at y=335, above the dock. The chip still carries the same words. A meeting is unchanged. `test/mobile/broadcast-ended.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-quiet-type.png`. After: `test/mobile/screenshots/after/iphone-se-quiet-type.png`.
+
+Design: the sentence stays readable when the type grows. Large type stays at 4. Someone who arrives after a service has ended still cannot watch it.
+
 ### Q66. A viewer had to hunt for Hand
 
 The join line says a viewer is seen only if they raise a hand. On an iPhone SE the dock was React, More, and Leave, and Hand was a 0×0 control inside More. Hand now sits on the dock, 44×44, before React, with Leave still inside the screen at x=214. A tap raises the hand and the button reads Lower. A town hall watcher gets the same dock. A meeting, a host, and a person called on stage keep Hand in More. `test/mobile/hand-dock.spec.mjs`.

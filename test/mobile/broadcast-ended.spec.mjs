@@ -57,6 +57,30 @@ test('a church viewer sees that the service has not started', async ({ page }) =
   await expect(page.locator('#status')).not.toContainText('send the invite');
 });
 
+test('a large text size keeps the quiet sentence above the dock', async ({ page }) => {
+  await settleViewer(page, roomUrl('big' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)));
+  await page.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
+  await page.waitForFunction(() => {
+    const p = document.getElementById('bc-ended-txt');
+    const range = document.createRange();
+    range.selectNodeContents(p);
+    const lines = [...range.getClientRects()];
+    const bar = document.querySelector('.bar').getBoundingClientRect();
+    const chip = document.querySelector('.topchip').getBoundingClientRect();
+    return lines.length > 0 && lines.every((l) => l.bottom <= bar.top + 1 && l.top >= chip.bottom - 1);
+  });
+  const m = await page.evaluate(() => {
+    const p = document.getElementById('bc-ended-txt');
+    const range = document.createRange();
+    range.selectNodeContents(p);
+    const lines = [...range.getClientRects()];
+    return { n: lines.length, font: parseFloat(getComputedStyle(p).fontSize), text: p.textContent };
+  });
+  expect(m.text).toBe('The service has not started.');
+  expect(m.n).toBeGreaterThan(0);
+  expect(m.font).toBeGreaterThanOrEqual(24);
+});
+
 test('a stream viewer sees that the stream has not started', async ({ page }) => {
   await settleViewer(page, roomUrl('stm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), true));
   await expect(page.locator('#bc-ended-txt')).toHaveText('The stream has not started.');
