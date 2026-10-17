@@ -19448,12 +19448,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (!p.rofferYieldTimer) {
               p.rofferYieldTimer = setTimeout(() => {
                 p.rofferYieldTimer = null;
-                const ym = p.rofferYield; p.rofferYield = null;
+                let ym = p.rofferYield; p.rofferYield = null;
                 if (!ym || !p.pc || leaving || p.makingOffer) return;
                 // The bootstrap offer was already answered: applying the twin
-                // restarts ICE before the channel opens.
+                // restarts ICE before the channel opens. A firewalled pair is
+                // the exception: the first offer can carry candidates before
+                // the block's name is known, and skipping the twin leaves that
+                // path connected.
+                if (iceBlocked(p.id) && ym.sdp) ym = Object.assign({}, ym, { sdp: sdpSansIce(ym.sdp) });
                 const carried = p.connected || (p.dc && p.dc.readyState === 'open');
-                if (!carried && p.pc.signalingState === 'stable') return;
+                if (!carried && p.pc.signalingState === 'stable' && !iceBlocked(p.id)) return;
                 if (typeof clog === 'function') clog('roffer-yield ' + String(p.id).slice(0, 6));
                 p.kickVideo = true;
                 applyRoffer(ym);
@@ -19504,7 +19508,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (p.rofferYield) {
               const ym = p.rofferYield;
               const fx = /o=mozilla/i.test(String((ym.sdp && ym.sdp.sdp) || '').slice(0, 80));
-              if (fx || !carried) {
+              // Keep the timer for a firewalled pair so the twin can drop the
+              // candidates the first offer raced through (fix-rel-newcomer).
+              if ((fx || !carried) && !(typeof iceBlocked === 'function' && iceBlocked(p.id))) {
                 p.rofferYield = null;
                 if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
               }
