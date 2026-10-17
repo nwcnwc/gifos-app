@@ -1868,6 +1868,32 @@ test('settings on a service is not called a meeting', async ({ page }) => {
   await expect(page.locator('#setbtn')).toHaveAttribute('title', meetingTip);
 });
 
+test('a service chat pins a file to the service', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=pin' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.locator('#chatbtn').click();
+    const pin = page.locator('#cattach');
+    await expect(pin).toBeVisible();
+    await expect(pin).toHaveAttribute('title', 'Pin a file to this service');
+    const lay = await page.evaluate(() => {
+      const r = document.getElementById('cattach').getBoundingClientRect();
+      const form = document.getElementById('chatform').getBoundingClientRect();
+      return { inForm: r.top >= form.top - 1 && r.bottom <= form.bottom + 1 && r.left >= form.left - 1, on: r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1 && r.left >= -1 };
+    });
+    expect(lay.inForm, JSON.stringify(lay)).toBe(true);
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+  }
+  await page.goto('/run.html?desk=pingroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.locator('#chatbtn').click();
+  await expect(page.locator('#cattach')).toHaveAttribute('title', 'Pin a file to the meeting');
+});
+
 test('a host steps on and off the stage from the dock', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
