@@ -1872,7 +1872,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       </div>
       <div class="set-sec">
         <b>Your name</b>
-        <p class="set-help">What everyone sees on your tile: <b id="set-name-cur">…</b> <button id="set-rename" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin-left:.4rem">Change</button></p>
+        <p class="set-help"><span id="set-name-lead">What everyone sees on your tile:</span> <b id="set-name-cur">…</b> <button id="set-rename" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;margin-left:.4rem">Change</button></p>
         <p class="set-help">Your picture, when the camera is off. An animated GIF stays animated.</p>
         <img id="set-avatar-preview" alt="" hidden style="width:72px;height:72px;object-fit:cover;border-radius:.5rem">
         <input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Picture">
@@ -2554,6 +2554,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
         const help = document.getElementById('helpbtn');
         if (help) help.title = 'How this small group works';
+        const nameLead = document.getElementById('set-name-lead');
+        if (nameLead) nameLead.textContent = 'What everyone sees on your tile:';
         const helpH = document.querySelector('#help-modal h3');
         if (helpH) helpH.textContent = 'How this small group works';
         return;
@@ -2572,6 +2574,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
       const help = document.getElementById('helpbtn');
       if (help) help.title = 'How this service works';
+      const nameLead = document.getElementById('set-name-lead');
+      if (nameLead) nameLead.textContent = 'What everyone sees on the stage:';
       const helpH = document.querySelector('#help-modal h3');
       if (helpH) helpH.textContent = 'How this service works';
       const who = document.getElementById('whobtn');

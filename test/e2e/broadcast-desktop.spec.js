@@ -1781,6 +1781,35 @@ test('a host shares the stage from the dock', async ({ page }) => {
   expect(resized.barIn).toBe(true);
 });
 
+test('settings names the stage on a service', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=setname' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.locator('#bartoggle').click();
+    await page.locator('#setbtn').click();
+    await expect(page.locator('#set-name-lead')).toHaveText('What everyone sees on the stage:');
+    const lay = await page.evaluate(() => {
+      const lead = document.getElementById('set-name-lead').getBoundingClientRect();
+      const box = document.querySelector('#set-modal .name-box').getBoundingClientRect();
+      return {
+        lead: lead.top >= -1 && lead.bottom <= innerHeight + 1 && lead.left >= -1 && lead.right <= innerWidth + 1,
+        box: box.left >= -1 && box.right <= innerWidth + 1 && box.top >= -1,
+      };
+    });
+    expect(lay.lead, JSON.stringify(lay)).toBe(true);
+    expect(lay.box, JSON.stringify(lay)).toBe(true);
+  }
+  await page.goto('/run.html?desk=setnamegroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.locator('#bartoggle').click();
+  await page.locator('#setbtn').click();
+  await expect(page.locator('#set-name-lead')).toHaveText('What everyone sees on your tile:');
+});
+
 test('a host steps on and off the stage from the dock', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
