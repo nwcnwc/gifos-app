@@ -9188,7 +9188,7 @@
       "appId": "tip-creators",
       "name": "Tip GifOS Creators",
       "shortName": "Tip",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Like GifOS? Buy the people who make it a coffee.",
       "author": {
         "name": "GifOS",
@@ -9206,8 +9206,7 @@
         "support",
         "donate",
         "thanks",
-        "paypal",
-        "usdc"
+        "paypal"
       ],
       "accent": [
         255,
@@ -9215,15 +9214,15 @@
         57
       ],
       "cover": "/apps/tip-creators/cover.jpg",
-      "bytes": 184472,
+      "bytes": 184455,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-14"
+        "ts": "2026-10-17"
       },
-      "sha256": "9ebe5b059dacc1ad2e976a912dcd60444501f801b7f3bf26aa6b849ecb834897"
+      "sha256": "5da558a5b64da2c19f3976c402f01e859c154d62c658c5ad7ea3c97358ff4eeb"
     },
     {
       "slug": "tosios",
