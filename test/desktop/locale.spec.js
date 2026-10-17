@@ -92,3 +92,44 @@ test('the in-call line talks about faces', async ({ page }) => {
   await expect(page.locator('#statusrest')).not.toContainText('reconnecting');
   expect(await page.evaluate(() => document.getElementById('statusrest').scrollWidth <= document.getElementById('statusrest').clientWidth + 1)).toBe(true);
 });
+
+// A face's own words (its tip, its spoken name, its chips, "(you)") follow the
+// page's language, like the dock: an English "Full screen" tip and "hand
+// raised" chip on a German face is a mixed screen for the people it serves.
+const FACE_WORDS = {
+  'de-DE': { you: '(Sie)', full: 'Vollbild', controls: 'Steuerung für diese Person.', hand: '✋ Hand gehoben', muted: 'Stumm', camOff: 'Kamera aus' },
+  'es-MX': { you: '(tú)', full: 'Pantalla completa', controls: 'Controles para esta persona.', hand: '✋ mano levantada', muted: 'En silencio', camOff: 'Cámara apagada' },
+};
+for (const [locale, want] of Object.entries(FACE_WORDS)) {
+  test.describe('face words ' + locale, () => {
+    test.use({ locale });
+    test('a face says its tip, its name line, and its chips in ' + locale, async ({ page }) => {
+      await openJoin(page);
+      await page.click('#nmok');
+      const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 3, connected: false }));
+      expect(seeded && seeded.ok).toBe(true);
+      await page.waitForFunction(() => document.querySelectorAll('#feed .tile:not(.me)').length >= 3);
+      await page.waitForTimeout(600);
+      const got = await page.evaluate(() => {
+        const me = document.querySelector('#feed .tile.me');
+        const others = [...document.querySelectorAll('#feed .tile:not(.me)')];
+        const titles = (t) => [...t.querySelectorAll('.chips .ico')].map((e) => e.getAttribute('aria-label'));
+        return {
+          meName: me.querySelector('.name').textContent,
+          meChips: titles(me),
+          fullTips: [...document.querySelectorAll('#feed .tile .maxbtn')].map((b) => b.title + '|' + b.getAttribute('aria-label')),
+          tileLabels: others.map((t) => t.getAttribute('aria-label')),
+          hands: [...document.querySelectorAll('#feed .tile .chips span')].map((s) => s.textContent).filter((s) => s.indexOf('✋') === 0),
+        };
+      });
+      await page.screenshot({ path: 'test/desktop/shots/face-lang-' + locale.slice(0, 2) + '-1280.png' });
+      expect(got.meName).toBe('Avery Chen ' + want.you);
+      expect(got.meChips).toEqual([want.muted, want.camOff]);
+      expect(got.fullTips.length).toBeGreaterThanOrEqual(4);
+      for (const t of got.fullTips) expect(t).toBe(want.full + '|' + want.full);
+      for (const l of got.tileLabels) expect(l).toMatch(/^\S.*\. /); 
+      expect(got.tileLabels.map((l) => l.slice(l.indexOf('. ') + 2))).toEqual(got.tileLabels.map(() => want.controls));
+      expect(got.hands).toEqual([want.hand]);
+    });
+  });
+}
