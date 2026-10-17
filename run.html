@@ -1498,7 +1498,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .bartoggle svg { transform: none; }
   .bar #leavebtn { width: 72px; height: 72px; min-width: 72px; min-height: 72px; margin-left: 6px; padding: 0;
     border: 0; border-radius: 22px; background: #b61622; color: #fff; display: inline-flex; align-items: center; justify-content: center; }
-  /* Mic, camera, Share screen, Chat, More, and Leave say what they are. Reactions stays an icon. */
+  /* Unmute, camera, Share screen, Chat, More, and Leave say what they do. Reactions stays an icon. */
   .bar #cam, .bar #mic, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
     height: 76px; width: auto; min-width: 72px; min-height: 76px;
     padding: 8px 10px 6px; flex-direction: column; gap: 2px; border-radius: 22px;
@@ -1780,11 +1780,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
       <span class="dockword" data-t="cam">Camera</span>
     </button>
-    <button id="mic" class="iconbtn off" aria-label="Microphone" aria-keyshortcuts="Alt+A" title="Your mic">
+    <button id="mic" class="iconbtn off" aria-label="Unmute" aria-keyshortcuts="Alt+A" title="You are muted — tap to speak">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="22"/>
         <line class="slash" x1="3" y1="3" x2="21" y2="21"/></svg>
-      <span class="dockword" data-t="mic">Mic</span>
+      <span class="dockword" data-t="unmute">Unmute</span>
     </button>
     <button id="reactbtn" type="button" class="iconbtn" aria-label="Reactions" aria-expanded="false" aria-pressed="false" title="Reactions">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1.1 1.4 2.4 2 4 2s2.9-.6 4-2"/><circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none"/></svg>
@@ -2549,7 +2549,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // markup. Anything without a translation stays English on purpose.
     const UI_TEXT = {
       de: {
-        mic: 'Mikro', cam: 'Kamera', more: 'Mehr', hide: 'Weniger', leave: 'Ende',
+        mic: 'Mikro', unmute: 'Ton an', mute: 'Stumm', micHeld: 'Stumm', cam: 'Kamera', more: 'Mehr', hide: 'Weniger', leave: 'Ende',
         hideControls: 'Steuerungen ausblenden',
         appearTitle: 'So sehen Sie aus', screenName: 'Name', notNow: 'Nicht jetzt', join: 'Beitreten',
         appearClear: 'Leeren', appearSave: 'Speichern', changePic: 'Bild ändern',
@@ -2746,7 +2746,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         badLink: 'Das war kein Link und keine Kennung.',
       },
       es: {
-        mic: 'Micro', cam: 'Cámara', more: 'Más', hide: 'Menos', leave: 'Salir',
+        mic: 'Micro', unmute: 'Activar', mute: 'Silenciar', micHeld: 'Mudo', cam: 'Cámara', more: 'Más', hide: 'Menos', leave: 'Salir',
         hideControls: 'Ocultar controles',
         appearTitle: 'Así te verán', screenName: 'Nombre', notNow: 'Ahora no', join: 'Entrar',
         appearClear: 'Limpiar', appearSave: 'Guardar', changePic: 'Cambiar foto',
@@ -21886,11 +21886,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     armMeetDialogs();
 
     function paintControls() {
-      // mic
+      // mic — one labeled control. The word is the action. There is no header Unmute pill.
       const muted = myStatus.muted, micLocked = amGloballyMuted();
       micBtn.classList.toggle('off', muted);
       micBtn.classList.toggle('locked', micLocked);
       micBtn.setAttribute('aria-pressed', muted ? 'false' : 'true');
+      const micWord = micLocked
+        ? uiText('micHeld', 'Muted')
+        : (muted ? uiText('unmute', 'Unmute') : uiText('mute', 'Mute'));
+      const micLabel = micBtn.querySelector('.dockword');
+      if (micLabel) { if (micLabel.textContent !== micWord) micLabel.textContent = micWord; }
+      if (micBtn.getAttribute('aria-label') !== micWord) micBtn.setAttribute('aria-label', micWord);
       micBtn.title = micLocked
         ? 'Muted for everyone' + (modOf('me').mute.by ? ' by ' + modOf('me').mute.by : '') + ' — someone else has to lift it'
         : (muted ? 'You are muted — tap to speak' : 'Your mic is on — tap to mute');
@@ -25100,6 +25106,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         myStatus.muted = false;
         syncSpeech();
         return { cc: !!myStatus.cc, show: !!ccShow, speech: speechRunning() };
+      },
+      setOwnMicForTest: (live) => {
+        myStatus.muted = !live;
+        paintControls();
+        const word = micBtn.querySelector('.dockword');
+        return {
+          muted: !!myStatus.muted,
+          word: word ? word.textContent : '',
+          label: micBtn.getAttribute('aria-label'),
+          svg: !!micBtn.querySelector('svg'),
+          headerUnmute: !!document.getElementById('unmute'),
+          headerCam: !!document.getElementById('showcam'),
+        };
       },
       whisperForTest: () => ({ engine: ccEngine(), live: !!wsp, ready: whisperReady(), queue: wspQ.items.length, sent: wspQ.sent, dropped: wspQ.dropped, rate: wsp ? wsp.rate : 0, captures: Array.from(wspCaps.keys()), scribe: scribeOn(), source: ccSourceId, inFlight: !!wspQ.busy, behind: !!wspQ.behind, paused: !!wspPaused, lastLatencyMs: wspQ.lastLatencyMs || 0, model: wspModel(), scribes: ccScribes().map((x) => x.id) }),
       whisperFeedForTest: (f32, rate, forId) => { const w = wspCaps.get(forId || 'me'); if (!w) return false; wspEnqueue(w, [Float32Array.from(f32)], Date.now(), rate || 16000, true); return true; },

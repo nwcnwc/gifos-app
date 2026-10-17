@@ -15,7 +15,7 @@ test.describe('German', () => {
     await expect(page.locator('#nmok')).toHaveText('Speichern');
     await expect(page.locator('#nmcancel')).toHaveText('Leeren');
     await page.click('#nmok');
-    await expect(page.locator('#mic .dockword')).toHaveText('Mikro');
+    await expect(page.locator('#mic .dockword')).toHaveText('Ton an');
     await expect(page.locator('#cam .dockword')).toHaveText('Kamera');
     await expect(page.locator('#leavebtn .dockword')).toHaveText('Ende');
     await expect(page.locator('#bartoggle .dockword')).toHaveText('Mehr');
@@ -54,7 +54,7 @@ test.describe('Spanish', () => {
     await expect(page.locator('#nmok')).toHaveText('Guardar');
     await expect(page.locator('#nmcancel')).toHaveText('Limpiar');
     await page.click('#nmok');
-    await expect(page.locator('#mic .dockword')).toHaveText('Micro');
+    await expect(page.locator('#mic .dockword')).toHaveText('Activar');
     await expect(page.locator('#cam .dockword')).toHaveText('Cámara');
     await expect(page.locator('#bartoggle .dockword')).toHaveText('Más');
     await page.click('#bartoggle');

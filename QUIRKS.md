@@ -6,6 +6,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 
 ## Fixed
 
+### The dock said Mic, and a second Unmute would duplicate it
+
+- **Who hits it:** someone who joined muted, which is the default, looking for how to speak. Nathan flagged a header Unmute pill on the phone that copies the dock mic.
+- **What you saw:** the dock word was Mic. Desktop had no header pill, so the only control still named the object, not the action.
+- **Repro:** `test/desktop/dock-labels.spec.js` expected Unmute and got Mic. The same test refuses `#unmute` and `#showcam`.
+- **Fix:** while you are muted the dock says Unmute. While you are live it says Mute. German: Ton an / Stumm. Spanish: Activar / Silenciar. The icon stays on the button. There is no header Unmute and no header Camera.
+- **Proof:** the dock and locale tests pass on Chromium, Firefox, and WebKit. At 900px Camera, Unmute, Share screen, CC, Chat, More, and Leave all stay on screen. Screenshots: `test/desktop/shots/unmute-dock-before-1280.png`, `test/desktop/shots/unmute-after-1280-dock.png`, `test/desktop/shots/unmute-live-1280-dock.png`, `test/desktop/shots/unmute-after-900.png`.
+
 ### The gallery view needed the pointer
 
 - **Who hits it:** someone switching between fitting every face and scrolling larger faces, without reaching for the corner button.

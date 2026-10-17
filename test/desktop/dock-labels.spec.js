@@ -30,7 +30,7 @@ async function wordBox(page, id) {
 
 test('mic, camera, more, and leave show a word on the dock', async ({ page }) => {
   await boot(page, 1280, 720);
-  for (const [id, label] of [['mic', 'Mic'], ['cam', 'Camera'], ['sharebtn', 'Share screen'], ['bartoggle', 'More'], ['leavebtn', 'Leave']]) {
+  for (const [id, label] of [['mic', 'Unmute'], ['cam', 'Camera'], ['sharebtn', 'Share screen'], ['bartoggle', 'More'], ['leavebtn', 'Leave']]) {
     const box = await wordBox(page, id);
     expect(box.missing, id).toBe(false);
     expect(box.text, id).toBe(label);
@@ -42,6 +42,32 @@ test('mic, camera, more, and leave show a word on the dock', async ({ page }) =>
   await page.click('#bartoggle');
   const open = await wordBox(page, 'bartoggle');
   expect(open.text).toBe('Hide');
+});
+
+test('the dock mic is the only Unmute', async ({ page }) => {
+  await boot(page, 1280, 720);
+  expect(await page.locator('#unmute').count()).toBe(0);
+  expect(await page.locator('#showcam').count()).toBe(0);
+  const muted = await page.evaluate(() => window.__gifosVideo.setOwnMicForTest(false));
+  expect(muted.headerUnmute).toBe(false);
+  expect(muted.headerCam).toBe(false);
+  expect(muted.word).toBe('Unmute');
+  expect(muted.label).toBe('Unmute');
+  expect(muted.svg).toBe(true);
+  const live = await page.evaluate(() => window.__gifosVideo.setOwnMicForTest(true));
+  expect(live.word).toBe('Mute');
+  expect(live.label).toBe('Mute');
+  expect(live.svg).toBe(true);
+  const again = await page.evaluate(() => window.__gifosVideo.setOwnMicForTest(false));
+  expect(again.word).toBe('Unmute');
+  const pills = await page.evaluate(() => [...document.querySelectorAll('button')].filter((b) => {
+    if (b.closest('.bar')) return false;
+    const cs = getComputedStyle(b);
+    if (b.hidden || cs.display === 'none' || cs.visibility === 'hidden') return false;
+    const t = (b.textContent || '').replace(/\s+/g, ' ').trim();
+    return t === 'Unmute' || t === 'Mute';
+  }).map((b) => b.id));
+  expect(pills).toEqual([]);
 });
 
 test('dock words stay inside their buttons when the window narrows', async ({ page }) => {
