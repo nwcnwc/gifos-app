@@ -146,6 +146,16 @@
     return 'p-' + h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0');
   }
 
+  // seatBridgeId(key) → the credential service's id for a bridge the
+  // seating names. The seating's key joins the two groups' labels with a
+  // newline (both ends and the standby compute the same key); the service
+  // takes 1 to 64 letters, digits and ._:- only, so the key is hashed like
+  // a pair of pages. A standby that takes the bridge keeps its id.
+  function seatBridgeId(key) {
+    const k = String(key == null ? '' : key); const i = k.indexOf('\n');
+    return i < 0 ? bridgeIdFor(k, '') : bridgeIdFor(k.slice(0, i), k.slice(i + 1));
+  }
+
   // haltsOn(reason) → true when a paid refusal is final for this order.
   function haltsOn(reason) { return FINAL_REFUSALS.indexOf(String(reason)) >= 0; }
 
@@ -235,7 +245,7 @@
   const api = {
     BASE_PRODUCT, TOPUP_PRODUCT, TICKET_S, MIN_LEFT_S, RESIGN_BEFORE_S, METER_EVERY_MS, TOPUP_MARK_HOURS, TEXT,
     countingText, waitingText, checkReceipt, checkTopup, ticketFor, ticketJson, checkTicket, needsResign, better,
-    roomState, bridgeIdFor, haltsOn, wantPaid, farPaid, peopleCounting, fmtHours, topUpDue, meterView,
+    roomState, bridgeIdFor, seatBridgeId, haltsOn, wantPaid, farPaid, peopleCounting, fmtHours, topUpDue, meterView,
     receiptQuery, termsOf,
   };
   const GifOS = (root.GifOS = root.GifOS || {});

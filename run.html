@@ -6413,7 +6413,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const vaMineLive = () => { const m = vaMine(); return m && VA.checkReceipt(m.r, vaNowS()) ? m : null; };
     // The bridge a pair is counted as. Until the seating names real bridges,
     // a bridge is the pair itself; both ends compute the same id.
-    function vaBridge(pid) { const li = netSeated() ? netLinkInfo(pid) : null; return (li && li.bridge) || VA.bridgeIdFor(myId, pid); }   // the seating's bridge id when it names one (both ends compute the same), else the pair's
+    function vaBridge(pid) { const li = netSeated() ? netLinkInfo(pid) : null; return li && li.bridge ? VA.seatBridgeId(li.bridge) : VA.bridgeIdFor(myId, pid); }   // the seating's bridge when it names one (both ends compute the same id), else the pair's
     function vaOrderState() {
       if (!vaOrder) return null;
       const ns = vaNowS();
