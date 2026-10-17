@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q56. A town hall viewer got a meeting’s camera and mic
+
+Opening a town hall put Camera, Flip, and Unmute on the dock, then Blur, Run app, Share screen, Password, and Record in More. A watcher now gets React, More, and Leave. Hand, Chat, and Admin sign-in stay. The host, who holds the room key, keeps the camera and the mic. A stage grant puts the watcher’s camera and mic back. A meeting is unchanged. `test/mobile/town-hall-join.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-town-hall-dock.png`. After: `test/mobile/screenshots/after/iphone-se-town-hall-dock.png`.
+
+Design: a town hall watcher is here to watch. Corporate stays at 4. The room can still show a meeting’s gallery.
+
 ### Q55. The phone dock had no words
 
 Camera, Flip, the mic, React, More, and Leave were icons. A tall phone now prints the word on each one: Camera, Flip, Unmute, React, More, Leave. The mic is the only Unmute. When the mic is on, that same word becomes Mute. A broadcast viewer’s mic stays hidden, so they do not get an Unmute. A short landscape keeps the thin strip of marks and hides the words. `test/mobile/dock-labels.spec.mjs`.

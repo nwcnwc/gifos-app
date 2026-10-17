@@ -12,8 +12,21 @@ test('a town hall joiner lands in the town hall', async ({ page }) => {
   await expect(page.locator('#nm-lead')).toHaveCount(0);
   await expect(page.locator('#leavebtn')).toHaveAttribute('aria-label', 'Leave the town hall');
   await expect(page.locator('body')).not.toHaveClass(/broadcast/);
-  const cam = await page.locator('#cam').evaluate((el) => getComputedStyle(el).display);
-  expect(cam).not.toBe('none');
+  await expect(page.locator('body')).toHaveClass(/th-watch/);
+  for (const id of ['cam', 'flipcam', 'mic', 'appbtn', 'sharebtn', 'pwbtn', 'recbtn']) {
+    const display = await page.locator('#' + id).evaluate((el) => getComputedStyle(el).display);
+    expect(display, id).toBe('none');
+  }
+  await expect(page.locator('#reactbtn')).toBeVisible();
+  await expect(page.locator('#bartoggle')).toBeVisible();
+  await expect(page.locator('#hand')).toBeAttached();
+  const hand = await page.locator('#hand').evaluate((el) => getComputedStyle(el).display);
+  expect(hand).not.toBe('none');
+  await page.evaluate(() => document.body.classList.add('stage-granted'));
+  const camBack = await page.locator('#cam').evaluate((el) => getComputedStyle(el).display);
+  expect(camBack).not.toBe('none');
+  const micBack = await page.locator('#mic').evaluate((el) => getComputedStyle(el).display);
+  expect(micBack).not.toBe('none');
   const link = await page.locator('#share-url').inputValue();
   expect(link).toContain('th=1');
   expect(link).toContain('allhands');
@@ -29,6 +42,9 @@ test('a town hall host still confirms how they appear', async ({ page }) => {
   await expect(page.locator('.appear-box h3')).toHaveText(/This is how you.ll appear/);
   await expect(page.locator('#nm-lead')).toHaveCount(0);
   await expect(page.locator('body')).not.toHaveClass(/broadcast/);
+  await expect(page.locator('body')).not.toHaveClass(/th-watch/);
+  const cam = await page.locator('#cam').evaluate((el) => getComputedStyle(el).display);
+  expect(cam).not.toBe('none');
 });
 
 test('a meeting joiner still lands in the meeting', async ({ page }) => {
@@ -37,6 +53,8 @@ test('a meeting joiner still lands in the meeting', async ({ page }) => {
   await expect(page.locator('.appear-box h3')).toHaveText(/This is how you.ll appear/);
   await expect(page.locator('#nm-lead')).toHaveCount(0);
   await expect(page.locator('body')).not.toHaveClass(/townhall/);
+  const cam = await page.locator('#cam').evaluate((el) => getComputedStyle(el).display);
+  expect(cam).not.toBe('none');
   const link = await page.locator('#share-url').inputValue();
   expect(link).not.toContain('th=1');
 });
