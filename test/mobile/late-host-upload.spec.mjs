@@ -8,10 +8,13 @@
 //     first hops), not one per joiner,
 //   - the host's outbound-rtp bytes/s with 6 joiners stays within two
 //     copies (×1.25) of what 1 joiner costs,
-//   - every joiner sees the stage picture advancing.
-// Data-channel bytes per second are recorded beside it (trace.json), not
-// asserted: the status heartbeat floods the sender's section, so it grows
-// until the section is full (C² seats) and stays flat after (Q78).
+//   - every joiner sees the stage picture advancing,
+//   - the host's channel bytes per link stay what one joiner costs: a viewer's
+//     heartbeat goes to its own links only, so the host does not pass on
+//     every joiner's beat (Q79; before, the section flood grew it ~3 KB/s per
+//     joiner up to C² seats),
+//   - the host still counts everyone and sees a far joiner's raised hand
+//     (the room's count and hands come from the tree's fold).
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
 import { viewerBrowsers, PC_TAP } from './rebroadcast-lib.mjs';
@@ -22,6 +25,7 @@ const WAVES = [1, 2, 3]; // joiners added per wave: 1, then 3, then 6 in all
 const SETTLE_MS = 20000, WINDOW_MS = 10000;
 const MAX_MEDIA_LINKS = 2; // host → first hops of the stage fan-out
 const MAX_NEG_IN_WINDOW = 2; // offers + answers the host takes in a settled window
+const DC_PER_LINK_X = 1.5; // host channel B/s per open link, 6 joiners vs 1
 
 const TX_BY_PC = () => window.__txByPc = async () => {
   const out = [];
@@ -93,22 +97,34 @@ test('a late arrival never adds host upload', async ({ browser, baseURL }, info)
       }
       await h.waitForTimeout(SETTLE_MS);
       const n0 = await negCount(h);
+      const k0 = await h.evaluate(() => (window.__gifosVideo.txKindBytes || (() => ({})))());
       const a = await h.evaluate(() => window.__txByPc());
       const ta = Date.now();
       await h.waitForTimeout(WINDOW_MS);
       const b = await h.evaluate(() => window.__txByPc());
       const dt = (Date.now() - ta) / 1000;
       const n1 = await negCount(h);
+      const k1 = await h.evaluate(() => (window.__gifosVideo.txKindBytes || (() => ({})))());
+      const kinds = Object.fromEntries(Object.keys(k1).map((k) => [k, Math.round((k1[k] - (k0[k] || 0)) / dt)]).filter((x) => x[1] > 20).sort((x, y) => y[1] - x[1]));
       // Links are matched by position: __pcs only grows, closed ones drop out of both.
       const perLink = b.map((x, i) => ({ rtp: (x.rtp - ((a[i] || {}).rtp || 0)) / dt, dc: (x.dc - ((a[i] || {}).dc || 0)) / dt }));
       const mediaLinks = perLink.filter((x) => x.rtp > 1000).length;
       const rtp = Math.round(perLink.reduce((s, x) => s + x.rtp, 0));
       const dc = Math.round(perLink.reduce((s, x) => s + x.dc, 0));
+      const dcLinks = Math.max(1, perLink.filter((x) => x.dc > 50).length);
       const via = [];
       for (const v of viewers) via.push(await v.evaluate(() => window.__gifosVideo.stageViaForTest()).catch(() => null));
-      waves.push({ joiners: viewers.length, neg: n1 - n0, mediaLinks, rtpBps: rtp, dcBps: dc, via });
-      console.log(`[${info.project.name}] ${viewers.length} joiners: host offers+answers in ${WINDOW_MS / 1000}s ${n1 - n0}, media links ${mediaLinks}, rtp ${(rtp / 1000).toFixed(1)} KB/s, dc ${(dc / 1000).toFixed(1)} KB/s`);
+      const display = await h.evaluate(() => window.__gifosVideo.statusPlane().display);
+      waves.push({ joiners: viewers.length, neg: n1 - n0, mediaLinks, rtpBps: rtp, dcBps: dc, dcLinks, dcPerLink: Math.round(dc / dcLinks), display, kinds, perLink: perLink.map((x) => [Math.round(x.rtp), Math.round(x.dc)]), via });
+      console.log(`[${info.project.name}] ${viewers.length} joiners: host offers+answers in ${WINDOW_MS / 1000}s ${n1 - n0}, media links ${mediaLinks}, rtp ${(rtp / 1000).toFixed(1)} KB/s, dc ${(dc / 1000).toFixed(1)} KB/s on ${dcLinks} links, host counts ${display}`);
     }
+    // The last joiner (past the host's own links at 6) raises a hand; the
+    // host's queue must show it, through the fold if not first-hand.
+    const far = viewers[viewers.length - 1];
+    const farId = await far.evaluate(() => { window.__gifosVideo.raiseHand(true); return window.__gifosVideo.statusPlane().id; });
+    const farLinked = (await h.evaluate(() => window.__gifosVideo.meshLinks())).includes(farId);
+    const handSeen = await h.waitForFunction((id) => window.__gifosVideo.handQueue().some((e) => e.id === id), farId, { timeout: 30000 }).then(() => true, () => false);
+    console.log(`[${info.project.name}] far joiner ${String(farId).slice(0, 8)} linked to host: ${farLinked}, hand seen by host: ${handSeen}`);
     sampling = false; await sampler;
     const hostId = String(await h.evaluate(() => window.__gifosVideo.stageIds()[0])).slice(0, 8);
     fs.writeFileSync(info.outputPath('trace.json'), JSON.stringify({ hostId, waves, trace }, null, 1));
@@ -122,6 +138,11 @@ test('a late arrival never adds host upload', async ({ browser, baseURL }, info)
     // The host's own stage feed goes to at most two seats live (STG-DIRECT);
     // everyone else is fed down the tree. So 6 joiners cost at most two
     // copies of what 1 joiner costs, and 600 would cost the same.
+    // The host's channel: each link carries the host's own beat and upkeep,
+    // never every joiner's beat passed along. Links are bounded (C + 2).
+    expect(waves[2].dcPerLink, `host channel ${waves[0].dcPerLink} B/s per link with 1 joiner, ${waves[2].dcPerLink} with 6`).toBeLessThanOrEqual(waves[0].dcPerLink * DC_PER_LINK_X + 300);
+    expect(waves[2].display, 'host counts the host and 6 joiners').toBeGreaterThanOrEqual(7);
+    expect(handSeen, 'host sees the far joiner\'s hand').toBe(true);
     expect(waves[2].rtpBps, `host media ${waves[0].rtpBps} B/s with 1 joiner, ${waves[2].rtpBps} with 6`).toBeLessThanOrEqual(waves[0].rtpBps * MAX_MEDIA_LINKS * 1.25);
   } finally {
     await ctxH.close();
