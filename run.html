@@ -22611,6 +22611,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         probe: directPath, cred: turnCred ? turnCred.state() : 'idle', reach: turnReach(), heard: turnHeard(),
         anchor: turnAnchorId != null ? (rosterNames[turnAnchorId] || (peers.get(turnAnchorId) || {}).name || String(turnAnchorId).slice(0, 8)) : null,
         serving: [...peers.values()].filter((p) => p.turnServe).map((p) => rosterNames[p.id] || p.name || String(p.id).slice(0, 8)),
+        // what this page plays from each pair: its sound element's state (missing, paused, muted, volume)
+        ears: [...peers.values()].map((p) => { const a = p.video && p.video._aud; return [rosterNames[p.id] || String(p.id).slice(0, 8), a ? (a.paused ? 'paused' : 'playing') + (a.muted ? '/muted' : '') + '/' + Math.round((a.volume || 0) * 100) + (a.srcObject ? '' : '/no-src') : 'none']; }),
         // the mixes this page sends: its uplink to its anchor, one mix-minus per client, one feed per row mate (source keys by owner name), and whether each sender carries it
         mixes: (() => { const nm = (id) => rosterNames[id] || String(id).slice(0, 8); const keys = (ks) => [...ks].map((k) => { const m = /^(?:p|r):([^:]+):/.exec(k); return m ? nm(m[1]) : k.split(':')[0]; });
           const sent = (pid, t) => { const q = peers.get(pid); return !!(q && q.mainA && t && q.mainA.track === t); };
