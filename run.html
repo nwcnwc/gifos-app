@@ -1619,6 +1619,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore .seg.sel,
   .bar:not(.collapsed) .barmore .seg[aria-pressed="true"] { background: #1d1d1f; color: #fff; }
   .bar .barmore .blab { display: block; font-size: 16px; font-weight: 700; margin-top: 2px; line-height: 1.1; }
+  /* Desktop: All tools is the whole list on a 1280x720 laptop, host row too.
+     All tools sits beside Hand, Invite, and Help; each heading sits left of
+     its row, five buttons a row. */
+  @media (min-width: 900px) {
+    body.desk-ptr .bar:not(.collapsed) .barmore { flex-flow: row wrap; column-gap: 8px; width: min(920px, calc(100vw - 24px)); }
+    body.desk-ptr .bar:not(.collapsed) .barmore > * { flex: 1 1 100%; min-width: 0; }
+    body.desk-ptr .bar:not(.collapsed) .barmore > .yourow { flex: 3 1 0; grid-template-columns: repeat(3, 1fr); }
+    body.desk-ptr .bar:not(.collapsed) .barmore > #moretools { flex: 1 1 0; }
+    body.desk-ptr .bar:not(.collapsed) .barmore .moregroup { display: grid; grid-template-columns: 7em 1fr; align-items: center; gap: 8px; }
+    body.desk-ptr .bar:not(.collapsed) .barmore:not(.tools-open) .moregroup.extra { display: none; }
+    body.desk-ptr .bar:not(.collapsed) .barmore .moregroup .morerow { grid-template-columns: repeat(5, 1fr); }
+    body.desk-ptr .bar:not(.collapsed) .barmore .moregroup .morerow > button { min-height: 52px; padding: 6px; }
+  }
   .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 122px; transform: translateX(-50%);
     display: flex; gap: 8px; background: rgba(255,255,255,.96); border-radius: 20px; padding: 10px;
     box-shadow: 0 10px 28px rgba(0,0,0,.25); }
