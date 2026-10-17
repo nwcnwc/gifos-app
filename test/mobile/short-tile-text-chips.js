@@ -4,8 +4,9 @@
  * column of short tiles) and a sideways SE. Here the tiles carry the long
  * text chips: Ruth is reached "📡 via Pastor Dave" with her hand up and
  * muted; Margaret Johnson's "🚧 can't connect straight to them…" warning
- * sits with her mute and camera-off icons; Grace is "🖥 sharing their
- * screen", muted; the Lobby iPad has "🗳 2/3 to remove", muted. A tile
+ * sits with her mute and camera-off icons; the Lobby iPad has "🗳 2/3 to
+ * remove", muted. ("🖥 sharing their screen" takes the same path, but a
+ * share moves everyone into the filmstrip, so it is not seated here.) A tile
  * under 130px tall has about 60px beside Full screen, so those sentences
  * were cut inside their chip and pushed the mute icon off the tile. On
  * every whole tile each chip must show inside the tile, whole, clear of
@@ -30,7 +31,7 @@ const VIEWS = [
 ];
 const VERSION_JSON = '{"current":"0.9.99"}';
 const CHANGELOG_JSON = '{"entries":[{"version":"0.9.99","critical":true}]}';
-const BUSY = { Ruth: 3, 'Margaret Johnson': 3, Grace: 2, 'Lobby iPad': 2 };
+const BUSY = { Ruth: 3, 'Margaret Johnson': 3, 'Lobby iPad': 2 };
 
 function look(page) {
   return page.evaluate((busy) => {
@@ -108,7 +109,7 @@ function look(page) {
       v.setPeerStatusForTest('qa2', { hand: true, muted: true });
       v.setPeerStatusForTest('qa3', { hand: null, muted: true, camOff: true });
       v.setPeerStatusForTest('qa4', { muted: true });
-      v.setPeerStatusForTest('qa5', { muted: true, scr: true });
+      v.setPeerStatusForTest('qa5', { muted: true });
       v.setPeerNetForTest('qa2', { relayed: 'qa1' });
       v.setPeerNetForTest('qa3', { noRoute: true });
       v.setPeerNetForTest('qa4', { votes: [2, 3] });
@@ -118,8 +119,7 @@ function look(page) {
       if (!up) { bad.push(tag + ': the update bar never showed'); await context.close(); continue; }
     }
     await page.keyboard.press('Shift');
-    // Grace's share turns the gallery into a filmstrip a beat later; measure
-    // once the tiles have stopped moving.
+    // Measure once the tiles have stopped moving.
     let got = await look(page), was = '';
     for (let i = 0; i < 20 && JSON.stringify(got) !== was; i++) {
       was = JSON.stringify(got);
@@ -133,7 +133,7 @@ function look(page) {
     if (!/land/.test(tag) && whole.filter((t) => t.short && t.busy).length < 1) bad.push(tag + ': no whole short busy tile to check');
     for (const t of whole) {
       if (t.busy && t.chips.length < t.busy) bad.push(tag + ': ' + t.name + ' shows only ' + t.chips.length + ' chips');
-      const said = { Ruth: /via Pastor Dave/, 'Margaret Johnson': /can.t connect/, Grace: /sharing their screen/, 'Lobby iPad': /2\/3 to remove/ }[t.name];
+      const said = { Ruth: /via Pastor Dave/, 'Margaret Johnson': /can.t connect/, 'Lobby iPad': /2\/3 to remove/ }[t.name];
       if (said && !said.test(t.words || '')) bad.push(tag + ': ' + t.name + '\'s tile lost the words ' + said);
       for (const c of t.clash) bad.push(tag + ': on ' + t.name + '\'s tile ' + c);
     }

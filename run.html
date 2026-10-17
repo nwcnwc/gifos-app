@@ -1208,6 +1208,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       font-size: 0; width: 22px; height: 22px; min-width: 0; padding: 0; box-sizing: border-box; flex: 0 0 auto;
       display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
     .tile.slim .chips :is(span.hand, span.rec, span.lv) b { font-size: 13px; font-weight: normal; }
+    /* "📡 via Pastor Dave", "🚧 can't connect…", "🖥 sharing their screen" and
+       "🗳 2/3 to remove" are sentences a 105px tile cut, or that pushed the
+       mute icon off it: there they are the icon (a vote keeps its count). */
+    .tile.slim .chips span.tx.long,
+    .tile.slim.short .chips span.tx,
+    .tile.slim .chips:has(> span:not(.ico) ~ span:not(.ico)) span.tx {
+      font-size: 0; height: 22px; min-width: 22px; padding: 0 3px; box-sizing: border-box; flex: 0 0 auto;
+      display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
+    .tile.slim .chips span.tx b { font-size: 13px; font-weight: normal; white-space: nowrap; }
+    .tile.slim.short .chips span.tx { height: 20px; min-width: 20px; padding: 0 2px; }
+    .tile.slim.short .chips span.tx b { font-size: 11px; letter-spacing: -0.02em; }
     .tile.slim .chips span.rec b { color: #ff4d4d; }
     .tile.slim.short .chips :is(span.hand, span.rec, span.lv, span.ico) { width: 20px; height: 20px; }
     .tile.slim.short .chips span.lv b.ico-only,
@@ -6345,18 +6356,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const mod = modOf(id);
       const gMute = mod.mute && mod.mute.on, gBlur = mod.blur && mod.blur.on, gCam = mod.cam && mod.cam.on;
       const chips = [];
+      // A text chip: its icon in <b>, its words after. A slim phone tile draws
+      // a `long` one (and, once two text chips share a row, every one) as the
+      // icon alone; the words stay in the title and aria-label.
+      const txChip = (cls, ico, words) => '<span class="tx' + (cls ? ' ' + cls : '') + '" title="' + esc(words) + '" aria-label="' + esc(words) + '"><b>' + ico + '</b> ' + esc(words) + '</span>';
       paintAwayMark(t, !isMe && peerAway(id, 25000));
       // Not verified myself: everyone holds my media.
-      if (isMe && (typeof keysTrusted === 'function' && keysTrusted() === true) && !myIpAttV) chips.push('<span class="warn">\u26a0 the relay has not verified you yet \u2014 others cannot see or hear you until it does. If this stays, update GifOS.</span>');
+      if (isMe && (typeof keysTrusted === 'function' && keysTrusted() === true) && !myIpAttV) chips.push(txChip('warn long', '\u26a0', 'the relay has not verified you yet \u2014 others cannot see or hear you until it does. If this stays, update GifOS.'));
       if ((typeof attestOn === 'function' && attestOn() === true) && !isMe && !(typeof isEjected === 'function' && isEjected(id) === true)) {
         if (!(typeof isVerified === 'function' && isVerified(id) === true)) {
           const e = whoLog.get(id), young = e && Date.now() - e.first < 15000;
-          chips.push('<span class="warn">\ud83d\udd12 ' + (young ? 'verifying who they are\u2026 video and sound held' : 'not verified \u2014 video and sound held. They need to update GifOS.') + '</span>');
+          chips.push(txChip('warn long', '\ud83d\udd12', young ? 'verifying who they are\u2026 video and sound held' : 'not verified \u2014 video and sound held. They need to update GifOS.'));
         }
       }
-      if (!isMe && t.relayed) chips.push('<span>📡 via ' + esc(displayName(t.relayed)) + '</span>');
-      else if (!isMe && t.noRoute && !peerAway(id)) chips.push('<span class="warn">🚧 can’t connect straight to them — something on this network blocks video (common at work)</span>');
-      if (stageIds().includes(isMe ? myId : id)) chips.push('<span>🎙 ' + esc(uiText('onStageChip', 'on stage')) + '</span>');
+      if (!isMe && t.relayed) chips.push(txChip('long', '📡', 'via ' + displayName(t.relayed)));
+      else if (!isMe && t.noRoute && !peerAway(id)) chips.push(txChip('warn long', '🚧', 'can’t connect straight to them — something on this network blocks video (common at work)'));
+      if (stageIds().includes(isMe ? myId : id)) chips.push(txChip('', '🎙', uiText('onStageChip', 'on stage')));
       // WHAT IS ON SCREEN, AND WHOSE. A screen share is the one feed where the
       // pixels do not say who they came from or that they are not a face — so
       // the tile does, on every device, from the same gossiped bit.
@@ -6378,7 +6393,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if ((isMe ? st.scr : (typeof sharingScreen === 'function' && sharingScreen(id))) && (isMe || !(typeof shareBlocked === 'function' && shareBlocked(id)))) {
         chips.push(isMe
           ? '<span class="warn stopshare" role="button" tabindex="0" title="Stop sharing your screen">🖥 ' + esc(uiText('stopShare', 'Stop sharing')) + '</span>'
-          : '<span class="warn">🖥 ' + esc(uiText('shareTheirsChip', 'sharing their screen')) + '</span>');
+          : txChip('warn long', '🖥', uiText('shareTheirsChip', 'sharing their screen')));
       }
       if (st.hand) chips.push('<span class="warn hand" title="hand raised"><b>✋</b> hand raised</span>');
       // <b> is the icon a short phone tile keeps when the words can't fit.
@@ -6394,20 +6409,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const bl = blurLevelFor(id);
       if (!st.bot && gCam) chips.push(statusIco('cam-off', 'video off for all by ' + (mod.cam.by || 'someone')));
       else if (!st.bot && st.camOff) chips.push(statusIco('cam-off', 'camera off'));
-      if (hasAdminRoom() && mod.app && mod.app.on && !admins.includes(id)) chips.push('<span>🧩 may run apps — allowed by ' + esc(mod.app.by) + '</span>');
+      if (hasAdminRoom() && mod.app && mod.app.on && !admins.includes(id)) chips.push(txChip('long', '🧩', 'may run apps — allowed by ' + mod.app.by));
       // The chip names a per-person allow only. A room-wide allow covers
       // everyone and would chip every tile; modOf would not tell them apart.
       const sharePid = isMe ? myId : id;
       const ownShare = hasAdminRoom() && modTable[sharePid] && modTable[sharePid].share;
-      if (ownShare && ownShare.on === true && !admins.includes(sharePid)) chips.push('<span>🖥 may share a screen — allowed by ' + esc(ownShare.by) + '</span>');
+      if (ownShare && ownShare.on === true && !admins.includes(sharePid)) chips.push(txChip('long', '🖥', 'may share a screen — allowed by ' + ownShare.by));
       // vote-off progress (non-admin rooms): show how close a tile is to removal
       const dv = devOf[id];
-      if (!isMe && voteNeed && dv && voteTally[dv]) chips.push('<span class="warn">🗳 ' + voteTally[dv] + '/' + voteNeed + ' to remove</span>');
+      if (!isMe && voteNeed && dv && voteTally[dv]) chips.push('<span class="tx warn long" title="' + voteTally[dv] + '/' + voteNeed + ' to remove" aria-label="' + voteTally[dv] + '/' + voteNeed + ' votes to remove"><b>🗳 ' + voteTally[dv] + '/' + voteNeed + '</b> to remove</span>');
       // stage-vote progress: everyone watches the same arithmetic converge
       if (!hasAdminRoom()) {
         const vt = stageVoteTallies(), sdv = isMe ? myDevHash : dv;
-        if (sdv && vt.up[sdv]) chips.push('<span>🗳 ' + vt.up[sdv] + '/' + vt.need + ' to the stage</span>');
-        if (sdv && vt.down[sdv]) chips.push('<span class="warn">🗳 ' + vt.down[sdv] + '/' + vt.need + ' off the stage</span>');
+        if (sdv && vt.up[sdv]) chips.push('<span class="tx long" title="' + vt.up[sdv] + '/' + vt.need + ' to the stage" aria-label="' + vt.up[sdv] + '/' + vt.need + ' votes to the stage"><b>🗳 ' + vt.up[sdv] + '/' + vt.need + '</b> to the stage</span>');
+        if (sdv && vt.down[sdv]) chips.push('<span class="tx warn long" title="' + vt.down[sdv] + '/' + vt.need + ' off the stage" aria-label="' + vt.down[sdv] + '/' + vt.need + ' votes off the stage"><b>🗳 ' + vt.down[sdv] + '/' + vt.need + '</b> off the stage</span>');
       }
       // Write the chips only when they changed: a repaint runs on every gossip
       // pass, and rebuilding identical spans drops keyboard focus from the
