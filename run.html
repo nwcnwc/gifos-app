@@ -1084,6 +1084,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #chathead { display: flex; align-items: center; gap: .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
   #chathead button { margin-left: auto; padding: .2rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   #chatlog { flex: 1; overflow-y: auto; padding: .6rem; display: flex; flex-direction: column; gap: 8px; font-size: 1rem; }
+  #chatnew { align-self: center; flex: 0 0 auto; margin: 0 12px 8px; min-height: 44px; padding: 0 16px;
+             border: 0; border-radius: 22px; background: #0064c8; color: #fff; cursor: pointer;
+             font: 700 1rem/1 system-ui, sans-serif; }
+  #chatnew[hidden] { display: none !important; }
   /* Theirs is a light bubble with dark type. Mine is the blue one with
      white type. The name is the same size as the line, so 200% text
      stays readable. Neither bubble runs to the edge of the sheet. */
@@ -2223,6 +2227,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button id="chatmod" style="display:none" title="Silence the chat for everyone but you">Turn chat off</button>
       <button id="chatclose">✕</button></div>
     <div id="chatlog"></div>
+    <button type="button" id="chatnew" hidden>New messages</button>
     <div id="trwrap">
       <div id="trlog"><small style="color:#667">Tap CC in the bar and your device writes down everyone it hears — the lines gather here under each speaker's name, on every device in the meeting.</small></div>
       <div id="trfoot"><button id="trdl">Download transcript</button></div>
@@ -14049,12 +14054,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // A reader who scrolled up stays there. The log used to jump to the bottom
     // on every line. A hidden panel is not rebuilt; opening it paints once.
+    function paintChatNew(stick) {
+      const b = document.getElementById('chatnew');
+      if (b) b.hidden = !!stick;
+    }
     function paintLog(log, html) {
       if (!log) return;
       const stick = logNearBottom(log);
       const prev = log.scrollTop;
       log.innerHTML = html;
       log.scrollTop = stick ? log.scrollHeight : prev;
+      if (log.id === 'chatlog') paintChatNew(stick);
     }
     function chatPanelOpen() { return !!(chatPanel && chatPanel.classList.contains('open')); }
     function transcriptShown() {
@@ -14107,6 +14117,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     document.getElementById('chatmod').onclick = () => {
       setMod('*', 'chat', !chatOffInfo());
       paintChatGate(); renderChat();
+    };
+    document.getElementById('chatlog').addEventListener('scroll', () => {
+      const log = document.getElementById('chatlog');
+      if (logNearBottom(log)) paintChatNew(true);
+    });
+    document.getElementById('chatnew').onclick = () => {
+      const log = document.getElementById('chatlog');
+      log.scrollTop = log.scrollHeight;
+      paintChatNew(true);
     };
     document.getElementById('chatlog').addEventListener('click', (e) => {
       const b = e.target.closest('[data-cdel]'); if (!b) return;

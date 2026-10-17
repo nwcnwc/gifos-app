@@ -461,9 +461,19 @@ Repro: `test/mobile/chat-send.js`. It failed (`Send is rgb(255, 255, 255)`, the 
 
 Before: `qa/mobile/shots/before-chat-send-iphone-se.png`. After: `qa/mobile/shots/after-chat-send-iphone-se.png`.
 
+### 55. A new line had no way back down
+
+The log already stayed put when you had scrolled up. The new line arrived below, and nothing offered to take you there. Zoom, Meet, and Teams show that control.
+
+New messages sits under the log, blue, 44px. A tap jumps to the newest line and clears it. Scrolling to the bottom yourself clears it too.
+
+Repro: `test/mobile/chat-new.js`. It failed (`no way back down`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-new.js`.
+
+Before: `qa/mobile/shots/before-chat-new-iphone-se.png`. After: `qa/mobile/shots/after-chat-new-iphone-se.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A chat line that arrives while you are reading older ones has no way back down.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. Chat has no search.
 
 ## Personas (what was actually tried)
 
