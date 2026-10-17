@@ -12968,7 +12968,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           p.renegAgain = true; // polite rollback: my changes go again after I answer
           p.kickVideo = true; // that rollback stops the video encoder; reseat once stable
           // A ROLLBACK ON A PAIR ALREADY CARRYING MEDIA leaves it half dead in
-          // Chromium (measured, test/repro/va-resume-page-ops.js, 3 of 3): every
+          // Chromium (measured, every time): every
           // sender of the side that rolled back goes silent, audio included, and
           // its tiles stop presenting frames while their tracks keep decoding.
           // A reseat revives the senders; nothing on this pc revives the sinks.
