@@ -2007,19 +2007,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="app-modal" style="display:none">
     <div class="name-box" style="max-width:420px;text-align:left">
-      <h3>Run an app in this meeting</h3>
-      <p>Pick one of your apps. It runs live for <b>everyone here</b> — same state, same moves — with the meeting's audio, video and recording around it. Anyone can interact.</p>
+      <h3 data-t="appSheetTitle">Run an app in this meeting</h3>
+      <p data-t="appSheetBody">Pick one of your apps. It runs live for everyone here — same state, same moves — with the meeting's audio, video and recording around it. Anyone can interact.</p>
       <div id="app-list" style="max-height:38vh;overflow-y:auto;margin:.4rem 0 .8rem"></div>
       <div id="app-add" style="border-top:1px solid var(--border,#2a2a3f);padding-top:.7rem;margin-bottom:1rem">
-        <p style="margin:.1rem 0 .5rem;font-size:.82rem;color:var(--muted,#8888aa)">Or run a GIF app that isn’t on this computer:</p>
-        <button id="app-file" style="display:block;width:100%;text-align:left;padding:.5rem .7rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);cursor:pointer">＋ Choose a GIF file…</button>
+        <p data-t="appSheetOr" style="margin:.1rem 0 .5rem;font-size:16px;color:var(--muted,#8888aa)">Or run a GIF app that isn’t on this computer:</p>
+        <button id="app-file" data-t="appSheetFile" style="display:block;width:100%;text-align:left;padding:.5rem .7rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);cursor:pointer">＋ Choose a GIF file…</button>
         <div style="display:flex;gap:.4rem;margin-top:.5rem">
-          <input id="app-url" type="url" placeholder="Paste a GIF app link" style="flex:1;min-width:0;padding:.5rem .6rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0)">
-          <button id="app-url-go" style="padding:.5rem .9rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);cursor:pointer">Run</button>
+          <input id="app-url" type="url" data-ph="appSheetLink" placeholder="Paste a GIF app link" style="flex:1;min-width:0;padding:.5rem .6rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0)">
+          <button id="app-url-go" data-t="appSheetRun" style="padding:.5rem .9rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);cursor:pointer">Run</button>
         </div>
-        <div id="app-add-err" style="color:#e0574a;font-size:.8rem;margin-top:.45rem;display:none"></div>
+        <div id="app-add-err" style="color:#e0574a;font-size:16px;margin-top:.45rem;display:none"></div>
       </div>
-      <button id="app-cancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Cancel</button>
+      <button id="app-cancel" data-t="shareCancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Cancel</button>
     </div>
   </div>
   <input type="file" id="app-file-input" accept="image/gif,.gif" style="display:none">
@@ -2575,6 +2575,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         appearClear: 'Leeren', appearSave: 'Speichern', changePic: 'Bild ändern',
         people: 'Leute', share: 'Teilen', room: 'Raum', host: 'Leitung', help: 'Hilfe',
         who: 'Wer', hand: 'Hand', chat: 'Chat', invite: 'Einladen', runApp: 'App starten', showApp: 'App zeigen',
+        appSheetTitle: 'Eine App in dieser Besprechung starten',
+        appSheetBody: 'Wählen Sie eine Ihrer Apps. Sie läuft live für alle hier, mit demselben Stand und denselben Zügen, und mit Bild, Ton und Aufnahme der Besprechung. Jeder kann mitmachen.',
+        appSheetOr: 'Oder eine GIF-App, die nicht auf diesem Computer liegt:',
+        appSheetFile: '＋ Eine GIF-Datei wählen…', appSheetLink: 'Link zu einer GIF-App einfügen', appSheetRun: 'Starten',
+        appLoading: 'Ihre Apps werden geladen…',
+        appTip: 'Eine App in dieser Besprechung starten — alle hier benutzen sie gemeinsam',
+        appHidden: 'Hier läuft eine App ({name}) — Sie haben sie ausgeblendet. Tippen Sie, um sie zurückzuholen.',
+        appDenied: '🛡 Nur die Leitung dieses Raums — oder wen sie erlaubt — kann hier eine App starten.',
+        appLoadFail: 'Der Link ließ sich nicht laden. Speichern Sie das GIF auf Ihrem Gerät und wählen Sie dann eine GIF-Datei.',
+        appNotGif: 'Dieser Link ist keine GIF-Datei.', appReadFail: 'Diese Datei ließ sich nicht lesen.', appNeedLink: 'Fügen Sie zuerst einen GIF-Link ein.',
         shareScreen: 'Bildschirm', stopShare: 'Beenden', float: 'Bild-in-Bild', flip: 'Drehen',
         vote: 'Abstimmung', password: 'Passwort', stage: 'Bühne', record: 'Aufnahme', settings: 'Einstellungen', keys: 'Tasten',
         blur: 'Unschärfe', noBlur: 'Aus',
@@ -2774,6 +2784,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         appearClear: 'Limpiar', appearSave: 'Guardar', changePic: 'Cambiar foto',
         people: 'Gente', share: 'Compartir', room: 'Sala', host: 'Anfitrión', help: 'Ayuda',
         who: 'Quién', hand: 'Mano', chat: 'Chat', invite: 'Invitar', runApp: 'Abrir app', showApp: 'Mostrar app',
+        appSheetTitle: 'Abrir una app en esta reunión',
+        appSheetBody: 'Elige una de tus apps. Corre en vivo para todos aquí, con el mismo estado y los mismos movimientos, y con el audio, el video y la grabación de la reunión. Cualquiera puede usarla.',
+        appSheetOr: 'O una app GIF que no está en esta computadora:',
+        appSheetFile: '＋ Elegir un archivo GIF…', appSheetLink: 'Pega un enlace de app GIF', appSheetRun: 'Abrir',
+        appLoading: 'Cargando tus apps…',
+        appTip: 'Abre una app en esta reunión — todos aquí la usan juntos',
+        appHidden: 'Hay una app aquí ({name}) — la ocultaste. Toca para volver a verla.',
+        appDenied: '🛡 Solo los anfitriones de esta sala — o quien ellos permitan — pueden abrir una app aquí.',
+        appLoadFail: 'No se pudo abrir ese enlace. Guarda el GIF en tu dispositivo y elige un archivo GIF.',
+        appNotGif: 'Ese enlace no es un archivo GIF.', appReadFail: 'No se pudo leer ese archivo.', appNeedLink: 'Pega primero un enlace GIF.',
         shareScreen: 'Pantalla', stopShare: 'Parar', float: 'Flotar', flip: 'Girar',
         vote: 'Votar', password: 'Contraseña', stage: 'Escenario', record: 'Grabar', settings: 'Ajustes', keys: 'Teclas',
         blur: 'Desenfoque', noBlur: 'Sin',
@@ -23417,7 +23437,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let appBooting = false;
     async function runApp(fileId, name) {
       if (!window.GifOS || !GifOS.runtime || !GifOS.store) return;
-      if (!canIRunApp()) { setStatus('🛡 Only this room\u2019s admins — or people they allow — can run an app here.'); return; }
+      if (!canIRunApp()) { setStatus(uiText('appDenied', '🛡 Only this room\u2019s admins — or people they allow — can run an app here.')); return; }
       if (GifOS.lock) {
         const all = await GifOS.store.allItems();
         const it = GifOS.lock.itemOfFile(all, fileId);
@@ -23777,11 +23797,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const btn = document.getElementById('appbtn');
       if (want && want.s === appHiddenSid && !isMine) {
         btn.textContent = uiText('showApp', 'Show app');
-        btn.title = 'An app is shared here (' + (want.name || 'App') + ') — you hid it. Tap to bring it back.';
+        btn.title = uiText('appHidden', 'An app is shared here ({name}) — you hid it. Tap to bring it back.').replace('{name}', want.name || 'App');
       } else {
         btn.textContent = uiText('runApp', 'Run app');
-        btn.title = canIRunApp() ? 'Run an app inside this meeting — everyone here shares and interacts with it live'
-          : 'Only this room\u2019s admins — or people they allow — can run an app here';
+        btn.title = canIRunApp()
+          ? uiText('appTip', 'Run an app inside this meeting — everyone here shares and interacts with it live')
+          : uiText('appDenied', 'Only this room\u2019s admins — or people they allow — can run an app here').replace(/^🛡\s*/, '');
       }
       const hideB = document.getElementById('apphide');
       hideB.style.display = (appKey && !isMine) ? '' : 'none';
@@ -23807,7 +23828,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         appHiddenSid = null; reconcileApp(); return; // Show app (un-hide)
       }
       if (myStatus.app) { stopApp(); return; } // toggle my own share off
-      if (!canIRunApp()) { setStatus('🛡 Only this room\u2019s admins — or people they allow — can run an app here.'); return; }
+      if (!canIRunApp()) { setStatus(uiText('appDenied', '🛡 Only this room\u2019s admins — or people they allow — can run an app here.')); return; }
       openAppPicker();
     };
     document.getElementById('appstop').onclick = () => {
@@ -23884,8 +23905,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (buf.length > ADD_URL_MAX_BYTES) return tooBig();
         }
       }
-      catch (e) { return { error: 'Couldn’t load that link. Save the GIF to your device, then use “Choose a GIF file”.' }; }
-      if (!(buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46)) return { error: 'That link isn’t a GIF file.' };
+      catch (e) { return { error: uiText('appLoadFail', 'Couldn’t load that link. Save the GIF to your device, then use “Choose a GIF file”.') }; }
+      if (!(buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46)) return { error: uiText('appNotGif', 'That link isn’t a GIF file.') };
       let name = ''; try { name = decodeURIComponent((url.pathname.split('/').pop() || '').split('?')[0]); } catch (e) {}
       name = (name || 'app').replace(/[^\w.\-]+/g, '_'); if (!/\.gif$/i.test(name)) name += '.gif';
       return { bytes: buf, name };
@@ -23893,11 +23914,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     document.getElementById('app-file').onclick = () => document.getElementById('app-file-input').click();
     document.getElementById('app-file-input').onchange = async (e) => {
       const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
-      try { await importAndRunGif(new Uint8Array(await f.arrayBuffer()), f.name); } catch (err) { showAddErr('Could not read that file.'); }
+      try { await importAndRunGif(new Uint8Array(await f.arrayBuffer()), f.name); } catch (err) { showAddErr(uiText('appReadFail', 'Could not read that file.')); }
     };
     document.getElementById('app-url-go').onclick = async () => {
       const raw = (document.getElementById('app-url').value || '').trim();
-      if (!raw) { showAddErr('Paste a GIF link first.'); return; }
+      if (!raw) { showAddErr(uiText('appNeedLink', 'Paste a GIF link first.')); return; }
       const go = document.getElementById('app-url-go'); go.disabled = true; const was = go.textContent; go.textContent = '…'; showAddErr('');
       try { const r = await fetchGifFromUrl(raw); if (r.error) { showAddErr(r.error); return; } await importAndRunGif(r.bytes, r.name); }
       finally { go.disabled = false; go.textContent = was; }
@@ -23907,7 +23928,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const modal = document.getElementById('app-modal');
       const list = document.getElementById('app-list');
       showAddErr(''); const urlIn = document.getElementById('app-url'); if (urlIn) urlIn.value = '';
-      list.innerHTML = '<small style="color:#667">Loading your apps…</small>';
+      list.innerHTML = '<small style="color:#667">' + uiText('appLoading', 'Loading your apps…') + '</small>';
       modal.style.display = 'flex';
       let files = [];
       try { files = await GifOS.store.allFileMeta(); } catch (e) {} // names and flags — never the bytes of every app to fill a list
