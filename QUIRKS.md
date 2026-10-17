@@ -9,6 +9,151 @@ Geometry below is from `getBoundingClientRect` in Chromium unless a browser is n
 ## Fixed
 
 ### Q25. A Watching viewer still had Video and Unmute
+### Gallery tiles touched, with no gutter
+
+- **Who hits it:** anyone in a desktop gallery of two or more, most of all a company call that compares us with Zoom or Meet.
+- **What you saw:** faces butted edge to edge with square corners, so the wall read as one picture cut into pieces and a name strip ran up against the next face.
+- **Repro:** `test/desktop/gallery-pack.spec.js` (“faces have a gutter between them and soft corners”) failed before the fix on Chromium and Firefox. With five faces at 1280 the gap was 0 (acd2fc6).
+- **Fix:** on desktop each packed cell gives up 4px on every side, so faces have an 8px gutter, and a tile has 10px corners. Every tile is still the same size, a short row is still centered, and names still sit above the dock. A phone stays edge to edge.
+- **Proof:** the repro passes at 1280 with five and seven faces and at 900 with seven, on Chromium and Firefox. At 1280 the five tiles are each 416×261 with 8px between them. Screenshots: `test/desktop/shots/gallery-gutter-before-1280.png`, `test/desktop/shots/gallery-gutter-after-1280.png`.
+
+### A dead camera took about 9 seconds to come back
+
+- **Who hits it:** anyone whose camera stays live but goes pure black or stops sending frames, often after another app takes the lens.
+- **What you saw:** Camera stopped — bringing it back on your tile, then a black picture for the room until the restart, 7.4 to 8.9 seconds after the camera died.
+- **Repro:** `test/desktop/phone-cam.spec.js` (“a desktop camera that goes pure black…” and “…that stops sending frames is grabbed again within a few seconds”) failed before the fix on Chromium and Firefox. It was grabbed again after 7.3 to 8.9 seconds against a 5.5 second limit (711029f).
+- **Fix:** the watchdog samples the self-view every second instead of every three seconds. It grabs the camera again once it has been black or silent for about three more seconds, so a one-second hiccup is left alone. A dim room that is still sending frames still never counts. A track that has ended is still tried every three seconds, so three failed grabs still take about 9 seconds before the fail line.
+- **Proof:** the repro passes, and the desktop suite passes, 182/182 on Chromium and Firefox. Measured over five runs each at 1280: base 8.9 s (pure black) and 7.4 s (no frames), fix 3.9 s and 3.4 s. WebKit is skipped because a canvas capture closes its tab.
+
+### A quiet family call still showed buttons on every face
+
+- **Who hits it:** two to four people talking on a desktop, with the pointer resting on someone's face.
+- **What you saw:** the dock faded, but each face kept a Blur for all square and a Max button, and the face under the pointer kept Mute for everyone and Blur for everyone.
+- **Repro:** `test/desktop/calm-dock.spec.js` "hides the tile buttons" failed before the fix on Chromium and Firefox: Blur for all was still shown on 2 tiles once calm.
+- **Fix:** calm hides Blur for all, Max, and the hover row with the dock. Names and mute marks stay. Keyboard focus on a tile, or an open tile menu, keeps the call from going calm.
+- **Proof:** the test passes on Chromium and Firefox; full desktop suite 176/176. Screenshots: `test/desktop/shots/calm-tiles-before-1280.png`, `test/desktop/shots/calm-tiles-after-1280.png`.
+
+### A quiet family call still showed the whole dock
+
+- **Who hits it:** two to four people talking on a desktop, with nobody touching the mouse.
+- **What you saw:** the white dock, with eight buttons, stayed under the faces for the whole call. FaceTime and Meet hide their controls when you are not using them.
+- **Repro:** `test/desktop/calm-dock.spec.js` failed before the fix. After 2 quiet seconds in a three-person call, the dock was still fully shown.
+- **Fix:** after five seconds with no mouse, key, or wheel, the dock and Fit fade. The faces do not move. Any move or key brings them back. The dock stays while More, chat, Reactions, or a sheet is open, while the pointer is on the dock or a key has focus there, while you are alone, in a room of five or more, during a share or a broadcast, and on a phone.
+- **Proof:** the four tests pass on Chromium and Firefox. Screenshots: `test/desktop/shots/calm-dock-before-1280.png`, `test/desktop/shots/calm-dock-after-1280.png`.
+
+### A dim room had its camera restarted
+
+- **Who hits it:** anyone calling from a dim room, such as an evening call with one lamp on.
+- **What you saw:** about 9 seconds in, the header said Your camera was sending black video — restarting it…, the tile flashed Camera stopped, and the room saw your picture drop. It could happen three times.
+- **Repro:** `test/desktop/phone-cam.spec.js` (“a dark room that is still painting never restarts the camera”) failed before the fix on Chromium and Firefox. The camera was grabbed again on the third sample.
+- **Fix:** a dim picture that is still sending frames counts as a picture. Only no frames, or pure black, count toward a restart.
+- **Proof:** the desktop suite passes, 166/166 on Chromium and Firefox. Screenshots: `test/desktop/shots/cam-dim-before-1280.png`, `test/desktop/shots/cam-dim-after-1280.png`.
+
+### The song line never reached the room
+
+- **Who hits it:** the volunteer running a church service, and everyone watching it.
+- **What you saw:** during Song the booth read the line on its own screen. The room saw only the camera, with no words to sing.
+- **Repro:** `test/desktop/lyrics.spec.js` (“during Song the current line is on the picture the room sees”, blurred and clear) failed before the fix: no words on the outgoing frame (894a848). A first fix painted the line across the full width at the bottom. A real two-browser broadcast, booth and viewer on different machines, showed that the room sees this camera as a centered square with the name strip over its bottom 17%, so the viewer read “…ing g… how sweet the s…” under the name. The repro now checks for that too (8b2b1a3).
+- **Fix:** while the order of service is on Song, the booth paints the current line onto the picture it sends: white on a dark band, wrapped to two lines, inside the centered square, and above the name strip. A clear camera goes through the same canvas only while Song is up. The next line stays on the booth.
+- **Proof:** the repro passes on Chromium and Firefox, blurred and clear. In the two-browser broadcast the viewer reads the line on the booth’s picture. Screenshots: `test/desktop/shots/lyrics-air-before-1280.png`, `test/desktop/shots/lyrics-air-before-frame.png`, `test/desktop/shots/lyrics-air-after-1280.png`, `test/desktop/shots/lyrics-air-after-frame.png`, `test/desktop/shots/lyrics-air-viewer-after-1280.png`. WebKit is skipped because a canvas capture closes its tab. The song is one built-in hymn.
+
+### A camera that painted pure black waited 9 seconds in silence
+
+- **Who hits it:** someone whose camera stays live but sends only black, usually a phone or laptop after another app took the lens.
+- **What you saw:** your own tile was black with no words. Nothing changed until the camera restarted, about 9 seconds later.
+- **Repro:** `test/desktop/phone-cam.spec.js` (“a live camera that paints pure black says so before it restarts”) failed before the fix. One sample in, there was no line on the tile.
+- **Fix:** if every pixel of a sample is pure black, the tile says Camera stopped — bringing it back on the first sample, in German and Spanish too. The restart still waits for the third sample. A dim room still has a little light in it, so it gets no line. That case has its own test.
+- **Proof:** all five camera tests pass on Chromium and Firefox. WebKit is skipped because a canvas capture closes its tab. Screenshots: `test/desktop/shots/cam-black-before-1280.png`, `test/desktop/shots/cam-black-after-1280.png`.
+
+### The gallery ran under the dock, and a short row was stretched
+
+- **Who hits it:** anyone in a gallery of three or more, especially the people on the bottom row.
+- **What you saw:** tiles reached the bottom of the window, so the dock covered the middle names. A row with fewer people was stretched, so those faces were a different size. Five people were two large tiles over three smaller ones. Seven people put a smaller rail beside the others.
+- **Repro:** `test/desktop/gallery-pack.spec.js` failed before the fix (two names on a five-person wall intersected the dock).
+- **Fix:** every tile in the gallery is the same size. A short row is centered. The gallery stops where the dock starts, so a name stays above it. The dock stays 104px.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. At 1280 the five tiles are each 424×269, the pair on the bottom is centered, and the lowest name ends at y=594 while the dock starts at y=602. Screenshots: `test/desktop/shots/gallery-pack-before-1280.png`, `test/desktop/shots/gallery-pack-after-1280.png`.
+
+### Reactions was only an icon
+
+- **Who hits it:** anyone who does not already know the smile button opens reactions.
+- **What you saw:** Reactions was a 68px circle with no word. The other dock buttons said what they do.
+- **Repro:** `test/desktop/dock-labels.spec.js` failed before the label (`#reactbtn` had no `.dockword`).
+- **Fix:** the button says Reactions, in German Reaktionen and Spanish Reacciones, at 16px. The smile icon stays. The button matches the other dock buttons. It stays on screen at 900px.
+- **Proof:** the dock tests pass on Chromium, Firefox, and WebKit, and the German and Spanish dock lines pass on Chromium. Screenshots: `test/desktop/shots/react-label-before-1280.png`, `test/desktop/shots/react-label-after-1280.png`.
+
+### Fit and the More words were small
+
+- **Who hits it:** an older member reading the view switch or the More sheet.
+- **What you saw:** Fit was 14px and 32px tall. The More headings were 12px capitals. Max, Min, and No blur were about 12px, Float 13px, and Blur 14px.
+- **Repro:** `test/desktop/older-eyes.spec.js` failed before the change (Fit 14px; nine More words under 16px). A 44px Fit in its old place covered the top-right tile's Blur for all, and the test catches that too.
+- **Fix:** from 601px wide and 501px tall, Fit is 16px, 44px tall, and sits in the header row just left of the build label, above the tiles. Every word in More is 16px, and the headings are written People, Share, Room, Help instead of capitals. While a screen is shared, Fit is hidden: the faces are a strip then, and Stop sharing owns that corner (a test checks Fit never covers it).
+- **Proof:** the desktop suite passes 160/160 on Chromium and Firefox. WebKit is not checked: this box lacks its system libraries. Screenshots: `test/desktop/shots/older-eyes-before-1280.png`, `test/desktop/shots/older-eyes-after-1280.png`.
+
+### The dock words were 12px
+
+- **Who hits it:** anyone reading Camera, Unmute, Share screen, CC, Chat, More, or Leave.
+- **What you saw:** the words under the icons were 12px. On a 700px window they were 11px.
+- **Repro:** `test/desktop/dock-labels.spec.js` — “dock words are 16px on a desktop window” failed before the change (the mic word was 12px).
+- **Fix:** those words are 16px from 900px up. The buttons stay 76px and the bar stays 104px, so the self-view does not move. Under 700px they stay 11px so Leave still fits. Reactions stays an icon.
+- **Proof:** the dock tests pass on Chromium, Firefox, and WebKit. German and Spanish labels fit at 900px. Screenshots: `test/desktop/shots/dock-words-before-1280.png`, `test/desktop/shots/dock-words-after-1280.png`.
+
+### Save, Steal, Hide, and Talk stayed English
+
+- **Who hits it:** a German or Spanish person using an app in the meeting: saving a copy, taking the app home, hiding it, or turning Talk on.
+- **What you saw:** the app bar said “Save”, “Steal”, “Hide”, and “Talk: off”, at 12px. Steal then offered “+ data”, “as I joined”, and “app only” in English.
+- **Repro:** `test/desktop/app-bar.spec.js` failed before the translation (`appBarForTest` was missing, and a `de-DE` bar said “Save”).
+- **Fix:** those four words, their tips, and the Steal choices follow the device. German uses Sie. Spanish uses tú. English stays the fallback. The four buttons are 16px. Invite, Leading, and Full screen on that bar stay English.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/app-bar-before-de-1280.png`, `test/desktop/shots/app-bar-after-de-1280.png`.
+
+### Stop app and Turn chat off stayed English
+
+- **Who hits it:** a German or Spanish host, stopping a shared app or silencing chat.
+- **What you saw:** the app bar said “Stop app” and “Help”, at 12px. Chat said “Turn chat off”, at 13px. The line in the log said “Chat was turned off”.
+- **Repro:** `test/desktop/host-words.spec.js` failed before the translation (`appStopForTest` was missing, and the labels were English).
+- **Fix:** Stop app, Stop for everyone, Help on that bar, Turn chat off, Turn chat on, and the line that says who turned chat off follow the device. German uses Sie. Spanish uses tú. English stays the fallback. Those two buttons are 16px. Save, Steal, Hide, and Talk on the app bar stay English when they appear.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/host-words-before-de-1280.png`, `test/desktop/shots/host-words-after-de-1280.png`.
+
+### Signing in as admin stayed English
+
+- **Who hits it:** a German or Spanish host, opening Admin from All tools in a room that has an admin.
+- **What you saw:** the button said “Admin sign-in”. The sheet said “Room admin”, “Sign in as admin”, and “Admin password”. The hint was English, at 13.6px.
+- **Repro:** `test/desktop/admin-sheet.spec.js` failed before the translation (a `de-DE` button was “Admin sign-in”).
+- **Fix:** the button, the sheet, the hint, the password check, and the banned-device list follow the device. German uses Sie. Spanish uses tú. English stays in the markup. Signing in behaves as before. The hint is 16px. Stop app and Turn chat off stay English.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/admin-sheet-before-de-1280.png`, `test/desktop/shots/admin-sheet-after-de-1280.png`.
+
+### The Who download for the police stayed English
+
+- **Who hits it:** a German or Spanish device, handing the Who list to someone investigating.
+- **What you saw:** the button already said Diese Liste laden or Descargar esta lista. The file still opened with “GifOS meeting — who was here” and “HOW TO READ THIS”, and your own row said “this device” and “(you)”.
+- **Repro:** `test/desktop/who-file.spec.js` failed before the translation (`whoFileForTest` was missing, and a `de-DE` file was English).
+- **Fix:** the title, the how-to, the column names, and the connection words follow the device. German uses Sie. Spanish uses tú. Names, addresses, ports, times, peer ids, and signatures stay as recorded. English stays the fallback. Signing in as admin, Stop app, and Turn chat off stay English.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/who-file-before-de-1280.png`, `test/desktop/shots/who-file-after-de-1280.png`.
+
+### The Run app sheet stayed English
+
+- **Who hits it:** a German or Spanish device, opening Run app from All tools.
+- **What you saw:** the button already said App starten or Abrir app. The sheet still said “Run an app in this meeting” and “Choose a GIF file”. The button tip was English too.
+- **Repro:** `test/desktop/run-app.spec.js` failed before the translation (a `de-DE` title was “Run an app in this meeting”).
+- **Fix:** the sheet, the tip, the loading line, and the errors follow the device. German uses Sie. Spanish uses tú. English stays in the markup. Opening an app behaves as before. The file you download from Who, to hand to the police, stays English.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/app-sheet-before-de-1280.png`, `test/desktop/shots/app-sheet-after-de-1280.png`.
+
+### A volunteer opening More got the whole room
+
+- **Who hits it:** a church volunteer, or anyone older, who only wants to raise a hand, invite someone, or read Help.
+- **What you saw:** More was four headings and fourteen buttons: Who, Hand, Invite, Float, Run app, Vote, Password, Stage, Record, Captions, Settings, Keys, Help, Transcript. The sheet was 536px tall.
+- **Repro:** `test/desktop/more-groups.spec.js` — “More opens to Hand, Invite, and Help” failed before the fold (there was no All tools button).
+- **Fix:** More opens to Hand, Invite, and Help, with blur above them. All tools opens the rest, and Fewer tools puts it away. German: Alle Funktionen / Weniger Funktionen. Spanish: Todas las funciones / Menos funciones. The choice stays for this tab. The keys still reach a control that is folded.
+- **Proof:** the More, locale, settings, and shortcut tests pass on Chromium, Firefox, and WebKit. The short sheet is 230px. Screenshots: `test/desktop/shots/more-short-before-1280.png`, `test/desktop/shots/more-short-after-1280.png`, `test/desktop/shots/more-short-open-1280.png`.
+
+### Invite, settings, and the rest of More needed the pointer
+
+- **Who hits it:** a keyboard user who can already mute, share, and leave, and still has to open More for Who, Invite, or Settings.
+- **What you saw:** the shortcut list stopped at Alt+Q. Who, Invite, Run app, Vote, Password, Stage, Record, captions, Settings, Transcript, and Help had no key.
+- **Repro:** `test/desktop/shortcuts.spec.js` — “the rest of More has a key” failed before the chords (`#whobtn` had no `aria-keyshortcuts`).
+- **Fix:** Alt+W Who, Alt+I Invite, Alt+Y Run app, Alt+U Vote, Alt+L Password, Alt+G Stage, Alt+R Record, Alt+K captions, Alt+, Settings, Alt+T Transcript, Alt+/ Help. They work while More is closed. They stay quiet while you are typing and while a dialog is open. The list names them, including German and Spanish. The sheet scrolls on a short window. Host bulk tools still have no key.
+- **Proof:** the shortcut tests pass on Chromium, Firefox, and WebKit. Alt+I opens Invite. Alt+, opens Settings. Screenshots: `test/desktop/shots/more-keys-before-1280.png`, `test/desktop/shots/more-keys-after-1280.png`.
+
+### The dock said Mic, and a second Unmute would duplicate it
 
 The dock hid microphone and camera only under `body.notadmin`. A viewer session paints Watching without that class, so Video and Unmute stayed on the dock and a click called `getUserMedia` twice. The hide is now `body.bc-watching`, set from the watching seat itself (not the host, and not a stage grant). Clicks and `lateMedia` return before they publish. A host still has the buttons. The labeled-dock check runs as the host. Permanent repro: `test/e2e/broadcast-desktop.spec.js` (“a Watching viewer has no camera or mic…”).
 
@@ -101,6 +246,21 @@ The dock button says **Leave**. The question is Stay (outline) and Leave (red), 
 ### Q21. Mute and camera were only a dock color
 
 A full-width line under the room bar says **Microphone off** and **Camera off** while those are off. White on `#3a1014`. It sits under the room bar, clears the dock, and fits 1280, 1920, and 900. It hides when the microphone and camera are on. Someone only watching a service does not see it. After: `test/e2e/artifacts/av-off-after.png`, `av-on-after.png`.
+- **Who hits it:** a host of a large room, looking for a waiting room, a rename, and a way to put one person in front.
+- **What you saw:** each other person had Mute. There was no switch for a waiting room, no Admit, no Rename, and no Spotlight.
+- **Repro:** `test/desktop/host-roster.spec.js` failed before the fix (no `#roster-wait-toggle`). WebKit skips the walk that plays a canvas capture. A guest in an admin room is covered on WebKit too.
+- **Fix:** Waiting room is a switch on the roster. Someone who arrives after it is on comes off the wall and sits under Waiting, with Admit. Rename edits their name on the tile. Spotlight marks them on stage and puts that tile first. A guest in an admin room does not see these. The person waiting is off the wall. (The lobby is sealed now: see “The waiting room was not sealed”.)
+- **Proof:** the test passes on Chromium and Firefox, and the roster mute tests still pass on all three browsers. Screenshots: `test/desktop/shots/host-roster-before-1280.png`, `test/desktop/shots/host-roster-after-wait-1280.png`, `test/desktop/shots/host-roster-after-spot-1280.png`.
+
+### The waiting room was not sealed
+
+- **Who hits it:** a host of a large room who turns the waiting room on, and the person who arrives after.
+- **What you saw:** in a real call on three machines, the host and a guest who was already there still played the waiting person's voice, the waiting person heard the room, and their mic was sending. The host's Waiting list said “No one is waiting”, so there was no Admit to press. The waiting page also held the host: to it everyone was new, so even after Admit it would have shown and played no one.
+- **Repro:** `test/desktop/lobby-ears.spec.js` (two real browsers, both voices wired) failed before the fix on Chromium and Firefox: the host heard the guest, the guest heard the host, and the guest's mic sent. A three-machine run (host Chromium, earlier guest Firefox, late guest Chromium) showed the same, plus 0 Admit buttons.
+- **Fix:** the waiting page says it is waiting on its own status beat (`wt`, one byte, the same size in any room). Every page holds a person who says so; before that word, only a page that was there when the waiting room went on holds someone new. A held person reads as muted wherever a host's mute is read (each speaker, captions, the recording), their own mic locks with the line “You are in the waiting room: your mic opens when the host lets you in” (German and Spanish too), they are left out of every composite a row head builds, and the waiting page plays no one. The Waiting list repaints when someone is held or let go. After Admit everyone hears everyone and the guest can unmute.
+- **Proof:** the test passes on Chromium and Firefox, and the three-machine run passes: while waiting no page plays the guest and the guest plays no one, and after Admit all three hear each other and see three faces. WebKit has no fake microphone, so it is not run. Screenshots: `test/desktop/shots/lobby-ears-before-host-1280.png`, `test/desktop/shots/lobby-ears-before-guest-1280.png`, `test/desktop/shots/lobby-ears-after-host-1280.png`, `test/desktop/shots/lobby-ears-after-guest-1280.png`, `test/desktop/shots/lobby-x-before-host-1280.png`, `test/desktop/shots/lobby-x-after-host-1280.png`, `test/desktop/shots/lobby-x-before-guest-1280.png`, `test/desktop/shots/lobby-x-after-guest-1280.png`, `test/desktop/shots/lobby-x-before-admitted-guest-1280.png`, `test/desktop/shots/lobby-x-after-admitted-guest-1280.png`.
+
+### Who, Share, and Vote stayed English
 
 ### Q22. A recording started without a card you had to read
 
@@ -886,11 +1046,11 @@ With no saved confirmation for this session, joining shows how you will appear: 
 
 ### More sheet is a dense grid of mixed labels
 
-Who, Invite, and Hand sit under People. Chat is on the dock. Vote, Password, Stage, Record, Captions, and Settings sit under Room. Captions is also on the dock. Run app is under Share. Keys and Help are under Help. Host tools stay hidden until there is a host. “Turn video off” matches the other labels. The list is still long.
+More opens to Hand, Invite, and Help. All tools shows Who, Run app, Vote, Password, Stage, Record, Captions, Settings, Keys, and Transcript. Captions is also on the dock. Each of those has a key, including while All tools is folded. Host tools stay hidden until there is a host, and those bulk tools still have no key. The full list, once opened, is still long.
 
-### Run app is still English
+### Invite, Leading, and Full screen on the app bar stay English
 
-Password and Invite follow a German or Spanish device. Run app does not. The Who download for the police stays English.
+Save, Steal, Hide, and Talk follow a German or Spanish device. Invite, Leading, and Full screen on that bar still appear in English.
 
 ### Status line is easy to lose
 
@@ -905,3 +1065,4 @@ Gallery packing, self-view placement, and the reactions icon are not in this pas
 <!-- release/0.9.23: the phone Meet quirks from cursor/qa-meet-mobile follows. -->
 
 Four faces are real peer records (`__gifosVideo.presentPeers`), not cloned tiles. On a phone the packer now refuses a wide squash, including when the phone is sideways; desktop packing is unchanged. On a phone the dock and the Live row tuck when the call is quiet, and a tap brings them back.
+Self-view placement is not in this pass. Reactions says the word. The gallery packs equal tiles and stops above the dock. A shared slide fills the stage and Stop sharing sits on it. Share screen is one button on the dock, Alt+S does the same thing, and one click opens the picker. The stage says whose screen it is, at 16px, and that line follows German and Spanish. A broadcast says off air and on air, and the booth has an order of service. During Song the booth has Program and Preview. On a short window that card stays under Off air. Those words stay on this computer. They are not on the outgoing picture. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is a sealed lobby: until Admit the person waiting sees and hears no one, and no one hears them. Who, Share, Vote, Password, Invite, the Run app sheet, the Who download, signing in as admin, Stop app, Turn chat off, and Save, Steal, Hide, and Talk follow German and Spanish, including the tips and the line after you share or vote. Invite, Leading, and Full screen on the app bar stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back, including when the page never goes to the background. A camera that stays live and sends no frames says so on the first quiet sample. A camera that paints pure black says so on the first sample. A dim room that is still sending frames is never restarted.

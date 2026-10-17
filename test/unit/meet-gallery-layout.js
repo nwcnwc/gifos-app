@@ -56,12 +56,13 @@ check('resolver accepts an explicit scroll', P.resolveGallery('scroll') === 'scr
 check('five people in three rows lead 1/2/2', P.rowCounts(5, 3).join(',') === '1,2,2');
 
 const lead = P.chooseRows({ x: 0, y: 0, w: 800, h: 900 }, Array(5).fill(16 / 9));
-check('square 5-up is rows 1/2/2', !!lead && lead.dir === 'rows' && lead.counts.join(',') === '1,2,2', lead && lead.counts);
+// The packer now scores equal tile areas first (qa-meet-desktop: faces the
+// same size), so a 5-up is 2/2/1, not a big tile over or beside small ones.
+// The shape checks below still hold.
 check('square 5-up is not one skinny row', !!lead && lead.counts.join(',') !== '5');
 check('square 5-up tiles stay phone-wide', !!lead && lead.cells.every(aspectOk));
 
 const beside = P.chooseRows({ x: 0, y: 0, w: 1440, h: 900 }, Array(5).fill(16 / 9));
-check('wide 5-up puts a big tile beside smaller ones', !!beside && beside.dir === 'cols' && beside.sizing === 'aspect', beside && (beside.dir + ' ' + beside.sizing + ' ' + beside.counts));
 check('wide 5-up tiles stay phone-wide', !!beside && beside.cells.every(aspectOk));
 
 let cases = 0;

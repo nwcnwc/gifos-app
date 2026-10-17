@@ -1,5 +1,19 @@
 const { test, expect } = require('@playwright/test');
 
+// A small-group More sheet opens on Hand, Invite and Help; the rest sits behind
+// All tools (qa-meet-desktop). A service shows every tool. Reach a tool either way.
+async function moreTool(page, id) {
+  const sel = '#' + id;
+  if (!(await page.locator(sel).isVisible())) {
+    if (!(await page.locator('#barmore').isVisible())) await page.locator('#bartoggle').click();
+    if (!(await page.locator(sel).isVisible())) {
+      const t = page.locator('#moretools');
+      if (await t.isVisible()) await t.click();
+    }
+  }
+  await page.locator(sel).click();
+}
+
 // Session frame: broadcast skin, no relay knock. A full navigation is required
 // because a hash-only change does not re-run boot.
 const SESSION = '/run.html?desk=chat#mb=1&v=sunday&av=0123456789abcdef&bc=1';
@@ -60,8 +74,9 @@ test('mute and camera are labeled and the off state is filled red', async ({ pag
     const mic = page.locator('#mic');
     await expect(mic.locator('.docklab')).toHaveText('Unmute');
     await expect(mic).toHaveAttribute('aria-label', 'Unmute');
-    await expect(page.locator('#cam .docklab')).toHaveText('Video');
-    await expect(page.locator('#reactbtn .docklab')).toHaveText('React');
+    await expect(page.locator('#cam .docklab')).toHaveText('Camera');
+    // A service dock under 1100px keeps the short words (Step on, Invite and Full screen share the row).
+    await expect(page.locator('#reactbtn .docklab')).toHaveText(w < 1100 ? 'React' : 'Reactions');
     await expect(page.locator('#bartoggle .docklab')).toHaveText('More');
     const colors = await mic.evaluate((el) => {
       const s = getComputedStyle(el);
@@ -273,7 +288,7 @@ test('invite is one tap on the dock, not inside More', async ({ page }) => {
     expect(lab.x + lab.width).toBeLessThanOrEqual(box.x + box.width + 1);
   }
   await bootSession(page, 1280, 720);
-  await page.locator('#invite').click();
+  await moreTool(page, 'invite');
   await expect(page.locator('#inv-modal')).toBeVisible();
   await expect(page.locator('#inv-modal h3')).toHaveText('Share this service');
 });
@@ -281,11 +296,11 @@ test('invite is one tap on the dock, not inside More', async ({ page }) => {
 test('reactions are emoji under a smiley, and the sparkle stays off this control', async ({ page }) => {
   await bootSession(page, 1280, 720);
   const btn = page.locator('#reactbtn');
-  await expect(btn.locator('.dockface')).toHaveText('😊');
-  await expect(btn.locator('.docklab')).toHaveText('React');
+  // A smiley face icon (a wide window draws it as a line icon) under the word; never the AI sparkle.
+  await expect(btn.locator('.docklab')).toHaveText('Reactions');
   const glyph = await btn.innerText();
   expect(glyph).not.toMatch(/[✨✦✧⭐]/);
-  await expect(btn.locator('svg')).toHaveCount(0);
+  await expect(btn.locator('svg.ai-spark')).toHaveCount(0);
   const lab = await btn.locator('.docklab').boundingBox();
   const box = await btn.boundingBox();
   expect(lab.y + lab.height).toBeLessThanOrEqual(box.y + box.height + 1);
@@ -382,7 +397,7 @@ test('a service password is the viewer password', async ({ page }) => {
     await page.locator('#bartoggle').click();
     const pw = page.locator('#pwbtn');
     await expect(pw).toHaveAttribute('title', 'Viewer password. Optional. It is not part of the link.');
-    await pw.click();
+    await moreTool(page, 'pwbtn');
     await expect(page.locator('#pw-title')).toHaveText('Viewer password');
     const hint = page.locator('#pw-hint');
     await expect(hint).toHaveText('Optional. It is not part of the link. People can still watch, and the stage stays blurred until it is set.');
@@ -401,7 +416,7 @@ test('a service password is the viewer password', async ({ page }) => {
   await page.goto('/run.html?desk=vpwsg#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airbar.on.group');
   await page.locator('#bartoggle').click();
-  await page.locator('#pwbtn').click();
+  await moreTool(page, 'pwbtn');
   await expect(page.locator('#pw-title')).toHaveText('Room password');
   await expect(page.locator('#pw-hint')).toContainText('meeting');
 });
@@ -416,7 +431,7 @@ test('who is watching talks about the service', async ({ page }) => {
     await page.goto('/run.html?desk=who' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('body.broadcast .bar');
     await page.locator('#bartoggle').click();
-    await page.locator('#whobtn').click();
+    await moreTool(page, 'whobtn');
     await expect(page.locator('#who-modal h3')).toHaveText('Who is watching');
     const note = page.locator('#who-modal .name-box p');
     await expect(note).toContainText('storing this service');
@@ -432,7 +447,7 @@ test('who is watching talks about the service', async ({ page }) => {
   await page.goto('/run.html?desk=whosg#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airbar.on.group');
   await page.locator('#bartoggle').click();
-  await page.locator('#whobtn').click();
+  await moreTool(page, 'whobtn');
   await expect(page.locator('#who-modal h3')).toHaveText('Who is here');
   await expect(page.locator('#who-modal .name-box p')).toContainText('this meeting');
 });
@@ -891,9 +906,9 @@ test('a watching viewer keeps Hand and loses the publish controls', async ({ pag
   });
   expect(leaked.gum).toBe(0);
   expect(leaked.stage).toBe(0);
-  await page.locator('#hand').click();
+  await moreTool(page, 'hand');
   await expect(page.locator('#hand')).toContainText('Lower hand');
-  await page.locator('#helpbtn').click();
+  await moreTool(page, 'helpbtn');
   const help = page.locator('#help-modal .help-scroll');
   await expect(help).toBeVisible();
   await expect(help).not.toContainText('Ban lives on each tile');
@@ -1218,7 +1233,7 @@ test('service help names Raise hand and Step off', async ({ page }) => {
     await page.goto('/run.html?desk=help' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('body.broadcast .bar');
     await page.locator('#bartoggle').click();
-    await page.locator('#helpbtn').click();
+    await moreTool(page, 'helpbtn');
     await expect(page.locator('#help-modal h3')).toHaveText('How this service works');
     const scroll = page.locator('#help-modal .help-scroll');
     await expect(scroll).toContainText('Raise hand');
@@ -1235,7 +1250,7 @@ test('service help names Raise hand and Step off', async ({ page }) => {
   await page.goto('/run.html?desk=helpsg#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airbar.on.group');
   await page.locator('#bartoggle').click();
-  await page.locator('#helpbtn').click();
+  await moreTool(page, 'helpbtn');
   await expect(page.locator('#help-modal h3')).toHaveText('How this small group works');
   await expect(page.locator('#help-modal .help-scroll')).toContainText('stadium');
   await expect(page.locator('#help-modal .help-scroll')).not.toContainText('Tap Raise hand');
@@ -1695,7 +1710,7 @@ test('sharing a personal call is the link and a blue Copy', async ({ page }) => 
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/run.html?desk=inv' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#airbar.on.group');
-    await page.locator('#invite').click();
+    await moreTool(page, 'invite');
     await expect(page.locator('#inv-modal h3')).toHaveText('Share this small group');
     await expect(page.locator('#inv-modal')).toContainText('Send this link. Anyone who opens it joins you.');
     await expect(page.locator('#inv-modal')).not.toContainText(/troublemaker|blur|in charge|mute/i);
@@ -1730,7 +1745,7 @@ test('sharing a personal call is the link and a blue Copy', async ({ page }) => 
   await expect(page.locator('#inv-copy')).toHaveClass(/appear-primary/);
   await page.goto('/run.html?desk=invsvc#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airkind');
-  await page.locator('#invite').click();
+  await moreTool(page, 'invite');
   await expect(page.locator('#inv-modal h3')).toHaveText('Share this service');
   await expect(page.locator('#inv-modal')).toContainText('People who open it are watching');
   await expect(page.locator('#inv-modal')).not.toContainText(/troublemaker|blur|in charge/i);
@@ -1741,7 +1756,7 @@ test('sharing a personal call is the link and a blue Copy', async ({ page }) => 
   expect(svc.in, JSON.stringify(svc)).toBe(true);
   await page.goto('/run.html?desk=invhost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airbar.on.off');
-  await page.locator('#invite').click();
+  await moreTool(page, 'invite');
   await expect(page.locator('#inv-modal')).toContainText('The host password stays with you.');
 });
 
@@ -1777,12 +1792,14 @@ test('captions and record stay readable when they are on', async ({ page }) => {
     await page.waitForSelector('body.broadcast.bc-watching #leavebtn .docklab');
     await page.locator('#bartoggle').click();
     await expect(page.locator('#barmore')).toBeVisible();
+    // Captions sits behind All tools on a wide window (qa-meet-desktop).
+    if (!(await page.locator('#ccbtn').isVisible())) await page.locator('#moretools').click();
     await expect(page.locator('#ccbtn')).toHaveText('Captions');
     const off = await readOn();
     expect(off.cc.fg).toBe('rgb(29, 29, 31)');
     expect(off.cc.clip, JSON.stringify(off.cc)).toBe(true);
     expect(off.cc.in, JSON.stringify(off.cc)).toBe(true);
-    await page.locator('#ccbtn').click();
+    await moreTool(page, 'ccbtn');
     await expect(page.locator('#ccbtn')).toHaveClass(/on/);
     await page.evaluate(() => document.getElementById('recbtn').classList.add('on'));
     const on = await readOn();
@@ -1858,7 +1875,7 @@ test('share screen is on the small-group dock', async ({ page }) => {
     await page.waitForSelector('.bar > #sharebtn');
     const share = page.locator('.bar > #sharebtn');
     await expect(share).toBeVisible();
-    await expect(share.locator('.docklab')).toHaveText('Share');
+    await expect(share.locator('.docklab')).toHaveText('Share screen');
     await expect(share).toHaveAttribute('aria-label', 'Share screen');
     const inside = await share.evaluate((el) => !!el.closest('#barmore'));
     expect(inside).toBe(false);
@@ -1885,7 +1902,7 @@ test('share screen is on the small-group dock', async ({ page }) => {
     const lab = document.querySelector('.bar > #sharebtn .docklab');
     return { text: lab.textContent, clip: lab.scrollWidth <= lab.clientWidth + 1, barIn: bar.right <= innerWidth + 1 };
   });
-  expect(resized.text).toBe('Share');
+  expect(resized.text).toBe('Share screen');
   expect(resized.clip).toBe(true);
   expect(resized.barIn).toBe(true);
   await page.goto('/run.html?desk=sharesvc#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
@@ -1912,7 +1929,7 @@ test('a host shares the stage from the dock', async ({ page }) => {
     await page.waitForSelector('.bar > #sharebtn');
     const share = page.locator('.bar > #sharebtn');
     await expect(share).toBeVisible();
-    await expect(share.locator('.docklab')).toHaveText('Share');
+    await expect(share.locator('.docklab')).toHaveText(w < 1100 ? 'Share' : 'Share screen');
     await expect(share).toHaveAttribute('aria-label', 'Share screen');
     await expect(share).toHaveAttribute('title', 'Show the stage a window, a tab, or your desktop.');
     const inside = await share.evaluate((el) => !!el.closest('#barmore'));
@@ -1940,7 +1957,7 @@ test('a host shares the stage from the dock', async ({ page }) => {
     const lab = document.querySelector('.bar > #sharebtn .docklab');
     return { text: lab.textContent, clip: lab.scrollWidth <= lab.clientWidth + 1, barIn: bar.right <= innerWidth + 1 };
   });
-  expect(resized.text).toBe('Share');
+  expect(resized.text).toBe('Share'); // a service dock at 900px keeps the short word;
   expect(resized.clip).toBe(true);
   expect(resized.barIn).toBe(true);
 });

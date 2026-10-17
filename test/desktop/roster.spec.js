@@ -77,3 +77,20 @@ test('twenty people open as a roster from the count', async ({ page }) => {
   const again = await rosterBox(page);
   expect(again.open).toBe(false);
 });
+
+test('a roster of one says 1 person, not 1 people', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.setItem('gifos_appeared', '1');
+  });
+  await page.goto('/run.html#v=qaroster1&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#mic', { state: 'visible' });
+  // A host alone (say, with everyone else still in the waiting room) opens People.
+  await page.evaluate(() => document.getElementById('statuscount').click());
+  const one = await rosterBox(page);
+  await page.screenshot({ path: 'test/desktop/shots/roster-one-after-1280.png' });
+  expect(one.open).toBe(true);
+  expect(one.n).toBe(1);
+  expect(one.title).toBe('1 person');
+});

@@ -825,7 +825,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #appbar #appname { font-weight: 700; }
   #appbar #appwho { color: var(--muted, #8888aa); font-size: .78rem;
     flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #appbar #appstop { margin-left: auto; }
+  #appbar #appstop { margin-left: auto; font-size: 16px; }
+  #appbar #appsave, #appbar #appsteal, #appbar #apphide, #appbar #appaudio { font-size: 16px; }
   /* When the app bar is the ONLY bar (solo / app room before a call), it also
      carries the GifOS home link — same gradient wordmark as the meeting bar. */
   #appbar .brand { display: none; font-weight: 800; font-size: .9rem; text-decoration: none; cursor: pointer;
@@ -917,6 +918,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      strip-cell face is positioned by left/top, and a scale would move it. */
   .stagefacebox video.blur1 { filter: blur(11px) saturate(.9); }
   .stagefacebox video.blur2 { filter: blur(26px) saturate(.75); }
+  #muteall.on { border-color: #ff5c5c; color: #ff9c9c; background: #2a1010; }
   #blurall.on { border-color: #ffb86c; color: #ffd23c; background: #2a1f10; }
   #camall.on { border-color: #ff5c5c; color: #ff9c9c; background: #2a1010; }
   /* Admin-absence countdown: an admin room only lives while its host is here. */
@@ -1100,6 +1102,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      is an <img> of the original bytes — never drawn onto a canvas. */
   .tile .avatar.has-img { font-size: 0; color: transparent; }
   .tile .avatar .avatar-img { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  /* A camera-off placeholder is as soft as the face it stands in for. */
+  .tile .avatar.blur1 { filter: blur(11px) saturate(.9); transform: scale(1.07); }
+  .tile .avatar.blur2 { filter: blur(26px) saturate(.75); transform: scale(1.15); }
   .cmsg img.avchip, .trline img.avchip, .brow img.avchip { width: 1.25rem; height: 1.25rem; object-fit: cover;
     border-radius: .25rem; vertical-align: middle; margin-right: .35rem; }
   #bc-ident { display: none; }
@@ -1110,10 +1115,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile.cam-off:has(> .avatar.has-img) > video { visibility: hidden; }
   /* A dark seat past the shared-canvas cap (mountPeerAvatar) shows its letter
      overlay, blurred the way the video it stands in for would be. */
-  .tile.cam-off .avatar.rides-off { display: flex; }
-  .tile.cam-off:has(> .avatar.rides-off) > video { visibility: hidden; }
-  .tile:has(> video.blur1) .avatar.rides-off { filter: blur(11px) saturate(.9); }
-  .tile:has(> video.blur2) .avatar.rides-off { filter: blur(26px) saturate(.75); }
+  .tile.cam-off .avatar { display: flex; }
   .tile .chips { position: absolute; top: 6px; left: 6px; right: 6px; display: flex; flex-direction: row;
                  flex-wrap: nowrap; gap: 3px; align-items: center; z-index: 3; pointer-events: none; overflow: hidden; }
   .tile:has(> .blurbox.on) .chips { right: 96px; }
@@ -1136,6 +1138,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                      box-shadow: 0 1px 5px rgba(0,0,0,.42);
                      font: 700 13px/1.1 system-ui, sans-serif; white-space: pre-line;
                      text-align: center; align-items: center; justify-content: center; flex-direction: column; }
+  .tile .chips span.ico i.w { display: none; }
   .tile .awaymark { display: none; }
   .tile.away > .awaymark {
     display: flex; align-items: center; justify-content: center;
@@ -1186,13 +1189,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      where there is a real pointer. */
   @media (hover: hover) { .tile:hover .modbar { display: flex; } }
   .tile .modbar button[hidden] { display: none !important; }
-  /* Blur for all is on the corner chip; the menu has it only where
-     the chip is not shown (slim phone tiles), so no tile offers it twice. */
-  .tile:has(> .blurbox.on) .modbar [data-mod="blur"] { display: none; }
+  /* The corner square and the menu both say Blur for all / Unblur for all
+     (qa-meet-desktop: the state reads the same from either). */
   .tile:focus-visible { outline: 3px solid #7ec8ff; outline-offset: -3px; }
   .tile .modbar button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   .tile .modbar button { padding: .3rem .55rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.16);
                          background: rgba(10,10,15,.85); color: #eceef8; cursor: pointer; font-size: .68rem; }
+  .tile .modbar button[hidden] { display: none !important; }
   .tile .modbar button:hover { border-color: var(--accent2, #ff5caa); }
   /* Broadcast hides the gallery, so the host's guest tools live on the stage. */
   #stagemod { display: none; }
@@ -1436,6 +1439,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cwho { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin: 0 0 2px; }
   .cwho b { display: inline; margin: 0; }
   .cmsg .cwhen { color: inherit; font-size: .875rem; font-weight: 600; white-space: nowrap; }
+  #chathead #chatmod { font-size: 16px; font-weight: 650; }
   #cfiles { border-top: 1px solid var(--border, #2a2a3f); padding: .45rem .7rem; max-height: 34%; overflow-y: auto; }
   #cfiles[hidden] { display: none !important; }
   #cfiles h4 { font-size: .72rem; color: var(--muted, #8888aa); margin-bottom: .3rem; }
@@ -1582,6 +1586,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     max-height: calc(100vh - 2rem); max-height: calc(100dvh - 2rem); overflow-y: auto; }
   .name-box h3 { margin-bottom: .5rem; }
   #shortcutsheet .name-box { background: #fff; color: #1d1d1f; text-align: left; max-width: 440px; width: min(440px, calc(100vw - 32px)); }
+  /* Two columns where the screen is wide, so the whole list (a host's three
+     extra keys too) fits a 720px laptop without scrolling the title away. */
+  @media (min-width: 700px) {
+    #shortcutsheet .name-box { max-width: 780px; width: min(780px, calc(100vw - 32px)); }
+    #shortcutsheet ul { columns: 2 300px; column-gap: 1.75rem; }
+    #shortcutsheet li { break-inside: avoid; }
+    #shortcutsheet li:first-child { margin-top: 0; }
+  }
   #shortcutsheet h3 { color: #1d1d1f; font-size: 1.45rem; margin-bottom: .75rem; }
   #shortcutsheet ul { list-style: none; margin: 0 0 1rem; padding: 0; }
   #shortcutsheet li { font-size: 18px; line-height: 1.45; color: #1d1d1f; margin: .35rem 0; }
@@ -1600,6 +1612,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #appear #nmok { background: #0064c8; color: #fff; border: 0; min-width: 132px; font-weight: 700; }
   #appear #appear-pic { display: block; margin: -4px auto 12px; background: transparent; color: #0064c8; border: 0; min-height: 36px; font-weight: 700; }
   .name-box p { color: var(--muted, #8888aa); font-size: .85rem; margin-bottom: 1rem; }
+  #adm-modal #adm-hint, #adm-modal #adm-banned-h { font-size: 16px; line-height: 1.45; }
   .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem; min-height: 48px;
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
   .name-box button { padding: .5rem 1.4rem; min-height: 48px; border-radius: .5rem; border: 1px solid var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; }
@@ -1773,6 +1786,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     /* The box that holds the line draws the ellipsis: inline-block, clipped. */
     .topchip #statusrest { display: inline-block; max-width: 100%; vertical-align: bottom; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   }
+  .roster-row .spotbtn.on, .roster-row .admitbtn { background: #0064c8; border-color: transparent; color: #fff; }
+  .roster-row .renamebox { flex: 1 1 140px; min-width: 0; min-height: 40px; border-radius: 12px;
+    border: 1px solid #c5cad3; padding: 0 10px; font: 16px/1.2 system-ui, sans-serif; color: #1d1d1f; }
+  #waitself { display: none; position: fixed; z-index: 28; left: 50%; top: 18vh; transform: translateX(-50%);
+    width: min(440px, calc(100vw - 32px)); padding: 28px 28px 24px; background: #fff; color: #1d1d1f;
+    border-radius: 22px; box-shadow: 0 16px 40px rgba(0,0,0,.28); text-align: center; }
+  #waitself.on { display: block; }
+  #waitself h3 { margin: 0 0 8px; font: 700 28px/1.2 system-ui, sans-serif; }
+  #waitself p { margin: 0; font: 600 18px/1.35 system-ui, sans-serif; }
+  /* pre, not nowrap: the rest starts with " · 360p" and a flex item drops leading spaces. */
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
   /* A broadcast host who is the only person here gets Invite in the chip.
      The sentence stays. Wide screens show the same button the phone shows.
@@ -1873,6 +1896,47 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #lyrics-next { margin-top: 8px; min-height: 44px; border: 0; border-radius: 12px; background: #0064c8; color: #fff;
     font: 700 16px/1 system-ui, sans-serif; cursor: pointer; padding: 0 16px; }
   #lyrics-next.secondary { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
+  /* The booth's own song: typed here, one line per line, kept for this room
+     on this computer. Song reads it; nothing extra is sent to the room. */
+  #song-edit { min-height: 44px; border-radius: 12px; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0;
+    font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+  #songedit { display: none; position: fixed; z-index: 25; left: 290px; right: 14px; bottom: 128px;
+    max-width: 640px; max-height: calc(100vh - 18vh - 128px - 220px); min-height: 0;
+    flex-direction: column; gap: 8px; padding: 16px 18px 14px; box-sizing: border-box;
+    background: #fff; color: #1d1d1f; border-radius: 20px; box-shadow: 0 16px 40px rgba(0,0,0,.28); }
+  #songedit.open { display: flex; }
+  body.songedit #lyrics.open { display: none; }
+  #songedit h3 { margin: 0; font: 700 16px/1.2 system-ui, sans-serif; color: #3a3a3f; }
+  #songedit p { margin: 0; font: 400 16px/1.35 system-ui, sans-serif; color: #3a3a3f; }
+  #song-text { flex: 1 1 auto; min-height: 88px; resize: vertical; box-sizing: border-box; width: 100%;
+    padding: 8px 10px; border: 1.5px solid #8d93a0; border-radius: 10px; color: #1d1d1f; background: #fff;
+    font: 500 16px/1.4 system-ui, sans-serif; }
+  #songedit .songedit-row { display: flex; gap: 8px; }
+  #songedit .songedit-row button { min-height: 44px; padding: 0 18px; border: 0; border-radius: 12px;
+    background: #0064c8; color: #fff; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+  #songedit .songedit-row button.secondary { background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
+  @media (max-width: 1000px) {
+    body.broadcast.rundown #onair[data-state="off"] {
+      left: 290px; transform: none; width: min(400px, calc(100vw - 306px));
+    }
+  }
+  .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
+    border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
+    background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 16px/1.2 system-ui, sans-serif; }
+  /* Older eyes: on a desktop window Fit is 16px, a 44px target, and sits in the
+     header row beside the build label, above the tiles and their buttons. */
+  @media (min-width: 601px) and (min-height: 501px) { .fitbtn { top: calc(14px + var(--gtop, 0px)); min-height: 44px; padding: 10px 16px; } }
+  /* A shared screen folds the faces into a strip, so Fit has nothing to fit, and Stop sharing owns that corner. */
+  body.screen-on .fitbtn { display: none; }
+  /* A desktop reads the hand queue in the header row, left of Fit (placeHandq),
+     at 18px and on top of the faces; the header line ellipsizes to give it room.
+     A quiet call fades the header, never a raised hand. */
+  body.desk-ptr #handq.on { position: fixed; z-index: 7; top: calc(14px + var(--gtop, 0px)); right: 14px; max-width: 34vw; box-sizing: border-box;
+    min-height: 48px; padding: 12px 16px; border-radius: 999px; background: rgba(12,14,18,.92); color: #f4f7fb;
+    font-size: 18px; line-height: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.desk-ptr:has(#handq.on) .topchip { max-width: calc(100vw - 14px - var(--hq-room, 140px)); }
+  /* A shared slide starts below the header row, so the header never covers it. */
+  body.desk-ptr.screen-on #feed { padding-top: 70px; }
   /* Phone chrome from qa-meet-mobile: the status sheet, the 44px chip, Fit as a
      44px target, the Live/Record/Captions band and the chat preview. */
   #status-full .name-box {
@@ -2050,6 +2114,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     box-shadow: 0 6px 16px rgba(0,0,0,.35);
   }
   #chatbadge[hidden] { display: none !important; }
+  @media (min-width: 601px) and (min-height: 501px) { .fitbtn { top: calc(14px + var(--gtop, 0px)); min-height: 44px; padding: 10px 16px; } }
   body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
@@ -2057,11 +2122,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* The build name used to be a solid chip in the corner, beside Fit, and
      Fit hung down onto the top face. Fit shares the header row. The build
      name is a faint line under that row, not a second button. */
-  #gifos-build-float { top: calc(58px + var(--gtop)) !important; left: calc(14px + env(safe-area-inset-left, 0px)) !important;
-    right: auto !important; bottom: auto !important;
-    opacity: 0.55 !important; color: #c5cad3 !important; background: transparent !important; padding: 0 !important;
-    border-radius: 0 !important; font-size: 11px !important; line-height: 1.2 !important;
-    z-index: 6 !important; text-shadow: none !important; pointer-events: none !important; }
+  /* A wide window wears the build name as a pill at the top right, beside Fit (qa-meet-desktop). */
+  @media (min-width: 701px) and (min-height: 501px) {
+    #gifos-build-float { top: calc(14px + var(--gtop, 0px)) !important; right: 14px !important; bottom: auto !important; left: auto !important;
+      opacity: 1 !important; color: #e7ebf2 !important; background: rgba(12,14,18,.92); padding: 4px 10px;
+      border-radius: 999px; z-index: 6 !important; text-shadow: none !important; }
+  }
+  /* On a phone the build name is a faint line under the header row, left,
+     where Fit does not hang over the top face. A wide window keeps the badge
+     where it is drawn (placeFit sits Fit beside it). */
+  @media (max-width: 700px), (max-height: 500px) {
+    #gifos-build-float { top: calc(58px + var(--gtop)) !important; left: calc(14px + env(safe-area-inset-left, 0px)) !important;
+      right: auto !important; bottom: auto !important;
+      color: #c5cad3 !important; background: transparent !important; padding: 0 !important;
+      border-radius: 0 !important; font-size: 11px !important; line-height: 1.2 !important;
+      z-index: 6 !important; text-shadow: none !important; pointer-events: none !important; }
+  }
+  /* Faint on a phone, where it sits among the faces; a wide window reads it whole until a quiet call fades it. */
   /* A sideways phone's faces start at y=66, so the line under the header
      ran across the first two faces. It sits in the strip above the header
      instead, which stays clear with the buttons up or away. */
@@ -2073,6 +2150,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     max-width: calc(100% - 16px); padding: 0 16px 0 18px; margin: 0;
     background: rgba(255,255,255,.94); border: 0; border-radius: 32px;
     box-shadow: 0 10px 30px rgba(0,0,0,.28); overflow: visible; }
+  /* Nine worded buttons on a 900px window: a tighter gap, and Full screen (a
+     service control; a small-group tile has its own Max) steps off a narrow
+     small-group dock so Leave stays on screen. */
+  @media (min-width: 701px) and (max-width: 1100px) { .bar { gap: 6px; } body:not(.broadcast) .bar #fsbtn { display: none !important; } }
+  /* A service dock under 1100px (Step on, Invite, Full screen too): compact buttons and words. */
+  @media (min-width: 701px) and (max-width: 1100px) {
+    body.broadcast .bar #cam, body.broadcast .bar #mic, body.broadcast .bar #reactbtn, body.broadcast .bar #stagebtn, body.broadcast .bar #invite,
+    body.broadcast .bar #fsbtn, body.broadcast .bar #chatbtn, body.broadcast .bar #ccdock, body.broadcast .bar #sharebtn, body.broadcast .bar #hand, body.broadcast .bar #bartoggle, body.broadcast .bar #leavebtn {
+      min-width: 56px; padding: 6px 4px 4px; }
+    body.broadcast .bar .docklab { font-size: 12px; }
+    body.broadcast .bar #bargrip { width: 18px; min-width: 18px; }
+  }
   /* Idle tuck is a transform written by placeDock. No transition: a key nudge
      has to land on the next frame, and a transition would leave the old place. */
   .bar.tucked { pointer-events: none; }
@@ -2083,12 +2172,48 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* Self-view placement is a gallery choice (meet-selfview-stage). A broadcast
      has only the stage, and those rows made More tall enough to cover it. */
   body.broadcast .barmore .selfctl { display: none !important; }
-  .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #fsbtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
+  .bar { transition: opacity .2s ease; }
+  /* A quiet small call fades the dock (and Fit) so only faces are left. Coming
+     back is quick; going away is slow, so it never feels like a flicker. */
+  body.dock-calm .bar, body.dock-calm .fitbtn { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+  /* Calm is faces only: the tile buttons go too, even under a resting pointer.
+     Names and the mute chips stay. */
+  .tile > .blurbox, .tile .maxbtn, .tile .modbar { transition: opacity .2s ease; }
+  body.dock-calm .tile > .blurbox, body.dock-calm .tile .maxbtn, body.dock-calm .tile .modbar {
+    opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+  /* On a desktop a face is clean until you point at it (Zoom and Meet do
+     the same): Blur for all and Max show on the face under the pointer or
+     with keyboard focus. A blurred face keeps Unblur so the state is seen. */
+  body.desk-ptr .tile > .blurbox[aria-pressed="false"], body.desk-ptr .tile .maxbtn { opacity: 0; pointer-events: none; }
+  body.desk-ptr:not(.dock-calm) .tile:is(:hover, :focus-within, .menu) > .blurbox,
+  body.desk-ptr:not(.dock-calm) .tile:is(:hover, :focus-within, .menu) .maxbtn { opacity: 1; pointer-events: auto; }
+  /* Older eyes read a face's buttons too: their words are 16px on a desktop.
+     The square grows to fit "Blur for" on one line, and the row sits beside
+     it, so a short face in a room of nine still has room for the name. */
+  body.desk-ptr .tile > .blurbox { width: 80px; height: 80px; font-size: 16px; }
+  body.desk-ptr .tile:has(> .blurbox.on) .chips { right: 104px; }
+  body.desk-ptr .tile:has(> .blurbox.on) .modbar { top: 12px; right: 104px; }
+  body.desk-ptr .tile .modbar button { font-size: 16px; }
+  /* A raised hand is read from across the room: chip words are 16px too. */
+  body.desk-ptr .tile .chips span:not(.ico) { font-size: 16px; }
+  /* The mute and camera marks say their word too: an icon alone is a guess. */
+  body.desk-ptr .tile .chips span.ico { width: auto; height: auto; min-height: 22px; padding: 1px 8px 1px 6px; gap: 4px; }
+  body.desk-ptr .tile .chips span.ico i.w { display: inline; font-style: normal; font-size: 16px; line-height: 1.35; }
+  /* The header line and the build label go too, unless the line is saying
+     something (a notice, an alert, a reach state). */
+  .topchip, #gifos-build-float { transition: opacity .2s ease; }
+  body.head-calm .topchip { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+  body.head-calm #gifos-build-float { opacity: 0 !important; transition: opacity .8s ease; }
+  @media (prefers-reduced-motion: reduce) { .bar, body.dock-calm .bar, body.dock-calm .fitbtn,
+    .tile > .blurbox, .tile .maxbtn, .tile .modbar, .topchip, #gifos-build-float { transition: none !important; } }
+  .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #fsbtn, .bar #bartoggle {
     width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
     background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
     font-size: 11px; font-weight: 700; line-height: 1; letter-spacing: 0;
   }
   .bar .docklab { display: block; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
+  /* A wide window reads whole dock words (qa-meet-desktop); the phone dock clips its short ones. */
+  @media (min-width: 701px) and (min-height: 501px) { .bar .docklab { max-width: none; } }
   .bar #fsbtn { width: auto; min-width: 68px; padding: 0 8px; }
   .bar #fsbtn .docklab { max-width: none; }
   .bar #reactbtn .dockface { font-size: 26px; line-height: 1; pointer-events: none; }
@@ -2097,9 +2222,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar #mic.iconbtn:not(.off), .bar #cam.iconbtn:not(.off) { background: #146c36; color: #fff; }
   .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { background: #b61622; color: #fff; border-color: transparent; }
   .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 28px; height: 28px; }
-  .bar > #sharebtn { width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
-    background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
-    font-size: 11px; font-weight: 700; line-height: 1; }
+  /* Share screen is a worded dock button like the rest (qa-meet-desktop); only its colour is its own. */
+  .bar > #sharebtn { border: 0; }
   .bar > #sharebtn svg { width: 28px; height: 28px; }
   .bar > #sharebtn.on { background: #b3402f; color: #fff; }
   .bar > #stagebtn { width: auto; min-width: 68px; height: 68px; min-height: 68px; padding: 0 12px; border: 0; border-radius: 50%;
@@ -2125,6 +2249,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #left-rejoin, #left-close { min-height: 64px; min-width: 120px; font-size: 1.2rem; border-radius: 12px; cursor: pointer; }
   #left-rejoin { background: #0064c8; color: #fff; border: 0; }
   #left-close { margin-left: 12px; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
+  /* Unmute, camera, Reactions, Share screen, Chat, More, and Leave say what they do. */
+  .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
+    height: 76px; width: auto; min-width: 72px; min-height: 76px;
+    padding: 8px 10px 6px; flex-direction: column; gap: 2px; border-radius: 22px;
+  }
+  .bar .dockword {
+    display: block; flex: 0 0 auto; font: 700 16px/1 system-ui, sans-serif;
+    letter-spacing: 0; white-space: nowrap; pointer-events: none;
+  }
+  .bar #leavebtn {
+    flex-direction: column; width: auto; min-width: 76px; height: 76px; min-height: 76px;
+    gap: 2px; padding: 8px 10px 6px;
+  }
   .bar .barmore { display: none; }
   .bar:not(.collapsed) .barmore { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
     width: min(720px, calc(100vw - 24px));
@@ -2134,8 +2271,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     max-height: calc(100vh - 140px); max-height: calc(100dvh - 140px); overflow-y: auto; }
   .bar:not(.collapsed) .barmore > * { pointer-events: auto; }
   .bar:not(.collapsed) .barmore .moregroup { display: flex; flex-direction: column; gap: 6px; }
+  /* A volunteer sees Hand, Invite, and Help. The rest waits under All tools. */
+  .bar:not(.collapsed) .barmore:not(.tools-open) .moregroup.extra { display: none; }
+  /* A phone sheet is its own design (qa-meet-mobile): four actions first, the rest scroll. */
+  @media (max-width: 700px), (max-height: 500px) {
+    .barmore .moregroup.extra { display: flex !important; }
+    #moretools, .barmore .morerow.yourow[hidden] { display: none !important; }
+  }
+  .bar:not(.collapsed) .barmore .yourow { grid-template-columns: repeat(3, 1fr); }
+  .bar:not(.collapsed) .barmore #moretools { min-height: 64px; border: 1.5px solid #8d93a0; border-radius: 16px;
+    background: #fff; color: #1d1d1f; font: 700 18px/1.2 system-ui, sans-serif; cursor: pointer; }
   .bar:not(.collapsed) .barmore .moregroup:not(:has(.morerow > button:not([style*="display:none"]):not([style*="display: none"]))) { display: none; }
-  .bar:not(.collapsed) .barmore .moregroup h4 { margin: 0; padding: 0 4px; font: 700 12px/1.2 system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: #5c6370; }
+  .bar:not(.collapsed) .barmore .moregroup h4 { margin: 0; padding: 0 4px; font: 700 16px/1.2 system-ui, sans-serif; color: #4a505c; }
   .bar:not(.collapsed) .barmore .morerow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   /* Stage voting: the More sheet floats over the gallery; let .votedot receive taps. */
   body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore,
@@ -2147,11 +2294,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) #barmore #ccbtn.on,
   .bar:not(.collapsed) #barmore #recbtn.on { background: #0064c8; color: #fff; border-color: transparent; }
   .bar:not(.collapsed) .barmore .blurctl { grid-column: 1 / -1; display: flex; align-items: center; min-height: 48px; gap: 8px; }
-  .bar:not(.collapsed) .barmore .blurlbl { display: inline; color: #3a3a3f; font-size: 14px; }
-  .bar:not(.collapsed) .barmore .seg { min-height: 48px; min-width: 48px; color: #1d1d1f; background: #fff; }
+  .bar:not(.collapsed) .barmore .blurlbl { display: inline; color: #3a3a3f; font-size: 16px; }
+  .bar:not(.collapsed) .barmore .seg { min-height: 48px; min-width: 48px; color: #1d1d1f; background: #fff; font-size: 16px; }
   .bar:not(.collapsed) .barmore .seg.sel,
   .bar:not(.collapsed) .barmore .seg[aria-pressed="true"] { background: #1d1d1f; color: #fff; }
-  .bar .barmore .blab { display: block; font-size: 13px; font-weight: 700; margin-top: 2px; line-height: 1.1; }
+  .bar .barmore .blab { display: block; font-size: 16px; font-weight: 700; margin-top: 2px; line-height: 1.1; }
+  /* Desktop: All tools is the whole list on a 1280x720 laptop, host row too.
+     All tools sits beside Hand, Invite, and Help; each heading sits left of
+     its row, five buttons a row. */
+  @media (min-width: 900px) {
+    /* The phone sheet is a four-column grid; a wide window lays its groups out as a wrapping row (qa-meet-desktop). */
+    body.desk-ptr .bar:not(.collapsed) .barmore { display: flex; flex-flow: row wrap; column-gap: 8px; width: min(920px, calc(100vw - 24px)); }
+    body.desk-ptr .bar:not(.collapsed) .barmore > * { flex: 1 1 100%; min-width: 0; }
+    /* Hand, Invite, Help and All tools take a line of their own under the control rows. */
+    body.desk-ptr .bar:not(.collapsed) .barmore > .yourow { flex: 3 1 480px; grid-template-columns: repeat(3, 1fr); }
+    /* Blur, your video and the stage share one line, so All tools still fits a 1280x720 window. */
+    body.desk-ptr .bar:not(.collapsed) .barmore > .blurctl { flex: 1 1 auto; grid-column: auto; min-width: 0; }
+    body.desk-ptr .bar:not(.collapsed) .barmore > #moretools { flex: 1 1 160px; }
+    body.desk-ptr .bar:not(.collapsed) .barmore .moregroup { display: grid; grid-template-columns: 7em 1fr; align-items: center; gap: 8px; }
+    body.desk-ptr .bar:not(.collapsed) .barmore:not(.tools-open) .moregroup.extra { display: none; }
+    body.desk-ptr .bar:not(.collapsed) .barmore .moregroup .morerow { grid-template-columns: repeat(5, 1fr); }
+    body.desk-ptr .bar:not(.collapsed) .barmore .moregroup .morerow > button { min-height: 52px; padding: 6px; }
+  }
   .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 122px; transform: translateX(-50%);
     display: flex; gap: 8px; background: rgba(255,255,255,.96); border-radius: 20px; padding: 10px;
     box-shadow: 0 10px 28px rgba(0,0,0,.25); }
@@ -2246,6 +2410,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      the older gallery rule uses; matching it is what lets these win.
      Padding stays zero. The dock band is a content-box inset in viewBox
      (innerHeight - bar.top), so the packer itself is unchanged. */
+  /* Comfy: every face on screen, tiles the same size, the gallery stops
+     above the dock so a name is not covered. The long :not chain is what
+     the older gallery rule uses; matching it is what lets these win.
+     Padding stays zero. The packer insets the bottom by the dock. */
   body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
     position: fixed; inset: 0; overflow: hidden; padding: 0 !important; margin: 0;
     display: block; background: #0d0f14; z-index: 1; }
@@ -2324,6 +2492,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (min-width: 701px) {
     body.comfy.gallery-scroll #feed.can-scroll::after { bottom: 128px; }
   }
+  /* Desktop gallery: a gutter between faces (meet-views.js) and soft corners. */
+  body.comfy.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-gutter="1"],
+  body.comfy .stadface[data-gutter="1"] { border-radius: 10px; overflow: hidden; }
   /* Gallery keeps the stage strip playing (PiP can aim it) but off the mosaic.
      A stage mode adds .show-stage and places that strip itself. */
   body.comfy:not(.show-stage) #stagefeed {
@@ -2384,6 +2555,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.screen-on #feed { padding-bottom: 132px; box-sizing: border-box; background: #0c0e12; }
   body.screen-on #grid { flex: 0 0 120px; height: 120px; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; }
   body.screen-on #grid .tile { height: 104px; flex: 0 0 auto; width: auto; aspect-ratio: 16 / 9; }
+  /* A presenting desktop's strip is 104px tall: chips wrap whole instead of
+     being cut at the edge, and the row keeps no room for the Blur for all
+     square, which shows only under the pointer and then sits on top. */
+  body.desk-ptr.screen-on #grid .tile .chips { top: 4px; right: 6px; flex-wrap: wrap; align-content: flex-start; gap: 2px 3px; }
+  /* A 104px thumbnail has no room for the mark words: icons only there. */
+  body.desk-ptr.screen-on #grid .tile .chips span.ico { width: 22px; height: 22px; padding: 0; }
+  body.desk-ptr.screen-on #grid .tile .chips span.ico i.w { display: none; }
   @media (max-width: 700px) {
     body.screen-on #grid { flex-basis: 92px; height: 92px; }
     body.screen-on #grid .tile { height: 76px; }
@@ -2487,7 +2665,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     min-height: 44px; margin-left: 8px; padding: 0 14px; border: 0; border-radius: 999px;
     background: #0064c8; color: #fff; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
   .topchip #statusinvite[hidden] { display: none !important; }
-  .topchip #statusrest { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* pre, not nowrap: the rest starts with " · 360p" and a flex item drops a leading space. A phone's chip (below) truncates. */
+  @media (min-width: 701px) and (min-height: 501px) { .topchip #statusrest { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre; } }
   /* A phone keeps the count and the sentence too; Invite is the chip's button there (hdrinvite). */
   @media (max-width: 700px), (max-height: 500px) {
     .topchip #statusinvite { display: none !important; }
@@ -2611,7 +2790,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      47px notch. */
   .bar { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
   .topchip { top: calc(14px + var(--gtop)); left: calc(14px + env(safe-area-inset-left, 0px)); }
-  .fitbtn { top: calc(58px + var(--gtop)); right: calc(14px + env(safe-area-inset-right, 0px)); }
+  /* A phone's Fit sits under the header row; a wide window keeps Fit in the header row (above). */
+  @media (max-width: 700px), (max-height: 500px) { .fitbtn { top: calc(58px + var(--gtop)); right: calc(14px + env(safe-area-inset-right, 0px)); } }
   /* On a short landscape phone the chip and Fit share one row, so the
      faces can start higher. Portrait keeps Fit under the chip. */
   @media (max-height: 500px) and (orientation: landscape) {
@@ -2757,6 +2937,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <ol id="rundown-list"></ol>
     <p id="rundown-end"></p>
     <button type="button" id="rundown-next">Next</button>
+    <button type="button" id="song-edit" class="secondary">Song words</button>
+  </aside>
+  <aside id="songedit" aria-labelledby="songedit-title">
+    <h3 id="songedit-title">Song words</h3>
+    <p id="songedit-note">One line per line. Song reads them in order.</p>
+    <textarea id="song-text" rows="8" spellcheck="false" aria-labelledby="songedit-title" aria-describedby="songedit-note"></textarea>
+    <div class="songedit-row">
+      <button type="button" id="song-save">Save</button>
+      <button type="button" id="song-cancel" class="secondary">Cancel</button>
+    </div>
   </aside>
   <aside id="lyrics" aria-label="Lyrics">
     <p class="ly-k" id="lyrics-program-k">Program</p>
@@ -2795,12 +2985,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     </button>
     <!-- Smiley, on purpose. The sparkle (AI_SPARK_SVG) is only for AI: the transcript and the note bot. -->
     <button id="reactbtn" type="button" class="iconbtn" aria-label="Reactions" aria-expanded="false" aria-pressed="false" title="Reactions">
-      <span class="dockface" aria-hidden="true">😊</span>
-      <span class="docklab dockword">React</span>
-    </button>
-    <button id="invite" type="button" class="iconbtn" aria-label="Invite" data-ti="invTip" title="Friends join you live with one link">
-      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3.6 19.2c.7-2.8 2.8-4.4 5.4-4.4s4.7 1.6 5.4 4.4"/><path d="M18 8.5v5.5M15.2 11.2h5.6"/></svg>
-      <span class="docklab dockword">Invite</span>
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1.1 1.4 2.4 2 4 2s2.9-.6 4-2"/><circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none"/></svg>
+      <span class="docklab dockword" data-t="react">Reactions</span>
     </button>
     <button id="fsbtn" type="button" class="iconbtn" aria-label="Full screen" title="Watch full screen. Follows whoever is speaking.">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
@@ -2811,13 +2997,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span class="docklab dockword">Chat</span>
       <span class="chatcount" hidden></span>
     </button>
-    <button id="ccdock" type="button" class="iconbtn" aria-pressed="false" aria-label="Captions" title="Show or hide captions on your screen. This meeting is written down either way.">
+    <button id="ccdock" aria-keyshortcuts="Alt+K" data-ti="ccTip" type="button" class="iconbtn" aria-pressed="false" aria-label="Captions" title="Show or hide captions on your screen. This meeting is written down either way.">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 10a2 2 0 1 0 0 4M17 10a2 2 0 1 0 0 4"/></svg>
       <span class="docklab dockword">CC</span>
     </button>
     <button id="sharebtn" type="button" class="iconbtn" aria-label="Share screen" aria-keyshortcuts="Alt+S" title="Show the whole room a window, a tab or your desktop. To share a GifOS app, use Run app." style="display:none">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
-      <span class="docklab dockword">Share</span>
+      <span class="docklab dockword" data-t="shareScreen">Share screen</span>
     </button>
     <button id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
@@ -2877,11 +3063,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button type="button" class="seg" id="selfstage" data-self-stage="1">Show me on stage</button>
       </span>
     </span>
-    <section class="moregroup">
+    <div class="morerow yourow">
+      <button id="hand" data-t="hand" aria-keyshortcuts="Alt+H" title="Raise your hand — raised hands float to the top">Hand</button>
+      <button id="invite" data-t="invite" data-ti="invTip" aria-keyshortcuts="Alt+I" title="Friends join you live with one link">Invite</button>
+      <button id="helpbtn" data-t="help" aria-keyshortcuts="Alt+/" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
+    </div>
+    <button type="button" id="moretools" aria-expanded="false" data-t="moreTools">All tools</button>
+    <section class="moregroup extra">
       <h4 data-t="people">People</h4>
       <div class="morerow">
-        <button type="button" id="whobtn" data-t="who" data-ti="whoTip" title="Who is on this meeting — names and internet addresses">Who</button>
-        <button id="hand" data-t="hand" aria-keyshortcuts="Alt+H" title="Raise your hand — raised hands float to the top">Hand</button>
+        <button type="button" id="whobtn" data-t="who" data-ti="whoTip" aria-keyshortcuts="Alt+W" title="Who is on this meeting — names and internet addresses">Who</button>
         <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 8a8 8 0 0 0-14.9-2"/><polyline points="5 2 5 6 9 6"/>
@@ -2895,39 +3086,39 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         </button>
       </div>
     </section>
-    <section class="moregroup">
+    <section class="moregroup extra">
       <h4 data-t="share">Share</h4>
       <div class="morerow">
-        <button id="appbtn" data-t="runApp" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
+        <button id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
       </div>
     </section>
-    <section class="moregroup">
+    <section class="moregroup extra">
       <h4 data-t="room">Room</h4>
       <div class="morerow">
-        <button id="votebtn" data-t="vote" data-ti="voteTip" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
-        <button id="pwbtn" data-t="password" data-ti="pwTip" title="Lock this room with a password">Password</button>
-        <button id="stagebtn" data-t="stage" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
-        <button id="recbtn" data-t="record" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
+        <button id="votebtn" data-t="vote" data-ti="voteTip" aria-keyshortcuts="Alt+U" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
+        <button id="pwbtn" data-t="password" data-ti="pwTip" aria-keyshortcuts="Alt+L" title="Lock this room with a password">Password</button>
+        <button id="stagebtn" data-t="stage" aria-keyshortcuts="Alt+G" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
+        <button id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
         <button id="ccbtn" type="button" aria-pressed="false" data-t="captions" data-ti="ccTip" title="Show or hide captions on your screen. This meeting is written down either way.">Captions</button>
-        <button id="setbtn" data-t="settings" title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
+        <button id="setbtn" data-t="settings" aria-keyshortcuts="Alt+," title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
       </div>
     </section>
-    <section class="moregroup">
+    <section class="moregroup extra">
       <h4 data-t="host">Host</h4>
       <div class="morerow">
-        <button id="blurall" data-t="blurGuests" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
-        <button id="camall" data-t="videoOff" title="Turn video OFF for every guest at once (admins) — stronger than blur" style="display:none">Turn Video off</button>
-        <button id="shareall" data-t="allowShare" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
+        <button id="muteall" data-t="muteGuests" aria-keyshortcuts="Alt+M" title="Mute every guest at once (admins). Only an admin can lift it, for one guest from their tile or for all with the same button." style="display:none">Mute guests</button>
+        <button id="blurall" data-t="blurGuests" aria-keyshortcuts="Alt+B" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
+        <button id="camall" data-t="videoOff" aria-keyshortcuts="Alt+X" title="Turn video off for every guest at once (admins) — stronger than blur" style="display:none">Turn video off</button>
+        <button id="shareall" data-t="allowShare" aria-keyshortcuts="Alt+P" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
     <button id="waitbtn" type="button" aria-pressed="false" title="Hold people at the door until you admit them" style="display:none">Waiting room</button>
         <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
       </div>
     </section>
-    <section class="moregroup">
+    <section class="moregroup extra">
       <h4 data-t="help">Help</h4>
       <div class="morerow">
         <button id="keysbtn" data-t="keys" type="button" title="Keyboard shortcuts">Keys</button>
-        <button id="helpbtn" data-t="help" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
-        <button id="trbtn" title="The meeting's live transcript"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
+        <button data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript" id="trbtn"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
       </div>
     </section>
     </div>
@@ -2959,14 +3150,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span id="appname">App</span>
       <span id="appwho"></span>
       <button id="appinvite" style="display:none" title="Share this app live — friends join with one link">Invite</button>
-      <button id="appsave" style="display:none" title="Save a snapshot GIF — the app with its data, yours to keep">Save</button>
-      <button id="apphelp" title="How this app works">Help</button>
-      <button id="appaudio" style="display:none" title="Talk with the people in this app — when on, everyone here gets their own mic control (host only)">Talk: off</button>
-      <button id="appsteal" style="display:none" title="Steal a copy of this app — it goes to your desktop's Stolen Apps, data and all">Steal</button>
+      <button id="appsave" style="display:none" data-t="barSave" data-ti="barSaveTip" title="Save a snapshot GIF — the app with its data, yours to keep">Save</button>
+      <button id="apphelp" data-t="help" data-ti="appHelpTip" title="How this app works">Help</button>
+      <button id="appaudio" style="display:none" data-t="barTalkOff" data-ti="barTalkTip" title="Talk with the people in this app — when on, everyone here gets their own mic control (host only)">Talk: off</button>
+      <button id="appsteal" style="display:none" data-t="barSteal" data-ti="barStealTip" title="Steal a copy of this app — it goes to your desktop's Stolen Apps, data and all">Steal</button>
       <button class="perms" id="appperms" title="What this app can do — review or turn things off" style="display:none"></button>
       <button id="applead" style="display:none"></button>
-      <button id="apphide" style="display:none" title="Hide this app on my screen only — the meeting keeps sharing it">Hide</button>
-      <button id="appstop" title="Stop sharing this app with the meeting">Stop app</button>
+      <button id="apphide" style="display:none" data-t="barHide" data-ti="barHideTip" title="Hide this app on my screen only — the meeting keeps sharing it">Hide</button>
+      <button id="appstop" data-t="stopApp" data-ti="stopAppTip" title="Stop sharing this app with the meeting">Stop app</button>
       <button class="fs-btn" id="appfull" style="display:none" title="Full screen" aria-label="Full screen" aria-pressed="false"></button>
     </div>
     <div id="appmount"></div>
@@ -3080,27 +3271,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="app-modal" style="display:none">
     <div class="name-box" style="max-width:420px;text-align:left">
-      <h3>Run an app in this meeting</h3>
-      <p>Pick one of your apps. It runs live for <b>everyone here</b> — same state, same moves — with the meeting's audio, video and recording around it. Anyone can interact.</p>
+      <h3 data-t="appSheetTitle">Run an app in this meeting</h3>
+      <p data-t="appSheetBody">Pick one of your apps. It runs live for everyone here — same state, same moves — with the meeting's audio, video and recording around it. Anyone can interact.</p>
       <div id="app-list" style="max-height:38vh;overflow-y:auto;margin:.4rem 0 .8rem"></div>
       <div id="app-add" style="border-top:1px solid var(--border,#2a2a3f);padding-top:.7rem;margin-bottom:1rem">
-        <p style="margin:.1rem 0 .5rem;font-size:.82rem;color:var(--muted,#8888aa)">Or run a GIF app that isn’t on this computer:</p>
-        <button id="app-file" style="display:block;width:100%;text-align:left;padding:.5rem .7rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);cursor:pointer">＋ Choose a GIF file…</button>
+        <p data-t="appSheetOr" style="margin:.1rem 0 .5rem;font-size:16px;color:var(--muted,#8888aa)">Or run a GIF app that isn’t on this computer:</p>
+        <button id="app-file" data-t="appSheetFile" style="display:block;width:100%;text-align:left;padding:.5rem .7rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);cursor:pointer">＋ Choose a GIF file…</button>
         <div style="display:flex;gap:.4rem;margin-top:.5rem">
-          <input id="app-url" type="url" placeholder="Paste a GIF app link" style="flex:1;min-width:0;padding:.5rem .6rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0)">
-          <button id="app-url-go" style="padding:.5rem .9rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);cursor:pointer">Run</button>
+          <input id="app-url" type="url" data-ph="appSheetLink" placeholder="Paste a GIF app link" style="flex:1;min-width:0;padding:.5rem .6rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0)">
+          <button id="app-url-go" data-t="appSheetRun" style="padding:.5rem .9rem;border-radius:.5rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);cursor:pointer">Run</button>
         </div>
-        <div id="app-add-err" style="color:#e0574a;font-size:.8rem;margin-top:.45rem;display:none"></div>
+        <div id="app-add-err" style="color:#e0574a;font-size:16px;margin-top:.45rem;display:none"></div>
       </div>
-      <button id="app-cancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Cancel</button>
+      <button id="app-cancel" data-t="shareCancel" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Cancel</button>
     </div>
   </div>
   <input type="file" id="app-file-input" accept="image/gif,.gif" style="display:none">
 
   <div id="chatpanel">
     <div id="chathead"><span id="paneltitle" data-t="chatTitle">Meeting chat</span> <small id="chatprivacy" data-t="chatPrivate" style="color:#667;font-weight:400">Private. Gone when everyone leaves.</small>
-      <button id="trtab" style="margin-left:auto"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
-      <button id="chatmod" style="display:none" title="Silence the chat for everyone but you">Turn chat off</button>
+      <button id="trtab" type="button" data-t="transcript"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
+      <button id="chatmod" style="display:none" data-t="chatModOff" data-ti="chatModTipOff" title="Silence the chat for everyone but you">Turn chat off</button>
       <button id="chatclose" type="button" aria-label="Close chat">✕</button></div>
     <div id="chatfind" role="search">
       <input id="chatq" type="text" placeholder="Find in chat" aria-label="Find in chat" autocomplete="off" enterkeyhint="search">
@@ -3192,17 +3383,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="adm-modal" style="display:none">
     <div class="name-box" style="max-width:420px">
-      <h3>Room admin</h3>
+      <h3 data-t="admTitle">Room admin</h3>
       <p id="adm-hint"></p>
       <div id="adm-setup">
-        <input id="adm-pass" type="password" maxlength="64" placeholder="Admin password" autocomplete="new-password">
-        <button id="adm-enable">Sign in as admin</button>
+        <input id="adm-pass" type="password" maxlength="64" data-ph="admPassPh" placeholder="Admin password" autocomplete="new-password">
+        <button id="adm-enable" data-t="admEnable">Sign in as admin</button>
       </div>
       <div id="adm-panel" style="display:none;text-align:left">
-        <p style="margin-bottom:.2rem">Banned devices:</p>
+        <p id="adm-banned-h" data-t="admBanned" style="margin-bottom:.2rem">Banned devices:</p>
         <div id="adm-banned"></div>
       </div>
-      <button id="adm-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+      <button id="adm-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
     </div>
   </div>
 
@@ -3400,6 +3591,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <li><kbd>Alt+H</kbd> <span data-t="keyHand">Raise or lower your hand</span></li>
         <li><kbd>Alt+F</kbd> <span data-t="keyView">Fit everyone or scroll</span></li>
         <li><kbd>Alt+Q</kbd> <span data-t="keyLeave">Leave the meeting</span></li>
+        <li><kbd>Alt+W</kbd> <span data-t="keyWho">Who is here</span></li>
+        <li><kbd>Alt+I</kbd> <span data-t="keyInvite">Invite</span></li>
+        <li><kbd>Alt+Y</kbd> <span data-t="keyApp">Run app</span></li>
+        <li><kbd>Alt+U</kbd> <span data-t="keyVote">Vote</span></li>
+        <li><kbd>Alt+L</kbd> <span data-t="keyLock">Password</span></li>
+        <li><kbd>Alt+G</kbd> <span data-t="keyStage">Stage</span></li>
+        <li><kbd>Alt+R</kbd> <span data-t="keyRecord">Record</span></li>
+        <li><kbd>Alt+K</kbd> <span data-t="keyCaptions">Show or hide captions</span></li>
+        <li><kbd>Alt+,</kbd> <span data-t="keySettings">Settings</span></li>
+        <li><kbd>Alt+T</kbd> <span data-t="keyTranscript">Transcript</span></li>
+        <li><kbd>Alt+/</kbd> <span data-t="keyHelp">Help</span></li>
+        <li class="hostkey" hidden><kbd>Alt+M</kbd> <span data-t="keyMuteAll">Mute or unmute every guest</span></li>
+        <li class="hostkey" hidden><kbd>Alt+B</kbd> <span data-t="keyBlurAll">Blur or unblur every guest</span></li>
+        <li class="hostkey" hidden><kbd>Alt+X</kbd> <span data-t="keyCamAll">Turn every guest’s video off or on</span></li>
+        <li class="hostkey" hidden><kbd>Alt+P</kbd> <span data-t="keyShareAll">Let guests share their screen, or stop them</span></li>
         <li><kbd>?</kbd> <span data-t="keyList">Show or hide this list</span></li>
       </ul>
       <button id="shortcut-cancel" type="button" data-t="rosterClose">Close</button>
@@ -3781,8 +3987,46 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         const row = first.querySelector('.morerow');
         ['invite', 'pwbtn', 'recbtn', 'chatbtn', 'waitbtn'].forEach((id) => { const el = document.getElementById(id); if (el && el.parentElement !== row) row.appendChild(el); });
+        // Hand goes back to People and Help to its row; the wide window's
+        // first row (Hand, Invite, Help) is empty on a phone and hides.
+        const yourowP = more.querySelector('.morerow.yourow');
+        const handP = document.getElementById('hand'), helpP = document.getElementById('helpbtn');
+        const peopleRowP = rowOf('people'), helpRowP = rowOf('help');
+        if (handP && peopleRowP && handP.parentElement !== peopleRowP) peopleRowP.insertBefore(handP, peopleRowP.firstChild);
+        if (helpP && helpRowP && helpP.parentElement !== helpRowP) helpRowP.appendChild(helpP);
+        if (yourowP) yourowP.hidden = true;
       } else {
-        put('invite', people, 'fsbtn');
+        // A wide meeting window leads More with Hand, Invite, Help (qa-meet-desktop).
+        // A service keeps Hand on the viewer dock and Help in its row.
+        const yourowD = more.querySelector('.morerow.yourow');
+        const serviceD = typeof BROADCAST !== 'undefined' && BROADCAST;
+        if (yourowD && serviceD) {
+          yourowD.hidden = true;
+          const handS = document.getElementById('hand'), helpS = document.getElementById('helpbtn');
+          const peopleRowS = rowOf('people'), helpRowS = rowOf('help');
+          if (handS && peopleRowS && handS.parentElement === yourowD) peopleRowS.insertBefore(handS, peopleRowS.firstChild);
+          if (helpS && helpRowS && helpS.parentElement === yourowD) helpRowS.appendChild(helpS);
+        } else if (yourowD) {
+          yourowD.hidden = false;
+          const handD = document.getElementById('hand'), helpD = document.getElementById('helpbtn');
+          if (handD && handD.parentElement !== yourowD) yourowD.insertBefore(handD, yourowD.firstChild);
+          if (helpD && helpD.parentElement !== yourowD) yourowD.appendChild(helpD);
+        }
+        // Invite: on the dock for a Broadcast (one tap, qa-broadcast-desktop);
+        // in the first More row (Hand, Invite, Help) on a wide meeting window.
+        const inv = document.getElementById('invite');
+        const yourow = more.querySelector('.morerow.yourow');
+        if (inv && typeof BROADCAST !== 'undefined' && BROADCAST) {
+          if (!inv.querySelector('.docklab')) {
+            inv.classList.add('iconbtn');
+            inv.setAttribute('aria-label', 'Invite');
+            inv.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0z"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/><path d="M19 8v6M16 11h6"/></svg><span class="docklab dockword" data-t="invite">Invite</span>';
+          }
+          put('invite', people, 'fsbtn');
+        } else if (inv && yourow && inv.parentElement !== yourow) {
+          const help = document.getElementById('helpbtn');
+          yourow.insertBefore(inv, help && help.parentElement === yourow ? help : null);
+        }
         put('chatbtn', people, 'ccdock');
         const roomRow = rowOf('room'), hostRow = rowOf('host');
         const pw = document.getElementById('pwbtn'), rec = document.getElementById('recbtn'), wait = document.getElementById('waitbtn');
@@ -3800,6 +4044,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         ? { whobtn: 'People', pwbtn: 'Room password', votebtn: 'Vote on someone' }
         : { whobtn: uiText('who', 'Who'), pwbtn: uiText('password', 'Password'), votebtn: uiText('vote', 'Vote') };
       Object.keys(words).forEach((id) => { const el = document.getElementById(id); if (el && el.textContent !== words[id]) el.textContent = words[id]; });
+      // Dock words: short on a phone (five buttons in 320px), whole on a wide
+      // window where older eyes read them at 16px (qa-meet-desktop).
+      // A service dock carries Step on, Invite and Full screen too: under 1100px
+      // it keeps the short words so Leave stays on screen.
+      const narrowService = typeof BROADCAST !== 'undefined' && BROADCAST && window.innerWidth < 1100;
+      const dockWords = (phone || narrowService)
+        ? { reactbtn: 'React', sharebtn: 'Share' }
+        : { reactbtn: uiText('react', 'Reactions'), sharebtn: uiText('shareScreen', 'Share screen') };
+      Object.keys(dockWords).forEach((id) => { const el = document.querySelector('#' + id + ' .dockword'); if (el && el.textContent !== dockWords[id]) el.textContent = dockWords[id]; });
       try { paintStage(); } catch (e) {}
     }
     window.addEventListener('resize', () => { try { placeDockForWidth(); } catch (e) {} });
@@ -4141,12 +4394,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // markup. Anything without a translation stays English on purpose.
     const UI_TEXT = {
       de: {
-        mic: 'Mikro', unmute: 'Ton an', mute: 'Stumm', micHeld: 'Stumm', cam: 'Kamera', more: 'Mehr', hide: 'Weniger', leave: 'Ende',
+        mic: 'Mikro', unmute: 'Ton an', mute: 'Stumm', micHeld: 'Stumm', cam: 'Kamera', react: 'Reaktionen', more: 'Mehr', hide: 'Weniger', leave: 'Ende',
+        moreTools: 'Alle Funktionen', fewerTools: 'Weniger Funktionen',
         hideControls: 'Steuerungen ausblenden',
         appearTitle: 'So sehen Sie aus', screenName: 'Name', notNow: 'Nicht jetzt', join: 'Beitreten',
         appearClear: 'Leeren', appearSave: 'Speichern', changePic: 'Bild ändern',
         people: 'Leute', share: 'Teilen', room: 'Raum', host: 'Leitung', help: 'Hilfe',
         who: 'Wer', hand: 'Hand', chat: 'Chat', invite: 'Einladen', runApp: 'App starten', showApp: 'App zeigen',
+        appSheetTitle: 'Eine App in dieser Besprechung starten',
+        appSheetBody: 'Wählen Sie eine Ihrer Apps. Sie läuft live für alle hier, mit demselben Stand und denselben Zügen, und mit Bild, Ton und Aufnahme der Besprechung. Jeder kann mitmachen.',
+        appSheetOr: 'Oder eine GIF-App, die nicht auf diesem Computer liegt:',
+        appSheetFile: '＋ Eine GIF-Datei wählen…', appSheetLink: 'Link zu einer GIF-App einfügen', appSheetRun: 'Starten',
+        appLoading: 'Ihre Apps werden geladen…',
+        appTip: 'Eine App in dieser Besprechung starten — alle hier benutzen sie gemeinsam',
+        appHidden: 'Hier läuft eine App ({name}) — Sie haben sie ausgeblendet. Tippen Sie, um sie zurückzuholen.',
+        appDenied: '🛡 Nur die Leitung dieses Raums — oder wen sie erlaubt — kann hier eine App starten.',
+        appLoadFail: 'Der Link ließ sich nicht laden. Speichern Sie das GIF auf Ihrem Gerät und wählen Sie dann eine GIF-Datei.',
+        appNotGif: 'Dieser Link ist keine GIF-Datei.', appReadFail: 'Diese Datei ließ sich nicht lesen.', appNeedLink: 'Fügen Sie zuerst einen GIF-Link ein.',
         shareScreen: 'Bildschirm', stopShare: 'Beenden', float: 'Bild-in-Bild', flip: 'Drehen',
         vote: 'Abstimmung', password: 'Passwort', stage: 'Bühne', record: 'Aufnahme', settings: 'Einstellungen', keys: 'Tasten',
         blur: 'Unschärfe', noBlur: 'Aus',
@@ -4154,18 +4418,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         captions: 'Untertitel', ccTip: 'Untertitel nur auf diesem Bildschirm',
         trEmpty: 'Dieses Treffen wird mitgeschrieben. Die Zeilen stehen hier unter dem Namen. Jeder kann sie lesen oder herunterladen.',
         trDownload: 'Protokoll laden',
-        blurGuests: 'Weichzeichnen', unblurGuests: 'Schärfen', videoOff: 'Video aus', videoOn: 'Video an',
+        muteGuests: 'Gäste stumm', unmuteGuests: 'Gäste laut', blurGuests: 'Weichzeichnen', unblurGuests: 'Schärfen', videoOff: 'Video aus', videoOn: 'Video an',
         allowShare: 'Freigeben', stopShares: 'Freigabe aus',
-        inMeeting: 'im Meeting', justYou: 'Nur Sie', backIn: 'Wieder dabei',
+        inMeeting: 'im Meeting', justYou: 'Nur Sie', backIn: 'Wieder dabei', waitHere: 'Im Warteraum',
         away: 'Weg', stillHere: 'Sie sind noch dabei',
         unlockClear: 'Gesichter weich bis zum Passwort',
         onAir: 'Auf Sendung', offAir: 'Nicht live', watching: 'Live',
-        rosterPeople: 'Personen', you: 'Sie', muted: 'Stumm', rosterClose: 'Schließen', rosterFind: 'Name suchen',
+        rosterPeople: 'Personen', rosterPerson: 'Person', you: 'Sie', muted: 'Stumm', camOffChip: 'Kamera aus', rosterClose: 'Schließen', rosterFind: 'Name suchen',
         muteForAll: 'Stumm', unmuteForAll: 'Ton an', forEveryone: 'Für alle',
         waitRoom: 'Warteraum', waitOn: 'An', waitOff: 'Aus', waitHeading: 'Warten',
         admit: 'Herein', nobodyWaiting: 'Niemand wartet', rename: 'Umbenennen', saveName: 'Sichern',
         spotlight: 'Hervorheben', inView: 'Im Blick',
         waitSelf: 'Die Leitung lässt Sie gleich hinein', waitSelfNote: 'Sie sehen die Besprechung, sobald Sie hereingelassen werden.',
+        waitMic: 'Sie sind im Warteraum: Ihr Mikrofon geht an, sobald Sie hereingelassen werden.',
         shareTitle: 'Bildschirm teilen', shareGo: 'Auswählen, was geteilt wird…', shareCancel: 'Abbrechen',
         shareDenied: 'Nur die Leitung dieses Raums — oder wen sie erlaubt — kann einen Bildschirm teilen. Bitten Sie die Leitung, es zu erlauben, an Ihrem Feld oder für den ganzen Raum, und öffnen Sie dies dann erneut.',
         shareBody: 'Ein Bildschirm ist für das, was keine App sein kann: eine Präsentation auf Ihrem Rechner, ein Werkzeug, das nicht GifOS ist, ein Fenster von woanders. Es liegt auf der Bühne, der ganze Raum sieht es, und alle sehen, dass Sie teilen.',
@@ -4225,6 +4490,79 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         whoTitle: 'Wer in dieser Besprechung ist',
         whoLead: 'Kein Server in der Mitte speichert diese Besprechung. Die Telefone und Computer der Menschen darin sind die Server: sie verbinden sich direkt. Deshalb sieht hier jeder die Internetadresse der anderen — niemand ist anonym. ✓ markiert eine Adresse, die das GifOS-Relay geprüft hat oder die dieses Gerät direkt gesehen hat. Alles andere hat nur das Gerät der Person gemeldet. Wer gegangen ist, bleibt auf der Liste. Um etwas Illegales zu melden, laden Sie diese Liste herunter und legen Sie sie bei.',
         whoDl: 'Diese Liste laden',
+        whoYou: '(Sie)',
+        whoFileTitle: 'GifOS-Besprechung — wer hier war',
+        whoFileRoom: 'Raum: {room}',
+        whoFileSaved: 'Gespeichert: {when}   (jede Zeit in dieser Datei ist UTC)',
+        whoFileLink: 'Besprechungslink: {link}',
+        whoFileRelay: 'Relay-Sitzung: {session}',
+        whoFileRelayOff: 'nicht verbunden',
+        whoFileOnly: 'Wer den Besprechungslink hat, kann diese Besprechung öffnen. Geben Sie diese Datei nur an die Personen weiter, die ermitteln.',
+        whoFileHow: 'SO LESEN SIE DIESE DATEI',
+        whoFileVerified: 'Vom Relay geprüft: Das GifOS-Relay hat gesehen, dass das Gerät dieser Person zur genannten Zeit von dieser Adresse aus verbunden war, und hat das mit einer Erklärung bestätigt (am Ende aufgeführt). Das Gerät kann das nicht fälschen oder jemand anderen behaupten.',
+        whoFileSeenDirect: 'Direkt gesehen: Dieses Gerät war direkt mit deren Gerät verbunden und hat diese Adresse und diesen Port zwischen der ersten und der letzten genannten Zeit in Benutzung gesehen.',
+        whoFileReportedLine: 'Vom eigenen Gerät gemeldet: was das eigene Gerät gesagt hat. Das ist NICHT geprüft und kann falsch sein.',
+        whoFileEjectedLine: 'Ausgeschlossen: Sobald eine Fälschung erkannt wurde, hat dieses Gerät die Person abgeschnitten und nichts mehr angenommen: kein Bild, kein Ton, keine Nachrichten, keine Dateien.',
+        whoFileForgeryLine: 'Fälschung erkannt: Das Gerät hat etwas gesendet, das nur ein Fälscher senden würde: eine Relay-Erklärung, die nicht echt ist oder jemand anderem gehört, oder eine andere Adresse als die, die das Relay bestätigt hat. Die vom Relay geprüften und direkt gesehenen Adressen bleiben gültig.',
+        whoFileConnLine: 'Verbindung zu mir: „direkt“ heißt, dieses Gerät und deren Gerät waren direkt verbunden. „über andere“ heißt, dieses Gerät hat sie nur über andere Teilnehmer erreicht und ihre Adresse nie selbst gesehen.',
+        whoFileRelayNote: 'Relay-Sitzung: Das GifOS-Relay wird von Cloudflare betrieben. Dessen Verbindungsdaten, falls welche aufbewahrt werden, liegen unter dieser Sitzungsadresse. Die Verbindung jedes Teilnehmers nennt die Peer-Id (letzte Spalte), sodass beides zusammenpasst.',
+        whoFileIsp: 'Eine Adresse kann zu einem VPN, einem Arbeitsplatz oder einem Mobilnetz gehören, das viele Kunden teilen. Um einen Anschluss zu ermitteln, braucht ein Anbieter meist Adresse, Port und die genaue Zeit. Alle drei stehen hier, wo sie bekannt sind.',
+        whoColName: 'Name', whoColConn: 'Verbindung zu mir', whoColForgery: 'Fälschung erkannt',
+        whoColRelayAddr: 'Vom Relay geprüfte Adresse', whoColRelayAt: 'Relay sah um', whoColSeenAddr: 'Direkt gesehen (Adresse)',
+        whoColPort: 'Port', whoColProto: 'Protokoll', whoColKind: 'Verbindung', whoColFrom: 'Gesehen von', whoColUntil: 'Gesehen bis',
+        whoColInFrom: 'In der Besprechung von', whoColLast: 'Zuletzt gehört', whoColReported: 'Vom eigenen Gerät gemeldet',
+        whoColDev: 'Gerätekennung', whoColPeer: 'Peer-Id',
+        whoConnMe: 'dieses Gerät', whoConnDirect: 'direkt', whoConnIndirect: 'über andere', whoConnLeft: 'gegangen',
+        whoConnEjected: 'AUSGESCHLOSSEN wegen Fälschung um {when}',
+        whoFileLocal: 'lokales Netz',
+        whoFileSigned: 'SIGNIERTE RELAY-ERKLÄRUNGEN (Ed25519; die Signatur gilt für den Erklärungstext genau so, wie er hier steht)',
+        whoColStatement: 'Erklärung', whoColSig: 'Signatur (Base64)',
+        whoFileKeys: 'ÖFFENTLICHE RELAY-SCHLÜSSEL (Schlüssel-Id = die ersten 16 Hex-Zeichen von SHA-256 über den rohen 32-Byte-Schlüssel)',
+        admSignIn: 'Admin-Anmeldung', admBtn: 'Admin',
+        admTipOn: 'Admin-Steuerung: gesperrte Geräte, Raum-Passwort',
+        admTipOff: 'Dieser Raum hat einen Admin — geben Sie das Admin-Passwort ein, um die Steuerung zu bekommen',
+        admTitle: 'Raum-Admin', admPassPh: 'Admin-Passwort', admEnable: 'Als Admin anmelden',
+        admHintOff: 'Dieser Raum hat einen Admin. Wenn Sie das Admin-Passwort kennen, geben Sie es hier ein, um die Steuerung zu bekommen. Ihr Passwort bleibt auf diesem Gerät.',
+        admHintOn: 'Sie leiten diesen Raum. Admins können den Raum mit einem Passwort schließen (der Schlüssel zum scharfen Bild), jemanden für alle stummschalten oder weichzeichnen und Geräte sperren. Wer das Admin-Passwort kennt, kann Admin öffnen und sich auch anmelden.',
+        admBanned: 'Gesperrte Geräte:', admNobody: 'Niemand ist gesperrt.', admUnban: 'Entsperren', admUnnamed: 'ohne Namen',
+        admChecking: 'Wird geprüft…',
+        admCheckingStatus: '🛡 Passwort wird geprüft… (dauert ein paar Sekunden)',
+        admCheckFail: 'Das Passwort ließ sich nicht prüfen ({err}).',
+        admWrong: 'Falsches Admin-Passwort.',
+        admWrongStatus: '🛡 Falsches Admin-Passwort.',
+        admSignedIn: '🛡 Sie sind als Admin angemeldet.',
+        stopApp: 'App beenden', stopAppAll: 'Für alle beenden',
+        stopAppTip: 'Diese App nicht mehr mit der Besprechung teilen',
+        stopAppTipAdmin: 'Admin: diese App für den ganzen Raum beenden',
+        stopAppTipRoom: 'Diese App für den ganzen Raum beenden — alle sehen, dass Sie es waren, und wer sie teilt, kann sie wieder teilen',
+        appHelpTip: 'Wie diese App funktioniert',
+        chatModOff: 'Chat ausschalten', chatModOn: 'Chat einschalten',
+        chatModTipOff: 'Schaltet den Chat für alle außer Ihnen stumm',
+        chatModTipOn: 'Alle dürfen wieder im Chat schreiben',
+        chatWasOff: 'Der Chat wurde ausgeschaltet.',
+        chatWasOffBy: 'Der Chat wurde von {name} ausgeschaltet.',
+        chatHostOnly: 'Nur die Leitung kann schreiben.',
+        barSave: 'Speichern',
+        barSaveTip: 'Ein GIF dieser App mit ihren Daten speichern — es gehört Ihnen',
+        barSaveFail: 'Speichern ging nicht: {err}',
+        barSteal: 'Kopieren',
+        barStealTip: 'Eine Kopie dieser App mitnehmen — sie landet in „Stolen Apps“ auf Ihrem Schreibtisch, mit allen Daten',
+        barHide: 'Ausblenden',
+        barHideTip: 'Diese App nur auf Ihrem Bildschirm ausblenden — die Besprechung teilt sie weiter',
+        barHideStatus: '🧩 App nur auf Ihrem Bildschirm ausgeblendet — die Besprechung teilt sie weiter. „App zeigen“ holt sie zurück.',
+        barTalkOff: 'Sprechen: aus', barTalkOn: 'Sprechen: an',
+        barTalkTip: 'Mit den Menschen in dieser App sprechen — wenn an, hat hier jeder eine eigene Mikrofon-Taste (nur die Leitung)',
+        barTalkOnStatus: 'Sprechen ist an — alle hier können ihr Mikrofon einschalten.',
+        barTalkOffStatus: 'Sprechen ist aus — jedes Mikrofon ist still.',
+        barTalkHostOff: 'Die Leitung hat Sprechen ausgeschaltet.',
+        stealData: '+ Daten', stealDataTip: 'Die App und alles, was jetzt darin ist',
+        stealJoined: 'wie ich kam', stealJoinedTip: 'Die App und der Raum, wie er war, als Sie kamen',
+        stealApp: 'nur die App', stealAppTip: 'Eine saubere Kopie — nur die App, keine Daten des Raums',
+        stealBusy: 'Wird kopiert…', stealDone: '🥷 Kopiert ✓',
+        stealNone: '🥷 Gehört Ihnen — eine saubere Kopie in „Stolen Apps“, ohne die Daten des Raums.',
+        stealConnect: '🥷 Gehört Ihnen — der Raum, wie er war, als Sie kamen, in „Stolen Apps“.',
+        stealAll: '🥷 Gehört Ihnen — in „Stolen Apps“ auf Ihrem Schreibtisch, mit allen Daten.',
+        stealFail: 'Kopieren ging nicht: {err}',
         whoDirect: 'Direkt mit Ihnen verbunden',
         whoDirectNote: 'Ihr Gerät und ihres sprechen direkt miteinander, deshalb hat es die Adresse selbst gesehen.',
         whoIndirect: 'In der Besprechung, über andere',
@@ -4261,6 +4599,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         rdWelcome: 'Begrüßung', rdSong: 'Lied', rdPrayer: 'Gebet', rdScripture: 'Schrift',
         rdMessage: 'Predigt', rdClosing: 'Segen',
         lyProgram: 'Programm', lyPreview: 'Vorschau', lyNext: 'Nächste Zeile',
+        songWords: 'Liedtext', songNote: 'Eine Zeile pro Zeile. Lied liest sie der Reihe nach.', songSave: 'Speichern', songCancel: 'Abbrechen',
         setTitle: 'Einstellungen', setVideo: 'Videoqualität',
         setVideoHelp: 'Was Ihre eigene Kamera aufnimmt und sendet. Automatisch passt sich der Größe des Raums und Ihrem Akku an. Eine feste Wahl bleibt stehen.',
         setAuto: 'Automatisch', setName: 'Ihr Name',
@@ -4330,6 +4669,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bcEmpty: 'Sendungen, die Sie starten oder schauen, stehen hier.',
         shortcutTitle: 'Tastatur', keyMic: 'Stumm oder an', keyCam: 'Kamera an oder aus',
         keyChat: 'Chat auf oder zu', keyShare: 'Bildschirm teilen oder beenden', keyHand: 'Hand heben oder senken', keyView: 'Alle zeigen oder scrollen', keyLeave: 'Besprechung verlassen', keyList: 'Diese Liste zeigen oder schließen',
+        keyWho: 'Wer ist hier', keyMuteAll: 'Alle Gäste stumm oder laut schalten', keyBlurAll: 'Alle Gäste weichzeichnen oder schärfen', keyCamAll: 'Video aller Gäste aus oder an', keyShareAll: 'Gästen das Teilen erlauben oder beenden', keyInvite: 'Einladen', keyApp: 'App starten', keyVote: 'Abstimmung', keyLock: 'Passwort', keyStage: 'Bühne', keyRecord: 'Aufnahme', keyCaptions: 'Untertitel auf diesem Bildschirm', keySettings: 'Einstellungen', keyTranscript: 'Protokoll', keyHelp: 'Hilfe',
         helpTitle: 'So funktioniert diese Besprechung', helpGot: 'Verstanden',
         bcHelpTitle: 'So funktioniert diese Sendung', appHelpTitle: 'So funktioniert dieser App-Raum',
         screenNameTitle: 'Ihr Name', screenNameNote: 'Die anderen in der Besprechung sehen ihn.', save: 'Speichern',
@@ -4338,12 +4678,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         badLink: 'Das war kein Link und keine Kennung.',
       },
       es: {
-        mic: 'Micro', unmute: 'Activar', mute: 'Silenciar', micHeld: 'Mudo', cam: 'Cámara', more: 'Más', hide: 'Menos', leave: 'Salir',
+        mic: 'Micro', unmute: 'Activar', mute: 'Silenciar', micHeld: 'Mudo', cam: 'Cámara', react: 'Reacciones', more: 'Más', hide: 'Menos', leave: 'Salir',
+        moreTools: 'Todas las funciones', fewerTools: 'Menos funciones',
         hideControls: 'Ocultar controles',
         appearTitle: 'Así te verán', screenName: 'Nombre', notNow: 'Ahora no', join: 'Entrar',
         appearClear: 'Limpiar', appearSave: 'Guardar', changePic: 'Cambiar foto',
         people: 'Gente', share: 'Compartir', room: 'Sala', host: 'Anfitrión', help: 'Ayuda',
         who: 'Quién', hand: 'Mano', chat: 'Chat', invite: 'Invitar', runApp: 'Abrir app', showApp: 'Mostrar app',
+        appSheetTitle: 'Abrir una app en esta reunión',
+        appSheetBody: 'Elige una de tus apps. Corre en vivo para todos aquí, con el mismo estado y los mismos movimientos, y con el audio, el video y la grabación de la reunión. Cualquiera puede usarla.',
+        appSheetOr: 'O una app GIF que no está en esta computadora:',
+        appSheetFile: '＋ Elegir un archivo GIF…', appSheetLink: 'Pega un enlace de app GIF', appSheetRun: 'Abrir',
+        appLoading: 'Cargando tus apps…',
+        appTip: 'Abre una app en esta reunión — todos aquí la usan juntos',
+        appHidden: 'Hay una app aquí ({name}) — la ocultaste. Toca para volver a verla.',
+        appDenied: '🛡 Solo los anfitriones de esta sala — o quien ellos permitan — pueden abrir una app aquí.',
+        appLoadFail: 'No se pudo abrir ese enlace. Guarda el GIF en tu dispositivo y elige un archivo GIF.',
+        appNotGif: 'Ese enlace no es un archivo GIF.', appReadFail: 'No se pudo leer ese archivo.', appNeedLink: 'Pega primero un enlace GIF.',
         shareScreen: 'Pantalla', stopShare: 'Parar', float: 'Flotar', flip: 'Girar',
         vote: 'Votar', password: 'Contraseña', stage: 'Escenario', record: 'Grabar', settings: 'Ajustes', keys: 'Teclas',
         blur: 'Desenfoque', noBlur: 'Sin',
@@ -4351,18 +4702,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         captions: 'Subtítulos', ccTip: 'Subtítulos solo en tu pantalla',
         trEmpty: 'Esta reunión se transcribe. Las líneas quedan aquí, con el nombre. Cualquiera puede leerlas o descargarlas.',
         trDownload: 'Descargar transcripción',
-        blurGuests: 'Difuminar', unblurGuests: 'Quitar desenfoque', videoOff: 'Apagar video', videoOn: 'Encender video',
+        muteGuests: 'Silenciar invitados', unmuteGuests: 'Activar invitados', blurGuests: 'Difuminar', unblurGuests: 'Quitar desenfoque', videoOff: 'Apagar video', videoOn: 'Encender video',
         allowShare: 'Permitir pantalla', stopShares: 'Parar pantallas',
-        inMeeting: 'en la reunión', justYou: 'Solo tú', backIn: 'Volviendo',
+        inMeeting: 'en la reunión', justYou: 'Solo tú', backIn: 'Volviendo', waitHere: 'En la sala de espera',
         away: 'Fuera', stillHere: 'Sigues en la llamada',
         unlockClear: 'caras suaves hasta una contraseña',
         onAir: 'Al aire', offAir: 'Fuera del aire', watching: 'En vivo',
-        rosterPeople: 'personas', you: 'tú', muted: 'En silencio', rosterClose: 'Cerrar', rosterFind: 'Buscar un nombre',
+        rosterPeople: 'personas', rosterPerson: 'persona', you: 'tú', muted: 'En silencio', camOffChip: 'Cámara apagada', rosterClose: 'Cerrar', rosterFind: 'Buscar un nombre',
         muteForAll: 'Silenciar', unmuteForAll: 'Activar', forEveryone: 'Para todos',
         waitRoom: 'Sala de espera', waitOn: 'Sí', waitOff: 'No', waitHeading: 'Esperando',
         admit: 'Admitir', nobodyWaiting: 'Nadie espera', rename: 'Renombrar', saveName: 'Guardar',
         spotlight: 'Destacar', inView: 'En vista',
         waitSelf: 'El anfitrión te dejará entrar', waitSelfNote: 'Verás la reunión cuando te admitan.',
+        waitMic: 'Estás en la sala de espera: tu micrófono se abre cuando te admitan.',
         shareTitle: 'Compartir pantalla', shareGo: 'Elegir qué compartir…', shareCancel: 'Cancelar',
         shareDenied: 'Solo los anfitriones de esta sala — o quien ellos permitan — pueden compartir pantalla. Pide que te lo permitan, en tu recuadro o para toda la sala, y abre esto otra vez.',
         shareBody: 'Compartir pantalla es para lo que una app no puede ser: una presentación en tu disco, una herramienta que no es GifOS, una ventana de otro sitio. Se ve en el escenario, toda la sala la ve, y todos ven que eres tú.',
@@ -4422,6 +4774,79 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         whoTitle: 'Quién está en esta reunión',
         whoLead: 'No hay un servidor en medio que guarde esta reunión. Los teléfonos y las computadoras de quienes están son los servidores: se conectan directo. Por eso todos ven la dirección de internet de los demás — nadie es anónimo. ✓ marca una dirección que el relay de GifOS verificó o que este dispositivo vio directo. Lo demás es solo lo que dijo el dispositivo de esa persona. Quien se fue sigue en la lista. Para denunciar algo ilegal, descarga esta lista y adjúntala.',
         whoDl: 'Descargar esta lista',
+        whoYou: '(tú)',
+        whoFileTitle: 'Reunión de GifOS — quién estuvo aquí',
+        whoFileRoom: 'Sala: {room}',
+        whoFileSaved: 'Guardado: {when}   (todas las horas de este archivo son UTC)',
+        whoFileLink: 'Enlace de la reunión: {link}',
+        whoFileRelay: 'Sesión del relay: {session}',
+        whoFileRelayOff: 'sin conexión',
+        whoFileOnly: 'Quien tenga el enlace puede abrir esta reunión. Comparte este archivo solo con quienes investigan.',
+        whoFileHow: 'CÓMO LEER ESTO',
+        whoFileVerified: 'Verificado por el relay: el relay de GifOS vio que el dispositivo de esta persona se conectó desde esta dirección a la hora indicada, y firmó una constancia (al final). Su dispositivo no puede falsificarla ni atribuirla a otra persona.',
+        whoFileSeenDirect: 'Visto directo: este dispositivo estaba conectado directo al de esa persona y vio esta dirección y este puerto en uso entre la primera y la última hora indicadas.',
+        whoFileReportedLine: 'Lo que dijo su dispositivo: lo que su propio dispositivo declaró. NO está verificado y puede ser falso.',
+        whoFileEjectedLine: 'Expulsado: en cuanto se detectó una falsificación, este dispositivo cortó a esa persona y no aceptó nada más: ni video, ni audio, ni mensajes, ni archivos.',
+        whoFileForgeryLine: 'Falsificación detectada: su dispositivo envió algo que solo enviaría un falsificador: una constancia del relay que no es genuina o es de otra persona, o una dirección distinta de la que el relay firmó. Las direcciones verificadas por el relay y vistas directo siguen en pie.',
+        whoFileConnLine: 'Conexión conmigo: «directo» significa que este dispositivo y el de esa persona estaban conectados entre sí. «por otros» significa que este dispositivo solo los alcanzó a través de otros participantes y nunca vio su dirección.',
+        whoFileRelayNote: 'Sesión del relay: el relay de GifOS lo hospeda Cloudflare. Sus registros de conexión, si se guardan, están bajo esta dirección de sesión, y la conexión de cada participante nombra su id de par (última columna), para poder cruzarlos.',
+        whoFileIsp: 'Una dirección puede ser de una VPN, un trabajo o una red móvil compartida por muchos clientes. Para identificar un abonado, el proveedor suele necesitar la dirección, el puerto y la hora exacta. Los tres aparecen aquí cuando se conocen.',
+        whoColName: 'Nombre', whoColConn: 'Conexión conmigo', whoColForgery: 'Falsificación detectada',
+        whoColRelayAddr: 'Dirección verificada por el relay', whoColRelayAt: 'El relay vio a las', whoColSeenAddr: 'Visto directo (dirección)',
+        whoColPort: 'Puerto', whoColProto: 'Protocolo', whoColKind: 'Conexión', whoColFrom: 'Visto desde', whoColUntil: 'Visto hasta',
+        whoColInFrom: 'En la reunión desde', whoColLast: 'Última vez oído', whoColReported: 'Lo que dijo su dispositivo',
+        whoColDev: 'Etiqueta del dispositivo', whoColPeer: 'Id de par',
+        whoConnMe: 'este dispositivo', whoConnDirect: 'directo', whoConnIndirect: 'por otros', whoConnLeft: 'se fue',
+        whoConnEjected: 'EXPULSADO por falsificación a las {when}',
+        whoFileLocal: 'red local',
+        whoFileSigned: 'CONSTANCIAS FIRMADAS DEL RELAY (Ed25519; la firma cubre el texto de la constancia exactamente como está escrito)',
+        whoColStatement: 'Constancia', whoColSig: 'Firma (base64)',
+        whoFileKeys: 'CLAVES PÚBLICAS DEL RELAY (id de clave = los primeros 16 hex de SHA-256 sobre la clave cruda de 32 bytes)',
+        admSignIn: 'Entrar como anfitrión', admBtn: 'Anfitrión',
+        admTipOn: 'Controles de anfitrión: dispositivos bloqueados, contraseña de la sala',
+        admTipOff: 'Esta sala tiene un anfitrión — escribe la contraseña para tener los controles',
+        admTitle: 'Anfitrión de la sala', admPassPh: 'Contraseña de anfitrión', admEnable: 'Entrar como anfitrión',
+        admHintOff: 'Esta sala tiene un anfitrión. Si sabes la contraseña, escríbela aquí para tener los controles. Tu contraseña se queda en este dispositivo.',
+        admHintOn: 'Tú diriges esta sala. Los anfitriones pueden cerrarla con una contraseña (la llave del video nítido), silenciar o difuminar a alguien para todos, y bloquear dispositivos. Quien sepa la contraseña puede abrir Anfitrión y entrar también.',
+        admBanned: 'Dispositivos bloqueados:', admNobody: 'Nadie está bloqueado.', admUnban: 'Desbloquear', admUnnamed: 'sin nombre',
+        admChecking: 'Comprobando…',
+        admCheckingStatus: '🛡 Comprobando la contraseña… (tarda unos segundos)',
+        admCheckFail: 'No se pudo comprobar la contraseña ({err}).',
+        admWrong: 'Contraseña de anfitrión incorrecta.',
+        admWrongStatus: '🛡 Contraseña de anfitrión incorrecta.',
+        admSignedIn: '🛡 Entraste como anfitrión.',
+        stopApp: 'Detener app', stopAppAll: 'Detener para todos',
+        stopAppTip: 'Deja de compartir esta app con la reunión',
+        stopAppTipAdmin: 'Anfitrión: detén esta app para toda la sala',
+        stopAppTipRoom: 'Detén esta app para toda la sala — todos ven que fuiste tú, y quien la comparte puede volver a compartirla',
+        appHelpTip: 'Cómo funciona esta app',
+        chatModOff: 'Apagar el chat', chatModOn: 'Encender el chat',
+        chatModTipOff: 'Silencia el chat para todos menos tú',
+        chatModTipOn: 'Todos pueden escribir en el chat otra vez',
+        chatWasOff: 'El chat se apagó.',
+        chatWasOffBy: 'El chat lo apagó {name}.',
+        chatHostOnly: 'Solo el anfitrión puede escribir.',
+        barSave: 'Guardar',
+        barSaveTip: 'Guarda un GIF de esta app con sus datos — queda para ti',
+        barSaveFail: 'No se pudo guardar: {err}',
+        barSteal: 'Copiar',
+        barStealTip: 'Llévate una copia de esta app — va a «Stolen Apps» en tu escritorio, con todos los datos',
+        barHide: 'Ocultar',
+        barHideTip: 'Oculta esta app solo en tu pantalla — la reunión sigue compartiéndola',
+        barHideStatus: '🧩 App oculta solo en tu pantalla — la reunión sigue compartiéndola. «Mostrar app» la trae de vuelta.',
+        barTalkOff: 'Hablar: no', barTalkOn: 'Hablar: sí',
+        barTalkTip: 'Habla con la gente de esta app — si está activo, cada quien tiene su micrófono (solo el anfitrión)',
+        barTalkOnStatus: 'Hablar está activo — todos aquí pueden encender su micrófono.',
+        barTalkOffStatus: 'Hablar está apagado — todos los micrófonos quedan en silencio.',
+        barTalkHostOff: 'El anfitrión apagó Hablar.',
+        stealData: '+ datos', stealDataTip: 'La app y todo lo que hay ahora',
+        stealJoined: 'como entré', stealJoinedTip: 'La app y la sala como estaban cuando entraste',
+        stealApp: 'solo la app', stealAppTip: 'Una copia limpia — solo la app, sin los datos de la sala',
+        stealBusy: 'Copiando…', stealDone: '🥷 Copiada ✓',
+        stealNone: '🥷 Ya es tuya — una copia limpia en «Stolen Apps», sin los datos de la sala.',
+        stealConnect: '🥷 Ya es tuya — la sala como estaba cuando entraste, en «Stolen Apps».',
+        stealAll: '🥷 Ya es tuya — en «Stolen Apps» de tu escritorio, con todos los datos.',
+        stealFail: 'No se pudo copiar: {err}',
         whoDirect: 'Conectados directo contigo',
         whoDirectNote: 'Tu dispositivo y el suyo hablan directo, así que vio la dirección.',
         whoIndirect: 'En la reunión, a través de otros',
@@ -4458,6 +4883,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         rdWelcome: 'Bienvenida', rdSong: 'Canción', rdPrayer: 'Oración', rdScripture: 'Lectura',
         rdMessage: 'Mensaje', rdClosing: 'Cierre',
         lyProgram: 'Programa', lyPreview: 'Vista previa', lyNext: 'Siguiente línea',
+        songWords: 'Letra', songNote: 'Una línea por renglón. Canción las lee en orden.', songSave: 'Guardar', songCancel: 'Cancelar',
         setTitle: 'Ajustes', setVideo: 'Calidad de video',
         setVideoHelp: 'Lo que graba y envía tu propia cámara. Automático se adapta al tamaño de la sala y a tu batería. Una elección fija se queda.',
         setAuto: 'Automático', setName: 'Tu nombre',
@@ -4527,6 +4953,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bcEmpty: 'Las transmisiones que empieces o veas aparecen aquí.',
         shortcutTitle: 'Teclado', keyMic: 'Silenciar o activar', keyCam: 'Cámara activada o no',
         keyChat: 'Abrir o cerrar el chat', keyShare: 'Compartir o dejar de compartir', keyHand: 'Levantar o bajar la mano', keyView: 'Ver a todos o desplazar', keyLeave: 'Salir de la reunión', keyList: 'Mostrar u ocultar esta lista',
+        keyWho: 'Quién está', keyMuteAll: 'Silenciar o activar a todos los invitados', keyBlurAll: 'Difuminar o enfocar a todos los invitados', keyCamAll: 'Apagar o encender el video de los invitados', keyShareAll: 'Permitir o parar que los invitados compartan pantalla', keyInvite: 'Invitar', keyApp: 'Abrir app', keyVote: 'Votar', keyLock: 'Contraseña', keyStage: 'Escenario', keyRecord: 'Grabar', keyCaptions: 'Subtítulos en tu pantalla', keySettings: 'Ajustes', keyTranscript: 'Transcripción', keyHelp: 'Ayuda',
         helpTitle: 'Así funciona esta reunión', helpGot: 'Entendido',
         bcHelpTitle: 'Así funciona esta transmisión', appHelpTitle: 'Así funciona esta sala de app',
         screenNameTitle: 'Tu nombre', screenNameNote: 'Las demás personas de la reunión lo ven.', save: 'Guardar',
@@ -6393,10 +6820,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pid = self ? myId : id;
       const own = modTable[pid] || {};
       const all = modTable['*'];
+      // The waiting room is a sealed lobby: until Admit, the person waiting is
+      // a mute on every path that honours a host's mute (their own mic, each
+      // speaker, captions, the recording), whoever's page reads it.
+      if (all && all.wait && all.wait.on && pid && pid !== '*' && (self ? iAmWaiting() : isHeld(pid))) {
+        return Object.assign({}, own, { mute: { on: true, wait: true, by: '', at: +all.wait.at || 0 } });
+      }
       if (!all || pid === '*' || !hasAdminRoom()) return own;
       if (self ? (amAdmin || admins.includes(myId)) : admins.includes(pid)) return own;
       let out = own;
-      for (const f of ['blur', 'cam', 'share']) { // room-wide hammers; mute and app stay per-target. share is a grant (on = may), blur and cam are blocks (on = stopped)
+      for (const f of ['mute', 'blur', 'cam', 'share']) { // room-wide hammers; app stays per-target. share is a grant (on = may), mute, blur and cam are blocks (on = stopped)
         const w = all[f];
         if (w && typeof w === 'object' && (!own[f] || (+w.at || 0) > (+own[f].at || 0))) {
           if (out === own) out = Object.assign({}, own);
@@ -6423,6 +6856,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // rule can prevent.
     const forcedCamOff = (id) => { const m = modOf(id).cam; return !!(m && m.on); };
     const modBlurOn = (id) => { const m = modOf(id).blur; return !!(m && m.on); };
+    // A face that is already blurry needs no Blur for all / Blur for everyone:
+    // the sender announced its own blur (Min or Max). A host's blur for all
+    // keeps its Unblur, so that case is the caller's. Explicit state only; a
+    // soft, low-bitrate picture is not "already blurred".
+    const ownBlurOn = (id) => { const st = statusOf.get(id); return !!st && blurLevel(st.blur) > 0; };
     // A claimed screen from someone who may not share. Their video track is
     // the screen, so a receiver treats it the way it treats an admin video-off:
     // the pixels are not shown, composited or recorded. My own page is not
@@ -6477,7 +6915,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { updateTile('me', true); for (const pid of peers.keys()) updateTile(pid, true); }
       finally { passMemo = null; }
       layout();
-      if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn(); if (typeof updateCamAllBtn === 'function') updateCamAllBtn(); if (typeof updateShareAllBtn === 'function') updateShareAllBtn();
+      if (typeof updateMuteAllBtn === 'function') updateMuteAllBtn(); if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn(); if (typeof updateCamAllBtn === 'function') updateCamAllBtn(); if (typeof updateShareAllBtn === 'function') updateShareAllBtn();
       try { paintStageMod(); } catch (e) {}
       try { paintRoomTrust(); } catch (e) {}
     }
@@ -6567,9 +7005,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const pid of roomConsentIds()) { if (freshConsent(pid)) n++; }
       return n;
     }
-    function blurLevelFor(id) {
+    let clearForTest = false; // a test stands in for a consented password room
+    // asIfCamOn: the level a camera-off seat's PLACEHOLDER (initial or picture)
+    // takes. It stands in for the face, so it is as soft as the face would be
+    // with the camera on: soft in a soft room, clear in a clear one. The same
+    // call paints the self tile and every remote tile, so you see what others see.
+    function blurLevelFor(id, asIfCamOn) {
       const isMe = id === 'me';
-      const st = (isMe ? myStatus : statusOf.get(id)) || {};
+      let st = (isMe ? myStatus : statusOf.get(id)) || {};
+      if (asIfCamOn && st.camOff) st = Object.assign({}, st, { camOff: false });
       const blocked = !!(modOf(id).blur && modOf(id).blur.on);
       // (This rule applies UNCHANGED in broadcast rooms — Nathan's call,
       // 2026-08-03. An admin room is born UNLOCKED; the host locking it with
@@ -6583,7 +7027,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // minor-protection law in many countries. The password gate is the
       // legal boundary, not a UX inconvenience to optimize away.)
       const clear = !!roomPw && !blocked && (hasAdminRoom() ? (adminPresent() && consents(st)) : allConsent());
-      if (clear) return 0;
+      if (clear || (isMe && clearForTest)) return 0;
       return Math.max(1, blurLevel(st.blur));
     }
     // One knob re-derives every tile AND the outbound pixels whenever statuses,
@@ -7359,10 +7803,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // their own blur, or no password yet (faces stay soft room-wide, which
     // no one tile can change).
     function blurOffer(id) {
-      if (!roomPw) return '';
+      // On a phone an open room offers no blur: every face stays soft until a
+      // password, which no one tile can change (qa-meet-mobile). A wide window
+      // offers it on every clear face (qa-meet-desktop).
+      if (!roomPw && phoneLayout()) return '';
       const m = modOf(id).blur;
       if (m && m.on) return 'unblur';
-      return blurLevelFor(id) === 0 ? 'blur' : '';
+      // A bot has no face to blur (qa-meet-mobile).
+      const stB = (typeof statusOf !== 'undefined' && statusOf.get(id)) || null;
+      if (stB && stB.bot) return '';
+      // Their own blur already softens the face: nothing to blur (qa-meet-desktop).
+      return (typeof ownBlurOn === 'function' && ownBlurOn(id)) ? '' : 'blur';
     }
     function paintTileChrome(t, id, isMe, st) {
       if (!t || !t.tile || typeof t.tile.querySelector !== 'function') return;
@@ -7404,7 +7855,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { const m = modOf(id).blur; on = !!(m && m.on); by = (m && m.by) || ''; offer = blurOffer(id); } catch (e) {}
       // One wording for this control everywhere: the menu says the same.
       const words = hostWords('blur', on);
-      const label = words.replace(/ /g, '\n');
+      // Two lines on a phone's 64px square ("Blur" / "for all"); whole words on a wide window.
+      const label = phoneLayout() ? words.replace(/ /g, '\n') : words;
       box.className = offer ? 'blurbox on' : 'blurbox';
       if (box.textContent !== label) box.textContent = label;
       box.setAttribute('aria-label', words);
@@ -7423,7 +7875,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const statusIco = (kind, label) => {
         const svg = kind === 'mic-off' ? ICO_MIC_OFF : ICO_CAM_OFF;
         const safe = esc(label);
-        return '<span class="ico" data-icon="' + kind + '" title="' + safe + '" aria-label="' + safe + '">' + svg + '</span>';
+        // The word shows on a desktop only (CSS); a phone keeps the icon.
+        const word = kind === 'mic-off' ? uiText('muted', 'Muted') : uiText('camOffChip', 'Camera off');
+        return '<span class="ico" data-icon="' + kind + '" title="' + safe + '" aria-label="' + safe + '">' + svg + '<i class="w" aria-hidden="true">' + esc(word) + '</i></span>';
       };
       const isMe = id === 'me';
       const t = isMe ? meTile : peers.get(id);
@@ -7581,6 +8035,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // and this same class for everyone else.
       if (bl && !isMe) t.video.classList.add('blur' + bl);
       syncAvatarFeed(id, t, isMe, st, gCam);
+      // The letter overlay shows on every screen and is softened by the same
+      // rule as a camera (qa-meet-desktop); under it the video carries the
+      // avatar track, so what leaves this browser is blurred pixels too.
+      if (t.avatar && t.avatar.classList) {
+        const abl = blurLevelFor(id, true);
+        t.avatar.classList.toggle('blur1', abl === 1);
+        t.avatar.classList.toggle('blur2', abl === 2);
+      }
       if (t.voteBtn) {
         const mine = voteMode === 'kick' ? (dv && myVoteoffs.has(dv))
           : voteMode === 'up' ? (dv && myStageVotes.up.has(dv))
@@ -7635,10 +8097,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const [pid, p] of peers) apply(pid, p);
       // Once someone else is here, you leave the grid and float. The count
       // is the other people, so one other person fills the stage.
+      // A person held in the waiting room is off this screen: no space for them.
       const remoteTiles = [];
-      for (const [, p] of peers) if (p && p.tile) remoteTiles.push(p.tile);
+      for (const [, p] of peers) if (p && p.tile && !p.held) remoteTiles.push(p.tile);
       remoteTiles.sort((a, b) => (parseFloat(a.style.order) || 0) - (parseFloat(b.style.order) || 0));
-      const nRemote = peers.size;
+      let nRemote = 0;
+      for (const [, p] of peers) if (!(p && p.held)) nRemote++;
       document.body.classList.toggle('has-peers', nRemote > 0);
       if (grid) grid.setAttribute('data-remotes', String(nRemote));
       remoteTiles.forEach((t, i) => {
@@ -7651,9 +8115,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // People hidden from the row are the stadium. Stagers stay in the row
     // while comfy is on (their direct tile is the face; the strip is not).
     function comfyStadRoster() {
+      // While I wait I see no one; a held person is no one's face here.
+      if (iAmWaiting()) return [];
       const shown = {};
       if (myId) shown[myId] = true;
       for (const [pid, p] of peers) {
+        if (p && p.held) { shown[pid] = true; continue; }
         if (!p || p.headless || !p.tile) continue;
         if (p.tile.style.display !== 'none') shown[pid] = true;
       }
@@ -7710,7 +8177,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             speaker: !myStatus.bot && !!(speakingOf && speakingOf.get && speakingOf.get('me')), pz: 'peer:me' });
         }
         for (const [pid, p] of peers) {
-          if (!p || !p.tile || p.headless || p.tile.style.display === 'none') continue;
+          if (!p || !p.tile || p.headless || p.held || p.tile.style.display === 'none') continue;
           const st = statusOf.get(pid) || {};
           const si = stg.indexOf(pid);
           const bot = !!st.bot;
@@ -7830,6 +8297,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     });
     paintFit();
     window.__meetRelayout = () => { try { layout(); } catch (e) {} };
+    // The build label's width changes with the build, so Fit sits just left of it.
+    function placeFit() {
+      if (!fitbtn) return;
+      const bf = document.getElementById('gifos-build-float');
+      const r = bf && bf.getClientRects().length ? bf.getBoundingClientRect() : null;
+      const desk = window.matchMedia('(min-width: 601px) and (min-height: 501px)').matches;
+      fitbtn.style.right = desk && r ? Math.round(window.innerWidth - r.left + 8) + 'px' : '';
+    }
+    placeFit();
+    window.addEventListener('load', placeFit);
+    window.addEventListener('resize', placeFit);
     let comfyResizeT = 0;
     window.addEventListener('resize', () => {
       if (comfyResizeT) clearTimeout(comfyResizeT);
@@ -8195,7 +8673,42 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       blurPipe = null;
     }
     function blurPipeTune(level) {
-      return { level: level, px: level === 2 ? 26 : 11, capW: level >= 2 ? 320 : 480 };
+      // Level 0 runs only to carry the song line on a clear camera.
+      return { level: level, px: level === 2 ? 26 : 11, capW: level >= 2 ? 320 : level === 1 ? 480 : 640 };
+    }
+    // During Song the booth's current line rides on the picture the room
+    // sees: white on a dark band, clear of a face. The room is shown this
+    // camera as a centered square with the name strip over its bottom 17%
+    // (mesh-media.js), so the words wrap to fit that square and sit above
+    // the strip. Two lines at most; a longer line gets a smaller font.
+    function paintLyricOnAir(ctx, w, h) {
+      const line = lyricOnAir();
+      if (!line) return;
+      const side = Math.min(w, h);
+      const room = side * 0.9;
+      const wrap = (px) => {
+        ctx.font = '700 ' + px + 'px system-ui, sans-serif';
+        const out = [];
+        let cur = '';
+        for (const word of line.split(/\s+/)) {
+          const next = cur ? cur + ' ' + word : word;
+          if (cur && ctx.measureText(next).width > room) { out.push(cur); cur = word; } else cur = next;
+        }
+        if (cur) out.push(cur);
+        return out;
+      };
+      let px = Math.max(10, Math.round(side * 0.085));
+      let rows = wrap(px);
+      while (px > 8 && (rows.length > 2 || rows.some((r) => ctx.measureText(r).width > room))) rows = wrap(--px);
+      const lh = Math.round(px * 1.2), pad = Math.round(px * 0.35);
+      const band = rows.length * lh + pad * 2;
+      const bottom = Math.floor(h * 0.8);
+      ctx.fillStyle = 'rgba(0,0,0,0.66)';
+      ctx.fillRect(Math.round((w - side) / 2), bottom - band, side, band);
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      rows.forEach((r, i) => ctx.fillText(r, w / 2, bottom - band + pad + lh * i + lh / 2));
     }
     function blurPipeCanReuse(pipe, camId) {
       return !!(pipe && pipe.camId === camId && pipe.track && pipe.track.readyState === 'live');
@@ -8285,7 +8798,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const w = Math.max(2, Math.round(sw * sc)), h = Math.max(2, Math.round(sh * sc));
         if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
         let drew = false;
-        try { blurDraw(ctx, src, 0, 0, w, h, Math.max(4, Math.round(pipe.px * w / Math.max(1, sw))), pipe.level); drew = true; } catch (e) {}
+        try {
+          if (pipe.level > 0) blurDraw(ctx, src, 0, 0, w, h, Math.max(4, Math.round(pipe.px * w / Math.max(1, sw))), pipe.level);
+          else ctx.drawImage(src, 0, 0, w, h);
+          drew = true;
+        } catch (e) {}
+        if (drew) paintLyricOnAir(ctx, w, h);
         // painted counts a frame that was DRAWN. A throw used to increment
         // first, so blackCamWatch read a dead pipe as frames flowing.
         const why = noteBlurFrame(pipe, drew);
@@ -8337,6 +8855,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       pipe.unsub = () => {
         document.removeEventListener('visibilitychange', syncMetro);
         if (metroOff) { metroOff(); metroOff = null; }
+      };
+      // A camera grabbed again feeds this same canvas, so the track the room
+      // receives never ends (and a staged feed keeps its id). Until the new
+      // camera paints, the canvas holds the last frame.
+      pipe.swapSource = (cam2) => {
+        if (blurPipe !== pipe) return false;
+        let t2 = cam2, c2 = false;
+        try { t2 = cam2.clone(); c2 = true; } catch (e) { t2 = cam2; }
+        if (pipe.rvfc && src.cancelVideoFrameCallback) { try { src.cancelVideoFrameCallback(pipe.rvfc); } catch (e) {} }
+        if (pipe.cloned && pipe.srcTrack) { try { pipe.srcTrack.stop(); } catch (e) {} }
+        pipe.srcTrack = t2; pipe.cloned = c2; pipe.camId = cam2.id; pipe.failed = 0;
+        src.srcObject = new MediaStream([t2]);
+        src.play().catch(() => {});
+        if (src.requestVideoFrameCallback) pipe.rvfc = src.requestVideoFrameCallback(onFrame);
+        return true;
       };
       paint();
       return pipe.track;
@@ -8567,7 +9100,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       stopAvatarPipe();
       const lvl = blurLevelFor('me');
-      if (lvl > 0) return startBlurPipe(lvl) || cam;
+      if ((lvl > 0 || lyricOnAir()) && !myStatus.camOff) return startBlurPipe(lvl) || cam;
       stopBlurPipe();
       return cam;
     }
@@ -9376,6 +9909,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let restText = '';
       if (reachState && !inlineReach) {
         restText = REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' || reachState === 'turn-unavailable' ? '' : reachTriedSentence()) + tail;
+      } else if (typeof iAmWaiting === 'function' && iAmWaiting()) {
+        // A person in the waiting room is not alone and has no one to invite.
+        countText = uiText('waitHere', 'In the waiting room');
+        restText = tail;
       } else if (shown === 1) {
         if (atDoor) {
           countText = uiText('backIn', 'Getting you back in');
@@ -9511,7 +10048,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       el.classList.toggle('open', !!host);
       document.body.classList.toggle('rundown', !!host);
       try { paintLyrics(); } catch (e) {}
-      if (!host) return;
+      if (!host) {
+        const se = document.getElementById('songedit');
+        if (se) se.classList.remove('open');
+        document.body.classList.remove('songedit');
+        return;
+      }
+      try { paintSongWords(); } catch (e) {}
       const at = rundownAt();
       const ended = at >= RUNDOWN_STEPS.length;
       const title = document.getElementById('rundown-title');
@@ -9557,44 +10100,68 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     };
     // The hymn the booth reads during Song. The words stay as written.
     // Only the Program / Preview labels follow the device language.
-    // The index lives in this tab. It is not sent to the room, and it is
-    // not painted onto the camera.
-    const LYRIC_LINES = [
+    // The index lives in this tab. It is not sent to the room as data; the
+    // current line is painted onto the outgoing camera (paintLyricOnAir).
+    const HYMN_LINES = [
       'Amazing grace, how sweet the sound',
       'That saved a wretch like me',
       'I once was lost, but now am found',
       'Was blind, but now I see.',
     ];
+    // The booth's own song replaces the hymn: one line per line, blank lines
+    // dropped. Kept per room on this computer, so it can be typed before the
+    // service. Empty goes back to the hymn.
+    function songStoreKey() { return 'gifos_song_' + (params.get('v') || ''); }
+    function songLinesFrom(text) {
+      return String(text || '').split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').trim().slice(0, 120)).filter(Boolean).slice(0, 200);
+    }
+    function songLines() {
+      let own = [];
+      try { own = songLinesFrom(localStorage.getItem(songStoreKey())); } catch (e) {}
+      return own.length ? own : HYMN_LINES;
+    }
     function lyricStoreKey() { return 'gifos_lyric_' + (params.get('v') || ''); }
     function lyricAt() {
       let n = 0;
       try { n = parseInt(sessionStorage.getItem(lyricStoreKey()) || '0', 10); } catch (e) {}
       if (!isFinite(n) || n < 0) n = 0;
-      if (n >= LYRIC_LINES.length) n = LYRIC_LINES.length - 1;
+      const len = songLines().length;
+      if (n >= len) n = len - 1;
       return n;
     }
     function setLyricAt(n) {
       try { sessionStorage.setItem(lyricStoreKey(), String(n)); } catch (e) {}
     }
+    function lyricSongOn() {
+      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored()));
+      return !!(host && rundownAt() === 1);
+    }
+    // The line the room sees on the booth's camera, or '' outside Song.
+    function lyricOnAir() {
+      try { return lyricSongOn() ? (songLines()[lyricAt()] || '') : ''; } catch (e) { return ''; }
+    }
+    let lyricAirWas = false;
     function paintLyrics() {
       const el = document.getElementById('lyrics');
       if (!el) return;
-      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored()));
-      const song = !!(host && rundownAt() === 1);
+      const song = lyricSongOn();
+      // A clear camera has no canvas to paint on; switch the sent track.
+      if (song !== lyricAirWas) { lyricAirWas = song; try { refreshOutbound(); } catch (e) {} }
       el.classList.toggle('open', song);
       document.body.classList.toggle('lyrics', song);
       if (!song) return;
+      const lines = songLines();
       const at = lyricAt();
-      const last = at >= LYRIC_LINES.length - 1;
+      const last = at >= lines.length - 1;
       const progK = document.getElementById('lyrics-program-k');
       const prog = document.getElementById('lyrics-program');
       const prevK = document.getElementById('lyrics-preview-k');
       const prev = document.getElementById('lyrics-preview');
       const btn = document.getElementById('lyrics-next');
       if (progK) progK.textContent = uiText('lyProgram', 'Program');
-      if (prog && prog.textContent !== LYRIC_LINES[at]) prog.textContent = LYRIC_LINES[at];
+      if (prog && prog.textContent !== lines[at]) prog.textContent = lines[at];
       if (prevK) prevK.textContent = uiText('lyPreview', 'Preview');
-      const nxt = last ? '' : (LYRIC_LINES[at + 1] || '');
+      const nxt = last ? '' : (lines[at + 1] || '');
       if (prev && prev.textContent !== nxt) prev.textContent = nxt;
       if (btn) {
         btn.classList.toggle('secondary', last);
@@ -9605,9 +10172,58 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const lyricsNext = document.getElementById('lyrics-next');
     if (lyricsNext) lyricsNext.onclick = () => {
       const at = lyricAt();
-      setLyricAt(at >= LYRIC_LINES.length - 1 ? 0 : at + 1);
+      setLyricAt(at >= songLines().length - 1 ? 0 : at + 1);
       paintLyrics();
     };
+    function paintSongWords() {
+      const b = document.getElementById('song-edit');
+      if (b) b.textContent = uiText('songWords', 'Song words');
+      const t = document.getElementById('songedit-title');
+      if (t) t.textContent = uiText('songWords', 'Song words');
+      const n = document.getElementById('songedit-note');
+      if (n) n.textContent = uiText('songNote', 'One line per line. Song reads them in order.');
+      const sv = document.getElementById('song-save');
+      if (sv) sv.textContent = uiText('songSave', 'Save');
+      const cn = document.getElementById('song-cancel');
+      if (cn) cn.textContent = uiText('songCancel', 'Cancel');
+    }
+    function openSongWords(open) {
+      const el = document.getElementById('songedit');
+      if (!el) return;
+      el.classList.toggle('open', open);
+      document.body.classList.toggle('songedit', open);
+      if (open) {
+        paintSongWords();
+        const t = document.getElementById('song-text');
+        if (t) { t.value = songLines().join('\n'); try { t.focus(); } catch (e) {} }
+      } else {
+        const b = document.getElementById('song-edit');
+        if (b) { try { b.focus(); } catch (e) {} }
+      }
+    }
+    const songEdit = document.getElementById('song-edit');
+    if (songEdit) { paintSongWords(); songEdit.onclick = () => openSongWords(true); }
+    const songSave = document.getElementById('song-save');
+    if (songSave) songSave.onclick = () => {
+      const t = document.getElementById('song-text');
+      const lines = songLinesFrom(t ? t.value : '');
+      try {
+        if (lines.length) localStorage.setItem(songStoreKey(), lines.join('\n'));
+        else localStorage.removeItem(songStoreKey());
+      } catch (e) {}
+      setLyricAt(0);
+      openSongWords(false);
+      paintLyrics();
+    };
+    const songCancel = document.getElementById('song-cancel');
+    if (songCancel) songCancel.onclick = () => openSongWords(false);
+    const songBox = document.getElementById('songedit');
+    if (songBox) songBox.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      openSongWords(false);
+    });
     const pageArrived = Date.now();
     function mayHost() {
       return !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
@@ -9616,19 +10232,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const w = (modTable['*'] || {}).wait;
       return (w && w.on) ? (+w.at || 0) : 0;
     }
+    // Held = kept off this screen AND out of every ear and mix (modOf reads it
+    // as a mute). Only the waiting page knows when it arrived, so it says so
+    // on its own beat (myStatus.wt). Before its first beat, a page that was
+    // here when the room started waiting holds anyone new; a page that came
+    // later cannot tell who is new, so it waits for the word. While I wait,
+    // everyone is held on MY screen: I see and hear no one until Admit.
     function isHeld(id) {
+      if (!waitingSince() || !id || id === myId || !peers.get(id)) return false;
+      return iAmWaiting() || peerWaits(id);
+    }
+    // The room holds this person (the composites I build follow this, not my
+    // own screen: a waiting row head still carries its row's faces).
+    function peerWaits(id) {
       const since = waitingSince();
       if (!since || !id || id === myId) return false;
       const p = peers.get(id);
-      if (!p || (p.bornAt || 0) < since) return false;
+      if (!p) return false;
+      const w = modTable['*'].wait;
+      if (w.byId && w.byId === id) return false;
+      if (hasAdminRoom() && admins.includes(id)) return false;
       const adm = (modTable[id] || {}).admit;
       if (adm && adm.on && (+adm.at || 0) >= since) return false;
-      return true;
+      const st = statusOf.get(id);
+      if (st && st.wt !== undefined) return !!st.wt;
+      return pageArrived < since && (p.bornAt || 0) >= since;
     }
     function iAmWaiting() {
       const w = (modTable['*'] || {}).wait;
       if (!w || !w.on) return false;
       if (w.byId && w.byId === myId) return false;
+      if (hasAdminRoom() && amAdmin) return false;
       if (pageArrived < (+w.at || 0) - 2000) return false;
       const adm = (modTable[myId] || {}).admit;
       if (adm && adm.on && (+adm.at || 0) >= (+w.at || 0)) return false;
@@ -9651,14 +10285,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (hostSpot(id)) { if (!st.stg) st.stg = Date.now(); st._spot = 1; }
       else if (st._spot) { st.stg = 0; st._spot = 0; }
     }
+    // The roster's Waiting list and the faces follow every hold and release: a
+    // real arrival is held while its peer is built, long after both painted.
+    let rosterSoon = 0;
+    function paintRosterSoon() { if (!rosterSoon) rosterSoon = setTimeout(() => { rosterSoon = 0; paintRoster(); try { layout(); } catch (e) {} }, 0); }
     function holdPeer(p) {
       if (!p || !p.tile) return;
+      if (!p.held) paintRosterSoon();
       p.held = true;
-      if (p.video) { try { p.video.pause(); } catch (e) {} }
+      if (p.video) {
+        // Only a person the room holds is paused: on MY waiting page the tile
+        // is just off screen, and a row head still draws its mates from it.
+        if (peerWaits(p.id)) { try { p.video.pause(); } catch (e) {} }
+        if (p.video._aud) p.video._aud.muted = true; // the voice plays here, not in the <video>
+      }
       if (p.tile.parentNode) p.tile.remove();
     }
     function releaseHeld(p) {
       if (!p) return;
+      if (p.held) paintRosterSoon();
       p.held = false;
       if (p.tile && !p.headless && !p.tile.parentNode && typeof grid !== 'undefined' && grid) grid.appendChild(p.tile);
       if (p.video) { const pr = p.video.play(); if (pr && pr.catch) pr.catch(function () {}); }
@@ -9697,8 +10342,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         applySpotlightBit(id);
         if (p && p.held && !isHeld(id)) releaseHeld(p);
       }
-      for (const p of peers.values()) if (p && isHeld(p.id)) holdPeer(p);
+      for (const p of peers.values()) {
+        if (!p) continue;
+        if (isHeld(p.id)) holdPeer(p);
+        else if (p.held) releaseHeld(p);
+      }
       paintWaitingSelf();
+      const wt = iAmWaiting() ? 1 : 0;
+      if (myStatus.wt !== wt) { myStatus.wt = wt; try { broadcastStatus(); } catch (e) {} }
+      try { applyBuses(); } catch (e) {}
     }
     function setWaitingRoom(on) {
       if (!mayHost()) return;
@@ -9766,7 +10418,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function waitingRows() {
       const rows = [];
       for (const p of peers.values()) {
-        if (!p || !isHeld(p.id)) continue;
+        if (!p || !peerWaits(p.id)) continue;
         rows.push({ id: p.id, name: hostRename(p.id) || p.name || rosterNames[p.id] || 'Guest' });
       }
       rows.sort((a, b) => String(a.name).localeCompare(String(b.name)));
@@ -9780,7 +10432,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const all = rosterRows();
       const rows = all.filter((r) => !q || String(r.name).toLowerCase().indexOf(q) >= 0);
       const title = document.getElementById('roster-title');
-      if (title) title.textContent = all.length + ' ' + uiText('rosterPeople', 'people');
+      if (title) title.textContent = all.length + ' ' + (all.length === 1 ? uiText('rosterPerson', 'person') : uiText('rosterPeople', 'people'));
       const close = document.getElementById('roster-close');
       if (close) close.textContent = uiText('rosterClose', 'Close');
       if (find) {
@@ -11794,6 +12446,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       Object.defineProperty(st, 'raw', { value: raw });
       const scribeBit = !!(cur && cur.scribe) !== !!st.scribe;
       const shareBit = !!(cur && cur.scr) !== !!st.scr;
+      const waitBit = !cur || (cur.wt !== st.wt);
       if (typeof noteStatusFlags === 'function') noteStatusFlags(cur, st);
       if (!cur && from !== myId) scheduleNewPeerBeat(); // the first status from a person I held none for: answer with my own beat, whatever path carried theirs
       statusOf.set(from, st);
@@ -11801,6 +12454,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A share starting or stopping paints this tile now. The sharer list is
       // read live; a coalesced pass would leave the chip behind it.
       if (shareBit) { updateTile(from); if (typeof paintShare === 'function') paintShare(); }
+      // A waiting person's own word holds or releases their tile and voice.
+      if (waitBit && st.wt !== undefined && from !== myId && waitingSince() && typeof applyHostOrders === 'function') {
+        try { applyHostOrders(); updateTile(from); layout(); updateStatus(); } catch (e) {}
+      }
       // Proof of life past a departure verdict: the orders confirmGone parked
       // for this peer come back (unparkMod). notTomb lifts the tombstone on
       // this same frame, so mergeMod treats them as an ordinary target again.
@@ -13635,9 +14292,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // ban management. Creating an admin room lives in Invite. A plain room has
       // no admin and never can, so there's nothing for this button to do there.
       ab.style.display = hasAdmin ? '' : 'none';
-      ab.textContent = amAdmin ? 'Admin' : 'Admin sign-in';
-      ab.title = amAdmin ? 'Admin controls: banned devices, room password'
-        : 'This room has an admin — enter the admin password to get admin controls';
+      ab.textContent = amAdmin ? uiText('admBtn', 'Admin') : uiText('admSignIn', 'Admin sign-in');
+      ab.title = amAdmin ? uiText('admTipOn', 'Admin controls: banned devices, room password')
+        : uiText('admTipOff', 'This room has an admin — enter the admin password to get admin controls');
       const pwb = document.getElementById('pwbtn');
       pwb.disabled = hasAdmin && !amAdmin;
       pwb.title = (hasAdmin && !amAdmin)
@@ -13646,6 +14303,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Vote-off only exists where there is no admin to ban bad actors.
       document.body.classList.toggle('canvote', !hasAdmin);
       renderBanned();
+      if (typeof updateMuteAllBtn === 'function') updateMuteAllBtn();
       if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn();
       if (typeof updateCamAllBtn === 'function') updateCamAllBtn();
       paintChatGate(); renderChat(); // signing in as admin grows the chat toggle + per-line deletes
@@ -14826,6 +15484,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       handqHtml = html;
       handqEl.innerHTML = html;
       try { paintBroadcastSeats(); } catch (e) {}
+      placeHandq();
+    }
+    // Desktop: the queue sits just left of Fit (or of the build label while a
+    // screen is shared and Fit is gone); --hq-room tells the header line how
+    // much of the row it takes.
+    function placeHandq() {
+      if (!document.body.classList.contains('desk-ptr') || !handqEl.classList.contains('on')) {
+        handqEl.style.right = '';
+        document.body.style.removeProperty('--hq-room');
+        return;
+      }
+      let edge = window.innerWidth - 14;
+      for (const id of ['fitbtn', 'gifos-build-float']) {
+        const el = document.getElementById(id);
+        if (!el || !el.getClientRects().length) continue;
+        edge = Math.min(edge, el.getBoundingClientRect().left - 10);
+      }
+      const right = Math.max(14, Math.round(window.innerWidth - edge));
+      handqEl.style.right = right + 'px';
+      document.body.style.setProperty('--hq-room', Math.round(right + handqEl.getBoundingClientRect().width + 10) + 'px');
+    }
+    window.addEventListener('resize', placeHandq);
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(() => placeHandq());
+      ro.observe(handqEl);
+      const fb = document.getElementById('fitbtn');
+      if (fb) ro.observe(fb);
     }
     // ADMIN rooms, signed-in admins only: tapping a queued name CALLS THEM UP —
     // the tap issues the same individually-signed mod-table 'app' grant that
@@ -14957,7 +15642,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (nv) localStream.addTrack(nv);
           if (na) localStream.addTrack(na);
           meterFor('me', localStream);
-          stopBlurPipe();   // the old blur canvas read the dead camera track
+          // The blur canvas reads the new camera in place; without one, fall
+          // back to a fresh pipe.
+          if (!(nv && blurPipe && blurPipe.track && blurPipe.track.readyState === 'live' && blurPipe.swapSource && blurPipe.swapSource(nv))) stopBlurPipe();
           refreshOutbound(); // rebuild the (blurred or raw) sender AND the WYSIWYG self-view
           if (death) showCamBack(false);
         }).catch(() => { camGrabbing = false; if (death) showCamBack('fail'); });
@@ -14966,7 +15653,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Live-but-BLACK camera (iOS mostly: another app held the hardware, or
     // WebKit resumed the capture session wrong): the track stays 'live' but
     // reports muted (no frames) or delivers pure black pixels. Watch the
-    // self-view while the camera is ON; if nothing comes through for ~9s,
+    // self-view while the camera is ON; if nothing comes through for ~3s,
     // re-grab — the exact fix people discover by hand ("close the tab and
     // come back in"), done automatically. Capped so a genuinely dark room
     // never loops the camera; a single bright frame refills the budget.
@@ -14974,27 +15661,38 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const probe = document.createElement('canvas');
       probe.width = 32; probe.height = 18;
       const pctx = probe.getContext('2d', { willReadFrequently: true });
-      let darkTicks = 0, revives = 0, lastPainted = 0, endedTries = 0;
+      let darkTicks = 0, revives = 0, lastPainted = 0, endedTries = 0, tick = 0;
+      // 0 = picture, 1 = dark, 2 = pure black, 3 = no frames. A dark room
+      // still has sensor noise above 2; a camera that lost its frames paints
+      // exact zeros.
       const dark = () => {
         const v = meTile && meTile.video;
-        if (!v || !v.videoWidth) return true; // no frames yet IS the symptom
+        if (!v || !v.videoWidth) return 3; // no frames yet IS the symptom
         try {
           pctx.drawImage(v, 0, 0, 32, 18);
           const d = pctx.getImageData(0, 0, 32, 18).data;
-          for (let i = 0; i < d.length; i += 4) if (d[i] > 12 || d[i + 1] > 12 || d[i + 2] > 12) return false;
-          return true;
-        } catch (e) { return false; } // can't sample — assume fine, never loop
+          let top = 0;
+          for (let i = 0; i < d.length; i += 4) {
+            const m = Math.max(d[i], d[i + 1], d[i + 2]);
+            if (m > 12) return 0;
+            if (m > top) top = m;
+          }
+          return top <= 2 ? 2 : 1;
+        } catch (e) { return 0; } // can't sample — assume fine, never loop
       };
+      // Sample every second (a 32x18 read). An ended track is still tried on
+      // the old 3s beat so three failed grabs take ~9s, not 3.
       setInterval(() => {
         if (!localStream || myStatus.camOff || document.hidden) return;
         const vt = localStream.getVideoTracks()[0];
+        tick++;
         // A phone can end the camera while this page stays in front: a call,
         // or another app that takes the lens. visibilitychange never fires,
         // so the return-to-the-tab path never runs. Say so on the next sample
         // and grab again. Three tries, then the fail line stays. A grab
         // already in flight is left alone.
         if (!vt || vt.readyState === 'ended') {
-          if (vt && vt.readyState === 'ended' && !camGrabbing && endedTries < 3) {
+          if (vt && vt.readyState === 'ended' && !camGrabbing && endedTries < 3 && tick % 3 === 1) {
             endedTries++;
             reviveCamera();
           }
@@ -15019,22 +15717,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const painting = !!(blurPipe && blurPipe.painted > lastPainted);
         lastPainted = blurPipe ? blurPipe.painted : 0;
         // A phone that keeps the track "live" but sends no frames is the
-        // common kill. Say so on the tile at the first quiet sample. The
-        // re-grab still waits for three samples, so a dark room that is
-        // actually painting does not restart the camera or flash the line.
+        // common kill, and one that paints exact black is the other. Say so
+        // on the tile at the first such sample. The re-grab waits until it
+        // has lasted three more seconds, so a one-second hiccup is left
+        // alone, and a dark room that is still painting does not flash the
+        // line. A dim room that is still sending frames is a room, not a
+        // dead camera: it never counts toward a re-grab.
         const silent = window.__gifosForceBlackCamHold === true || (judge.muted && !painting);
-        if (silent || dark()) {
-          if (silent) showCamBack(true);
-          if (++darkTicks >= 3 && revives < 3) {
+        const shade = silent ? 0 : dark();
+        if (silent || shade >= 2) {
+          if (silent || shade === 2) showCamBack(true);
+          if (++darkTicks >= 4 && revives < 3) {
             darkTicks = 0; revives++;
             setStatus(uiText('camBlack', 'Your camera was sending black video — restarting it…'));
             regrabCamera('blackCamWatch:' + (silent ? 'track-muted' : 'dark-pixels'));
           }
         } else {
           if (darkTicks > 0) showCamBack(false);
-          darkTicks = 0; revives = 0;
+          darkTicks = 0;
+          if (!shade) revives = 0;
         }
-      }, 3000);
+      }, 1000);
     })();
 
     // ---- mic mode: voice vs music ---------------------------------------------
@@ -15381,13 +16084,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!box) return;
       box.innerHTML = '';
       if (!amAdmin) return;
-      if (!roomBan.length) { box.innerHTML = '<span style="color:#667">Nobody is banned.</span>'; return; }
+      if (!roomBan.length) { box.innerHTML = '<span style="color:#667">' + uiText('admNobody', 'Nobody is banned.') + '</span>'; return; }
       const names = banNames();
       for (const b of roomBan) {
         const row = document.createElement('div'); row.className = 'brow';
         const nm = document.createElement('span'); nm.style.flex = '1';
-        nm.textContent = (names[b.d] || nameForDev(b.d) || 'unnamed') + ' · ' + b.d;
-        const btn = document.createElement('button'); btn.textContent = 'Unban';
+        nm.textContent = (names[b.d] || nameForDev(b.d) || uiText('admUnnamed', 'unnamed')) + ' · ' + b.d;
+        const btn = document.createElement('button'); btn.textContent = uiText('admUnban', 'Unban');
         btn.onclick = () => { admSigned('unban', { dev: b.d }).then((w) => { if (w) relaySendObj({ t: 'unban', dev: b.d, w }); }); };
         row.appendChild(nm); row.appendChild(btn); box.appendChild(row);
       }
@@ -15400,12 +16103,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // moved to Invite), so there are just two moods: sign in, or manage.
       if (amAdmin) {
         setup.style.display = 'none'; panel.style.display = '';
-        document.getElementById('adm-hint').textContent = 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for all, and ban devices. Anyone who knows the admin password can open Admin and sign in too.';
+        document.getElementById('adm-hint').textContent = uiText('admHintOn', 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for everyone, and ban devices. Anyone who knows the admin password can open Admin and sign in too.');
         renderBanned();
       } else {
         setup.style.display = ''; panel.style.display = 'none';
-        btn.textContent = 'Sign in as admin';
-        document.getElementById('adm-hint').textContent = 'This room has an admin. If you know the admin password, enter it here to get the admin controls. Your password stays on this device.';
+        btn.textContent = uiText('admEnable', 'Sign in as admin');
+        document.getElementById('adm-hint').textContent = uiText('admHintOff', 'This room has an admin. If you know the admin password, enter it here to get the admin controls. Your password stays on this device.');
       }
       admModal.style.display = 'flex';
     }
@@ -15419,23 +16122,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const btn = document.getElementById('adm-enable');
       const hint = document.getElementById('adm-hint');
       btn.disabled = true;
-      btn.textContent = 'Checking…';
-      setStatus('🛡 Checking the password… (takes a few seconds)');
+      btn.textContent = uiText('admChecking', 'Checking…');
+      setStatus(uiText('admCheckingStatus', '🛡 Checking the password… (takes a few seconds)'));
       let K;
       try { K = await deriveAdminKey(room, v); }
       catch (err) {
         btn.disabled = false;
-        btn.textContent = 'Sign in as admin';
-        hint.textContent = 'Could not check the password (' + ((err && err.name) || 'Error') + ').';
+        btn.textContent = uiText('admEnable', 'Sign in as admin');
+        hint.textContent = uiText('admCheckFail', 'Could not check the password ({err}).').split('{err}').join((err && err.name) || 'Error');
         return;
       }
       // V commits to the PUBLIC KEY of the keypair K seeds (§9) — the check
       // is local, instant, and needs no relay round-trip.
       if (!(await adoptAdmKey(K))) {
         btn.disabled = false;
-        btn.textContent = 'Sign in as admin';
-        hint.textContent = 'Wrong admin password.';
-        setStatus('🛡 Wrong admin password.');
+        btn.textContent = uiText('admEnable', 'Sign in as admin');
+        hint.textContent = uiText('admWrong', 'Wrong admin password.');
+        setStatus(uiText('admWrongStatus', '🛡 Wrong admin password.'));
         return;
       }
       btn.disabled = false;
@@ -15443,7 +16146,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { localStorage.setItem(admStoreKey(), admKey); } catch (e2) {}
       mirrorRoomState({ admin: true });
       admModal.style.display = 'none';
-      setStatus('🛡 You are signed in as admin.');
+      setStatus(uiText('admSignedIn', '🛡 You are signed in as admin.'));
       applyAdminUi();
       broadcastStatus(); // the next signed heartbeat announces my adminship to every peer
     };
@@ -15713,50 +16416,70 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the port wherever one was seen (a provider sharing one address among
     // many customers needs address, port AND time), and the relay's signed
     // statements with the keys that check them.
-    document.getElementById('who-dl').onclick = async () => {
-      try { await whoObserve(); } catch (e) {}
-      const stamp = new Date().toISOString();
+    function whoFill(s, map) {
+      let out = s;
+      for (const k of Object.keys(map)) out = out.split('{' + k + '}').join(map[k] == null ? '' : String(map[k]));
+      return out;
+    }
+    // The same words as the button, in the language of this device. Names,
+    // addresses, ports, and signatures stay as recorded. English is the fallback.
+    function whoFileText() {
+      const L = (k, en) => uiText(k, en);
       const rows = whoRows();
       const keys = window.GIFOS_RELAY_ATTEST_KEYS || {};
+      const relay = sessId && relayUrl() ? relayUrl().replace(/\/$/, '') + '/s/' + sessId : L('whoFileRelayOff', 'not connected');
+      const you = L('whoYou', '(you)');
       const lines = [
-        'GifOS meeting \u2014 who was here',
-        'Room: ' + room,
-        'Saved: ' + utc(Date.now()) + '   (every time in this file is UTC)',
-        // The link as opened, and the relay session it maps to: the relay
-        // never learns the link, but its host's connection records carry the
-        // session path and each participant's peer id (?peer=) with the
-        // address they connected from.
-        'Meeting link: ' + location.href,
-        'Relay session: ' + (sessId && relayUrl() ? relayUrl().replace(/\/$/, '') + '/s/' + sessId : 'not connected'),
-        'Anyone holding the meeting link can open this meeting. Share this file only with the people investigating.',
+        L('whoFileTitle', 'GifOS meeting \u2014 who was here'),
+        whoFill(L('whoFileRoom', 'Room: {room}'), { room: room }),
+        whoFill(L('whoFileSaved', 'Saved: {when}   (every time in this file is UTC)'), { when: utc(Date.now()) }),
+        whoFill(L('whoFileLink', 'Meeting link: {link}'), { link: location.href }),
+        whoFill(L('whoFileRelay', 'Relay session: {session}'), { session: relay }),
+        L('whoFileOnly', 'Anyone holding the meeting link can open this meeting. Share this file only with the people investigating.'),
         '',
-        'HOW TO READ THIS',
-        'Verified by the relay: the GifOS relay saw this person\'s device connect from this address at the time given, and signed a statement saying so (listed at the end). Their device cannot fake it or claim someone else\'s.',
-        'Seen directly: this device was connected straight to theirs and saw this address and port in use between the first and last times given.',
-        'Reported by their device: what their own device said. It is NOT verified and may be false.',
-        'Ejected: as soon as a forgery was detected this device cut the person off and accepted nothing more from them: no video, audio, messages or files.',
-        'Forgery detected: their device sent something only a forger would: a relay statement that is not genuine or belongs to someone else, or an address different from the one the relay signed for it. The relay-verified and seen-directly addresses still stand.',
-        'Connection to me: "direct" means this device and theirs were connected straight to each other; "through others" means this device reached them only through other participants and never saw their address itself.',
-        'Relay session: the GifOS relay is hosted by Cloudflare. Its connection records, if any are kept, are filed under this session address, and each participant\'s connection to it names their peer id (last column), so the two can be matched.',
-        'An address may belong to a VPN, a workplace or a mobile network shared by many customers. To identify a subscriber, an internet provider usually needs the address, the port and the exact time; all three are given where known.',
+        L('whoFileHow', 'HOW TO READ THIS'),
+        L('whoFileVerified', 'Verified by the relay: the GifOS relay saw this person\'s device connect from this address at the time given, and signed a statement saying so (listed at the end). Their device cannot fake it or claim someone else\'s.'),
+        L('whoFileSeenDirect', 'Seen directly: this device was connected straight to theirs and saw this address and port in use between the first and last times given.'),
+        L('whoFileReportedLine', 'Reported by their device: what their own device said. It is NOT verified and may be false.'),
+        L('whoFileEjectedLine', 'Ejected: as soon as a forgery was detected this device cut the person off and accepted nothing more from them: no video, audio, messages or files.'),
+        L('whoFileForgeryLine', 'Forgery detected: their device sent something only a forger would: a relay statement that is not genuine or belongs to someone else, or an address different from the one the relay signed for it. The relay-verified and seen-directly addresses still stand.'),
+        L('whoFileConnLine', 'Connection to me: "direct" means this device and theirs were connected straight to each other; "through others" means this device reached them only through other participants and never saw their address itself.'),
+        L('whoFileRelayNote', 'Relay session: the GifOS relay is hosted by Cloudflare. Its connection records, if any are kept, are filed under this session address, and each participant\'s connection to it names their peer id (last column), so the two can be matched.'),
+        L('whoFileIsp', 'An address may belong to a VPN, a workplace or a mobile network shared by many customers. To identify a subscriber, an internet provider usually needs the address, the port and the exact time; all three are given where known.'),
         '',
-        ['Name', 'Connection to me', 'Forgery detected', 'Relay-verified address', 'Relay saw at', 'Seen directly (address)', 'Port', 'Protocol', 'Connection', 'Seen from', 'Seen until', 'In meeting from', 'Last heard', 'Reported by their device', 'Device tag', 'Peer id'].join('\t'),
+        ['whoColName', 'whoColConn', 'whoColForgery', 'whoColRelayAddr', 'whoColRelayAt', 'whoColSeenAddr', 'whoColPort', 'whoColProto', 'whoColKind', 'whoColFrom', 'whoColUntil', 'whoColInFrom', 'whoColLast', 'whoColReported', 'whoColDev', 'whoColPeer']
+          .map((k, i) => L(k, ['Name', 'Connection to me', 'Forgery detected', 'Relay-verified address', 'Relay saw at', 'Seen directly (address)', 'Port', 'Protocol', 'Connection', 'Seen from', 'Seen until', 'In meeting from', 'Last heard', 'Reported by their device', 'Device tag', 'Peer id'][i])).join('\t'),
       ];
+      const connWord = {
+        me: L('whoConnMe', 'this device'),
+        direct: L('whoConnDirect', 'direct'),
+        indirect: L('whoConnIndirect', 'through others'),
+        left: L('whoConnLeft', 'left'),
+      };
       for (const r of rows) {
-        const conn = { me: 'this device', direct: 'direct', indirect: 'through others', left: 'left', ejected: 'EJECTED for forgery at ' + utc((ejected.get(r.pid) || {}).at) }[whoGroupOf(r)];
-        const base = (x) => [r.name, conn, r.forged || '', r.att ? r.att.ip : '', r.att ? utc(r.att.ts) : ''].concat(x, [utc(r.first), utc(r.last), r.ip || '', r.dev || '', r.pid || '']).join('\t');
+        const g = whoGroupOf(r);
+        const conn = g === 'ejected'
+          ? whoFill(L('whoConnEjected', 'EJECTED for forgery at {when}'), { when: utc((ejected.get(r.pid) || {}).at) })
+          : connWord[g];
+        const name = r.me ? r.name.replace(/ \(you\)$/, ' ' + you) : r.name;
+        const base = (x) => [name, conn, r.forged || '', r.att ? r.att.ip : '', r.att ? utc(r.att.ts) : ''].concat(x, [utc(r.first), utc(r.last), r.ip || '', r.dev || '', r.pid || '']).join('\t');
         if (!r.seen.length) lines.push(base(['', '', '', '', '', '']));
-        for (const x of r.seen) lines.push(base([x.addr, x.port || '', x.proto, x.type === 'host' ? 'local network' : (x.type || ''), utc(x.first), utc(x.last)]));
+        for (const x of r.seen) lines.push(base([x.addr, x.port || '', x.proto, x.type === 'host' ? L('whoFileLocal', 'local network') : (x.type || ''), utc(x.first), utc(x.last)]));
       }
       const signed = rows.filter((r) => r.att);
       if (signed.length) {
-        lines.push('', 'SIGNED RELAY STATEMENTS (Ed25519; the signature covers the statement text exactly as written)');
-        lines.push(['Peer id', 'Statement', 'Signature (base64)'].join('\t'));
+        lines.push('', L('whoFileSigned', 'SIGNED RELAY STATEMENTS (Ed25519; the signature covers the statement text exactly as written)'));
+        lines.push([L('whoColPeer', 'Peer id'), L('whoColStatement', 'Statement'), L('whoColSig', 'Signature (base64)')].join('\t'));
         for (const r of signed) lines.push([r.pid, r.att.sp, r.att.sig].join('\t'));
-        lines.push('', 'RELAY PUBLIC KEYS (key id = first 16 hex of SHA-256 over the raw 32-byte key)');
+        lines.push('', L('whoFileKeys', 'RELAY PUBLIC KEYS (key id = first 16 hex of SHA-256 over the raw 32-byte key)'));
         for (const kid of Object.keys(keys)) lines.push(kid + '\t' + keys[kid]);
       }
-      const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/plain' });
+      return lines.join('\n') + '\n';
+    }
+    document.getElementById('who-dl').onclick = async () => {
+      try { await whoObserve(); } catch (e) {}
+      const stamp = new Date().toISOString();
+      const blob = new Blob([whoFileText()], { type: 'text/plain' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = 'gifos-meeting-' + room + '-' + stamp.replace(/[:.]/g, '-') + '.txt';
@@ -18005,7 +18728,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }).join('');
       const co = chatOffInfo();
       if (q && !ms.length) html = '<div class="cempty" id="chatnomatch">No matches</div>';
-      else if (co && !q) html += '<div class="cmsg" style="opacity:.65"><b>🔇</b>Chat was turned off' + (co.by ? ' by ' + esc(co.by) : '') + '.' + (amAdmin ? '' : ' Only the host can post.') + '</div>';
+      else if (co && !q) {
+        const line = co.by
+          ? uiText('chatWasOffBy', 'Chat was turned off by {name}.').split('{name}').join(esc(co.by))
+          : uiText('chatWasOff', 'Chat was turned off.');
+        const tail = amAdmin ? '' : (' ' + uiText('chatHostOnly', 'Only the host can post.'));
+        html += '<div class="cmsg" style="opacity:.65"><b>🔇</b>' + line + tail + '</div>';
+      }
       paintChatFind();
       paintLog(log, html);
       // A tapped last line grows by its buttons; keep them in the log.
@@ -18043,8 +18772,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.getElementById('cattach').disabled = locked;
       const b = document.getElementById('chatmod');
       b.style.display = (hasAdminRoom() && amAdmin) ? '' : 'none';
-      b.textContent = off ? 'Turn chat on' : 'Turn chat off';
-      b.title = off ? 'Let everyone post in chat again' : 'Silence the chat for everyone but you';
+      b.textContent = off ? uiText('chatModOn', 'Turn chat on') : uiText('chatModOff', 'Turn chat off');
+      b.title = off ? uiText('chatModTipOn', 'Let everyone post in chat again') : uiText('chatModTipOff', 'Silence the chat for everyone but you');
     }
     document.getElementById('chatmod').onclick = () => {
       setMod('*', 'chat', !chatOffInfo());
@@ -18827,7 +19556,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (stageEar.fold.setGain) stageEar.fold.setGain(k2, (gm && gm.on) ? 0 : 1); // a cached older fold lacks it: held at 1, as before
       }
       stageEar.el.volume = mix.stage;
-      stageEar.el.muted = !(mix.stage > 0); // iOS ignores volume; 0 must be `muted`
+      stageEar.el.muted = iAmWaiting() || !(mix.stage > 0); // iOS ignores volume; 0 must be `muted`
     }
     // A stage source built while the sender was muted latches that silence.
     // The track often never fires `unmute` (silence frames, not a mute edge),
@@ -21051,9 +21780,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // directly-linked peer. Stream carries the audio the fold sums; el is the
       // drawImage source (a <video> or a nested composite's <canvas>).
       const srcFor = (pid, feedKey) => {
-        if (pid === myId) return { el: meTile.video, stream: selfFoldStream() };
+        // Someone in the waiting room is in no composite: no face, no voice.
+        if (pid === myId) return iAmWaiting() ? { el: null, stream: null } : { el: meTile.video, stream: selfFoldStream() };
         const f = feedKey ? mosIn.get(feedKey) : null;
         if (f) return { el: f.el, stream: f.stream };
+        if (peerWaits(pid)) return { el: null, stream: null };
         const p = peers.get(pid);
         return p ? { el: p.video, stream: p.video.srcObject } : { el: null, stream: null };
       };
@@ -22447,7 +23178,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const docked = shareBtn.parentElement && shareBtn.parentElement.classList.contains('bar');
       const shareLab = shareBtn.querySelector('.docklab');
       if (docked && shareLab) {
-        shareLab.textContent = on ? uiText('stopShare', 'Stop') : uiText('shareScreen', 'Share');
+        // Whole words on the dock (qa-meet-desktop: older eyes read them at 16px).
+        // Short words on a phone and on a narrow service window (placeDockForWidth).
+        const shortShare = phoneLayout() || (typeof BROADCAST !== 'undefined' && BROADCAST && window.innerWidth < 1100);
+        shareLab.textContent = on ? uiText('stopShare', shortShare ? 'Stop' : 'Stop sharing') : (shortShare ? 'Share' : uiText('shareScreen', 'Share screen'));
         shareBtn.setAttribute('aria-label', sharingLabel);
       } else {
         shareBtn.textContent = sharingLabel;
@@ -22870,6 +23604,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       el._aud.muted = !!el._gmute || !(vol > 0); // group mute rides the same pipe as the faders
     }
     function applyBuses() {
+      const sealed = iAmWaiting(); // a person in the waiting room hears no one
       const stg = new Set(stageIds());
       const mates = new Set(rowMates());
       let hasStadium = false;
@@ -22884,21 +23619,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Stagers' direct tracks are muted too: their voice arrives via the
         // per-stager feeds folded at the ear — the direct link would double it.
         const bus = stg.has(pid) ? null : mates.has(pid) ? 'row' : null;
-        busVolume(p.video, bus ? mix[bus] : 0);
+        busVolume(p.video, (bus && !sealed && !isHeld(pid)) ? mix[bus] : 0);
       }
       // feed tiles (the nested mosaics): stage strip is Stage; stadium tiles
       // are The stadium.
-      for (const el of stagefeedEl.querySelectorAll('.rowtile video')) { if (el.classList.contains('stageface')) continue; busVolume(el, mix.stage); }
+      for (const el of stagefeedEl.querySelectorAll('.rowtile video')) { if (el.classList.contains('stageface')) continue; busVolume(el, sealed ? 0 : mix.stage); }
       for (const el of stadiumEl.querySelectorAll('.rowtile')) {
         const v = el.querySelector('video'); if (!v) continue;
-        busVolume(v, mix.stadium); hasStadium = true; // the only stadium-area tile now is the Stadium composite
+        busVolume(v, sealed ? 0 : mix.stadium); hasStadium = true; // the only stadium-area tile now is the Stadium composite
       }
       // Section A/V + audio are dropped; section-mates fold into the Stadium.
       // Progressive disclosure for the stadium fader.
       const stadLab = document.getElementById('mixlab-stadium');
       const stadMark = hasStadium ? '1' : '0';
       if (stadLab && stadLab.dataset.on !== stadMark) { stadLab.dataset.on = stadMark; stadLab.style.display = hasStadium ? '' : 'none'; }
-      if (stageEar) { stageEar.el.volume = mix.stage; stageEar.el.muted = !(mix.stage > 0); } // the Stage fader drives the ear fold (muted at 0: iOS ignores volume)
+      if (stageEar) { stageEar.el.volume = mix.stage; stageEar.el.muted = sealed || !(mix.stage > 0); } // the Stage fader drives the ear fold (muted at 0: iOS ignores volume)
       kickPausedAudio();
     }
     // The Settings modal: the sound mix's new home (same fader ids as when it
@@ -25565,6 +26300,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let dockx = 0, docky = 0, tucked = false, idleTimer = 0, idleMs = 8000;
       // A small group tucks the dock once the call sits quiet. A service keeps
       // it: volunteers need the large controls without hunting for them.
+      // A small group tucks the dock once the call sits quiet (qa-meet-mobile);
+      // a wide window also fades it sooner (dock-calm, qa-meet-desktop). A service
+      // keeps it: volunteers need the large controls without hunting for them.
       const personalCall = () => !(typeof BROADCAST !== 'undefined' && BROADCAST);
       const dockBusy = () => {
         if (!bar.classList.contains('collapsed')) return true;
@@ -25673,6 +26411,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           else if (!moved) lastTap = now;
         });
         grip.addEventListener('pointercancel', () => { drag = null; });
+      }
+      const toolsBtn = document.getElementById('moretools');
+      function paintTools() {
+        if (!toolsBtn) return;
+        const open = bar.querySelector('#barmore').classList.contains('tools-open');
+        const word = open ? uiText('fewerTools', 'Fewer tools') : uiText('moreTools', 'All tools');
+        if (toolsBtn.textContent !== word) toolsBtn.textContent = word;
+        toolsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+      if (toolsBtn) {
+        toolsBtn.onclick = () => {
+          const sheet = document.getElementById('barmore');
+          sheet.classList.toggle('tools-open');
+          try { sessionStorage.setItem('gifos_more_tools', sheet.classList.contains('tools-open') ? '1' : ''); } catch (e) {}
+          paintTools();
+        };
+        try { if (sessionStorage.getItem('gifos_more_tools') === '1') document.getElementById('barmore').classList.add('tools-open'); } catch (e) {}
+        paintTools();
       }
       // Publish the bar's own height so the fixed overlays that hang from the
       // top (the chat panel) can start BELOW it instead of on top of it. It has
@@ -25853,6 +26609,56 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       syncChrome();
     })();
 
+    // A small call is a room, not a product: with 2–4 people on a desktop,
+    // nothing open, and no mouse or key for a few seconds, the dock fades and
+    // only faces are left (FaceTime and Meet do the same). Any move or key
+    // brings it back. The layout does not change, so faces never jump.
+    let dockCalmMs = 5000;
+    (function () {
+      document.body.classList.toggle('desk-ptr', !IS_MOBILE);
+      const bar = document.querySelector('.bar');
+      let lastInput = Date.now();
+      const wake = () => {
+        lastInput = Date.now();
+        document.body.classList.remove('dock-calm');
+      };
+      for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart', 'focusin']) {
+        window.addEventListener(ev, wake, { capture: true, passive: true });
+      }
+      function busy() {
+        if (IS_MOBILE || document.hidden) return true; // a touch laptop wakes it on touchstart
+        const n = participantCount();
+        if (n < 2 || n > 4) return true; // alone needs Invite; a big room needs the host tools
+        if (joinVeilEl) return true;
+        const b = document.body.classList;
+        for (const c of ['screen-on', 'broadcast', 'app-room', 'solo-app', 'lyrics', 'rundown']) if (b.contains(c)) return true;
+        if (!bar.classList.contains('collapsed')) return true; // More is open
+        // A clicked button keeps focus, so only keyboard focus holds the dock.
+        if (bar.matches(':hover') || bar.querySelector(':focus-visible')) return true;
+        // Keyboard focus on a tile or its buttons keeps them (calm hides tile buttons too).
+        if (document.querySelector('#feed :focus-visible, #feed .tile.menu')) return true;
+        if (bar.querySelector('[aria-expanded="true"], .on:not(#ccdock)')) return true;
+        const chat = document.getElementById('chatpanel');
+        if (chat && chat.classList.contains('open')) return true;
+        for (const d of document.querySelectorAll('[role="dialog"][aria-modal="true"]')) {
+          if (d.style.display !== 'none' && d.getClientRects().length) return true;
+        }
+        return false;
+      }
+      setInterval(() => {
+        let calm = false;
+        try { calm = Date.now() - lastInput >= dockCalmMs && !busy(); } catch (e) {}
+        if (calm !== document.body.classList.contains('dock-calm')) document.body.classList.toggle('dock-calm', calm);
+        // The header only goes while it is the plain count line.
+        let head = calm;
+        if (head) {
+          const st = document.getElementById('status');
+          head = !!st && st.dataset.kind === 'meeting' && !st.classList.contains('alert') && Date.now() >= statusHoldUntil;
+        }
+        if (head !== document.body.classList.contains('head-calm')) document.body.classList.toggle('head-calm', head);
+      }, 250);
+    })();
+
     (function () {
       const btn = document.getElementById('reactbtn');
       const tray = document.getElementById('reacttray');
@@ -25906,6 +26712,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     })();
 
     function amGloballyMuted() { const m = modOf('me').mute; return !!(m && m.on); }
+    function micLockWords() {
+      const m = modOf('me').mute || {};
+      if (m.wait) return uiText('waitMic', 'You are in the waiting room: your mic opens when the host lets you in.');
+      return 'You were muted for all' + (m.by ? ' by ' + m.by : '') + ' — another participant has to lift it.';
+    }
 
     function focusOf(el) {
       return el.querySelector('input:not([type="hidden"]), select, textarea, button');
@@ -25959,11 +26770,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       micBtn.classList.toggle('locked', micLocked);
       micBtn.setAttribute('aria-pressed', muted ? 'false' : 'true');
       const micWord = micLocked ? uiText('micHeld', 'Muted') : (muted ? uiText('unmute', 'Unmute') : uiText('mute', 'Mute'));
-      micBtn.setAttribute('aria-label', micLocked ? 'Muted for everyone' : micWord);
+      micBtn.setAttribute('aria-label', micWord);
       const micLab = micBtn.querySelector('.docklab');
       if (micLab && micLab.textContent !== micWord) micLab.textContent = micWord;
       micBtn.title = micLocked
-        ? 'Muted for all' + (modOf('me').mute.by ? ' by ' + modOf('me').mute.by : '') + ' — someone else has to lift it'
+        ? (modOf('me').mute.wait ? micLockWords() : 'Muted for all' + (modOf('me').mute.by ? ' by ' + modOf('me').mute.by : '') + ' — someone else has to lift it')
         : (muted ? 'You are muted — tap to speak. Shortcut: M' : 'Your mic is on — tap to mute. Shortcut: M');
       if (unmuteBtn) {
         const lob = document.getElementById('lobby');
@@ -25975,7 +26786,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       camBtn.setAttribute('aria-pressed', myStatus.camOff ? 'false' : 'true');
       camBtn.setAttribute('aria-label', myStatus.camOff ? 'Start video' : 'Stop video');
       const camLab = camBtn.querySelector('.docklab');
-      if (camLab) camLab.textContent = uiText('cam', 'Video');
+      if (camLab) camLab.textContent = phoneLayout() ? 'Video' : uiText('cam', 'Camera');
       camBtn.title = myStatus.camOff ? 'Camera off — tap to turn on. Shortcut: V' : 'Camera on — tap to turn off. Shortcut: V';
       // The filled segment follows the blur that is actually on the feed
       // (forced blur, room password, consent). The local wish is the fallback
@@ -26089,10 +26900,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // microphone off, even when the permission is answered after the order.
     function lateRefusal(kind) {
       if (kind === 'cam' && forcedCamOff('me')) return '📷 An admin turned your video off for the room — only they can turn it back on.';
-      if (kind === 'mic' && amGloballyMuted()) {
-        const by = modOf('me').mute.by;
-        return 'You were muted for all' + (by ? ' by ' + by : '') + ' — another participant has to lift it.';
-      }
+      if (kind === 'mic' && amGloballyMuted()) return micLockWords();
       return null;
     }
     function lateMedia(kind) {
@@ -26236,11 +27044,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (document.body.classList.contains('app-room') && !roomAudioOn()) { setStatus('Talk is off — only the app host can turn it on.'); return; }
       if (!localStream) return lateMedia('mic');
       const track = localStream.getAudioTracks()[0]; if (!track) return lateMedia('mic');
-      if (!track.enabled && amGloballyMuted()) {
-        const by = modOf('me').mute.by;
-        setStatus('You were muted for all' + (by ? ' by ' + by : '') + ' — another participant has to lift it.');
-        return;
-      }
+      if (!track.enabled && amGloballyMuted()) { setStatus(micLockWords()); return; }
       track.enabled = !track.enabled;
       myStatus.muted = !track.enabled;
       paintControls();
@@ -26377,6 +27181,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function allGuestsBlocked() { return modAllOn('blur'); }
     function updateBlurAllBtn() {
       blurAllBtn.style.display = amAdmin ? '' : 'none';
+      for (const li of document.querySelectorAll('#shortcutsheet .hostkey')) li.hidden = !amAdmin; // the host keys are listed for a host only
       if (!amAdmin) return;
       const on = allGuestsBlocked();
       blurAllBtn.classList.toggle('on', on);
@@ -26406,6 +27211,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setMod('*', 'cam', on);        // one entry, one flood, whatever the room's size
       updateCamAllBtn();
       setStatus(on ? 'Turned every guest\'s video off.' : 'Guests may turn their video back on.');
+    };
+    // "Mute guests" (admin) — ONE room-wide order, modTable['*'].mute. Every
+    // receiver drops a muted guest's voice (modOf), and an honest guest's mic
+    // locks until an admin lifts it, for one guest from the tile or for all here.
+    const muteAllBtn = document.getElementById('muteall');
+    function allGuestsMuted() { return modAllOn('mute'); }
+    function updateMuteAllBtn() {
+      muteAllBtn.style.display = amAdmin ? '' : 'none';
+      if (!amAdmin) return;
+      const on = allGuestsMuted();
+      muteAllBtn.classList.toggle('on', on);
+      muteAllBtn.textContent = on ? uiText('unmuteGuests', 'Unmute guests') : uiText('muteGuests', 'Mute guests');
+    }
+    muteAllBtn.onclick = () => {
+      if (!amAdmin) return;
+      const on = !allGuestsMuted();
+      setMod('*', 'mute', on);       // one entry, one flood, whatever the room's size
+      updateMuteAllBtn();
+      setStatus(on ? 'Muted every guest.' : 'Guests may unmute again.');
     };
     // "Allow screen share" (admin) — ONE room-wide grant, modTable['*'].share.
     // Off until the admin turns it on. A per-tile share order still wins when
@@ -27107,7 +27931,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     if (leaveCancel) leaveCancel.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; try { releaseLeaveAsk(); } catch (e) {} };
     const leaveGo = document.getElementById('leave-go');
     if (leaveGo) leaveGo.onclick = () => { if (leaveAsk) leaveAsk.style.display = 'none'; leaveMeeting(); };
-    // Keyboard: Alt+A mic, Alt+V camera, Alt+S share, Alt+C chat, Alt+H hand, Alt+F view, Alt+Q leave confirm.
+    // Keyboard: Alt+A mic, Alt+V camera, Alt+S share, Alt+C chat, Alt+K captions,
+    // Alt+H hand, Alt+F view, Alt+Q leave confirm, and the rest of More
+    // (Who, Invite, Run app, Vote, Password, Stage, Record, Settings, Transcript, Help).
     // ? lists them. None of these fire while a field has the caret, and the
     // Alt chords stay quiet under a dialog. The physical key (e.code) is
     // what matters, so a non-US layout still hits the same keys.
@@ -27146,12 +27972,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (!e.altKey || e.shiftKey || shortcutTyping(e) || shortcutBlocked()) return;
-      const id = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn' }[e.code];
+      const id = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'invite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', Slash: 'helpbtn', KeyM: 'muteall', KeyB: 'blurall', KeyX: 'camall', KeyP: 'shareall' }[e.code];
       if (!id) return;
       const btn = document.getElementById(id);
       // A control inside More is still a shortcut while the sheet is folded.
       // A button hidden on its own (a viewer who cannot share) stays quiet.
       if (!btn || (getComputedStyle(btn).display === 'none' && !btn.closest('#barmore'))) return;
+      // The host's room-wide tools are hidden for a guest, and their keys with them.
+      if (/^(muteall|blurall|camall|shareall)$/.test(id) && btn.style.display === 'none') return;
       e.preventDefault();
       btn.click();
     });
@@ -27432,8 +28260,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // window would be silently lost. The mint below refreshes right away.
       const show = ROOM.kind === 'app' && !ROOM.solo && document.body.classList.contains('app-room') && appMode === 'host' && !!myStatus.app;
       b.style.display = show ? '' : 'none';
+      paintTalkBtn();
+    }
+    function paintTalkBtn() {
+      const b = document.getElementById('appaudio');
       const on = roomAudioOn();
-      b.textContent = on ? 'Talk: on' : 'Talk: off';
+      b.textContent = on ? uiText('barTalkOn', 'Talk: on') : uiText('barTalkOff', 'Talk: off');
+      b.title = uiText('barTalkTip', 'Talk with the people in this app — when on, everyone here gets their own mic control (host only)');
       b.classList.toggle('on', on);
     }
     function applyRoomAudio() {
@@ -27446,14 +28279,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const tr = localStream.getAudioTracks()[0];
         if (tr && tr.enabled) { tr.enabled = false; myStatus.muted = true; paintControls(); broadcastStatus(); }
       }
-      if (was !== on) { refreshAudioBtn(); if (!on) setStatus('The app host turned Talk off.'); }
+      if (was !== on) { refreshAudioBtn(); if (!on) setStatus(uiText('barTalkHostOff', 'The app host turned Talk off.')); }
     }
     document.getElementById('appaudio').onclick = () => {
       if (appMode !== 'host' || !myStatus.app) return;
       myStatus.app.audio = !myStatus.app.audio;
       broadcastStatus();
       applyRoomAudio(); refreshAudioBtn();
-      setStatus(myStatus.app.audio ? 'Talk is on — everyone here can turn on their mic.' : 'Talk is off — every mic is quiet.');
+      setStatus(myStatus.app.audio ? uiText('barTalkOnStatus', 'Talk is on — everyone here can turn on their mic.') : uiText('barTalkOffStatus', 'Talk is off — every mic is quiet.'));
     };
     function refreshStealBtn() {
       document.getElementById('appsteal').style.display = (ROOM.kind === 'app' && appMode === 'client') ? '' : 'none';
@@ -27510,7 +28343,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         a.href = URL.createObjectURL(new Blob([bytes], { type: 'image/gif' }));
         a.download = (document.getElementById('appname').textContent || 'app') + '-snapshot.gif';
         a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-      }).catch((e) => setStatus('Could not save: ' + (e && e.message || e)));
+      }).catch((e) => setStatus(uiText('barSaveFail', 'Could not save: {err}').split('{err}').join(e && e.message || e)));
       if (soloCtl && ROOM.solo) soloCtl.save();
       else if (appHostCtl) appHostCtl.save();
       else if (appClientCtl && appClientCtl.snapshot) dl(appClientCtl.snapshot());
@@ -27537,24 +28370,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // their eyes already are — morph it, hold it, restore it.
       const go = (data, btn) => {
         [d1, d2, d3].forEach((x) => { x.disabled = true; });
-        btn.textContent = 'Stealing…';
+        btn.textContent = uiText('stealBusy', 'Stealing…');
         appClientCtl.stealToDesktop({ data })
           .then(() => {
             fold();
-            b.textContent = '🥷 Stolen ✓';
+            b.textContent = uiText('stealDone', '🥷 Stolen ✓');
             b.disabled = true;
             setStatus(data === 'none'
-              ? '🥷 Yours now — a clean copy in your desktop’s Stolen Apps, none of the room’s data.'
+              ? uiText('stealNone', '🥷 Yours now — a clean copy in your desktop’s Stolen Apps, none of the room’s data.')
               : data === 'connect'
-                ? '🥷 Yours now — the room as it stood when you joined, in your Stolen Apps.'
-                : '🥷 Yours now — saved to your desktop’s Stolen Apps, data and all.');
+                ? uiText('stealConnect', '🥷 Yours now — the room as it stood when you joined, in your Stolen Apps.')
+                : uiText('stealAll', '🥷 Yours now — saved to your desktop’s Stolen Apps, data and all.'));
             setTimeout(() => { b.textContent = label; b.disabled = false; }, 4000);
           })
-          .catch((e) => { fold(); setStatus('Could not steal: ' + (e && e.message || e)); });
+          .catch((e) => { fold(); setStatus(uiText('stealFail', 'Could not steal: {err}').split('{err}').join(e && e.message || e)); });
       };
       const mk = (txt, title, data) => {
         const x = document.createElement('button');
-        x.textContent = txt; x.title = title; x.className = b.className;
+        x.textContent = txt; x.title = title; x.className = b.className; x.dataset.steal = data; x.style.fontSize = '16px';
         x.onclick = () => go(data, x);
         b.parentNode.insertBefore(x, b.nextSibling);
         return x;
@@ -27562,9 +28395,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       b.style.display = 'none';
       // Insertion order: reversed, since each lands at b.nextSibling —
       // reads left-to-right as: + data · as I joined · app only.
-      const d3 = mk('app only', 'A clean copy — the app alone, none of the room’s data', 'none');
-      const d2 = mk('as I joined', 'The app and the room as it stood when you came in', 'connect');
-      const d1 = mk('+ data', 'The app and everything in it right now', 'current');
+      const d3 = mk(uiText('stealApp', 'app only'), uiText('stealAppTip', 'A clean copy — the app alone, none of the room’s data'), 'none');
+      const d2 = mk(uiText('stealJoined', 'as I joined'), uiText('stealJoinedTip', 'The app and the room as it stood when you came in'), 'connect');
+      const d1 = mk(uiText('stealData', '+ data'), uiText('stealDataTip', 'The app and everything in it right now'), 'current');
     };
     let appClientStop = null; // live client mount's teardown (unsubscribes its sga lane)
     let appClientCtl = null;  // the client mount's control: snapshot() + setFrozen() (one-runtime freeze/succession)
@@ -27600,7 +28433,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let appBooting = false;
     async function runApp(fileId, name) {
       if (!window.GifOS || !GifOS.runtime || !GifOS.store) return;
-      if (!canIRunApp()) { setStatus('🛡 Only this room\u2019s admins — or people they allow — can run an app here.'); return; }
+      if (!canIRunApp()) { setStatus(uiText('appDenied', '🛡 Only this room\u2019s admins — or people they allow — can run an app here.')); return; }
       if (GifOS.lock) {
         const all = await GifOS.store.allItems();
         const it = GifOS.lock.itemOfFile(all, fileId);
@@ -27960,20 +28793,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const btn = document.getElementById('appbtn');
       if (want && want.s === appHiddenSid && !isMine) {
         btn.textContent = uiText('showApp', 'Show app');
-        btn.title = 'An app is shared here (' + (want.name || 'App') + ') — you hid it. Tap to bring it back.';
+        btn.title = uiText('appHidden', 'An app is shared here ({name}) — you hid it. Tap to bring it back.').replace('{name}', want.name || 'App');
       } else {
         btn.textContent = uiText('runApp', 'Run app');
-        btn.title = canIRunApp() ? 'Run an app inside this meeting — everyone here shares and interacts with it live'
-          : 'Only this room\u2019s admins — or people they allow — can run an app here';
+        btn.title = canIRunApp()
+          ? uiText('appTip', 'Run an app inside this meeting — everyone here shares and interacts with it live')
+          : uiText('appDenied', 'Only this room\u2019s admins — or people they allow — can run an app here').replace(/^🛡\s*/, '');
       }
       const hideB = document.getElementById('apphide');
       hideB.style.display = (appKey && !isMine) ? '' : 'none';
       const stopB = document.getElementById('appstop');
       stopB.style.display = (isMine || !hasAdminRoom() || amAdmin) ? '' : 'none';
-      stopB.textContent = isMine ? 'Stop app' : 'Stop for everyone';
-      stopB.title = isMine ? 'Stop sharing this app with the meeting'
-        : (hasAdminRoom() ? 'Admin: stop this app for the whole room'
-          : 'Stop this app for the whole room — everyone sees it was you, and the sharer can re-share');
+      stopB.textContent = isMine ? uiText('stopApp', 'Stop app') : uiText('stopAppAll', 'Stop for everyone');
+      stopB.title = isMine ? uiText('stopAppTip', 'Stop sharing this app with the meeting')
+        : (hasAdminRoom() ? uiText('stopAppTipAdmin', 'Admin: stop this app for the whole room')
+          : uiText('stopAppTipRoom', 'Stop this app for the whole room — everyone sees it was you, and the sharer can re-share'));
       // ONE RUNTIME: in an app-PINNED room the app cannot be unmounted, hidden
       // or swapped — the room's whole identity is this app (docs/one-runtime.md).
       if (ROOM.appPinned) { stopB.style.display = 'none'; hideB.style.display = 'none'; }
@@ -27990,7 +28824,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         appHiddenSid = null; reconcileApp(); return; // Show app (un-hide)
       }
       if (myStatus.app) { stopApp(); return; } // toggle my own share off
-      if (!canIRunApp()) { setStatus('🛡 Only this room\u2019s admins — or people they allow — can run an app here.'); return; }
+      if (!canIRunApp()) { setStatus(uiText('appDenied', '🛡 Only this room\u2019s admins — or people they allow — can run an app here.')); return; }
       openAppPicker();
     };
     document.getElementById('appstop').onclick = () => {
@@ -28003,7 +28837,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     document.getElementById('apphide').onclick = () => {
       if (!appKey || (myStatus.app && appKey === myStatus.app.s)) return;
       appHiddenSid = appKey;
-      setStatus('🧩 App hidden on your screen only — the meeting still shares it. \u201CShow app\u201D brings it back.');
+      setStatus(uiText('barHideStatus', '🧩 App hidden on your screen only — the meeting still shares it. \u201CShow app\u201D brings it back.'));
       reconcileApp();
     };
     document.getElementById('applead').onclick = () => {
@@ -28067,8 +28901,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (buf.length > ADD_URL_MAX_BYTES) return tooBig();
         }
       }
-      catch (e) { return { error: 'Couldn’t load that link. Save the GIF to your device, then use “Choose a GIF file”.' }; }
-      if (!(buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46)) return { error: 'That link isn’t a GIF file.' };
+      catch (e) { return { error: uiText('appLoadFail', 'Couldn’t load that link. Save the GIF to your device, then use “Choose a GIF file”.') }; }
+      if (!(buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46)) return { error: uiText('appNotGif', 'That link isn’t a GIF file.') };
       let name = ''; try { name = decodeURIComponent((url.pathname.split('/').pop() || '').split('?')[0]); } catch (e) {}
       name = (name || 'app').replace(/[^\w.\-]+/g, '_'); if (!/\.gif$/i.test(name)) name += '.gif';
       return { bytes: buf, name };
@@ -28076,11 +28910,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     document.getElementById('app-file').onclick = () => document.getElementById('app-file-input').click();
     document.getElementById('app-file-input').onchange = async (e) => {
       const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
-      try { await importAndRunGif(new Uint8Array(await f.arrayBuffer()), f.name); } catch (err) { showAddErr('Could not read that file.'); }
+      try { await importAndRunGif(new Uint8Array(await f.arrayBuffer()), f.name); } catch (err) { showAddErr(uiText('appReadFail', 'Could not read that file.')); }
     };
     document.getElementById('app-url-go').onclick = async () => {
       const raw = (document.getElementById('app-url').value || '').trim();
-      if (!raw) { showAddErr('Paste a GIF link first.'); return; }
+      if (!raw) { showAddErr(uiText('appNeedLink', 'Paste a GIF link first.')); return; }
       const go = document.getElementById('app-url-go'); go.disabled = true; const was = go.textContent; go.textContent = '…'; showAddErr('');
       try { const r = await fetchGifFromUrl(raw); if (r.error) { showAddErr(r.error); return; } await importAndRunGif(r.bytes, r.name); }
       finally { go.disabled = false; go.textContent = was; }
@@ -28090,7 +28924,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const modal = document.getElementById('app-modal');
       const list = document.getElementById('app-list');
       showAddErr(''); const urlIn = document.getElementById('app-url'); if (urlIn) urlIn.value = '';
-      list.innerHTML = '<small style="color:#667">Loading your apps…</small>';
+      list.innerHTML = '<small style="color:#667">' + uiText('appLoading', 'Loading your apps…') + '</small>';
       modal.style.display = 'flex';
       let files = [];
       try { files = await GifOS.store.allFileMeta(); } catch (e) {} // names and flags — never the bytes of every app to fill a list
@@ -28606,6 +29440,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         return { ok: false };
       },
+      // A seeded face announces its own blur choice (0 none, 1 min, 2 max).
+      setPeerBlurForTest: (name, level) => {
+        for (const p of peers.values()) {
+          if (!p || p.name !== name) continue;
+          const st = statusOf.get(p.id) || {};
+          st.blur = level | 0;
+          statusOf.set(p.id, st);
+          try { updateTile(p.id); } catch (e) {}
+          return { ok: true, blur: st.blur };
+        }
+        return { ok: false };
+      },
       setTabHiddenForTest: (hidden) => {
         try { Object.defineProperty(document, 'hidden', { configurable: true, get: () => !!hidden }); } catch (e) {}
         document.dispatchEvent(new Event('visibilitychange'));
@@ -28661,6 +29507,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { updateStatus(); } catch (e) {}
         return { n: headerCount(), peers: peers.size };
       },
+      // What this page can hear and send: each peer's companion audio (the
+      // element that actually plays their voice) and my own mic. Read-only.
+      earsForTest: () => {
+        const live = (s) => !!(s && s.getAudioTracks && s.getAudioTracks().some((t) => t.readyState === 'live'));
+        const out = [];
+        for (const p of peers.values()) {
+          if (!p || p.qa) continue;
+          const a = p.video && p.video._aud;
+          out.push({ name: p.name || '', held: !!p.held, connected: !!p.connected, wired: !!(a && live(a.srcObject)), audible: !!(a && live(a.srcObject) && !a.muted && a.volume > 0 && !a.paused) });
+        }
+        const mic = localStream && localStream.getAudioTracks()[0];
+        return { peers: out, micSends: !!(mic && mic.readyState === 'live' && mic.enabled && !myStatus.muted), waiting: iAmWaiting() };
+      },
+      setDockCalmMsForTest: (ms) => { dockCalmMs = Math.max(0, ms | 0); return { ok: true }; },
+      statusNoticeForTest: (m) => { setStatus(String(m)); return { ok: true }; },
       bot: () => !!myStatus.bot,
       ccOn: () => !!myStatus.cc,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
@@ -29464,6 +30325,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         paintOnAir();
         return { ok: !!myStatus.stg };
       },
+      setClearForTest: (on) => { clearForTest = !!on; refreshOutbound(); return blurLevelFor('me'); },
       setCamLiveForTest: (on) => {
         myStatus.camOff = !on;
         bcCamLiveForTest = !!on;
@@ -29661,6 +30523,57 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         myStatus.muted = false;
         syncSpeech();
         return { cc: !!myStatus.cc, show: !!ccShow, speech: speechRunning() };
+      },
+      whoFileForTest: () => whoFileText(),
+      appStopForTest: (mine) => {
+        if (mine) { appKey = 'qa-stop'; myStatus.app = { s: 'qa-stop', name: 'Notes' }; }
+        else { appKey = null; myStatus.app = null; }
+        showAppPane('Notes', '');
+        updateAppButtons(myStatus.app);
+        const b = document.getElementById('appstop');
+        return { text: b.textContent, title: b.title, font: parseFloat(getComputedStyle(b).fontSize), display: getComputedStyle(b).display };
+      },
+      appBarForTest: (talkOn) => {
+        document.body.classList.add('has-app');
+        if (talkOn) {
+          document.body.classList.add('app-room');
+          appMode = 'host';
+          myStatus.app = Object.assign(myStatus.app || { s: 'qa-talk' }, { audio: true });
+        } else if (myStatus.app) {
+          myStatus.app.audio = false;
+        }
+        paintTalkBtn();
+        ['appsave', 'appsteal', 'apphide', 'appaudio'].forEach((id) => { document.getElementById(id).style.display = ''; });
+        const read = (id) => {
+          const b = document.getElementById(id);
+          return { text: b.textContent, title: b.title, font: parseFloat(getComputedStyle(b).fontSize) };
+        };
+        return { save: read('appsave'), steal: read('appsteal'), hide: read('apphide'), talk: read('appaudio') };
+      },
+      stealChoicesForTest: () => {
+        appClientCtl = appClientCtl || { stealToDesktop: () => new Promise(() => {}) };
+        const b = document.getElementById('appsteal');
+        b.style.display = '';
+        if (b.dataset.armed) delete b.dataset.armed;
+        document.querySelectorAll('#appbar [data-steal]').forEach((el) => el.remove());
+        b.click();
+        return [...document.querySelectorAll('#appbar [data-steal]')].map((el) => ({ text: el.textContent, title: el.title, data: el.dataset.steal }));
+      },
+      chatModForTest: (off) => {
+        amAdmin = true;
+        if (off) modTable['*'] = { chat: { on: true, by: 'Pastor Kim' } };
+        else delete modTable['*'];
+        applyAdminUi();
+        try { renderChat(); } catch (e) {}
+        document.getElementById('chatpanel').classList.add('open');
+        const b = document.getElementById('chatmod');
+        const row = document.querySelector('#chatlog .cmsg');
+        return {
+          text: b.textContent, title: b.title,
+          font: parseFloat(getComputedStyle(b).fontSize),
+          display: getComputedStyle(b).display,
+          line: row ? row.textContent : '',
+        };
       },
       setOwnMicForTest: (live) => {
         myStatus.muted = !live;

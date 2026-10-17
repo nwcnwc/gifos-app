@@ -58,11 +58,13 @@ function readTile(t) {
 }
 
 // What each guest's tile must and must not offer.
-function expect(name, locked, hostBlur) {
+function expect(name, locked, hostBlur, phone) {
   const want = [], not = [];
   const muted = STATUS[name].muted;
   (muted ? not : want).push('Mute for all');
-  if (!locked) not.push('Blur for all', 'Unblur for all');
+  // A phone offers no blur in an open room (faces stay soft until a password).
+  // A wide window offers it on every clear face (qa-meet-desktop), open or locked.
+  if (!locked && phone) not.push('Blur for all', 'Unblur for all');
   else if (hostBlur[name]) { want.push('Unblur for all'); not.push('Blur for all'); }
   else if (STATUS[name].blur) not.push('Blur for all', 'Unblur for all');
   else { want.push('Blur for all'); not.push('Unblur for all'); }
@@ -129,7 +131,7 @@ async function run(browser, dev, bad) {
       }
       // The wording is checked above; read the states past it.
       const offers = r.shown.map((l) => l.replace(/ for everyone$/i, ' for all'));
-      const e = expect(name, locked, hostBlur);
+      const e = expect(name, locked, hostBlur, phone);
       for (const w of e.want) if (!offers.includes(w)) bad.push(tag + ': no "' + w + '" (offers ' + (r.shown.join(', ') || 'nothing') + ')');
       for (const w of e.not) if (offers.includes(w)) bad.push(tag + ': offers "' + w + '" (' + r.shown.join(', ') + ')');
     }

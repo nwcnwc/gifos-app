@@ -53,9 +53,11 @@ function wording(tag, info, bad) {
   for (const l of info.texts) {
     if (/mute|blur/i.test(l) && !/^(Un)?(mute|blur) for all$/i.test(l)) bad.push(tag + ': a control reads "' + l + '"');
   }
+  // A wide window shows Blur for all on the corner square and in the menu (qa-meet-desktop:
+  // the state reads the same from either); a phone face offers each control once.
   const seen = new Set();
   for (const l of info.shown) {
-    if (seen.has(l)) bad.push(tag + ': "' + l + '" shows twice');
+    if (seen.has(l) && !(/^desktop/.test(tag) && /blur for all$/i.test(l))) bad.push(tag + ': "' + l + '" shows twice');
     seen.add(l);
   }
 }

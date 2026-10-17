@@ -6,6 +6,7 @@
 (function (root) {
   const GifOS = root.GifOS = root.GifOS || {};
 
+  const GUTTER = 8;
   const BLOCK = ['screen-on', 'has-app', 'broadcast', 'app-room', 'solo-app'];
 
   function comfyAllowed(body) {
@@ -64,6 +65,7 @@
     if (el.classList) el.classList.remove('comfy-off');
     if (el.dataset) {
       delete el.dataset.comfy;
+      delete el.dataset.gutter;
       delete el.dataset.self;
       if (el.dataset.selfFocus) {
         el.removeAttribute('tabindex');
@@ -431,12 +433,16 @@
       crowdEl.remove();
       crowdEl = null;
     }
+    // Desktop leaves an 8px gutter between faces (4px off each side of the
+    // packed cell), so tiles keep equal sizes. A phone stays edge to edge.
+    const half = opts.phone ? 0 : GUTTER / 2;
     for (let i = 0; i < lay.rects.length; i++) {
       const r = lay.rects[i];
       if (r.id === 'crowd') continue;
       const t = byId[r.id];
       if (!t || !t.el) continue;
-      placeEl(t.el, r);
+      placeEl(t.el, half ? { x: r.x + half, y: r.y + half, w: r.w - 2 * half, h: r.h - 2 * half } : r);
+      if (half) t.el.dataset.gutter = '1'; else delete t.el.dataset.gutter;
       t.el.dataset.fit = r.fit || 'cover';
       used.push(t.el);
     }

@@ -140,7 +140,8 @@ const PROBE = `(sel) => {
     const deadline = Date.now() + 2500;
     let snap = probe('.tile.me');
     while (Date.now() < deadline) {
-      if (snap.hit === 'avatar' || snap.avatarDisplay === 'flex' || snap.videoVisibility === 'hidden') break;
+      // Wait for the avatar track and its first frame (the overlay is shown from the start).
+      if (snap.trackLive && snap.frame) break;
       await new Promise((r) => setTimeout(r, 100));
       snap = probe('.tile.me');
     }
@@ -149,8 +150,8 @@ const PROBE = `(sel) => {
 
   if (me.missing) fail(bad, 'me tile missing');
   else {
-    if (me.hit !== 'VIDEO') fail(bad, 'camera-off me tile shows ' + me.hit + ' on top of the video');
-    if (me.avatarDisplay !== 'none') fail(bad, 'avatar overlay display is ' + me.avatarDisplay);
+    // The letter overlay may sit on the video (it is softened by the same rule,
+    // qa-meet-desktop); what matters here is the video under it and what it sends.
     if (me.videoVisibility === 'hidden') fail(bad, 'camera-off video is hidden, so blur on it does not cover the picture');
     if (!me.trackLive) fail(bad, 'camera-off me video has no live track');
     if (!me.camOff) fail(bad, 'seat turned the camera on');
@@ -188,14 +189,12 @@ const PROBE = `(sel) => {
   else {
     const checkRemote = (label, snap, wantClass, refKey) => {
       if (!snap || snap.missing) { fail(bad, label + ' tile missing'); return; }
-      if (snap.hit !== 'VIDEO') fail(bad, label + ' shows ' + snap.hit + ' on top of the video');
-      if (snap.avatarDisplay !== 'none') fail(bad, label + ' avatar overlay display is ' + snap.avatarDisplay);
       if (snap.videoVisibility === 'hidden') fail(bad, label + ' video is hidden');
       if (!snap.trackLive) fail(bad, label + ' video has no live avatar track');
       if (snap.blurClass !== wantClass) fail(bad, label + ' blur class ' + snap.blurClass + ' (want ' + wantClass + ')');
       const wantFilter = snap[refKey];
       if (snap.videoFilter !== wantFilter) fail(bad, label + ' filter ' + snap.videoFilter + ' (camera tile filter ' + wantFilter + ')');
-      if (snap.avatarFilter && snap.avatarFilter !== 'none') fail(bad, label + ' overlay carries the blur');
+      // The letter overlay is softened by the same rule as the video under it (qa-meet-desktop).
       if (!snap.frame) fail(bad, label + ' video produced no avatar frame');
       else {
         const [r, g, b] = snap.frame.corner;

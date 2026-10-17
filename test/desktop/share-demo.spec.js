@@ -47,7 +47,7 @@ test('a consultant can put a slide on the stage and stop it', async ({ page, bro
   });
   expect(dock.inMore).toBe(false);
   expect(dock.collapsed).toBe(true);
-  expect(dock.word).toBe('Share');
+  expect(dock.word).toBe('Share screen');
   expect(dock.inBar).toBe(true);
   expect(dock.onScreen).toBe(true);
   await armSlide(page);
@@ -106,7 +106,7 @@ test('a consultant can put a slide on the stage and stop it', async ({ page, bro
 
   await page.click('#stagefeed .stagestop');
   await expect(page.locator('#stagefeed video')).toHaveCount(0);
-  await expect(page.locator('#sharebtn')).toHaveText('Share');
+  await expect(page.locator('#sharebtn')).toHaveText('Share screen');
 });
 
 test('the menu steps aside once the slide is up, and the thumbnail can stop it', async ({ page, browserName }) => {
