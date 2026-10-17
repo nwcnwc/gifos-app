@@ -1130,6 +1130,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .tile.slim > .blurbox { display: none !important; }
     .tile.slim:has(> .blurbox.on) .modbar [data-mod="blur"] { display: inline-block; }
     .tile.slim:not(.cam-off) .chips { left: 56px; right: 56px; }
+    /* "✋ hand raised" is 121px at a phone's chip size; a 105px tile cut it
+       to "✋ hand rais". On a slim tile it wraps, a size down. */
+    .tile.slim .chips span.warn { white-space: normal; text-align: center; font-size: 12px; line-height: 1.15;
+      min-width: 0; padding: 1px 4px; border-radius: 8px; }
     /* Upright tiles are tall enough to put "✋ hand raised" under the buttons, not between them. */
     @media (orientation: portrait) {
       .tile.slim:not(.cam-off) .chips { top: 58px; left: 6px; right: 6px; }
@@ -1158,7 +1162,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        92px down to a sliver of Mute for everyone. It opens as a small sheet
        under the room name instead, says whose it is, and the tile is ringed. */
     @media (orientation: landscape) {
-      .tile.slim.menu { outline: 3px solid #7ec8ff; outline-offset: -3px; }
+      /* Between Full screen and the Blur corner (56px each side) a 105px
+         tile had no room, so a raised hand never showed. Blur is in the
+         menu here, so the chips take the whole right of Full screen, above
+         the name (which starts 62px down). */
+      .tile.slim:not(.cam-off) .chips { right: 4px; flex-wrap: wrap; align-content: flex-start; }
+      .tile.slim .chips span.warn { font-size: 11px; padding: 1px 2px; }
       .tile.slim.menu .modbar { position: fixed; top: 60px; left: 50%; right: auto; bottom: auto; transform: translateX(-50%);
         width: min(300px, calc(100vw - 24px)); max-height: calc(100vh - 160px); overflow-y: auto; box-sizing: border-box;
         display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; z-index: 20;

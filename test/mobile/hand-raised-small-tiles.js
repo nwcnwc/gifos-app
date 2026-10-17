@@ -41,8 +41,14 @@ async function look(page, who) {
     const cb = box(chip);
     let onTop = false;
     if (cb && cb.w > 0) {
+      // Chips take no taps (pointer-events: none), which hides them from
+      // elementFromPoint; let the chip be hit while we look.
+      const row = chip.parentNode;
+      const was = [row.style.pointerEvents, chip.style.pointerEvents];
+      row.style.pointerEvents = 'auto'; chip.style.pointerEvents = 'auto';
       const el = document.elementFromPoint(cb.x + cb.w / 2, cb.y + cb.h / 2);
       onTop = !!el && (el === chip || chip.contains(el));
+      row.style.pointerEvents = was[0]; chip.style.pointerEvents = was[1];
     }
     return {
       tile: box(t), chip: cb, text: chip ? chip.textContent.trim() : '', onTop,
