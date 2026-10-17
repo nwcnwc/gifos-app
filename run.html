@@ -25139,5 +25139,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <a href="https://github.com/nwcnwc/gifos-app">source on GitHub</a> ·
   <a href="https://github.com/nwcnwc/gifos-app/issues/new">report a problem</a>. Contact: support@gifos.app.</p>
 </nav>
+<script>
+  // The agent links are clipped to 1px, so a Tab stop on one shows no
+  // focus. Keep them in the HTML and the landmark list, out of the Tab walk.
+  document.querySelectorAll('#agent-links a').forEach((a) => a.setAttribute('tabindex', '-1'));
+</script>
 </body>
 </html>
