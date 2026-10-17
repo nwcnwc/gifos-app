@@ -57,7 +57,6 @@
   // A link never switches anyone (see the channel loader). Each choice below is one constant.
   const PIN_CONFIRM = 'type';          // confirm by: 'type' (type EDGE or the version), 'checkbox', or 'hold' (press and hold)
   const PIN_OLDER_PICKER = 'list';     // older releases: 'list' (pick one) or 'type' (type the exact version)
-  const PIN_EXPIRE_DAYS = 0;           // pins never expire; the loader does not treat gifos_pin_until as an end
   const PIN_LINK_OPENS_CONFIRM = true; // ?edge opens the edge confirm (never switches by itself); false ignores it
   const PIN_HOLD_MS = 2000;            // 'hold' confirm: how long to hold
   const PIN_BANNER_SINCE = '0.9.23';   // older releases than this have no header indicator of their own
@@ -3858,7 +3857,6 @@
         ? 'v' + escapeHtml(v) + ' was made before the header shows a pin. To come back, choose “Use latest” in its Settings, or visit <b>gifos.app/?latest</b>.'
         : 'The header will say you are pinned, with <b>Back to current release</b> right there.',
     ];
-    if (PIN_EXPIRE_DAYS > 0) risks.push('After ' + PIN_EXPIRE_DAYS + ' days this computer goes back to the latest release on its own.');
     const step = PIN_CONFIRM === 'checkbox'
       ? '<label class="pin-ack-row"><input type="checkbox" class="pin-ack"> I understand the risks and I’m testing GifOS</label>'
       : PIN_CONFIRM === 'hold'
@@ -3923,13 +3921,22 @@
   // the menubar itself says "Pinned: edge" or "Pinned: v0.9.x" and offers
   // "Back to current release". It is never dismissible, and it does not add a
   // second row. Narrow headers show a shorter label; the button's name stays.
+  // A pin does not end, so this copy has no time input: while attached, it shows.
+  function pinHeadCopy(to) {
+    if (!to) return null;
+    return {
+      label: to === EDGE ? 'Pinned: edge' : ('Pinned: v' + to),
+      action: 'Back to current release',
+    };
+  }
   function paintPinHead() {
     const to = attachedTo();
     const old = document.getElementById('pin-bar');
     if (old) old.remove();
     document.body.style.removeProperty('--pinbar-h');
     let el = document.getElementById('pin-head');
-    if (!to) { if (el) el.remove(); return; }
+    const copy = pinHeadCopy(to);
+    if (!copy) { if (el) el.remove(); return; }
     const menu = document.querySelector('.menubar');
     if (!menu) return;
     if (!el) {
@@ -3938,18 +3945,18 @@
       const crumbs = document.getElementById('crumbs');
       menu.insertBefore(el, crumbs && crumbs.nextSibling ? crumbs.nextSibling : menu.firstChild);
     }
-    const label = to === EDGE ? 'Pinned: edge' : 'Pinned: v' + to;
     el.innerHTML =
-      '<span class="pin-head-t">' + escapeHtml(label) + '</span>' +
-      '<button type="button" id="pin-back" aria-label="Back to current release">' +
-        '<span class="pin-back-wide">Back to current release</span>' +
+      '<span class="pin-head-t">' + escapeHtml(copy.label) + '</span>' +
+      '<button type="button" id="pin-back" aria-label="' + escapeHtml(copy.action) + '">' +
+        '<span class="pin-back-wide">' + escapeHtml(copy.action) + '</span>' +
         '<span class="pin-back-narrow">Use latest</span></button>';
     el.querySelector('#pin-back').onclick = () => useRelease();
   }
 
-  // gifos_pin_ended — the loader ended a switch (its time ran out, or it was
-  // made before the confirm existed) and sent this computer back to latest.
-  // Say so once.
+  // gifos_pin_ended — a build that predates the confirm sent this computer
+  // back to latest (reset:). A pin does not end on its own, so nothing here
+  // clears one. An expired: note left by a build that used to time a pin out
+  // is still explained once, then dropped.
   function notePinEnded() {
     let v = '';
     try { v = localStorage.getItem('gifos_pin_ended') || ''; localStorage.removeItem('gifos_pin_ended'); } catch (e) {}
@@ -4066,8 +4073,7 @@
     const testing =
       '<details class="vtesting" id="set-testing"' + (testingOpen ? ' open' : '') + '>' +
         '<summary class="vhead"><span class="vcaret" aria-hidden="true">▸</span>Advanced / testing</summary>' +
-        '<p class="add-help">For people testing GifOS before it is released. Most people never need this. Every switch asks you to confirm' +
-          (PIN_EXPIRE_DAYS > 0 ? ' and ends after ' + PIN_EXPIRE_DAYS + ' days' : '') + '.</p>' +
+        '<p class="add-help">For people testing GifOS before it is released. Most people never need this. Every switch asks you to confirm. A pin stays until you come back.</p>' +
         '<div class="vlist">' + edgeRow + olderHtml + '</div>' +
       '</details>';
 
