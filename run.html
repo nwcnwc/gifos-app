@@ -2091,6 +2091,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       top: calc(110px + var(--gtop));
       bottom: calc(var(--dockh, 108px) + var(--stateh, 0px) + 8px); }
   }
+  /* Fit steers the gallery, and a share puts the faces in a strip, so Fit
+     did nothing there and its row over the slide stood empty (an SE in
+     Safari watched the hymn at 116x66). It hides during a share, and
+     upright the share starts under the build line, unless Unmute, Camera
+     or the countdown hold that row. */
+  @media (max-width: 700px), (max-height: 500px) {
+    body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .fitbtn { display: none; }
+  }
+  @media (max-width: 700px) and (orientation: portrait) {
+    body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):not(:has(#unmute:not([hidden]), #showcam:not([hidden]), #admcount:not([style*="none"]))) #feed {
+      top: calc(76px + var(--gtop)); }
+  }
   /* Sideways, the header and Fit share one row, and a strip under the
      share left the slide a sliver: the faces stand in a column beside it. */
   @media (max-height: 500px) and (orientation: landscape) {

@@ -133,6 +133,10 @@ async function run(browser, dev, tag, vp, bad) {
       return document.body.classList.contains('screen-on') && v && v.videoWidth > 0;
     }, null, { timeout: 15000 }).then(() => true, () => false);
     if (!up) { bad.push(tag + ', ' + who + ': the shared screen never reached the stage'); continue; }
+    // A viewer only gets a share once seated; "Reaching the meeting…" over
+    // the stage is the room not yet reached (slow on a far machine), not this.
+    const seated = await page.waitForFunction(() => !document.getElementById('joinveil'), null, { timeout: 15000 }).then(() => true, () => false);
+    if (!seated) { bad.push(tag + ', ' + who + ': never reached the meeting'); continue; }
   // Buttons up (any key brings them back), then tucked away as on a quiet call.
   for (const phase of ['buttons up', 'buttons away']) {
     if (phase === 'buttons away') await page.evaluate(() => window.__gifosChrome.idle());
