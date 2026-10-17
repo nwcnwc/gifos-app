@@ -3992,3 +3992,67 @@ test('with the chat open, the room bar keeps each pill and its title on one line
     }
   }
 });
+
+test('with the chat open on a small window, the dock fits in the call and the rest is under More', async ({ page }) => {
+  // Seen across two machines at 900: the host's dock (872px) was wider than
+  // the call beside the open chat (560px), so Chat, Share, More and End sat
+  // over the chat panel; a viewer's dock ran across the edge at 800.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const [w, h] of [[900, 720], [800, 720], [1024, 768]]) {
+    for (const who of ['host', 'view', 'group']) {
+      await page.setViewportSize({ width: w, height: h });
+      const url = who === 'group'
+        ? '/run.html?desk=dockfit' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=dockfit' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.mouse.move(w / 3, h / 2);
+      const shown = () => page.evaluate(() => [...document.querySelector('.bar').children]
+        .filter((e) => e.tagName === 'BUTTON' && e.getClientRects().length).map((e) => e.id));
+      const full = await shown();
+      await page.locator('#chatbtn').click();
+      await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+      if (w === 900 && who === 'host') await page.screenshot({ path: 'artifacts/dock-fit-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      const got = await page.evaluate(() => {
+        const edge = document.getElementById('chatpanel').getBoundingClientRect().left;
+        const d = document.querySelector('.bar').getBoundingClientRect();
+        return { edge: Math.round(edge), dockLeft: Math.round(d.left), dockRight: Math.round(d.right) };
+      });
+      const tag = who + ' at ' + w + ': ' + JSON.stringify(got);
+      expect(got.dockLeft, tag + ' dock inside the window').toBeGreaterThanOrEqual(8);
+      expect(got.dockRight, tag + ' dock clear of the chat').toBeLessThanOrEqual(got.edge - 8);
+      expect(Math.abs((got.dockLeft + got.dockRight) / 2 - got.edge / 2), tag + ' dock centred in the call').toBeLessThanOrEqual(2);
+      // Video, Unmute, the stage and hand buttons, More and End/Leave stay.
+      const slim = await shown();
+      for (const id of ['cam', 'mic', 'stagebtn', 'hand', 'bartoggle', 'leavebtn']) {
+        if (full.includes(id)) expect(slim, tag + ' keeps ' + id).toContain(id);
+      }
+      // Whatever left the dock is in More, with its name, inside the call.
+      const gone = full.filter((id) => !slim.includes(id));
+      await page.locator('#bartoggle').click();
+      const more = await page.evaluate((gone) => {
+        const sheet = document.getElementById('barmore').getBoundingClientRect();
+        const items = gone.map((id) => {
+          const p = document.querySelector('#barmore [data-dock="' + id + '"]');
+          return p && p.getClientRects().length ? p.textContent.trim() : null;
+        });
+        return { left: Math.round(sheet.left), right: Math.round(sheet.right), items };
+      }, gone);
+      expect(more.items.every(Boolean), tag + ' moved ' + JSON.stringify(gone) + ' into More ' + JSON.stringify(more)).toBe(true);
+      expect(more.left, tag + ' More inside the window ' + JSON.stringify(more)).toBeGreaterThanOrEqual(0);
+      expect(more.right, tag + ' More clear of the chat ' + JSON.stringify(more)).toBeLessThanOrEqual(got.edge);
+      await page.locator('#bartoggle').click();
+      // Closing the chat brings the whole dock back.
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#chatpanel')).not.toHaveClass(/open/);
+      expect(await shown(), who + ' at ' + w + ' whole dock back').toEqual(full);
+    }
+  }
+});
