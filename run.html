@@ -2651,10 +2651,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      above the dock so a name is not covered. The long :not chain is what
      the older gallery rule uses; matching it is what lets these win.
      Padding stays zero. The packer insets the bottom by the dock. */
-  body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
+  body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
     position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; overflow: hidden; padding: 0 !important; margin: 0;
     display: block; background: #0d0f14; z-index: 1; }
-  body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll {
+  body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll {
     overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
     /* Ends at the dock band (meet-views sets it): no tile under the buttons. */
     bottom: var(--comfy-clip, 0px); }
@@ -2662,12 +2662,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     position: static; display: block; padding: 0; margin: 0; gap: 0; overflow: visible;
     height: auto; background: transparent; border: 0; }
   body.comfy #stadium.on { display: block; }
-  body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile,
+  body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile,
   body.comfy .stadface, body.comfy .rowtile {
     border-radius: 0; border: 0; aspect-ratio: auto; min-height: 0; box-shadow: none; }
-  body.comfy.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
+  body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
     position: absolute; right: auto; bottom: auto; border: 0; border-radius: 0; box-shadow: none; }
-  body.comfy.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-self="float"] {
+  body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-self="float"] {
     z-index: 7; border-radius: 16px; border: 2px solid #fff; overflow: hidden; cursor: grab; touch-action: none;
     box-shadow: 0 12px 28px rgba(0,0,0,.45); }
   body.comfy .comfy-off { display: none !important; }
@@ -2676,8 +2676,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      `.tile.speaking`, and an inset shadow would sit under the video that
      fills the tile. Outline paints above the picture. A negative offset
      keeps the frame inside this tile, where the neighbour cannot cover it. */
-  body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.speaking,
-  body.comfy.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me.speaking,
+  body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.speaking,
+  body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me.speaking,
   body.comfy .stadface.speaking {
     outline: 3px solid #7bffcf;
     outline-offset: -3px;
@@ -2720,7 +2720,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* Scroll is a manual gallery choice. Fit stays one screen (overflow hidden
      above). Scroll grows downward; it is not a pager and it is not applied
      just because faces got small. */
-  body.comfy.gallery-scroll:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
+  body.comfy.gallery-scroll:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
     overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   /* A fade just above the dock when Scroll has more people below. */
   body.comfy.gallery-scroll #feed.can-scroll::after {
@@ -2730,7 +2730,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.comfy.gallery-scroll #feed.can-scroll::after { bottom: 128px; }
   }
   /* Desktop gallery: a gutter between faces (meet-views.js) and soft corners. */
-  body.comfy.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-gutter="1"],
+  body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-gutter="1"],
   body.comfy .stadface[data-gutter="1"] { border-radius: 10px; overflow: hidden; }
   /* Gallery keeps the stage strip playing (PiP can aim it) but off the mosaic.
      A stage mode adds .show-stage and places that strip itself. */
@@ -3365,6 +3365,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lobby.service-ready #lob-desk-more { top: 0; right: 8px; }
   }
 </style>
+<link rel="stylesheet" href="css/meet-23b.css">
 <script src="js/gifos-themes.js"></script>
 </head>
 <body>
@@ -4182,6 +4183,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/meet-pack.js"></script>
   <script src="js/meet-layout.js"></script>
   <script src="js/meet-leave.js"></script>
+  <script src="js/meet-zones.js"></script>
   <script src="js/meet-views.js"></script>
   <script src="js/meet-turn.js"></script>
   <script src="js/mesh-pipe.js"></script>
@@ -9083,6 +9085,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             hand: !!myStatus.hand, handOrd: myStatus.hand || 0,
             // Your tile stays off the stage unless you turned on "Show me on stage".
             stage: !myStatus.bot && selfPin,
+            shareFace: !myStatus.bot && !!myStatus.scr,
             stageOrd: Math.max(0, stg.indexOf(myId)),
             speaker: !myStatus.bot && !!(speakingOf && speakingOf.get && speakingOf.get('me')), pz: 'peer:me' });
         }
@@ -9094,8 +9097,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           tiles.push({ id: pid, el: p.tile, tier: bot ? 'bot' : 'row', bot: bot,
             hand: !!st.hand, handOrd: st.hand || 0,
             stage: !bot && si >= 0, stageOrd: Math.max(0, si),
+            // A sharer's screen is the Stage (the sgs strip below); their face stays in the Row.
+            shareFace: !bot && (() => { try { return !!sharingScreen(pid); } catch (e) { return false; } })(),
             speaker: !bot && !!(speakingOf && speakingOf.get && speakingOf.get(pid)), pz: 'peer:' + pid });
         }
+        for (const t of tiles) if (t.shareFace) t.stage = false;
+        // Pin (the tile window) puts that person on my Stage only.
+        for (const t of tiles) if (focusId && t.id === focusId) t.stage = true;
+        // The Stage strip (a shared screen, or the stage composite) at its true aspect.
+        const sgs = document.querySelector('#stagefeed [data-row="sgs"]');
+        const sgsV = sgs && sgs.querySelector('video');
+        const sgsOn = !!(sgsV && sgsV.srcObject);
+        if (sgsOn) tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, pz: 'stage:sgs' });
+        document.body.classList.toggle('show-stage', sgsOn);
         const meta = comfyStadMeta();
         const roster = comfyStadRoster();
         // Faces are the people not already on screen. The packer's count
@@ -9178,6 +9192,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           onSettle: () => { try { layout(); } catch (e) {} },
         });
         if (meta.srcEl) meta.srcEl.classList.toggle('stad-src', faces.length > 0);
+        try { applyViewerCrops(); } catch (e) {}
       } finally { comfyBusy = false; }
     }
     try {
@@ -9207,6 +9222,287 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     });
     paintFit();
     window.__meetRelayout = () => { try { layout(); } catch (e) {} };
+    // ---- 0.9.23b: calm by default, tap a tile for its controls, viewer crop ----
+    // Calm: tiles show only the name and the green speaking frame. Any touch,
+    // scroll, mouse move or key wakes the info (body.meet-awake) for 3 s.
+    const AWAKE_MS = 3000;
+    let awakeT = 0;
+    function wakeMeet() {
+      document.body.classList.add('meet-awake');
+      if (awakeT) clearTimeout(awakeT);
+      awakeT = setTimeout(() => {
+        awakeT = 0;
+        if (tileWin.el) return; // an open control window keeps the info up
+        document.body.classList.remove('meet-awake');
+      }, AWAKE_MS);
+    }
+    for (const ev of ['pointermove', 'pointerdown', 'touchstart', 'wheel', 'keydown']) {
+      window.addEventListener(ev, wakeMeet, { capture: true, passive: true });
+    }
+    try { const fe = document.getElementById('feed'); if (fe) fe.addEventListener('scroll', wakeMeet, { passive: true }); } catch (e) {}
+
+    // Viewer crop: local only, applied to video already received (no bandwidth).
+    const VCROP_KEY = 'meet.vcrop.v1';
+    let vcrops = {};
+    try { const v = JSON.parse(localStorage.getItem(VCROP_KEY) || '{}'); if (v && typeof v === 'object') vcrops = v; } catch (e) {}
+    function saveVcrops() { try { localStorage.setItem(VCROP_KEY, JSON.stringify(vcrops)); } catch (e) {} }
+    function viewerCropOf(key) { return (key && vcrops[key]) || null; }
+    function applyViewerCrop(tile, sideIn) {
+      const MZ = GifOS.meetZones;
+      if (!tile || !MZ || tile.classList.contains('me')) return;
+      const v = tile.querySelector(':scope > video');
+      if (!v) return;
+      const c = viewerCropOf(tile.dataset.pzkey);
+      const side = sideIn || parseFloat(tile.style.width) || tile.clientWidth;
+      const box = c && !MZ.isDefault(c) && tile.dataset.tier === 'row' ? MZ.cropBox(v.videoWidth, v.videoHeight, c, side) : null;
+      if (!v._vcropRz) { v._vcropRz = true; v.addEventListener('resize', () => applyViewerCrop(tile)); }
+      if (!box) {
+        if (tile.dataset.vcrop) {
+          delete tile.dataset.vcrop;
+          v.style.position = v.style.left = v.style.top = v.style.width = v.style.height = v.style.maxWidth = v.style.maxHeight = '';
+        }
+        return;
+      }
+      tile.dataset.vcrop = '1';
+      v.style.position = 'absolute'; v.style.maxWidth = 'none'; v.style.maxHeight = 'none';
+      v.style.left = box.x + 'px'; v.style.top = box.y + 'px'; v.style.width = box.w + 'px'; v.style.height = box.h + 'px';
+    }
+    function applyViewerCrops() {
+      document.querySelectorAll('#feed .tile[data-comfy="1"]').forEach((t) => { try { applyViewerCrop(t); } catch (e) {} });
+    }
+
+    // Tap a tile: it grows in place, then its control window opens. It stays
+    // big until the window closes. Per-person buttons live here, not on tiles.
+    const tileWin = { el: null, modbar: null, home: null, winT: 0 };
+    function twIdOf(el) {
+      if (el.classList.contains('tile')) return el.dataset.peer || '';
+      if (el.classList.contains('stadface')) return String(el.dataset.pzkey || '').replace(/^stad:/, '');
+      return '';
+    }
+    function twPeer(id) { return id && peers.get(id); }
+    function twName(el, id) {
+      if (el.classList.contains('rowtile')) { const lb = el.querySelector('.rlabel'); return (lb && lb.textContent) || uiText('stageLabel', 'On stage'); }
+      if (el.classList.contains('me')) { try { return myName() + ' ' + uiText('youParen', '(you)'); } catch (e) { return 'You'; } }
+      const nm = el.querySelector('.name');
+      return (nm && nm.textContent) || (id && displayName(id)) || '';
+    }
+    function twButton(label, on, fn, extra) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'tw-btn' + (on ? ' on' : '') + (extra ? ' ' + extra : '');
+      b.textContent = label;
+      b.addEventListener('click', (e) => { e.stopPropagation(); fn(b); });
+      return b;
+    }
+    function twCropSection(win, el, isMe) {
+      const MZ = GifOS.meetZones;
+      const tv = el.querySelector(':scope > video');
+      let stream = null;
+      if (isMe) stream = localStream && localStream.getVideoTracks()[0] ? new MediaStream([localStream.getVideoTracks()[0]]) : null;
+      else stream = tv && tv.srcObject;
+      if (!MZ || !stream || el.classList.contains('cam-off')) return;
+      const sec = document.createElement('div'); sec.className = 'tw-sec';
+      sec.innerHTML = '<b></b><p class="tw-help"></p><div class="tw-pad"><video muted playsinline autoplay></video><div class="tw-win"></div></div>'
+        + '<div class="tw-zoom"><span aria-hidden="true">−</span><input type="range" min="30" max="100" step="1"><span aria-hidden="true">+</span></div><div class="tw-row" style="margin-top:8px"></div>';
+      sec.querySelector('b').textContent = isMe ? 'Crop what everyone sees' : 'Pan, zoom and crop';
+      sec.querySelector('.tw-help').textContent = isMe
+        ? 'Drag the square. Everyone gets exactly this part of your camera.'
+        : 'Drag the square. Only your screen changes; it costs no bandwidth.';
+      const pad = sec.querySelector('.tw-pad'), pv = pad.querySelector('video'), win2 = pad.querySelector('.tw-win');
+      const zoom = sec.querySelector('input');
+      zoom.setAttribute('aria-label', 'Zoom');
+      pv.muted = true; pv.srcObject = stream; const pr = pv.play(); if (pr && pr.catch) pr.catch(() => {});
+      let crop = Object.assign({ x: 0.5, y: 0.5, s: 1 }, isMe ? (window.__senderCrop.get() || {}) : (viewerCropOf(el.dataset.pzkey) || {}));
+      let pushT = 0;
+      const push = () => {
+        if (isMe) {
+          if (pushT) clearTimeout(pushT);
+          pushT = setTimeout(() => { pushT = 0; window.__senderCrop.set(crop); }, 120);
+        } else {
+          if (MZ.isDefault(crop)) delete vcrops[el.dataset.pzkey]; else vcrops[el.dataset.pzkey] = { x: crop.x, y: crop.y, s: crop.s };
+          saveVcrops();
+          applyViewerCrop(el);
+        }
+      };
+      const paint = () => {
+        // The preview never shows more than the tile does: same blur.
+        if (!isMe && tv) { try { const f = getComputedStyle(tv).filter; pv.style.filter = f && f !== 'none' ? f : ''; } catch (e) {} }
+        const vw = pv.videoWidth || (tv && tv.videoWidth) || 16, vh = pv.videoHeight || (tv && tv.videoHeight) || 9;
+        pad.style.aspectRatio = vw + ' / ' + vh;
+        crop = MZ.normCrop(crop, vw, vh);
+        const pw = pad.clientWidth || 300, ph = pw * vh / vw;
+        const side = crop.s * Math.min(vw, vh) * (pw / vw);
+        win2.style.width = side + 'px'; win2.style.height = side + 'px';
+        win2.style.left = (crop.x * pw - side / 2) + 'px'; win2.style.top = (crop.y * ph - side / 2) + 'px';
+        zoom.value = String(Math.round(crop.s * 100));
+      };
+      pv.addEventListener('loadedmetadata', paint); pv.addEventListener('resize', paint);
+      let drag = null;
+      pad.addEventListener('pointerdown', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        try { pad.setPointerCapture(e.pointerId); } catch (err) {}
+        drag = { x: e.clientX, y: e.clientY, cx: crop.x, cy: crop.y };
+      });
+      pad.addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        const r = pad.getBoundingClientRect();
+        crop.x = drag.cx + (e.clientX - drag.x) / Math.max(1, r.width);
+        crop.y = drag.cy + (e.clientY - drag.y) / Math.max(1, r.height);
+        paint(); push();
+      });
+      const end = () => { drag = null; };
+      pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
+      zoom.addEventListener('input', () => { crop.s = (+zoom.value || 100) / 100; paint(); push(); });
+      sec.querySelector('.tw-row').appendChild(twButton('Reset', false, () => { crop = { x: 0.5, y: 0.5, s: 1 }; paint(); push(); }));
+      win.appendChild(sec);
+      requestAnimationFrame(paint);
+    }
+    function twFill(win, el) {
+      win.textContent = '';
+      const id = twIdOf(el);
+      const isMe = el.classList.contains('me');
+      const isStage = el.classList.contains('rowtile');
+      const head = document.createElement('div'); head.className = 'tw-head';
+      const nm = document.createElement('div'); nm.className = 'tw-name'; nm.id = 'tilewin-title'; nm.textContent = twName(el, id);
+      const x = document.createElement('button'); x.type = 'button'; x.className = 'tw-close'; x.textContent = '✕';
+      x.setAttribute('aria-label', 'Close'); x.addEventListener('click', (e) => { e.stopPropagation(); closeTileWin(); });
+      head.appendChild(nm); head.appendChild(x); win.appendChild(head);
+      // Info: the badges the tile no longer wears.
+      const info = document.createElement('div'); info.className = 'tw-info';
+      el.querySelectorAll(':scope > .chips span, :scope > .botbadge').forEach((c) => {
+        const t = (c.getAttribute('aria-label') || c.title || c.textContent || '').trim();
+        if (t) { const sp = document.createElement('span'); sp.textContent = t; info.appendChild(sp); }
+      });
+      if (el.classList.contains('stadface')) { const sp = document.createElement('span'); sp.textContent = 'In the stadium'; info.appendChild(sp); }
+      if (info.childNodes.length) win.appendChild(info);
+      if (!isStage && el.dataset.tier === 'row') twCropSection(win, el, isMe);
+      const sec = document.createElement('div'); sec.className = 'tw-sec';
+      const lab = document.createElement('b'); lab.textContent = isMe ? 'You' : isStage ? 'Stage' : 'Person';
+      sec.appendChild(lab);
+      const row = document.createElement('div'); row.className = 'tw-row';
+      if (isMe) {
+        const mic = document.getElementById('mic'), cam = document.getElementById('cam');
+        if (mic) row.appendChild(twButton(myStatus.muted ? 'Unmute' : 'Mute', !myStatus.muted, () => { mic.click(); closeTileWin(); }));
+        if (cam) row.appendChild(twButton(myStatus.camOff ? 'Camera on' : 'Camera off', !myStatus.camOff, () => { cam.click(); closeTileWin(); }));
+      } else if (isStage) {
+        if (myStatus.scr) row.appendChild(twButton(uiText('stopShare', 'Stop sharing'), false, () => { try { stopScreenShare(); } catch (e) {} closeTileWin(); }, 'danger'));
+      } else if (id) {
+        row.appendChild(twButton(focusId === id ? 'Unpin' : 'Pin', focusId === id, () => {
+          focusId = focusId === id ? null : id;
+          closeTileWin();
+          try { layout(); } catch (e) {}
+        }));
+      }
+      if (row.childNodes.length) sec.appendChild(row);
+      // The tile's own per-person controls (role-aware, painted by updateTile).
+      const p = twPeer(id);
+      if (!isMe && p && p.modbar) {
+        tileWin.modbar = p.modbar; tileWin.home = p.tile;
+        try { updateTile(id); } catch (e) {}
+        sec.appendChild(p.modbar);
+      }
+      if (sec.childNodes.length > 1) win.appendChild(sec);
+    }
+    function placeTileWin(win, big) {
+      const vw = window.innerWidth, vh = window.innerHeight;
+      if (phoneLayout()) { win.style.left = win.style.top = ''; return; }
+      const ww = win.offsetWidth || 340, wh = win.offsetHeight || 300;
+      let left = big.x + big.w + 14;
+      if (left + ww > vw - 12) left = big.x - ww - 14;
+      if (left < 12) left = Math.max(12, vw - ww - 12);
+      const top = Math.max(12, Math.min(vh - wh - 12, big.y));
+      win.style.left = left + 'px'; win.style.top = top + 'px';
+    }
+    function openTileWin(el) {
+      if (tileWin.el === el) return;
+      if (tileWin.el) closeTileWin();
+      const feed = document.getElementById('feed');
+      let veil = document.getElementById('tilewin-veil'), win = document.getElementById('tilewin');
+      if (!veil) {
+        veil = document.createElement('div'); veil.id = 'tilewin-veil'; veil.hidden = true;
+        veil.addEventListener('click', (e) => { e.stopPropagation(); closeTileWin(); });
+        document.body.appendChild(veil);
+      }
+      if (!win) {
+        win = document.createElement('div'); win.id = 'tilewin'; win.hidden = true;
+        win.setAttribute('role', 'dialog'); win.setAttribute('aria-modal', 'true'); win.setAttribute('aria-labelledby', 'tilewin-title');
+        win.addEventListener('click', (e) => e.stopPropagation());
+        document.body.appendChild(win);
+      }
+      tileWin.el = el;
+      const vw = window.innerWidth, vh = window.innerHeight;
+      const st = feed ? feed.scrollTop : 0;
+      const x = parseFloat(el.style.left) || 0, y = (parseFloat(el.style.top) || 0) - st;
+      const w = parseFloat(el.style.width) || el.offsetWidth, h = parseFloat(el.style.height) || el.offsetHeight;
+      let bw = w, bh = h;
+      if (!el.classList.contains('rowtile')) {
+        // Grow a square in place: about twice its size, kept on screen.
+        const phone = phoneLayout();
+        const cap = phone ? Math.min(vw - 24, vh * 0.38) : Math.min(vw * 0.42, vh * 0.62);
+        bw = bh = Math.max(w, Math.min(cap, Math.max(w * 2, 220)));
+      }
+      let bx = x + w / 2 - bw / 2, by = y + h / 2 - bh / 2;
+      const phone = phoneLayout();
+      const maxY = phone ? vh * 0.4 - bh / 2 : vh - bh - 12;
+      bx = Math.max(12, Math.min(vw - bw - 12, bx));
+      by = Math.max(12, Math.min(Math.max(12, maxY), by));
+      if (phone && !el.classList.contains('rowtile')) {
+        // Between the header and the control sheet.
+        bw = bh = Math.max(w, Math.min(vw - 48, vh * 0.42 - 76));
+        bx = (vw - bw) / 2; by = 64;
+      }
+      el.classList.add('tw-big');
+      el.style.left = bx + 'px'; el.style.top = (by + st) + 'px'; el.style.width = bw + 'px'; el.style.height = bh + 'px';
+      if (el.classList.contains('tile')) applyViewerCrop(el, bw);
+      veil.hidden = false;
+      document.body.classList.add('tw-open', 'meet-awake');
+      twFill(win, el);
+      if (tileWin.winT) clearTimeout(tileWin.winT);
+      tileWin.winT = setTimeout(() => {
+        tileWin.winT = 0;
+        if (tileWin.el !== el) return;
+        win.hidden = false;
+        placeTileWin(win, { x: bx, y: by, w: bw, h: bh });
+        const first = win.querySelector('.tw-close'); if (first) try { first.focus({ preventScroll: true }); } catch (e) {}
+      }, 240);
+    }
+    function closeTileWin() {
+      const el = tileWin.el;
+      if (!el) return;
+      tileWin.el = null;
+      if (tileWin.winT) { clearTimeout(tileWin.winT); tileWin.winT = 0; }
+      const win = document.getElementById('tilewin'), veil = document.getElementById('tilewin-veil');
+      if (tileWin.modbar && tileWin.home) { try { tileWin.home.appendChild(tileWin.modbar); } catch (e) {} }
+      tileWin.modbar = tileWin.home = null;
+      if (win) { win.querySelectorAll('video').forEach((v) => { try { v.srcObject = null; } catch (e) {} }); win.hidden = true; win.textContent = ''; }
+      if (veil) veil.hidden = true;
+      document.body.classList.remove('tw-open');
+      el.classList.remove('tw-big');
+      try { layout(); } catch (e) {}
+      setTimeout(() => { try { if (el.classList.contains('tile')) applyViewerCrop(el); } catch (e) {} }, 300);
+      wakeMeet();
+      try { el.focus({ preventScroll: true }); } catch (e) {}
+    }
+    window.__tileWin = { open: openTileWin, close: closeTileWin, isOpen: () => !!tileWin.el, applyViewerCrops: applyViewerCrops };
+    (function () {
+      const feed = document.getElementById('feed');
+      if (!feed) return;
+      feed.addEventListener('click', (e) => {
+        if (!document.body.classList.contains('comfy')) return;
+        const t = e.target;
+        if (!t || !t.closest || t.closest('button, a, input, select, textarea, label')) return;
+        const el = t.closest('.tile[data-comfy="1"], .stadface[data-comfy="1"], #stagefeed > .rowtile[data-comfy="1"]');
+        if (!el) return;
+        e.stopPropagation();
+        openTileWin(el);
+      }, true);
+      feed.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        const el = e.target && e.target.closest && e.target.closest('.tile[data-comfy="1"]');
+        if (!el || e.target !== el) return;
+        e.preventDefault(); openTileWin(el);
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && tileWin.el) { e.stopPropagation(); closeTileWin(); } }, true);
+    })();
     // The build label's width changes with the build, so Fit sits just left of it.
     function placeFit() {
       if (!fitbtn) return;
@@ -9705,12 +10001,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // ships. Scaling by the long side gives 180x320: same pixel budget the
         // rung always meant, ~3.2x less to blur, paint, encode and send.
         const long = Math.max(sw, sh), sc = Math.min(1, pipe.capW / Math.max(1, long));
-        const w = Math.max(2, Math.round(sw * sc)), h = Math.max(2, Math.round(sh * sc));
+        let w = Math.max(2, Math.round(sw * sc)), h = Math.max(2, Math.round(sh * sc));
+        // Sender crop: the canvas is the chosen square; the whole frame is
+        // drawn offset and scaled so that square lands on it.
+        let ox = 0, oy = 0, dw = w, dh = h;
+        const sCrop = senderCrop();
+        if (sCrop && GifOS.meetZones) {
+          const r = GifOS.meetZones.cropRect(sw, sh, sCrop);
+          const side = Math.max(2, Math.round(Math.min(r.side, pipe.capW)));
+          const k = side / Math.max(1, r.side);
+          w = h = side; ox = -r.sx * k; oy = -r.sy * k; dw = sw * k; dh = sh * k;
+        }
         if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
         let drew = false;
         try {
-          if (pipe.level > 0) blurDraw(ctx, src, 0, 0, w, h, Math.max(4, Math.round(pipe.px * w / Math.max(1, sw))), pipe.level);
-          else ctx.drawImage(src, 0, 0, w, h);
+          if (pipe.level > 0) blurDraw(ctx, src, ox, oy, dw, dh, Math.max(4, Math.round(pipe.px * dw / Math.max(1, sw))), pipe.level);
+          else ctx.drawImage(src, ox, oy, dw, dh);
           drew = true;
         } catch (e) {}
         if (drew) paintLyricOnAir(ctx, w, h);
@@ -9963,6 +10269,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // — my own setting, a group-blur targeted at me, or the room's guest blur
     // — is baked into the broadcast pixels at the source. "Blurred" is never
     // viewer-side cosmetics alone: what leaves this browser is already blurry.
+    // 0.9.23b sender crop: { x, y, s } in the camera frame (meet-zones.js),
+    // or null for the default centered square. Kept per device.
+    const SENDER_CROP_KEY = 'meet.crop.v1.self';
+    let senderCropVal = null;
+    try { const c = JSON.parse(localStorage.getItem(SENDER_CROP_KEY) || 'null'); if (c && typeof c === 'object') senderCropVal = c; } catch (e) {}
+    function senderCrop() {
+      const MZ = typeof GifOS !== 'undefined' && GifOS.meetZones;
+      if (!senderCropVal || !MZ || MZ.isDefault(senderCropVal)) return null;
+      return senderCropVal;
+    }
+    function setSenderCrop(c) {
+      const MZ = typeof GifOS !== 'undefined' && GifOS.meetZones;
+      senderCropVal = c && MZ && !MZ.isDefault(c) ? { x: +c.x, y: +c.y, s: +c.s } : null;
+      try { if (senderCropVal) localStorage.setItem(SENDER_CROP_KEY, JSON.stringify(senderCropVal)); else localStorage.removeItem(SENDER_CROP_KEY); } catch (e) {}
+      try { refreshOutbound(); } catch (e) {}
+    }
+    window.__senderCrop = { get: () => senderCropVal, set: setSenderCrop };
     function sentVideoTrack() {
       // A broadcast viewer has no outbound video, even if a track was armed
       // by a bypass. Stage guests and hosts publish as a meeting does.
@@ -10014,7 +10337,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       stopAvatarPipe();
       const lvl = blurLevelFor('me');
-      if ((lvl > 0 || lyricOnAir()) && !myStatus.camOff) return startBlurPipe(lvl) || cam;
+      // A sender crop (0.9.23b) rides the same canvas: everyone gets the square I chose.
+      if ((lvl > 0 || lyricOnAir() || !!senderCrop()) && !myStatus.camOff) return startBlurPipe(lvl) || cam;
       stopBlurPipe();
       return cam;
     }
@@ -28511,7 +28835,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // controls. This one only tucks Live, Record, Captions, and the dock on
       // a phone, and a tap brings them back. More, chat, a tray, a waiting
       // list, or a dialog holds them up.
-      const CHROME_IDLE_MS = 6000;
+      const CHROME_IDLE_MS = 3000; // 0.9.23b: calm after 3 s
       let chromeTimer = 0;
       let swallowClick = false;
       function phoneCall() {
@@ -28613,7 +28937,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // nothing open, and no mouse or key for a few seconds, the dock fades and
     // only faces are left (FaceTime and Meet do the same). Any move or key
     // brings it back. The layout does not change, so faces never jump.
-    let dockCalmMs = 5000;
+    let dockCalmMs = 3000; // 0.9.23b: calm after 3 s
     (function () {
       document.body.classList.toggle('desk-ptr', !IS_MOBILE);
       const bar = document.querySelector('.bar');
@@ -28628,7 +28952,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       function busy() {
         if (IS_MOBILE || document.hidden) return true; // a touch laptop wakes it on touchstart
         const n = participantCount();
-        if (n < 2 || n > 4) return true; // alone needs Invite; a big room needs the host tools
+        if (n < 2) return true; // alone needs Invite (0.9.23b: every larger room is calm too)
         if (joinVeilEl) return true;
         const b = document.body.classList;
         for (const c of ['screen-on', 'broadcast', 'app-room', 'solo-app', 'lyrics', 'rundown']) if (b.contains(c)) return true;

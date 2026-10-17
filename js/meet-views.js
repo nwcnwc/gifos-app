@@ -7,7 +7,7 @@
   const GifOS = root.GifOS = root.GifOS || {};
 
   const GUTTER = 8;
-  const BLOCK = ['screen-on', 'has-app', 'broadcast', 'app-room', 'solo-app'];
+  const BLOCK = ['has-app', 'broadcast', 'app-room', 'solo-app'];
 
   function comfyAllowed(body) {
     // A normal #v= room never gets body.meet-session (only an mb=1 frame
@@ -19,6 +19,8 @@
 
   function placeEl(el, r) {
     if (!el || !r) return;
+    // A tile grown for its control window keeps its big box until it closes.
+    if (el.classList && el.classList.contains('tw-big')) { el.dataset.comfy = '1'; el.classList.remove('comfy-off'); return; }
     const s = el.style;
     s.position = 'absolute';
     s.left = r.x + 'px';
@@ -367,6 +369,25 @@
     }
   }
 
+  // 0.9.23b: Stage (true aspect), Row and Stadium (squares). meet-zones.js
+  // does the geometry; this keeps the shape the rest of apply() reads.
+  function zonesLayout(MZ, tiles, box, opts) {
+    const stage = [], row = [], stad = [];
+    for (let i = 0; i < tiles.length; i++) {
+      const t = tiles[i];
+      if (t.tier === 'stad') stad.push(t.id);
+      else if (t.stage || t.share) stage.push({ id: t.id, aspect: t.aspect > 0 ? t.aspect : 16 / 9 });
+      else row.push(t.id);
+    }
+    const z = MZ.layout({ box: box, stage: stage, row: row, stad: stad, phone: !!opts.phone,
+      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit', gap: opts.phone ? 4 : MZ.GAP });
+    let band = null;
+    if (z.tooSmall) band = { text: 'faces tiny \u00b7 Scroll is in \u25a6', x: box.x + 6, y: box.y + 6 };
+    return { mode: stage.length ? 'stage' : 'gallery', gallery: z.gallery, rects: z.rects, crowd: false, band: band,
+      box: box, regions: z.regions, stage: z.regions.stage, contentH: z.contentH, tooSmall: !!z.tooSmall,
+      self: { arrangement: 'tile' }, zones: true, side: z.side, stadSide: z.stadSide };
+  }
+
   // opts: { feed, tiles, faces, video, cols, orderKey, holdMs, vw, vh, phone, pill, mode, now, onSettle }
   // tiles: [{ id, el, tier, me, stage, stageOrd, hand, handOrd, speaker, pz }]
   // faces: [{ id, name, initials }] in stadium order
@@ -400,7 +421,11 @@
       +opts.holdBottom > Math.max(0, +opts.bottom || 0);
     const byId = {};
     for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
-    let lay = ML.layoutFor({
+    const MZ = GifOS.meetZones;
+    let lay = MZ ? zonesLayout(MZ, tiles, hold ? ML.viewBox(opts.vw || 1, opts.vh || 1, {
+      phone: true, pill: !!opts.pill, bottom: +opts.holdBottom,
+      top: opts.top > 0 ? opts.top : undefined,
+    }) : box, opts) : ML.layoutFor({
       mode: opts.mode || 'gallery',
       tiles: tiles,
       box: hold ? ML.viewBox(opts.vw || 1, opts.vh || 1, {
@@ -415,7 +440,7 @@
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i].me || tiles[i].id === 'me') markSelf(tiles[i].el, lay.self);
     }
-    if (hold && !lay.crowd) lay = holdRows(lay, box, byId, true);
+    if (hold && !lay.crowd && !MZ) lay = holdRows(lay, box, byId, true);
     const used = [];
     let crowdEl = feed.querySelector('#stadcrowd');
     if (lay.crowd) {
@@ -435,7 +460,7 @@
     }
     // Desktop leaves an 8px gutter between faces (4px off each side of the
     // packed cell), so tiles keep equal sizes. A phone stays edge to edge.
-    const half = opts.phone ? 0 : GUTTER / 2;
+    const half = (opts.phone || lay.zones) ? 0 : GUTTER / 2;
     for (let i = 0; i < lay.rects.length; i++) {
       const r = lay.rects[i];
       if (r.id === 'crowd') continue;
