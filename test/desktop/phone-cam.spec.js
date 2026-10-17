@@ -169,8 +169,8 @@ test('a live camera that sends nothing says so before it restarts', async ({ pag
   await expect(mark).toBeHidden({ timeout: 8000 });
 });
 
-async function paintedCam(page, hash, color) {
-  await page.setViewportSize({ width: 390, height: 844 });
+async function paintedCam(page, hash, color, width) {
+  await page.setViewportSize(width ? { width: width, height: 720 } : { width: 390, height: 844 });
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Jordan Lee');
     sessionStorage.setItem('gifos_appeared', '1');
@@ -196,6 +196,7 @@ async function paintedCam(page, hash, color) {
     navigator.mediaDevices.getUserMedia = () => {
       n += 1;
       window.__gumN = n;
+      (window.__gumAt = window.__gumAt || []).push(performance.now());
       if (n === 1) return Promise.resolve(stream(fill));
       return new Promise((res) => { release = () => res(stream('#c45b3e')); });
     };
@@ -244,4 +245,31 @@ test('a dark room that is still painting never restarts the camera', async ({ pa
   }
   expect(await page.evaluate(() => (window.__regrabLog || []).map((r) => r.reason))).toEqual([]);
   expect(await page.evaluate(() => window.__gumN || 0)).toBe(1);
+});
+
+// The old watchdog re-grabbed on the third 3s sample, so a dead camera was
+// never back before 6s (up to 9s). A desktop call should get it back in ~4s.
+test('a desktop camera that goes pure black is grabbed again within a few seconds', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
+  await paintedCam(page, 'qadeskblackfast', '#000000', 1280);
+  await expect.poll(() => page.evaluate(() => window.__gumN || 0), { timeout: 12000 }).toBe(2);
+  const gap = await page.evaluate(() => window.__gumAt[1] - window.__gumAt[0]);
+  expect(gap).toBeLessThan(5500);
+  const reason = await page.evaluate(() => (window.__regrabLog || []).map((r) => r.reason).pop());
+  expect(reason).toBe('blackCamWatch:dark-pixels');
+  await page.evaluate(() => window.__releaseCam());
+  await expect(page.locator('.tile.me .cambackmark')).toBeHidden({ timeout: 8000 });
+});
+
+test('a desktop camera that stops sending frames is grabbed again within a few seconds', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
+  await paintedCam(page, 'qadeskmutefast', '#3d6b4f', 1280);
+  // Let the picture settle first, then kill it, so the clock starts at the death.
+  await page.waitForTimeout(1500);
+  const dead = await page.evaluate(() => { window.__gifosForceBlackCamHold = true; return performance.now(); });
+  await expect.poll(() => page.evaluate(() => window.__gumN || 0), { timeout: 12000 }).toBe(2);
+  const gap = await page.evaluate((t) => window.__gumAt[1] - t, dead);
+  expect(gap).toBeLessThan(5500);
+  await page.evaluate(() => { window.__gifosForceBlackCamHold = false; window.__releaseCam(); });
+  await expect(page.locator('.tile.me .cambackmark')).toBeHidden({ timeout: 8000 });
 });
