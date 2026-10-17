@@ -1477,7 +1477,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   .fitbtn { position: fixed; z-index: 6; top: 58px; right: 14px; min-width: 32px; min-height: 32px;
     border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
-    background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 14px/1.2 system-ui, sans-serif; }
+    background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 16px/1.2 system-ui, sans-serif; }
+  /* Older eyes: on a desktop window Fit is 16px, a 44px target, and sits in the
+     header row beside the build label, above the tiles and their buttons. */
+  @media (min-width: 601px) and (min-height: 501px) { .fitbtn { top: 14px; min-height: 44px; padding: 10px 16px; } }
+  /* A shared screen folds the faces into a strip, so Fit has nothing to fit, and Stop sharing owns that corner. */
+  body.screen-on .fitbtn { display: none; }
   body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
@@ -1528,7 +1533,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore #moretools { min-height: 64px; border: 1.5px solid #8d93a0; border-radius: 16px;
     background: #fff; color: #1d1d1f; font: 700 18px/1.2 system-ui, sans-serif; cursor: pointer; }
   .bar:not(.collapsed) .barmore .moregroup:not(:has(.morerow > button:not([style*="display:none"]):not([style*="display: none"]))) { display: none; }
-  .bar:not(.collapsed) .barmore .moregroup h4 { margin: 0; padding: 0 4px; font: 700 12px/1.2 system-ui, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: #5c6370; }
+  .bar:not(.collapsed) .barmore .moregroup h4 { margin: 0; padding: 0 4px; font: 700 16px/1.2 system-ui, sans-serif; color: #4a505c; }
   .bar:not(.collapsed) .barmore .morerow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   /* Stage voting: the More sheet floats over the gallery; let .votedot receive taps. */
   body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore,
@@ -1537,11 +1542,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: #e8ecf1; color: #1d1d1f; font-size: 18px; font-weight: 650; white-space: normal; }
   .bar:not(.collapsed) .barmore .morerow > #ccbtn.on { background: #0064c8; color: #fff; }
   .bar:not(.collapsed) .barmore .blurctl { grid-column: 1 / -1; display: flex; align-items: center; min-height: 48px; gap: 8px; }
-  .bar:not(.collapsed) .barmore .blurlbl { display: inline; color: #3a3a3f; font-size: 14px; }
-  .bar:not(.collapsed) .barmore .seg { min-height: 48px; min-width: 48px; color: #1d1d1f; background: #fff; }
+  .bar:not(.collapsed) .barmore .blurlbl { display: inline; color: #3a3a3f; font-size: 16px; }
+  .bar:not(.collapsed) .barmore .seg { min-height: 48px; min-width: 48px; color: #1d1d1f; background: #fff; font-size: 16px; }
   .bar:not(.collapsed) .barmore .seg.sel,
   .bar:not(.collapsed) .barmore .seg[aria-pressed="true"] { background: #1d1d1f; color: #fff; }
-  .bar .barmore .blab { display: block; font-size: 13px; font-weight: 700; margin-top: 2px; line-height: 1.1; }
+  .bar .barmore .blab { display: block; font-size: 16px; font-weight: 700; margin-top: 2px; line-height: 1.1; }
   .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 122px; transform: translateX(-50%);
     display: flex; gap: 8px; background: rgba(255,255,255,.96); border-radius: 20px; padding: 10px;
     box-shadow: 0 10px 28px rgba(0,0,0,.25); }
@@ -5883,6 +5888,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { layout(); } catch (e) {}
     });
     paintFit();
+    // The build label's width changes with the build, so Fit sits just left of it.
+    function placeFit() {
+      if (!fitbtn) return;
+      const bf = document.getElementById('gifos-build-float');
+      const r = bf && bf.getClientRects().length ? bf.getBoundingClientRect() : null;
+      const desk = window.matchMedia('(min-width: 601px) and (min-height: 501px)').matches;
+      fitbtn.style.right = desk && r ? Math.round(window.innerWidth - r.left + 8) + 'px' : '';
+    }
+    placeFit();
+    window.addEventListener('load', placeFit);
+    window.addEventListener('resize', placeFit);
     let comfyResizeT = 0;
     window.addEventListener('resize', () => {
       if (comfyResizeT) clearTimeout(comfyResizeT);

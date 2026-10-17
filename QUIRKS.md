@@ -30,6 +30,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 - **Fix:** the button says Reactions, in German Reaktionen and Spanish Reacciones, at 16px. The smile icon stays. The button matches the other dock buttons. It stays on screen at 900px.
 - **Proof:** the dock tests pass on Chromium, Firefox, and WebKit, and the German and Spanish dock lines pass on Chromium. Screenshots: `test/desktop/shots/react-label-before-1280.png`, `test/desktop/shots/react-label-after-1280.png`.
 
+### Fit and the More words were small
+
+- **Who hits it:** an older member reading the view switch or the More sheet.
+- **What you saw:** Fit was 14px and 32px tall. The More headings were 12px capitals. Max, Min, and No blur were about 12px, Float 13px, and Blur 14px.
+- **Repro:** `test/desktop/older-eyes.spec.js` failed before the change (Fit 14px; nine More words under 16px). A 44px Fit in its old place covered the top-right tile's Blur for all, and the test catches that too.
+- **Fix:** from 601px wide and 501px tall, Fit is 16px, 44px tall, and sits in the header row just left of the build label, above the tiles. Every word in More is 16px, and the headings are written People, Share, Room, Help instead of capitals. While a screen is shared, Fit is hidden: the faces are a strip then, and Stop sharing owns that corner (a test checks Fit never covers it).
+- **Proof:** the desktop suite passes 160/160 on Chromium and Firefox. WebKit is not checked: this box lacks its system libraries. Screenshots: `test/desktop/shots/older-eyes-before-1280.png`, `test/desktop/shots/older-eyes-after-1280.png`.
+
 ### The dock words were 12px
 
 - **Who hits it:** anyone reading Camera, Unmute, Share screen, CC, Chat, More, or Leave.
