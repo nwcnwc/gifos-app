@@ -3054,3 +3054,35 @@ test('a clap on the stage names who clapped', async ({ page }) => {
   await expect(who).toHaveText('You');
   expect(errors).toEqual([]);
 });
+
+test('a joined viewer reads who is live, not watching three times', async ({ page }) => {
+  // Seen across two machines: a viewer's header read "WATCHING · You are
+  // watching this service." beside "Service · You are watching". The badge
+  // and the room bar already say watching; the line now names the host.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  const status = page.locator('#status');
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=whoislive' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on.watch');
+    await page.waitForFunction(() => window.__gifosVideo && window.__gifosVideo.livePeerForTest);
+    await page.evaluate(() => {
+      const v = window.__gifosVideo;
+      v.livePeerForTest('viewer-b', 'Sam Lee');
+      v.livePeerForTest('hostpeer', 'Pastor Sam');
+      if (v.hostPeerForTest) v.hostPeerForTest('hostpeer');
+    });
+    await expect(page.locator('#onair')).toHaveText('Watching');
+    await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+    if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/who-live-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    await expect(status).toHaveText(/^Pastor Sam is live\./);
+    await expect(status).not.toContainText('watching');
+    await expect(status).not.toContainText('Sam Lee');
+    const clip = await status.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+    expect(clip).toBe(false);
+  }
+});
