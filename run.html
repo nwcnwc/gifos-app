@@ -2871,7 +2871,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         barLeadingStatus: '🧩 Sie leiten die App — nur Ihre Änderungen an den gemeinsamen Reglern bleiben.',
         barCommunalStatus: '🧩 Gemeinsame Steuerung — jeder hier kann die geteilte App steuern.',
         fullScreen: 'Vollbild', leaveFullScreen: 'Vollbild beenden',
-        tileControls: 'Steuerung für diese Person.', handChip: 'Hand gehoben', leavingChip: 'geht…', recChip: 'nimmt dieses Meeting auf', scribeChip: 'schreibt alle mit', stopShareTip: 'Ihre Bildschirmfreigabe beenden',
+        tileControls: 'Steuerung für diese Person.', handChip: 'Hand gehoben', handUpOne: 'Hand oben', handUpMany: 'Hände oben', stageFull: 'Bühne voll', leavingChip: 'geht…', recChip: 'nimmt dieses Meeting auf', scribeChip: 'schreibt alle mit', stopShareTip: 'Ihre Bildschirmfreigabe beenden',
         stealData: '+ Daten', stealDataTip: 'Die App und alles, was jetzt darin ist',
         stealJoined: 'wie ich kam', stealJoinedTip: 'Die App und der Raum, wie er war, als Sie kamen',
         stealApp: 'nur die App', stealAppTip: 'Eine saubere Kopie — nur die App, keine Daten des Raums',
@@ -3163,7 +3163,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         barLeadingStatus: '🧩 Diriges la app — solo tus cambios en los controles compartidos se quedan.',
         barCommunalStatus: '🧩 Control entre todos — cualquiera aquí puede manejar la app compartida.',
         fullScreen: 'Pantalla completa', leaveFullScreen: 'Salir de pantalla completa',
-        tileControls: 'Controles para esta persona.', handChip: 'mano levantada', leavingChip: 'saliendo…', recChip: 'grabando esta reunión', scribeChip: 'anotando a todos', stopShareTip: 'Dejar de compartir tu pantalla',
+        tileControls: 'Controles para esta persona.', handChip: 'mano levantada', handUpOne: 'mano levantada', handUpMany: 'manos levantadas', stageFull: 'escenario lleno', leavingChip: 'saliendo…', recChip: 'grabando esta reunión', scribeChip: 'anotando a todos', stopShareTip: 'Dejar de compartir tu pantalla',
         stealData: '+ datos', stealDataTip: 'La app y todo lo que hay ahora',
         stealJoined: 'como entré', stealJoinedTip: 'La app y la sala como estaban cuando entraste',
         stealApp: 'solo la app', stealAppTip: 'Una copia limpia — solo la app, sin los datos de la sala',
@@ -12559,8 +12559,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         + (i === 0 ? '<b>' + esc(e.n) + '</b>' : esc(e.n)) + '</span>';
       const tot = handTotal(q), shown = Math.min(q.length, 8);
       // The full stage is a fact about the queue, said once after the count.
+      // "Hands up", not "waiting": the waiting room is people not yet in.
       const html = !q.length ? ''
-        : '✋ ' + tot + ' waiting' + (stageFull ? ' (stage full)' : '') + ': ' + q.slice(0, 8).map(seg).join(', ') + (tot > shown ? ', +' + (tot - shown) : '');
+        : '✋ ' + tot + ' ' + (tot === 1 ? uiText('handUpOne', 'hand up') : uiText('handUpMany', 'hands up'))
+          + (stageFull ? ' (' + uiText('stageFull', 'stage full') + ')' : '') + ': ' + q.slice(0, 8).map(seg).join(', ') + (tot > shown ? ', +' + (tot - shown) : '');
       if (html === handqHtml) return;
       handqHtml = html;
       handqEl.innerHTML = html;

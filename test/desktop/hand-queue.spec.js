@@ -142,7 +142,13 @@ for (const w of HAND_WORDS) {
       if (w.lang === 'de-DE') await page.screenshot({ path: 'test/desktop/shots/hand-words-' + (process.env.HAND_WORDS_PHASE || 'after') + '-de-1280.png' });
       expect(one).not.toMatch(/waiting/i);
       expect(one).toBe(w.one);
-      await expect(page.locator('#feed .tile .chips').filter({ hasText: w.chip })).toHaveCount(1);
+      // Line and chip in ONE read: a seeded face's chip can drop a few seconds
+      // in once the relay says "reconnecting" (Firefox), so a later separate
+      // read of the chip measured the seed, not the words.
+      await expect.poll(() => page.evaluate((chip) => ({
+        line: document.getElementById('handq').textContent,
+        chips: [...document.querySelectorAll('#feed .tile .chips')].filter((c) => c.textContent.includes(chip)).length,
+      }), w.chip), { timeout: 2000 }).toEqual({ line: w.one, chips: 1 });
       await page.evaluate(() => window.__gifosVideo.raiseHand(true));
       await expect.poll(async () => (await readQueue(page)).text).toMatch(w.two);
       expectReadable(await readQueue(page), 'Priya Shah');
