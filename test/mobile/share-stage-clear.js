@@ -62,11 +62,14 @@ function look(page) {
     if (stop && seen(stop)) parts.push(['Stop sharing', stop.getBoundingClientRect()]);
     const lbl = document.querySelector('#stagefeed .rlabel');
     if (lbl && seen(lbl)) parts.push(['the share label', lbl.getBoundingClientRect()]);
-    // The strip scrolls sideways; only the faces on screen count.
+    // The faces scroll (a strip, or a column sideways); only the part the
+    // strip shows counts.
+    const g = document.getElementById('grid').getBoundingClientRect();
     document.querySelectorAll('#grid .tile').forEach((t) => {
       if (!seen(t)) return;
-      const r = t.getBoundingClientRect();
-      if (r.right <= 0 || r.left >= innerWidth) return;
+      const q = t.getBoundingClientRect();
+      const r = { left: Math.max(q.left, g.left), top: Math.max(q.top, g.top), right: Math.min(q.right, g.right), bottom: Math.min(q.bottom, g.bottom) };
+      if (r.right - r.left < 8 || r.bottom - r.top < 8 || r.right <= 0 || r.left >= innerWidth) return;
       parts.push(['the face of ' + ((t.querySelector('.name') || {}).textContent || '?').trim(), r]);
     });
     const under = [];
