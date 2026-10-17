@@ -109,7 +109,9 @@ for (const [locale, want] of Object.entries(FACE_WORDS)) {
       const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 3, connected: false }));
       expect(seeded && seeded.ok).toBe(true);
       await page.waitForFunction(() => document.querySelectorAll('#feed .tile:not(.me)').length >= 3);
-      await page.waitForTimeout(600);
+      // My own raised hand is the sure chip (a seeded peer's can be repainted away).
+      await page.evaluate(() => window.__gifosVideo.raiseHand(true));
+      await page.waitForFunction(() => [...document.querySelectorAll('#feed .tile .chips span')].some((s) => s.textContent.indexOf('✋') === 0));
       const got = await page.evaluate(() => {
         const me = document.querySelector('#feed .tile.me');
         const others = [...document.querySelectorAll('#feed .tile:not(.me)')];
@@ -127,9 +129,10 @@ for (const [locale, want] of Object.entries(FACE_WORDS)) {
       expect(got.meChips).toEqual([want.muted, want.camOff]);
       expect(got.fullTips.length).toBeGreaterThanOrEqual(4);
       for (const t of got.fullTips) expect(t).toBe(want.full + '|' + want.full);
-      for (const l of got.tileLabels) expect(l).toMatch(/^\S.*\. /); 
+      for (const l of got.tileLabels) expect(l).toMatch(/^\S.*\. /);
       expect(got.tileLabels.map((l) => l.slice(l.indexOf('. ') + 2))).toEqual(got.tileLabels.map(() => want.controls));
-      expect(got.hands).toEqual([want.hand]);
+      expect(got.hands.length).toBeGreaterThanOrEqual(1);
+      expect(got.hands).toEqual(got.hands.map(() => want.hand));
     });
   });
 }
