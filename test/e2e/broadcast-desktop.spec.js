@@ -3194,3 +3194,50 @@ test('the chat close and attach buttons have names, and closing returns to Chat'
     }
   }
 });
+
+test('the Tab walk in a session stops only on controls you can see', async ({ page }) => {
+  // After the room bar, Tab walked through eight off-screen links meant for
+  // AI agents (llms.txt, sitemap, …): a 1px clipped box with no visible
+  // focus, on a service host, a viewer and a small group.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const who of ['host', 'view', 'group']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const url = who === 'group'
+      ? '/run.html?desk=tabwalkg#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=tabwalk' + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+    const hidden = [];
+    let dock = 0;
+    let afterBar = 0;
+    for (let i = 0; i < 30; i++) {
+      await page.keyboard.press('Tab');
+      const stop = await page.evaluate(() => {
+        const e = document.activeElement;
+        if (!e || e === document.body) return null;
+        const r = e.getBoundingClientRect();
+        // A clipped 1px box still reports a rect, so ask what is drawn at
+        // the stop's centre.
+        const x = r.left + r.width / 2, y = r.top + r.height / 2;
+        const hit = x >= 0 && y >= 0 && x < innerWidth && y < innerHeight && document.elementFromPoint(x, y);
+        const seen = !!hit && (e === hit || e.contains(hit));
+        return { id: e.id, name: (e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 30), seen };
+      });
+      if (!stop) continue;
+      if (stop.id === 'chatbtn') dock++;
+      if (!stop.seen) hidden.push(stop.name);
+      // Shoot the stop after the room bar's last button.
+      if (who === 'host' && afterBar === 1) await page.screenshot({ path: 'artifacts/tab-walk-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      if (stop.id === 'airsound' || afterBar) afterBar++;
+    }
+    expect(dock, who + ': the walk reaches the dock').toBeGreaterThan(0);
+    expect(hidden, who + ': unseen Tab stops').toEqual([]);
+  }
+});
