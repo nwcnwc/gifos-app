@@ -175,8 +175,11 @@
   //       pool, extra(), halts(reason) }
   // pool    the pool asked for ('free' when absent).
   // extra   () → more fields for every ask (the paid pool's receipt, room
-  //         ticket and bridge), read at each ask so a re-signed ticket rides
-  //         the next renewal; null means "nothing to ask with": no grant.
+  //         ticket and bridge; the free pool's TURN ticket, freeTicket), read
+  //         at each ask so a re-signed ticket rides the next renewal; null
+  //         means "nothing to ask with": no grant. May be a promise.
+  // granted (fields) → called on each grant with the extra fields its ask
+  //         carried (freeTicket counts a ticket's slots with it).
   // halts   (reason) → true when an "unavailable" answer with that reason
   //         means asking again cannot help. The client then stops asking;
   //         a grant in hand still runs to its expiry.
@@ -203,7 +206,7 @@
       if (stopped || inFlight || halted) return;
       inFlight = true;
       const renew = !!grant;
-      let settled = false, tOut = null;
+      let settled = false, tOut = null, asked = null;
       const done = (body) => {
         if (settled) return;
         settled = true; inFlight = false;
@@ -223,6 +226,7 @@
         const had = !!grant;
         grant = { iceServers: g.iceServers, issuedAt: t, renewAt: t + g.renewAfter * 1000, expiresAt: t + g.ttl * 1000 };
         everHad = true;
+        if (o.granted) { try { o.granted(asked); } catch (e) {} }
         schedule(grant.renewAt - t);
         if (tExpire != null) clearTimer(tExpire);
         const mine = grant;
@@ -237,8 +241,14 @@
       tOut = setTimer(() => { tOut = null; done(null); }, FETCH_TIMEOUT_MS);
       let p;
       try {
+        const go = (more) => {
+          if (more == null || stopped || settled) return null;
+          asked = more;
+          return o.ask(Object.assign({ room: String(o.room), pool }, renew ? { renew: true } : {}, more));
+        };
         const more = o.extra ? o.extra() : {};
-        p = more == null ? Promise.resolve(null) : Promise.resolve(o.ask(Object.assign({ room: String(o.room), pool }, renew ? { renew: true } : {}, more)));
+        // A plain answer asks at once; a promise (a ticket being fetched) first.
+        p = more && typeof more.then === 'function' ? Promise.resolve(more).then(go) : Promise.resolve(go(more));
       } catch (e) { p = Promise.resolve(null); }
       p.then((b) => done(b), () => done(null));
     }
@@ -258,6 +268,45 @@
     };
   }
 
+  // THE FREE POOL'S TICKET (workers turnstile; gifos docs/relay-lockdown.md
+  // "Free TURN tickets"). The credential service hands free credentials only
+  // to a ticket from the relay's person check: the tt the relay's /t mint
+  // returned beside the join token, or, once the room handed a rejoin token,
+  // a fresh one from the relay's GET /tt (a reload, a renewal). A ticket has
+  // TICKET_CREDS slots and each slot names ONE credential (asking a slot
+  // again returns the same one), so the page spends them one grant at a
+  // time: slot 0 first, the next slot after each grant on that ticket, and
+  // no ask once they are spent (a /tt ticket keeps its slots for an hour).
+  // freeTicket(getTicket) → { extra, granted } for createCredentials;
+  // getTicket() → the ticket (or a promise of it), '' when the relay has
+  // none: then the ask goes without one, as before tickets.
+  const TICKET_CREDS = 3;
+  function ticketNonce(tt) {
+    try {
+      const p = String(tt).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      return String(JSON.parse(atob(p + '='.repeat((4 - (p.length % 4)) % 4))).n || '');
+    } catch (e) { return ''; }
+  }
+  function freeTicket(getTicket) {
+    const used = new Map(); // ticket nonce → slots granted on it
+    return {
+      extra() {
+        return Promise.resolve().then(() => (getTicket ? getTicket() : '')).catch(() => '').then((tt) => {
+          if (!tt || typeof tt !== 'string') return {};
+          const slot = used.get(ticketNonce(tt)) || 0;
+          return slot >= TICKET_CREDS ? null : { tt, slot };
+        });
+      },
+      granted(more) {
+        if (!more || !more.tt) return;
+        const n = ticketNonce(more.tt), had = used.get(n) || 0;
+        used.delete(n); // re-insert: the newest nonce is last, the oldest goes first
+        used.set(n, Math.max(had, (more.slot | 0) + 1));
+        while (used.size > 8) used.delete(used.keys().next().value);
+      },
+    };
+  }
+
   // askIce(fetchFn, url) → ask(body): the page's network call. The Origin
   // header is the browser's own; no credential or cookie rides it. The body
   // is JSON sent as plain text, which makes it a simple cross-origin request:
@@ -272,7 +321,7 @@
   const api = {
     ICE_URL, DEFAULT_WORKER, WORKER_KEY, workerBase, POOL, FETCH_TIMEOUT_MS, RETRY_MAX_MS, P0_MS, P1_MS, MAX_SERVED,
     reachable, pairStage, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, mayServe,
-    retryDelayMs, parseIce, createCredentials, askIce,
+    retryDelayMs, parseIce, createCredentials, askIce, freeTicket, TICKET_CREDS,
   };
   const GifOS = (root.GifOS = root.GifOS || {});
   GifOS.meetTurn = api;

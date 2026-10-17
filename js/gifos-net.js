@@ -278,6 +278,10 @@
   // no token, and the upgrade goes without one, as before tokens existed.
   // Busy (503): opts.onBusy(), no person check, and the next look waits 30 s.
   // One mint in flight at a time: a timer, a kick and a reconnect share it.
+  //   turnTicket(dev) → Promise of the free TURN pool's ticket (workers
+  // turnstile, meet-turn.js freeTicket): the tt the mint returned beside the
+  // join token while it lives, else one traded for the rejoin token at the
+  // relay's GET /tt (no new person check); '' when the relay issues none.
   const BUSY_TEXT = 'GifOS is very busy right now, please try again later';
   const TOKEN_SLACK_MS = 20000; // a token this close to expiry is not sent
   function tokenExp(t) {
@@ -340,19 +344,36 @@
     const key = 'gifos_rt:' + o.sid;
     const fetchFn = o.fetch || ((u) => root.fetch(u, { cache: 'no-store', credentials: 'omit' }));
     let jt = '', rt = '', offUntil = 0, busyUntil = 0, inflight = null;
+    let tt = '', ttOffUntil = 0, ttInflight = null;
     try { rt = (root.sessionStorage && root.sessionStorage.getItem(key)) || ''; } catch (e) { rt = ''; }
     const live = (t, dev) => { if (!t) return false; const x = tokenExp(t); return x.d === dev && x.e - Date.now() > TOKEN_SLACK_MS; };
     const token = (dev) => (live(rt, dev) ? rt : live(jt, dev) ? jt : '');
     const sitekey = () => { try { return String(root.GIFOS_TURNSTILE_SITEKEY || (root.localStorage && root.localStorage.getItem('gifos_turnstile_sitekey')) || ''); } catch (e) { return String(root.GIFOS_TURNSTILE_SITEKEY || ''); } };
     const getJson = (q) => fetchFn(httpBase + '/t?sid=' + encodeURIComponent(o.sid) + '&dev=' + encodeURIComponent(q.dev) + (q.extra || ''))
       .then((r) => r.json().catch(() => ({})).then((j) => ({ status: r.status, j })));
+    const keepTt = (t) => { if (typeof t === 'string' && t.length <= 1024) tt = t; };
+    const turnTicket = (dev) => {
+      if (!dev) return Promise.resolve('');
+      if (live(tt, dev)) return Promise.resolve(tt);
+      if (!httpBase || !live(rt, dev) || Date.now() < ttOffUntil) return Promise.resolve('');
+      if (!ttInflight) {
+        ttInflight = fetchFn(httpBase + '/tt?sid=' + encodeURIComponent(o.sid) + '&dev=' + encodeURIComponent(dev) + '&rt=' + encodeURIComponent(rt))
+          .then((r) => r.json().catch(() => ({})).then((j) => {
+            if (r.status === 200 && j) keepTt(j.tt);
+            else if (r.status === 404) ttOffUntil = Date.now() + 10 * 60000; // this relay issues no TURN tickets
+          }))
+          .catch(() => {})
+          .then(() => { ttInflight = null; });
+      }
+      return ttInflight.then(() => (live(tt, dev) ? tt : ''));
+    };
     async function mint(dev) {
       // A first ask with no answer is cheap (no room object, no person check)
       // and says what this relay wants: off (404), busy (503), or which check.
       let r = await getJson({ dev });
       if (r.status === 404) { offUntil = Date.now() + 10 * 60000; return; }
       if (r.status === 503) { busyUntil = Date.now() + 30000; if (o.onBusy) { try { o.onBusy(); } catch (e) {} } return; }
-      if (r.status === 200 && r.j && r.j.jt) { jt = r.j.jt; return; }
+      if (r.status === 200 && r.j && r.j.jt) { jt = r.j.jt; keepTt(r.j.tt); return; }
       if (r.status !== 403 || !r.j) return;
       const sk = sitekey();
       let extra = '';
@@ -360,7 +381,7 @@
       if (!extra && r.j.powBits > 0) { const pts = Date.now(); const pow = await solvePow(o.sid, dev, pts, r.j.powBits); if (pow) extra = '&pts=' + pts + '&pow=' + pow; }
       if (!extra) return;
       r = await getJson({ dev, extra });
-      if (r.status === 200 && r.j && r.j.jt) jt = r.j.jt;
+      if (r.status === 200 && r.j && r.j.jt) { jt = r.j.jt; keepTt(r.j.tt); }
       else if (r.status === 503) { busyUntil = Date.now() + 30000; if (o.onBusy) { try { o.onBusy(); } catch (e) {} } }
     }
     const prepare = (dev) => {
@@ -375,8 +396,8 @@
     };
     // The relay refused what we sent (4016 bad, 4017 in use): both go, and
     // the next connect mints a fresh one.
-    const drop = () => { jt = ''; rt = ''; try { if (root.sessionStorage) root.sessionStorage.removeItem(key); } catch (e) {} };
-    return { prepare, token, setRejoin, drop, busy: () => Date.now() < busyUntil };
+    const drop = () => { jt = ''; rt = ''; tt = ''; try { if (root.sessionStorage) root.sessionStorage.removeItem(key); } catch (e) {} };
+    return { prepare, token, setRejoin, drop, turnTicket, busy: () => Date.now() < busyUntil };
   }
 
   // ---- transport fragmentation ----------------------------------------------

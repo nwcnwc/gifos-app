@@ -1190,6 +1190,13 @@
       // when its switch is on.
       RAW_SOCKET_SEND_FOR_TEST(obj) { if (stopped) return { err: 'stopped' }; if (!sock) makeSock(); if (sock.rejected) return { err: 'rejected' }; sock.send(obj); return { ok: true }; },
       relayUp() { return !!(sock && sock.state === 'up'); },
+      // The free TURN pool's ticket for this room and device (gifos-net.js
+      // relayTicket.turnTicket; run.html turnSweep asks with it).
+      turnTicket() {
+        if (!ticket) return Promise.resolve('');
+        const extra = opts.urlParams ? String(opts.urlParams() || '') : '';
+        return ticket.turnTicket(devOfUrl(extra));
+      },
       // The network came back after a dark spell: read the door again now
       // (re-register as a door, or ask for the list), so a change made while
       // I was away — a new room password above all — shows at once (R6).

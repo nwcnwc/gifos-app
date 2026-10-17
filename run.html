@@ -1939,6 +1939,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // directly, and in a free room only for audio, through one anchor.
     const MT = GifOS.meetTurn;
     let turnCred = null, turnCredRoom = null;  // the credential client (asks only after joining, only from a blocked network)
+    let turnFree = null;                        // its relay TURN ticket and slots (meetTurn.freeTicket)
     let turnAnchorId = null;                   // the seat this page sends its voice to, and hears the room from
     let turnAnchorSince = 0, turnAnchorUpAt = 0, turnAnchorFails = 0, turnEverServed = false;
     const turnDownAt = new Map();      // peer id -> since when that pair has had no working path (kept across redials)
@@ -6041,7 +6042,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (want && (!turnCred || turnCredRoom !== sessId)) {
         if (turnCred) turnCred.stop();
         turnCredRoom = sessId;
-        turnCred = MT.createCredentials({ ask: MT.askIce(window.fetch.bind(window)), room: sessId, onChange: onTurnCred });
+        // The free pool needs the relay's TURN ticket (workers turnstile): the
+        // one this page's join minted, or one traded for its rejoin token.
+        turnFree = MT.freeTicket(() => (meshNode && meshNode.turnTicket ? meshNode.turnTicket() : ''));
+        turnCred = MT.createCredentials({ ask: MT.askIce(window.fetch.bind(window)), room: sessId, onChange: onTurnCred, extra: turnFree.extra, granted: turnFree.granted });
         turnCred.start();
       } else if (turnCred && directPath !== 'blocked') {
         turnCred.stop(); turnCred = null; turnCredRoom = null; // this network can be reached now: no pool
