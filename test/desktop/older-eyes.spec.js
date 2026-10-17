@@ -95,3 +95,57 @@ test('Fit does not cover Stop sharing on a shared slide', async ({ page, browser
   await page.click('#stagefeed .stagestop');
   await expect(page.locator('#stagefeed video')).toHaveCount(0);
 });
+
+// Older eyes read the words on a face's buttons too. On a desktop, Blur for
+// all and the Mute / Blur for everyone row were 11-12px. Point at a face in
+// a room of five and of nine: every word on its buttons is 16px, and the
+// buttons stay on the face without covering each other or the name.
+test('the words on a face you point at are 16px', async ({ context }) => {
+  for (const count of [4, 8]) {
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.addInitScript(() => {
+      localStorage.setItem('gifos_name', 'Jordan Lee');
+      sessionStorage.setItem('gifos_appeared', '1');
+    });
+    await page.goto('/run.html#v=qaeyestile&debug=on', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#mic', { state: 'visible' });
+    await page.evaluate((n) => window.__gifosVideo.seedGalleryForTest({ count: n, connected: true }), count);
+    await page.waitForFunction((n) => document.querySelectorAll('#feed .tile:not(.me) > .blurbox.on').length >= n, count);
+    const face = page.locator('#feed .tile:not(.me)').first();
+    const fb = await face.boundingBox();
+    await page.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
+    await page.waitForTimeout(400);
+    if (count === 4) await page.screenshot({ path: 'test/desktop/shots/tile-words-after-1280.png' });
+    const info = await page.evaluate(() => {
+      const tile = document.querySelector('#feed .tile:not(.me)');
+      const tb = tile.getBoundingClientRect();
+      const seen = (el) => {
+        const cs = getComputedStyle(el);
+        return el.getClientRects().length && cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.5;
+      };
+      const els = [...tile.querySelectorAll(':scope > .blurbox, .modbar button, .maxbtn, .name')].filter(seen);
+      const boxes = els.map((el) => {
+        const r = el.getBoundingClientRect();
+        return { id: el.className + ':' + (el.textContent || '').trim(), left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+      });
+      const small = els.filter((el) => el.tagName === 'BUTTON' && /[A-Za-z]/.test(el.textContent || ''))
+        .filter((el) => parseFloat(getComputedStyle(el).fontSize) < 16)
+        .map((el) => el.textContent.trim() + ' ' + getComputedStyle(el).fontSize);
+      const words = els.filter((el) => el.tagName === 'BUTTON' && /[A-Za-z]/.test(el.textContent || '')).map((el) => el.textContent.trim());
+      const clipped = els.filter((el) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1).map((el) => el.textContent.trim());
+      const outside = boxes.filter((b) => b.left < tb.left - 1 || b.right > tb.right + 1 || b.top < tb.top - 1 || b.bottom > tb.bottom + 1).map((b) => b.id);
+      return { words, small, clipped, outside, boxes };
+    });
+    expect(info.words, 'room of ' + (count + 1)).toEqual(expect.arrayContaining(['Blur for all', 'Mute for everyone', 'Blur for everyone']));
+    expect(info.small, 'room of ' + (count + 1)).toEqual([]);
+    expect(info.clipped, 'room of ' + (count + 1)).toEqual([]);
+    expect(info.outside, 'room of ' + (count + 1)).toEqual([]);
+    const hits = [];
+    for (let i = 0; i < info.boxes.length; i++) for (let j = i + 1; j < info.boxes.length; j++) {
+      if (overlap(info.boxes[i], info.boxes[j])) hits.push(info.boxes[i].id + ' / ' + info.boxes[j].id);
+    }
+    expect(hits, 'room of ' + (count + 1)).toEqual([]);
+    await page.close();
+  }
+});
