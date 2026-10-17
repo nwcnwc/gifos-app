@@ -52,7 +52,10 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
       reply: box(el.querySelector('.creply')),
       del: box(el.querySelector('.cdel')),
       picks: Array.from(el.querySelectorAll('[data-react-pick]')).map(box),
-      chips: Array.from(el.querySelectorAll('[data-react-chip]')).map((c) => Object.assign(box(c), { e: c.getAttribute('data-react-chip') })),
+      chips: Array.from(el.querySelectorAll('[data-react-chip]')).map((c) => Object.assign(box(c), {
+        e: c.getAttribute('data-react-chip'), edge: getComputedStyle(c).borderTopColor, fill: getComputedStyle(c).backgroundColor,
+      })),
+      bg: getComputedStyle(el).backgroundColor,
       vh: window.innerHeight,
       alert: (document.getElementById('chatpeek') || {}).hidden === false,
     };
@@ -88,6 +91,8 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
         const heart = c.chips.find((x) => x.e === '❤️');
         if (!up || !/2/.test(up.text) || up.pressed !== 'true') bad.push('👍 reads "' + (up ? up.text : '') + '" (pressed ' + (up ? up.pressed : '-') + '), not 2 with yours');
         if (!heart || !/1/.test(heart.text) || heart.pressed !== 'true') bad.push('your ❤️ is not on your line');
+        // "Yours is outlined": the outline must not vanish into your blue bubble.
+        if (up && (up.edge === c.bg || up.edge === up.fill)) bad.push('your 👍 outline (' + up.edge + ') is lost on your bubble (' + c.bg + ')');
       }
     }
   }
