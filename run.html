@@ -5081,7 +5081,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (p.mainA) {
           // A client I anchor on the free pool hears the mix-minus on this
           // sender instead of my microphone (my voice is in the mix).
-          const mixT = p.turnServe ? turnMixTrack(p.id) : null;
+          const mixT = turnMixFor(p) ? turnMixTrack(p.id) : null;
           if (mixT) { turnMixSenders.add(p.mainA); if (p.mainA.track !== mixT) p.mainA.replaceTrack(mixT).catch(() => {}); }
           else {
             turnMixSenders.delete(p.mainA);
@@ -6057,11 +6057,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function syncTurnMixes() {
       for (const [pid, mx] of [...turnMixes]) {
         const q = peers.get(pid);
-        if (!q || !q.turnServe) { mx.fold.clear(); turnMixes.delete(pid); }
+        if (!q || !turnMixFor(q)) { mx.fold.clear(); turnMixes.delete(pid); }
       }
       let src = null;
       for (const q of peers.values()) {
-        if (!q.turnServe) continue;
+        if (!turnMixFor(q)) continue;
         if (!ensureAc()) return;
         if (!src) src = turnHeardSources();
         let mx = turnMixes.get(q.id);
@@ -6076,6 +6076,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     function turnMixTrack(pid) { const mx = turnMixes.get(pid); return mx ? mx.fold.track() : null; }
+    // A pair whose one audio sender carries a mix: a client I anchor hears
+    // my mix-minus; and when the seating makes this page the relay end of a
+    // bridge, the far end must hear my whole network through that one link,
+    // so I send it the mix of everyone I hear directly (minus the far end
+    // itself), not my voice alone.
+    function turnMixFor(p) { if (!p) return false; if (p.turnServe) return true; if (!p.turnMine || !netSeated()) return false; const li = netLinkInfo(p.id); return !!(li && li.bridge); }
     // The beat's TURN pass (the sweep calls it after the pair verdicts).
     function turnSweep(now) {
       if (myStatus.np !== directPath) myStatus.np = directPath; // my reachability rides my status: an anchor choice reads it
@@ -6171,7 +6177,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       syncTurnMixes();
       let swap = false;
       for (const p of peers.values()) {
-        if (p.turnServe && p.mainA) { const mt = turnMixTrack(p.id); if (mt && p.mainA.track !== mt) swap = true; }
+        if (turnMixFor(p) && p.mainA) { const mt = turnMixTrack(p.id); if (mt && p.mainA.track !== mt) swap = true; }
         if (p.turnAudio && !p.mainA && localStream && p.dc && p.dc.readyState === 'open') swap = true; // the voice sender is missing: refreshOutbound adds it
       }
       if (swap) refreshOutbound();
