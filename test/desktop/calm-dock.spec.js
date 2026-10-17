@@ -80,3 +80,43 @@ test('alone, or with a big room, the dock stays', async ({ page }) => {
   await page.waitForFunction(() => document.querySelectorAll('#feed .tile').length >= 8);
   expect((await idleThenRead(page, 2000)).calm).toBe(false);
 });
+
+// Calm means faces only: the per-tile buttons (Blur for all, Max, and the hover
+// row) go with the dock, even with the pointer resting on a face. Names stay.
+test('a quiet small call hides the tile buttons and keeps the names', async ({ page }) => {
+  await boot(page, 2);
+  await page.waitForSelector('#feed .tile > .blurbox.on');
+  const read = () => page.evaluate(() => {
+    const shown = (el) => {
+      if (!el) return false;
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.05 && r.width > 1;
+    };
+    const tiles = [...document.querySelectorAll('#feed .tile:not(.me)')];
+    const hovered = tiles.find((t) => t.matches(':hover'));
+    return {
+      hovered: !!hovered,
+      blur: tiles.filter((t) => shown(t.querySelector(':scope > .blurbox'))).length,
+      max: tiles.filter((t) => shown(t.querySelector('.maxbtn'))).length,
+      mod: tiles.filter((t) => shown(t.querySelector('.modbar'))).length,
+      names: tiles.filter((t) => shown(t.querySelector('.name'))).length,
+      n: tiles.length,
+    };
+  });
+  const awake = await read();
+  expect(awake.hovered).toBe(true);
+  expect(awake.blur).toBeGreaterThan(0);
+  expect((await idleThenRead(page, 2000)).calm).toBe(true);
+  // Let the fade finish before reading.
+  await page.waitForTimeout(1000);
+  const quiet = await read();
+  await page.screenshot({ path: 'test/desktop/shots/calm-tiles-after-1280.png' });
+  expect(quiet.hovered).toBe(true);
+  expect(quiet.blur).toBe(0);
+  expect(quiet.max).toBe(0);
+  expect(quiet.mod).toBe(0);
+  expect(quiet.names).toBe(quiet.n);
+  await page.mouse.move(660, 220);
+  await expect.poll(async () => (await read()).blur).toBeGreaterThan(0);
+});
