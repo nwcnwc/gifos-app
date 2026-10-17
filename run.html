@@ -1182,6 +1182,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cmsg .cpick { padding: 0; font-size: 22px; }
   .cmsg .cchip { gap: 6px; color: #1d1d1f; }
   .cmsg .cchip[aria-pressed="true"] { border: 2.5px solid #0064c8; background: #e6f0fb; }
+  .cmsg.mine .cchip[aria-pressed="true"] { border-color: #1d1d1f; }
   .cmsg .cpicks, .cmsg .cchips, .cmsg .cacts { display: flex; flex-wrap: wrap; }
   .cmsg .cwhorx { margin: 8px 0 0; font: 400 1rem/1.35 system-ui, sans-serif; }
   .cmsg .cwhorx span { display: block; }
@@ -15820,8 +15821,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             return '<button type="button" class="cchip" data-react-chip="' + e + '" data-react-id="' + attr + '" aria-pressed="' + mineR + '" aria-label="' + e + ' ' + who.size + ': ' + esc(reactorNames(who)) + '">' + e + '<span>' + who.size + '</span></button>';
           }).join('') + '</div>'
           : '';
-        // Your own line keeps Reply and Delete on one row; React is for theirs.
-        const reactBtn = m.byId === myId ? '' : '<button type="button" class="creact" data-react-open="' + attr + '" aria-expanded="' + (reactOpen === m.id) + '">React</button>';
+        // Your own line takes a reaction too ("👍 if Tuesday works").
+        const reactBtn = '<button type="button" class="creact" data-react-open="' + attr + '" aria-expanded="' + (reactOpen === m.id) + '">React</button>';
         const open = lineOpen === m.id || reactOpen === m.id;
         const whoR = open && per && per.size
           ? '<div class="cwhorx">' + REACTS.filter((e) => per.has(e)).map((e) => '<span>' + e + ' ' + esc(reactorNames(per.get(e))) + '</span>').join('') + '</div>'
