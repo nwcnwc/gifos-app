@@ -14,11 +14,11 @@ async function boot(page, hash) {
   await expect(page.locator('#roster.open')).toBeVisible();
 }
 
-test('a host mutes someone for everyone from the roster', async ({ page }) => {
+test('a host mutes someone for all from the roster', async ({ page }) => {
   await boot(page, 'v=qamute&debug=on');
   const sam = page.locator('.roster-row', { hasText: 'Sam Okonkwo' });
   const mute = sam.locator('.mutebtn');
-  await expect(mute).toHaveText('Mute for everyone');
+  await expect(mute).toHaveText('Mute for all');
   await expect(page.locator('.roster-row', { hasText: 'Jordan Lee' }).locator('.mutebtn')).toHaveCount(0);
   const fit = await page.evaluate(() => {
     const row = Array.from(document.querySelectorAll('.roster-row')).find((el) => /Sam Okonkwo/.test(el.textContent));
@@ -45,13 +45,13 @@ test('a host mutes someone for everyone from the roster', async ({ page }) => {
   expect(fit.coversDock).toBe(false);
 
   await mute.click();
-  await expect(mute).toHaveText('Unmute for everyone');
+  await expect(mute).toHaveText('Unmute for all');
   await expect(mute).toHaveClass(/on/);
-  await expect(sam).toContainText('For everyone');
+  await expect(sam).toContainText('For all');
   const onBg = await mute.evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(onBg).not.toBe(fit.bg);
   await mute.click();
-  await expect(mute).toHaveText('Mute for everyone');
+  await expect(mute).toHaveText('Mute for all');
   await expect(page.locator('#roster.open')).toBeVisible();
 });
 

@@ -1,6 +1,6 @@
 /*
  * Upright on an iPhone SE, a side tile is about 105px wide and 153px tall.
- * Tapping it opens the tile menu (Mute for everyone, Blur for everyone).
+ * Tapping it opens the tile menu (Mute for all, Blur for all).
  * The menu sat 92px down, under Blur for all, so it ran over Full screen
  * and the name, and past the tile's foot; its buttons were 22px tall.
  * A host at the back of a church hall can't hit that, or read who it is for.
@@ -13,6 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium, devices } = require('playwright');
+const { clearRoom } = require('./lib/clear-room');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
@@ -38,28 +39,23 @@ function hit(a, b) {
 
   const names = ['Ruth', 'Margaret Johnson'];
   const seeded = await page.evaluate((a) => window.__gifosVideo.seedGalleryForTest({ count: a.length, names: a }), names);
-  // Ruth seats muted, and a muted guest's menu has no Mute for everyone
+  // Ruth seats muted, and a muted guest's menu has no Mute for all
   // (host-tile-controls.js). Unmute her so the menu holds every button.
   await page.evaluate(() => window.__gifosVideo.setPeerStatusForTest('qa1', { muted: false }));
   if (!seeded || !seeded.ok) bad.push('could not seat ' + names.join(', '));
+  // Blur for all shows only on a clear face: lock the room, faces clear.
+  if (!(await clearRoom(page, ['qa1', 'qa2']))) bad.push('the faces never cleared in a locked room');
   await page.waitForTimeout(400);
 
   let shot = false;
   for (const want of names) {
     const tile = page.locator('#grid .tile', { has: page.locator('.name', { hasText: want }) }).first();
     if (!(await tile.count())) { bad.push('no tile reads "' + want + '"'); continue; }
-    // Tap the video where no button or name is.
-    const spot = await tile.evaluate((t) => {
-      const r = t.getBoundingClientRect();
-      for (let y = r.top + 4; y < r.bottom - 4; y += 4) {
-        for (let x = r.left + 4; x < r.right - 4; x += 4) {
-          const el = document.elementFromPoint(x, y);
-          if (el && el.closest('.tile') === t && !el.closest('button, .name, .chips')) return { x, y };
-        }
-      }
-      return null;
-    });
-    if (!spot) { bad.push(want + ': no spot on the tile is free to tap'); continue; }
+    // Tap the name pill: it opens the menu and is clear of the buttons. A
+    // free spot near the tile's top edge snaps to the tile above.
+    const nb = await tile.locator('.name').boundingBox();
+    const spot = nb && { x: nb.x + nb.width / 2, y: nb.y + nb.height / 2 };
+    if (!spot) { bad.push(want + ': no name pill to tap'); continue; }
     await page.touchscreen.tap(spot.x, spot.y);
     await page.waitForTimeout(200);
     const info = await tile.evaluate((t) => {

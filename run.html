@@ -1098,7 +1098,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      where there is a real pointer. */
   @media (hover: hover) { .tile:hover .modbar { display: flex; } }
   .tile .modbar button[hidden] { display: none !important; }
-  /* Blur for everyone is on the corner chip; the menu has it only where
+  /* Blur for all is on the corner chip; the menu has it only where
      the chip is not shown (slim phone tiles), so no tile offers it twice. */
   .tile:has(> .blurbox.on) .modbar [data-mod="blur"] { display: none; }
   .tile:focus-visible { outline: 3px solid #7ec8ff; outline-offset: -3px; }
@@ -1146,7 +1146,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         font-size: 13px; line-height: 1.1; white-space: normal; flex: 0 0 auto; background: #14141c; }
       .tile.slim.menu > .blurbox, .tile.slim.menu .maxbtn { visibility: hidden; }
       /* An admin's menu adds Allow apps, Allow screen share and Ban: five
-         buttons in a 95px box hid Mute for everyone above its scroll top.
+         buttons in a 95px box hid Mute for all above its scroll top.
          It opens as the sideways sheet instead, under Fit. */
       body.amadmin .tile.slim.menu { outline: 3px solid #7ec8ff; outline-offset: -3px; }
       body.amadmin .tile.slim.menu > .blurbox, body.amadmin .tile.slim.menu .maxbtn { visibility: visible; }
@@ -1159,7 +1159,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       body.amadmin .tile.slim.menu .modbar button { width: auto; font-size: 14px; padding: 2px 6px; }
     }
     /* Sideways a slim tile is about 100px tall, so the tile clipped the menu
-       92px down to a sliver of Mute for everyone. It opens as a small sheet
+       92px down to a sliver of Mute for all. It opens as a small sheet
        under the room name instead, says whose it is, and the tile is ringed. */
     @media (orientation: landscape) {
       /* Between Full screen and the Blur corner (56px each side) a 105px
@@ -5443,7 +5443,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The room-wide chat switch is the admin's alone, and only means
       // anything where there IS an admin to sign it.
       if ((field === 'chat' || field === 'cc') && (!hasAdminRoom() || !amAdmin)) return;
-      if (hasAdminRoom() && !amAdmin) { setStatus('🛡 Only this room' + String.fromCharCode(39) + 's admins can ' + (field === 'mute' ? 'mute' : 'blur') + ' someone for everyone.'); return; }
+      if (hasAdminRoom() && !amAdmin) { setStatus('🛡 Only this room' + String.fromCharCode(39) + 's admins can ' + (field === 'mute' ? 'mute' : 'blur') + ' someone for all.'); return; }
       const mine = modTable[target] = modTable[target] || {};
       mine[field] = { on, by: myName(), byId: myId, at: Date.now() };
       // In an admin room the table travels with the admin's signature, and a
@@ -6086,7 +6086,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         tile.appendChild(voteBtn);
         modbar = document.createElement('div');
         modbar.className = 'modbar';
-        modbar.innerHTML = '<button data-mod="mute" aria-label="Mute for everyone"></button><button data-mod="blur" aria-label="Blur for everyone"></button>'
+        modbar.innerHTML = '<button data-mod="mute" aria-label="' + hostWords('mute', false) + '"></button><button data-mod="blur" aria-label="' + hostWords('blur', false) + '"></button>'
           + '<button class="grantbtn" data-mod="app" title="Let this person run and lead apps in your room" aria-label="Allow apps & stage"></button>'
           + '<button class="grantbtn" data-mod="share" title="Let this person share their screen" aria-label="Allow screen share"></button>'
           + '<button class="banbtn" data-adm="ban" title="Ban this person&#39;s device from the room" aria-label="Ban this device">Ban</button>';
@@ -6165,6 +6165,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin) return false;
       return true;
     }
+    // A host's per-person controls say "for all", the same words on every
+    // tile, menu, sheet, chip, tooltip and People row (Nathan, 2026-10-16).
+    function hostWords(field, on) {
+      if (field === 'mute') return on ? uiText('unmuteForAll', 'Unmute for all') : uiText('muteForAll', 'Mute for all');
+      return on ? uiText('unblurForAll', 'Unblur for all') : uiText('blurForAll', 'Blur for all');
+    }
+    // Which blur control a guest's tile offers, from explicit state only
+    // (the password, the signed orders, their announced blur), never from
+    // the picture. 'unblur' while blurred for all in a room that can be
+    // clear; 'blur' while the tile is clear; '' while it is soft anyway:
+    // their own blur, or no password yet (faces stay soft room-wide, which
+    // no one tile can change).
+    function blurOffer(id) {
+      if (!roomPw) return '';
+      const m = modOf(id).blur;
+      if (m && m.on) return 'unblur';
+      return blurLevelFor(id) === 0 ? 'blur' : '';
+    }
     function paintTileChrome(t, id, isMe, st) {
       if (!t || !t.tile || typeof t.tile.querySelector !== 'function') return;
       if (typeof document === 'undefined' || !document || typeof document.createElement !== 'function') return;
@@ -6197,12 +6215,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         });
         tile.appendChild(box);
       }
-      let on = false, by = '';
-      try { const m = modOf(id).blur; on = !!(m && m.on); by = (m && m.by) || ''; } catch (e) {}
+      let on = false, by = '', offer = '';
+      try { const m = modOf(id).blur; on = !!(m && m.on); by = (m && m.by) || ''; offer = blurOffer(id); } catch (e) {}
       // One wording for this control everywhere: the menu says the same.
-      const words = on ? 'Unblur for everyone' : 'Blur for everyone';
-      const label = (on ? 'Unblur' : 'Blur') + '\nfor\neveryone';
-      box.className = 'blurbox on';
+      const words = hostWords('blur', on);
+      const label = words.replace(/ /g, '\n');
+      box.className = offer ? 'blurbox on' : 'blurbox';
       if (box.textContent !== label) box.textContent = label;
       box.setAttribute('aria-label', words);
       box.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -6322,10 +6340,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Status icons only: a muted mic, a camera-off glyph. No icon when the
       // camera is on. Blur is the picture itself, never a badge. A bot has
       // neither a mic nor a camera.
-      if (!st.bot && gMute) chips.push(statusIco('mic-off', 'muted for everyone by ' + (mod.mute.by || 'someone')));
+      if (!st.bot && gMute) chips.push(statusIco('mic-off', 'muted for all by ' + (mod.mute.by || 'someone')));
       else if (!st.bot && st.muted) chips.push(statusIco('mic-off', 'muted'));
       const bl = blurLevelFor(id);
-      if (!st.bot && gCam) chips.push(statusIco('cam-off', 'video off for everyone by ' + (mod.cam.by || 'someone')));
+      if (!st.bot && gCam) chips.push(statusIco('cam-off', 'video off for all by ' + (mod.cam.by || 'someone')));
       else if (!st.bot && st.camOff) chips.push(statusIco('cam-off', 'camera off'));
       if (hasAdminRoom() && mod.app && mod.app.on && !admins.includes(id)) chips.push('<span>🧩 may run apps — allowed by ' + esc(mod.app.by) + '</span>');
       // The chip names a per-person allow only. A room-wide allow covers
@@ -6390,14 +6408,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         t.video._gmute = !!gMute;
         if (t.video._aud) t.video._aud.muted = !!gMute;
         if (t.modbar) {
-          const muteLabel = gMute ? 'Unmute for everyone' : 'Mute for everyone';
-          const blurLabel = gBlur ? 'Unblur for everyone' : 'Blur for everyone';
+          const muteLabel = hostWords('mute', gMute);
+          const blurLabel = hostWords('blur', gBlur);
           const appLabel = (mod.app && mod.app.on) ? 'Revoke apps & stage' : 'Allow apps & stage';
           t.modbar.children[0].textContent = muteLabel; t.modbar.children[0].setAttribute('aria-label', muteLabel);
           // Already muted by their own hand (their announced status): nothing
           // to mute. Muted for everyone, it stays, as the way to lift it.
           t.modbar.children[0].hidden = !gMute && !!st.muted;
           t.modbar.children[1].textContent = blurLabel; t.modbar.children[1].setAttribute('aria-label', blurLabel);
+          // Already soft (their own blur, or no password yet): nothing to blur.
+          t.modbar.children[1].hidden = !blurOffer(id);
           t.modbar.children[2].textContent = appLabel; t.modbar.children[2].setAttribute('aria-label', appLabel);
           for (const b of t.modbar.children) {
             if (!b.getAttribute || b.getAttribute('data-mod') !== 'share') continue;
@@ -8368,7 +8388,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const flags = [];
         if (r.stage) flags.push(uiText('onAir', 'On air'));
         if (r.hand) flags.push(uiText('hand', 'Hand'));
-        if (r.roomMute) flags.push(uiText('forEveryone', 'For everyone'));
+        if (r.roomMute) flags.push(uiText('forEveryone', 'For all'));
         else if (r.muted) flags.push(uiText('muted', 'Muted'));
         if (flags.length) {
           const f = document.createElement('span');
@@ -8382,7 +8402,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const b = document.createElement('button');
           b.type = 'button';
           b.className = 'mutebtn' + (r.roomMute ? ' on' : '');
-          const words = r.roomMute ? uiText('unmuteForAll', 'Unmute for everyone') : uiText('muteForAll', 'Mute for everyone');
+          const words = hostWords('mute', r.roomMute);
           b.textContent = words;
           b.setAttribute('aria-label', words + ': ' + r.name);
           b.onclick = () => {
@@ -13531,7 +13551,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // moved to Invite), so there are just two moods: sign in, or manage.
       if (amAdmin) {
         setup.style.display = 'none'; panel.style.display = '';
-        document.getElementById('adm-hint').textContent = 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for everyone, and ban devices. Anyone who knows the admin password can open Admin and sign in too.';
+        document.getElementById('adm-hint').textContent = 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for all, and ban devices. Anyone who knows the admin password can open Admin and sign in too.';
         renderBanned();
       } else {
         setup.style.display = ''; panel.style.display = 'none';
@@ -23685,7 +23705,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (micLabel) { if (micLabel.textContent !== micWord) micLabel.textContent = micWord; }
       if (micBtn.getAttribute('aria-label') !== micWord) micBtn.setAttribute('aria-label', micWord);
       micBtn.title = micLocked
-        ? 'Muted for everyone' + (modOf('me').mute.by ? ' by ' + modOf('me').mute.by : '') + ' — someone else has to lift it'
+        ? 'Muted for all' + (modOf('me').mute.by ? ' by ' + modOf('me').mute.by : '') + ' — someone else has to lift it'
         : (muted ? 'You are muted — tap to speak' : 'Your mic is on — tap to mute');
       if (unmuteBtn) {
         const lob = document.getElementById('lobby');
@@ -23779,7 +23799,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (kind === 'cam' && forcedCamOff('me')) return '📷 An admin turned your video off for the room — only they can turn it back on.';
       if (kind === 'mic' && amGloballyMuted()) {
         const by = modOf('me').mute.by;
-        return 'You were muted for everyone' + (by ? ' by ' + by : '') + ' — another participant has to lift it.';
+        return 'You were muted for all' + (by ? ' by ' + by : '') + ' — another participant has to lift it.';
       }
       return null;
     }
@@ -23914,7 +23934,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const track = localStream.getAudioTracks()[0]; if (!track) return lateMedia('mic');
       if (!track.enabled && amGloballyMuted()) {
         const by = modOf('me').mute.by;
-        setStatus('You were muted for everyone' + (by ? ' by ' + by : '') + ' — another participant has to lift it.');
+        setStatus('You were muted for all' + (by ? ' by ' + by : '') + ' — another participant has to lift it.');
         return;
       }
       track.enabled = !track.enabled;
@@ -24014,7 +24034,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           ? (amAdmin ? 'Set one with the Password button.' : 'Only this room’s admin can set one.')
           : 'Anyone here can set one with the Password button.'));
       } else if (blocked) {
-        setStatus('Someone in the room has blurred you for everyone — you stay blurred until that is lifted.');
+        setStatus('Someone in the room has blurred you for all — you stay blurred until that is lifted.');
       } else if (myStatus.camOff) {
         setStatus('No blur picked — turn your camera on to be ready for clear video.');
       } else if (hasAdminRoom() && !adminPresent()) {

@@ -145,6 +145,20 @@ async function run(browser, dev, bad) {
   // 1. Locked with a password: the room can be clear, so each tile follows
   //    its own guest's state. Margaret gets blurred for all by hand first.
   await page.evaluate(() => window.__gifosVideo.setRoomPwForTest('qa-pass'));
+  // The room counts its admin as present on its next sweep (2s), and the
+  // tiles repaint on the guests' next status beat, as they would in a call.
+  // Until then every face stays soft; beat every guest until Grace clears.
+  let clear = false;
+  for (let i = 0; i < 16 && !clear; i++) {
+    await page.waitForTimeout(500);
+    clear = await page.evaluate((a) => {
+      for (const g of a.all) window.__gifosVideo.setPeerStatusForTest(g.id, g.st);
+      const t = Array.from(document.querySelectorAll('#grid .tile')).find((x) => (x.querySelector('.name') || {}).textContent === 'Grace');
+      const v = t && t.querySelector('video');
+      return !!v && !v.classList.contains('blur1') && !v.classList.contains('blur2');
+    }, { all: NAMES.map((n) => ({ id: ID[n], st: STATUS[n] })) });
+  }
+  if (!clear) bad.push(dev + ': Grace never showed clear in the locked room');
   await page.waitForTimeout(300);
   await reach('Margaret Johnson');
   const target = tileOf('Margaret Johnson').locator('button', { hasText: /^Blur\s+for\s+(all|everyone)$/i }).filter({ visible: true }).first();

@@ -1,6 +1,6 @@
 /*
  * In a room with an admin, the admin's tile menu has five buttons: Mute for
- * everyone, Blur for everyone, Allow apps & stage, Allow screen share and
+ * all, Blur for all, Allow apps & stage, Allow screen share and
  * Ban. On an iPhone SE a side tile is slim (105x153 upright, 105x100
  * sideways), and the slim menu was sized for two. A church or company admin
  * on a phone must still reach every one of them: each is on screen when
@@ -12,10 +12,11 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium, devices } = require('playwright');
+const { clearRoom } = require('./lib/clear-room');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
-const WANT = [/^(Un)?[Mm]ute for everyone$/, /^(Un)?[Bb]lur for everyone$/, /^(Allow|Revoke) apps & stage$/, /^(Allow|Revoke) screen share$/, /^Ban$/];
+const WANT = [/^(Un)?[Mm]ute for all$/, /^(Un)?[Bb]lur for all$/, /^(Allow|Revoke) apps & stage$/, /^(Allow|Revoke) screen share$/, /^Ban$/];
 
 // A fixed admin key; the room's verifier is derived from it in the page.
 const K = '5eed'.repeat(16);
@@ -36,13 +37,15 @@ async function run(browser, dev, av, tagShot, bad) {
 
   const names = ['Ruth', 'Margaret Johnson'];
   const seeded = await page.evaluate((a) => window.__gifosVideo.seedGalleryForTest({ count: a.length, names: a }), names);
-  // Ruth seats muted, and a muted guest's menu has no Mute for everyone
+  // Ruth seats muted, and a muted guest's menu has no Mute for all
   // (host-tile-controls.js). Unmute her so the menu holds every button.
   await page.evaluate(() => window.__gifosVideo.setPeerStatusForTest('qa1', { muted: false }));
   if (!seeded || !seeded.ok) bad.push(dev + ': could not seat ' + names.join(', '));
   // This phone holds the room's admin key, so it signs in as the admin.
   const admin = await page.waitForFunction(() => document.body.classList.contains('amadmin'), null, { timeout: 10000 }).then(() => true, () => false);
   if (!admin) bad.push(dev + ': the stored admin key did not sign this phone in as admin');
+  // Blur for all shows only on a clear face: lock the room, faces clear.
+  if (!(await clearRoom(page, ['qa1', 'qa2']))) bad.push(dev + ': the faces never cleared in a locked room');
   await page.waitForTimeout(600);
 
   let shot = false;
@@ -112,7 +115,7 @@ async function run(browser, dev, av, tagShot, bad) {
       await tile.evaluate((t) => { const bar = t.querySelector('.modbar'); bar.scrollTop = 0; });
       await page.screenshot({ path: path.join(SHOTS, tagShot(bad.length ? 'before' : 'after')) });
     }
-    // Mute for everyone still works from there.
+    // Mute for all still works from there.
     const mute = await tile.evaluate((t) => {
       const el = t.querySelector('.modbar button[data-mod="mute"]');
       el.scrollIntoView({ block: 'nearest' });
@@ -122,7 +125,7 @@ async function run(browser, dev, av, tagShot, bad) {
     await page.touchscreen.tap(mute.x, mute.y);
     await page.waitForTimeout(200);
     const now = await tile.evaluate((t) => t.querySelector('.modbar button[data-mod="mute"]').textContent);
-    if (now !== 'Unmute for everyone') bad.push(tag + ': tapping Mute for everyone left it reading "' + now + '"');
+    if (now !== 'Unmute for all') bad.push(tag + ': tapping Mute for all left it reading "' + now + '"');
     // A tap off the tile closes it.
     await page.touchscreen.tap(8, 8);
     await page.waitForTimeout(200);

@@ -1,4 +1,8 @@
 const { test, expect } = require('@playwright/test');
+const { clearRoom } = require('../mobile/lib/clear-room');
+
+// A clear room needs this page's camera on too (clearRoom).
+test.use({ launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] }, permissions: ['camera', 'microphone'] });
 
 async function boot(page) {
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -9,10 +13,12 @@ async function boot(page) {
   await page.goto('/run.html#v=qablur&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#leavebtn', { state: 'visible' });
   await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 2, connected: true }));
-  await page.waitForSelector('.tile > .blurbox');
+  // Blur for all shows only on a clear face: lock the room, faces clear.
+  expect(await clearRoom(page, ['qa1', 'qa2'])).toBe(true);
+  await page.waitForSelector('.tile > .blurbox.on');
 }
 
-test('Blur for everyone is a square inset from the tile corner', async ({ page }) => {
+test('Blur for all is a square inset from the tile corner', async ({ page }) => {
   await boot(page);
   const info = await page.evaluate(() => {
     function gap(a, b) {
@@ -48,7 +54,7 @@ test('Blur for everyone is a square inset from the tile corner', async ({ page }
   });
   expect(info.length).toBeGreaterThanOrEqual(1);
   for (const b of info) {
-    expect(b.text).toBe('Blur for everyone');
+    expect(b.text).toBe('Blur for all');
     expect(b.w).toBeGreaterThanOrEqual(44);
     expect(b.h).toBeGreaterThanOrEqual(44);
     expect(Math.abs(b.w - b.h)).toBeLessThanOrEqual(1);

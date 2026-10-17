@@ -1,8 +1,8 @@
 /*
  * Sideways on an iPhone SE, every tile is about 105px wide and 100px tall.
- * A host taps Ruth's tile for Mute for everyone. The menu opened 92px down
- * that 100px tile, so the tile clipped it: Mute for everyone showed as a
- * sliver under the name and Blur for everyone not at all. A host holding
+ * A host taps Ruth's tile for Mute for all. The menu opened 92px down
+ * that 100px tile, so the tile clipped it: Mute for all showed as a
+ * sliver under the name and Blur for all not at all. A host holding
  * the phone sideways (a church livestream, a desk stand) could not mute
  * anyone. Opened on a short sideways tile, every button of the menu is on
  * screen, 44px tall, read in full, on top, and the menu says whose it is.
@@ -12,6 +12,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium, devices } = require('playwright');
+const { clearRoom } = require('./lib/clear-room');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
@@ -33,10 +34,12 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
 
   const names = ['Ruth', 'Margaret Johnson'];
   const seeded = await page.evaluate((a) => window.__gifosVideo.seedGalleryForTest({ count: a.length, names: a }), names);
-  // Ruth seats muted, and a muted guest's menu has no Mute for everyone
+  // Ruth seats muted, and a muted guest's menu has no Mute for all
   // (host-tile-controls.js). Unmute her so the menu holds every button.
   await page.evaluate(() => window.__gifosVideo.setPeerStatusForTest('qa1', { muted: false }));
   if (!seeded || !seeded.ok) bad.push('could not seat ' + names.join(', '));
+  // Blur for all shows only on a clear face: lock the room, faces clear.
+  if (!(await clearRoom(page, ['qa1', 'qa2']))) bad.push('the faces never cleared in a locked room');
   await page.waitForTimeout(400);
 
   let shot = false;
@@ -112,13 +115,13 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
       shot = true;
       await page.screenshot({ path: path.join(SHOTS, (bad.length ? 'before' : 'after') + '-tile-menu-land-iphone-se.png') });
     }
-    // Mute for everyone works from there.
-    const mute = info.btns.find((b) => /^Mute for everyone$/.test(b.text));
+    // Mute for all works from there.
+    const mute = info.btns.find((b) => /^Mute for all$/.test(b.text));
     if (mute && !mute.covered) {
       await page.touchscreen.tap(mute.box.x + mute.box.w / 2, mute.box.y + mute.box.h / 2);
       await page.waitForTimeout(200);
       const now = await tile.evaluate((t) => t.querySelector('.modbar').children[0].textContent);
-      if (now !== 'Unmute for everyone') bad.push(tag + ': tapping Mute for everyone left it reading "' + now + '"');
+      if (now !== 'Unmute for all') bad.push(tag + ': tapping Mute for all left it reading "' + now + '"');
     }
     // A tap off the tile and off the menu closes it.
     await page.touchscreen.tap(8, 8);

@@ -3,19 +3,20 @@
  * everyone" and "Blur for everyone" while Margaret Johnson's tile offered
  * "Blur for all" and Full screen. The cause: Ruth's tap menu was open, and a
  * closed tile shows only its corner chip, which said "Blur for all" and had
- * no Mute. Ruth was also already muted, and still offered Mute for everyone.
+ * no Mute. Ruth was also already muted, and still offered Mute.
  *
  * Every guest tile offers the same host controls with one wording ("for
- * everyone": text, aria-label and title), each control once. Mute for
- * everyone hides while that person says they are muted and comes back when
- * they unmute; muted for everyone, it reads Unmute for everyone. People
- * (the roster) follows the same rule. A desktop case checks the same.
+ * all": text, aria-label and title), each control once. Mute for all hides
+ * while that person says they are muted and comes back when they unmute;
+ * muted for all, it reads Unmute for all. People (the roster) follows the
+ * same rule. A desktop case checks the same.
  *
  * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/host-tile-controls.js
  */
 const fs = require('fs');
 const path = require('path');
 const { chromium, devices } = require('playwright');
+const { clearRoom } = require('./lib/clear-room');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
@@ -47,10 +48,10 @@ function readTile(t) {
 
 function wording(tag, info, bad) {
   for (const l of new Set(info.labels)) {
-    if (/\bfor all\b/i.test(l)) bad.push(tag + ': a control says "' + l + '"');
+    if (/\bfor everyone\b/i.test(l)) bad.push(tag + ': a control says "' + l + '"');
   }
   for (const l of info.texts) {
-    if (/mute|blur/i.test(l) && !/^(Un)?(mute|blur) for everyone$/i.test(l)) bad.push(tag + ': a control reads "' + l + '"');
+    if (/mute|blur/i.test(l) && !/^(Un)?(mute|blur) for all$/i.test(l)) bad.push(tag + ': a control reads "' + l + '"');
   }
   const seen = new Set();
   for (const l of info.shown) {
@@ -70,8 +71,11 @@ async function openPage(browser, device, room) {
   const skip = page.locator('#nmok');
   if (await skip.count()) await skip.click().catch(() => {});
   const seeded = await page.evaluate((a) => window.__gifosVideo.seedGalleryForTest({ count: a.length, names: a }), NAMES);
+  // Blur for all shows only on a clear face: lock the room, faces clear
+  // (host-tile-blur-states.js covers soft faces).
+  const clear = await clearRoom(page, ['qa1', 'qa2']);
   await page.waitForTimeout(400);
-  return { context, page, seeded: !!(seeded && seeded.ok) };
+  return { context, page, seeded: !!(seeded && seeded.ok) && clear };
 }
 
 const tileOf = (page, name) => page.locator('#grid .tile', { has: page.locator('.name', { hasText: name }) }).first();
@@ -115,7 +119,7 @@ async function phone(browser, bad) {
     wording(tag + ' ' + name + ' at rest', s.rest, bad);
     wording(tag + ' ' + name + ' menu open', s.opened, bad);
     const reach = s.rest.shown.concat(s.opened.shown);
-    for (const want of ['Mute for everyone', 'Blur for everyone']) {
+    for (const want of ['Mute for all', 'Blur for all']) {
       if (!reach.includes(want)) bad.push(tag + ' ' + name + ': no "' + want + '" at rest or in the menu (' + reach.join(', ') + ')');
     }
   }
@@ -125,15 +129,15 @@ async function phone(browser, bad) {
     if (!sameSet(a.opened.shown, b.opened.shown)) bad.push(tag + ': menu open Ruth offers [' + a.opened.shown + '], Margaret offers [' + b.opened.shown + ']');
   }
 
-  // 2. Ruth mutes herself: her tile stops offering Mute for everyone.
+  // 2. Ruth mutes herself: her tile stops offering Mute for all.
   await setMuted(page, true);
   await page.waitForTimeout(150);
   const ruthMuted = await open('Ruth');
-  await page.screenshot({ path: path.join(SHOTS, (bad.length || ruthMuted.shown.includes('Mute for everyone') ? 'before' : 'after') + '-host-tile-controls-iphone-se.png') });
-  if (ruthMuted.shown.includes('Mute for everyone')) bad.push(tag + ': Ruth is muted and her menu still offers Mute for everyone');
+  await page.screenshot({ path: path.join(SHOTS, (bad.length || ruthMuted.shown.includes('Mute for all') ? 'before' : 'after') + '-host-tile-controls-iphone-se.png') });
+  if (ruthMuted.shown.includes('Mute for all')) bad.push(tag + ': Ruth is muted and her menu still offers Mute for all');
   await meTap();
   const margaret = await open('Margaret Johnson');
-  if (!margaret.shown.includes('Mute for everyone')) bad.push(tag + ': Margaret is not muted and her menu has no Mute for everyone');
+  if (!margaret.shown.includes('Mute for all')) bad.push(tag + ': Margaret is not muted and her menu has no Mute for all');
   await meTap();
 
   // People follows the same rule and the same words.
@@ -156,18 +160,18 @@ async function phone(browser, bad) {
     else {
       if (ruth.mute) bad.push(tag + ': People offers "' + ruth.mute.text + '" for Ruth, who is muted');
       if (!mj.mute) bad.push(tag + ': People offers no mute for Margaret');
-      else if (mj.mute.text !== 'Mute for everyone') bad.push(tag + ': People says "' + mj.mute.text + '" for Margaret');
+      else if (mj.mute.text !== 'Mute for all') bad.push(tag + ': People says "' + mj.mute.text + '" for Margaret');
     }
     await page.locator('#roster-close').click().catch(() => {});
     await page.waitForTimeout(100);
   } else bad.push(tag + ': no People in the room sheet');
 
-  // 3. Ruth unmutes: Mute for everyone is back.
+  // 3. Ruth unmutes: Mute for all is back.
   await setMuted(page, false);
   await page.waitForTimeout(150);
   const back = await open('Ruth');
-  if (!back.shown.includes('Mute for everyone')) bad.push(tag + ': Ruth unmuted and her menu has no Mute for everyone');
-  // 4. Muted for everyone, then she announces her mic off: the lift stays.
+  if (!back.shown.includes('Mute for all')) bad.push(tag + ': Ruth unmuted and her menu has no Mute for all');
+  // 4. Muted for all, then she announces her mic off: the lift stays.
   const mute = tileOf(page, 'Ruth').locator('.modbar button[data-mod="mute"]');
   if (await mute.isVisible()) {
     await mute.tap();
@@ -176,7 +180,7 @@ async function phone(browser, bad) {
     await page.waitForTimeout(150);
     let lift = await tileOf(page, 'Ruth').evaluate(readTile);
     if (!lift.open) lift = await open('Ruth');
-    if (!lift.shown.includes('Unmute for everyone')) bad.push(tag + ': Ruth muted for everyone offers [' + lift.shown + '], no Unmute for everyone');
+    if (!lift.shown.includes('Unmute for all')) bad.push(tag + ': Ruth muted for all offers [' + lift.shown + '], no Unmute for all');
   }
   await context.close();
 }
@@ -197,7 +201,7 @@ async function desktop(browser, bad) {
     const s = await hover(name);
     seen[name] = s;
     wording(tag + ' ' + name, s, bad);
-    for (const want of ['Mute for everyone', 'Blur for everyone']) {
+    for (const want of ['Mute for all', 'Blur for all']) {
       if (!s.shown.includes(want)) bad.push(tag + ' ' + name + ': no "' + want + '" on hover (' + s.shown.join(', ') + ')');
     }
   }
@@ -205,8 +209,8 @@ async function desktop(browser, bad) {
   await setMuted(page, true);
   await page.mouse.move(2, 2);
   const ruth = await hover('Ruth');
-  await page.screenshot({ path: path.join(SHOTS, (ruth.shown.includes('Mute for everyone') || bad.length ? 'before' : 'after') + '-host-tile-controls-desktop.png') });
-  if (ruth.shown.includes('Mute for everyone')) bad.push(tag + ': Ruth is muted and her tile still offers Mute for everyone');
+  await page.screenshot({ path: path.join(SHOTS, (ruth.shown.includes('Mute for all') || bad.length ? 'before' : 'after') + '-host-tile-controls-desktop.png') });
+  if (ruth.shown.includes('Mute for all')) bad.push(tag + ': Ruth is muted and her tile still offers Mute for all');
   await context.close();
 }
 
