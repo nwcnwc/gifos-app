@@ -3097,7 +3097,8 @@ test('the lobby preview says you join muted with the camera off', async ({ page 
   for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
     for (const bc of [false, true]) {
       await page.setViewportSize({ width: w, height: h });
-      await page.goto('/run.html?desk=lobnote' + w + (bc ? '#bc=1' : ''));
+      // A distinct query per boot: a hash-only change would not re-run boot.
+      await page.goto('/run.html?desk=lobnote' + w + (bc ? 's#bc=1' : 'g'));
       await page.waitForSelector('#lobby.show');
       if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/lobby-note-' + (bc ? 'service-' : 'group-') + (process.env.SHOT_TAG || 'run') + '.png' }); }
       const note = page.locator('#lob-preview .lob-pv-note');
