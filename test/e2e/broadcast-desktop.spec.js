@@ -3881,3 +3881,56 @@ test('the lobby card keeps the same gap to the right edge as the preview has to 
     }
   }
 });
+
+test('with the chat open, the dock sits in the call beside it, not across its edge', async ({ page }) => {
+  // Seen across two machines at 1280: the host's dock ran from 204 to 1076,
+  // End sat over the open chat's edge at 940, and the panel kept an empty
+  // 128px band at its bottom for the dock. The dock is centred on the window,
+  // not on the call that now sits beside the chat.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [1024, 720], [900, 720]]) {
+    for (const who of ['host', 'view', 'group']) {
+      await page.setViewportSize({ width: w, height: h });
+      const url = who === 'group'
+        ? '/run.html?desk=dockside' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=dockside' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.mouse.move(w / 3, h / 2);
+      await page.locator('#chatbtn').click();
+      await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+      await page.waitForTimeout(300);
+      if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/dock-side-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      const got = await page.evaluate(() => {
+        const edge = document.getElementById('chatpanel').getBoundingClientRect().left;
+        const d = document.querySelector('.bar').getBoundingClientRect();
+        const send = document.getElementById('chatsend') || document.querySelector('#chatpanel button[type="submit"]');
+        return { edge: Math.round(edge), dockLeft: Math.round(d.left), dockRight: Math.round(d.right), dockWidth: Math.round(d.width),
+          sendBottom: send ? Math.round(send.getBoundingClientRect().bottom) : -1, h: innerHeight };
+      });
+      const tag = who + ' at ' + w + ': ' + JSON.stringify(got);
+      if (got.dockWidth + 16 <= got.edge) {
+        // It fits in the call: it sits there, centred, clear of the chat,
+        // and the chat's composer takes the band the dock used to cover.
+        expect(got.dockRight, tag + ' dock clear of the chat').toBeLessThanOrEqual(got.edge - 8);
+        expect(Math.abs((got.dockLeft + got.dockRight) / 2 - got.edge / 2), tag + ' dock centred in the call').toBeLessThanOrEqual(2);
+        expect(got.sendBottom, tag + ' composer at the panel bottom').toBeGreaterThanOrEqual(got.h - 24);
+      } else {
+        // Too wide for the call beside the chat: it floats over the chat's
+        // bottom band, and the composer stays above it.
+        expect(got.sendBottom, tag + ' composer above the dock').toBeLessThanOrEqual(got.h - 104 - 14);
+      }
+      // Closing the chat puts the dock back in the window's middle.
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#chatpanel')).not.toHaveClass(/open/);
+      const d = await page.locator('.bar').boundingBox();
+      expect(Math.abs(d.x + d.width / 2 - w / 2), who + ' at ' + w + ' dock back in the middle').toBeLessThanOrEqual(2);
+    }
+  }
+});
