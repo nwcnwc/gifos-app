@@ -1840,6 +1840,34 @@ test('settings names the stage on a service', async ({ page }) => {
   await expect(page.locator('#set-name-lead')).toHaveText('What everyone sees on your tile:');
 });
 
+test('settings on a service is not called a meeting', async ({ page }) => {
+  const serviceTip = 'Service settings — the picture you send, and the name people see on the stage.';
+  const meetingTip = 'Meeting settings — your sound mix, timing, and the video quality your camera records';
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=settip' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.locator('#bartoggle').click();
+    const btn = page.locator('#setbtn');
+    await expect(btn).toBeVisible();
+    await expect(btn).toHaveAttribute('title', serviceTip);
+    const lay = await page.evaluate(() => {
+      const r = document.getElementById('setbtn').getBoundingClientRect();
+      const menu = document.getElementById('barmore').getBoundingClientRect();
+      return { inMenu: r.top >= menu.top - 1 && r.bottom <= menu.bottom + 1 && r.left >= menu.left - 1 && r.right <= menu.right + 1, on: r.left >= -1 && r.right <= innerWidth + 1 && r.top >= -1 && r.bottom <= innerHeight + 1 };
+    });
+    expect(lay.inMenu, JSON.stringify(lay)).toBe(true);
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+  }
+  await page.goto('/run.html?desk=settipgroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.locator('#bartoggle').click();
+  await expect(page.locator('#setbtn')).toHaveAttribute('title', meetingTip);
+});
+
 test('a host steps on and off the stage from the dock', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');

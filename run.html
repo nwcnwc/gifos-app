@@ -2546,6 +2546,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         say('chatprivacy', '· private to this small group, gone when everyone leaves');
         const chatMeet = document.getElementById('chatbtn');
         if (chatMeet) chatMeet.title = 'Chat and share files — stays between the people on this meeting, not on a server';
+        const setMeet = document.getElementById('setbtn');
+        if (setMeet) setMeet.title = 'Meeting settings — your sound mix, timing, and the video quality your camera records';
         const leave = document.getElementById('leavebtn');
         if (leave) {
           leave.title = 'Leave the small group. Your camera and microphone stop.';
@@ -2578,6 +2580,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (help) help.title = 'How this service works';
       const nameLead = document.getElementById('set-name-lead');
       if (nameLead) nameLead.textContent = 'What everyone sees on the stage:';
+      const setBtn = document.getElementById('setbtn');
+      if (setBtn) setBtn.title = 'Service settings — the picture you send, and the name people see on the stage.';
       const helpH = document.querySelector('#help-modal h3');
       if (helpH) helpH.textContent = 'How this service works';
       const who = document.getElementById('whobtn');
