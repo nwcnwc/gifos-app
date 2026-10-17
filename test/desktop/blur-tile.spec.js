@@ -192,3 +192,48 @@ test('Blur for all hides on a face that is already blurred', async ({ page }) =>
   await page.evaluate(() => window.__gifosVideo.setPeerBlurForTest('Avery Chen', 0));
   expect(await look('Avery Chen')).toEqual({ box: 'Blur for all', every: 'Blur for everyone' });
 });
+
+// The same rule in the phone's tap menu: Blur for all and Blur for everyone
+// are gone from a self-blurred face, Unblur stays on a face blurred for all.
+test.describe('phone', () => {
+  test.skip(({ browserName }) => browserName === 'firefox', 'Firefox has no mobile emulation');
+  test.use({
+    viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true,
+    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+  });
+  test('Blur for all hides on a phone face that is already blurred', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('gifos_name', 'Jordan Lee');
+      sessionStorage.setItem('gifos_appeared', '1');
+    });
+    await page.goto('/run.html#v=qablurdonephone&debug=on', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#leavebtn', { state: 'visible' });
+    await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 3, connected: true }));
+    await page.waitForFunction(() => document.querySelectorAll('#feed .tile:not(.me) > .blurbox.on').length >= 3);
+    await page.evaluate(() => window.__gifosVideo.setPeerBlurForTest('Avery Chen', 2));
+    const tileOf = (name) => page.locator('#feed .tile:not(.me)').filter({ has: page.locator('.name', { hasText: name }) });
+    await tileOf('Sam Okonkwo').locator(':scope > .blurbox').tap();
+    await expect(tileOf('Sam Okonkwo').locator(':scope > .blurbox')).toHaveAttribute('aria-pressed', 'true');
+    const look = (name) => tileOf(name).evaluate((tile) => {
+      tile.classList.add('menu');
+      const shown = (el) => {
+        if (!el) return false;
+        const cs = getComputedStyle(el);
+        const r = el.getBoundingClientRect();
+        return cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.95 && r.width > 1;
+      };
+      const box = tile.querySelector(':scope > .blurbox');
+      const every = tile.querySelector('.modbar [data-mod="blur"]');
+      return { box: shown(box) ? box.textContent.trim() : '', every: shown(every) ? every.textContent.trim() : '' };
+    });
+    const avery = await look('Avery Chen');
+    const sam = await look('Sam Okonkwo');
+    const priya = await look('Priya Shah');
+    await page.screenshot({ path: 'test/desktop/shots/blur-done-phone-after-390.png' });
+    expect(avery).toEqual({ box: '', every: '' });
+    expect(sam).toEqual({ box: 'Unblur', every: 'Unblur for everyone' });
+    expect(priya).toEqual({ box: 'Blur for all', every: 'Blur for everyone' });
+    await page.evaluate(() => window.__gifosVideo.setPeerBlurForTest('Avery Chen', 0));
+    expect(await look('Avery Chen')).toEqual({ box: 'Blur for all', every: 'Blur for everyone' });
+  });
+});
