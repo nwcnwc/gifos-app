@@ -669,6 +669,13 @@
       // seekers DEEP instead of packing shallow (compaction leg 1: byDepth 3
       // went 1 -> 51). No occ entry => no claimant => free.
       if (!this.occ.has(k)) return false;
+      // The seeker's OWN cell is no reservation against it, even while its
+      // stamp is fresh: a page that rebuilt its node under the same id
+      // (run.html startMesh after a password grant) knocks inside the 60-tick
+      // window and was seated one row over while every mate still listed it
+      // at its old cell (test/mesh/rekey-restart-same-id.js). Only that id
+      // can take the cell (CLAIM/HELLO are signed): a forged FIND seats nobody.
+      if (this.findNc != null && this.occGet(k) === this.findNc) return false;
       if (this.firstHandLive(k)) return true;
       return !this.occIsPhantom(k);
     }
@@ -2170,7 +2177,7 @@
               const hk = ck(adm);
               const ago = this.live.has(hk) ? TICK - this.live.get(hk) : 999;
               if (ago > 16) {
-                if (TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && this.oneRowRoom())) {
+                if (this.occGet(k) === mm.nc || TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && this.oneRowRoom())) {
                   this.healOnly.delete(k); this.healTry.set(k, TICK);
                   if (this.occIsPhantom(k)) { this.occ.delete(k); this.live.delete(k); this.s1seen.delete(k); this.kidful.delete(k); this.tlForget(k, 'phantom-standin'); }
                   this.admit(cell, mm); return;
@@ -2187,7 +2194,12 @@
               // In a one-row room a heal's stamp paces the heal, not admission: heal() re-arms every 45 ticks
               // and its FINDLEAF can never fill the seat there, so a shared gate never opened for a newcomer.
               if (this.coord.i === 0 && cell.r === this.coord.r && !this.rowLedger && TICK - this.seatedAt <= 60) { skip.push('L' + t + '.' + j); continue; }
-              if (TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && this.oneRowRoom())) {
+              // ...and the cooling never holds a seeker out of ITS OWN cell:
+              // the gate keeps a stranger off a seat that may still be live,
+              // and the knocker is that seat (rekey-restart-same-id.js: the
+              // row sweep forgot the dark mate, a row-mate re-listed it, and
+              // its rebuilt node was seated one row over instead).
+              if (this.occGet(k) === mm.nc || TICK - (this.healTry.has(k) ? this.healTry.get(k) : -999) > 45 || (this.healOnly.has(k) && this.oneRowRoom())) {
                 this.healOnly.delete(k); this.healTry.set(k, TICK);
                 if (this.occIsPhantom(k)) {
                   this.occ.delete(k); this.live.delete(k); this.s1seen.delete(k); this.kidful.delete(k); this.tlForget(k, 'phantom-heal');
