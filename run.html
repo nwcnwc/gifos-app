@@ -741,6 +741,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #bc-join-note[hidden] { display: none !important; }
   .lob-watch-note { margin: .2rem 0 .6rem; font-size: .85rem; line-height: 1.45; color: var(--text, #e0e0f0); }
   .lob-watch-note[hidden] { display: none !important; }
+  /* In a call the faces box is fixed over the whole page, so the queue line
+     at the top sat under it (nobody saw it), and during a phone share it
+     showed through under the room name. In those views the header chip
+     carries a "✋ 1" button, and the line opens under the header. */
+  #hdrhand { display: none; flex: 0 0 auto; box-sizing: border-box; align-items: center; justify-content: center;
+    min-width: 44px; min-height: 44px; height: 44px; margin: 0 0 0 4px; padding: 0 12px;
+    border: 0; border-radius: 999px; background: #2b2f38; color: #fff; cursor: pointer;
+    font: 700 1rem/1 system-ui, sans-serif; white-space: nowrap; }
+  #hdrhand .hw { margin-left: .3em; }
+  body.comfy #hdrhand.on, body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #hdrhand.on { display: inline-flex; }
+  body.comfy #handq.on:not(.open), body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #handq.on:not(.open) { display: none; }
+  body.comfy #handq.open, body.screen-on #handq.open {
+    position: fixed; z-index: 34; top: calc(106px + var(--gtop, 0px));
+    left: calc(14px + env(safe-area-inset-left, 0px)); max-width: calc(100% - 28px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    box-sizing: border-box; padding: 10px 14px; border-radius: 16px; background: rgba(12,14,18,.96);
+    color: #f4f7fb; font-size: 1rem; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+  body.comfy #handq.open b, body.screen-on #handq.open b { color: #ffd23c; }
+  @media (max-width: 700px), (max-height: 500px) {
+    #hdrhand .hw { display: none; }
+  }
+  /* Sideways, Fit shares the header row, so the line opens right under it. */
+  @media (max-height: 500px) and (orientation: landscape) {
+    body.comfy #handq.open, body.screen-on #handq.open { top: calc(62px + var(--gtop, 0px)); }
+  }
   /* The Settings modal sections (video quality, and the sound mix that used
      to float as its own Mix panel — same element ids, new home). */
   .set-sec { display: flex; flex-direction: column; gap: .45rem; font-size: .8rem; margin-bottom: .9rem; }
@@ -1125,6 +1149,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .chips span.ico { width: 22px; height: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
                           font-size: 0; line-height: 0; border-radius: 6px; flex: 0 0 auto; }
   .tile .chips span.ico svg { width: 14px; height: 14px; display: block; }
+  .tile .chips b.ico-only { display: none; }
   /* Blur for all is a 64px square, inset from the corner. The edge has to
      read on a light wall, a dark room, and a busy picture: a thin light
      border, a soft dark shadow, and a frosted fill. "Blur" and "for all"
@@ -1284,10 +1309,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
          mute icon and Full screen. As on a sideways tile, the chips sit right
          of Full screen; the hand is a ✋ chip there, and the name is a size
          down so two lines clear Full screen. */
-      .tile.slim.short:not(.cam-off) .chips { right: 4px; flex-wrap: wrap; align-content: flex-start; gap: 4px; }
-      .tile.slim.short:not(.cam-off) .chips span.hand { font-size: 0; width: 22px; height: 22px; padding: 0; box-sizing: border-box;
-        display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
-      .tile.slim.short:not(.cam-off) .chips span.hand b { font-size: 13px; font-weight: normal; }
+      .tile.slim.short:not(.cam-off) .chips { right: 3px; flex-wrap: wrap; align-content: flex-start; gap: 3px; }
       .tile.slim.short .name { font-size: 13px; line-height: 1.15; }
       /* An admin's menu adds Allow apps, Allow screen share and Ban: five
          buttons in a 95px box hid Mute for all above its scroll top.
@@ -1330,6 +1352,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
       body.amadmin .tile.slim.menu .modbar button { font-size: 13px; padding: 2px 4px; }
     }
+    /* A short camera-off tile (about 100px) drew its two-line name and a
+       three-line "✋ hand raised" over the big initial. The hand is a ✋ chip,
+       and the initial fits the band between the chips and the name. */
+    .tile.slim.short.cam-off .chips { flex-wrap: wrap; align-content: flex-start; gap: 3px; }
+    /* A short tile has about 44px beside Full screen, and a slim one about
+       93px under it, so "✋ hand raised" beside "⏺ recording this meeting"
+       was cut, pushed the mute icon off the tile, or ran onto the initial.
+       There the hand, recording and leaving chips are icons (the words stay
+       in the title), and a short tile's icons are 20px so two fit a row. */
+    .tile.slim.short .chips :is(span.hand, span.rec, span.lv),
+    .tile.slim .chips:has(> span:not(.ico) ~ span:not(.ico)) :is(span.hand, span.rec, span.lv) {
+      font-size: 0; width: 22px; height: 22px; min-width: 0; padding: 0; box-sizing: border-box; flex: 0 0 auto;
+      display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
+    .tile.slim .chips :is(span.hand, span.rec, span.lv) b { font-size: 13px; font-weight: normal; }
+    /* "📡 via Pastor Dave", "🚧 can't connect…", "🖥 sharing their screen" and
+       "🗳 2/3 to remove" are sentences a 105px tile cut, or that pushed the
+       mute icon off it: there they are the icon (a vote keeps its count). */
+    .tile.slim .chips span.tx.long,
+    .tile.slim.short .chips span.tx,
+    .tile.slim .chips:has(> span:not(.ico) ~ span:not(.ico)) span.tx {
+      font-size: 0; height: 22px; min-width: 22px; padding: 0 3px; box-sizing: border-box; flex: 0 0 auto;
+      display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
+    .tile.slim .chips span.tx b { font-size: 13px; font-weight: normal; white-space: nowrap; }
+    .tile.slim.short .chips span.tx { height: 20px; min-width: 20px; padding: 0 2px; }
+    .tile.slim.short .chips span.tx b { font-size: 11px; letter-spacing: -0.02em; }
+    .tile.slim .chips span.rec b { color: #ff4d4d; }
+    .tile.slim.short .chips :is(span.hand, span.rec, span.lv, span.ico) { width: 20px; height: 20px; }
+    .tile.slim.short .chips span.lv b.ico-only,
+    .tile.slim .chips:has(> span:not(.ico) ~ span:not(.ico)) span.lv b.ico-only { display: inline; }
+    .tile.slim.short.cam-off .avatar { box-sizing: border-box; padding: 30px 0 40px; line-height: 1;
+      font-size: clamp(24px, calc((var(--th, 130px) - 70px) * 1.1), 48px); }
     .tile.slim .name, html body.comfy .tile.slim .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 1px 4px; z-index: 5;
       white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
   }
@@ -1570,6 +1623,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: #b61622; color: #fff; font: 700 16px/1 system-ui, sans-serif;
     cursor: pointer;
   }
+  /* A phone's stage is small (about 300x110 on an SE in Safari): drawn on
+     the slide, the share line covered the words being read and Stop sharing
+     sat on the title. placeStageMarks moves both off the picture, into the
+     side bars a 16:9 slide leaves (.mk-side) or into a row under it
+     (.mk-bar). */
+  #stagefeed .rowtile.mk-side .stagestop, #stagefeed .rowtile.mk-bar .stagestop {
+    min-height: 32px; padding: 0 10px; font-size: 14px; }
+  #stagefeed .rowtile.mk-side .stagestop { top: 6px; right: 6px; }
+  #stagefeed .rowtile.mk-side .rlabel.sharelabel { right: auto; width: var(--mkw, 40%); background: none;
+    white-space: normal; overflow-wrap: break-word; font-size: 14px; padding: 6px 8px; }
+  #stagefeed .rowtile.mk-bar { display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) auto; align-items: center; background: #000; }
+  #stagefeed .rowtile.mk-bar video { grid-column: 1 / -1; grid-row: 1; height: 100%; min-height: 0; }
+  #stagefeed .rowtile.mk-bar .rlabel.sharelabel { position: static; grid-column: 1; grid-row: 2; background: none;
+    white-space: normal; font-size: 13px; line-height: 1.25; padding: 4px 8px; }
+  #stagefeed .rowtile.mk-bar .stagestop { position: static; grid-column: 2; grid-row: 2; margin: 3px 4px 3px 0; }
   .share-note { border: 1px solid var(--border, #2a2a3f); border-left: 3px solid #6f7bd4;
     background: rgba(111,123,212,.10); border-radius: .45rem; padding: .55rem .7rem;
     font-size: .84rem; line-height: 1.4; margin: .2rem 0 .7rem; }
@@ -1985,6 +2054,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     /* The room name and the count share the header row with Fit.
        Unmute sits in the gap between them, and the chip stops short of it. */
     .topchip { max-width: calc(100% - 12rem - 48px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
+    /* No Unmute in the gap: the chip runs up to Fit (room for "▦ Scroll"). */
+    body:not(:has(#unmute:not([hidden]), #showcam:not([hidden]))) .topchip {
+      max-width: calc(100% - 5rem - 60px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
     #unmute, #showcam {
       top: calc(14px + var(--gtop));
       left: auto;
@@ -2402,8 +2474,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        (meet-selfview-stage, newer) places you instead. */
   }
   /* Fit sits on the next row when the phone is upright, so the chip can
-     use the width and the room name can sit beside the count. */
-  @media (max-width: 700px) and (min-height: 520px) {
+     use the width and the room name can sit beside the count. Any upright
+     height: an SE in Safari (320x460) kept the 140px cap and showed "h…". */
+  @media (max-width: 700px) and (orientation: portrait) {
     .topchip { max-width: calc(100% - 28px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
   }
   /* Comfy: every face on screen, tiles touch. The long :not chain is what
@@ -2565,6 +2638,39 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-width: 700px) {
     body.screen-on #grid { flex-basis: 92px; height: 92px; }
     body.screen-on #grid .tile { height: 76px; }
+  }
+  /* A phone's header, Fit and Unmute stay pinned over the call. A shared
+     screen dropped the gallery's box and ran up under them (the slide's top
+     and Stop sharing), and its faces ran under Record and Captions. The
+     share and its faces sit between the header band and the dock. */
+  @media (max-width: 700px), (max-height: 500px) {
+    body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
+      position: fixed; z-index: 1; margin: 0; padding: 0;
+      left: env(safe-area-inset-left, 0px); right: env(safe-area-inset-right, 0px);
+      top: calc(110px + var(--gtop));
+      bottom: calc(var(--dockh, 108px) + var(--stateh, 0px) + 8px); }
+  }
+  /* Fit steers the gallery, and a share puts the faces in a strip, so Fit
+     did nothing there and its row over the slide stood empty (an SE in
+     Safari watched the hymn at 116x66). It hides during a share, and
+     upright the share starts under the build line, unless Unmute, Camera
+     or the countdown hold that row. */
+  @media (max-width: 700px), (max-height: 500px) {
+    body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .fitbtn { display: none; }
+  }
+  @media (max-width: 700px) and (orientation: portrait) {
+    body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):not(:has(#unmute:not([hidden]), #showcam:not([hidden]), #admcount:not([style*="none"]))) #feed {
+      top: calc(76px + var(--gtop)); }
+  }
+  /* Sideways, the header and Fit share one row, and a strip under the
+     share left the slide a sliver: the faces stand in a column beside it. */
+  @media (max-height: 500px) and (orientation: landscape) {
+    body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
+      top: calc(66px + var(--gtop)); flex-direction: row; }
+    body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #stagefeed { padding: 0 0 0 8px; }
+    body.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid {
+      flex: 0 0 auto; height: auto; width: max-content; flex-direction: column;
+      overflow-x: hidden; overflow-y: auto; padding: 0 8px; }
   }
   body.has-app #feed { margin-bottom: 132px; }
   body.broadcast #feed { padding-bottom: 132px; box-sizing: border-box; }
@@ -2922,6 +3028,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <span class="status" id="status"><button type="button" id="statuscount" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span><button type="button" id="statusinvite" hidden>Invite</button></span>
     <button type="button" id="hdrinvite" hidden title="Share the viewer link">Invite</button>
+    <button type="button" id="hdrhand" aria-expanded="false" aria-controls="handq"></button>
   </div>
   <aside id="roster" aria-label="People">
     <div class="roster-head"><h3 id="roster-title">People</h3><button type="button" id="roster-close">Close</button></div>
@@ -7713,6 +7820,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const w = en.contentRect.width;
             const h = en.contentRect.height;
             if (w > 0) { en.target.classList.toggle('slim', w < 200); en.target.classList.toggle('thin', w < 116); en.target.classList.toggle('short', w < 200 && h > 0 && h < 130); }
+            if (h > 0) en.target.style.setProperty('--th', Math.round(h) + 'px'); // sizes a short tile's initial
           }));
         }
         try { makeTile.slimObs.observe(tile); } catch (e) {}
@@ -7936,21 +8044,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const mod = modOf(id);
       const gMute = mod.mute && mod.mute.on, gBlur = mod.blur && mod.blur.on, gCam = mod.cam && mod.cam.on;
       const chips = [];
+      // A text chip: its icon in <b>, its words after. A slim phone tile draws
+      // a `long` one (and, once two text chips share a row, every one) as the
+      // icon alone; the words stay in the title and aria-label.
+      const txChip = (cls, ico, words) => '<span class="tx' + (cls ? ' ' + cls : '') + '" title="' + esc(words) + '" aria-label="' + esc(words) + '"><b>' + ico + '</b> ' + esc(words) + '</span>';
       // A silent peer (peerReconnecting) is still counted; its tile says so.
       const reconnecting = !isMe && typeof peerReconnecting === 'function' && peerReconnecting(id) === true;
       if (reconnecting) chips.push('<span class="warn">⟳ Reconnecting…</span>');
       paintAwayMark(t, !isMe && !reconnecting && peerAway(id, 25000));
       // Not verified myself: everyone holds my media.
-      if (isMe && (typeof keysTrusted === 'function' && keysTrusted() === true) && !myIpAttV) chips.push('<span class="warn">\u26a0 the relay has not verified you yet \u2014 others cannot see or hear you until it does. If this stays, update GifOS.</span>');
+      if (isMe && (typeof keysTrusted === 'function' && keysTrusted() === true) && !myIpAttV) chips.push(txChip('warn long', '\u26a0', 'the relay has not verified you yet \u2014 others cannot see or hear you until it does. If this stays, update GifOS.'));
       if ((typeof attestOn === 'function' && attestOn() === true) && !isMe && !(typeof isEjected === 'function' && isEjected(id) === true)) {
         if (!(typeof isVerified === 'function' && isVerified(id) === true)) {
           const e = whoLog.get(id), young = e && Date.now() - e.first < 15000;
-          chips.push('<span class="warn">\ud83d\udd12 ' + (young ? 'verifying who they are\u2026 video and sound held' : 'not verified \u2014 video and sound held. They need to update GifOS.') + '</span>');
+          chips.push(txChip('warn long', '\ud83d\udd12', young ? 'verifying who they are\u2026 video and sound held' : 'not verified \u2014 video and sound held. They need to update GifOS.'));
         }
       }
-      if (!isMe && t.relayed) chips.push('<span>📡 via ' + esc(displayName(t.relayed)) + '</span>');
-      else if (!isMe && t.noRoute && !peerAway(id)) chips.push('<span class="warn">🚧 can’t connect straight to them — something on this network blocks video (common at work)</span>');
-      if (stageIds().includes(isMe ? myId : id)) chips.push('<span>🎙 ' + esc(uiText('onStageChip', 'on stage')) + '</span>');
+      if (!isMe && t.relayed) chips.push(txChip('long', '📡', 'via ' + displayName(t.relayed)));
+      else if (!isMe && t.noRoute && !peerAway(id)) chips.push(txChip('warn long', '🚧', 'can’t connect straight to them — something on this network blocks video (common at work)'));
+      if (stageIds().includes(isMe ? myId : id)) chips.push(txChip('', '🎙', uiText('onStageChip', 'on stage')));
       // WHAT IS ON SCREEN, AND WHOSE. A screen share is the one feed where the
       // pixels do not say who they came from or that they are not a face — so
       // the tile does, on every device, from the same gossiped bit.
@@ -7972,11 +8084,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if ((isMe ? st.scr : (typeof sharingScreen === 'function' && sharingScreen(id))) && (isMe || !(typeof shareBlocked === 'function' && shareBlocked(id)))) {
         chips.push(isMe
           ? '<span class="warn stopshare" role="button" tabindex="0" title="Stop sharing your screen">🖥 ' + esc(uiText('stopShare', 'Stop sharing')) + '</span>'
-          : '<span class="warn">🖥 ' + esc(uiText('shareTheirsChip', 'sharing their screen')) + '</span>');
+          : txChip('warn long', '🖥', uiText('shareTheirsChip', 'sharing their screen')));
       }
       if (st.hand) chips.push('<span class="warn hand" title="hand raised"><b>✋</b> hand raised</span>');
-      if (st.lv) chips.push('<span>leaving…</span>');
-      if (st.rec) chips.push('<span class="warn">⏺ recording this meeting</span>');
+      // <b> is the icon a short phone tile keeps when the words can't fit.
+      if (st.lv) chips.push('<span class="lv" title="leaving…"><b class="ico-only">🚪</b>leaving…</span>');
+      if (st.rec) chips.push('<span class="warn rec" title="recording this meeting"><b>⏺</b> recording this meeting</span>');
       // No per-person transcription chip. Captions are a local display, and
       // every browser is already writing its own voice.
       // Status icons only: a muted mic, a camera-off glyph. No icon when the
@@ -7987,20 +8100,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const bl = blurLevelFor(id);
       if (!st.bot && gCam) chips.push(statusIco('cam-off', 'video off for all by ' + (mod.cam.by || 'someone')));
       else if (!st.bot && st.camOff) chips.push(statusIco('cam-off', 'camera off'));
-      if (hasAdminRoom() && mod.app && mod.app.on && !admins.includes(id)) chips.push('<span>🧩 may run apps — allowed by ' + esc(mod.app.by) + '</span>');
+      if (hasAdminRoom() && mod.app && mod.app.on && !admins.includes(id)) chips.push(txChip('long', '🧩', 'may run apps — allowed by ' + mod.app.by));
       // The chip names a per-person allow only. A room-wide allow covers
       // everyone and would chip every tile; modOf would not tell them apart.
       const sharePid = isMe ? myId : id;
       const ownShare = hasAdminRoom() && modTable[sharePid] && modTable[sharePid].share;
-      if (ownShare && ownShare.on === true && !admins.includes(sharePid)) chips.push('<span>🖥 may share a screen — allowed by ' + esc(ownShare.by) + '</span>');
+      if (ownShare && ownShare.on === true && !admins.includes(sharePid)) chips.push(txChip('long', '🖥', 'may share a screen — allowed by ' + ownShare.by));
       // vote-off progress (non-admin rooms): show how close a tile is to removal
       const dv = devOf[id];
-      if (!isMe && voteNeed && dv && voteTally[dv]) chips.push('<span class="warn">🗳 ' + voteTally[dv] + '/' + voteNeed + ' to remove</span>');
+      if (!isMe && voteNeed && dv && voteTally[dv]) chips.push('<span class="tx warn long" title="' + voteTally[dv] + '/' + voteNeed + ' to remove" aria-label="' + voteTally[dv] + '/' + voteNeed + ' votes to remove"><b>🗳 ' + voteTally[dv] + '/' + voteNeed + '</b> to remove</span>');
       // stage-vote progress: everyone watches the same arithmetic converge
       if (!hasAdminRoom()) {
         const vt = stageVoteTallies(), sdv = isMe ? myDevHash : dv;
-        if (sdv && vt.up[sdv]) chips.push('<span>🗳 ' + vt.up[sdv] + '/' + vt.need + ' to the stage</span>');
-        if (sdv && vt.down[sdv]) chips.push('<span class="warn">🗳 ' + vt.down[sdv] + '/' + vt.need + ' off the stage</span>');
+        if (sdv && vt.up[sdv]) chips.push('<span class="tx long" title="' + vt.up[sdv] + '/' + vt.need + ' to the stage" aria-label="' + vt.up[sdv] + '/' + vt.need + ' votes to the stage"><b>🗳 ' + vt.up[sdv] + '/' + vt.need + '</b> to the stage</span>');
+        if (sdv && vt.down[sdv]) chips.push('<span class="tx warn long" title="' + vt.down[sdv] + '/' + vt.need + ' off the stage" aria-label="' + vt.down[sdv] + '/' + vt.need + ' votes off the stage"><b>🗳 ' + vt.down[sdv] + '/' + vt.need + '</b> off the stage</span>');
       }
       // Write the chips only when they changed: a repaint runs on every gossip
       // pass, and rebuilding identical spans drops keyboard focus from the
@@ -15464,6 +15577,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       handqEl.classList.toggle('on', q.length > 0);
       const stageFull = amAdmin && stageIds().length >= SCALE.C;
       const tot = handTotal(q), shown = Math.min(q.length, 8);
+      paintHandBtn(q, tot);
       let html;
       if (BROADCAST) {
         const rows = q.slice(0, 8).map((e) => {
@@ -15512,6 +15626,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const fb = document.getElementById('fitbtn');
       if (fb) ro.observe(fb);
     }
+    // The header's "✋ 1" stands for the line where the call covers it.
+    const hdrHandEl = document.getElementById('hdrhand');
+    let hdrHandSays = '';
+    function paintHandBtn(q, tot) {
+      hdrHandEl.classList.toggle('on', q.length > 0);
+      if (!q.length) setHandqOpen(false);
+      const says = q.length ? tot + '|' + q[0].n : '';
+      if (says === hdrHandSays) return;
+      hdrHandSays = says;
+      hdrHandEl.innerHTML = q.length ? '✋ ' + tot + '<span class="hw">waiting</span>' : '';
+      hdrHandEl.setAttribute('aria-label', q.length ? tot + ' waiting with a hand up: ' + q.slice(0, 8).map((e) => e.n).join(', ') : '');
+    }
+    function setHandqOpen(on) {
+      handqEl.classList.toggle('open', !!on);
+      hdrHandEl.setAttribute('aria-expanded', on ? 'true' : 'false');
+    }
+    hdrHandEl.addEventListener('click', () => setHandqOpen(!handqEl.classList.contains('open')));
+    // A tap anywhere else puts the line away (names inside stay tappable).
+    document.addEventListener('pointerdown', (e) => {
+      if (!handqEl.classList.contains('open')) return;
+      if (handqEl.contains(e.target) || hdrHandEl.contains(e.target)) return;
+      setHandqOpen(false);
+    }, true);
     // ADMIN rooms, signed-in admins only: tapping a queued name CALLS THEM UP —
     // the tap issues the same individually-signed mod-table 'app' grant that
     // gates apps and the Stage (§SIG; setMod refuses non-admins locally, and
@@ -21638,8 +21775,35 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!selfStageSt || selfStageSt.getVideoTracks()[0] !== vt) selfStageSt = new MediaStream([vt]);
       return selfStageSt;
     }
+    // On a phone, keep the share line and Stop sharing off the slide: in the
+    // side bars when the slide leaves them wide enough, else in a row under
+    // the picture. Bigger screens keep them on the slide's edge.
+    const stageMarksMq = window.matchMedia('(max-width: 700px), (max-height: 500px)');
+    function placeStageMarks(el) {
+      if (!el || !el.isConnected) return;
+      const v = el.querySelector('video'), lb = el.querySelector('.rlabel'), stop = el.querySelector('.stagestop');
+      const want = stageMarksMq.matches && document.body.classList.contains('screen-on') &&
+        lb && lb.classList.contains('sharelabel') && v && v.videoWidth > 0 && v.videoHeight > 0;
+      el.classList.remove('mk-side', 'mk-bar');
+      if (!want) return;
+      const W = el.clientWidth, H = el.clientHeight;
+      if (W < 40 || H < 40) return;
+      const side = (W - H * (v.videoWidth / v.videoHeight)) / 2;
+      if (side >= 96) {
+        el.style.setProperty('--mkw', Math.floor(side) + 'px');
+        el.classList.add('mk-side');
+        const fits = lb.scrollWidth <= lb.clientWidth + 1 && lb.offsetHeight <= H - (stop ? 0 : 4) &&
+          (!stop || (stop.offsetWidth + 10 <= side && stop.offsetTop + stop.offsetHeight <= H - lb.offsetHeight));
+        if (fits) return;
+        el.classList.remove('mk-side');
+      }
+      el.classList.add('mk-bar');
+    }
+    // A guest's share as a viewer sees it (debug only; remoteShareForTest).
+    let qaStageSt = null;
     // The Stage strip: one wide tile at the top of the stage feed.
     function paintStageStrip(stream) {
+      if (qaStageSt) stream = qaStageSt;
       let el = stagefeedEl.querySelector('[data-row="sgs"]');
       if (!stream) {
         if (el) { for (const v of el.querySelectorAll('video')) { try { v.pause(); v.srcObject = null; } catch (e) {} releaseAudio(v); } el.remove(); }
@@ -21653,6 +21817,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const v = document.createElement('video'); v.muted = true; v.autoplay = true; v.setAttribute('playsinline', '');
         const lb = document.createElement('div'); lb.className = 'rlabel'; lb.textContent = uiText('stageLabel', 'On stage');
         el.appendChild(v); el.appendChild(lb); stagefeedEl.appendChild(el); trackAspect(el, v);
+        const again = () => placeStageMarks(el);
+        v.addEventListener('resize', again); v.addEventListener('loadedmetadata', again);
+        if (window.ResizeObserver) new ResizeObserver(() => requestAnimationFrame(again)).observe(el);
       }
       const v = el.querySelector('video');
       if (v.srcObject !== stream) { v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
@@ -21692,6 +21859,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const word = uiText('stopShare', 'Stop sharing');
         if (stop.textContent !== word) stop.textContent = word;
       } else if (stop) stop.remove();
+      placeStageMarks(el);
       compOf.set('sgs', { via: 'stage', streamId: stream.id, stream, names: stageIds(), el: v });
       recSrcDirty = true;
       if (typeof paintStagePlate === 'function') paintStagePlate();
@@ -29421,6 +29589,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { paintRoster(); } catch (e) {}
         return true;
       },
+      // A seat's route and vote chips: reached via someone, can't connect, a
+      // remove vote in progress (votes: [have, need]).
+      setPeerNetForTest: (id, spec) => {
+        const p = DEBUG_ON && peers.get(id);
+        if (!p || !p.qa) return false;
+        const s = spec || {};
+        if ('relayed' in s) p.relayed = s.relayed || null;
+        if ('noRoute' in s) p.noRoute = !!s.noRoute;
+        if (s.votes) { devOf[id] = devOf[id] || ('qadev-' + id); voteTally[devOf[id]] = s.votes[0]; voteNeed = s.votes[1]; }
+        try { refreshAllTiles(); } catch (e) {}
+        return true;
+      },
       // Lock or open the room on this page only (memory: no store, no door),
       // to see what a password changes on the tiles.
       setRoomPwForTest: (pw) => {
@@ -29820,6 +30000,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return out;
       },
       startScreenShareForTest: () => { startScreenShare(); return true; },
+      // Seated guests share their screens and the stage shows `stream` as
+      // the strip a viewer gets; ids [] ends it.
+      remoteShareForTest: (ids, stream) => {
+        if (!DEBUG_ON) return false;
+        const now = Date.now();
+        for (const id of [...peers.keys()]) {
+          const p = peers.get(id), on = ids.indexOf(id) !== -1;
+          if (!p || !p.qa) continue;
+          statusOf.set(id, Object.assign({}, statusOf.get(id) || {}, { scr: on, stg: on ? now : 0, at: now, rx: now }));
+        }
+        qaStageSt = ids.length ? stream || null : null;
+        paintShare();
+        try { refreshAllTiles(); } catch (e) {}
+        paintStageStrip(qaStageSt);
+        try { layout(); } catch (e) {}
+        return true;
+      },
       stopScreenShareForTest: () => { stopScreenShare(); return true; },
       // The sheet's copy, as rendered — the app-pin preference is a PROMISE the
       // product makes in words, so the guard reads the words.
