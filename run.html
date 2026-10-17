@@ -2509,6 +2509,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     //                 bridge is decided before a pool exists.
     //   socketOpen    a peer whose status pulse reached me within 60 s.
     let netPool = { level: 0, cred: false };
+    const doorWhy = new Map();   // peer -> why my last reach verdict for our pair was what it was (the debug view's door test)
     const netSeated = () => { const s = meshSeat(); return !!(netRoom && s && s.hasCoord && s.state === 3); };
     function netSeatingPool(level, credOk) { netPool = { level: level | 0, cred: !!credOk }; if (netRoom) netRoom.topoChanged(); }
     function netSeatingLiveView() {
@@ -2551,11 +2552,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         probe, probeDone,
         reach: (a, b) => {
           if (a === b) return true;
-          if (a === myId || b === myId) { const p = peers.get(a === myId ? b : a); if (!p) return true; if (p.connected) return !pairRelayed(p); if (p.neverUp && Date.now() - (p.bornAt || 0) > PROBE_MS) return false; return true; }
+          if (a === myId || b === myId) {
+            const pid = a === myId ? b : a; const p = peers.get(pid); const age = p ? Date.now() - (p.bornAt || 0) : -1; let r = true, why = 'no-pair';
+            if (p && p.connected) { r = !pairRelayed(p); why = r ? 'up' : 'up-relayed'; }
+            else if (p && p.neverUp && age > PROBE_MS) { r = false; why = 'never-up'; }
+            else if (p) why = 'pending:' + (p.pc ? p.pc.connectionState : 'no-pc') + ':' + age;
+            if (doorWhy.size > 64) doorWhy.clear(); doorWhy.set(pid, why); return r;   // the debug view's reason for each of my own pairs' verdicts
+          }
           const ca = connsOf.get(a), cb = connsOf.get(b);
           if ((ca && ca.includes(b)) || (cb && cb.includes(a))) return true;
           return !(ca && cb);   // both maps known and neither names the other: unreachable; otherwise unknown counts as reachable
         },
+        reachWhy: (id) => doorWhy.get(id) || null,
         stun: (id) => { if (id === myId) return directPath !== 'blocked'; const st = statusOf.get(id); return !(st && st.net === 'blocked'); },
         clientsOf: (a, b) => { let ca = !view.stun(a), cb = !view.stun(b); if (!ca && !cb) ca = true; return [ca, cb]; },   // never two relay clients where one end can be reached
         turn: () => netPool.level,
@@ -22538,7 +22546,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       myId: () => myId,
       // network-aware seating, as a suite sees it: the view installed, the pool the seating counts, my seat, every link's bridge/standby/dark verdict
       netSeating: () => { const s = meshSeat(); return { installed: !!netRoom, seated: netSeated(), pool: Object.assign({}, netPool), coord: s && s.hasCoord ? s.coord : null, label: s ? s.glabel : null, anchored: !!(s && s.anchored),
-        seat: s ? { state: s.state, tick: s.TICK, retryAt: s.retryAt, walkPending: !!s.walkPending, walkRounds: s.walkRounds, probeAt: s.netProbeAt, probeIds: (s.netProbeIds || []).length, glFind: s.glFind, haveRoster: !!s.haveRoster, roster: (s.netRoster || s.roster || []).length, seatTries: s.seatTries } : null,
+        seat: s ? { state: s.state, tick: s.TICK, retryAt: s.retryAt, walkPending: !!s.walkPending, walkRounds: s.walkRounds, probeAt: s.netProbeAt, probeIds: (s.netProbeIds || []).length, door: (s.netTested || []).map((t) => [rosterNames[t[0]] || String(t[0]).slice(0, 8), t[1], t[2] != null ? String(t[2]).slice(2, 6) : null, t[3] || null, t[4]]), glFind: s.glFind, glHead: s.glHead || null, haveRoster: !!s.haveRoster, roster: (s.netRoster || s.roster || []).length, seatTries: s.seatTries } : null,
         links: netLinks().map((l) => Object.assign({}, l, { name: rosterNames[l.peer] || (peers.get(l.peer) || {}).name || String(l.peer).slice(0, 8) })) }; },
       turnState: () => ({
         probe: directPath, cred: turnCred ? turnCred.state() : 'idle', reach: turnReach(), heard: turnHeard(),

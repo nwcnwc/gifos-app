@@ -520,6 +520,7 @@
       this.glabel = null; this.glFind = NET_OFF; this.anchored = false; this.lastReached = -1; this.netRoster = null;
       this.glHead = null;          // the coord of the head my walk reached: my FIND names it, so the greeter routes there (no room scan)
       this.walkRounds = 0; this.walkPending = false;   // the walk's rounds past the ring (one signaling round trip each); the FIND waits them out
+      this.netTested = null; this.netProbeWaitFrom = 0;   // the last door test, for the debug view: [id, reached 0/1, label, the view's reason, ticks since the links opened] per seated ring member it tested (at most the ring)
       this.netProbeAt = -1; this.netProbeIds = null;   // the door test: the tick I asked the view to open links to the ring (and to whom); the decision waits for them, NET_PROBE ticks at most
       this.bcDead = 0; this.bcDeadAt = -1;   // refusals saying my group has no room under its head (its child row is another network's); three of them over NET_DEAD_WAIT ticks make me head a second subnet
       this.ringMixed = false;      // my ring test saw a seat I do not reach (more than one network in this room)
@@ -1637,7 +1638,8 @@
     netDecide(ro) {
       const R = this.env.NET; let reached = 0, ringSeated = 0, best = null, bestSeat = null; const seen = new Set();
       this.glHead = null; this.walkRounds = 0;
-      const test = (v) => { if (v == null || v === this.id || seen.has(v) || !R.seatedLive(v)) return; seen.add(v); ringSeated++; if (!R.reach(this.id, v)) return; reached++; const l = R.labelOf(v); if (l != null && (best == null || idLess(l, best))) { best = l; bestSeat = v; } };
+      const tested = this.netTested = [];
+      const test = (v) => { if (v == null || v === this.id || seen.has(v) || !R.seatedLive(v)) return; seen.add(v); ringSeated++; const ok = R.reach(this.id, v); tested.push([v, ok ? 1 : 0, R.labelOf(v), R.o.reachWhy ? R.o.reachWhy(v) : null, this.TICK - this.netProbeWaitFrom]); if (!ok) return; reached++; const l = R.labelOf(v); if (l != null && (best == null || idLess(l, best))) { best = l; bestSeat = v; } };
       for (const e of ro) if (e) test(e.v);
       for (let t = 0; t < C(); t++) for (let j = 0; j < C(); j++) test(R.at(ck({ pc: 0, r: t, i: j })));   // the whole ring: one greeter's roster can lag a cell seated this second
       this.ringMixed = reached < ringSeated;
@@ -4698,7 +4700,7 @@
           this.join(); this.wake(); return;
         }
         if (this.dr && TICK - this.dr.at >= DOOR_ROUND_WAIT) this.closeDoorRound();
-        if ((this.state === 0 || this.state === 1) && TICK - this.retryAt > 20) { if (this.walkPending) { if (this.netProbeAt >= 0) { const R = this.env.NET; let done = TICK - this.netProbeAt >= NET_PROBE; if (!done && R && R.o.probeDone) { try { done = !!R.o.probeDone(this.netProbeIds); } catch (e) { done = false; } } if (!done) { this.retryAt = TICK - 20; this.wake(); return; } } this.walkPending = false; if (this.netProbeAt >= 0) { this.netProbeAt = -1; this.netProbeIds = null; this.glFind = this.netDecide(this.netRoster || this.roster); if (this.walkRounds > 0) { this.walkPending = true; this.retryAt = TICK - 20 + this.walkRounds * NET_ROUND; this.wake(); return; } } if (this.haveRoster && this.roster.length) { const t = this.pickRoster(); if (t != null) { this.askSeat(t); this.wake(); return; } } } if (!this.resumeAsk()) this.join(); } // ENTRY RESUME: re-enter at WHOHOME while the greeter list is fresh; full knock only when it isn't
+        if ((this.state === 0 || this.state === 1) && TICK - this.retryAt > 20) { if (this.walkPending) { if (this.netProbeAt >= 0) { const R = this.env.NET; let done = TICK - this.netProbeAt >= NET_PROBE; if (!done && R && R.o.probeDone) { try { done = !!R.o.probeDone(this.netProbeIds); } catch (e) { done = false; } } if (!done) { this.retryAt = TICK - 20; this.wake(); return; } } this.walkPending = false; if (this.netProbeAt >= 0) { this.netProbeWaitFrom = this.netProbeAt; this.netProbeAt = -1; this.netProbeIds = null; this.glFind = this.netDecide(this.netRoster || this.roster); if (this.walkRounds > 0) { this.walkPending = true; this.retryAt = TICK - 20 + this.walkRounds * NET_ROUND; this.wake(); return; } } if (this.haveRoster && this.roster.length) { const t = this.pickRoster(); if (t != null) { this.askSeat(t); this.wake(); return; } } } if (!this.resumeAsk()) this.join(); } // ENTRY RESUME: re-enter at WHOHOME while the greeter list is fresh; full knock only when it isn't
         // Graded state-2 retry, SOLE-CANDIDATE ONLY: with exactly one live
         // greeter to ask there is no second admission chain to race, so a void
         // FIND may re-ask after 12 ticks instead of 60 — before this, one
