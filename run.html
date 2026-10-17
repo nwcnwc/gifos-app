@@ -1107,12 +1107,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #chatpanel.open { display: flex; }
   /* Beside the call, not over it: on a wide window the room bar, header and
      stage narrow by the panel's width (body.chatside follows the panel), as
-     Meet and Zoom do; the dock already floats above the panel's bottom band.
+     Meet and Zoom do; the dock moves into the call too when it fits there.
      A phone keeps the panel over the call. */
   @media (min-width: 800px) {
     body.chatside { padding-right: 340px; }
     body.chatside .fitbtn { right: 354px; }
     body.chatside .topchip { max-width: calc(100% - 460px); }
+    /* The dock sits in the call beside the chat (placeDock), so the composer
+       takes the band it used to keep clear. */
+    body.chatside.dockbeside #chatpanel { padding-bottom: 12px; }
   }
   #chathead { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
   /* The privacy line used to sit beside the title and collapse into a narrow
@@ -14346,6 +14349,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     new MutationObserver(() => {
       chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
       document.body.classList.toggle('chatside', chatPanelOpen());
+      if (window.__gifosDock) window.__gifosDock.place();
     }).observe(chatPanel, { attributes: true, attributeFilter: ['class'] });
     chatBtn.setAttribute('aria-expanded', chatPanelOpen() ? 'true' : 'false');
     chatBtn.onclick = () => {
@@ -21347,9 +21351,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // serialized as the inset shorthand, which also pins top, so the dock
       // cannot move upward. A tuck is an extra downward shift in the same
       // translate, including when the grip is still centered.
+      // With the chat open beside the call (body.chatside on a wide window),
+      // the dock centres on the call, not the window, when it fits there; it
+      // used to straddle the chat's edge with End over the panel.
+      const chatPanelEl = document.getElementById('chatpanel');
       const placeDock = () => {
         const w = bar.offsetWidth, h = bar.offsetHeight;
-        const maxX = Math.max(0, (window.innerWidth - w) / 2 - 8);
+        const side = document.body.classList.contains('chatside') && window.innerWidth >= 800 && chatPanelEl ? chatPanelEl.offsetWidth : 0;
+        const beside = side > 0 && w + 16 <= window.innerWidth - side;
+        document.body.classList.toggle('dockbeside', beside);
+        const cx = beside ? -side / 2 : 0;
+        const maxX = Math.max(0, (window.innerWidth - (beside ? side : 0) - w) / 2 - 8);
         const maxY = Math.max(0, window.innerHeight - h - 22);
         dockx = Math.max(-maxX, Math.min(maxX, dockx));
         docky = Math.max(-6, Math.min(maxY, docky));
@@ -21358,11 +21370,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bar.style.top = '';
         bar.style.bottom = '';
         const extra = tucked ? (h + Math.max(0, docky) + 40) : 0;
-        if (!extra && dockx === 0 && docky === 0) {
+        if (!extra && dockx === 0 && docky === 0 && !cx) {
           bar.style.transform = '';
           return;
         }
-        bar.style.transform = 'translateX(-50%) translate(' + dockx + 'px, ' + (-docky + extra) + 'px)';
+        bar.style.transform = 'translateX(-50%) translate(' + (cx + dockx) + 'px, ' + (-docky + extra) + 'px)';
       };
       const markTuck = (on) => {
         tucked = !!on;
@@ -21399,6 +21411,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return true;
         },
         wake() { wakeDock(); return !tucked; },
+        place: placeDock,
       };
       const nudge = (dx, dy) => { dockx += dx; docky += dy; placeDock(); };
       const resetDock = () => { dockx = 0; docky = 0; placeDock(); };

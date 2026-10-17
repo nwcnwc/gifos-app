@@ -18,7 +18,10 @@ async function openChat(page, width, height) {
 }
 
 async function composerOverlap(page) {
-  return page.evaluate(() => {
+  // Read the first painted frame: after a viewport change the dock is placed
+  // by the resize event, which fires in the next frame's rendering steps.
+  return page.evaluate(async () => {
+    await new Promise((r) => requestAnimationFrame(r));
     const bar = document.querySelector('.bar').getBoundingClientRect();
     const hit = (el) => {
       const r = el.getBoundingClientRect();
