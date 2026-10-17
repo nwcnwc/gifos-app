@@ -19,14 +19,17 @@ const WANT = [/^(Un)?[Mm]ute for everyone$/, /^(Un)?[Bb]lur for everyone$/, /^(A
 
 // A fixed admin key; the room's verifier is derived from it in the page.
 const K = '5eed'.repeat(16);
+// A room of its own: two runs in one room are two admins, and their signed
+// mute orders merge into each other's tiles.
+const ROOM = 'tile-menu-admin-' + process.pid + '-' + Date.now().toString(36);
 
 async function run(browser, dev, av, tagShot, bad) {
   const context = await browser.newContext(Object.assign({}, devices[dev], { hasTouch: true }));
   await context.addInitScript((a) => {
-    try { localStorage.setItem('gifos_name', 'Nathan'); localStorage.setItem('gifos_vadm_tile-menu-admin.' + a.av, a.K); } catch (e) {}
-  }, { av, K });
+    try { localStorage.setItem('gifos_name', 'Nathan'); localStorage.setItem('gifos_vadm_' + a.room + '.' + a.av, a.K); } catch (e) {}
+  }, { av, K, room: ROOM });
   const page = await context.newPage();
-  await page.goto(BASE + '/run.html#v=tile-menu-admin&av=' + av + '&debug=on', { waitUntil: 'domcontentloaded', timeout: 20000 });
+  await page.goto(BASE + '/run.html#v=' + ROOM + '&av=' + av + '&debug=on', { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForSelector('#bartoggle', { timeout: 15000 });
   const skip = page.locator('#nmok');
   if (await skip.count()) await skip.tap().catch(() => {});
@@ -68,7 +71,11 @@ async function run(browser, dev, av, tagShot, bad) {
         const r = el.getBoundingClientRect();
         const br = bar.getBoundingClientRect();
         const pts = [[r.left + r.width / 2, r.top + 3], [r.left + r.width / 2, r.top + r.height / 2], [r.left + r.width / 2, r.bottom - 3]];
-        const covered = pts.some(([x, y]) => { const e = document.elementFromPoint(x, y); return !e || (e.closest('button') || e) !== el; });
+        let covered = '';
+        for (const [x, y] of pts) {
+          const e = document.elementFromPoint(x, y);
+          if (!e || (e.closest('button') || e) !== el) { covered = e ? (e.id || e.className || e.tagName) + '' : 'nothing'; break; }
+        }
         return {
           text: el.textContent, x: r.left, y: r.top, w: r.width, h: r.height,
           inBar: r.top >= br.top - 1 && r.bottom <= br.bottom + 1 && r.left >= br.left - 1 && r.right <= br.right + 1,
@@ -84,9 +91,18 @@ async function run(browser, dev, av, tagShot, bad) {
       if (!b.onScreen) bad.push(bt + ' leaves the screen');
       if (b.h < 44) bad.push(bt + ' is ' + Math.round(b.h) + 'px tall');
       if (b.cut) bad.push(bt + ' is cut');
-      if (b.covered) bad.push(bt + ' is painted over');
+      if (b.covered) bad.push(bt + ' is painted over by ' + b.covered);
     }
     for (const re of WANT) if (!seen.some((s) => re.test(s))) bad.push(tag + ': the menu has no ' + re.source);
+    // The whole menu stays clear of Record/Captions and the dock; they paint over it.
+    const clash = await tile.evaluate((t) => {
+      const m = t.querySelector('.modbar').getBoundingClientRect();
+      return Array.from(document.querySelectorAll('#callstate > *, .bar')).filter((e) => {
+        const r = e.getBoundingClientRect();
+        return r.width > 0 && getComputedStyle(e).visibility !== 'hidden' && m.left < r.right && r.left < m.right && m.top < r.bottom && r.top < m.bottom;
+      }).map((e) => e.id || e.className);
+    });
+    if (clash.length) bad.push(tag + ': the menu runs under ' + clash.join(', '));
 
     if (!shot) {
       shot = true;

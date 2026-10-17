@@ -1136,6 +1136,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       .tile.slim.menu .modbar button { box-sizing: border-box; width: 100%; min-height: 44px; padding: 2px 4px;
         font-size: 13px; line-height: 1.1; white-space: normal; flex: 0 0 auto; background: #14141c; }
       .tile.slim.menu > .blurbox, .tile.slim.menu .maxbtn { visibility: hidden; }
+      /* An admin's menu adds Allow apps, Allow screen share and Ban: five
+         buttons in a 95px box hid Mute for everyone above its scroll top.
+         It opens as the sideways sheet instead, under Fit. */
+      body.amadmin .tile.slim.menu { outline: 3px solid #7ec8ff; outline-offset: -3px; }
+      body.amadmin .tile.slim.menu > .blurbox, body.amadmin .tile.slim.menu .maxbtn { visibility: visible; }
+      body.amadmin .tile.slim.menu .modbar { position: fixed; top: 110px; left: 50%; right: auto; bottom: auto; transform: translateX(-50%);
+        width: min(300px, calc(100vw - 24px)); max-height: calc(100vh - 122px); overflow-y: auto; box-sizing: border-box;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; z-index: 20; justify-content: normal;
+        border-radius: 14px; background: #0a0a0f; border: 1px solid rgba(255,255,255,.2); box-shadow: 0 6px 24px rgba(0,0,0,.6); }
+      body.amadmin .tile.slim.menu .modbar::before { content: attr(data-who); grid-column: 1 / -1; color: #eceef8; font: 700 14px/1.2 system-ui, sans-serif;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      body.amadmin .tile.slim.menu .modbar button { width: auto; font-size: 14px; padding: 2px 6px; }
     }
     /* Sideways a slim tile is about 100px tall, so the tile clipped the menu
        92px down to a sliver of Mute for everyone. It opens as a small sheet
@@ -1150,6 +1162,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .tile.slim.menu .modbar button { box-sizing: border-box; min-height: 44px; padding: 2px 6px; font-size: 14px; line-height: 1.1;
         white-space: normal; background: #14141c; }
+      /* An admin's five buttons ran the sheet down under Record/Captions and
+         the dock, which painted over Allow apps and Ban (the sheet lives in
+         the call strip, under them). Three across with the name first, it is
+         two rows, and it sits right, clear of Record/Captions on the left. */
+      body.amadmin .tile.slim.menu .modbar { left: auto; right: calc(12px + env(safe-area-inset-right, 0px)); transform: none;
+        width: min(420px, calc(100vw - 236px)); grid-template-columns: repeat(3, 1fr); padding: 4px; }
+      body.amadmin .tile.slim.menu .modbar::before { grid-column: auto; align-self: center; white-space: normal;
+        overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+      body.amadmin .tile.slim.menu .modbar button { font-size: 13px; padding: 2px 4px; }
     }
     .tile.slim .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 1px 4px; z-index: 5;
       white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
