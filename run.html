@@ -6356,6 +6356,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // that 12s into a phone's shader warm-up.
           const asleep = starveDebtSince(basePid);
           if (!p.connected && !heardPid && nowHb - basePid - asleep < 12000) { why('notconn'); continue; }
+          // A knocker's door at me is the knocker's to heal: it redials while
+          // it still needs in. Rebuilt from here, it dialled a knocker that had
+          // just closed it on being seated, the knocker took it as a fresh
+          // knock, and the pair stayed open for good: a Section-1 seat held one
+          // per late joiner (bw-ladder N=32). The sweeper drops a dead one.
+          if (p.boot && !p.bootOut && !linkTo(pid) && !p.turnAnchor && !p.turnServe) { why('door'); continue; }
           // THE HALF-OPEN PAIR (pair-probe.js, 2026-07-27): ICE lands but the
           // DataChannel NEVER opens — ondatachannel never fires on the
           // answerer, the initiator's channel sticks in 'connecting'. No
@@ -12745,7 +12751,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!linkTo(from) && meshKnows(from) && !turnPair) { rxStats.offerRejected++; return; }
         const p = makePeer(from, msg.name);
         if (!p) return; // banned seat or forger: no pair, no negotiation
-        if (!linkTo(from) && !meshKnows(from)) p.boot = true; // a knocker's door, seen from the greeter: kept while it serves, never rebuilt once the knocker is seated elsewhere
+        if (p && !linkTo(from) && !meshKnows(from)) {
+          p.boot = true; // a knocker's door, seen from the greeter: kept while it serves, never rebuilt once the knocker is seated elsewhere
+          // ...unless I am the one knocking (a greeter dialled me back): then it
+          // is my door, closed by me once I am seated, like the ones I dial
+          const ms = meshSeat(); if (!(ms && ms.hasCoord && ms.state === 3)) p.bootOut = true;
+        }
         // A fresh offer onto a LONG-DEAD local pc negotiates into a corpse:
         // the tunnel-return stall (behavior battery 06c, 2026-07-26) — the
         // evicted side's zombie ate the returning offers until the vouch
@@ -13135,7 +13146,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // muted (e2e-sixth-audio). The polite side only asks.
       if (iInitiate(pid)) sendOffer(pid, false);
       else { const q0 = makePeer(pid, null); if (q0) askDial(pid, q0); }
-      const q = peers.get(pid); if (q) { q.boot = true; if (!manyDoors) armDoorRetry(pid, q); } // the door I came in by: retired once a seat's own link is open (retireBootPairs), unless the arithmetic names it
+      const q = peers.get(pid); if (q) { q.boot = true; q.bootOut = true; if (!manyDoors) armDoorRetry(pid, q); } // the door I came in by: retired once a seat's own link is open (retireBootPairs), unless the arithmetic names it
     }
     // The bootstrap channel to a greeter has done its work once I am seated
     // and a link the arithmetic names is open: a seat holds its bounded
@@ -13144,7 +13155,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function retireBootPairs() {
       const s = meshSeat();
       if (!s || !s.hasCoord || s.state !== 3) return;
-      for (const [pid, q] of Array.from(peers)) if (q.boot && !linkTo(pid) && meshKnows(pid) && !q.turnAnchor && !q.turnServe) dropPeer(pid, true); // a knocker still outside keeps its door to me; a free-pool anchor pair keeps carrying its voice
+      for (const [pid, q] of Array.from(peers)) if (q.boot && !linkTo(pid) && (meshKnows(pid) || q.bootOut) && !q.turnAnchor && !q.turnServe) dropPeer(pid, true); // a knocker still outside keeps its door to me; a door I knocked through goes wherever its greeter sits; a free-pool anchor pair keeps carrying its voice
     }
     function ensureLink(pid, name) {
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return; // never link to a forger
@@ -15280,8 +15291,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // knock, a knocker's (not yet in my occupancy) while it knocks at
           // me — and retired once both are seated with no link between them.
           const theyOutside = !meshKnows(pid);
-          if (p.boot && p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed')) { dropPeer(pid, !theyOutside || rosterIds.includes(pid)); continue; } // a dead door: gone now, never rebuilt (a knocker redials); a member the roster already holds keeps its status
+          const doorShut = p.boot && !p.bootOut && p.dc && p.dc.readyState === 'closed'; // the knocker closed my end of its door
+          if (p.boot && p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed' || doorShut)) { dropPeer(pid, !theyOutside || rosterIds.includes(pid)); continue; } // a dead door: gone now, never rebuilt (a knocker redials); a member the roster already holds keeps its status
           else if (p.turnAnchor || p.turnServe) { p.unlinkedSince = 0; } // a free-pool anchor pair stays while it carries a voice, whatever the seats say
+          // A door I knocked through is mine to close once I am seated: its
+          // greeter is seated somewhere my occupancy need not hold (Section 1
+          // when I sit deep), so theyOutside says nothing about it. Kept, it
+          // was a pc with video from every late joiner to every Section-1
+          // seat, a front seat's load growing with the room (bw-ladder N=32).
+          else if (p.boot && p.bootOut && seatedNow && anyLinkOpen) { dropPeer(pid, true); continue; }
           else if (p.boot && (!seatedNow || theyOutside)) { p.unlinkedSince = 0; }
           else if (p.boot && seatedNow && anyLinkOpen) { dropPeer(pid, true); continue; }
           else {
@@ -29852,7 +29870,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // `stored` says an offer was set aside to answer. Neither firing and
         // neither stored means the offer never reached the handler at all,
         // which is a different bug from a yield that armed and failed.
-        glareArmed: !!p.glareTimer, glareStored: !!p.glareOffer })),
+        glareArmed: !!p.glareTimer, glareStored: !!p.glareOffer,
+        // why a pair is kept: door flags, free-pool pair, and the seat arithmetic's verdict
+        bootOut: !!p.bootOut, turn: !!(p.turnAnchor || p.turnServe), link: linkTo(p.id), knows: meshKnows(p.id), ageS: Math.round((Date.now() - (p.bornAt || 0)) / 1000) })),
       grid: () => ({ // the alignment engine's live state: clocks, tiers, timing, sing, mic
         sing: roomSingOn(), mic: micMode, timing, gd: myStatus.gd || 0,
         sn: myStatus.sn || 0, sp: myStatus.sp || null, // song: my stage need / per-feed playout (gossiped)
