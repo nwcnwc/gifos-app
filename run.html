@@ -1398,6 +1398,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #airbar.watch::before { background: #0064c8; }
   #airbar.group::before { background: #7dcea0; }
   #airbar .airacts { display: flex; align-items: center; gap: 8px; margin-left: 8px; }
+  #airwho[hidden] { display: none !important; }
   #airrec, #airwho, body.broadcast #airsound:not([hidden]) { appearance: none; display: inline-block; font: 700 15px/1 system-ui, sans-serif; min-height: 36px;
     padding: 0 12px; border-radius: 999px; cursor: pointer; background: transparent; color: inherit;
     border: 2px solid currentColor; }
@@ -2517,6 +2518,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           : 'Not recording. Tap to record on this device. Everyone here will see it.';
       }
       if (who) {
+        // Not joined yet, so there is nobody to count.
+        who.hidden = !!(serviceWatchCount() !== null && document.getElementById('appear-modal'));
         const watch = serviceWatchCount();
         const n = watch === null ? roomHeadCount() : watch;
         const word = watch === null ? 'here' : 'watching';
@@ -6802,14 +6805,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const reach = typeof reachInfo === 'function' ? reachInfo() : null;
       const reachState = reach ? reach.state : null;
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
-      const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
+      // AT THE NAME CARD ON A SERVICE nothing has joined yet: the room is not
+      // dialed (joinRoom runs after Save), so "watching" and "reconnecting"
+      // were both untrue. Say it is joining.
+      const atCard = !!(BROADCAST && document.getElementById('appear-modal'));
+      const statusText = atCard ? (bcHostStored() ? 'Going live…' : 'Joining the service…')
+        : reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
         : (n === 1 ? (atDoor ? 'Getting you back into the ' + (BROADCAST ? 'service' : 'small group') + ' — waiting for the others to answer…' : (BROADCAST ? ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin') ? 'You are live. Send the link.' : ((typeof myStatus !== 'undefined' && myStatus.stg) ? 'You are on stage.' : 'You are watching this service.')) : 'Just you. Send the invite.') + reachTriedSentence())
         : displayCount() + ' in this ' + (BROADCAST ? 'service' : 'small group') + ' · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
       // of the reach states that replace the line. Tests and styling read
       // this, never the sentence.
-      const statusKind = reachState && reachState !== 'partial' ? reachState : n === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
+      const statusKind = atCard ? 'joining' : reachState && reachState !== 'partial' ? reachState : n === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
       // A broadcast host who is the only person here gets Invite beside the
       // sentence, at every width. The sentence stays. The viewer password is
       // never part of the link this button shares.
