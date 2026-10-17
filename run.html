@@ -7986,7 +7986,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       whoGone(pid); // the Who log keeps them, with what is about to be forgotten
       meshGone.set(pid, Date.now());
       { const s = meshSeat(); meshGoneTick.set(pid, s && typeof s.TICK === 'number' ? s.TICK : -1); }
-      if (typeof meshGoneSilent === 'object' && meshGoneSilent) { if (why === 'vouch-reap') meshGoneSilent.add(pid); else meshGoneSilent.delete(pid); } // typeof: as dropStatus below
+      if (typeof meshGoneSilent === 'object' && meshGoneSilent) { if (why === 'vouch-reap') meshGoneSilent.add(pid); else meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid); } // typeof: as dropStatus below
       occVanish.delete(pid);
       if (typeof dropStatus === 'function') dropStatus(pid); else statusOf.delete(pid); forgetConns(pid); delete rosterNames[pid]; delete ipsOf[pid]; delete devOf[pid];
       pidFirstSeen.delete(pid); meshRxByPid.delete(pid); tlFiredPid.delete(pid); speakingOf.delete(pid);
@@ -8046,9 +8046,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // lifted the tombstone within seconds and re-dialled the silent peer as
     // a nameless tile. So a vouch-reap tombstone (meshGoneSilent) lifts only
     // on a status from the peer, a live connection, or the mesh hearing it
-    // first-hand, and it does not expire while the mesh still names the id.
+    // first-hand, and it does not expire until the mesh has stopped naming
+    // the id for the whole settle window (one sweep without it is occ churn,
+    // and the next echo would re-dial the silent peer as a newcomer).
     const meshGoneTick = new Map();   // pid -> seat.TICK at the verdict
     const meshGoneSilent = new Set(); // pids whose tombstone is this page's own silence verdict
+    const meshGoneNamedAt = new Map(); // silent pid -> when the sweep last saw the mesh name it
     const meshNames = (pid) => { const s = meshSeat(); if (!s || !s.occ) return false; for (const v of s.occ.values()) if (v === pid) return true; return false; };
     const meshHeardSince = (pid) => {
       const gt = meshGoneTick.get(pid); const s = meshSeat();
@@ -8066,17 +8069,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return false; // ejected: gone for good, whatever it says
       const g = meshGone.get(pid); if (g === undefined) return true;
       const st = statusOf.get(pid); const p = peers.get(pid);
-      if ((st && (st.rx || 0) > g + TOMB_GRACE) || (p && p.connected) || meshHeardSince(pid)) { meshGone.delete(pid); meshGoneTick.delete(pid); if (typeof meshGoneSilent === 'object' && meshGoneSilent) meshGoneSilent.delete(pid); return true; }
+      if ((st && (st.rx || 0) > g + TOMB_GRACE) || (p && p.connected) || meshHeardSince(pid)) { meshGone.delete(pid); meshGoneTick.delete(pid); if (typeof meshGoneSilent === 'object' && meshGoneSilent) { meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid); } return true; }
       return false;
     };
     // Departure tombstones expire once every occ echo of the freed seat has
     // settled — after that a same-id RE-JOIN is an ordinary newcomer. A
-    // silent peer's tombstone waits for the mesh to stop naming it.
+    // silent peer's tombstone waits until the mesh has not named it for the
+    // same 60 s.
     function expireTombs(now) {
       for (const [pid, at] of meshGone) {
+        const silent = meshGoneSilent.has(pid);
+        if (silent && meshNames(pid)) meshGoneNamedAt.set(pid, now);
         if (now - at <= 60000) continue;
-        if (meshGoneSilent.has(pid) && meshNames(pid)) continue;
-        meshGone.delete(pid); meshGoneTick.delete(pid); meshGoneSilent.delete(pid);
+        if (silent && now - (meshGoneNamedAt.get(pid) || at) <= 60000) continue;
+        meshGone.delete(pid); meshGoneTick.delete(pid); meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid);
       }
     }
     function departSweep(s) {
