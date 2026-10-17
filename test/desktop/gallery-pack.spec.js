@@ -102,3 +102,44 @@ test('seven faces stay even at 1280 and at 900', async ({ page }) => {
     expect(info.skinny, String(w)).toBe(0);
   }
 });
+
+// Zoom and Meet leave a thin gutter between faces. Touching tiles read as
+// one picture cut into pieces, and a name strip runs into the next face.
+async function gutters(page) {
+  return page.evaluate(() => {
+    const tiles = [...document.querySelectorAll('#feed .tile')].map((el) => {
+      const r = el.getBoundingClientRect();
+      if (getComputedStyle(el).display === 'none' || r.width < 2 || r.height < 2) return null;
+      return { x: r.x, y: r.y, r: r.right, b: r.bottom, radius: parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0 };
+    }).filter(Boolean);
+    let minX = Infinity, minY = Infinity;
+    for (const a of tiles) for (const b of tiles) {
+      if (a === b) continue;
+      const sameRow = Math.min(a.b, b.b) - Math.max(a.y, b.y) > 8;
+      const sameCol = Math.min(a.r, b.r) - Math.max(a.x, b.x) > 8;
+      if (sameRow && b.x >= a.x) minX = Math.min(minX, b.x - a.r);
+      if (sameCol && b.y >= a.y) minY = Math.min(minY, b.y - a.b);
+    }
+    return { n: tiles.length, minX: minX, minY: minY, radius: Math.min(...tiles.map((t) => t.radius)) };
+  });
+}
+
+test('faces have a gutter between them and soft corners', async ({ context }) => {
+  for (const [w, n] of [[1280, 4], [1280, 6], [900, 6]]) {
+    // A fresh page per boot: Firefox treats a second goto to the same url as same-document.
+    const page = await context.newPage();
+    await boot(page, w, 720, n);
+    const g = await gutters(page);
+    const at = w + 'px, ' + (n + 1) + ' faces';
+    expect(g.n, at).toBe(n + 1);
+    expect(g.minX, at).toBeGreaterThanOrEqual(6);
+    expect(g.minY, at).toBeGreaterThanOrEqual(6);
+    expect(g.minX, at).toBeLessThanOrEqual(16);
+    expect(g.minY, at).toBeLessThanOrEqual(16);
+    expect(g.radius, at).toBeGreaterThanOrEqual(8);
+    const info = await pack(page);
+    expect(info.covered, at).toBe(0);
+    expect(info.fair, at).toBeGreaterThan(0.98);
+    await page.close();
+  }
+});
