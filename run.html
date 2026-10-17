@@ -21320,7 +21320,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       takeAudienceReact(emoji, (typeof myId !== 'undefined' && myId) || 'me');
       const id = uid('r');
       audienceReactFresh(id);
-      try { sendAll({ k: 'react', e: emoji, id }, { ephemeral: true }); } catch (e) {}
+      const msg = { k: 'react', e: emoji, id };
+      try { sendAll(msg, { ephemeral: true }); } catch (e) {}
+      // The roster catches up on its own tick, so a link that just opened can
+      // be missing from it. The clap goes over that link too. The id drops
+      // the copy a peer gets both ways.
+      try {
+        const sent = new Set(gossipIds());
+        for (const p of peers.values()) if (p && p.id && !sent.has(p.id) && p.dc && p.dc.readyState === 'open') dcSend(p, msg);
+      } catch (e) {}
     }
     (function () {
       const btn = document.getElementById('reactbtn');
