@@ -14560,7 +14560,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (n) return n;
       if (reactNames.has(byId)) return reactNames.get(byId);
       for (const m of chat.values()) if (m.byId === byId && m.by) return m.by;
-      return 'Someone';
+      // No name at all: People calls them Guest, so the line does too.
+      return 'Guest';
     }
     function reactorNames(who) {
       const ids = Array.from(who);

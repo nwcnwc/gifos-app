@@ -79,5 +79,5 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
     console.error('FAIL ' + bad.join('; '));
     process.exit(1);
   }
-  console.log('PASS chat react left');
+  console.log('PASS chat react guest');
 })().catch((e) => { console.error(e); process.exit(1); });
