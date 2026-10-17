@@ -177,6 +177,15 @@ test.describe('Spanish shortcuts', () => {
   });
 });
 
+// The whole list, title to Close, is on a 1280x720 screen.
+async function sheetFits(page) {
+  return page.evaluate(() => {
+    const t = document.getElementById('shortcut-title').getBoundingClientRect();
+    const c = document.getElementById('shortcut-cancel').getBoundingClientRect();
+    return { titleTop: Math.round(t.top), closeBottom: Math.round(c.bottom), h: window.innerHeight, ok: t.top >= 0 && c.bottom <= window.innerHeight };
+  });
+}
+
 // A host's room-wide tools (Blur guests, Video off, Allow screen share) are
 // one signed order each, whatever the room's size. They have keys too, and a
 // guest pressing the same keys changes nothing.
@@ -212,7 +221,9 @@ test('a host blurs guests, turns guest video off, and allows shares by key', asy
   await expect(page.locator('#blurall')).toHaveText('Blur guests');
   await page.keyboard.press('?');
   const sheet = page.locator('#shortcutsheet');
-  await expect(sheet).toContainText('Alt+B');
+  await expect(sheet.locator('li', { hasText: 'Alt+B' })).toBeVisible();
+  await expect(sheet.locator('li', { hasText: 'Alt+P' })).toBeVisible();
+  expect(await sheetFits(page)).toMatchObject({ ok: true });
   await expect(sheet).toContainText('Blur or unblur every guest');
   await expect(sheet).toContainText('Alt+X');
   await expect(sheet).toContainText('Turn every guest’s video off or on');
@@ -229,6 +240,7 @@ test('a guest does not see or fire the host keys', async ({ page }) => {
   await page.keyboard.press('?');
   const sheet = page.locator('#shortcutsheet');
   await expect(sheet).toBeVisible();
-  await expect(sheet).not.toContainText('Alt+B');
-  await expect(sheet).not.toContainText('Blur or unblur every guest');
+  await expect(sheet.locator('li', { hasText: 'Alt+B' })).toBeHidden();
+  expect(await sheetFits(page)).toMatchObject({ ok: true });
+  expect(await sheet.innerText()).not.toContain('Blur or unblur every guest');
 });
