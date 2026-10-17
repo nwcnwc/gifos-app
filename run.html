@@ -2099,7 +2099,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     box-shadow: 0 12px 28px rgba(0,0,0,.45); }
   body.comfy .comfy-off { display: none !important; }
   .bar:not(.collapsed) .barmore .blurctl[hidden] { display: none !important; }
-  body.comfy .tile.speaking, body.comfy .stadface.speaking {
+  /* The tile rules above zero the shadow at a higher specificity than
+     `.tile.speaking`, and an inset shadow would sit under the video that
+     fills the tile. Outline paints above the picture. A negative offset
+     keeps the frame inside this tile, where the neighbour cannot cover it. */
+  body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.speaking,
+  body.comfy.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me.speaking,
+  body.comfy .stadface.speaking {
+    outline: 3px solid #7bffcf;
+    outline-offset: -3px;
     box-shadow: inset 0 0 0 3px #7bffcf, inset 0 0 24px rgba(123,255,207,.35); }
   body.comfy .tile video, body.comfy .stadface video { object-fit: cover; object-position: 50% 40%; }
   body.comfy .tile.cam-off .avatar.has-img, body.comfy .stadface.cam-off .avatar.has-img {
@@ -8264,6 +8272,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         refreshOutbound(); // mains park on the now-null track; senders stay negotiated
       }, 20000);
     }
+    // THE VOICE MY MAIN AUDIO SENDERS CARRY. Normally the mic. While a meeting
+    // bot speaks it is the speech track instead, and every path that seats a
+    // main audio sender (this refresh, a new pair, a late attach, a re-seat
+    // after a rollback) reads it here. Seated once by hand, the next refresh
+    // put the muted mic back a second or two into the line: everyone heard
+    // the start of what the bot said, a newcomer heard none of it, and the
+    // bot's tile never lit.
+    var botVoiceTrack = null; // var: refreshOutbound is hoisted and may run before this line
+    function mainAudioTrack() {
+      if (botVoiceTrack && botVoiceTrack.readyState === 'live') return botVoiceTrack;
+      return (localStream && localStream.getAudioTracks()[0]) || null;
+    }
     function refreshOutbound() {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       // Viewers do not ride the row. Stepping off the stage in Meet restores
@@ -8300,7 +8320,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Stage fan-up cost. Stepping down swaps the CURRENT tracks back in
       // (pure replaceTrack, no renegotiation — the m-lines never left).
       const staged = stageIds().includes(myId);
-      const at = (localStream && localStream.getAudioTracks()[0]) || null;
+      const at = mainAudioTrack();
       for (const p of peers.values()) {
         const cam = camPeer(p.id) && !staged; // structural link OR staged ⇒ no raw camera encode
         // BECAME a row-mate after a seat move (heal/teleport): the pc predates
@@ -10689,7 +10709,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pc = p.pc, carryCam = camPeer(p.id) && !p.headless;
       let added = false;
       if (localStream && carryCam) {
-        const at = localStream.getAudioTracks()[0];
+        const at = mainAudioTrack();
         if (at) { p.mainA = pc.addTrack(at, localStream); added = true; }
         // Send the blur-canvas track when any blur applies — never the raw camera.
         const vt = sentVideoTrack();
@@ -17721,7 +17741,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function kickMainAudio(p) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (!p || !p.mainA || stageIds().includes(myId)) return;
-      const at = localStream && localStream.getAudioTracks()[0];
+      const at = mainAudioTrack();
       if (!at || at.readyState !== 'live') return;
       const sender = p.mainA;
       const seat = () => sender.replaceTrack(at).catch(() => {});
@@ -25264,7 +25284,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const tr of localStream.getTracks()) {
           if (tr.kind === 'video' ? p.mainV : p.mainA) continue;
           try {
-            const t = p.pc.addTransceiver(tr, { streams: [localStream] });
+            const t = p.pc.addTransceiver(tr.kind === 'audio' ? (mainAudioTrack() || tr) : tr, { streams: [localStream] });
             if (tr.kind === 'video') p.mainV = t.sender; else p.mainA = t.sender;
             added = true;
           } catch (e) {}
@@ -27338,11 +27358,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // those bytes. It does not call a model or a speech stand-in.
       let botSpeechAudio = null;
       let botSpeechUrl = '';
+      let botSpeechCtx = null;
       function stopBotSpeech() {
         if (botSpeechAudio) { try { botSpeechAudio.pause(); } catch (e) {} botSpeechAudio = null; }
         if (botSpeechUrl) { try { URL.revokeObjectURL(botSpeechUrl); } catch (e) {} botSpeechUrl = ''; }
+        if (botVoiceTrack) { try { botVoiceTrack.stop(); } catch (e) {} botVoiceTrack = null; }
+        if (botSpeechCtx) { try { botSpeechCtx.close(); } catch (e) {} botSpeechCtx = null; }
+        try { refreshOutbound(); } catch (e) {}
+        // Stopped means quiet, whether or not a line had already ended.
         const track = localStream && localStream.getAudioTracks()[0];
-        if (track && track.enabled) { track.enabled = false; myStatus.muted = true; }
+        if (track) track.enabled = false;
+        myStatus.muted = true;
         try { paintControls(); broadcastStatus(); } catch (e) {}
         return { stopped: true };
       }
@@ -27359,15 +27385,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return Promise.reject(new Error('This meeting cannot play the bot.'));
         const ctx = new Ctx();
+        botSpeechCtx = ctx;
         const src = ctx.createMediaElementSource(audio);
         const dest = ctx.createMediaStreamDestination();
         src.connect(dest);
-        const out = dest.stream.getAudioTracks()[0];
-        try {
-          for (const p of peers.values()) {
-            if (p.mainA && p.mainA.replaceTrack) p.mainA.replaceTrack(out);
-          }
-        } catch (e) {}
+        // Every main audio sender carries this track until the next line or
+        // a stop, including a pair that opens while the bot is talking.
+        botVoiceTrack = dest.stream.getAudioTracks()[0] || null;
+        try { refreshOutbound(); } catch (e) {}
+        // The line is over: the mic takes the senders back, muted as before.
+        audio.addEventListener('ended', () => {
+          if (botSpeechAudio !== audio) return;
+          if (botVoiceTrack) { try { botVoiceTrack.stop(); } catch (e) {} botVoiceTrack = null; }
+          try { refreshOutbound(); } catch (e) {}
+          const mic = localStream && localStream.getAudioTracks()[0];
+          myStatus.muted = !(mic && mic.enabled);
+          try { paintControls(); broadcastStatus(); } catch (e) {}
+        });
         myStatus.muted = false;
         try { paintControls(); broadcastStatus(); } catch (e) {}
         rememberBotSpoken(msg && msg.text);
