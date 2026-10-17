@@ -1023,6 +1023,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .chips span.ico { width: 22px; height: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
                           font-size: 0; line-height: 0; border-radius: 6px; flex: 0 0 auto; }
   .tile .chips span.ico svg { width: 14px; height: 14px; display: block; }
+  .tile .chips span.ico i.w { display: none; }
   .tile .awaymark { display: none; }
   .tile.away > .awaymark {
     display: flex; align-items: center; justify-content: center;
@@ -1560,6 +1561,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.desk-ptr .tile .modbar button { font-size: 16px; }
   /* A raised hand is read from across the room: chip words are 16px too. */
   body.desk-ptr .tile .chips span:not(.ico) { font-size: 16px; }
+  /* The mute and camera marks say their word too: an icon alone is a guess. */
+  body.desk-ptr .tile .chips span.ico { width: auto; height: auto; min-height: 22px; padding: 1px 8px 1px 6px; gap: 4px; }
+  body.desk-ptr .tile .chips span.ico i.w { display: inline; font-style: normal; font-size: 16px; line-height: 1.35; }
   /* The header line and the build label go too, unless the line is saying
      something (a notice, an alert, a reach state). */
   .topchip, #gifos-build-float { transition: opacity .2s ease; }
@@ -1766,6 +1770,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      being cut at the edge, and the row keeps no room for the Blur for all
      square, which shows only under the pointer and then sits on top. */
   body.desk-ptr.screen-on #grid .tile .chips { top: 4px; right: 6px; flex-wrap: wrap; align-content: flex-start; gap: 2px 3px; }
+  /* A 104px thumbnail has no room for the mark words: icons only there. */
+  body.desk-ptr.screen-on #grid .tile .chips span.ico { width: 22px; height: 22px; padding: 0; }
+  body.desk-ptr.screen-on #grid .tile .chips span.ico i.w { display: none; }
   @media (max-width: 700px) {
     body.screen-on #grid { flex-basis: 92px; height: 92px; }
     body.screen-on #grid .tile { height: 76px; }
@@ -2713,7 +2720,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         away: 'Weg', stillHere: 'Sie sind noch dabei',
         unlockClear: 'Gesichter weich bis zum Passwort',
         onAir: 'Auf Sendung', offAir: 'Nicht live', watching: 'Live',
-        rosterPeople: 'Personen', rosterPerson: 'Person', you: 'Sie', muted: 'Stumm', rosterClose: 'Schließen', rosterFind: 'Name suchen',
+        rosterPeople: 'Personen', rosterPerson: 'Person', you: 'Sie', muted: 'Stumm', camOffChip: 'Kamera aus', rosterClose: 'Schließen', rosterFind: 'Name suchen',
         muteForAll: 'Stumm', unmuteForAll: 'Ton an', forEveryone: 'Für alle',
         waitRoom: 'Warteraum', waitOn: 'An', waitOff: 'Aus', waitHeading: 'Warten',
         admit: 'Herein', nobodyWaiting: 'Niemand wartet', rename: 'Umbenennen', saveName: 'Sichern',
@@ -2997,7 +3004,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         away: 'Fuera', stillHere: 'Sigues en la llamada',
         unlockClear: 'caras suaves hasta una contraseña',
         onAir: 'Al aire', offAir: 'Fuera del aire', watching: 'En vivo',
-        rosterPeople: 'personas', rosterPerson: 'persona', you: 'tú', muted: 'En silencio', rosterClose: 'Cerrar', rosterFind: 'Buscar un nombre',
+        rosterPeople: 'personas', rosterPerson: 'persona', you: 'tú', muted: 'En silencio', camOffChip: 'Cámara apagada', rosterClose: 'Cerrar', rosterFind: 'Buscar un nombre',
         muteForAll: 'Silenciar', unmuteForAll: 'Activar', forEveryone: 'Para todos',
         waitRoom: 'Sala de espera', waitOn: 'Sí', waitOff: 'No', waitHeading: 'Esperando',
         admit: 'Admitir', nobodyWaiting: 'Nadie espera', rename: 'Renombrar', saveName: 'Guardar',
@@ -5674,7 +5681,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const statusIco = (kind, label) => {
         const svg = kind === 'mic-off' ? ICO_MIC_OFF : ICO_CAM_OFF;
         const safe = esc(label);
-        return '<span class="ico" data-icon="' + kind + '" title="' + safe + '" aria-label="' + safe + '">' + svg + '</span>';
+        // The word shows on a desktop only (CSS); a phone keeps the icon.
+        const word = kind === 'mic-off' ? uiText('muted', 'Muted') : uiText('camOffChip', 'Camera off');
+        return '<span class="ico" data-icon="' + kind + '" title="' + safe + '" aria-label="' + safe + '">' + svg + '<i class="w" aria-hidden="true">' + esc(word) + '</i></span>';
       };
       const isMe = id === 'me';
       const t = isMe ? meTile : peers.get(id);
