@@ -1196,6 +1196,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
       body.amadmin .tile.slim.menu .modbar button { font-size: 13px; padding: 2px 4px; }
     }
+    /* A short camera-off tile (about 100px) drew its two-line name and a
+       three-line "✋ hand raised" over the big initial. The hand is a ✋ chip,
+       and the initial fits the band between the chips and the name. */
+    .tile.slim.short.cam-off .chips { flex-wrap: wrap; align-content: flex-start; gap: 4px; }
+    .tile.slim.short.cam-off .chips span.hand { font-size: 0; width: 22px; height: 22px; padding: 0; box-sizing: border-box;
+      display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
+    .tile.slim.short.cam-off .chips span.hand b { font-size: 13px; font-weight: normal; }
+    .tile.slim.short.cam-off .avatar { box-sizing: border-box; padding: 30px 0 40px; line-height: 1;
+      font-size: clamp(24px, calc((var(--th, 130px) - 70px) * 1.1), 48px); }
     .tile.slim .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 1px 4px; z-index: 5;
       white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
   }
@@ -6100,6 +6109,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const w = en.contentRect.width;
             const h = en.contentRect.height;
             if (w > 0) { en.target.classList.toggle('slim', w < 200); en.target.classList.toggle('thin', w < 116); en.target.classList.toggle('short', w < 200 && h > 0 && h < 130); }
+            if (h > 0) en.target.style.setProperty('--th', Math.round(h) + 'px'); // sizes a short tile's initial
           }));
         }
         try { makeTile.slimObs.observe(tile); } catch (e) {}
