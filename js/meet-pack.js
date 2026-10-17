@@ -85,11 +85,13 @@ function candidates(box, aspects, all) {
     if (T.legacyRows && (dir === 'cols' || sizing === 'aspect')) continue; // rev 2 (before/after only)
     const { counts, cells } = cellsFor(box, N, dir, r, sizing);
     let score = 0, minShort = Infinity, viol = 0;
+    let skinny = 1;
     cells.forEach((c, i) => {
       score += fitArea(c.w, c.h, aspects[i]); minShort = Math.min(minShort, c.w, c.h);
       const t = c.w / c.h; viol = Math.max(viol, t < ASPECT_MIN ? ASPECT_MIN / t : t > ASPECT_MAX ? t / ASPECT_MAX : 1);
+      if (t < ASPECT_MIN) skinny = Math.max(skinny, ASPECT_MIN / t);
     });
-    out.push({ dir, r, sizing, counts, cells, score, minShort, viol });
+    out.push({ dir, r, sizing, counts, cells, score, minShort, viol, skinny });
   }
   return out;
 }
@@ -106,6 +108,10 @@ function chooseRows(box, aspects, prevRows, minSide) {
   if (!cands.length) cands = candidates(box, aspects, true);
   const vmin = T.legacyRows ? Infinity : Math.min(...cands.map(c => c.viol));
   cands = cands.filter(c => c.viol <= Math.max(1, vmin) + 1e-9);
+  // A tile narrower than a portrait phone (w/h < 0.44) is never the pick when
+  // another arrangement in this set keeps every tile at least that wide:
+  // 1/2/2, or a big tile beside smaller ones (cols + aspect sizing).
+  if (!T.legacyRows && cands.some(c => c.skinny <= 1 + 1e-9)) cands = cands.filter(c => c.skinny <= 1 + 1e-9);
   if (minSide && cands.some(c => c.minShort >= minSide)) cands = cands.filter(c => c.minShort >= minSide);
   const best = Math.max(...cands.map(c => c.score));
   cands = cands.filter(c => c.score >= best * (1 - TIE));
@@ -169,10 +175,69 @@ function splitBoxes(box, side, f) {
 // ---------- Full view ----------
 // people: [{id, aspect, me?, row?}]  (row = mesh row, only drives quality)
 // stage:  [{id, aspect, share?}] up to 5 (people ids or 'share:<id>')
+// Fit is the default. Scroll happens only when the caller asks. Anything else
+// (including a pager request) stays on Fit. The gallery never pages and never
+// switches itself to Scroll because faces got small.
+function resolveGallery(v) { return v === 'scroll' ? 'scroll' : 'fit'; }
+
+// Inset a tile that the box itself forced outside [ASPECT_MIN, ASPECT_MAX].
+// Narrower than a portrait phone: shorten it. Wider than the ribbon limit:
+// narrow it. The picture stays centred in the cell it was given.
+function clampShape(t) {
+  if (!t || !(t.w > 0) || !(t.h > 0)) return t;
+  const a = t.w / t.h;
+  if (a < ASPECT_MIN) {
+    const nh = t.w / ASPECT_MIN;
+    t.y += (t.h - nh) / 2;
+    t.h = nh;
+  } else if (a > ASPECT_MAX) {
+    const nw = t.h * ASPECT_MAX;
+    t.x += (t.w - nw) / 2;
+    t.w = nw;
+  }
+  return t;
+}
+
+// Stadium slices come from one shared feed. Draw each a bit smaller than the
+// real row tiles (short side <= row / TIER_RATIO) without changing its shape.
+function shrinkStad(tiles) {
+  const row = [], stad = [];
+  for (let i = 0; i < tiles.length; i++) (tiles[i].tier === 'stad' ? stad : row).push(tiles[i]);
+  if (!row.length || !stad.length) return tiles;
+  let rowShort = Infinity;
+  for (let i = 0; i < row.length; i++) rowShort = Math.min(rowShort, row[i].w, row[i].h);
+  const cap = rowShort / TIER_RATIO;
+  if (!(cap > 0)) return tiles;
+  for (let i = 0; i < stad.length; i++) {
+    const t = stad[i];
+    const short = Math.min(t.w, t.h);
+    if (!(short > cap + 0.5)) continue;
+    const s = cap / short;
+    const nw = t.w * s, nh = t.h * s;
+    t.x += (t.w - nw) / 2;
+    t.y += (t.h - nh) / 2;
+    t.w = nw;
+    t.h = nh;
+  }
+  return tiles;
+}
+
+function presentTiles(res) {
+  if (!res || !res.tiles) return res;
+  for (let i = 0; i < res.tiles.length; i++) clampShape(res.tiles[i]);
+  shrinkStad(res.tiles);
+  if (res.tiles.length) res.minShort = Math.min(...res.tiles.map(t => Math.min(t.w, t.h)));
+  return res;
+}
+
 // opts: {W, H, phone?, mode:'auto'|'gallery'|'stageOnly', order:Order,
-//        myRow, selfView:'tile'|'inset'|'hidden', stageSelf, page, prevRows}
+//        myRow, selfView:'tile'|'inset'|'hidden', stageSelf, prevRows,
+//        gallery:'fit'|'scroll'}
 // Self is never auto-staged. Pass stageSelf only when the viewer put their
 // own tile on the stage. Stage only is the only mode that hides the gallery.
+// opts.page is ignored. Fit keeps every face on one screen; Scroll grows
+// downward. Nobody is dropped onto a later page, and Fit is never rewritten
+// to Scroll from in here.
 function layout(people, stage, opts) {
   const W = opts.W, H = opts.H;
   const phone = opts.phone != null ? opts.phone : Math.min(W, H) < 600;
@@ -192,7 +257,7 @@ function layout(people, stage, opts) {
   const byId = new Map(people.map(p => [p.id, p]));
   gallery = order.sort(gallery.map(p => p.id)).map(id => byId.get(id));
   if (me && selfView === 'tile' && !stageIds.has(me.id)) { gallery = [me, ...gallery.filter(p => p !== me)]; }
-  const out = { W, H, box, tiles: [], regions: {}, overflow: 0 };
+  const out = { W, H, box, tiles: [], regions: {}, overflow: 0, paged: false, gallery: resolveGallery(opts.gallery) };
   const quality = id => { const p = byId.get(id); return p && opts.myRow != null && p.row === opts.myRow ? 'hi' : 'lo'; };
 
   let galBox = box, stageBox = null;
@@ -204,7 +269,9 @@ function layout(people, stage, opts) {
     if (mode === 'stageOnly' || !gallery.length) stageBox = box, galBox = null;
     else {
       // split fraction f: stage weighs 4x (share 8x). The gallery strip cannot
-      // shrink past stripFloor, so the other people stay visible.
+      // shrink past stripFloor, so the other people stay visible. The gallery
+      // never pages: a rail under the Fit floor is penalised, and every face
+      // still gets a tile. Search 35..maxI%.
       const gA = gallery.map(p => p.aspect);
       const floor = stripFloor(box, phone, side);
       const along = Math.max(1, side ? box.w : box.h);
@@ -234,11 +301,12 @@ function layout(people, stage, opts) {
     out.regions.stage = stageBox;
     for (const t of placeStage(stageBox, stageList)) out.tiles.push({ ...t, region: 'stage', quality: 'hi' });
   }
-  if (mode === 'stageOnly' && stageList.length) { out.overflow = gallery.length; return out; }
+  if (mode === 'stageOnly' && stageList.length) { out.overflow = gallery.length; out.paged = false; out.gallery = resolveGallery(opts.gallery); return out; }
+  const galleryMode = resolveGallery(opts.gallery);
   if (galBox && gallery.length) {
     out.regions.gallery = galBox;
-    const g = twoTier(galBox, gallery, me, opts, phone);
-    Object.assign(out, { rows: g.rows, split: g.split, contentH: g.contentH, minShort: g.minShort, tooSmall: g.tooSmall, gallery: opts.gallery || 'fit' });
+    const g = twoTier(galBox, gallery, me, { ...opts, gallery: galleryMode }, phone);
+    Object.assign(out, { rows: g.rows, split: g.split, contentH: g.contentH, minShort: g.minShort, tooSmall: g.tooSmall, gallery: galleryMode, paged: false });
     for (const t of g.tiles) out.tiles.push({ ...t, region: 'gallery', me: !!(byId.get(t.id) || {}).me, quality: t.tier === 'row' ? 'hi' : 'lo' });
   }
   return out;
@@ -249,32 +317,55 @@ function layout(people, stage, opts) {
 // tiles. Both tiers use packRegion. Fit: row band on top, stadium below;
 // the split f is searched (20..85%) maximising rowScore*ROW_W + stadScore,
 // keeping row tiles between 1.5x and 2.5x the stadium tile's short side
-// ("a bit smaller"); if no split can, the one closest to that band wins.
-// Scroll: row band fills one screen-height share, the stadium below grows
-// downward at a comfortable size (SCROLL_MIN). Nobody is ever hidden.
+// ("a bit smaller"). If no split keeps legal shapes, one shared grid is
+// used and the stadium faces are then inset so they still render smaller.
+// Scroll: only when gallery is 'scroll'. The row band fills one screen-height
+// share and the stadium grows downward (SCROLL_MIN). Fit is never rewritten
+// to Scroll. Nobody is hidden and nobody is paged.
 const ROW_W = 1, TIER_RATIO = 1.5, TIER_MAX = 2.5, SCROLL_MIN = { phone: 96, other: 128 }, FIT_FLOOR = { phone: 28, other: 36 };
 function twoTier(box, gallery, me, opts, phone) {
+  return presentTiles(packTiers(box, gallery, me, opts || {}, phone));
+}
+function packTiers(box, gallery, me, opts, phone) {
   const inRow = p => p === me || (opts.myRow != null && p.row === opts.myRow);
   const row = gallery.filter(inRow), stad = gallery.filter(p => !inRow(p));
-  const wide = false; // bands stack vertically in every box (row on top), simplest to read and to scroll
   const emit = (list, rects, tier) => list.map((p, i) => ({ id: p.id, ...rects[i], tier }));
-  const mode = opts.gallery || 'fit';
+  const mode = resolveGallery(opts.gallery);
+  const scrollFloor = phone ? SCROLL_MIN.phone : SCROLL_MIN.other;
   if (mode === 'scroll') { // Scroll never makes tiles smaller than Fit: if Fit is already comfortable, Scroll == Fit
-    const fit = twoTier(box, gallery, me, { ...opts, gallery: 'fit' }, phone);
-    const stadMin = Math.min(...fit.tiles.filter(t => t.tier === 'stad').map(t => Math.min(t.w, t.h)));
-    if (stadMin >= (phone ? SCROLL_MIN.phone : SCROLL_MIN.other)) return fit;
+    const fit = packTiers(box, gallery, me, { ...opts, gallery: 'fit' }, phone);
+    const stadTiles = fit.tiles.filter(t => t.tier === 'stad');
+    const pool = stadTiles.length ? stadTiles : fit.tiles;
+    const short = pool.length ? Math.min(...pool.map(t => Math.min(t.w, t.h))) : Infinity;
+    if (short >= scrollFloor) return fit;
   }
   if (!stad.length || !row.length) {
     const list = row.length ? row : stad, tier = row.length ? 'row' : 'stad';
-    if (mode === 'scroll' && tier === 'stad') return scrollStad(box, list, [], phone, box.y);
+    if (mode === 'scroll') return scrollStad(box, list, [], phone, box.y, 0, tier);
     const p = packRegion(box, list.map(t => t.aspect), { prevRows: opts.prevRows });
     return { tiles: emit(list, p.rects, tier), rows: p.rows, split: tier === 'row' ? 1 : 0, contentH: box.h, minShort: p.minShort, tooSmall: p.minShort < (phone ? FIT_FLOOR.phone : FIT_FLOOR.other) };
   }
   if (mode === 'scroll') {
-    // row band: 50% of the first screen, or the nearest height whose row tiles are legal shapes
-    const okH = h => chooseRows({ x: box.x, y: box.y, w: box.w, h }, row.map(t => t.aspect)).viol <= 1;
-    let rh = box.h * 0.5;
-    for (let d = 0; d <= 0.45 && !okH(rh); d += 0.05) { if (okH(box.h * (0.5 + d))) { rh = box.h * (0.5 + d); break; } if (okH(box.h * (0.5 - d))) { rh = box.h * (0.5 - d); break; } }
+    // The row leads, but the first screen still shows the crowd. A taller
+    // band is only used when a shorter one cannot hold legal tile shapes,
+    // and it never takes more than 62% of the screen.
+    const okH = (h) => {
+      if (!(h > 48)) return false;
+      const c = chooseRows({ x: box.x, y: box.y, w: box.w, h: h }, row.map(t => t.aspect));
+      return !!(c && c.viol <= 1);
+    };
+    const maxH = box.h * 0.62;
+    let rh = Math.min(box.h * 0.40, maxH);
+    if (!okH(rh)) {
+      let picked = false;
+      for (let d = 0.04; d <= 0.22 && !picked; d += 0.04) {
+        const shorter = box.h * (0.40 - d);
+        const taller = Math.min(maxH, box.h * (0.40 + d));
+        if (okH(shorter)) { rh = shorter; picked = true; break; }
+        if (taller > rh && okH(taller)) { rh = taller; picked = true; break; }
+      }
+      if (!picked) rh = maxH;
+    }
     const rp = packRegion({ x: box.x, y: box.y, w: box.w, h: rh }, row.map(t => t.aspect));
     return scrollStad(box, stad, emit(row, rp.rects, 'row'), phone, box.y + rh, rp.rows);
   }
@@ -301,7 +392,7 @@ function twoTier(box, gallery, me, opts, phone) {
 }
 // Scroll: columns = most that keep the short side >= SCROLL_MIN at the
 // median aspect; the region is as tall as it needs to be.
-function scrollStad(box, stad, rowTiles, phone, y0, rowRows) {
+function scrollStad(box, stad, rowTiles, phone, y0, rowRows, tier) {
   const min = phone ? SCROLL_MIN.phone : SCROLL_MIN.other, a = median(stad.map(t => t.aspect));
   // tile h = (W/c)/a must be >= min and W/c >= min
   const c = Math.max(1, Math.min(stad.length, Math.floor(box.w / Math.max(min, min * a))));
@@ -311,7 +402,7 @@ function scrollStad(box, stad, rowTiles, phone, y0, rowRows) {
   const tiles = rowTiles.slice(); let i = 0, y = y0;
   counts.forEach((k) => { const w = box.w / k, h = w / ta; for (let j = 0; j < k; j++, i++) {
     const sa = stad[i].aspect, keep = Math.min(ta / sa, sa / ta);
-    tiles.push({ id: stad[i].id, x: box.x + j * w, y, w, h, tier: 'stad', fit: keep >= T.KMIN ? 'cover' : 'contain', objPos: '50% 40%' }); } y += h; });
+    tiles.push({ id: stad[i].id, x: box.x + j * w, y, w, h, tier: tier || 'stad', fit: keep >= T.KMIN ? 'cover' : 'contain', objPos: '50% 40%' }); } y += h; });
   const rb = { h: y - y0 };
   return { tiles, rows: (rowRows || 0) + '+' + r, split: null, contentH: y0 - box.y + rb.h, minShort: Math.min(...tiles.map(t => Math.min(t.w, t.h))), tooSmall: false };
 }
@@ -427,6 +518,6 @@ function viewWindow(crop, z) {
   return { x: crop.x + (z.x - 0.5 / z.s) * crop.w, y: crop.y + (z.y - 0.5 / z.s) * crop.h, w, h, keep: crop.keep };
 }
 
-return { TUNE_REV2, ASPECT_MIN, ASPECT_MAX, candidates, cellsFor, setTune, TUNE, TUNE_V1, smoothFace, cropFor, FACE_DEFAULT, ZoomStore, canZoom, viewWindow, ZOOM, twoTier, SCROLL_MIN, FIT_FLOOR, TIER_RATIO, fitArea, rowCounts, chooseRows, packRegion, capacity, Order, layout, MIN_SIDE, CROP_KEEP_MIN, stripFloor, PORTRAIT_SPLIT };
+return { TUNE_REV2, ASPECT_MIN, ASPECT_MAX, candidates, cellsFor, setTune, TUNE, TUNE_V1, smoothFace, cropFor, FACE_DEFAULT, ZoomStore, canZoom, viewWindow, ZOOM, twoTier, SCROLL_MIN, FIT_FLOOR, TIER_RATIO, TIER_MAX, fitArea, rowCounts, chooseRows, packRegion, capacity, Order, layout, MIN_SIDE, CROP_KEEP_MIN, stripFloor, PORTRAIT_SPLIT, resolveGallery };
 
 });
