@@ -742,6 +742,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #appbar #appstop { margin-left: auto; font-size: 16px; }
   #appbar #appsave, #appbar #appsteal, #appbar #apphide, #appbar #appaudio,
   #appbar #appinvite, #appbar #applead { font-size: 16px; }
+  /* A desktop has the room: Help and the "you are hosting it" line read at
+     16px like the rest of the bar (older eyes). Phones keep the small line. */
+  @media (min-width: 900px) {
+    #appbar #apphelp, #appbar #appwho { font-size: 16px; }
+  }
   /* When the app bar is the ONLY bar (solo / app room before a call), it also
      carries the GifOS home link — same gradient wordmark as the meeting bar. */
   #appbar .brand { display: none; font-weight: 800; font-size: .9rem; text-decoration: none; cursor: pointer;
