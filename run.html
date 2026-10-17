@@ -664,7 +664,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .name-box.rec-box {
     display: flex; flex-direction: column; text-align: left; overflow: hidden;
     width: min(440px, calc(100vw - 24px)); max-width: none;
-    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     padding: 16px 16px 12px; border: 0; border-radius: 20px;
     background: #fff; color: #1d1d1f;
   }
@@ -1769,7 +1769,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border-radius: 16px; background: #e8ecf1; }
   .appear-face { position: relative; width: 72px; height: 72px; min-width: 72px; border-radius: 50%; overflow: hidden;
     background: #3a3a3f; color: #fff; font-weight: 700; font-size: 1.6rem; display: flex; align-items: center; justify-content: center; }
-  .appear-face #nm-avatar, .appear-face #nm-cam { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+  .appear-face #nm-avatar, .appear-face #nm-cam { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; margin: 0;
     border-radius: 0; object-fit: cover; }
   .appear-face #nm-cam[hidden], .appear-face #nm-avatar[hidden] { display: none; }
   #nm-preview-name { display: block; font-size: 1.05rem; line-height: 1.25; overflow-wrap: anywhere; }
@@ -2652,7 +2652,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      the older gallery rule uses; matching it is what lets these win.
      Padding stays zero. The packer insets the bottom by the dock. */
   body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
-    position: fixed; inset: 0; overflow: hidden; padding: 0 !important; margin: 0;
+    position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; overflow: hidden; padding: 0 !important; margin: 0;
     display: block; background: #0d0f14; z-index: 1; }
   body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll {
     overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
@@ -2689,7 +2689,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.comfy .stadface.cam-off, body.comfy .tile.cam-off {
     background-color: var(--tile-shade, #3b4d78); }
   body.comfy .stadface .avatar {
-    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; align-items: center; justify-content: center;
     font-size: 2.4rem; font-weight: 800; color: #fff; background: transparent; z-index: 1; }
   body.comfy .stadface .name {
     position: absolute; left: .4rem; bottom: .4rem; z-index: 2;
@@ -2798,7 +2798,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     left: calc(12px + env(safe-area-inset-left, 0px));
     right: calc(12px + env(safe-area-inset-right, 0px));
     bottom: calc(var(--dockh, 108px) + 8px);
-    max-height: calc(100dvh - var(--dockh, 108px) - 80px - env(safe-area-inset-top, 0px));
+    max-height: calc(100vh - var(--dockh, 108px) - 80px - env(safe-area-inset-top, 0px)); max-height: calc(100dvh - var(--dockh, 108px) - 80px - env(safe-area-inset-top, 0px));
     overflow-y: auto; overscroll-behavior: contain;
     background: #fff; color: #1d1d1f; border-radius: 18px; padding: 12px;
     box-shadow: 0 16px 40px rgba(0,0,0,.32);
@@ -2808,7 +2808,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* A knocker the relay has not seated. Covers the call so the waiting
      person sees no tiles, roster, or chat. */
   #waitdoor {
-    position: fixed; z-index: 70; inset: 0;
+    position: fixed; z-index: 70; top: 0; right: 0; bottom: 0; left: 0; inset: 0;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 16px; padding: 24px; text-align: center;
     background: #f4f6f8; color: #1d1d1f;
@@ -3043,7 +3043,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      overflow visible. In landscape its top sat above the screen (SE: y=-194)
      and Password could not be scrolled to. Cap it and scroll inside. */
   .bar:not(.collapsed) .barmore {
-    max-height: calc(100dvh - 160px);
+    max-height: calc(100vh - 160px); max-height: calc(100dvh - 160px);
     overflow-y: auto;
     overscroll-behavior: contain;
     pointer-events: auto;
@@ -3126,7 +3126,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   .bar:not(.collapsed) .barmore {
     bottom: calc(122px + env(safe-area-inset-bottom, 0px));
-    max-height: calc(100dvh - 160px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100vh - 160px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); max-height: calc(100dvh - 160px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   }
   .reacttray { bottom: calc(122px + env(safe-area-inset-bottom, 0px)); }
   @media (max-width: 700px) {
@@ -3146,7 +3146,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      Cap the height to the band under the header instead. The rows scroll. */
   @media (max-height: 500px) and (orientation: landscape) {
     .bar:not(.collapsed) .barmore {
-      max-height: calc(100dvh - 58px - 122px - 14px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+      max-height: calc(100vh - 58px - 122px - 14px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); max-height: calc(100dvh - 58px - 122px - 14px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
       min-height: 0;
       overflow-y: auto;
     }
@@ -3291,12 +3291,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       grid-template-rows: 1fr; padding: 0; background: #1a1d24;
     }
     #lobby.form-open.service-ready .lob-preview {
-      position: absolute; inset: 0; z-index: 0;
+      position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 0;
       max-height: none; min-height: 0; margin: 0; border-radius: 0;
       cursor: pointer;
     }
     #lobby.form-open.service-ready .lobby-card {
-      position: absolute; inset: 0; z-index: 1;
+      position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 1;
       display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch;
       gap: 8px; margin: 0; border-radius: 0; background: transparent; color: #f4f7fb;
       max-height: none; overflow: visible;
