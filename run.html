@@ -1183,6 +1183,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cmsg .cchip { gap: 6px; color: #1d1d1f; }
   .cmsg .cchip[aria-pressed="true"] { border: 2.5px solid #0064c8; background: #e6f0fb; }
   .cmsg .cpicks, .cmsg .cchips, .cmsg .cacts { display: flex; flex-wrap: wrap; }
+  .cmsg[data-line] { cursor: pointer; }
+  .cmsg[aria-expanded="true"] { box-shadow: 0 0 0 2px #0064c8; }
+  .cmsg.mine[aria-expanded="true"] { box-shadow: 0 0 0 2px #1d1d1f; }
   #chatreply { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; margin: 0 12px; padding: 8px 0 0; }
   #chatreply[hidden] { display: none !important; }
   #chatreply .chatreply-body { flex: 1; min-width: 0; border-left: 3px solid #0064c8; padding: 2px 8px; }
@@ -14513,6 +14516,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const REACTS = ['👍', '❤️', '😂', '🙏', '👏'];
     const chatReacts = new Map(); // line id -> Map(emoji -> Set(byId))
     let reactOpen = null; // the line whose picker is open
+    // A line's Reply/React/Delete show only once you tap that line, so a
+    // phone shows the conversation instead of a row of buttons per line.
+    let lineOpen = null;
     function takeReact(id, e, byId, on) {
       if (!id || !byId || REACTS.indexOf(e) < 0) return false;
       id = String(id).slice(0, 80);
@@ -15766,16 +15772,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           : '';
         // Your own line keeps Reply and Delete on one row; React is for theirs.
         const reactBtn = m.byId === myId ? '' : '<button type="button" class="creact" data-react-open="' + attr + '" aria-expanded="' + (reactOpen === m.id) + '">React</button>';
+        const open = lineOpen === m.id || reactOpen === m.id;
+        const acts = open ? '<div class="cacts">' + replyBtn + reactBtn + ownDel + '</div>' : '';
         const picks = reactOpen === m.id
           ? '<div class="cpicks">' + REACTS.map((e) => '<button type="button" class="cpick" data-react-pick="' + e + '" data-react-id="' + attr + '" aria-label="React ' + e + '">' + e + '</button>').join('') + '</div>'
           : '';
-        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '">' + who + quote + body + chips + '<div class="cacts">' + replyBtn + reactBtn + ownDel + '</div>' + del + picks + '</div>';
+        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '" data-line="' + attr + '" tabindex="0" aria-expanded="' + open + '" title="Tap for Reply and React">' + who + quote + '<span class="cbody">' + body + '</span>' + chips + acts + del + picks + '</div>';
       }).join('');
       const co = chatOffInfo();
       if (q && !ms.length) html = '<div class="cempty" id="chatnomatch">No matches</div>';
       else if (co && !q) html += '<div class="cmsg" style="opacity:.65"><b>🔇</b>Chat was turned off' + (co.by ? ' by ' + esc(co.by) : '') + '.' + (amAdmin ? '' : ' Only the host can post.') + '</div>';
       paintChatFind();
       paintLog(log, html);
+      // A tapped last line grows by its buttons; keep them in the log.
+      if (lineOpen) {
+        const el = Array.from(log.querySelectorAll('.cmsg[data-line]')).find((x) => x.getAttribute('data-line') === lineOpen);
+        if (el && el.scrollIntoView) try { el.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+      }
+    }
+    function toggleLine(id) {
+      lineOpen = lineOpen === id ? null : id;
+      if (reactOpen && reactOpen !== lineOpen) reactOpen = null;
+      renderChat();
     }
     (function () {
       const q = document.getElementById('chatq');
@@ -15811,6 +15829,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const log = document.getElementById('chatlog');
       if (logNearBottom(log)) paintChatNew(true);
     });
+    document.getElementById('chatlog').addEventListener('keydown', (e) => {
+      if ((e.key !== 'Enter' && e.key !== ' ') || !e.target.matches || !e.target.matches('.cmsg[data-line]')) return;
+      e.preventDefault();
+      const id = e.target.getAttribute('data-line');
+      toggleLine(id);
+      const el = Array.from(document.querySelectorAll('#chatlog .cmsg[data-line]')).find((x) => x.getAttribute('data-line') === id);
+      if (el) try { el.focus(); } catch (err) {}
+    });
     document.getElementById('chatnew').onclick = () => {
       const log = document.getElementById('chatlog');
       log.scrollTop = log.scrollHeight;
@@ -15843,6 +15869,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const per = chatReacts.get(id);
         const on = !(per && per.get(em) && per.get(em).has(myId));
         reactOpen = null;
+        lineOpen = null;
         if (takeReact(id, em, myId, on)) sendAll({ k: 'creact', id: id, e: em, on: on, by: myId });
         renderChat();
         return;
@@ -15858,7 +15885,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         return;
       }
-      const b = e.target.closest('[data-cdel]'); if (!b) return;
+      const b = e.target.closest('[data-cdel]');
+      if (!b) {
+        // A tap on the words (not a link) shows or hides that line's buttons.
+        const line = e.target.closest('.cmsg[data-line]');
+        if (line && !e.target.closest('a, button')) toggleLine(line.getAttribute('data-line'));
+        return;
+      }
       const id = b.getAttribute('data-cdel');
       if (!amAdmin || chatTombs.has(id)) return;
       admSigned('cdel', { id }).then((w) => {
