@@ -441,9 +441,19 @@ Repro: `test/mobile/chat-files.js`. It failed (`empty files tray is showing`), t
 
 Before: `qa/mobile/shots/before-chat-files-iphone-se.png`. After: `qa/mobile/shots/after-chat-files-iphone-se.png`.
 
+### 53. Someone else's line matched the sheet
+
+On the light theme the chat page and the other person's bubble were both `#e8ecf1`. The line had no edge. Mine, in blue, was the only bubble you could see.
+
+A phone chat is a white page. The gray bubble and the blue one stay, so both lines have an edge.
+
+Repro: `test/mobile/chat-sheet.js`. It failed (`Ruth's bubble matches the sheet`), then passed on an iPhone SE and a sideways iPhone 15. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-sheet.js`.
+
+Before: `qa/mobile/shots/before-chat-sheet-iphone-se.png`. After: `qa/mobile/shots/after-chat-sheet-iphone-se.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. Send is the same gray as the paperclip.
 
 ## Personas (what was actually tried)
 

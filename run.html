@@ -1820,6 +1820,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     top: 0; z-index: 31; overflow: clip; min-height: 0;
     bottom: max(var(--dockh, 108px), var(--kb, 0px));
   }
+  /* The light theme paints the sheet with the same gray as someone else's
+     bubble, so their line had no edge. A phone chat is a white page.
+     The gray bubble and the blue one stay. */
+  @media (max-width: 700px), (max-height: 500px) {
+    #chatpanel { background: #fff; color: #1d1d1f; border-left-color: #e4e4ea; }
+    #chathead, #chatform, #trfoot, #cfiles { border-color: #e4e4ea; }
+  }
   #chatlog, #cfiles { min-height: 0; }
   #chathead, #chatform, #emojirow { flex-shrink: 0; }
   @media (max-width: 700px) {
