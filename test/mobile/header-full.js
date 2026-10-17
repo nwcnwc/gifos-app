@@ -45,7 +45,8 @@ const LINE = 'No blur picked — turn your camera on to be ready for clear video
     return {
       text: el.textContent,
       title: el.title || '',
-      cut: el.scrollWidth > el.clientWidth + 2,
+      // The line clips in the span that holds the text (it draws the "…").
+      cut: [el, el.querySelector('.statustext')].some((b) => b && b.scrollWidth > b.clientWidth + 2),
       tag: el.tagName,
     };
   });

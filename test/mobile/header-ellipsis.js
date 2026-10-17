@@ -37,16 +37,21 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
     await page.locator('#blur-none').tap();
     await page.waitForTimeout(200);
     const info = await page.evaluate(() => {
-      const el = document.getElementById('status');
+      const btn = document.getElementById('status');
+      // The box that draws "…" is the one that holds the text itself.
+      const walk = document.createTreeWalker(btn, NodeFilter.SHOW_TEXT);
+      let node = walk.nextNode();
+      while (node && !node.nodeValue.trim()) node = walk.nextNode();
+      const el = node ? node.parentElement : btn;
       const cs = getComputedStyle(el);
       return {
-        text: el.textContent.trim(),
+        text: btn.textContent.trim(),
         over: el.scrollWidth > el.clientWidth + 1,
         display: cs.display,
         overflow: cs.overflowX,
         ws: cs.whiteSpace,
         to: cs.textOverflow,
-        h: el.getBoundingClientRect().height,
+        h: btn.getBoundingClientRect().height,
       };
     });
     const bad = [];

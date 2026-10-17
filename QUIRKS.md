@@ -611,9 +611,19 @@ Repro: `test/mobile/header-message.js`. It failed 3 of 3 runs (`phone header rea
 
 Before: `qa/mobile/shots/before-header-message-pixel-7.png`. After: `qa/mobile/shots/after-header-message-pixel-7.png`, and `qa/mobile/shots/after-header-full-pixel-7.png`.
 
+### 70. A cut phone header message had no "…"
+
+On a phone, a message too long for the header chip ("Faces stay blurred until this room has a password…", a refusal, a reach warning) was cut mid-word ("until th"), with no sign there was more to tap for. The phone made `#status` a flex box for its 44px tap, and `text-overflow: ellipsis` is never drawn on a flex box (a WebKit button is one inside, too).
+
+The text now sits in an inner `.statustext` span, a block that clips with "…". The button keeps its 44px tap, and a tap still opens the whole line.
+
+Repro: `test/mobile/header-ellipsis.js`. It failed 3 of 3 runs on iPhone SE and Pixel 7 (`a cut message has no "…" (display flex …)`), then passed 3 of 3. Firefox at the same phone sizes passes too. Safari (WebKit) was not run: no fleet machine can launch it this cycle. `caption-read.js` and `caption-on-tile.js` failed only because they never turned CC on, which captions need since a801ad4. They tap CC first now and pass.
+
+Before: `qa/mobile/shots/before-header-ellipsis-iphone-se.png`, `qa/mobile/shots/before-header-ellipsis-pixel-7.png`. After: `qa/mobile/shots/after-header-ellipsis-iphone-se.png`, `qa/mobile/shots/after-header-ellipsis-pixel-7.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, Reply keeps that line on the answer, and Delete takes back your own line. An address in a line is a link. The room name and full screen are 44px taps. A sideways phone shows the whole name. A chat line takes a reaction. The keyboard leaves the chat field and Send in view on a sideways SE. The chat title says when a search is cutting the log down. A phone header shows a message while it holds. The phone line clips a long message with no "…". `caption-on-tile.js` and `caption-read.js` fail at 200% text on an SE.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, Reply keeps that line on the answer, and Delete takes back your own line. An address in a line is a link. The room name and full screen are 44px taps. A sideways phone shows the whole name. A chat line takes a reaction. The keyboard leaves the chat field and Send in view on a sideways SE. The chat title says when a search is cutting the log down. A phone header shows a message while it holds. A long header message ends in "…". Safari has not been checked for the "…".
 
 ## Personas (what was actually tried)
 

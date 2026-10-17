@@ -1500,6 +1500,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border: 0; background: transparent; padding: 0; font-family: inherit; font-weight: inherit;
     text-align: left; cursor: pointer; appearance: none; -webkit-appearance: none; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
+  .topchip .status .statustext { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #status-full .name-box {
     background: #fff; color: #1d1d1f; text-align: left;
     width: min(22rem, calc(100vw - 32px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
@@ -2252,7 +2253,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <div class="topchip">
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
-    <button type="button" class="status" id="status" aria-expanded="false">Joining…</button>
+    <button type="button" class="status" id="status" aria-expanded="false"><span class="statustext">Joining…</span></button>
     <button type="button" id="statuscount" aria-expanded="false" aria-controls="roster">Joining…</button>
     <span id="statusrest"></span>
     <button type="button" id="statusinvite" hidden>Invite</button>
@@ -3034,6 +3035,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     };
     const grid = document.getElementById('grid');
     const statusEl = document.getElementById('status');
+    // The text lives in an inner span: a phone makes the button a flex box
+    // for its 44px tap, and "…" is never drawn on a flex box (or on a
+    // WebKit button), so a long message was cut mid-word.
+    const writeStatus = (t) => {
+      let span = statusEl.querySelector('.statustext');
+      if (!span) { span = document.createElement('span'); span.className = 'statustext'; statusEl.replaceChildren(span); }
+      span.textContent = t;
+    };
     const share = document.getElementById('share');
     const shareUrl = document.getElementById('share-url');
     // ONE rule, ONE sentence: the password button's own guard and the door's
@@ -3056,7 +3065,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // #status is the phone's line, #statusrest the wide window's. Write
       // both: a phone hides #statusrest, and a refusal there went unread.
       if (countEl && restEl) { countEl.textContent = ''; restEl.textContent = m; }
-      statusEl.textContent = m;
+      writeStatus(m);
       const invHold = document.getElementById('statusinvite');
       if (invHold) invHold.hidden = true;
       if (statusEl.title !== String(m)) statusEl.title = String(m);
@@ -7731,7 +7740,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
       }
       if (reachState && reachState !== 'partial') statusEl.classList.add('alert');
-      if (statusEl.textContent !== statusShown) statusEl.textContent = statusShown;
+      if (statusEl.textContent !== statusShown) writeStatus(statusShown);
       if (statusEl.title !== shownDetail) statusEl.title = shownDetail;
       const countEl = document.getElementById('statuscount');
       const restEl = document.getElementById('statusrest');
