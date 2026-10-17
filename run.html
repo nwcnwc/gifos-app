@@ -1764,6 +1764,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </div>
   <button type="button" id="fitbtn" class="fitbtn" aria-pressed="true" title="Fit everyone on one screen. Scroll keeps faces larger.">▦ Fit</button>
   <div class="admcount" id="admcount" style="display:none"></div>
+  <!-- Room bar before the dock in the DOM so Tab runs top to bottom. -->
+  <div id="airbar" hidden>
+    <span id="airkind" role="status"></span>
+    <span class="airacts">
+      <button type="button" id="airrec" aria-pressed="false">Not recording</button>
+      <button type="button" id="airwho">1 here</button>
+      <button type="button" id="airsound" hidden aria-pressed="false">Sound on</button>
+    </span>
+  </div>
+  <div id="avstate" hidden>
+    <span id="avmic" hidden>Microphone off</span>
+    <span id="avcam" hidden>Camera off</span>
+  </div>
   <div class="bar collapsed" role="toolbar" aria-label="Call controls">
     <button id="bargrip" type="button" aria-label="Move the controls" title="Drag to move. Double-tap to reset. Arrow keys nudge.">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 8h14M5 12h14M5 16h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -1880,18 +1893,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div id="appmount"></div>
   </div>
   <div id="handq"></div>
-  <div id="airbar" hidden>
-    <span id="airkind" role="status"></span>
-    <span class="airacts">
-      <button type="button" id="airrec" aria-pressed="false">Not recording</button>
-      <button type="button" id="airwho">1 here</button>
-      <button type="button" id="airsound" hidden aria-pressed="false">Sound on</button>
-    </span>
-  </div>
-  <div id="avstate" hidden>
-    <span id="avmic" hidden>Microphone off</span>
-    <span id="avcam" hidden>Camera off</span>
-  </div>
   <div id="feed">
     <div id="stagefeed"></div>
     <div id="stagemod" hidden aria-label="On stage"></div>
