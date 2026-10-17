@@ -3088,3 +3088,32 @@ test('a joined viewer reads who is live, not watching three times', async ({ pag
     expect(clip).toBe(false);
   }
 });
+
+test('the lobby preview says you join muted with the camera off', async ({ page }) => {
+  // The preview shows your camera live, but a call opens muted with the
+  // camera off, and the card said "Turn the camera on here" with no control
+  // here. A service's list also said Broadcasts.
+  await page.addInitScript(() => { localStorage.setItem('gifos_name', 'Avery Chen'); });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    for (const bc of [false, true]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.goto('/run.html?desk=lobnote' + w + (bc ? '#bc=1' : ''));
+      await page.waitForSelector('#lobby.show');
+      if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/lobby-note-' + (bc ? 'service-' : 'group-') + (process.env.SHOT_TAG || 'run') + '.png' }); }
+      const note = page.locator('#lob-preview .lob-pv-note');
+      await expect(note).toBeVisible();
+      await expect(note).toHaveText('You join muted, with the camera off');
+      await expect(page.locator('#lobby .lob-quiet')).not.toContainText(/on here/);
+      const box = await page.evaluate(() => {
+        const r = (id) => document.querySelector(id).getBoundingClientRect();
+        const pv = r('#lob-preview'), n = r('#lob-preview .lob-pv-note'), nm = r('#lob-preview-name');
+        const apart = n.bottom <= nm.top || n.top >= nm.bottom || n.right <= nm.left || n.left >= nm.right;
+        return { inside: n.left >= pv.left && n.right <= pv.right && n.top >= pv.top && n.bottom <= pv.bottom, apart };
+      });
+      expect(box.inside).toBe(true);
+      expect(box.apart).toBe(true);
+      if (bc) await expect(page.locator('#lob-empty')).toHaveText('Services you start or watch show up here.');
+      else await expect(page.locator('#lob-empty')).toHaveText('Calls you start or join show up here.');
+    }
+  }
+});
