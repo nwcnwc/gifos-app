@@ -25936,6 +25936,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return true;
       },
       arriveGuestForTest: (spec) => arriveGuestForTest(spec),
+      // A seat announcing a new status (mic muted, own blur), as its pulse lands it.
+      setPeerStatusForTest: (id, patch) => {
+        const p = DEBUG_ON && peers.get(id);
+        if (!p || !p.qa) return false;
+        const now = Date.now();
+        statusOf.set(id, Object.assign({}, statusOf.get(id) || {}, patch || {}, { at: now, rx: now }));
+        try { updateTile(id); } catch (e) {}
+        try { paintRoster(); } catch (e) {}
+        return true;
+      },
       markPeerAwayForTest: (name, on) => {
         for (const p of peers.values()) {
           if (!p || p.name !== name) continue;
