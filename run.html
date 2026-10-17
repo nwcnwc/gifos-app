@@ -740,7 +740,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #appbar #appwho { color: var(--muted, #8888aa); font-size: .78rem;
     flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #appbar #appstop { margin-left: auto; font-size: 16px; }
-  #appbar #appsave, #appbar #appsteal, #appbar #apphide, #appbar #appaudio { font-size: 16px; }
+  #appbar #appsave, #appbar #appsteal, #appbar #apphide, #appbar #appaudio,
+  #appbar #appinvite, #appbar #applead { font-size: 16px; }
   /* When the app bar is the ONLY bar (solo / app room before a call), it also
      carries the GifOS home link — same gradient wordmark as the meeting bar. */
   #appbar .brand { display: none; font-weight: 800; font-size: .9rem; text-decoration: none; cursor: pointer;
@@ -2019,7 +2020,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <img id="appgif" alt="">
       <span id="appname">App</span>
       <span id="appwho"></span>
-      <button id="appinvite" style="display:none" title="Share this app live — friends join with one link">Invite</button>
+      <button id="appinvite" style="display:none" data-t="invite" data-ti="barInviteTip" title="Share this app live — friends join with one link">Invite</button>
       <button id="appsave" style="display:none" data-t="barSave" data-ti="barSaveTip" title="Save a snapshot GIF — the app with its data, yours to keep">Save</button>
       <button id="apphelp" data-t="help" data-ti="appHelpTip" title="How this app works">Help</button>
       <button id="appaudio" style="display:none" data-t="barTalkOff" data-ti="barTalkTip" title="Talk with the people in this app — when on, everyone here gets their own mic control (host only)">Talk: off</button>
@@ -2851,6 +2852,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         barTalkOnStatus: 'Sprechen ist an — alle hier können ihr Mikrofon einschalten.',
         barTalkOffStatus: 'Sprechen ist aus — jedes Mikrofon ist still.',
         barTalkHostOff: 'Die Leitung hat Sprechen ausgeschaltet.',
+        barInviteTip: 'Diese App live teilen — Freunde kommen mit einem Link dazu',
+        barLeading: '👑 Sie leiten', barCommunal: 'Gemeinsam',
+        barLeadingTip: 'Sie leiten diese App — nur Ihr Blättern bewegt den Raum. Tippen für gemeinsame Steuerung.',
+        barCommunalTip: 'Gemeinsam — jeder hier kann die geteilte App steuern. Tippen, um zu leiten.',
+        barLeadingStatus: '🧩 Sie leiten die App — nur Ihre Änderungen an den gemeinsamen Reglern bleiben.',
+        barCommunalStatus: '🧩 Gemeinsame Steuerung — jeder hier kann die geteilte App steuern.',
+        fullScreen: 'Vollbild', leaveFullScreen: 'Vollbild beenden',
         stealData: '+ Daten', stealDataTip: 'Die App und alles, was jetzt darin ist',
         stealJoined: 'wie ich kam', stealJoinedTip: 'Die App und der Raum, wie er war, als Sie kamen',
         stealApp: 'nur die App', stealAppTip: 'Eine saubere Kopie — nur die App, keine Daten des Raums',
@@ -3135,6 +3143,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         barTalkOnStatus: 'Hablar está activo — todos aquí pueden encender su micrófono.',
         barTalkOffStatus: 'Hablar está apagado — todos los micrófonos quedan en silencio.',
         barTalkHostOff: 'El anfitrión apagó Hablar.',
+        barInviteTip: 'Comparte esta app en vivo — tus amigos entran con un enlace',
+        barLeading: '👑 Diriges', barCommunal: 'Entre todos',
+        barLeadingTip: 'Diriges esta app — solo tus cambios de página mueven la sala. Toca para control entre todos.',
+        barCommunalTip: 'Entre todos — cualquiera aquí puede manejar la app compartida. Toca para dirigir.',
+        barLeadingStatus: '🧩 Diriges la app — solo tus cambios en los controles compartidos se quedan.',
+        barCommunalStatus: '🧩 Control entre todos — cualquiera aquí puede manejar la app compartida.',
+        fullScreen: 'Pantalla completa', leaveFullScreen: 'Salir de pantalla completa',
         stealData: '+ datos', stealDataTip: 'La app y todo lo que hay ahora',
         stealJoined: 'como entré', stealJoinedTip: 'La app y la sala como estaban cuando entraste',
         stealApp: 'solo la app', stealAppTip: 'Una copia limpia — solo la app, sin los datos de la sala',
@@ -24005,7 +24020,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // dark behind the top layer (see #appbar .fs-btn above). Hidden outright
     // where the browser has no fullscreen at all — gifos-fullscreen.js decides.
     if (window.GifOS && GifOS.fullscreen) {
-      GifOS.fullscreen.attach(document.getElementById('appfull'), document.documentElement, { fill: 'app-full' });
+      GifOS.fullscreen.attach(document.getElementById('appfull'), document.documentElement, {
+        fill: 'app-full', enterLabel: uiText('fullScreen', 'Full screen'), exitLabel: uiText('leaveFullScreen', 'Leave full screen') });
     }
     document.getElementById('apphelp-close').onclick = () => { document.getElementById('apphelp-modal').style.display = 'none'; };
     document.getElementById('apphelp-modal').onclick = (e) => {
@@ -24487,10 +24503,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (ROOM.appPinned) { stopB.style.display = 'none'; hideB.style.display = 'none'; }
       const leadB = document.getElementById('applead');
       leadB.style.display = (isMine && appLeadable) ? '' : 'none';
-      leadB.textContent = appLeadOn ? '👑 Leading' : 'Communal';
+      leadB.textContent = appLeadOn ? uiText('barLeading', '👑 Leading') : uiText('barCommunal', 'Communal');
       leadB.title = appLeadOn
-        ? 'You lead this app — only your page-turns move the room. Tap for communal control.'
-        : 'Communal — anyone here can drive the shared app\u2019s controls. Tap to lead.';
+        ? uiText('barLeadingTip', 'You lead this app — only your page-turns move the room. Tap for communal control.')
+        : uiText('barCommunalTip', 'Communal — anyone here can drive the shared app\u2019s controls. Tap to lead.');
     }
     document.getElementById('appbtn').onclick = () => {
       const want = findSharedApp();
@@ -24519,8 +24535,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       appLeadOn = !appLeadOn;
       appLeadSet(appLeadOn);
       updateAppButtons(findSharedApp());
-      setStatus(appLeadOn ? '🧩 You lead the app — only your changes to its shared controls stick.'
-        : '🧩 Communal control — anyone here can drive the shared app.');
+      setStatus(appLeadOn ? uiText('barLeadingStatus', '🧩 You lead the app — only your changes to its shared controls stick.')
+        : uiText('barCommunalStatus', '🧩 Communal control — anyone here can drive the shared app.'));
     };
     document.getElementById('app-cancel').onclick = () => { document.getElementById('app-modal').style.display = 'none'; };
     // ---- run a GIF app that isn't on this computer (file or link) ----
