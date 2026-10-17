@@ -7381,7 +7381,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The request is async: a quick flip away and back runs exitPip while it
       // is still pending, and the float then opens over a visible tab with
       // nothing left to close it. Settle against the tab as it is NOW.
-      if (!document.hidden && !pipManual) exitPip();
+      if (!document.hidden && !pipManual && !(pipAwayAt && !document.hasFocus())) exitPip();
     }
     function exitPip() {
       try {
@@ -7462,8 +7462,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Any float that opens over a visible tab without the Float button — the
     // browser's own auto-PiP resolving late included — goes straight back.
     document.addEventListener('enterpictureinpicture', () => {
-      if (!document.hidden && !pipManual) exitPip();
+      if (!document.hidden && !pipManual && pipAwayAt === 0) exitPip();
     }, true);
+    // Switching to another window (the tab stays visible) floats the meeting
+    // too, the way the tab switch does, as far as the browser allows; coming
+    // back closes it.
+    let pipAwayAt = 0, pipAwayT = 0;
+    window.addEventListener('blur', () => {
+      if (pipAwayT) clearTimeout(pipAwayT);
+      pipAwayT = setTimeout(() => {
+        pipAwayT = 0;
+        if (document.hidden || document.hasFocus() || pipManual) return;
+        // An iframe inside the page (an app) takes focus without leaving.
+        const ae = document.activeElement;
+        if (ae && ae.tagName === 'IFRAME') return;
+        pipAwayAt = Date.now();
+        enterPip();
+      }, 250);
+    });
+    window.addEventListener('focus', () => {
+      if (pipAwayT) { clearTimeout(pipAwayT); pipAwayT = 0; }
+      if (!pipAwayAt) return;
+      pipAwayAt = 0;
+      if (!document.hidden && !pipManual) exitPip();
+    });
     // The tile left behind reads "Playing in picture-in-picture": tapping it
     // brings the video back into the page.
     document.addEventListener('click', (e) => {
@@ -8254,10 +8276,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // view, following the speaker, with the strip to switch people. On an
     // iPhone with no element full screen it is still this fixed overlay,
     // never one raw <video>, so blur and camera-off hold.
+    // 0.9.23b: ONE Full screen. It takes the whole page full screen (the
+    // meeting as laid out, or the app when one runs). Only a browser with
+    // no element full screen (iPhone) gets the in-page view instead.
     function toggleFsView() {
-      if (fsview.classList.contains('on')) closeFsView();
-      else openFsView('auto');
+      if (fsview.classList.contains('on')) { closeFsView(); return; }
+      const FS = window.GifOS && GifOS.fullscreen;
+      if (FS && FS.supported()) { FS.toggle(document.documentElement); return; }
+      openFsView('auto');
     }
+    function paintFsDock() {
+      const b = document.getElementById('fsbtn');
+      if (!b) return;
+      const on = !!(document.fullscreenElement || document.webkitFullscreenElement) || fsview.classList.contains('on');
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      const lab = b.querySelector('.docklab');
+      const word = on ? uiText('leaveFullScreen', 'Exit full screen') : uiText('fullScreen', 'Full screen');
+      if (lab && lab.textContent !== word) lab.textContent = word;
+      b.setAttribute('aria-label', word);
+      b.title = on ? word : uiText('fullScreenTip', 'Full screen');
+      document.body.classList.toggle('app-full', on && document.body.classList.contains('has-app') && !fsview.classList.contains('on'));
+    }
+    document.addEventListener('fullscreenchange', paintFsDock);
+    document.addEventListener('webkitfullscreenchange', paintFsDock);
     const fsDock = document.getElementById('fsbtn');
     if (fsDock) fsDock.onclick = toggleFsView;
     // Only the browser's own exit (its Escape, a swipe) closes the view
