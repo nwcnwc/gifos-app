@@ -1043,6 +1043,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .chips span.ico { width: 22px; height: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
                           font-size: 0; line-height: 0; border-radius: 6px; flex: 0 0 auto; }
   .tile .chips span.ico svg { width: 14px; height: 14px; display: block; }
+  .tile .chips b.ico-only { display: none; }
   /* Blur for all is a 64px square, inset from the corner. The edge has to
      read on a light wall, a dark room, and a busy picture: a thin light
      border, a soft dark shadow, and a frosted fill. "Blur" and "for all"
@@ -1150,10 +1151,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
          mute icon and Full screen. As on a sideways tile, the chips sit right
          of Full screen; the hand is a ✋ chip there, and the name is a size
          down so two lines clear Full screen. */
-      .tile.slim.short:not(.cam-off) .chips { right: 4px; flex-wrap: wrap; align-content: flex-start; gap: 4px; }
-      .tile.slim.short:not(.cam-off) .chips span.hand { font-size: 0; width: 22px; height: 22px; padding: 0; box-sizing: border-box;
-        display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
-      .tile.slim.short:not(.cam-off) .chips span.hand b { font-size: 13px; font-weight: normal; }
+      .tile.slim.short:not(.cam-off) .chips { right: 3px; flex-wrap: wrap; align-content: flex-start; gap: 3px; }
       .tile.slim.short .name { font-size: 13px; line-height: 1.15; }
       /* An admin's menu adds Allow apps, Allow screen share and Ban: five
          buttons in a 95px box hid Mute for all above its scroll top.
@@ -1199,10 +1197,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     /* A short camera-off tile (about 100px) drew its two-line name and a
        three-line "✋ hand raised" over the big initial. The hand is a ✋ chip,
        and the initial fits the band between the chips and the name. */
-    .tile.slim.short.cam-off .chips { flex-wrap: wrap; align-content: flex-start; gap: 4px; }
-    .tile.slim.short.cam-off .chips span.hand { font-size: 0; width: 22px; height: 22px; padding: 0; box-sizing: border-box;
+    .tile.slim.short.cam-off .chips { flex-wrap: wrap; align-content: flex-start; gap: 3px; }
+    /* A short tile has about 44px beside Full screen, and a slim one about
+       93px under it, so "✋ hand raised" beside "⏺ recording this meeting"
+       was cut, pushed the mute icon off the tile, or ran onto the initial.
+       There the hand, recording and leaving chips are icons (the words stay
+       in the title), and a short tile's icons are 20px so two fit a row. */
+    .tile.slim.short .chips :is(span.hand, span.rec, span.lv),
+    .tile.slim .chips:has(> span:not(.ico) ~ span:not(.ico)) :is(span.hand, span.rec, span.lv) {
+      font-size: 0; width: 22px; height: 22px; min-width: 0; padding: 0; box-sizing: border-box; flex: 0 0 auto;
       display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; }
-    .tile.slim.short.cam-off .chips span.hand b { font-size: 13px; font-weight: normal; }
+    .tile.slim .chips :is(span.hand, span.rec, span.lv) b { font-size: 13px; font-weight: normal; }
+    .tile.slim .chips span.rec b { color: #ff4d4d; }
+    .tile.slim.short .chips :is(span.hand, span.rec, span.lv, span.ico) { width: 20px; height: 20px; }
+    .tile.slim.short .chips span.lv b.ico-only,
+    .tile.slim .chips:has(> span:not(.ico) ~ span:not(.ico)) span.lv b.ico-only { display: inline; }
     .tile.slim.short.cam-off .avatar { box-sizing: border-box; padding: 30px 0 40px; line-height: 1;
       font-size: clamp(24px, calc((var(--th, 130px) - 70px) * 1.1), 48px); }
     .tile.slim .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 1px 4px; z-index: 5;
@@ -6372,8 +6381,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           : '<span class="warn">🖥 ' + esc(uiText('shareTheirsChip', 'sharing their screen')) + '</span>');
       }
       if (st.hand) chips.push('<span class="warn hand" title="hand raised"><b>✋</b> hand raised</span>');
-      if (st.lv) chips.push('<span>leaving…</span>');
-      if (st.rec) chips.push('<span class="warn">⏺ recording this meeting</span>');
+      // <b> is the icon a short phone tile keeps when the words can't fit.
+      if (st.lv) chips.push('<span class="lv" title="leaving…"><b class="ico-only">🚪</b>leaving…</span>');
+      if (st.rec) chips.push('<span class="warn rec" title="recording this meeting"><b>⏺</b> recording this meeting</span>');
       // No per-person transcription chip. Captions are a local display, and
       // every browser is already writing its own voice.
       // Status icons only: a muted mic, a camera-off glyph. No icon when the
