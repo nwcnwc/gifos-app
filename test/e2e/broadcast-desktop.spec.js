@@ -3161,3 +3161,36 @@ test('Escape closes the chat panel and returns to the Chat button', async ({ pag
     }
   }
 });
+
+test('the chat close and attach buttons have names, and closing returns to Chat', async ({ page }) => {
+  // The chat's close button read only "✕" and the attach button "📎" to a
+  // screen reader, and pressing the close button dropped the keyboard on
+  // the page body instead of Chat.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  const panel = page.locator('#chatpanel');
+  for (const [w, h] of [[1280, 720], [900, 720]]) {
+    for (const who of ['host', 'view', 'group']) {
+      await page.setViewportSize({ width: w, height: h });
+      const url = who === 'group'
+        ? '/run.html?desk=chatname' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=chatname' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.locator('#chatbtn').click();
+      await expect(panel).toHaveClass(/open/);
+      if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/chat-names-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      await expect(page.locator('#chatclose')).toHaveAccessibleName('Close chat');
+      await expect(page.locator('#cattach')).toHaveAccessibleName(who === 'group' ? 'Pin a file to the meeting' : 'Pin a file to this service');
+      await page.locator('#chatclose').focus();
+      await page.keyboard.press('Enter');
+      await expect(panel).not.toHaveClass(/open/);
+      await expect(page.locator('#chatbtn')).toBeFocused();
+    }
+  }
+});
