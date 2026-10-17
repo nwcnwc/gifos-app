@@ -244,7 +244,9 @@ test('the host rebroadcasts the last service after it ends, and Stop ends it aga
     await rb.click();
     await expect(h.locator('#rec-replay')).toHaveCount(0);
     await expect(h.locator('#rb-now')).toContainText('Last service', { timeout: 10000 });
-    await expect(h.locator('#rb-now')).toContainText(/ \/ 0:(2|3)\d/, { timeout: 10000 });
+    // Position and length. Go live's keep can start late (Q69), so the kept
+    // copy may be shorter than the time the host was live.
+    await expect(h.locator('#rb-now')).toContainText(/\d:\d\d \/ 0:[0-5]\d/, { timeout: 10000 });
     await expect(h.locator('#livebadge-txt')).toHaveText('PRERECORDED');
 
     // Someone who missed it opens the link and sees it playing.
