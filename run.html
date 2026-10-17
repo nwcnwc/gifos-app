@@ -5509,7 +5509,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (st.hand) chips.push('<span class="warn">✋ hand raised</span>');
       if (st.lv) chips.push('<span>leaving…</span>');
-      if (st.rec) chips.push('<span class="warn">⏺ recording this meeting</span>');
+      // The same room word as the card and the room bar (recRoomWord).
+      if (st.rec) chips.push('<span class="warn">⏺ recording this ' + recRoomWord() + '</span>');
       if (st.scribe) chips.push('<span>✍ writing everyone down</span>');
       if (st.cc) chips.push('<span>📝 ' + ccLiveLabel(st) + '</span>');
       // Status icons only: a muted mic, a camera-off glyph. No icon when the
@@ -20746,7 +20747,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const tile = meTile && meTile.tile;
       const chips = tile && tile.querySelector('.chips');
       const text = chips ? (chips.textContent || '') : '';
-      if (text.indexOf('recording this meeting') < 0) return false;
+      if (text.indexOf('recording this ' + recRoomWord()) < 0) return false;
       if (myStatus.bot && text.indexOf('bot') < 0) return false;
       if ((myStatus.cc || myStatus.scribe) && !ccIndicatorOn(text)) return false;
       return true;
