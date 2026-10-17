@@ -4,7 +4,7 @@
 
 /* ---- zones ---------------------------------------------------------- */
 body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
-  position: fixed; inset: 0; overflow: hidden; padding: 0 !important; margin: 0; display: block; }
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; overflow: hidden; padding: 0 !important; margin: 0; display: block; }
 body.comfy.show-stage #stagefeed { display: contents !important; }
 body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] {
   position: absolute; aspect-ratio: auto; max-height: none; min-height: 0; z-index: 2;
@@ -53,7 +53,7 @@ body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] { cursor: pointer; }
   box-shadow: 0 18px 48px rgba(0,0,0,.6), 0 0 0 2px rgba(255,255,255,.85) !important;
   transition: left .28s cubic-bezier(.2,.8,.2,1), top .28s cubic-bezier(.2,.8,.2,1),
               width .28s cubic-bezier(.2,.8,.2,1), height .28s cubic-bezier(.2,.8,.2,1); }
-#tilewin-veil { position: fixed; inset: 0; z-index: 39; background: rgba(6,8,12,.55);
+#tilewin-veil { position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 39; background: rgba(6,8,12,.55);
   backdrop-filter: none; }
 #tilewin-veil[hidden], #tilewin[hidden] { display: none !important; }
 #tilewin {
@@ -81,14 +81,14 @@ body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] { cursor: pointer; }
 #tilewin .modbar button.banbtn, #tilewin button.tw-btn.danger { background: #fde8e8; color: #b3261e; }
 #tilewin .modbar { position: static !important; display: flex !important; flex-wrap: wrap; gap: 8px;
   opacity: 1 !important; pointer-events: auto !important; transform: none !important;
-  background: transparent !important; padding: 0 !important; inset: auto !important; box-shadow: none !important;
+  background: transparent !important; padding: 0 !important; top: auto !important; right: auto !important; bottom: auto !important; left: auto !important; inset: auto !important; box-shadow: none !important;
   width: auto !important; height: auto !important; }
 #tilewin .modbar button[hidden], #tilewin .modbar button[style*="display: none"] { display: none !important; }
 #tilewin .tw-zoom { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 #tilewin .tw-zoom input[type=range] { flex: 1 1 auto; accent-color: #1d1d1f; }
 #tilewin .tw-pad { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #111; border-radius: 10px;
   overflow: hidden; touch-action: none; cursor: grab; }
-#tilewin .tw-pad video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+#tilewin .tw-pad video { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 #tilewin .tw-pad .tw-win { position: absolute; border: 2px solid #fff; border-radius: 4px;
   box-shadow: 0 0 0 9999px rgba(0,0,0,.5); pointer-events: none; }
 @media (max-width: 700px), (max-height: 500px) {
