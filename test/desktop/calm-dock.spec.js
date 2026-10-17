@@ -120,3 +120,40 @@ test('a quiet small call hides the tile buttons and keeps the names', async ({ p
   await page.mouse.move(660, 220);
   await expect.poll(async () => (await read()).blur).toBeGreaterThan(0);
 });
+
+// Calm is a room, not a product: the header line (logo, count, resolution) and
+// the build label go with the dock. A notice on that line is the one thing that
+// must be read, so it keeps the header up until it has had its time.
+test('a quiet small call fades the header line and build label, but not a notice', async ({ page }) => {
+  await boot(page, 2);
+  await page.waitForSelector('#gifos-build-float');
+  const read = () => page.evaluate(() => {
+    const op = (el) => (el ? Number(getComputedStyle(el).opacity) : -1);
+    const chip = document.querySelector('.topchip');
+    return {
+      chip: op(chip),
+      build: op(document.getElementById('gifos-build-float')),
+      chipClicks: getComputedStyle(chip).pointerEvents !== 'none',
+      count: document.getElementById('statuscount').textContent,
+    };
+  });
+  const awake = await read();
+  expect(awake.chip).toBeGreaterThan(0.95);
+  expect(awake.build).toBeGreaterThan(0.95);
+  await page.screenshot({ path: 'test/desktop/shots/calm-head-before-1280.png' });
+  expect((await idleThenRead(page, 2000)).calm).toBe(true);
+  await page.waitForTimeout(1000);
+  const quiet = await read();
+  await page.screenshot({ path: 'test/desktop/shots/calm-head-after-1280.png' });
+  expect(quiet.chip).toBeLessThan(0.05);
+  expect(quiet.build).toBeLessThan(0.05);
+  expect(quiet.chipClicks).toBe(false);
+
+  // A notice arrives while calm: the header comes back for it, the dock does not.
+  await page.evaluate(() => window.__gifosVideo.statusNoticeForTest('Camera stopped — bringing it back'));
+  await expect.poll(async () => (await read()).chip).toBeGreaterThan(0.95);
+  expect(await page.evaluate(() => document.body.classList.contains('dock-calm'))).toBe(true);
+
+  await page.mouse.move(700, 260);
+  await expect.poll(async () => (await read()).build).toBeGreaterThan(0.95);
+});
