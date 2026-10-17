@@ -1507,6 +1507,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      A service is one stage, so Fit is not shown there. */
   body.dock-idle #fitbtn { transform: translateY(calc(-100% - 70px)); pointer-events: none; }
   body.broadcast #fitbtn { display: none !important; }
+  /* On a desktop Fit sits in the header band, above the faces, as Zoom's View
+     does; hung at 58px it covered the top-right tile's Blur for all and dot.
+     The build label moves to its left, and the status line keeps clear of both. */
+  @media (min-width: 800px) {
+    .fitbtn { top: 22px; min-width: 84px; background: #262a33; box-shadow: inset 0 0 0 1px rgba(255,255,255,.22); }
+    .fitbtn:hover { background: #343944; }
+    body:not(.broadcast):not(.chatside) #gifos-build-float { top: 27px !important; right: 106px !important; }
+    body:not(.broadcast):not(.chatside) .topchip { max-width: calc(100% - 260px); }
+  }
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #fsbtn, .bar #chatbtn, .bar #bartoggle {
     width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
     background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
