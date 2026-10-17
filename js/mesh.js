@@ -1630,7 +1630,7 @@
       const R = this.env.NET; if (!R || !R.o.probe || this.netProbeAt >= 0) return false;
       const ids = []; for (const e of ro || []) if (e && e.v != null && e.v !== this.id && !ids.includes(e.v)) ids.push(e.v);
       for (let t = 0; t < C(); t++) for (let j = 0; j < C(); j++) { const x = R.at(ck({ pc: 0, r: t, i: j })); if (x != null && x !== this.id && !ids.includes(x)) ids.push(x); }
-      if (!ids.length) return false;
+      if (R.o.doorKnown) { try { for (const x of R.o.doorKnown(this.id) || []) if (x != null && x !== this.id && !ids.includes(x)) ids.push(x); } catch (e) {} }   // and the joiners at the door I know of: the decision waits for those links too, so two members of one network see each other (o.doorPeers)
       let opened = false; try { opened = R.o.probe(ids) !== false; } catch (e) { opened = false; }
       if (!opened) return false;
       this.netProbeAt = this.TICK; this.netProbeIds = ids; this.walkPending = true; this.retryAt = this.TICK - 20; this.wake(); return true;
@@ -5003,6 +5003,9 @@
   //   o.doorPeers(me)     OPTIONAL: the joiners still at the door that `me`
   //                       holds a direct link to (a page cannot see their
   //                       door tests; the lowest id among them heads them).
+  //   o.doorKnown(me)     OPTIONAL: every joiner at the door `me` knows of,
+  //                       linked or not: the door test dials them with the
+  //                       ring and waits for those links as well.
   //   o.reachWhy(id)      OPTIONAL, debug only: why o.reach said what it said.
   //   o.groupOf(id), o.groups(), o.groupsReach(g, h)  OPTIONAL, for a harness
   //                       fabric's own carriage model and for reports; no

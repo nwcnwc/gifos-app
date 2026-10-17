@@ -2580,6 +2580,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The joiners still at the door I hold a direct link to: a connected
         // pair that is not relayed, to a peer that no pulse, roster or cell of
         // mine names as seated (mesh.js netDecide: the lowest id heads them).
+        doorKnown: () => {
+          const s = me(); const held = new Set();
+          if (s) { if (s.occ) for (const v of s.occ.values()) if (v != null) held.add(v); for (const e of (s.netRoster || s.roster || [])) if (e && e.v != null) held.add(e.v); }
+          const out = [];
+          for (const [pid, p] of peers) { if (pid === myId || !p || held.has(pid) || p.absentSince) continue; const st = statusOf.get(pid); if (st && st.seat && typeof st.seat.pc === 'number') continue; out.push(pid); }
+          return out.slice(0, 24);   // bounded: the door test dials them with the ring
+        },
         doorPeers: () => {
           const s = me(); const held = new Set();
           if (s) { if (s.occ) for (const v of s.occ.values()) if (v != null) held.add(v); for (const e of (s.netRoster || s.roster || [])) if (e && e.v != null) held.add(e.v); }
@@ -22613,16 +22620,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         anchor: turnAnchorId != null ? (rosterNames[turnAnchorId] || (peers.get(turnAnchorId) || {}).name || String(turnAnchorId).slice(0, 8)) : null,
         serving: [...peers.values()].filter((p) => p.turnServe).map((p) => rosterNames[p.id] || p.name || String(p.id).slice(0, 8)),
         // what this page plays from each pair: its sound element's state (missing, paused, muted, volume)
-        ears: [...peers.values()].map((p) => { const a = p.video && p.video._aud; return [rosterNames[p.id] || String(p.id).slice(0, 8), a ? (a.paused ? 'paused' : 'playing') + (a.muted ? '/muted' : '') + '/' + Math.round((a.volume || 0) * 100) + (a.srcObject ? '' : '/no-src') : 'none']; }),
+        ears: [...peers.values()].map((p) => { const a = p.video && p.video._aud; return [rosterNames[p.id] || String(p.id).slice(0, 8), a ? (a.paused ? 'paused' : 'playing') + (a.muted ? '/muted' : '') + '/' + Math.round((a.volume || 0) * 100) + (a.srcObject ? '' : '/no-src') : 'none', (a && a.srcObject ? a.srcObject.getAudioTracks() : []).map((t) => t.id.slice(0, 8) + (t.muted ? ':muted' : '')).join(','), (p.stream ? p.stream.getAudioTracks() : []).map((t) => t.id.slice(0, 8) + (t.muted ? ':muted' : '')).join(',')]; }),
         // the mixes this page sends: its uplink to its anchor, one mix-minus per client, one feed per row mate (source keys by owner name), and whether each sender carries it
         mixes: (() => { const nm = (id) => rosterNames[id] || String(id).slice(0, 8); const keys = (ks) => [...ks].map((k) => { const m = /^(?:p|r):([^:]+):/.exec(k); return m ? nm(m[1]) : k.split(':')[0]; });
           const sent = (pid, t) => { const q = peers.get(pid); return !!(q && q.mainA && t && q.mainA.track === t); };
           const mid = (pid) => { const q = peers.get(pid); try { const tr = q && q.pc && q.mainA ? q.pc.getTransceivers().find((x) => x.sender === q.mainA) : null; return tr ? tr.mid : null; } catch (e) { return null; } };
           const lvl = (fold) => { try { if (!ac || !fold || !fold.dest) return null; let an = dbgFoldMeters.get(fold); if (!an) { an = ac.createAnalyser(); an.fftSize = 2048; ac.createMediaStreamSource(fold.dest.stream).connect(an); dbgFoldMeters.set(fold, an); } const b = new Float32Array(an.fftSize); an.getFloatTimeDomainData(b); let e = 0; for (const x of b) e += x * x; return Math.round(Math.sqrt(e / b.length) * 1e4) / 1e4; } catch (e) { return null; } };
           const a = turnAnchorId != null ? turnAnchorId : null;
-          return { up: turnUp ? { to: a != null ? nm(a) : null, keys: keys(turnUp.keys), sent: a != null && sent(a, turnUpTrack()), mid: a != null ? mid(a) : null, level: lvl(turnUp.fold) } : null,
+          return { up: turnUp ? { to: a != null ? nm(a) : null, keys: keys(turnUp.keys), sent: a != null && sent(a, turnUpTrack()), mid: a != null ? mid(a) : null, level: lvl(turnUp.fold), src: turnUp.fold.peek ? turnUp.fold.peek() : null } : null,
             serve: [...turnMixes].map(([pid, mx]) => ({ to: nm(pid), keys: keys(mx.keys), sent: sent(pid, turnMixTrack(pid)), mid: mid(pid), level: lvl(mx.fold) })),
-            feeds: [...bridgeFeeds].map(([pid, fd]) => ({ to: nm(pid), keys: keys(fd.keys), sent: sent(pid, bridgeFeedTrack(pid)), mid: mid(pid), level: lvl(fd.fold) })) }; })(),
+            feeds: [...bridgeFeeds].map(([pid, fd]) => ({ to: nm(pid), keys: keys(fd.keys), sent: sent(pid, bridgeFeedTrack(pid)), mid: mid(pid), level: lvl(fd.fold), src: fd.fold.peek ? fd.fold.peek() : null })) }; })(),
         pairs: [...peers.values()].map((p) => {
           let urls = [];
           try { for (const sv of (p.pc && p.pc.getConfiguration().iceServers) || []) urls = urls.concat(Array.isArray(sv.urls) ? sv.urls : [sv.urls]); } catch (e) {}
