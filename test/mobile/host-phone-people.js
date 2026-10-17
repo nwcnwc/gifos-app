@@ -57,6 +57,11 @@ const phones = [
       if (way.h < 44 || way.w < 44) bad.push('People in the sheet is ' + Math.round(way.w) + 'x' + Math.round(way.h));
       await page.locator('#' + way.id).tap();
       await page.waitForTimeout(120);
+      // A sideways phone scrolls People to reach a row, as a person would.
+      for (const sel of ['#roster .mutebtn[aria-label$="Ruth"]', '#roster .renamebtn[aria-label="Rename Lobby iPad"]']) {
+        const x = page.locator(sel);
+        if (await x.count()) await x.scrollIntoViewIfNeeded().catch(() => {});
+      }
       const r = await page.evaluate(() => {
         const el = document.getElementById('roster');
         const sheet = document.getElementById('status-full');
@@ -65,25 +70,35 @@ const phones = [
           const x = document.querySelector(sel);
           if (!x) return null;
           const q = x.getBoundingClientRect();
-          return { h: q.height, top: q.top, bottom: q.bottom, left: q.left, right: q.right };
+          // Nothing else (the Record/Captions row, the dock) sits on top of it.
+          const hit = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
+          return { h: q.height, top: q.top, bottom: q.bottom, left: q.left, right: q.right, covered: !(hit && x.contains(hit)) };
         };
         return {
           open: el.classList.contains('open') && getComputedStyle(el).display !== 'none',
           sheetGone: getComputedStyle(sheet).display === 'none',
           box: { top: b.top, bottom: b.bottom, left: b.left, right: b.right, h: b.height },
+          // The panel's own bottom edge is not painted over by the Record row.
+          edgeCovered: [0.15, 0.5, 0.85].some((f) => {
+            const hit = document.elementFromPoint(b.left + b.width * f, b.bottom - 6);
+            return !(hit && el.contains(hit));
+          }),
           rename: btn('#roster .renamebtn[aria-label="Rename Lobby iPad"]'),
+          last: btn('#roster .roster-row:last-child .renamebtn'),
           mute: btn('#roster .mutebtn[aria-label$="Ruth"]'),
           close: btn('#roster-close'),
           vw: innerWidth, vh: innerHeight,
         };
       });
-      const on = (q) => q && q.h >= 40 && q.top >= -1 && q.left >= -1 && q.right <= r.vw + 1 && q.bottom <= r.vh + 1;
+      const on = (q) => q && q.h >= 40 && !q.covered && q.top >= -1 && q.left >= -1 && q.right <= r.vw + 1 && q.bottom <= r.vh + 1;
       if (!r.open) bad.push('People did not open');
       else {
         if (!r.sheetGone) bad.push('the room sheet stayed over People');
         if (r.box.h < 160) bad.push('People is only ' + Math.round(r.box.h) + 'px tall');
         if (!on(r.close)) bad.push('People has no reachable Close');
         if (!on(r.mute)) bad.push('Mute for Ruth is not reachable');
+        if (r.edgeCovered) bad.push('the Record/Captions row paints over People');
+        if (r.last && r.last.covered) bad.push('something covers the last Rename in People');
         if (!on(r.rename)) bad.push('Rename for the lobby iPad is not reachable');
         else {
           await page.locator('#roster .renamebtn[aria-label="Rename Lobby iPad"]').tap();
