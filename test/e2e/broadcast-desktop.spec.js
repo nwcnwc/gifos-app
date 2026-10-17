@@ -2996,6 +2996,41 @@ test('the raised-hands line is readable on the dark page', async ({ page }) => {
   }
 });
 
+test('the vote sheet is readable in a small group', async ({ page }) => {
+  // Seen across two machines: in a small group's Place a vote sheet, the hint
+  // under Vote onto stage and Vote off stage was near-black on the dark
+  // buttons, and Cancel was pale grey on the white sheet.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.setItem('gifos_appear_ok', '1');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  await page.goto('/run.html?desk=voteg#mb=1&v=sunday&av=0123456789abcdef', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on');
+  await page.evaluate(() => document.getElementById('votebtn').click());
+  await expect(page.locator('#vote-modal')).toBeVisible();
+  const got = await page.evaluate(() => {
+    const rgba = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+    const lum = (c) => { const v = c.slice(0, 3).map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]; };
+    // the first solid background behind el
+    const under = (el) => { for (let e = el; e; e = e.parentElement) { const c = rgba(getComputedStyle(e).backgroundColor); if (c.length === 3 || c[3] === 1) return c.slice(0, 3); } return [255, 255, 255]; };
+    const ratio = (el) => {
+      const c = rgba(getComputedStyle(el).color), bg = under(el);
+      let a = c.length > 3 ? c[3] : 1; for (let e = el; e; e = e.parentElement) a *= parseFloat(getComputedStyle(e).opacity);
+      const fg = c.slice(0, 3).map((x, i) => x * a + bg[i] * (1 - a));
+      const x = lum(fg), y = lum(bg); return Math.round(((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)) * 10) / 10;
+    };
+    const out = {};
+    for (const b of document.querySelectorAll('#vote-modal .voteopt')) out[b.dataset.vm] = ratio(b.querySelector('small'));
+    out.cancel = ratio(document.getElementById('vote-cancel'));
+    return out;
+  });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: 'artifacts/vote-sheet-' + (process.env.SHOT_TAG || 'run') + '.png' });
+  expect({ upReadable: got.up >= 4.5, downReadable: got.down >= 4.5, kickReadable: got.kick >= 4.5, cancelReadable: got.cancel >= 4.5, ...got })
+    .toMatchObject({ upReadable: true, downReadable: true, kickReadable: true, cancelReadable: true });
+});
+
 test('the Chat icon on the dock is as large as its neighbours', async ({ page }) => {
   // Seen across two machines: on the host's and the viewer's dock the Chat
   // speech bubble was 13px, where Invite, Full screen and More are 28px.
