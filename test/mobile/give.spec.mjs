@@ -67,6 +67,8 @@ test('the host sets the giving page, and the viewer gives during the service', a
     await v.goto('/run.html' + link.hash, { waitUntil: 'domcontentloaded' });
     await v.locator('#nmok').click();
     await v.waitForFunction(() => !!document.querySelector('#stagefeed .rowtile'), null, { timeout: 45000 });
+    // The quiet screen gives way to the picture, and Give rides the picture.
+    await expect(v.locator('#bc-ended')).toBeHidden();
     await expect(v.locator('#bc-give')).toBeVisible();
     const g = await giveBox(v);
     expect(g.text).toBe('Give');
@@ -87,6 +89,30 @@ test('the host sets the giving page, and the viewer gives during the service', a
     const [pop] = await Promise.all([ctxV.waitForEvent('page'), v.locator('#bc-give').click()]);
     await pop.waitForLoadState('domcontentloaded');
     expect(pop.url()).toBe(GIVE);
+    await pop.close();
+
+    // Large type and a rotated phone: Give stays 44px or more, on screen,
+    // and clear of Fit, the chip, and the dock.
+    const clear = async () => v.evaluate(() => {
+      const r = document.getElementById('bc-give').getBoundingClientRect();
+      const hit = (sel) => {
+        const el = document.querySelector(sel);
+        if (!el || !el.getClientRects().length) return false; // Fit and the chip are fixed: no offsetParent
+        const o = el.getBoundingClientRect();
+        return r.left < o.right && o.left < r.right && r.top < o.bottom && o.top < r.bottom;
+      };
+      return { h: r.height, inside: r.left >= 0 && r.top >= 0 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5,
+        fit: hit('#fitbtn'), chip: hit('.topchip'), bar: hit('.bar') };
+    });
+    const want = { inside: true, fit: false, chip: false, bar: false };
+    await v.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
+    await expect.poll(async () => { const c = await clear(); delete c.h; return c; }).toEqual(want);
+    expect((await clear()).h).toBeGreaterThanOrEqual(44);
+    await v.evaluate(() => { document.documentElement.style.fontSize = ''; });
+    const vp = v.viewportSize();
+    await v.setViewportSize({ width: vp.height, height: vp.width });
+    await expect.poll(async () => { const c = await clear(); delete c.h; return c; }).toEqual(want);
+    expect((await clear()).h).toBeGreaterThanOrEqual(44);
 
     // A reload of the host's phone keeps the giving page.
     await h.reload({ waitUntil: 'domcontentloaded' });

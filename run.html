@@ -1486,6 +1486,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap;
   }
   #bcwhenrow input { min-height: 44px; font: inherit; border-radius: 10px; padding: 0 8px; }
+  #bcgiverow { display: none; }
+  body.broadcast.bc-host #bcgiverow {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap;
+  }
+  #bcgiverow input { min-height: 44px; min-width: 12rem; font: inherit; border-radius: 10px; padding: 0 8px; }
+  /* Give rides the picture, right side, clear of the dock. On the screen
+     that says the service ended it joins Watch in the middle. */
+  #bc-give[hidden] { display: none !important; }
+  #bc-give {
+    position: fixed; z-index: 5; right: calc(14px + var(--inset-right, 0px));
+    bottom: calc(var(--dock-clear, 108px) + 4px);
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: clamp(44px, 2.75rem, 56px); min-width: 44px; padding: 0.4rem clamp(14px, 1.1rem, 22px); box-sizing: border-box;
+    border-radius: 999px; background: rgba(12,14,18,.82); color: #f4f7fb;
+    text-decoration: none; font: 700 min(1.05rem, 22px)/1 system-ui, sans-serif;
+    box-shadow: 0 0 0 1.5px rgba(244,247,251,.55);
+  }
+  /* Large type grows Give to 56px and no more, so the picture stays the
+     stage. Where it would still meet Fit, it moves to the left. */
+  #bc-give.left { right: auto; left: calc(14px + var(--inset-left, 0px)); }
+  #bc-give svg { width: clamp(22px, 1.375rem, 28px); height: clamp(22px, 1.375rem, 28px); flex: 0 0 auto; }
+  #bc-ended #bc-give {
+    position: static; pointer-events: auto; min-height: 48px; padding: 10px 22px;
+    background: transparent; box-shadow: none; border: 2px solid #f4f7fb; border-radius: 16px;
+  }
   #bc-ended p {
     margin: 0; max-width: 18rem; color: #f4f7fb;
     font: 700 clamp(1.15rem, 9cqh, 1.75rem)/1.25 system-ui, sans-serif; letter-spacing: -0.02em;
@@ -2153,6 +2178,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span class="blab">Float</span>
     </button>
     <label id="bcwhenrow" title="When the service starts. The viewer link says so."><span id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
+    <label id="bcgiverow" title="Your giving or tip page. Viewers get Give on the picture."><span id="bcgive-lbl">Giving page</span><input type="url" id="bcgive" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…"></label>
     <button id="invite" title="Friends join you live with one link">Invite</button>
     <button id="appbtn" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
     <button id="sharebtn" title="Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)" style="display:none">Share screen</button>
@@ -2217,6 +2243,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div id="handq"></div>
   <div id="feed">
     <div id="bc-ended" hidden><p id="bc-ended-txt"></p><button type="button" id="bc-replay" hidden>Watch</button><a id="bc-cal" hidden>Add to calendar</a></div>
+    <a id="bc-give" hidden target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span id="bc-give-txt">Give</span></a>
     <div id="stagefeed"></div>
     <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-name"></div></div>
     <div id="grid"></div>
@@ -2833,6 +2860,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (now < at + 3 * 3600000) return { phase: 'soon' };
       return { phase: 'ended' };
     }
+    // THE GIVING PAGE rides the link as give=<https url>, set by the host in
+    // More: the church's own giving page, or a streamer's tip page. Only an
+    // https page is offered, and the button names its site, because anyone
+    // can hand someone a link.
+    const BC_GIVE_KEY = 'gifos_bcgive_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
+    if (BROADCAST && !params.get('give') && bcHostStored()) {
+      try { const s = localStorage.getItem(BC_GIVE_KEY); if (s) params.set('give', s); } catch (e) {}
+    }
+    function bcGiveCheck(raw) {
+      raw = String(raw || '').trim();
+      if (!raw || raw.length > 512) return null;
+      try {
+        const u = new URL(raw);
+        if (u.protocol !== 'https:' || !u.hostname || u.username || u.password) return null;
+        return { href: u.href, site: u.hostname.replace(/^www\./, '') };
+      } catch (e) { return null; }
+    }
+    function bcGive() { return BROADCAST ? bcGiveCheck(params.get('give')) : null; }
     const grid = document.getElementById('grid');
     const statusEl = document.getElementById('status');
     const share = document.getElementById('share');
@@ -6962,6 +7007,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const replayBtn = document.getElementById('bc-replay');
         if (replayBtn) replayBtn.hidden = !(on && bcViewer && /has ended/.test(quietLine) && replayHere);
         paintBcCalendar(on && bcViewer && !hallQuiet && !!sched && sched.phase === 'future');
+        paintBcGive(bcViewer, on && !hallQuiet);
       }
       paintLiveBadge();
     }
@@ -12363,14 +12409,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const custom = relay && relay !== window.GIFOS_RELAY;
       const avPart = (av ? '&av=' + av : '') + (BROADCAST ? '&bc=1' : '') + (TOWNHALL ? '&th=1' : '') + (BROADCAST && params.has('st') ? '&st=1' : '');
       const atBit = BROADCAST && /^\d+$/.test(params.get('at') || '') ? params.get('at') : '';
-      const avPartAt = avPart + (atBit ? '&at=' + atBit : '');
+      const giveBit = BROADCAST && bcGive() ? encodeURIComponent(bcGive().href) : '';
+      const avPartAt = avPart + (atBit ? '&at=' + atBit : '') + (giveBit ? '&give=' + giveBit : '');
       const pretty = /(^|\.)gifos\.app$/.test(location.hostname) && !custom;
       // A broadcast's pretty form is /cast/<room>/<V> — same 404-router
       // machinery as /meet, but the path itself carries the skin so the
       // shared link opens as a broadcast for every viewer.
       const prettyPath = (BROADCAST ? '/cast/' : '/meet/') + room + (av ? '/' + av : '');
       const prettyTown = TOWNHALL ? '?th=1' : (BROADCAST && params.has('st') ? '?st=1' : '');
-      const prettyQs = prettyTown + (atBit ? (prettyTown ? '&' : '?') + 'at=' + atBit : '');
+      const prettyQs0 = prettyTown + (atBit ? (prettyTown ? '&' : '?') + 'at=' + atBit : '');
+      const prettyQs = prettyQs0 + (giveBit ? (prettyQs0 ? '&' : '?') + 'give=' + giveBit : '');
       // A RELEASE/pinned computer runs from /versions/<x.y.z>/, but prettyPath is
       // rooted at the domain. Rewriting the address bar to it MOVED THE DOCUMENT
       // BASE off the snapshot — document.baseURI became /meet/<room>, so every
@@ -22668,10 +22716,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try {
         const u = new URL(raw, location.origin);
         const at = BROADCAST ? String(params.get('at') || '') : '';
+        const give = bcGive() ? bcGive().href : '';
         const h = new URLSearchParams(u.hash.replace(/^#/, ''));
-        if (h.has('v')) { if (at) h.set('at', at); else h.delete('at'); u.hash = h.toString(); }
-        else if (at) u.searchParams.set('at', at);
-        else u.searchParams.delete('at');
+        const put = (sp, k, val) => { if (val) sp.set(k, val); else sp.delete(k); };
+        if (h.has('v')) { put(h, 'at', at); put(h, 'give', give); u.hash = h.toString(); }
+        else { put(u.searchParams, 'at', at); put(u.searchParams, 'give', give); }
         raw = u.toString();
       } catch (e) {}
       return raw;
@@ -22702,6 +22751,46 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bcCalUrl = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
       a.href = bcCalUrl;
       a.download = (name || noun).replace(/[^\w.-]+/g, '-') + '.ics';
+    }
+    // A viewer gets Give (Tip on a stream) when the link carries a giving
+    // page: on the picture while the service is on, and beside Watch on the
+    // screen that says it ended.
+    function paintBcGive(viewer, quiet) {
+      const a = document.getElementById('bc-give');
+      if (!a) return;
+      const g = viewer ? bcGive() : null;
+      a.hidden = !g;
+      if (!g) return;
+      const word = params.has('st') ? 'Tip' : 'Give';
+      const txt = document.getElementById('bc-give-txt');
+      if (txt && txt.textContent !== word) txt.textContent = word;
+      if (a.getAttribute('href') !== g.href) a.setAttribute('href', g.href);
+      const label = word + ' · opens ' + g.site;
+      if (a.getAttribute('aria-label') !== label) { a.setAttribute('aria-label', label); a.title = label; }
+      const ended = document.getElementById('bc-ended');
+      const home = quiet && ended ? ended : document.getElementById('feed');
+      if (home && a.parentElement !== home) home.appendChild(a);
+      placeBcGive();
+    }
+    function placeBcGive() {
+      const a = document.getElementById('bc-give');
+      const fit = document.getElementById('fitbtn');
+      if (!a || a.hidden) return;
+      let left = false;
+      if (!a.closest('#bc-ended') && fit && fit.getClientRects().length) { // Fit is fixed: no offsetParent
+        a.classList.remove('left');
+        const r = a.getBoundingClientRect(), f = fit.getBoundingClientRect();
+        left = r.left < f.right && f.left < r.right && r.top < f.bottom && f.top < r.bottom;
+      }
+      a.classList.toggle('left', left);
+    }
+    // A text size or a rotation moves Fit and Give at once; place it again
+    // then, not on the next status beat.
+    if (window.ResizeObserver && BROADCAST) {
+      try {
+        const ro = new ResizeObserver(() => { try { placeBcGive(); } catch (e) {} });
+        ['bc-give', 'fitbtn'].forEach((id) => { const el = document.getElementById(id); if (el) ro.observe(el); });
+      } catch (e) {}
     }
     function shareMeetingLink(btn) {
       const url = viewerShareUrl();
@@ -22767,6 +22856,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { updateStatus(); } catch (e) {}
       };
       paintBcWhen();
+    }
+    // The host's giving page. It stays on the host's phone for this room and
+    // rides every viewer link from Invite.
+    const bcGiveIn = document.getElementById('bcgive');
+    function paintBcGiveField() {
+      const lbl = document.getElementById('bcgive-lbl');
+      const g = bcGive();
+      if (lbl) lbl.textContent = g ? 'Giving · ' + g.site : (bcGiveIn && bcGiveIn.value.trim() ? 'Giving page must start with https://' : 'Giving page');
+      if (bcGiveIn && g && document.activeElement !== bcGiveIn && !bcGiveIn.value) bcGiveIn.value = g.href;
+    }
+    if (bcGiveIn && BROADCAST) {
+      bcGiveIn.onchange = () => {
+        const g = bcGiveCheck(bcGiveIn.value);
+        if (g) params.set('give', g.href); else params.delete('give');
+        try { g ? localStorage.setItem(BC_GIVE_KEY, g.href) : localStorage.removeItem(BC_GIVE_KEY); } catch (e) {}
+        paintBcGiveField();
+        try { updateStatus(); } catch (e) {}
+      };
+      paintBcGiveField();
     }
     document.getElementById('invite').onclick = () => {
       share.classList.add('show'); // keep the top copy row visible/copyable behind the sheet
