@@ -3657,3 +3657,50 @@ test('Full screen of a camera-off host shows who it is, not a black screen', asy
   await page.keyboard.press('Escape');
   await expect(page.locator('#fsview')).not.toHaveClass(/on/);
 });
+
+test('the open chat sits beside the room bar and stage, not over them', async ({ page }) => {
+  // At 1280 the open chat covered the room bar's Sound on pill (host and
+  // viewer) and the Fit button (small group); at 900-1024 also the status
+  // line, Invite and the watching count, and the stage stayed centred under
+  // the panel. Meet and Zoom narrow the call beside a side panel.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [1024, 720], [900, 720]]) {
+    for (const who of ['host', 'view', 'group']) {
+      await page.setViewportSize({ width: w, height: h });
+      const url = who === 'group'
+        ? '/run.html?desk=chatside' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=chatside' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.locator('#chatbtn').click();
+      await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+      await page.waitForTimeout(300);
+      if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/chat-side-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      const under = await page.evaluate(() => {
+        const edge = document.getElementById('chatpanel').getBoundingClientRect().left;
+        const out = [];
+        const seen = (e) => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
+        for (const e of document.querySelectorAll('#airbar *, #status, #hdrinvite, #fitbtn, #bc-stage, #bc-stage-line')) {
+          if (!seen(e)) continue;
+          const r = e.getBoundingClientRect();
+          if (r.width > 1 && r.right > edge + 1) out.push((e.id || e.className) + ' ' + Math.round(r.right));
+        }
+        return { edge: Math.round(edge), out };
+      });
+      expect(under.out, who + ' at ' + w + ': nothing of the room bar, header or stage under the chat (edge ' + under.edge + ')').toEqual([]);
+      // The room bar still reads on one line beside the chat.
+      const bar = await page.locator('#airbar').boundingBox();
+      expect(bar.height, who + ' at ' + w + ': room bar height').toBeLessThanOrEqual(60);
+      // Closing the chat gives the width back.
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#chatpanel')).not.toHaveClass(/open/);
+      expect((await page.locator('#airbar').boundingBox()).width).toBe(w);
+    }
+  }
+});
