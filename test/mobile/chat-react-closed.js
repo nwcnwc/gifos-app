@@ -35,6 +35,7 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
     const c = window.__gifosChat;
     const t = Date.now() - 60000;
     c.frame('qa-ruth', { k: 'chat', m: { id: 'qa-r1', by: 'Ruth', byId: 'qa-ruth', at: t, text: 'ready when you are' } });
+    c.frame('qa-david', { k: 'chat', m: { id: 'qa-d1', by: 'David', byId: 'qa-david', at: t + 1000, text: 'me too' } });
   });
   await page.locator('#chat-in').fill('👍 if you can see my slides');
   await page.locator('#chat-in').press('Enter');
@@ -70,6 +71,7 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
       return {
         shown: !note.hidden && cs.display !== 'none' && r.width > 8 && r.height > 8,
         text: (pv.innerText || '').replace(/\s+/g, ' ').trim(),
+        cut: (() => { const b = document.getElementById('chatpreview-by'); return b.scrollWidth > b.clientWidth + 1; })(),
         label: pv.getAttribute('aria-label') || '',
         badge: badge.hidden ? '' : badge.textContent,
         chat: (document.getElementById('chatbtn').getAttribute('aria-label') || ''),
@@ -80,6 +82,7 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
     else {
       if (!/Ruth/.test(info.text) || !/David/.test(info.text)) bad.push('the call does not say who reacted ("' + info.text + '")');
       if (info.text.indexOf('👍') < 0) bad.push('the call does not show the 👍');
+      if (info.cut) bad.push('who reacted is cut off');
       if (!/slides/.test(info.text)) bad.push('the call does not say which line ("' + info.text + '")');
       if (!/Ruth/.test(info.label) || !/react/i.test(info.label)) bad.push('the note is read out as "' + info.label + '"');
       if (info.h < 44) bad.push('the note is ' + Math.round(info.h) + 'px tall');

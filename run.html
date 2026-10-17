@@ -1634,6 +1634,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #chatpreview.mention { background: #0064c8; color: #fff; }
   #chatpreview.mention b, #chatpreview.mention span { color: #fff; }
   #chatpreview.mention b { max-width: 58%; }
+  /* Who reacted is what the note is for; the line gives way first. */
+  #chatpreview.reacted b { flex-shrink: 0; max-width: 58%; }
   #chatbadge {
     flex: 0 0 auto;
     min-width: 44px; min-height: 44px; padding: 0 12px;
@@ -14516,6 +14518,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let unread = 0;
     let lastChatLine = null;
     let mentionAlert = null;
+    // Someone reacted to your line while chat was closed: the call says so.
+    // It is not a new message, so the count stays as it was.
+    let reactAlert = null;
     let pendingReply = null;
     // Reactions: one emoji from a short list, per person, per line.
     // A frame counts only from the person it names (like taking back a line).
@@ -14560,6 +14565,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return true;
     }
+    function noteReactToMe(id, e, on) {
+      const line = chat.get(String(id));
+      if (!on || !line || line.byId !== myId) return;
+      if (chatPanel && chatPanel.classList.contains('open')) return;
+      const per = chatReacts.get(line.id);
+      const who = new Set(per && per.get(e) ? per.get(e) : []);
+      who.delete(myId);
+      if (!who.size) return;
+      // The call has room for two names; a third and on are "+2".
+      const names = reactorNames(who).split(', ');
+      const short = names.length > 2 ? names[0] + ' +' + (names.length - 1) : names.join(', ');
+      reactAlert = { by: names.join(', '), short: short, e: e, text: String(line.text || '').slice(0, 160) };
+      paintChatBadge();
+    }
     function myReactsObj() { // what I picked, replayed to a newcomer
       const o = {};
       for (const [id, per] of chatReacts) {
@@ -14594,13 +14613,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const lob = document.getElementById('lobby');
       const inCall = !(lob && lob.classList.contains('show'));
       const open = !!(chatPanel && chatPanel.classList.contains('open'));
-      const show = inCall && unread > 0 && !open;
+      const show = inCall && (unread > 0 || !!reactAlert) && !open;
       const mention = !!(mentionAlert && !open);
       if (preview) preview.classList.toggle('mention', mention);
+      if (preview) preview.classList.toggle('reacted', !mention && !!reactAlert && !open);
       if (mention) {
         if (by) by.textContent = mentionAlert.by + ' mentioned you';
         if (txt) txt.textContent = mentionAlert.text;
         if (preview) preview.setAttribute('aria-label', mentionAlert.by + ' mentioned you. ' + mentionAlert.text + '. Open chat.');
+      } else if (reactAlert && !open) {
+        if (by) by.textContent = reactAlert.e + ' ' + reactAlert.short;
+        if (txt) txt.textContent = reactAlert.text;
+        if (preview) preview.setAttribute('aria-label', reactAlert.by + ' reacted ' + reactAlert.e + ' to ' + reactAlert.text + '. Open chat.');
       } else {
         if (by) by.textContent = lastChatLine ? lastChatLine.by : '';
         if (txt) txt.textContent = lastChatLine ? lastChatLine.text : '';
@@ -14608,7 +14632,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       b.textContent = unread > 99 ? '99+' : String(Math.max(0, unread));
       b.setAttribute('aria-label', 'Chat, ' + unread + (unread === 1 ? ' new message' : ' new messages'));
-      b.hidden = !show;
+      b.hidden = !show || unread < 1;
       note.hidden = !show;
       const key = (note.hidden ? '0' : '1') + ':' + note.offsetWidth + ':' + note.offsetHeight;
       if (key !== paintChatBadge.key) {
@@ -14617,7 +14641,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     function countClosedChat(m) {
-      if (m) lastChatLine = { by: String(m.by || 'Someone').slice(0, 40), text: String(m.text || '').slice(0, 160) };
+      if (m) { lastChatLine = { by: String(m.by || 'Someone').slice(0, 40), text: String(m.text || '').slice(0, 160) }; reactAlert = null; }
       const open = !!(chatPanel && chatPanel.classList.contains('open'));
       // A mention of this person stays on the call until they open chat.
       // A later line must not hide it. Naming someone else is an ordinary preview.
@@ -14915,7 +14939,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         recvChatAck(m);
       } else if (m.k === 'creact') {
         // Only the person who reacted can put on or take off their reaction.
-        if (p && p.id && m.by === p.id && takeReact(m.id, m.e, m.by, !!m.on)) renderChat();
+        if (p && p.id && m.by === p.id && takeReact(m.id, m.e, m.by, !!m.on)) { renderChat(); noteReactToMe(m.id, m.e, !!m.on); }
       } else if (m.k === 'cdel') {
         // The author may take their own line back. That frame is accepted
         // only from their channel. Anyone else's copy is ignored.
@@ -16081,6 +16105,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (chatPanel.classList.contains('open')) {
         unread = 0;
         mentionAlert = null;
+        reactAlert = null;
         chatBtn.textContent = 'Chat';
         paintChatBadge();
         // The More sheet floats over the composer. Fold it so the field is the next tap.
