@@ -3118,3 +3118,46 @@ test('the lobby preview says you join muted with the camera off', async ({ page 
     }
   }
 });
+
+test('Escape closes the chat panel and returns to the Chat button', async ({ page }) => {
+  // Chat stayed open on Escape: the first press folded More, the next did
+  // nothing, and the panel kept covering the right of the stage. Meet and
+  // Zoom close a side panel on Escape.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  const panel = page.locator('#chatpanel');
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    for (const who of ['host', 'view', 'group']) {
+      await page.setViewportSize({ width: w, height: h });
+      const url = who === 'group'
+        ? '/run.html?desk=chatesc' + w + 'g#mb=1&v=sunday&av=0123456789abcdef'
+        : '/run.html?desk=chatesc' + w + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.locator('#chatbtn').click();
+      await expect(panel).toHaveClass(/open/);
+      await page.locator('#chat-in').focus();
+      if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/chat-esc-open-' + (process.env.SHOT_TAG || 'run') + '.png' });
+      await page.keyboard.press('Escape');
+      await expect(panel).not.toHaveClass(/open/);
+      if (w === 1280 && who === 'host') { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/chat-esc-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+      await expect(page.locator('#chatbtn')).toBeFocused();
+      await expect(page.locator('#chatbtn')).toHaveAttribute('aria-expanded', 'false');
+      // A sheet over the chat closes first, and the chat stays.
+      await page.locator('#chatbtn').click();
+      await expect(panel).toHaveClass(/open/);
+      await expect(page.locator('#chatbtn')).toHaveAttribute('aria-expanded', 'true');
+      await page.locator('#invite').click();
+      const sheet = page.locator('.name-modal:visible, #invite-modal:visible').first();
+      await expect(sheet).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(sheet).toBeHidden();
+      await expect(panel).toHaveClass(/open/);
+    }
+  }
+});
