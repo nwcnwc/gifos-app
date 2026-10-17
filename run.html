@@ -4364,6 +4364,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const BROADCAST = BC_INTENT && !!params.get('v') && /^[a-f0-9]{16,64}$/.test((params.get('av') || '').toLowerCase());
     const BC_WATCH_COPY = 'Watching the service. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.';
     if (BROADCAST) document.body.classList.add('broadcast');
+    // A town hall is a skin on the same admin room, the way a broadcast is.
+    // th rides the link (?th=1 on a pretty /meet path, &th=1 in the hash).
+    // It does not change who can be a viewer, on stage, or the host.
+    const TOWNHALL = !BROADCAST && params.has('th');
+    if (TOWNHALL) document.body.classList.add('townhall');
     // The lobby is renamed when you arrive wanting a broadcast. The room used
     // to keep saying "meeting" on the chat, the leave dialog, and Help, and
     // nothing told a host they were on air. Paint that chrome once the host
@@ -4876,6 +4881,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { return !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()); }
       catch (e) { return false; }
     };
+    if (TOWNHALL && !bcHostStored()) document.body.classList.add('th-watch');
+    // THE VISIT LINK rides the link as visit=<https url>, set by the host in
+    // More: the church's or streamer's own site. We can't vouch for where it
+    // goes, so it is only a link. Only an https page is offered, and the
+    // button names its site, because anyone can hand someone a link. Links
+    // shared before the rename carry give=; they still work.
+    if (params.get('give') && !params.get('visit')) params.set('visit', params.get('give'));
+    params.delete('give');
+    const BC_VISIT_KEY = 'gifos_bcvisit_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
+    if (BROADCAST && !params.get('visit') && bcHostStored()) {
+      try {
+        const s = localStorage.getItem(BC_VISIT_KEY) || localStorage.getItem(BC_VISIT_KEY.replace('_bcvisit_', '_bcgive_'));
+        if (s) params.set('visit', s);
+      } catch (e) {}
+    }
+    function bcVisitCheck(raw) {
+      raw = String(raw || '').trim();
+      if (!raw || raw.length > 512) return null;
+      try {
+        const u = new URL(raw);
+        if (u.protocol !== 'https:' || !u.hostname || u.username || u.password) return null;
+        return { href: u.href, site: u.hostname };
+      } catch (e) { return null; }
+    }
+    function bcVisit() { return BROADCAST ? bcVisitCheck(params.get('visit')) : null; }
     // none until joinRoom starts the adopt; pending while the stored key is
     // still being checked, so a host is not treated as a viewer in that gap.
     // ok after it verifies; no after it does not.
@@ -5834,25 +5864,95 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         };
         input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
       });
-      const finish = () => {
-        dlg.bg.remove();
-        try { refreshAllTiles(); broadcastStatus(); pushLeaf(); paintLobbyAppear(); } catch (e) {}
-      };
-      const save = () => {
-        const v = dlg.input.value.trim();
-        if (v !== (GifOS.store.identity().name || '')) GifOS.store.setName(v);
-        finish();
-      };
-      const clear = () => {
-        dlg.input.value = '';
-        GifOS.store.setName('');
-        try { GifOS.store.setAvatar(null); } catch (e) {}
-        finish();
-      };
-      dlg.bg.querySelector('#nmok').onclick = save;
-      dlg.bg.querySelector('#nmcancel').onclick = clear;
-      dlg.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
-      return Promise.resolve(GifOS.store.identity());
+    }
+
+    // Broadcast glance state. The status sentence still carries the detail.
+    // The badge is the one word a volunteer, a late viewer, or someone on a
+    // bad link can read without parsing that sentence.
+    function paintLiveBadge() {
+      const b = document.getElementById('livebadge');
+      if (!b) return;
+      if (!document.body.classList.contains('broadcast')) { b.dataset.state = ''; return; }
+      const text = statusDetail || statusEl.textContent || '';
+      const kind = (statusEl.dataset && statusEl.dataset.kind) || '';
+      const reachDown = !!(statusEl.dataset && statusEl.dataset.reach && statusEl.dataset.reach !== 'partial');
+      // A viewer who is still arriving, or who is alone because the service
+      // has not started, is off air. RECONNECTING is a link that dropped, a
+      // door they are knocking on again, or a network that cannot get through.
+      const joining = /Joining the broadcast/i.test(text);
+      const alone = kind === 'alone';
+      const linkDown = /reconnecting|Joining the broadcast|Connection trouble|Could not join|Getting you back/i.test(text) || reachDown;
+      const host = typeof bcHostStored === 'function' && bcHostStored();
+      const picture = myStatus && !myStatus.camOff;
+      // A rebroadcast is never LIVE (Q77): the host's own, or one on the
+      // stage this viewer is watching.
+      const pre = host ? !!(rbNow && rbNow.v) : (!joining && !alone && bcPreInRoom());
+      let state, label, aria;
+      if (pre) { state = 'pre'; label = 'PRERECORDED'; aria = 'Prerecorded, not live'; }
+      else if (host && picture && linkDown) { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
+      else if (host && picture) { state = 'live'; label = 'LIVE'; aria = 'You are live'; }
+      else if (host) { state = 'off'; label = 'OFF AIR'; aria = 'You are off air'; }
+      else if (joining || alone || document.body.classList.contains('bc-quiet')) { state = 'off'; label = 'OFF AIR'; aria = 'The broadcast is off air'; }
+      else if (linkDown || kind === 'door') { state = 'reconnecting'; label = 'RECONNECTING'; aria = 'Reconnecting'; }
+      else { state = 'watching'; label = 'WATCHING'; aria = 'You are watching'; }
+      b.dataset.state = state;
+      const t = document.getElementById('livebadge-txt');
+      if (t && t.textContent !== label) t.textContent = label;
+      if (b.getAttribute('aria-label') !== aria) b.setAttribute('aria-label', aria);
+      const pe = document.getElementById('bc-pre');
+      if (pe) {
+        const on = !!(pre && !host && document.querySelector('#stagefeed .rowtile'));
+        if (pe.hidden === on) pe.hidden = !on;
+        // Under the chip, which wraps to two lines on a narrow phone.
+        const chip = on && statusEl.closest('.topchip');
+        const top = chip && chip.getClientRects().length ? Math.round(chip.getBoundingClientRect().bottom + 8) + 'px' : '';
+        if (pe.style.top !== top) pe.style.top = top;
+      }
+      paintStreamLink();
+    }
+
+    // Someone on the stage says they are playing a recording (Q77).
+    function bcPreInRoom() {
+      try { for (const id of stageIds()) { const st = statusOf.get(id); if (st && st.rb) return true; } } catch (e) {}
+      return false;
+    }
+    // The host's stage carries the friend link. Off air it sits under the
+    // title. On air it is a row above the dock, so the picture stays the stage.
+    // Viewers never see it.
+    function paintStreamLink() {
+      const card = document.getElementById('bc-link');
+      if (!card) return;
+      const host = typeof BROADCAST !== 'undefined' && BROADCAST && typeof bcHostStored === 'function' && bcHostStored();
+      const onAir = myStatus && myStatus.camOff === false;
+      const url = (typeof shareUrl !== 'undefined' && shareUrl && shareUrl.value) || '';
+      const show = !!(host && url);
+      card.classList.toggle('on', show);
+      card.classList.toggle('live', show && onAir);
+      if (!show) return;
+      const input = document.getElementById('bc-link-url');
+      if (input && input.value !== url) input.value = url;
+      const ident = document.getElementById('bc-ident');
+      if (ident) ident.classList.remove('on');
+      const chip = document.querySelector('.topchip');
+      const bar = document.querySelector('.bar');
+      const chipBottom = chip ? chip.getBoundingClientRect().bottom : 0;
+      let top = Math.ceil(chipBottom + 8);
+      const hands = document.getElementById('handq');
+      if (hands && hands.classList.contains('on')) {
+        const hr = hands.getBoundingClientRect();
+        if (hr.height > 0 && hr.bottom + 8 > top) top = Math.ceil(hr.bottom + 8);
+      }
+      const barTop = bar ? bar.getBoundingClientRect().top : window.innerHeight;
+      const limit = (barTop > top + 48 && barTop < window.innerHeight) ? barTop : window.innerHeight;
+      if (onAir) {
+        card.style.top = 'auto';
+        card.style.maxHeight = 'none';
+        card.style.bottom = Math.ceil(window.innerHeight - limit + 8) + 'px';
+      } else {
+        card.style.bottom = '';
+        card.style.top = top + 'px';
+        card.style.maxHeight = Math.max(96, Math.floor(limit - top - 8)) + 'px';
+      }
     }
 
     // ---- everyone's live status + room moderation ------------------------------
@@ -20221,6 +20321,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     };
     document.getElementById('chatclose').onclick = () => { chatPanel.classList.remove('open'); try { paintChatBtn(); } catch (e) {} };
+    // Closing the chat refits the dock first: beside the open chat Chat may
+    // sit in More (placeDock), and focus on a hidden button is dropped.
+    function closeChatToButton() {
+      chatPanel.classList.remove('open');
+      document.body.classList.remove('chatside');
+      if (window.__gifosDock) window.__gifosDock.place();
+      try { paintChatBtn(); } catch (e) {}
+      try { chatBtn.focus(); } catch (err) {}
+    }
     document.getElementById('chatbadge').onclick = () => { if (chatBtn) chatBtn.click(); };
     document.getElementById('chatpreview').onclick = () => { if (chatBtn) chatBtn.click(); };
     window.__gifosChat = {
@@ -28104,7 +28213,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       toggle.onclick = function () {
         const next = !bar.classList.contains('collapsed'); apply(next);
-        try { showMeetChrome(!next); } catch (e) {}
         try { localStorage.setItem('gifos_meet_bar', next ? '1' : '0'); } catch (e) {}
       };
       let saved = null; try { saved = localStorage.getItem('gifos_meet_bar'); } catch (e) {}
@@ -28648,7 +28756,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           btn.setAttribute('aria-expanded', 'true');
           btn.setAttribute('aria-pressed', 'true');
           btn.classList.add('on');
-        } else { shut(); try { showMeetChrome(false); } catch (e) {} }
+        } else shut();
       };
       tray.addEventListener('click', (e) => {
         const b = e.target.closest('button');
