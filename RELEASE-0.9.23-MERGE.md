@@ -162,7 +162,7 @@ Fresh clone under the job folder with `../gifos-app` linked to this checkout.
   quick ladder (N=20, 300) prints the same numbers on the branch tip alone,
   including its "still grows at the top" line, which the full N=20000 ladder
   decides and was not run here.
-- cursor/stale-peer-ui is kept in both repos (clawbox loops still push to it).
+- cursor/stale-peer-ui is kept in both repos (the QA loops still push to it).
 
 ## release/0.9.24
 
