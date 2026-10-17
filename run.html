@@ -1527,6 +1527,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.desk-ptr:has(#handq.on) .topchip { max-width: calc(100vw - 14px - var(--hq-room, 140px)); }
   /* A shared slide starts below the header row, so the header never covers it. */
   body.desk-ptr.screen-on #feed { padding-top: 70px; }
+  /* Same for an app in a meeting: its bar starts below the header row, and Fit
+     (faces are a strip under the app, nothing to fit) leaves Stop app clear. */
+  body.desk-ptr.has-app:not(.solo-app):not(.app-room) #apppane,
+  body.desk-ptr.has-app.app-room.audio-on #apppane { padding-top: 70px; }
+  body.has-app .fitbtn { display: none; }
   body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
