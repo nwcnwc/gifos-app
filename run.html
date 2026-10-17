@@ -25043,8 +25043,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // host's phone stays quiet and its mic hears nothing back.
       if (rbCap(vid)) vid.muted = true;
       else try {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        r.actx = new AC();
+        // Plays nothing (it only routes the clip into a stream): no output device.
+        r.actx = newMeetAudioContext();
         const dst = r.actx.createMediaStreamDestination();
         r.actx.createMediaElementSource(vid).connect(dst);
         r.a = dst.stream.getAudioTracks()[0] || null;
