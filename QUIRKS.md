@@ -16,6 +16,25 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q79. A broadcast host passed on every viewer's heartbeat
+
+Q78's open part. The status heartbeat floods its sender's section (`scope: 'section'`, up to C² = 25 seats), and every seat in the section passes each beat on over its section links. The host is one of those seats, so its channel upload grew with every viewer, up to 25 of them: one node's bandwidth in proportion to users. Nobody shows a viewer's tile in a broadcast, so the flood bought nothing there.
+
+Now a broadcast viewer (not the host, not on the Stage) sends its beat only on its own links (row, cross, up/down: at most C + 2), with no section flood (`bcViewerBeat`). Its neighbours still hear it first-hand, which is all the near field reads (relay claims from `conns`, playout need, seat reports). What the room needs from a viewer far away (a raised hand, a Stage ask, being counted) already rides the tree's fold, so a broadcast reads the fold at any size (`foldIsRoom`: hands, Stage asks, the count), not only past one section. The host and anyone on the Stage still flood their section, as before.
+
+`test/mobile/late-host-upload.spec.mjs` (host here, 1/3/6 late joiners on two other fleet machines) now also counts the host's channel bytes by kind (`__gifosVideo.txKindBytes()`) and asserts its status-beat bytes per open link at 6 joiners stay within 1.5× of 1 joiner; the host still counts 7, and the last joiner (not linked to the host) raises a hand that reaches the host's queue.
+
+| | host status beats per link, B/s (1, 3, 6 joiners) | all host channel bytes per link (1 → 6) | host beats total at 6 |
+|---|---|---|---|
+| Before (427a57f + byte counter only), iphone-se, android-360: fail | 840, 1460-1580, 2980-3115 | 1340 → 4530-6050 | 11.9-15.6 KB/s |
+| After, 4 profiles: beat check passes 4/4 | 842, 608-610, 657-985 | 1340 → 2000-2630 | 3.3-4.9 KB/s |
+
+Open parts, both on the host at 6 joiners, both seen before this change too:
+1. Mesh `ROUTE` probes (S1 liveness probes of rook cells routed through the tree) add 3.0-4.5 KB/s on the host at 6 joiners (3.5-9.4 before), and `S1SYNC` grows with the section's occupancy. Both are mesh control traffic capped at C² seats, but they still grow with users up to there.
+2. Sometimes (3 of 10 after runs, 1 of 3 before) the host feeds the stage straight to a third joiner (three joiners report `via` = host; a third link at 1.9-4.0 KB/s), past the stage feed's two direct seats (STG-DIRECT). Q78's media-link check catches it; it is not reproducible on demand yet.
+
+Before: `test/mobile/screenshots/before/*-host-beat-*`. After: `test/mobile/screenshots/after/*-host-beat-*`.
+
 ### Q78. Each late arrival added host upload: a renegotiation loop and a row band per joiner
 
 Two causes, both per late arrival, both on the host:
@@ -31,7 +50,7 @@ Two causes, both per late arrival, both on the host:
 | | (pixel-7 ran before ids were forced: 0 at 1 joiner, the first joiner drew the higher id) | | | (1.3 at 1) |
 | After, 4 profiles, 4/4 pass | 0, 0, 0 | 2 | 7.1-7.3 → 14.4-15.9 | 1.0-1.4, 6.7-9.1, 20.9-26.4 |
 
-Open part: the host's channel bytes still grow with joiners, by about 3 KB/s each. That is the status heartbeat. It floods the sender's section (`scope: 'section'`), and the host's section holds up to C² = 25 seats. So the growth stops at 25 members and stays flat after, by design, but up to there one node's upload is proportional to the room. Not fixed here. A broadcast could keep a viewer's beat to its own row, because nobody shows a viewer tile.
+Open part: the host's channel bytes still grow with joiners, by about 3 KB/s each. That is the status heartbeat. It floods the sender's section (`scope: 'section'`), and the host's section holds up to C² = 25 seats. So the growth stops at 25 members and stays flat after, by design, but up to there one node's upload is proportional to the room. Fixed in Q79: a broadcast viewer's beat stays on its own links.
 
 Before: `test/mobile/screenshots/before/*-late-host-upload-{host,joiner,trace}.*`. After: `test/mobile/screenshots/after/*-late-host-upload-*`.
 

@@ -3466,7 +3466,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the fold's n to choose a DISPLAY SOURCE only (G2): inflating it past C² in
     // a small room changes nothing (the section is the room), deflating it in a
     // big one falls back to first-hand statuses, which only hides far facts.
-    const digLists = () => (roomPastSection() ? roomDig() : null);
+    // A BROADCAST reads the fold at any size: a viewer's beat reaches only its
+    // own links (bcViewerBeat), so the section is not first-hand there (Q79).
+    const bcViewerBeat = () => BROADCAST && !amAdmin && !stageIds().includes(myId);
+    const foldIsRoom = () => roomPastSection() || (BROADCAST && !!roomDig());
+    const digLists = () => (foldIsRoom() ? roomDig() : null);
     const stSeen = (st) => (st ? (st.rx || st.at || 0) : 0); // when a status was said, on MY clock (takeStatus)
     let gossipAgeMs = 0; // set while a relayed gossip message is being handled
     let admBeatAt = 0; // my last room-wide admin presence beat
@@ -3713,7 +3717,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // seat's fresh status this way, not just its own section's). The mesh gossip flood above
       // already carries my beat to my section; a non-link DC pair hears
       // nothing it would not get there (or sooner, in the fold's count).
-      fanOut(payload, (p) => { if (!linkTo(p.id)) return; txStats.dcStatus++; dcSend(p, { k: 'sig', msg: payload }); }, scoped ? { scope: 'section', ephemeral: true } : undefined);
+      // A BROADCAST VIEWER'S BEAT STAYS ON ITS OWN LINKS (Q79). Nobody shows a
+      // viewer's tile, and what the room needs from a viewer (a hand, a Stage
+      // ask, being counted) rides the fold. Flooding the section made every
+      // seat in it, the host's included, pass on every viewer's beat: the
+      // host's channel upload grew with each joiner up to C² seats. Its links
+      // (row, cross, up/down, at most C+2) still hear it first-hand, which is
+      // all the near-field needs (relay claims, playout need, seat reports).
+      if (scoped && bcViewerBeat()) {
+        const s = meshSeat();
+        if (s && s.hasCoord) for (const pid of s.linkPeers()) { const p = peers.get(pid); if (p && p.dc && p.dc.readyState === 'open') { txStats.dcStatus++; dcSend(p, { k: 'sig', msg: payload }); } }
+      } else fanOut(payload, (p) => { if (!linkTo(p.id)) return; txStats.dcStatus++; dcSend(p, { k: 'sig', msg: payload }); }, scoped ? { scope: 'section', ephemeral: true } : undefined);
       // AN ADMIN IS PRESENT FOR THE WHOLE ROOM. Its status is its section's like
       // anyone's; what the room needs is the SIGNED proof that an admin is here
       // (takeMod credits presence from the signature, whoever carries it). That
@@ -6459,7 +6473,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The count people SEE. Past one section it is the fold's n — a LABEL (G2):
     // it may be displayed and may never gate behaviour, so the bitrate ladder and
     // every other decision keep reading participantCount().
-    function displayCount() { return roomPastSection() ? Math.max(participantCount(), roomDig().n) : participantCount(); }
+    function displayCount() { return foldIsRoom() ? Math.max(participantCount(), roomDig().n) : participantCount(); }
     // BATTERY TIERS (Nathan 2026-07-26): encode watts are the meeting's
     // biggest phone cost, so quality follows the battery — ON BATTERY at all
     // sends one rung lighter, under 50% two rungs, under 25% three rungs and
@@ -8022,8 +8036,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
       const dc = p.dc;
       return txm(() => net.seal(roomE2E, msg).then((env) =>
-        net.sendChunked(env, (piece, str) => { try { dc.send(str); } catch (e) {} })));
+        net.sendChunked(env, (piece, str) => { txKindAdd(msg, str.length); try { dc.send(str); } catch (e) {} })));
     };
+    // Channel bytes I sent, by kind (mesh frames by type, beats by status kind):
+    // what a test reads to say which traffic grows with the room.
+    const txKindBytes = {};
+    function txKindAdd(msg, n) {
+      const m = msg.m, inner = msg.msg;
+      const k = String(msg.k) + (msg.k === 'mesh' && m ? ':' + m.t + (m.m && m.m.msg && m.m.msg.kind ? ':' + m.m.msg.kind : '') : '') + (msg.k === 'sig' && inner ? ':' + inner.kind : '');
+      txKindBytes[k] = (txKindBytes[k] || 0) + n;
+    }
     // The picture goes to each open channel once per hash, in pieces whose JSON
     // is <=16KB, paced, and only on this channel. A newer hash bumps _avGen so
     // the in-flight send stops. A new channel sends again. Leaving the peer
@@ -24727,6 +24749,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // ICE AND an open DataChannel — the gate every data-path assertion must
       // use: a half-open pair passes liveLinks and carries nothing (pair-probe.js).
       liveDataLinks: () => Array.from(peers.values()).filter((p) => p.connected && p.dc && p.dc.readyState === 'open').length,
+      txKindBytes: () => Object.assign({}, txKindBytes), // channel bytes sent, by kind
       txStats: () => Object.assign({}, txStats), // heartbeat transport split (relay vs DC vs sponsor hops)
       // REACH: the meeting-wide connectivity verdict (REACH_MSG): state id
       // ('udp-blocked' | 'cannot-reach-room' | 'outsiders-cannot-reach-me' |
