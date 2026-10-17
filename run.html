@@ -1183,6 +1183,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cmsg .cchip { gap: 6px; color: #1d1d1f; }
   .cmsg .cchip[aria-pressed="true"] { border: 2.5px solid #0064c8; background: #e6f0fb; }
   .cmsg .cpicks, .cmsg .cchips, .cmsg .cacts { display: flex; flex-wrap: wrap; }
+  .cmsg .cwhorx { margin: 8px 0 0; font: 400 1rem/1.35 system-ui, sans-serif; }
+  .cmsg .cwhorx span { display: block; }
   .cmsg[data-line] { cursor: pointer; }
   .cmsg[aria-expanded="true"] { box-shadow: 0 0 0 2px #0064c8; }
   .cmsg.mine[aria-expanded="true"] { box-shadow: 0 0 0 2px #1d1d1f; }
@@ -14523,6 +14525,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // A line's Reply/React/Delete show only once you tap that line, so a
     // phone shows the conversation instead of a row of buttons per line.
     let lineOpen = null;
+    // Who reacted, by name: a phone has no hover, so the open line says it.
+    // Someone who left is still named by a line they wrote.
+    function reactorName(byId) {
+      if (byId === myId) return 'You';
+      const n = typeof nameForPeer === 'function' ? nameForPeer(byId) : '';
+      if (n) return n;
+      for (const m of chat.values()) if (m.byId === byId && m.by) return m.by;
+      return 'Someone';
+    }
+    function reactorNames(who) {
+      const ids = Array.from(who);
+      // You first, then in the order they reacted.
+      ids.sort((a, b) => (b === myId) - (a === myId));
+      return ids.map(reactorName).join(', ');
+    }
     function takeReact(id, e, byId, on) {
       if (!id || !byId || REACTS.indexOf(e) < 0) return false;
       id = String(id).slice(0, 80);
@@ -15771,17 +15788,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           ? '<div class="cchips">' + REACTS.filter((e) => per.has(e)).map((e) => {
             const who = per.get(e);
             const mineR = who.has(myId);
-            return '<button type="button" class="cchip" data-react-chip="' + e + '" data-react-id="' + attr + '" aria-pressed="' + mineR + '" aria-label="' + e + ' ' + who.size + (mineR ? ', yours' : '') + '">' + e + '<span>' + who.size + '</span></button>';
+            return '<button type="button" class="cchip" data-react-chip="' + e + '" data-react-id="' + attr + '" aria-pressed="' + mineR + '" aria-label="' + e + ' ' + who.size + ': ' + esc(reactorNames(who)) + '">' + e + '<span>' + who.size + '</span></button>';
           }).join('') + '</div>'
           : '';
         // Your own line keeps Reply and Delete on one row; React is for theirs.
         const reactBtn = m.byId === myId ? '' : '<button type="button" class="creact" data-react-open="' + attr + '" aria-expanded="' + (reactOpen === m.id) + '">React</button>';
         const open = lineOpen === m.id || reactOpen === m.id;
+        const whoR = open && per && per.size
+          ? '<div class="cwhorx">' + REACTS.filter((e) => per.has(e)).map((e) => '<span>' + e + ' ' + esc(reactorNames(per.get(e))) + '</span>').join('') + '</div>'
+          : '';
         const acts = open ? '<div class="cacts">' + replyBtn + reactBtn + ownDel + '</div>' : '';
         const picks = reactOpen === m.id
           ? '<div class="cpicks">' + REACTS.map((e) => '<button type="button" class="cpick" data-react-pick="' + e + '" data-react-id="' + attr + '" aria-label="React ' + e + '">' + e + '</button>').join('') + '</div>'
           : '';
-        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '" data-line="' + attr + '" tabindex="0" aria-expanded="' + open + '" title="Tap for Reply and React">' + who + quote + '<span class="cbody">' + body + '</span>' + chips + acts + del + picks + '</div>';
+        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '" data-line="' + attr + '" tabindex="0" aria-expanded="' + open + '" title="Tap for Reply and React">' + who + quote + '<span class="cbody">' + body + '</span>' + chips + whoR + acts + del + picks + '</div>';
       }).join('');
       const co = chatOffInfo();
       if (q && !ms.length) html = '<div class="cempty" id="chatnomatch">No matches</div>';
