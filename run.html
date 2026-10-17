@@ -19053,8 +19053,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       el.classList.add('mk-bar');
     }
+    // A guest's share as a viewer sees it (debug only; remoteShareForTest).
+    let qaStageSt = null;
     // The Stage strip: one wide tile at the top of the stage feed.
     function paintStageStrip(stream) {
+      if (qaStageSt) stream = qaStageSt;
       let el = stagefeedEl.querySelector('[data-row="sgs"]');
       if (!stream) {
         if (el) { for (const v of el.querySelectorAll('video')) { try { v.pause(); v.srcObject = null; } catch (e) {} releaseAudio(v); } el.remove(); }
@@ -26542,6 +26545,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return out;
       },
       startScreenShareForTest: () => { startScreenShare(); return true; },
+      // Seated guests share their screens and the stage shows `stream` as
+      // the strip a viewer gets; ids [] ends it.
+      remoteShareForTest: (ids, stream) => {
+        if (!DEBUG_ON) return false;
+        const now = Date.now();
+        for (const id of [...peers.keys()]) {
+          const p = peers.get(id), on = ids.indexOf(id) !== -1;
+          if (!p || !p.qa) continue;
+          statusOf.set(id, Object.assign({}, statusOf.get(id) || {}, { scr: on, stg: on ? now : 0, at: now, rx: now }));
+        }
+        qaStageSt = ids.length ? stream || null : null;
+        paintShare();
+        try { refreshAllTiles(); } catch (e) {}
+        paintStageStrip(qaStageSt);
+        try { layout(); } catch (e) {}
+        return true;
+      },
       stopScreenShareForTest: () => { stopScreenShare(); return true; },
       // The sheet's copy, as rendered — the app-pin preference is a PROMISE the
       // product makes in words, so the guard reads the words.
