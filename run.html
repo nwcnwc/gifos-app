@@ -950,6 +950,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .avatar { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: none; align-items: center; justify-content: center;
                   font-size: 3rem; font-weight: 800; color: #3a3a55; background: var(--surface, #14141f); }
   .tile.cam-off .avatar { display: flex; }
+  /* The blocked-video tile: the explanation lies over the picture (which keeps
+     decoding underneath, so its return is seen) and, for an admin, one button. */
+  .tile .vablock { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: .6rem;
+                   padding: .8rem; text-align: center; background: var(--surface, #14141f); color: var(--text, #e0e0f0); z-index: 1; overflow: auto; }
+  .tile.va-blocked .vablock { display: flex; }
+  .tile .vablock p { margin: 0; font-size: .78rem; line-height: 1.35; max-width: 28rem; }
+  .tile .vablock .vabuy { pointer-events: auto; padding: .4rem .9rem; border-radius: .5rem; border: 1px solid #5ca0ff; background: #1b2a44; color: #e8eeff; font: inherit; font-size: .8rem; cursor: pointer; }
+  .tile .vablock .vabuy[hidden] { display: none; }
   .tile.cam-off > video { visibility: hidden; }
   .tile .chips { position: absolute; top: .4rem; left: .4rem; display: flex; flex-direction: column;
                  gap: .25rem; align-items: flex-start; z-index: 3; pointer-events: none; }
@@ -4292,7 +4300,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       }
       if (!isMe && t.relayed) chips.push('<span>📡 via ' + esc(displayName(t.relayed)) + '</span>');
-      else if (!isMe && t.noRoute && !peerAway(id)) chips.push('<span class="warn">🚧 can’t connect straight to them — something on this network blocks video (common at work)</span>');
+      else if (!isMe && t.noRoute && !peerAway(id) && !t.tile.classList.contains('va-blocked')) chips.push('<span class="warn">🚧 can’t connect straight to them — something on this network blocks video (common at work)</span>');
       if (stageIds().includes(isMe ? myId : id)) chips.push('<span>🎙 on stage</span>');
       // WHAT IS ON SCREEN, AND WHOSE. A screen share is the one feed where the
       // pixels do not say who they came from or that they are not a face — so
@@ -5670,7 +5678,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // other reach state replaces the line.
       const inlineReach = reachState === 'partial' || reachState === 'heard-not-seen';
       const vaWait = reachState === 'heard-not-seen' ? vaWaitingNote() : ''; // Video Anywhere: a paid room before its admin's launch order
-      const partial = reachState === 'partial' ? reachNote(reach.dead) : reachState === 'heard-not-seen' ? ' · ' + (vaWait || REACH_MSG['heard-not-seen']) : '';
+      // heard-not-seen: the tiles of the people not seen carry the explanation now; the line adds only the waiting note.
+      const partial = reachState === 'partial' ? reachNote(reach.dead) : reachState === 'heard-not-seen' && vaWait ? ' · ' + vaWait : '';
       const statusText = reachState && !inlineReach ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' || reachState === 'turn-unavailable' ? '' : reachTriedSentence())
         : (n === 1 ? (atDoor ? 'Getting you back into the meeting — waiting for the others to answer…' : 'Just you — send the invite; the link has no expiry' + reachTriedSentence())
         : displayCount() + ' in the meeting · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
@@ -6278,6 +6287,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // ---- the beat
     function vaSweep(now) {
+      vaPaintTiles(now); // every room: a blocked picture is explained, whoever runs the room
+      vaRefreshCarries(now);
       if (!hasAdminRoom()) return;
       const room = vaRoom();
       const blocked = directPath === 'blocked';
@@ -6298,6 +6309,93 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         vaLaunch();
         vaMeterTick(now);
         vaResume();
+      }
+    }
+    // ---- THE BLOCKED-VIDEO TILE (rules in js/meet-video-anywhere.js) ----
+    // A tile whose picture the network blocks, while the voice still comes
+    // through, shows the explanation instead of a blank or an avatar, on every
+    // page that shows that tile. An admin also gets one button: buy Video
+    // Anywhere, or top up once the hours ran out; the price is the payment
+    // service's live terms. Paying unblocks the picture where it is: the order,
+    // the paid credentials and the pair switch run with nobody rejoining.
+    // Frames counted on the tile's own video element; the message lies over
+    // it without hiding it, so the count keeps running underneath.
+    function vaPictureLive(p, now) {
+      const f = p.vaFrames || (p.vaFrames = { n: -1, liveAt: 0 });
+      let n = -1;
+      try { const q = p.video && p.video.srcObject && p.video.getVideoPlaybackQuality ? p.video.getVideoPlaybackQuality() : null; if (q) n = q.totalVideoFrames; } catch (e) {}
+      if (n > f.n && f.n >= 0) f.liveAt = now;
+      f.n = n;
+      return now - f.liveAt < 5000;
+    }
+    function vaTileFacts(p, now) {
+      const st = statusOf.get(p.id) || {};
+      const mod = modOf(p.id) || {};
+      const r = relayVia.get(p.id), rs = r && r.stream;
+      return {
+        isMe: false,
+        camOn: !seatDark(st) && !(mod.cam && mod.cam.on) && !shareBlocked(p.id),
+        pictureLive: vaPictureLive(p, now),
+        freePair: !!(p.connected && p.turnAudio),
+        voiceCarry: !!(rs && rs.getAudioTracks().length && !rs.getVideoTracks().length),
+        inMixOnly: turnHeard() && p.id !== turnAnchorId && !p.connected && !rs,
+      };
+    }
+    // Which button an admin is offered: buy, top up, or none (paid already).
+    function vaSub() {
+      const m = vaMineLive();
+      if (!m) return vaRoom() === 'live' ? 'live' : 'none'; // a room another device paid for is not sold twice
+      const v = vaView();
+      return v && v.zero ? 'zero' : 'live';
+    }
+    function vaPaintTile(p, now) {
+      if (!p || !p.tile) return;
+      const blocked = VA.tileBlocked(vaTileFacts(p, now));
+      const btn = blocked ? VA.tileButton({ amAdmin, adminRoom: hasAdminRoom(), terms: vaTerms, sub: vaSub() }) : null;
+      let el = p.vaBlockEl;
+      if (blocked && !el) {
+        el = document.createElement('div');
+        el.className = 'vablock';
+        const msg = document.createElement('p');
+        msg.textContent = VA.TEXT.blockedTile;
+        const b = document.createElement('button');
+        b.className = 'vabuy'; b.hidden = true;
+        b.addEventListener('click', (e) => { e.stopPropagation(); if (b.dataset.product) vaBuy(b.dataset.product); });
+        el.appendChild(msg); el.appendChild(b);
+        p.tile.appendChild(el);
+        p.vaBlockEl = el;
+      }
+      if (p.tile.classList.contains('va-blocked') !== blocked) { p.tile.classList.toggle('va-blocked', blocked); updateTile(p.id); }
+      if (!el) return;
+      const b = el.querySelector('button');
+      const key = btn ? btn.kind + '|' + btn.price : '';
+      if (el.dataset.key !== key) {
+        el.dataset.key = key;
+        b.hidden = !btn;
+        b.textContent = btn ? btn.label : '';
+        b.dataset.kind = btn ? btn.kind : ''; b.dataset.price = btn ? btn.price : ''; b.dataset.product = btn ? btn.product : '';
+      }
+      b.disabled = vaBuying;
+    }
+    function vaPaintTiles(now) {
+      let any = false;
+      for (const p of peers.values()) { vaPaintTile(p, now); if (p.tile && p.tile.classList.contains('va-blocked')) any = true; }
+      if (any && amAdmin && hasAdminRoom()) vaLoadTerms(); // the button's price
+    }
+    // A friend carrying a person's voice to someone keeps carrying voice only
+    // after that person's pair turns paid, unless the carry is rebuilt with
+    // the picture. One rebuild per carry per 10 s at most; the number of
+    // carries stays MAX_RELAY_JOBS, so no seat sends more as the room grows.
+    function vaRefreshCarries(now) {
+      for (const job of [...relayJobs.values()]) {
+        const tp = peers.get(job.target), rq = peers.get(job.requester);
+        if (!tp || !rq || !tp.stream || tp.turnAudio || rq.turnAudio) continue;
+        if (!tp.stream.getVideoTracks().length || job.senders.some((sd) => sd.track && sd.track.kind === 'video')) continue;
+        if (now - (job.vaRebuiltAt || 0) < 10000) continue;
+        stopRelayJob(job.target, job.requester, false);
+        startRelayJob(rq, job.target);
+        const nj = relayJobs.get(job.target + '>' + job.requester);
+        if (nj) nj.vaRebuiltAt = now;
       }
     }
     // The note on a bridged seat of a paid room whose admin has not launched
@@ -10370,7 +10468,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (rv) { const viaP = peers.get(rv.via); if (!viaP || !viaP.connected) stopRelayFor(pid, false); }
         // No direct route for a while → ask the smallest-id mutual friend to
         // forward their media to us (a volunteer TURN made of friends).
-        if (!p.connected && !p.absentSince && !relayVia.has(pid) && !turnHeard() // heard through a free-pool anchor: its one mixed stream carries everyone
+        if (!p.connected && !p.absentSince && !relayVia.has(pid) && !(turnHeard() && !vaSeen()) // heard through a free-pool anchor: its one mixed stream carries everyone (a Video Anywhere anchor also carries pictures)
             && p.downSince && now - p.downSince > 10000 && now - (p.relayAskAt || 0) > 10000) {
           const refused = relayRefusal.get(pid) || {};
           const cands = myConns().filter((r) => r !== pid
@@ -21567,6 +21665,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         };
       },
       vaMeterNow: () => { vaMeterTick(Date.now(), true); return true; },
+      // The blocked-video tiles on this page: per person, whether the message
+      // shows, the admin's button (kind, price) if any, and frames decoded.
+      vaTiles: () => [...peers.values()].map((p) => {
+        const el = p.vaBlockEl, b = el && el.querySelector('button');
+        let frames = null; try { frames = p.video && p.video.getVideoPlaybackQuality ? p.video.getVideoPlaybackQuality().totalVideoFrames : null; } catch (e) {}
+        return { name: rosterNames[p.id] || p.name || null, blocked: !!(p.tile && p.tile.classList.contains('va-blocked')),
+          message: !!(el && p.tile.classList.contains('va-blocked') && el.querySelector('p') && el.querySelector('p').textContent.length > 0),
+          button: b && !b.hidden ? { kind: b.dataset.kind, price: b.dataset.price } : null, frames, facts: vaTileFacts(p, Date.now()) };
+      }),
+
       // Transport bytes on one pair's selected path, both directions (debug).
       wireBytes: async (name) => {
         for (const p of peers.values()) {

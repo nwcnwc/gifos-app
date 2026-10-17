@@ -44,6 +44,8 @@
     notCounting: 'Not counting: everyone here connects directly.',
     zero: 'Your Video Anywhere hours for this period are used up. Video across networks stops within 10 minutes; voices continue. You are never billed afterwards.',
     topUp: 'Your Video Anywhere hours are running low. A top-up adds hours without interrupting the meeting.',
+    // On a tile whose video the network blocks, for everyone who sees that tile.
+    blockedTile: 'Your network or theirs (often a work VPN or office network) blocks direct video between you. Getting video across it means sending it through our servers, which costs us real money, so this meeting needs Video Anywhere. Voices still come through.',
   };
   const people = (n) => n + (n === 1 ? ' person' : ' people');
   const countingText = (n) => 'Counting: video is crossing networks for ' + people(n) + '.';
@@ -210,6 +212,37 @@
     };
   }
 
+  // tileBlocked(f) → does this tile show the blocked-video message instead of
+  // a picture? f = {
+  //   isMe         the page's own tile (never: it sees its own camera)
+  //   camOn        the person's camera is on (a camera that is off is not blocked)
+  //   pictureLive  frames from them are arriving on this tile now
+  //   freePair     this page's pair with them is on the free voice-only path
+  //   voiceCarry   a third person carries their voice to this page, and no picture
+  //   inMixOnly    this page hears them only inside its anchor's mixed voice
+  // } Only a voice that still comes through makes the message true ("Voices
+  // still come through"); no voice at all is another state.
+  function tileBlocked(f) {
+    if (!f || f.isMe || !f.camOn || f.pictureLive) return false;
+    return !!(f.freePair || f.voiceCarry || f.inMixOnly);
+  }
+
+  // tileButton(f) → the admin's one-tap button on a blocked tile, or null.
+  // f = { amAdmin, adminRoom, terms: termsOf(...), sub }
+  //   sub  'none' (no Video Anywhere month for this room), 'live' (a month
+  //        with hours left) or 'zero' (a month whose hours ran out)
+  // Prices come from the live terms; with no terms there is no button.
+  function tileButton(f) {
+    if (!f || !f.amAdmin || !f.adminRoom || !f.terms) return null;
+    if (f.sub === 'live') return null; // paid for: the video is on its way
+    if (f.sub === 'zero') {
+      const t = f.terms.topup;
+      return t ? { kind: 'topup', product: TOPUP_PRODUCT, price: t.price, label: 'Top up, ' + t.price } : null;
+    }
+    const m = f.terms.month;
+    return m ? { kind: 'month', product: BASE_PRODUCT, price: m.price, label: 'Get Video Anywhere, ' + m.price + '/month' } : null;
+  }
+
   // receiptQuery(claim, buyerKey, base) → the query that reads a GifOS
   // product's receipt (base: the parsed month a top-up adds to, or null).
   function receiptQuery(claim, buyerKey, base) {
@@ -236,7 +269,7 @@
     BASE_PRODUCT, TOPUP_PRODUCT, TICKET_S, MIN_LEFT_S, RESIGN_BEFORE_S, METER_EVERY_MS, TOPUP_MARK_HOURS, TEXT,
     countingText, waitingText, checkReceipt, checkTopup, ticketFor, ticketJson, checkTicket, needsResign, better,
     roomState, bridgeIdFor, haltsOn, wantPaid, farPaid, peopleCounting, fmtHours, topUpDue, meterView,
-    receiptQuery, termsOf,
+    receiptQuery, termsOf, tileBlocked, tileButton,
   };
   const GifOS = (root.GifOS = root.GifOS || {});
   GifOS.meetVA = api;
