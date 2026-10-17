@@ -102,3 +102,6 @@ body.tw-open .fitbtn, body.tw-open .topchip { visibility: hidden; }
 /* Broadcast is calm too: the airbar already says "You are watching", and the
    lobby showed the full note before joining. */
 body.broadcast #bc-join-note { display: none !important; }
+/* Broadcast calm: the status bar fades with the dock; the on-air lamp stays. */
+#airbar { transition: opacity .8s ease; }
+body.broadcast.dock-calm #airbar, body.broadcast.chrome-away #airbar { opacity: 0; pointer-events: none; }

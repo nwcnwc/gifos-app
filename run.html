@@ -9445,6 +9445,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function twPeer(id) { return id && peers.get(id); }
     function twName(el, id) {
+      if (el.id === 'bc-ident') { const n = document.getElementById('bc-ident-name'); return (n && n.textContent) || uiText('stageLabel', 'On stage'); }
       if (el.classList.contains('rowtile')) { const lb = el.querySelector('.rlabel'); return (lb && lb.textContent) || uiText('stageLabel', 'On stage'); }
       if (el.classList.contains('me')) { try { return myName() + ' ' + uiText('youParen', '(you)'); } catch (e) { return 'You'; } }
       const nm = el.querySelector('.name');
@@ -9565,6 +9566,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         sec.appendChild(p.modbar);
       }
       if (sec.childNodes.length > 1) win.appendChild(sec);
+      // Broadcast: what a watcher can do with the Stage.
+      if (document.body.classList.contains('broadcast')) {
+        const w = document.createElement('div'); w.className = 'tw-sec';
+        const wb = document.createElement('b'); wb.textContent = 'Watch'; w.appendChild(wb);
+        const wr = document.createElement('div'); wr.className = 'tw-row';
+        const shown = (id2) => { const b = document.getElementById(id2); return b && b.offsetParent !== null ? b : null; };
+        const pip = document.getElementById('pipbtn');
+        if (pip && pip.style.display !== 'none') wr.appendChild(twButton(document.pictureInPictureElement ? 'Stop floating' : 'Float', !!document.pictureInPictureElement, () => { pip.click(); closeTileWin(); }));
+        const snd = shown('airsound');
+        if (snd) wr.appendChild(twButton(snd.textContent || 'Sound', snd.getAttribute('aria-pressed') === 'true', () => { snd.click(); closeTileWin(); }));
+        const cc = shown('bc-cap-btn');
+        if (cc) wr.appendChild(twButton(cc.getAttribute('aria-pressed') === 'false' ? 'Show captions' : 'Hide captions', cc.getAttribute('aria-pressed') !== 'false', () => { cc.click(); closeTileWin(); }));
+        if (wr.childNodes.length) { w.appendChild(wr); win.appendChild(w); }
+      }
     }
     function placeTileWin(win, big) {
       const vw = window.innerWidth, vh = window.innerHeight;
@@ -9594,6 +9609,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       tileWin.el = el;
       const vw = window.innerWidth, vh = window.innerHeight;
+      // A broadcast Stage already fills the screen: its window opens beside
+      // it without growing anything.
+      if (!document.body.classList.contains('comfy')) {
+        const r = el.getBoundingClientRect();
+        veil.hidden = false;
+        document.body.classList.add('tw-open', 'meet-awake');
+        twFill(win, el);
+        win.hidden = false;
+        placeTileWin(win, { x: r.left, y: r.top, w: Math.min(r.width, vw - 380), h: r.height });
+        return;
+      }
       const st = feed ? feed.scrollTop : 0;
       const x = parseFloat(el.style.left) || 0, y = (parseFloat(el.style.top) || 0) - st;
       const w = parseFloat(el.style.width) || el.offsetWidth, h = parseFloat(el.style.height) || el.offsetHeight;
@@ -9640,8 +9666,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (win) { win.querySelectorAll('video').forEach((v) => { try { v.srcObject = null; } catch (e) {} }); win.hidden = true; win.textContent = ''; }
       if (veil) veil.hidden = true;
       document.body.classList.remove('tw-open');
+      const grown = el.classList.contains('tw-big');
       el.classList.remove('tw-big');
-      try { layout(); } catch (e) {}
+      if (grown) try { layout(); } catch (e) {}
       setTimeout(() => { try { if (el.classList.contains('tile')) applyViewerCrop(el); } catch (e) {} }, 300);
       wakeMeet();
       try { el.focus({ preventScroll: true }); } catch (e) {}
@@ -9651,10 +9678,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const feed = document.getElementById('feed');
       if (!feed) return;
       feed.addEventListener('click', (e) => {
-        if (!document.body.classList.contains('comfy')) return;
+        const bc = document.body.classList.contains('broadcast');
+        if (!document.body.classList.contains('comfy') && !bc) return;
         const t = e.target;
         if (!t || !t.closest || t.closest('button, a, input, select, textarea, label')) return;
-        const el = t.closest('.tile[data-comfy="1"], .stadface[data-comfy="1"], #stagefeed > .rowtile[data-comfy="1"]');
+        // A broadcast is the Stage: a tap anywhere on it opens its controls.
+        const bcStage = () => {
+          const id = document.getElementById('bc-ident');
+          if (id && id.offsetParent !== null) return id;
+          return document.querySelector('#stagefeed > .rowtile') || document.querySelector('#feed .tile.onstage');
+        };
+        const el = bc ? (t.closest('#feed .tile, #stagefeed > .rowtile, #bc-ident') || bcStage())
+          : t.closest('.tile[data-comfy="1"], .stadface[data-comfy="1"], #stagefeed > .rowtile[data-comfy="1"]');
         if (!el) return;
         e.stopPropagation();
         openTileWin(el);
@@ -29119,7 +29154,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (n < 2) return true; // alone needs Invite (0.9.23b: every larger room is calm too)
         if (joinVeilEl) return true;
         const b = document.body.classList;
-        for (const c of ['screen-on', 'broadcast', 'app-room', 'solo-app', 'lyrics', 'rundown']) if (b.contains(c)) return true;
+        // 0.9.23b: a shared screen and a broadcast are calm too.
+        for (const c of ['app-room', 'solo-app', 'lyrics', 'rundown']) if (b.contains(c)) return true;
         if (!bar.classList.contains('collapsed')) return true; // More is open
         // A clicked button keeps focus, so only keyboard focus holds the dock.
         if (bar.matches(':hover') || bar.querySelector(':focus-visible')) return true;
