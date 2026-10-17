@@ -2517,7 +2517,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const doorWhy = new Map();   // peer -> why my last reach verdict for our pair was what it was (the debug view's door test)
     const netSeated = () => { const s = meshSeat(); return !!(netRoom && s && s.hasCoord && s.state === 3); };
     function netSeatingPool(level, credOk) { netPool = { level: level | 0, cred: !!credOk }; if (netRoom) netRoom.topoChanged(); }
-    const netPairRelayed = (p) => !!(p && (p.viaRelay || p.turnServe || (p.viaRelay === undefined && (p.turnMine || p.turnAnchor))));   // viaRelay: the selected candidate pair's type (whoObserve); unobserved, a pair this page put TURN on counts as relayed; a client I serve over the pool always does
+    const netPairRelayed = (p) => !!(p && (p.viaRelay || p.turnServe || turnInvited(p) || (p.viaRelay === undefined && (p.turnMine || p.turnAnchor))));   // viaRelay: the selected candidate pair's type (whoObserve); unobserved, a pair this page put TURN on counts as relayed; a client I serve over the pool, or a peer that dialled me through it, always does
     // My connected pairs that run through a relay server, for my status
     // (st.rl): a relayed pair joins two networks, it does not make them one,
     // so another page's view never reads it as a direct path.
@@ -2566,7 +2566,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const relayedBy = (x, y) => { const st = statusOf.get(x); return !!(st && ((Array.isArray(st.rl) && st.rl.includes(y)) || (Array.isArray(st.tl) && st.tl.includes(y)))); };   // st.rl: its relayed pairs; st.tl: its relay-pool pairs (the pool code's own list)
           if (a === myId || b === myId) {
             const pid = a === myId ? b : a; const p = peers.get(pid); const age = p ? Date.now() - (p.bornAt || 0) : -1; let r = true, why = 'no-pair';
-            if (p && p.connected) { r = !pairRelayed(p) && !relayedBy(pid, myId); why = r ? 'up' : 'up-relayed'; }   // the far end's word counts too: a pair it reaches through the relay server is relayed at my end as well
+            if (p && turnInvited(p)) { r = false; why = 'via-pool'; }   // the far end dialled me through the relay pool: its network cannot reach mine, connected yet or not
+            else if (p && p.connected) { r = !pairRelayed(p) && !relayedBy(pid, myId); why = r ? 'up' : 'up-relayed'; }   // the far end's word counts too: a pair it reaches through the relay server is relayed at my end as well
             else if (p && p.neverUp && age > PROBE_MS) { r = false; why = 'never-up'; }
             else if (p) why = 'pending:' + (p.pc ? p.pc.connectionState : 'no-pc') + ':' + age;
             if (doorWhy.size > 64) doorWhy.clear(); doorWhy.set(pid, why); return r;   // the debug view's reason for each of my own pairs' verdicts
