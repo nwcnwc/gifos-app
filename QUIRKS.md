@@ -571,9 +571,19 @@ Repro: `test/mobile/chat-delete.js`. It failed (`no way to take back your line`)
 
 Before: `qa/mobile/shots/before-chat-delete-iphone-se.png`. After: `qa/mobile/shots/after-chat-delete-iphone-se.png`.
 
+### 66. A chat line had no reaction
+
+Ruth wrote "the vote is Tuesday." The only answers were Reply or a new line. Zoom, Meet, and Teams let you put a 🙏 or a 👍 on a line.
+
+React sits on someone else's line, at 44px, beside Reply. It opens 👍 ❤️ 😂 🙏 👏, each 44px. The pick stays on the line with a count, and yours is outlined. Tap it again to take it off. Your own line keeps Reply and Delete on one row. The line's buttons are their own row, so a short line does not wrap them. A reaction frame counts only from the person it names, and a newcomer gets each person's own picks when they join.
+
+Repro: `test/mobile/chat-react.js`. It failed (`no way to react to a line`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-react.js`.
+
+Before: `qa/mobile/shots/before-chat-react-iphone-se.png`. After: `qa/mobile/shots/after-chat-react-iphone-se.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, Reply keeps that line on the answer, and Delete takes back your own line. An address in a line is a link. The room name and full screen are 44px taps. A sideways phone shows the whole name. A reaction still has no place on a chat line.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, Reply keeps that line on the answer, and Delete takes back your own line. An address in a line is a link. The room name and full screen are 44px taps. A sideways phone shows the whole name. A chat line takes a reaction. `test/mobile/chat-keyboard.js` fails on an SE turned sideways: the keyboard covers the chat field and Send. It failed before reactions too.
 
 ## Personas (what was actually tried)
 

@@ -106,10 +106,28 @@ function overlaps(a, b) {
       const back = await read();
       const chip3 = back.chips.find((c) => c.text.indexOf('🙏') >= 0);
       if (!chip3 || !/1/.test(chip3.text) || chip3.pressed === 'true') bad.push('tapping your 🙏 did not take it off (' + (chip3 ? chip3.text + ' ' + chip3.pressed : 'none') + ')');
+      // Over the wire: Ruth's own 👍 lands, a 👍 she claims for Esther does not,
+      // and a newcomer's 'hi' replays only that person's picks.
+      const wire = await page.evaluate(() => {
+        const c = window.__gifosChat;
+        const line = Array.from(document.querySelectorAll('#chatlog [data-react-open]'))[0];
+        const id = line && line.getAttribute('data-react-open');
+        c.frame('qa-ruth', { k: 'creact', id: id, e: '👍', on: true, by: 'qa-ruth' });
+        c.frame('qa-ruth', { k: 'creact', id: id, e: '👏', on: true, by: 'qa-esther' });
+        c.frame('qa-ann', { k: 'hi', reacts: { [id]: ['❤️', 'nope'] } });
+        const chips = () => Array.from(document.querySelectorAll('#chatlog [data-react-chip]')).map((el) => (el.innerText || '').replace(/\s+/g, ''));
+        const got = chips();
+        c.frame('qa-ruth', { k: 'creact', id: id, e: '👍', on: false, by: 'qa-ruth' });
+        return { got: got, off: chips() };
+      });
+      if (wire.got.indexOf('👍1') < 0) bad.push('Ruth\'s 👍 frame did not land (' + wire.got.join(' ') + ')');
+      if (wire.got.some((t) => t.indexOf('👏') >= 0)) bad.push('a 👏 claimed for someone else landed');
+      if (wire.got.indexOf('❤️1') < 0) bad.push('a newcomer\'s ❤️ from hi did not land (' + wire.got.join(' ') + ')');
+      if (wire.off.some((t) => t.indexOf('👍') >= 0)) bad.push('Ruth could not take her 👍 off');
       // A stray emoji is not a reaction.
       await page.evaluate(() => window.__gifosChat.react({ text: 'vote is Tuesday', e: '<b>x</b>', byId: 'qa-david' }));
       const stray = await read();
-      if (stray.chips.length !== 1) bad.push('a stray reaction landed');
+      if (stray.chips.length !== 2) bad.push('a stray reaction landed');
     }
   }
   await context.close();

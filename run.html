@@ -1172,6 +1172,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cmsg .creply, .cmsg .cdel { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
     min-width: 44px; min-height: 44px; margin: 8px 8px 0 0; padding: 0 12px; border: 1.5px solid #c5cad3; border-radius: 12px;
     background: #fff; color: #0064c8; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+  /* A reaction is one tap on a line. React opens five, each 44px.
+     What people picked sits on the line with a count; yours is outlined. */
+  .cmsg .creact, .cmsg .cpick, .cmsg .cchip { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+    min-width: 44px; min-height: 44px; margin: 8px 8px 0 0; padding: 0 12px; border: 1.5px solid #c5cad3; border-radius: 12px;
+    background: #fff; color: #0064c8; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+  .cmsg .cpick { padding: 0; font-size: 22px; }
+  .cmsg .cchip { gap: 6px; color: #1d1d1f; }
+  .cmsg .cchip[aria-pressed="true"] { border: 2.5px solid #0064c8; background: #e6f0fb; }
+  .cmsg .cpicks, .cmsg .cchips, .cmsg .cacts { display: flex; flex-wrap: wrap; }
   #chatreply { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; margin: 0 12px; padding: 8px 0 0; }
   #chatreply[hidden] { display: none !important; }
   #chatreply .chatreply-body { flex: 1; min-width: 0; border-left: 3px solid #0064c8; padding: 2px 8px; }
@@ -10480,7 +10489,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         late.hiLate = setTimeout(() => {
           if (peers.get(pid) !== late || (late.dc && late.dc.readyState === 'open')) return;
           if (!lateHiSender(myId, targetLinkIds(pid))) return;
-          deliverLateHi(pid, { k: 'hi', chats: Array.from(chat.values()).slice(-200), trs: Array.from(trs.values()).slice(-100), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj() });
+          deliverLateHi(pid, { k: 'hi', chats: Array.from(chat.values()).slice(-200), trs: Array.from(trs.values()).slice(-100), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
         }, 20000);
       }
       p.absentSince = 0;
@@ -14482,6 +14491,40 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let lastChatLine = null;
     let mentionAlert = null;
     let pendingReply = null;
+    // Reactions: one emoji from a short list, per person, per line.
+    // A frame counts only from the person it names (like taking back a line).
+    const REACTS = ['👍', '❤️', '😂', '🙏', '👏'];
+    const chatReacts = new Map(); // line id -> Map(emoji -> Set(byId))
+    let reactOpen = null; // the line whose picker is open
+    function takeReact(id, e, byId, on) {
+      if (!id || !byId || REACTS.indexOf(e) < 0) return false;
+      id = String(id).slice(0, 80);
+      let per = chatReacts.get(id);
+      if (!per) {
+        if (!on) return false;
+        if (!chat.has(id) && chatReacts.size >= 500) return false;
+        per = new Map(); chatReacts.set(id, per);
+      }
+      let who = per.get(e);
+      if (on) {
+        if (!who) { who = new Set(); per.set(e, who); }
+        if (who.has(byId)) return false;
+        who.add(byId);
+      } else {
+        if (!who || !who.delete(byId)) return false;
+        if (!who.size) per.delete(e);
+      }
+      return true;
+    }
+    function myReactsObj() { // what I picked, replayed to a newcomer
+      const o = {};
+      for (const [id, per] of chatReacts) {
+        const es = [];
+        for (const [e, who] of per) if (who.has(myId)) es.push(e);
+        if (es.length) o[id] = es;
+      }
+      return o;
+    }
     function paintReply() {
       const bar = document.getElementById('chatreply');
       if (!bar) return;
@@ -14687,7 +14730,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
         try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
-        dcSend(p, { k: 'hi', chats: Array.from(chat.values()).slice(-500), trs: Array.from(trs.values()).slice(-300), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj() });
+        dcSend(p, { k: 'hi', chats: Array.from(chat.values()).slice(-500), trs: Array.from(trs.values()).slice(-300), metas: fileMetas(), tombs: tombObj(), ctombs: ctombsObj(), reacts: myReactsObj() });
         // THE MOMENT A CHANNEL EXISTS is the moment the stage pulls can finally
         // travel. Everything below was silently impossible a millisecond ago:
         // sgaFan delivers only to peers whose DC is already OPEN, so a
@@ -14793,8 +14836,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (w && w.ownBy && p && p.id === w.ownBy) { if (applyOwnDelete(id, w.ownBy)) renderChat(); continue; }
           admVerify(w, 'cdel', Infinity).then((o) => { if (o && o.id === id && applyCdel(id, w)) renderChat(); });
         }
+        let reacted = false;
+        if (p && p.id && m.reacts && typeof m.reacts === 'object') {
+          for (const id in m.reacts) {
+            const es = m.reacts[id];
+            if (Array.isArray(es)) es.slice(0, REACTS.length).forEach((e) => { if (takeReact(id, e, p.id, true)) reacted = true; });
+          }
+        }
         (m.metas || []).forEach((meta) => takeMeta(meta, p));
-        if (freshChats.length) renderChat();
+        if (freshChats.length || reacted) renderChat();
         renderFiles();
       } else if (m.k === 'av') {
         takeAvatar(p, m);
@@ -14819,6 +14869,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Addressed by peer id, not re-gossiped — the flood that carried it
         // already reached every member, admin included.
         recvChatAck(m);
+      } else if (m.k === 'creact') {
+        // Only the person who reacted can put on or take off their reaction.
+        if (p && p.id && m.by === p.id && takeReact(m.id, m.e, m.by, !!m.on)) renderChat();
       } else if (m.k === 'cdel') {
         // The author may take their own line back. That frame is accepted
         // only from their channel. Anyone else's copy is ignored.
@@ -15681,7 +15734,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const attr = String(m.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
         const replyBtn = '<button type="button" class="creply" data-reply="' + attr + '">Reply</button>';
         const ownDel = m.byId === myId ? '<button type="button" class="cdel" data-own-del="' + attr + '">Delete</button>' : '';
-        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '">' + who + quote + body + replyBtn + ownDel + del + '</div>';
+        const per = chatReacts.get(m.id);
+        const chips = per && per.size
+          ? '<div class="cchips">' + REACTS.filter((e) => per.has(e)).map((e) => {
+            const who = per.get(e);
+            const mineR = who.has(myId);
+            return '<button type="button" class="cchip" data-react-chip="' + e + '" data-react-id="' + attr + '" aria-pressed="' + mineR + '" aria-label="' + e + ' ' + who.size + (mineR ? ', yours' : '') + '">' + e + '<span>' + who.size + '</span></button>';
+          }).join('') + '</div>'
+          : '';
+        // Your own line keeps Reply and Delete on one row; React is for theirs.
+        const reactBtn = m.byId === myId ? '' : '<button type="button" class="creact" data-react-open="' + attr + '" aria-expanded="' + (reactOpen === m.id) + '">React</button>';
+        const picks = reactOpen === m.id
+          ? '<div class="cpicks">' + REACTS.map((e) => '<button type="button" class="cpick" data-react-pick="' + e + '" data-react-id="' + attr + '" aria-label="React ' + e + '">' + e + '</button>').join('') + '</div>'
+          : '';
+        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '">' + who + quote + body + chips + '<div class="cacts">' + replyBtn + reactBtn + ownDel + '</div>' + del + picks + '</div>';
       }).join('');
       const co = chatOffInfo();
       if (q && !ms.length) html = '<div class="cempty" id="chatnomatch">No matches</div>';
@@ -15736,6 +15802,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         paintReply();
         const inp = document.getElementById('chat-in');
         if (inp && inp.focus) inp.focus();
+        return;
+      }
+      const rOpen = e.target.closest('[data-react-open]');
+      if (rOpen) {
+        const id = rOpen.getAttribute('data-react-open');
+        reactOpen = reactOpen === id ? null : id;
+        renderChat();
+        return;
+      }
+      const rTap = e.target.closest('[data-react-pick], [data-react-chip]');
+      if (rTap) {
+        const id = rTap.getAttribute('data-react-id');
+        const em = rTap.getAttribute('data-react-pick') || rTap.getAttribute('data-react-chip');
+        if (!id || !chat.has(id)) return;
+        const per = chatReacts.get(id);
+        const on = !(per && per.get(em) && per.get(em).has(myId));
+        reactOpen = null;
+        if (takeReact(id, em, myId, on)) sendAll({ k: 'creact', id: id, e: em, on: on, by: myId });
+        renderChat();
         return;
       }
       const ownDel = e.target.closest('[data-own-del]');
@@ -15940,6 +16025,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         renderChat();
         countClosedChat(msg);
         return unread;
+      },
+      // A data-channel frame as it arrives from that peer's channel.
+      frame: function (fromId, m) { onDc({ id: String(fromId) }, null, m); },
+      // A reaction as a peer's frame would land it.
+      react: function (o) {
+        const want = String((o && o.text) || '');
+        const line = Array.from(chat.values()).reverse().find((m) => String(m.text || '').indexOf(want) >= 0);
+        if (!line || !takeReact(line.id, o && o.e, String((o && o.byId) || 'qa-peer'), !(o && o.on === false))) return false;
+        renderChat();
+        return true;
       },
       pin: function (o) {
         const f = {
