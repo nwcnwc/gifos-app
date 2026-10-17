@@ -2792,6 +2792,39 @@ test('a viewer sees who is on stage when their camera is off', async ({ page }) 
   expect(errors).toEqual([]);
 });
 
+test('a viewer sees the camera-off card when the stage feed arrives after the host status', async ({ page }) => {
+  // Seen across two machines (1 run in 3): the viewer learned the host's
+  // camera was off before the stage feed came in, and the feed's tile never
+  // brought the card up, so the stage stayed a grey frame with no name.
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  await page.goto('/run.html?desk=camofflate#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.watch');
+  await page.evaluate(() => window.__gifosVideo.camOffPeerForTest('host-dark', 'Pastor Kim'));
+  const card = page.locator('#bc-ident');
+  await expect(page.locator('#bc-stage')).toBeVisible();
+  await page.evaluate(() => {
+    const c = document.createElement('canvas'); c.width = 320; c.height = 180;
+    const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 320, 180);
+    window.__gifosVideo.stageStripForTest(c.captureStream(5));
+  });
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: 'artifacts/camoff-late-' + (process.env.SHOT_TAG || 'run') + '.png' });
+  await expect(card, 'the card comes up with the feed').toBeVisible({ timeout: 3000 });
+  await expect(card).toContainText('Pastor Kim');
+  await expect(card).toContainText('Camera off');
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector('#stagefeed .rowtile video')).visibility)).toBe('hidden');
+  // The feed leaving takes the card with it: the plate says the stage is clear.
+  await page.evaluate(() => window.__gifosVideo.stageStripForTest(null));
+  await expect(card).toBeHidden({ timeout: 3000 });
+  await expect(page.locator('#bc-stage')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test('a viewer at the name card has no camera or mic on the dock', async ({ page }) => {
   // Seen across two machines: a viewer opening the link got red Video and
   // Unmute on the dock behind "This is how you'll appear", until they saved.
