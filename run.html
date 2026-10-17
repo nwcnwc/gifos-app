@@ -1502,6 +1502,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #leave-ask .name-box h3 { color: #1d1d1f; font-size: 1.7rem; margin-bottom: 1rem; }
   #leave-ask #leave-cancel { min-height: 64px; min-width: 96px; font-size: 1.2rem; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
   #leave-ask #leave-go { min-height: 64px; min-width: 96px; font-size: 1.2rem; margin-left: 8px; background: #b61622; color: #fff; border: 0; }
+  #leave-ask #leave-ask-note { color: #1d1d1f; font-size: 1.05rem; line-height: 1.4; margin: 0 0 1.25rem; }
+  #leave-ask:has(#leave-ask-note:not([hidden])) .name-box { max-width: 440px; }
   body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
     background: #0c0e12; display: flex; flex-direction: column; padding: 8px 8px 132px; box-sizing: border-box; }
   body:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #grid {
@@ -2210,6 +2212,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="name-modal" role="alertdialog" aria-modal="true" id="leave-ask" style="display:none">
     <div class="name-box">
       <h3 id="leave-ask-title">Leave the meeting?</h3>
+      <p id="leave-ask-note" hidden></p>
       <button id="leave-cancel" type="button">Stay</button>
       <button id="leave-go" type="button">Leave</button>
     </div>
@@ -2532,6 +2535,47 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pill = document.getElementById('onair');
       const say = (id, text) => { const el = document.getElementById(id); if (el && text) el.textContent = text; };
       const bar = document.querySelector('.bar');
+      // A host ends the service for everyone watching. A viewer only leaves.
+      // The room does not cut at once: admin-absence runs a silent grace, then
+      // the five-minute countdown in #admcount, then closeRoomNoHost().
+      const paintLeave = (mode) => {
+        const leave = document.getElementById('leavebtn');
+        const lab = leave && leave.querySelector('.docklab');
+        const go = document.getElementById('leave-go');
+        const note = document.getElementById('leave-ask-note');
+        const end = mode === 'end';
+        if (leave) {
+          if (end) {
+            leave.title = 'End the service. Everyone watching sees it close after you leave.';
+            leave.setAttribute('aria-label', 'End the service');
+          } else if (mode === 'watch') {
+            leave.title = 'Leave the service. Your camera and microphone stop.';
+            leave.setAttribute('aria-label', 'Leave the service');
+          } else {
+            leave.title = 'Leave the small group. Your camera and microphone stop.';
+            leave.setAttribute('aria-label', 'Leave the small group');
+          }
+        }
+        if (lab) lab.textContent = end ? 'End' : 'Leave';
+        if (go) go.textContent = end ? 'End' : 'Leave';
+        if (note) {
+          note.hidden = !end;
+          note.textContent = end ? 'Everyone watching sees a five-minute countdown after you leave, and then the room closes.' : '';
+        }
+        if (end) {
+          say('leave-ask-title', 'End the service?');
+          say('left-title', 'You ended the service');
+          say('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
+        } else if (mode === 'watch') {
+          say('leave-ask-title', 'Leave the service?');
+          say('left-title', 'You left the service');
+          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+        } else {
+          say('leave-ask-title', 'Leave the small group?');
+          say('left-title', 'You left the small group');
+          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+        }
+      };
       if (!BROADCAST) {
         document.title = 'Small group — GifOS';
         if (pill) { pill.hidden = true; pill.textContent = ''; pill.className = ''; }
@@ -2561,14 +2605,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           pipMeet.title = 'Float the meeting in a mini window — it stays on screen while you use other apps';
           pipMeet.setAttribute('aria-label', 'Float the meeting');
         }
-        const leave = document.getElementById('leavebtn');
-        if (leave) {
-          leave.title = 'Leave the small group. Your camera and microphone stop.';
-          leave.setAttribute('aria-label', 'Leave the small group');
-        }
-        say('leave-ask-title', 'Leave the small group?');
-        say('left-title', 'You left the small group');
-        say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+        paintLeave('group');
         const help = document.getElementById('helpbtn');
         if (help) help.title = 'How this small group works';
         const nameLead = document.getElementById('set-name-lead');
@@ -2581,14 +2618,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const curTitle = document.getElementById('paneltitle');
       if (curTitle && curTitle.textContent !== 'Transcript') curTitle.textContent = 'Service chat';
       say('chatprivacy', '· private to this service, gone when everyone leaves');
-      const leave = document.getElementById('leavebtn');
-      if (leave) {
-        leave.title = 'Leave the service. Your camera and microphone stop.';
-        leave.setAttribute('aria-label', 'Leave the service');
-      }
-      say('leave-ask-title', 'Leave the service?');
-      say('left-title', 'You left the service');
-      say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
       const help = document.getElementById('helpbtn');
       if (help) help.title = 'How this service works';
       const nameLead = document.getElementById('set-name-lead');
@@ -2638,6 +2667,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const shareOnDock = document.getElementById('sharebtn');
       const moreSheet = document.getElementById('barmore');
       const host = bcHostStored() || document.body.classList.contains('amadmin');
+      paintLeave(host ? 'end' : 'watch');
       // Slides and a window are how a host fills the stage. Share sits on the
       // host dock, the same place a small group already has it. A viewer keeps
       // it in More until they are allowed to share.
@@ -11923,7 +11953,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + '<li>The <b>Password</b> button sets or changes the <b>viewer password</b>: without one the broadcast stays blurred; with one, whoever you give it to sees you clear.</li>'
           + '<li>The hand queue floats to the top — tap a name to call them up on Stage. Revoking their grant pulls them back down.</li>'
           + '<li>Chat has a <b>Turn chat off</b> switch (your messages still land) and per-message delete. Ban lives on each tile’s controls.</li>'
-          + '<li>A broadcast lives while its host is present: leave, and it winds down after a countdown.</li>'
+          + '<li>A broadcast lives while its host is present. <b>End</b> it, and everyone watching sees a five-minute countdown, then the room closes.</li>'
           + '</ul>'
           + '<p>Underneath it is the same thing as a GifOS Meeting: everything goes straight between the people here, no accounts, no company keeping your video.</p>';
       } else if (ROOM.kind === 'app') {

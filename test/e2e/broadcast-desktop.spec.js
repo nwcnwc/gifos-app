@@ -151,7 +151,8 @@ test('a broadcast host is marked Live and the room is not called a meeting', asy
   await expect(page.locator('#onair')).toHaveText('Live');
   await expect(page.locator('#onair')).toHaveClass(/live/);
   await expect(page.locator('#leavebtn')).toHaveAttribute('title', /service/i);
-  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the service?');
+  await expect(page.locator('#leavebtn .docklab')).toHaveText('End');
+  await expect(page.locator('#leave-ask-title')).toHaveText('End the service?');
   expect((await page.locator('#leavebtn').getAttribute('title')).toLowerCase()).not.toContain('meeting');
   expect((await page.locator('#airbar').textContent()).toLowerCase()).not.toContain('small group');
   await page.locator('#bartoggle').click();
@@ -2232,4 +2233,91 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
   await expect(page.locator('#airbar')).toHaveClass(/watch/);
   await expect(page.locator('#status')).toContainText('You are watching this service.');
   await expect(page.locator('#onair')).toHaveText('Watching');
+});
+
+test('a host ends the service and a viewer still leaves', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (new URLSearchParams(location.search).get('host') === '1') localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=endhost' + w + '&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast');
+    const leave = page.locator('#leavebtn');
+    await expect(leave.locator('.docklab')).toHaveText('End');
+    await expect(leave).toHaveAttribute('aria-label', 'End the service');
+    const tip = (await leave.getAttribute('title')).toLowerCase();
+    expect(tip).toContain('everyone watching');
+    expect(tip).not.toContain('meeting');
+    const lay = await page.evaluate(() => {
+      const btn = document.getElementById('leavebtn').getBoundingClientRect();
+      const lab = document.querySelector('#leavebtn .docklab').getBoundingClientRect();
+      const bar = document.querySelector('.bar').getBoundingClientRect();
+      return {
+        labIn: lab.width > 0 && lab.left >= btn.left - 1 && lab.right <= btn.right + 1 && lab.top >= btn.top - 1 && lab.bottom <= btn.bottom + 1,
+        barIn: bar.left >= -1 && bar.right <= innerWidth + 1,
+        on: btn.left >= -1 && btn.right <= innerWidth + 1 && btn.top >= -1 && btn.bottom <= innerHeight + 1,
+      };
+    });
+    expect(lay.labIn, JSON.stringify(lay)).toBe(true);
+    expect(lay.barIn, JSON.stringify(lay)).toBe(true);
+    expect(lay.on, JSON.stringify(lay)).toBe(true);
+    if (w === 1280) {
+      await page.locator('#bartoggle').click();
+      await page.locator('#helpbtn').click();
+      await expect(page.locator('#help-modal .help-scroll')).toContainText('five-minute countdown');
+      await page.locator('#help-close').click();
+      await page.locator('#bartoggle').click();
+    }
+    await leave.click();
+    const ask = page.locator('#leave-ask');
+    await expect(ask).toBeVisible();
+    await expect(page.locator('#leave-ask-title')).toHaveText('End the service?');
+    await expect(page.locator('#leave-ask-note')).toBeVisible();
+    await expect(page.locator('#leave-ask-note')).toContainText('five-minute countdown');
+    await expect(page.locator('#leave-ask-note')).not.toContainText('meeting');
+    await expect(page.locator('#leave-go')).toHaveText('End');
+    await expect(page.locator('#leave-cancel')).toHaveText('Stay');
+    const card = await page.evaluate(() => {
+      const box = document.querySelector('#leave-ask .name-box').getBoundingClientRect();
+      const note = document.getElementById('leave-ask-note').getBoundingClientRect();
+      const go = document.getElementById('leave-go').getBoundingClientRect();
+      return {
+        on: box.left >= -1 && box.right <= innerWidth + 1 && box.top >= -1 && box.bottom <= innerHeight + 1,
+        noteIn: note.width > 0 && note.top >= box.top - 1 && note.bottom <= box.bottom + 1,
+        goIn: go.top >= box.top - 1 && go.bottom <= box.bottom + 1 && go.right <= innerWidth + 1,
+      };
+    });
+    expect(card.on, JSON.stringify(card)).toBe(true);
+    expect(card.noteIn, JSON.stringify(card)).toBe(true);
+    expect(card.goIn, JSON.stringify(card)).toBe(true);
+    const colors = await page.evaluate(() => ({
+      go: getComputedStyle(document.getElementById('leave-go')).backgroundColor,
+      stay: getComputedStyle(document.getElementById('leave-cancel')).backgroundColor,
+    }));
+    expect(colors.go).toBe('rgb(182, 22, 34)');
+    expect(colors.stay).not.toBe(colors.go);
+    await page.locator('#leave-cancel').click();
+    await expect(ask).toBeHidden();
+  }
+  await page.locator('#leavebtn').click();
+  await page.locator('#leave-go').click();
+  await expect(page.locator('#left-modal')).toBeVisible();
+  await expect(page.locator('#left-title')).toHaveText('You ended the service');
+  await expect(page.locator('#left-note')).toContainText('five-minute countdown');
+  await expect(page.locator('#left-note')).toContainText('Rejoin');
+  await page.goto('/run.html?desk=endview#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.broadcast');
+  await expect(page.locator('#leavebtn .docklab')).toHaveText('Leave');
+  await expect(page.locator('#leavebtn')).toHaveAttribute('aria-label', 'Leave the service');
+  await expect(page.locator('#leave-ask-note')).toBeHidden();
+  await page.locator('#leavebtn').click();
+  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the service?');
+  await expect(page.locator('#leave-go')).toHaveText('Leave');
+  await expect(page.locator('#leave-ask-note')).toBeHidden();
+  await page.locator('#leave-go').click();
+  await expect(page.locator('#left-title')).toHaveText('You left the service');
 });
