@@ -2768,8 +2768,12 @@ test('a viewer sees who is on stage when their camera is off', async ({ page }) 
   await expect(card).toContainText('Camera off');
   const at = await page.evaluate(() => {
     const r = (s) => document.querySelector(s).getBoundingClientRect();
-    return { card: r('#bc-ident'), air: r('#airbar'), dock: r('.bar'), tile: r('#stagefeed .rowtile'),
-      video: getComputedStyle(document.querySelector('#stagefeed .rowtile video')).visibility };
+    // what the card shows: the picture or initial, the name, the note
+    const parts = Array.from(document.querySelectorAll('#bc-ident > *')).filter((e) => e.offsetParent).map((e) => e.getBoundingClientRect());
+    const card = { top: Math.min(...parts.map((b) => b.top)), bottom: Math.max(...parts.map((b) => b.bottom)) };
+    return { card, air: r('#airbar'), dock: r('.bar'), tile: r('#stagefeed .rowtile'),
+      video: getComputedStyle(document.querySelector('#stagefeed .rowtile video')).visibility,
+      under: getComputedStyle(document.querySelector('#stagefeed .rowtile')).backgroundColor };
   });
   // The card sits on the stage, clear of the room bar and the dock.
   expect(at.card.top).toBeGreaterThanOrEqual(at.air.bottom - 1);
@@ -2778,6 +2782,7 @@ test('a viewer sees who is on stage when their camera is off', async ({ page }) 
   expect(at.card.bottom).toBeLessThanOrEqual(at.tile.bottom + 1);
   // The black frame under it is not shown.
   expect(at.video).toBe('hidden');
+  expect(at.under).toBe('rgb(0, 0, 0)');
   // A screen share with the camera off is a picture: it shows, no card.
   await page.evaluate(() => window.__gifosVideo.camOffPeerForTest('host-dark', 'Pastor Kim', true));
   await expect(card).toBeHidden();

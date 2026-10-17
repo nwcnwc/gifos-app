@@ -1008,10 +1008,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cmsg img.avchip, .trline img.avchip, .brow img.avchip { width: 1.25rem; height: 1.25rem; object-fit: cover;
     border-radius: .25rem; vertical-align: middle; margin-right: .35rem; }
   #bc-ident { display: none; }
-  body.broadcast #bc-ident.on { display: flex; position: fixed; z-index: 6; left: 50%; top: 12vh; transform: translateX(-50%);
-    flex-direction: column; align-items: center; gap: .6rem; pointer-events: none; max-width: 90vw; }
-  body.broadcast #bc-ident img { width: 256px; width: min(256px, 70vw); height: 256px; height: min(256px, 46vh); object-fit: cover; border-radius: 1rem; background: #14141f; }
-  #bc-ident-name { background: rgba(10,10,15,.72); color: #eceef8; padding: .2rem .7rem; border-radius: .4rem; font-size: .95rem; }
+  /* On the stage, between the room bar and the dock (#feed's 132px foot). */
+  body.broadcast #bc-ident.on { display: flex; position: absolute; z-index: 6; left: 0; right: 0; top: 0; bottom: 132px;
+    flex-direction: column; align-items: center; justify-content: center; gap: .6rem; pointer-events: none; padding: 16px; box-sizing: border-box; }
+  body.broadcast #bc-ident img, #bc-ident-init { width: 256px; width: min(256px, 70vw, 40vh); height: 256px; height: min(256px, 70vw, 40vh); object-fit: cover; border-radius: 1rem; background: #14141f; }
+  body.broadcast #bc-ident:not(.pic) img, body.broadcast #bc-ident.pic #bc-ident-init { display: none; }
+  #bc-ident-init { display: flex; align-items: center; justify-content: center; color: #b9bdd6; font: 700 96px/1 system-ui, sans-serif; font-size: min(96px, 16vh); }
+  #bc-ident-name { background: rgba(10,10,15,.72); color: #eceef8; padding: .2rem .7rem; border-radius: .4rem; font-size: 1.25rem; font-weight: 600; }
+  #bc-ident-note { color: #b9bdd6; font-size: .95rem; }
+  #bc-ident.me #bc-ident-note { display: none; } /* the host's own line already says Camera off */
+  /* The card is the picture: the black frame under it, its name burned in, is not. */
+  body.broadcast:has(#bc-ident.on) #stagefeed .rowtile video { visibility: hidden; }
+  body.broadcast:has(#bc-ident.on) #stagefeed .rowtile { background: #000; }
   .tile.cam-off > video { visibility: hidden; }
   .tile .chips { position: absolute; top: 6px; left: 6px; right: 6px; display: flex; flex-direction: row;
                  flex-wrap: nowrap; gap: 3px; align-items: center; z-index: 3; pointer-events: none; overflow: hidden; }
@@ -1867,7 +1875,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div id="feed">
     <div id="stagefeed"></div>
     <div id="stagemod" hidden aria-label="On stage"></div>
-    <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-name"></div></div>
+    <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-init" aria-hidden="true"></div><div id="bc-ident-name"></div><div id="bc-ident-note">Camera off</div></div>
     <div id="bc-stage" hidden><p id="bc-stage-line">The stage is clear.</p></div>
     <div id="bc-react" aria-hidden="true"></div>
     <div id="bc-reacts" hidden role="status" aria-label="Audience reactions"></div>
@@ -7758,7 +7766,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const isMe = pid === myId;
       const st = isMe ? myStatus : (statusOf.get(pid) || {});
       const camOn = isMe ? myStatus.camOff === false : st.camOff === false;
-      if (camOn) { el.classList.remove('on'); return; }
+      // A screen share is a picture too, camera or not.
+      if (camOn || st.scr) { el.classList.remove('on'); if (typeof paintStagePlate === 'function') paintStagePlate(); return; }
       let url = '', hash = '', name = '';
       if (isMe) {
         const a = (GifOS.store.identity() || {}).avatar;
@@ -7778,7 +7787,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (img.getAttribute('data-hash') !== hash) { img.src = url; img.setAttribute('data-hash', hash); }
         } else img.removeAttribute('src');
       }
-      el.classList.toggle('on', !!url);
+      const init = document.getElementById('bc-ident-init');
+      if (init) init.textContent = (name.trim()[0] || '').toUpperCase();
+      // No picture is still someone: on a stage frame that is black, the
+      // initial and the name stand in for it.
+      el.classList.toggle('pic', !!url);
+      el.classList.toggle('me', isMe);
+      el.classList.toggle('on', !!(url || (name && document.querySelector('#stagefeed .rowtile'))));
       if (typeof paintStagePlate === 'function') paintStagePlate();
     }
     function avatarChip(byId) {
