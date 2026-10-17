@@ -1940,8 +1940,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="app-modal" style="display:none">
     <div class="name-box" style="max-width:420px;text-align:left">
-      <h3>Run an app in this meeting</h3>
-      <p>Pick one of your apps. It runs live for <b>everyone here</b> — same state, same moves — with the meeting's audio, video and recording around it. Anyone can interact.</p>
+      <h3 id="app-title">Run an app in this meeting</h3>
+      <p id="app-note">Pick one of your apps. It runs live for <b>everyone here</b> — same state, same moves — with the meeting's audio, video and recording around it. Anyone can interact.</p>
       <div id="app-list" style="max-height:38vh;overflow-y:auto;margin:.4rem 0 .8rem"></div>
       <div id="app-add" style="border-top:1px solid var(--border,#2a2a3f);padding-top:.7rem;margin-bottom:1rem">
         <p style="margin:.1rem 0 .5rem;font-size:.82rem;color:var(--muted,#8888aa)">Or run a GIF app that isn’t on this computer:</p>
@@ -2550,6 +2550,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (setMeet) setMeet.title = 'Meeting settings — your sound mix, timing, and the video quality your camera records';
         const pinMeet = document.getElementById('cattach');
         if (pinMeet) pinMeet.title = 'Pin a file to the meeting';
+        const appMeet = document.getElementById('appbtn');
+        if (appMeet) appMeet.title = 'Run an app inside this meeting — everyone here shares and interacts with it live';
+        const appTitle = document.getElementById('app-title');
+        if (appTitle) appTitle.textContent = 'Run an app in this meeting';
+        const appNote = document.getElementById('app-note');
+        if (appNote) appNote.innerHTML = 'Pick one of your apps. It runs live for <b>everyone here</b> — same state, same moves — with the meeting\'s audio, video and recording around it. Anyone can interact.';
+        const pipMeet = document.getElementById('pipbtn');
+        if (pipMeet) {
+          pipMeet.title = 'Float the meeting in a mini window — it stays on screen while you use other apps';
+          pipMeet.setAttribute('aria-label', 'Float the meeting');
+        }
         const leave = document.getElementById('leavebtn');
         if (leave) {
           leave.title = 'Leave the small group. Your camera and microphone stop.';
@@ -2608,6 +2619,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (files) files.textContent = 'Files pinned to this service';
       const pin = document.getElementById('cattach');
       if (pin) pin.title = 'Pin a file to this service';
+      const appBtn = document.getElementById('appbtn');
+      if (appBtn) appBtn.title = 'Run an app on this service — everyone watching shares it and can use it.';
+      const appTitle = document.getElementById('app-title');
+      if (appTitle) appTitle.textContent = 'Run an app on this service';
+      const appNote = document.getElementById('app-note');
+      if (appNote) appNote.innerHTML = 'Pick one of your apps. It runs live for <b>everyone watching</b> — same state, same moves — around the stage. Anyone can interact.';
+      const pipBtn = document.getElementById('pipbtn');
+      if (pipBtn) {
+        pipBtn.title = 'Float the stage in a mini window. It stays on screen while you use other apps.';
+        pipBtn.setAttribute('aria-label', 'Float the stage');
+      }
+      const appHide = document.getElementById('apphide');
+      if (appHide) appHide.title = 'Hide this app on my screen only. The service keeps sharing it.';
+      const appStop = document.getElementById('appstop');
+      if (appStop && appStop.title.indexOf('meeting') !== -1) appStop.title = 'Stop sharing this app with the service';
       if (bar) bar.setAttribute('aria-label', 'Service controls');
       const shareOnDock = document.getElementById('sharebtn');
       const moreSheet = document.getElementById('barmore');
@@ -23108,7 +23134,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         btn.title = 'An app is shared here (' + (want.name || 'App') + ') — you hid it. Tap to bring it back.';
       } else {
         btn.textContent = 'Run app';
-        btn.title = canIRunApp() ? 'Run an app inside this meeting — everyone here shares and interacts with it live'
+        const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+        btn.title = canIRunApp()
+          ? (service
+            ? 'Run an app on this service — everyone watching shares it and can use it.'
+            : 'Run an app inside this meeting — everyone here shares and interacts with it live')
           : 'Only this room\u2019s admins — or people they allow — can run an app here';
       }
       const hideB = document.getElementById('apphide');
@@ -23116,7 +23146,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const stopB = document.getElementById('appstop');
       stopB.style.display = (isMine || !hasAdminRoom() || amAdmin) ? '' : 'none';
       stopB.textContent = isMine ? 'Stop app' : 'Stop for everyone';
-      stopB.title = isMine ? 'Stop sharing this app with the meeting'
+      stopB.title = isMine ? ((typeof BROADCAST !== 'undefined' && BROADCAST) ? 'Stop sharing this app with the service' : 'Stop sharing this app with the meeting')
         : (hasAdminRoom() ? 'Admin: stop this app for the whole room'
           : 'Stop this app for the whole room — everyone sees it was you, and the sharer can re-share');
       // ONE RUNTIME: in an app-PINNED room the app cannot be unmounted, hidden
@@ -23245,7 +23275,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // WHOLE MEETING away. Same set as desktop.js SYSTEM_LAUNCHERS.
       const SYSTEM_APPS = { meet: 1, video: 1, broadcast: 1, appstore: 1 };
       const apps = (files || []).filter((f) => f.isApp && !SYSTEM_APPS[f.appId]);
-      if (!apps.length) { list.innerHTML = '<small style="color:#667">No apps on this computer yet. Make one with ＋ Add on your Home Screen, then run it in a meeting.</small>'; return; }
+      if (!apps.length) {
+        const where = (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'on this service' : 'in a meeting';
+        list.innerHTML = '<small style="color:#667">No apps on this computer yet. Make one with ＋ Add on your Home Screen, then run it ' + where + '.</small>';
+        return;
+      }
       const label = (f) => (f.name || f.appId || 'App').replace(/\.gif$/i, '');
       apps.sort((a, b) => label(a).localeCompare(label(b), undefined, { sensitivity: 'base', numeric: true }));
       list.innerHTML = '';

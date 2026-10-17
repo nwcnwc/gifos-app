@@ -1894,6 +1894,57 @@ test('a service chat pins a file to the service', async ({ page }) => {
   await expect(page.locator('#cattach')).toHaveAttribute('title', 'Pin a file to the meeting');
 });
 
+test('run app and float talk about the service', async ({ page }) => {
+  const appTip = 'Run an app on this service — everyone watching shares it and can use it.';
+  const floatTip = 'Float the stage in a mini window. It stays on screen while you use other apps.';
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('view=1') === -1 && location.hash.indexOf('bc=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const w of [1280, 1920, 900]) {
+    await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
+    await page.goto('/run.html?desk=appf' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.locator('#bartoggle').click();
+    await expect(page.locator('#appbtn')).toHaveAttribute('title', appTip);
+    await expect(page.locator('#pipbtn')).toHaveAttribute('title', floatTip);
+    await expect(page.locator('#pipbtn')).toHaveAttribute('aria-label', 'Float the stage');
+    await expect(page.locator('#app-title')).toHaveText('Run an app on this service');
+    await expect(page.locator('#app-note')).toContainText('everyone watching');
+    await expect(page.locator('#app-note')).toContainText('stage');
+    const note = await page.locator('#app-note').innerText();
+    expect(note.toLowerCase()).not.toContain('meeting');
+    const lay = await page.evaluate(() => {
+      const menu = document.getElementById('barmore').getBoundingClientRect();
+      const app = document.getElementById('appbtn').getBoundingClientRect();
+      const pip = document.getElementById('pipbtn').getBoundingClientRect();
+      const inside = (r) => r.width > 0 && r.top >= menu.top - 1 && r.bottom <= menu.bottom + 1 && r.left >= -1 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1;
+      document.getElementById('app-modal').style.display = 'flex';
+      const box = document.querySelector('#app-modal .name-box').getBoundingClientRect();
+      const pipOn = getComputedStyle(document.getElementById('pipbtn')).display !== 'none';
+      return {
+        app: inside(app),
+        pipOn,
+        pip: !pipOn || inside(pip),
+        card: box.left >= -1 && box.right <= innerWidth + 1 && box.top >= -1 && box.bottom <= innerHeight + 1,
+      };
+    });
+    expect(lay.app, JSON.stringify(lay)).toBe(true);
+    expect(lay.pip, JSON.stringify(lay)).toBe(true);
+    expect(lay.card, JSON.stringify(lay)).toBe(true);
+  }
+  await page.goto('/run.html?desk=appfview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#appbtn')).toHaveAttribute('title', appTip);
+  await expect(page.locator('#pipbtn')).toHaveAttribute('aria-label', 'Float the stage');
+  await page.goto('/run.html?desk=appfgroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.locator('#bartoggle').click();
+  await expect(page.locator('#appbtn')).toHaveAttribute('title', 'Run an app inside this meeting — everyone here shares and interacts with it live');
+  await expect(page.locator('#pipbtn')).toHaveAttribute('aria-label', 'Float the meeting');
+  await expect(page.locator('#app-title')).toHaveText('Run an app in this meeting');
+});
+
 test('a host steps on and off the stage from the dock', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
