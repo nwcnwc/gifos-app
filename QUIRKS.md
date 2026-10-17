@@ -6,6 +6,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 
 ## Fixed
 
+### A quiet family call still showed the whole dock
+
+- **Who hits it:** two to four people talking on a desktop, with nobody touching the mouse.
+- **What you saw:** the white dock, with eight buttons, stayed under the faces for the whole call. FaceTime and Meet hide their controls when you are not using them.
+- **Repro:** `test/desktop/calm-dock.spec.js` failed before the fix. After 2 quiet seconds in a three-person call, the dock was still fully shown.
+- **Fix:** after five seconds with no mouse, key, or wheel, the dock and Fit fade. The faces do not move. Any move or key brings them back. The dock stays while More, chat, Reactions, or a sheet is open, while the pointer is on the dock or a key has focus there, while you are alone, in a room of five or more, during a share or a broadcast, and on a phone.
+- **Proof:** the four tests pass on Chromium and Firefox. Screenshots: `test/desktop/shots/calm-dock-before-1280.png`, `test/desktop/shots/calm-dock-after-1280.png`.
+
 ### A dim room had its camera restarted
 
 - **Who hits it:** anyone calling from a dim room, such as an evening call with one lamp on.

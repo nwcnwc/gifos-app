@@ -1494,7 +1494,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; height: 104px; width: auto;
     max-width: calc(100% - 16px); padding: 0 16px 0 18px; margin: 0;
     background: rgba(255,255,255,.94); border: 0; border-radius: 32px;
-    box-shadow: 0 10px 30px rgba(0,0,0,.28); overflow: visible; }
+    box-shadow: 0 10px 30px rgba(0,0,0,.28); overflow: visible; transition: opacity .2s ease; }
+  /* A quiet small call fades the dock (and Fit) so only faces are left. Coming
+     back is quick; going away is slow, so it never feels like a flicker. */
+  body.dock-calm .bar, body.dock-calm .fitbtn { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+  @media (prefers-reduced-motion: reduce) { .bar, body.dock-calm .bar, body.dock-calm .fitbtn { transition: none; } }
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
     width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
     background: #e8ecf1; color: #1d1d1f; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
@@ -22112,6 +22116,46 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setBarH();
     })();
 
+    // A small call is a room, not a product: with 2–4 people on a desktop,
+    // nothing open, and no mouse or key for a few seconds, the dock fades and
+    // only faces are left (FaceTime and Meet do the same). Any move or key
+    // brings it back. The layout does not change, so faces never jump.
+    let dockCalmMs = 5000;
+    (function () {
+      const bar = document.querySelector('.bar');
+      let lastInput = Date.now();
+      const wake = () => {
+        lastInput = Date.now();
+        document.body.classList.remove('dock-calm');
+      };
+      for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart', 'focusin']) {
+        window.addEventListener(ev, wake, { capture: true, passive: true });
+      }
+      function busy() {
+        if (IS_MOBILE || document.hidden) return true; // a touch laptop wakes it on touchstart
+        const n = participantCount();
+        if (n < 2 || n > 4) return true; // alone needs Invite; a big room needs the host tools
+        if (joinVeilEl) return true;
+        const b = document.body.classList;
+        for (const c of ['screen-on', 'broadcast', 'app-room', 'solo-app', 'lyrics', 'rundown']) if (b.contains(c)) return true;
+        if (!bar.classList.contains('collapsed')) return true; // More is open
+        // A clicked button keeps focus, so only keyboard focus holds the dock.
+        if (bar.matches(':hover') || bar.querySelector(':focus-visible')) return true;
+        if (bar.querySelector('[aria-expanded="true"], .on:not(#ccdock)')) return true;
+        const chat = document.getElementById('chatpanel');
+        if (chat && chat.classList.contains('open')) return true;
+        for (const d of document.querySelectorAll('[role="dialog"][aria-modal="true"]')) {
+          if (d.style.display !== 'none' && d.getClientRects().length) return true;
+        }
+        return false;
+      }
+      setInterval(() => {
+        let calm = false;
+        try { calm = Date.now() - lastInput >= dockCalmMs && !busy(); } catch (e) {}
+        if (calm !== document.body.classList.contains('dock-calm')) document.body.classList.toggle('dock-calm', calm);
+      }, 250);
+    })();
+
     (function () {
       const btn = document.getElementById('reactbtn');
       const tray = document.getElementById('reacttray');
@@ -24539,6 +24583,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return { ok: true, ended: !vt || vt.readyState === 'ended', n: stopped.length };
       },
       participants: participantCount,
+      setDockCalmMsForTest: (ms) => { dockCalmMs = Math.max(0, ms | 0); return { ok: true }; },
       bot: () => !!myStatus.bot,
       // Strip-teardown forensics (e2e-mosaic): whose status holds a stage
       // seat, and which stg pipes this page still holds. Read-only peeks.
