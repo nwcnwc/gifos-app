@@ -149,3 +149,46 @@ test('the words on a face you point at are 16px', async ({ context }) => {
     await page.close();
   }
 });
+
+// A raised hand is the one chip a volunteer must read from across the room.
+// On a desktop its words are 16px, in a room of five and of nine, and the
+// chip still sits inside the face, whole, and clear of the name.
+test('the hand raised chip on a face is 16px', async ({ context }) => {
+  for (const count of [4, 8]) {
+    const page = await context.newPage();
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.addInitScript(() => {
+      localStorage.setItem('gifos_name', 'Jordan Lee');
+      sessionStorage.setItem('gifos_appeared', '1');
+    });
+    await page.goto('/run.html#v=qaeyeshand&debug=on', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#mic', { state: 'visible' });
+    await page.evaluate((n) => window.__gifosVideo.seedGalleryForTest({ count: n, connected: true }), count);
+    await page.waitForFunction((n) => document.querySelectorAll('#feed .tile:not(.me) > .blurbox.on').length >= n, count);
+    await page.evaluate(() => window.__gifosVideo.raiseHand(true));
+    await page.waitForFunction(() => [...document.querySelectorAll('#feed .tile .chips span')].some((s) => /hand raised/.test(s.textContent)));
+    await page.waitForTimeout(300);
+    if (count === 4) await page.screenshot({ path: 'test/desktop/shots/hand-chip-after-1280.png' });
+    const info = await page.evaluate(() => {
+      const chip = [...document.querySelectorAll('#feed .tile .chips span')].find((s) => /hand raised/.test(s.textContent));
+      const tile = chip.closest('.tile');
+      const tb = tile.getBoundingClientRect();
+      const cb = chip.getBoundingClientRect();
+      const row = chip.parentElement.getBoundingClientRect();
+      const name = tile.querySelector('.name');
+      const nb = name && name.getClientRects().length ? name.getBoundingClientRect() : null;
+      return {
+        font: parseFloat(getComputedStyle(chip).fontSize),
+        inside: cb.left >= tb.left - 1 && cb.right <= tb.right + 1 && cb.top >= tb.top - 1 && cb.bottom <= tb.bottom + 1,
+        whole: cb.right <= row.right + 1 && chip.scrollWidth <= chip.clientWidth + 1,
+        chip: { left: cb.left, right: cb.right, top: cb.top, bottom: cb.bottom },
+        name: nb && { left: nb.left, right: nb.right, top: nb.top, bottom: nb.bottom },
+      };
+    });
+    expect(info.font, 'room of ' + (count + 1)).toBeGreaterThanOrEqual(16);
+    expect(info.inside, 'room of ' + (count + 1)).toBe(true);
+    expect(info.whole, 'room of ' + (count + 1)).toBe(true);
+    if (info.name) expect(overlap(info.chip, info.name), 'room of ' + (count + 1)).toBe(false);
+    await page.close();
+  }
+});
