@@ -277,6 +277,36 @@
   let stadSeen = { key: '', at: 0 };
   let stadTimer = 0;
 
+  // The call's buttons tucked away: keep the rows and columns laid out for
+  // the band above them and stretch the rows into the taller box, so no face
+  // jumps to a new place each time the buttons go or come back. Rows grow
+  // only as far as a legal tile shape, and shrink (never under the phone's
+  // smallest side) when that lets rows that were scrolled to fit on screen.
+  function holdRows(lay, box, byId, phone) {
+    const Pack = GifOS.meetPack;
+    const from = lay.box;
+    if (!Pack || !from || !lay.rects.length) return lay;
+    const contentH = lay.contentH || from.h;
+    const minSide = phone ? 96 : 80;
+    let k = box.h / Math.max(1, contentH);
+    let floor = 0;
+    for (let i = 0; i < lay.rects.length; i++) {
+      const r = lay.rects[i];
+      if (!(r.h > 0)) continue;
+      k = Math.min(k, r.w / r.h / Pack.ASPECT_MIN);
+      floor = Math.max(floor, Math.min(r.h, minSide) / r.h);
+    }
+    k = Math.max(k, floor);
+    const rects = lay.rects.map((r) => {
+      const h = r.h * k;
+      const t = byId[r.id];
+      const a = t && t.aspect > 0 ? t.aspect : 16 / 9;
+      const crop = Pack.cropFor(a, r.w / h);
+      return Object.assign({}, r, { y: box.y + (r.y - from.y) * k, h: h, fit: crop && crop.contain ? 'contain' : 'cover' });
+    });
+    return Object.assign({}, lay, { rects: rects, box: box, contentH: contentH * k });
+  }
+
   function applyCrop(video, crop) {
     if (!video) return;
     if (!crop) {
@@ -335,16 +365,23 @@
       phone: !!opts.phone, pill: !!opts.pill, bottom: Math.max(0, +opts.bottom || 0),
       top: opts.top > 0 ? opts.top : undefined,
     });
-    const lay = ML.layoutFor({
+    // opts.holdBottom: where the tucked-away buttons stood (phone gallery).
+    const hold = !!opts.phone && (opts.mode || 'gallery') === 'gallery' && opts.gallery !== 'scroll' &&
+      +opts.holdBottom > Math.max(0, +opts.bottom || 0);
+    const byId = {};
+    for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
+    let lay = ML.layoutFor({
       mode: opts.mode || 'gallery',
       tiles: tiles,
-      box: box,
+      box: hold ? ML.viewBox(opts.vw || 1, opts.vh || 1, {
+        phone: true, pill: !!opts.pill, bottom: +opts.holdBottom,
+        top: opts.top > 0 ? opts.top : undefined,
+      }) : box,
       phone: !!opts.phone,
       swapSelf: !!opts.swapSelf,
       gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit',
     });
-    const byId = {};
-    for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
+    if (hold && !lay.crowd) lay = holdRows(lay, box, byId, true);
     const used = [];
     let crowdEl = feed.querySelector('#stadcrowd');
     if (lay.crowd) {

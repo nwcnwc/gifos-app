@@ -6512,6 +6512,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return { n: n | 0, cols: cols | 0, video: video, srcEl: srcEl };
     }
     let comfyBusy = false;
+    // Where the call's buttons stood last, per screen size, so the faces
+    // keep their places while the buttons are tucked away.
+    let comfyUpBottom = { key: '', v: 0 };
     function applyComfy() {
       if (comfyBusy) return;
       const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
@@ -6578,35 +6581,41 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         let holdMs = 2500;
         try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}
-        let bottom = 0;
+        let bottom = 0, holdBottom = 0;
         try {
           // Tucked chrome is off the call. Measuring the sliding dock would
           // keep the empty band, so a quiet call uses only the home indicator.
           const away = document.body.classList.contains('chrome-away');
           if (!away) {
+            // Where the dock and Record/Captions rest, not where their slide
+            // back has got to: a fixed box's offsetTop skips its transform.
+            const restTop = (el) => getComputedStyle(el).position === 'fixed' ? el.offsetTop : el.getBoundingClientRect().top;
             const bar = document.querySelector('.bar');
-            if (bar) bottom = Math.max(0, window.innerHeight - bar.getBoundingClientRect().top);
+            if (bar) bottom = Math.max(0, window.innerHeight - restTop(bar));
             const state = document.getElementById('callstate');
             if (state && !state.hidden && state.getClientRects().length) {
               const sr = state.getBoundingClientRect();
               const vis = getComputedStyle(state).visibility;
-              if (sr.height > 2 && vis !== 'hidden') bottom = Math.max(bottom, window.innerHeight - sr.top);
+              if (sr.height > 2 && vis !== 'hidden') bottom = Math.max(bottom, window.innerHeight - restTop(state));
             }
+            comfyUpBottom = { key: vwNow + 'x' + vhNow, v: bottom };
           } else {
             const probe = document.getElementById('gifos-safe-b');
             if (probe) bottom = probe.offsetHeight || 0;
+            if (comfyUpBottom.key === vwNow + 'x' + vhNow) holdBottom = comfyUpBottom.v;
           }
           const note = document.getElementById('chatnote');
           if (note && !note.hidden && note.getClientRects().length) {
             const nr = note.getBoundingClientRect();
             if (nr.height > 2) bottom = Math.max(bottom, window.innerHeight - nr.top);
           }
+          if (holdBottom) holdBottom = Math.max(holdBottom, bottom);
         } catch (e) {}
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: faces, video: meta.video, cols: cols,
           orderKey: roster.length + ':' + roster.join(','), holdMs: holdMs,
           vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: myId || 'me',
-          pill: document.body.classList.contains('has-pill'), bottom: bottom, top: topInset,
+          pill: document.body.classList.contains('has-pill'), bottom: bottom, holdBottom: holdBottom, top: topInset,
           mode: window.__meetViewMode || 'gallery', swapSelf: !!window.__meetSwapSelf,
           gallery: window.__meetGallery || 'fit', now: Date.now(),
           onSettle: () => { try { layout(); } catch (e) {} },

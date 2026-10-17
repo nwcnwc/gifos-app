@@ -84,7 +84,7 @@ function look(page) {
       if (!u || !b) { bad.push(dev + ': ' + a.name + ' is missing'); continue; }
       if (u.row !== a.row || u.col !== a.col) bad.push(dev + ': ' + a.name + ' moved from row ' + (u.row + 1) + ' place ' + (u.col + 1) + ' to row ' + (a.row + 1) + ' place ' + (a.col + 1) + ' when the buttons tucked away');
       else if (Math.abs(u.left - a.left) > 1 || Math.abs(u.w - a.w) > 1) bad.push(dev + ': ' + a.name + ' slid sideways (' + u.left + '+' + u.w + ' to ' + a.left + '+' + a.w + ')');
-      if (b.left !== u.left || b.top !== u.top || b.w !== u.w || b.h !== u.h) bad.push(dev + ': ' + a.name + ' did not go back to its place when the buttons came back');
+      if (b.left !== u.left || b.top !== u.top || b.w !== u.w || b.h !== u.h) bad.push(dev + ': ' + a.name + ' did not go back to its place when the buttons came back (' + [u.left, u.top, u.w, u.h] + ' to ' + [b.left, b.top, b.w, b.h] + ')');
       if (!a.whole) bad.push(dev + ': ' + a.name + ' is not whole with the buttons away');
       if (Math.min(a.w, a.h) < 96) bad.push(dev + ': ' + a.name + ' is ' + a.w + 'x' + a.h + ' with the buttons away');
       if (a.w / a.h < 0.43) bad.push(dev + ': ' + a.name + ' is a sliver, ' + a.w + 'x' + a.h);
