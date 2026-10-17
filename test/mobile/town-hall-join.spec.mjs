@@ -104,8 +104,33 @@ test('a town hall host still confirms how they appear', async ({ page }) => {
   const cam = await page.locator('#cam').evaluate((el) => getComputedStyle(el).display);
   expect(cam).not.toBe('none');
   await page.locator('#nmok').click();
-  await expect(page.locator('.tile.me')).toBeVisible();
   await expect(page.locator('#bc-ended')).toBeHidden();
+  await expect(page.locator('#status')).toContainText('send the invite');
+  const hostRoom = await page.evaluate(() => {
+    const tile = document.querySelector('.tile.me');
+    const grid = document.getElementById('grid');
+    return {
+      tile: tile ? tile.getClientRects().length : 0,
+      grid: getComputedStyle(grid).display,
+    };
+  });
+  expect(hostRoom.grid).toBe('none');
+  expect(hostRoom.tile).toBe(0);
+  const box = await page.evaluate(() => {
+    const feed = document.getElementById('stagefeed');
+    const el = document.createElement('div');
+    el.className = 'rowtile';
+    el.dataset.row = 'sgs';
+    el.style.aspectRatio = '1.7778';
+    const v = document.createElement('video');
+    el.append(v, document.createElement('div'));
+    feed.appendChild(el);
+    const r = el.getBoundingClientRect();
+    return { w: r.width, h: r.height, vw: innerWidth, vh: innerHeight, fit: getComputedStyle(v).objectFit };
+  });
+  expect(box.w).toBeGreaterThanOrEqual(box.vw - 1);
+  expect(box.h).toBeGreaterThanOrEqual(box.vh * 0.75);
+  expect(box.fit).toBe('cover');
 });
 
 test('a meeting joiner still lands in the meeting', async ({ page }) => {

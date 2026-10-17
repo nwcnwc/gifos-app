@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q63. A town hall host saw a meeting gallery
+
+The host’s own tile filled an iPhone SE, 316×504, named “Guest … (you).” The gallery is gone. The host’s room is the stage. A speaker fills that screen. The invite line stays while they are alone, and the camera stays on the dock. A watcher is unchanged. A meeting still shows the gallery. `test/mobile/town-hall-join.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-town-hall-host.png`. After: `test/mobile/screenshots/after/iphone-se-town-hall-host.png`.
+
+Design: the host looks at the stage. Corporate stays at 4. The empty hall is still the invite sentence on a dark stage.
+
 ### Q62. An ended service had nothing to watch
 
 The stage said “The service has ended.” and stopped there. A viewer who watched the stage now gets Watch on that screen. It plays the picture they just saw, filling the phone, and Close leaves the file where it is. A stream says the same thing. A service that has not started has no Watch. The host still uses Record. `test/mobile/viewer-replay.spec.mjs`.
