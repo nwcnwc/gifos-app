@@ -740,6 +740,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #appbar #appwho { color: var(--muted, #8888aa); font-size: .78rem;
     flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #appbar #appstop { margin-left: auto; font-size: 16px; }
+  #appbar #appsave, #appbar #appsteal, #appbar #apphide, #appbar #appaudio { font-size: 16px; }
   /* When the app bar is the ONLY bar (solo / app room before a call), it also
      carries the GifOS home link — same gradient wordmark as the meeting bar. */
   #appbar .brand { display: none; font-weight: 800; font-size: .9rem; text-decoration: none; cursor: pointer;
@@ -1904,13 +1905,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span id="appname">App</span>
       <span id="appwho"></span>
       <button id="appinvite" style="display:none" title="Share this app live — friends join with one link">Invite</button>
-      <button id="appsave" style="display:none" title="Save a snapshot GIF — the app with its data, yours to keep">Save</button>
+      <button id="appsave" style="display:none" data-t="barSave" data-ti="barSaveTip" title="Save a snapshot GIF — the app with its data, yours to keep">Save</button>
       <button id="apphelp" data-t="help" data-ti="appHelpTip" title="How this app works">Help</button>
-      <button id="appaudio" style="display:none" title="Talk with the people in this app — when on, everyone here gets their own mic control (host only)">Talk: off</button>
-      <button id="appsteal" style="display:none" title="Steal a copy of this app — it goes to your desktop's Stolen Apps, data and all">Steal</button>
+      <button id="appaudio" style="display:none" data-t="barTalkOff" data-ti="barTalkTip" title="Talk with the people in this app — when on, everyone here gets their own mic control (host only)">Talk: off</button>
+      <button id="appsteal" style="display:none" data-t="barSteal" data-ti="barStealTip" title="Steal a copy of this app — it goes to your desktop's Stolen Apps, data and all">Steal</button>
       <button class="perms" id="appperms" title="What this app can do — review or turn things off" style="display:none"></button>
       <button id="applead" style="display:none"></button>
-      <button id="apphide" style="display:none" title="Hide this app on my screen only — the meeting keeps sharing it">Hide</button>
+      <button id="apphide" style="display:none" data-t="barHide" data-ti="barHideTip" title="Hide this app on my screen only — the meeting keeps sharing it">Hide</button>
       <button id="appstop" data-t="stopApp" data-ti="stopAppTip" title="Stop sharing this app with the meeting">Stop app</button>
       <button class="fs-btn" id="appfull" style="display:none" title="Full screen" aria-label="Full screen" aria-pressed="false"></button>
     </div>
@@ -2717,6 +2718,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         chatWasOff: 'Der Chat wurde ausgeschaltet.',
         chatWasOffBy: 'Der Chat wurde von {name} ausgeschaltet.',
         chatHostOnly: 'Nur die Leitung kann schreiben.',
+        barSave: 'Speichern',
+        barSaveTip: 'Ein GIF dieser App mit ihren Daten speichern — es gehört Ihnen',
+        barSaveFail: 'Speichern ging nicht: {err}',
+        barSteal: 'Kopieren',
+        barStealTip: 'Eine Kopie dieser App mitnehmen — sie landet in „Stolen Apps“ auf Ihrem Schreibtisch, mit allen Daten',
+        barHide: 'Ausblenden',
+        barHideTip: 'Diese App nur auf Ihrem Bildschirm ausblenden — die Besprechung teilt sie weiter',
+        barHideStatus: '🧩 App nur auf Ihrem Bildschirm ausgeblendet — die Besprechung teilt sie weiter. „App zeigen“ holt sie zurück.',
+        barTalkOff: 'Sprechen: aus', barTalkOn: 'Sprechen: an',
+        barTalkTip: 'Mit den Menschen in dieser App sprechen — wenn an, hat hier jeder eine eigene Mikrofon-Taste (nur die Leitung)',
+        barTalkOnStatus: 'Sprechen ist an — alle hier können ihr Mikrofon einschalten.',
+        barTalkOffStatus: 'Sprechen ist aus — jedes Mikrofon ist still.',
+        barTalkHostOff: 'Die Leitung hat Sprechen ausgeschaltet.',
+        stealData: '+ Daten', stealDataTip: 'Die App und alles, was jetzt darin ist',
+        stealJoined: 'wie ich kam', stealJoinedTip: 'Die App und der Raum, wie er war, als Sie kamen',
+        stealApp: 'nur die App', stealAppTip: 'Eine saubere Kopie — nur die App, keine Daten des Raums',
+        stealBusy: 'Wird kopiert…', stealDone: '🥷 Kopiert ✓',
+        stealNone: '🥷 Gehört Ihnen — eine saubere Kopie in „Stolen Apps“, ohne die Daten des Raums.',
+        stealConnect: '🥷 Gehört Ihnen — der Raum, wie er war, als Sie kamen, in „Stolen Apps“.',
+        stealAll: '🥷 Gehört Ihnen — in „Stolen Apps“ auf Ihrem Schreibtisch, mit allen Daten.',
+        stealFail: 'Kopieren ging nicht: {err}',
         whoDirect: 'Direkt mit Ihnen verbunden',
         whoDirectNote: 'Ihr Gerät und ihres sprechen direkt miteinander, deshalb hat es die Adresse selbst gesehen.',
         whoIndirect: 'In der Besprechung, über andere',
@@ -2978,6 +3000,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         chatWasOff: 'El chat se apagó.',
         chatWasOffBy: 'El chat lo apagó {name}.',
         chatHostOnly: 'Solo el anfitrión puede escribir.',
+        barSave: 'Guardar',
+        barSaveTip: 'Guarda un GIF de esta app con sus datos — queda para ti',
+        barSaveFail: 'No se pudo guardar: {err}',
+        barSteal: 'Copiar',
+        barStealTip: 'Llévate una copia de esta app — va a «Stolen Apps» en tu escritorio, con todos los datos',
+        barHide: 'Ocultar',
+        barHideTip: 'Oculta esta app solo en tu pantalla — la reunión sigue compartiéndola',
+        barHideStatus: '🧩 App oculta solo en tu pantalla — la reunión sigue compartiéndola. «Mostrar app» la trae de vuelta.',
+        barTalkOff: 'Hablar: no', barTalkOn: 'Hablar: sí',
+        barTalkTip: 'Habla con la gente de esta app — si está activo, cada quien tiene su micrófono (solo el anfitrión)',
+        barTalkOnStatus: 'Hablar está activo — todos aquí pueden encender su micrófono.',
+        barTalkOffStatus: 'Hablar está apagado — todos los micrófonos quedan en silencio.',
+        barTalkHostOff: 'El anfitrión apagó Hablar.',
+        stealData: '+ datos', stealDataTip: 'La app y todo lo que hay ahora',
+        stealJoined: 'como entré', stealJoinedTip: 'La app y la sala como estaban cuando entraste',
+        stealApp: 'solo la app', stealAppTip: 'Una copia limpia — solo la app, sin los datos de la sala',
+        stealBusy: 'Copiando…', stealDone: '🥷 Copiada ✓',
+        stealNone: '🥷 Ya es tuya — una copia limpia en «Stolen Apps», sin los datos de la sala.',
+        stealConnect: '🥷 Ya es tuya — la sala como estaba cuando entraste, en «Stolen Apps».',
+        stealAll: '🥷 Ya es tuya — en «Stolen Apps» de tu escritorio, con todos los datos.',
+        stealFail: 'No se pudo copiar: {err}',
         whoDirect: 'Conectados directo contigo',
         whoDirectNote: 'Tu dispositivo y el suyo hablan directo, así que vio la dirección.',
         whoIndirect: 'En la reunión, a través de otros',
@@ -23401,8 +23444,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // window would be silently lost. The mint below refreshes right away.
       const show = ROOM.kind === 'app' && !ROOM.solo && document.body.classList.contains('app-room') && appMode === 'host' && !!myStatus.app;
       b.style.display = show ? '' : 'none';
+      paintTalkBtn();
+    }
+    function paintTalkBtn() {
+      const b = document.getElementById('appaudio');
       const on = roomAudioOn();
-      b.textContent = on ? 'Talk: on' : 'Talk: off';
+      b.textContent = on ? uiText('barTalkOn', 'Talk: on') : uiText('barTalkOff', 'Talk: off');
+      b.title = uiText('barTalkTip', 'Talk with the people in this app — when on, everyone here gets their own mic control (host only)');
       b.classList.toggle('on', on);
     }
     function applyRoomAudio() {
@@ -23415,14 +23463,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const tr = localStream.getAudioTracks()[0];
         if (tr && tr.enabled) { tr.enabled = false; myStatus.muted = true; paintControls(); broadcastStatus(); }
       }
-      if (was !== on) { refreshAudioBtn(); if (!on) setStatus('The app host turned Talk off.'); }
+      if (was !== on) { refreshAudioBtn(); if (!on) setStatus(uiText('barTalkHostOff', 'The app host turned Talk off.')); }
     }
     document.getElementById('appaudio').onclick = () => {
       if (appMode !== 'host' || !myStatus.app) return;
       myStatus.app.audio = !myStatus.app.audio;
       broadcastStatus();
       applyRoomAudio(); refreshAudioBtn();
-      setStatus(myStatus.app.audio ? 'Talk is on — everyone here can turn on their mic.' : 'Talk is off — every mic is quiet.');
+      setStatus(myStatus.app.audio ? uiText('barTalkOnStatus', 'Talk is on — everyone here can turn on their mic.') : uiText('barTalkOffStatus', 'Talk is off — every mic is quiet.'));
     };
     function refreshStealBtn() {
       document.getElementById('appsteal').style.display = (ROOM.kind === 'app' && appMode === 'client') ? '' : 'none';
@@ -23479,7 +23527,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         a.href = URL.createObjectURL(new Blob([bytes], { type: 'image/gif' }));
         a.download = (document.getElementById('appname').textContent || 'app') + '-snapshot.gif';
         a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-      }).catch((e) => setStatus('Could not save: ' + (e && e.message || e)));
+      }).catch((e) => setStatus(uiText('barSaveFail', 'Could not save: {err}').split('{err}').join(e && e.message || e)));
       if (soloCtl && ROOM.solo) soloCtl.save();
       else if (appHostCtl) appHostCtl.save();
       else if (appClientCtl && appClientCtl.snapshot) dl(appClientCtl.snapshot());
@@ -23506,24 +23554,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // their eyes already are — morph it, hold it, restore it.
       const go = (data, btn) => {
         [d1, d2, d3].forEach((x) => { x.disabled = true; });
-        btn.textContent = 'Stealing…';
+        btn.textContent = uiText('stealBusy', 'Stealing…');
         appClientCtl.stealToDesktop({ data })
           .then(() => {
             fold();
-            b.textContent = '🥷 Stolen ✓';
+            b.textContent = uiText('stealDone', '🥷 Stolen ✓');
             b.disabled = true;
             setStatus(data === 'none'
-              ? '🥷 Yours now — a clean copy in your desktop’s Stolen Apps, none of the room’s data.'
+              ? uiText('stealNone', '🥷 Yours now — a clean copy in your desktop’s Stolen Apps, none of the room’s data.')
               : data === 'connect'
-                ? '🥷 Yours now — the room as it stood when you joined, in your Stolen Apps.'
-                : '🥷 Yours now — saved to your desktop’s Stolen Apps, data and all.');
+                ? uiText('stealConnect', '🥷 Yours now — the room as it stood when you joined, in your Stolen Apps.')
+                : uiText('stealAll', '🥷 Yours now — saved to your desktop’s Stolen Apps, data and all.'));
             setTimeout(() => { b.textContent = label; b.disabled = false; }, 4000);
           })
-          .catch((e) => { fold(); setStatus('Could not steal: ' + (e && e.message || e)); });
+          .catch((e) => { fold(); setStatus(uiText('stealFail', 'Could not steal: {err}').split('{err}').join(e && e.message || e)); });
       };
       const mk = (txt, title, data) => {
         const x = document.createElement('button');
-        x.textContent = txt; x.title = title; x.className = b.className;
+        x.textContent = txt; x.title = title; x.className = b.className; x.dataset.steal = data; x.style.fontSize = '16px';
         x.onclick = () => go(data, x);
         b.parentNode.insertBefore(x, b.nextSibling);
         return x;
@@ -23531,9 +23579,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       b.style.display = 'none';
       // Insertion order: reversed, since each lands at b.nextSibling —
       // reads left-to-right as: + data · as I joined · app only.
-      const d3 = mk('app only', 'A clean copy — the app alone, none of the room’s data', 'none');
-      const d2 = mk('as I joined', 'The app and the room as it stood when you came in', 'connect');
-      const d1 = mk('+ data', 'The app and everything in it right now', 'current');
+      const d3 = mk(uiText('stealApp', 'app only'), uiText('stealAppTip', 'A clean copy — the app alone, none of the room’s data'), 'none');
+      const d2 = mk(uiText('stealJoined', 'as I joined'), uiText('stealJoinedTip', 'The app and the room as it stood when you came in'), 'connect');
+      const d1 = mk(uiText('stealData', '+ data'), uiText('stealDataTip', 'The app and everything in it right now'), 'current');
     };
     let appClientStop = null; // live client mount's teardown (unsubscribes its sga lane)
     let appClientCtl = null;  // the client mount's control: snapshot() + setFrozen() (one-runtime freeze/succession)
@@ -23973,7 +24021,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     document.getElementById('apphide').onclick = () => {
       if (!appKey || (myStatus.app && appKey === myStatus.app.s)) return;
       appHiddenSid = appKey;
-      setStatus('🧩 App hidden on your screen only — the meeting still shares it. \u201CShow app\u201D brings it back.');
+      setStatus(uiText('barHideStatus', '🧩 App hidden on your screen only — the meeting still shares it. \u201CShow app\u201D brings it back.'));
       reconcileApp();
     };
     document.getElementById('applead').onclick = () => {
@@ -25311,6 +25359,32 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         updateAppButtons(myStatus.app);
         const b = document.getElementById('appstop');
         return { text: b.textContent, title: b.title, font: parseFloat(getComputedStyle(b).fontSize), display: getComputedStyle(b).display };
+      },
+      appBarForTest: (talkOn) => {
+        document.body.classList.add('has-app');
+        if (talkOn) {
+          document.body.classList.add('app-room');
+          appMode = 'host';
+          myStatus.app = Object.assign(myStatus.app || { s: 'qa-talk' }, { audio: true });
+        } else if (myStatus.app) {
+          myStatus.app.audio = false;
+        }
+        paintTalkBtn();
+        ['appsave', 'appsteal', 'apphide', 'appaudio'].forEach((id) => { document.getElementById(id).style.display = ''; });
+        const read = (id) => {
+          const b = document.getElementById(id);
+          return { text: b.textContent, title: b.title, font: parseFloat(getComputedStyle(b).fontSize) };
+        };
+        return { save: read('appsave'), steal: read('appsteal'), hide: read('apphide'), talk: read('appaudio') };
+      },
+      stealChoicesForTest: () => {
+        appClientCtl = appClientCtl || { stealToDesktop: () => new Promise(() => {}) };
+        const b = document.getElementById('appsteal');
+        b.style.display = '';
+        if (b.dataset.armed) delete b.dataset.armed;
+        document.querySelectorAll('#appbar [data-steal]').forEach((el) => el.remove());
+        b.click();
+        return [...document.querySelectorAll('#appbar [data-steal]')].map((el) => ({ text: el.textContent, title: el.title, data: el.dataset.steal }));
       },
       chatModForTest: (off) => {
         amAdmin = true;
