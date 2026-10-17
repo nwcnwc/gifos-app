@@ -664,8 +664,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      as the room's recording captures it — never a crop. */
   #stagefeed .rowtile video { object-fit: contain; }
   .rowtile .rlabel { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 6px;
-    font-size: .65rem; color: var(--text, #e0e0f0); background: rgba(10,10,15,.7);
+    font-size: .65rem; color: #e0e0f0; background: rgba(10,10,15,.7);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* The band is always dark, so its words are always light: a light theme's
+     --text read near-black on it. The stage's label is read across a room. */
+  #stagefeed .rowtile .rlabel { font-size: .8rem; padding: 3px 8px; }
   /* On stage: the tile floats first and wears the accent — the whole room's
      eye line. The four-bus mix panel is a personal knob rack (receiver-side
      volume only — as ungovernable as any volume knob); the section and
