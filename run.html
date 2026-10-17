@@ -1060,6 +1060,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile:focus-visible { outline: 3px solid #7ec8ff; outline-offset: -3px; }
   .tile .modbar button { padding: .3rem .55rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.16);
                          background: rgba(10,10,15,.85); color: #eceef8; cursor: pointer; font-size: .68rem; }
+  .tile .modbar button[hidden] { display: none !important; }
   .tile .modbar button:hover { border-color: var(--accent2, #ff5caa); }
   .tile.noroute { opacity: .8; border-style: dashed; }
   /* live audio → glowing border (never while muted) */
@@ -4903,6 +4904,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // rule can prevent.
     const forcedCamOff = (id) => { const m = modOf(id).cam; return !!(m && m.on); };
     const modBlurOn = (id) => { const m = modOf(id).blur; return !!(m && m.on); };
+    // A face that is already blurry needs no Blur for all / Blur for everyone:
+    // the sender announced its own blur (Min or Max). A host's blur for all
+    // keeps its Unblur, so that case is the caller's. Explicit state only; a
+    // soft, low-bitrate picture is not "already blurred".
+    const ownBlurOn = (id) => { const st = statusOf.get(id); return !!st && blurLevel(st.blur) > 0; };
     // A claimed screen from someone who may not share. Their video track is
     // the screen, so a receiver treats it the way it treats an admin video-off:
     // the pixels are not shown, composited or recorded. My own page is not
@@ -5564,7 +5570,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let on = false, by = '';
       try { const m = modOf(id).blur; on = !!(m && m.on); by = (m && m.by) || ''; } catch (e) {}
       const label = on ? 'Unblur' : 'Blur for all';
-      box.className = 'blurbox on';
+      box.className = (on || !ownBlurOn(id)) ? 'blurbox on' : 'blurbox';
       if (box.textContent !== label) box.textContent = label;
       box.setAttribute('aria-pressed', on ? 'true' : 'false');
       const tip = on ? ('Blurred for everyone' + (by ? ' by ' + by : '')) : 'Blur for all';
@@ -5745,6 +5751,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const appLabel = (mod.app && mod.app.on) ? 'Revoke apps & stage' : 'Allow apps & stage';
           t.modbar.children[0].textContent = muteLabel; t.modbar.children[0].setAttribute('aria-label', muteLabel);
           t.modbar.children[1].textContent = blurLabel; t.modbar.children[1].setAttribute('aria-label', blurLabel);
+          t.modbar.children[1].hidden = !gBlur && ownBlurOn(id);
           t.modbar.children[2].textContent = appLabel; t.modbar.children[2].setAttribute('aria-label', appLabel);
           for (const b of t.modbar.children) {
             if (!b.getAttribute || b.getAttribute('data-mod') !== 'share') continue;
