@@ -4237,3 +4237,58 @@ test('the Blur row in the More sheet reads at the sheet\'s size', async ({ page 
     }
   }
 });
+
+test('Allow screen share in the More sheet stays on one line', async ({ page }) => {
+  // Seen at 1280 on a live host's More sheet: "Allow screen share" broke
+  // over two lines ("Allow screen / share") in its 168px box while every
+  // other button read on one. "Stop guest shares" (the on state) did too.
+  // The button shows only for a room admin after the join, so the spec shows
+  // it by hand; cross-moreshare.js checks a real live host.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Pastor Kim');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
+  for (const [desk, url] of [['host', HOST_SESSION], ['group', MEET_SESSION]]) {
+    for (const [w, h, chat] of [[1280, 720], [1920, 1080], [900, 720], [800, 720], [1280, 720, true]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.goto(url.replace('desk=', 'desk=moreshare' + desk + w + (chat ? 'chat' : '')));
+      await page.waitForSelector('body.meet-session #mic .docklab');
+      if (chat) { await page.locator('#chatbtn').click(); await expect(page.locator('#chatpanel')).toBeVisible(); }
+      await page.locator('#bartoggle').click();
+      await expect(page.locator('#barmore .blurctl')).toBeVisible();
+      await page.evaluate(() => { document.getElementById('shareall').style.display = ''; });
+      for (const label of ['Allow screen share', 'Stop guest shares']) {
+        await page.evaluate((t) => { document.getElementById('shareall').textContent = t; }, label);
+        await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+        if (desk === 'host' && w === 1280 && !chat && label[0] === 'A') await page.screenshot({ path: 'artifacts/more-share-' + (process.env.SHOT_TAG || 'run') + '.png' });
+        const got = await page.evaluate(() => {
+          const sheet = document.getElementById('barmore');
+          const lines = (b) => {
+            const tops = new Set();
+            for (const n of b.childNodes) if (n.nodeType === 3 && n.textContent.trim()) {
+              const r = document.createRange(); r.selectNodeContents(n);
+              for (const x of r.getClientRects()) tops.add(Math.round(x.top));
+            }
+            for (const s of b.querySelectorAll('.blab')) for (const x of s.getClientRects()) tops.add(Math.round(x.top));
+            return tops.size;
+          };
+          const btns = Array.from(sheet.querySelectorAll(':scope > button')).filter((b) => b.getClientRects().length);
+          const sr = sheet.getBoundingClientRect();
+          const cp = document.getElementById('chatpanel');
+          const edge = cp && cp.getClientRects().length ? cp.getBoundingClientRect().left : innerWidth;
+          return {
+            wrapped: btns.filter((b) => lines(b) > 1).map((b) => b.textContent.trim()),
+            widths: Array.from(new Set(btns.map((b) => Math.round(b.getBoundingClientRect().width)))),
+            sheetInside: sr.left >= 0 && sr.right <= edge + 0.5,
+            sheet: [Math.round(sr.left), Math.round(sr.right), Math.round(edge)],
+          };
+        });
+        const where = desk + ' at ' + w + (chat ? ' with chat' : '') + ' "' + label + '" ' + JSON.stringify(got);
+        expect(got.wrapped, where).toEqual([]);
+        expect(got.widths.length, where + ': the buttons keep one width').toBe(1);
+        expect(got.sheetInside, where).toBe(true);
+      }
+    }
+  }
+});
