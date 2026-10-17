@@ -27185,6 +27185,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { localStorage.setItem('gifos_cc_view', ccShow ? '1' : '0'); } catch (e) {}
       paintCcView();
       if (!ccShow) return;
+      // Turning captions on is the way back from a Whisper give-up: the pause
+      // holds until Whisper is re-picked or CC is turned on.
+      if (wspPaused) {
+        wspPaused = false; wspQ.stalls = 0; wspQ.behind = false;
+        if (myStatus.ccst === 'behind' || myStatus.ccst === 'paused') delete myStatus.ccst;
+        try { syncSpeech(); } catch (e) {}
+        try { paintCcState(); } catch (e) {}
+      }
       const lines = trBlocks();
       const last = lines.length ? lines[lines.length - 1] : null;
       if (last) showCaption(last.byId, last.text);
