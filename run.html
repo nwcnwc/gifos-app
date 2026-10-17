@@ -6130,14 +6130,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const mic = localStream && localStream.getAudioTracks()[0];
       if (mic) out.push({ key: 'me:' + mic.id, owner: myId, stream: localStream, gain: 1 });
       const held = (pid) => { try { const gm = modOf(pid).mute; return !!(gm && gm.on); } catch (e) { return false; } }; // "mute for everyone" holds in the mix too
+      // A source is one live audio track, and its key names that track: a
+      // renegotiation that ends a pair's track and adds a new one to the same
+      // stream makes a new key, so every mix drops the ended track (which
+      // reads silence for ever) and folds the live one.
+      const live = (st) => { for (const t of st.getAudioTracks()) if (t.readyState !== 'ended') return t; return null; };
       for (const q of peers.values()) {
-        if (!q.connected || q.relayed || !q.stream || !q.stream.getAudioTracks().length) continue;
+        if (!q.connected || q.relayed || !q.stream) continue;
         if (typeof mediaOk === 'function' && mediaOk(q.id) === false) continue;
-        out.push({ key: 'p:' + q.id + ':' + q.stream.id, owner: q.id, stream: q.stream, gain: held(q.id) ? 0 : 1 });
+        const t = live(q.stream); if (!t) continue;
+        out.push({ key: 'p:' + q.id + ':' + q.stream.id + ':' + t.id, owner: q.id, stream: new MediaStream([t]), gain: held(q.id) ? 0 : 1 });
       }
       for (const [target, r] of relayVia) {
-        if (!r.stream || !r.stream.getAudioTracks().length) continue;
-        out.push({ key: 'r:' + target + ':' + r.stream.id, owner: target, stream: r.stream, gain: held(target) ? 0 : 1 });
+        if (!r.stream) continue;
+        const t = live(r.stream); if (!t) continue;
+        out.push({ key: 'r:' + target + ':' + r.stream.id + ':' + t.id, owner: target, stream: new MediaStream([t]), gain: held(target) ? 0 : 1 });
       }
       if (stageEar && stageEar.fold && stageEar.fold.dest) out.push({ key: 'stage', owner: null, stream: stageEar.fold.dest.stream, gain: 1 });
       return out;
@@ -22620,7 +22627,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         anchor: turnAnchorId != null ? (rosterNames[turnAnchorId] || (peers.get(turnAnchorId) || {}).name || String(turnAnchorId).slice(0, 8)) : null,
         serving: [...peers.values()].filter((p) => p.turnServe).map((p) => rosterNames[p.id] || p.name || String(p.id).slice(0, 8)),
         // what this page plays from each pair: its sound element's state (missing, paused, muted, volume)
-        ears: [...peers.values()].map((p) => { const a = p.video && p.video._aud; return [rosterNames[p.id] || String(p.id).slice(0, 8), a ? (a.paused ? 'paused' : 'playing') + (a.muted ? '/muted' : '') + '/' + Math.round((a.volume || 0) * 100) + (a.srcObject ? '' : '/no-src') : 'none', (a && a.srcObject ? a.srcObject.getAudioTracks() : []).map((t) => t.id.slice(0, 8) + (t.muted ? ':muted' : '')).join(','), (p.stream ? p.stream.getAudioTracks() : []).map((t) => t.id.slice(0, 8) + (t.muted ? ':muted' : '')).join(',')]; }),
+        ears: [...peers.values()].map((p) => { const a = p.video && p.video._aud; return [rosterNames[p.id] || String(p.id).slice(0, 8), a ? (a.paused ? 'paused' : 'playing') + (a.muted ? '/muted' : '') + '/' + Math.round((a.volume || 0) * 100) + (a.srcObject ? '' : '/no-src') : 'none', (a && a.srcObject ? a.srcObject.getAudioTracks() : []).map((t) => t.id.slice(0, 8) + (t.muted ? ':muted' : '')).join(','), (p.stream ? p.stream.getAudioTracks() : []).map((t) => t.id.slice(0, 8) + (t.muted ? ':muted' : '')).join(','), (() => { try { return p.pc ? p.pc.getTransceivers().filter((x) => x.sender && x.sender.track && x.sender.track.kind === 'audio' && x.currentDirection && x.currentDirection.indexOf('send') >= 0).map((x) => x.mid + (x.sender === p.mainA ? '*' : '')).join(',') : ''; } catch (e) { return ''; } })()]; }),   // ...and the mids that send audio on the pair (* = the voice sender)
         // the mixes this page sends: its uplink to its anchor, one mix-minus per client, one feed per row mate (source keys by owner name), and whether each sender carries it
         mixes: (() => { const nm = (id) => rosterNames[id] || String(id).slice(0, 8); const keys = (ks) => [...ks].map((k) => { const m = /^(?:p|r):([^:]+):/.exec(k); return m ? nm(m[1]) : k.split(':')[0]; });
           const sent = (pid, t) => { const q = peers.get(pid); return !!(q && q.mainA && t && q.mainA.track === t); };
