@@ -3328,3 +3328,71 @@ test('? lists the keyboard shortcuts that work here', async ({ page }) => {
   await page.keyboard.press('?');
   await expect(page.locator('#keys-modal'), 'lobby').toBeHidden();
 });
+
+test('C, H and R open Chat, raise a hand and open Reactions', async ({ page }) => {
+  // Only M and V acted: Chat, Raise hand and Reactions took a Tab walk
+  // through the dock, on a service host, a viewer and a small group. Zoom
+  // and Meet each give chat and raise hand a key.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const who of ['host', 'view', 'group']) {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const url = who === 'group'
+      ? '/run.html?desk=keys2g#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=keys2' + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    await page.evaluate(() => document.activeElement && document.activeElement.blur());
+    // C opens the chat with the keyboard in the message box.
+    await page.keyboard.press('c');
+    if (who === 'host') {
+      await page.waitForTimeout(300);
+      await page.screenshot({ path: 'artifacts/keys2-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    }
+    await expect(page.locator('#chatpanel'), who + ': C opens the chat').toHaveClass(/open/);
+    await expect(page.locator('#chat-in'), who + ': C lands in the message box').toBeFocused();
+    // Typing a c, h or r in the chat stays in the chat.
+    await page.keyboard.type('chr');
+    await expect(page.locator('#chat-in'), who).toHaveValue('chr');
+    await expect(page.locator('#reacttray'), who).toBeHidden();
+    await page.locator('#chat-in').fill('');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#chatpanel'), who + ': Escape closes the chat').not.toHaveClass(/open/);
+    // C again from the dock closes an open chat as well.
+    await page.keyboard.press('c');
+    await expect(page.locator('#chatpanel'), who).toHaveClass(/open/);
+    await page.locator('#chatbtn').focus();
+    await page.keyboard.press('c');
+    await expect(page.locator('#chatpanel'), who + ': C closes the chat').not.toHaveClass(/open/);
+    // R opens Reactions with the keyboard on the first one.
+    await page.keyboard.press('r');
+    await expect(page.locator('#reacttray'), who + ': R opens Reactions').toBeVisible();
+    await expect(page.locator('#reacttray button').first(), who + ': R lands on the first reaction').toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#reacttray'), who).toBeHidden();
+    // H raises and lowers the hand where a hand can go up (a viewer, a
+    // small group); a service host has no hand to raise.
+    const hand = page.locator('#react-hand');
+    await page.keyboard.press('h');
+    if (who === 'host') await expect(hand, who + ': no hand for a host').not.toHaveAttribute('aria-pressed', 'true');
+    else {
+      await expect(hand, who + ': H raises the hand').toHaveAttribute('aria-pressed', 'true');
+      await page.keyboard.press('h');
+      await expect(hand, who + ': H lowers it').toHaveAttribute('aria-pressed', 'false');
+    }
+    // The ? list names them.
+    await page.keyboard.press('?');
+    const keys = await page.locator('#keys-modal kbd').allTextContents();
+    expect(keys, who).toEqual(expect.arrayContaining(['C', 'R']));
+    if (who === 'host') expect(keys, who).not.toContain('H');
+    else expect(keys, who).toContain('H');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#chatbtn'), who).toHaveAttribute('aria-keyshortcuts', 'C');
+    await expect(page.locator('#reactbtn'), who).toHaveAttribute('aria-keyshortcuts', 'R');
+  }
+});
