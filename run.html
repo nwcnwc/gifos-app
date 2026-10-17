@@ -6337,12 +6337,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const st = statusOf.get(p.id) || {};
       const mod = modOf(p.id) || {};
       const r = relayVia.get(p.id), rs = r && r.stream;
+      const live = vaPictureLive(p, now);
       return {
         isMe: false,
         camOn: !seatDark(st) && !(mod.cam && mod.cam.on) && !shareBlocked(p.id),
-        pictureLive: vaPictureLive(p, now),
+        pictureLive: live,
         freePair: !!(p.connected && p.turnAudio),
-        voiceCarry: !!(rs && rs.getAudioTracks().length && !rs.getVideoTracks().length),
+        // Voice carried without a picture: a carry of the voice alone, or a
+        // carry of someone whose own network blocks direct video and whose
+        // picture does not arrive (the carry keeps its video track after
+        // the paid hours run out, but the picture stops at the source).
+        voiceCarry: !!(rs && rs.getAudioTracks().length && (!rs.getVideoTracks().length || (st.np === 'blocked' && !live))),
         inMixOnly: turnHeard() && p.id !== turnAnchorId && !p.connected && !rs,
       };
     }
