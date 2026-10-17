@@ -32,8 +32,9 @@ const TX_BY_PC = () => window.__txByPc = async () => {
   for (const pc of window.__pcs) {
     if (pc.connectionState === 'closed') continue;
     let rtp = 0, dc = 0;
-    try { (await pc.getStats()).forEach((s) => { if (s.type === 'outbound-rtp') rtp += s.bytesSent || 0; if (s.type === 'data-channel') dc += s.bytesSent || 0; }); } catch (e) {}
-    out.push({ rtp, dc });
+    const by = {};
+    try { (await pc.getStats()).forEach((s) => { if (s.type === 'outbound-rtp') { rtp += s.bytesSent || 0; by[s.kind + ':' + s.mid] = s.bytesSent || 0; } if (s.type === 'data-channel') dc += s.bytesSent || 0; }); } catch (e) {}
+    out.push({ rtp, dc, by });
   }
   return out;
 };
@@ -107,7 +108,7 @@ test('a late arrival never adds host upload', async ({ browser, baseURL }, info)
       const k1 = await h.evaluate(() => (window.__gifosVideo.txKindBytes || (() => ({})))());
       const kinds = Object.fromEntries(Object.keys(k1).map((k) => [k, Math.round((k1[k] - (k0[k] || 0)) / dt)]).filter((x) => x[1] > 20).sort((x, y) => y[1] - x[1]));
       // Links are matched by position: __pcs only grows, closed ones drop out of both.
-      const perLink = b.map((x, i) => ({ rtp: (x.rtp - ((a[i] || {}).rtp || 0)) / dt, dc: (x.dc - ((a[i] || {}).dc || 0)) / dt }));
+      const perLink = b.map((x, i) => ({ rtp: (x.rtp - ((a[i] || {}).rtp || 0)) / dt, dc: (x.dc - ((a[i] || {}).dc || 0)) / dt, by: Object.fromEntries(Object.entries(x.by).map(([k, v]) => [k, Math.round((v - (((a[i] || {}).by || {})[k] || 0)) / dt)]).filter((e) => e[1] > 50)) }));
       const mediaLinks = perLink.filter((x) => x.rtp > 1000).length;
       const rtp = Math.round(perLink.reduce((s, x) => s + x.rtp, 0));
       const dc = Math.round(perLink.reduce((s, x) => s + x.dc, 0));
@@ -115,10 +116,14 @@ test('a late arrival never adds host upload', async ({ browser, baseURL }, info)
       const via = [];
       for (const v of viewers) via.push(await v.evaluate(() => window.__gifosVideo.stageViaForTest()).catch(() => null));
       const display = await h.evaluate(() => window.__gifosVideo.statusPlane().display);
+      // Which of the host's ship jobs are hot, and where each joiner sits.
+      const hostJobs = await h.evaluate(() => { const m = window.__gifosVideo.mosaic(); return { coord: m.coord, jobs: m.jobsActive }; }).catch(() => null);
+      const seats = [];
+      for (const v of viewers) seats.push(await v.evaluate(() => { const m = window.__gifosVideo.mosaic(); return { me: m.me, coord: m.coord, claims: m.claims, standby: m.standby }; }).catch(() => null));
       // Status beats the host put on the channel: its own beat, plus every
       // beat it passed on through the section flood.
       const beat = Object.entries(kinds).filter(([k]) => /(^|:)status$/.test(k)).reduce((a, [, v]) => a + v, 0);
-      waves.push({ joiners: viewers.length, neg: n1 - n0, mediaLinks, rtpBps: rtp, dcBps: dc, dcLinks, dcPerLink: Math.round(dc / dcLinks), beatPerLink: Math.round(beat / dcLinks), display, kinds, perLink: perLink.map((x) => [Math.round(x.rtp), Math.round(x.dc)]), via });
+      waves.push({ joiners: viewers.length, neg: n1 - n0, mediaLinks, rtpBps: rtp, dcBps: dc, dcLinks, dcPerLink: Math.round(dc / dcLinks), beatPerLink: Math.round(beat / dcLinks), display, kinds, perLink: perLink.map((x) => [Math.round(x.rtp), Math.round(x.dc), x.by]), via, hostJobs, seats });
       console.log(`[${info.project.name}] ${viewers.length} joiners: host offers+answers in ${WINDOW_MS / 1000}s ${n1 - n0}, media links ${mediaLinks}, rtp ${(rtp / 1000).toFixed(1)} KB/s, dc ${(dc / 1000).toFixed(1)} KB/s on ${dcLinks} links (beats ${(beat / 1000).toFixed(1)}), host counts ${display}`);
     }
     // The last joiner (past the host's own links at 6) raises a hand; the
