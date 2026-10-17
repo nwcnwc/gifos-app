@@ -88,7 +88,9 @@ async function run(browser, dev, tag, count, bad) {
     // A tap on the room name must reach it, not the bar.
     const hit = await page.evaluate(() => {
       const st = document.getElementById('status');
-      const r = st.getBoundingClientRect();
+      const r = st && st.getBoundingClientRect();
+      // Desktop shows the count in the header; its room name is a 1px stub.
+      if (!r || r.width < 8 || getComputedStyle(st).visibility === 'hidden') return true;
       const el = document.elementFromPoint(r.left + Math.min(40, r.width / 2), r.top + r.height / 2);
       return !!el && !!el.closest('#status');
     });

@@ -1572,6 +1572,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, .seg:focus-visible {
     outline: 3px solid #0064c8; outline-offset: 2px;
   }
+  /* What is pinned to the top of a call (the header chip, Fit, Unmute, the
+     build name, the lobby's notice) starts below the notch and below the
+     "new version" bar, which floats over the top of the page (js/gifos-update.js)
+     and used to cover the room name, a phone's only way into People.
+     run.html sets --updh to the bar's height while it shows. */
+  :root { --gtop: max(env(safe-area-inset-top, 0px), var(--updh, 0px)); }
   .topchip { position: fixed; z-index: 6; top: 14px; left: 14px; display: flex; align-items: center; gap: 8px;
     width: max-content; max-width: calc(100vw - 140px); background: rgba(12,14,18,.92); color: #f4f7fb;
     border-radius: 999px; padding: 6px 12px 6px 14px; }
@@ -1620,7 +1626,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .topchip[data-invite="1"] { padding-right: 0; }
     .topchip[data-invite="1"] #hdrinvite:not([hidden]) { display: inline-flex; }
   }
-  .fitbtn { position: fixed; z-index: 6; top: calc(58px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); min-width: 44px; min-height: 44px;
+  .fitbtn { position: fixed; z-index: 6; top: calc(58px + var(--gtop)); right: calc(14px + env(safe-area-inset-right, 0px)); min-width: 44px; min-height: 44px;
     border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer;
     background: rgba(12,14,18,.92); color: #f4f7fb; font: 700 1rem/1.2 system-ui, sans-serif; }
   /* A texted link skips the lobby, so "You join muted" is never seen.
@@ -1630,7 +1636,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      The picture stays on the video feed. This is not a second avatar. */
   #unmute, #showcam {
     position: fixed; z-index: 7;
-    top: calc(58px + env(safe-area-inset-top, 0px));
+    top: calc(58px + var(--gtop));
     left: calc(14px + env(safe-area-inset-left, 0px));
     min-width: 44px; min-height: 44px; padding: 8px 16px; border: 0; border-radius: 999px;
     background: #0064c8; color: #fff; cursor: pointer;
@@ -1642,7 +1648,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        Unmute sits in the gap between them, and the chip stops short of it. */
     .topchip { max-width: calc(100% - 12rem - 48px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
     #unmute, #showcam {
-      top: calc(14px + env(safe-area-inset-top, 0px));
+      top: calc(14px + var(--gtop));
       left: auto;
       right: calc(5rem + 24px + env(safe-area-inset-right, 0px));
       transform: none;
@@ -1750,7 +1756,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* The build name used to be a solid chip in the corner, beside Fit, and
      Fit hung down onto the top face. Fit shares the header row. The build
      name is a faint line under that row, not a second button. */
-  #gifos-build-float { top: calc(58px + env(safe-area-inset-top, 0px)) !important; left: calc(14px + env(safe-area-inset-left, 0px)) !important;
+  #gifos-build-float { top: calc(58px + var(--gtop)) !important; left: calc(14px + env(safe-area-inset-left, 0px)) !important;
     right: auto !important; bottom: auto !important;
     opacity: 0.55 !important; color: #c5cad3 !important; background: transparent !important; padding: 0 !important;
     border-radius: 0 !important; font-size: 11px !important; line-height: 1.2 !important;
@@ -1759,7 +1765,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      ran across the first two faces. It sits in the strip above the header
      instead, which stays clear with the buttons up or away. */
   @media (max-height: 500px) and (orientation: landscape) {
-    #gifos-build-float { top: env(safe-area-inset-top, 0px) !important; }
+    #gifos-build-float { top: var(--gtop) !important; }
   }
   .bar { position: fixed; z-index: 32; left: 50%; bottom: 14px; transform: translateX(-50%);
     display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; height: 104px; width: auto;
@@ -2044,7 +2050,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      picture instead of pushing Start, the admin action, and Join down. */
   @media (min-height: 431px) {
     #lobby.show .lob-appear { position: fixed; z-index: 36; left: 12px; right: 12px;
-      top: calc(12px + env(safe-area-inset-top, 0px)); margin: 0; width: auto;
+      top: calc(12px + var(--gtop)); margin: 0; width: auto;
       background: rgba(255,255,255,.96); box-shadow: 0 8px 24px rgba(0,0,0,.28); }
     #lobby.show .lob-pv-name { display: none; }
   }
@@ -2260,12 +2266,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      top of a 34px home indicator, and the name chip sat at y=14 under a
      47px notch. */
   .bar { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
-  .topchip { top: calc(14px + env(safe-area-inset-top, 0px)); left: calc(14px + env(safe-area-inset-left, 0px)); }
-  .fitbtn { top: calc(58px + env(safe-area-inset-top, 0px)); right: calc(14px + env(safe-area-inset-right, 0px)); }
+  .topchip { top: calc(14px + var(--gtop)); left: calc(14px + env(safe-area-inset-left, 0px)); }
+  .fitbtn { top: calc(58px + var(--gtop)); right: calc(14px + env(safe-area-inset-right, 0px)); }
   /* On a short landscape phone the chip and Fit share one row, so the
      faces can start higher. Portrait keeps Fit under the chip. */
   @media (max-height: 500px) and (orientation: landscape) {
-    .fitbtn { top: calc(14px + env(safe-area-inset-top, 0px)); }
+    .fitbtn { top: calc(14px + var(--gtop)); }
   }
   .bar:not(.collapsed) .barmore {
     bottom: calc(122px + env(safe-area-inset-bottom, 0px));
@@ -6581,13 +6587,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const shortLand = vhNow < 500 && vwNow > vhNow && vwNow < 900;
         const phone = vwNow < 600 || shortLand;
         let topInset = 0;
-        if (shortLand) {
+        // The "new version" bar moves the header down by --updh; the faces
+        // start under the moved header, never under the bar.
+        const updH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--updh')) || 0;
+        if (shortLand || updH > 0) {
           let below = 0;
           const fitEl = document.getElementById('fitbtn');
           const chipEl = document.querySelector('.topchip');
           if (chipEl) below = Math.max(below, chipEl.getBoundingClientRect().bottom);
           if (fitEl) below = Math.max(below, fitEl.getBoundingClientRect().bottom);
-          if (below > 0) topInset = Math.ceil(below + 8);
+          // Upright keeps meet-layout's 120 (Fit at 200% text) when it is lower.
+          if (below > 0) topInset = shortLand ? Math.ceil(below + 8) : Math.max(120, Math.ceil(below + 18));
         }
         let holdMs = 2500;
         try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}
@@ -6655,6 +6665,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (comfyResizeT) clearTimeout(comfyResizeT);
       comfyResizeT = setTimeout(() => { comfyResizeT = 0; try { layout(); } catch (e) {} }, 150);
     });
+    // The "new version" bar (js/gifos-update.js) floats over the top of the
+    // page. While it shows, --updh holds its height, so the header, Fit and
+    // the faces move down under it (--gtop in the CSS), and back up once it
+    // is dismissed. The bar is added to <body> on the first check.
+    (function () {
+      let updWas = -1, updSeen = null;
+      const sync = () => {
+        const bar = document.getElementById('update-bar');
+        if (bar && bar !== updSeen) {
+          updSeen = bar;
+          new MutationObserver(sync).observe(bar, { attributes: true, attributeFilter: ['style', 'class'] });
+          if (window.ResizeObserver) new ResizeObserver(sync).observe(bar);
+        }
+        const h = bar && bar.style.display !== 'none' ? Math.ceil(bar.getBoundingClientRect().height) : 0;
+        if (h === updWas) return;
+        updWas = h;
+        document.documentElement.style.setProperty('--updh', h + 'px');
+        try { layout(); } catch (e) {}
+      };
+      const watchBody = new MutationObserver(() => { if (document.getElementById('update-bar')) { watchBody.disconnect(); sync(); } });
+      watchBody.observe(document.body, { childList: true });
+      sync();
+    })();
 
     // ---- who's talking: per-stream audio meters → glowing tile border --------
     let ac = null;
