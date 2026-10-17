@@ -2789,3 +2789,32 @@ test('a viewer sees who is on stage when their camera is off', async ({ page }) 
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('#stagefeed .rowtile video')).visibility)).toBe('visible');
   expect(errors).toEqual([]);
 });
+
+test('a viewer at the name card has no camera or mic on the dock', async ({ page }) => {
+  // Seen across two machines: a viewer opening the link got red Video and
+  // Unmute on the dock behind "This is how you'll appear", until they saved.
+  // A viewer brings no camera; the host still has both.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.removeItem('gifos_appear_ok');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  await page.goto('/run.html?desk=namecard#v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#appear-modal')).toBeVisible();
+  await expect(page.locator('#appear-note')).toBeVisible();
+  await expect(page.locator('.bar #cam')).toBeHidden();
+  await expect(page.locator('.bar #mic')).toBeHidden();
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.waitForSelector('#airbar.on.watch');
+  await expect(page.locator('.bar #cam')).toBeHidden();
+  await expect(page.locator('.bar #mic')).toBeHidden();
+  await page.goto('/run.html?desk=namecardhost&host=1#v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#appear-modal')).toBeVisible();
+  await expect(page.locator('#appear-note')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Save' }).click();
+  await page.waitForSelector('#airbar.on.live');
+  await expect(page.locator('.bar #cam')).toBeVisible();
+  await expect(page.locator('.bar #mic')).toBeVisible();
+});
