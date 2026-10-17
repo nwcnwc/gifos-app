@@ -2009,7 +2009,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div id="chathead"><span id="paneltitle">Meeting chat</span> <small id="chatprivacy" style="color:#667;font-weight:400">· private to this meeting, gone when everyone leaves</small>
       <button id="trtab" style="margin-left:auto">Transcript</button>
       <button id="chatmod" style="display:none" title="Silence the chat for everyone but you">Turn chat off</button>
-      <button id="chatclose">✕</button></div>
+      <button id="chatclose" type="button" aria-label="Close chat" title="Close chat">✕</button></div>
     <div id="chatlog"></div>
     <div id="trwrap">
       <div id="trlog"><small style="color:#667">Tap Captions in the bar and your device writes down everyone it hears — the lines gather here under each speaker's name, on every device in the meeting.</small></div>
@@ -2018,7 +2018,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div id="cfiles" hidden><h4>Files pinned to this meeting</h4><div id="cfilelist"></div></div>
     <form id="chatform">
       <button type="button" id="pray" aria-pressed="false" title="Mark messages as prayer requests">Prayer</button>
-      <button type="button" id="cattach" title="Pin a file to the meeting">📎</button>
+      <button type="button" id="cattach" aria-label="Pin a file to the meeting" title="Pin a file to the meeting">📎</button>
       <input type="file" id="cfile-in" multiple style="display:none">
       <input type="text" id="chat-in" placeholder="Message everyone…" autocomplete="off" maxlength="2000">
       <button type="submit">Send</button>
@@ -2678,7 +2678,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const setMeet = document.getElementById('setbtn');
         if (setMeet) setMeet.title = 'Meeting settings — your sound mix, timing, and the video quality your camera records';
         const pinMeet = document.getElementById('cattach');
-        if (pinMeet) pinMeet.title = 'Pin a file to the meeting';
+        if (pinMeet) { pinMeet.title = 'Pin a file to the meeting'; pinMeet.setAttribute('aria-label', pinMeet.title); }
         const appMeet = document.getElementById('appbtn');
         if (appMeet) appMeet.title = 'Run an app inside this meeting — everyone here shares and interacts with it live';
         const appTitle = document.getElementById('app-title');
@@ -2732,7 +2732,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const files = document.querySelector('#cfiles h4');
       if (files) files.textContent = 'Files pinned to this service';
       const pin = document.getElementById('cattach');
-      if (pin) pin.title = 'Pin a file to this service';
+      if (pin) { pin.title = 'Pin a file to this service'; pin.setAttribute('aria-label', pin.title); }
       const appBtn = document.getElementById('appbtn');
       if (appBtn) appBtn.title = 'Run an app on this service — everyone watching shares it and can use it.';
       const appTitle = document.getElementById('app-title');
@@ -14228,7 +14228,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // is not painted while the panel is closed: paint the tab that shows.
       if (chatPanel.classList.contains('open')) { unread = 0; paintChatCount(); if (transcriptShown()) renderTranscript(); else renderChat(); renderFiles(); }
     };
-    document.getElementById('chatclose').onclick = () => chatPanel.classList.remove('open');
+    // The keyboard lands back on Chat, not on the page body, as Escape does.
+    document.getElementById('chatclose').onclick = () => { chatPanel.classList.remove('open'); try { chatBtn.focus(); } catch (err) {} };
 
     // ---- peer relay: a mutual friend forwards media between blocked pairs ----
     // When B and C can't reach each other but both reach A, B asks A (the
