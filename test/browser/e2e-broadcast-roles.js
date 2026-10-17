@@ -149,7 +149,10 @@ function fail(list, msg) { list.push(msg); }
     });
     // The viewer's hand is docked and labelled Raise hand (qa-broadcast-desktop, newer than Ask to join).
     if (v.hand.indexOf('Raise hand') < 0) fail(bad, tag + ' viewer hand says "' + v.hand + '"');
-    for (const [key, label] of [['mic', 'mic'], ['cam', 'camera'], ['share', 'share'], ['app', 'run app'], ['rec', 'record'], ['cc', 'captions'], ['pw', 'password'], ['stage', 'stage'], ['blur', 'blur']]) {
+    // CC only shows or hides captions on this screen (the meeting is always
+    // transcribed), so a viewer keeps it.
+    if (v.cc === 'none') fail(bad, tag + ' viewer lost captions');
+    for (const [key, label] of [['mic', 'mic'], ['cam', 'camera'], ['share', 'share'], ['app', 'run app'], ['rec', 'record'], ['pw', 'password'], ['stage', 'stage'], ['blur', 'blur']]) {
       if (v[key] !== 'none') fail(bad, tag + ' viewer ' + label + ' display ' + v[key]);
     }
     if (v.chat === 'none' || v.who === 'none') fail(bad, tag + ' viewer lost chat or who');

@@ -47,10 +47,13 @@ async function bootSession(page, width, height) {
   });
   await page.setViewportSize({ width, height });
   await page.goto(SESSION);
-  await page.waitForSelector('body.broadcast.meet-session #mic .docklab');
+  await page.waitForSelector('body.broadcast.meet-session #leavebtn .docklab');
 }
 
 test('mute and camera are labeled and the off state is filled red', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+  });
   for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
     await bootSession(page, w, h);
     const mic = page.locator('#mic');
@@ -147,9 +150,10 @@ test('a broadcast host is marked Live and the room is not called a meeting', asy
   await page.waitForSelector('body.broadcast.meet-session');
   await expect(page).toHaveTitle('Service — GifOS');
   await expect(page.locator('#paneltitle')).toHaveText('Service chat');
-  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
-  await expect(page.locator('#onair')).toHaveText('Live');
-  await expect(page.locator('#onair')).toHaveClass(/live/);
+  // A host whose camera and microphone are still off is off air (confirmed design).
+  await expect(page.locator('#airkind')).toHaveText('Service · You are off air');
+  await expect(page.locator('#onair')).toHaveText('Off air');
+  await expect(page.locator('#onair')).toHaveClass(/off/);
   await expect(page.locator('#leavebtn')).toHaveAttribute('title', /service/i);
   await expect(page.locator('#leave-ask-title')).toHaveText('Leave the service?');
   expect((await page.locator('#leavebtn').getAttribute('title')).toLowerCase()).not.toContain('meeting');
@@ -317,7 +321,7 @@ test('a service password is the viewer password', async ({ page }) => {
   for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/run.html?desk=vpw' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#onair.live');
+    await page.waitForSelector('#onair.off');
     await page.locator('#bartoggle').click();
     const pw = page.locator('#pwbtn');
     await expect(pw).toHaveAttribute('title', 'Viewer password. Optional. It is not part of the link.');
@@ -420,7 +424,7 @@ test('full screen on a service shows the stage', async ({ page }) => {
   }
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/run.html?desk=fsstagehost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('#onair.live');
+  await page.waitForSelector('#onair.off');
   await page.evaluate(() => window.__gifosVideo.setStageForTest(true));
   await page.locator('#fsbtn').click();
   const onStage = await readFs();
@@ -518,6 +522,7 @@ test('a family call and a church broadcast start from a plain lobby', async ({ p
   }
   await page.locator('#lob-join-btn').click();
   await expect(page.locator('#lob-join-in')).toBeVisible();
+  await expect(page.locator('#lob-watch-note')).toBeHidden();
   await expect(page.locator('#lob-admin')).toBeHidden();
   await page.locator('#lob-admin-btn').click();
   await expect(page.locator('#lob-admin-pass')).toBeVisible();
@@ -564,9 +569,8 @@ test('the screen-name step prefills your GifOS name and picture', async ({ page 
   await page.evaluate(() => { window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); return null; });
   const dialog = page.locator('#appear-modal .appear-box');
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('h3')).toHaveText("This is how you'll appear");
-  await expect(dialog.locator('#appear-note')).toHaveText('Only seen if you raise your hand and are promoted to the stage.');
-  await expect(dialog).not.toContainText('in the meeting');
+  await expect(dialog.locator('h3')).toHaveText('Watching the service');
+  await expect(dialog.locator('#appear-note')).toHaveText('You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.');
   await expect(page.locator('#nm')).toHaveValue('Avery Chen');
   await expect(page.locator('#appear-face img')).toHaveAttribute('src', new RegExp(png.slice(0, 24)));
   await expect(page.locator('#nmcancel')).toHaveText('Clear');
@@ -622,8 +626,9 @@ test('a broadcast viewer is told their picture stays off the stage', async ({ pa
     await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); });
     const note = page.locator('#appear-note');
     await expect(note).toBeVisible();
-    await expect(note).toHaveText('Only seen if you raise your hand and are promoted to the stage.');
-    await expect(page.locator('#appear-title')).toHaveText("This is how you'll appear");
+    // The viewer's join step wording from desktop-watching-gaps (newer).
+    await expect(note).toHaveText('You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.');
+    await expect(page.locator('#appear-title')).toHaveText('Watching the service');
     const fit = await page.evaluate(() => {
       const box = document.querySelector('#appear-modal .appear-box').getBoundingClientRect();
       const line = document.getElementById('appear-note').getBoundingClientRect();
@@ -640,7 +645,7 @@ test('a broadcast viewer is told their picture stays off the stage', async ({ pa
   }
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/run.html?desk=anotehost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('#airbar.on.live');
+  await page.waitForSelector('#airbar.on.off');
   await page.evaluate(() => { sessionStorage.removeItem('gifos_appear_ok'); window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); });
   await expect(page.locator('#appear-title')).toHaveText("This is how you'll appear");
   await expect(page.locator('#appear-note')).toHaveCount(0);
@@ -794,6 +799,104 @@ test('a service hides Fit because the stage is one picture', async ({ page }) =>
   await expect(btn).toHaveAttribute('aria-pressed', 'false');
 });
 
+test('a watching viewer keeps Hand and loses the publish controls', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Pat');
+    localStorage.setItem('gifos_meet_bar', '0');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(SESSION, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.broadcast.bc-watching #onair.watch');
+  await page.waitForFunction(() => window.__gifosVideo && window.__gifosVideo.stageFlagForTest);
+  await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+  await expect(page.locator('#mic')).toBeHidden();
+  await expect(page.locator('#cam')).toBeHidden();
+  await expect(page.locator('#stagebtn')).toBeHidden();
+  await expect(page.locator('#hand')).toBeVisible();
+  await expect(page.locator('#hand')).toContainText('Raise hand');
+  const leaked = await page.evaluate(() => {
+    window.__gumCalls = 0;
+    const md = navigator.mediaDevices;
+    if (md && md.getUserMedia) {
+      const orig = md.getUserMedia.bind(md);
+      md.getUserMedia = function () {
+        window.__gumCalls += 1;
+        return orig.apply(md, arguments);
+      };
+    }
+    document.getElementById('mic').click();
+    document.getElementById('cam').click();
+    document.getElementById('stagebtn').click();
+    return {
+      gum: window.__gumCalls,
+      stage: window.__gifosVideo.stageFlagForTest(),
+    };
+  });
+  expect(leaked.gum).toBe(0);
+  expect(leaked.stage).toBe(0);
+  await page.locator('#hand').click();
+  await expect(page.locator('#hand')).toContainText('Lower hand');
+  await page.locator('#helpbtn').click();
+  const help = page.locator('#help-modal .help-scroll');
+  await expect(help).toBeVisible();
+  await expect(help).not.toContainText('Ban lives on each tile');
+  await expect(help).toContainText('Raised hands are a list');
+  await expect(help).toContainText('Promote');
+  await expect(help).toContainText('Demote');
+  await expect(help).toContainText('stage seat');
+  await page.goto('/run.html?desk=watchjoin#bc=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#lobby.show');
+  await page.locator('#lob-join-btn').click();
+  await expect(page.locator('#lob-watch-note')).toBeVisible();
+  await expect(page.locator('#lob-watch-note')).toHaveText('Watching the service. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.');
+  await page.locator('#lob-admin-btn').click();
+  await expect(page.locator('#lob-admin')).toBeVisible();
+  await expect(page.locator('#lob-admin')).not.toContainText('only seen if you raise a hand');
+});
+
+test('a host promotes from a raised-hands list', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '0');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.hash.indexOf('who=view') === -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.goto(HOST_SESSION, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.broadcast #onair.off');
+  await expect(page.locator('#handraise')).toBeHidden();
+  const id = await page.evaluate(() => window.__gifosVideo.raisedHandForTest('Sam Okonkwo'));
+  expect(id).toBe('qa-hand');
+  const row = page.locator('#handraise .raiserow[data-peer="qa-hand"]');
+  await expect(page.locator('#handraise')).toBeVisible();
+  await expect(page.locator('#handraise .raisekicker')).toHaveText('Raised hands');
+  await expect(row).toHaveAttribute('aria-label', /Sam Okonkwo/);
+  await expect(row.locator('[data-raise="promote"]')).toHaveText('Promote');
+  await expect(row.locator('[data-raise="mute"]')).toBeVisible();
+  await expect(row.locator('[data-raise="blur"]')).toBeVisible();
+  await expect(row.locator('[data-raise="ban"]')).toHaveText('Ban');
+  await row.locator('[data-raise="promote"]').click();
+  await expect(page.locator('#handraise .raiserow[data-peer="qa-hand"]')).toHaveCount(0);
+  const promoted = await page.evaluate(() => window.__gifosVideo.promotedHandsForTest());
+  expect(promoted).toContain('qa-hand');
+  const seat = page.locator('#stagemod .stagecard[data-peer="qa-hand"]');
+  await expect(seat).toBeVisible();
+  await expect(seat.locator('[data-adm="demote"]')).toHaveText('Demote');
+  await seat.locator('[data-adm="demote"]').click();
+  await expect(seat).toHaveCount(0);
+  await page.evaluate(() => { window.__gifosVideo.ensureNameForTest(); return null; });
+  await expect(page.locator('#appear-modal h3')).toHaveText("This is how you'll appear");
+  await expect(page.locator('#appear-note')).toHaveCount(0);
+  await page.goto(SESSION + '&who=view', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('body.broadcast.bc-watching #onair.watch');
+  await page.evaluate(() => window.__gifosVideo.raisedHandForTest('Sam Okonkwo'));
+  await expect(page.locator('#handraise')).toBeHidden();
+  await expect(page.locator('#mic')).toBeHidden();
+  await expect(page.locator('#hand')).toBeVisible();
+});
+
 test('a broadcast host moderates guests on the stage', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
@@ -805,7 +908,7 @@ test('a broadcast host moderates guests on the stage', async ({ page }) => {
   for (const [w, h] of [[1280, 720], [900, 720]]) {
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/run.html?desk=stage' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('body.broadcast.meet-session #onair.live');
+    await page.waitForSelector('body.broadcast.meet-session #onair.off');
     const id = await page.evaluate(() => window.__gifosVideo.stageGuestForTest('Jordan Lee'));
     expect(id).toBe('qa-guest');
     const strip = page.locator('#stagemod');
@@ -895,11 +998,11 @@ test('a volunteer cannot miss whether they are on air', async ({ page }) => {
   for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/run.html?desk=air' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#onair.live');
+    await page.waitForSelector('#onair.off');
     const live = await readBar();
-    expect(live.text).toBe('Service · You are live');
-    expect(live.bg).toBe('rgb(182, 22, 34)');
-    expect(live.fg).toBe('rgb(255, 255, 255)');
+    expect(live.text).toBe('Service · You are off air');
+    expect(live.bg).toBe('rgb(42, 42, 63)');
+    expect(live.fg).toBe('rgb(224, 224, 240)');
     expect(live.h).toBeGreaterThanOrEqual(44);
     expect(live.w).toBeGreaterThanOrEqual(w - 2);
     expect(live.belowChip, JSON.stringify(live)).toBe(true);
@@ -995,8 +1098,11 @@ test('recording and who is here sit on the room bar', async ({ page }) => {
   await page.waitForSelector('#airkind');
   await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
   await expect(page.locator('#airrec')).toHaveText('Not recording');
+  // A Watching viewer does not record (confirmed design): the bar still says
+  // whether the service is being recorded, but a tap opens no card.
   await page.locator('#airrec').click();
-  await expect(page.locator('#rec-options h3')).toHaveText('Record this service');
+  await page.waitForTimeout(300);
+  await expect(page.locator('#rec-options')).toHaveCount(0);
 });
 
 test('chat is one tap on the dock, and a prayer is its own line', async ({ page }) => {
@@ -1282,9 +1388,9 @@ test('a service alone says you are live or you are watching', async ({ page }) =
   for (const w of [1280, 1920, 900]) {
     await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
     await page.goto('/run.html?desk=live' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('You are live') !== -1);
+    await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('Off air. Send the link.') !== -1);
     const host = await readStatus();
-    expect(host.text).toContain('You are live. Send the link.');
+    expect(host.text).toContain('Off air. Send the link.');
     expect(host.text).not.toContain('Just you');
     expect(host.clip, JSON.stringify(host)).toBe(false);
     expect(host.hit, JSON.stringify(host)).toBe(false);
@@ -1293,7 +1399,7 @@ test('a service alone says you are live or you are watching', async ({ page }) =
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.setViewportSize({ width: 900, height: 720 });
   const resized = await readStatus();
-  expect(resized.text).toContain('You are live. Send the link.');
+  expect(resized.text).toContain('Off air. Send the link.');
   expect(resized.clip, JSON.stringify(resized)).toBe(false);
   expect(resized.hit, JSON.stringify(resized)).toBe(false);
   await page.goto('/run.html?desk=liveview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
@@ -1347,7 +1453,7 @@ test('a host alone on a service gets Invite beside the live sentence', async ({ 
     await page.goto('/run.html?desk=inv' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.locator('#hdrinvite').waitFor({ state: 'visible' });
     const host = await place();
-    expect(host.text).toContain('You are live. Send the link.');
+    expect(host.text).toContain('Off air. Send the link.');
     expect(host.text).not.toContain('Just you');
     expect(host.shown).toBe(true);
     expect(host.h).toBeGreaterThanOrEqual(44);
@@ -1452,7 +1558,7 @@ test('microphone and camera off are a line you cannot miss', async ({ page }) =>
   await expect(page.locator('#avstate')).toBeHidden();
   await page.goto('/run.html?desk=avhost#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#avstate.on');
-  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are off air');
   await expect(page.locator('#avmic')).toHaveText('Microphone off');
   await page.goto('/run.html?desk=avview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#onair.watch');
@@ -1578,7 +1684,7 @@ test('sharing a personal call is the link and a blue Copy', async ({ page }) => 
   expect(svc.bg).toBe('rgb(255, 255, 255)');
   expect(svc.in, JSON.stringify(svc)).toBe(true);
   await page.goto('/run.html?desk=invhost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('#airbar.on.live');
+  await page.waitForSelector('#airbar.on.off');
   await page.locator('#invite').click();
   await expect(page.locator('#inv-modal')).toContainText('The host password stays with you.');
 });
@@ -1611,7 +1717,7 @@ test('captions and record stay readable when they are on', async ({ page }) => {
   for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/run.html?desk=cap' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('body.broadcast.meet-session #mic .docklab');
+    await page.waitForSelector('body.broadcast.bc-watching #leavebtn .docklab');
     await page.locator('#bartoggle').click();
     await expect(page.locator('#barmore')).toBeVisible();
     await expect(page.locator('#ccbtn')).toHaveText('Captions');
@@ -1729,9 +1835,10 @@ test('share screen is on the small-group dock', async ({ page }) => {
   await page.waitForSelector('body.broadcast .bar');
   await expect(page.locator('.bar > #sharebtn')).toHaveCount(0);
   await page.locator('#bartoggle').click();
+  // Share is a separate grant on a service (confirmed design): a Watching
+  // viewer does not see it, on the dock or in More, until the host allows it.
   const tucked = page.locator('#barmore #sharebtn');
-  await expect(tucked).toBeVisible();
-  await expect(tucked).toHaveText('Share screen');
+  await expect(tucked).toBeHidden();
 });
 
 test('a host shares the stage from the dock', async ({ page }) => {
@@ -1792,7 +1899,7 @@ test('a host steps on and off the stage from the dock', async ({ page }) => {
   for (const w of [1280, 1920, 900]) {
     await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
     await page.goto('/run.html?desk=step' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('#airbar.on.live');
+    await page.waitForSelector('#airbar.on.off');
     const step = page.locator('.bar > #stagebtn');
     await expect(step).toBeVisible();
     await expect(step.locator('.docklab')).toHaveText('Step on');
@@ -1828,7 +1935,7 @@ test('a host steps on and off the stage from the dock', async ({ page }) => {
   expect(steppedOn).toBe(true);
   const onAir = await page.evaluate(() => getComputedStyle(document.querySelector('.bar > #stagebtn')).backgroundColor);
   expect(onAir).toBe('rgb(182, 22, 34)');
-  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+  await expect(page.locator('#airkind')).toHaveText('Service · You are off air');
   await step.click();
   await expect(step.locator('.docklab')).toHaveText('Step on');
   const steppedOff = await step.evaluate((el) => el.classList.contains('on'));
@@ -1911,7 +2018,7 @@ test('a service picture fills the stage and a clear stage says so', async ({ pag
   expect(resized.tile.bottom).toBeLessThanOrEqual(resized.dockTop + 1);
   expect(resized.tile.right).toBeLessThanOrEqual(901);
   await page.goto('/run.html?desk=pichost#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('#airbar.on.live');
+  await page.waitForSelector('#airbar.on.off');
   await expect(page.locator('#bc-stage-line')).toHaveText('The stage is clear.');
   await page.locator('.bar > #stagebtn').click();
   await expect(page.locator('#bc-stage-line')).toHaveText('You are on stage. Your camera is off.');
@@ -1972,7 +2079,7 @@ test('a viewer raises a hand from the dock', async ({ page }) => {
   await expect(hand.locator('.docklab')).toHaveText('Raise hand');
   await expect(hand).toHaveAttribute('aria-pressed', 'false');
   await page.goto('/run.html?desk=handhost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('#airbar.on.live');
+  await page.waitForSelector('#airbar.on.off');
   await expect(page.locator('.bar > #hand')).toHaveCount(0);
   await page.locator('#bartoggle').click();
   await expect(page.locator('#barmore #hand')).toHaveText('Hand');
@@ -1994,6 +2101,8 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
     await page.goto('/run.html?desk=vstep' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#airbar.on.watch');
     await expect(page.locator('.bar > #stagebtn')).toHaveCount(0);
+    // Promotion is the signed stage grant; a viewer cannot seat themselves.
+    await page.evaluate(() => window.__gifosVideo.broadcastGrantForTest(true));
     await page.evaluate(() => window.__gifosVideo.setStageForTest(true));
     const step = page.locator('.bar > #stagebtn');
     await expect(step).toBeVisible();
@@ -2016,7 +2125,7 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
     });
     expect(lay.bg).toBe('rgb(182, 22, 34)');
     await expect(page.locator('#airkind')).toHaveText('Service · You are on stage');
-    await expect(page.locator('#airbar')).toHaveClass(/live/);
+    await expect(page.locator('#airbar')).toHaveClass(/off/);
     const air = await page.evaluate(() => {
       const bar = document.getElementById('airbar');
       const kind = document.getElementById('airkind');
@@ -2028,16 +2137,16 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
       const overlap = !(kr.right < rr.left || rr.right < kr.left || kr.bottom < rr.top || rr.bottom < kr.top);
       return { bg: s.backgroundColor, fg: s.color, overlap, full: br.width >= innerWidth - 2, inside: kr.left >= br.left - 1 && kr.right <= br.right + 1 && kr.top >= br.top - 1 && kr.bottom <= br.bottom + 1 };
     });
-    expect(air.bg).toBe('rgb(182, 22, 34)');
-    expect(air.fg).toBe('rgb(255, 255, 255)');
+    expect(air.bg).toBe('rgb(42, 42, 63)');
+    expect(air.fg).toBe('rgb(224, 224, 240)');
     expect(air.overlap, JSON.stringify(air)).toBe(false);
     expect(air.full, JSON.stringify(air)).toBe(true);
     expect(air.inside, JSON.stringify(air)).toBe(true);
     await expect(page.locator('#bc-stage-line')).toHaveText('You are on stage. Your camera is off.');
     await expect(page.locator('#status')).toContainText('You are on stage.');
     await expect(page.locator('#status')).not.toContainText('watching');
-    await expect(page.locator('#onair')).toHaveText('On stage');
-    await expect(page.locator('#onair')).toHaveClass(/live/);
+    await expect(page.locator('#onair')).toHaveText('Off air');
+    await expect(page.locator('#onair')).toHaveClass(/off/);
     const chip = await page.evaluate(() => {
       const status = document.getElementById('status').getBoundingClientRect();
       const fit = document.getElementById('fitbtn').getBoundingClientRect();
@@ -2067,5 +2176,7 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
   await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
   await expect(page.locator('#airbar')).toHaveClass(/watch/);
   await expect(page.locator('#status')).toContainText('You are watching this service.');
-  await expect(page.locator('#onair')).toHaveText('Watching');
+  // The seat still holds the stage grant, so the lamp keeps the confirmed
+  // stage-guest rule: Off air until a camera or a microphone sends.
+  await expect(page.locator('#onair')).toHaveText('Off air');
 });

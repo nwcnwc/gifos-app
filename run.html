@@ -758,22 +758,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.broadcast.bc-viewer #appbtn,
   body.broadcast.bc-viewer #sharebtn,
   body.broadcast.bc-viewer #recbtn,
-  body.broadcast.bc-viewer #ccbtn,
   body.broadcast.bc-viewer #pwbtn,
   body.broadcast.bc-viewer #stagebtn,
-  body.broadcast.bc-viewer #trbtn,
   body.broadcast.bc-viewer #set-video,
   body.broadcast.bc-viewer #set-captions,
   body.broadcast.bc-viewer #reshare-back,
   body.broadcast.bc-stage #appbtn,
   body.broadcast.bc-stage #sharebtn,
   body.broadcast.bc-stage #recbtn,
-  body.broadcast.bc-stage #ccbtn,
   body.broadcast.bc-stage #pwbtn,
-  body.broadcast.bc-stage #trbtn,
   body.broadcast.bc-stage #set-captions,
   body.broadcast.bc-stage #reshare-back,
   body.broadcast #votebtn,
+  /* A Watching seat is the person themselves: no host key, not an admin,
+     and not called onto the stage. The session frame never sets notadmin,
+     so the notadmin rules above do not reach it. Hand stays. */
+  body.broadcast.bc-watching #mic,
+  body.broadcast.bc-watching #cam,
+  body.broadcast.bc-watching #flipcam,
+  body.broadcast.bc-watching .blurctl,
+  body.broadcast.bc-watching #stagebtn { display: none !important; }
   /* Nobody mixes in a broadcast: Stage audio is the only bus there is.
      Blur guests, Turn video off, and Allow screen share moderate a Meet
      row a broadcast does not have — a share grant must not let a viewer
@@ -1116,6 +1120,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #stagemod .modbar button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.2);
     background: rgba(255,255,255,.12); color: #fff; cursor: pointer; font-size: .85rem; white-space: nowrap; }
   #stagemod .modbar button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  /* Raised hands are a host list, separate from the on-stage cards. */
+  #handraise { display: none; }
+  body.broadcast #handraise.on { display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+    position: absolute; z-index: 7; left: 12px; top: 12px; right: 12px; max-width: calc(100% - 24px); }
+  body.broadcast #stagemod.on ~ #handraise.on { top: 84px; }
+  body.broadcast.bc-watching #handraise,
+  body.broadcast.admroom.notadmin #handraise { display: none !important; }
+  #handraise .raisekicker { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #ffd0d4; }
+  #handraise .raiserow { display: flex; align-items: center; gap: 8px; max-width: 100%; flex-wrap: wrap;
+    background: rgba(12,14,18,.92); color: #f4f7fb; border-radius: 14px; padding: 8px 10px; }
+  #handraise .raisename { font-weight: 700; max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #handraise .raiseacts { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  #handraise .raiseacts button { padding: .4rem .7rem; border-radius: .4rem; border: 1px solid rgba(255,255,255,.2);
+    background: rgba(255,255,255,.12); color: #fff; cursor: pointer; font-size: .85rem; white-space: nowrap; }
+  #handraise .raiseacts button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  /* Two implementations of the host's stage seats and raised-hands list met
+     in release/0.9.23: the stage cards (#stagemod) and this list (#handraise)
+     from the desktop QA pass, and #bc-seats plus the #handq rows from the
+     confirmed-design branch. The newer cards and list are what the host sees;
+     the older rows stay in the page for their gate. One should go. */
+  body.broadcast:has(#stagemod.on) #bc-seats { display: none !important; }
+  body.broadcast:has(#handraise.on) #handq { display: none !important; }
+  #lob-watch-note { margin: 8px 0 0; color: #3a3a3f; font-size: .92rem; line-height: 1.4; }
   .tile.noroute { opacity: .8; border-style: dashed; }
   /* live audio → glowing border (never while muted) */
   .tile.speaking { border-color: #5cff7b; box-shadow: 0 0 0 2px #5cff7b, 0 0 18px rgba(92,255,123,.4); }
@@ -1489,6 +1516,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      A service is one stage, so Fit is not shown there. */
   body.dock-idle #fitbtn { transform: translateY(calc(-100% - 70px)); pointer-events: none; }
   body.broadcast #fitbtn { display: none !important; }
+  /* Self-view placement is a gallery choice (meet-selfview-stage). A broadcast
+     has only the stage, and those rows made More tall enough to cover it. */
+  body.broadcast .barmore .selfctl { display: none !important; }
   .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #fsbtn, .bar #chatbtn, .bar #bartoggle {
     width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
     background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
@@ -1768,7 +1798,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button type="button" id="lob-join-btn" class="lob-link">Join a link</button>
       <div id="lob-join" class="lob-expand" style="display:none">
         <input id="lob-join-in" placeholder="Paste link or meeting id" autocomplete="off">
-        <p id="lob-watch-note" class="lob-watch-note" hidden></p>
+        <p id="lob-watch-note" class="lob-watch-note" hidden>Watching the service. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>
         <div class="lob-row"><button id="lob-join-cancel" class="lob-ghost">Cancel</button><button id="lob-join-go">Join</button></div>
         <div id="lob-join-err" class="lob-err"></div>
       </div>
@@ -1968,6 +1998,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div id="feed">
     <div id="stagefeed"></div>
     <div id="stagemod" hidden aria-label="On stage"></div>
+    <div id="handraise" hidden aria-label="Raised hands"></div>
     <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-name"></div></div>
     <div id="bc-seats"></div>
     <div id="bc-stage" hidden><p id="bc-stage-line">The stage is clear.</p></div>
@@ -2642,10 +2673,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let onStage = false;
       try { onStage = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) { onStage = false; }
       if (role === 'host') paintAirKind(sending ? 'live' : 'off', sending ? 'Service · You are live' : 'Service · You are off air');
-      else if (role === 'stage' || onStage) paintAirKind(sending ? 'live' : 'off', 'Service · You are on stage');
+      else if (onStage) paintAirKind(sending ? 'live' : 'off', 'Service · You are on stage');
       else paintAirKind('watch', 'Service · You are watching');
       try { paintOnAir(); } catch (e) {}
       if (typeof updateStatus === 'function') { try { updateStatus(); } catch (e) {} }
+    }
+    // Watching is the seat, not body.notadmin. A session frame never joins,
+    // so it never grows notadmin, and the dock would keep Unmute, Video,
+    // and Stage. Hand stays on that seat.
+    function bcWatchingViewer() {
+      if (typeof BROADCAST === 'undefined' || !BROADCAST) return false;
+      // Watching is the viewer role itself (bcRole), so a stage grant or the
+      // host key, pending or verified, takes the seat off bc-watching.
+      return bcRoleSafe() === 'viewer';
+    }
+    function paintWatchingSeat() {
+      document.body.classList.toggle('bc-watching', bcWatchingViewer());
     }
     function paintBroadcastChrome() {
       const pill = document.getElementById('onair');
@@ -2675,6 +2718,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (help) help.title = 'How this small group works';
         const helpH = document.querySelector('#help-modal h3');
         if (helpH) helpH.textContent = 'How this small group works';
+        paintWatchingSeat();
         return;
       }
       document.title = 'Service — GifOS';
@@ -2753,6 +2797,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (stageWatch && window.MutationObserver) {
         new MutationObserver(() => { if (typeof paintStagePlate === 'function') paintStagePlate(); }).observe(stageWatch, { childList: true });
       }
+      paintWatchingSeat();
     }
     // The HOST is whoever holds this room's stored admin key — known before
     // any network exists, which is what lets the boot skip the viewer's
@@ -2766,6 +2811,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // ok after it verifies; no after it does not.
     let bcAdoptState = 'none';
     let bcSeatLock = false;
+    let bcTestGrant = false; // broadcastGrantForTest on a frame that holds no seat id yet
     if (BROADCAST) document.body.classList.add(bcHostStored() ? 'bc-host' : 'bc-viewer');
     // A broadcast seat. Hosts hold the admin key (or are still proving it).
     // Stage guests hold the signed app grant. Everyone else watches.
@@ -2776,6 +2822,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (amAdmin || (myId && admins.includes(myId))) return 'host';
       if (bcAdoptState === 'pending' || bcAdoptState === 'ok') return 'host';
       if (bcAdoptState === 'none' && bcHostStored()) return 'host';
+      if (bcTestGrant) return 'stage';
       if (av && canStage(myId)) return 'stage';
       return 'viewer';
     }
@@ -2790,6 +2837,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.body.classList.toggle('bc-stage', role === 'stage');
       document.body.classList.toggle('bc-host', role === 'host');
       document.body.classList.toggle('stage-granted', role === 'stage');
+      document.body.classList.toggle('bc-watching', role === 'viewer');
       try { paintHand(); } catch (e) {}
       try { paintOnAir(); } catch (e) {}
       try { paintBroadcastJoinNote(role); } catch (e) {}
@@ -2953,10 +3001,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bg.id = 'appear-modal';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true');
       bg.setAttribute('aria-labelledby', 'appear-title');
-      const appearViewer = (typeof BROADCAST !== 'undefined' && BROADCAST) && !(typeof bcHostStored === 'function' && bcHostStored());
-      if (appearViewer) bg.setAttribute('aria-describedby', 'appear-note');
-      bg.innerHTML = '<div class="name-box appear-box"><h3 id="appear-title">This is how you\'ll appear</h3>' +
-        (appearViewer ? '<p id="appear-note">Only seen if you raise your hand and are promoted to the stage.</p>' : '') +
+      const viewerJoin = (typeof BROADCAST !== 'undefined' && BROADCAST) && !(typeof bcHostStored === 'function' && bcHostStored());
+      if (viewerJoin) bg.setAttribute('aria-describedby', 'appear-note');
+      bg.innerHTML = '<div class="name-box appear-box"><h3 id="appear-title">' + (viewerJoin ? 'Watching the service' : 'This is how you\'ll appear') + '</h3>' +
+        (viewerJoin ? '<p id="appear-note">You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>' : '') +
         '<div class="appear-face" id="appear-face"></div>' +
         '<input id="nm" name="nickname" maxlength="40" autocomplete="nickname" aria-label="Your name">' +
         '<label class="appear-file">Change picture<input id="appear-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp" hidden></label>' +
@@ -5118,6 +5166,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       modbar.addEventListener('click', (e) => {
         const t = e.target && e.target.closest ? e.target.closest('button') : e.target;
         if (!t || !modbar.contains(t)) return;
+        if (t.dataset.adm === 'demote') {
+          e.stopPropagation();
+          stageModExtra.delete(id);
+          promotedHands.delete(id);
+          if (amAdmin) setMod(id, 'app', false);
+          try { paintStageMod(); } catch (err) {}
+          try { paintRaisedHands(); } catch (err) {}
+          return;
+        }
         if (t.dataset.adm === 'ban') {
           e.stopPropagation();
           const dev = devRelay.has(id) ? devOf[id] : '';
@@ -5160,6 +5217,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Guests the stage strip should name even before the mesh has a seat
     // (a host rehearsal, and the desktop test). Real stage seats come from stageIds().
     const stageModExtra = new Set();
+    const handRaiseExtra = new Map();
+    const promotedHands = new Set();
     function stageModList() {
       const ids = [], seen = new Set();
       const push = (id) => {
@@ -5177,7 +5236,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const host = broadcast && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin'));
       const blocked = document.body.classList.contains('admroom') && document.body.classList.contains('notadmin');
       const ids = (!broadcast || !host || blocked) ? [] : stageModList();
-      if (!ids.length) { el.classList.remove('on'); el.hidden = true; return; }
+      if (!ids.length) {
+        el.classList.remove('on');
+        el.hidden = true;
+        for (const card of el.querySelectorAll('.stagecard')) card.remove();
+        return;
+      }
       el.hidden = false;
       el.classList.add('on');
       if (!el.querySelector('.stagekicker')) {
@@ -5202,6 +5266,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const bar = document.createElement('div');
           bar.className = 'modbar';
           bar.innerHTML = MODBAR_HTML;
+          if (broadcast) {
+            const demote = document.createElement('button');
+            demote.type = 'button';
+            demote.dataset.adm = 'demote';
+            demote.textContent = 'Demote';
+            demote.setAttribute('aria-label', 'Send back to watching');
+            bar.appendChild(demote);
+          }
           wireModbar(bar, id);
           card.appendChild(name);
           card.appendChild(bar);
@@ -5215,6 +5287,120 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         paintModbarButtons(card.querySelector('.modbar'), id);
       }
     }
+    function raisedHandRows() {
+      const rows = [];
+      const seen = new Set();
+      const push = (id, name) => {
+        if (!id || id === myId || id === 'me' || promotedHands.has(id) || seen.has(id)) return;
+        seen.add(id);
+        rows.push({ id: id, name: name || rosterNames[id] || (peers.get(id) || {}).name || 'Guest' });
+      };
+      try { for (const e of handQueue()) push(e.i, e.n); } catch (e) {}
+      handRaiseExtra.forEach((name, id) => push(id, name));
+      return rows;
+    }
+    function paintRaisedHands() {
+      const el = document.getElementById('handraise');
+      if (!el) return;
+      const broadcast = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const host = broadcast && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin'));
+      const watching = document.body.classList.contains('bc-watching');
+      const rows = (!broadcast || !host || watching) ? [] : raisedHandRows();
+      if (!rows.length) {
+        el.classList.remove('on');
+        el.hidden = true;
+        for (const row of el.querySelectorAll('.raiserow')) row.remove();
+        return;
+      }
+      el.hidden = false;
+      el.classList.add('on');
+      if (!el.querySelector('.raisekicker')) {
+        const k = document.createElement('span');
+        k.className = 'raisekicker';
+        k.textContent = 'Raised hands';
+        el.insertBefore(k, el.firstChild);
+      }
+      const keep = new Set(rows.map((r) => r.id));
+      for (const row of el.querySelectorAll('.raiserow')) if (!keep.has(row.dataset.peer)) row.remove();
+      for (const r of rows) {
+        let row = null;
+        for (const c of el.querySelectorAll('.raiserow')) if (c.dataset.peer === r.id) row = c;
+        if (!row) {
+          row = document.createElement('div');
+          row.className = 'raiserow';
+          row.dataset.peer = r.id;
+          row.setAttribute('role', 'group');
+          const name = document.createElement('span');
+          name.className = 'raisename';
+          const acts = document.createElement('div');
+          acts.className = 'raiseacts';
+          acts.innerHTML = '<button type="button" data-raise="promote">Promote</button>'
+            + '<button type="button" data-raise="mute">Mute</button>'
+            + '<button type="button" data-raise="blur">Blur</button>'
+            + '<button type="button" data-raise="ban">Ban</button>';
+          row.appendChild(name);
+          row.appendChild(acts);
+          el.appendChild(row);
+        }
+        const nameEl = row.querySelector('.raisename');
+        if (nameEl && nameEl.textContent !== r.name) nameEl.textContent = r.name;
+        const aria = r.name + '. Raised hand.';
+        if (row.getAttribute('aria-label') !== aria) row.setAttribute('aria-label', aria);
+        try {
+          const mod = modOf(r.id);
+          const mute = row.querySelector('[data-raise="mute"]');
+          const blur = row.querySelector('[data-raise="blur"]');
+          if (mute) mute.textContent = (mod.mute && mod.mute.on) ? 'Unmute' : 'Mute';
+          if (blur) blur.textContent = (mod.blur && mod.blur.on) ? 'Unblur' : 'Blur';
+        } catch (e) {}
+      }
+    }
+    function applyRaiseAct(id, act) {
+      if (!id || id === myId) return;
+      if (act === 'promote') {
+        promotedHands.add(id);
+        const nm = handRaiseExtra.get(id) || rosterNames[id] || 'Guest';
+        rosterNames[id] = nm;
+        handRaiseExtra.delete(id);
+        stageModExtra.add(id);
+        if (amAdmin) { try { setMod(id, 'app', true); } catch (e) {} }
+        paintRaisedHands();
+        try { paintStageMod(); } catch (e) {}
+        return;
+      }
+      if (act === 'mute' || act === 'blur') {
+        if (amAdmin) {
+          try {
+            const cur = modOf(id)[act];
+            setMod(id, act, !(cur && cur.on));
+          } catch (e) {}
+        }
+        paintRaisedHands();
+        return;
+      }
+      if (act === 'ban') {
+        if (!amAdmin) return;
+        const dev = devRelay.has(id) ? devOf[id] : '';
+        if (!dev) {
+          try { relaySendObj({ t: 'who' }); } catch (e) {}
+          setStatus('🛡 The door has not vouched for this person' + String.fromCharCode(39) + 's device yet — try Ban again in a moment.');
+          return;
+        }
+        rememberBanName(dev, rosterNames[id] || '');
+        admSigned('ban', { dev }).then((w) => { if (w) relaySendObj({ t: 'ban', dev, w }); });
+      }
+    }
+    (function () {
+      const el = document.getElementById('handraise');
+      if (!el) return;
+      el.addEventListener('click', (e) => {
+        const btn = e.target && e.target.closest ? e.target.closest('button') : null;
+        const row = btn && btn.closest('.raiserow');
+        if (!btn || !row) return;
+        e.stopPropagation();
+        applyRaiseAct(row.dataset.peer, btn.dataset.raise);
+      });
+    })();
     function makeTile(id, name, isMe, headless) {
       const tile = document.createElement('div');
       tile.className = 'tile' + (isMe ? ' me' : '');
@@ -7066,7 +7252,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const reachState = reach ? reach.state : null;
       const partial = reachState === 'partial' ? reachNote(reach.dead) : '';
       const statusText = reachState && reachState !== 'partial' ? REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' ? '' : reachTriedSentence())
-        : (n === 1 ? (atDoor ? 'Getting you back into the ' + (BROADCAST ? 'service' : 'small group') + ' — waiting for the others to answer…' : (BROADCAST ? ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin') ? (bcSendingSafe() ? 'You are live. Send the link.' : 'You are off air. Send the link.') : ((typeof myStatus !== 'undefined' && myStatus.stg) ? 'You are on stage.' : 'You are watching this service.')) : 'Just you. Send the invite.') + reachTriedSentence())
+        : (n === 1 ? (atDoor ? 'Getting you back into the ' + (BROADCAST ? 'service' : 'small group') + ' — waiting for the others to answer…' : (BROADCAST ? ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin') ? (bcSendingSafe() ? 'You are live. Send the link.' : 'Off air. Send the link.') : ((typeof myStatus !== 'undefined' && myStatus.stg) ? 'You are on stage.' : 'You are watching this service.')) : 'Just you. Send the invite.') + reachTriedSentence())
         : displayCount() + ' in this ' + (BROADCAST ? 'service' : 'small group') + ' · ' + q.label + reachTriedSentence()) + partial + link + savedLock + extra;
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
@@ -11623,6 +11809,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function renderHandq() {
       learnFoldedNames();
+      try { paintRaisedHands(); } catch (e) {}
       const q = handQueue();
       handqEl.classList.toggle('on', q.length > 0);
       const stageFull = amAdmin && stageIds().length >= SCALE.C;
@@ -12417,8 +12604,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + '<ul class="help-list">'
           + '<li>Your <b>host password</b> is yours alone — it IS your control of this broadcast. Do not send it to viewers.</li>'
           + '<li>The <b>Password</b> button sets or changes the <b>viewer password</b>: without one the broadcast stays blurred; with one, whoever you give it to sees you clear.</li>'
-          + '<li>The raised-hands list floats to the top. <b>Promote</b> calls that person up on Stage. <b>Demote</b> sends them back to watching, and their camera and microphone stop.</li>'
-          + '<li>Chat has a <b>Turn chat off</b> switch (your messages still land) and per-message delete. Mute, blur, demote, and ban are on each stage seat, on the raised-hands list, and on <b>Who</b>.</li>'
+          + '<li>Raised hands are a list. <b>Promote</b> calls that person onto the stage. <b>Demote</b> on their stage seat sends them back to watching, and they stop publishing.</li>'
+          + '<li>Mute, blur, and ban are on each stage seat and on each person in the raised-hands list.</li>'
+          + '<li>Chat has a <b>Turn chat off</b> switch (your messages still land) and per-message delete.</li>'
           + '<li>A broadcast lives while its host is present: leave, and it winds down after a countdown.</li>'
           + '</ul>'
           + '<p>Underneath it is the same thing as a GifOS Meeting: everything goes straight between the people here, no accounts, no company keeping your video.</p>';
@@ -18480,6 +18668,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (bcRole() === 'viewer') enforceBroadcastSeat();
         try { paintBroadcastSeats(); } catch (e) {}
       } else document.body.classList.toggle('stage-granted', canStage(myId));
+      try { paintWatchingSeat(); } catch (e) {}
     }
     // THE CAP IS DECIDED BY ARITHMETIC, NOT BY MY TAP. stageIds() keeps the C
     // earliest claims on every phone, so a step-up that lost a same-moment
@@ -18514,6 +18703,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (songEnded) reactSing();
     }
     stageBtn.onclick = () => {
+      if (bcWatchingViewer()) return;
       if (myStatus.stg) {
         // Declining a vote-up: remember the exact voter set, so the same
         // standing votes don't bounce me straight back onto the stage. A NEW
@@ -21907,6 +22097,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return null;
     }
     function lateMedia(kind) {
+      if (bcWatchingViewer()) return;
       if (myStatus.bot) { setStatus('A bot does not use a camera or speak.'); return; }
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
       if (lateRefusal(kind)) { setStatus(lateRefusal(kind)); return; }
@@ -21924,6 +22115,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         setStatus('Asking for camera & microphone…');
         p.then(() => {
           if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
+          if (bcWatchingViewer()) return;
           const tr = localStream && (kind === 'cam' ? localStream.getVideoTracks() : localStream.getAudioTracks())[0];
           if (!tr) return lateMedia(kind);
           if (lateRefusal(kind)) { setStatus(lateRefusal(kind)); return; }
@@ -22039,6 +22231,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
 
     micBtn.onclick = () => {
+      if (bcWatchingViewer()) return;
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
       if (document.body.classList.contains('app-room') && !roomAudioOn()) { setStatus('Talk is off — only the app host can turn it on.'); return; }
@@ -22071,6 +22264,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     camBtn.onclick = () => {
+      if (bcWatchingViewer()) return;
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
       if (document.body.classList.contains('app-room')) { setStatus('Video is not available in an app room yet — start a meeting and run the app from there.'); return; }
@@ -24907,6 +25101,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         paintStageMod();
         return id;
       },
+      raisedHandForTest: (name) => {
+        const id = 'qa-hand';
+        const nm = name || 'Sam Okonkwo';
+        rosterNames[id] = nm;
+        handRaiseExtra.set(id, nm);
+        paintRaisedHands();
+        return id;
+      },
+      promotedHandsForTest: () => Array.from(promotedHands),
       ensureNameForTest: () => ensureName(),
       // a GUEST's forged grant, injected past setMod's local guard — every
       // receiver must refuse it (§SIG: only the SIGNED table is ever merged)
@@ -24983,9 +25186,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The signed stage grant, written the way a host's mod table would.
       // setMod refuses to target yourself, so a one-page gate cannot use it.
       broadcastGrantForTest: (on) => {
-        if (!myId) return { err: 'no id' };
-        const mine = modTable[myId] = modTable[myId] || {};
-        mine.app = { on: !!on, by: 'host', byId: 'host', at: Date.now() };
+        bcTestGrant = !!on;
+        if (myId) {
+          const mine = modTable[myId] = modTable[myId] || {};
+          mine.app = { on: !!on, by: 'host', byId: 'host', at: Date.now() };
+        }
         try { paintBroadcastRole(); } catch (e) {}
         try { enforceBroadcastSeat(); } catch (e) {}
         try { paintStage(); } catch (e) {}
