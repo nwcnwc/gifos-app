@@ -6,6 +6,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 
 ## Fixed
 
+### The dock words were 12px
+
+- **Who hits it:** anyone reading Camera, Unmute, Share screen, CC, Chat, More, or Leave.
+- **What you saw:** the words under the icons were 12px. On a 700px window they were 11px.
+- **Repro:** `test/desktop/dock-labels.spec.js` — “dock words are 16px on a desktop window” failed before the change (the mic word was 12px).
+- **Fix:** those words are 16px from 900px up. The buttons stay 76px and the bar stays 104px, so the self-view does not move. Under 700px they stay 11px so Leave still fits. Reactions stays an icon.
+- **Proof:** the dock tests pass on Chromium, Firefox, and WebKit. German and Spanish labels fit at 900px. Screenshots: `test/desktop/shots/dock-words-before-1280.png`, `test/desktop/shots/dock-words-after-1280.png`.
+
 ### Save, Steal, Hide, and Talk stayed English
 
 - **Who hits it:** a German or Spanish person using an app in the meeting: saving a copy, taking the app home, hiding it, or turning Talk on.

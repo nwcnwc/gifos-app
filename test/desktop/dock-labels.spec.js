@@ -70,6 +70,19 @@ test('the dock mic is the only Unmute', async ({ page }) => {
   expect(pills).toEqual([]);
 });
 
+test('dock words are 16px on a desktop window', async ({ page }) => {
+  await boot(page, 1280, 720);
+  for (const w of [1280, 900]) {
+    await page.setViewportSize({ width: w, height: 720 });
+    for (const id of ['mic', 'cam', 'sharebtn', 'chatbtn', 'ccdock', 'bartoggle', 'leavebtn']) {
+      const box = await wordBox(page, id);
+      expect(box.font, id + ' at ' + w).toBeGreaterThanOrEqual(16);
+      expect(box.inside, id + ' at ' + w).toBe(true);
+      expect(box.onScreen, id + ' at ' + w).toBe(true);
+    }
+  }
+});
+
 test('dock words stay inside their buttons when the window narrows', async ({ page }) => {
   await boot(page, 1920, 1080);
   for (const w of [1600, 1280, 1100, 900]) {
