@@ -94,4 +94,4 @@ async function run(name, body) {
   process.exit(failed ? 1 : 0);
 }
 
-module.exports = { sleep, until, goLive, watch, run };
+module.exports = { BASE, sleep, until, user, goLive, watch, run };

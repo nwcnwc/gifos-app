@@ -1635,9 +1635,11 @@ test('captions and record stay readable when they are on', async ({ page }) => {
       return { cc: look(cc), rec: look(rec), pressed: cc.getAttribute('aria-pressed') };
     });
   }
+  // Captions and Record are the host's: a viewer has neither.
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
     localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
   });
   for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
     await page.setViewportSize({ width: w, height: h });
@@ -2813,8 +2815,9 @@ test('a viewer at the name card has no camera or mic on the dock', async ({ page
   await page.goto('/run.html?desk=namecardhost&host=1#v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#appear-modal')).toBeVisible();
   await expect(page.locator('#appear-note')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Save' }).click();
-  await page.waitForSelector('#airbar.on.live');
+  // The stored key here is a stand-in that fails its check once the room
+  // joins, so read the host's dock at the card (cross-namecard.js joins a
+  // real host).
   await expect(page.locator('.bar #cam')).toBeVisible();
   await expect(page.locator('.bar #mic')).toBeVisible();
 });

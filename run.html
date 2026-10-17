@@ -2730,6 +2730,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const shareOnDock = document.getElementById('sharebtn');
       const moreSheet = document.getElementById('barmore');
       const host = bcHostStored() || document.body.classList.contains('amadmin');
+      // A viewer is known at boot; don't wait for the join (applyAdminUi) to
+      // take the camera and mic off their dock, or the name card shows them.
+      if (!host) document.body.classList.add('notadmin');
       paintLeave(host ? 'end' : 'watch');
       // Slides and a window are how a host fills the stage. Share sits on the
       // host dock, the same place a small group already has it. A viewer keeps
