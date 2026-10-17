@@ -19,6 +19,9 @@ test('a town hall joiner lands in the town hall', async ({ page }) => {
   }
   await expect(page.locator('.tile.me')).toBeHidden();
   await expect(page.locator('#bc-ended-txt')).toHaveText('The town hall has not started.');
+  await expect(page.locator('#hdrinvite')).toBeHidden();
+  const watcherInvite = await page.evaluate(() => document.querySelector('.topchip').dataset.invite || '');
+  expect(watcherInvite).toBe('');
   await expect(page.locator('#reactbtn')).toBeVisible();
   await expect(page.locator('#bartoggle')).toBeVisible();
   await expect(page.locator('#hand')).toBeAttached();
@@ -104,8 +107,46 @@ test('a town hall host still confirms how they appear', async ({ page }) => {
   const cam = await page.locator('#cam').evaluate((el) => getComputedStyle(el).display);
   expect(cam).not.toBe('none');
   await page.locator('#nmok').click();
-  await expect(page.locator('#bc-ended')).toBeHidden();
-  await expect(page.locator('#status')).toContainText('send the invite');
+  await expect(page.locator('#bc-ended-txt')).toHaveText('The town hall has not started.');
+  await expect(page.locator('#status')).toContainText('allhands');
+  await expect(page.locator('#status')).not.toContainText('send the invite');
+  const invite = page.locator('#hdrinvite');
+  await expect(invite).toBeVisible();
+  await expect(invite).toHaveText('Invite');
+  const place = await page.evaluate(() => {
+    const el = document.getElementById('hdrinvite');
+    const chip = document.querySelector('.topchip');
+    const b = el.getBoundingClientRect();
+    const c = chip.getBoundingClientRect();
+    const cam = document.getElementById('cam');
+    return {
+      h: b.height,
+      bg: getComputedStyle(el).backgroundColor,
+      inChip: b.left >= c.left - 1 && b.right <= c.right + 1 && b.top >= c.top - 1 && b.bottom <= c.bottom + 1,
+      cam: getComputedStyle(cam).display,
+      flag: chip.dataset.invite || '',
+    };
+  });
+  expect(place.h).toBeGreaterThanOrEqual(44);
+  expect(place.bg).toBe('rgb(0, 100, 200)');
+  expect(place.inChip).toBe(true);
+  expect(place.cam).not.toBe('none');
+  expect(place.flag).toBe('1');
+  const shared = await page.evaluate(() => {
+    const input = document.getElementById('share-url');
+    input.value = input.value + '&pw=hall-secret';
+    let payload = null;
+    navigator.share = (p) => { payload = p; return Promise.resolve(); };
+    document.getElementById('hdrinvite').click();
+    return payload;
+  });
+  expect(shared.title).toBe('Watch my GifOS town hall');
+  expect(shared.url).toContain('th=1');
+  expect(shared.url).toContain('allhands');
+  expect(shared.url).not.toContain('bc=1');
+  expect(shared.url).not.toContain('pw=');
+  expect(shared.url).not.toContain('hall-secret');
+  expect(shared.text).not.toContain('hall-secret');
   const hostRoom = await page.evaluate(() => {
     const tile = document.querySelector('.tile.me');
     const grid = document.getElementById('grid');
@@ -131,6 +172,21 @@ test('a town hall host still confirms how they appear', async ({ page }) => {
   expect(box.w).toBeGreaterThanOrEqual(box.vw - 1);
   expect(box.h).toBeGreaterThanOrEqual(box.vh * 0.75);
   expect(box.fit).toBe('cover');
+  await expect(page.locator('#bc-ended')).toBeHidden();
+});
+
+test('a wide town hall keeps the invite sentence', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_vadm_allhands.0123456789abcdef0123456789abcdef', 'stored-host-key');
+  });
+  await page.goto(HALL, { waitUntil: 'domcontentloaded' });
+  await page.locator('#nmok').click();
+  await expect(page.locator('#status')).toContainText('send the invite');
+  await expect(page.locator('#hdrinvite')).toBeHidden();
+  await expect(page.locator('#bc-ended-txt')).toHaveText('The town hall has not started.');
+  const flag = await page.evaluate(() => document.querySelector('.topchip').dataset.invite || '');
+  expect(flag).toBe('1');
 });
 
 test('a meeting joiner still lands in the meeting', async ({ page }) => {

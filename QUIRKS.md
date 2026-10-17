@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q64. An empty town hall was the invite sentence on a dark stage
+
+A town hall host alone on an iPhone SE read “Just you — send the invite; the link has no expiry” in the chip. The stage was dark, and Invite was not there. The stage now says “The town hall has not started.” The chip names the room and offers a blue Invite, 75×44. The shared link carries `th=1` and leaves the password out. A wide screen keeps the invite sentence and hides the button. A watcher does not get Invite. A meeting still asks its host to send the invite. The camera stays on the dock. A speaker still fills the stage, and the sentence steps aside. `test/mobile/town-hall-join.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-town-hall-empty.png`. After: `test/mobile/screenshots/after/iphone-se-town-hall-empty.png`.
+
+Design: the empty hall says what it is, and Invite is the next tap. Corporate stays at 4. Someone who arrives after a service or stream has ended still cannot watch it.
+
 ### Q63. A town hall host saw a meeting gallery
 
 The host’s own tile filled an iPhone SE, 316×504, named “Guest … (you).” The gallery is gone. The host’s room is the stage. A speaker fills that screen. The invite line stays while they are alone, and the camera stays on the dock. A watcher is unchanged. A meeting still shows the gallery. `test/mobile/town-hall-join.spec.mjs`.

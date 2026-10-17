@@ -1404,9 +1404,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip .status { color: #e7ebf2; font-size: 1.25rem; margin: 0; flex: 1 1 auto; min-width: 0; max-width: 100%;
     min-height: 1.3em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .topchip .status.alert { color: #ffd23c; font-weight: 600; }
-  /* A broadcast host alone on a phone gets Invite instead of "send the invite".
-     Wide screens leave the button hidden. .topchip[data-invite="1"] and
-     __gifosVideo.shareInvite are the hook for the Broadcast desktop agent. */
+  /* A broadcast host, or a town hall host, alone on a phone gets Invite
+     instead of "send the invite". Wide screens leave the button hidden.
+     .topchip[data-invite="1"] and __gifosVideo.shareInvite are the hook
+     for the desktop agents. */
   #hdrinvite {
     display: none; flex: 0 0 auto; box-sizing: border-box;
     min-width: 44px; min-height: 44px; height: 44px; margin: 0 0 0 4px; padding: 0 14px;
@@ -1416,8 +1417,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   #hdrinvite[hidden] { display: none !important; }
   @media (max-width: 700px), (max-height: 500px) {
-    body.broadcast .topchip[data-invite="1"] { padding-top: 0; padding-bottom: 0; padding-right: 0; min-height: 44px; }
-    body.broadcast .topchip[data-invite="1"] #hdrinvite:not([hidden]) { display: inline-flex; }
+    body.broadcast .topchip[data-invite="1"],
+    body.townhall .topchip[data-invite="1"] { padding-top: 0; padding-bottom: 0; padding-right: 0; min-height: 44px; }
+    body.broadcast .topchip[data-invite="1"] #hdrinvite:not([hidden]),
+    body.townhall .topchip[data-invite="1"] #hdrinvite:not([hidden]) { display: inline-flex; }
   }
   /* A broadcast viewer with an empty stage gets the sentence on the stage.
      OFF AIR stays the banner. The chip carries the same sentence. */
@@ -6794,11 +6797,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // of the reach states that replace the line. Tests and styling read
       // this, never the sentence.
       const statusKind = reachState && reachState !== 'partial' ? reachState : n === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
-      // A broadcast host who is the only person here gets Invite on a phone.
-      // The chip names the room. data-invite="1" is set at every width so the
-      // Broadcast desktop agent can show the same button. The viewer password
-      // is never part of this.
-      const hostHere = typeof BROADCAST !== 'undefined' && BROADCAST && typeof bcHostStored === 'function' && bcHostStored();
+      // A broadcast host, or a town hall host, who is the only person here
+      // gets Invite on a phone. The chip names the room. data-invite="1" is
+      // set at every width so a desktop agent can show the same button. The
+      // viewer password is never part of this. Wide screens keep the sentence.
+      const hostHere = typeof bcHostStored === 'function' && bcHostStored() && ((typeof BROADCAST !== 'undefined' && BROADCAST) || (typeof TOWNHALL !== 'undefined' && TOWNHALL));
       const hostAlone = !!(hostHere && statusKind === 'alone');
       let phoneAlone = false;
       try { phoneAlone = hostAlone && window.matchMedia('(max-width: 700px), (max-height: 500px)').matches; } catch (e) {}
@@ -6823,10 +6826,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (statusEl.title !== shown) statusEl.title = shown;
       const quiet = document.getElementById('bc-ended');
       if (quiet) {
-        const hallQuiet = typeof TOWNHALL !== 'undefined' && TOWNHALL && !hostStored && statusKind === 'alone';
+        const hallQuiet = typeof TOWNHALL !== 'undefined' && TOWNHALL && statusKind === 'alone';
         const stageLive = !!document.querySelector('#stagefeed .rowtile');
         const on = ((bcViewer && statusKind === 'alone') || hallQuiet) && !stageLive;
-        const quietLine = hallQuiet ? aloneCore : bcAlone;
+        const quietLine = hallQuiet ? 'The town hall has not started.' : bcAlone;
         quiet.hidden = !on;
         document.body.classList.toggle('bc-quiet', on);
         const quietTxt = document.getElementById('bc-ended-txt');
@@ -22284,7 +22287,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let raw = (shareUrl && shareUrl.value) || '';
       if (!raw && typeof room === 'string' && room) {
         const avBit = (params.get('av') || '').toLowerCase();
-        raw = location.origin + location.pathname + '#v=' + encodeURIComponent(room) + (avBit ? '&av=' + avBit : '') + (BROADCAST ? '&bc=1' : '') + (BROADCAST && params.has('st') ? '&st=1' : '');
+        raw = location.origin + location.pathname + '#v=' + encodeURIComponent(room) + (avBit ? '&av=' + avBit : '') + (BROADCAST ? '&bc=1' : '') + (typeof TOWNHALL !== 'undefined' && TOWNHALL ? '&th=1' : '') + (BROADCAST && params.has('st') ? '&st=1' : '');
       }
       if (!raw) return '';
       const dropKeys = ['pw', 'password', 'guest', 'vpw', 'guestpw', 'pass'];
@@ -22316,7 +22319,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!url) return;
       const isApp = document.body.classList.contains('app-room');
       const payload = {
-        title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : 'Join my GifOS meeting',
+        title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : (typeof TOWNHALL !== 'undefined' && TOWNHALL ? 'Watch my GifOS town hall' : 'Join my GifOS meeting'),
         text: 'Tap this link and you’re in:',
         url: url,
       };
