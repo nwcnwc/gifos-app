@@ -2663,6 +2663,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         whoTitle: 'Wer in dieser Besprechung ist',
         whoLead: 'Kein Server in der Mitte speichert diese Besprechung. Die Telefone und Computer der Menschen darin sind die Server: sie verbinden sich direkt. Deshalb sieht hier jeder die Internetadresse der anderen — niemand ist anonym. ✓ markiert eine Adresse, die das GifOS-Relay geprüft hat oder die dieses Gerät direkt gesehen hat. Alles andere hat nur das Gerät der Person gemeldet. Wer gegangen ist, bleibt auf der Liste. Um etwas Illegales zu melden, laden Sie diese Liste herunter und legen Sie sie bei.',
         whoDl: 'Diese Liste laden',
+        whoYou: '(Sie)',
+        whoFileTitle: 'GifOS-Besprechung — wer hier war',
+        whoFileRoom: 'Raum: {room}',
+        whoFileSaved: 'Gespeichert: {when}   (jede Zeit in dieser Datei ist UTC)',
+        whoFileLink: 'Besprechungslink: {link}',
+        whoFileRelay: 'Relay-Sitzung: {session}',
+        whoFileRelayOff: 'nicht verbunden',
+        whoFileOnly: 'Wer den Besprechungslink hat, kann diese Besprechung öffnen. Geben Sie diese Datei nur an die Personen weiter, die ermitteln.',
+        whoFileHow: 'SO LESEN SIE DIESE DATEI',
+        whoFileVerified: 'Vom Relay geprüft: Das GifOS-Relay hat gesehen, dass das Gerät dieser Person zur genannten Zeit von dieser Adresse aus verbunden war, und hat das mit einer Erklärung bestätigt (am Ende aufgeführt). Das Gerät kann das nicht fälschen oder jemand anderen behaupten.',
+        whoFileSeenDirect: 'Direkt gesehen: Dieses Gerät war direkt mit deren Gerät verbunden und hat diese Adresse und diesen Port zwischen der ersten und der letzten genannten Zeit in Benutzung gesehen.',
+        whoFileReportedLine: 'Vom eigenen Gerät gemeldet: was das eigene Gerät gesagt hat. Das ist NICHT geprüft und kann falsch sein.',
+        whoFileEjectedLine: 'Ausgeschlossen: Sobald eine Fälschung erkannt wurde, hat dieses Gerät die Person abgeschnitten und nichts mehr angenommen: kein Bild, kein Ton, keine Nachrichten, keine Dateien.',
+        whoFileForgeryLine: 'Fälschung erkannt: Das Gerät hat etwas gesendet, das nur ein Fälscher senden würde: eine Relay-Erklärung, die nicht echt ist oder jemand anderem gehört, oder eine andere Adresse als die, die das Relay bestätigt hat. Die vom Relay geprüften und direkt gesehenen Adressen bleiben gültig.',
+        whoFileConnLine: 'Verbindung zu mir: „direkt“ heißt, dieses Gerät und deren Gerät waren direkt verbunden. „über andere“ heißt, dieses Gerät hat sie nur über andere Teilnehmer erreicht und ihre Adresse nie selbst gesehen.',
+        whoFileRelayNote: 'Relay-Sitzung: Das GifOS-Relay wird von Cloudflare betrieben. Dessen Verbindungsdaten, falls welche aufbewahrt werden, liegen unter dieser Sitzungsadresse. Die Verbindung jedes Teilnehmers nennt die Peer-Id (letzte Spalte), sodass beides zusammenpasst.',
+        whoFileIsp: 'Eine Adresse kann zu einem VPN, einem Arbeitsplatz oder einem Mobilnetz gehören, das viele Kunden teilen. Um einen Anschluss zu ermitteln, braucht ein Anbieter meist Adresse, Port und die genaue Zeit. Alle drei stehen hier, wo sie bekannt sind.',
+        whoColName: 'Name', whoColConn: 'Verbindung zu mir', whoColForgery: 'Fälschung erkannt',
+        whoColRelayAddr: 'Vom Relay geprüfte Adresse', whoColRelayAt: 'Relay sah um', whoColSeenAddr: 'Direkt gesehen (Adresse)',
+        whoColPort: 'Port', whoColProto: 'Protokoll', whoColKind: 'Verbindung', whoColFrom: 'Gesehen von', whoColUntil: 'Gesehen bis',
+        whoColInFrom: 'In der Besprechung von', whoColLast: 'Zuletzt gehört', whoColReported: 'Vom eigenen Gerät gemeldet',
+        whoColDev: 'Gerätekennung', whoColPeer: 'Peer-Id',
+        whoConnMe: 'dieses Gerät', whoConnDirect: 'direkt', whoConnIndirect: 'über andere', whoConnLeft: 'gegangen',
+        whoConnEjected: 'AUSGESCHLOSSEN wegen Fälschung um {when}',
+        whoFileLocal: 'lokales Netz',
+        whoFileSigned: 'SIGNIERTE RELAY-ERKLÄRUNGEN (Ed25519; die Signatur gilt für den Erklärungstext genau so, wie er hier steht)',
+        whoColStatement: 'Erklärung', whoColSig: 'Signatur (Base64)',
+        whoFileKeys: 'ÖFFENTLICHE RELAY-SCHLÜSSEL (Schlüssel-Id = die ersten 16 Hex-Zeichen von SHA-256 über den rohen 32-Byte-Schlüssel)',
         whoDirect: 'Direkt mit Ihnen verbunden',
         whoDirectNote: 'Ihr Gerät und ihres sprechen direkt miteinander, deshalb hat es die Adresse selbst gesehen.',
         whoIndirect: 'In der Besprechung, über andere',
@@ -2872,6 +2900,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         whoTitle: 'Quién está en esta reunión',
         whoLead: 'No hay un servidor en medio que guarde esta reunión. Los teléfonos y las computadoras de quienes están son los servidores: se conectan directo. Por eso todos ven la dirección de internet de los demás — nadie es anónimo. ✓ marca una dirección que el relay de GifOS verificó o que este dispositivo vio directo. Lo demás es solo lo que dijo el dispositivo de esa persona. Quien se fue sigue en la lista. Para denunciar algo ilegal, descarga esta lista y adjúntala.',
         whoDl: 'Descargar esta lista',
+        whoYou: '(tú)',
+        whoFileTitle: 'Reunión de GifOS — quién estuvo aquí',
+        whoFileRoom: 'Sala: {room}',
+        whoFileSaved: 'Guardado: {when}   (todas las horas de este archivo son UTC)',
+        whoFileLink: 'Enlace de la reunión: {link}',
+        whoFileRelay: 'Sesión del relay: {session}',
+        whoFileRelayOff: 'sin conexión',
+        whoFileOnly: 'Quien tenga el enlace puede abrir esta reunión. Comparte este archivo solo con quienes investigan.',
+        whoFileHow: 'CÓMO LEER ESTO',
+        whoFileVerified: 'Verificado por el relay: el relay de GifOS vio que el dispositivo de esta persona se conectó desde esta dirección a la hora indicada, y firmó una constancia (al final). Su dispositivo no puede falsificarla ni atribuirla a otra persona.',
+        whoFileSeenDirect: 'Visto directo: este dispositivo estaba conectado directo al de esa persona y vio esta dirección y este puerto en uso entre la primera y la última hora indicadas.',
+        whoFileReportedLine: 'Lo que dijo su dispositivo: lo que su propio dispositivo declaró. NO está verificado y puede ser falso.',
+        whoFileEjectedLine: 'Expulsado: en cuanto se detectó una falsificación, este dispositivo cortó a esa persona y no aceptó nada más: ni video, ni audio, ni mensajes, ni archivos.',
+        whoFileForgeryLine: 'Falsificación detectada: su dispositivo envió algo que solo enviaría un falsificador: una constancia del relay que no es genuina o es de otra persona, o una dirección distinta de la que el relay firmó. Las direcciones verificadas por el relay y vistas directo siguen en pie.',
+        whoFileConnLine: 'Conexión conmigo: «directo» significa que este dispositivo y el de esa persona estaban conectados entre sí. «por otros» significa que este dispositivo solo los alcanzó a través de otros participantes y nunca vio su dirección.',
+        whoFileRelayNote: 'Sesión del relay: el relay de GifOS lo hospeda Cloudflare. Sus registros de conexión, si se guardan, están bajo esta dirección de sesión, y la conexión de cada participante nombra su id de par (última columna), para poder cruzarlos.',
+        whoFileIsp: 'Una dirección puede ser de una VPN, un trabajo o una red móvil compartida por muchos clientes. Para identificar un abonado, el proveedor suele necesitar la dirección, el puerto y la hora exacta. Los tres aparecen aquí cuando se conocen.',
+        whoColName: 'Nombre', whoColConn: 'Conexión conmigo', whoColForgery: 'Falsificación detectada',
+        whoColRelayAddr: 'Dirección verificada por el relay', whoColRelayAt: 'El relay vio a las', whoColSeenAddr: 'Visto directo (dirección)',
+        whoColPort: 'Puerto', whoColProto: 'Protocolo', whoColKind: 'Conexión', whoColFrom: 'Visto desde', whoColUntil: 'Visto hasta',
+        whoColInFrom: 'En la reunión desde', whoColLast: 'Última vez oído', whoColReported: 'Lo que dijo su dispositivo',
+        whoColDev: 'Etiqueta del dispositivo', whoColPeer: 'Id de par',
+        whoConnMe: 'este dispositivo', whoConnDirect: 'directo', whoConnIndirect: 'por otros', whoConnLeft: 'se fue',
+        whoConnEjected: 'EXPULSADO por falsificación a las {when}',
+        whoFileLocal: 'red local',
+        whoFileSigned: 'CONSTANCIAS FIRMADAS DEL RELAY (Ed25519; la firma cubre el texto de la constancia exactamente como está escrito)',
+        whoColStatement: 'Constancia', whoColSig: 'Firma (base64)',
+        whoFileKeys: 'CLAVES PÚBLICAS DEL RELAY (id de clave = los primeros 16 hex de SHA-256 sobre la clave cruda de 32 bytes)',
         whoDirect: 'Conectados directo contigo',
         whoDirectNote: 'Tu dispositivo y el suyo hablan directo, así que vio la dirección.',
         whoIndirect: 'En la reunión, a través de otros',
@@ -12796,50 +12852,70 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the port wherever one was seen (a provider sharing one address among
     // many customers needs address, port AND time), and the relay's signed
     // statements with the keys that check them.
-    document.getElementById('who-dl').onclick = async () => {
-      try { await whoObserve(); } catch (e) {}
-      const stamp = new Date().toISOString();
+    function whoFill(s, map) {
+      let out = s;
+      for (const k of Object.keys(map)) out = out.split('{' + k + '}').join(map[k] == null ? '' : String(map[k]));
+      return out;
+    }
+    // The same words as the button, in the language of this device. Names,
+    // addresses, ports, and signatures stay as recorded. English is the fallback.
+    function whoFileText() {
+      const L = (k, en) => uiText(k, en);
       const rows = whoRows();
       const keys = window.GIFOS_RELAY_ATTEST_KEYS || {};
+      const relay = sessId && relayUrl() ? relayUrl().replace(/\/$/, '') + '/s/' + sessId : L('whoFileRelayOff', 'not connected');
+      const you = L('whoYou', '(you)');
       const lines = [
-        'GifOS meeting \u2014 who was here',
-        'Room: ' + room,
-        'Saved: ' + utc(Date.now()) + '   (every time in this file is UTC)',
-        // The link as opened, and the relay session it maps to: the relay
-        // never learns the link, but its host's connection records carry the
-        // session path and each participant's peer id (?peer=) with the
-        // address they connected from.
-        'Meeting link: ' + location.href,
-        'Relay session: ' + (sessId && relayUrl() ? relayUrl().replace(/\/$/, '') + '/s/' + sessId : 'not connected'),
-        'Anyone holding the meeting link can open this meeting. Share this file only with the people investigating.',
+        L('whoFileTitle', 'GifOS meeting \u2014 who was here'),
+        whoFill(L('whoFileRoom', 'Room: {room}'), { room: room }),
+        whoFill(L('whoFileSaved', 'Saved: {when}   (every time in this file is UTC)'), { when: utc(Date.now()) }),
+        whoFill(L('whoFileLink', 'Meeting link: {link}'), { link: location.href }),
+        whoFill(L('whoFileRelay', 'Relay session: {session}'), { session: relay }),
+        L('whoFileOnly', 'Anyone holding the meeting link can open this meeting. Share this file only with the people investigating.'),
         '',
-        'HOW TO READ THIS',
-        'Verified by the relay: the GifOS relay saw this person\'s device connect from this address at the time given, and signed a statement saying so (listed at the end). Their device cannot fake it or claim someone else\'s.',
-        'Seen directly: this device was connected straight to theirs and saw this address and port in use between the first and last times given.',
-        'Reported by their device: what their own device said. It is NOT verified and may be false.',
-        'Ejected: as soon as a forgery was detected this device cut the person off and accepted nothing more from them: no video, audio, messages or files.',
-        'Forgery detected: their device sent something only a forger would: a relay statement that is not genuine or belongs to someone else, or an address different from the one the relay signed for it. The relay-verified and seen-directly addresses still stand.',
-        'Connection to me: "direct" means this device and theirs were connected straight to each other; "through others" means this device reached them only through other participants and never saw their address itself.',
-        'Relay session: the GifOS relay is hosted by Cloudflare. Its connection records, if any are kept, are filed under this session address, and each participant\'s connection to it names their peer id (last column), so the two can be matched.',
-        'An address may belong to a VPN, a workplace or a mobile network shared by many customers. To identify a subscriber, an internet provider usually needs the address, the port and the exact time; all three are given where known.',
+        L('whoFileHow', 'HOW TO READ THIS'),
+        L('whoFileVerified', 'Verified by the relay: the GifOS relay saw this person\'s device connect from this address at the time given, and signed a statement saying so (listed at the end). Their device cannot fake it or claim someone else\'s.'),
+        L('whoFileSeenDirect', 'Seen directly: this device was connected straight to theirs and saw this address and port in use between the first and last times given.'),
+        L('whoFileReportedLine', 'Reported by their device: what their own device said. It is NOT verified and may be false.'),
+        L('whoFileEjectedLine', 'Ejected: as soon as a forgery was detected this device cut the person off and accepted nothing more from them: no video, audio, messages or files.'),
+        L('whoFileForgeryLine', 'Forgery detected: their device sent something only a forger would: a relay statement that is not genuine or belongs to someone else, or an address different from the one the relay signed for it. The relay-verified and seen-directly addresses still stand.'),
+        L('whoFileConnLine', 'Connection to me: "direct" means this device and theirs were connected straight to each other; "through others" means this device reached them only through other participants and never saw their address itself.'),
+        L('whoFileRelayNote', 'Relay session: the GifOS relay is hosted by Cloudflare. Its connection records, if any are kept, are filed under this session address, and each participant\'s connection to it names their peer id (last column), so the two can be matched.'),
+        L('whoFileIsp', 'An address may belong to a VPN, a workplace or a mobile network shared by many customers. To identify a subscriber, an internet provider usually needs the address, the port and the exact time; all three are given where known.'),
         '',
-        ['Name', 'Connection to me', 'Forgery detected', 'Relay-verified address', 'Relay saw at', 'Seen directly (address)', 'Port', 'Protocol', 'Connection', 'Seen from', 'Seen until', 'In meeting from', 'Last heard', 'Reported by their device', 'Device tag', 'Peer id'].join('\t'),
+        ['whoColName', 'whoColConn', 'whoColForgery', 'whoColRelayAddr', 'whoColRelayAt', 'whoColSeenAddr', 'whoColPort', 'whoColProto', 'whoColKind', 'whoColFrom', 'whoColUntil', 'whoColInFrom', 'whoColLast', 'whoColReported', 'whoColDev', 'whoColPeer']
+          .map((k, i) => L(k, ['Name', 'Connection to me', 'Forgery detected', 'Relay-verified address', 'Relay saw at', 'Seen directly (address)', 'Port', 'Protocol', 'Connection', 'Seen from', 'Seen until', 'In meeting from', 'Last heard', 'Reported by their device', 'Device tag', 'Peer id'][i])).join('\t'),
       ];
+      const connWord = {
+        me: L('whoConnMe', 'this device'),
+        direct: L('whoConnDirect', 'direct'),
+        indirect: L('whoConnIndirect', 'through others'),
+        left: L('whoConnLeft', 'left'),
+      };
       for (const r of rows) {
-        const conn = { me: 'this device', direct: 'direct', indirect: 'through others', left: 'left', ejected: 'EJECTED for forgery at ' + utc((ejected.get(r.pid) || {}).at) }[whoGroupOf(r)];
-        const base = (x) => [r.name, conn, r.forged || '', r.att ? r.att.ip : '', r.att ? utc(r.att.ts) : ''].concat(x, [utc(r.first), utc(r.last), r.ip || '', r.dev || '', r.pid || '']).join('\t');
+        const g = whoGroupOf(r);
+        const conn = g === 'ejected'
+          ? whoFill(L('whoConnEjected', 'EJECTED for forgery at {when}'), { when: utc((ejected.get(r.pid) || {}).at) })
+          : connWord[g];
+        const name = r.me ? r.name.replace(/ \(you\)$/, ' ' + you) : r.name;
+        const base = (x) => [name, conn, r.forged || '', r.att ? r.att.ip : '', r.att ? utc(r.att.ts) : ''].concat(x, [utc(r.first), utc(r.last), r.ip || '', r.dev || '', r.pid || '']).join('\t');
         if (!r.seen.length) lines.push(base(['', '', '', '', '', '']));
-        for (const x of r.seen) lines.push(base([x.addr, x.port || '', x.proto, x.type === 'host' ? 'local network' : (x.type || ''), utc(x.first), utc(x.last)]));
+        for (const x of r.seen) lines.push(base([x.addr, x.port || '', x.proto, x.type === 'host' ? L('whoFileLocal', 'local network') : (x.type || ''), utc(x.first), utc(x.last)]));
       }
       const signed = rows.filter((r) => r.att);
       if (signed.length) {
-        lines.push('', 'SIGNED RELAY STATEMENTS (Ed25519; the signature covers the statement text exactly as written)');
-        lines.push(['Peer id', 'Statement', 'Signature (base64)'].join('\t'));
+        lines.push('', L('whoFileSigned', 'SIGNED RELAY STATEMENTS (Ed25519; the signature covers the statement text exactly as written)'));
+        lines.push([L('whoColPeer', 'Peer id'), L('whoColStatement', 'Statement'), L('whoColSig', 'Signature (base64)')].join('\t'));
         for (const r of signed) lines.push([r.pid, r.att.sp, r.att.sig].join('\t'));
-        lines.push('', 'RELAY PUBLIC KEYS (key id = first 16 hex of SHA-256 over the raw 32-byte key)');
+        lines.push('', L('whoFileKeys', 'RELAY PUBLIC KEYS (key id = first 16 hex of SHA-256 over the raw 32-byte key)'));
         for (const kid of Object.keys(keys)) lines.push(kid + '\t' + keys[kid]);
       }
-      const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/plain' });
+      return lines.join('\n') + '\n';
+    }
+    document.getElementById('who-dl').onclick = async () => {
+      try { await whoObserve(); } catch (e) {}
+      const stamp = new Date().toISOString();
+      const blob = new Blob([whoFileText()], { type: 'text/plain' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = 'gifos-meeting-' + room + '-' + stamp.replace(/[:.]/g, '-') + '.txt';
@@ -25171,6 +25247,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         syncSpeech();
         return { cc: !!myStatus.cc, show: !!ccShow, speech: speechRunning() };
       },
+      whoFileForTest: () => whoFileText(),
       setOwnMicForTest: (live) => {
         myStatus.muted = !live;
         paintControls();
