@@ -4474,3 +4474,53 @@ test('Fit sits in the header, clear of every tile and its controls', async ({ pa
     expect(got.inside, where).toBe(true);
   }
 });
+
+test('a tile\'s hover menu sits clear of its "Blur for all" box', async ({ page }) => {
+  // Seen on two machines (fit-header-cross-after.png): hovering a peer's tile
+  // at 1280 opened the menu (Mute, Blur) at the tile's top right, under the
+  // "Blur for all" box, which sits above it, so Mute was hidden and the click
+  // landed on Blur for all. Zoom's hover menu never sits under another
+  // control. The box is built here as paintTileChrome builds it (an mb=1 page
+  // never joins); cross-tilemenu.js hovers a real peer's tile.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto(MEET_SESSION);
+    await page.waitForSelector('body.meet-session #grid');
+    await page.evaluate(() => {
+      window.__gifosVideo.guestTileForTest('Jordan Lee');
+      const tile = document.querySelector('.tile[data-peer="qa-guest"]');
+      const box = document.createElement('button');
+      box.type = 'button';
+      box.className = 'blurbox on';
+      box.textContent = 'Blur for all';
+      tile.appendChild(box);
+    });
+    const tile = page.locator('.tile[data-peer="qa-guest"]');
+    await tile.hover();
+    await expect(tile.locator('[data-mod="mute"]')).toBeVisible();
+    if (w === 1280) await page.screenshot({ path: 'artifacts/tile-menu-' + (process.env.SHOT_TAG || 'run') + '.png' });
+    const got = await page.evaluate(async () => {
+      await new Promise((r) => requestAnimationFrame(r));
+      const t = document.querySelector('.tile[data-peer="qa-guest"]');
+      const blur = t.querySelector(':scope > .blurbox').getBoundingClientRect();
+      const tb = t.getBoundingClientRect();
+      const hit = (a, b) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0;
+      return Array.from(t.querySelectorAll('.modbar button')).filter((b) => b.getClientRects().length).map((b) => {
+        const r = b.getBoundingClientRect();
+        const top = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+        return { name: b.textContent, onTop: top === b, underBlur: hit(r, blur), inTile: r.bottom <= tb.bottom && r.top >= tb.top };
+      });
+    });
+    const where = 'at ' + w + ' ' + JSON.stringify(got);
+    expect(got.length, where).toBeGreaterThanOrEqual(2);
+    for (const b of got) {
+      expect(b.onTop, where).toBe(true);
+      expect(b.underBlur, where).toBe(false);
+      expect(b.inTile, where).toBe(true);
+    }
+  }
+});
