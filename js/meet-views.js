@@ -397,6 +397,28 @@
     // Short, in the bottom right corner, where a tile has no name or button.
     if (past && !band) band = { text: '\u2193' + past, label: past + ' more below, scroll down', x: lay.box.x + lay.box.w - 4, y: clipY - 4, end: true };
     placeBand(feed, band);
+    // The hint hangs in the last face's bottom right corner, where a wide
+    // name ("Lobby iPad" on a 109px tile) ran under it. That tile's name
+    // keeps clear of it and wraps instead.
+    let hintEl = null, hintW = 0;
+    if (past && band && band.end) {
+      const hb = (feed.ownerDocument || document).getElementById('stadband');
+      hintW = hb ? hb.offsetWidth : 0;
+      let best = null;
+      for (let i = 0; i < lay.rects.length; i++) {
+        const r = lay.rects[i];
+        if (r.y >= clipY - 1 || r.y + r.h < clipY - 1) continue;
+        if (!best || r.x + r.w > best.x + best.w) best = r;
+      }
+      const t = best && byId[best.id];
+      if (t && t.el && best.x + best.w >= band.x - 1) hintEl = t.el;
+    }
+    for (let i = 0; i < used.length; i++) {
+      const el = used[i];
+      if (!el || !el.classList) continue;
+      el.classList.toggle('by-hint', el === hintEl);
+      if (el === hintEl && el.style && el.style.setProperty) el.style.setProperty('--hintw', hintW + 'px');
+    }
     if (overflows) {
       if (!spacer) {
         spacer = (feed.ownerDocument || document).createElement('div');

@@ -1940,6 +1940,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     position: absolute; z-index: 4; pointer-events: none; background: rgba(12,14,18,.72);
     color: #f4f7fb; font-size: 12px; font-weight: 700; letter-spacing: .04em;
     padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+  /* The face under "↓2" keeps its name out of the hint's corner (meet-views). */
+  body.comfy .tile.by-hint .name { max-width: calc(100% - 14px - var(--hintw, 40px)) !important;
+    white-space: normal; overflow-wrap: anywhere; }
   body.comfy .tile[data-tier="bot"] { z-index: 5; border-radius: 12px; overflow: hidden; }
   /* Gallery keeps the stage strip playing (PiP can aim it) but off the mosaic.
      A stage mode adds .show-stage and places that strip itself. */
