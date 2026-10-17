@@ -466,6 +466,7 @@
       this.glabel = null; this.glFind = NET_OFF; this.anchored = false; this.lastReached = -1; this.netRoster = null;
       this.glHead = null;          // the coord of the head my walk reached: my FIND names it, so the greeter routes there (no room scan)
       this.walkRounds = 0; this.walkPending = false;   // the walk's rounds past the ring (one signaling round trip each); the FIND waits them out
+      this.netProbeAt = -1;        // the door test: the tick I asked the view to open links to the ring; the decision waits NET_PROBE ticks for them
       this.bcDead = 0; this.bcDeadAt = -1;   // refusals saying my group has no room under its head (its child row is another network's); three of them over NET_DEAD_WAIT ticks make me head a second subnet
       this.ringMixed = false;      // my ring test saw a seat I do not reach (more than one network in this room)
       this.darkLeft = new Map();   // cell -> the peer whose knock at my door said it left that cell (held across a dark link)
@@ -1495,6 +1496,19 @@
     // others are relabelled (LABEL MERGE). Reaching nobody, I head a new group
     // (NET_NONE): I sit under a seated head that anchors me. With no relay
     // pool I still sit: my group stays apart over dark links until a bridge opens.
+    // THE DOOR TEST'S LINKS. Rule 1: the joiner opens direct links to every
+    // ring member at once and keeps the ones that connect. A view that can
+    // open links (o.probe) is asked once per HOME; the decision then waits
+    // NET_PROBE ticks for the links. Returns true when the decision waits.
+    netProbe(ro) {
+      const R = this.env.NET; if (!R || !R.o.probe || this.netProbeAt >= 0) return false;
+      const ids = []; for (const e of ro || []) if (e && e.v != null && e.v !== this.id && !ids.includes(e.v)) ids.push(e.v);
+      for (let t = 0; t < C(); t++) for (let j = 0; j < C(); j++) { const x = R.at(ck({ pc: 0, r: t, i: j })); if (x != null && x !== this.id && !ids.includes(x)) ids.push(x); }
+      if (!ids.length) return false;
+      let opened = false; try { opened = R.o.probe(ids) !== false; } catch (e) { opened = false; }
+      if (!opened) return false;
+      this.netProbeAt = this.TICK; this.walkPending = true; this.retryAt = this.TICK - 20 + NET_PROBE; this.wake(); return true;
+    }
     netDecide(ro) {
       const R = this.env.NET; let reached = 0, ringSeated = 0, best = null, bestSeat = null; const seen = new Set();
       this.glHead = null; this.walkRounds = 0;
@@ -1737,7 +1751,7 @@
       this.lastReach = this.TICK;
       this.seatTries = 0;
       this.state = 1;
-      if (this.env.NET && rosterOk(o.roster)) { const all = []; for (const sm of this.forkSamples) if (sm.gkey === o.gkey && Array.isArray(sm.roster)) for (const e of sm.roster) all.push(e); this.netRoster = all.length ? all : o.roster; this.glFind = this.netDecide(this.netRoster); if (this.walkRounds > 0) { this.walkPending = true; this.retryAt = this.TICK - 20 + this.walkRounds * NET_ROUND; this.wake(); return; } }   // the door test covers every roster the doors returned; the walk's rounds pass before the FIND
+      if (this.env.NET && rosterOk(o.roster)) { const all = []; for (const sm of this.forkSamples) if (sm.gkey === o.gkey && Array.isArray(sm.roster)) for (const e of sm.roster) all.push(e); this.netRoster = all.length ? all : o.roster; if (this.netProbe(this.netRoster)) return; this.glFind = this.netDecide(this.netRoster); if (this.walkRounds > 0) { this.walkPending = true; this.retryAt = this.TICK - 20 + this.walkRounds * NET_ROUND; this.wake(); return; } }   // the door test covers every roster the doors returned; its links are opened first, the walk's rounds pass before the FIND
       const t = this.pickRoster();
       if (t != null) this.askSeat(t);
       else this.retryAt = this.TICK - 10;
@@ -3663,7 +3677,7 @@
           // is sealed out of its own door, R3a) and replace its roster.
           if (this.state === 3 && TICK - this.rosterAskAt > 120) return;
           if (m.gkey != null) this.genKey = m.gkey; // learn this meeting's genesis key (the dance)
-          if (this.state === 1) { if (!rosterOk(m.roster)) { this.retryAt = TICK - 10; return; } this.roster = m.roster; this.haveRoster = true; this.lastReach = TICK; this.seatTries = 0; this.resumeTries = 0; if (this.env.NET) { this.netRoster = null; this.glFind = this.netDecide(m.roster); if (this.walkRounds > 0) { this.walkPending = true; this.retryAt = TICK - 20 + this.walkRounds * NET_ROUND; return; } } const t = this.pickRoster(); if (t != null) this.askSeat(t); else this.retryAt = TICK - 10; } // reached a greeter: note it for R6; a landed HOME re-arms the resume budget
+          if (this.state === 1) { if (!rosterOk(m.roster)) { this.retryAt = TICK - 10; return; } this.roster = m.roster; this.haveRoster = true; this.lastReach = TICK; this.seatTries = 0; this.resumeTries = 0; if (this.env.NET) { this.netRoster = null; if (this.netProbe(m.roster)) return; this.glFind = this.netDecide(m.roster); if (this.walkRounds > 0) { this.walkPending = true; this.retryAt = TICK - 20 + this.walkRounds * NET_ROUND; return; } } const t = this.pickRoster(); if (t != null) this.askSeat(t); else this.retryAt = TICK - 10; } // reached a greeter: note it for R6; a landed HOME re-arms the resume budget
           // An acknowledged ask is still unanswered, and a seated door just
           // answered again. The hand-off that ack promised has not seated us,
           // and the room can hear us. Re-drive the SAME greeter. This is not a
@@ -4403,7 +4417,7 @@
           this.join(); this.wake(); return;
         }
         if (this.dr && TICK - this.dr.at >= DOOR_ROUND_WAIT) this.closeDoorRound();
-        if ((this.state === 0 || this.state === 1) && TICK - this.retryAt > 20) { if (this.walkPending) { this.walkPending = false; if (this.haveRoster && this.roster.length) { const t = this.pickRoster(); if (t != null) { this.askSeat(t); this.wake(); return; } } } if (!this.resumeAsk()) this.join(); } // ENTRY RESUME: re-enter at WHOHOME while the greeter list is fresh; full knock only when it isn't
+        if ((this.state === 0 || this.state === 1) && TICK - this.retryAt > 20) { if (this.walkPending) { this.walkPending = false; if (this.netProbeAt >= 0) { this.netProbeAt = -1; this.glFind = this.netDecide(this.netRoster || this.roster); if (this.walkRounds > 0) { this.walkPending = true; this.retryAt = TICK - 20 + this.walkRounds * NET_ROUND; this.wake(); return; } } if (this.haveRoster && this.roster.length) { const t = this.pickRoster(); if (t != null) { this.askSeat(t); this.wake(); return; } } } if (!this.resumeAsk()) this.join(); } // ENTRY RESUME: re-enter at WHOHOME while the greeter list is fresh; full knock only when it isn't
         // Graded state-2 retry, SOLE-CANDIDATE ONLY: with exactly one live
         // greeter to ask there is no second admission chain to race, so a void
         // FIND may re-ask after 12 ticks instead of 60 — before this, one
@@ -4674,6 +4688,10 @@
   //   o.credOk(a, b)      the pair holds (or can get) relay credentials
   //   o.socketOpen(id)    that page's door socket is open (alive, maybe
   //                       unreachable); false once it closed (gone)
+  //   o.probe(ids)        OPTIONAL: open direct links to these ring members
+  //                       now (the door test's parallel dials); the seat
+  //                       decides NET_PROBE ticks later from o.reach. A view
+  //                       without it (the harness) answers reach at once.
   //   o.seats() / o.seat(id)  the seats this view knows. A NetRoom reads them
   //                       only for what a page learns from frames: the ring
   //                       (HOME, S1SYNC), a row head's answer in the walk (its
@@ -4691,6 +4709,7 @@
   const NET_SINGLE = true;   // with a relay pool, a seeker that reaches nobody takes a free cell under a seated row head (its anchor), never a whole empty row
   const NET_BEAT_MS = 100;   // a bridge end beats its heir this often; three missed beats switch the bridge to the standby
   const NET_ROUND = 4;       // ticks one walk round costs (a signaling round trip through the door and the mesh)
+  const NET_PROBE = 4;       // ticks the door test waits for the links it opened to the ring (the view's probe), before the seat decides
   const NET_DEAD_WAIT = 300;    // ticks a labelled seeker is refused by its own head before it heads a second subnet (a dead end lasts; a refusal a heal or a move lifts clears sooner)
   const NET_HEAL_SETTLE = 12;   // ticks a healed bridge-end cell must hold its new seat before the standby hands the bridge back
   const NET_DEAD = 254;      // a NOROOM's nd: the seeker's own group has no room under its head (the head's child row is another network's)
@@ -4738,7 +4757,7 @@
     groupOf(id) { return id == null || !this.o.groupOf ? null : this.o.groupOf(id); }
     reach(a, b) { return a === b || !!this.o.reach(a, b); }
     stun(id) { return !this.o.stun || !!this.o.stun(id); }
-    labelOf(id) { return this.seatedLive(id) ? this.seatOf(id).glabel : null; }
+    labelOf(id) { if (!this.seatedLive(id)) return null; const s = this.seatOf(id); return s.glabel != null ? s.glabel : s.id; }   // a seated seat with no label yet (seated before the view existed) is its own group's first member
     anchoredAt(id) { const s = this.seatOf(id); return !!s && !!s.anchored; }
     // The seated occupant of each cell, rebuilt when the tick or the room changes.
     at(k) {
