@@ -3078,6 +3078,8 @@ test('a joined viewer reads who is live, not watching three times', async ({ pag
     });
     await expect(page.locator('#onair')).toHaveText('Watching');
     await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+    // The host is not watching: this viewer and Sam Lee are.
+    await expect(page.locator('#airwho')).toHaveText('2 watching');
     if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/who-live-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
     await expect(status).toHaveText(/^Pastor Sam is live\./);
     await expect(status).not.toContainText('watching');
