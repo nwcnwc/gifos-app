@@ -12363,11 +12363,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       probe.width = 32; probe.height = 18;
       const pctx = probe.getContext('2d', { willReadFrequently: true });
       let darkTicks = 0, revives = 0, lastPainted = 0, endedTries = 0;
-      // 0 = picture, 1 = dark, 2 = pure black. A dark room still has sensor
-      // noise above 2; a camera that lost its frames paints exact zeros.
+      // 0 = picture, 1 = dark, 2 = pure black, 3 = no frames. A dark room
+      // still has sensor noise above 2; a camera that lost its frames paints
+      // exact zeros.
       const dark = () => {
         const v = meTile && meTile.video;
-        if (!v || !v.videoWidth) return 1; // no frames yet IS the symptom
+        if (!v || !v.videoWidth) return 3; // no frames yet IS the symptom
         try {
           pctx.drawImage(v, 0, 0, 32, 18);
           const d = pctx.getImageData(0, 0, 32, 18).data;
@@ -12417,10 +12418,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // common kill, and one that paints exact black is the other. Say so
         // on the tile at the first such sample. The re-grab still waits for
         // three samples, and a dark room that is still painting does not
-        // flash the line.
+        // flash the line. A dim room that is still sending frames is a room,
+        // not a dead camera: it never counts toward a re-grab.
         const silent = window.__gifosForceBlackCamHold === true || (judge.muted && !painting);
         const shade = silent ? 0 : dark();
-        if (silent || shade) {
+        if (silent || shade >= 2) {
           if (silent || shade === 2) showCamBack(true);
           if (++darkTicks >= 3 && revives < 3) {
             darkTicks = 0; revives++;
@@ -12429,7 +12431,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         } else {
           if (darkTicks > 0) showCamBack(false);
-          darkTicks = 0; revives = 0;
+          darkTicks = 0;
+          if (!shade) revives = 0;
         }
       }, 3000);
     })();

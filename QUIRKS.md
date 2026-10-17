@@ -6,6 +6,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 
 ## Fixed
 
+### A dim room had its camera restarted
+
+- **Who hits it:** anyone calling from a dim room, such as an evening call with one lamp on.
+- **What you saw:** about 9 seconds in, the header said Your camera was sending black video — restarting it…, the tile flashed Camera stopped, and the room saw your picture drop. It could happen three times.
+- **Repro:** `test/desktop/phone-cam.spec.js` (“a dark room that is still painting never restarts the camera”) failed before the fix on Chromium and Firefox. The camera was grabbed again on the third sample.
+- **Fix:** a dim picture that is still sending frames counts as a picture. Only no frames, or pure black, count toward a restart.
+- **Proof:** the desktop suite passes, 166/166 on Chromium and Firefox. Screenshots: `test/desktop/shots/cam-dim-before-1280.png`, `test/desktop/shots/cam-dim-after-1280.png`.
+
 ### The song line never reached the room
 
 - **Who hits it:** the volunteer running a church service, and everyone watching it.
@@ -468,4 +476,4 @@ Save, Steal, Hide, and Talk follow a German or Spanish device. Invite, Leading, 
 
 ### Not yet walked end to end
 
-Self-view placement is not in this pass. Reactions says the word. The gallery packs equal tiles and stops above the dock. A shared slide fills the stage and Stop sharing sits on it. Share screen is one button on the dock, Alt+S does the same thing, and one click opens the picker. The stage says whose screen it is, at 16px, and that line follows German and Spanish. A broadcast says off air and on air, and the booth has an order of service. During Song the booth has Program and Preview. On a short window that card stays under Off air. Those words stay on this computer. They are not on the outgoing picture. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, Vote, Password, Invite, the Run app sheet, the Who download, signing in as admin, Stop app, Turn chat off, and Save, Steal, Hide, and Talk follow German and Spanish, including the tips and the line after you share or vote. Invite, Leading, and Full screen on the app bar stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back, including when the page never goes to the background. A camera that stays live and sends no frames says so on the first quiet sample. A camera that paints pure black says so on the first sample. A dim picture that is not pure black still waits for the restart.
+Self-view placement is not in this pass. Reactions says the word. The gallery packs equal tiles and stops above the dock. A shared slide fills the stage and Stop sharing sits on it. Share screen is one button on the dock, Alt+S does the same thing, and one click opens the picker. The stage says whose screen it is, at 16px, and that line follows German and Spanish. A broadcast says off air and on air, and the booth has an order of service. During Song the booth has Program and Preview. On a short window that card stays under Off air. Those words stay on this computer. They are not on the outgoing picture. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, Vote, Password, Invite, the Run app sheet, the Who download, signing in as admin, Stop app, Turn chat off, and Save, Steal, Hide, and Talk follow German and Spanish, including the tips and the line after you share or vote. Invite, Leading, and Full screen on the app bar stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back, including when the page never goes to the background. A camera that stays live and sends no frames says so on the first quiet sample. A camera that paints pure black says so on the first sample. A dim room that is still sending frames is never restarted.
