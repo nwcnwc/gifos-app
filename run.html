@@ -2489,6 +2489,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function netSeatingKeep() { const s = meshSeat(); if (s && s.env && s.env.NET !== (netRoom || undefined)) s.env.NET = netRoom || undefined; if (netRoom && s && s.hasCoord && s.glabel == null) s.glabel = s.id; }   // a rebuilt seat keeps the room; a seat taken before the view attached heads its own group
     function netSeatingInstall(view) { netRoom = view ? new GifOS.mesh.NetRoom(view) : null; netSeatingKeep(); const s = meshSeat(); if (netRoom && s && s.hasCoord && s.glabel == null) s.glabel = s.id; return netRoom; }   // a seat taken before the view existed heads its own group
     function netLinks() { try { const s = meshSeat(); return s && netRoom ? s.netLinks() : []; } catch (e) { return []; } }
+    // A HOT STANDBY is connected and silent: no voice crosses it (one relayed
+    // pair carries audio between two networks) until the seating makes it
+    // the bridge. The pair I anchor on or serve is never a standby.
+    function netStandbyQuiet(p) { if (!p || p.turnAnchor || p.turnServe || !netRoom || !netSeated()) return false; for (const l of netLinks()) if (l.peer === p.id) return !!l.standby && !l.bridge; return false; }
     function netLinkInfo(pid) { try { const s = meshSeat(); return s && netRoom && pid != null ? netRoom.linkInfo(s.id, pid) : null; } catch (e) { return null; } }
     function netBeatTarget() { try { const s = meshSeat(); return s && netRoom ? netRoom.heirFor(s.id) : null; } catch (e) { return null; } }
     function netBeatFrom(pid) { if (netRoom && pid != null) netRoom.beat(pid, Date.now()); }
@@ -2513,7 +2517,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const doorWhy = new Map();   // peer -> why my last reach verdict for our pair was what it was (the debug view's door test)
     const netSeated = () => { const s = meshSeat(); return !!(netRoom && s && s.hasCoord && s.state === 3); };
     function netSeatingPool(level, credOk) { netPool = { level: level | 0, cred: !!credOk }; if (netRoom) netRoom.topoChanged(); }
-    const netPairRelayed = (p) => !!(p && (p.viaRelay || (p.viaRelay === undefined && (p.turnMine || p.turnAnchor))));   // viaRelay: the selected candidate pair's type (whoObserve); unobserved, a pair this page put TURN on counts as relayed
+    const netPairRelayed = (p) => !!(p && (p.viaRelay || p.turnServe || (p.viaRelay === undefined && (p.turnMine || p.turnAnchor))));   // viaRelay: the selected candidate pair's type (whoObserve); unobserved, a pair this page put TURN on counts as relayed; a client I serve over the pool always does
     // My connected pairs that run through a relay server, for my status
     // (st.rl): a relayed pair joins two networks, it does not make them one,
     // so another page's view never reads it as a direct path.
@@ -2584,6 +2588,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return out;
         },
         stun: (id) => { if (id === myId) return directPath !== 'blocked'; const st = statusOf.get(id); return !(st && st.net === 'blocked'); },
+        stunKnown: (id) => id === myId || !!(statusOf.get(id) && statusOf.get(id).net),   // a peer whose status has not reached me has no verdict yet
         clientsOf: (a, b) => { let ca = !view.stun(a), cb = !view.stun(b); if (!ca && !cb) ca = true; return [ca, cb]; },   // never two relay clients where one end can be reached
         turn: () => netPool.level,
         credOk: () => netPool.cred,
@@ -5153,7 +5158,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // My anchor hears my network's voices with mine, when I bridge it.
           // A row mate of a bridge end hears the other network in its feed.
           const mixT = p.turnServe ? turnMixTrack(p.id) : p.turnAnchor ? turnUpTrack() : bridgeFeedTrack(p.id);
-          if (mixT) { turnMixSenders.add(p.mainA); if (p.mainA.track !== mixT) p.mainA.replaceTrack(mixT).catch(() => {}); }
+          if (netStandbyQuiet(p)) { turnMixSenders.delete(p.mainA); if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
+          else if (mixT) { turnMixSenders.add(p.mainA); if (p.mainA.track !== mixT) p.mainA.replaceTrack(mixT).catch(() => {}); }
           else {
             turnMixSenders.delete(p.mainA);
             if (staged && !p.turnAudio) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
@@ -6352,6 +6358,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let swap = false;
       for (const p of peers.values()) {
         if (p.mainA && !p.turnServe && !p.turnAnchor) { const ft = bridgeFeedTrack(p.id); if (ft ? p.mainA.track !== ft : turnMixSenders.has(p.mainA)) swap = true; }
+        if (p.mainA && (netStandbyQuiet(p) ? !!p.mainA.track : (p.turnAudio && !p.mainA.track && !p.turnServe && !p.turnAnchor))) swap = true;   // a standby falls silent; a standby that is no longer one speaks again
         if (p.turnServe && p.mainA) { const mt = turnMixTrack(p.id); if (mt && p.mainA.track !== mt) swap = true; }
         if (p.turnAnchor && p.mainA) { const ut = turnUpTrack(); if (ut ? p.mainA.track !== ut : turnMixSenders.has(p.mainA)) swap = true; }
         if (p.turnAudio && !p.mainA && localStream && p.dc && p.dc.readyState === 'open') swap = true; // the voice sender is missing: refreshOutbound adds it

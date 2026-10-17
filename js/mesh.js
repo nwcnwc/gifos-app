@@ -4997,6 +4997,9 @@
   //                       A page knows a joiner only once it is seated: the
   //                       seat's own sitting-down marks (the label its PLACE
   //                       carried) and the FIND's label stand in until then.
+  //   o.stunKnown(id)     OPTIONAL: whether o.stun(id) is a verdict the view
+  //                       holds (a page has none for a peer whose status has
+  //                       not arrived); without it every o.stun is one.
   //   o.doorPeers(me)     OPTIONAL: the joiners still at the door that `me`
   //                       holds a direct link to (a page cannot see their
   //                       door tests; the lowest id among them heads them).
@@ -5059,7 +5062,7 @@
     // A page on a blocked network reaches nobody outside it, so a pair with
     // one blocked end and one that is not is never direct, whatever a view's
     // connection gossip says (a pair through the relay pool is connected too).
-    reach(a, b) { if (a === b) return true; if (this.o.stun && this.stun(a) !== this.stun(b)) return false; return !!this.o.reach(a, b); }
+    reach(a, b) { if (a === b) return true; if (this.o.stun && this.stun(a) !== this.stun(b) && (!this.o.stunKnown || (this.o.stunKnown(a) && this.o.stunKnown(b)))) return false; return !!this.o.reach(a, b); }   // only two verdicts the view holds (a peer whose status never arrived has none)
     stun(id) { return !this.o.stun || !!this.o.stun(id); }
     labelOf(id) { if (!this.seatedLive(id)) return null; const s = this.seatOf(id); return s.glabel != null ? s.glabel : s.id; }   // a seated seat with no label yet (seated before the view existed) is its own group's first member
     anchoredAt(id) { const s = this.seatOf(id); return !!s && !!s.anchored; }
