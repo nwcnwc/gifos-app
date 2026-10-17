@@ -6,6 +6,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 
 ## Fixed
 
+### Signing in as admin stayed English
+
+- **Who hits it:** a German or Spanish host, opening Admin from All tools in a room that has an admin.
+- **What you saw:** the button said “Admin sign-in”. The sheet said “Room admin”, “Sign in as admin”, and “Admin password”. The hint was English, at 13.6px.
+- **Repro:** `test/desktop/admin-sheet.spec.js` failed before the translation (a `de-DE` button was “Admin sign-in”).
+- **Fix:** the button, the sheet, the hint, the password check, and the banned-device list follow the device. German uses Sie. Spanish uses tú. English stays in the markup. Signing in behaves as before. The hint is 16px. Stop app and Turn chat off stay English.
+- **Proof:** the test passes on Chromium, Firefox, and WebKit. Screenshots: `test/desktop/shots/admin-sheet-before-de-1280.png`, `test/desktop/shots/admin-sheet-after-de-1280.png`.
+
 ### The Who download for the police stayed English
 
 - **Who hits it:** a German or Spanish device, handing the Who list to someone investigating.
@@ -386,9 +394,9 @@ With no saved confirmation for this session, joining shows how you will appear: 
 
 More opens to Hand, Invite, and Help. All tools shows Who, Run app, Vote, Password, Stage, Record, Captions, Settings, Keys, and Transcript. Captions is also on the dock. Each of those has a key, including while All tools is folded. Host tools stay hidden until there is a host, and those bulk tools still have no key. The full list, once opened, is still long.
 
-### Signing in as admin, Stop app, and Turn chat off stay English
+### Stop app and Turn chat off stay English
 
-The Who file follows a German or Spanish device. The admin sheet still says “Room admin” and “Sign in as admin”. Stop app still says “Stop app” or “Stop for everyone”. Chat still says “Turn chat off”.
+Signing in as admin follows a German or Spanish device. Stop app still says “Stop app” or “Stop for everyone”. Chat still says “Turn chat off”.
 
 ### Status line is easy to lose
 
@@ -396,4 +404,4 @@ The Who file follows a German or Spanish device. The admin sheet still says “R
 
 ### Not yet walked end to end
 
-Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. Share screen is one button on the dock, Alt+S does the same thing, and one click opens the picker. The stage says whose screen it is, at 16px, and that line follows German and Spanish. A broadcast says off air and on air, and the booth has an order of service. During Song the booth has Program and Preview. On a short window that card stays under Off air. Those words stay on this computer. They are not on the outgoing picture. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, Vote, Password, Invite, the Run app sheet, and the Who download follow German and Spanish, including the tips and the line after you share or vote. Signing in as admin, Stop app, and Turn chat off stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back, including when the page never goes to the background. A camera that stays live and sends no frames says so on the first quiet sample. A camera that is still painting black frames waits on the watchdog.
+Gallery packing, self-view placement, and the reactions icon are not in this pass. A shared slide fills the stage and Stop sharing sits on it. Share screen is one button on the dock, Alt+S does the same thing, and one click opens the picker. The stage says whose screen it is, at 16px, and that line follows German and Spanish. A broadcast says off air and on air, and the booth has an order of service. During Song the booth has Program and Preview. On a short window that card stays under Off air. Those words stay on this computer. They are not on the outgoing picture. The roster can mute someone for everyone, hold a new arrival until Admit, rename them, and spotlight them. The waiting room is not a sealed lobby. Who, Share, Vote, Password, Invite, the Run app sheet, the Who download, and signing in as admin follow German and Spanish, including the tips and the line after you share or vote. Stop app and Turn chat off stay English. Stepping away shows Away, and coming back says you are still in the call. A phone that ends the camera says so on your tile and brings it back, including when the page never goes to the background. A camera that stays live and sends no frames says so on the first quiet sample. A camera that is still painting black frames waits on the watchdog.

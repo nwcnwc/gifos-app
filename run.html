@@ -1231,6 +1231,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #appear #nmok { background: #0064c8; color: #fff; border: 0; min-width: 132px; font-weight: 700; }
   #appear #appear-pic { display: block; margin: -4px auto 12px; background: transparent; color: #0064c8; border: 0; min-height: 36px; font-weight: 700; }
   .name-box p { color: var(--muted, #8888aa); font-size: .85rem; margin-bottom: 1rem; }
+  #adm-modal #adm-hint, #adm-modal #adm-banned-h { font-size: 16px; line-height: 1.45; }
   .name-box input { width: 100%; padding: .55rem .7rem; border-radius: .5rem; min-height: 48px;
     border: 1px solid var(--border, #2a2a3f); background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0); font: inherit; margin-bottom: .8rem; }
   .name-box button { padding: .5rem 1.4rem; min-height: 48px; border-radius: .5rem; border: 1px solid var(--accent, #7b5cff); background: var(--accent, #7b5cff); color: var(--onaccent, #fff); cursor: pointer; }
@@ -2092,17 +2093,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
   <div class="name-modal" role="dialog" aria-modal="true" id="adm-modal" style="display:none">
     <div class="name-box" style="max-width:420px">
-      <h3>Room admin</h3>
+      <h3 data-t="admTitle">Room admin</h3>
       <p id="adm-hint"></p>
       <div id="adm-setup">
-        <input id="adm-pass" type="password" maxlength="64" placeholder="Admin password" autocomplete="new-password">
-        <button id="adm-enable">Sign in as admin</button>
+        <input id="adm-pass" type="password" maxlength="64" data-ph="admPassPh" placeholder="Admin password" autocomplete="new-password">
+        <button id="adm-enable" data-t="admEnable">Sign in as admin</button>
       </div>
       <div id="adm-panel" style="display:none;text-align:left">
-        <p style="margin-bottom:.2rem">Banned devices:</p>
+        <p id="adm-banned-h" data-t="admBanned" style="margin-bottom:.2rem">Banned devices:</p>
         <div id="adm-banned"></div>
       </div>
-      <button id="adm-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
+      <button id="adm-close" data-t="setClose" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Close</button>
     </div>
   </div>
 
@@ -2691,6 +2692,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         whoFileSigned: 'SIGNIERTE RELAY-ERKLÄRUNGEN (Ed25519; die Signatur gilt für den Erklärungstext genau so, wie er hier steht)',
         whoColStatement: 'Erklärung', whoColSig: 'Signatur (Base64)',
         whoFileKeys: 'ÖFFENTLICHE RELAY-SCHLÜSSEL (Schlüssel-Id = die ersten 16 Hex-Zeichen von SHA-256 über den rohen 32-Byte-Schlüssel)',
+        admSignIn: 'Admin-Anmeldung', admBtn: 'Admin',
+        admTipOn: 'Admin-Steuerung: gesperrte Geräte, Raum-Passwort',
+        admTipOff: 'Dieser Raum hat einen Admin — geben Sie das Admin-Passwort ein, um die Steuerung zu bekommen',
+        admTitle: 'Raum-Admin', admPassPh: 'Admin-Passwort', admEnable: 'Als Admin anmelden',
+        admHintOff: 'Dieser Raum hat einen Admin. Wenn Sie das Admin-Passwort kennen, geben Sie es hier ein, um die Steuerung zu bekommen. Ihr Passwort bleibt auf diesem Gerät.',
+        admHintOn: 'Sie leiten diesen Raum. Admins können den Raum mit einem Passwort schließen (der Schlüssel zum scharfen Bild), jemanden für alle stummschalten oder weichzeichnen und Geräte sperren. Wer das Admin-Passwort kennt, kann Admin öffnen und sich auch anmelden.',
+        admBanned: 'Gesperrte Geräte:', admNobody: 'Niemand ist gesperrt.', admUnban: 'Entsperren', admUnnamed: 'ohne Namen',
+        admChecking: 'Wird geprüft…',
+        admCheckingStatus: '🛡 Passwort wird geprüft… (dauert ein paar Sekunden)',
+        admCheckFail: 'Das Passwort ließ sich nicht prüfen ({err}).',
+        admWrong: 'Falsches Admin-Passwort.',
+        admWrongStatus: '🛡 Falsches Admin-Passwort.',
+        admSignedIn: '🛡 Sie sind als Admin angemeldet.',
         whoDirect: 'Direkt mit Ihnen verbunden',
         whoDirectNote: 'Ihr Gerät und ihres sprechen direkt miteinander, deshalb hat es die Adresse selbst gesehen.',
         whoIndirect: 'In der Besprechung, über andere',
@@ -2928,6 +2942,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         whoFileSigned: 'CONSTANCIAS FIRMADAS DEL RELAY (Ed25519; la firma cubre el texto de la constancia exactamente como está escrito)',
         whoColStatement: 'Constancia', whoColSig: 'Firma (base64)',
         whoFileKeys: 'CLAVES PÚBLICAS DEL RELAY (id de clave = los primeros 16 hex de SHA-256 sobre la clave cruda de 32 bytes)',
+        admSignIn: 'Entrar como anfitrión', admBtn: 'Anfitrión',
+        admTipOn: 'Controles de anfitrión: dispositivos bloqueados, contraseña de la sala',
+        admTipOff: 'Esta sala tiene un anfitrión — escribe la contraseña para tener los controles',
+        admTitle: 'Anfitrión de la sala', admPassPh: 'Contraseña de anfitrión', admEnable: 'Entrar como anfitrión',
+        admHintOff: 'Esta sala tiene un anfitrión. Si sabes la contraseña, escríbela aquí para tener los controles. Tu contraseña se queda en este dispositivo.',
+        admHintOn: 'Tú diriges esta sala. Los anfitriones pueden cerrarla con una contraseña (la llave del video nítido), silenciar o difuminar a alguien para todos, y bloquear dispositivos. Quien sepa la contraseña puede abrir Anfitrión y entrar también.',
+        admBanned: 'Dispositivos bloqueados:', admNobody: 'Nadie está bloqueado.', admUnban: 'Desbloquear', admUnnamed: 'sin nombre',
+        admChecking: 'Comprobando…',
+        admCheckingStatus: '🛡 Comprobando la contraseña… (tarda unos segundos)',
+        admCheckFail: 'No se pudo comprobar la contraseña ({err}).',
+        admWrong: 'Contraseña de anfitrión incorrecta.',
+        admWrongStatus: '🛡 Contraseña de anfitrión incorrecta.',
+        admSignedIn: '🛡 Entraste como anfitrión.',
         whoDirect: 'Conectados directo contigo',
         whoDirectNote: 'Tu dispositivo y el suyo hablan directo, así que vio la dirección.',
         whoIndirect: 'En la reunión, a través de otros',
@@ -10973,9 +11000,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // ban management. Creating an admin room lives in Invite. A plain room has
       // no admin and never can, so there's nothing for this button to do there.
       ab.style.display = hasAdmin ? '' : 'none';
-      ab.textContent = amAdmin ? 'Admin' : 'Admin sign-in';
-      ab.title = amAdmin ? 'Admin controls: banned devices, room password'
-        : 'This room has an admin — enter the admin password to get admin controls';
+      ab.textContent = amAdmin ? uiText('admBtn', 'Admin') : uiText('admSignIn', 'Admin sign-in');
+      ab.title = amAdmin ? uiText('admTipOn', 'Admin controls: banned devices, room password')
+        : uiText('admTipOff', 'This room has an admin — enter the admin password to get admin controls');
       const pwb = document.getElementById('pwbtn');
       pwb.disabled = hasAdmin && !amAdmin;
       pwb.title = (hasAdmin && !amAdmin)
@@ -12599,13 +12626,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!box) return;
       box.innerHTML = '';
       if (!amAdmin) return;
-      if (!roomBan.length) { box.innerHTML = '<span style="color:#667">Nobody is banned.</span>'; return; }
+      if (!roomBan.length) { box.innerHTML = '<span style="color:#667">' + uiText('admNobody', 'Nobody is banned.') + '</span>'; return; }
       const names = banNames();
       for (const b of roomBan) {
         const row = document.createElement('div'); row.className = 'brow';
         const nm = document.createElement('span'); nm.style.flex = '1';
-        nm.textContent = (names[b.d] || nameForDev(b.d) || 'unnamed') + ' · ' + b.d;
-        const btn = document.createElement('button'); btn.textContent = 'Unban';
+        nm.textContent = (names[b.d] || nameForDev(b.d) || uiText('admUnnamed', 'unnamed')) + ' · ' + b.d;
+        const btn = document.createElement('button'); btn.textContent = uiText('admUnban', 'Unban');
         btn.onclick = () => { admSigned('unban', { dev: b.d }).then((w) => { if (w) relaySendObj({ t: 'unban', dev: b.d, w }); }); };
         row.appendChild(nm); row.appendChild(btn); box.appendChild(row);
       }
@@ -12618,12 +12645,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // moved to Invite), so there are just two moods: sign in, or manage.
       if (amAdmin) {
         setup.style.display = 'none'; panel.style.display = '';
-        document.getElementById('adm-hint').textContent = 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for everyone, and ban devices. Anyone who knows the admin password can open Admin and sign in too.';
+        document.getElementById('adm-hint').textContent = uiText('admHintOn', 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for everyone, and ban devices. Anyone who knows the admin password can open Admin and sign in too.');
         renderBanned();
       } else {
         setup.style.display = ''; panel.style.display = 'none';
-        btn.textContent = 'Sign in as admin';
-        document.getElementById('adm-hint').textContent = 'This room has an admin. If you know the admin password, enter it here to get the admin controls. Your password stays on this device.';
+        btn.textContent = uiText('admEnable', 'Sign in as admin');
+        document.getElementById('adm-hint').textContent = uiText('admHintOff', 'This room has an admin. If you know the admin password, enter it here to get the admin controls. Your password stays on this device.');
       }
       admModal.style.display = 'flex';
     }
@@ -12637,23 +12664,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const btn = document.getElementById('adm-enable');
       const hint = document.getElementById('adm-hint');
       btn.disabled = true;
-      btn.textContent = 'Checking…';
-      setStatus('🛡 Checking the password… (takes a few seconds)');
+      btn.textContent = uiText('admChecking', 'Checking…');
+      setStatus(uiText('admCheckingStatus', '🛡 Checking the password… (takes a few seconds)'));
       let K;
       try { K = await deriveAdminKey(room, v); }
       catch (err) {
         btn.disabled = false;
-        btn.textContent = 'Sign in as admin';
-        hint.textContent = 'Could not check the password (' + ((err && err.name) || 'Error') + ').';
+        btn.textContent = uiText('admEnable', 'Sign in as admin');
+        hint.textContent = uiText('admCheckFail', 'Could not check the password ({err}).').split('{err}').join((err && err.name) || 'Error');
         return;
       }
       // V commits to the PUBLIC KEY of the keypair K seeds (§9) — the check
       // is local, instant, and needs no relay round-trip.
       if (!(await adoptAdmKey(K))) {
         btn.disabled = false;
-        btn.textContent = 'Sign in as admin';
-        hint.textContent = 'Wrong admin password.';
-        setStatus('🛡 Wrong admin password.');
+        btn.textContent = uiText('admEnable', 'Sign in as admin');
+        hint.textContent = uiText('admWrong', 'Wrong admin password.');
+        setStatus(uiText('admWrongStatus', '🛡 Wrong admin password.'));
         return;
       }
       btn.disabled = false;
@@ -12661,7 +12688,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { localStorage.setItem(admStoreKey(), admKey); } catch (e2) {}
       mirrorRoomState({ admin: true });
       admModal.style.display = 'none';
-      setStatus('🛡 You are signed in as admin.');
+      setStatus(uiText('admSignedIn', '🛡 You are signed in as admin.'));
       applyAdminUi();
       broadcastStatus(); // the next signed heartbeat announces my adminship to every peer
     };
