@@ -1887,7 +1887,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span class="docklab">Chat</span>
       <span class="chatcount" hidden></span>
     </button>
-    <button id="sharebtn" type="button" class="iconbtn" aria-label="Share screen" title="Show the whole room a window, a tab or your desktop. To share a GifOS app, use Run app." style="display:none">
+    <button id="sharebtn" type="button" class="iconbtn" aria-label="Share screen" aria-keyshortcuts="S" title="Show the whole room a window, a tab or your desktop. To share a GifOS app, use Run app." style="display:none">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
       <span class="docklab">Share</span>
     </button>
@@ -18678,7 +18678,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const blocked = !myStatus.scr && !mayShareScreen(myId);
       document.getElementById('share-go').style.display = blocked ? 'none' : '';
       document.getElementById('share-denied').style.display = blocked ? '' : 'none';
-      shareSheetOpener = (document.activeElement && document.activeElement !== document.body) ? document.activeElement : shareBtn;
+      // From a key, focus goes back to Share, or to More when Share sits
+      // folded under it (a viewer's, or a dock squeezed beside the chat).
+      const shareShown = shareBtn && shareBtn.getClientRects().length;
+      shareSheetOpener = (document.activeElement && document.activeElement !== document.body) ? document.activeElement
+        : (shareShown ? shareBtn : (document.getElementById('bartoggle') || shareBtn));
       modal.style.display = 'flex';
       const focusEl = document.getElementById(shareSheetFocusId(blocked));
       if (focusEl && focusEl.focus) { try { focusEl.focus(); } catch (e) {} }
@@ -22083,6 +22087,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         fb.click();
         return;
       }
+      if (k === 's') {
+        // Share, as Zoom gives it a key: wherever this person has Share (the
+        // dock, More, or More's stand-in beside the chat), never for a viewer
+        // who has not been allowed to share.
+        if (!document.querySelector('.bar') || document.querySelector('#lobby.show') || topNameModal()) return;
+        if (!shareOffered()) return;
+        e.preventDefault();
+        document.getElementById('sharebtn').click();
+        return;
+      }
       if (k === 'c' || k === 'r' || k === 'h') {
         // Chat, Reactions and the hand, as Zoom and Meet give them keys.
         if (!document.querySelector('.bar') || document.querySelector('#lobby.show') || topNameModal()) return;
@@ -22119,6 +22133,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const svc = typeof BROADCAST !== 'undefined' && BROADCAST;
       return !svc || !!(handBtn.parentElement && handBtn.parentElement.classList.contains('bar'));
     }
+    // Share is offered when its button is not hidden by the room's rules;
+    // folded under More (or moved there beside the chat) still counts.
+    function shareOffered() {
+      const b = document.getElementById('sharebtn');
+      if (!b || document.body.classList.contains('app-room')) return false;
+      return b.classList.contains('inmore') || getComputedStyle(b).display !== 'none';
+    }
     // ? lists the keys that work for this person right now (a viewer has
     // no mic or camera on the dock, so M and V are left out).
     const keysModal = document.getElementById('keys-modal');
@@ -22132,6 +22153,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (canRaiseHand()) rows.push(['H', 'Raise or lower your hand']);
       const fsB = document.getElementById('fsbtn');
       if (fsB && fsB.offsetParent !== null) rows.push(['F', 'Open or close Full screen']);
+      if (shareOffered()) rows.push(['S', 'Share your screen, or stop sharing']);
       rows.push(['Esc', 'Close a sheet or the chat, then fold More']);
       rows.push(['Tab', 'Move through the controls, top to bottom']);
       rows.push(['Arrows', 'On the grip: move the controls']);

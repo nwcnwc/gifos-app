@@ -1,6 +1,7 @@
 /*
  * cross-sharekey.js — in a live service, S opens the Share sheet with the
- * keyboard on Choose what to share…, and Escape closes it back on Share. A
+ * keyboard on Choose what to share…, and Escape closes it back on Share (on
+ * More for a viewer, whose Share is folded under it). A
  * viewer who may not share gets nothing from S and no S in the ? list; once
  * the host allows guest shares, the viewer's S opens the sheet too.
  *
@@ -51,18 +52,18 @@ run('cross-sharekey', async (hb, vb, shoot) => {
   await sleep(800);
   await shoot();
   const bad = [];
-  const opens = (who, s) => {
+  const opens = (who, s, back) => {
     if (!s.open.on) { bad.push(who + ': S opens no Share'); return; }
     if (s.open.denied) bad.push(who + ': the sheet refuses the share');
     if (s.open.focus !== 'share-go') bad.push(who + ': S leaves the keyboard on ' + (s.open.focus || 'nothing'));
     if (s.shut.on) bad.push(who + ': Escape leaves Share open');
-    else if (s.shut.focus !== 'sharebtn') bad.push(who + ': closing leaves the keyboard on ' + (s.shut.focus || 'nothing'));
+    else if (s.shut.focus !== back) bad.push(who + ': closing leaves the keyboard on ' + (s.shut.focus || 'nothing'));
     if (!s.listsS) bad.push(who + ': ? does not list S');
   };
-  opens('host', out.host);
+  opens('host', out.host, 'sharebtn');
   if (out.viewer.open.on) bad.push('viewer: S opens Share before the host allows it');
   if (out.viewer.listsS) bad.push('viewer: ? lists S before the host allows sharing');
-  opens('allowed viewer', out.allowed);
+  opens('allowed viewer', out.allowed, 'bartoggle');
   if (bad.length) throw new Error(bad.join('; ') + ' ' + JSON.stringify(out));
   return JSON.stringify(out);
 });
