@@ -102,7 +102,7 @@ test('Save keeps the shown name and avatar', async ({ page }) => {
   expect(after.avatar).toBeTruthy();
 });
 
-test('Go live is the sheet, and Watch opens from More', async ({ page }) => {
+test('the picture is the screen, and Watch opens from More', async ({ page }) => {
   await page.goto('/run.html#bc=1', { waitUntil: 'domcontentloaded' });
   await page.locator('#lobby.show').waitFor();
   await page.locator('#lob-admin-go').waitFor({ state: 'visible' });
@@ -111,33 +111,39 @@ test('Go live is the sheet, and Watch opens from More', async ({ page }) => {
   const g = await page.evaluate(() => {
     const go = document.getElementById('lob-admin-go').getBoundingClientRect();
     const more = document.getElementById('lob-desk-more').getBoundingClientRect();
-    const card = document.querySelector('#lobby .lobby-card').getBoundingClientRect();
+    const preview = document.getElementById('lob-preview').getBoundingClientRect();
+    const card = document.querySelector('#lobby .lobby-card');
     return {
       goH: go.height,
       goBottom: go.bottom,
       goTop: go.top,
-      cardTop: card.top,
+      previewTop: preview.top,
+      previewH: preview.height,
       moreBottom: more.bottom,
       moreH: more.height,
       vh: innerHeight,
+      cardBg: getComputedStyle(card).backgroundColor,
       goBg: getComputedStyle(document.getElementById('lob-admin-go')).backgroundColor,
     };
   });
   expect(g.goH).toBeGreaterThanOrEqual(44);
   expect(g.moreH).toBeGreaterThanOrEqual(44);
   expect(g.goBottom).toBeLessThanOrEqual(g.vh + 0.5);
-  expect(g.goTop - g.cardTop).toBeLessThanOrEqual(40);
-  expect(g.moreBottom).toBeLessThanOrEqual(g.cardTop + 4);
+  expect(g.previewTop).toBeLessThanOrEqual(1);
+  expect(g.previewH).toBeGreaterThanOrEqual(g.vh - 1);
+  expect(g.goTop).toBeGreaterThan(g.previewH * 0.5);
+  expect(g.moreBottom).toBeLessThan(g.goTop);
+  expect(g.cardBg).toBe('rgba(0, 0, 0, 0)');
   await page.locator('#lob-desk-more').click();
   const after = await page.evaluate(() => {
     const watch = document.getElementById('lob-join-btn').getBoundingClientRect();
-    const card = document.querySelector('#lobby .lobby-card').getBoundingClientRect();
+    const preview = document.getElementById('lob-preview').getBoundingClientRect();
     const go = document.getElementById('lob-admin-go');
     return {
       watchH: watch.height,
       watchTop: watch.top,
       watchBottom: watch.bottom,
-      cardTop: card.top,
+      previewBottom: preview.bottom,
       vh: innerHeight,
       goHidden: go.getClientRects().length === 0,
       watchBg: getComputedStyle(document.getElementById('lob-join-btn')).backgroundColor,
@@ -146,7 +152,30 @@ test('Go live is the sheet, and Watch opens from More', async ({ page }) => {
   });
   expect(after.goHidden).toBe(true);
   expect(after.watchH).toBeGreaterThanOrEqual(44);
-  expect(after.watchTop).toBeGreaterThanOrEqual(after.cardTop - 1);
+  expect(after.watchTop).toBeGreaterThanOrEqual(0);
+  expect(after.watchBottom).toBeLessThanOrEqual(after.previewBottom + 0.5);
   expect(after.watchBottom).toBeLessThanOrEqual(after.vh + 0.5);
   expect(farEnough(rgb(after.goBg), rgb(after.watchBg))).toBe(true);
+});
+
+test('a tap on the picture goes live', async ({ page }) => {
+  await page.goto('/run.html#bc=1&st=1', { waitUntil: 'domcontentloaded' });
+  await page.locator('#lobby.show.stream-ready').waitFor();
+  await page.locator('#lob-admin-go').waitFor({ state: 'visible' });
+  const spot = await page.evaluate(() => {
+    const preview = document.getElementById('lob-preview').getBoundingClientRect();
+    const go = document.getElementById('lob-admin-go').getBoundingClientRect();
+    const name = document.getElementById('lob-admin-name').getBoundingClientRect();
+    return {
+      x: preview.left + preview.width / 2,
+      y: (name.bottom + go.top) / 2,
+      previewH: preview.height,
+      vh: innerHeight,
+    };
+  });
+  expect(spot.previewH).toBeGreaterThanOrEqual(spot.vh - 1);
+  expect(spot.y).toBeGreaterThan(0);
+  await page.mouse.click(spot.x, spot.y);
+  await expect(page.locator('#lob-admin-go')).toHaveText('Creating…');
+  await expect(page.locator('#lob-admin-go')).toBeDisabled();
 });

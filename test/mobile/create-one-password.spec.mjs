@@ -41,25 +41,31 @@ test('a church desk opens on a service name and Go live', async ({ page }) => {
   expect(goBefore.y - (nameBox.y + nameBox.height)).toBeGreaterThanOrEqual(8);
   expect(moreBox.y + moreBox.height).toBeLessThanOrEqual(goBefore.y);
   const sheet = await page.evaluate(() => {
-    const card = document.querySelector('#lobby .lobby-card').getBoundingClientRect();
+    const card = document.querySelector('#lobby .lobby-card');
     const go = document.getElementById('lob-admin-go').getBoundingClientRect();
     const name = document.getElementById('lob-admin-name').getBoundingClientRect();
-    return { cardTop: card.top, goTop: go.top, nameBottom: name.bottom };
+    const preview = document.getElementById('lob-preview').getBoundingClientRect();
+    return {
+      goTop: go.top,
+      nameBottom: name.bottom,
+      previewH: preview.height,
+      previewTop: preview.top,
+      cardBg: getComputedStyle(card).backgroundColor,
+    };
   });
-  expect(sheet.nameBottom).toBeLessThanOrEqual(sheet.cardTop + 4);
-  expect(sheet.goTop - sheet.cardTop).toBeLessThanOrEqual(40);
+  expect(sheet.nameBottom).toBeLessThanOrEqual(sheet.goTop - 8);
   const stage = await page.evaluate(() => {
     const preview = document.getElementById('lob-preview').getBoundingClientRect();
-    const card = document.querySelector('#lobby .lobby-card').getBoundingClientRect();
-    return { h: preview.height, top: preview.top, cardTop: card.top, w: innerWidth, vh: innerHeight };
+    const go = document.getElementById('lob-admin-go').getBoundingClientRect();
+    return { h: preview.height, top: preview.top, goTop: go.top, w: innerWidth, vh: innerHeight };
   });
   if (stage.vh >= 540 && stage.w <= 700) {
-    const face = Math.min(stage.h, stage.cardTop);
-    expect(face).toBeGreaterThanOrEqual(220);
+    expect(stage.h).toBeGreaterThanOrEqual(stage.vh - 1);
     expect(stage.top).toBeLessThanOrEqual(1);
-    expect(stage.cardTop).toBeGreaterThan(stage.h - 24);
+    expect(stage.goTop).toBeGreaterThan(stage.h * 0.5);
+    expect(sheet.cardBg).toBe('rgba(0, 0, 0, 0)');
   }
-  expect(moreBox.y + moreBox.height).toBeLessThanOrEqual(sheet.cardTop + 4);
+  expect(moreBox.y + moreBox.height).toBeLessThanOrEqual(sheet.goTop);
   await more.click();
   await expect(page.locator('#lob-admin-go')).toBeHidden();
   await expect(page.locator('#lob-join-btn')).toBeVisible();
@@ -117,23 +123,24 @@ test('a stream name is filled in above Go live', async ({ page }) => {
   const place = await page.evaluate(() => {
     const name = document.getElementById('lob-admin-name').getBoundingClientRect();
     const go = document.getElementById('lob-admin-go').getBoundingClientRect();
-    const card = document.querySelector('#lobby .lobby-card').getBoundingClientRect();
+    const preview = document.getElementById('lob-preview').getBoundingClientRect();
     return {
       nameBottom: name.bottom,
       nameH: name.height,
       goTop: go.top,
       goBottom: go.bottom,
       goH: go.height,
-      cardTop: card.top,
+      previewTop: preview.top,
+      previewH: preview.height,
       vh: innerHeight,
     };
   });
   expect(place.nameH).toBeGreaterThanOrEqual(44);
   expect(place.goH).toBeGreaterThanOrEqual(44);
-  expect(place.nameBottom).toBeLessThanOrEqual(place.cardTop + 4);
+  expect(place.previewTop).toBeLessThanOrEqual(1);
+  expect(place.previewH).toBeGreaterThanOrEqual(place.vh - 1);
   expect(place.nameBottom).toBeLessThanOrEqual(place.goTop - 8);
-  expect(place.goTop).toBeGreaterThanOrEqual(place.cardTop - 1);
-  expect(place.goTop - place.cardTop).toBeLessThanOrEqual(40);
+  expect(place.goTop).toBeGreaterThan(place.previewH * 0.5);
   expect(place.goBottom).toBeLessThanOrEqual(place.vh + 0.5);
 });
 

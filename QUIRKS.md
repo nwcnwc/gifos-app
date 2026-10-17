@@ -12,6 +12,14 @@ Screenshots for the open bugs are in `test/mobile/screenshots/before/`.
 
 ## Fixed
 
+### Q59. Go live was a white sheet under the picture
+
+The camera filled 320×504 of an iPhone SE, and a white bar sat under it with Go live. The picture now fills the phone, 320×568. Go live is a button on that picture, and a tap on the picture is that same button. Sunday morning and Friday night stay on the picture. More still opens Watch and the host key. The host key is still minted. A short landscape keeps the strip so Go live stays on the screen. `test/mobile/action-buttons.spec.mjs`, `test/mobile/create-one-password.spec.mjs`.
+
+Before: `test/mobile/screenshots/before/iphone-se-go-live.png`. After: `test/mobile/screenshots/after/iphone-se-go-live.png`, `test/mobile/screenshots/after/iphone-se-stream-go-live.png`.
+
+Design: the picture is the tap. Church and personal stay at 4. There is still no replay.
+
 ### Q58. A town hall speaker was a meeting tile
 
 The stage strip was a 16:9 card, 320×180, parked at the top of the phone. A speaker now fills the watcher’s screen. The picture is cover, the corners are square, and the short side stays at least 120px. “On stage” sits above the dock. The “has not started” line stays off while a speaker is up. A meeting speaker stays a tile. The host still has the gallery. `test/mobile/town-hall-join.spec.mjs`.
