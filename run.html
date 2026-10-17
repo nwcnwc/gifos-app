@@ -1568,6 +1568,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore .seg.sel,
   .bar:not(.collapsed) .barmore .seg[aria-pressed="true"] { background: #1d1d1f; color: #fff; }
   .bar .barmore .blab { display: block; font-size: 13px; font-weight: 700; margin-top: 2px; line-height: 1.1; }
+  /* Desktop sheet: Float reads like Who / Stage / Settings beside it, its icon set apart. */
+  @media (min-width: 800px) {
+    .bar:not(.collapsed) .barmore > .iconbtn { gap: 8px; }
+    .bar:not(.collapsed) .barmore > .iconbtn .blab { display: inline; font-size: inherit; font-weight: inherit; margin-top: 0; }
+  }
   .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 122px; transform: translateX(-50%);
     display: flex; gap: 8px; background: rgba(255,255,255,.96); border-radius: 20px; padding: 10px;
     box-shadow: 0 10px 28px rgba(0,0,0,.25); }
