@@ -1496,6 +1496,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (min-width: 601px) and (min-height: 501px) { .fitbtn { top: 14px; min-height: 44px; padding: 10px 16px; } }
   /* A shared screen folds the faces into a strip, so Fit has nothing to fit, and Stop sharing owns that corner. */
   body.screen-on .fitbtn { display: none; }
+  /* A desktop reads the hand queue in the header row, left of Fit (placeHandq),
+     at 18px and on top of the faces; the header line ellipsizes to give it room.
+     A quiet call fades the header, never a raised hand. */
+  body.desk-ptr #handq.on { position: fixed; z-index: 7; top: 14px; right: 14px; max-width: 34vw; box-sizing: border-box;
+    min-height: 48px; padding: 12px 16px; border-radius: 999px; background: rgba(12,14,18,.92); color: #f4f7fb;
+    font-size: 18px; line-height: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.desk-ptr:has(#handq.on) .topchip { max-width: calc(100vw - 14px - var(--hq-room, 140px)); }
+  /* A shared slide starts below the header row, so the header never covers it. */
+  body.desk-ptr.screen-on #feed { padding-top: 70px; }
   body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: 58px; left: 14px; right: 14px; }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
@@ -12312,6 +12321,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (html === handqHtml) return;
       handqHtml = html;
       handqEl.innerHTML = html;
+      placeHandq();
+    }
+    // Desktop: the queue sits just left of Fit (or of the build label while a
+    // screen is shared and Fit is gone); --hq-room tells the header line how
+    // much of the row it takes.
+    function placeHandq() {
+      if (!document.body.classList.contains('desk-ptr') || !handqEl.classList.contains('on')) {
+        handqEl.style.right = '';
+        document.body.style.removeProperty('--hq-room');
+        return;
+      }
+      let edge = window.innerWidth - 14;
+      for (const id of ['fitbtn', 'gifos-build-float']) {
+        const el = document.getElementById(id);
+        if (!el || !el.getClientRects().length) continue;
+        edge = Math.min(edge, el.getBoundingClientRect().left - 10);
+      }
+      const right = Math.max(14, Math.round(window.innerWidth - edge));
+      handqEl.style.right = right + 'px';
+      document.body.style.setProperty('--hq-room', Math.round(right + handqEl.getBoundingClientRect().width + 10) + 'px');
+    }
+    window.addEventListener('resize', placeHandq);
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(() => placeHandq());
+      ro.observe(handqEl);
+      const fb = document.getElementById('fitbtn');
+      if (fb) ro.observe(fb);
     }
     // ADMIN rooms, signed-in admins only: tapping a queued name CALLS THEM UP —
     // the tap issues the same individually-signed mod-table 'app' grant that

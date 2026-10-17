@@ -17,6 +17,8 @@ async function boot(page, width) {
   expect(seeded && seeded.ok).toBe(true);
   await page.waitForFunction(() => document.querySelectorAll('#feed .tile').length >= 4);
   await expect.poll(() => page.evaluate(() => document.getElementById('handq').textContent)).toContain('Priya Shah');
+  // Park the pointer on the faces, away from the dock.
+  await page.mouse.move(width / 2, 200);
 }
 
 async function armSlide(page) {
@@ -95,16 +97,15 @@ test('a desktop gallery shows who has a hand up, readable and on top', async ({ 
     page = await context.newPage();
     await boot(page, width);
     const got = await readQueue(page);
-    if (width === 1280) await page.screenshot({ path: 'test/desktop/shots/hand-queue-gallery-1280.png' });
+    if (width === 1280) await page.screenshot({ path: 'test/desktop/shots/hand-queue-gallery-after-1280.png' });
     expectReadable(got, 'Priya Shah');
   }
   // A quiet call fades the header, but a raised hand stays in view.
-  await page.evaluate(async () => {
+  await page.evaluate(() => {
     const set = window.__gifosVideo.setDockCalmMsForTest;
     if (set) set(300);
-    await new Promise((r) => setTimeout(r, 2000));
   });
-  expect(await page.evaluate(() => document.body.classList.contains('dock-calm'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => document.body.classList.contains('dock-calm'))).toBe(true);
   expectReadable(await readQueue(page), 'Priya Shah');
 });
 
@@ -116,7 +117,7 @@ test('a presenter reads the hand queue, and the header is off the slide', async 
   await expect(page.locator('#stagefeed video')).toBeVisible();
   await expect.poll(() => page.evaluate(() => (document.querySelector('#stagefeed video') || {}).videoWidth || 0)).toBeGreaterThanOrEqual(640);
   const got = await readQueue(page);
-  await page.screenshot({ path: 'test/desktop/shots/hand-queue-share-1280.png' });
+  await page.screenshot({ path: 'test/desktop/shots/hand-queue-share-after-1280.png' });
   expectReadable(got, 'Priya Shah');
   expect(got.slideUnderHeader).toBe(false);
 });
