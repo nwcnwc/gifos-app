@@ -3817,3 +3817,38 @@ test('the chat box shows its whole placeholder beside Send', async ({ page }) =>
     }
   }
 });
+
+test('the chat-off placeholders fit the chat box', async ({ page }) => {
+  // Seen across two machines at 1280: with chat turned off, the host's box
+  // read "Chat is off for guests — you can sti" and a viewer's "Chat is off
+  // — only the host c": both run past the box's ~219px of text room.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Avery Chen');
+    localStorage.setItem('gifos_meet_bar', '1');
+    localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  for (const [w, h] of [[1280, 720], [1920, 1080], [1024, 720], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=chatoff' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    await page.locator('#chatbtn').click();
+    await expect(page.locator('#chatpanel')).toHaveClass(/open/);
+    for (const admin of [true, false]) {
+      const text = await page.evaluate((a) => window.__gifosVideo.chatGateForTest(true, a), admin);
+      const got = await page.evaluate(() => {
+        const inp = document.getElementById('chat-in');
+        const cs = getComputedStyle(inp);
+        const ctx = document.createElement('canvas').getContext('2d');
+        ctx.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+        return { text: inp.placeholder, disabled: inp.disabled, need: Math.ceil(ctx.measureText(inp.placeholder).width),
+          room: Math.floor(inp.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) };
+      });
+      const tag = (admin ? 'host' : 'viewer') + ' at ' + w + ': ' + JSON.stringify(got);
+      if (w === 1280) await page.screenshot({ path: 'artifacts/chat-off-' + (admin ? 'host' : 'viewer') + '-' + (process.env.SHOT_TAG || 'run') + '.png', clip: { x: 900, y: 600, width: 380, height: 120 } });
+      expect(got.text, tag).toBe(text);
+      expect(got.disabled, tag + ' locked only for guests').toBe(!admin);
+      expect(got.text, tag + ' says chat is off').toMatch(/chat is off|chat off/i);
+      expect(got.need, tag + ' whole placeholder fits').toBeLessThanOrEqual(got.room);
+    }
+  }
+});
