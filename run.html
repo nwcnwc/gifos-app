@@ -1398,7 +1398,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border-radius: 0; border: 0; aspect-ratio: auto; min-height: 0; box-shadow: none; }
   body.comfy.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
     position: absolute; right: auto; bottom: auto; border: 0; border-radius: 0; box-shadow: none; }
-  body.comfy .tile.speaking, body.comfy .stadface.speaking {
+  /* The tile rules above zero the shadow at a higher specificity than
+     `.tile.speaking`, and an inset shadow would sit under the video that
+     fills the tile. Outline paints above the picture. A negative offset
+     keeps the frame inside this tile, where the neighbour cannot cover it. */
+  body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.speaking,
+  body.comfy.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me.speaking,
+  body.comfy .stadface.speaking {
+    outline: 3px solid #7bffcf;
+    outline-offset: -3px;
     box-shadow: inset 0 0 0 3px #7bffcf, inset 0 0 24px rgba(123,255,207,.35); }
   body.comfy .tile video, body.comfy .stadface video { object-fit: cover; object-position: 50% 40%; }
   body.comfy .tile.cam-off .avatar.has-img, body.comfy .stadface.cam-off .avatar.has-img {
