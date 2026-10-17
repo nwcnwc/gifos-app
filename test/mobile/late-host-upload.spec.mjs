@@ -126,12 +126,14 @@ test('a late arrival never adds host upload', async ({ browser, baseURL }, info)
       const display = await h.evaluate(() => window.__gifosVideo.statusPlane().display);
       // Which of the host's ship jobs are hot, and where each joiner sits.
       const hostJobs = await h.evaluate(() => { const m = window.__gifosVideo.mosaic(); return { coord: m.coord, jobs: m.jobsActive }; }).catch(() => null);
+      // Every host sender per link: what carries the media, and whether its job is parked.
+      const hostSenders = await h.evaluate(() => window.__gifosVideo.sendersByPeer()).catch(() => null);
       const seats = [];
       for (const v of viewers) seats.push(await v.evaluate(() => { const m = window.__gifosVideo.mosaic(); return { me: m.me, coord: m.coord, claims: m.claims, standby: m.standby }; }).catch(() => null));
       // Status beats the host put on the channel: its own beat, plus every
       // beat it passed on through the section flood.
       const beat = Object.entries(kinds).filter(([k]) => /(^|:)status$/.test(k)).reduce((a, [, v]) => a + v, 0);
-      waves.push({ joiners: viewers.length, neg: n1 - n0, mediaLinks, rtpBps: rtp, dcBps: dc, dcLinks, dcPerLink: Math.round(dc / dcLinks), beatPerLink: Math.round(beat / dcLinks), display, kinds, perLink: perLink.map((x) => [Math.round(x.rtp), Math.round(x.dc), x.by]), via, hostJobs, seats });
+      waves.push({ joiners: viewers.length, neg: n1 - n0, mediaLinks, rtpBps: rtp, dcBps: dc, dcLinks, dcPerLink: Math.round(dc / dcLinks), beatPerLink: Math.round(beat / dcLinks), display, kinds, perLink: perLink.map((x) => [Math.round(x.rtp), Math.round(x.dc), x.by]), via, hostJobs, hostSenders, seats });
       console.log(`[${info.project.name}] ${viewers.length} joiners: host offers+answers in ${WINDOW_MS / 1000}s ${n1 - n0}, media links ${mediaLinks}, rtp ${(rtp / 1000).toFixed(1)} KB/s, dc ${(dc / 1000).toFixed(1)} KB/s on ${dcLinks} links (beats ${(beat / 1000).toFixed(1)}), host counts ${display}`);
     }
     // The last joiner (past the host's own links at 6) raises a hand; the

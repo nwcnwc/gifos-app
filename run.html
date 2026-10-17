@@ -16300,6 +16300,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (up) demand(up.via, uk, up.streamId, want);
     }
     // END-CHAIN-PARK
+    // A slow relay, for tests: while held, this seat starts no NEW relay of a
+    // stage feed (a copy it already ships keeps going). DEBUG only.
+    const relayHeldForTest = (key, to) => DEBUG_ON && (window.__relayHoldUntil || 0) > Date.now() && !mosJobs.has(key + '>' + to);
     const jobPinned = (jk) => DEBUG_ON && window.__parkedJobs && (window.__parkedJobs.get(jk) || 0) > Date.now();
     function setJobActive(jk, on) {
       const job = mosJobs.get(jk); if (!job) return;
@@ -18013,7 +18016,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const direct = owner === myId ? stgDirectSet(T.rowMates(c).map((m) => occPid(m)), T.colMates(c).map((m) => occPid(m)),
             (t) => { const q = peers.get(t); return !!(q && q.pc && q.connected); }) : null;
           const hmSb = { h, sb: 1 };
-          for (const t of s1peers) { if (skip(t)) continue; const jk = shipMos(key, t, stream, (direct && !direct.has(t)) ? hmSb : hm, key); if (jk) wanted.add(jk); }
+          for (const t of s1peers) { if (skip(t) || (owner !== myId && relayHeldForTest(key, t))) continue; const jk = shipMos(key, t, stream, (direct && !direct.has(t)) ? hmSb : hm, key); if (jk) wanted.add(jk); }
           const dnP = occPid(T.down(c)); // and DOWN — Stage audio folds at every ear
           if (!skip(dnP)) {
             const dnSt = stgDownShip(key, stream, !!(owner && sharingScreen(owner)), stgAudioMemo);
@@ -25057,6 +25060,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         setJobActive(jk, false);
         return { ok: true, jk: jk.slice(0, 24), ms: ms || 15000, active: !!(mosJobs.get(jk) || {}).active };
       },
+      // A SLOW RELAY: for ms, this seat starts no new relay of a stage feed,
+      // so a newcomer hears the stager's own copy first (Q80).
+      holdRelayForTest: (ms) => {
+        if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
+        window.__relayHoldUntil = Date.now() + (ms || 0);
+        return { ok: true, ms: ms || 0 };
+      },
       unparkJobForTest: (key, toPid) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
         const jk = key + '>' + toPid;
@@ -25332,6 +25342,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         rowFaces: dbgRowFaces.slice(), // which pid the packer drew at each of my row's seats (test observability, 2026-07-29 stale-seat dup)
         tile: (() => { const v = stadiumEl.querySelector('[data-row="sd"] video'); return v ? { live: v.videoWidth > 0, w: v.videoWidth } : null; })(),
         strip: (() => { const v = stagefeedEl.querySelector('[data-row="sgs"] video'); return v ? { live: v.videoWidth > 0 } : null; })(), stagers: stageIds().length }; },
+      // Every sender on every link, and who owns it: which media a link
+      // carries, and why (Q80: a parked job's link still carried media).
+      sendersByPeer: () => {
+        const own = new Map();
+        for (const [k, j] of mosJobs) for (const sd of j.senders) own.set(sd, { job: k.slice(0, k.indexOf('>')).slice(0, 14), active: !!j.active });
+        const out = {};
+        for (const [pid, p] of peers) {
+          if (!p.pc) continue;
+          // pc: this link's index in a test's RTCPeerConnection tap, if any.
+          out[String(pid).slice(0, 8)] = { pc: window.__pcs ? window.__pcs.indexOf(p.pc) : -1, tx: p.pc.getTransceivers().map((t) => {
+            const sd = t.sender, o = own.get(sd);
+            return { mid: t.mid, dir: t.currentDirection, kind: sd.track ? sd.track.kind : null, live: !!(sd.track && sd.track.readyState === 'live'),
+              main: sd === p.mainA ? 'A' : sd === p.mainV ? 'V' : '', stage: stageSenders.has(sd), job: o ? o.job : null, active: o ? o.active : null };
+          }) };
+        }
+        return out;
+      },
       relayUpNow: () => relayUp(),
       rosterIdsNow: () => rosterIds.slice(),
       linkToPeer: (pid) => linkTo(pid),
