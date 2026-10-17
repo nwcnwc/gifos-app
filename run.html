@@ -1747,7 +1747,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (min-width: 701px) {
     #lobby.show { grid-template-columns: 1.35fr .8fr; }
     #lobby .lob-preview { margin: 16px; border-radius: 20px; }
-    #lobby .lobby-card { max-width: none; margin: 16px 16px 16px 0; border-radius: 20px; padding: 28px 32px; overflow: auto; }
+    /* width:auto, not the base 100%: 100% plus the 16px margin ran the card
+       off the right edge and cut its corners square. */
+    #lobby .lobby-card { width: auto; max-width: none; margin: 16px 16px 16px 0; border-radius: 20px; padding: 28px 32px; overflow: auto; }
   }
 </style>
 <script src="js/gifos-themes.js"></script>
