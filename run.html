@@ -1775,10 +1775,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* A presenting desktop's strip is 104px tall: chips wrap whole instead of
      being cut at the edge, and the row keeps no room for the Blur for all
      square, which shows only under the pointer and then sits on top. */
-  body.desk-ptr.screen-on #grid .tile .chips { top: 4px; right: 6px; flex-wrap: wrap; align-content: flex-start; gap: 2px 3px; }
-  /* A 104px thumbnail has no room for the mark words: icons only there. */
-  body.desk-ptr.screen-on #grid .tile .chips span.ico { width: 22px; height: 22px; padding: 0; }
-  body.desk-ptr.screen-on #grid .tile .chips span.ico i.w { display: none; }
+  body.desk-ptr.screen-on #grid .tile .chips,
+  body.desk-ptr.has-app #grid .tile .chips { top: 4px; right: 6px; flex-wrap: wrap; align-content: flex-start; gap: 2px 3px; }
+  /* A 104px thumbnail (or a running app's 180px strip) has no room for the
+     mark words: icons only there, and no view-only note running behind the
+     chips and name (the Camera off mark already says it). */
+  body.desk-ptr.screen-on #grid .tile .chips span.ico,
+  body.desk-ptr.has-app #grid .tile .chips span.ico { width: 22px; height: 22px; padding: 0; }
+  body.desk-ptr.screen-on #grid .tile .chips span.ico i.w,
+  body.desk-ptr.has-app #grid .tile .chips span.ico i.w,
+  body.desk-ptr.screen-on #grid .tile .note,
+  body.desk-ptr.has-app #grid .tile .note { display: none; }
   @media (max-width: 700px) {
     body.screen-on #grid { flex-basis: 92px; height: 92px; }
     body.screen-on #grid .tile { height: 76px; }
