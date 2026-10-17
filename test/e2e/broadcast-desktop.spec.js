@@ -2960,3 +2960,27 @@ test('the stage label is readable on the dark stage', async ({ page }) => {
     expect({ width: w, readable: got.contrast >= 4.5, big: got.px >= 12, ...got }).toMatchObject({ width: w, readable: true, big: true });
   }
 });
+
+test('the Chat icon on the dock is as large as its neighbours', async ({ page }) => {
+  // Seen across two machines: on the host's and the viewer's dock the Chat
+  // speech bubble was 13px, where Invite, Full screen and More are 28px.
+  // Chat (and prayer requests) is the one dock button a congregation uses
+  // most, and it read as a dot.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.setItem('gifos_appear_ok', '1');
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem('gifos_vadm_sunday.0123456789abcdef', 'host-key');
+    else localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
+  });
+  for (const [who, q, w, h] of [['viewer', '', 1280, 720], ['viewer', '', 1920, 1080], ['host', '&host=1', 1280, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=chaticon' + who + w + q + '#v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#airbar.on');
+    await expect(page.locator('.bar #chatbtn')).toBeVisible();
+    const size = (sel) => page.locator(sel).evaluate((el) => Math.round(el.getBoundingClientRect().width));
+    const chat = await size('.bar #chatbtn svg');
+    const invite = await size('.bar #invite svg');
+    if (who === 'viewer' && w === 1280) { await page.screenshot({ path: 'artifacts/chat-icon-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+    expect({ who, width: w, chat }).toEqual({ who, width: w, chat: invite });
+  }
+});
