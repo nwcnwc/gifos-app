@@ -26016,6 +26016,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { paintRoster(); } catch (e) {}
         return true;
       },
+      // Lock or open the room on this page only (memory: no store, no door),
+      // to see what a password changes on the tiles.
+      setRoomPwForTest: (pw) => {
+        if (!DEBUG_ON) return false;
+        roomPw = String(pw || '');
+        try { reactRoomState(); } catch (e) {}
+        return true;
+      },
       markPeerAwayForTest: (name, on) => {
         for (const p of peers.values()) {
           if (!p || p.name !== name) continue;
