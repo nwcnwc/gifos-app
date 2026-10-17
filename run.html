@@ -5151,7 +5151,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // A client I anchor on the free pool hears the mix-minus on this
           // sender instead of my microphone (my voice is in the mix).
           // My anchor hears my network's voices with mine, when I bridge it.
-          const mixT = p.turnServe ? turnMixTrack(p.id) : p.turnAnchor ? turnUpTrack() : null;
+          // A row mate of a bridge end hears the other network in its feed.
+          const mixT = p.turnServe ? turnMixTrack(p.id) : p.turnAnchor ? turnUpTrack() : bridgeFeedTrack(p.id);
           if (mixT) { turnMixSenders.add(p.mainA); if (p.mainA.track !== mixT) p.mainA.replaceTrack(mixT).catch(() => {}); }
           else {
             turnMixSenders.delete(p.mainA);
@@ -6170,6 +6171,35 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     function turnUpTrack() { return turnUp ? turnUp.fold.track() : null; }
+    // THE BRIDGE FEED. When the seating puts two networks in rows of their
+    // own, a bridge end is the one page of its row that hears the other
+    // network (its anchor's mix, or its client's uplink). Its row mates hear
+    // that network through it: on each row mate's pair it sends what it
+    // hears (its own voice and the bridge's stream) minus that mate's voice
+    // and anyone the mate hears directly. In a row that holds both ends of a
+    // pair nothing changes (each row mate hears the others directly).
+    const bridgeFeeds = new Map();   // row mate -> { fold, keys }: at most one row
+    function bridgeCrossRow() { for (const p of peers.values()) if ((p.turnAnchor || p.turnServe) && p.connected && !isRowMate(p.id)) return true; return false; }
+    function syncBridgeFeeds() {
+      const on = bridgeCrossRow(); const mates = on ? new Set(rowMates()) : new Set();
+      const fed = (q) => !!(q && q.connected && !q.turnAudio && !q.turnServe && !q.turnAnchor);
+      for (const [pid, fd] of [...bridgeFeeds]) if (!mates.has(pid) || !fed(peers.get(pid))) { fd.fold.clear(); bridgeFeeds.delete(pid); }
+      if (!on || !ensureAc()) return;
+      let src = null;
+      for (const pid of mates) {
+        const q = peers.get(pid); if (!fed(q)) continue;
+        if (!src) src = turnHeardSources();
+        let fd = bridgeFeeds.get(pid);
+        if (!fd) { fd = { fold: MM.createAudioFold(ac), keys: new Set() }; bridgeFeeds.set(pid, fd); }
+        const want = new Map(MT.mixMinus(src, pid, (connsOf.get(pid) || []).filter((x) => x !== myId)).map((x) => [x.key, x]));
+        for (const k of [...fd.keys]) if (!want.has(k)) { fd.fold.remove(k); fd.keys.delete(k); }
+        for (const [k, x] of want) {
+          if (!fd.keys.has(k)) { fd.fold.add(k, x.stream, x.gain); fd.keys.add(k); }
+          else if (fd.fold.setGain) fd.fold.setGain(k, x.gain);
+        }
+      }
+    }
+    function bridgeFeedTrack(pid) { const fd = bridgeFeeds.get(pid); return fd ? fd.fold.track() : null; }
     // The beat's TURN pass (the sweep calls it after the pair verdicts).
     function turnSweep(now) {
       if (myStatus.np !== directPath) myStatus.np = directPath; // my reachability rides my status: an anchor choice reads it
@@ -6318,8 +6348,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // 6. The anchor side: one mix-minus per client, on that pair's audio sender.
       syncTurnMixes();
       syncTurnUpMix(); // 7. A network's bridge: its network's voices up to its anchor, on that pair's audio sender
+      syncBridgeFeeds(); // 8. A bridge end in a row of its own network: the other network to its row mates
       let swap = false;
       for (const p of peers.values()) {
+        if (p.mainA && !p.turnServe && !p.turnAnchor) { const ft = bridgeFeedTrack(p.id); if (ft ? p.mainA.track !== ft : turnMixSenders.has(p.mainA)) swap = true; }
         if (p.turnServe && p.mainA) { const mt = turnMixTrack(p.id); if (mt && p.mainA.track !== mt) swap = true; }
         if (p.turnAnchor && p.mainA) { const ut = turnUpTrack(); if (ut ? p.mainA.track !== ut : turnMixSenders.has(p.mainA)) swap = true; }
         if (p.turnAudio && !p.mainA && localStream && p.dc && p.dc.readyState === 'open') swap = true; // the voice sender is missing: refreshOutbound adds it
@@ -18050,7 +18082,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // composite carried them too).
         // Stagers' direct tracks are muted too: their voice arrives via the
         // per-stager feeds folded at the ear — the direct link would double it.
-        const bus = stg.has(pid) ? null : mates.has(pid) ? 'row' : null;
+        const bus = stg.has(pid) ? null : (mates.has(pid) || (p.turnAudio && (p.turnAnchor || p.turnServe))) ? 'row' : null;   // a free-pool pair I anchor or am anchored on carries the other network's voices: it plays wherever its far end sits
         busVolume(p.video, bus ? mix[bus] : 0);
       }
       // feed tiles (the nested mosaics): stage strip is Stage; stadium tiles
