@@ -407,6 +407,8 @@ test('full screen on a service shows the stage', async ({ page }) => {
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/run.html?desk=fsstage' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('body.broadcast #onair.watch');
+    // The host is here, off the stage: the stage is known to be clear.
+    await page.evaluate(() => window.__gifosVideo.stageHostForTest('host-here', 'Pastor Kim', 0));
     await page.locator('#fsbtn').click();
     await expect(page.locator('#fsview')).toHaveClass(/on/);
     const clear = await readFs();
@@ -2047,6 +2049,8 @@ test('a service picture fills the stage and a clear stage says so', async ({ pag
     await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
     await page.goto('/run.html?desk=pic' + w + '&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#airbar.on.watch');
+    // The host is here, off the stage: the stage is known to be clear.
+    await page.evaluate(() => window.__gifosVideo.stageHostForTest('host-here', 'Pastor Kim', 0));
     const empty = await place();
     expect(empty.text).toBe('The stage is clear.');
     expect(empty.shown).toBe(true);
@@ -2230,6 +2234,8 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
   await expect(page.locator('.bar > #stagebtn')).toHaveCount(0);
   await page.locator('#bartoggle').click();
   await expect(page.locator('#barmore #stagebtn')).toHaveText('Stage');
+  // The host is here, off the stage: the stage is known to be clear.
+  await page.evaluate(() => window.__gifosVideo.stageHostForTest('host-here', 'Pastor Kim', 0));
   await expect(page.locator('#bc-stage-line')).toHaveText('The stage is clear.');
   await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
   await expect(page.locator('#airbar')).toHaveClass(/watch/);

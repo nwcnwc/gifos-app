@@ -1914,7 +1914,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div id="stagefeed"></div>
     <div id="stagemod" hidden aria-label="On stage"></div>
     <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-init" aria-hidden="true"></div><div id="bc-ident-name"></div><div id="bc-ident-note">Camera off</div></div>
-    <div id="bc-stage" hidden><p id="bc-stage-line">The stage is clear.</p></div>
+    <div id="bc-stage" hidden><p id="bc-stage-line">Joining the service…</p></div>
     <div id="bc-react" aria-hidden="true"></div>
     <div id="bc-reacts" hidden role="status" aria-label="Audience reactions"></div>
     <div id="grid"></div>
@@ -3209,6 +3209,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // status gossip. The relay's roster is only the GREETER POOL now, never
     // the room; rosterIds is refreshed from the mesh each tick (renderFromOcc).
     let rosterIds = [], rosterNames = {};
+    let roomJoinedAt = 0; // when joinRoom ran (the stage plate says joining until the room is heard)
     let recSrcDirty = true, recStructSig = ''; // the recorder rebuilds its source list on a roster or stage change, not per frame
     const gossipIds = () => rosterIds.filter((id) => id !== myId);
     // The relay's OWN roster: the set of peers currently holding a relay socket
@@ -7854,6 +7855,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         refreshAvatarSurfaces();
       }).catch(() => {});
     }
+    const STAGE_HEAR_MS = 20000;
+    let platePaintT = 0;
     function paintStagePlate() {
       const el = document.getElementById('bc-stage');
       const line = document.getElementById('bc-stage-line');
@@ -7865,7 +7868,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (picture) return;
       let on = false;
       try { on = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) { on = false; }
-      line.textContent = on ? 'You are on stage. Your camera is off.' : 'The stage is clear.';
+      if (on) { line.textContent = 'You are on stage. Your camera is off.'; return; }
+      // "The stage is clear." only once it is known. Someone else on stage
+      // with no picture yet: their feed is on its way. Nobody heard from yet,
+      // before and just after joining: still joining (a silent room reads clear
+      // STAGE_HEAR_MS after joinRoom, so the line never hangs on joining).
+      const nameOf = (id) => ((peers.get(id) || {}).name || rosterNames[id] || '').trim();
+      // A host whose live status says on stage counts before the roster
+      // lists them (it lags their first status by a beat or more).
+      const others = stageIds().filter((id) => id !== myId)
+        .concat(admins.filter((id) => id !== myId && stHold(id) && (statusOf.get(id) || {}).stg));
+      if (others.length) {
+        const nm = others.map(nameOf).find((x) => x);
+        line.textContent = nm ? 'Connecting to ' + nm + '…' : 'Connecting to the stage…';
+        return;
+      }
+      // Heard means the host is known (a hosted room's first status from
+      // them can land before their host proof, when they are not yet on the
+      // stage), or in an open room anyone's status. The host knows its stage.
+      const meHost = (typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin');
+      const heard = meHost || (hasAdminRoom() ? admins.some((id) => id !== myId) : Array.from(statusOf.keys()).some((id) => id !== myId));
+      const wait = roomJoinedAt ? roomJoinedAt + STAGE_HEAR_MS - Date.now() : 1;
+      if (!heard && wait > 0) {
+        line.textContent = 'Joining the service…';
+        clearTimeout(platePaintT);
+        if (roomJoinedAt) platePaintT = setTimeout(paintStagePlate, wait + 50);
+        return;
+      }
+      line.textContent = 'The stage is clear.';
     }
     function paintBroadcastIdent() {
       const el = document.getElementById('bc-ident');
@@ -12243,6 +12273,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     };
 
     function joinRoom() {
+      roomJoinedAt = Date.now();
+      paintStagePlate();
       room = params.get('v') || shortCode();
       // A meeting has no separate join token — the link IS the capability, so the
       // room id is the whole identity. There is no &k= at all.
