@@ -541,9 +541,19 @@ Repro: `test/mobile/tile-fullscreen.js`. It failed (`full screen is 28x32`), the
 
 Before: `qa/mobile/shots/before-tile-fullscreen-iphone-15.png`. After: `qa/mobile/shots/after-tile-fullscreen-iphone-15.png`.
 
+### 63. A sideways phone cut every name
+
+Four people on an iPhone SE held sideways sat in a row of 105px tiles. The name was capped beside Full screen, so Nathan, Ruth, David, and Sam were cut off. Blur, 64px on a 100px tile, also sat on the name.
+
+The name takes the bottom of the tile and shows the whole name. Full screen and Blur move to the top corners at 44px, so they stay tappable and off the name. An iPhone 15 sideways keeps the whole name too.
+
+Repro: `test/mobile/sideways-names.js`. It failed (the name was clipped, and blur covered Ruth), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/sideways-names.js`.
+
+Before: `qa/mobile/shots/before-sideways-names-iphone-se.png`. After: `qa/mobile/shots/after-sideways-names-iphone-se.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, and Reply keeps that line on the answer. The room name and full screen are 44px taps. A sideways phone is still the open personal job.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, and Reply keeps that line on the answer. The room name and full screen are 44px taps. A sideways phone shows the whole name. Chat is still the open personal job.
 
 ## Personas (what was actually tried)
 

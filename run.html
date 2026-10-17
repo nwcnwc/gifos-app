@@ -1753,6 +1753,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #leave-ask .name-box h3 { font-size: 1.35rem; }
     #leave-ask #leave-cancel, #leave-ask #leave-go { min-height: 56px; font-size: 1.05rem; }
     .tile .name { font-size: 1rem; }
+    /* Sideways tiles are about 105px wide. A 1rem name beside a 44px
+       Full screen button was capped to 45px, so Ruth read as Ru.
+       The name takes the bottom of the tile. Full screen and Blur
+       sit on the top corners and stay 44px. */
+    @media (max-height: 500px) and (orientation: landscape) {
+      .tile .maxbtn { top: 8px; left: 8px; right: auto; bottom: auto; }
+      .tile > .blurbox { width: 44px; height: 44px; min-width: 44px; min-height: 44px; top: 8px; right: 8px; padding: 2px; font-size: 10px; line-height: 1.05; }
+      .tile:not(.cam-off) .chips { left: 56px; right: 56px; }
+      .tile .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); font-size: .75rem; padding: 1px 4px; z-index: 5; }
+    }
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
       width: 180px; height: 240px; right: 14px; bottom: 118px; border-radius: 18px; }
     body.has-peers:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app):has(#grid[data-remotes="3"]) .tile.me {
