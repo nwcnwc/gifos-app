@@ -25355,8 +25355,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (pr && pr.then) pr.then(() => { if (typeof audioUnblocked === 'function') audioUnblocked(stageEar.el); }).catch((e) => audioBlocked(stageEar.el, e));
       }
     }
-    function busVolume(el, vol) {
-      if (!el.srcObject) { if (el._aud) el._aud.srcObject = null; el.volume = vol; return; }
+    // voice: the stream whose sound this element's companion plays. A peer's
+    // tile with the camera off shows a locally painted avatar (mountPeerAvatar),
+    // which has no audio, so the caller hands the peer's own stream.
+    function busVolume(el, vol, voice) {
+      const src = voice || el.srcObject;
+      if (!src) { if (el._aud) el._aud.srcObject = null; el.volume = vol; return; }
       if (!el._aud) { el._aud = new Audio(); el._aud.autoplay = true; }
       el.muted = true; // the <video> is picture-only, always — sound lives in the companion
       // Muting is what makes a late srcObject legal to play. The element is
@@ -25367,9 +25371,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const heldTile = el.closest && el.closest('[data-peer]');
       const heldPid = heldTile && heldTile.dataset && heldTile.dataset.peer;
       const held = heldPid && heldPid !== myId && typeof mediaOk === 'function' && mediaOk(heldPid) === false;
-      if (!held && (el.paused || el.readyState === 0)) { const pr = el.play(); if (pr && pr.catch) pr.catch(() => {}); }
-      if (el._aud.srcObject !== el.srcObject) {
-        el._aud.srcObject = el.srcObject;
+      if (!held && el.srcObject && (el.paused || el.readyState === 0)) { const pr = el.play(); if (pr && pr.catch) pr.catch(() => {}); }
+      if (el._aud.srcObject !== src) {
+        el._aud.srcObject = src;
         let pr = null; try { pr = el._aud.play(); } catch (e) { audioBlocked(el._aud, e); }
         if (pr && pr.then) pr.then(() => { if (typeof audioUnblocked === 'function') audioUnblocked(el._aud); }).catch((e) => audioBlocked(el._aud, e));
       }
@@ -25406,7 +25410,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Stagers' direct tracks are muted too: their voice arrives via the
         // per-stager feeds folded at the ear — the direct link would double it.
         const bus = stg.has(pid) ? null : mates.has(pid) ? 'row' : null;
-        busVolume(p.video, (bus && !sealed && !isHeld(pid)) ? mix[bus] : 0);
+        busVolume(p.video, (bus && !sealed && !isHeld(pid)) ? mix[bus] : 0, (!p.relayed && p.stream) || null);
       }
       // feed tiles (the nested mosaics): stage strip is Stage; stadium tiles
       // are The stadium.
