@@ -736,6 +736,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.broadcast.notadmin #ccbtn,
   body.broadcast.notadmin #pwbtn,
   body.broadcast #votebtn,
+  /* A service host answers hands and has none to raise (Q98, Q100); a
+     viewer's Hand moves onto the dock, so only a host's stays in More. */
+  body.broadcast:not(.notadmin) #barmore > #hand,
   /* Nobody mixes buses in a broadcast: Stage audio is the only bus, so the
      Sound-mix section stays hidden. Mute for what you hear lives on the room
      bar (Sound on / Muted) and never changes anyone else's stage. The host's
@@ -22101,7 +22104,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       e.preventDefault();
       btn.click();
     });
-    // A service host has no hand to raise (theirs sits unused in More); a
+    // A service host has no hand to raise (theirs is hidden in More); a
     // viewer has it on the dock, and anyone in a small group can raise one.
     function canRaiseHand() {
       if (!handBtn || handBtn.style.display === 'none') return false;
