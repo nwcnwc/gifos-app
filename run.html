@@ -1896,7 +1896,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     position: fixed; inset: 0; overflow: hidden; padding: 0 !important; margin: 0;
     display: block; background: #0d0f14; z-index: 1; }
   body.comfy:not(.screen-on):not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll {
-    overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    /* Ends at the dock band (meet-views sets it): no tile under the buttons. */
+    bottom: var(--comfy-clip, 0px); }
   body.comfy #grid, body.comfy #stadium, body.comfy #stagefeed, body.comfy #stadfaces {
     position: static; display: block; padding: 0; margin: 0; gap: 0; overflow: visible;
     height: auto; background: transparent; border: 0; }
@@ -1928,7 +1930,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.comfy .stad-band {
     position: absolute; z-index: 4; pointer-events: none; background: rgba(12,14,18,.72);
     color: #f4f7fb; font-size: 12px; font-weight: 700; letter-spacing: .04em;
-    padding: 3px 8px; border-radius: 999px; }
+    padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
   body.comfy .tile[data-tier="bot"] { z-index: 5; border-radius: 12px; overflow: hidden; }
   /* Gallery keeps the stage strip playing (PiP can aim it) but off the mosaic.
      A stage mode adds .show-stage and places that strip itself. */

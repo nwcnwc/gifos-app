@@ -265,9 +265,12 @@
       feed.appendChild(el);
     }
     el.textContent = band.text || '';
+    if (band.label) el.setAttribute('aria-label', band.label); else el.removeAttribute('aria-label');
     el.style.position = 'absolute';
     el.style.left = band.x + 'px';
     el.style.top = band.y + 'px';
+    // An end band hangs from its point (the box's bottom right) instead.
+    el.style.transform = band.end ? 'translate(-100%, -100%)' : '';
     el.style.zIndex = '4';
   }
 
@@ -368,15 +371,26 @@
       t.el.dataset.fit = r.fit || 'cover';
       used.push(t.el);
     }
-    placeBand(feed, lay.band);
     // Absolute tiles do not grow scrollHeight. A 1px spacer does, so Scroll
     // can move through the stadium without a pager.
     let spacer = feed.querySelector('#comfyspacer');
     const contentH = lay.contentH || (lay.box ? lay.box.h : 0);
     const need = (lay.box ? lay.box.y : 0) + contentH;
     const overflows = !!(lay.box && contentH > lay.box.h + 1);
-    const tail = overflows ? Math.max(0, (+opts.vh || 0) - lay.box.y - lay.box.h) : 0;
+    // A gallery that scrolls ends where the dock band starts: tiles past it
+    // are scrolled to, never painted under the call's buttons (a sideways
+    // phone with the buttons up has a 100px band for seven people).
+    if (feed.style && feed.style.setProperty) feed.style.setProperty('--comfy-clip', overflows ? Math.max(0, (+opts.vh || 0) - lay.box.y - lay.box.h) + 'px' : '0px');
     if (feed.classList) feed.classList.toggle('comfy-scroll', overflows);
+    let band = lay.band;
+    if (overflows && !band) {
+      const edge = lay.box.y + lay.box.h + 1;
+      let past = 0;
+      for (let i = 0; i < lay.rects.length; i++) if (lay.rects[i].y + lay.rects[i].h > edge) past++;
+      // Short, in the bottom right corner, where a tile has no name or button.
+      if (past) band = { text: '\u2193' + past, label: past + ' more below, scroll down', x: lay.box.x + lay.box.w - 4, y: lay.box.y + lay.box.h - 4, end: true };
+    }
+    placeBand(feed, band);
     if (overflows) {
       if (!spacer) {
         spacer = (feed.ownerDocument || document).createElement('div');
@@ -387,7 +401,7 @@
       spacer.style.left = '0';
       spacer.style.top = '0';
       spacer.style.width = '1px';
-      spacer.style.height = (need + tail) + 'px';
+      spacer.style.height = need + 'px';
       spacer.style.pointerEvents = 'none';
     } else if (spacer && spacer.remove) spacer.remove();
     const shadeItems = [];

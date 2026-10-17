@@ -69,7 +69,18 @@ function look(page) {
     }
     const band = document.getElementById('stadband');
     const br = shown(band);
+    // The hint must not sit on anyone's name or Full screen.
+    const hintOn = [];
+    if (br && clip(br)) {
+      for (const t of document.querySelectorAll('#feed .tile')) {
+        for (const el of [t.querySelector('.name'), t.querySelector('.maxbtn')]) {
+          const r = shown(el);
+          if (r && meet(br, r)) hintOn.push(t.querySelector('.name').textContent.trim() + (el.classList.contains('maxbtn') ? '\'s Full screen' : '\'s name'));
+        }
+      }
+    }
     return {
+      hintOn,
       away: document.body.classList.contains('chrome-away'),
       scroll: feed.scrollHeight - feed.clientHeight, top: feed.scrollTop,
       hint: br && clip(br) ? band.textContent.trim() : '', tiles,
@@ -105,6 +116,7 @@ function look(page) {
   }
   const hidden = a.tiles.filter((t) => !t.whole);
   if (hidden.length && !a.hint) bad.push(hidden.length + ' faces are past the edge and nothing says so');
+  if (a.hintOn.length) bad.push('the "more" hint sits on ' + a.hintOn.join(' and '));
   if (hidden.length && a.scroll < 2) bad.push('faces are past the edge but the tiles do not scroll');
   await page.screenshot({ path: path.join(SHOTS, 'sideways-crowd-chrome-iphone-se-land.png') });
   if (hidden.length) {
