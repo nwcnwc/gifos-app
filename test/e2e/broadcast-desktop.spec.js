@@ -4082,3 +4082,36 @@ test('the small group lobby says muted once: the preview says it, the card does 
     expect(oneLine, 'card line fits on one line at ' + w).toBe(true);
   }
 });
+
+test('a service host\'s React tray has no Raise hand; a viewer\'s still does', async ({ page }) => {
+  // Seen at 1280: the host's React tray opened on ✋ Raise hand, and pressing
+  // it raised the host's own hand (the tray button turned blue) at a service
+  // where the host is the one who answers hands. The host's dock and H key
+  // already leave the hand out; the tray must too.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', location.search.indexOf('host=1') !== -1 ? 'Pastor Kim' : 'Jordan Lee');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const who of ['host', 'viewer']) {
+    for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.goto('/run.html?desk=reactnohand' + who + w + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('#airbar.on');
+      await page.locator('#reactbtn').click();
+      await expect(page.locator('#reacttray')).toBeVisible();
+      if (who === 'host' && w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/react-nohand-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+      const labels = await page.locator('#reacttray button').evaluateAll((bs) => bs.filter((b) => b.getClientRects().length).map((b) => b.getAttribute('aria-label')));
+      const want = who === 'host' ? ['Clap', 'Yes', 'No', 'Laugh'] : ['Raise hand', 'Clap', 'Yes', 'No', 'Laugh'];
+      expect(labels, who + ' tray at ' + w).toEqual(want);
+      // The tray stays centred over the React button's dock.
+      const centred = await page.evaluate(() => {
+        const t = document.getElementById('reacttray').getBoundingClientRect();
+        return Math.abs((t.left + t.right) / 2 - window.innerWidth / 2) <= 2 && t.left >= 0 && t.right <= window.innerWidth;
+      });
+      expect(centred, who + ' tray centred at ' + w).toBe(true);
+    }
+  }
+});
