@@ -1111,6 +1111,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       padding: 0; right: 8px; bottom: 8px; display: inline-flex; align-items: center; justify-content: center;
       font-size: 1.15rem; border-radius: 12px; }
     .tile .name { max-width: calc(100% - 60px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; }
+    /* An upright SE's side tiles are about 105px wide, so the name beside
+       Full screen read "R…". A tile under 200px (.slim, set in makeTile)
+       puts Full screen and Blur on the top corners and gives the name the
+       bottom, on two lines if it needs them. */
+    .tile.slim .maxbtn { top: 8px; left: 8px; right: auto; bottom: auto; }
+    .tile.slim > .blurbox { width: 44px; height: 44px; min-width: 44px; min-height: 44px; top: 8px; right: 8px; padding: 2px; font-size: 10px; line-height: 1.05; }
+    .tile.slim:not(.cam-off) .chips { left: 56px; right: 56px; }
+    /* Upright tiles are tall enough to put "✋ hand raised" under the buttons, not between them. */
+    @media (orientation: portrait) {
+      .tile.slim:not(.cam-off) .chips { top: 58px; left: 6px; right: 6px; }
+      /* Under 116px (.thin) two 44px buttons can't sit side by side with
+         12px between. With Blur for all up, Full screen goes under it and
+         the name takes a tighter line so two lines still clear it. */
+      .tile.thin:has(> .blurbox.on) .maxbtn { top: 64px; left: auto; right: 8px; }
+      .tile.thin:has(> .blurbox.on):not(.cam-off) .chips { right: 56px; }
+      .tile.thin:has(> .blurbox.on) .name { font-size: .85rem; line-height: 1.15; }
+    }
+    .tile.slim .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 1px 4px; z-index: 5;
+      white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
   }
   .tile.cam-off .maxbtn { display: none; }
   .tile.focus { grid-column: 1 / -1; aspect-ratio: 16 / 9; }
@@ -5968,6 +5987,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         openFsView(isMe ? 'me' : 'peer:' + id);
       });
       tile.appendChild(maxbtn);
+      if (window.ResizeObserver) {
+        if (!makeTile.slimObs) {
+          makeTile.slimObs = new ResizeObserver((list) => list.forEach((en) => {
+            // A removed tile reports 0x0 once; let it go.
+            if (!en.target.isConnected) { makeTile.slimObs.unobserve(en.target); return; }
+            const w = en.contentRect.width;
+            if (w > 0) { en.target.classList.toggle('slim', w < 200); en.target.classList.toggle('thin', w < 116); }
+          }));
+        }
+        try { makeTile.slimObs.observe(tile); } catch (e) {}
+      }
       let modbar = null, voteBtn = null;
       if (!isMe) {
         // The vote TARGET (non-admin rooms): hidden until the bar's Vote menu
