@@ -2321,3 +2321,42 @@ test('a host ends the service and a viewer still leaves', async ({ page }) => {
   await page.locator('#leave-go').click();
   await expect(page.locator('#left-title')).toHaveText('You left the service');
 });
+
+test('a service recording captures the stage', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('gifos_name', 'Avery Chen'));
+  for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/run.html?desk=recstage' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('body.broadcast');
+    await page.locator('#airrec').click();
+    await expect(page.locator('#rec-options h3')).toHaveText('Record this service');
+    await expect(page.locator('#rec-stage-only')).toHaveText('Only the stage.');
+    await expect(page.locator('#rec-options')).not.toContainText('my row');
+    await expect(page.locator('#rec-options')).not.toContainText('stadium');
+    await expect(page.locator('input[name=rec-scope]:visible')).toHaveCount(0);
+    const card = await page.evaluate(() => {
+      const box = document.querySelector('#rec-options .name-box').getBoundingClientRect();
+      const start = document.getElementById('ro-start').getBoundingClientRect();
+      return {
+        on: box.left >= -1 && box.right <= innerWidth + 1 && box.top >= -1 && box.bottom <= innerHeight + 1,
+        startIn: start.top >= box.top - 1 && start.bottom <= box.bottom + 1 && start.right <= innerWidth + 1,
+      };
+    });
+    expect(card.on, JSON.stringify(card)).toBe(true);
+    expect(card.startIn, JSON.stringify(card)).toBe(true);
+    if (w === 1280) {
+      await page.locator('#ro-start').click();
+      await expect(page.locator('#rec-options')).toBeVisible();
+      await expect(page.locator('#rec-err')).toHaveText('No one is on the stage yet — nothing to record.');
+    }
+    await page.locator('#ro-cancel').click();
+    await expect(page.locator('#rec-options')).toHaveCount(0);
+  }
+  await page.goto('/run.html?desk=recstagegroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#airbar.on.group');
+  await page.locator('#airrec').click();
+  await expect(page.locator('#rec-options h3')).toHaveText('Record this small group');
+  await expect(page.locator('#rec-options')).toContainText('Stage + my row');
+  await expect(page.locator('#rec-options')).toContainText('Everything I see');
+  await expect(page.locator('#rec-stage-only')).toHaveCount(0);
+});

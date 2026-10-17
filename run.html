@@ -647,6 +647,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border-top: 1px solid var(--border, #2a2a3f); }
   /* Recording options popup. */
   .rec-sec { margin: .7rem 0 .3rem; }
+  #rec-stage-only { color: inherit; font-size: .95rem; margin: .15rem 0 .35rem; }
   .rec-sec > b { display: block; font-size: .85rem; margin-bottom: .25rem; }
   .rec-opt { display: flex; gap: .5rem; align-items: flex-start; padding: .3rem .2rem; cursor: pointer; font-size: .9rem; }
   .rec-opt.inline { display: inline-flex; align-items: center; margin-right: .9rem; }
@@ -20740,7 +20741,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try {
         opts = opts || { scope: 'all', quality: recDefaultQuality(IS_MOBILE), matchMix: true };
         if (!ensureAc()) return fail('This browser cannot record sound.');
-        const scope = opts.scope || 'all';
+        let scope = opts.scope || 'all';
+        // A service is the stage. The row and the stadium are not on screen,
+        // so a recording of them would be a picture nobody is watching.
+        if (typeof BROADCAST !== 'undefined' && BROADCAST && scope !== 'app') scope = 'stage';
         recMatchMix = opts.matchMix !== false;
         recQuality = REC_QUALITY[opts.quality] ? opts.quality : recDefaultQuality(IS_MOBILE);
         const q = REC_QUALITY[recQuality];
@@ -20917,23 +20921,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // has people: the stadium needs "everything", a row records the row,
       // and an empty stage is never the default — Start used to pick it,
       // bail, and close the sheet before anyone could read why.
+      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
       const srcNow = recSources();
-      const scopeDefault = srcNow.stage.length ? 'stage' : (srcNow.stadium.length ? 'all' : (srcNow.row.length ? 'row' : 'stage'));
+      const scopeDefault = service ? 'stage' : (srcNow.stage.length ? 'stage' : (srcNow.stadium.length ? 'all' : (srcNow.row.length ? 'row' : 'stage')));
       const stageSub = srcNow.stage.length
         ? 'Just the front — the reader or speaker, verbatim. One clean feed.'
         : 'Nobody is on the stage yet.';
       const opt = (val, name, ttl, sub) => '<label class="rec-opt"><input type="radio" name="' + name + '" value="' + val + '"' + (val === scopeDefault ? ' checked' : '') + '> <span><b>' + ttl + '</b><small>' + sub + '</small></span></label>';
       const qDef = recDefaultQuality(IS_MOBILE);
       const qRadio = (val, label) => '<label class="rec-opt inline"><input type="radio" name="rec-q" value="' + val + '"' + (qDef === val ? ' checked' : '') + '> ' + label + '</label>';
+      // A service has no row and no stadium. Recording those would save a
+      // picture the room is not showing. The stage is the capture, plus the
+      // shared app when one is up.
+      const capture = service
+        ? (hasApp
+          ? opt('stage', 'rec-scope', 'The stage', stageSub) + opt('app', 'rec-scope', 'With the shared app', 'Capture this tab so the app and the stage record together.')
+          : '<p id="rec-stage-only">Only the stage.</p><input type="radio" name="rec-scope" value="stage" checked hidden>')
+        : opt('stage', 'rec-scope', 'The stage', stageSub) +
+          opt('row', 'rec-scope', 'Stage + my row', 'The stage plus the people right around you.') +
+          opt('all', 'rec-scope', 'Everything I see', 'The whole screen — stage, your row, the stadium. The crowd is folded, as shown.') +
+          (hasApp ? opt('app', 'rec-scope', 'With the shared app', 'Capture this tab so the app and tiles record together.') : '');
       bg.innerHTML = '<div class="name-box" style="max-width:470px;text-align:left">' +
-        '<h3>Record this ' + (BROADCAST ? 'service' : 'small group') + '</h3>' +
-        '<p>Saved on this device only. Everyone here will see that this ' + (BROADCAST ? 'service' : 'small group') + ' is being recorded.</p>' +
-        '<div class="rec-sec"><b>What to capture</b>' +
-        opt('stage', 'rec-scope', 'The stage', stageSub) +
-        opt('row', 'rec-scope', 'Stage + my row', 'The stage plus the people right around you.') +
-        opt('all', 'rec-scope', 'Everything I see', 'The whole screen — stage, your row, the stadium. The crowd is folded, as shown.') +
-        (hasApp ? opt('app', 'rec-scope', 'With the shared app', 'Capture this tab so the app and tiles record together.') : '') +
-        '</div>' +
+        '<h3>Record this ' + (service ? 'service' : 'small group') + '</h3>' +
+        '<p>Saved on this device only. Everyone here will see that this ' + (service ? 'service' : 'small group') + ' is being recorded.</p>' +
+        '<div class="rec-sec"><b>What to capture</b>' + capture + '</div>' +
         '<div class="rec-sec"><b>Quality</b>' +
         qRadio('low', 'Low · 720p') +
         qRadio('std', 'Standard · 1080p') +
