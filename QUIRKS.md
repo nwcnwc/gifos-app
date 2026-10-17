@@ -6,6 +6,14 @@ Personas in progress: consultant with a screen share, keyboard-only power user, 
 
 ## Fixed
 
+### The song line never reached the room
+
+- **Who hits it:** the volunteer running a church service, and everyone watching it.
+- **What you saw:** during Song the booth read the line on its own screen. The room saw only the camera, with no words to sing.
+- **Repro:** `test/desktop/lyrics.spec.js` (“during Song the current line is on the picture the room sees”, blurred and clear) failed before the fix: no words on the outgoing frame (894a848). A first fix painted the line across the full width at the bottom. A real two-browser broadcast, booth and viewer on different machines, showed that the room sees this camera as a centered square with the name strip over its bottom 17%, so the viewer read “…ing g… how sweet the s…” under the name. The repro now checks for that too (8b2b1a3).
+- **Fix:** while the order of service is on Song, the booth paints the current line onto the picture it sends: white on a dark band, wrapped to two lines, inside the centered square, and above the name strip. A clear camera goes through the same canvas only while Song is up. The next line stays on the booth.
+- **Proof:** the repro passes on Chromium and Firefox, blurred and clear. In the two-browser broadcast the viewer reads the line on the booth’s picture. Screenshots: `test/desktop/shots/lyrics-air-before-1280.png`, `test/desktop/shots/lyrics-air-before-frame.png`, `test/desktop/shots/lyrics-air-after-1280.png`, `test/desktop/shots/lyrics-air-after-frame.png`, `test/desktop/shots/lyrics-air-viewer-after-1280.png`. WebKit is skipped because a canvas capture closes its tab. The song is one built-in hymn.
+
 ### A camera that painted pure black waited 9 seconds in silence
 
 - **Who hits it:** someone whose camera stays live but sends only black, usually a phone or laptop after another app took the lens.

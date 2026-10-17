@@ -6242,7 +6242,42 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       blurPipe = null;
     }
     function blurPipeTune(level) {
-      return { level: level, px: level === 2 ? 26 : 11, capW: level >= 2 ? 320 : 480 };
+      // Level 0 runs only to carry the song line on a clear camera.
+      return { level: level, px: level === 2 ? 26 : 11, capW: level >= 2 ? 320 : level === 1 ? 480 : 640 };
+    }
+    // During Song the booth's current line rides on the picture the room
+    // sees: white on a dark band, clear of a face. The room is shown this
+    // camera as a centered square with the name strip over its bottom 17%
+    // (mesh-media.js), so the words wrap to fit that square and sit above
+    // the strip. Two lines at most; a longer line gets a smaller font.
+    function paintLyricOnAir(ctx, w, h) {
+      const line = lyricOnAir();
+      if (!line) return;
+      const side = Math.min(w, h);
+      const room = side * 0.9;
+      const wrap = (px) => {
+        ctx.font = '700 ' + px + 'px system-ui, sans-serif';
+        const out = [];
+        let cur = '';
+        for (const word of line.split(/\s+/)) {
+          const next = cur ? cur + ' ' + word : word;
+          if (cur && ctx.measureText(next).width > room) { out.push(cur); cur = word; } else cur = next;
+        }
+        if (cur) out.push(cur);
+        return out;
+      };
+      let px = Math.max(10, Math.round(side * 0.085));
+      let rows = wrap(px);
+      while (px > 8 && (rows.length > 2 || rows.some((r) => ctx.measureText(r).width > room))) rows = wrap(--px);
+      const lh = Math.round(px * 1.2), pad = Math.round(px * 0.35);
+      const band = rows.length * lh + pad * 2;
+      const bottom = Math.floor(h * 0.8);
+      ctx.fillStyle = 'rgba(0,0,0,0.66)';
+      ctx.fillRect(Math.round((w - side) / 2), bottom - band, side, band);
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      rows.forEach((r, i) => ctx.fillText(r, w / 2, bottom - band + pad + lh * i + lh / 2));
     }
     function blurPipeCanReuse(pipe, camId) {
       return !!(pipe && pipe.camId === camId && pipe.track && pipe.track.readyState === 'live');
@@ -6332,7 +6367,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const w = Math.max(2, Math.round(sw * sc)), h = Math.max(2, Math.round(sh * sc));
         if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
         let drew = false;
-        try { blurDraw(ctx, src, 0, 0, w, h, Math.max(4, Math.round(pipe.px * w / Math.max(1, sw))), pipe.level); drew = true; } catch (e) {}
+        try {
+          if (pipe.level > 0) blurDraw(ctx, src, 0, 0, w, h, Math.max(4, Math.round(pipe.px * w / Math.max(1, sw))), pipe.level);
+          else ctx.drawImage(src, 0, 0, w, h);
+          drew = true;
+        } catch (e) {}
+        if (drew) paintLyricOnAir(ctx, w, h);
         // painted counts a frame that was DRAWN. A throw used to increment
         // first, so blackCamWatch read a dead pipe as frames flowing.
         const why = noteBlurFrame(pipe, drew);
@@ -6427,7 +6467,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const cam = localStream && localStream.getVideoTracks()[0];
       if (!cam) return null;
       const lvl = blurLevelFor('me');
-      if (lvl > 0 && !myStatus.camOff) return startBlurPipe(lvl) || cam;
+      if ((lvl > 0 || lyricOnAir()) && !myStatus.camOff) return startBlurPipe(lvl) || cam;
       stopBlurPipe();
       return cam;
     }
@@ -7315,8 +7355,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     };
     // The hymn the booth reads during Song. The words stay as written.
     // Only the Program / Preview labels follow the device language.
-    // The index lives in this tab. It is not sent to the room, and it is
-    // not painted onto the camera.
+    // The index lives in this tab. It is not sent to the room as data; the
+    // current line is painted onto the outgoing camera (paintLyricOnAir).
     const LYRIC_LINES = [
       'Amazing grace, how sweet the sound',
       'That saved a wretch like me',
@@ -7334,11 +7374,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function setLyricAt(n) {
       try { sessionStorage.setItem(lyricStoreKey(), String(n)); } catch (e) {}
     }
+    function lyricSongOn() {
+      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored()));
+      return !!(host && rundownAt() === 1);
+    }
+    // The line the room sees on the booth's camera, or '' outside Song.
+    function lyricOnAir() {
+      try { return lyricSongOn() ? (LYRIC_LINES[lyricAt()] || '') : ''; } catch (e) { return ''; }
+    }
+    let lyricAirWas = false;
     function paintLyrics() {
       const el = document.getElementById('lyrics');
       if (!el) return;
-      const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored()));
-      const song = !!(host && rundownAt() === 1);
+      const song = lyricSongOn();
+      // A clear camera has no canvas to paint on; switch the sent track.
+      if (song !== lyricAirWas) { lyricAirWas = song; try { refreshOutbound(); } catch (e) {} }
       el.classList.toggle('open', song);
       document.body.classList.toggle('lyrics', song);
       if (!song) return;
