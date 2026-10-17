@@ -118,7 +118,7 @@ test('the booth reads the current line and the next one', async ({ page }) => {
   expect(prayer.display).toBe('none');
 
   await page.setViewportSize({ width: 900, height: 720 });
-  for (let i = 0; i < 6; i++) await page.click('#rundown-next');
+  for (let i = 0; i < 7; i++) await page.click('#rundown-next');
   const narrow = await lyricBox(page);
   expect(narrow.program).toBe('Amazing grace, how sweet the sound');
   expect(narrow.clipped).toBe(false);
@@ -420,8 +420,9 @@ test('a service has a second song after the Message with its own words', async (
   expect(b.coversAir).toBe(false);
   expect(b.coversDock).toBe(false);
   expect(b.coversRundown).toBe(false);
-  // The room sees the second song's line on the booth's picture.
-  await expect.poll(() => page.evaluate(() => window.__painted.join(' | '))).toContain(SECOND_SONG[0]);
+  // The room sees the second song's line on the booth's picture (a long
+  // line is painted wrapped, so look for its start).
+  await expect.poll(() => page.evaluate(() => window.__painted.join(' | '))).toContain('Be Thou my vision');
   await shot('after');
 
   // Closing has no lyrics.

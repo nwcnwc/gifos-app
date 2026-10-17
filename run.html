@@ -7455,8 +7455,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       ['rdPrayer', 'Prayer'],
       ['rdScripture', 'Scripture'],
       ['rdMessage', 'Message'],
+      ['rdSong', 'Song'],
       ['rdClosing', 'Closing'],
     ];
+    // Which song a step is (0 for the first Song, 1 for the second), or -1.
+    function songSlotOf(i) {
+      if (!RUNDOWN_STEPS[i] || RUNDOWN_STEPS[i][0] !== 'rdSong') return -1;
+      let n = 0;
+      for (let j = 0; j < i; j++) if (RUNDOWN_STEPS[j][0] === 'rdSong') n++;
+      return n;
+    }
+    // The song on now, or the next one coming (after the end, the first).
+    function songSlotAhead() {
+      const at = rundownAt();
+      for (let i = at; i < RUNDOWN_STEPS.length; i++) if (songSlotOf(i) >= 0) return songSlotOf(i);
+      return 0;
+    }
     function rundownStoreKey() { return 'gifos_rundown_' + (params.get('v') || ''); }
     function rundownAt() {
       let n = 0;
@@ -7505,7 +7519,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
           const name = document.createElement('span');
           name.className = 'rdname';
-          name.textContent = uiText(step[0], step[1]);
+          const slot = songSlotOf(i);
+          name.textContent = uiText(step[0], step[1]) + (slot >= 0 ? ' ' + (slot + 1) : '');
           li.appendChild(name);
           list.appendChild(li);
         });
@@ -7523,7 +7538,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     if (rundownNext) rundownNext.onclick = () => {
       const at = rundownAt();
       const next = at >= RUNDOWN_STEPS.length ? 0 : at + 1;
-      if (next === 0) setLyricAt(0);
+      if (next === 0 || songSlotOf(next) >= 0) setLyricAt(0);
       setRundownAt(next);
       paintRundown();
     };
@@ -7531,23 +7546,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Only the Program / Preview labels follow the device language.
     // The index lives in this tab. It is not sent to the room as data; the
     // current line is painted onto the outgoing camera (paintLyricOnAir).
-    const HYMN_LINES = [
+    // Song 2 (after the Message) has its own built-in hymn.
+    const HYMN_LINES = [[
       'Amazing grace, how sweet the sound',
       'That saved a wretch like me',
       'I once was lost, but now am found',
       'Was blind, but now I see.',
-    ];
+    ], [
+      'Praise God, from whom all blessings flow;',
+      'Praise Him, all creatures here below;',
+      'Praise Him above, ye heavenly host;',
+      'Praise Father, Son, and Holy Ghost.',
+    ]];
     // The booth's own song replaces the hymn: one line per line, blank lines
-    // dropped. Kept per room on this computer, so it can be typed before the
-    // service. Empty goes back to the hymn.
-    function songStoreKey() { return 'gifos_song_' + (params.get('v') || ''); }
+    // dropped. Kept per room and per song on this computer, so it can be typed
+    // before the service. Empty goes back to the hymn.
+    function songStoreKey(slot) { return (slot ? 'gifos_song' + (slot + 1) + '_' : 'gifos_song_') + (params.get('v') || ''); }
     function songLinesFrom(text) {
       return String(text || '').split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').trim().slice(0, 120)).filter(Boolean).slice(0, 200);
     }
-    function songLines() {
+    function songLines(slot) {
+      if (slot === undefined) slot = songSlotAhead();
       let own = [];
-      try { own = songLinesFrom(localStorage.getItem(songStoreKey())); } catch (e) {}
-      return own.length ? own : HYMN_LINES;
+      try { own = songLinesFrom(localStorage.getItem(songStoreKey(slot))); } catch (e) {}
+      return own.length ? own : (HYMN_LINES[slot] || HYMN_LINES[0]);
     }
     function lyricStoreKey() { return 'gifos_lyric_' + (params.get('v') || ''); }
     function lyricAt() {
@@ -7563,7 +7585,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function lyricSongOn() {
       const host = typeof BROADCAST !== 'undefined' && BROADCAST && (amAdmin || (typeof bcHostStored === 'function' && bcHostStored()));
-      return !!(host && rundownAt() === 1);
+      return !!(host && songSlotOf(rundownAt()) >= 0);
     }
     // The line the room sees on the booth's camera, or '' outside Song.
     function lyricOnAir() {
@@ -7604,11 +7626,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setLyricAt(at >= songLines().length - 1 ? 0 : at + 1);
       paintLyrics();
     };
+    // The song the open Song words box edits, picked when it opens.
+    let songEditSlot = 0;
     function paintSongWords() {
       const b = document.getElementById('song-edit');
       if (b) b.textContent = uiText('songWords', 'Song words');
       const t = document.getElementById('songedit-title');
-      if (t) t.textContent = uiText('songWords', 'Song words');
+      if (t) t.textContent = uiText('songWords', 'Song words') + ' · ' + uiText('rdSong', 'Song') + ' ' + (songEditSlot + 1);
       const n = document.getElementById('songedit-note');
       if (n) n.textContent = uiText('songNote', 'One line per line. Song reads them in order.');
       const sv = document.getElementById('song-save');
@@ -7622,9 +7646,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       el.classList.toggle('open', open);
       document.body.classList.toggle('songedit', open);
       if (open) {
+        songEditSlot = songSlotAhead();
         paintSongWords();
         const t = document.getElementById('song-text');
-        if (t) { t.value = songLines().join('\n'); try { t.focus(); } catch (e) {} }
+        if (t) { t.value = songLines(songEditSlot).join('\n'); try { t.focus(); } catch (e) {} }
       } else {
         const b = document.getElementById('song-edit');
         if (b) { try { b.focus(); } catch (e) {} }
@@ -7637,10 +7662,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const t = document.getElementById('song-text');
       const lines = songLinesFrom(t ? t.value : '');
       try {
-        if (lines.length) localStorage.setItem(songStoreKey(), lines.join('\n'));
-        else localStorage.removeItem(songStoreKey());
+        if (lines.length) localStorage.setItem(songStoreKey(songEditSlot), lines.join('\n'));
+        else localStorage.removeItem(songStoreKey(songEditSlot));
       } catch (e) {}
-      setLyricAt(0);
+      // Typing the next song must not move the song being sung now.
+      if (songSlotOf(rundownAt()) === songEditSlot || songSlotOf(rundownAt()) < 0) setLyricAt(0);
       openSongWords(false);
       paintLyrics();
     };
