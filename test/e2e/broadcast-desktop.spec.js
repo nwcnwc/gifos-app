@@ -1149,7 +1149,7 @@ test('service chat keeps the title on one line', async ({ page }) => {
     await page.waitForSelector('#chatpanel.open');
     const m = await headBox();
     expect(m.title).toBe('Service chat');
-    expect(m.priv).toBe('· private to this service, gone when everyone leaves');
+    expect(m.priv).toBe('Private to this service, gone when everyone leaves');
     expect(m.oneLine, JSON.stringify(m)).toBe(true);
     expect(m.privBelow, JSON.stringify(m)).toBe(true);
     expect(m.privWide, JSON.stringify(m)).toBe(true);
@@ -3717,7 +3717,7 @@ test('the chat head keeps its buttons on one row beside the title', async ({ pag
     if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
     else localStorage.removeItem(key);
   });
-  for (const [w, h] of [[1280, 720], [900, 720], [390, 800]]) {
+  for (const [w, h] of [[1280, 720], [1920, 1080], [1024, 720], [900, 720]]) {
     for (const who of ['host', 'view', 'group']) {
       await page.setViewportSize({ width: w, height: h });
       const url = who === 'group'
