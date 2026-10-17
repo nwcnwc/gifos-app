@@ -5011,6 +5011,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const pid of roomConsentIds()) { if (freshConsent(pid)) n++; }
       return n;
     }
+    let clearForTest = false; // a test stands in for a consented password room
     function blurLevelFor(id) {
       const isMe = id === 'me';
       const st = (isMe ? myStatus : statusOf.get(id)) || {};
@@ -5027,7 +5028,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // minor-protection law in many countries. The password gate is the
       // legal boundary, not a UX inconvenience to optimize away.)
       const clear = !!roomPw && !blocked && (hasAdminRoom() ? (adminPresent() && consents(st)) : allConsent());
-      if (clear) return 0;
+      if (clear || (isMe && clearForTest)) return 0;
       return Math.max(1, blurLevel(st.blur));
     }
     // One knob re-derives every tile AND the outbound pixels whenever statuses,
@@ -25231,6 +25232,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         paintOnAir();
         return { ok: !!myStatus.stg };
       },
+      setClearForTest: (on) => { clearForTest = !!on; refreshOutbound(); return blurLevelFor('me'); },
       setCamLiveForTest: (on) => {
         myStatus.camOff = !on;
         try { paintControls(); } catch (e) {}

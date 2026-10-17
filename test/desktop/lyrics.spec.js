@@ -167,3 +167,61 @@ test.describe('Spanish lyrics chrome', () => {
     expect(b.program).toBe('Amazing grace, how sweet the sound');
   });
 });
+
+// What leaves the booth: the self tile plays exactly the track that is sent.
+// The camera is one flat color, so any near-white pixel in the lower part of
+// the frame is a word painted onto the picture.
+async function outgoingWords(page) {
+  return page.evaluate(async () => {
+    const v = document.querySelector('.tile.me video');
+    if (!v || !v.videoWidth) return { ok: false, white: 0, top: 0 };
+    await new Promise((r) => setTimeout(r, 400));
+    const c = document.createElement('canvas');
+    c.width = v.videoWidth; c.height = v.videoHeight;
+    const x = c.getContext('2d');
+    x.drawImage(v, 0, 0, c.width, c.height);
+    const band = x.getImageData(0, Math.floor(c.height * 0.6), c.width, c.height - Math.floor(c.height * 0.6)).data;
+    const upper = x.getImageData(0, 0, c.width, Math.floor(c.height * 0.4)).data;
+    const count = (d) => { let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 220 && d[i + 1] > 220 && d[i + 2] > 220) n++; return n; };
+    return { ok: true, white: count(band), top: count(upper), w: c.width, h: c.height };
+  });
+}
+
+for (const blur of [2, 0]) {
+  test(`during Song the current line is on the picture the room sees (blur ${blur})`, async ({ page, browserName }) => {
+    test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
+    await boot(page, `v=qalyricair${blur}&av=0123456789abcdef&bc=1&debug=on`);
+    await page.evaluate(() => {
+      navigator.mediaDevices.getUserMedia = () => {
+        const c = document.createElement('canvas');
+        c.width = 640; c.height = 360;
+        c.style.cssText = 'position:fixed;left:-4000px;top:0';
+        document.body.appendChild(c);
+        const x = c.getContext('2d');
+        // Repaint so the capture keeps sending frames.
+        setInterval(() => { x.fillStyle = '#c45b3e'; x.fillRect(0, 0, 640, 360); }, 100);
+        x.fillStyle = '#c45b3e'; x.fillRect(0, 0, 640, 360);
+        return Promise.resolve(c.captureStream(8));
+      };
+    });
+    const armed = await page.evaluate(() => window.__gifosVideo.armBroadcastHostForTest());
+    expect(armed && armed.ok).toBe(true);
+    await page.click('#cam');
+    if (blur === 0) await page.evaluate(() => window.__gifosVideo.setClearForTest(true));
+    await expect.poll(() => page.evaluate(() => { const v = document.querySelector('.tile.me video'); return !!(v && v.videoWidth); })).toBe(true);
+
+    const welcome = await outgoingWords(page);
+    expect(welcome.ok).toBe(true);
+    expect(welcome.white).toBe(0);
+
+    await page.click('#rundown-next');
+    await expect.poll(async () => (await outgoingWords(page)).white).toBeGreaterThan(40);
+    const song = await outgoingWords(page);
+    // The words sit low on the picture, clear of a face.
+    expect(song.top).toBe(0);
+    await page.screenshot({ path: `test/desktop/shots/lyrics-air-blur${blur}-1280.png` });
+
+    await page.click('#rundown-next');
+    await expect.poll(async () => (await outgoingWords(page)).white).toBe(0);
+  });
+}
