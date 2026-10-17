@@ -10596,16 +10596,32 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // One WYSIWYG source means the preview never becomes a second <video>
       // element fighting the camera track — the mobile-browser failure that
       // froze/blanked either the preview or the outbound when they diverged.
-      // 0.9.23b: my shared screen is on the Stage; my Row tile keeps my face.
-      let selfVt = vt;
-      if (myStatus.scr && !myStatus.camOff && localStream) {
-        const camT = localStream.getVideoTracks()[0];
-        if (camT && camT.readyState === 'live' && camT !== vt) selfVt = camT;
+      // 0.9.23b: my shared screen is on the Stage, so my Row tile shows my
+      // face on top of it: a local-only <video class="selfcam">. meTile.video
+      // stays the broadcast track, because the Stage composite reads it.
+      if (meTile && meTile.tile) {
+        let camT = null;
+        if (myStatus.scr && !myStatus.camOff && localStream) {
+          const c = localStream.getVideoTracks()[0];
+          if (c && c.readyState === 'live' && c !== vt) camT = c;
+        }
+        let sc = meTile.tile.querySelector(':scope > video.selfcam');
+        if (camT) {
+          if (!sc) {
+            sc = document.createElement('video');
+            sc.className = 'selfcam'; sc.muted = true; sc.autoplay = true; sc.playsInline = true;
+            meTile.video.insertAdjacentElement('afterend', sc);
+          }
+          if (!sc.srcObject || sc.srcObject.getVideoTracks()[0] !== camT) {
+            sc.srcObject = new MediaStream([camT]);
+            const pr = sc.play(); if (pr && pr.catch) pr.catch(() => {});
+          }
+        } else if (sc) { try { sc.srcObject = null; } catch (e) {} sc.remove(); }
       }
-      if (meTile && selfVt) {
+      if (meTile && vt) {
         const cur = meTile.video.srcObject;
-        if (!cur || cur.getVideoTracks()[0] !== selfVt) {
-          meTile.video.srcObject = new MediaStream([selfVt]);
+        if (!cur || cur.getVideoTracks()[0] !== vt) {
+          meTile.video.srcObject = new MediaStream([vt]);
           const pr = meTile.video.play(); if (pr && pr.catch) pr.catch(() => {});
         }
       }
