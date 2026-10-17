@@ -2472,7 +2472,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         : 'You can hear the stage. Tap to mute it on this device. Everyone else still hears it.';
       btn.setAttribute('aria-label', muted ? 'Stage muted on this device' : 'Mute the stage on this device');
     }
+    let headCountOverride = 0; // headCountForTest: stands in for the live count
     function roomHeadCount() {
+      if (headCountOverride > 0) return headCountOverride;
       try {
         if (typeof displayCount === 'function') {
           const n = displayCount();
@@ -2480,6 +2482,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       } catch (e) {}
       return 1;
+    }
+    // A service counts the people watching. The host and everyone on the
+    // stage are not watching, so a host alone reads 0. null off a service.
+    function serviceWatchCount() {
+      let bc = false;
+      try { bc = typeof BROADCAST !== 'undefined' && !!BROADCAST; } catch (e) { bc = false; }
+      if (!bc) return null;
+      const up = new Set();
+      try { stageIds().forEach((id) => up.add(id)); } catch (e) {}
+      try { adminsNow().forEach((id) => up.add(id)); } catch (e) {}
+      try {
+        if ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')) up.add(myId || 'me');
+      } catch (e) {}
+      return Math.max(0, roomHeadCount() - up.size);
     }
     function paintRoomTrust() {
       const rec = document.getElementById('airrec');
@@ -2493,10 +2509,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           : 'Not recording. Tap to record on this device. Everyone here will see it.';
       }
       if (who) {
-        const n = roomHeadCount();
-        who.textContent = n + ' here';
-        who.title = 'Who is here';
-        who.setAttribute('aria-label', 'Who is here, ' + n);
+        const watch = serviceWatchCount();
+        const n = watch === null ? roomHeadCount() : watch;
+        const word = watch === null ? 'here' : 'watching';
+        who.textContent = n + ' ' + word;
+        who.title = 'Who is ' + word;
+        who.setAttribute('aria-label', 'Who is ' + word + ', ' + n);
       }
       paintServiceSound();
       maybeShowRecNotice();
@@ -24324,6 +24342,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       pipEnterForTest: () => enterPip(true),
       audienceReactForTest: (emoji, fromId) => takeAudienceReact(emoji, fromId || 'viewer'),
       stageHearLevelForTest: () => heardStage(),
+      headCountForTest: (n) => { headCountOverride = Math.max(0, +n || 0); paintRoomTrust(); return roomHeadCount(); },
       // moderation SINKS (e2e-meet-mod.js): what the filmstrip would list and how
       // blurred, and a sender that defies the admin's video-off — the DOM-hacked
       // guest the receiver-side rule exists for (it only re-enables MY track).
