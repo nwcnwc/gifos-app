@@ -4160,3 +4160,38 @@ test('Float in the More sheet reads at the size of Who, Stage and Settings', asy
     }
   }
 });
+
+test('a service host\'s More sheet has no Hand; a viewer raises one from the dock', async ({ page }) => {
+  // Seen at 1280: after Q98 took ✋ out of the host's React tray, the host's
+  // More sheet still offered Hand, and pressing it raised the host's own
+  // hand at their own service (it read Lower hand and went out on the
+  // host's status). A small group keeps its Hand.
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', location.search.indexOf('host=1') !== -1 ? 'Pastor Kim' : 'Jordan Lee');
+    localStorage.setItem('gifos_meet_bar', '1');
+    const key = 'gifos_vadm_sunday.0123456789abcdef';
+    if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
+    else localStorage.removeItem(key);
+  });
+  for (const who of ['host', 'viewer', 'group']) {
+    for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
+      await page.setViewportSize({ width: w, height: h });
+      const hash = who === 'group' ? '#mb=1&v=standup' : '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      await page.goto('/run.html?desk=morehand' + who + w + (who === 'host' ? '&host=1' : '') + hash, { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('body.meet-session #mic .docklab');
+      await page.locator('#bartoggle').click();
+      await expect(page.locator('#barmore')).toBeVisible();
+      if (who === 'host' && w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/more-hand-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
+      const sheetHand = await page.locator('#barmore #hand').evaluateAll((bs) => bs.filter((b) => b.getClientRects().length).length);
+      const dockHand = await page.locator('.bar > #hand').evaluateAll((bs) => bs.filter((b) => b.getClientRects().length).length);
+      const where = who + ' at ' + w;
+      if (who === 'host') {
+        expect(sheetHand + dockHand, where + ': no Hand anywhere').toBe(0);
+      } else if (who === 'viewer') {
+        expect({ sheetHand, dockHand }, where).toEqual({ sheetHand: 0, dockHand: 1 });
+      } else {
+        expect(sheetHand + dockHand, where + ': a small group keeps a Hand').toBe(1);
+      }
+    }
+  }
+});
