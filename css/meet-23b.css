@@ -78,7 +78,7 @@ body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] { cursor: pointer; }
 #tilewin .tw-row { display: flex; flex-wrap: wrap; gap: 8px; }
 #tilewin button.tw-btn, #tilewin .modbar button {
   flex: 1 1 calc(50% - 4px); min-height: 44px; padding: 8px 12px; border-radius: 12px; border: 0;
-  background: #e6e8ec; color: #1d1d1f; font: 600 15px/1.2 system-ui, sans-serif; cursor: pointer; text-align: center; }
+  background: #e6e8ec; color: #1d1d1f; font: 600 16px/1.2 system-ui, sans-serif; cursor: pointer; text-align: center; }
 #tilewin button.tw-btn.on, #tilewin .modbar button.on { background: #1d1d1f; color: #fff; }
 #tilewin .modbar button.banbtn, #tilewin button.tw-btn.danger { background: #fde8e8; color: #b3261e; }
 #tilewin .modbar { position: static !important; display: flex !important; flex-wrap: wrap; gap: 8px;

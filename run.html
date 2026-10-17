@@ -9709,6 +9709,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const r = bf && bf.getClientRects().length ? bf.getBoundingClientRect() : null;
       const desk = window.matchMedia('(min-width: 601px) and (min-height: 501px)').matches;
       fitbtn.style.right = desk && r ? Math.round(window.innerWidth - r.left + 8) + 'px' : '';
+      // The header line ends before Fit, however long its status gets.
+      const chip = document.querySelector('.topchip');
+      if (chip) {
+        const fr = desk && fitbtn.getClientRects().length ? fitbtn.getBoundingClientRect() : null;
+        const cl = chip.getBoundingClientRect().left;
+        chip.style.maxWidth = fr && fr.left > cl ? Math.max(160, Math.floor(fr.left - cl - 8)) + 'px' : '';
+      }
     }
     placeFit();
     window.addEventListener('load', placeFit);

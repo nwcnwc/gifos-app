@@ -10,8 +10,10 @@ async function boot(page, width, height) {
   await page.waitForSelector('#mic', { state: 'visible' });
   const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4 }));
   expect(seeded && seeded.ok).toBe(true);
-  // The tile buttons arrive once the gallery has settled.
-  await page.waitForFunction(() => [...document.querySelectorAll('#feed .tile .blurbox')].filter((el) => el.getClientRects().length).length >= 4);
+  await page.waitForFunction(() => document.querySelectorAll('#feed .tile[data-comfy="1"]').length >= 5);
+  // Fit is placed beside the build label once that label is up.
+  await page.waitForFunction(() => { const b = document.getElementById('gifos-build-float'); return b && b.getClientRects().length; });
+  await page.evaluate(() => new Promise((r) => { window.dispatchEvent(new Event('resize')); requestAnimationFrame(() => requestAnimationFrame(r)); }));
 }
 
 function overlap(a, b) {
@@ -96,11 +98,10 @@ test('Fit does not cover Stop sharing on a shared slide', async ({ page, browser
   await expect(page.locator('#stagefeed video')).toHaveCount(0);
 });
 
-// Older eyes read the words on a face's buttons too. On a desktop, Blur for
-// all and the Mute / Blur for everyone row were 11-12px. Point at a face in
-// a room of five and of nine: every word on its buttons is 16px, and the
-// buttons stay on the face without covering each other or the name.
-test('the words on a face you point at are 16px', async ({ context }) => {
+// 0.9.23b: a face's per-person buttons live in its control window. Open it
+// on a face in a room of five and of nine: every word on its buttons is
+// 16px, nothing is clipped, and the buttons do not cover each other.
+test('the words in a face\'s control window are 16px', async ({ context }) => {
   for (const count of [4, 8]) {
     const page = await context.newPage();
     await page.setViewportSize({ width: 1280, height: 720 });
@@ -108,40 +109,30 @@ test('the words on a face you point at are 16px', async ({ context }) => {
       localStorage.setItem('gifos_name', 'Jordan Lee');
       sessionStorage.setItem('gifos_appeared', '1');
     });
-    await page.goto('/run.html#v=qaeyestile&debug=on', { waitUntil: 'domcontentloaded' });
+    await page.goto('/run.html#v=qaeyestile' + count + '&debug=on', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#mic', { state: 'visible' });
     await page.evaluate((n) => window.__gifosVideo.seedGalleryForTest({ count: n, connected: true }), count);
-    await page.waitForFunction((n) => document.querySelectorAll('#feed .tile:not(.me) > .blurbox.on').length >= n, count);
+    await page.waitForFunction((n) => document.querySelectorAll('#feed .tile[data-comfy="1"]:not(.me)').length >= n, count);
     const face = page.locator('#feed .tile:not(.me)').first();
     const fb = await face.boundingBox();
-    await page.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
-    await page.waitForTimeout(400);
+    await page.mouse.click(fb.x + fb.width / 2, fb.y + fb.height / 2);
+    await expect(page.locator('#tilewin')).toBeVisible();
     if (count === 4) await page.screenshot({ path: 'test/desktop/shots/tile-words-after-1280.png' });
     const info = await page.evaluate(() => {
-      const tile = document.querySelector('#feed .tile:not(.me)');
-      const tb = tile.getBoundingClientRect();
-      const seen = (el) => {
-        const cs = getComputedStyle(el);
-        return el.getClientRects().length && cs.display !== 'none' && cs.visibility !== 'hidden' && Number(cs.opacity) > 0.5;
+      const win = document.getElementById('tilewin');
+      const seen = (el) => { const cs = getComputedStyle(el); return el.getClientRects().length && cs.display !== 'none' && cs.visibility !== 'hidden'; };
+      const btns = [...win.querySelectorAll('button')].filter(seen).filter((el) => /[A-Za-z]/.test(el.textContent || ''));
+      const boxes = btns.map((el) => { const r = el.getBoundingClientRect(); return { id: el.textContent.trim(), left: r.left, right: r.right, top: r.top, bottom: r.bottom }; });
+      return {
+        words: btns.map((el) => el.textContent.trim()),
+        small: btns.filter((el) => parseFloat(getComputedStyle(el).fontSize) < 16).map((el) => el.textContent.trim() + ' ' + getComputedStyle(el).fontSize),
+        clipped: btns.filter((el) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1).map((el) => el.textContent.trim()),
+        boxes,
       };
-      const els = [...tile.querySelectorAll(':scope > .blurbox, .modbar button, .name')].filter(seen);
-      const boxes = els.map((el) => {
-        const r = el.getBoundingClientRect();
-        return { id: el.className + ':' + (el.textContent || '').trim(), left: r.left, right: r.right, top: r.top, bottom: r.bottom };
-      });
-      const small = els.filter((el) => el.tagName === 'BUTTON' && /[A-Za-z]/.test(el.textContent || ''))
-        .filter((el) => parseFloat(getComputedStyle(el).fontSize) < 16)
-        .map((el) => el.textContent.trim() + ' ' + getComputedStyle(el).fontSize);
-      const words = els.filter((el) => el.tagName === 'BUTTON' && /[A-Za-z]/.test(el.textContent || '')).map((el) => el.textContent.trim());
-      const clipped = els.filter((el) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1).map((el) => el.textContent.trim());
-      const outside = boxes.filter((b) => b.left < tb.left - 1 || b.right > tb.right + 1 || b.top < tb.top - 1 || b.bottom > tb.bottom + 1).map((b) => b.id);
-      return { words, small, clipped, outside, boxes };
     });
-    // The first seeded guest is muted by their own hand, so the face offers no Mute for all (host words rule, Nathan 2026-10-16).
-    expect(info.words, 'room of ' + (count + 1)).toEqual(expect.arrayContaining(['Blur for all']));
+    expect(info.words, 'room of ' + (count + 1)).toEqual(expect.arrayContaining(['Pin']));
     expect(info.small, 'room of ' + (count + 1)).toEqual([]);
     expect(info.clipped, 'room of ' + (count + 1)).toEqual([]);
-    expect(info.outside, 'room of ' + (count + 1)).toEqual([]);
     const hits = [];
     for (let i = 0; i < info.boxes.length; i++) for (let j = i + 1; j < info.boxes.length; j++) {
       if (overlap(info.boxes[i], info.boxes[j])) hits.push(info.boxes[i].id + ' / ' + info.boxes[j].id);
