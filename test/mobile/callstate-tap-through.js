@@ -48,15 +48,19 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
   for (const want of names) {
     const tile = page.locator('#grid .tile', { has: page.locator('.name', { hasText: want }) }).first();
     if (!(await tile.count())) { bad.push('no tile reads "' + want + '"'); continue; }
-    const spot = await tile.evaluate((t) => {
+    // Tap the part of the name the row lies over (a long name wraps to
+    // three lines on WebKit, so its middle can sit above the row).
+    const spot = await tile.evaluate((t, row) => {
       const n = t.querySelector('.name').getBoundingClientRect();
       const x = n.left + n.width / 2;
-      const y = n.top + n.height / 2;
+      const top = Math.max(n.top, row.top);
+      const bottom = Math.min(n.bottom, row.bottom);
+      const y = bottom > top ? (top + bottom) / 2 : n.top + n.height / 2;
       const el = document.elementFromPoint(x, y);
       return { x, y, onTile: !!(el && el.closest('.tile') === t), hit: el ? (el.id || el.className || el.tagName) : 'nothing' };
-    });
-    if (row.shown && (spot.y < row.top || spot.y > row.bottom)) bad.push(want + ': the name is not level with the Record row, the case is gone');
-    if (!spot.onTile) bad.push(want + ': the middle of the name is under #' + spot.hit + ', not the tile');
+    }, row);
+    if (row.shown && (spot.y < row.top || spot.y > row.bottom)) bad.push(want + ': the name does not reach the Record row, the case is gone');
+    if (!spot.onTile) bad.push(want + ': the name where the row meets it is under #' + spot.hit + ', not the tile');
     if (!shot) {
       shot = true;
       await page.screenshot({ path: path.join(SHOTS, (bad.length ? 'before' : 'after') + '-callstate-tap-through-pixel5-land.png') });

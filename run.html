@@ -1643,7 +1643,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     right: calc(8px + env(safe-area-inset-right, 0px));
     bottom: calc(var(--dockh, 108px) + 8px);
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    /* The row is full width; sideways its empty part lies over the tiles'
+       names. Only its buttons take taps. */
+    pointer-events: none;
   }
+  #callstate > * { pointer-events: auto; }
   #callstate[hidden] { display: none !important; }
   body.solo-app #callstate { display: none !important; }
   #call-live, #call-rec, #call-cc {
@@ -2280,6 +2284,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     pointer-events: none;
     transform: translateY(16px);
   }
+  body.chrome-away #callstate > * { pointer-events: none; }
   /* The preview was taking more than half of a short phone, so Join a link
      sat below the fold (SE portrait bottom 661 on a 568px screen, and in
      landscape the first action was already off screen). */
