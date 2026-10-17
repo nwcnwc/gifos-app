@@ -511,9 +511,19 @@ Repro: `test/mobile/chat-mention-alert.js`. It failed (`the preview does not say
 
 Before: `qa/mobile/shots/before-chat-mention-alert-iphone-se.png`. After: `qa/mobile/shots/after-chat-mention-alert-iphone-se.png`.
 
+### 60. Answering a line started a new message at the bottom
+
+Ruth wrote "the vote is Tuesday." The only way to answer was a new line, so the answer and the vote did not stay together. Zoom and Teams quote the line you answer.
+
+Reply sits on the line, at 44px, and stays off Send. The composer keeps Ruth's line until the answer is sent or Cancel is tapped. The answer shows that line in a quoted strip.
+
+Repro: `test/mobile/chat-reply.js`. It failed (`no Reply`), then passed. Gate: `NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-reply.js`.
+
+Before: `qa/mobile/shots/before-chat-reply-iphone-se.png`. After: `qa/mobile/shots/after-chat-reply-iphone-se.png`.
+
 ## Open
 
-The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat now says who mentioned you. Answering that line still starts a new message at the bottom, so the mention and the answer do not stay together. Church tap targets and a sideways phone are still open.
+The build name is a faint line under the header. A green round "A" in Nathan's shot did not appear in the Playwright capture. Fit and the name chip stay while the dock is tucked. A closed chat says who mentioned you, and Reply keeps that line on the answer. The room name in the header is still 23px tall, so the tap that opens the rest of the status is easy to miss. A sideways phone is still open.
 
 ## Personas (what was actually tried)
 

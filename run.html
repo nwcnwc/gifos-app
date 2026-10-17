@@ -1152,6 +1152,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .cmsg { background: #e8ecf1; color: #1d1d1f; border: 0; border-radius: 16px; padding: 10px 12px; max-width: 78%; align-self: flex-start; overflow-wrap: anywhere; font-size: 1rem; line-height: 1.35; }
   .cmsg.mine { align-self: flex-end; background: #0064c8; color: #fff; }
   .cmsg b { color: inherit; font-size: 1rem; font-weight: 700; display: block; margin: 0 0 2px; }
+  /* A reply keeps the line it answers. The quote is a strip inside the
+     bubble. Reply is its own control, 44px, so it is not the same as Send. */
+  .cmsg .cquote { display: block; margin: 2px 0 6px; padding: 4px 8px; border: 0; border-left: 3px solid #0064c8;
+    border-radius: 8px; background: #fff; color: #1d1d1f; }
+  .cmsg .cquote b { display: block; margin: 0; font-size: .875rem; font-weight: 700; color: inherit; }
+  .cmsg .cquote span { display: block; font-size: 1rem; line-height: 1.35; }
+  .cmsg.mine .cquote { background: rgba(0, 0, 0, .18); color: #fff; border-left-color: #fff; }
+  .cmsg .creply { display: flex; align-items: center; justify-content: center; box-sizing: border-box;
+    min-width: 44px; min-height: 44px; margin: 8px 0 0; padding: 0 12px; border: 1.5px solid #c5cad3; border-radius: 12px;
+    background: #fff; color: #0064c8; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
+  #chatreply { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; margin: 0 12px; padding: 8px 0 0; }
+  #chatreply[hidden] { display: none !important; }
+  #chatreply .chatreply-body { flex: 1; min-width: 0; border-left: 3px solid #0064c8; padding: 2px 8px; }
+  #chatreply b { display: block; margin: 0; font: 700 1rem/1.2 system-ui, sans-serif; color: inherit; }
+  #chatreply span { display: block; font: 400 1rem/1.3 system-ui, sans-serif; color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #chatreply-x { flex: 0 0 auto; box-sizing: border-box; min-width: 44px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 12px;
+    background: #e8ecf1; color: #1d1d1f; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
   /* The clock sits beside the name. Same ink as the line, so it stays
      readable on the light bubble and on the blue one. */
   .cwho { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin: 0 0 2px; }
@@ -2037,7 +2054,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #chatform button[type=submit]:disabled { background: #e8ecf1; color: #3a3a3f; }
   }
   #chatlog, #cfiles { min-height: 0; }
-  #chathead, #chatfind, #chatmentions, #chatform, #emojirow { flex-shrink: 0; }
+  #chathead, #chatfind, #chatmentions, #chatreply, #chatform, #emojirow { flex-shrink: 0; }
   @media (max-width: 700px) {
     #chathead small { display: none; }
   }
@@ -2489,6 +2506,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button type="button" data-emoji="🔥">🔥</button>
     </div>
     <div id="chatmentions" hidden role="listbox" aria-label="People"></div>
+    <div id="chatreply" hidden>
+      <div class="chatreply-body">
+        <b id="chatreply-by"></b>
+        <span id="chatreply-txt"></span>
+      </div>
+      <button type="button" id="chatreply-x">Cancel</button>
+    </div>
     <form id="chatform">
       <button type="button" id="cattach" title="Pin a file to the meeting">📎</button>
       <input type="file" id="cfile-in" multiple style="display:none">
@@ -14419,6 +14443,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let unread = 0;
     let lastChatLine = null;
     let mentionAlert = null;
+    let pendingReply = null;
+    function paintReply() {
+      const bar = document.getElementById('chatreply');
+      if (!bar) return;
+      bar.hidden = !pendingReply;
+      const by = document.getElementById('chatreply-by');
+      const txt = document.getElementById('chatreply-txt');
+      if (by) by.textContent = pendingReply ? pendingReply.by : '';
+      if (txt) txt.textContent = pendingReply ? pendingReply.text : '';
+    }
     function messageMentionsMe(text) {
       const name = String(myName() || '').trim();
       if (!name) return false;
@@ -15315,7 +15349,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // `link`, when present, renders as a "Join →" button — validate it is an
       // http(s) URL (never javascript:/data:) so a peer can't inject a live link.
       const link = (typeof m.link === 'string' && /^https?:\/\//i.test(m.link)) ? m.link.slice(0, 400) : undefined;
-      chat.set(m.id, { id: m.id, by: String(m.by || '?').slice(0, 40), byId: m.byId, at: m.at || 0, text: String(m.text || '').slice(0, 2000), link });
+      let reply;
+      if (m.reply && typeof m.reply === 'object' && !Array.isArray(m.reply)) {
+        const id = String(m.reply.id || '').slice(0, 80);
+        const by = String(m.reply.by || '').slice(0, 40);
+        const text = String(m.reply.text || '').slice(0, 160);
+        if (id && text) reply = { id: id, by: by, text: text };
+      }
+      chat.set(m.id, { id: m.id, by: String(m.by || '?').slice(0, 40), byId: m.byId, at: m.at || 0, text: String(m.text || '').slice(0, 2000), link, reply });
       trimMap(chat, CHAT_MAX);
       return true;
     }
@@ -15577,7 +15618,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const when = chatWhen(m.at);
         const stamp = when ? '<small class="cwhen">' + esc(when) + '</small>' : '';
         const who = '<span class="cwho"><b>' + (typeof avatarChip === 'function' ? (avatarChip(m.byId) || '') : '') + esc(m.by) + '</b>' + stamp + '</span>';
-        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '">' + who + body + del + '</div>';
+        const quote = (m.reply && m.reply.text)
+          ? '<blockquote class="cquote"><b>' + esc(m.reply.by || '') + '</b><span>' + esc(m.reply.text) + '</span></blockquote>'
+          : '';
+        const replyBtn = '<button type="button" class="creply" data-reply="' + String(m.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '">Reply</button>';
+        return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + '">' + who + quote + body + replyBtn + del + '</div>';
       }).join('');
       const co = chatOffInfo();
       if (q && !ms.length) html = '<div class="cempty" id="chatnomatch">No matches</div>';
@@ -15623,6 +15668,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       paintChatNew(true);
     };
     document.getElementById('chatlog').addEventListener('click', (e) => {
+      const replyBtn = e.target.closest('[data-reply]');
+      if (replyBtn) {
+        const id = replyBtn.getAttribute('data-reply');
+        const src = id ? chat.get(id) : null;
+        if (!src) return;
+        pendingReply = { id: String(src.id).slice(0, 80), by: String(src.by || '').slice(0, 40), text: String(src.text || '').slice(0, 160) };
+        paintReply();
+        const inp = document.getElementById('chat-in');
+        if (inp && inp.focus) inp.focus();
+        return;
+      }
       const b = e.target.closest('[data-cdel]'); if (!b) return;
       const id = b.getAttribute('data-cdel');
       if (!amAdmin || chatTombs.has(id)) return;
@@ -15726,12 +15782,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const text = inp.value.trim();
       if (!text) return;
       const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text };
+      if (pendingReply) m.reply = { id: pendingReply.id, by: pendingReply.by, text: pendingReply.text };
       chat.set(m.id, m);
       sendAll({ k: 'chat', m });
       inp.value = '';
+      pendingReply = null;
+      paintReply();
       paintMentions();
       renderChat();
     });
+    document.getElementById('chatreply-x').onclick = () => {
+      pendingReply = null;
+      paintReply();
+    };
     (function () {
       const inp = document.getElementById('chat-in');
       const box = document.getElementById('chatmentions');
