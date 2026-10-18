@@ -26277,6 +26277,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function audioKick() { for (const el of Array.from(blockedAudio)) audioRetry(el); }
     function audioBlocked(el, err) {
       if (!el || !el.srcObject) return;
+      // AbortError is not a refusal: a new stream replaced the one this play()
+      // was loading (Firefox, a companion re-pointed mid-load). Telling the
+      // person "refused ... tap" and then "Sound is back" was a false alarm
+      // that also covered the header line. Retry once, quietly.
+      if (err && err.name === 'AbortError') {
+        setTimeout(() => {
+          if (!el.srcObject || !el.paused || blockedAudio.has(el)) return;
+          let pr = null; try { pr = el.play(); } catch (e) {}
+          if (pr && pr.catch) pr.catch((e2) => { if (e2 && e2.name !== 'AbortError') audioBlocked(el, e2); });
+        }, 1500);
+        return;
+      }
       blockedAudio.add(el);
       if (!audioKickArmed) {
         audioKickArmed = true;
