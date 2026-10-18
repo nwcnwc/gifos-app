@@ -15366,7 +15366,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // the probe-gated D5 path own it.
           const recentRebuild = p && p.rebuiltAt && (Date.now() - p.rebuiltAt < 60000);
           if (!dcClosed || recentRebuild) { occVanish.delete(pid); continue; }
-          if (Date.now() - at >= 900) { occVanish.delete(pid); confirmGone(pid, 'left'); }
+          if (Date.now() - at < 900) continue;
+          occVanish.delete(pid);
+          // A DOOR CLOSING IS NOT A GOODBYE. A pair that came in as a door
+          // (p.boot) and is no tree link of mine is closed on purpose by the
+          // far side once its own links are up (retireBootPairs). A seat that
+          // moves into a departed neighbour's cell does exactly that, in the
+          // same moment its old cell leaves my view and before its new cell
+          // reaches me. Read as a goodbye, the close marked a live member
+          // gone, and that mark then refused the very link the move needed.
+          // The pair is retired and the member keeps its status; a real
+          // departure is still judged by its own links.
+          if (p && p.boot && !linkTo(pid)) { if (typeof clog === 'function') clog('door-closed ' + String(pid).slice(0, 6) + ' (not a goodbye)'); dropPeer(pid, true); continue; }
+          confirmGone(pid, 'left');
         }
       }
       occPrevIds = occNow; occPrevMyCk = myCk;
