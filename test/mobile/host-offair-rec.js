@@ -1,6 +1,8 @@
 /*
  * A broadcast host who is off air is not recording. Going on air starts the
- * device recording; going back off air stops it. A Stop tap stays stopped.
+ * device recording; going back off air stops it and saves that file. The
+ * saved file is what Rebroadcast plays, and it holds only the on-air time.
+ * A Stop tap stays stopped.
  *
  * MEET_BASE=http://127.0.0.1:8765 node test/mobile/host-offair-rec.js
  */
@@ -35,13 +37,28 @@ const check = (n, c, d) => { console.log((c ? 'PASS' : 'FAIL') + ' — ' + n + (
     air: document.getElementById('onair').textContent,
   }));
   check('off air: not recording and no Stop', off.rec === 'Not recording' && !/^Stop/.test(off.stop) && /off air/i.test(off.air), off);
+  const preludeAt = Date.now();
+  await sleep(2000);
+  const quiet = await h.evaluate(async () => ({ rec: window.__gifosVideo.recOnForTest(), saved: await window.__gifosVideo.lastServiceForTest() }));
+  check('nothing is recorded while the host stays off air', quiet.rec === false && quiet.saved == null, quiet);
   const started = await h.evaluate(() => window.__gifosVideo.slipCamOnForTest());
   check('the camera can come on', started === true);
   const live = await h.waitForFunction(() => document.getElementById('airrec').textContent === 'Recording' && /^Stop/.test(document.getElementById('recbtn').textContent), null, { timeout: 15000 }).then(() => true, () => false);
   check('on air: Recording and Stop', live);
+  const onAt = Date.now();
+  await sleep(2500);
   await h.evaluate(() => window.__gifosVideo.slipCamOffForTest());
   const back = await h.waitForFunction(() => document.getElementById('airrec').textContent === 'Not recording' && !/^Stop/.test(document.getElementById('recbtn').textContent), null, { timeout: 15000 }).then(() => true, () => false);
   check('back off air: recording stopped', back);
+  const offAt = Date.now();
+  const saved = await h.evaluate(async () => window.__gifosVideo.lastServiceForTest());
+  const onAirSec = (offAt - onAt) / 1000;
+  const allSec = (offAt - preludeAt) / 1000;
+  check('going off air saves the recording', !!(saved && saved.bytes > 1000), saved);
+  check('the saved recording is only the on-air stretch', !!(saved && saved.sec > 1 && saved.sec < onAirSec + 1.5 && saved.sec < allSec - 1.5), { saved, onAirSec, allSec });
+  await sleep(1500);
+  const still = await h.evaluate(async () => window.__gifosVideo.lastServiceForTest());
+  check('staying off air does not add to that file', !!(still && saved && still.bytes === saved.bytes && still.sec === saved.sec), still);
   await h.evaluate(() => window.__gifosVideo.slipCamOnForTest());
   await h.waitForFunction(() => /^Stop/.test(document.getElementById('recbtn').textContent), null, { timeout: 15000 });
   await h.evaluate(() => document.getElementById('recbtn').click());
