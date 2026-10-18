@@ -3254,8 +3254,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       display: block; max-width: 100%; white-space: normal; overflow: hidden;
     }
     body.broadcast #hdrinvite { order: 4; }
-    /* The sentence is a second chip row; the air bar used to start under a one-line chip. */
-    body.broadcast #airbar.on { margin-top: calc(var(--banner-h) + 92px); }
+    /* The sentence is a second chip row. Its height follows the words, so the
+       air bar starts at the chip's measured bottom (--chip-bottom), not a
+       fixed guess that let a second line cover "Service · You are off air". */
+    body.broadcast #airbar.on { margin-top: var(--chip-bottom, calc(var(--banner-h) + 120px)); }
     body:has(.bar:not(.collapsed)) #bc-link { display: none !important; }
   }
   /* Sideways, a width over 700px skipped the phone cap and the sheet grew
@@ -12052,6 +12054,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof paintLiveBadge === 'function') paintLiveBadge();
       paintStatusSheet();
       try { paintOnAir(); } catch (e) {}
+      try {
+        const chip = document.querySelector('body.broadcast .topchip');
+        if (chip) document.documentElement.style.setProperty('--chip-bottom', Math.ceil(chip.getBoundingClientRect().bottom) + 'px');
+      } catch (e2) {}
     }
     // The host's start time and Visit link can arrive by gossip after the
     // line was painted; the countdown moves on its own.
