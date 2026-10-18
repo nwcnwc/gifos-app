@@ -2489,7 +2489,7 @@
         let s1admFree = 0;
         for (let t = 0; t < C(); t++) {
           const liveR = rowLive[t];
-          if (netOn) { if (!R.rowFor(0, t, gl, mm.nc, this)) continue; if (netLab(gl) && R.rowLabel(0, t, this) == null && !R.s1GroupFull(gl, this)) continue; if (!netLab(gl) && R.rowNotForNewHead(this, t)) continue; }   // only cells my group may take count as admissible
+          if (netOn) { if (!R.rowFor(0, t, gl, mm.nc, this)) { skip.push('g' + t + (R.rowLabel(0, t, this) != null ? '' : '-')); continue; } if (netLab(gl) && R.rowLabel(0, t, this) == null && !R.s1GroupFull(gl, this)) continue; if (!netLab(gl) && R.rowNotForNewHead(this, t)) continue; }   // forensics: g<row> a row my group may not take (- unlabelled)   // only cells my group may take count as admissible
           for (let j = 0; j < C(); j++) {
             if (j === 0 && liveR) continue;
             if (!this.cellReserved(ck({ pc: 0, r: t, i: j })) && !(netOn && R.at(ck({ pc: 0, r: t, i: j })) != null && !R.s1Same(this.glabel, t, this))) s1admFree++;

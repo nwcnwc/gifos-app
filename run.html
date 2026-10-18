@@ -18174,7 +18174,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // composite carried them too).
         // Stagers' direct tracks are muted too: their voice arrives via the
         // per-stager feeds folded at the ear — the direct link would double it.
-        const bus = stg.has(pid) ? null : (mates.has(pid) || (p.turnAudio && (p.turnAnchor || p.turnServe))) ? 'row' : null;   // a free-pool pair I anchor or am anchored on carries the other network's voices: it plays wherever its far end sits
+        const bus = stg.has(pid) ? null : (mates.has(pid) || ((p.turnAnchor || p.turnServe) && p.connected)) ? 'row' : null;   // a pool pair I anchor or am anchored on (free or paid) carries the other network's voices: it plays wherever its far end sits
         busVolume(p.video, bus ? mix[bus] : 0);
       }
       // feed tiles (the nested mosaics): stage strip is Stage; stadium tiles
