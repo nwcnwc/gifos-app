@@ -15368,16 +15368,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (!dcClosed || recentRebuild) { occVanish.delete(pid); continue; }
           if (Date.now() - at < 900) continue;
           occVanish.delete(pid);
-          // A DOOR CLOSING IS NOT A GOODBYE. A pair that came in as a door
-          // (p.boot) and is no tree link of mine is closed on purpose by the
-          // far side once its own links are up (retireBootPairs). A seat that
-          // moves into a departed neighbour's cell does exactly that, in the
-          // same moment its old cell leaves my view and before its new cell
-          // reaches me. Read as a goodbye, the close marked a live member
-          // gone, and that mark then refused the very link the move needed.
-          // The pair is retired and the member keeps its status; a real
-          // departure is still judged by its own links.
-          if (p && p.boot && !linkTo(pid)) { if (typeof clog === 'function') clog('door-closed ' + String(pid).slice(0, 6) + ' (not a goodbye)'); dropPeer(pid, true); continue; }
+          // A CLOSE IS NOT A GOODBYE WHILE THE MEMBER IS PLAINLY STILL HERE.
+          // A seat that moves into a departed neighbour's cell retires the
+          // pairs it no longer needs (a door it came in by, a link its new
+          // cell does not have) in the same moment its old cell leaves my
+          // view, and before its new cell reaches me. Read as a goodbye, the
+          // close marked a live member gone, and that mark then refused the
+          // very link the move needed. Two things say the member is still
+          // here: the pair was a door that is no tree link of mine (doors
+          // are closed on purpose once a seat's own links are up), or the
+          // relay still reaches the member's socket (a page that went away
+          // closed it). The pair is retired and the member keeps its status;
+          // a real departure is still judged by its own links.
+          const stillHere = (p && p.boot && !linkTo(pid)) || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
+          if (stillHere) { if (typeof clog === 'function') clog('pair-closed ' + String(pid).slice(0, 6) + ' (still here, not a goodbye)'); dropPeer(pid, true); continue; }
           confirmGone(pid, 'left');
         }
       }
