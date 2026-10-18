@@ -3529,8 +3529,16 @@
       if (this.translostConfirmed(hk)) return true;
       if (this.firstHandLive(hk)) { this.holeSince.delete(hk); return false; }
       this.routeTo(h, 1); // probe across the rook
+      // A stamp is evidence about the seat I HEARD there. A seat that comes
+      // back in next to a cell it last heard under someone else (it left,
+      // the cell changed hands) must not judge the new holder by the old
+      // holder's silence: that read a live seat dead at once, the newcomer
+      // moved into its cell, and the two held it together for good. A stamp
+      // for a different holder opens the ordinary hole window instead.
+      const lb = this.liveBy.get(hk), cur = this.occGet(hk);
+      const mine = lb === undefined || cur == null || lb === cur;
       let since;
-      if (this.live.has(hk)) since = this.live.get(hk);
+      if (this.live.has(hk) && mine) since = this.live.get(hk);
       else if (this.holeSince.has(hk)) since = this.holeSince.get(hk);
       else { since = this.TICK; this.holeSince.set(hk, since); }
       return this.TICK - since > RING_HOLD;
