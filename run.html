@@ -8095,7 +8095,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // where that promise is enforced).
     //
     // Nothing else. No room-wide guest blur, no floors, no pinning.
-    const consents = (st) => !!st && blurLevel(st.blur) === 0 && (!st.camOff || !!st.scr || !!st.rb);
+    // Sharing a screen is the sharer's consent (video on, No blur) for that share.
+    const consents = (st) => !!st && (!!st.scr || (blurLevel(st.blur) === 0 && (!st.camOff || !!st.rb)));
     const adminPresent = () => hasAdminRoom() && admins.length > 0;
     // Clear video is a ROOM-WIDE unanimity, so it MUST be tallied over shared
     // state (rosterIds = occ ∪ fresh status gossip), NOT over `peers` — my
@@ -8170,6 +8171,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const isMe = id === 'me';
       let st = (isMe ? myStatus : statusOf.get(id)) || {};
       if (asIfCamOn && st.camOff) st = Object.assign({}, st, { camOff: false });
+      // A screen share is that seat's video with its own blur at None (sharing
+      // is consent). Every other rule below still applies to it, exactly as to
+      // a camera: no password, a plain room short of unanimity, a moderator's
+      // blur all keep it blurred.
+      if (st.scr) st = Object.assign({}, st, { camOff: false, blur: 0 });
       const blocked = !!(modOf(id).blur && modOf(id).blur.on);
       // (This rule applies UNCHANGED in broadcast rooms — Nathan's call,
       // 2026-08-03. An admin room is born UNLOCKED; the host locking it with
@@ -10362,8 +10368,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function blurPipeCanReuse(pipe, camId) {
       return !!(pipe && pipe.camId === camId && pipe.track && pipe.track.readyState === 'live');
     }
-    function startBlurPipe(level) {
-      const cam = localStream && localStream.getVideoTracks()[0];
+    // source: a screen share's track. A share is blurred by the same rule as a
+    // camera (blurLevelFor), through this same pipe; it takes no sender crop.
+    function startBlurPipe(level, source) {
+      const cam = source || (localStream && localStream.getVideoTracks()[0]);
       if (!cam) return null;
       if (blurPipeCanReuse(blurPipe, cam.id)) {
         const tune = blurPipeTune(level);
@@ -10393,7 +10401,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       const tune = blurPipeTune(level);
-      const pipe = { level: tune.level, px: tune.px, capW: tune.capW, camId: cam.id, src, srcTrack, cloned, canvas, ctx, track: null, unsub: null, rvfc: 0, painted: 0 };
+      const pipe = { level: tune.level, px: tune.px, capW: tune.capW, camId: cam.id, screen: !!source, src, srcTrack, cloned, canvas, ctx, track: null, unsub: null, rvfc: 0, painted: 0 };
       // ADAPTIVE FRAME-DROP: paint is driven by BOTH the metronome and rVFC,
       // and on a software-rendered / overloaded device one filtered drawImage
       // can cost 100ms+. Without a governor the paint tasks queue FASTER than
@@ -10448,7 +10456,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Sender crop: the canvas is the chosen square; the whole frame is
         // drawn offset and scaled so that square lands on it.
         let ox = 0, oy = 0, dw = w, dh = h;
-        const sCrop = senderCrop(), sFrame = stageFrame();
+        const sCrop = pipe.screen ? null : senderCrop(), sFrame = pipe.screen ? null : stageFrame();
         if (sFrame) {
           // The Stage frame: any aspect, the long side capped like the rest.
           const rw = sFrame.w * sw, rh = sFrame.h * sh;
@@ -10789,17 +10797,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // outbound video sender reads this function. A client that armed a
       // capture without permission publishes its camera (or nothing) instead.
       if (scr && scr.readyState === 'live' && mayShareScreen('me')) {
-        // NO BLUR ON A SHARED SCREEN. Blur exists to protect a face and the
-        // room behind it from people who have not yet all consented, and it is
-        // the DEFAULT state (everyone joins Max-blurred). Applied to a slide it
-        // protects nothing and destroys everything — a Max-blurred deck is a
-        // grey rectangle, so the feature would simply not work in the state
-        // every room starts in. A share is instead a deliberate, announced act:
-        // the room sees a "sharing their screen" chip and the strip names the
-        // sharer, and an admin's video-off still stops it outright
-        // (stopScreenShare below), so the moderation ladder is not bypassed.
-        stopBlurPipe();
+        // A SHARED SCREEN OBEYS THE SAME BLUR RULES AS A CAMERA. Sharing is
+        // the sharer's consent (their own blur reads
+        // None, blurLevelFor), and nothing else is waived: a room with no
+        // password, a plain room short of unanimity, or a moderator's blur
+        // keeps the share blurred, through the camera's own pipe, so every
+        // consumer of this track (row senders, the Stage feed, the Stadium,
+        // composites, the recorder) gets the same pixels. An admin's video-off
+        // still stops it outright (stopScreenShare below).
         stopAvatarPipe();
+        const lvl = blurLevelFor('me');
+        if (lvl > 0) return startBlurPipe(lvl, scr); // null if the pipe cannot run: nothing leaves, never the raw screen
+        stopBlurPipe();
         return scr;
       }
       const cam = localStream && localStream.getVideoTracks()[0];
