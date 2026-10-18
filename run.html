@@ -3190,6 +3190,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-width: 700px) {
     .bar:not(.collapsed) .barmore { max-height: min(50dvh, 18rem); }
   }
+  /* Pixel 7 host dock: "Unmute" was ellipsized at 16px inside a 64px cap,
+     the More sheet was 16px narrower than the dock so Live/End peeked out
+     both sides, and the off-air link card sat on the header. */
+  @media (max-width: 700px), (max-height: 500px) {
+    .bar .docklab.dockword {
+      max-width: none; overflow: visible; text-overflow: clip;
+      font-size: 12px; letter-spacing: -0.02em;
+    }
+    .bar > #mic { width: auto; min-width: max-content; }
+    /* Full screen width, square bottom corners: a narrower rounded sheet
+       let the red Video and End buttons show through the corner cutouts. */
+    .bar:not(.collapsed) .barmore {
+      left: 50%; right: auto; width: 100vw; max-width: 100vw;
+      transform: translateX(-50%); margin-left: 0; z-index: 40;
+      border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+    }
+    /* The sentence sits on its own row. A 90px column wrapped it into
+       "Off air. / Send the / link." which read as a truncated chip. */
+    body.broadcast .topchip {
+      flex-wrap: wrap; width: calc(100vw - 28px); max-width: calc(100vw - 28px);
+      border-radius: 22px;
+    }
+    body.broadcast .topchip .status { order: 5; flex: 1 0 100%; min-width: 0; }
+    body.broadcast .topchip #statusrest {
+      display: block; max-width: none; white-space: nowrap; overflow: visible; text-overflow: clip;
+    }
+    body.broadcast #hdrinvite { order: 4; }
+    /* The sentence is a second chip row; the air bar used to start under a one-line chip. */
+    body.broadcast #airbar.on { margin-top: calc(var(--banner-h) + 92px); }
+    body:has(.bar:not(.collapsed)) #bc-link { display: none !important; }
+  }
   /* Sideways, a width over 700px skipped the phone cap and the sheet grew
      up over the header (top 24, chip bottom 58). The sheet is anchored on
      the dock, so a top edge would be measured from the dock, not the screen.
