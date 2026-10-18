@@ -15714,6 +15714,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     //                  this meeting's).
     //   pwHeld       — the remembered password parked during that probe.
     let pwFromStore = false, pwProbe = '', pwHeld = '';
+    // An admin's R6 re-knocks (onLocked): how many in the last minute, and when.
+    const ADMIN_REKNOCKS = 4;
+    let adminReknocks = 0, adminReknockAt = 0;
     // Derived relay identity + room key — "derive, don't send" (gifos-net.js):
     // the relay routes on sessId and equality-checks sessTok/pwProof, all
     // one-way hashes of the room code (+ password); roomE2E seals every
@@ -16744,6 +16747,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             net.meetPwProof(room, av, roomPw).then((pr) => { pwProof = pr; return rekeyRoom(true); }).then(() => startMesh()).catch((err) => pwChainFailed(err, true));
             reactRoomState();
             return;
+          }
+          // THE ROOM'S ADMIN IS NEVER ASKED FOR HER OWN PASSWORD. An admin room
+          // that empties forgets its lock at the door, so whoever comes back
+          // first re-founds it on the OPEN key, and her blobs-under-the-password
+          // knock reads nothing there. But her socket's roster has already sent
+          // the signed re-assert: the door lock, and the key itself granted to
+          // every socket in the room sealed under the open key (applyAdminBoot).
+          // The occupants adopt it and re-key a moment later. So she knocks
+          // again, a few times, before anything is shown; each fresh socket
+          // re-grants. Only if the room still reads nothing (it really is under
+          // a different password) does the prompt appear.
+          if (hasAdminRoom() && (admKey || amAdmin) && roomPw) {
+            if (Date.now() - adminReknockAt > 60000) adminReknocks = 0;
+            if (adminReknocks < ADMIN_REKNOCKS) {
+              adminReknocks++; adminReknockAt = Date.now();
+              pwLog('R6 holding the ADMIN password → the key went to the room; knocking again (' + adminReknocks + ')');
+              const gen = meshBootGen;
+              setTimeout(() => { if (gen !== meshBootGen || leaving || bannedOut || pwBlocked) return; startMesh(); }, 1500 * adminReknocks);
+              return;
+            }
           }
           pwLog('R6-LOCKED → pw modal');
           if (pwFromStore || pwProbe === 'restored') forgetPw('neither it nor the open key reads this room');
