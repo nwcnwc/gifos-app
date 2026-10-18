@@ -2549,14 +2549,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const me = () => meshSeat();
       const rec = (pid, st) => ({ id: pid, alive: true, state: 3, hasCoord: true, coord: st.seat, glabel: st.lab != null ? st.lab : pid, anchored: !!st.anc, sitting: new Map(), glFind: -2, lastReached: -1 });
       // A pulse names the seat its sender held when it spoke. My own seat's
-      // map of the cells (what the mesh itself heard) outranks it: a cell I
-      // hold, or that my map names someone else in, is no longer the
-      // sender's (a page that left keeps its last pulse in my table a while).
+      // first-hand hearing outranks it: a cell I hold, or one where I hear
+      // someone else first hand, is no longer the sender's (a page that left
+      // keeps its last pulse in my table a while).
       const pulseSeat = (s, pid, st) => {
         if (!st || !st.seat || typeof st.seat.pc !== 'number') return false;
         if (!s) return true; const k = net.topo.ckey(st.seat);
         if (s.hasCoord && k === net.topo.ckey(s.coord)) return false;
-        const o = s.occ ? s.occ.get(k) : undefined; return o == null || o === pid;
+        const o = s.occ ? s.occ.get(k) : undefined; if (o == null || o === pid) return true;
+        return !(typeof s.firstHandLive === 'function' && s.firstHandLive(k));   // only a cell I hear its occupant in first hand overrules the pulse
       };
       // The ring as my own seat knows it before any pulse arrives: the HOME
       // roster and my occ name the Section-1 cells and who holds them. A cell's
@@ -2564,8 +2565,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const ringRecs = () => {
         const s = me(); if (!s) return [];
         const cells = new Map();   // ck -> pid
-        for (const e of (s.netRoster || s.roster || [])) if (e && e.v != null && e.k != null) cells.set(e.k, e.v);
+        // Seated, my own seat's map is the ring (what the mesh heard first
+        // hand); the door's roster is the ring as it was when I knocked, and a
+        // cell it names may have been healed since. At the door the roster
+        // comes first. The cell I hold is mine either way.
+        if (!s.hasCoord) for (const e of (s.netRoster || s.roster || [])) if (e && e.v != null && e.k != null) cells.set(e.k, e.v);
         if (s.occ) for (const [k, v] of s.occ) if (v != null && GifOS.mesh.isS1key(k) && !cells.has(k)) cells.set(k, v);
+        if (s.hasCoord) cells.delete(net.topo.ckey(s.coord));
         const out = [];
         for (const [k, pid] of cells) {
           if (pid === myId) continue;
