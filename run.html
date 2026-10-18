@@ -2525,9 +2525,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore .moregroup:not(:has(.morerow > button:not([style*="display:none"]):not([style*="display: none"]))) { display: none; }
   .bar:not(.collapsed) .barmore .moregroup h4 { margin: 0; padding: 0 4px; font: 700 16px/1.2 system-ui, sans-serif; color: #4a505c; }
   .bar:not(.collapsed) .barmore .morerow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  /* Stage voting: the More sheet floats over the gallery; let .votedot receive taps. */
-  body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore,
-  body.canvote[class*="vm-"] .bar:not(.collapsed) .barmore * { pointer-events: none !important; }
+  /* Stage voting: picking a vote mode folds More, so the dots are in reach.
+     A More sheet opened again during a vote takes taps like any other time
+     (to change the mode, or turn voting off). */
   .bar:not(.collapsed) .barmore .morerow > button { min-height: 64px; height: auto; padding: 8px 6px; border: 0; border-radius: 16px;
     background: #e8ecf1; color: #1d1d1f; font-size: 1.125rem; font-weight: 650; white-space: normal; }
   /* The old on-colors were written for a dark bar. On this light sheet they
@@ -10721,6 +10721,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       stopAvatarPipe();
       const canvas = document.createElement('canvas');
+      // A browser that cannot stream a canvas sends no picture with the
+      // camera off. It still joins and watches (view-only is supported).
+      if (typeof canvas.captureStream !== 'function') return null;
       paintAvatarCanvas(canvas, name, lvl);
       const stream = canvas.captureStream(0);
       const track = stream.getVideoTracks()[0];
@@ -10760,6 +10763,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (p) avPipes.delete(key);
       if (avPipes.size >= AV_PIPE_CAP) return null;
       const canvas = document.createElement('canvas');
+      if (typeof canvas.captureStream !== 'function') return null; // the letter overlay stands in
       paintAvatarCanvas(canvas, name, 0);
       const stream = canvas.captureStream(0);
       const track = stream.getVideoTracks()[0];
@@ -10826,19 +10830,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (dark && t.avatar && t.avatar.classList) t.avatar.classList.add('rides-off');
         return;
       }
+      // The person's own stream: the direct one, or the one a friend carries
+      // while the direct pair is down (relayVia). The dead direct stream must
+      // never replace a carried picture.
+      const own = (t.relayed && (relayVia.get(id) || {}).stream) || t.stream;
       if (!dark) {
         clearPeerAvatar(t);
-        const tr = t.stream && t.stream.getVideoTracks && t.stream.getVideoTracks()[0];
-        if (tr && t.video.srcObject !== t.stream) {
-          t.video.srcObject = t.stream;
+        const tr = own && own.getVideoTracks && own.getVideoTracks()[0];
+        if (tr && t.video.srcObject !== own) {
+          t.video.srcObject = own;
           const pr = t.video.play(); if (pr && pr.catch) pr.catch(() => {});
         }
         return;
       }
-      const wire = (!gCam && !blockedShare) ? remoteWireTrack(t) : null;
+      const wire = (!gCam && !blockedShare) ? remoteWireTrack({ stream: own }) : null;
       if (wire) {
         clearPeerAvatar(t);
-        showAvatarTrack(t.video, t.stream, wire);
+        showAvatarTrack(t.video, own, wire);
         return;
       }
       mountPeerAvatar(t, displayName(id));
@@ -24226,12 +24234,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The stadium tile (one, keyed 'sd') in the stadium strip.
     function paintStadiumTile(stream) {
       let el = stadiumEl.querySelector('[data-row="sd"]');
+      // The mosaic sweep calls this every couple of seconds with the same
+      // stream. The gallery is laid out again only when the Stadium tile
+      // actually changes (it appears, goes, gets a new stream or a new
+      // count), so a quiet room does not lay out once a sweep.
       if (!stream) {
+        const had = !!el;
         if (el) { for (const v of el.querySelectorAll('video')) { try { v.pause(); v.srcObject = null; } catch (e) {} releaseAudio(v); } el.remove(); }
         stadiumEl.classList.toggle('on', !!stadiumEl.querySelector('.rowtile')); compOf.delete('sd'); recSrcDirty = true;
-        try { layout(); } catch (e) {}
+        if (had) { try { layout(); } catch (e) {} }
         return;
       }
+      const prevSd = compOf.get('sd');
+      let changed = !el || !stadiumEl.classList.contains('on');
       if (!el) {
         el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sd';
         const v = document.createElement('video'); v.muted = true; v.autoplay = true; v.setAttribute('playsinline', '');
@@ -24239,11 +24254,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         el.appendChild(v); el.appendChild(lb); stadiumEl.appendChild(el); trackAspect(el, v);
       }
       const v = el.querySelector('video');
-      if (v.srcObject !== stream) { v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
+      if (v.srcObject !== stream) { v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); changed = true; }
       stadiumEl.classList.add('on');
-      compOf.set('sd', { via: 'mosaic', streamId: stream.id, stream, names: [], cnt: roomPastSection() ? displayCount() : knownTotal(), el: v });
+      const cnt = roomPastSection() ? displayCount() : knownTotal();
+      if (!prevSd || prevSd.streamId !== stream.id || prevSd.cnt !== cnt || prevSd.el !== v) changed = true;
+      compOf.set('sd', { via: 'mosaic', streamId: stream.id, stream, names: [], cnt, el: v });
       recSrcDirty = true;
-      try { layout(); } catch (e) {}
+      if (changed) { try { layout(); } catch (e) {} }
     }
     // A STAGER NEVER WATCHES ITSELF THROUGH ITS OWN COMPOSITE.
     //
@@ -26580,7 +26597,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Stagers' direct tracks are muted too: their voice arrives via the
         // per-stager feeds folded at the ear — the direct link would double it.
         const bus = stg.has(pid) ? null : mates.has(pid) ? 'row' : null;
-        busVolume(p.video, (bus && !sealed && !isHeld(pid)) ? mix[bus] : 0, (!p.relayed && p.stream) || null);
+        // The voice is the person's own stream: the direct one, or the one a
+        // friend carries (relayVia). The tile's element can hold a painted
+        // picture instead (camera off), which has no sound.
+        const voice = p.relayed ? ((relayVia.get(pid) || {}).stream || null) : (p.stream || null);
+        busVolume(p.video, (bus && !sealed && !isHeld(pid)) ? mix[bus] : 0, voice);
       }
       // feed tiles (the nested mosaics): stage strip is Stage; stadium tiles
       // are The stadium.
@@ -27370,6 +27391,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       node.connect(ac.destination); // the node only ticks while connected onward; both paths output silence
       wspCaps.set(id, w);
       if (id === 'me') wsp = w;
+      paintWspChip(); // the way back is on screen the moment Whisper runs, not a tick later
     }
     function wspWorkletPending(ctx) {
       if (!ctx || ctx._wspWorkletBad || !ctx.audioWorklet || typeof ctx.audioWorklet.addModule !== 'function') return null;
@@ -27422,6 +27444,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function wspStop(id) {
       const w = wspCaps.get(id); if (!w) return;
       wspCaps.delete(id); if (id === 'me') wsp = null;
+      paintWspChip();
       if (w.node) {
         w.node.onaudioprocess = null;
         if (w.node.port) w.node.port.onmessage = null;
@@ -28155,6 +28178,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return best;
     }
     let speech = null, speechFails = 0, speechRetry = null, speechGaveUp = false;
+    // A browser whose speech engine cannot run tells the room so (ccst
+    // 'paused'): it writes nothing, and a scribe takes its voice instead.
+    // The first line it writes again takes the word back.
+    let speechSaidPaused = false;
+    function speechEngineDown() {
+      if (typeof myStatus === 'undefined' || !myStatus || myStatus.ccst === 'paused') return;
+      myStatus.ccst = 'paused'; speechSaidPaused = true;
+      try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
+      try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
+    }
+    function speechEngineUp() {
+      if (!speechSaidPaused) return;
+      speechSaidPaused = false;
+      if (myStatus && myStatus.ccst === 'paused') {
+        delete myStatus.ccst;
+        try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
+        try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
+      }
+    }
     function speechKeep(rec) {
       if (!rec) return false;
       if (rec.input) return !!(myStatus.cc || myStatus.scribe || ccFilling());
@@ -28177,6 +28219,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         speech.lang = ccLang() === 'auto' ? (navigator.language || 'en-US') : ccLang();
         speech.onresult = (e) => {
           speechFails = 0;
+          speechEngineUp();
           if (rec.input) {
             for (let i = e.resultIndex; i < e.results.length; i++) {
               if (!e.results[i].isFinal) continue;
@@ -28213,6 +28256,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (speech !== rec) return;
           if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'language-not-supported') {
             stopSpeech();
+            speechEngineDown();
             setStatus('Transcription paused');
             return;
           }
@@ -28223,6 +28267,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               // service must not turn that button off. Retry on its own.
               speechGaveUp = true;
               stopSpeech();
+              speechEngineDown();
               setStatus('Transcription paused', 15000);
               setTimeout(() => { speechGaveUp = false; speechFails = 0; try { syncSpeech(); } catch (err) {} }, 20000);
             }
@@ -28536,7 +28581,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const chips = tile && tile.querySelector('.chips');
       const text = chips ? (chips.textContent || '') : '';
       if (text.indexOf('recording this ' + recRoomWord()) < 0) return false;
-      if (myStatus.bot && text.indexOf('bot') < 0) return false;
+      // A bot's badge sits on its tile beside the chips (paintTileChrome).
+      if (myStatus.bot && !(tile && tile.querySelector(':scope > .botbadge')) && text.indexOf('bot') < 0) return false;
       return true;
     }
     async function recOpenSink(name, quiet) {
