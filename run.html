@@ -5282,7 +5282,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // both: a phone hides #statusrest, and a refusal there went unread.
       // The count and the rest are children of #status: writing the span's own
       // text would delete them (and Invite) for good.
-      if (countEl && restEl) { countEl.textContent = ''; restEl.textContent = m; }
+      if (countEl && restEl) { countEl.textContent = ''; countEl.hidden = true; restEl.textContent = m; }
       else statusEl.textContent = m;
       const invHold = document.getElementById('statusinvite');
       if (invHold) invHold.hidden = true;
@@ -11648,8 +11648,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // blurred, see blurLevelFor).
       const bcLive = !!(BROADCAST && ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
       let extra = '';
-      if (n > 1) {
-        if (!roomPw) extra = ' · ' + uiText('unlockClear', 'faces stay soft until a password');
+      if (n > 1 && !bcWatcher) {
+        if (!roomPw) extra = bcLive ? ' · blurred until you set a viewer password' : ' · ' + uiText('unlockClear', 'faces stay soft until a password');
         else if (hasAdminRoom() && admins.length === 0) extra = ' · no admin here — everyone stays blurred';
         else if (!adminPresent() && !allConsent()) {
           // Past one section the ready count is the fold's: everyone minus the
@@ -11712,6 +11712,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           countText = uiText('justYou', 'Just you');
           restText = reachTriedSentence() + tail;
         }
+      } else if (bcWatcher) {
+        // The badge and room bar say watching; the line names who is live.
+        restText = (bcLiveName ? bcLiveName + ' is live.' : 'You are watching this service.') + reachTriedSentence() + tail;
+      } else if (bcLive) {
+        // The room bar counts who is watching; the host reads that she is live.
+        restText = 'You are live · ' + q.label + reachTriedSentence() + tail;
       } else {
         countText = shown + ' ' + (BROADCAST ? 'in this service' : uiText('inMeeting', 'in this small group'));
         restText = ' · ' + q.label + reachTriedSentence() + tail;
@@ -11767,6 +11773,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const deskInvite = document.getElementById('statusinvite');
       if (countEl && restEl) {
         if (countEl.textContent !== countText) countEl.textContent = countText;
+        // An empty count is no button: Tab must not stop on nothing.
+        if (countEl.hidden !== !countText) countEl.hidden = !countText;
         if (restEl.textContent !== restText) restEl.textContent = restText;
       }
       if (deskInvite) {
