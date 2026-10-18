@@ -439,6 +439,12 @@
       if (tiles[i].me || tiles[i].id === 'me') markSelf(tiles[i].el, lay.self);
     }
     if (hold && !lay.crowd && !MZ) lay = holdRows(lay, box, byId, true);
+    if (hold && MZ && lay.zones) {
+      // Faces keep the places they had with the buttons up; whether they
+      // scroll is judged against what is visible now.
+      const hb = lay.box;
+      lay = Object.assign({}, lay, { box: box, contentH: Math.max(box.h, hb.y + lay.contentH - box.y) });
+    }
     const used = [];
     let crowdEl = feed.querySelector('#stadcrowd');
     if (lay.crowd) {

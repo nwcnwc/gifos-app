@@ -21,6 +21,9 @@
   // Scroll keeps faces at least this big (px).
   const SCROLL_ROW_MIN = { desk: 180, phone: 150 };
   const SCROLL_STAD_MIN = { desk: 90, phone: 72 };
+  // Fit's floor: below this a face is not readable, so the rest scroll.
+  const FIT_ROW_MIN = { desk: 96, phone: 96 };
+  const FIT_STAD_MIN = { desk: 40, phone: 40 };
 
   function lines(n, perLine) { return n > 0 ? Math.ceil(n / Math.max(1, perLine)) : 0; }
   function perLine(w, side, gap) { return Math.max(1, Math.floor((w + gap) / (side + gap))); }
@@ -83,6 +86,17 @@
     } else {
       s = fitSide(nr, ns, box.w, box.h, gap);
       t = ns ? Math.max(1, Math.floor(s * STAD_RATIO)) : 0;
+      // A face is never smaller than FIT_ROW_MIN: when everyone cannot fit
+      // at that size, the whole faces that fit show and the rest scroll.
+      const k2 = phone ? 'phone' : 'desk';
+      const rowMin = Math.min(box.w, FIT_ROW_MIN[k2]);
+      if (s < rowMin) {
+        s = snap(box.w, rowMin, gap);
+        t = ns ? snap(box.w, Math.min(s, Math.max(FIT_STAD_MIN[k2], s * STAD_RATIO)), gap) : 0;
+      } else if (ns && t < FIT_STAD_MIN[k2]) {
+        // The Row keeps its size; a crowd of small Stadium faces scrolls.
+        t = snap(box.w, FIT_STAD_MIN[k2], gap);
+      }
     }
     const total = peopleH(nr, ns, box.w, s, t, gap);
     // Fit centers the block; Scroll starts at the top.
@@ -95,7 +109,9 @@
 
   // Stage items at their true aspect, side by side (or stacked when that is
   // bigger), each contain-fit and centered in its cell.
-  function stageRects(items, box, gap) {
+  // top: the Stage hugs the top of its band (a phone, where the header sits
+  // right above it) instead of centring in it.
+  function stageRects(items, box, gap, top) {
     const n = items.length;
     if (!n) return [];
     let best = null;
@@ -118,9 +134,9 @@
       const inRow = Math.min(best.cols, n - r * best.cols);
       const rowW = inRow * best.cw + (inRow - 1) * gap;
       const x0 = box.x + (box.w - rowW) / 2 + c * (best.cw + gap);
-      const y0 = box.y + (box.h - (best.rows * best.ch + (best.rows - 1) * gap)) / 2 + r * (best.ch + gap);
+      const y0 = box.y + (top ? 0 : (box.h - (best.rows * best.ch + (best.rows - 1) * gap)) / 2) + r * (best.ch + gap);
       const w = Math.min(best.cw, best.ch * a), h = w / a;
-      out.push({ id: items[i].id, tier: 'stage', x: x0 + (best.cw - w) / 2, y: y0 + (best.ch - h) / 2, w: w, h: h, fit: 'contain' });
+      out.push({ id: items[i].id, tier: 'stage', x: x0 + (best.cw - w) / 2, y: y0 + (top ? 0 : (best.ch - h) / 2), w: w, h: h, fit: 'contain' });
     }
     return out;
   }
@@ -148,13 +164,15 @@
       pb = { x: box.x + box.w - pw, y: box.y, w: pw, h: box.h };
     } else {
       const a = stage.length === 1 && stage[0].aspect > 0 ? stage[0].aspect : 16 / 9;
-      const want = Math.min(box.h * 0.62, Math.max(box.h * 0.35, box.w / a));
+      // The Stage band is the picture's own height (never more than 62% of
+      // the screen), so it sits right under the header with no empty band.
+      const want = Math.min(box.h * 0.62, box.w / a);
       const sh = Math.round(want);
       sb = { x: box.x, y: box.y, w: box.w, h: sh };
       pb = { x: box.x, y: box.y + sh + gap, w: box.w, h: Math.max(1, box.h - sh - gap) };
     }
     const p = people(row, stad, pb, phone, gallery, gap);
-    const rects = stageRects(stage, sb, gap).concat(p.rects);
+    const rects = stageRects(stage, sb, gap, phone).concat(p.rects);
     const contentH = (pb.y - box.y) + p.contentH;
     return { rects: rects, contentH: Math.max(box.h, contentH), regions: { stage: sb, people: pb }, side: p.side, stadSide: p.stadSide, tooSmall: p.tooSmall && gallery === 'fit', gallery: gallery };
   }

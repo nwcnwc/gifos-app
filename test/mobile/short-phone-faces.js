@@ -26,7 +26,8 @@ const NAMES = ['Pastor Dave', 'Ruth', 'Margaret Johnson', 'Lobby iPad', 'Grace',
 // [device, tag, viewport or null, update bar?, faces that must show whole]
 const VIEWS = [
   ['iPhone SE', 'iphone-se-safari', { width: 320, height: 460 }, false, 6],
-  ['iPhone SE', 'iphone-se-2-safari', { width: 375, height: 553 }, false, 7],
+  // 0.9.23b faces are squares of at least 96px: two rows of three show whole here.
+  ['iPhone SE', 'iphone-se-2-safari', { width: 375, height: 553 }, false, 6],
   ['iPhone SE', 'iphone-se-update-bar', null, true, 6],
   ['iPhone SE', 'iphone-se', null, false, 7],
   ['iPhone SE landscape', 'iphone-se-land', null, false, 5],

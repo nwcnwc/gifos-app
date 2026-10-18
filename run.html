@@ -9318,7 +9318,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The "new version" bar moves the header down by --updh; the faces
         // start under the moved header, never under the bar.
         const updH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--updh')) || 0;
-        if (shortLand || updH > 0) {
+        // A phone with a shared screen up: Fit is hidden, so the Stage starts
+        // right under the header chip and the build line.
+        const stageUpright = phone && !shortLand && document.body.classList.contains('show-stage');
+        if (stageUpright) {
+          let below = 0;
+          for (const sel of ['.topchip', '#gifos-build-float', '#unmute', '#showcam']) {
+            const e = document.querySelector(sel);
+            if (!e || !e.getClientRects().length) continue;
+            const cs = getComputedStyle(e);
+            if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+            below = Math.max(below, e.getBoundingClientRect().bottom);
+          }
+          if (below > 0) topInset = Math.ceil(below + 8);
+        } else if (shortLand || updH > 0) {
           let below = 0;
           const fitEl = document.getElementById('fitbtn');
           const chipEl = document.querySelector('.topchip');
