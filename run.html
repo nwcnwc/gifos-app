@@ -1452,6 +1452,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     /* The dock sits in the call beside the chat (placeDock), so the composer
        takes the band it used to keep clear. */
     body.chatside.dockbeside #chatpanel { padding-bottom: 12px; }
+    /* ...and runs the full height: the phone's stop-above-the-dock inset
+       left a dead band under Send. The keyboard inset still applies. */
+    body.chatside.dockbeside #chatpanel.open { bottom: var(--kb, 0px); }
     /* The call beside the chat is 460-684px: the room bar's pills move to a
        row under the title rather than breaking "Not / recording". */
     body.chatside #airbar.on { flex-wrap: wrap; row-gap: 6px; padding: 6px 16px; }
@@ -1475,6 +1478,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #chatprivacy { order: 1; flex: 1 0 100%; margin: 0; line-height: 1.35; }
   #chathead button { margin-left: auto; padding: .2rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
   #chatprivacy { font-size: 16px; color: #e4e7ee; }
+  /* A desktop window keeps Title, Transcript, Turn chat off and ✕ on one
+     row: the phone's 44px keys and 16px words pushed Turn chat off and ✕
+     onto a row of their own. Only Transcript pushes right. */
+  @media (min-width: 701px) and (min-height: 501px) {
+    #chathead { column-gap: .3rem; padding-left: .7rem; padding-right: .7rem; }
+    #chathead button, #chatpanel #chathead #chatmod { flex: none; white-space: nowrap; margin-left: 0; padding: .15rem .35rem; font-size: .75rem; font-weight: 600; line-height: 1.2; }
+    #chathead #trtab .ai-spark { width: 13px; height: 13px; }
+    #chathead #trtab { margin-left: auto; }
+    #chathead #chatclose { min-width: 28px; min-height: 28px; }
+  }
   /* A short landscape phone keeps the chat head to one row. */
   @media (max-height: 500px) and (orientation: landscape) { #chatprivacy { display: none !important; } }
   .cmsg.prayer { background: #241833; border-color: #c9a6ff; }
@@ -2437,7 +2450,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      and Meet, not a small slash on a gray circle. */
   .bar #mic.iconbtn:not(.off), .bar #cam.iconbtn:not(.off) { background: #146c36; color: #fff; }
   .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { background: #b61622; color: #fff; border-color: transparent; }
-  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 28px; height: 28px; }
+  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #chatbtn svg, .bar #ccdock svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 28px; height: 28px; }
   /* Share screen is a worded dock button like the rest (qa-meet-desktop); only its colour is its own. */
   .bar > #sharebtn { border: 0; }
   .bar > #sharebtn svg { width: 28px; height: 28px; }
@@ -5616,8 +5629,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         waiting: 'wir warten auf die anderen…',
         chatTitle: 'Meeting-Chat',
         chatPlaceholder: 'Nachricht an alle…', send: 'Senden',
-        chatOff: 'Chat ist aus — nur die Leitung schreibt.',
-        chatOffHost: 'Chat ist für Gäste aus — Sie können schreiben.',
+        chatOff: 'Chat ist gerade aus',
+        chatOffHost: 'Chat für Gäste aus',
         filesTitle: 'Dateien in diesem Meeting',
         filesLocked: 'Dateien erst nach einem Passwort (Taste Passwort).',
         filesEmpty: 'Noch keine Dateien.',
@@ -5911,8 +5924,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         waiting: 'esperando a los demás…',
         chatTitle: 'Chat de la reunión',
         chatPlaceholder: 'Mensaje para todos…', send: 'Enviar',
-        chatOff: 'Chat apagado — solo escribe el anfitrión.',
-        chatOffHost: 'Chat apagado para invitados — tú sí puedes escribir.',
+        chatOff: 'Chat apagado por ahora',
+        chatOffHost: 'Chat apagado para invitados',
         filesTitle: 'Archivos de esta reunión',
         filesLocked: 'Archivos solo con contraseña (botón Contraseña).',
         filesEmpty: 'Aún no hay archivos.',
@@ -20960,8 +20973,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const inp = document.getElementById('chat-in');
       inp.disabled = locked;
       const praying = document.getElementById('pray') && document.getElementById('pray').getAttribute('aria-pressed') === 'true';
-      inp.placeholder = locked ? uiText('chatOff', 'Chat is off — only the host can post.')
-        : (off ? uiText('chatOffHost', 'Chat is off for guests — you can still post.') : (praying ? 'Prayer request…' : uiText('chatPlaceholder', 'Message everyone…')));
+      // Short enough to read whole in the box beside Send.
+      inp.placeholder = locked ? uiText('chatOff', 'Chat is off for now')
+        : (off ? uiText('chatOffHost', 'Chat is off for guests') : (praying ? 'Prayer request…' : uiText('chatPlaceholder', 'Message everyone…')));
       document.querySelector('#chatform button[type="submit"]').disabled = locked;
       document.getElementById('cattach').disabled = locked;
       const b = document.getElementById('chatmod');
@@ -21244,7 +21258,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       }
     };
-    document.getElementById('chatclose').onclick = () => { chatPanel.classList.remove('open'); try { paintChatBtn(); } catch (e) {} };
+    // ✕ closes like Escape does: the dock refits and the keyboard lands back on Chat.
+    document.getElementById('chatclose').onclick = () => closeChatToButton();
     // Closing the chat refits the dock first: beside the open chat Chat may
     // sit in More (placeDock), and focus on a hidden button is dropped.
     function closeChatToButton() {
