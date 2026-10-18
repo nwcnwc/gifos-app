@@ -9,7 +9,7 @@ test.describe('German lobby, help, and shortcuts', () => {
     await page.goto('/run.html#debug=on', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#lobby.show h1')).toHaveText('Besprechung');
     await expect(page.locator('#lob-open span')).toHaveText('Besprechung starten');
-    await expect(page.locator('.lob-quiet')).toContainText('stumm');
+    await expect(page.locator('.lob-quiet')).toContainText('Mikrofon und Kamera');
     await expect(page.locator('#lob-empty')).toContainText('Besprechungen');
   });
 
