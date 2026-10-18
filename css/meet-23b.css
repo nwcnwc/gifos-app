@@ -144,3 +144,8 @@ body.head-calm .topchip > :not(#txmark), body.chrome-away .topchip > :not(#txmar
 body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
   top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; display: block !important; }
 body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll { bottom: var(--comfy-clip, 0px) !important; }
+/* A sideways phone: the tile window is a panel on the right, full height. */
+@media (max-height: 500px) and (orientation: landscape) {
+  #tilewin { left: auto !important; right: calc(12px + env(safe-area-inset-right, 0px)) !important; top: 8px !important;
+    bottom: 8px !important; width: min(360px, 62vw); max-height: none; }
+}

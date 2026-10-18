@@ -118,8 +118,8 @@ function overlaps(a, b) {
     if (tucked.live && tucked.live.h > 1 && tucked.live.vis !== 'hidden' && tucked.live.op !== '0' && tucked.live.pe !== 'none') quiet.push('LIVE still takes taps');
     const covered = tucked.tiles.some((t) => overlaps(t, tucked.bar) && tucked.bar.op !== '0' && tucked.bar.top < tucked.vh);
     if (covered) quiet.push('dock still covers a face');
-    if (tucked.lowest < tucked.vh - 24) quiet.push('faces did not grow into the dock band (bottom ' + Math.round(tucked.lowest) + ')');
-    if (tucked.lowest < stateTop + 16) quiet.push('faces still stop above Record');
+    // 0.9.23b: the call goes calm every 3 s, so faces keep their places when
+    // the buttons tuck away instead of growing into the band (chrome-hold-tiles.js).
     if (phone.name === 'iphone-15') await page.screenshot({ path: path.join(SHOTS, 'after-chrome-idle-iphone-15.png') });
     const spot = await page.evaluate(() => {
       const tiles = Array.from(document.querySelectorAll('.tile')).filter((el) => {
