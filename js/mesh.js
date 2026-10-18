@@ -4221,6 +4221,12 @@
             if (this.translost.has(kk)) continue; // D5: my standing first-hand observation (transport died, probe unanswered) outranks an echo — gossip must not re-seat the corpse; any answer or a genuine refill clears the observation and gossip resumes
             if (this.liveElsewhere(eid, kk)) continue; // A SEAT IS IN ONE PLACE, and I hear this one first-hand at another cell: an echo never plants it beside itself (behavior 14a: a returning head's stale table listed the real head one cell over, and its row-mate carried two cells for the same seat until the hint aged out)
             const seen = TICK - age - 2; const cur = this.occGet(kk); const curSeen = this.s1seen.has(kk) ? this.s1seen.get(kk) : -999;
+            // A GOODBYE OUTRANKS AN OLDER WORD (sim twin): an entry last seen
+            // before I heard the cell's holder say goodbye is that holder's
+            // echo (a mate's S1SYNC sent before the goodbye reached it). Taken,
+            // it put the departed head back in my view, so the first live mate
+            // past a dark heir never healed the head (head-bye-dark-heir 6, 7).
+            if (this.byeAt.has(kk) && seen <= this.byeAt.get(kk)) continue;
             // CLAIM BIRTH (2026-08-02): the ±8 lower-id tie-break exists to
             // resolve SIMULTANEOUS claims, but the freshness stamps it
             // compares are hop-laundered — max(curSeen, seen) lets a
@@ -4719,12 +4725,20 @@
           // gone dark to me: it will not heal, and the room sat headless for
           // the whole wait (a head thawed from a freeze said goodbye while its
           // heir's radio was off; the head chair stayed empty 21 s).
+          // ...and only the FIRST live mate past the dark heir skips it, with
+          // or without a live left neighbour (its left is the dark heir).
+          // With every mate from column 2 on skipping the wait, two of them
+          // healed the head at once, the loser dropped its seat and knocked
+          // again, and a newcomer at the door was refused through the race
+          // (dark-heir-free-chair seeds 3, 7: 24-25 ticks, bound 20).
           if (this.coord.i >= 2) {
             const hc = { pc: 0, r: this.coord.r, i: 0 }; const hk = ck(hc);
-            if (this.occGet(hk) == null && this.firstHandLive(lk) && this.occGet(ck(topo.down(hc))) == null) {
-              const lost = this.TICK - this.translost.get(hk) > EARLY_HOLD + HEAD_HEIR_WAIT && this.translostConfirmed(hk);
-              const heirWait = this.darkMate(ck({ pc: 0, r: this.coord.r, i: 1 })) ? 0 : HEAD_HEIR_WAIT;
-              const bye = this.byeAt.has(hk) && this.TICK - this.byeAt.get(hk) > heirWait && this.oneRowRoom();
+            let skipWait = this.darkMate(ck({ pc: 0, r: this.coord.r, i: 1 }));
+            for (let j = 2; j < this.coord.i && skipWait; j++) { const jk = ck({ pc: 0, r: this.coord.r, i: j }); if (this.occGet(jk) != null && !this.darkMate(jk)) skipWait = false; }
+            const leftLive = this.firstHandLive(lk);
+            if (this.occGet(hk) == null && (leftLive || skipWait) && this.occGet(ck(topo.down(hc))) == null) {
+              const lost = leftLive && this.TICK - this.translost.get(hk) > EARLY_HOLD + HEAD_HEIR_WAIT && this.translostConfirmed(hk);
+              const bye = this.byeAt.has(hk) && this.TICK - this.byeAt.get(hk) > (skipWait ? 0 : HEAD_HEIR_WAIT) && this.oneRowRoom();
               if (lost || bye) this.heal(hc);
             }
           }
