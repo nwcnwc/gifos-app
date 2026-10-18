@@ -24319,13 +24319,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function paintStageStrip(stream) {
       if (qaStageSt) stream = qaStageSt;
       let el = stagefeedEl.querySelector('[data-row="sgs"]');
+      // The Row drops whoever the Stage strip shows (and takes them back when
+      // it goes), so the gallery is laid out again when the strip appears,
+      // goes, gets a new stream or shows a different set of people. The
+      // Stadium sweep no longer lays out on every pass to catch it.
       if (!stream) {
+        const had = !!el;
         if (el) { for (const v of el.querySelectorAll('video')) { try { v.pause(); v.srcObject = null; } catch (e) {} releaseAudio(v); } el.remove(); }
         stageViewNow = null;
         compOf.delete('sgs'); recSrcDirty = true;
         if (typeof paintStagePlate === 'function') paintStagePlate();
+        if (had) { try { layout(); } catch (e) {} }
         return;
       }
+      const prevSgs = compOf.get('sgs');
+      let stripChanged = !el;
       if (!el) {
         el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sgs';
         const v = document.createElement('video'); v.muted = true; v.autoplay = true; v.setAttribute('playsinline', '');
@@ -24336,7 +24344,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (window.ResizeObserver) new ResizeObserver(() => requestAnimationFrame(again)).observe(el);
       }
       const v = el.querySelector('video');
-      if (v.srcObject !== stream) { v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
+      if (v.srcObject !== stream) { v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); stripChanged = true; }
       // NAME THE SHARE. A composited strip carries no attribution of its own —
       // the burned overlay names each face, but a shared screen's pixels are
       // somebody's spreadsheet, with nothing on them to say whose window this
@@ -24374,9 +24382,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (stop.textContent !== word) stop.textContent = word;
       } else if (stop) stop.remove();
       placeStageMarks(el);
-      compOf.set('sgs', { via: 'stage', streamId: stream.id, stream, names: stageIds(), el: v });
+      const sgsNames = stageIds();
+      if (!prevSgs || prevSgs.streamId !== stream.id || prevSgs.el !== v || String(prevSgs.names) !== String(sgsNames)) stripChanged = true;
+      compOf.set('sgs', { via: 'stage', streamId: stream.id, stream, names: sgsNames, el: v });
       recSrcDirty = true;
       if (typeof paintStagePlate === 'function') paintStagePlate();
+      if (stripChanged) { try { layout(); } catch (e) {} }
     }
     // (Channel Se — the C×C Section composite — was DROPPED to free its cross-link
     // budget for the Stadium/Stage cross-link redundancy. Section-mates now fold
