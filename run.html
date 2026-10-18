@@ -2572,13 +2572,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const ro = s.netRoster || s.roster || [];
         if (s.hasCoord) { if (s.occ) for (const [k, v] of s.occ) if (v != null && GifOS.mesh.isS1key(k)) cells.set(k, v); for (const e of ro) if (e && e.v != null && e.k != null && !cells.has(e.k)) cells.set(e.k, e.v); cells.delete(net.topo.ckey(s.coord)); }
         else { for (const e of ro) if (e && e.v != null && e.k != null) cells.set(e.k, e.v); if (s.occ) for (const [k, v] of s.occ) if (v != null && GifOS.mesh.isS1key(k) && !cells.has(k)) cells.set(k, v); }
+        // A ring cell no pulse speaks for: its row's label. One label per row,
+        // so my own row's is mine; another row's is its head's, by the head's
+        // pulse when I hold one, else the head's id (a group's first member).
+        const myK = s.hasCoord ? net.topo.ckey(s.coord) : null;
+        const ringLabel = (c, pid) => {
+          if (s.hasCoord && c.pc === s.coord.pc && c.r === s.coord.r && s.glabel != null) return s.glabel;
+          const headK = net.topo.ckey({ pc: c.pc, r: c.r, i: 0 }); const head = headK === myK ? myId : cells.get(headK);
+          const hs = head != null && head !== myId ? statusOf.get(head) : null;
+          return hs && hs.lab != null ? hs.lab : head != null ? head : pid;
+        };
         const out = [];
         for (const [k, pid] of cells) {
           if (pid === myId) continue;
           const c = net.topo.unck(k); const st = statusOf.get(pid);
           if (st && st.seat && typeof st.seat.pc === 'number') continue;   // its pulse speaks for it
-          const headK = net.topo.ckey({ pc: c.pc, r: c.r, i: 0 }); const head = cells.get(headK);
-          out.push({ id: pid, alive: true, state: 3, hasCoord: true, coord: c, glabel: head != null ? head : pid, anchored: false, sitting: new Map(), glFind: -2, lastReached: -1 });
+          out.push({ id: pid, alive: true, state: 3, hasCoord: true, coord: c, glabel: ringLabel(c, pid), anchored: false, sitting: new Map(), glFind: -2, lastReached: -1 });
         }
         return out;
       };
