@@ -3491,6 +3491,55 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .appear-row { display: flex; align-items: center; gap: 12px; }
 
 
+  /* Restored: broadcast, town hall, start time, Visit, flip camera and
+     dock Hand rules the same merge left out. */
+  @media (max-width: 700px), (max-height: 500px) {
+    body.broadcast #handq.on, body.townhall #handq.on { display: block; position: fixed; z-index: 5; left: 8px; right: 8px; margin: 0; padding: 8px 12px; font-size: 1.0625rem; line-height: 1.2; color: #f4f7fb; background: rgba(12,14,18,.92); border-radius: 16px; pointer-events: auto; }
+    body.broadcast #handq.on { top: calc(var(--banner-h) + 8px + 4.25rem + 8px + var(--inset-top, 0px)); }
+    body.townhall #handq.on { top: calc(14px + 4.25rem + 8px + var(--inset-top, 0px)); }
+    body.broadcast #handq.on .hq, body.townhall #handq.on .hq { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; margin: 4px 2px; padding: 0 12px; border-radius: 999px; background: rgba(255,255,255,.14); vertical-align: middle; }
+  }
+  body.townhall #grid, body.townhall #stadium { display: none !important; }
+  body.broadcast #bc-ident img { width: 256px; width: min(256px, 70vw); height: 256px; height: min(256px, 46vh); object-fit: cover; border-radius: 1rem; background: #14141f; }
+  @media (max-width: 700px), (max-height: 500px) {
+    body.broadcast .topchip[data-invite="1"], body.townhall .topchip[data-invite="1"] { padding-top: 0; padding-bottom: 0; padding-right: 0; min-height: 44px; }
+    body.broadcast .topchip[data-invite="1"] #hdrinvite:not([hidden]), body.townhall .topchip[data-invite="1"] #hdrinvite:not([hidden]) { display: inline-flex; }
+  }
+  #bcwhenrow { display: none; }
+  body.broadcast.bc-host #bcwhenrow { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap; }
+  #bcwhenrow input { min-height: 44px; font: inherit; border-radius: 10px; padding: 0 8px; }
+  #bcvisitrow { display: none; }
+  body.broadcast.bc-host #bcvisitrow { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap; }
+  #bcvisitrow input { min-height: 44px; min-width: 12rem; font: inherit; border-radius: 10px; padding: 0 8px; }
+  #bcvisit-help { flex-basis: 100%; font-size: 0.85em; opacity: .8; }
+  @media (min-height: 500px) {
+    body.broadcast .fitbtn, body.broadcast .admcount { top: calc(var(--banner-h) + 8px + 4.25rem + var(--inset-top, 0px)); }
+  }
+  .bar #flipcam { display: none; }
+  @media (max-width: 700px) {
+    body.broadcast #livebadge { font-size: 1.25rem; }
+  }
+  @media (max-width: 700px) and (min-height: 421px) {
+    .bar > #hand .docklab { display: block; }
+  }
+  #hand .handmark { display: none; }
+  .barmore #hand .docklab, .barmore #hand .handmark { display: none !important; }
+  .bar > #hand .handword { display: none; }
+  @media (max-width: 700px), (max-height: 500px) {
+    .bar > #hand { width: clamp(44px, 2.75rem, 88px); min-width: 44px; min-height: 44px; height: auto; padding: 4px 0 3px; border: 0; border-radius: 16px; box-sizing: border-box; background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto; }
+    .bar > #hand .handmark { display: block; width: clamp(22px, 1.375rem, 44px); height: clamp(22px, 1.375rem, 44px); }
+    .bar > #hand.on { background: #0064c8; color: #fff; }
+  }
+  @media (max-height: 420px) {
+    .bar > #hand, .bar > #hand.on { width: clamp(44px, 1.5rem, 48px); height: clamp(44px, 1.5rem, 48px); min-width: 44px; min-height: 44px; background: transparent; color: #1d1d1f; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)); }
+    .bar > #hand.on { color: #0064c8; background: transparent; }
+    .bar > #hand .handmark { width: clamp(18px, 1rem, 24px); height: clamp(18px, 1rem, 24px); }
+  }
+  @media (max-height: 380px) {
+    body.broadcast { --banner-h: 44px; }
+    body.broadcast #livebadge { font-size: 1rem; line-height: 1; }
+  }
+
 </style>
 <link rel="stylesheet" href="css/meet-23b.css">
 <script src="js/gifos-themes.js"></script>
@@ -3507,6 +3556,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <p class="lob-quiet" data-t="lobQuiet">You come in muted. Turn the camera on here if you want to be seen.</p>
       <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a call</span><small data-t="lobStartSub">Anyone with the link can join</small></button>
       <button type="button" id="lob-admin-btn" class="lob-link">Host this call</button>
+      <button type="button" id="lob-th-btn" class="lob-link">Start a town hall</button>
+      <button type="button" id="lob-stream" class="lob-link">Stream to friends</button>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <input id="lob-admin-name" maxlength="40" placeholder="Name this call" autocomplete="off">
         <button type="button" id="lob-key-reveal" class="lob-text" hidden>Change host key</button>
@@ -3752,6 +3803,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button id="stagebtn" data-t="stage" aria-keyshortcuts="Alt+G" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
         <button id="recbtn" data-t="record" aria-keyshortcuts="Alt+R" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
         <button id="rbbtn" title="Play the last service, or a video, into the broadcast. Viewers see Prerecorded.">Rebroadcast</button>
+        <label id="bcwhenrow" title="When the service starts. The viewer link and the room say so."><span id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
+        <label id="bcvisitrow" title="Link for viewers (opens in a new window)"><span id="bcvisit-lbl">Visit link</span><input type="url" id="bcvisit" inputmode="url" autocomplete="url" placeholder="https://" spellcheck="false"></label>
         <button id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
         <button id="ccbtn" type="button" aria-pressed="false" data-t="captions" data-ti="ccTip" title="Show or hide captions on your screen. This meeting is written down either way.">Captions</button>
         <button id="setbtn" data-t="settings" aria-keyshortcuts="Alt+," title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
@@ -5044,7 +5097,57 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return { href: u.href, site: u.hostname };
       } catch (e) { return null; }
     }
-    function bcVisit() { return BROADCAST ? bcVisitCheck(params.get('visit')) : null; }
+    // The host's own values also ride its status gossip (the existing
+    // fan-out), so a viewer who opened a bare link still gets them.
+    function bcHostGossip(field) {
+      try { for (const st of statusOf.values()) if (st && st[field]) return st[field]; } catch (e) {}
+      return null;
+    }
+    function bcVisit() { return BROADCAST ? (bcVisitCheck(params.get('visit')) || bcVisitCheck(bcHostGossip('bcvisit'))) : null; }
+    // THE START TIME rides the link as at=<unix seconds> (and the host's
+    // status), set by the host in More. A church shares Sunday's link
+    // midweek: an early viewer reads when it starts and a countdown, and
+    // someone who opens it hours later reads that it ended.
+    const BC_AT_KEY = 'gifos_bcat_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
+    if (BROADCAST && !params.get('at') && bcHostStored()) {
+      try { const s0 = localStorage.getItem(BC_AT_KEY); if (s0) params.set('at', s0); } catch (e) {}
+    }
+    function bcStartAt() {
+      let n = Number(params.get('at'));
+      if (!(n > 0)) n = Number(bcHostGossip('bcat')) || 0;
+      return BROADCAST && Number.isFinite(n) && n > 0 ? n * 1000 : 0;
+    }
+    // "today at 6:30 PM", "tomorrow at 9:00 AM", "Sunday at 10:00 AM", or a
+    // date past the coming week. Intl's narrow spaces read as plain spaces.
+    function bcWhenWords(ms, now) {
+      const d = new Date(ms), n = new Date(now);
+      const plain = (x) => x.replace(/[\u202f\u00a0]/g, ' ');
+      const time = plain(d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }));
+      const day0 = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+      const days = Math.round((day0(d) - day0(n)) / 86400000);
+      const day = days === 0 ? 'today' : days === 1 ? 'tomorrow'
+        : days > 1 && days < 7 ? d.toLocaleDateString(undefined, { weekday: 'long' })
+        : plain(d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }));
+      return day + ' at ' + time;
+    }
+    // "in 2 h 5 min", "in 4 min", "in under a minute".
+    function bcCountdown(ms, now) {
+      const m = Math.ceil((ms - now) / 60000);
+      if (m <= 1) return 'in under a minute';
+      if (m < 60) return 'in ' + m + ' min';
+      const h = Math.floor(m / 60), r = m % 60;
+      if (h < 48) return 'in ' + h + ' h' + (r ? ' ' + r + ' min' : '');
+      return 'in ' + Math.round(h / 24) + ' days';
+    }
+    // Before the time: when it starts. From 15 minutes before to 3 hours
+    // after: about to start (the host may be late). Later: it has ended.
+    function bcSchedule(now) {
+      const at = bcStartAt();
+      if (!at) return null;
+      if (now < at - 15 * 60000) return { phase: 'future', words: bcWhenWords(at, now), countdown: bcCountdown(at, now) };
+      if (now < at + 3 * 3600000) return { phase: 'soon', countdown: now < at ? bcCountdown(at, now) : '' };
+      return { phase: 'ended' };
+    }
     // none until joinRoom starts the adopt; pending while the stored key is
     // still being checked, so a host is not treated as a viewer in that gap.
     // ok after it verifies; no after it does not.
@@ -6719,6 +6822,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function broadcastStatus(answer) {
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
+      if (BROADCAST && typeof bcHostStored === 'function' && bcHostStored()) {
+        const at0 = Number(params.get('at')) || 0, vis0 = (bcVisitCheck(params.get('visit')) || {}).href || '';
+        if (at0 > 0) myStatus.bcat = at0; else delete myStatus.bcat;
+        if (vis0) myStatus.bcvisit = vis0; else delete myStatus.bcvisit;
+      }
       // My SEAT rides the heartbeat: coord is the tree fact everything else
       // (rows, links, Stage membership order) derives from. The old deck
       // bookkeeping (leaf/cnt/tot/seen/branch/bl) is gone with the deck model —
@@ -11329,6 +11437,51 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       Promise.all(jobs).then(() => { powerStats = { at: Date.now(), senders: out }; });
     }, 10000);
+    // A broadcast viewer or a town hall watcher with nothing on air: the
+    // Stage says whether it has not started, when it starts (with a
+    // countdown), or that it has ended. "Ended" is the host's one gossiped
+    // flag, the schedule, or this tab having seen company and now alone.
+    function bcQuietLine(shown, reachBlocked, atDoor) {
+      const host0 = typeof bcHostStored === 'function' && bcHostStored();
+      const viewer = !!(BROADCAST && !host0);
+      const watch = !!(typeof TOWNHALL !== 'undefined' && TOWNHALL && !host0);
+      const seenKey = 'gifos_bc_seen_' + String(params.get('v') || '') + '.' + String(params.get('av') || '').toLowerCase();
+      if (viewer && shown > 1) { try { sessionStorage.setItem(seenKey, '1'); } catch (e) {} }
+      // On air means a picture on the Stage: a stager's camera, screen or a
+      // rebroadcast. A host waiting off air is not on air.
+      let onAir = false;
+      try {
+        onAir = !!document.querySelector('#stagefeed .rowtile') && stageIds().some((id) => {
+          const st = id === myId ? myStatus : statusOf.get(id);
+          return stagePersonLive(id) || !!(st && (st.scr || st.rb));
+        });
+      } catch (e) {}
+      const out = { text: '', sched: null, viewer: viewer };
+      if (!(viewer || watch) || reachBlocked || atDoor || onAir) return out;
+      const noun = watch ? 'town hall' : (params.has('st') ? 'stream' : 'service');
+      let seen = false; try { seen = sessionStorage.getItem(seenKey) === '1'; } catch (e) {}
+      const sched = viewer ? bcSchedule(Date.now()) : null;
+      out.sched = sched;
+      const ended = viewer && ((typeof bcEndedInRoom === 'function' && bcEndedInRoom()) || (sched && sched.phase === 'ended') || (seen && shown === 1));
+      if (ended) out.text = 'The ' + noun + ' has ended.';
+      else if (shown === 1 || viewer) {
+        out.text = sched && sched.phase === 'future' ? 'The ' + noun + ' starts ' + sched.words + ' · ' + sched.countdown + '.'
+          : sched && sched.phase === 'soon' ? 'The ' + noun + ' is about to start' + (sched.countdown ? ' · ' + sched.countdown : '') + '.'
+          : 'The ' + noun + ' has not started.';
+      }
+      return out;
+    }
+    function paintBcQuiet(bq) {
+      const quiet = document.getElementById('bc-ended');
+      if (!quiet) return;
+      const on = !!bq.text;
+      if (quiet.hidden === on) quiet.hidden = !on;
+      document.body.classList.toggle('bc-quiet', on);
+      const qt = document.getElementById('bc-ended-txt');
+      if (qt && on && qt.textContent !== bq.text) qt.textContent = bq.text;
+      try { paintBcCalendar(on && bq.viewer && !!bq.sched && bq.sched.phase === 'future'); } catch (e) {}
+      try { paintBcVisit(bq.viewer, on); } catch (e) {}
+    }
     function updateStatus() {
       refreshTrBtn();
       if (bannedOut) return;                      // the ban notice is permanent
@@ -11441,6 +11594,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         countText = shown + ' ' + (BROADCAST ? 'in this service' : uiText('inMeeting', 'in this small group'));
         restText = ' · ' + q.label + reachTriedSentence() + tail;
       }
+      const bq = bcQuietLine(shown, !!(reachState && !inlineReach), atDoor);
+      const bcQuiet = bq.text;
+      if (bcQuiet) restText = bcQuiet + reachTriedSentence() + tail;
       const statusText = countText + restText;
       const detail = statusText;
       // A phone chip names the room and the count (qa-meet-mobile); the whole
@@ -11501,9 +11657,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (deskInvite.textContent !== label) deskInvite.textContent = label;
         }
       }
+      paintBcQuiet(bq);
       paintStatusSheet();
       try { paintOnAir(); } catch (e) {}
     }
+    // The host's start time and Visit link can arrive by gossip after the
+    // line was painted; the countdown moves on its own.
+    if (BROADCAST && !(typeof bcHostStored === 'function' && bcHostStored())) setInterval(() => {
+      try {
+        const seat = meshSeat(), door = !!(seat && (seat.state === 1 || seat.state === 2));
+        const r = typeof reachInfo === 'function' ? reachInfo() : null;
+        const blocked = !!(r && r.state && r.state !== 'partial' && r.state !== 'heard-not-seen');
+        paintBcQuiet(bcQuietLine(headerCount(), blocked, door));
+      } catch (e) {}
+      try { updateStatus(); } catch (e) {}
+    }, 5000);
     try {
       const hdrMq = window.matchMedia('(max-width: 700px), (max-height: 500px)');
       if (hdrMq.addEventListener) hdrMq.addEventListener('change', () => { try { updateStatus(); } catch (e) {} });
@@ -18523,7 +18691,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.getElementById('lob-open').onclick = () => { enterMeeting('#v=' + shortCode()); };
       const streamBtn = document.getElementById('lob-stream');
       if (streamBtn) streamBtn.onclick = () => { enterMeeting('#bc=1&st=1'); };
-      document.getElementById('lob-admin-btn').onclick = () => {
+      // Host this call mints an admin small group; Start a town hall mints
+      // the same admin room with th=1 (watchers stay off camera).
+      let lobTownHall = false;
+      const thBtn = document.getElementById('lob-th-btn');
+      if (thBtn) thBtn.onclick = () => {
+        const form = document.getElementById('lob-admin');
+        const wasTh = lobTownHall && form.style.display !== 'none';
+        lobTownHall = true;
+        if (wasTh) { form.style.display = 'none'; lob.classList.remove('form-open'); return; }
+        form.style.display = 'none';
+        document.getElementById('lob-admin-btn').onclick();
+      };
+      document.getElementById('lob-admin-btn').onclick = (ev) => {
+        if (ev) lobTownHall = false;
         toggle('lob-admin');
         document.getElementById('lob-join').style.display = 'none';
         const open = document.getElementById('lob-admin').style.display !== 'none';
@@ -18535,9 +18716,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           document.getElementById('lob-key-block').hidden = true;
           document.getElementById('lob-key-reveal').hidden = false;
         }
-        if (open && !BC_INTENT) {
+        if (open && !BC_INTENT && lobTownHall) {
           document.querySelector('#lobby h1').textContent = 'Town hall';
-          document.querySelector('#lobby .lob-quiet').textContent = 'You host. People with the link can join.';
+          document.querySelector('#lobby .lob-quiet').textContent = 'You host. People with the link watch, and come on stage when you call them up.';
           n.placeholder = 'Town hall';
         }
         if (open) n.focus();
@@ -18612,7 +18793,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // guest, the guest password is the one you send them).
           const guest = (document.getElementById('lob-guest-pass').value || '').trim();
           if (guest) { try { localStorage.setItem('gifos_vpw_' + chosen + '.' + V, guest); localStorage.setItem('gifos_vpwat_' + chosen + '.' + V, String(Date.now())); } catch (e) {} } // stamp the store's clock (§LOCK expiry)
-          enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' : ''));
+          enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' + (params.has('st') ? '&st=1' : '') : (lobTownHall ? '&th=1' : '')));
         } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = go.dataset.label || 'Start'; }
       };
       document.getElementById('lob-join-btn').onclick = () => { toggle('lob-join'); document.getElementById('lob-admin').style.display = 'none'; const i = document.getElementById('lob-join-in'); if (document.getElementById('lob-join').style.display !== 'none') i.focus(); };
@@ -18683,7 +18864,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (legacy) legacy.textContent = me.name || '…';
     }
     function showLobby() {
-      document.title = (BC_INTENT ? 'Service' : 'Small group') + ' — GifOS';
+      const streamLobby = BC_INTENT && params.has('st');
+      document.title = (streamLobby ? 'Stream' : BC_INTENT ? 'Service' : 'Small group') + ' — GifOS';
       // The Broadcast app opens THIS page with #bc=1 and no room: same lobby,
       // reworded — no open rooms (a broadcast without a host is nothing), and
       // creating one mints the same admin room with &bc=1 riding the link.
@@ -18711,6 +18893,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.getElementById('lob-empty').textContent = 'Services you start or watch show up here.';
         const watchNote = document.getElementById('lob-watch-note');
         if (watchNote) { watchNote.hidden = false; watchNote.textContent = BC_WATCH_COPY; }
+        ['lob-th-btn', 'lob-stream'].forEach((id) => { const b = document.getElementById(id); if (b) b.style.display = 'none'; });
+        // A stream to friends: the same live fan-out, a friendlier name.
+        if (streamLobby) {
+          document.querySelector('#lobby h1').textContent = 'Stream';
+          if (quiet) quiet.textContent = 'Friends watch with the link.';
+          const nm = document.getElementById('lob-admin-name');
+          nm.placeholder = 'Friday night';
+          if (!nm.value) nm.value = 'Friday night';
+          document.getElementById('lob-empty').textContent = 'Streams you start or watch show up here.';
+          if (watchNote) watchNote.textContent = 'Watching a stream. You stay off camera unless the host brings you on.';
+        }
       }
       paintLobbyAppear();
       renderLobbyList();
@@ -18776,7 +18969,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           updateTile('me');
           joinRoom();
           updateStatus();
-          document.title = BROADCAST ? 'Service — GifOS' : 'Small group — GifOS';
+          document.title = (typeof TOWNHALL !== 'undefined' && TOWNHALL) ? 'Town hall — GifOS' : BROADCAST ? (params.has('st') ? 'Stream — GifOS' : 'Service — GifOS') : 'Small group — GifOS';
           if (BROADCAST) {
             const hint = document.querySelector('.share .hint');
             if (hint) hint.textContent = 'Share this link — anyone who opens it is watching:';
@@ -28138,6 +28331,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const play = vid.play();
       if (play && play.catch) play.catch(() => {});
     }
+    function showServiceEnded(saved) {
+      const old = document.getElementById('rb-sheet');
+      if (old) old.remove();
+      const noun = (typeof params !== 'undefined' && params.has('st')) ? 'stream' : 'service';
+      const bg = document.createElement('div');
+      bg.id = 'rb-sheet'; bg.className = 'rb-sheet';
+      bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true'); bg.setAttribute('aria-label', 'The ' + noun + ' has ended');
+      bg.innerHTML = '<div class="rb-card"><p class="rb-title">The ' + noun + ' has ended.</p>' +
+        '<p class="rb-why">Anyone who opens the link now reads that it ended. You can play the recording again live into this room; viewers see Prerecorded.</p>' +
+        '<button type="button" id="se-rebroadcast">Rebroadcast it live</button>' +
+        '<button type="button" id="se-save">Save the recording</button>' +
+        '<button type="button" id="se-leave">Leave</button></div>';
+      document.body.appendChild(bg);
+      let kept = !!saved.saved;
+      bg.querySelector('#se-save').onclick = () => { if (!kept) { kept = true; recDownload(saved); } bg.querySelector('#se-save').textContent = 'Saved'; };
+      bg.querySelector('#se-rebroadcast').onclick = () => {
+        bg.remove();
+        // Back on air: the ended seat's outgoing hold lifts (camera and mic
+        // stay off; the recording is the picture).
+        try { bcSeeding = false; delete myStatus.bcend; releaseLeaveAsk(); broadcastStatus(); } catch (e) {}
+        rbStart({ blob: fetch(saved.href).then((r) => r.blob()), title: 'Last ' + noun, last: true });
+      };
+      bg.querySelector('#se-leave').onclick = () => { bg.remove(); recRelease(saved); leaveSeededService(); };
+    }
     function recDeliver(saved) {
       if (saved && saved.held) return 'held';
       // The host's kept service is what Rebroadcast > Last service plays.
@@ -28147,9 +28364,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bcLastService = { blob: blob, name: saved.name || '' };
       }
       if (saved && saved.href && bcSeeding) {
+        // A service is never replayed on demand. The host's choices are to
+        // play it again live into this room (the normal fan-out; viewers see
+        // Prerecorded), keep the file, or leave.
         saved.seed = true;
-        showRecReplay(saved);
-        return 'replay';
+        showServiceEnded(saved);
+        return 'ended';
       }
       if (saved && saved.href && recOnPhone()) {
         showRecReplay(saved);
@@ -30555,6 +30775,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         raw = u.toString();
       } catch (e) {}
+      // The start time and the Visit link ride the viewer link.
+      try {
+        const u = new URL(raw, location.origin);
+        const at = BROADCAST ? String(params.get('at') || '') : '';
+        const visit = bcVisit() ? bcVisit().href : '';
+        const h = new URLSearchParams(u.hash.replace(/^#/, ''));
+        const put = (sp, k, val) => { if (val) sp.set(k, val); else sp.delete(k); };
+        if (h.has('v')) { put(h, 'at', at); put(h, 'visit', visit); u.hash = h.toString(); }
+        else { put(u.searchParams, 'at', at); put(u.searchParams, 'visit', visit); }
+        raw = u.toString();
+      } catch (e) {}
       const secrets = [];
       try {
         if (typeof roomPw === 'string' && roomPw) secrets.push(roomPw);
@@ -30567,13 +30798,124 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       });
       return raw;
     }
+    // A viewer early for a scheduled service gets Add to calendar: a one-event
+    // .ics with the viewer link, which a phone opens in its calendar.
+    let bcCalUrl = null, bcCalFor = '';
+    function paintBcCalendar(show) {
+      const a = document.getElementById('bc-cal');
+      if (!a) return;
+      a.hidden = !show;
+      if (!show) return;
+      const at = bcStartAt(), link = viewerShareUrl();
+      if (bcCalFor === at + link) return;
+      bcCalFor = at + link;
+      const stamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+      const esc = (s) => String(s).replace(/([\\;,])/g, '\\$1').replace(/\n/g, '\\n');
+      const noun = params.has('st') ? 'stream' : 'service';
+      const name = String(params.get('v') || '').trim();
+      const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GifOS//Broadcast//EN', 'BEGIN:VEVENT',
+        'UID:' + at + '-' + name.replace(/[^a-z0-9]/gi, '') + '@gifos.app', 'DTSTAMP:' + stamp(Date.now()),
+        'DTSTART:' + stamp(at), 'DTEND:' + stamp(at + 90 * 60000),
+        'SUMMARY:' + esc((name ? name + ' · ' : '') + 'live ' + noun),
+        'DESCRIPTION:' + esc('Watch here: ' + link), 'URL:' + link,
+        'BEGIN:VALARM', 'TRIGGER:-PT15M', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc('The ' + noun + ' starts in 15 minutes'), 'END:VALARM',
+        'END:VEVENT', 'END:VCALENDAR', ''].join('\r\n');
+      if (bcCalUrl) { try { URL.revokeObjectURL(bcCalUrl); } catch (e) {} }
+      bcCalUrl = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+      a.href = bcCalUrl;
+      a.download = (name || noun).replace(/[^\w.-]+/g, '-') + '.ics';
+    }
+    // A viewer gets Visit when the link carries the host's site: on the
+    // picture while the service is on, and under the sentence on the screen
+    // that says it has not started or has ended.
+    function paintBcVisit(viewer, quiet) {
+      const a = document.getElementById('bc-visit');
+      if (!a) return;
+      const g = viewer ? bcVisit() : null;
+      a.hidden = !g;
+      if (!g) return;
+      if (a.getAttribute('href') !== g.href) a.setAttribute('href', g.href);
+      const label = 'Visit ' + g.site + ' (opens in a new window)';
+      if (a.getAttribute('aria-label') !== label) { a.setAttribute('aria-label', label); a.title = label; }
+      const ended = document.getElementById('bc-ended');
+      const home = quiet && ended ? ended : document.getElementById('feed');
+      if (home && a.parentElement !== home) home.appendChild(a);
+      placeBcVisit();
+    }
+    function placeBcVisit() {
+      const a = document.getElementById('bc-visit');
+      const fit = document.getElementById('fitbtn');
+      if (!a || a.hidden) return;
+      let left = false;
+      if (!a.closest('#bc-ended') && fit && fit.getClientRects().length) { // Fit is fixed: no offsetParent
+        a.classList.remove('left');
+        const r = a.getBoundingClientRect(), f = fit.getBoundingClientRect();
+        left = r.left < f.right && f.left < r.right && r.top < f.bottom && f.top < r.bottom;
+      }
+      a.classList.toggle('left', left);
+    }
+    // A text size or a rotation moves Fit and Visit at once; place it again
+    // then, not on the next status beat.
+    if (window.ResizeObserver && BROADCAST) {
+      try {
+        const ro = new ResizeObserver(() => { try { placeBcVisit(); } catch (e) {} });
+        ['bc-visit', 'fitbtn'].forEach((id) => { const el = document.getElementById(id); if (el) ro.observe(el); });
+      } catch (e) {}
+    }
+    // The host's start time. The phone's own picker gives local time; the
+    // link carries it as unix seconds, so every viewer reads it in theirs.
+    const bcWhenIn = document.getElementById('bcwhen');
+    function paintBcWhen() {
+      const lbl = document.getElementById('bcwhen-lbl');
+      const at = bcStartAt();
+      if (lbl) lbl.textContent = at ? 'Starts ' + bcWhenWords(at, Date.now()) : 'Start time';
+      if (bcWhenIn && at && document.activeElement !== bcWhenIn) {
+        const d = new Date(at), z = (n) => String(n).padStart(2, '0');
+        bcWhenIn.value = d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + 'T' + z(d.getHours()) + ':' + z(d.getMinutes());
+      }
+    }
+    if (bcWhenIn && BROADCAST) {
+      bcWhenIn.onchange = () => {
+        const ms = bcWhenIn.value ? new Date(bcWhenIn.value).getTime() : NaN;
+        const secs = Number.isFinite(ms) ? String(Math.floor(ms / 1000)) : '';
+        if (secs) params.set('at', secs); else params.delete('at');
+        try { secs ? localStorage.setItem(BC_AT_KEY, secs) : localStorage.removeItem(BC_AT_KEY); } catch (e) {}
+        paintBcWhen();
+        try { updateStatus(); } catch (e) {}
+      };
+      paintBcWhen();
+    }
+    // The host's Visit link. It stays on the host's phone for this room and
+    // rides every viewer link from Invite.
+    const bcVisitIn = document.getElementById('bcvisit');
+    function paintBcVisitField() {
+      const lbl = document.getElementById('bcvisit-lbl');
+      const g = bcVisit();
+      if (lbl) lbl.textContent = g ? 'Visit link · ' + g.site : (bcVisitIn && bcVisitIn.value.trim() ? 'Visit link must start with https://' : 'Visit link');
+      if (bcVisitIn && g && document.activeElement !== bcVisitIn && !bcVisitIn.value) bcVisitIn.value = g.href;
+    }
+    if (bcVisitIn && BROADCAST) {
+      bcVisitIn.onchange = () => {
+        const g = bcVisitCheck(bcVisitIn.value);
+        if (g) params.set('visit', g.href); else params.delete('visit');
+        try {
+          g ? localStorage.setItem(BC_VISIT_KEY, g.href) : localStorage.removeItem(BC_VISIT_KEY);
+          localStorage.removeItem(BC_VISIT_KEY.replace('_bcvisit_', '_bcgive_'));
+        } catch (e) {}
+        paintBcVisitField();
+        try { updateStatus(); } catch (e) {}
+      };
+      paintBcVisitField();
+    }
     function shareMeetingLink(btn) {
       const url = viewerShareUrl();
       if (!url) return;
       const isApp = document.body.classList.contains('app-room');
       const payload = {
-        title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : 'Join my GifOS meeting',
-        text: 'Tap this link and you’re in:',
+        title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : (typeof TOWNHALL !== 'undefined' && TOWNHALL ? 'Watch my GifOS town hall' : 'Join my GifOS meeting'),
+        text: BROADCAST && bcStartAt() > Date.now()
+          ? 'Live ' + bcWhenWords(bcStartAt(), Date.now()) + '. Tap this link to watch:'
+          : 'Tap this link and you’re in:',
         url: url,
       };
       const markCopied = () => {
@@ -33587,6 +33929,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       ccViewOn: () => !!ccShow,
       ownVoice: () => ({ wanted: !!ownVoiceArmed, cc: !!myStatus.cc, muted: !!myStatus.muted }),
       scribeForTest: (on) => { myStatus.scribe = !!on; broadcastStatus(); syncSpeech(); },
+      // A service's start time and Visit link, here and in the gossip.
+      bcPeekForTest: () => ({ quiet: bcQuietLine(headerCount(), false, false), count: headerCount(), stagers: stageIds().map((id) => [String(id).slice(0, 6), stagePersonLive(id)]), rowtile: !!document.querySelector('#stagefeed .rowtile'), hold: Math.max(0, statusHoldUntil - Date.now()), banned: !!bannedOut, at: bcStartAt(), visit: bcVisit(), mine: { bcat: myStatus.bcat || 0, bcvisit: myStatus.bcvisit || '' }, host: bcHostStored(), params: { at: params.get('at') || '', visit: params.get('visit') || '' }, gossip: Array.from(statusOf.values()).map((st) => [st.bcat || 0, st.bcvisit || '']) }),
       // Why a scribe takes or skips each peer (the conditions wspSync reads).
       scribeWhyForTest: () => Array.from(peers.keys()).map((pid) => {
         const st = statusOf.get(pid) || {}; const p = peers.get(pid);
