@@ -451,7 +451,7 @@
   // The redirect above is still immediate. desktop.js is the other writer.
   try {
     if (typeof fetch === 'function') {
-      fetch('/version.json', { cache: 'no-store' }).then(function (r) {
+      fetch('/version.json', { cache: 'no-cache' }).then(function (r) {
         return r && r.ok ? r.json() : null;
       }).then(function (j) {
         var v = j && j.current;
@@ -6260,14 +6260,43 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // their own tile and letterboxes their own cell and buys them no seat, no
     // reach and no fanout (healing-laws S — harm ≈ fanout). Nobody can ever
     // set anyone else's.
+    // AN UPDATE RELOAD KEEPS THE MEETING. When a new release reloads this tab
+    // (the Update button, or an emergency release), updateReload() writes down
+    // what a plain reload loses — the blur level, the Stage seat, a broadcast
+    // host's air, a host's waiting room — under gifos_update_resume in
+    // sessionStorage (this tab only). It is read once, here, and removed at
+    // once. Only that path writes it; Leave and any other way out of the page
+    // (pagehide that is not an update) clear it, so a real leave and rejoin
+    // still starts at Max blur. Mic, camera and screen share ride the same
+    // reload through stashRecoverMedia, as a freeze reload does.
+    const UPDATE_RESUME_KEY = 'gifos_update_resume';
+    const UPDATE_RESUME_TTL = 120000;
+    const updateRoomKey = () => (params.get('v') || '') + '.' + String(params.get('av') || '').toLowerCase();
+    const updateResume = (() => {
+      let raw = null;
+      try { raw = sessionStorage.getItem(UPDATE_RESUME_KEY); sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) { return null; }
+      if (!raw) return null;
+      let o = null;
+      try { o = JSON.parse(raw); } catch (e) { return null; }
+      if (!o || o.v !== 1 || typeof o.at !== 'number' || Date.now() - o.at > UPDATE_RESUME_TTL) return null;
+      if (!params.get('v') || o.room !== updateRoomKey()) return null;
+      return o;
+    })();
     // EVERYONE JOINS MAX-BLURRED, EVERY MEETING (docs/meeting.md, Blur). The
     // level is never remembered between meetings: a choice made for one room
     // must not walk into the next one, where the people and the consent are
     // different. Nothing reads or writes a stored blur level; a key left by a
-    // build that did is removed here. A privacy rule, guarded in the release
-    // gate by test/unit/meet-join-max-blur.js.
+    // build that did is removed here. The one exception is an UPDATE reload of
+    // this same tab (updateResume above): the meeting goes on, so the level
+    // chosen in it does too; Leave or closing the tab clears that note. A
+    // privacy rule, guarded in the release gate by test/unit/meet-join-max-blur.js.
     try { localStorage.removeItem('gifos_blur'); } catch (e) {}
     const myStatus = { muted: true, camOff: true, blur: 2, hand: null, rec: false, cc: false, pwEp: 0, scr: 0, scribe: false };
+    // The Stage seat comes back with its original claim time, so the person
+    // keeps their place in step-up order. A grant that has not arrived yet
+    // must not disarm it (reactStageLost waits out stageResumeUntil).
+    let stageResumeUntil = 0;
+    if (updateResume && +updateResume.stg > 0) { myStatus.stg = +updateResume.stg; stageResumeUntil = Date.now() + 20000; }
     window.__gifosRoomTrust = {
       setRecording(on) {
         myStatus.rec = !!on;
@@ -6501,6 +6530,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const waitDeclined = new Set();
     const waitAdmitted = new Set(); // host pressed Admit: the next WHOHOME may be answered
     const waitQueue = new Map();
+    // A host's waiting room survives an update reload: the switch, who was
+    // admitted or turned away, and who is still waiting.
+    if (updateResume && updateResume.wait && typeof updateResume.wait === 'object') {
+      const w = updateResume.wait;
+      holdDoor = !!w.hold;
+      const ids = (a) => (Array.isArray(a) ? a.slice(0, 200).map(String) : []);
+      for (const id of ids(w.admitted)) waitAdmitted.add(id);
+      for (const id of ids(w.declined)) waitDeclined.add(id);
+      if (Array.isArray(w.queue)) for (const q of w.queue.slice(0, 200)) if (Array.isArray(q) && q[0]) waitQueue.set(String(q[0]), String(q[1] || '').slice(0, 40) || 'Someone waiting');
+    }
     function waitPaint() {
       const list = document.getElementById('waitlist');
       const btn = document.getElementById('waitbtn');
@@ -8278,7 +8317,62 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // action moves the room to the live release. (A room born from a solo app
     // by Invite keeps the entry's answer: its address is still #id=.)
     const ENTRY_IS_ROOM = !ROOM.solo;
-    if (window.GifOS && GifOS.update) GifOS.update.watch({ delay: 1000, room: () => ENTRY_IS_ROOM });
+    if (window.GifOS && GifOS.update) GifOS.update.watch({ delay: 1000, room: () => ENTRY_IS_ROOM, reload: (t) => updateReload(t) });
+    // THE UPDATE RELOAD. Same tab, same address, same room: the password and
+    // admin key are in localStorage and the peer id in sessionStorage, so the
+    // page comes back into the meeting with no prompt. Before it goes it
+    // writes down what a reload would lose (see UPDATE_RESUME_KEY), then takes
+    // the freeze path (resumeReload): mic/camera/share stashed, a recording
+    // stopped and saved first. On a snapshot address the page moves to the
+    // same path on the new release; elsewhere a reload follows gifos_current.
+    let updateLeaving = false;
+    function updateReload(target) {
+      target = target || {};
+      updateLeaving = true;
+      try {
+        let onAir = false;
+        try { onAir = !!(BROADCAST && bcRole() === 'host' && bcSending()); } catch (e) {}
+        const wait = (holdDoor || waitAdmitted.size || waitDeclined.size || waitQueue.size)
+          ? { hold: holdDoor, admitted: Array.from(waitAdmitted), declined: Array.from(waitDeclined), queue: Array.from(waitQueue.entries()) }
+          : null;
+        sessionStorage.setItem(UPDATE_RESUME_KEY, JSON.stringify({
+          v: 1, at: Date.now(), room: updateRoomKey(), to: String(target.latest || ''),
+          emergency: !!target.emergency, note: String(target.note || '').slice(0, 200),
+          blur: blurLevel(myStatus.blur), stg: +myStatus.stg || 0, onAir, wait,
+          sharing: !!myStatus.scr,
+        }));
+      } catch (e) {}
+      try { stashRecoverMedia(); } catch (e) {}
+      try { setStatus((target.emergency ? 'An important GifOS update is out. ' : '') + 'Updating to GifOS v' + target.latest + ' — you stay in this meeting.'); } catch (e) {}
+      if (target.url) { try { history.replaceState(history.state, '', target.url); } catch (e) {} }
+      resumeReload();
+    }
+    // The blur level comes back before the camera does (gum below), through
+    // the slider's own path, so the first frames leave at the level the person
+    // had chosen in this meeting before the reload.
+    let updateBlurDone = false;
+    function applyUpdateResumeBlur() {
+      if (updateBlurDone || !updateResume || updateResume.blur == null) return;
+      updateBlurDone = true;
+      const lvl = blurLevel(updateResume.blur);
+      if (lvl !== blurLevel(myStatus.blur)) setPersonalBlur(lvl);
+    }
+    // One short line once the page is back: which release, and that a screen
+    // share needs a tap (a browser asks again for every share).
+    if (updateResume) setTimeout(() => {
+      let v = updateResume.to;
+      try { const r = GifOS.update.running().version; if (/^\d+\.\d+\.\d+$/.test(r)) v = r; } catch (e) {}
+      try {
+        setStatus((updateResume.note ? updateResume.note + ' ' : '') + (v ? 'Updated to GifOS v' + v + '. ' : 'GifOS updated. ') +
+          (updateResume.sharing ? 'Tap Share to show your screen again.' : 'You are still in the meeting.'));
+      } catch (e) {}
+    }, 3000);
+    // Any way out of the page that is not an update reload drops the note,
+    // so the next join starts fresh (Max blur, off the Stage).
+    window.addEventListener('pagehide', () => {
+      if (updateLeaving) return;
+      try { sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) {}
+    });
     // HOME IS THE PINNED BUILD. A pinned person can be in a meeting on the live
     // release (the room rule above); the relative index.html would open THIS
     // build's Home Screen and quietly undo the pin. So Home goes to the pin.
@@ -19256,6 +19350,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             for (const tr of localStream.getTracks()) tr.enabled = false;
             // A freeze reload stashed the live mic/camera/share. Put them back
             // before the first status goes out, so peers never see a quiet rejoin.
+            try { applyUpdateResumeBlur(); } catch (e) {}
             let restored = false;
             try { restored = typeof applyRecoverMedia === 'function' && applyRecoverMedia() === true; } catch (e) {}
             // The lobby's Go live tap is the camera. A host who opens their
@@ -19268,6 +19363,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               goLiveTap = sessionStorage.getItem(k) === '1';
               sessionStorage.removeItem(k);
             } catch (e) {}
+            // An update reload of a host who was on air is the same choice, made before the reload.
+            if (updateResume && updateResume.onAir) goLiveTap = true;
             if (!restored && BROADCAST && bcHostStored() && goLiveTap) {
               const cam = localStream.getVideoTracks()[0];
               if (cam && !(typeof forcedCamOff === 'function' && forcedCamOff('me'))) {
@@ -19301,6 +19398,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             try { window.__gumBootErr = (e && e.name ? e.name + ': ' : '') + String(e && e.message || e); } catch (e2) {}
             // No camera still gets the one-tap re-share, if a share was up.
             // The same boot still restarts paused inbound audio.
+            try { applyUpdateResumeBlur(); } catch (e5) {}
             try { if (typeof applyRecoverMedia === 'function') applyRecoverMedia(); } catch (e3) {}
             try { if (typeof keepMeetingAudio === 'function') keepMeetingAudio(); } catch (e4) {}
             tileNote(meTile, gumRefused(e)
@@ -25591,6 +25689,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let stgLostSince = 0;
     function reactStageLost() {
       if (!myStatus.stg || stageIds().includes(myId)) { stgLostSince = 0; return; }
+      if (stageResumeUntil > Date.now()) { stgLostSince = 0; return; } // an update reload's seat waits for its grant
       if (!stgLostSince) { stgLostSince = Date.now(); return; }
       if (Date.now() - stgLostSince < 2 * SCALE.HB) return;
       stgLostSince = 0;
@@ -31342,6 +31441,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // the ended screen.
       if (rbNow) rbQuit();
       if (DEBUG_ON) { try { (window.__bcTrace = window.__bcTrace || []).push({ ev: 'leave', t: Date.now(), seeding: bcSeeding, seed: bcSeedOnLeave(), kept: bcKept, host: !!bcHostStored(), rec: recRec ? recRec.state : 'none' }); } catch (e) {} }
+      try { updateLeaving = false; sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) {} // a real leave: the next join starts at Max blur
       if (!bcSeeding && bcSeedOnLeave()) return endServiceKeepSeat();
       const flushing = stopLocalCapture();
       sendMeshLeave();
@@ -34359,6 +34459,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }),
       closedShown: () => { const el = document.getElementById('closed-modal'); return !!el && el.style.display !== 'none'; },
       myBlur: () => blurLevel(myStatus.blur),
+      updateResumed: () => (updateResume ? JSON.parse(JSON.stringify(updateResume)) : null), // what an update reload brought back (null on a normal join)
+      waitStateForTest: () => ({ hold: holdDoor, admitted: Array.from(waitAdmitted), declined: Array.from(waitDeclined), queue: Array.from(waitQueue.keys()) }),
       setBlur: (v) => setPersonalBlur(v),        // drive the slider from tests
       // camera-orientation forensics: what adapt() last ASKED the camera for
       // ("WxH@fps"), and a way to drive a sweep. Guards the portrait<->landscape

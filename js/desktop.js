@@ -2714,22 +2714,43 @@
 
   // ---------- version: update nudge + pinning ----------
   // The check, the decision and the bar are js/gifos-update.js, shared with
-  // run.html and sign.html. The Home Screen keeps its own action: the bar only
-  // INFORMS, and the update itself is a proactive choice on the Advanced →
-  // Version page, where the changelog (and any critical notes) show before
-  // anything changes — the computer is never updated behind your back.
+  // every other page. The Home Screen's header bar says what is new and its
+  // Update button updates right here: the same Home Screen, on the live
+  // release. "What's new" opens Settings → Updates with the full notes. An
+  // EMERGENCY release (version.json "emergency") moves an unpinned computer
+  // at once; a computer pinned to a release or to edge is never moved, it
+  // keeps the bar (and the pin banner).
   const updateBar = document.getElementById('update-bar');
+  let emergencyFloor = null;        // version.json.emergency — releases under it move now
+  let updateMoving = false;
+  function updateInPlace() {
+    if (updateMoving || !GifOS.update) return;
+    updateMoving = true;
+    GifOS.update.go(latestVersion);
+  }
   function applyUpdateBar() {
     const U = GifOS.update;
     if (!U) return;
-    let d = U.decide({ version: VERSION, edge: runningEdge(), pinned: pinnedVersion(), latest: latestVersion, changelog });
+    let d = U.decide({ version: VERSION, edge: runningEdge(), pinned: pinnedVersion(), latest: latestVersion, changelog, emergency: emergencyFloor });
+    if (d && d.emergency) {
+      // Once per tab per release: a Home Screen that comes back still behind
+      // shows the bar instead of reloading in a loop.
+      let tried = null;
+      try { tried = JSON.parse(sessionStorage.getItem('gifos_update_tried') || 'null'); } catch (e) {}
+      if (!(tried && tried.to === d.latest && Date.now() - (+tried.at || 0) < 600000)) {
+        try { sessionStorage.setItem('gifos_update_tried', JSON.stringify({ to: d.latest, at: Date.now() })); } catch (e) {}
+        updateInPlace();
+        return;
+      }
+    }
     // The pin banner already says "pinned, latest is vX" and offers the way
     // back; the update bar only adds to it for a critical release.
     if (d && d.pinned && !d.critical.length && document.getElementById('pin-head')) d = null;
-    U.paint(updateBar, d, d && {
-      label: d.critical.length ? 'See what changed' : 'What’s new',
-      run: () => showSettings({ focus: 'version' }),
-    });
+    // A pinned computer changes build only by its own choice in Settings.
+    U.paint(updateBar, d, d && (d.pinned
+      ? { label: d.critical.length ? 'See what changed' : 'What’s new', run: () => showSettings({ focus: 'version' }) }
+      : { label: 'Update now', run: updateInPlace }),
+    d && !d.pinned ? { run: () => showSettings({ focus: 'version' }) } : undefined);
   }
 
   // The whole computer — every HTML page, js/ module, css and theme file — is
@@ -2877,15 +2898,22 @@
     else location.reload();
   }
 
-  async function checkForUpdate() {
-    // GifOS.update.check() fetches version.json + changelog.json (both
-    // network-first) and persists the live-release pointer (gifos_current) so
-    // the root loader can redirect default visitors instantly on the next visit.
-    const got = GifOS.update ? await GifOS.update.check() : null;
+  async function checkForUpdate(withNotes) {
+    // GifOS.update.check() fetches version.json (revalidated, not re-sent)
+    // and persists the live-release pointer (gifos_current) so the root loader
+    // can redirect default visitors instantly on the next visit. The release
+    // notes come along only when Settings is open or the bar has news.
+    const U = GifOS.update;
+    const notes = withNotes === true ? undefined : (info) => {
+      const d = U.decide({ version: VERSION, edge: runningEdge(), pinned: pinnedVersion(), latest: info.current, changelog: null, emergency: info.emergency });
+      return !!d && !d.emergency;
+    };
+    const got = U ? await U.check({ notes }) : null;
     if (!got) return false;   // offline or no version.json — stay silent
     const info = got.info;
     versionChecked = true;
     latestVersion = info.current || VERSION;
+    emergencyFloor = info.emergency || null;
     edgeBuild = Number(info.edgeBuild) || BUILD;   // latest edge build number, live
     releaseBuilds = (info.builds && typeof info.builds === 'object') ? info.builds : {};
     availableVersions = Array.isArray(info.versions) && info.versions.length ? info.versions : [VERSION];
@@ -2895,6 +2923,11 @@
     applyUpdateBar();
     return true;
   }
+  // Check again every minute while the Home Screen is in view, and at once
+  // when it comes back into view. Reads are cheap: version.json is
+  // revalidated by the browser, the notes are read once per release.
+  setInterval(() => { if (!document.hidden) checkForUpdate().catch(() => {}); }, (GifOS.update && GifOS.update.MINUTE) || 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate().catch(() => {}); });
 
   // One-line, non-technical summary of the last paint for Settings → Advanced.
   function perfLine(s) {
@@ -3687,7 +3720,7 @@
     paintVersion(vc, null, unfoldNew, opts.focus === 'testing');
     revealVersion();
     revealTesting();
-    checkForUpdate().then((ok) => { paintVersion(vc, ok ? null : 'offline', unfoldNew); revealVersion(); });
+    checkForUpdate(true).then((ok) => { paintVersion(vc, ok ? null : 'offline', unfoldNew); revealVersion(); });
     box.querySelector('#set-bg-color').addEventListener('input', (e) => setBackgroundColor(e.target.value));
     box.querySelector('#set-bg-image').onclick = () => {
       const inp = document.createElement('input');
@@ -4867,7 +4900,7 @@
   // ---------- boot ----------
   requestPersistence();
   paintPinHead();
-  load().then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(notePinEnded).then(handleRunParam).then(handlePlaceParam).then(handleEdgeLink).then(checkForUpdate).then(reclaimOrphanAssets).then(backfillOrnaments);
+  load().then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(notePinEnded).then(handleRunParam).then(handlePlaceParam).then(handleEdgeLink).then(() => checkForUpdate()).then(reclaimOrphanAssets).then(backfillOrnaments);
 
   GifOS.desktop = { render, load, backfillOrnaments, get stats() { return renderStats; },
     // The lazy seed, awaitable: the promise the boot armed (resolves once it has run), and what it decided.
