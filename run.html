@@ -28000,6 +28000,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return best;
     }
     let speech = null, speechFails = 0, speechRetry = null, speechGaveUp = false;
+    // A browser whose speech engine cannot run tells the room so (ccst
+    // 'paused'): it writes nothing, and a scribe takes its voice instead.
+    // The first line it writes again takes the word back.
+    let speechSaidPaused = false;
+    function speechEngineDown() {
+      if (typeof myStatus === 'undefined' || !myStatus || myStatus.ccst === 'paused') return;
+      myStatus.ccst = 'paused'; speechSaidPaused = true;
+      try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
+      try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
+    }
+    function speechEngineUp() {
+      if (!speechSaidPaused) return;
+      speechSaidPaused = false;
+      if (myStatus && myStatus.ccst === 'paused') {
+        delete myStatus.ccst;
+        try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
+        try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
+      }
+    }
     function speechKeep(rec) {
       if (!rec) return false;
       if (rec.input) return !!(myStatus.cc || myStatus.scribe || ccFilling());
@@ -28022,6 +28041,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         speech.lang = ccLang() === 'auto' ? (navigator.language || 'en-US') : ccLang();
         speech.onresult = (e) => {
           speechFails = 0;
+          speechEngineUp();
           if (rec.input) {
             for (let i = e.resultIndex; i < e.results.length; i++) {
               if (!e.results[i].isFinal) continue;
@@ -28058,6 +28078,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (speech !== rec) return;
           if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'language-not-supported') {
             stopSpeech();
+            speechEngineDown();
             setStatus('Transcription paused');
             return;
           }
@@ -28068,6 +28089,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               // service must not turn that button off. Retry on its own.
               speechGaveUp = true;
               stopSpeech();
+              speechEngineDown();
               setStatus('Transcription paused', 15000);
               setTimeout(() => { speechGaveUp = false; speechFails = 0; try { syncSpeech(); } catch (err) {} }, 20000);
             }
