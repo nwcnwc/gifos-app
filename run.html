@@ -1654,6 +1654,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      room minted yet. Every meeting control hides until Invite mints one; the
      GifOS home link stays. (docs/one-runtime.md, engineering step 1.) */
   body.solo-app .bar { display: none !important; }
+  /* A solo app is no room: no room bar. */
+  body.solo-app #airbar { display: none !important; }
   body.solo-app #grid { display: none; }
   /* App ROOM (one-runtime steps 2+4): the app is pinned front-and-center and
      the grid NEVER shows. The room is audio-only (Talk, below): every tile
@@ -3566,6 +3568,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div class="lob-preview" id="lob-preview">
       <video id="lob-preview-vid" autoplay muted playsinline></video>
       <span class="lob-pv-name" id="lob-preview-name">You</span>
+      <button type="button" id="lob-desk-more" hidden aria-pressed="false" aria-label="Watch, or change the host key">More</button>
       <span class="lob-pv-note">You join muted, with the camera off</span>
     </div>
     <div class="lobby-card">
@@ -19096,6 +19099,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const watchNote = document.getElementById('lob-watch-note');
         if (watchNote) { watchNote.hidden = false; watchNote.textContent = BC_WATCH_COPY; }
         ['lob-th-btn', 'lob-stream'].forEach((id) => { const b = document.getElementById(id); if (b) b.style.display = 'none'; });
+        // More on the picture opens Watch and the host key (Q49).
+        const deskMore = document.getElementById('lob-desk-more');
+        if (deskMore) deskMore.hidden = false;
         // A stream to friends: the same live fan-out, a friendlier name.
         if (streamLobby) {
           document.querySelector('#lobby h1').textContent = 'Stream';
