@@ -85,6 +85,19 @@ async function meeting(browser, prof) {
     // each moved button has its stand-in in More, and it presses the real one
     if (k) {
       await h.locator('#bartoggle').click();
+      if (prof === 'phone') {
+        const sheet = await h.evaluate(() => {
+          const s = document.querySelector('.barmore');
+          const r = s.getBoundingClientRect();
+          const vw = window.innerWidth;
+          const btns = [...s.querySelectorAll('.morerow > button, .dockmore')].filter((b) => !b.hidden && b.getClientRects().length && getComputedStyle(b).display !== 'none');
+          const box = btns.map((b) => { const g = b.getBoundingClientRect(); return { t: (b.innerText || '').trim().slice(0, 18), h: Math.round(g.height), right: Math.round(g.right), left: Math.round(g.left) }; });
+          return { l: Math.round(r.left), right: Math.round(r.right), vw, box };
+        });
+        const hs = sheet.box.map((b) => b.h);
+        check('phone host: the More sheet fits the screen width', sheet.l >= -1 && sheet.right <= sheet.vw + 1, sheet);
+        check('phone host: every More button is on screen and 64px tall', sheet.box.length > 0 && sheet.box.every((b) => b.left >= -1 && b.right <= sheet.vw + 1 && b.h === 64), sheet.box);
+      }
       const sh = await h.evaluate((m) => m.map((id) => { const p = document.querySelector('#barmore .dockmore[data-dock="' + id + '"]'); return { id, shown: !!(p && !p.hidden && p.getClientRects().length), text: p && p.textContent }; }), d.moved);
       check(prof + ' host: More shows a stand-in for each moved button', sh.every((s) => s.shown), sh);
       const after = await dockOf(h);
