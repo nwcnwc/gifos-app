@@ -173,7 +173,8 @@ async function run(browser, dev, tag, vp, bad) {
       const o = await look(page);
       if (!o.open || !o.line) bad.push(where + ': a tap on the hand button does not show the line');
       for (const u of o.out) bad.push(where + ', opened: ' + u);
-      if (!/1 waiting: Margaret Johnson/.test(o.said)) bad.push(where + ', opened: the line says "' + o.said + '"');
+      if (!/1 hand up: Margaret Johnson/.test(o.said)) // the hand line says hands up, not waiting (desktop hand-queue.spec)
+        bad.push(where + ', opened: the line says "' + o.said + '"');
       console.log(where + ', opened: line ' + o.line + ' "' + o.said + '"');
       fs.writeFileSync(path.join(SHOTS, '__hand-queue-clear-' + tag + '-' + phase + '-open.png'), await page.screenshot());
       if (dev) await page.locator('#hdrhand').tap();

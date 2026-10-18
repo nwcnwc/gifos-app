@@ -3585,7 +3585,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="topchip">
     <span id="livebadge" data-state="off" aria-label="You are off air"><i class="livedot" aria-hidden="true"></i><span id="livebadge-txt">OFF AIR</span></span>
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
-    <span id="txmark" role="status" title="This meeting is written down while people speak. Each browser writes its own voice; Meet Bot writes the rest.">📝 <span data-t="transcribing">Transcribing</span></span>
+    <span id="txmark" role="status" aria-label="Transcribing" title="This meeting is written down while people speak. Each browser writes its own voice; Meet Bot writes the rest.">📝 <span data-t="transcribing">Transcribing</span></span>
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <span class="status" id="status"><button type="button" id="statuscount" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span><button type="button" id="statusinvite" hidden>Invite</button></span>
     <button type="button" id="hdrinvite" hidden title="Share the viewer link">Invite</button>
@@ -4913,7 +4913,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           leave.title = 'Leave the small group. Your camera and microphone stop.';
           leave.setAttribute('aria-label', 'Leave the small group');
         }
-        say('chatprivacy', 'Private to this small group, gone when everyone leaves');
+        say('chatprivacy', 'Private. Gone when everyone leaves.'); // before UI_TEXT exists; the data-t on the element localises it
         const chatMeet = document.getElementById('chatbtn');
         if (chatMeet) chatMeet.title = 'Chat and share files — stays between the people on this meeting, not on a server';
         const setMeet = document.getElementById('setbtn');
@@ -8523,11 +8523,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const word = on ? uiText('leaveFullScreen', 'Exit full screen') : uiText('fullScreen', 'Full screen');
       if (lab && lab.textContent !== word) lab.textContent = word;
       b.setAttribute('aria-label', word);
-      b.title = on ? word : uiText('fullScreenTip', 'Full screen');
+      b.title = word;
       document.body.classList.toggle('app-full', on && document.body.classList.contains('has-app') && !fsview.classList.contains('on'));
     }
     document.addEventListener('fullscreenchange', paintFsDock);
     document.addEventListener('webkitfullscreenchange', paintFsDock);
+    paintFsDock(); // also puts the dock's word in this device's language
     const fsDock = document.getElementById('fsbtn');
     if (fsDock) fsDock.onclick = toggleFsView;
     // Only the browser's own exit (its Escape, a swipe) closes the view
@@ -8896,9 +8897,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       let modbar = null, voteBtn = null;
       if (!isMe) {
-        tile.tabIndex = 0;
-        tile.setAttribute('role', 'group');
-        tile.setAttribute('aria-label', (name || 'Guest') + '. Guest controls.');
         // The vote TARGET (non-admin rooms): hidden until the bar's Vote menu
         // arms a mode — then it's the green dot / red ✕ centered on the tile.
         voteBtn = document.createElement('button');
@@ -9155,7 +9153,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           ? '<span class="warn stopshare" role="button" tabindex="0" title="Stop sharing your screen">🖥 ' + esc(uiText('stopShare', 'Stop sharing')) + '</span>'
           : txChip('warn long', '🖥', uiText('shareTheirsChip', 'sharing their screen')));
       }
-      if (st.hand) chips.push('<span class="warn hand" title="hand raised"><b>✋</b> hand raised</span>');
+      if (st.hand) { const hw = uiText('handChip', 'hand raised'); chips.push('<span class="warn hand" title="' + hw + '"><b>✋</b> ' + hw + '</span>'); }
       // <b> is the icon a short phone tile keeps when the words can't fit.
       if (st.lv) chips.push('<span class="lv" title="leaving…"><b class="ico-only">🚪</b>leaving…</span>');
       if (st.rec) chips.push('<span class="warn rec" title="recording this meeting"><b>⏺</b> recording this meeting</span>');
@@ -9165,10 +9163,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // camera is on. Blur is the picture itself, never a badge. A bot has
       // neither a mic nor a camera.
       if (!st.bot && gMute) chips.push(statusIco('mic-off', 'muted for all by ' + (mod.mute.by || 'someone')));
-      else if (!st.bot && st.muted) chips.push(statusIco('mic-off', 'muted'));
+      else if (!st.bot && st.muted) chips.push(statusIco('mic-off', uiText('muted', 'muted')));
       const bl = blurLevelFor(id);
       if (!st.bot && gCam) chips.push(statusIco('cam-off', 'video off for all by ' + (mod.cam.by || 'someone')));
-      else if (!st.bot && st.camOff) chips.push(statusIco('cam-off', 'camera off'));
+      else if (!st.bot && st.camOff) chips.push(statusIco('cam-off', uiText('camOffChip', 'camera off')));
       if (hasAdminRoom() && mod.app && mod.app.on && !admins.includes(id)) chips.push(txChip('long', '🧩', 'may run apps — allowed by ' + mod.app.by));
       // The chip names a per-person allow only. A room-wide allow covers
       // everyone and would chip every tile; modOf would not tell them apart.
@@ -9829,7 +9827,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (chip) {
         const fr = desk && fitbtn.getClientRects().length ? fitbtn.getBoundingClientRect() : null;
         const cl = chip.getBoundingClientRect().left;
-        chip.style.maxWidth = fr && fr.left > cl ? Math.max(160, Math.floor(fr.left - cl - 8)) + 'px' : '';
+        let end = fr ? fr.left : 0;
+        // A desktop's hand line sits left of Fit in the same row.
+        const hq = document.getElementById('handq');
+        if (desk && hq && hq.classList.contains('on') && document.body.classList.contains('desk-ptr') && hq.getClientRects().length) {
+          const hr = hq.getBoundingClientRect();
+          if (hr.top < 80) end = end ? Math.min(end, hr.left) : hr.left;
+        }
+        chip.style.maxWidth = end > cl ? Math.max(160, Math.floor(end - cl - 8)) + 'px' : '';
       }
     }
     placeFit();
@@ -17301,6 +17306,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!document.body.classList.contains('desk-ptr') || !handqEl.classList.contains('on')) {
         handqEl.style.right = '';
         document.body.style.removeProperty('--hq-room');
+        try { placeFit(); } catch (e) {}
         return;
       }
       let edge = window.innerWidth - 14;
@@ -17312,6 +17318,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const right = Math.max(14, Math.round(window.innerWidth - edge));
       handqEl.style.right = right + 'px';
       document.body.style.setProperty('--hq-room', Math.round(right + handqEl.getBoundingClientRect().width + 10) + 'px');
+      try { placeFit(); } catch (e) {}
     }
     window.addEventListener('resize', placeHandq);
     if (window.ResizeObserver) {
@@ -30087,20 +30094,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       queueMicrotask(syncModalFocus);
     }
     document.getElementById('keys-close').onclick = () => { keysModal.style.display = 'none'; };
+    // One shortcut list: ? and Help's Keys open the same localized sheet
+    // (toggleShortcutSheet); this older list stays for a caller that asks.
     document.getElementById('help-keys').onclick = () => {
       document.getElementById('help-modal').style.display = 'none';
-      openKeys();
+      try { toggleShortcutSheet(true); } catch (e) { openKeys(); }
     };
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== '?' || e.metaKey || e.ctrlKey || e.altKey) return;
-      const t = e.target;
-      if (t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]')) return;
-      // Only in a call: the dock is on screen (not the lobby or a name card).
-      const dock = document.querySelector('.bar');
-      if (!dock || !dock.getClientRects().length || document.querySelector('#lobby.show') || keysModal.style.display !== 'none' || topNameModal()) return;
-      e.preventDefault();
-      openKeys();
-    });
     // Flip front/back camera (mobile convention). regrabCamera does the whole
     // swap: same MediaStream identity, senders re-fed, blur pipe rebuilt.
     document.getElementById('flipcam').onclick = () => {

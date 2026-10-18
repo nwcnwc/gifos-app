@@ -149,3 +149,18 @@ body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app)
   #tilewin { left: auto !important; right: calc(12px + env(safe-area-inset-right, 0px)) !important; top: 8px !important;
     bottom: 8px !important; width: min(360px, 62vw); max-height: none; }
 }
+/* A narrow phone: while the header is awake the mark is its 📝 (still
+   labelled Transcribing); the word comes back whenever the call is calm. */
+@media (max-width: 999px) {
+  body:not(.head-calm):not(.chrome-away) #txmark span { display: none; }
+  body:not(.head-calm):not(.chrome-away) #txmark { padding: 3px 8px; }
+}
+/* The people count ends inside its line instead of running under the buttons beside it. */
+@media (max-width: 700px), (max-height: 500px) {
+  .topchip #statuscount { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+}
+/* Raised hands: a desktop reads the line in the header row beside Fit
+   (placeHandq); a phone taps the header's "✋ 1" to open it under the header. */
+body.desk-ptr.comfy #handq.on, body.desk-ptr.comfy #handq.on.open { display: block !important; left: auto !important;
+  top: calc(14px + var(--gtop, 0px)) !important; }
+body.desk-ptr #hdrhand.on { display: none !important; }

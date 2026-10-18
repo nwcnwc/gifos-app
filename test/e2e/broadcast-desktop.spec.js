@@ -4050,7 +4050,8 @@ test('the chat head keeps its buttons on one row beside the title', async ({ pag
         expect(r.h, tag + ' ' + r.id + ' one line').toBeLessThanOrEqual(30);
       }
       expect(head.titleH, tag + ' title one line').toBeLessThanOrEqual(24);
-      expect(head.privacy, tag).toMatch(/^Private to this (service|small group), gone when everyone leaves$/);
+      // A small group says the short line (see 1351); a service names itself.
+      expect(head.privacy, tag).toMatch(/^(Private to this service, gone when everyone leaves|Private\. Gone when everyone leaves\.)$/);
       await page.keyboard.press('Escape');
     }
   }
