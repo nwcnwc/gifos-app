@@ -7548,13 +7548,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // fix is untouched — heardPid>0 pairs (once-established) keep the
           // full edge too.
           const formingAlive = !heardPid && nowHb - (p.lastHeard || 0) < 12000;
-          // A member still named in my view whose relay socket is up is not
-          // dead — only the pair is. Quiet-door heal (P3→P4 starve-dead then
-          // gone d5 while the census still seated both) fired the death edge
-          // on a live row-mate whose channel was mid-rebuild. Rebuild below;
-          // leave the death edge for a peer the relay can no longer reach.
-          const liveNamed = occNamed.has(pid) && (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
-          if (!tlFiredPid.has(pid) && !formingAlive && !liveNamed && (!dcOpen || !carried)) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
+          // A member the room still knows (roster, status, occ, or relay) is
+          // not dead — only the pair is. Quiet-door heal fired starve-dead→d5
+          // on a live survivor during an occ blink when relaySocketed had
+          // dropped them after an earlier relay-leave hint (edc4392 a1:
+          // P3→P5). Rebuild below; leave the death edge for a peer nobody
+          // in the room still names.
+          const roomKnows = occNamed.has(pid)
+            || (Array.isArray(rosterIds) && rosterIds.includes(pid))
+            || (statusOf && statusOf.has(pid))
+            || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
+          if (!tlFiredPid.has(pid) && !formingAlive && !roomKnows && (!dcOpen || !carried)) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
           if (typeof clog === 'function') clog('mesh-starve rebuild ' + String(pid).slice(0, 6));
           newPcFor(p);
           sendOffer(pid, false);
@@ -15360,11 +15364,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else {
         for (const [pid, k] of occPrevIds) {
           if (occNow.has(pid) || meshGone.has(pid)) continue;
-          // Translost on the vacated cell is not a death while the relay still
-          // reaches that member (quiet-door: starve-dead on a heal pair, then
-          // a one-tick occ blink, confirmed a live survivor gone as d5).
+          // Translost on the vacated cell is not a death while the room still
+          // names that member (roster/status/relay). Quiet-door: starve-dead
+          // plus a one-tick occ blink confirmed a live survivor gone as d5
+          // even when the census still seated them (edc4392 a1 P3→P5).
           if (s.translost.has(k)) {
-            if (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid)) {
+            const roomKnows = (Array.isArray(rosterIds) && rosterIds.includes(pid))
+              || (statusOf && statusOf.has(pid))
+              || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
+            if (roomKnows) {
               try { s.translost.delete(k); } catch (e) {}
               continue;
             }
