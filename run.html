@@ -18258,7 +18258,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const lead = whoModal.querySelector('.who-lead'); if (lead) lead.textContent = 'Everyone on this call.';
         for (const r of rows.filter((x) => x.here && !x.ejected)) {
           const row = document.createElement('div'); row.className = 'brow';
-          const nm = document.createElement('span'); nm.className = 'who-name'; nm.textContent = r.name + (r.me ? ' (you)' : '');
+          const nm = document.createElement('span'); nm.className = 'who-name'; nm.textContent = r.name; // whoRows already marks the own row "(you)"
           const state = document.createElement('span'); state.className = 'who-state';
           try { state.textContent = whoFaceState(r); } catch (e) { state.textContent = ''; }
           row.appendChild(nm); row.appendChild(state); list.appendChild(row);
@@ -18288,7 +18288,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           list.appendChild(h);
         }
         for (const r of inG) {
-          const row = document.createElement('div'); row.className = 'brow';
+          const row = document.createElement('div'); row.className = 'brow'; row.dataset.group = g.k;
           if (!r.here) row.style.opacity = '.65';
           const nm = document.createElement('span'); nm.className = 'who-name'; nm.textContent = r.name;
           const whoAv = r.me ? (GifOS.store.identity().avatar) : ((peers.get(r.pid) && peers.get(r.pid).avatarUrl) ? { url: peers.get(r.pid).avatarUrl, hash: peers.get(r.pid).avatarHash } : null);
@@ -18954,6 +18954,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // guest, the guest password is the one you send them).
           const guest = (document.getElementById('lob-guest-pass').value || '').trim();
           if (guest) { try { localStorage.setItem('gifos_vpw_' + chosen + '.' + V, guest); localStorage.setItem('gifos_vpwat_' + chosen + '.' + V, String(Date.now())); } catch (e) {} } // stamp the store's clock (§LOCK expiry)
+          // Go live here is the deliberate tap: the stream boots with the
+          // camera on. Opening the host link later lands off air.
+          if (BC_INTENT) { try { sessionStorage.setItem('gifos_bc_golive_' + chosen + '.' + V, '1'); } catch (e) {} }
           enterMeeting('#v=' + chosen + '&av=' + V + (BC_INTENT ? '&bc=1' + (params.has('st') ? '&st=1' : '') : (lobTownHall ? '&th=1' : '')));
         } catch (e) { err.textContent = 'Could not create the room. Try again.'; go.disabled = false; go.textContent = go.dataset.label || 'Start'; }
       };
@@ -19138,7 +19141,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             else {
               // The HOST auto-steps onto the Stage: a broadcast page's whole
               // point, and the Stage is where their camera reaches the room.
-              // Go live turns the camera on. The mic stays quiet.
+              // The lobby Go live tap turns the camera on; opening the link lands off air. The mic stays quiet.
               // tryBroadcastStage runs from the admin-key adopt and from the
               // S4 identity, whichever lands second. The sweep retries while
               // the stage is full. At 30s we stop and say so.
@@ -19228,10 +19231,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // before the first status goes out, so peers never see a quiet rejoin.
             let restored = false;
             try { restored = typeof applyRecoverMedia === 'function' && applyRecoverMedia() === true; } catch (e) {}
-            // A personal stream's Go live is the camera. A meeting still joins
-            // quiet. A reload that already chose keeps that choice. The mic
-            // stays off. Blur stays on the video track; there is no avatar overlay.
-            if (!restored && BROADCAST && bcHostStored()) {
+            // The lobby's Go live tap is the camera. A host who opens their
+            // link lands off air, camera off, until they tap it. A meeting
+            // still joins quiet. A reload that already chose keeps that choice.
+            // The mic stays off. Blur stays on the video track; there is no avatar overlay.
+            let goLiveTap = false;
+            try {
+              const k = 'gifos_bc_golive_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
+              goLiveTap = sessionStorage.getItem(k) === '1';
+              sessionStorage.removeItem(k);
+            } catch (e) {}
+            if (!restored && BROADCAST && bcHostStored() && goLiveTap) {
               const cam = localStream.getVideoTracks()[0];
               if (cam && !(typeof forcedCamOff === 'function' && forcedCamOff('me'))) {
                 cam.enabled = true;
