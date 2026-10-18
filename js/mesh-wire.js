@@ -867,7 +867,7 @@
       // excluded pid) is no key divide: only blobs my key cannot open count.
       // Counting the set-aside ones challenged a member for the password it
       // holds, and the lock flag then dropped its every door reply while
-      // unseated (chaos admin-order-holds-82fea9 #8: 15-17 s back, bound 10).
+      // unseated, so a member coming back in waited out a full retry.
       const unopened = sealedFps.some((f) => f[0] === 'X');
       if (preState === 3 && seat.hasCoord && seat.occ.size <= 1 && shrankSolo && list.length && !ids.length && unopened) {
         sealedSoloRuns++;

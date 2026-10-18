@@ -1494,9 +1494,9 @@
         // A vacated cell whose holder phoned me it had children is an
         // INTERNAL hole: its down-child heals up into it (11a). Admitting a
         // newcomer there seated two people in one cell once the heal landed
-        // (sim repro-partition seed 17: a requeued holder read as a phantom,
-        // its chair given away, its down-child promoted in 42 ticks later).
-        // childSweep frees the cell if nobody heals it.
+        // (a holder that left without its owner hearing the goodbye read as
+        // a phantom, its chair was given away, and its down-child moved up
+        // into it moments later). childSweep frees the cell if nobody heals it.
         if (this.occ.has(k) && this.kidful.get(k)) continue;
         const dk = ck(topo.down(rc));
         if (this.cellReserved(dk) && !this.occIsPhantom(dk)) continue;
@@ -4228,11 +4228,11 @@
             if (this.translost.has(kk)) continue; // D5: my standing first-hand observation (transport died, probe unanswered) outranks an echo — gossip must not re-seat the corpse; any answer or a genuine refill clears the observation and gossip resumes
             if (this.liveElsewhere(eid, kk)) continue; // A SEAT IS IN ONE PLACE, and I hear this one first-hand at another cell: an echo never plants it beside itself (behavior 14a: a returning head's stale table listed the real head one cell over, and its row-mate carried two cells for the same seat until the hint aged out)
             const seen = TICK - age - 2; const cur = this.occGet(kk); const curSeen = this.s1seen.has(kk) ? this.s1seen.get(kk) : -999;
-            // A GOODBYE OUTRANKS AN OLDER WORD (sim twin): an entry last seen
+            // A GOODBYE OUTRANKS AN OLDER WORD: an entry last seen
             // before I heard the cell's holder say goodbye is that holder's
             // echo (a mate's S1SYNC sent before the goodbye reached it). Taken,
             // it put the departed head back in my view, so the first live mate
-            // past a dark heir never healed the head (head-bye-dark-heir 6, 7).
+            // past a dark heir never healed the head.
             if (this.byeAt.has(kk) && seen <= this.byeAt.get(kk)) continue;
             // CLAIM BIRTH (2026-08-02): the ±8 lower-id tie-break exists to
             // resolve SIMULTANEOUS claims, but the freshness stamps it
@@ -4736,8 +4736,7 @@
           // or without a live left neighbour (its left is the dark heir).
           // With every mate from column 2 on skipping the wait, two of them
           // healed the head at once, the loser dropped its seat and knocked
-          // again, and a newcomer at the door was refused through the race
-          // (dark-heir-free-chair seeds 3, 7: 24-25 ticks, bound 20).
+          // again, and a newcomer at the door was refused through the race.
           if (this.coord.i >= 2) {
             const hc = { pc: 0, r: this.coord.r, i: 0 }; const hk = ck(hc);
             let skipWait = this.darkMate(ck({ pc: 0, r: this.coord.r, i: 1 }));
