@@ -1654,6 +1654,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      room minted yet. Every meeting control hides until Invite mints one; the
      GifOS home link stays. (docs/one-runtime.md, engineering step 1.) */
   body.solo-app .bar { display: none !important; }
+  /* A solo app is no room: no room bar. */
+  body.solo-app #airbar { display: none !important; }
   body.solo-app #grid { display: none; }
   /* App ROOM (one-runtime steps 2+4): the app is pinned front-and-center and
      the grid NEVER shows. The room is audio-only (Talk, below): every tile
@@ -3566,6 +3568,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div class="lob-preview" id="lob-preview">
       <video id="lob-preview-vid" autoplay muted playsinline></video>
       <span class="lob-pv-name" id="lob-preview-name">You</span>
+      <button type="button" id="lob-desk-more" hidden aria-pressed="false" aria-label="Watch, or change the host key">More</button>
       <span class="lob-pv-note">You join muted, with the camera off</span>
     </div>
     <div class="lobby-card">
@@ -9250,7 +9253,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { paintTileChrome(t, id, isMe, st); } catch (e) {}
       const dark = seatDark(st) || !!gCam || (!isMe && typeof shareBlocked === 'function' && !!shareBlocked(id));
       if (dark && t.avatar && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.paintShade) {
-        const sid = isMe ? ((typeof myId !== 'undefined' && myId) ? myId : 'me') : id;
+        const sid = shadeKey(isMe ? 'me' : id);
         try {
           GifOS.meetViews.paintShade(t.tile, sid);
           GifOS.meetViews.paintShade(t.avatar, sid);
@@ -9308,6 +9311,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         paintControls();
       }
       if (!inPass) layout(); // a pass (refreshAllTiles) lays out once after every tile
+    }
+    // A camera-off shade follows the person, not this page load: the peer id
+    // is minted fresh on every join, so it keys on the room-salted device tag
+    // (the same on every screen in the room, and across a reload), and on the
+    // peer id only while that tag is not known yet.
+    function shadeKey(id) {
+      let dv = '';
+      try { dv = (id === 'me' || id === myId) ? myDevHash : (devOf[id] || ''); } catch (e) { dv = ''; } // read before those are set up: the id
+      if (dv) return 'dv:' + dv;
+      return (id === 'me' || id === myId) ? (myId || 'me') : id;
     }
     const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -9409,7 +9422,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const stg = stageIds();
         if (meTile && meTile.tile && meTile.tile.style.display !== 'none') {
           const selfPin = !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage));
-          tiles.push({ id: 'me', el: meTile.tile, tier: myStatus.bot ? 'bot' : 'row', me: true, bot: !!myStatus.bot,
+          tiles.push({ id: 'me', el: meTile.tile, tier: myStatus.bot ? 'bot' : 'row', me: true, bot: !!myStatus.bot, shade: shadeKey('me'),
             hand: !!myStatus.hand, handOrd: myStatus.hand || 0,
             // Your tile stays off the stage unless you turned on "Show me on stage".
             stage: !myStatus.bot && selfPin,
@@ -9422,7 +9435,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const st = statusOf.get(pid) || {};
           const si = stg.indexOf(pid);
           const bot = !!st.bot;
-          tiles.push({ id: pid, el: p.tile, tier: bot ? 'bot' : 'row', bot: bot,
+          tiles.push({ id: pid, el: p.tile, tier: bot ? 'bot' : 'row', bot: bot, shade: shadeKey(pid),
             hand: !!st.hand, handOrd: st.hand || 0,
             stage: !bot && si >= 0, stageOrd: Math.max(0, si),
             // A sharer's screen is the Stage (the sgs strip below); their face stays in the Row.
@@ -9467,7 +9480,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const off = !st || (!!st.camOff && !st.scr);
           let avatar = '';
           try { avatar = (MV.avatarUrl && MV.avatarUrl(st || {}, null)) || ''; } catch (e2) {}
-          faces.push({ id: id, name: name, initials: nameInitial(name), off: off, avatar: avatar });
+          faces.push({ id: id, name: name, initials: nameInitial(name), off: off, avatar: avatar, shade: shadeKey(id) });
         }
         const cols = (meta.n === roster.length) ? (meta.cols || 0) : 0;
         if (meta.video && !meta.video._comfyRz) {
@@ -9538,7 +9551,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: faces, video: meta.video, cols: cols,
           orderKey: roster.length + ':' + roster.join(','), holdMs: holdMs,
-          vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: myId || 'me',
+          vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: shadeKey('me'),
           pill: document.body.classList.contains('has-pill'), bottom: bottom, holdBottom: holdBottom, top: topInset,
           mode: window.__meetViewMode || 'gallery',
           swapSelf: !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage)),
@@ -19088,6 +19101,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const watchNote = document.getElementById('lob-watch-note');
         if (watchNote) { watchNote.hidden = false; watchNote.textContent = BC_WATCH_COPY; }
         ['lob-th-btn', 'lob-stream'].forEach((id) => { const b = document.getElementById(id); if (b) b.style.display = 'none'; });
+        // More on the picture opens Watch and the host key (Q49).
+        const deskMore = document.getElementById('lob-desk-more');
+        if (deskMore) deskMore.hidden = false;
         // A stream to friends: the same live fan-out, a friendlier name.
         if (streamLobby) {
           document.querySelector('#lobby h1').textContent = 'Stream';
@@ -29346,7 +29362,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (b) b.click();
         });
       }
+      // A spot a drag saved (js/meet-views.js installBar puts it back as
+      // left/top before this script runs) becomes this dock's offset the first
+      // time the dock is placed, so a tuck or a resize keeps the dock there
+      // instead of re-centring it.
+      let freeAdopted = false;
+      const adoptFree = () => {
+        freeAdopted = true;
+        if (bar.dataset.barfree !== '1' || !bar.style.left) return;
+        const r = bar.getBoundingClientRect();
+        const st = bar.style, keep = { l: st.left, t: st.top, r: st.right, b: st.bottom, tr: st.transform };
+        st.left = ''; st.top = ''; st.right = ''; st.bottom = ''; st.transform = '';
+        const d = bar.getBoundingClientRect(); // where the centred dock stands
+        st.left = keep.l; st.top = keep.t; st.right = keep.r; st.bottom = keep.b; st.transform = keep.tr;
+        dockx = r.left - d.left; docky = d.top - r.top;
+      };
       const placeDock = () => {
+        if (!freeAdopted) adoptFree();
         const side = document.body.classList.contains('chatside') && window.innerWidth >= 800 && chatPanelEl ? chatPanelEl.offsetWidth : 0;
         fitBeside(side);
         const w = bar.offsetWidth, h = bar.offsetHeight;
