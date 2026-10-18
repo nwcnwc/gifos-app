@@ -8087,6 +8087,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof noteStatusFlags === 'function') noteStatusFlags(cur, st);
       if (!cur && from !== myId) scheduleNewPeerBeat(); // the first status from a person I held none for: answer with my own beat, whatever path carried theirs
       statusOf.set(from, st);
+      if (netRoom && st.seat) netRoom.fresh();   // the seating's cell map reads this seat now, not at the next tick
       // A share starting or stopping paints this tile now. The sharer list is
       // read live; a coalesced pass would leave the chip behind it.
       if (shareBit) { updateTile(from); if (typeof paintShare === 'function') paintShare(); }

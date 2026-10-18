@@ -1637,7 +1637,7 @@
     }
     netDecide(ro) {
       const R = this.env.NET; let reached = 0, ringSeated = 0, best = null, bestSeat = null; const seen = new Set();
-      this.glHead = null; this.walkRounds = 0;
+      this.glHead = null; this.walkRounds = 0; R.fresh();
       const tested = this.netTested = [];
       const test = (v) => { if (v == null || v === this.id || seen.has(v) || !R.seatedLive(v)) return; seen.add(v); ringSeated++; const ok = R.reach(this.id, v); tested.push([v, ok ? 1 : 0, R.labelOf(v), R.o.reachWhy ? R.o.reachWhy(v) : null, this.TICK - this.netProbeWaitFrom]); if (!ok) return; reached++; const l = R.labelOf(v); if (l != null && (best == null || idLess(l, best))) { best = l; bestSeat = v; } };
       for (const e of ro) if (e) test(e.v);
@@ -5046,6 +5046,10 @@
     // over it.
     anchorOk() { return NET_SINGLE && !!this.o.turn(); }
     topoChanged() { this.epoch++; }
+    // The cell map is cached per tick, but a page's view changes between two
+    // ticks' worth of frames (a status naming a seat arrives mid-tick). A
+    // decision made from it reads the view as it is now.
+    fresh() { this.atTick = -1; }
     noteDeath(id) { if (id != null) this.diedAt.set(id, this.TICK); this.epoch++; }
     // HOT STANDBY HEARTBEAT. Each primary end beats its heir every NET_BEAT_MS
     // over their direct link; the page calls beat() when one arrives and
