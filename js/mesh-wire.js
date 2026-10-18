@@ -863,7 +863,13 @@
       // fresh blob unreadable at the other, churning fingerprints). No dial
       // can cross a key divide; count the consecutive sightings and hand the
       // evidence to the app (whose persisted-credential reload re-converges).
-      if (preState === 3 && seat.hasCoord && seat.occ.size <= 1 && shrankSolo && list.length && !ids.length) {
+      // A blob that OPENED and was then set aside (a severed pair, an
+      // excluded pid) is no key divide: only blobs my key cannot open count.
+      // Counting the set-aside ones challenged a member for the password it
+      // holds, and the lock flag then dropped its every door reply while
+      // unseated (chaos admin-order-holds-82fea9 #8: 15-17 s back, bound 10).
+      const unopened = sealedFps.some((f) => f[0] === 'X');
+      if (preState === 3 && seat.hasCoord && seat.occ.size <= 1 && shrankSolo && list.length && !ids.length && unopened) {
         sealedSoloRuns++;
         // STALE-KEY MEMBER = A DOOR CHALLENGE (Nathan's law, 2026-07-29). Root
         // cause of the terminal fork: a member who RELOADS while the room's
@@ -882,7 +888,7 @@
         // in flight — never reaches it.
         if (sealedSoloRuns >= 4 && !olderSeen) fireLocked();   // ...never over blobs a key I replaced opens: their writers are behind me (a setter left alone with a stale member)
         if (opts.onFragment) { try { opts.onFragment([], { shrank: true, sealedOnly: true, runs: sealedSoloRuns }); } catch (e) {} }
-      } else if (ids.length || !list.length) sealedSoloRuns = 0;
+      } else if (ids.length || !list.length || !unopened) sealedSoloRuns = 0;
       // BEHIND THE ROOM'S KEY (a member who missed a password
       // change stays out, and is TOLD so). A seated page whose door serves
       // only blobs that neither my key nor any key this room used before it
