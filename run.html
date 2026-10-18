@@ -7425,7 +7425,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // just closed it on being seated, the knocker took it as a fresh
           // knock, and the pair stayed open for good: a Section-1 seat held one
           // per late joiner (bw-ladder N=32). The sweeper drops a dead one.
-          if (p.boot && !p.bootOut && !linkTo(pid) && !p.turnAnchor && !p.turnServe) { why('door'); continue; }
+          // …AND an OUTBOUND door we just opened while healing (door-out) must
+          // not be judged by an old pidFirstSeen clock: starve-dead fired
+          // within a second of door-out, and departSweep then confirmed a
+          // live founder gone (quiet-door: P5 → P0 d5 after stranded-tx heal).
+          // Skip every boot pair that is not yet a tree link while it is still
+          // forming (inbound always; outbound until ICE has heard them).
+          if (p.boot && !linkTo(pid) && !p.turnAnchor && !p.turnServe &&
+              (!p.bootOut || (!p.connected && !heardPid))) { why('door'); continue; }
           // THE HALF-OPEN PAIR (pair-probe.js, 2026-07-27): ICE lands but the
           // DataChannel NEVER opens — ondatachannel never fires on the
           // answerer, the initiator's channel sticks in 'connecting'. No
@@ -7542,7 +7549,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // fix is untouched — heardPid>0 pairs (once-established) keep the
           // full edge too.
           const formingAlive = !heardPid && nowHb - (p.lastHeard || 0) < 12000;
-          if (!tlFiredPid.has(pid) && !formingAlive && (!dcOpen || !carried)) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
+          // A member the room still knows (roster, status, occ, or relay) is
+          // not dead — only the pair is. Quiet-door heal fired starve-dead→d5
+          // on a live survivor during an occ blink when relaySocketed had
+          // dropped them after an earlier relay-leave hint (edc4392 a1:
+          // P3→P5). Rebuild below; leave the death edge for a peer nobody
+          // in the room still names.
+          const roomKnows = occNamed.has(pid)
+            || (Array.isArray(rosterIds) && rosterIds.includes(pid))
+            || (statusOf && statusOf.has(pid))
+            || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
+          if (!tlFiredPid.has(pid) && !formingAlive && !roomKnows && (!dcOpen || !carried)) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
           if (typeof clog === 'function') clog('mesh-starve rebuild ' + String(pid).slice(0, 6));
           newPcFor(p);
           sendOffer(pid, false);
@@ -15356,7 +15373,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else {
         for (const [pid, k] of occPrevIds) {
           if (occNow.has(pid) || meshGone.has(pid)) continue;
-          if (s.translost.has(k)) { confirmGone(pid, 'd5'); continue; }
+          // Translost on the vacated cell is not a death while the room still
+          // names that member (roster/status/relay). Quiet-door: starve-dead
+          // plus a one-tick occ blink confirmed a live survivor gone as d5
+          // even when the census still seated them (edc4392 a1 P3→P5).
+          if (s.translost.has(k)) {
+            const roomKnows = (Array.isArray(rosterIds) && rosterIds.includes(pid))
+              || (statusOf && statusOf.has(pid))
+              || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
+            if (roomKnows) {
+              try { s.translost.delete(k); } catch (e) {}
+              continue;
+            }
+            confirmGone(pid, 'd5'); continue;
+          }
           if (peers.has(pid) && !occVanish.has(pid)) occVanish.set(pid, Date.now());
         }
         for (const [pid, at] of occVanish) {
@@ -15375,7 +15405,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // the probe-gated D5 path own it.
           const recentRebuild = p && p.rebuiltAt && (Date.now() - p.rebuiltAt < 60000);
           if (!dcClosed || recentRebuild) { occVanish.delete(pid); continue; }
-          if (Date.now() - at >= 900) { occVanish.delete(pid); confirmGone(pid, 'left'); }
+          if (Date.now() - at < 900) continue;
+          occVanish.delete(pid);
+          // A CLOSE IS NOT A GOODBYE WHILE THE MEMBER IS PLAINLY STILL HERE.
+          // A seat that moves into a departed neighbour's cell retires the
+          // pairs it no longer needs (a door it came in by, a link its new
+          // cell does not have) in the same moment its old cell leaves my
+          // view, and before its new cell reaches me. Read as a goodbye, the
+          // close marked a live member gone, and that mark then refused the
+          // very link the move needed. Two things say the member is still
+          // here: the pair was a door that is no tree link of mine (doors
+          // are closed on purpose once a seat's own links are up), or the
+          // relay still reaches the member's socket (a page that went away
+          // closed it). The pair is retired and the member keeps its status;
+          // a real departure is still judged by its own links.
+          const stillHere = (p && p.boot && !linkTo(pid)) || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
+          if (stillHere) { if (typeof clog === 'function') clog('pair-closed ' + String(pid).slice(0, 6) + ' (still here, not a goodbye)'); dropPeer(pid, true); continue; }
+          confirmGone(pid, 'left');
         }
       }
       occPrevIds = occNow; occPrevMyCk = myCk;
@@ -15400,9 +15446,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // parent dies, the door is the one channel its new parent can still
       // signal it over. A pair that only just became a link is judged from
       // that moment, not from the quiet it kept while it was a door.
+      // ...and a beat is owed only on a link BOTH ends hold. A deep row's
+      // non-head seats count their row's owner among their links, but the
+      // owner holds only the row head, so it closes their door and never
+      // answers their dial: their side of the pair stays quiet by design,
+      // and reading that as death marked a live owner gone. When my view
+      // shows the far side's links and I am not among them, the pair is not
+      // owed; an unknown far side is judged as before.
       const REAP_MS = 195000; // vouch cap + pulse slack
       for (const [pid, p] of Array.from(peers)) {
-        const owed = linkTo(pid);
+        const theirs = typeof targetLinkIds === 'function' ? targetLinkIds(pid) : null;
+        const owed = linkTo(pid) && (!theirs || theirs.includes(myId));
         if (!owed) p.owedAt = 0; else if (!p.owedAt) p.owedAt = nowMs;
         if (rosterIds.includes(pid)) continue;
         const st = statusOf.get(pid);
