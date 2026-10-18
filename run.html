@@ -6111,6 +6111,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       turnAnchorId = pid; turnAnchorSince = now; turnAnchorUpAt = 0;
       p.turnAnchor = true;
       if (typeof clog === 'function') clog('turn anchor ' + String(pid).slice(0, 6));
+      if (p.connected && p.turnMine) return;   // a standby already up through the pool carries the bridge as it is: no new transport (the hello follows on its open channel)
       newPcFor(p); // the new transport carries the pool's servers (iceFor)
       p.lastKick = now + Math.random() * 1500;
       sendOffer(pid, false);
