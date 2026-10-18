@@ -27444,6 +27444,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!src && id === 'me' && localStream && localStream.getAudioTracks()[0]) {
         try { src = ac.createMediaStreamSource(new MediaStream([localStream.getAudioTracks()[0]])); own = true; } catch (e) { return false; }
       }
+      // The bot's microphone is muted silence. The words it speaks go out on
+      // botVoiceTrack. A scribe that kept the mic would write Whisper's
+      // silence phrases ("you", "I'm sorry.", "BEEP") over the whole line.
+      if (id === 'me' && botVoiceTrack && botVoiceTrack.readyState === 'live') {
+        try { src = ac.createMediaStreamSource(new MediaStream([botVoiceTrack])); own = true; stageSid = null; } catch (e) { /* keep the mic */ }
+      }
       if (!src) return false;
       const w = { id, src, node: null, own, rate: ac.sampleRate, stageSid, pre: [], preMs: 0, utt: null, uttStart: 0, lastVoice: 0, worklet: false };
       if (wspUseWorklet(id, w)) return true;
@@ -32776,6 +32782,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (botVoiceTrack) { try { botVoiceTrack.stop(); } catch (e) {} botVoiceTrack = null; }
         if (botSpeechCtx) { try { botSpeechCtx.close(); } catch (e) {} botSpeechCtx = null; }
         try { refreshOutbound(); } catch (e) {}
+        try { if (wspCaps.has('me')) wspStop('me'); wspSync(); } catch (e) {}
         // Stopped means quiet, whether or not a line had already ended.
         const track = localStream && localStream.getAudioTracks()[0];
         if (track) track.enabled = false;
@@ -32804,11 +32811,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // a stop, including a pair that opens while the bot is talking.
         botVoiceTrack = dest.stream.getAudioTracks()[0] || null;
         try { refreshOutbound(); } catch (e) {}
+        try { if (wspCaps.has('me')) wspStop('me'); wspSync(); } catch (e) {}
         // The line is over: the mic takes the senders back, muted as before.
         audio.addEventListener('ended', () => {
           if (botSpeechAudio !== audio) return;
           if (botVoiceTrack) { try { botVoiceTrack.stop(); } catch (e) {} botVoiceTrack = null; }
           try { refreshOutbound(); } catch (e) {}
+          try { if (wspCaps.has('me')) wspStop('me'); wspSync(); } catch (e) {}
           const mic = localStream && localStream.getAudioTracks()[0];
           myStatus.muted = !(mic && mic.enabled);
           try { paintControls(); broadcastStatus(); } catch (e) {}
