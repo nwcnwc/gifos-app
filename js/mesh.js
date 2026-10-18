@@ -1491,6 +1491,13 @@
         const k = ck(rc);
         if (c > 0 && !ledger) continue;
         if (this.cellReserved(k)) continue;
+        // A vacated cell whose holder phoned me it had children is an
+        // INTERNAL hole: its down-child heals up into it (11a). Admitting a
+        // newcomer there seated two people in one cell once the heal landed
+        // (sim repro-partition seed 17: a requeued holder read as a phantom,
+        // its chair given away, its down-child promoted in 42 ticks later).
+        // childSweep frees the cell if nobody heals it.
+        if (this.occ.has(k) && this.kidful.get(k)) continue;
         const dk = ck(topo.down(rc));
         if (this.cellReserved(dk) && !this.occIsPhantom(dk)) continue;
         if (this.softSitting(dk)) continue;
