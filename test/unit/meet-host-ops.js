@@ -1,6 +1,7 @@
 // meet-host-ops.js — room ops from host-ops, voice from capabilities.meet.
 //
-// The bot app makes its own audio (gifos-mcp injects tts/stt/smartest) and
+// The bot app makes its own audio (the GifOS MCP servers, gifos-meet-mcp and
+// gifos-broadcast-mcp, inject tts and stt; there is no text model) and
 // gifos.meet.speak only plays those bytes. The host does not hold a key, a
 // model URL, or a speech stand-in. Meeting state, snapshot, the microphone
 // and camera, and chat still go through the host.

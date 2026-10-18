@@ -20,7 +20,7 @@ In this repo (`nwcnwc/gifos-app`):
 - `origin/cursor/reactions-smiley-pin-header`: commit `7ae8c49`.
 - `origin/ui-redesign-meet`: mockups only (`ui-review/meet/`). No written Broadcast spec.
 
-`nwcnwc/gifos` is not a public repository. `gh repo list nwcnwc` returns `gifos-app`, `gifos-apps-source`, and `gifos-mcp`, and `git clone https://github.com/nwcnwc/gifos.git` returns "repository not found".
+`nwcnwc/gifos` is not a public repository. `gh repo list nwcnwc` returns `gifos-app`, `gifos-apps-source`, and `gifos-mcp` (since renamed `gifos-meet-mcp`, next to `gifos-broadcast-mcp` and `gifos-mcp-core`), and `git clone https://github.com/nwcnwc/gifos.git` returns "repository not found".
 
 `nwcnwc/gifos-apps-source` has no Broadcast app. Meeting Bot (`meeting-bot/manifest.json`, `help.md`, `CONTROL.md`) is a different product: a bot that sits in meetings. Its "broadcast" wording is app-data visibility (`read-only`: guests see, the host writes), not the Broadcast app.
 
