@@ -10719,19 +10719,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (dark && t.avatar && t.avatar.classList) t.avatar.classList.add('rides-off');
         return;
       }
+      // The person's own stream: the direct one, or the one a friend carries
+      // while the direct pair is down (relayVia). The dead direct stream must
+      // never replace a carried picture.
+      const own = (t.relayed && (relayVia.get(id) || {}).stream) || t.stream;
       if (!dark) {
         clearPeerAvatar(t);
-        const tr = t.stream && t.stream.getVideoTracks && t.stream.getVideoTracks()[0];
-        if (tr && t.video.srcObject !== t.stream) {
-          t.video.srcObject = t.stream;
+        const tr = own && own.getVideoTracks && own.getVideoTracks()[0];
+        if (tr && t.video.srcObject !== own) {
+          t.video.srcObject = own;
           const pr = t.video.play(); if (pr && pr.catch) pr.catch(() => {});
         }
         return;
       }
-      const wire = (!gCam && !blockedShare) ? remoteWireTrack(t) : null;
+      const wire = (!gCam && !blockedShare) ? remoteWireTrack({ stream: own }) : null;
       if (wire) {
         clearPeerAvatar(t);
-        showAvatarTrack(t.video, t.stream, wire);
+        showAvatarTrack(t.video, own, wire);
         return;
       }
       mountPeerAvatar(t, displayName(id));
