@@ -4317,6 +4317,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <li class="hostkey" hidden><kbd>Alt+B</kbd> <span data-t="keyBlurAll">Blur or unblur every guest</span></li>
         <li class="hostkey" hidden><kbd>Alt+X</kbd> <span data-t="keyCamAll">Turn every guest’s video off or on</span></li>
         <li class="hostkey" hidden><kbd>Alt+P</kbd> <span data-t="keyShareAll">Let guests share their screen, or stop them</span></li>
+        <li><kbd>Esc</kbd> <span data-t="keyEsc">Close a window or the chat</span></li>
         <li><kbd>?</kbd> <span data-t="keyList">Show or hide this list</span></li>
       </ul>
       <button id="shortcut-cancel" type="button" data-t="rosterClose">Close</button>
@@ -5641,7 +5642,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bcJoin: 'Eine Sendung schauen', bcJoinSub: 'Einen Sendungslink einfügen',
         bcEmpty: 'Sendungen, die Sie starten oder schauen, stehen hier.',
         shortcutTitle: 'Tastatur', keyMic: 'Stumm oder an', keyCam: 'Kamera an oder aus',
-        keyChat: 'Chat auf oder zu', keyShare: 'Bildschirm teilen oder beenden', keyHand: 'Hand heben oder senken', keyView: 'Alle zeigen oder scrollen', keyLeave: 'Besprechung verlassen', keyList: 'Diese Liste zeigen oder schließen',
+        keyChat: 'Chat auf oder zu', keyShare: 'Bildschirm teilen oder beenden', keyHand: 'Hand heben oder senken', keyView: 'Alle zeigen oder scrollen', keyLeave: 'Besprechung verlassen', keyEsc: 'Fenster oder Chat schließen', keyList: 'Diese Liste zeigen oder schließen',
         keyWho: 'Wer ist hier', keyMuteAll: 'Alle Gäste stumm oder laut schalten', keyBlurAll: 'Alle Gäste weichzeichnen oder schärfen', keyCamAll: 'Video aller Gäste aus oder an', keyShareAll: 'Gästen das Teilen erlauben oder beenden', keyInvite: 'Einladen', keyApp: 'App starten', keyVote: 'Abstimmung', keyLock: 'Passwort', keyStage: 'Bühne', keyRecord: 'Aufnahme', keyCaptions: 'Untertitel auf diesem Bildschirm', keySettings: 'Einstellungen', keyTranscript: 'Protokoll', keyHelp: 'Hilfe',
         helpTitle: 'So funktioniert diese Besprechung', helpGot: 'Verstanden',
         bcHelpTitle: 'So funktioniert diese Sendung', appHelpTitle: 'So funktioniert dieser App-Raum',
@@ -5936,7 +5937,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bcJoin: 'Ver una transmisión', bcJoinSub: 'Pega un enlace de transmisión',
         bcEmpty: 'Las transmisiones que empieces o veas aparecen aquí.',
         shortcutTitle: 'Teclado', keyMic: 'Silenciar o activar', keyCam: 'Cámara activada o no',
-        keyChat: 'Abrir o cerrar el chat', keyShare: 'Compartir o dejar de compartir', keyHand: 'Levantar o bajar la mano', keyView: 'Ver a todos o desplazar', keyLeave: 'Salir de la reunión', keyList: 'Mostrar u ocultar esta lista',
+        keyChat: 'Abrir o cerrar el chat', keyShare: 'Compartir o dejar de compartir', keyHand: 'Levantar o bajar la mano', keyView: 'Ver a todos o desplazar', keyLeave: 'Salir de la reunión', keyEsc: 'Cerrar una ventana o el chat', keyList: 'Mostrar u ocultar esta lista',
         keyWho: 'Quién está', keyMuteAll: 'Silenciar o activar a todos los invitados', keyBlurAll: 'Difuminar o enfocar a todos los invitados', keyCamAll: 'Apagar o encender el video de los invitados', keyShareAll: 'Permitir o parar que los invitados compartan pantalla', keyInvite: 'Invitar', keyApp: 'Abrir app', keyVote: 'Votar', keyLock: 'Contraseña', keyStage: 'Escenario', keyRecord: 'Grabar', keyCaptions: 'Subtítulos en tu pantalla', keySettings: 'Ajustes', keyTranscript: 'Transcripción', keyHelp: 'Ayuda',
         helpTitle: 'Así funciona esta reunión', helpGot: 'Entendido',
         bcHelpTitle: 'Así funciona esta transmisión', appHelpTitle: 'Así funciona esta sala de app',
@@ -30156,15 +30157,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const t = e.target;
       if (t && t.closest && t.closest('input, textarea, select, [contenteditable="true"]')) return;
       const k = (e.key || '').toLowerCase();
-      if (k === 'f') {
-        // Full screen, as Zoom and YouTube give it a key; F again closes.
-        if (!document.querySelector('.bar') || document.querySelector('#lobby.show') || topNameModal()) return;
-        const fb = document.getElementById('fsbtn');
-        if (!fb || fb.offsetParent === null) return;
-        e.preventDefault();
-        fb.click();
-        return;
-      }
+      // F (Full screen) has one handler, with the shortcut sheet's keys
+      // below; a second one here toggled it open and shut on one press.
       if (k === 's') {
         // Share, as Zoom gives it a key: wherever this person has Share (the
         // dock, More, or More's stand-in beside the chat), never for a viewer
@@ -31285,11 +31279,44 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return false;
     }
+    const SHORTCUT_IDS = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'invite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', Slash: 'helpbtn', KeyM: 'muteall', KeyB: 'blurall', KeyX: 'camall', KeyP: 'shareall' };
+    // The control an Alt chord presses, or null when that chord does nothing
+    // for this person right now.
+    function shortcutTarget(id) {
+      const btn = document.getElementById(id);
+      // A control inside More is still a shortcut while the sheet is folded
+      // (a folded sheet hides its rows, not the button's own display). A
+      // button hidden on its own (a viewer who cannot share, a host tool a
+      // service hides) stays quiet, in More or not.
+      if (!btn || (getComputedStyle(btn).display === 'none' && !btn.classList.contains('inmore'))) return null;
+      // The host's room-wide tools are hidden for a guest, and their keys with them.
+      if (/^(muteall|blurall|camall|shareall)$/.test(id) && btn.style.display === 'none') return null;
+      return btn;
+    }
+    // The sheet lists only the keys that work for this person: a viewer
+    // with no microphone or camera on the dock is not offered their keys.
+    function paintShortcutSheet(el) {
+      const codeOf = { '/': 'Slash', ',': 'Comma' };
+      for (const li of el.querySelectorAll('li')) {
+        const k = (li.querySelector('kbd') || {}).textContent || '';
+        const m = /^Alt\+(.)$/.exec(k);
+        let ok = true;
+        if (m) {
+          const id = SHORTCUT_IDS[codeOf[m[1]] || ('Key' + m[1].toUpperCase())];
+          ok = !!(id && shortcutTarget(id));
+        } else if (k === 'F') {
+          const fb = document.getElementById('fsbtn');
+          ok = !!(fb && getComputedStyle(fb).display !== 'none');
+        }
+        li.hidden = !ok;
+      }
+    }
     function toggleShortcutSheet(force) {
       const el = document.getElementById('shortcutsheet');
       if (!el) return;
       const open = el.style.display !== 'none';
       const show = force === true ? true : force === false ? false : !open;
+      if (show) paintShortcutSheet(el);
       el.style.display = show ? 'flex' : 'none';
       if (show) {
         const b = document.getElementById('shortcut-cancel');
@@ -31320,14 +31347,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (!e.altKey || e.shiftKey || shortcutTyping(e) || shortcutBlocked()) return;
-      const id = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'invite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', Slash: 'helpbtn', KeyM: 'muteall', KeyB: 'blurall', KeyX: 'camall', KeyP: 'shareall' }[e.code];
+      const id = SHORTCUT_IDS[e.code];
       if (!id) return;
-      const btn = document.getElementById(id);
-      // A control inside More is still a shortcut while the sheet is folded.
-      // A button hidden on its own (a viewer who cannot share) stays quiet.
-      if (!btn || (getComputedStyle(btn).display === 'none' && !btn.closest('#barmore') && !btn.classList.contains('inmore'))) return;
-      // The host's room-wide tools are hidden for a guest, and their keys with them.
-      if (/^(muteall|blurall|camall|shareall)$/.test(id) && btn.style.display === 'none') return;
+      const btn = shortcutTarget(id);
+      if (!btn) return;
       e.preventDefault();
       btn.click();
     });
