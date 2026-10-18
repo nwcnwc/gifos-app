@@ -27223,6 +27223,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       node.connect(ac.destination); // the node only ticks while connected onward; both paths output silence
       wspCaps.set(id, w);
       if (id === 'me') wsp = w;
+      paintWspChip(); // the way back is on screen the moment Whisper runs, not a tick later
     }
     function wspWorkletPending(ctx) {
       if (!ctx || ctx._wspWorkletBad || !ctx.audioWorklet || typeof ctx.audioWorklet.addModule !== 'function') return null;
@@ -27275,6 +27276,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function wspStop(id) {
       const w = wspCaps.get(id); if (!w) return;
       wspCaps.delete(id); if (id === 'me') wsp = null;
+      paintWspChip();
       if (w.node) {
         w.node.onaudioprocess = null;
         if (w.node.port) w.node.port.onmessage = null;
