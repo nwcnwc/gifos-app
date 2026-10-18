@@ -7548,7 +7548,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // fix is untouched — heardPid>0 pairs (once-established) keep the
           // full edge too.
           const formingAlive = !heardPid && nowHb - (p.lastHeard || 0) < 12000;
-          if (!tlFiredPid.has(pid) && !formingAlive && (!dcOpen || !carried)) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
+          // A member still named in my view whose relay socket is up is not
+          // dead — only the pair is. Quiet-door heal (P3→P4 starve-dead then
+          // gone d5 while the census still seated both) fired the death edge
+          // on a live row-mate whose channel was mid-rebuild. Rebuild below;
+          // leave the death edge for a peer the relay can no longer reach.
+          const liveNamed = occNamed.has(pid) && (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
+          if (!tlFiredPid.has(pid) && !formingAlive && !liveNamed && (!dcOpen || !carried)) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
           if (typeof clog === 'function') clog('mesh-starve rebuild ' + String(pid).slice(0, 6));
           newPcFor(p);
           sendOffer(pid, false);
@@ -15354,7 +15360,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else {
         for (const [pid, k] of occPrevIds) {
           if (occNow.has(pid) || meshGone.has(pid)) continue;
-          if (s.translost.has(k)) { confirmGone(pid, 'd5'); continue; }
+          // Translost on the vacated cell is not a death while the relay still
+          // reaches that member (quiet-door: starve-dead on a heal pair, then
+          // a one-tick occ blink, confirmed a live survivor gone as d5).
+          if (s.translost.has(k)) {
+            if (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid)) {
+              try { s.translost.delete(k); } catch (e) {}
+              continue;
+            }
+            confirmGone(pid, 'd5'); continue;
+          }
           if (peers.has(pid) && !occVanish.has(pid)) occVanish.set(pid, Date.now());
         }
         for (const [pid, at] of occVanish) {
