@@ -34264,6 +34264,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // a camera that comes on by a path that never asked the order (the page itself is honest)
       slipCamOnForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; t.enabled = true; myStatus.camOff = false; try { paintOnAir(); } catch (e) {} return true; },
       slipCamOffForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (t) t.enabled = false; myStatus.camOff = true; try { paintOnAir(); } catch (e) {} return true; },
+      recOnForTest: () => !!(recRec && recRec.state !== 'inactive'),
+      lastServiceForTest: async () => {
+        if (!bcLastService || !bcLastService.blob) return null;
+        const b = await bcLastService.blob;
+        const url = URL.createObjectURL(b);
+        const sec = await new Promise((res) => {
+          const v = document.createElement('video');
+          let done = false;
+          const finish = (n) => { if (done) return; done = true; try { v.removeAttribute('src'); v.load(); } catch (e) {} res(n); };
+          v.preload = 'metadata';
+          v.onloadedmetadata = () => {
+            if (isFinite(v.duration) && v.duration > 0 && v.duration < 1e6) finish(v.duration);
+            else { try { v.currentTime = 1e10; } catch (e) {} }
+          };
+          v.ontimeupdate = () => { if (isFinite(v.duration) && v.duration > 0 && v.duration < 1e6) finish(v.duration); };
+          v.onerror = () => finish(0);
+          setTimeout(() => finish(isFinite(v.duration) && v.duration < 1e6 ? v.duration : 0), 4000);
+          v.src = url;
+        });
+        try { URL.revokeObjectURL(url); } catch (e) {}
+        return { bytes: b.size, sec: sec };
+      },
       // freeze my outgoing pulses (simulates a phone that has throttled itself)
       haltPulseForTest: (on) => { pulseHalt = !!on; },
       // backdate the beat clock (simulates a renderer that froze and then resumed)
