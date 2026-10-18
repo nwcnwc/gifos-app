@@ -4968,11 +4968,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           pipMeet.setAttribute('aria-label', 'Float the meeting');
         }
         paintLeave('group');
-        const help = document.getElementById('helpbtn');
+        // An app room keeps its own Help (applyRoomHelp); only a meeting is a small group.
+        const help = ROOM.kind === 'app' ? null : document.getElementById('helpbtn');
         if (help) help.title = 'How this small group works';
         const nameLead = document.getElementById('set-name-lead');
         if (nameLead) nameLead.textContent = 'What everyone sees on your tile:';
-        const helpH = document.querySelector('#help-modal h3');
+        const helpH = ROOM.kind === 'app' ? null : document.querySelector('#help-modal h3');
         if (helpH) helpH.textContent = 'How this small group works';
         paintWatchingSeat();
         return;
