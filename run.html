@@ -723,6 +723,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.broadcast #handq .bc-hand { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap;
     padding: .35rem .5rem; margin: .2rem 0; background: var(--surface, #14141f);
     border: 1px solid var(--border, #2a2a3f); border-radius: .45rem; }
+  /* The row is a light card in the light theme: its name takes the card's
+     ink, not the dark banner's white (the name vanished, white on white). */
+  body.broadcast #handq .bc-hand { color: var(--text, #e0e0f0); }
   body.broadcast #handq .bc-hand .hq { flex: 1; min-width: 6rem; text-decoration: none; }
   body.broadcast.amadmin #handq .bc-hand .hq { text-decoration: underline; }
   #handq .bc-hand button, #bc-seats .bc-seat button { padding: .15rem .45rem; font-size: .72rem;
