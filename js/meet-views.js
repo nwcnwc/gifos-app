@@ -399,7 +399,7 @@
     const faceEls = faces.length ? syncFaces(feed, faces) : syncFaces(feed, []);
     const tiles = (opts.tiles || []).slice();
     for (let i = 0; i < faceEls.length; i++) {
-      tiles.push({ id: 'stad:' + faces[i].id, tier: 'stad', el: faceEls[i] });
+      tiles.push({ id: 'stad:' + faces[i].id, tier: 'stad', el: faceEls[i], shade: faces[i].shade || '' });
     }
     for (let i = 0; i < tiles.length; i++) {
       const t = tiles[i];
@@ -547,8 +547,10 @@
       if (!r || r.id === 'crowd') continue;
       const t = byId[r.id];
       if (!t) continue;
+      // t.shade: the page's stable key for this person (falls back to the id).
       let sid = String(t.id || r.id);
       if (t.me || sid === 'me') sid = opts.selfId || 'me';
+      else if (t.shade) sid = String(t.shade);
       else if (sid.indexOf('stad:') === 0) sid = sid.slice(5);
       shadeItems.push({ id: sid, x: r.x, y: r.y, w: r.w, h: r.h, el: t.el });
     }
@@ -594,10 +596,10 @@
         v.style.visibility = 'hidden';
         applyCrop(v, null);
         el.classList.add('cam-off');
-        paintShade(el, faces[j].id);
+        paintShade(el, faces[j].shade || faces[j].id);
         if (av) {
           av.style.display = 'flex';
-          paintShade(av, faces[j].id);
+          paintShade(av, faces[j].shade || faces[j].id);
           paintAvatar(av, faces[j].avatar || '', faces[j].initials);
         }
       }

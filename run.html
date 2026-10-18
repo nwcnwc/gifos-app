@@ -9250,7 +9250,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { paintTileChrome(t, id, isMe, st); } catch (e) {}
       const dark = seatDark(st) || !!gCam || (!isMe && typeof shareBlocked === 'function' && !!shareBlocked(id));
       if (dark && t.avatar && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.paintShade) {
-        const sid = isMe ? ((typeof myId !== 'undefined' && myId) ? myId : 'me') : id;
+        const sid = shadeKey(isMe ? 'me' : id);
         try {
           GifOS.meetViews.paintShade(t.tile, sid);
           GifOS.meetViews.paintShade(t.avatar, sid);
@@ -9308,6 +9308,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         paintControls();
       }
       if (!inPass) layout(); // a pass (refreshAllTiles) lays out once after every tile
+    }
+    // A camera-off shade follows the person, not this page load: the peer id
+    // is minted fresh on every join, so it keys on the room-salted device tag
+    // (the same on every screen in the room, and across a reload), and on the
+    // peer id only while that tag is not known yet.
+    function shadeKey(id) {
+      let dv = '';
+      try { dv = (id === 'me' || id === myId) ? myDevHash : (devOf[id] || ''); } catch (e) { dv = ''; } // read before those are set up: the id
+      if (dv) return 'dv:' + dv;
+      return (id === 'me' || id === myId) ? (myId || 'me') : id;
     }
     const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -9409,7 +9419,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const stg = stageIds();
         if (meTile && meTile.tile && meTile.tile.style.display !== 'none') {
           const selfPin = !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage));
-          tiles.push({ id: 'me', el: meTile.tile, tier: myStatus.bot ? 'bot' : 'row', me: true, bot: !!myStatus.bot,
+          tiles.push({ id: 'me', el: meTile.tile, tier: myStatus.bot ? 'bot' : 'row', me: true, bot: !!myStatus.bot, shade: shadeKey('me'),
             hand: !!myStatus.hand, handOrd: myStatus.hand || 0,
             // Your tile stays off the stage unless you turned on "Show me on stage".
             stage: !myStatus.bot && selfPin,
@@ -9422,7 +9432,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const st = statusOf.get(pid) || {};
           const si = stg.indexOf(pid);
           const bot = !!st.bot;
-          tiles.push({ id: pid, el: p.tile, tier: bot ? 'bot' : 'row', bot: bot,
+          tiles.push({ id: pid, el: p.tile, tier: bot ? 'bot' : 'row', bot: bot, shade: shadeKey(pid),
             hand: !!st.hand, handOrd: st.hand || 0,
             stage: !bot && si >= 0, stageOrd: Math.max(0, si),
             // A sharer's screen is the Stage (the sgs strip below); their face stays in the Row.
@@ -9467,7 +9477,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const off = !st || (!!st.camOff && !st.scr);
           let avatar = '';
           try { avatar = (MV.avatarUrl && MV.avatarUrl(st || {}, null)) || ''; } catch (e2) {}
-          faces.push({ id: id, name: name, initials: nameInitial(name), off: off, avatar: avatar });
+          faces.push({ id: id, name: name, initials: nameInitial(name), off: off, avatar: avatar, shade: shadeKey(id) });
         }
         const cols = (meta.n === roster.length) ? (meta.cols || 0) : 0;
         if (meta.video && !meta.video._comfyRz) {
@@ -9538,7 +9548,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: faces, video: meta.video, cols: cols,
           orderKey: roster.length + ':' + roster.join(','), holdMs: holdMs,
-          vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: myId || 'me',
+          vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: shadeKey('me'),
           pill: document.body.classList.contains('has-pill'), bottom: bottom, holdBottom: holdBottom, top: topInset,
           mode: window.__meetViewMode || 'gallery',
           swapSelf: !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage)),
