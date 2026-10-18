@@ -66,8 +66,15 @@ async function wholeControls(page) {
 // The call goes calm 3 s after the last move (0.9.23b) and a move wakes it,
 // so reach for a control the way a person does: move onto it, then press.
 // A slow engine (WebKit) spends those 3 s on the screenshot alone.
+// In a narrow window the quiet call also slides the dock off the bottom,
+// and only a tap brings it back (a move does not), so tap the faces first,
+// as a person would; the page swallows that tap, so no face's window opens.
 async function moveOnto(page, sel) {
   const vp = page.viewportSize();
+  if (await page.evaluate(() => document.body.classList.contains('chrome-away'))) {
+    await page.mouse.click(vp.width / 2, vp.height / 2);
+    await page.waitForFunction(() => !document.body.classList.contains('chrome-away'));
+  }
   const b = sel ? await page.locator(sel).first().boundingBox() : null;
   const x = b ? b.x + b.width / 2 : vp.width / 2, y = b ? b.y + b.height / 2 : vp.height / 3;
   await page.mouse.move(x - 3, y - 3);
