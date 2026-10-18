@@ -45,7 +45,8 @@ function look(page) {
       if (!shown(av) || !txt || av.classList.contains('has-img')) { out.clash.push('no initial shows'); return out; }
       // The shaded avatar still covers the whole tile (nothing behind it shows).
       const ar = av.getBoundingClientRect();
-      if (Math.abs(ar.top - r.top) > 3 || Math.abs(ar.bottom - r.bottom) > 3 || Math.abs(ar.left - r.left) > 3 || Math.abs(ar.right - r.right) > 3) out.clash.push('the avatar no longer covers the tile');
+      // Covers means contains: a soft (blurred) avatar is drawn a little larger and the tile clips it.
+      if (ar.top > r.top + 3 || ar.bottom < r.bottom - 3 || ar.left > r.left + 3 || ar.right < r.right - 3) out.clash.push('the avatar no longer covers the tile');
       // The drawn letter: its line box, trimmed to the font's cap height.
       const range = document.createRange();
       range.selectNodeContents(txt);

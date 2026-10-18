@@ -497,7 +497,8 @@
         const r = lay.rects[i];
         if (r.y <= lay.box.y + 1) clipY = Math.max(clipY, r.y + r.h);
       }
-      for (let i = 0; i < lay.rects.length; i++) if (lay.rects[i].y >= clipY - 1) past++;
+      // A face cut by the fold is below it too: the hint counts every face not whole.
+      for (let i = 0; i < lay.rects.length; i++) if (lay.rects[i].y + lay.rects[i].h > clipY + 1) past++;
     }
     if (feed.style && feed.style.setProperty) feed.style.setProperty('--comfy-clip', overflows ? Math.max(0, (+opts.vh || 0) - clipY) + 'px' : '0px');
     if (feed.classList) { feed.classList.toggle('can-scroll', overflows); feed.classList.toggle('comfy-scroll', overflows); }

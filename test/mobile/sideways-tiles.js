@@ -120,7 +120,8 @@ function overlaps(a, b) {
   const deskBad = [];
   if (deskInfo.length < 4) deskBad.push('only ' + deskInfo.length + ' desktop faces');
   // The desktop packer (meet-gallery-fit-scroll, newer) keeps every tile a legal shape; its own suites cover it.
-  if (!deskInfo.some((a) => a > 1.4)) deskBad.push('desktop packing changed ' + deskInfo.map((a) => a.toFixed(2)).join(','));
+  // 0.9.23b: every Row tile is a square on a desktop too.
+  if (!deskInfo.every((a) => Math.abs(a - 1) < 0.02)) deskBad.push('desktop tiles are not squares ' + deskInfo.map((a) => a.toFixed(2)).join(','));
   if (deskBad.length) failures.push('desktop: ' + deskBad.join('; '));
   await desk.close();
 
