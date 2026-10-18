@@ -26425,7 +26425,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Stagers' direct tracks are muted too: their voice arrives via the
         // per-stager feeds folded at the ear — the direct link would double it.
         const bus = stg.has(pid) ? null : mates.has(pid) ? 'row' : null;
-        busVolume(p.video, (bus && !sealed && !isHeld(pid)) ? mix[bus] : 0, (!p.relayed && p.stream) || null);
+        // The voice is the person's own stream: the direct one, or the one a
+        // friend carries (relayVia). The tile's element can hold a painted
+        // picture instead (camera off), which has no sound.
+        const voice = p.relayed ? ((relayVia.get(pid) || {}).stream || null) : (p.stream || null);
+        busVolume(p.video, (bus && !sealed && !isHeld(pid)) ? mix[bus] : 0, voice);
       }
       // feed tiles (the nested mosaics): stage strip is Stage; stadium tiles
       // are The stadium.
