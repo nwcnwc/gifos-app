@@ -2522,6 +2522,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bottom: calc(84px + env(safe-area-inset-bottom, 0px));
       transform: translateX(-50%);
       width: min(720px, calc(100vw - 16px));
+      max-height: calc(100vh - 96px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
       max-height: calc(100dvh - 96px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     }
     body:has(.bar:not(.collapsed)) #rundown.open,
@@ -3188,7 +3189,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      that moved into More (Share / React / Step off are taller). Cap in rem so
      rows grow with text size; everything else scrolls. */
   @media (max-width: 700px) {
-    .bar:not(.collapsed) .barmore { max-height: min(50dvh, 18rem); }
+    .bar:not(.collapsed) .barmore { max-height: min(50vh, 18rem); max-height: min(50dvh, 18rem); }
   }
   /* Pixel 7 host dock: "Unmute" was ellipsized at 16px inside a 64px cap,
      the More sheet was 16px narrower than the dock so Live/End peeked out
@@ -3211,6 +3212,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       /* bottom is relative to the dock (the bar is transformed), so 100%
          sits the sheet on the dock's top edge with no strip between them. */
       bottom: 100%;
+      max-height: calc(100vh - 320px);
       max-height: calc(100dvh - 320px);
       grid-template-columns: 1fr;
     }
@@ -3274,7 +3276,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* A narrow sideways phone anchors the sheet 102px up, not 122. The wide
      cap used 122 and cut the second row (Waiting room and Chat) off an SE. */
   @media (max-height: 500px) and (orientation: landscape) and (max-width: 700px) {
-    .bar:not(.collapsed) .barmore { max-height: min(50dvh, 18rem); }
+    .bar:not(.collapsed) .barmore { max-height: min(50vh, 18rem); max-height: min(50dvh, 18rem); }
   }
   @media (min-width: 381px) {
     .bar { max-width: calc(100% - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
@@ -7643,7 +7645,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // P3→P5). Rebuild below; leave the death edge for a peer nobody
           // in the room still names.
           const roomKnows = occNamed.has(pid)
-            || (Array.isArray(rosterIds) && rosterIds.includes(pid))
+            || rosterSet.has(pid)
             || (statusOf && statusOf.has(pid))
             || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
           if (!tlFiredPid.has(pid) && !formingAlive && !roomKnows && (!dcOpen || !carried)) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
