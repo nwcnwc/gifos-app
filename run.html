@@ -14282,7 +14282,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       p.doorRetry = 0;
       if (p.bootOut) doorsShut.set(peerId, Date.now()); // a door I knocked through, closed by me
       if (p.boot && typeof clog === 'function') clog('door-drop ' + String(peerId).slice(0, 6) + ' out=' + !!p.bootOut);
-      if (p.boot && p.neverUp === true && !linkTo(peerId)) doorOffGrid.add(p.id); // a seatless door stays off the grid; a neighbour can still be relayed
+      // A seatless door stays off the grid; a neighbour can still be relayed.
+      // So does a pair I dialled myself to a person who has no seat here and
+      // never connected (the higher id offers, so half the time a knocker is
+      // dialled rather than knocking): their redial must not mint a new face.
+      if (p.neverUp === true && !linkTo(peerId) && (p.boot || !meshKnows(peerId))) doorOffGrid.add(p.id);
       try { p.pc.close(); } catch (e) {}
       releaseAudio(p.video);
       p.tile.remove();
