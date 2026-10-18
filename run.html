@@ -3205,7 +3205,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       /* 100vw is wider than the phone, so the right column sat off the screen. */
       left: 50%; right: auto; width: 100dvw; max-width: 100dvw;
       transform: translateX(-50%); margin-left: 0; z-index: 40;
-      box-sizing: border-box; overflow-x: hidden;
+      box-sizing: border-box; overflow-x: hidden; overflow-y: auto;
       border-bottom-left-radius: 0; border-bottom-right-radius: 0;
       /* Sit on the dock. A gap there showed Recording and the red buttons. */
       /* bottom is relative to the dock (the bar is transformed), so 100%
@@ -3227,17 +3227,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       width: 100%; min-width: 0; max-width: 100%;
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
+    /* Start time and Visit are fields, not quarter-tiles. A 12rem input
+       was wider than the column, so it ran under Questions. */
+    .bar:not(.collapsed) #barmore #bcwhenrow,
+    .bar:not(.collapsed) #barmore #bcvisitrow {
+      grid-column: 1 / -1; display: flex; flex-direction: column; align-items: stretch;
+      width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box;
+    }
+    .bar:not(.collapsed) #barmore #bcwhenrow input,
+    .bar:not(.collapsed) #barmore #bcvisitrow input {
+      width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box;
+    }
+    .bar:not(.collapsed) #barmore #rbbtn { grid-column: 1 / -1; }
+    .bar:not(.collapsed) #barmore .ai-spark { display: none; }
     body:has(.bar:not(.collapsed)) #callstate,
     body:has(.bar:not(.collapsed)) #bc-stage { display: none !important; }
     /* The sentence sits on its own row. A 90px column wrapped it into
        "Off air. / Send the / link." which read as a truncated chip. */
     body.broadcast .topchip {
-      flex-wrap: wrap; width: calc(100vw - 28px); max-width: calc(100vw - 28px);
+      flex-wrap: wrap; box-sizing: border-box;
+      width: calc(100dvw - 16px); max-width: calc(100dvw - 16px);
       border-radius: 22px;
     }
-    body.broadcast .topchip .status { order: 5; flex: 1 0 100%; min-width: 0; }
+    body.broadcast .topchip .status { order: 5; flex: 1 0 100%; min-width: 0; overflow: hidden; }
     body.broadcast .topchip #statusrest {
-      display: block; max-width: none; white-space: nowrap; overflow: visible; text-overflow: clip;
+      display: block; max-width: 100%; white-space: normal; overflow: hidden;
     }
     body.broadcast #hdrinvite { order: 4; }
     /* The sentence is a second chip row; the air bar used to start under a one-line chip. */
