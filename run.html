@@ -2498,14 +2498,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function netBeatFrom(pid) { if (netRoom && pid != null) netRoom.beat(pid, Date.now()); }
     function netPulse() { if (netRoom) netRoom.pulse(Date.now()); }
     // THE BEAT: while I end a bridge I beat my heir every 100 ms over our
-    // direct link; the heir's pulse counts me down after three missed beats
-    // and its seating hands the bridge to the standby at once. A worker
-    // clock keeps the 100 ms in a background tab.
+    // direct link; the heir's pulse counts me down 300 ms after my link to it
+    // closed and its seating hands the bridge to the standby at once. A
+    // worker clock keeps the 100 ms in a background tab.
     let netBeatClock = null;
     function netBeatTick() {
       if (!netRoom) return;
       const h = netBeatTarget(); const q = h != null ? peers.get(h) : null;
       if (q && q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'nb' });
+      // Beats arrive late on a loaded page; a late beat is no departure. My
+      // own view alone would hand the bridge over, so the other pages would
+      // still name the old one: two bridges. An end whose link to me is open
+      // keeps its bridge; its link closing (it left) counts it down at once.
+      const nowMs = Date.now();
+      for (const e of netRoom.beats.keys()) { const x = peers.get(e); if (x && x.connected && x.dc && x.dc.readyState === 'open') netRoom.beat(e, nowMs); }
       netPulse();
     }
     function netBeatStart() {
@@ -6088,7 +6094,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // audio sender (my voice, or the mix I send an anchored client) is
     // parked, video first of all.
     function parkTurnSenders(p) {
-      if (!p || !p.pc || !p.turnAudio) return;
+      if (!p || !p.pc || !(p.turnAudio || p.netQuiet)) return;
       let senders = [];
       try { senders = p.pc.getSenders(); } catch (e) {}
       for (const sd of senders) if (sd !== p.mainA && sd.track) sd.replaceTrack(null).catch(() => {});
@@ -6216,10 +6222,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // and anyone the mate hears directly. In a row that holds both ends of a
     // pair nothing changes (each row mate hears the others directly).
     const bridgeFeeds = new Map();   // row mate -> { fold, keys }: at most one row
+    let bridgeSelf = null;           // { fold, keys }: my voice and the bridge's stream, my cell's sound in my composites
     const dbgFoldMeters = new WeakMap();   // fold -> analyser, for the debug view only (made on first read)
     function bridgeCrossRow() { for (const p of peers.values()) if ((p.turnAnchor || p.turnServe) && p.connected && !isRowMate(p.id)) return true; return false; }
     function syncBridgeFeeds() {
       const on = bridgeCrossRow(); const mates = on ? new Set(rowMates()) : new Set();
+      // my own cell's sound for the composites I build: my voice and the bridge's stream
+      if (!on && bridgeSelf) { bridgeSelf.fold.clear(); bridgeSelf = null; }
+      if (on && ensureAc()) {
+        const ends = new Set(); for (const p of peers.values()) if ((p.turnAnchor || p.turnServe) && p.connected && !isRowMate(p.id)) ends.add(p.id);
+        const want = new Map(turnHeardSources().filter((x) => x.owner === myId && x.key.indexOf('me:') === 0 || ends.has(x.owner)).map((x) => [x.key, x]));
+        if (!bridgeSelf) bridgeSelf = { fold: MM.createAudioFold(ac), keys: new Set() };
+        for (const k of [...bridgeSelf.keys]) if (!want.has(k)) { bridgeSelf.fold.remove(k); bridgeSelf.keys.delete(k); }
+        for (const [k, x] of want) { if (!bridgeSelf.keys.has(k)) { bridgeSelf.fold.add(k, x.stream, x.gain); bridgeSelf.keys.add(k); } else if (bridgeSelf.fold.setGain) bridgeSelf.fold.setGain(k, x.gain); }
+      }
       const fed = (q) => !!(q && q.connected && !q.turnAudio && !q.turnServe && !q.turnAnchor);
       for (const [pid, fd] of [...bridgeFeeds]) if (!mates.has(pid) || !fed(peers.get(pid))) { fd.fold.clear(); bridgeFeeds.delete(pid); }
       if (!on || !ensureAc()) return;
@@ -6390,7 +6406,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       }
       // 5. Every free-pool pair: audio only, one stream each way.
-      for (const p of peers.values()) if (p.turnAudio) parkTurnSenders(p);
+      for (const p of peers.values()) { p.netQuiet = netStandbyQuiet(p); if (p.turnAudio || p.netQuiet) parkTurnSenders(p); }   // a hot standby carries nothing beyond its (silent) voice sender either
       // 6. The anchor side: one mix-minus per client, on that pair's audio sender.
       syncTurnMixes();
       syncTurnUpMix(); // 7. A network's bridge: its network's voices up to its anchor, on that pair's audio sender
@@ -13785,7 +13801,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const t = pc.addTransceiver(tr, { streams: [container] });
       auxSenders.add(t.sender);
       // A free-pool pair carries one audio stream each way: anything more rides parked.
-      for (const q of peers.values()) if (q.pc === pc && q.turnAudio) { t.sender.replaceTrack(null).catch(() => {}); break; }
+      for (const q of peers.values()) if (q.pc === pc && (q.turnAudio || q.netQuiet)) { t.sender.replaceTrack(null).catch(() => {}); break; }
       return t.sender;
     };
 
@@ -14143,8 +14159,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // mute (track.enabled) and a mic re-grab (a new track) reach it the same
     // way. Cached by track identity: a fresh stream id would re-fold every
     // sweep.
-    let selfFoldSt = null;
+    let selfFoldSt = null, selfBridgeSt = null;
     function selfFoldStream() {
+      // A bridge end's own cell carries the other network too: every
+      // composite it builds (its row's product, its children's down-mix)
+      // folds its voice with the bridge's stream (syncBridgeFeeds).
+      const bt = bridgeSelf ? bridgeSelf.fold.track() : null;
+      if (bt && bt.readyState !== 'ended') { if (!selfBridgeSt || selfBridgeSt.getAudioTracks()[0] !== bt) selfBridgeSt = new MediaStream([bt]); return selfBridgeSt; }
       const at = (localStream && localStream.getAudioTracks()[0]) || null;
       const vs = meTile && meTile.video ? meTile.video.srcObject : null;
       if (!at || at.readyState === 'ended') { selfFoldSt = null; return vs || localStream; }
@@ -15170,8 +15191,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (on && jobPinned(jk)) return; // pinned parked — ignore the wake
       if (!!job.active === !!on) return;
       job.active = !!on;
+      const jq = peers.get(job.to); const quiet = !!(jq && (jq.turnAudio || jq.netQuiet));   // a free-pool pair or a hot standby carries no feed
       for (let i = 0; i < job.senders.length; i++) {
-        try { job.senders[i].replaceTrack(on ? (job.trackList[i] || null) : null); } catch (e) {}
+        try { job.senders[i].replaceTrack(on && !quiet ? (job.trackList[i] || null) : null); } catch (e) {}
       }
       // A PIPED job's dormancy must reach the worker: a parked pipe's minted
       // templates die at the detached track, so its tap must stop queueing
