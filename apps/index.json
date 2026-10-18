@@ -9228,7 +9228,7 @@
       "appId": "tip-creators",
       "name": "Tip GifOS Creators",
       "shortName": "Tip",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Like GifOS? Buy the people who make it a coffee.",
       "author": {
         "name": "GifOS",
@@ -9246,8 +9246,7 @@
         "support",
         "donate",
         "thanks",
-        "paypal",
-        "usdc"
+        "paypal"
       ],
       "accent": [
         255,
