@@ -2530,6 +2530,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore .seg.sel,
   .bar:not(.collapsed) .barmore .seg[aria-pressed="true"] { background: #1d1d1f; color: #fff; }
   .bar .barmore .blab { display: block; font-size: 16px; font-weight: 700; margin-top: 2px; line-height: 1.1; }
+  /* Desktop sheet: Float reads like Who and Settings beside it, its icon set
+     apart, and the Blur word at the sheet's size, not a small grey word. */
+  @media (min-width: 701px) and (min-height: 501px) {
+    .bar:not(.collapsed) .barmore .morerow > .iconbtn { gap: 8px; }
+    .bar:not(.collapsed) .barmore .morerow > .iconbtn .blab { display: inline; font-size: inherit; font-weight: inherit; margin-top: 0; }
+    .bar:not(.collapsed) .barmore .blurctl > .blurlbl { color: #1d1d1f; font-size: 1.125rem; font-weight: 650; }
+  }
   /* Desktop: All tools is the whole list on a 1280x720 laptop, host row too.
      All tools sits beside Hand, Invite, and Help; each heading sits left of
      its row, five buttons a row. */
@@ -2544,7 +2551,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.desk-ptr .bar:not(.collapsed) .barmore > #moretools { flex: 1 1 160px; }
     body.desk-ptr .bar:not(.collapsed) .barmore .moregroup { display: grid; grid-template-columns: 7em 1fr; align-items: center; gap: 8px; }
     body.desk-ptr .bar:not(.collapsed) .barmore:not(.tools-open) .moregroup.extra { display: none; }
-    body.desk-ptr .bar:not(.collapsed) .barmore .moregroup .morerow { grid-template-columns: repeat(5, 1fr); }
+    /* Columns as wide as the longest label ("Allow screen share", "Stop
+       guest shares" stay on one line); fewer per row on a narrower window. */
+    body.desk-ptr .bar:not(.collapsed) .barmore .moregroup .morerow { grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); }
+    body.desk-ptr .bar:not(.collapsed) .barmore.tools-open { width: min(1180px, calc(100vw - 24px)); }
     body.desk-ptr .bar:not(.collapsed) .barmore .moregroup .morerow > button { min-height: 52px; padding: 6px; }
   }
   .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 122px; transform: translateX(-50%);
@@ -3713,6 +3723,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button type="button" class="dockmore" data-dock="fsbtn" hidden>Full screen</button>
       <button type="button" class="dockmore" data-dock="ccdock" hidden>CC</button>
       <button type="button" class="dockmore" data-dock="chatbtn" hidden>Chat</button>
+      <button type="button" class="dockmore" data-dock="invite" hidden>Invite</button>
       <button type="button" class="dockmore" data-dock="sharebtn" hidden>Share screen</button>
       <button type="button" class="dockmore" data-dock="reactbtn" hidden>Reactions</button>
     </div>
@@ -29255,15 +29266,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (b && b.parentElement === bar && b.getClientRects().length) b.classList.add('inmore');
           }
         }
+        // The stand-ins and their row carry [hidden] in the markup; a
+        // display style alone never showed them, so a moved button was
+        // on neither the dock nor More.
+        let any = false;
         for (const p of bar.querySelectorAll('#barmore .dockmore')) {
           const b = document.getElementById(p.dataset.dock);
           const on = !!(b && b.classList.contains('inmore'));
           p.style.display = on ? '' : 'none';
+          p.hidden = !on;
+          any = any || on;
           if (!on) continue;
           const lab = b.querySelector('.docklab');
           p.textContent = lab ? lab.textContent : (b.getAttribute('aria-label') || p.textContent);
           p.title = b.title;
         }
+        const row = document.getElementById('dockrow');
+        if (row) row.hidden = !any;
       };
       for (const p of bar.querySelectorAll('#barmore .dockmore')) {
         p.addEventListener('click', () => {
