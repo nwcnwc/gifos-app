@@ -2548,6 +2548,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function netSeatingLiveView() {
       const me = () => meshSeat();
       const rec = (pid, st) => ({ id: pid, alive: true, state: 3, hasCoord: true, coord: st.seat, glabel: st.lab != null ? st.lab : pid, anchored: !!st.anc, sitting: new Map(), glFind: -2, lastReached: -1 });
+      // A pulse names the seat its sender held when it spoke. My own seat's
+      // map of the cells (what the mesh itself heard) outranks it: a cell I
+      // hold, or that my map names someone else in, is no longer the
+      // sender's (a page that left keeps its last pulse in my table a while).
+      const pulseSeat = (s, pid, st) => {
+        if (!st || !st.seat || typeof st.seat.pc !== 'number') return false;
+        if (!s) return true; const k = net.topo.ckey(st.seat);
+        if (s.hasCoord && k === net.topo.ckey(s.coord)) return false;
+        const o = s.occ ? s.occ.get(k) : undefined; return o == null || o === pid;
+      };
       // The ring as my own seat knows it before any pulse arrives: the HOME
       // roster and my occ name the Section-1 cells and who holds them. A cell's
       // label is its row head's when the pulse has not said otherwise.
@@ -2580,8 +2590,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pairRelayed = netPairRelayed;
       const view = {
         tick: () => { const s = me(); return s ? s.TICK : 0; },
-        seats: () => { const s = me(); const out = s ? [s] : []; for (const [pid, st] of statusOf) if (pid !== myId && st && st.seat && typeof st.seat.pc === 'number') out.push(rec(pid, st)); for (const r of ringRecs()) out.push(r); return out; },
-        seat: (id) => { const s = me(); if (s && id === s.id) return s; const st = statusOf.get(id); if (st && st.seat && typeof st.seat.pc === 'number') return rec(id, st); return ringRecs().find((r) => r.id === id) || null; },
+        seats: () => { const s = me(); const out = s ? [s] : []; for (const [pid, st] of statusOf) if (pid !== myId && pulseSeat(s, pid, st)) out.push(rec(pid, st)); for (const r of ringRecs()) out.push(r); return out; },
+        seat: (id) => { const s = me(); if (s && id === s.id) return s; const st = statusOf.get(id); if (pulseSeat(s, id, st)) return rec(id, st); return ringRecs().find((r) => r.id === id) || null; },
         probe, probeDone,
         reach: (a, b) => {
           if (a === b) return true;
