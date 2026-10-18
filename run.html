@@ -24063,12 +24063,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The stadium tile (one, keyed 'sd') in the stadium strip.
     function paintStadiumTile(stream) {
       let el = stadiumEl.querySelector('[data-row="sd"]');
+      // The mosaic sweep calls this every couple of seconds with the same
+      // stream. The gallery is laid out again only when the Stadium tile
+      // actually changes (it appears, goes, gets a new stream or a new
+      // count), so a quiet room does not lay out once a sweep.
       if (!stream) {
+        const had = !!el;
         if (el) { for (const v of el.querySelectorAll('video')) { try { v.pause(); v.srcObject = null; } catch (e) {} releaseAudio(v); } el.remove(); }
         stadiumEl.classList.toggle('on', !!stadiumEl.querySelector('.rowtile')); compOf.delete('sd'); recSrcDirty = true;
-        try { layout(); } catch (e) {}
+        if (had) { try { layout(); } catch (e) {} }
         return;
       }
+      const prevSd = compOf.get('sd');
+      let changed = !el || !stadiumEl.classList.contains('on');
       if (!el) {
         el = document.createElement('div'); el.className = 'rowtile'; el.dataset.row = 'sd';
         const v = document.createElement('video'); v.muted = true; v.autoplay = true; v.setAttribute('playsinline', '');
@@ -24076,11 +24083,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         el.appendChild(v); el.appendChild(lb); stadiumEl.appendChild(el); trackAspect(el, v);
       }
       const v = el.querySelector('video');
-      if (v.srcObject !== stream) { v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); }
+      if (v.srcObject !== stream) { v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); changed = true; }
       stadiumEl.classList.add('on');
-      compOf.set('sd', { via: 'mosaic', streamId: stream.id, stream, names: [], cnt: roomPastSection() ? displayCount() : knownTotal(), el: v });
+      const cnt = roomPastSection() ? displayCount() : knownTotal();
+      if (!prevSd || prevSd.streamId !== stream.id || prevSd.cnt !== cnt || prevSd.el !== v) changed = true;
+      compOf.set('sd', { via: 'mosaic', streamId: stream.id, stream, names: [], cnt, el: v });
       recSrcDirty = true;
-      try { layout(); } catch (e) {}
+      if (changed) { try { layout(); } catch (e) {} }
     }
     // A STAGER NEVER WATCHES ITSELF THROUGH ITS OWN COMPOSITE.
     //
