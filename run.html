@@ -2487,7 +2487,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     //   netBeatFrom(pid)         a beat from bridge end pid arrived; netPulse() on a 100 ms clock
     let netRoom = null;
     function netSeatingKeep() { const s = meshSeat(); if (s && s.env && s.env.NET !== (netRoom || undefined)) s.env.NET = netRoom || undefined; if (netRoom && s && s.hasCoord && s.glabel == null) s.glabel = s.id; }   // a rebuilt seat keeps the room; a seat taken before the view attached heads its own group
-    function netSeatingInstall(view) { netRoom = view ? new GifOS.mesh.NetRoom(view) : null; netSeatingKeep(); const s = meshSeat(); if (netRoom && s && s.hasCoord && s.glabel == null) s.glabel = s.id; return netRoom; }   // a seat taken before the view existed heads its own group
+    function netSeatingInstall(view) { netRoom = view ? new GifOS.mesh.NetRoom(view) : null; if (netRoom) netBeatStart(); netSeatingKeep(); const s = meshSeat(); if (netRoom && s && s.hasCoord && s.glabel == null) s.glabel = s.id; return netRoom; }   // a seat taken before the view existed heads its own group
     function netLinks() { try { const s = meshSeat(); return s && netRoom ? s.netLinks() : []; } catch (e) { return []; } }
     // A HOT STANDBY is connected and silent: no voice crosses it (one relayed
     // pair carries audio between two networks) until the seating makes it
@@ -2497,6 +2497,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function netBeatTarget() { try { const s = meshSeat(); return s && netRoom ? netRoom.heirFor(s.id) : null; } catch (e) { return null; } }
     function netBeatFrom(pid) { if (netRoom && pid != null) netRoom.beat(pid, Date.now()); }
     function netPulse() { if (netRoom) netRoom.pulse(Date.now()); }
+    // THE BEAT: while I end a bridge I beat my heir every 100 ms over our
+    // direct link; the heir's pulse counts me down after three missed beats
+    // and its seating hands the bridge to the standby at once. A worker
+    // clock keeps the 100 ms in a background tab.
+    let netBeatClock = null;
+    function netBeatTick() {
+      if (!netRoom) return;
+      const h = netBeatTarget(); const q = h != null ? peers.get(h) : null;
+      if (q && q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'nb' });
+      netPulse();
+    }
+    function netBeatStart() {
+      if (netBeatClock) return;
+      try { const u = URL.createObjectURL(new Blob(['setInterval(function(){postMessage(0)},100)'], { type: 'text/javascript' })); const w = new Worker(u); w.onmessage = netBeatTick; netBeatClock = w; }
+      catch (e) { netBeatClock = setInterval(netBeatTick, 100); }
+    }
     // The room view this page builds from what it knows itself. Nothing in it
     // grows with the room beyond what the status pulse already carries:
     //   reach(a, b)   my own pairs: the transport's word (a connected pair that
@@ -6306,7 +6322,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (seatLinks) {
         const br = seatBridge;
         for (const p of peers.values()) { const sb = seatStandby.find((l) => l.peer === p.id); if (!!p.turnStandby !== !!sb) { p.turnStandby = !!sb; if (p.turnStandby && !p.connected && !p.turnMine) { newPcFor(p); p.lastKick = now + Math.random() * 1500; sendOffer(p.id, false); } } }
-        if (br && turnAnchorId !== br.peer) { if (turnAnchorId != null) dropTurnAnchor(now, 0); if (directPath === 'blocked' && servers && !((turnAnchorDead.get(br.peer) || 0) > now)) setTurnAnchor(br.peer, now); }   // a bridge end that just failed keeps its dead hold; the seating's own heal moves the bridge
+        if (br && turnAnchorId !== br.peer) {
+          // MAKE BEFORE BREAK: while my current anchor still carries me and
+          // the pair the seating now names is not up, keep the anchor and
+          // dial the new pair through the pool; the bridge moves once it is up.
+          const cur = turnAnchorId != null ? peers.get(turnAnchorId) : null, next = peers.get(br.peer);
+          if (cur && cur.connected && next && !next.connected && directPath === 'blocked' && servers) {
+            if (now - (next.turnPreDialAt || 0) > 10000) { next.turnPreDialAt = now; newPcFor(next); next.lastKick = now + Math.random() * 1500; sendOffer(next.id, false); }
+          } else { if (turnAnchorId != null) dropTurnAnchor(now, 0); if (directPath === 'blocked' && servers && !((turnAnchorDead.get(br.peer) || 0) > now)) setTurnAnchor(br.peer, now); }   // a bridge end that just failed keeps its dead hold; the seating's own heal moves the bridge
+        }
         else if (!br && turnAnchorId != null) dropTurnAnchor(now, 0);
       }
       // 3. The client side: one anchor, kept while it carries me.
@@ -12972,6 +12996,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (m.k === 'va') {
         // Video Anywhere: the admin's signed launch order, passed peer to peer.
         vaTake(m.w, p.id);
+      } else if (m.k === 'nb') {
+        netBeatFrom(p.id);   // a beat from the bridge end I am heir to
       } else if (m.k === 'va-pair') {
         // The far end of this pair dials it through a paid server (or stopped).
         p.vaFarPaid = m.paid === 1;
