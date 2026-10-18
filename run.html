@@ -10788,8 +10788,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // and sharing a screen with the camera off is the normal case — bailing
       // first would have silently dropped the share 20 seconds in, which is
       // exactly the shape of the stage-voice bug (see mySelfStream).
-      // A rebroadcast (Q77) is a source swap too, and like a screen it is
-      // not a face: no blur. It wins while it plays.
+      // A rebroadcast (Q77) is a source swap too. It is sent unblurred and
+      // wins while it plays.
       const rbv = rbNow && rbNow.v;
       if (rbv && rbv.readyState === 'live') { stopBlurPipe(); return rbv; }
       const scr = screenStream && screenStream.getVideoTracks()[0];
