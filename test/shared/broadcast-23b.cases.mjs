@@ -87,6 +87,10 @@ async function host(page) {
   await expect(page.locator('body')).toHaveClass(/bc-host/, { timeout: 20000 });
   await expect(page.locator('#bc-link')).toHaveClass(/\bon\b/, { timeout: 20000 });
   await expect(page.locator('#rundown')).toBeVisible();
+  // Go live keeps the service: the recording starts and its card (the
+  // consent everyone sees) comes up; the host reads it and closes it.
+  const ok = page.locator('#rec-notice-ok');
+  await ok.waitFor({ state: 'visible', timeout: 15000 }).then(() => ok.click(), () => {});
 }
 
 const boxes = (page) => page.evaluate(() => {

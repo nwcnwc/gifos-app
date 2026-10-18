@@ -9172,7 +9172,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (st.hand) { const hw = uiText('handChip', 'hand raised'); chips.push('<span class="warn hand" title="' + hw + '"><b>✋</b> ' + hw + '</span>'); }
       // <b> is the icon a short phone tile keeps when the words can't fit.
       if (st.lv) chips.push('<span class="lv" title="leaving…"><b class="ico-only">🚪</b>leaving…</span>');
-      if (st.rec) chips.push('<span class="warn rec" title="recording this meeting"><b>⏺</b> recording this meeting</span>');
+      // The same room word as the card and the room bar (recRoomWord):
+      // recordingIndicatorsOk reads this chip before any recording starts.
+      if (st.rec) { const rw = 'recording this ' + recRoomWord(); chips.push('<span class="warn rec" title="' + rw + '"><b>⏺</b> ' + rw + '</span>'); }
       // No per-person transcription chip. Captions are a local display, and
       // every browser is already writing its own voice.
       // Status icons only: a muted mic, a camera-off glyph. No icon when the
@@ -28803,7 +28805,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let scope = opts.scope || 'all';
         // A service is the stage. The row and the stadium are not on screen,
         // so a recording of them would be a picture nobody is watching.
-        if (typeof BROADCAST !== 'undefined' && BROADCAST && scope !== 'app') scope = 'stage';
+        // 'program' (a kept service) is the stage too, with the host alone on
+        // it before the strip exists; turning it into 'stage' failed the
+        // first try and put "nothing to record" on the live host's line.
+        if (typeof BROADCAST !== 'undefined' && BROADCAST && scope !== 'app' && scope !== 'program') scope = 'stage';
         recMatchMix = opts.matchMix !== false;
         recQuality = REC_QUALITY[opts.quality] ? opts.quality : recDefaultQuality(IS_MOBILE);
         const q = REC_QUALITY[recQuality];
@@ -29570,7 +29575,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (bar.matches(':hover') || bar.querySelector(':focus-visible')) return true;
         // Keyboard focus on a tile or its buttons keeps them (calm hides tile buttons too).
         if (document.querySelector('#feed :focus-visible, #feed .tile.menu')) return true;
-        if (bar.querySelector('[aria-expanded="true"], .on:not(#ccdock):not(#sharebtn):not(#stagebtn)')) return true;
+        // A pressed state inside the folded More (Record on through a whole
+        // service, Captions) is not something open; it never held the calm.
+        if (bar.querySelector('[aria-expanded="true"], .on:not(#ccdock):not(#sharebtn):not(#stagebtn):not(#barmore .on)')) return true;
         const chat = document.getElementById('chatpanel');
         if (chat && chat.classList.contains('open')) return true;
         for (const d of document.querySelectorAll('[role="dialog"][aria-modal="true"]')) {
