@@ -39,10 +39,11 @@ test('a viewer early for a service reads when it starts, a countdown, Add to cal
   expect(c.visit).toBe('https://example.org/church');
 });
 
-test('a viewer reads that the service has ended once the host says so', async ({ page }) => {
+test('a viewer whose service has ended sees only the clear stage', async ({ page }) => {
   await viewer(page);
   await page.evaluate(() => window.__gifosVideo.setPeerStatusForTest('qa1', { bcend: Date.now() }));
-  await expect.poll(async () => (await card(page)).text, { timeout: 15000 }).toBe('The service has ended.');
+  await expect.poll(async () => (await card(page)).on, { timeout: 15000 }).toBe(false);
+  await expect.poll(async () => page.locator('#bc-stage-line').textContent(), { timeout: 15000 }).toBe('The stage is clear.');
   expect((await card(page)).cal).toBe(false);
 });
 

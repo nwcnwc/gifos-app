@@ -11779,6 +11779,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const qt = document.getElementById('bc-ended-txt');
       if (qt && on && qt.textContent !== bq.text) qt.textContent = bq.text;
       try { paintBcCalendar(on && bq.viewer && !!bq.sched && bq.sched.phase === 'future'); } catch (e) {}
+      try { if (typeof paintStagePlate === 'function') paintStagePlate(); } catch (e) {}
       try { paintBcVisit(bq.viewer, on); } catch (e) {}
     }
     function updateStatus() {
@@ -13799,6 +13800,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let on = false;
       try { on = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) { on = false; }
       if (on) { line.textContent = 'You are on stage. Your camera is off.'; return; }
+      // An ended service has one sentence, the plate. The overlay stays off.
+      if (typeof bcEndedInRoom === 'function' && bcEndedInRoom()) {
+        line.textContent = 'The stage is clear.';
+        return;
+      }
       // "The stage is clear." only once it is known. Someone else on stage
       // with no picture yet: their feed is on its way. Nobody heard from yet,
       // before and just after joining: still joining (a silent room reads clear
