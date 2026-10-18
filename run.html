@@ -10483,7 +10483,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // painted counts a frame that was DRAWN. A throw used to increment
         // first, so blackCamWatch read a dead pipe as frames flowing.
         const why = noteBlurFrame(pipe, drew);
-        if (why) regrabCamera(why);
+        if (why && !pipe.screen) regrabCamera(why);
         blurPaintDone(gov, now, performance.now());
         pipe.cost = gov.cost; pipe.lastPaintAt = Date.now();
       };
@@ -10518,7 +10518,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // entirely, so with blur on and no recording the Worker is GONE. It
       // comes back on the visibility flip, which is a human action — rare
       // enough that the churn is free.
-      const rvfcDrives = !!src.requestVideoFrameCallback;
+      // A still screen (a slide, a document) brings rVFC no new frames, so the
+      // metronome keeps painting a shared screen whatever the tab state.
+      const rvfcDrives = !!src.requestVideoFrameCallback && !pipe.screen;
       const tick = () => { if (blurPipe === pipe) { pipe.metroN = (pipe.metroN || 0) + 1; paint(); } };
       let metroOff = null;
       const syncMetro = () => {
