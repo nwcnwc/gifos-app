@@ -34,18 +34,22 @@
   "capabilities": {
     "db": true,
     "meet": true,
-    "remote": true
+    "remote": true,
+    "ai": [
+      "smartest",
+      "tts"
+    ]
   },
   "cover": "/apps/meeting-bot/cover.jpg",
   "screenshots": [],
   "gif": "/apps/meeting-bot/meeting-bot.gif",
-  "bytes": 21600,
+  "bytes": 42781,
   "download": 0,
   "provides": null,
-  "sha256": "93e77bb333c7a49eba08f1e910d8c8aac2b7b911051e481598fac50d2a68ddef",
+  "sha256": "cd3a0c15482ca8205ef4ab6118e64970ee4692835cf16efb9f2ac6b911d2d422",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-15"
+    "ts": "2026-10-18"
   }
 }
