@@ -2188,6 +2188,7 @@
         let head = null; for (let t = 0; t < C(); t++) if (R.s1Row(gl, t, this)) { const h = R.cellOccOrSoft(ck({ pc: 0, r: t, i: 0 }), this); if (h != null && R.seatedLive(h)) { head = h; break; } }
         if (head != null && head !== this.id && mm.ttl > 1) { this.handOn(mm, head, ck({ pc: 0, r: 0, i: 0 }), false); return; }
         if (head == null) { this.noroomWhy = 'label-unseated'; this.emit(mm.nc, { t: 'NOROOM', nd: 0 }); return; } }
+      let s1Why = glcHere ? 'glc' : this.coord.pc !== 0 ? 'deep-seat' : null;   // forensics for a deep admit (admitWhy): why Section 1 took nobody
       if (this.coord.pc === 0 && !glcHere) {
         const skip = [];   // forensics: why each Section-1 cell was passed over (noroomWhy, the test trace's NOROOM row)
         // A SPLIT-OFF SEAT ADMITS NOBODY INTO SECTION 1 (sim twin). A healer
@@ -2498,6 +2499,7 @@
         // free cells look unservable fast-tracks silent death past the H1-S1
         // ring-hold (headless-row leg C), and buys nothing — the partitioned
         // half recovers on the reachable-forward fix below alone.
+        s1Why = 'free=' + s1admFree + ' ' + skip.join(' ');
         if (s1admFree > 0) { this.noroomWhy = 's1:' + skip.join(' '); this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
       }
       const f = netOn ? this.firstFreeInRoster(gl, mm.nc) : this.firstFreeInRoster();
@@ -2506,7 +2508,7 @@
         // admit, exactly as the S1 designated arm does.
         const fk = ck(f);
         if (this.occIsPhantom(fk)) { this.occ.delete(fk); this.live.delete(fk); this.s1seen.delete(fk); this.kidful.delete(fk); this.tlForget(fk, 'phantom-deep'); }
-        this.admit(f, mm); return;
+        this.admitWhy = 'roster ' + (s1Why || ''); this.admit(f, mm); this.admitWhy = null; return;
       }
       // Descend — but NEVER into the void. This forward used raw occ, so it
       // emitted the FIND at an occupant on the far side of a partition (or a
