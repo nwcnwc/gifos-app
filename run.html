@@ -2596,8 +2596,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pairRelayed = netPairRelayed;
       const view = {
         tick: () => { const s = me(); return s ? s.TICK : 0; },
-        seats: () => { const s = me(); const out = s ? [s] : []; for (const [pid, st] of statusOf) if (pid !== myId && pulseSeat(s, pid, st)) out.push(rec(pid, st)); for (const r of ringRecs()) out.push(r); return out; },
-        seat: (id) => { const s = me(); if (s && id === s.id) return s; const st = statusOf.get(id); if (pulseSeat(s, id, st)) return rec(id, st); return ringRecs().find((r) => r.id === id) || null; },
+        seats: () => { const s = me(); const out = s ? [s] : []; const best = new Map(); for (const [pid, st] of statusOf) if (pid !== myId && pulseSeat(s, pid, st)) { const k = net.topo.ckey(st.seat); const b = best.get(k); if (!b || (st.rx || 0) > (b.st.rx || 0)) best.set(k, { pid, st }); } for (const { pid, st } of best.values()) out.push(rec(pid, st)); for (const r of ringRecs()) if (!best.has(net.topo.ckey(r.coord))) out.push(r); return out; },   // two pulses naming one cell: the newer one holds it (a seat that moved on keeps its old pulse a while)
+        seat: (id) => { const s = me(); if (s && id === s.id) return s; const st = statusOf.get(id); if (pulseSeat(s, id, st)) { const k = net.topo.ckey(st.seat); for (const [q, o] of statusOf) if (q !== id && q !== myId && (o && o.rx || 0) > (st.rx || 0) && o.seat && typeof o.seat.pc === 'number' && net.topo.ckey(o.seat) === k && pulseSeat(s, q, o)) return null; return rec(id, st); } return ringRecs().find((r) => r.id === id) || null; },
         probe, probeDone,
         reach: (a, b) => {
           if (a === b) return true;
@@ -6174,7 +6174,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // renegotiation that ends a pair's track and adds a new one to the same
       // stream makes a new key, so every mix drops the ended track (which
       // reads silence for ever) and folds the live one.
-      const live = (st) => { for (const t of st.getAudioTracks()) if (t.readyState !== 'ended') return t; return null; };
+      // A pair's stream can hold several audio tracks (one per m-line it ever
+      // received on): the one receiving packets is the voice; a track whose
+      // m-line went quiet reads muted.
+      const live = (st) => { let held = null; for (const t of st.getAudioTracks()) { if (t.readyState === 'ended') continue; if (!t.muted) return t; if (!held) held = t; } return held; };
       for (const q of peers.values()) {
         if (!q.connected || q.relayed || !q.stream) continue;
         if (typeof mediaOk === 'function' && mediaOk(q.id) === false) continue;
