@@ -3576,8 +3576,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <p class="lob-quiet" data-t="lobQuiet">Turn your mic and camera on from the call.</p>
       <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a call</span><small data-t="lobStartSub">Anyone with the link can join</small></button>
       <button type="button" id="lob-admin-btn" class="lob-link">Host this call</button>
-      <button type="button" id="lob-th-btn" class="lob-link">Start a town hall</button>
-      <button type="button" id="lob-stream" class="lob-link">Stream to friends</button>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <input id="lob-admin-name" maxlength="40" placeholder="Name this call" autocomplete="off">
         <button type="button" id="lob-key-reveal" class="lob-text" hidden>Change host key</button>
@@ -3604,6 +3602,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <div class="lob-row"><button id="lob-join-cancel" class="lob-ghost">Cancel</button><button id="lob-join-go">Join</button></div>
         <div id="lob-join-err" class="lob-err"></div>
       </div>
+      <!-- Town hall and Stream to friends come after Join: Start, Host and Join
+           stay on the first screen even at the largest text. -->
+      <button type="button" id="lob-th-btn" class="lob-link">Start a town hall</button>
+      <button type="button" id="lob-stream" class="lob-link">Stream to friends</button>
       <div class="lob-sep"></div>
       <div class="lob-hist-h" data-t="lobRecent">Recent &amp; saved</div>
       <div id="lob-list"></div>
