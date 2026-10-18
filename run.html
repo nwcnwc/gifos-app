@@ -15407,9 +15407,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // parent dies, the door is the one channel its new parent can still
       // signal it over. A pair that only just became a link is judged from
       // that moment, not from the quiet it kept while it was a door.
+      // ...and a beat is owed only on a link BOTH ends hold. A deep row's
+      // non-head seats count their row's owner among their links, but the
+      // owner holds only the row head, so it closes their door and never
+      // answers their dial: their side of the pair stays quiet by design,
+      // and reading that as death marked a live owner gone. When my view
+      // shows the far side's links and I am not among them, the pair is not
+      // owed; an unknown far side is judged as before.
       const REAP_MS = 195000; // vouch cap + pulse slack
       for (const [pid, p] of Array.from(peers)) {
-        const owed = linkTo(pid);
+        const theirs = typeof targetLinkIds === 'function' ? targetLinkIds(pid) : null;
+        const owed = linkTo(pid) && (!theirs || theirs.includes(myId));
         if (!owed) p.owedAt = 0; else if (!p.owedAt) p.owedAt = nowMs;
         if (rosterIds.includes(pid)) continue;
         const st = statusOf.get(pid);
