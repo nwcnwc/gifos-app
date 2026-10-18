@@ -9423,18 +9423,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const sgsV = sgs && sgs.querySelector('video');
         const sgsOn = !!(sgsV && sgsV.srcObject);
         if (sgsOn) {
-          // The strip carries everyone on the Stage: their own tiles leave the
-          // layout, so nobody shows twice. A sharer keeps their face in the
-          // Row (the Stage shows their screen); a Pin keeps its tile.
-          let stagersNow = [];
-          try { stagersNow = stageIds(); } catch (e) {}
-          for (let i = tiles.length - 1; i >= 0; i--) {
-            const t = tiles[i];
-            const sid = t.me ? myId : t.id;
-            if (!sid || stagersNow.indexOf(sid) < 0 || t.shareFace || (focusId && t.id === focusId)) continue;
-            tiles.splice(i, 1);
-            try { t.el.classList.add('comfy-off'); } catch (e) {}
-          }
           tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, pz: 'stage:sgs' });
         }
         document.body.classList.toggle('show-stage', sgsOn);
@@ -9862,16 +9850,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         placeTileWin(win, { x: r.left, y: r.top, w: Math.min(r.width, vw - 380), h: r.height });
         return;
       }
-      // The tile itself becomes the window: the person's one live picture is
-      // inside it, and the tile's spot in the Row keeps a placeholder until
-      // the window closes. The window grows out of the tile's own rectangle.
+      // The tile expands into the window: the window grows out of the
+      // tile's own rectangle. The tile stays as it is behind the veil.
       const r = el.getBoundingClientRect();
       veil.hidden = false;
       document.body.classList.add('tw-open', 'meet-awake');
       twFill(win, el);
-      // The live picture is in the window now: its spot (a tile, or the
-      // Stage when it shows this person) keeps a placeholder.
-      if (!el.classList.contains('rowtile') || win.querySelector('.tw-pad')) el.classList.add('tw-away');
       win.hidden = false;
       placeTileWin(win, { x: r.left, y: r.top, w: r.width, h: r.height });
       const wr = win.getBoundingClientRect();
@@ -9898,7 +9882,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (win) { win.querySelectorAll('video').forEach((v) => { try { v.srcObject = null; } catch (e) {} }); win.hidden = true; win.textContent = ''; }
       if (veil) veil.hidden = true;
       document.body.classList.remove('tw-open');
-      el.classList.remove('tw-away');
       try { if (el.classList.contains('tile')) applyViewerCrop(el); } catch (e) {}
       wakeMeet();
       try { el.focus({ preventScroll: true }); } catch (e) {}

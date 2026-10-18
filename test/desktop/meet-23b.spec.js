@@ -55,7 +55,7 @@ test('calm by default: after 3 s only names and the speaking frame show; a move 
   expect(await shown(page, '#feed .tile > .blurbox, #feed .tile .modbar button')).toBe(false);
 });
 
-test('tap a tile: it becomes its control window, one picture of the person, and its spot keeps a placeholder', async ({ page, browserName }) => {
+test('tap a tile: it expands into its control window, and the tile keeps showing the person', async ({ page, browserName }) => {
   await boot(page, 3);
   const before = (await rects(page)).find((r) => r.id === 'qa2');
   await page.mouse.click(before.x + before.w / 2, before.y + before.h / 2);
@@ -66,10 +66,10 @@ test('tap a tile: it becomes its control window, one picture of the person, and 
     return { w: r.width, away: t.classList.contains('tw-away'), tileVideoHidden: getComputedStyle(v).visibility === 'hidden',
       winVideos: document.querySelectorAll('#tilewin video').length };
   });
-  // The tile does not grow: the person is in the window, and the spot stays.
+  // The window grew out of the tile; the tile itself stays as it was, picture and all.
   expect(Math.round(st.w)).toBe(Math.round(before.w));
-  expect(st.away).toBe(true);
-  expect(st.tileVideoHidden).toBe(true);
+  expect(st.away).toBe(false);
+  expect(st.tileVideoHidden).toBe(false);
   expect(st.winVideos).toBe(browserName === 'webkit' ? 0 : 1);
   await expect(page.locator('#tilewin .tw-name')).toContainText(/\S/);
   await expect(page.locator('#tilewin', { hasText: 'Pin' })).toBeVisible();

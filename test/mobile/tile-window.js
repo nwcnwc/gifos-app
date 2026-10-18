@@ -2,8 +2,7 @@
  * 0.9.23b: a tap on a face opens that tile into its control window. On a
  * phone and on a desktop:
  * - a calm phone's first tap only wakes the call; the next tap opens it
- * - the person's one live picture is in the window; their spot in the Row
- *   keeps a placeholder (no second big copy of anyone)
+ * - the window grows out of the tile; the tile keeps showing the person
  * - the window is whole on the screen, every button at least 44px tall with
  *   16px words, each per-person control once, in the same words everywhere
  *   ("Mute for all", "Blur for all"), plus Pin
@@ -80,7 +79,7 @@ async function closeWin(page) {
     await openWin(page, phone);
     let r = await read(page);
     if (!r.onScreen) bad.push(tag + ': the window runs off the screen');
-    if (!r.away || !r.tileVideoHidden) bad.push(tag + ': Ruth shows twice (her tile kept its picture while the window is open)');
+    if (r.away || r.tileVideoHidden) bad.push(tag + ': Ruth\'s tile was blanked while her window is open');
     for (const w of ['Mute for all', 'Blur for all', 'Pin']) {
       const n = r.words.filter((x) => x === w).length;
       if (n !== 1) bad.push(tag + ': "' + w + '" shows ' + n + ' times (' + r.words.join(', ') + ')');
@@ -88,7 +87,6 @@ async function closeWin(page) {
     if (r.small.length) bad.push(tag + ': too small to tap or read: ' + r.small.join(', '));
     if (r.outside.length) bad.push(tag + ': runs out of the window: ' + r.outside.join(', '));
     await closeWin(page);
-    if (await page.evaluate(() => document.querySelector('#grid .tile.tw-away') !== null)) bad.push(tag + ': a face stayed a placeholder after Close');
     await page.evaluate(() => window.__gifosVideo.setPeerStatusForTest('qa1', { muted: true }));
     await openWin(page, phone);
     r = await read(page);
