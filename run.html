@@ -10610,6 +10610,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       stopAvatarPipe();
       const canvas = document.createElement('canvas');
+      // A browser that cannot stream a canvas sends no picture with the
+      // camera off. It still joins and watches (view-only is supported).
+      if (typeof canvas.captureStream !== 'function') return null;
       paintAvatarCanvas(canvas, name, lvl);
       const stream = canvas.captureStream(0);
       const track = stream.getVideoTracks()[0];
@@ -10649,6 +10652,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (p) avPipes.delete(key);
       if (avPipes.size >= AV_PIPE_CAP) return null;
       const canvas = document.createElement('canvas');
+      if (typeof canvas.captureStream !== 'function') return null; // the letter overlay stands in
       paintAvatarCanvas(canvas, name, 0);
       const stream = canvas.captureStream(0);
       const track = stream.getVideoTracks()[0];
