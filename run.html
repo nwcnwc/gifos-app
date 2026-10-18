@@ -3365,6 +3365,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #lobby.service-ready #lob-desk-more { top: 0; right: 8px; }
   }
 
+  /* The host key and its Generate button share a row (restored with the lobby key markup). */
+  .lob-keyrow { display: flex; align-items: stretch; gap: 8px; margin-bottom: .5rem; }
+  .lob-keyrow input { flex: 1 1 auto; width: auto; min-width: 0; margin-bottom: 0; }
+  @media (max-width: 700px) { .lob-keyrow { flex-direction: column; } #lob-keygen.lob-ghost { width: 100%; } }
   /* Restored: broadcast stream link, ended card, Visit, captions, questions,
      rebroadcast, flip camera, key button and appear-row styles that a
      merge left out (the markup and code were kept, the styles were not). */
@@ -3504,8 +3508,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button type="button" id="lob-admin-btn" class="lob-link">Host this call</button>
       <div id="lob-admin" class="lob-expand" style="display:none">
         <input id="lob-admin-name" maxlength="40" placeholder="Name this call" autocomplete="off">
+        <button type="button" id="lob-key-reveal" class="lob-text" hidden>Change host key</button>
+        <div id="lob-key-block">
         <label class="lob-pwlab">🔑 <b id="lob-admin-pass-head">Host password</b> — only you<small id="lob-admin-pass-note">Do not share it. Guests do not need it, and it is not part of the link.</small></label>
-        <input id="lob-admin-pass" type="password" maxlength="64" placeholder="Host password" autocomplete="new-password">
+        <div class="lob-keyrow">
+          <input id="lob-admin-pass" type="password" maxlength="64" placeholder="Host password" autocomplete="new-password">
+          <button type="button" id="lob-keygen" class="lob-ghost">Generate</button>
+        </div>
+        </div>
+        <button type="button" id="lob-guest-reveal" class="lob-text" hidden>Add a guest password</button>
         <button type="button" id="lob-guest-more" class="lob-link" aria-expanded="false">Add a password for guests</button>
         <div id="lob-guest-extra" style="display:none">
           <label class="lob-pwlab">🎟 <b id="lob-guest-pass-head">Guest password</b> — the one you share<small id="lob-guest-pass-note">Optional. It is not part of the link.</small></label>
