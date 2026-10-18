@@ -9376,7 +9376,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const sgs = document.querySelector('#stagefeed [data-row="sgs"]');
         const sgsV = sgs && sgs.querySelector('video');
         const sgsOn = !!(sgsV && sgsV.srcObject);
-        if (sgsOn) tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, pz: 'stage:sgs' });
+        if (sgsOn) {
+          // The strip carries everyone on the Stage: their own tiles leave the
+          // layout, so nobody shows twice. A sharer keeps their face in the
+          // Row (the Stage shows their screen); a Pin keeps its tile.
+          let stagersNow = [];
+          try { stagersNow = stageIds(); } catch (e) {}
+          for (let i = tiles.length - 1; i >= 0; i--) {
+            const t = tiles[i];
+            const sid = t.me ? myId : t.id;
+            if (!sid || stagersNow.indexOf(sid) < 0 || t.shareFace || (focusId && t.id === focusId)) continue;
+            tiles.splice(i, 1);
+            try { t.el.classList.add('comfy-off'); } catch (e) {}
+          }
+          tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, pz: 'stage:sgs' });
+        }
         document.body.classList.toggle('show-stage', sgsOn);
         const meta = comfyStadMeta();
         const roster = comfyStadRoster();
@@ -9640,6 +9654,56 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       win.appendChild(sec);
       requestAnimationFrame(paint);
     }
+    // On the Stage: frame what the Stage shows, any shape. Drag the frame to
+    // move it, drag its corner to resize it; Whole picture sends it all.
+    function twStageFrameSection(win) {
+      const cam = localStream && localStream.getVideoTracks()[0];
+      if (!cam || myStatus.camOff) return;
+      const sec = document.createElement('div'); sec.className = 'tw-sec tw-stageframe';
+      sec.innerHTML = '<b>Frame what the Stage shows</b><p class="tw-help">On the Stage everyone sees your whole camera at its own shape. Drag the frame to show less, or its corner to change its size and shape.</p>'
+        + '<div class="tw-pad"><video muted playsinline autoplay></video><div class="tw-win tw-rect"><i class="tw-grip" aria-hidden="true"></i></div></div><div class="tw-row" style="margin-top:8px"></div>';
+      const pad = sec.querySelector('.tw-pad'), pv = pad.querySelector('video'), box = pad.querySelector('.tw-rect');
+      pv.muted = true; pv.srcObject = new MediaStream([cam]); const pr = pv.play(); if (pr && pr.catch) pr.catch(() => {});
+      let f = Object.assign({ x: 0.5, y: 0.5, w: 1, h: 1 }, stageFrameVal || {});
+      let pushT = 0;
+      const push = () => { if (pushT) clearTimeout(pushT); pushT = setTimeout(() => { pushT = 0; setStageFrame(f); }, 120); };
+      const paint = () => {
+        const vw = pv.videoWidth || 16, vh = pv.videoHeight || 9;
+        pad.style.aspectRatio = vw + ' / ' + vh;
+        const maxW = (pad.parentElement && pad.parentElement.clientWidth) || 360;
+        pad.style.width = Math.round(Math.min(maxW, (window.innerHeight * 0.46) * vw / vh)) + 'px';
+        const n = normStageFrame(f) || { x: 0.5, y: 0.5, w: 1, h: 1 };
+        f = n;
+        box.style.left = ((n.x - n.w / 2) * 100) + '%'; box.style.top = ((n.y - n.h / 2) * 100) + '%';
+        box.style.width = (n.w * 100) + '%'; box.style.height = (n.h * 100) + '%';
+      };
+      pv.addEventListener('loadedmetadata', paint); pv.addEventListener('resize', paint);
+      let drag = null;
+      pad.addEventListener('pointerdown', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        try { pad.setPointerCapture(e.pointerId); } catch (err) {}
+        const br = box.getBoundingClientRect();
+        const corner = Math.abs(e.clientX - br.right) < 28 && Math.abs(e.clientY - br.bottom) < 28;
+        drag = { corner: corner, x: e.clientX, y: e.clientY, f: Object.assign({}, f) };
+      });
+      pad.addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        const r = pad.getBoundingClientRect();
+        const dx = (e.clientX - drag.x) / Math.max(1, r.width), dy = (e.clientY - drag.y) / Math.max(1, r.height);
+        if (drag.corner) {
+          // The top-left corner stays put; the frame grows or shrinks.
+          const l = drag.f.x - drag.f.w / 2, t = drag.f.y - drag.f.h / 2;
+          const w = Math.min(1 - l, Math.max(0.2, drag.f.w + dx)), h = Math.min(1 - t, Math.max(0.2, drag.f.h + dy));
+          f = { x: l + w / 2, y: t + h / 2, w: w, h: h };
+        } else f = { x: drag.f.x + dx, y: drag.f.y + dy, w: drag.f.w, h: drag.f.h };
+        paint(); push();
+      });
+      const end = () => { drag = null; };
+      pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
+      sec.querySelector('.tw-row').appendChild(twButton('Whole picture', !stageFrameVal, () => { f = { x: 0.5, y: 0.5, w: 1, h: 1 }; paint(); push(); }));
+      win.appendChild(sec);
+      requestAnimationFrame(paint);
+    }
     function twFill(win, el) {
       win.textContent = '';
       const id = twIdOf(el);
@@ -9657,7 +9721,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (t) { const sp = document.createElement('span'); sp.textContent = t; info.appendChild(sp); }
       });
       if (el.classList.contains('stadface')) { const sp = document.createElement('span'); sp.textContent = 'In the stadium'; info.appendChild(sp); }
-      if (!isStage && el.dataset.tier === 'row') twCropSection(win, el, isMe);
+      if ((isMe || isStage) && meOnStage() && !myStatus.scr) twStageFrameSection(win);
+      else if (!isStage && (el.dataset.tier === 'row' || isMe)) twCropSection(win, el, isMe);
       if (!isStage && !win.querySelector('.tw-pad')) {
         // No live picture to show (camera off, or a Stadium face): the
         // person's picture or initial stands in.
@@ -9678,6 +9743,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (myStatus.scr) row.appendChild(twButton(uiText('stopShare', 'Stop sharing'), false, () => { try { stopScreenShare(); } catch (e) {} closeTileWin(); }, 'danger'));
       } else if (isStage) {
         if (myStatus.scr) row.appendChild(twButton(uiText('stopShare', 'Stop sharing'), false, () => { try { stopScreenShare(); } catch (e) {} closeTileWin(); }, 'danger'));
+        else if (meOnStage()) {
+          const sb = document.getElementById('stagebtn');
+          if (sb) row.appendChild(twButton('Step off the stage', false, () => { sb.click(); closeTileWin(); }));
+        }
       } else if (id) {
         row.appendChild(twButton(focusId === id ? 'Unpin' : 'Pin', focusId === id, () => {
           focusId = focusId === id ? null : id;
@@ -9751,10 +9820,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // inside it, and the tile's spot in the Row keeps a placeholder until
       // the window closes. The window grows out of the tile's own rectangle.
       const r = el.getBoundingClientRect();
-      if (!el.classList.contains('rowtile')) el.classList.add('tw-away');
       veil.hidden = false;
       document.body.classList.add('tw-open', 'meet-awake');
       twFill(win, el);
+      // The live picture is in the window now: its spot (a tile, or the
+      // Stage when it shows this person) keeps a placeholder.
+      if (!el.classList.contains('rowtile') || win.querySelector('.tw-pad')) el.classList.add('tw-away');
       win.hidden = false;
       placeTileWin(win, { x: r.left, y: r.top, w: r.width, h: r.height });
       const wr = win.getBoundingClientRect();
@@ -10331,8 +10402,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Sender crop: the canvas is the chosen square; the whole frame is
         // drawn offset and scaled so that square lands on it.
         let ox = 0, oy = 0, dw = w, dh = h;
-        const sCrop = senderCrop();
-        if (sCrop && GifOS.meetZones) {
+        const sCrop = senderCrop(), sFrame = stageFrame();
+        if (sFrame) {
+          // The Stage frame: any aspect, the long side capped like the rest.
+          const rw = sFrame.w * sw, rh = sFrame.h * sh;
+          const k = Math.min(1, pipe.capW / Math.max(1, rw, rh));
+          w = Math.max(2, Math.round(rw * k)); h = Math.max(2, Math.round(rh * k));
+          ox = -(sFrame.x * sw - rw / 2) * k; oy = -(sFrame.y * sh - rh / 2) * k; dw = sw * k; dh = sh * k;
+        } else if (sCrop && GifOS.meetZones) {
           const r = GifOS.meetZones.cropRect(sw, sh, sCrop);
           const side = Math.max(2, Math.round(Math.min(r.side, pipe.capW)));
           const k = side / Math.max(1, r.side);
@@ -10600,11 +10677,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const SENDER_CROP_KEY = 'meet.crop.v1.self';
     let senderCropVal = null;
     try { const c = JSON.parse(localStorage.getItem(SENDER_CROP_KEY) || 'null'); if (c && typeof c === 'object') senderCropVal = c; } catch (e) {}
+    // On the Stage a person sends their full camera frame at its own aspect
+    // (or the Stage frame they chose, any aspect); the square crop is for
+    // the Row and comes back when they leave the Stage.
+    function meOnStage() {
+      try { return !!(myStatus && myStatus.stg) || (typeof stageIds === 'function' && !!myId && stageIds().includes(myId)); } catch (e) { return false; }
+    }
     function senderCrop() {
       const MZ = typeof GifOS !== 'undefined' && GifOS.meetZones;
       if (!senderCropVal || !MZ || MZ.isDefault(senderCropVal)) return null;
+      if (meOnStage()) return null;
       return senderCropVal;
     }
+    // { x, y, w, h }: the centre and the size of the Stage frame as shares
+    // of the camera's width and height. null = the whole frame.
+    const STAGE_FRAME_KEY = 'meet.frame.v1.stage';
+    let stageFrameVal = null;
+    try { const f = JSON.parse(localStorage.getItem(STAGE_FRAME_KEY) || 'null'); if (f && typeof f === 'object') stageFrameVal = f; } catch (e) {}
+    function normStageFrame(f) {
+      if (!f) return null;
+      const w = Math.min(1, Math.max(0.2, +f.w || 1)), h = Math.min(1, Math.max(0.2, +f.h || 1));
+      const x = Math.min(1 - w / 2, Math.max(w / 2, f.x != null ? +f.x : 0.5));
+      const y = Math.min(1 - h / 2, Math.max(h / 2, f.y != null ? +f.y : 0.5));
+      return (w > 0.995 && h > 0.995) ? null : { x: x, y: y, w: w, h: h };
+    }
+    function stageFrame() { return meOnStage() ? normStageFrame(stageFrameVal) : null; }
+    function setStageFrame(f) {
+      stageFrameVal = normStageFrame(f);
+      try { if (stageFrameVal) localStorage.setItem(STAGE_FRAME_KEY, JSON.stringify(stageFrameVal)); else localStorage.removeItem(STAGE_FRAME_KEY); } catch (e) {}
+      try { refreshOutbound(); } catch (e) {}
+    }
+    window.__stageFrame = { get: () => stageFrameVal, set: setStageFrame, onStage: meOnStage };
     function setSenderCrop(c) {
       const MZ = typeof GifOS !== 'undefined' && GifOS.meetZones;
       senderCropVal = c && MZ && !MZ.isDefault(c) ? { x: +c.x, y: +c.y, s: +c.s } : null;
@@ -10664,7 +10767,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       stopAvatarPipe();
       const lvl = blurLevelFor('me');
       // A sender crop (0.9.23b) rides the same canvas: everyone gets the square I chose.
-      if ((lvl > 0 || lyricOnAir() || !!senderCrop()) && !myStatus.camOff) return startBlurPipe(lvl) || cam;
+      if ((lvl > 0 || lyricOnAir() || !!senderCrop() || !!stageFrame()) && !myStatus.camOff) return startBlurPipe(lvl) || cam;
       stopBlurPipe();
       return cam;
     }
@@ -10718,6 +10821,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       reactCamIdle();
+      // Promoted to the Stage: open my window on the Stage frame, once per step-up.
+      const stagedNow = meOnStage();
+      if (stagedNow && !refreshOutbound.wasStaged && refreshOutbound.seatedAt && Date.now() - refreshOutbound.seatedAt > 3000 && meTile && meTile.tile && !myStatus.camOff) {
+        setTimeout(() => {
+          try {
+            if (!window.__tileWin || window.__tileWin.isOpen()) return;
+            const st = document.querySelector('#stagefeed [data-row="sgs"]');
+            window.__tileWin.open(st && st.getClientRects().length ? st : meTile.tile);
+          } catch (e) {}
+        }, 1200);
+      }
+      if (!refreshOutbound.seatedAt && myId) refreshOutbound.seatedAt = Date.now();
+      refreshOutbound.wasStaged = stagedNow;
       const vt = sentVideoTrack();
       // Your self-view shows EXACTLY the track you broadcast (raw or blurred).
       // One WYSIWYG source means the preview never becomes a second <video>
@@ -24578,7 +24694,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           paintStageStrip(selfSt);
         }
         else {
-        if (!stripPack) stripPack = MM.createPacker({ shape: 'bar', fps: STAGE_FPS, cell: stageCell(), maxW: STAGE_MAXW }).start(); // VIDEO-ONLY: Stage audio folds at the ear (mix-minus). NOT the secondary-tile defaults — see "THE STAGE IS NOT A SECONDARY TILE"
+        if (!stripPack) stripPack = MM.createPacker({ shape: 'bar', fps: STAGE_FPS, cell: stageCell(), maxW: STAGE_MAXW, native: true }).start(); // VIDEO-ONLY: Stage audio folds at the ear (mix-minus). NOT the secondary-tile defaults — see "THE STAGE IS NOT A SECONDARY TILE"
         // The power tier moves under a long-lived strip; track it without a
         // teardown (a rebuild would mint a new stream id and re-ship to
         // everyone). Both dials, every sweep — setCell/setFps no-op unchanged.

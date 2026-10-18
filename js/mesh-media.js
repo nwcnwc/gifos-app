@@ -618,6 +618,31 @@
       const order = [...tiles.values()].sort((a, b) => (a.ord < b.ord ? -1 : a.ord > b.ord ? 1 : 0));
       const dense = DENSE && T > STAD_CAP;
       let cell, W, H, geo = null, dl = null;
+      // ONE STAGER, THEIR OWN SHAPE (opts.native, the Stage strip): a lone
+      // camera leaf is sent at its native aspect, with the same pixel area as
+      // the square cell it replaces, so the bandwidth does not change. A
+      // screen (contain), a dark cell or a moderator's blur keeps the square.
+      const solo = order[0];
+      const soloEl = solo && solo.el;
+      const nsw = soloEl ? (soloEl.videoWidth || soloEl.width || 0) : 0, nsh = soloEl ? (soloEl.videoHeight || soloEl.height || 0) : 0;
+      const native = !!(opts.native && shape === 'bar' && T === 1 && solo && solo.n === 1 && solo.fit !== 'contain' && !solo.dark && !solo.blur && nsw > 0 && nsh > 0);
+      if (native) {
+        cell = cellSize(shape, cellPref, maxW, 1);
+        const a = nsw / nsh;
+        W = Math.max(2, Math.round(cell * Math.sqrt(a) / 2) * 2); H = Math.max(2, Math.round(cell / Math.sqrt(a) / 2) * 2);
+        denseNow = false; cellNow = cell;
+        const sig = frameSig();
+        const sizeDue = canvas.width !== W || canvas.height !== H;
+        if (!sizeDue && sig !== null && sig === lastSig && now - lastRealPaint < STILL_MAX_MS) { still++; last = now; return; }
+        lastSig = sig === null ? '' : sig; lastRealPaint = now;
+        if (canvas.width !== W) canvas.width = W;
+        if (canvas.height !== H) canvas.height = H;
+        try { ctx.drawImage(soloEl, 0, 0, nsw, nsh, 0, 0, W, H); } catch (e) {}
+        const c = Math.min(W, H);
+        drawOverlay(0, H - c, c, solo.lbl);
+        last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++); drawn++;
+        return;
+      }
       if (dense) {
         // Fixed footprint, one drawImage per tile (see DENSE MODE above).
         geo = denseItems(order, false);
