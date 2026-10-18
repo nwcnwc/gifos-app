@@ -5334,6 +5334,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (w && w.textContent !== words) w.textContent = words;
       el.setAttribute('aria-label', words);
           try { paintOnAirSide(); } catch (e) {}
+      try { bcKeepSync(); } catch (e) {}
     }
     function paintBroadcastJoinNote(role) {
       const note = document.getElementById('bc-join-note');
@@ -16266,14 +16267,32 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // keeps the stage the same way, with the recording chip everyone sees,
     // and Leave hands the replay over. Once per page, so a Stop stays stopped.
     let bcKept = false;
+    let bcKeepUserStop = false;
     const bcKeepLog = []; // read by keepPeekForTest
+    // Recording starts only while this host is on air (camera or mic actually
+    // sending). Off air shows neither the Recording pill nor Stop. Leaving
+    // the air stops that recording; the next Go live starts it again, unless
+    // the host tapped Stop.
+    function bcKeepSync() {
+      if (!BROADCAST || !bcHostStored() || bcKeepUserStop) return;
+      if (bcSending()) bcKeepService();
+      else bcKeepOffAir();
+    }
+    function bcKeepOffAir() {
+      if (!(recRec && recRec.state !== 'inactive') && !recStarting) { bcKept = false; return; }
+      try { if (typeof recDraw === 'function') recDraw(); } catch (e) {}
+      try { if (recRec && recRec.state !== 'inactive') recRec.stop(); } catch (e) {}
+      recRec = null;
+      bcKept = false;
+    }
     function bcKeepService() {
-      if (bcKept || !BROADCAST || !bcHostStored()) return;
+      if (bcKeepUserStop || bcKept || !BROADCAST || !bcHostStored() || !bcSending()) return;
       bcKept = true;
       const until = Date.now() + 30000;
       const tick = () => {
         bcKeepLog.push({ t: Date.now(), leaving: !!leaving, rec: !!(recRec && recRec.state !== 'inactive'), starting: !!recStarting, stg: !!myStatus.stg });
-        if (leaving || (recRec && recRec.state !== 'inactive') || recStarting) return;
+        if (bcKeepUserStop || leaving || (recRec && recRec.state !== 'inactive') || recStarting) return;
+        if (!bcSending()) { bcKept = false; return; }
         if (!myStatus.stg || !recScopeSources('program').stage.length) {
           if (Date.now() < until) setTimeout(tick, 500);
           return;
@@ -29471,6 +29490,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (BROADCAST && bcRole() !== 'host') return;
       if (recStarting) return;
       if (recRec && recRec.state !== 'inactive') {
+        if (BROADCAST && bcHostStored()) bcKeepUserStop = true;
         // Halt the 15fps compositor BEFORE stop(): stop() makes the encoder
         // flush its backlog, and on a weak/software-rendered device the
         // still-running composite loop starves that flush — onstop (and the
@@ -34236,7 +34256,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       peerCamOff: (pid) => seatDark(statusOf.get(pid)),
       defyCamOffForTest: () => { if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return false; const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; camDefiant = true; t.enabled = true; myStatus.camOff = false; broadcastStatus(); return true; },
       // a camera that comes on by a path that never asked the order (the page itself is honest)
-      slipCamOnForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; t.enabled = true; myStatus.camOff = false; return true; },
+      slipCamOnForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (!t) return false; t.enabled = true; myStatus.camOff = false; try { paintOnAir(); } catch (e) {} return true; },
+      slipCamOffForTest: () => { const t = localStream && localStream.getVideoTracks()[0]; if (t) t.enabled = false; myStatus.camOff = true; try { paintOnAir(); } catch (e) {} return true; },
       // freeze my outgoing pulses (simulates a phone that has throttled itself)
       haltPulseForTest: (on) => { pulseHalt = !!on; },
       // backdate the beat clock (simulates a renderer that froze and then resumed)
