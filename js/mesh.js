@@ -4706,8 +4706,13 @@
         // my own link to it died; firstHandLive may linger up to 60 ticks.)
         if (this.coord.i >= 1 && TICK - this.healAt > 20 && (!this.firstHandLive(ck({ pc: 0, r: this.coord.r, i: 0 })) || this.translost.has(ck({ pc: 0, r: this.coord.r, i: 0 })))) {
           const lft = { pc: 0, r: this.coord.r, i: this.coord.i - 1 }; const lk = ck(lft);
-          // Defer to VERTICAL only when down-child OCC present (not stale childOf).
-          const defer = this.translost.has(lk) && this.occGet(ck(topo.down(lft))) != null;
+          // On the early path, defer to VERTICAL whenever the cell has a
+          // down-child: in my view's occ, or named as the cell's heir (a
+          // down-child in another section is in no occ of mine, and racing it
+          // here seated two people in the dead seat's cell). The head's
+          // s1Fill already reads it this way; the RING_HOLD horizon path
+          // below is unchanged, so a stale heir name can only delay a heal.
+          const defer = this.translost.has(lk) && this.hasDownChild(lft);
           if (!defer && this.ringConfirmDead(lft)) { if (this.occ.has(lk)) { this.occ.delete(lk); this.live.delete(lk); this.s1seen.delete(lk); this.kidful.delete(lk); } this.holeSince.delete(lk); this.heal(lft); }
           // ...and the HEAD cell itself, when I hold the row's first-hand proof
           // of its death and my left neighbour is alive. The backstop above
