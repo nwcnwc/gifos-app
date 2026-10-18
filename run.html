@@ -6302,6 +6302,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const st = statusOf.get(pid);
       if (!st) return;
       const wasScribe = !!st.scribe;
+      if (typeof DEBUG_ON !== 'undefined' && DEBUG_ON) { try { (window.__bcTrace = window.__bcTrace || []).push({ t: Date.now(), ev: 'drop', from: String(pid).slice(0, 8), bcend: st.bcend || 0 }); } catch (e) {} }
       noteStatusFlags(st, null);
       statusOf.delete(pid);
       if (wasScribe && typeof scribeWatch === 'function') scribeWatch();
@@ -14400,6 +14401,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof noteStatusFlags === 'function') noteStatusFlags(cur, st);
       if (!cur && from !== myId) scheduleNewPeerBeat(); // the first status from a person I held none for: answer with my own beat, whatever path carried theirs
       statusOf.set(from, st);
+      if (DEBUG_ON && (!cur || !!cur.bcend !== !!st.bcend || !!cur.bce !== !!st.bce || !!cur.rec !== !!st.rec || !!cur.stg !== !!st.stg)) { try { (window.__bcTrace = window.__bcTrace || []).push({ t: Date.now(), ev: 'st', from: String(from).slice(0, 8), bcend: st.bcend || 0, bce: st.bce || 0, rec: !!st.rec, stg: st.stg || 0, cam: !st.camOff }); } catch (e) {} }
+      try { noteBcEnd(st); } catch (e) {} // a viewer keeps the host's ended word past its seat
       try { applySpotlightBit(from); } catch (e) {}
       // A share starting or stopping paints this tile now. The sharer list is
       // read live; a coalesced pass would leave the chip behind it.
@@ -31287,7 +31290,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // pulls the kept file from this phone (Q76). Close is the real leave.
     let bcSeeding = false;
     // The host's seat that ended its service says so on its status pulse.
+    // A viewer keeps that word after the seat is gone (the booth closes it a
+    // few seconds later, and dropStatus forgets the seat), and passes it on
+    // in its own pulse (bce), so a viewer who comes later reads it too. Both
+    // stamps are the host's clock: a later stage or rebroadcast stamp from
+    // the host (stg/rb) means it is back on air, and older echoes lose.
+    let bcEndAt = 0, bcAirAt = 0;
+    function noteBcEnd(st) {
+      if (!BROADCAST || !st) return;
+      const air = Math.max(+st.stg || 0, +st.rb || 0);
+      if (air > bcAirAt) bcAirAt = air;
+      const e = Math.max(+st.bcend || 0, +st.bce || 0);
+      const was = bcEndAt;
+      if (e > bcEndAt) bcEndAt = e;
+      if (bcEndAt && bcAirAt > bcEndAt) bcEndAt = 0;
+      if (bcEndAt === was || bcHostStored()) return;
+      if (bcEndAt) myStatus.bce = bcEndAt; else delete myStatus.bce;
+      try { broadcastStatus(); } catch (e2) {}
+      try { updateStatus(); } catch (e2) {}
+    }
     function bcEndedInRoom() {
+      if (bcEndAt > 0) return true;
       for (const st of statusOf.values()) if (st && st.bcend) return true;
       return false;
     }
@@ -31318,6 +31341,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Leave ends a rebroadcast too; the clip must not keep playing behind
       // the ended screen.
       if (rbNow) rbQuit();
+      if (DEBUG_ON) { try { (window.__bcTrace = window.__bcTrace || []).push({ ev: 'leave', t: Date.now(), seeding: bcSeeding, seed: bcSeedOnLeave(), kept: bcKept, host: !!bcHostStored(), rec: recRec ? recRec.state : 'none' }); } catch (e) {} }
       if (!bcSeeding && bcSeedOnLeave()) return endServiceKeepSeat();
       const flushing = stopLocalCapture();
       sendMeshLeave();
