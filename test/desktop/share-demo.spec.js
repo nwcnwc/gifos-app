@@ -12,6 +12,13 @@ async function boot(page) {
   expect(seeded && seeded.ok).toBe(true);
 }
 
+// A share obeys the blur rules (0.9.23b): it is clear only in a password
+// room where everyone consents. The seeded faces consent (camera on, No
+// blur); the hook stands in for the room's password, so the slide is clear.
+async function consentedRoom(page) {
+  expect(await page.evaluate(() => window.__gifosVideo.setClearForTest(true))).toBe(0);
+}
+
 async function armSlide(page) {
   await page.evaluate(() => {
     const c = document.createElement('canvas');
@@ -55,6 +62,14 @@ test('a consultant can put a slide on the stage and stop it', async ({ page, bro
   await expect(page.locator('#share-modal')).toBeHidden();
   const stage = page.locator('#stagefeed video');
   await expect(stage).toBeVisible();
+  // With no password the slide goes up blurred: the Stage plays the blur
+  // pipe's own smaller picture, never the raw 1280 screen.
+  await expect.poll(() => page.evaluate(() => (document.querySelector('#stagefeed video') || {}).videoWidth || 0)).toBeGreaterThan(0);
+  const soft = await page.evaluate(() => ({ level: window.__gifosVideo.blurClassOf('me'), vw: document.querySelector('#stagefeed video').videoWidth }));
+  expect(soft.level).toBeGreaterThanOrEqual(1);
+  expect(soft.vw).toBeLessThan(1280);
+  // Once the room is a consented password room the same share goes clear.
+  await consentedRoom(page);
   await expect.poll(async () => page.evaluate(() => {
     const v = document.querySelector('#stagefeed video');
     return v ? v.videoWidth : 0;
@@ -114,6 +129,7 @@ test('a consultant can put a slide on the stage and stop it', async ({ page, bro
 test('the menu steps aside once the slide is up, and the Stage can stop it', async ({ page, browserName }) => {
   test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
   await boot(page);
+  await consentedRoom(page);
   await armSlide(page);
   await page.click('#sharebtn');
   await expect(page.locator('#share-modal')).toBeHidden();
@@ -160,6 +176,7 @@ test.describe('the stage line follows the device', () => {
   test('a German device names the slide in German', async ({ page, browserName }) => {
     test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
     await boot(page);
+    await consentedRoom(page);
     await armSlide(page);
     await page.click('#sharebtn');
     await expect.poll(async () => page.evaluate(() => {

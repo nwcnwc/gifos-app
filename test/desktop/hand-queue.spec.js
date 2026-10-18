@@ -112,6 +112,9 @@ test('a desktop gallery shows who has a hand up, readable and on top', async ({ 
 test('a presenter reads the hand queue, and the header is off the slide', async ({ page, browserName }) => {
   test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
   await boot(page, 1280);
+  // A share is clear only in a consented password room (0.9.23b blur rules);
+  // the seeded faces consent and the hook stands in for the password.
+  expect(await page.evaluate(() => window.__gifosVideo.setClearForTest(true))).toBe(0);
   await armSlide(page);
   await page.click('#sharebtn');
   await expect(page.locator('#stagefeed video')).toBeVisible();
