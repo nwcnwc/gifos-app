@@ -3466,23 +3466,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #bc-ended p { font-size: 1.25rem; }
   }
   body.has-flip .bar #flipcam { display: inline-flex; }
-  @media (max-width: 700px) {
-    body.has-flip .bar #bargrip { display: none; }
-    body.has-flip .bar { gap: 0.5rem; }
-    body.has-flip .bar #cam, body.has-flip .bar #flipcam, body.has-flip .bar #mic, body.has-flip .bar #reactbtn, body.has-flip .bar #bartoggle { width: clamp(44px, 2.75rem, 88px); height: clamp(44px, 2.75rem, 88px); min-width: 44px; min-height: 44px; }
-    body.has-flip .bar #leavebtn { width: clamp(44px, 3rem, 96px); height: clamp(44px, 3rem, 96px); min-width: 44px; min-height: 44px; margin-left: 0; }
-  }
-  @media (max-height: 420px) {
-    .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle, body.has-flip .bar #cam, body.has-flip .bar #flipcam, body.has-flip .bar #mic, body.has-flip .bar #reactbtn, body.has-flip .bar #bartoggle, .bar #mic.iconbtn.off, .bar #cam.iconbtn.off, .bar #reactbtn.on, .bar #bartoggle[aria-expanded="true"] { width: clamp(44px, 1.5rem, 48px); height: clamp(44px, 1.5rem, 48px); min-width: 44px; min-height: 44px; background: transparent; color: #1d1d1f; filter: drop-shadow(0 0 1px rgba(255,255,255,.95)); }
-    .bar #leavebtn, body.has-flip .bar #leavebtn { width: clamp(44px, 1.5rem, 48px); height: clamp(44px, 1.5rem, 48px); min-width: 44px; min-height: 44px; background: #b61622; color: #fff; filter: none; border-radius: 12px; }
-  }
-  @media (max-width: 700px) and (min-height: 421px) {
-    .bar #cam, .bar #flipcam, .bar #mic, .bar #reactbtn, .bar #bartoggle, .bar #leavebtn, body.has-flip .bar #cam, body.has-flip .bar #flipcam, body.has-flip .bar #mic, body.has-flip .bar #reactbtn, body.has-flip .bar #bartoggle, body.has-flip .bar #leavebtn { flex-direction: column; justify-content: center; gap: 1px; width: clamp(44px, 2.75rem, 88px); min-width: 44px; max-width: none; height: auto; min-height: clamp(44px, 2.75rem, 88px); padding: 4px 0 3px; border-radius: 16px; box-sizing: border-box; }
-    body.has-flip .bar #leavebtn, .bar #leavebtn { width: clamp(48px, 3rem, 96px); min-height: clamp(44px, 3rem, 96px); }
-  }
-  @media (max-width: 380px) {
-    body.has-flip .bar { gap: 8px; padding: 6px 2px; }
-  }
   #lob-keygen.lob-ghost { flex: 0 0 auto; min-height: 48px; min-width: 44px; padding: 0 12px; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; border-radius: .45rem; font-weight: 650; }
   @media (max-width: 700px) {
     #lob-keygen.lob-ghost { width: 100%; }
