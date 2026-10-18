@@ -28411,7 +28411,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const chips = tile && tile.querySelector('.chips');
       const text = chips ? (chips.textContent || '') : '';
       if (text.indexOf('recording this ' + recRoomWord()) < 0) return false;
-      if (myStatus.bot && text.indexOf('bot') < 0) return false;
+      // A bot's badge sits on its tile beside the chips (paintTileChrome).
+      if (myStatus.bot && !(tile && tile.querySelector(':scope > .botbadge')) && text.indexOf('bot') < 0) return false;
       return true;
     }
     async function recOpenSink(name, quiet) {
