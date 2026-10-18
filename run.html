@@ -10697,6 +10697,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (t.avatar && t.avatar.classList) t.avatar.classList.toggle('rides-off', !!(dark && phoneLayout()));
         return;
       }
+      // Held (not verified, or ejected): no stream on the tile at all, not even
+      // the local letter canvas; the letter overlay stands in (who-attest).
+      if (typeof mediaOk === 'function' && mediaOk(id) === false) {
+        clearPeerAvatar(t);
+        if (t.video.srcObject) t.video.srcObject = null;
+        if (dark && t.avatar && t.avatar.classList) t.avatar.classList.add('rides-off');
+        return;
+      }
       if (!dark) {
         clearPeerAvatar(t);
         const tr = t.stream && t.stream.getVideoTracks && t.stream.getVideoTracks()[0];
