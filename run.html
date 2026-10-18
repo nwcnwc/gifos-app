@@ -5289,6 +5289,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (statusEl.title !== String(m)) statusEl.title = String(m);
       statusEl.classList.toggle('alert', blocking || !!hold);
       statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
+      // The OFF AIR / LIVE banner follows the line (and the camera) on every paint.
+      if (typeof paintLiveBadge === 'function') paintLiveBadge();
       const holdChip = statusEl.closest('.topchip');
       if (holdChip) delete holdChip.dataset.invite;
       const holdInvite = document.getElementById('hdrinvite');
@@ -6148,6 +6150,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The host's stage carries the friend link. Off air it sits under the
     // title. On air it is a row above the dock, so the picture stays the stage.
     // Viewers never see it.
+    function bcLinkOnStage() {
+      const card = document.getElementById('bc-link');
+      return !!(card && card.classList.contains('on') && window.matchMedia && window.matchMedia('(max-width: 700px), (max-height: 500px)').matches);
+    }
     function paintStreamLink() {
       const card = document.getElementById('bc-link');
       if (!card) return;
@@ -6160,8 +6166,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!show) return;
       const input = document.getElementById('bc-link-url');
       if (input && input.value !== url) input.value = url;
+      // A phone puts the link on the off-air stage, in the camera-off card's
+      // place. A wider screen keeps the card under the link: clearing it on
+      // every paint there made the host's card blink on and off.
       const ident = document.getElementById('bc-ident');
-      if (ident) ident.classList.remove('on');
+      if (ident && bcLinkOnStage()) ident.classList.remove('on');
       const chip = document.querySelector('.topchip');
       const bar = document.querySelector('.bar');
       const chipBottom = chip ? chip.getBoundingClientRect().bottom : 0;
@@ -11769,6 +11778,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       }
       paintBcQuiet(bq);
+      if (typeof paintLiveBadge === 'function') paintLiveBadge();
       paintStatusSheet();
       try { paintOnAir(); } catch (e) {}
     }
@@ -13669,7 +13679,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // initial and the name stand in for it.
       el.classList.toggle('pic', !!url);
       el.classList.toggle('me', isMe);
-      el.classList.toggle('on', !!(url || (name && document.querySelector('#stagefeed .rowtile'))));
+      el.classList.toggle('on', !!(url || (name && document.querySelector('#stagefeed .rowtile'))) && !(isMe && typeof bcLinkOnStage === 'function' && bcLinkOnStage()));
       if (typeof paintStagePlate === 'function') paintStagePlate();
     }
     function avatarChip(byId) {
@@ -29840,6 +29850,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (seg.title === 'Chosen. Clear video shows when everyone here is ready.') seg.title = '';
       }
       paintShare();
+      if (typeof paintLiveBadge === 'function') paintLiveBadge();
       try { paintOnAir(); } catch (e) {}
       try { paintBroadcastAir(); } catch (e) {}
       paintAvState();
