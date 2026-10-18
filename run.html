@@ -3737,6 +3737,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button type="button" class="dockmore" data-dock="invite" hidden>Invite</button>
       <button type="button" class="dockmore" data-dock="sharebtn" hidden>Share screen</button>
       <button type="button" class="dockmore" data-dock="reactbtn" hidden>Reactions</button>
+      <button type="button" class="dockmore" data-dock="stagebtn" hidden>Step off</button>
     </div>
     <span class="blurctl" title="How much your own video is blurred to everyone else">
       <span class="blurlbl" data-t="blur">Blur</span>
@@ -29520,9 +29521,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // the phone sizes (.dockslim) and moves these into More, one at a time,
       // until it fits; More shows a stand-in that presses the real button.
       const slimOrder = ['chatbtn', 'invite', 'fsbtn', 'sharebtn'];
+      const fitOrder = ['sharebtn', 'reactbtn', 'stagebtn'];
+      // The width the dock's own buttons need, even when the dock is capped
+      // to the window and they run past its edge. More's panel is not counted.
+      const dockNeed = () => {
+        let lo = Infinity, hi = -Infinity;
+        for (const el of bar.children) {
+          if (el.id === 'barmore') continue;
+          for (const r of el.getClientRects()) { if (r.width) { lo = Math.min(lo, r.left); hi = Math.max(hi, r.right); } }
+        }
+        if (hi < lo) return bar.offsetWidth;
+        const cs = getComputedStyle(bar);
+        return hi - lo + (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0) + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.borderRightWidth) || 0);
+      };
       const fitBeside = (side) => {
         bar.classList.remove('dockslim');
-        for (const id of slimOrder) { const b = document.getElementById(id); if (b) b.classList.remove('inmore'); }
+        for (const id of slimOrder.concat(fitOrder)) { const b = document.getElementById(id); if (b) b.classList.remove('inmore'); }
         const room = window.innerWidth - side;
         if (side > 0 && bar.offsetWidth + 16 > room) {
           bar.classList.add('dockslim');
@@ -29532,13 +29546,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (b && b.parentElement === bar && b.getClientRects().length) b.classList.add('inmore');
           }
         }
+        // A dock that still runs past the window (a service host's: Step
+        // off, Reactions and Share beside Camera and Mic) moves Share, then
+        // Reactions, then Step off into More until it fits. Camera, Mic,
+        // More, End and the grip stay on the dock.
+        for (const id of fitOrder) {
+          if (dockNeed() + 16 <= room) break;
+          const b = document.getElementById(id);
+          if (b && b.parentElement === bar && !b.classList.contains('inmore') && b.getClientRects().length) b.classList.add('inmore');
+        }
         // The stand-ins and their row carry [hidden] in the markup; a
         // display style alone never showed them, so a moved button was
         // on neither the dock nor More.
         let any = false;
         for (const p of bar.querySelectorAll('#barmore .dockmore')) {
           const b = document.getElementById(p.dataset.dock);
-          const on = !!(b && b.classList.contains('inmore'));
+          const on = !!(b && b.parentElement === bar && b.classList.contains('inmore'));
           p.style.display = on ? '' : 'none';
           p.hidden = !on;
           any = any || on;
@@ -29643,6 +29666,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (dockFrame) return;
         dockFrame = requestAnimationFrame(() => { dockFrame = 0; if (document.body.classList.contains('chatside')) placeDock(); });
       }).observe(bar);
+      // A dock capped to the window does not resize when a button appears
+      // (Step off, Share for a host), so a change to the dock's own buttons
+      // refits it too. The refit's own changes are dropped, not re-run.
+      let fitFrame = 0;
+      const fitWatch = new MutationObserver((recs) => {
+        if (fitFrame) return;
+        if (!recs.some((r) => (r.type === 'childList' && r.target === bar) || (r.type === 'attributes' && r.target.parentElement === bar && r.target.id !== 'barmore'))) return;
+        fitFrame = requestAnimationFrame(() => {
+          fitFrame = 0;
+          try { placeDock(); } catch (e) {}
+          fitWatch.takeRecords();
+        });
+      });
+      fitWatch.observe(bar, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
       if (grip) {
         grip.addEventListener('keydown', (e) => {
           const step = e.shiftKey ? 48 : 24;
