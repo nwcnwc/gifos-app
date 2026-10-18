@@ -27430,6 +27430,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const [w, ws] of statusOf) {
         if (w === myId || !ws || !Array.isArray(ws.ccv) || ws.ccv.indexOf(pid) < 0) continue;
         if (ws.cc && (filling || w === pid)) return true;
+        // A browser that writes its own voice is not written twice. One whose
+        // engine stopped (ccst 'paused') writes nothing, so a scribe takes it.
+        if (w === pid && !ws.muted && ws.ccst !== 'paused') return true;
         if (w !== pid && String(w) < String(myId)) return true;
       }
       return false;
@@ -27682,6 +27685,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function ownVoiceWanted() {
       if (!myStatus || myStatus.muted) return false;
       try { if (typeof ccSourceWritesMe === 'function' && ccSourceWritesMe()) return false; } catch (e) {}
+      // Only a browser that can write speech claims its own voice; one with
+      // no engine leaves it to a scribe (Meet Bot) instead of to no one.
+      try {
+        const whisperOk = typeof ccEngine === 'function' && ccEngine() === 'whisper' && typeof whisperReady === 'function' && whisperReady();
+        if (!whisperOk && typeof browserCaptionsMissing === 'function' && browserCaptionsMissing()) return false;
+      } catch (e) {}
       return true;
     }
     var ownVoiceArmed = false;
@@ -31984,11 +31993,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           } catch (e) {}
           return { ok: true, id: m.id };
         },
-        transcribe() {
-          // Transcription is already on for this meeting. This does not light
-          // a tile, and it does not change anyone else's captions.
-          try { syncSpeech(); } catch (e) {}
-          return { ok: true, cc: false, scribe: false, always: true, view: !!ccShow };
+        transcribe(msg) {
+          // Every browser that can writes its own voice. The bot is the scribe
+          // for the rest (a browser with no speech engine): with on, it writes
+          // down, with Whisper, every unmuted voice nobody else writes. It does
+          // not light a tile or change anyone's captions.
+          const on = !(msg && msg.on === false);
+          myStatus.scribe = on;
+          if (on) {
+            try { localStorage.setItem('gifos_cc_engine', 'whisper'); } catch (e) {}
+            wspPaused = false;
+          }
+          try { broadcastStatus(); syncSpeech(); } catch (e) {}
+          return { ok: true, cc: false, scribe: on, always: true, view: !!ccShow };
         },
         sendXfer(msg) {
           const x = (msg && msg.xfer) || {};
@@ -33560,6 +33577,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       ccViewOn: () => !!ccShow,
       ownVoice: () => ({ wanted: !!ownVoiceArmed, cc: !!myStatus.cc, muted: !!myStatus.muted }),
       scribeForTest: (on) => { myStatus.scribe = !!on; broadcastStatus(); syncSpeech(); },
+      // Why a scribe takes or skips each peer (the conditions wspSync reads).
+      scribeWhyForTest: () => Array.from(peers.keys()).map((pid) => {
+        const st = statusOf.get(pid) || {}; const p = peers.get(pid);
+        return { id: String(pid).slice(0, 6), muted: !!st.muted, modMute: !!(modOf(pid).mute && modOf(pid).mute.on), elsewhere: ccWrittenElsewhere(pid),
+          ccv: st.ccv || null, ccst: st.ccst || null, connected: !!(p && p.connected), source: !!(p && wspSource(pid)) };
+      }),
       ccSourceForTest: (id) => { ccSourceId = id || null; syncSpeech(); scribeWatch(); },
       installWhisperForTest: () => installWhisper(true),
       whisperEngineForTest: (eng) => { lsSet(CC_ENGINE_KEY, eng === 'whisper' ? 'whisper' : ''); syncSpeech(); },
