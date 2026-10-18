@@ -55,8 +55,11 @@
   // deterministic in its seed, but the seed is 32 fresh random bytes, so the
   // participant key is unique and unguessable. Returns everything a seat needs:
   //   { priv, pubB64, peerId }  — priv signs, pubB64 travels, peerId = H(pubB64).
-  async function mint() {
-    const seed = net.randHex(32);
+  // seedHex (64 hex): the SAME identity again — run.html hands its own seed
+  // back to itself across an update reload of the same tab, so the person
+  // keeps their peer id (and their seat) through it.
+  async function mint(seedHex) {
+    const seed = (typeof seedHex === 'string' && /^[0-9a-f]{64}$/.test(seedHex)) ? seedHex : net.randHex(32);
     const k = await net.edKeysFromSeedHex(seed);
     const peerId = await peerIdOf(k.pubB64);
     return { priv: k.priv, pubB64: k.pubB64, peerId };
