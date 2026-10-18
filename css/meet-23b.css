@@ -81,6 +81,9 @@ body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] { cursor: pointer; }
   background: transparent !important; padding: 0 !important; top: auto !important; right: auto !important; bottom: auto !important; left: auto !important; inset: auto !important; box-shadow: none !important;
   width: auto !important; height: auto !important; }
 #tilewin .modbar button[hidden], #tilewin .modbar button[style*="display: none"] { display: none !important; }
+/* Pin's row and the per-person buttons under it keep the row gap; they sat
+   glued together (Firefox drew them overlapping by a fraction). */
+#tilewin .tw-row + .modbar { margin: 8px 0 0 !important; }
 #tilewin .tw-zoom { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 #tilewin .tw-zoom input[type=range] { flex: 1 1 auto; accent-color: #1d1d1f; }
 #tilewin .tw-pad { position: relative; width: 100%; margin: 0 auto; aspect-ratio: 16 / 9; background: #111; border-radius: 10px;
