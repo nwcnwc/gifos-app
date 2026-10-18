@@ -2721,6 +2721,18 @@
   // at once; a computer pinned to a release or to edge is never moved, it
   // keeps the bar (and the pin banner).
   const updateBar = document.getElementById('update-bar');
+  // The bar sits in the flow above the menu bar; the icon surface is placed
+  // under the menu bar, so while the bar shows --updh moves it down by the
+  // bar's height (and back when it is dismissed).
+  if (updateBar) {
+    const syncUpdh = () => {
+      const h = updateBar.style.display !== 'none' ? Math.ceil(updateBar.getBoundingClientRect().height) : 0;
+      document.documentElement.style.setProperty('--updh', h + 'px');
+    };
+    new MutationObserver(syncUpdh).observe(updateBar, { attributes: true, attributeFilter: ['style', 'class'], childList: true, subtree: true });
+    if (root.ResizeObserver) new ResizeObserver(syncUpdh).observe(updateBar);
+    syncUpdh();
+  }
   let emergencyFloor = null;        // version.json.emergency — releases under it move now
   let updateMoving = false;
   function updateInPlace() {
