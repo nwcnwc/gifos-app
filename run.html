@@ -22672,7 +22672,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // network-aware seating, as a suite sees it: the view installed, the pool the seating counts, my seat, every link's bridge/standby/dark verdict
       netSeating: () => { const s = meshSeat(); return { installed: !!netRoom, seated: netSeated(), pool: Object.assign({}, netPool), coord: s && s.hasCoord ? s.coord : null, label: s ? s.glabel : null, anchored: !!(s && s.anchored),
         seat: s ? { state: s.state, tick: s.TICK, retryAt: s.retryAt, walkPending: !!s.walkPending, walkRounds: s.walkRounds, probeAt: s.netProbeAt, probeIds: (s.netProbeIds || []).length, door: (s.netTested || []).map((t) => [rosterNames[t[0]] || String(t[0]).slice(0, 8), t[1], t[2] != null ? String(t[2]).slice(2, 6) : null, t[3] || null, t[4]]), glFind: s.glFind, glHead: s.glHead || null, haveRoster: !!s.haveRoster, roster: (s.netRoster || s.roster || []).length, seatTries: s.seatTries } : null,
-        links: netLinks().map((l) => Object.assign({}, l, { name: rosterNames[l.peer] || (peers.get(l.peer) || {}).name || String(l.peer).slice(0, 8) })) }; },
+        links: netLinks().map((l) => Object.assign({}, l, { name: rosterNames[l.peer] || (peers.get(l.peer) || {}).name || String(l.peer).slice(0, 8) })),
+        known: (() => { try { return netRoom ? netRoom.o.seats().slice(0, 30).map((x) => (rosterNames[x.id] || String(x.id).slice(0, 6)) + '@' + (x.hasCoord ? net.topo.ckey(x.coord) : '-') + ':' + String(x.glabel).slice(2, 6)) : []; } catch (e) { return []; } })(),
+        bridges: (() => { try { if (!netRoom) return []; netRoom.rebuild(); return [...netRoom.bridges.values()].map((b) => [b.a, b.b, b.sa, b.sb].map((x) => x == null ? '-' : (rosterNames[x] || String(x).slice(0, 6))).join('/') + (b.standbySince === -2 ? ' standby-carries' : '')); } catch (e) { return []; } })() }; },
       turnState: () => ({
         probe: directPath, cred: turnCred ? turnCred.state() : 'idle', reach: turnReach(), heard: turnHeard(),
         anchor: turnAnchorId != null ? (rosterNames[turnAnchorId] || (peers.get(turnAnchorId) || {}).name || String(turnAnchorId).slice(0, 8)) : null,
