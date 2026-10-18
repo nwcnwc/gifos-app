@@ -17520,7 +17520,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     window.addEventListener('resize', placeHandq);
     if (window.ResizeObserver) {
-      const ro = new ResizeObserver(() => placeHandq());
+      // In the next frame, not in the callback: placeHandq resizes the header
+      // line, which another observer watches; a resize in the same frame is
+      // left undelivered and the page reports a ResizeObserver loop.
+      let handqFrame = 0;
+      const ro = new ResizeObserver(() => {
+        if (!handqFrame) handqFrame = requestAnimationFrame(() => { handqFrame = 0; placeHandq(); });
+      });
       ro.observe(handqEl);
       const fb = document.getElementById('fitbtn');
       if (fb) ro.observe(fb);
@@ -29407,7 +29413,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       window.addEventListener('resize', placeDock);
       // A button that appears while the chat is open (Step on, Video for a
       // promoted viewer) refits the dock beside it.
-      if (window.ResizeObserver) new ResizeObserver(() => { if (document.body.classList.contains('chatside')) placeDock(); }).observe(bar);
+      // The refit resizes the dock it watches, so it waits for the next frame.
+      let dockFrame = 0;
+      if (window.ResizeObserver) new ResizeObserver(() => {
+        if (dockFrame) return;
+        dockFrame = requestAnimationFrame(() => { dockFrame = 0; if (document.body.classList.contains('chatside')) placeDock(); });
+      }).observe(bar);
       if (grip) {
         grip.addEventListener('keydown', (e) => {
           const step = e.shiftKey ? 48 : 24;
