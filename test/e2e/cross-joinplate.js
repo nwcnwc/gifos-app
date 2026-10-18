@@ -12,7 +12,7 @@
  *
  * Env: see cross-lib.js. Exit 0 on pass, 1 on fail.
  */
-const { BASE, until, user, goLive, run } = require('./cross-lib.js');
+const { BASE, until, user, goLive, run, saveName } = require('./cross-lib.js');
 
 run('cross-joinplate', async (hb, vb, shoot) => {
   const host = await goLive(hb, 'joinplate');
@@ -45,7 +45,7 @@ run('cross-joinplate', async (hb, vb, shoot) => {
     };
   });
   await viewer.goto(BASE + '/run.html?desk=crossview#' + host.url().split('#')[1]);
-  await viewer.getByRole('button', { name: 'Save' }).click({ timeout: 20000 });
+  await saveName(viewer);
   // What the viewer sees while the picture is on its way.
   await viewer.waitForFunction(() => window.__said.length > 0 || window.__tileIn, null, { timeout: 5000 }).catch(() => {});
   await shoot();

@@ -5,14 +5,14 @@
  * The viewer's page holds the feed's tile until the host's name is known
  * and the card has gone quiet, so that order happens every run.
  *
- *   1. the host goes live with the camera off (see cross-lib.js)
+ *   1. the host goes live and turns the camera off (see cross-lib.js)
  *   2. the viewer opens the link; its stage tile waits for the host's status
  *   3. the stage shows the card on the first frame after the tile goes in
  *      (not a bare frame until some later repaint), and after it settles
  *
  * Env: see cross-lib.js. Exit 0 on pass, 1 on fail.
  */
-const { BASE, sleep, until, user, goLive, run } = require('./cross-lib.js');
+const { BASE, sleep, until, user, goLive, camOff, run, saveName } = require('./cross-lib.js');
 
 const look = (pg) => pg.evaluate(() => {
   const card = document.getElementById('bc-ident');
@@ -23,6 +23,7 @@ const look = (pg) => pg.evaluate(() => {
 
 run('cross-camofflate', async (hb, vb, shoot) => {
   const host = await goLive(hb, 'camofflate');
+  await camOff(host);
   const viewer = await user(vb, 'Jordan Lee');
   await viewer.addInitScript(() => {
     // Every repaint of the card rewrites the name; hold the tile until the
@@ -61,7 +62,7 @@ run('cross-camofflate', async (hb, vb, shoot) => {
     };
   });
   await viewer.goto(BASE + '/run.html?desk=crossview#' + host.url().split('#')[1]);
-  await viewer.getByRole('button', { name: 'Save' }).click({ timeout: 20000 });
+  await saveName(viewer);
   await until('the viewer stage has the host frame', async () => { const s = await look(viewer); return { ok: s.tile, ...s }; }, 30000);
   await sleep(5000); // the host's status and name settle
   const seen = await look(viewer);

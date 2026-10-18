@@ -9,7 +9,7 @@
  *
  * Env: see cross-lib.js. Exit 0 on pass, 1 on fail.
  */
-const { BASE, until, goLive, user, run } = require('./cross-lib.js');
+const { BASE, until, goLive, user, run, saveName } = require('./cross-lib.js');
 
 const read = (pg) => pg.evaluate(() => {
   const who = document.getElementById('airwho');
@@ -25,7 +25,7 @@ run('cross-cardstatus', async (hb, vb, shoot) => {
   await viewer.waitForTimeout(1500);
   const atCard = await read(viewer);
   await shoot();
-  await viewer.getByRole('button', { name: 'Save' }).click();
+  await saveName(viewer);
   const joined = await until('viewer counts one watching', async () => {
     const r = await read(viewer);
     return { ok: r.who === '1 watching' && !/reconnecting|Joining/.test(r.status), ...r };

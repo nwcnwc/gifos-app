@@ -9,7 +9,7 @@
  *
  * Env: see cross-lib.js. Exit 0 on pass, 1 on fail.
  */
-const { BASE, until, goLive, user, run } = require('./cross-lib.js');
+const { BASE, until, goLive, user, run, saveName } = require('./cross-lib.js');
 
 const dock = (pg) => pg.evaluate(() => ['cam', 'mic'].filter((id) => {
   const el = document.querySelector('.bar #' + id);
@@ -23,7 +23,7 @@ run('cross-namecard', async (hb, vb, shoot) => {
   await viewer.locator('#appear-note').waitFor({ timeout: 20000 });
   const atCard = await dock(viewer);
   await shoot();
-  await viewer.getByRole('button', { name: 'Save' }).click();
+  await saveName(viewer);
   await until('viewer is watching', async () => ({ ok: (await viewer.locator('#airkind').textContent()) === 'Service · You are watching' }), 15000);
   const watching = await dock(viewer);
   const hostDock = await dock(host);

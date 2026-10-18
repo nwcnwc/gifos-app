@@ -4,7 +4,7 @@
  * machine (1280x720), with a gap between its icon and its label.
  *
  *   1. the host goes live (see cross-lib.js), the viewer opens the link
- *   2. both open More; Float must be shown (Chromium has a mini window)
+ *   2. both open More and All tools; Float must be shown (Chromium has a mini window)
  *   3. Float's label must match Who's size and weight, 6px+ from its icon
  *
  * Env: see cross-lib.js. Exit 0 on pass, 1 on fail.
@@ -23,7 +23,14 @@ const read = (pg) => pg.evaluate(() => {
 run('cross-morefloat', async (hb, vb, shoot) => {
   const host = await goLive(hb, 'morefloat');
   const viewer = await watch(vb, host);
-  for (const pg of [host, viewer]) { await pg.locator('#bartoggle').click(); await pg.waitForSelector('#barmore #whobtn:visible'); }
+  for (const pg of [host, viewer]) {
+    await pg.mouse.move(640, 400); // wake the controls (calm by default)
+    await pg.locator('#bartoggle').click();
+    // 0.9.23b's More opens on its first row; Who, Float and Settings wait under All tools.
+    const tools = pg.locator('#moretools');
+    if (await tools.isVisible() && (await tools.getAttribute('aria-expanded')) !== 'true') await tools.click();
+    await pg.waitForSelector('#barmore #whobtn:visible');
+  }
   await sleep(400);
   const got = { host: await read(host), viewer: await read(viewer) };
   await shoot();

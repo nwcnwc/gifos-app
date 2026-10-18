@@ -46,6 +46,26 @@ async function until(what, fn, ms) {
   throw new Error(what + ': ' + JSON.stringify(last));
 }
 
+// A kept service records from Go live, and everyone gets the recording card
+// (the consent: Stay or Leave, OK for the one recording). A person reads it
+// and closes it before anything else; so do these scripts.
+async function ackRecording(pg, ms) {
+  const ok = pg.locator('#rec-notice-ok');
+  await ok.waitFor({ state: 'visible', timeout: ms }).then(() => ok.click(), () => {});
+}
+
+// Save on the name card. A kept service is recording, so its card can come
+// up over the name card first; a person reads it (Stay) and then saves.
+async function saveName(pg, ms) {
+  const end = Date.now() + (ms || 20000);
+  const save = pg.getByRole('button', { name: 'Save' });
+  for (;;) {
+    const ok = pg.locator('#rec-notice-ok');
+    if (await ok.isVisible()) await ok.click();
+    try { await save.click({ timeout: 1000 }); return; } catch (e) { if (Date.now() > end) throw e; }
+  }
+}
+
 // The host goes live from the lobby (Go live, a name, a password). setup, if
 // given, runs on the host's page before it opens (e.g. to route its sockets).
 async function goLive(hb, prefix, setup) {
@@ -61,15 +81,50 @@ async function goLive(hb, prefix, setup) {
   await host.locator('#lob-admin-go').click();
   await host.waitForSelector('body.broadcast', { timeout: 30000 });
   await until('host is live', async () => ({ ok: (await host.locator('#airkind').textContent()) === 'Service · You are live' }), 15000);
+  await ackRecording(host, 15000);
   return host;
+}
+
+// A hosted small group (no service): Host this call, a name, the host key
+// (minted by the lobby when it offers no field).
+async function hostCall(hb, prefix) {
+  const host = await user(hb, 'Pastor Kim');
+  await host.goto(BASE + '/run.html?desk=crosshost');
+  await host.waitForSelector('#lobby.show');
+  await host.locator('#lob-admin-btn').click();
+  await host.locator('#lob-admin-name').fill(prefix + '-' + Date.now().toString(36));
+  if (await host.locator('#lob-admin-pass').isVisible()) await host.locator('#lob-admin-pass').fill('host-pass-' + Math.random().toString(36).slice(2));
+  await host.locator('#lob-admin-go').click();
+  await host.waitForSelector('body.amadmin', { timeout: 30000 });
+  return host;
+}
+
+// A guest opens the host's link and saves the name card.
+async function joinCall(vb, host, name) {
+  const guest = await user(vb, name || 'Jordan Lee');
+  await guest.goto(BASE + '/run.html?desk=crossguest#' + host.url().split('#')[1]);
+  await guest.getByRole('button', { name: 'Save' }).click({ timeout: 20000 }).catch(() => {});
+  await until('the guest is in the call', async () => ({ ok: await guest.evaluate(() => document.querySelectorAll('.tile:not(.me)').length >= 1) }), 30000);
+  return guest;
+}
+
+// Go live turns the camera on (0.9.23b). A script about a camera-off stage
+// turns it off the way a host does: wake the controls, press Camera.
+async function camOff(host) {
+  await host.mouse.move(640, 300);
+  await host.mouse.move(660, 320);
+  const cam = host.locator('#cam');
+  if ((await cam.getAttribute('aria-label')) === 'Stop video') await cam.click();
+  await until('the host camera is off', async () => ({ ok: (await cam.getAttribute('aria-label')) === 'Start video' }), 10000);
 }
 
 // The viewer opens the host's link and saves the name card.
 async function watch(vb, host) {
   const viewer = await user(vb, 'Jordan Lee');
   await viewer.goto(BASE + '/run.html?desk=crossview#' + host.url().split('#')[1]);
-  await viewer.getByRole('button', { name: 'Save' }).click({ timeout: 20000 });
+  await saveName(viewer);
   await until('viewer is watching', async () => ({ ok: (await viewer.locator('#airkind').textContent()) === 'Service · You are watching' }), 15000);
+  await ackRecording(viewer, 10000);
   return viewer;
 }
 
@@ -98,4 +153,4 @@ async function run(name, body) {
   process.exit(failed ? 1 : 0);
 }
 
-module.exports = { BASE, RELAY, sleep, until, user, goLive, watch, run };
+module.exports = { BASE, RELAY, sleep, until, user, ackRecording, saveName, goLive, camOff, watch, hostCall, joinCall, run };

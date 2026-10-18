@@ -31,7 +31,8 @@ run('cross-clap', async (hb, vb, shoot) => {
       else setTimeout(wait, 20);
     })();
   }));
-  const pills = () => document.getElementById('bc-reacts').innerText.trim();
+  // The count pill only: the line under it names who clapped (cross-clapwho).
+  const pills = () => Array.from(document.querySelectorAll('#bc-reacts .bcreact')).map((p) => p.innerText.trim()).join(' ');
   // The pills fade 4 s after the last clap, so both stages are read now.
   const t0 = Date.now();
   let host2 = '', seen = '';

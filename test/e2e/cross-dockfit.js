@@ -17,7 +17,9 @@ const read = (pg) => pg.evaluate(() => {
   const bar = document.querySelector('.bar');
   const d = bar.getBoundingClientRect();
   const shown = [...bar.children].filter((e) => e.tagName === 'BUTTON' && e.getClientRects().length).map((e) => e.id);
-  const more = [...document.querySelectorAll('#barmore [data-dock]')].filter((e) => e.style.display !== 'none').map((e) => e.dataset.dock);
+  // A stand-in in More counts only when More would really show it.
+  const more = [...document.querySelectorAll('#barmore [data-dock]')].filter((e) => !e.hidden && e.style.display !== 'none'
+    && !(e.parentElement && e.parentElement.hidden)).map((e) => e.dataset.dock);
   return { edge: Math.round(edge), dockLeft: Math.round(d.left), dockRight: Math.round(d.right), shown, more };
 });
 
