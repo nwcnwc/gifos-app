@@ -21,7 +21,9 @@ async function open(browserName, name) {
   const b = await pw[browserName].launch(browserName === 'firefox' ? { firefoxUserPrefs: FF_PREFS } : { args: MEDIA_ARGS });
   const ctx = await b.newContext({ viewport: { width: 1280, height: 720 }, ...(browserName === 'chromium' ? { permissions: ['camera', 'microphone'] } : {}) });
   const page = await ctx.newPage();
-  await page.addInitScript((n) => { localStorage.setItem('gifos_name', n); sessionStorage.setItem('gifos_appeared', '1'); }, name);
+  // Two browsers meet through the page's relay: the public one unless RELAY
+  // names another (ws://127.0.0.1:8790 on a box with no way out).
+  await page.addInitScript(([n, r]) => { localStorage.setItem('gifos_name', n); sessionStorage.setItem('gifos_appeared', '1'); if (r) localStorage.setItem('gifos_relay', r); }, [name, process.env.RELAY || '']);
   return { b, page };
 }
 

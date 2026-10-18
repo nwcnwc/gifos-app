@@ -1,5 +1,11 @@
 const { test, expect } = require('@playwright/test');
 
+// Playwright's Linux WebKit does WebCrypto with libgcrypt, which aborts the
+// tab on an Ed25519 signature over 64 KB (an app's bytes); Safari does not.
+// There the page uses its own JS signer (same signatures; a documented hook).
+const JS_SIGNER = () => { window.GIFOS_ED_FORCE_JS = true; };
+test.beforeEach(async ({ page, browserName }) => { if (browserName === 'webkit') await page.addInitScript(JS_SIGNER); });
+
 async function boot(page) {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.addInitScript(() => {
@@ -192,7 +198,7 @@ for (const [locale, lang, want] of [
 ]) {
   test.describe(lang + ' app who line', () => {
     test.use({ locale });
-    test('the line beside a running app says who runs it in ' + lang, async ({ page, browser }) => {
+    test('the line beside a running app says who runs it in ' + lang, async ({ page, browser, browserName }) => {
       const room = 'qaappwho' + locale.slice(0, 2) + Date.now().toString(36);
       await page.setViewportSize({ width: 1280, height: 720 });
       await page.addInitScript(() => {
@@ -212,6 +218,7 @@ for (const [locale, lang, want] of [
       if (locale === 'de-DE') await page.locator('#appbar').screenshot({ path: 'test/desktop/shots/app-who-host-de-1280.png' });
 
       const ctx = await browser.newContext({ locale, viewport: { width: 1280, height: 720 } });
+      if (browserName === 'webkit') await ctx.addInitScript(JS_SIGNER);
       const guest = await ctx.newPage();
       await guest.addInitScript(() => {
         localStorage.setItem('gifos_name', 'Avery Chen');

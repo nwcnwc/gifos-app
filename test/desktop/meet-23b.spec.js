@@ -58,18 +58,26 @@ test('calm by default: after 3 s only names and the speaking frame show; a move 
 test('tap a tile: it expands into its control window, and the tile keeps showing the person', async ({ page, browserName }) => {
   await boot(page, 3);
   const before = (await rects(page)).find((r) => r.id === 'qa2');
+  // What the tile shows: its video, or (camera off) the person's initial.
+  // WebKit's seeded faces are camera off: the seed plays no canvas capture there.
+  const showing = () => page.evaluate(() => {
+    const t = document.querySelector('.tile[data-peer="qa2"]');
+    const seen = (e) => !!e && e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none';
+    return { video: seen(t.querySelector(':scope > video')), initial: seen(t.querySelector('.avatar')) };
+  });
+  const was = await showing();
+  expect(was.video || was.initial).toBe(true);
+  if (browserName !== 'webkit') expect(was.video).toBe(true);
   await page.mouse.click(before.x + before.w / 2, before.y + before.h / 2);
   await expect(page.locator('#tilewin')).toBeVisible();
   const st = await page.evaluate(() => {
     const t = document.querySelector('.tile[data-peer="qa2"]'); const r = t.getBoundingClientRect();
-    const v = t.querySelector(':scope > video');
-    return { w: r.width, away: t.classList.contains('tw-away'), tileVideoHidden: getComputedStyle(v).visibility === 'hidden',
-      winVideos: document.querySelectorAll('#tilewin video').length };
+    return { w: r.width, away: t.classList.contains('tw-away'), winVideos: document.querySelectorAll('#tilewin video').length };
   });
   // The window grew out of the tile; the tile itself stays as it was, picture and all.
   expect(Math.round(st.w)).toBe(Math.round(before.w));
   expect(st.away).toBe(false);
-  expect(st.tileVideoHidden).toBe(false);
+  expect(await showing()).toEqual(was);
   expect(st.winVideos).toBe(browserName === 'webkit' ? 0 : 1);
   await expect(page.locator('#tilewin .tw-name')).toContainText(/\S/);
   await expect(page.locator('#tilewin', { hasText: 'Pin' })).toBeVisible();

@@ -76,6 +76,8 @@ function world() {
     // No free-pool anchor in this world: no mix-minus sender ever replaces the voice.
     turnMixSenders: new WeakSet(), turnMixTrack: () => null,
     paintControls() {}, broadcastStatus() { w.beats++; }, rememberBotSpoken() {},
+    // refreshOutbound opens the Stage frame on a step-up; a bot is never on the Stage.
+    meOnStage: () => false,
     Blob: function () {}, URL: { createObjectURL: () => 'blob:x', revokeObjectURL() {} },
     Audio: FakeAudio, window: { AudioContext: FakeCtx },
   };

@@ -63,11 +63,24 @@ async function wholeControls(page) {
 }
 
 // Find the one control: on the dock, or open More and find it there.
+// The call goes calm 3 s after the last move (0.9.23b) and a move wakes it,
+// so reach for a control the way a person does: move onto it, then press.
+// A slow engine (WebKit) spends those 3 s on the screenshot alone.
+async function moveOnto(page, sel) {
+  const vp = page.viewportSize();
+  const b = sel ? await page.locator(sel).first().boundingBox() : null;
+  const x = b ? b.x + b.width / 2 : vp.width / 2, y = b ? b.y + b.height / 2 : vp.height / 3;
+  await page.mouse.move(x - 3, y - 3);
+  await page.mouse.move(x, y, { steps: 2 });
+  await page.waitForTimeout(150);
+}
+
 async function reachControl(page) {
+  await moveOnto(page);
   let got = await wholeControls(page);
   if (got.length === 0) {
     const more = await page.$('#bartoggle');
-    if (more) { await more.click(); got = await wholeControls(page); }
+    if (more) { await moveOnto(page, '#bartoggle'); await more.click(); got = await wholeControls(page); }
   }
   return got;
 }
@@ -87,8 +100,9 @@ async function viewState(page) {
 }
 
 async function pressControl(page, id) {
-  if (id === 'fsbtn') await page.click('#fsbtn');
-  else await page.click('.bar .dockmore[data-dock="fsbtn"]');
+  const sel = id === 'fsbtn' ? '#fsbtn' : '.bar .dockmore[data-dock="fsbtn"]';
+  await moveOnto(page, sel);
+  await page.click(sel);
 }
 
 // Let the browser's full screen finish changing before the next key, as a
@@ -163,7 +177,7 @@ test('Broadcast desktop: one Full screen button on the dock, none on a face', as
   const onTiles = await tileEntries(page);
   const controls = await reachControl(page);
   expect({ onTiles, controls }).toEqual({ onTiles: [], controls: ['fsbtn'] });
-  await page.click('#fsbtn');
+  await pressControl(page, 'fsbtn');
   await openedUp(page);
   await closeIt(page);
   await closedOut(page);
