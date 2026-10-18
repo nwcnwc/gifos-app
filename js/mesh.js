@@ -1830,6 +1830,13 @@
       // signed PLACE cannot fill my view with cells of its choosing.
       { const ok = new Set(topo.ownedLinks(c).map(ck)); const oc = ownerCoordOf(c); if (oc) ok.add(ck(oc)); let adm = owner != null;
         for (const kv of (Array.isArray(nbrs) ? nbrs : [])) { if (!kv || kv.v == null || !cellKeyOk(kv.k)) continue; if (!ok.has(kv.k)) { if (!adm || kv.v !== owner) continue; adm = false; } if (!this.occ.has(kv.k)) { this.setOcc(kv.k, kv.v); this.noteS1(kv.k); if (kv.v !== owner && isS1key(kv.k)) this.s1told.set(kv.k, this.TICK); } } }   // a listing is no sighting: only the admitter (its signed PLACE in hand) is just seen; the rest stay fresh for the one-place guards but off my room list (s1told) — a healer into a frozen seat's link handed it out again (test/mesh/frozen-roster-heal-echo.js)
+      // ...and, seated in my dead owner's cell after E1, the heir of my old
+      // head cell (drainOrReenter: exRow) — a hint at my down link that
+      // announce() HELLOs, so the seat below learns its owner instead of
+      // phoning the corpse to its own E1 (test/mesh/left-pack-dead-owner.js).
+      // The door may seat me elsewhere first and a FINDLEAF move me into the
+      // hole later: the memory holds for one RING_HOLD, whatever seat I pass.
+      { const x = this.exRow; if (x) { if (this.TICK - x.at > RING_HOLD) this.exRow = null; else if (x.oc === ck(c)) { this.exRow = null; const dk = ck(topo.down(c)); if (!this.occ.has(dk)) this.setOcc(dk, x.heir); } } }
       this.drainAt = 0; this.seatTries = 0; this.seatedAt = this.TICK; this.rookSeenAt = this.TICK; this.estAt = this.TICK; this.nbrAt = this.TICK; this.pendY = null; this.challTo = null; this.lateY = null;
       // § G: a seat change re-parents me — new aggregator, new scope, new child
       // row. Every digest relationship starts over, including G4's grace
@@ -2697,7 +2704,19 @@
       // E1 LAST RESORT, checked FIRST (bug #7): owner-chain dead >220 with no
       // mesh route → drop the dead roster and re-enter the front door. Below
       // the drain branch it was unreachable for a seat holding a STALE roster.
-      if (TICK - this.lastAck > 220) { this.haveRoster = false; this.roster = []; this.drainAt = 0; this.requeue(); return; }
+      if (TICK - this.lastAck > 220) {
+        // A DEEP HEAD DISSOLVED BY E1 REMEMBERS WHO HEALS ITS CELL (test/mesh/
+        // left-pack-dead-owner.js). The door seats me in my dead owner's own
+        // cell more often than not (it is the hole): my old row is my child
+        // row now, and the mate that left-packed into my head cell (or the
+        // child that healed up into it) inherited the same corpse as its
+        // owner from the row's shared view. It phones the corpse, its only
+        // path up, and E1 dissolves it in turn — nobody below can learn of
+        // me, so I keep its name and reach down (take: exRow). An id, never
+        // liveness; a wrong guess is a silent child and swept.
+        if (this.coord.pc !== 0 && this.coord.i === 0) { const oc = this.ownerCoord(); let heir = this.occGet(ck({ pc: this.coord.pc, r: this.coord.r, i: 1 })); if (heir == null) heir = this.occGet(ck(topo.down(this.coord))); this.exRow = (oc && heir != null && heir !== this.id) ? { oc: ck(oc), heir, at: TICK } : null; }
+        this.haveRoster = false; this.roster = []; this.drainAt = 0; this.requeue(); return;
+      }
       if (this.haveRoster && this.roster.length) { if (!this.drainAt) { const rc = this.rosterCells(); for (let c = 0; c < C(); c++) { const x = this.occGet(ck(rc[c])); if (x != null && x !== this.id) this.emit(x, { t: 'DRAIN', roster: this.roster, id: this.id }); } this.drainAt = TICK + 25 + (this.rng() * 10 | 0); } return; } // `id`: a DRAIN is signed and honoured only from the receiver's anchor
       if (TICK - this.rosterAskAt > 40) {
         this.rosterAskAt = TICK; const x = topo.crossLink(this.coord); let xid = x ? this.occGet(ck(x)) : null;
@@ -3504,7 +3523,14 @@
         // hand loss and heals it in ~probe-time; racing it here minted
         // duplicates. The RING_HOLD horizon path is unchanged (translost
         // clears once the cell refills or answers).
-        if (this.translost.has(kk) && this.hasDownChild(c)) continue;
+        // ...for one RING_HOLD: the heir's own E1 horizon. A heir that has
+        // not healed up by then is not coming (its owner died silently, it
+        // never heard the hole and E1 dissolved it; the door seated it
+        // elsewhere), the heir name is stale, and the hole stayed for good —
+        // the row below it phoned the corpse to its own E1, one seat per
+        // horizon (test/mesh/left-pack-dead-owner.js seed 5: 0/0.1 empty at
+        // tick 700 with its heir seated at 1/1.0).
+        if (this.translost.has(kk) && TICK - this.translost.get(kk) <= RING_HOLD && this.hasDownChild(c)) continue;
         // (the translost observation deliberately STANDS after the clear — it
         // keeps S1SYNC echoes from re-seating the corpse in my occ until the
         // cell genuinely refills; setOcc/admit clear it on an occupant change)
