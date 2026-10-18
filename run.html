@@ -9423,6 +9423,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const sgsV = sgs && sgs.querySelector('video');
         const sgsOn = !!(sgsV && sgsV.srcObject);
         if (sgsOn) {
+          // Everyone on the Stage is shown by the Stage strip: their own tiles
+          // leave the Row until they step off. A sharer keeps their face in
+          // the Row (the Stage shows their screen); a Pin keeps its tile.
+          let stagersNow = [];
+          try { stagersNow = stageIds(); } catch (e) {}
+          for (let i = tiles.length - 1; i >= 0; i--) {
+            const t = tiles[i];
+            const sid = t.me ? myId : t.id;
+            if (!sid || stagersNow.indexOf(sid) < 0 || t.shareFace || (focusId && t.id === focusId)) continue;
+            tiles.splice(i, 1);
+            try { t.el.classList.add('comfy-off'); } catch (e) {}
+          }
           tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, pz: 'stage:sgs' });
         }
         document.body.classList.toggle('show-stage', sgsOn);

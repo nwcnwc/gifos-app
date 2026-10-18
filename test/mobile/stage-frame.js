@@ -5,6 +5,8 @@
  *   the screen, and my picture leaves as the whole camera at its own shape
  * - dragging the frame's corner changes the shape that leaves (not square)
  * - stepping off puts the saved square back
+ * - on the Stage my tile leaves the Row (the Stage strip shows me), and it
+ *   comes back when I step off
  *
  *   NODE_PATH=<playwright> node test/mobile/stage-frame.js
  */
@@ -18,6 +20,20 @@ const CASES = [
   ['desktop', { viewport: { width: 1280, height: 720 } }],
 ];
 const near = (a, b, e) => Math.abs(a - b) <= e;
+
+// Where I am: my Row tile laid out or not, and the Stage strip showing.
+const whereAmI = (page) => page.evaluate(() => {
+  const me = document.querySelector('#feed .tile.me, #grid .tile.me');
+  const sgs = document.querySelector('#stagefeed [data-row="sgs"]');
+  const v = sgs && sgs.querySelector('video');
+  const laid = (e) => !!e && e.getClientRects().length > 0 && getComputedStyle(e).display !== 'none';
+  return { tile: laid(me) && !me.classList.contains('comfy-off'), stage: laid(sgs) && !!(v && v.srcObject) };
+});
+async function settle(page, want) {
+  const end = Date.now() + 8000; let w;
+  do { w = await whereAmI(page); if (w.tile === want.tile && w.stage === want.stage) return w; await page.waitForTimeout(200); } while (Date.now() < end);
+  return w;
+}
 
 async function shape(page) {
   await page.waitForTimeout(700);
@@ -45,12 +61,16 @@ async function shape(page) {
     if (!s) { bad.push(tag + ': no outgoing picture with the camera on'); await ctx.close(); continue; }
     if (s.w !== s.h) bad.push(tag + ': off the Stage the picture is ' + s.w + 'x' + s.h + ', not the saved square');
     const camA = s.camW / s.camH;
+    let at = await whereAmI(page);
+    if (!at.tile) bad.push(tag + ': off the Stage my tile is not in the Row ' + JSON.stringify(at));
     // A step-up in the first seconds of a join is a rejoin, not a promotion.
     await page.waitForTimeout(3500);
     if (!(await page.evaluate(() => window.__gifosVideo.stageForTest(true)))) { bad.push(tag + ': could not step on the Stage'); await ctx.close(); continue; }
     try { await page.locator('#tilewin .tw-stageframe').waitFor({ state: 'visible', timeout: 6000 }); }
     catch (e) { bad.push(tag + ': stepping on did not open "Frame what the Stage shows"'); }
     await page.waitForTimeout(600);
+    at = await settle(page, { tile: false, stage: true });
+    if (at.tile || !at.stage) bad.push(tag + ': on the Stage my tile should leave the Row while the Stage shows me ' + JSON.stringify(at));
     const onScreen = await page.evaluate(() => { const w = document.getElementById('tilewin'); if (!w) return false; const r = w.getBoundingClientRect(); return r.width > 0 && r.left >= -0.5 && r.top >= -0.5 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5; });
     if (!onScreen) bad.push(tag + ': the framing window runs off the screen');
     s = await shape(page);
@@ -81,11 +101,13 @@ async function shape(page) {
     await page.screenshot({ path: '/tmp/stage-frame-' + tag + '.png' });
     await page.evaluate(() => { window.__tileWin.close(); window.__gifosVideo.stageForTest(false); });
     s = await shape(page);
+    at = await settle(page, { tile: true, stage: false });
+    if (!at.tile) bad.push(tag + ': after stepping off my tile is not back in the Row ' + JSON.stringify(at));
     if (!s || s.w !== s.h) bad.push(tag + ': after stepping off the picture is ' + (s && s.w + 'x' + s.h) + ', not the saved square');
     if (errs.length) bad.push(tag + ': page error ' + errs[0].slice(0, 160));
     await ctx.close();
   }
   await browser.close();
   if (bad.length) { console.log('FAIL\n' + bad.join('\n')); process.exit(1); }
-  console.log('PASS the Stage sends the whole camera, framed at any shape, and the square comes back after, on ' + CASES.map((c) => c[0]).join(', '));
+  console.log('PASS the Stage sends the whole camera, framed at any shape, my tile leaves the Row while on the Stage, and the square and the tile come back after, on ' + CASES.map((c) => c[0]).join(', '));
 })().catch((e) => { console.log('FAIL ' + (e && e.stack || e)); process.exit(1); });
