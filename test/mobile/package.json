@@ -1,7 +1,6 @@
 {
   "name": "gifos-mobile-qa",
   "private": true,
-  "type": "module",
   "scripts": {
     "test": "playwright test --config playwright.config.mjs"
   },
