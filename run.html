@@ -16198,6 +16198,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the host tapped Stop.
     function bcKeepSync() {
       if (!BROADCAST || !bcHostStored() || bcKeepUserStop) return;
+      // The End question blacks the tracks while the host decides. That hold
+      // is not off air: stopping here forgot the recording, so End left the
+      // camera looking live and never told the room the service was over.
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (bcSending()) bcKeepService();
       else bcKeepOffAir();
     }
@@ -31653,6 +31657,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { broadcastStatus(); } catch (e) {}
       try { paintControls(); } catch (e) {}
       keepAwake();
+      // The ended word has to be on the seat before the seat leaves, or a
+      // viewer who still has the tile never hears that the service is over.
+      // One beat, then the same goodbye a hang-up sends.
+      setTimeout(() => { try { sendMeshLeave(); } catch (e) {} }, 400);
       return flushing;
     }
     function leaveSeededService() {
