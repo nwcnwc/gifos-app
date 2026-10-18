@@ -6302,6 +6302,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const st = statusOf.get(pid);
       if (!st) return;
       const wasScribe = !!st.scribe;
+      if (typeof DEBUG_ON !== 'undefined' && DEBUG_ON) { try { (window.__bcTrace = window.__bcTrace || []).push({ t: Date.now(), ev: 'drop', from: String(pid).slice(0, 8), bcend: st.bcend || 0 }); } catch (e) {} }
       noteStatusFlags(st, null);
       statusOf.delete(pid);
       if (wasScribe && typeof scribeWatch === 'function') scribeWatch();
@@ -8095,8 +8096,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // where that promise is enforced).
     //
     // Nothing else. No room-wide guest blur, no floors, no pinning.
-    // Sharing a screen is the sharer's consent (video on, No blur) for that share.
-    const consents = (st) => !!st && (!!st.scr || (blurLevel(st.blur) === 0 && (!st.camOff || !!st.rb)));
+    // Sharing a screen, or a host's rebroadcast, is that seat's consent (video
+    // on, No blur) for it.
+    const consents = (st) => !!st && (!!st.scr || !!st.rb || (blurLevel(st.blur) === 0 && !st.camOff));
     const adminPresent = () => hasAdminRoom() && admins.length > 0;
     // Clear video is a ROOM-WIDE unanimity, so it MUST be tallied over shared
     // state (rosterIds = occ ∪ fresh status gossip), NOT over `peers` — my
@@ -8171,11 +8173,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const isMe = id === 'me';
       let st = (isMe ? myStatus : statusOf.get(id)) || {};
       if (asIfCamOn && st.camOff) st = Object.assign({}, st, { camOff: false });
-      // A screen share is that seat's video with its own blur at None (sharing
-      // is consent). Every other rule below still applies to it, exactly as to
-      // a camera: no password, a plain room short of unanimity, a moderator's
-      // blur all keep it blurred.
-      if (st.scr) st = Object.assign({}, st, { camOff: false, blur: 0 });
+      // A screen share or a rebroadcast is that seat's video with its own blur
+      // at None (it is consent). Every other rule below still applies to it,
+      // exactly as to a camera: no password, a room short of unanimity, a
+      // moderator's blur all keep it blurred.
+      if (st.scr || st.rb) st = Object.assign({}, st, { camOff: false, blur: 0 });
       const blocked = !!(modOf(id).blur && modOf(id).blur.on);
       // (This rule applies UNCHANGED in broadcast rooms — Nathan's call,
       // 2026-08-03. An admin room is born UNLOCKED; the host locking it with
@@ -10796,10 +10798,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // and sharing a screen with the camera off is the normal case — bailing
       // first would have silently dropped the share 20 seconds in, which is
       // exactly the shape of the stage-voice bug (see mySelfStream).
-      // A rebroadcast (Q77) is a source swap too. It is sent unblurred and
-      // wins while it plays.
+      // A rebroadcast (Q77) is a source swap too, and wins while it plays. It
+      // obeys the camera's blur rules like a screen share (below).
       const rbv = rbNow && rbNow.v;
-      if (rbv && rbv.readyState === 'live') { stopBlurPipe(); return rbv; }
+      if (rbv && rbv.readyState === 'live') {
+        stopAvatarPipe();
+        const rl = blurLevelFor('me');
+        if (rl > 0) return startBlurPipe(rl, rbv); // null if the pipe cannot run: never the raw clip
+        stopBlurPipe();
+        return rbv;
+      }
       const scr = screenStream && screenStream.getVideoTracks()[0];
       // THE GRANT IS THE GATE ON THE BYTES, not only on the button. Every
       // outbound video sender reads this function. A client that armed a
@@ -14393,6 +14401,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof noteStatusFlags === 'function') noteStatusFlags(cur, st);
       if (!cur && from !== myId) scheduleNewPeerBeat(); // the first status from a person I held none for: answer with my own beat, whatever path carried theirs
       statusOf.set(from, st);
+      if (DEBUG_ON && (!cur || !!cur.bcend !== !!st.bcend || !!cur.bce !== !!st.bce || !!cur.rec !== !!st.rec || !!cur.stg !== !!st.stg)) { try { (window.__bcTrace = window.__bcTrace || []).push({ t: Date.now(), ev: 'st', from: String(from).slice(0, 8), bcend: st.bcend || 0, bce: st.bce || 0, rec: !!st.rec, stg: st.stg || 0, cam: !st.camOff }); } catch (e) {} }
+      try { noteBcEnd(st); } catch (e) {} // a viewer keeps the host's ended word past its seat
       try { applySpotlightBit(from); } catch (e) {}
       // A share starting or stopping paints this tile now. The sharer list is
       // read live; a coalesced pass would leave the chip behind it.
@@ -31280,7 +31290,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // pulls the kept file from this phone (Q76). Close is the real leave.
     let bcSeeding = false;
     // The host's seat that ended its service says so on its status pulse.
+    // A viewer keeps that word after the seat is gone (the booth closes it a
+    // few seconds later, and dropStatus forgets the seat), and passes it on
+    // in its own pulse (bce), so a viewer who comes later reads it too. Both
+    // stamps are the host's clock: a later stage or rebroadcast stamp from
+    // the host (stg/rb) means it is back on air, and older echoes lose.
+    let bcEndAt = 0, bcAirAt = 0;
+    function noteBcEnd(st) {
+      if (!BROADCAST || !st) return;
+      const air = Math.max(+st.stg || 0, +st.rb || 0);
+      if (air > bcAirAt) bcAirAt = air;
+      const e = Math.max(+st.bcend || 0, +st.bce || 0);
+      const was = bcEndAt;
+      if (e > bcEndAt) bcEndAt = e;
+      if (bcEndAt && bcAirAt > bcEndAt) bcEndAt = 0;
+      if (bcEndAt === was || bcHostStored()) return;
+      if (bcEndAt) myStatus.bce = bcEndAt; else delete myStatus.bce;
+      try { broadcastStatus(); } catch (e2) {}
+      try { updateStatus(); } catch (e2) {}
+    }
     function bcEndedInRoom() {
+      if (bcEndAt > 0) return true;
       for (const st of statusOf.values()) if (st && st.bcend) return true;
       return false;
     }
@@ -31311,6 +31341,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Leave ends a rebroadcast too; the clip must not keep playing behind
       // the ended screen.
       if (rbNow) rbQuit();
+      if (DEBUG_ON) { try { (window.__bcTrace = window.__bcTrace || []).push({ ev: 'leave', t: Date.now(), seeding: bcSeeding, seed: bcSeedOnLeave(), kept: bcKept, host: !!bcHostStored(), rec: recRec ? recRec.state : 'none' }); } catch (e) {} }
       if (!bcSeeding && bcSeedOnLeave()) return endServiceKeepSeat();
       const flushing = stopLocalCapture();
       sendMeshLeave();
@@ -33355,7 +33386,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // "active" fan jobs stayed green through a fully silent stage).
       rebroadcastStreamForTest: () => (rbNow && rbNow.v ? new MediaStream([rbNow.v, rbNow.a].filter(Boolean)) : null),
       stageViaForTest: () => { for (const [k, f] of mosIn) if (k.indexOf('stg:') === 0 && k !== 'stg:' + myId) return { via: String(f.via).slice(0, 8), me: String(myId).slice(0, 8) }; return null; },
-      rebroadcastForTest: () => (rbNow ? { pos: rbNow.vid.currentTime, len: rbNow.vid.duration, paused: rbNow.vid.paused, title: rbNow.title, sending: !!rbNow.v } : null),
+      rebroadcastForTest: () => (rbNow ? { pos: rbNow.vid.currentTime, len: rbNow.vid.duration, paused: rbNow.vid.paused, title: rbNow.title, sending: !!rbNow.v, vId: rbNow.v ? rbNow.v.id : '' } : null),
       // The stage feed this phone receives (stream with picture and sound).
       stageFeedForTest: () => { for (const [k, f] of mosIn) if (k.indexOf('stg:') === 0 && k !== 'stg:' + myId && f.stream) return f.stream; return null; },
       stageEarLevel: (ms) => new Promise((resolve) => {
