@@ -2513,8 +2513,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* Phone: keep every More button (incl. dock stand-ins) fully in the sheet;
      Order of service sits under the sheet while More is open. */
   @media (max-width: 700px), (max-height: 500px) {
+    /* Fixed to the viewport so the short dock bar cannot clip the sheet
+       (Share/React/Step off were cut off inside .bar's box on Pixel 7). */
     .bar:not(.collapsed) .barmore {
+      position: fixed;
+      left: 50%;
+      right: auto;
       bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+      transform: translateX(-50%);
       width: min(720px, calc(100vw - 16px));
       max-height: calc(100dvh - 96px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     }
@@ -3178,11 +3184,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .reacttray { bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
   }
   /* A phone was opening More over the faces: 13 equal buttons on an iPhone 15.
-     The first screen is the four the sheet already leads with. Two rows are
-     14px of padding, two 56px buttons, and the 8px gap, written in rem so
-     the rows grow with the text size. Everything else scrolls. */
+     The first screen must fit the four lead actions AND any dock stand-ins
+     that moved into More (Share / React / Step off are taller). Cap in rem so
+     rows grow with text size; everything else scrolls. */
   @media (max-width: 700px) {
-    .bar:not(.collapsed) .barmore { max-height: 9.25rem; }
+    .bar:not(.collapsed) .barmore { max-height: min(50dvh, 18rem); }
   }
   /* Sideways, a width over 700px skipped the phone cap and the sheet grew
      up over the header (top 24, chip bottom 58). The sheet is anchored on
@@ -3198,7 +3204,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* A narrow sideways phone anchors the sheet 102px up, not 122. The wide
      cap used 122 and cut the second row (Waiting room and Chat) off an SE. */
   @media (max-height: 500px) and (orientation: landscape) and (max-width: 700px) {
-    .bar:not(.collapsed) .barmore { max-height: 9.25rem; }
+    .bar:not(.collapsed) .barmore { max-height: min(50dvh, 18rem); }
   }
   @media (min-width: 381px) {
     .bar { max-width: calc(100% - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
