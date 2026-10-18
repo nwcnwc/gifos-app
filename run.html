@@ -2507,9 +2507,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
     width: min(720px, calc(100vw - 24px));
     max-height: calc(100vh - 146px); max-height: calc(100dvh - 146px); overflow-x: hidden; overflow-y: auto;
-    background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23;
+    background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 30;
     pointer-events: none;
-    max-height: calc(100vh - 140px); max-height: calc(100dvh - 140px); overflow-y: auto; }
+    max-height: calc(100vh - 140px); max-height: calc(100dvh - 140px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  /* Phone: keep every More button (incl. dock stand-ins) fully in the sheet;
+     Order of service sits under the sheet while More is open. */
+  @media (max-width: 700px), (max-height: 500px) {
+    .bar:not(.collapsed) .barmore {
+      bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+      width: min(720px, calc(100vw - 16px));
+      max-height: calc(100dvh - 96px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    }
+    body:has(.bar:not(.collapsed)) #rundown.open,
+    body:has(.bar:not(.collapsed)) #lyrics.open { display: none !important; }
+  }
   .bar:not(.collapsed) .barmore > * { pointer-events: auto; }
   .bar:not(.collapsed) .barmore .moregroup { display: flex; flex-direction: column; gap: 6px; }
   /* A volunteer sees Hand, Invite, and Help. The rest waits under All tools. */
@@ -29495,6 +29506,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         toggle.title = collapsed ? 'More' : 'Hide ' + surface + ' controls';
         const word = toggle.querySelector('.docklab');
         if (word) word.textContent = collapsed ? uiText('more', 'More') : uiText('hide', 'Hide');
+        // Opening More covers the Order of service / lyrics cards so every
+        // dock stand-in on the sheet is fully visible (Pixel 7 host dock).
+        if (!collapsed) {
+          try { const rd = document.getElementById('rundown'); if (rd) rd.classList.remove('open'); } catch (e) {}
+          try { const ly = document.getElementById('lyrics'); if (ly) ly.classList.remove('open'); } catch (e) {}
+        }
       }
       toggle.onclick = function () {
         const next = !bar.classList.contains('collapsed'); apply(next);
