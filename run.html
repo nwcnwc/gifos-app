@@ -29210,7 +29210,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (bar.matches(':hover') || bar.querySelector(':focus-visible')) return true;
         // Keyboard focus on a tile or its buttons keeps them (calm hides tile buttons too).
         if (document.querySelector('#feed :focus-visible, #feed .tile.menu')) return true;
-        if (bar.querySelector('[aria-expanded="true"], .on:not(#ccdock):not(#sharebtn)')) return true;
+        if (bar.querySelector('[aria-expanded="true"], .on:not(#ccdock):not(#sharebtn):not(#stagebtn)')) return true;
         const chat = document.getElementById('chatpanel');
         if (chat && chat.classList.contains('open')) return true;
         for (const d of document.querySelectorAll('[role="dialog"][aria-modal="true"]')) {
