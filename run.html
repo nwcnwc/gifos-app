@@ -7424,7 +7424,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // just closed it on being seated, the knocker took it as a fresh
           // knock, and the pair stayed open for good: a Section-1 seat held one
           // per late joiner (bw-ladder N=32). The sweeper drops a dead one.
-          if (p.boot && !p.bootOut && !linkTo(pid) && !p.turnAnchor && !p.turnServe) { why('door'); continue; }
+          // …AND an OUTBOUND door we just opened while healing (door-out) must
+          // not be judged by an old pidFirstSeen clock: starve-dead fired
+          // within a second of door-out, and departSweep then confirmed a
+          // live founder gone (quiet-door: P5 → P0 d5 after stranded-tx heal).
+          // Skip every boot pair that is not yet a tree link while it is still
+          // forming (inbound always; outbound until ICE has heard them).
+          if (p.boot && !linkTo(pid) && !p.turnAnchor && !p.turnServe &&
+              (!p.bootOut || (!p.connected && !heardPid))) { why('door'); continue; }
           // THE HALF-OPEN PAIR (pair-probe.js, 2026-07-27): ICE lands but the
           // DataChannel NEVER opens — ondatachannel never fires on the
           // answerer, the initiator's channel sticks in 'connecting'. No
