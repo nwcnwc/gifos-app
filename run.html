@@ -2507,9 +2507,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; position: absolute; left: 50%; bottom: 122px; transform: translateX(-50%);
     width: min(720px, calc(100vw - 24px));
     max-height: calc(100vh - 146px); max-height: calc(100dvh - 146px); overflow-x: hidden; overflow-y: auto;
-    background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 23;
+    background: #fff; color: #1d1d1f; border-radius: 22px; padding: 14px 12px; box-shadow: 0 16px 40px rgba(0,0,0,.3); z-index: 30;
     pointer-events: none;
-    max-height: calc(100vh - 140px); max-height: calc(100dvh - 140px); overflow-y: auto; }
+    max-height: calc(100vh - 140px); max-height: calc(100dvh - 140px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  /* Phone: keep every More button (incl. dock stand-ins) fully in the sheet;
+     Order of service sits under the sheet while More is open. */
+  @media (max-width: 700px), (max-height: 500px) {
+    /* Fixed to the viewport so the short dock bar cannot clip the sheet
+       (Share/React/Step off were cut off inside .bar's box on Pixel 7). */
+    .bar:not(.collapsed) .barmore {
+      position: fixed;
+      left: 50%;
+      right: auto;
+      bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+      transform: translateX(-50%);
+      width: min(720px, calc(100vw - 16px));
+      max-height: calc(100dvh - 96px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    }
+    body:has(.bar:not(.collapsed)) #rundown.open,
+    body:has(.bar:not(.collapsed)) #lyrics.open { display: none !important; }
+  }
   .bar:not(.collapsed) .barmore > * { pointer-events: auto; }
   .bar:not(.collapsed) .barmore .moregroup { display: flex; flex-direction: column; gap: 6px; }
   /* A volunteer sees Hand, Invite, and Help. The rest waits under All tools. */
@@ -3167,11 +3184,81 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .reacttray { bottom: calc(102px + env(safe-area-inset-bottom, 0px)); }
   }
   /* A phone was opening More over the faces: 13 equal buttons on an iPhone 15.
-     The first screen is the four the sheet already leads with. Two rows are
-     14px of padding, two 56px buttons, and the 8px gap, written in rem so
-     the rows grow with the text size. Everything else scrolls. */
+     The first screen must fit the four lead actions AND any dock stand-ins
+     that moved into More (Share / React / Step off are taller). Cap in rem so
+     rows grow with text size; everything else scrolls. */
   @media (max-width: 700px) {
-    .bar:not(.collapsed) .barmore { max-height: 9.25rem; }
+    .bar:not(.collapsed) .barmore { max-height: min(50dvh, 18rem); }
+  }
+  /* Pixel 7 host dock: "Unmute" was ellipsized at 16px inside a 64px cap,
+     the More sheet was 16px narrower than the dock so Live/End peeked out
+     both sides, and the off-air link card sat on the header. */
+  @media (max-width: 700px), (max-height: 500px) {
+    .bar .docklab.dockword {
+      max-width: none; overflow: visible; text-overflow: clip;
+      font-size: 12px; letter-spacing: -0.02em;
+    }
+    .bar > #mic { width: auto; min-width: max-content; }
+    /* Full screen width, square bottom corners: a narrower rounded sheet
+       let the red Video and End buttons show through the corner cutouts. */
+    .bar:not(.collapsed) .barmore {
+      /* 100vw is wider than the phone, so the right column sat off the screen. */
+      left: 50%; right: auto; width: 100dvw; max-width: 100dvw;
+      transform: translateX(-50%); margin-left: 0; z-index: 40;
+      box-sizing: border-box; overflow-x: hidden; overflow-y: auto;
+      border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+      /* Sit on the dock. A gap there showed Recording and the red buttons. */
+      /* bottom is relative to the dock (the bar is transformed), so 100%
+         sits the sheet on the dock's top edge with no strip between them. */
+      bottom: 100%;
+      max-height: calc(100dvh - 320px);
+      grid-template-columns: 1fr;
+    }
+    .bar:not(.collapsed) .barmore .moregroup h4 { display: none; }
+    .bar:not(.collapsed) #barmore .moregroup.phone-first .morerow > button,
+    .bar:not(.collapsed) #barmore .morerow > button,
+    .bar:not(.collapsed) #barmore .dockmore {
+      height: 64px; min-height: 64px; max-height: 64px; box-sizing: border-box;
+      width: 100%; min-width: 0; max-width: none;
+    }
+    .bar:not(.collapsed) .barmore .moregroup { width: 100%; min-width: 0; max-width: 100%; }
+    .bar:not(.collapsed) .barmore .morerow,
+    .bar:not(.collapsed) .barmore .dockrow {
+      width: 100%; min-width: 0; max-width: 100%;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    /* Start time and Visit are fields, not quarter-tiles. A 12rem input
+       was wider than the column, so it ran under Questions. */
+    .bar:not(.collapsed) #barmore #bcwhenrow,
+    .bar:not(.collapsed) #barmore #bcvisitrow {
+      grid-column: 1 / -1; display: flex; flex-direction: column; align-items: stretch;
+      width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box;
+    }
+    .bar:not(.collapsed) #barmore #bcwhenrow input,
+    .bar:not(.collapsed) #barmore #bcvisitrow input {
+      width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box;
+    }
+    .bar:not(.collapsed) #barmore #rbbtn { grid-column: 1 / -1; }
+    .bar:not(.collapsed) #barmore .ai-spark { display: none; }
+    body:has(.bar:not(.collapsed)) #callstate,
+    body:has(.bar:not(.collapsed)) #bc-stage { display: none !important; }
+    /* The sentence sits on its own row. A 90px column wrapped it into
+       "Off air. / Send the / link." which read as a truncated chip. */
+    body.broadcast .topchip {
+      flex-wrap: wrap; box-sizing: border-box;
+      width: calc(100dvw - 16px); max-width: calc(100dvw - 16px);
+      border-radius: 22px;
+    }
+    body.broadcast .topchip .status { order: 5; flex: 1 0 100%; min-width: 0; overflow: hidden; }
+    body.broadcast .topchip #statusrest {
+      display: block; max-width: 100%; white-space: normal; overflow: hidden;
+    }
+    body.broadcast #hdrinvite { order: 4; }
+    /* The sentence is a second chip row. Its height follows the words, so the
+       air bar starts at the chip's measured bottom (--chip-bottom), not a
+       fixed guess that let a second line cover "Service · You are off air". */
+    body.broadcast #airbar.on { margin-top: var(--chip-bottom, calc(var(--banner-h) + 120px)); }
+    body:has(.bar:not(.collapsed)) #bc-link { display: none !important; }
   }
   /* Sideways, a width over 700px skipped the phone cap and the sheet grew
      up over the header (top 24, chip bottom 58). The sheet is anchored on
@@ -3187,7 +3274,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* A narrow sideways phone anchors the sheet 102px up, not 122. The wide
      cap used 122 and cut the second row (Waiting room and Chat) off an SE. */
   @media (max-height: 500px) and (orientation: landscape) and (max-width: 700px) {
-    .bar:not(.collapsed) .barmore { max-height: 9.25rem; }
+    .bar:not(.collapsed) .barmore { max-height: min(50dvh, 18rem); }
   }
   @media (min-width: 381px) {
     .bar { max-width: calc(100% - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
@@ -7425,7 +7512,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // just closed it on being seated, the knocker took it as a fresh
           // knock, and the pair stayed open for good: a Section-1 seat held one
           // per late joiner (bw-ladder N=32). The sweeper drops a dead one.
-          if (p.boot && !p.bootOut && !linkTo(pid) && !p.turnAnchor && !p.turnServe) { why('door'); continue; }
+          // …AND an OUTBOUND door we just opened while healing (door-out) must
+          // not be judged by an old pidFirstSeen clock: starve-dead fired
+          // within a second of door-out, and departSweep then confirmed a
+          // live founder gone (quiet-door: P5 → P0 d5 after stranded-tx heal).
+          // Skip every boot pair that is not yet a tree link while it is still
+          // forming (inbound always; outbound until ICE has heard them).
+          if (p.boot && !linkTo(pid) && !p.turnAnchor && !p.turnServe &&
+              (!p.bootOut || (!p.connected && !heardPid))) { why('door'); continue; }
           // THE HALF-OPEN PAIR (pair-probe.js, 2026-07-27): ICE lands but the
           // DataChannel NEVER opens — ondatachannel never fires on the
           // answerer, the initiator's channel sticks in 'connecting'. No
@@ -7542,7 +7636,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // fix is untouched — heardPid>0 pairs (once-established) keep the
           // full edge too.
           const formingAlive = !heardPid && nowHb - (p.lastHeard || 0) < 12000;
-          if (!tlFiredPid.has(pid) && !formingAlive && (!dcOpen || !carried)) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
+          // A member the room still knows (roster, status, occ, or relay) is
+          // not dead — only the pair is. Quiet-door heal fired starve-dead→d5
+          // on a live survivor during an occ blink when relaySocketed had
+          // dropped them after an earlier relay-leave hint (edc4392 a1:
+          // P3→P5). Rebuild below; leave the death edge for a peer nobody
+          // in the room still names.
+          const roomKnows = occNamed.has(pid)
+            || (Array.isArray(rosterIds) && rosterIds.includes(pid))
+            || (statusOf && statusOf.has(pid))
+            || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
+          if (!tlFiredPid.has(pid) && !formingAlive && !roomKnows && (!dcOpen || !carried)) { tlFiredPid.add(pid); onTransportDead(pid, 'starve-dead'); }
           if (typeof clog === 'function') clog('mesh-starve rebuild ' + String(pid).slice(0, 6));
           newPcFor(p);
           sendOffer(pid, false);
@@ -11970,6 +12074,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof paintLiveBadge === 'function') paintLiveBadge();
       paintStatusSheet();
       try { paintOnAir(); } catch (e) {}
+      try {
+        const chip = document.querySelector('body.broadcast .topchip');
+        if (chip) document.documentElement.style.setProperty('--chip-bottom', Math.ceil(chip.getBoundingClientRect().bottom) + 'px');
+      } catch (e2) {}
     }
     // The host's start time and Visit link can arrive by gossip after the
     // line was painted; the countdown moves on its own.
@@ -15356,7 +15464,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else {
         for (const [pid, k] of occPrevIds) {
           if (occNow.has(pid) || meshGone.has(pid)) continue;
-          if (s.translost.has(k)) { confirmGone(pid, 'd5'); continue; }
+          // Translost on the vacated cell is not a death while the room still
+          // names that member (roster/status/relay). Quiet-door: starve-dead
+          // plus a one-tick occ blink confirmed a live survivor gone as d5
+          // even when the census still seated them (edc4392 a1 P3→P5).
+          if (s.translost.has(k)) {
+            const roomKnows = (Array.isArray(rosterIds) && rosterIds.includes(pid))
+              || (statusOf && statusOf.has(pid))
+              || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
+            if (roomKnows) {
+              try { s.translost.delete(k); } catch (e) {}
+              continue;
+            }
+            confirmGone(pid, 'd5'); continue;
+          }
           if (peers.has(pid) && !occVanish.has(pid)) occVanish.set(pid, Date.now());
         }
         for (const [pid, at] of occVanish) {
@@ -15375,7 +15496,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // the probe-gated D5 path own it.
           const recentRebuild = p && p.rebuiltAt && (Date.now() - p.rebuiltAt < 60000);
           if (!dcClosed || recentRebuild) { occVanish.delete(pid); continue; }
-          if (Date.now() - at >= 900) { occVanish.delete(pid); confirmGone(pid, 'left'); }
+          if (Date.now() - at < 900) continue;
+          occVanish.delete(pid);
+          // A CLOSE IS NOT A GOODBYE WHILE THE MEMBER IS PLAINLY STILL HERE.
+          // A seat that moves into a departed neighbour's cell retires the
+          // pairs it no longer needs (a door it came in by, a link its new
+          // cell does not have) in the same moment its old cell leaves my
+          // view, and before its new cell reaches me. Read as a goodbye, the
+          // close marked a live member gone, and that mark then refused the
+          // very link the move needed. Two things say the member is still
+          // here: the pair was a door that is no tree link of mine (doors
+          // are closed on purpose once a seat's own links are up), or the
+          // relay still reaches the member's socket (a page that went away
+          // closed it). The pair is retired and the member keeps its status;
+          // a real departure is still judged by its own links.
+          const stillHere = (p && p.boot && !linkTo(pid)) || (typeof relaySocketed !== 'undefined' && relaySocketed.has(pid));
+          if (stillHere) { if (typeof clog === 'function') clog('pair-closed ' + String(pid).slice(0, 6) + ' (still here, not a goodbye)'); dropPeer(pid, true); continue; }
+          confirmGone(pid, 'left');
         }
       }
       occPrevIds = occNow; occPrevMyCk = myCk;
@@ -15400,9 +15537,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // parent dies, the door is the one channel its new parent can still
       // signal it over. A pair that only just became a link is judged from
       // that moment, not from the quiet it kept while it was a door.
+      // ...and a beat is owed only on a link BOTH ends hold. A deep row's
+      // non-head seats count their row's owner among their links, but the
+      // owner holds only the row head, so it closes their door and never
+      // answers their dial: their side of the pair stays quiet by design,
+      // and reading that as death marked a live owner gone. When my view
+      // shows the far side's links and I am not among them, the pair is not
+      // owed; an unknown far side is judged as before.
       const REAP_MS = 195000; // vouch cap + pulse slack
       for (const [pid, p] of Array.from(peers)) {
-        const owed = linkTo(pid);
+        const theirs = typeof targetLinkIds === 'function' ? targetLinkIds(pid) : null;
+        const owed = linkTo(pid) && (!theirs || theirs.includes(myId));
         if (!owed) p.owedAt = 0; else if (!p.owedAt) p.owedAt = nowMs;
         if (rosterIds.includes(pid)) continue;
         const st = statusOf.get(pid);
@@ -29533,6 +29678,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         toggle.title = collapsed ? 'More' : 'Hide ' + surface + ' controls';
         const word = toggle.querySelector('.docklab');
         if (word) word.textContent = collapsed ? uiText('more', 'More') : uiText('hide', 'Hide');
+        // Opening More covers the Order of service / lyrics cards so every
+        // dock stand-in on the sheet is fully visible (Pixel 7 host dock).
+        if (!collapsed) {
+          try { const rd = document.getElementById('rundown'); if (rd) rd.classList.remove('open'); } catch (e) {}
+          try { const ly = document.getElementById('lyrics'); if (ly) ly.classList.remove('open'); } catch (e) {}
+        }
       }
       toggle.onclick = function () {
         const next = !bar.classList.contains('collapsed'); apply(next);
@@ -29627,6 +29778,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         const row = document.getElementById('dockrow');
         if (row) row.hidden = !any;
+        // On a phone the stand-ins join the lead row, so Share, React and
+        // Step off are the same size as Invite and the row has no empty cell.
+        const lead = document.querySelector('#barmore .moregroup.phone-first .morerow');
+        if (phoneLayout() && lead) {
+          for (const p of bar.querySelectorAll('#barmore .dockmore')) {
+            if (!p.hidden) { if (p.parentElement !== lead) lead.appendChild(p); }
+            else if (row && p.parentElement !== row) row.appendChild(p);
+          }
+          if (row) row.hidden = true;
+        }
       };
       for (const p of bar.querySelectorAll('#barmore .dockmore')) {
         p.addEventListener('click', () => {

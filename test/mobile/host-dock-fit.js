@@ -14,11 +14,10 @@ const RELAY = process.env.MEET_RELAY || 'ws://127.0.0.1:9';
 // The "This is how you'll appear" card is saved once per tab.
 const APPEAR_SEEN = "try{sessionStorage.setItem('gifos_appear_ok','1')}catch(e){};";
 async function wakeDock(pg) {
-  const vp = pg.viewportSize() || { width: 800, height: 600 };
-  const x = Math.round(vp.width / 2), y = Math.round(vp.height / 3);
-  await pg.mouse.move(x, y);
-  await pg.mouse.move(x + 3, y + 2);
-  await pg.waitForFunction(() => !document.body.classList.contains('dock-calm'), null, { timeout: 2000 }).catch(() => {});
+  // A phone tucks the dock after a few quiet seconds. A tap on the picture
+  // would open that tile, so the test uses the same show the tap calls.
+  await pg.evaluate(() => { try { if (window.__gifosChrome) window.__gifosChrome.show(); } catch (e) {} });
+  await pg.waitForFunction(() => !document.body.classList.contains('chrome-away'), null, { timeout: 2000 }).catch(() => {});
 }
 async function ackRecNotice(pg, ms) {
   const ok = await pg.waitForSelector('#rec-notice-ok', { timeout: ms }).catch(() => null);
@@ -84,7 +83,53 @@ async function meeting(browser, prof) {
     if (prof === 'phone') check('phone host: something had to move (the dock did not fit)', k > 0, d.moved);
     // each moved button has its stand-in in More, and it presses the real one
     if (k) {
+      await wakeDock(h);
       await h.locator('#bartoggle').click();
+      if (prof === 'phone') {
+        const sheet = await h.evaluate(() => {
+          const s = document.querySelector('.barmore');
+          s.scrollTop = s.scrollHeight;
+          const r = s.getBoundingClientRect();
+          const dock = document.querySelector('.bar').getBoundingClientRect();
+          const vw = window.innerWidth;
+          const shown = (el) => !el.hidden && el.getClientRects().length && getComputedStyle(el).display !== 'none';
+          const btns = [...s.querySelectorAll('.morerow > button, .dockmore')].filter(shown);
+          const box = btns.map((b) => {
+            const g = b.getBoundingClientRect();
+            return { t: (b.innerText || '').trim().slice(0, 18), h: Math.round(g.height), right: Math.round(g.right), left: Math.round(g.left), over: b.scrollWidth > b.clientWidth + 1 || b.scrollHeight > b.clientHeight + 1 };
+          });
+          const hit = (a, b) => a.left < b.right - 2 && a.right > b.left + 2 && a.top < b.bottom - 2 && a.bottom > b.top + 2;
+          const fields = ['#bcwhenrow', '#bcvisitrow', '#qabtn', '#rbbtn'].map((sel) => {
+            const el = s.querySelector(sel);
+            if (!el || !shown(el)) return null;
+            const g = el.getBoundingClientRect();
+            const input = el.querySelector('input');
+            return { sel, l: Math.round(g.left), r: Math.round(g.right), t: Math.round(g.top), b: Math.round(g.bottom), in: input ? input.scrollWidth > input.clientWidth + 1 : false, rect: g };
+          }).filter(Boolean);
+          const overlaps = [];
+          for (let i = 0; i < fields.length; i++) for (let j = i + 1; j < fields.length; j++) if (hit(fields[i].rect, fields[j].rect)) overlaps.push(fields[i].sel + '+' + fields[j].sel);
+          const status = document.getElementById('statusrest');
+          const sr = status ? status.getBoundingClientRect() : null;
+          const chip = document.querySelector('.topchip');
+          const air = document.getElementById('airbar');
+          const cg = chip ? chip.getBoundingClientRect() : null;
+          const ag = air ? air.getBoundingClientRect() : null;
+          const dockHits = btns.filter((b) => hit(b.getBoundingClientRect(), dock) && b.getBoundingClientRect().top < dock.top).map((b) => (b.innerText || '').trim().slice(0, 18));
+          return {
+            l: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), dockTop: Math.round(dock.top), vw, box,
+            fields: fields.map(({ rect, ...rest }) => rest), overlaps, dockHits,
+            statusRight: sr ? Math.round(sr.right) : 0, statusOver: status ? status.scrollWidth > status.clientWidth + 1 || status.scrollHeight > status.clientHeight + 1 : false,
+            chipBottom: cg ? Math.round(cg.bottom) : 0, airTop: ag ? Math.round(ag.top) : 0,
+            airText: air ? (air.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 80) : '',
+          };
+        });
+        check('phone host: the More sheet fits the screen width', sheet.l >= -1 && sheet.right <= sheet.vw + 1 && sheet.bottom <= sheet.dockTop + 1, sheet);
+        check('phone host: every More button is on screen, 64px, and its text fits', sheet.box.length > 0 && sheet.box.every((b) => b.left >= -1 && b.right <= sheet.vw + 1 && b.h === 64 && !b.over), sheet.box);
+        check('phone host: start time, Visit, Rebroadcast and Questions do not overlap', sheet.overlaps.length === 0 && sheet.fields.every((f) => f.r <= sheet.vw + 1 && !f.in), sheet.fields.concat(sheet.overlaps));
+        check('phone host: no More tile sits on the dock', sheet.dockHits.length === 0, sheet.dockHits);
+        check('phone host: the header sentence stays inside the screen', sheet.statusRight <= sheet.vw + 1 && !sheet.statusOver, { statusRight: sheet.statusRight, vw: sheet.vw, statusOver: sheet.statusOver });
+        check('phone host: the header sits above the on-air title', sheet.airTop >= sheet.chipBottom - 1 && sheet.airTop > 0, { chipBottom: sheet.chipBottom, airTop: sheet.airTop, airText: sheet.airText });
+      }
       const sh = await h.evaluate((m) => m.map((id) => { const p = document.querySelector('#barmore .dockmore[data-dock="' + id + '"]'); return { id, shown: !!(p && !p.hidden && p.getClientRects().length), text: p && p.textContent }; }), d.moved);
       check(prof + ' host: More shows a stand-in for each moved button', sh.every((s) => s.shown), sh);
       const after = await dockOf(h);
