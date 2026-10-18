@@ -12,7 +12,7 @@ const path = require('path');
 
 const SHOTS = path.join(__dirname, 'shots');
 const PHASE = process.env.LOBBY_EARS_PHASE || 'after';
-const URL0 = process.env.LOBBY_EARS_BASE || 'http://127.0.0.1:8765';
+const URL0 = process.env.LOBBY_EARS_BASE || process.env.BASE_URL || 'http://127.0.0.1:8765';
 
 const MEDIA_ARGS = ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'];
 const FF_PREFS = { 'media.navigator.streams.fake': true, 'media.navigator.permission.disabled': true, 'media.autoplay.default': 0 };
