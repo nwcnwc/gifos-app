@@ -19,8 +19,6 @@
 
   function placeEl(el, r) {
     if (!el || !r) return;
-    // A tile grown for its control window keeps its big box until it closes.
-    if (el.classList && el.classList.contains('tw-big')) { el.dataset.comfy = '1'; el.classList.remove('comfy-off'); return; }
     const s = el.style;
     s.position = 'absolute';
     s.left = r.x + 'px';

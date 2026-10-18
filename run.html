@@ -3490,6 +3490,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip .status .statustext { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .appear-row { display: flex; align-items: center; gap: 12px; }
 
+
 </style>
 <link rel="stylesheet" href="css/meet-23b.css">
 <script src="js/gifos-themes.js"></script>
@@ -3550,6 +3551,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="topchip">
     <span id="livebadge" data-state="off" aria-label="You are off air"><i class="livedot" aria-hidden="true"></i><span id="livebadge-txt">OFF AIR</span></span>
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
+    <span id="txmark" role="status" title="This meeting is written down while people speak. Each browser writes its own voice; Meet Bot writes the rest.">📝 <span data-t="transcribing">Transcribing</span></span>
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
     <span class="status" id="status"><button type="button" id="statuscount" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span><button type="button" id="statusinvite" hidden>Invite</button></span>
     <button type="button" id="hdrinvite" hidden title="Share the viewer link">Invite</button>
@@ -9506,6 +9508,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!isMe && tv) { try { const f = getComputedStyle(tv).filter; pv.style.filter = f && f !== 'none' ? f : ''; } catch (e) {} }
         const vw = pv.videoWidth || (tv && tv.videoWidth) || 16, vh = pv.videoHeight || (tv && tv.videoHeight) || 9;
         pad.style.aspectRatio = vw + ' / ' + vh;
+        const maxW = (pad.parentElement && pad.parentElement.clientWidth) || 360;
+        pad.style.width = Math.round(Math.min(maxW, (window.innerHeight * 0.46) * vw / vh)) + 'px';
         crop = MZ.normCrop(crop, vw, vh);
         const pw = pad.clientWidth || 300, ph = pw * vh / vw;
         const side = crop.s * Math.min(vw, vh) * (pw / vw);
@@ -9551,8 +9555,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (t) { const sp = document.createElement('span'); sp.textContent = t; info.appendChild(sp); }
       });
       if (el.classList.contains('stadface')) { const sp = document.createElement('span'); sp.textContent = 'In the stadium'; info.appendChild(sp); }
-      if (info.childNodes.length) win.appendChild(info);
       if (!isStage && el.dataset.tier === 'row') twCropSection(win, el, isMe);
+      if (!isStage && !win.querySelector('.tw-pad')) {
+        // No live picture to show (camera off, or a Stadium face): the
+        // person's picture or initial stands in.
+        const face = document.createElement('div'); face.className = 'tw-face';
+        const av = el.querySelector('.avatar');
+        if (av) { const c = av.cloneNode(true); c.removeAttribute('style'); c.className = 'tw-face-av'; face.appendChild(c); }
+        win.appendChild(face);
+      }
+      if (info.childNodes.length) win.appendChild(info);
       const sec = document.createElement('div'); sec.className = 'tw-sec';
       const lab = document.createElement('b'); lab.textContent = isMe ? 'You' : isStage ? 'Stage' : 'Person';
       sec.appendChild(lab);
@@ -9598,11 +9610,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function placeTileWin(win, big) {
       const vw = window.innerWidth, vh = window.innerHeight;
       if (phoneLayout()) { win.style.left = win.style.top = ''; return; }
-      const ww = win.offsetWidth || 340, wh = win.offsetHeight || 300;
-      let left = big.x + big.w + 14;
-      if (left + ww > vw - 12) left = big.x - ww - 14;
-      if (left < 12) left = Math.max(12, vw - ww - 12);
-      const top = Math.max(12, Math.min(vh - wh - 12, big.y));
+      const ww = win.offsetWidth || 380, wh = win.offsetHeight || 300;
+      // Centred on the tile it grew out of, kept on screen.
+      const left = Math.max(12, Math.min(vw - ww - 12, big.x + big.w / 2 - ww / 2));
+      const top = Math.max(12, Math.min(vh - wh - 12, big.y + big.h / 2 - wh / 2));
       win.style.left = left + 'px'; win.style.top = top + 'px';
     }
     function openTileWin(el) {
@@ -9634,40 +9645,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         placeTileWin(win, { x: r.left, y: r.top, w: Math.min(r.width, vw - 380), h: r.height });
         return;
       }
-      const st = feed ? feed.scrollTop : 0;
-      const x = parseFloat(el.style.left) || 0, y = (parseFloat(el.style.top) || 0) - st;
-      const w = parseFloat(el.style.width) || el.offsetWidth, h = parseFloat(el.style.height) || el.offsetHeight;
-      let bw = w, bh = h;
-      if (!el.classList.contains('rowtile')) {
-        // Grow a square in place: about twice its size, kept on screen.
-        const phone = phoneLayout();
-        const cap = phone ? Math.min(vw - 24, vh * 0.38) : Math.min(vw * 0.42, vh * 0.62);
-        bw = bh = Math.max(w, Math.min(cap, Math.max(w * 2, 220)));
-      }
-      let bx = x + w / 2 - bw / 2, by = y + h / 2 - bh / 2;
-      const phone = phoneLayout();
-      const maxY = phone ? vh * 0.4 - bh / 2 : vh - bh - 12;
-      bx = Math.max(12, Math.min(vw - bw - 12, bx));
-      by = Math.max(12, Math.min(Math.max(12, maxY), by));
-      if (phone && !el.classList.contains('rowtile')) {
-        // Between the header and the control sheet.
-        bw = bh = Math.max(w, Math.min(vw - 48, vh * 0.42 - 76));
-        bx = (vw - bw) / 2; by = 64;
-      }
-      el.classList.add('tw-big');
-      el.style.left = bx + 'px'; el.style.top = (by + st) + 'px'; el.style.width = bw + 'px'; el.style.height = bh + 'px';
-      if (el.classList.contains('tile')) applyViewerCrop(el, bw);
+      // The tile itself becomes the window: the person's one live picture is
+      // inside it, and the tile's spot in the Row keeps a placeholder until
+      // the window closes. The window grows out of the tile's own rectangle.
+      const r = el.getBoundingClientRect();
+      if (!el.classList.contains('rowtile')) el.classList.add('tw-away');
       veil.hidden = false;
       document.body.classList.add('tw-open', 'meet-awake');
       twFill(win, el);
-      if (tileWin.winT) clearTimeout(tileWin.winT);
-      tileWin.winT = setTimeout(() => {
-        tileWin.winT = 0;
-        if (tileWin.el !== el) return;
-        win.hidden = false;
-        placeTileWin(win, { x: bx, y: by, w: bw, h: bh });
-        const first = win.querySelector('.tw-close'); if (first) try { first.focus({ preventScroll: true }); } catch (e) {}
-      }, 240);
+      win.hidden = false;
+      placeTileWin(win, { x: r.left, y: r.top, w: r.width, h: r.height });
+      const wr = win.getBoundingClientRect();
+      if (wr.width > 0 && wr.height > 0 && !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+        win.style.transition = 'none';
+        win.style.transformOrigin = '0 0';
+        win.style.transform = 'translate(' + (r.left - wr.left) + 'px,' + (r.top - wr.top) + 'px) scale(' + (r.width / wr.width) + ',' + (r.height / wr.height) + ')';
+        win.style.opacity = '0.6';
+        void win.offsetWidth;
+        win.style.transition = 'transform .28s cubic-bezier(.2,.8,.2,1), opacity .2s ease';
+        win.style.transform = '';
+        win.style.opacity = '';
+      }
+      const first = win.querySelector('.tw-close'); if (first) try { first.focus({ preventScroll: true }); } catch (e) {}
     }
     function closeTileWin() {
       const el = tileWin.el;
@@ -9680,10 +9679,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (win) { win.querySelectorAll('video').forEach((v) => { try { v.srcObject = null; } catch (e) {} }); win.hidden = true; win.textContent = ''; }
       if (veil) veil.hidden = true;
       document.body.classList.remove('tw-open');
-      const grown = el.classList.contains('tw-big');
-      el.classList.remove('tw-big');
-      if (grown) try { layout(); } catch (e) {}
-      setTimeout(() => { try { if (el.classList.contains('tile')) applyViewerCrop(el); } catch (e) {} }, 300);
+      el.classList.remove('tw-away');
+      try { if (el.classList.contains('tile')) applyViewerCrop(el); } catch (e) {}
       wakeMeet();
       try { el.focus({ preventScroll: true }); } catch (e) {}
     }

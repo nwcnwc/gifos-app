@@ -50,16 +50,16 @@ body.comfy .tile .name, body.comfy .stadface .name { opacity: 1 !important; }
 /* ---- tap a tile: explode + control window -------------------------- */
 body.comfy .tile[data-comfy="1"], body.comfy .stadface[data-comfy="1"],
 body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] { cursor: pointer; }
-.tile.tw-big, .stadface.tw-big, .rowtile.tw-big {
-  z-index: 40 !important; border-radius: 14px !important;
-  box-shadow: 0 18px 48px rgba(0,0,0,.6), 0 0 0 2px rgba(255,255,255,.85) !important;
-  transition: left .28s cubic-bezier(.2,.8,.2,1), top .28s cubic-bezier(.2,.8,.2,1),
-              width .28s cubic-bezier(.2,.8,.2,1), height .28s cubic-bezier(.2,.8,.2,1); }
+/* While a tile's window is open the person lives in the window; their
+   spot in the Row stays put as a quiet placeholder (no second picture). */
+.tile.tw-away > video, .stadface.tw-away > video, .tile.tw-away > .selfcam { visibility: hidden; }
+.tile.tw-away, .stadface.tw-away { outline: 2px dashed rgba(255,255,255,.5) !important; outline-offset: -4px;
+  background: #1b1f27 !important; box-shadow: none !important; }
 #tilewin-veil { position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 39; background: rgba(6,8,12,.55);
   backdrop-filter: none; }
 #tilewin-veil[hidden], #tilewin[hidden] { display: none !important; }
 #tilewin {
-  position: fixed; z-index: 41; width: min(340px, calc(100vw - 24px));
+  position: fixed; z-index: 41; width: min(400px, calc(100vw - 24px));
   max-height: calc(100dvh - 24px); overflow: auto;
   background: #f7f8fa; color: #1d1d1f; border-radius: 16px;
   box-shadow: 0 18px 48px rgba(0,0,0,.45); padding: 14px 14px 12px;
@@ -88,7 +88,7 @@ body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] { cursor: pointer; }
 #tilewin .modbar button[hidden], #tilewin .modbar button[style*="display: none"] { display: none !important; }
 #tilewin .tw-zoom { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
 #tilewin .tw-zoom input[type=range] { flex: 1 1 auto; accent-color: #1d1d1f; }
-#tilewin .tw-pad { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #111; border-radius: 10px;
+#tilewin .tw-pad { position: relative; width: 100%; margin: 0 auto; aspect-ratio: 16 / 9; background: #111; border-radius: 10px;
   overflow: hidden; touch-action: none; cursor: grab; }
 #tilewin .tw-pad video { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 #tilewin .tw-pad .tw-win { position: absolute; border: 2px solid #fff; border-radius: 4px;
@@ -97,7 +97,10 @@ body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] { cursor: pointer; }
   #tilewin { left: 12px !important; right: 12px !important; width: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
     top: auto !important; max-height: 58dvh; border-radius: 18px; }
 }
-@media (prefers-reduced-motion: reduce) { .tile.tw-big, .stadface.tw-big, .rowtile.tw-big { transition: none; } }
+#tilewin .tw-face { display: flex; justify-content: center; margin: 4px 0 10px; }
+#tilewin .tw-face-av { width: 120px; height: 120px; border-radius: 50%; display: flex !important; align-items: center; justify-content: center;
+  background: #3b4d78; color: #fff; font: 700 48px/1 system-ui, sans-serif; overflow: hidden; }
+#tilewin .tw-face-av img { width: 100%; height: 100%; object-fit: cover; }
 body.tw-open .fitbtn, body.tw-open .topchip { visibility: hidden; }
 /* One Full screen: the dock's. The app bar's own copy is retired. */
 #appfull { display: none !important; }
@@ -128,3 +131,11 @@ body.comfy.show-stage .tile.me > .chips .stopshare { display: none; }
 /* The Stage's share line is read from across the room: 16px, not the
    small label size an older rule gave every stage label. */
 #stagefeed .rowtile .rlabel.sharelabel { font-size: 16px; }
+/* The meeting is always being written down, so it always says so: a
+   "📝 Transcribing" mark in the header that stays when the call goes calm
+   (the rest of the header fades around it). */
+#txmark { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; white-space: nowrap;
+  padding: 3px 10px; border-radius: 999px; background: rgba(12,14,18,.92); color: #f4f7fb;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.28); font: 700 14px/1.2 system-ui, sans-serif; }
+body.head-calm .topchip, body.chrome-away .topchip { opacity: 1 !important; visibility: visible !important; background: transparent !important; box-shadow: none !important; }
+body.head-calm .topchip > :not(#txmark), body.chrome-away .topchip > :not(#txmark) { opacity: 0; pointer-events: none; transition: opacity .8s ease; }

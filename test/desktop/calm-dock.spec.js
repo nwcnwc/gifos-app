@@ -124,8 +124,10 @@ test('a quiet small call fades the header line and build label, but not a notice
   const read = () => page.evaluate(() => {
     const op = (el) => (el ? Number(getComputedStyle(el).opacity) : -1);
     const chip = document.querySelector('.topchip');
+    // 0.9.23b: the chip stays for the "Transcribing" mark; the header line fades.
     return {
-      chip: op(chip),
+      chip: op(document.getElementById('status')),
+      mark: op(document.getElementById('txmark')),
       build: op(document.getElementById('gifos-build-float')),
       chipClicks: getComputedStyle(chip).pointerEvents !== 'none',
       count: document.getElementById('statuscount').textContent,
@@ -140,6 +142,7 @@ test('a quiet small call fades the header line and build label, but not a notice
   const quiet = await read();
   await page.screenshot({ path: 'test/desktop/shots/calm-head-after-1280.png' });
   expect(quiet.chip).toBeLessThan(0.05);
+  expect(quiet.mark).toBeGreaterThan(0.95);
   expect(quiet.build).toBeLessThan(0.05);
   expect(quiet.chipClicks).toBe(false);
 

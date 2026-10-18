@@ -55,19 +55,38 @@ test('calm by default: after 3 s only names and the speaking frame show; a move 
   expect(await shown(page, '#feed .tile > .blurbox, #feed .tile .modbar button')).toBe(false);
 });
 
-test('tap a tile: it grows in place, then its control window opens; Escape shrinks it back', async ({ page }) => {
+test('tap a tile: it becomes its control window, one picture of the person, and its spot keeps a placeholder', async ({ page, browserName }) => {
   await boot(page, 3);
   const before = (await rects(page)).find((r) => r.id === 'qa2');
   await page.mouse.click(before.x + before.w / 2, before.y + before.h / 2);
   await expect(page.locator('#tilewin')).toBeVisible();
-  const big = await page.evaluate(() => { const r = document.querySelector('.tile[data-peer="qa2"]').getBoundingClientRect(); return { w: r.width, h: r.height }; });
-  expect(big.w).toBeGreaterThan(before.w * 1.2);
-  expect(Math.abs(big.w - big.h)).toBeLessThan(1.5);
+  const st = await page.evaluate(() => {
+    const t = document.querySelector('.tile[data-peer="qa2"]'); const r = t.getBoundingClientRect();
+    const v = t.querySelector(':scope > video');
+    return { w: r.width, away: t.classList.contains('tw-away'), tileVideoHidden: getComputedStyle(v).visibility === 'hidden',
+      winVideos: document.querySelectorAll('#tilewin video').length };
+  });
+  // The tile does not grow: the person is in the window, and the spot stays.
+  expect(Math.round(st.w)).toBe(Math.round(before.w));
+  expect(st.away).toBe(true);
+  expect(st.tileVideoHidden).toBe(true);
+  expect(st.winVideos).toBe(browserName === 'webkit' ? 0 : 1);
   await expect(page.locator('#tilewin .tw-name')).toContainText(/\S/);
   await expect(page.locator('#tilewin', { hasText: 'Pin' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.locator('#tilewin')).toBeHidden();
-  await expect.poll(async () => Math.round((await rects(page)).find((r) => r.id === 'qa2').w)).toBe(Math.round(before.w));
+  expect(await page.evaluate(() => document.querySelector('.tile[data-peer="qa2"]').classList.contains('tw-away'))).toBe(false);
+});
+
+test('the meeting always says it is being transcribed, also when calm', async ({ page }) => {
+  await boot(page, 2);
+  await expect(page.locator('#txmark')).toBeVisible();
+  await page.mouse.move(640, 200);
+  await page.waitForTimeout(3600);
+  await page.evaluate(() => { const f = window.__gifosVideo.setDockCalmMsForTest; if (f) f(300); });
+  await expect.poll(() => page.evaluate(() => document.body.classList.contains('head-calm'))).toBe(true);
+  await expect.poll(() => shown(page, '.topchip #status')).toBe(false);
+  expect(await shown(page, '#txmark')).toBe(true);
 });
 
 test('a viewer crop is local: it zooms that tile on this screen only and sends nothing', async ({ page, browserName }) => {
