@@ -135,6 +135,9 @@ test.describe('self-view blur matches remote view', () => {
       await J.page.click('#lob-admin-btn');
       await J.page.fill('#lob-admin-name', room);
       await J.page.fill('#lob-admin-pass', 'qa-admin-' + room);
+      // The guest password opens under its own link.
+      const reveal = J.page.locator('#lob-guest-more:visible, #lob-guest-reveal:visible').first();
+      if (await reveal.count()) await reveal.click();
       await J.page.fill('#lob-guest-pass', 'qa-guest-' + room);
       await J.page.click('#lob-admin-go');
       await J.page.waitForFunction(() => /av=/.test(location.hash), null, { timeout: 30000 });

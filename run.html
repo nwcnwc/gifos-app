@@ -3332,6 +3332,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     /* The name is already filled, and it sits on the picture. The picture
        is the tap. The host key is still minted, and More opens it. */
     #lobby.form-open.service-ready .lob-pv-name { display: none; }
+    /* The title and the stream sentence sit on the picture where its note
+       would be; the call itself says muted and camera off. */
+    #lobby.form-open.service-ready .lob-pv-note { display: none; }
     #lobby.form-open.service-ready #lob-admin-name-lab {
       position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
       clip: rect(0 0 0 0); white-space: nowrap; border: 0;
@@ -6170,7 +6173,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       const barTop = bar ? bar.getBoundingClientRect().top : window.innerHeight;
       const limit = (barTop > top + 48 && barTop < window.innerHeight) ? barTop : window.innerHeight;
-      if (onAir) {
+      // A phone keeps the link under the title on air too: the band above
+      // the dock is Live / Record and the Order of service there.
+      const narrow = window.matchMedia && window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
+      document.documentElement.style.setProperty('--bclinktop', top + 'px');
+      if (onAir && !narrow) {
         card.style.top = 'auto';
         card.style.maxHeight = 'none';
         card.style.bottom = Math.ceil(window.innerHeight - limit + 8) + 'px';
@@ -29441,6 +29448,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (tray && !tray.hasAttribute('hidden')) return true;
         const wait = document.getElementById('waitlist');
         if (wait && !wait.hasAttribute('hidden') && wait.getClientRects().length) return true;
+        // A tile's window is open: its controls are the screen, not chrome.
+        if (window.__tileWin && window.__tileWin.isOpen()) return true;
         const modals = document.querySelectorAll('.name-modal');
         for (let i = 0; i < modals.length; i++) {
           if (modals[i].style.display === 'none') continue;
@@ -29485,7 +29494,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!callOpen() || !phoneCall()) return;
         if (!document.body.classList.contains('chrome-away')) return;
         const t = e.target;
-        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist')) {
+        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin')) {
           showChrome();
           return;
         }
@@ -29543,7 +29552,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (joinVeilEl) return true;
         const b = document.body.classList;
         // 0.9.23b: a shared screen and a broadcast are calm too.
-        for (const c of ['app-room', 'solo-app', 'lyrics', 'rundown']) if (b.contains(c)) return true;
+        // Song words being typed hold the call up; an open Order of service
+        // fades with the dock like the rest (it is back on any move).
+        for (const c of ['app-room', 'solo-app', 'songedit']) if (b.contains(c)) return true;
         if (!bar.classList.contains('collapsed')) return true; // More is open
         // A clicked button keeps focus, so only keyboard focus holds the dock.
         if (bar.matches(':hover') || bar.querySelector(':focus-visible')) return true;
@@ -33663,6 +33674,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       hostPeerForTest: (id) => { id = String(id); admSeen.set(id, Date.now()); if (!admins.includes(id)) admins.push(id); updateStatus(); return admins.slice(); }, // admSeen, as a verified host frame does, so the watch count leaves them out
       linkFramesForTest: (id) => { const p = peers.get(String(id)); return p && p.testTx ? p.testTx.slice() : null; },
       sentFramesForTest: () => sentFrames.slice(),
+      // The shape of the picture that leaves (the blur canvas), and the camera's.
+      sentShapeForTest: () => { if (!blurPipe || !blurPipe.canvas.width) return null; const st = (blurPipe.srcTrack && blurPipe.srcTrack.getSettings && blurPipe.srcTrack.getSettings()) || {}; return { w: blurPipe.canvas.width, h: blurPipe.canvas.height, camW: st.width || blurPipe.src.videoWidth, camH: st.height || blurPipe.src.videoHeight }; },
       stageHearLevelForTest: () => heardStage(),
       headCountForTest: (n) => { headCountOverride = Math.max(0, +n || 0); paintRoomTrust(); return roomHeadCount(); },
       // moderation SINKS (e2e-meet-mod.js): what the filmstrip would list and how

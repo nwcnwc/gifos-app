@@ -53,9 +53,11 @@ async function goLive(hb, prefix, setup) {
   if (setup) await setup(host);
   await host.goto(BASE + '/run.html?desk=crosshost#bc=1');
   await host.waitForSelector('#lobby.show');
-  await host.locator('#lob-admin-btn').click();
+  // A service lobby opens on its Go live form; a plain lobby has the button first.
+  if (await host.locator('#lob-admin-btn').isVisible()) await host.locator('#lob-admin-btn').click();
   await host.locator('#lob-admin-name').fill(prefix + '-' + Date.now().toString(36));
-  await host.locator('#lob-admin-pass').fill('host-pass-' + Math.random().toString(36).slice(2));
+  // The service sheet mints the host key itself; an older lobby asks for it.
+  if (await host.locator('#lob-admin-pass').isVisible()) await host.locator('#lob-admin-pass').fill('host-pass-' + Math.random().toString(36).slice(2));
   await host.locator('#lob-admin-go').click();
   await host.waitForSelector('body.broadcast', { timeout: 30000 });
   await until('host is live', async () => ({ ok: (await host.locator('#airkind').textContent()) === 'Service · You are live' }), 15000);
