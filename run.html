@@ -11760,7 +11760,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const sched = viewer ? bcSchedule(Date.now()) : null;
       out.sched = sched;
       const ended = viewer && ((typeof bcEndedInRoom === 'function' && bcEndedInRoom()) || (sched && sched.phase === 'ended') || (seen && shown === 1));
-      if (ended) out.text = 'The ' + noun + ' has ended.';
+      // An ended service leaves the overlay off. The stage plate already says
+      // "The stage is clear." A second line on top of it was "The service has ended."
+      if (ended) out.text = '';
       else if (shown === 1 || viewer) {
         out.text = sched && sched.phase === 'future' ? 'The ' + noun + ' starts ' + sched.words + ' · ' + sched.countdown + '.'
           : sched && sched.phase === 'soon' ? 'The ' + noun + ' is about to start' + (sched.countdown ? ' · ' + sched.countdown : '') + '.'
