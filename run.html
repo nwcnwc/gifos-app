@@ -9474,6 +9474,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const mine = (GifOS.store.identity() || {}).avatar;
           paintAvatarImg(t.avatar, mine && mine.url, mine && mine.hash);
         } else paintAvatarImg(t.avatar, t.avatarUrl || '', t.avatarHash || '');
+        if (typeof setTileLetter === 'function') setTileLetter(t.avatar, nameInitial(isMe ? myName() : (hostRename(id) || displayName(id))));
       }
       if (typeof BROADCAST !== 'undefined' && BROADCAST) paintBroadcastIdent();
       t.video.classList.remove('blur1', 'blur2');

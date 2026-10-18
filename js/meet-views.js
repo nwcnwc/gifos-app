@@ -198,6 +198,19 @@
       el.style.backgroundRepeat = 'no-repeat, no-repeat';
       el.style.backgroundPosition = 'center, center';
       el.classList.add('has-img');
+      // A meeting tile keeps its <img> and the letter under it. Clearing the
+      // element here detached that image on the next paint.
+      const img = el.querySelector && el.querySelector('img.avatar-img');
+      if (img) {
+        const letter = initials || (el.dataset && el.dataset.initials) || '';
+        if (letter) {
+          let text = null;
+          for (let i = 0; i < el.childNodes.length; i++) if (el.childNodes[i].nodeType === 3) text = el.childNodes[i];
+          if (!text) el.insertBefore(document.createTextNode(letter), el.firstChild);
+          else if (text.nodeValue !== letter) text.nodeValue = letter;
+        }
+        return;
+      }
       el.textContent = '';
     } else {
       el.style.backgroundImage = grad;
