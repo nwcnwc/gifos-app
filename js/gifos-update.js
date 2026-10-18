@@ -114,7 +114,8 @@
     const entry = notesOf(o.changelog, String(o.latest));
     const headline = entry && entry.headline ? String(entry.headline) : '';
     const text = o.pinned
-      ? 'You are pinned to v' + o.version + '. ' + (o.meeting ? 'Meetings run on' : 'Latest is') + ' v' + o.latest + '.'
+      ? (o.pinned === 'edge' ? 'You are on the edge build. ' : 'You are pinned to v' + o.version + '. ') +
+        (o.meeting ? 'Meetings run on' : 'Latest is') + ' v' + o.latest + '.'
       : (critical.length || urgent)
         ? '⚠ Important update: GifOS v' + o.latest + ' is available.' + (headline ? ' ' + headline + '.' : '')
         : headline

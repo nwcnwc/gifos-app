@@ -8339,7 +8339,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           v: 1, at: Date.now(), room: updateRoomKey(), to: String(target.latest || ''),
           emergency: !!target.emergency, note: String(target.note || '').slice(0, 200),
           blur: blurLevel(myStatus.blur), stg: +myStatus.stg || 0, onAir, wait,
-          sharing: !!myStatus.scr,
+          sharing: !!myStatus.scr, seed: myIdentitySeed || '',
+          pwOk: !!roomPw && !pwProvisional, // this page holds the password as the room's (typed at the door, granted, or vouched by it)
         }));
       } catch (e) {}
       try { stashRecoverMedia(); } catch (e) {}
@@ -16537,7 +16538,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // socket-drop when seated deep. meet.html keeps its app-level relay
     // handlers via the onRelayMsg passthrough below.
     let myIdentity = null; // S4: one per-participant Ed25519 key, minted once, reused across reconnects
-    function ensureIdentity() { return myIdentity ? Promise.resolve(myIdentity) : GifOS.meshIdentity.mint().then((id) => (myIdentity = id)); }
+    // The seed stays in this page's memory so an UPDATE reload can hand it to
+    // the next boot of this same tab (updateReload → sessionStorage, read and
+    // removed at boot): same key, same peer id, same seat. Any other load
+    // mints a fresh one.
+    let myIdentitySeed = null;
+    function ensureIdentity() {
+      if (myIdentity) return Promise.resolve(myIdentity);
+      let seed = updateResume && typeof updateResume.seed === 'string' && /^[0-9a-f]{64}$/.test(updateResume.seed) ? updateResume.seed : null;
+      if (updateResume) delete updateResume.seed;
+      if (!seed) seed = GifOS.net.randHex(32);
+      return GifOS.meshIdentity.mint(seed).then((id) => { myIdentitySeed = seed; return (myIdentity = id); });
+    }
     // FRAG-RESCUE (the 2-person fork heal — see onFragment's one-corpse
     // gate). Nathan's bound: reunion in SECONDS, so no reload — the ordinary
     // PAIRING is both the liveness probe and the heal in one move. The offer
@@ -18671,6 +18683,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // (stored admin key) is exempt: her signed re-assert IS the authority,
       // and dropping her key first would make her re-assert an empty lock.
       pwProvisional = !!(av && roomPw && !admKey);
+      // …EXCEPT RIGHT AFTER AN UPDATE RELOAD OF THIS TAB. A tab that was IN the
+      // room on this password a moment ago (updateReload notes pwOk only when
+      // this page held it as the room's: typed at the door, granted, or
+      // vouched for by the door) is not guessing. An emergency release
+      // reloads the whole room at about the same time, the relay forgets an
+      // admin room's lock when it empties, and a guest who came back first
+      // would drop to the open key and found the room there, where the
+      // returning admin cannot read it (she meets the password prompt).
+      if (pwProvisional && updateResume && updateResume.pwOk) pwProvisional = false;
       // …AND THE OPEN-KEY PROBE IS EXEMPT FOR THE SAME REASON (2026-08-06).
       // An admin returning to her own evicted room finds it re-founded on the
       // OPEN key by whoever arrived first, so nothing she can read is in the
@@ -34459,7 +34480,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }),
       closedShown: () => { const el = document.getElementById('closed-modal'); return !!el && el.style.display !== 'none'; },
       myBlur: () => blurLevel(myStatus.blur),
-      updateResumed: () => (updateResume ? JSON.parse(JSON.stringify(updateResume)) : null), // what an update reload brought back (null on a normal join)
+      updateResumed: () => { if (!updateResume) return null; const o = JSON.parse(JSON.stringify(updateResume)); delete o.seed; return o; }, // what an update reload brought back (null on a normal join)
       waitStateForTest: () => ({ hold: holdDoor, admitted: Array.from(waitAdmitted), declined: Array.from(waitDeclined), queue: Array.from(waitQueue.keys()) }),
       setBlur: (v) => setPersonalBlur(v),        // drive the slider from tests
       // camera-orientation forensics: what adapt() last ASKED the camera for
