@@ -1,0 +1,36 @@
+  1) [iphone-15] › visit.spec.mjs:63:1 › the host sets a Visit link, and a viewer opens it during the service 
+    Error: expect(locator).toBeVisible() failed
+    Error: element(s) not found
+  2) [iphone-se] › visit.spec.mjs:63:1 › the host sets a Visit link, and a viewer opens it during the service 
+  3) [iphone-15] › visit.spec.mjs:169:1 › someone who opens the link after it ended still gets Visit 
+  4) [iphone-se] › visit.spec.mjs:169:1 › someone who opens the link after it ended still gets Visit 
+  5) [iphone-15] › visit.spec.mjs:184:1 › a stream says Visit too ──────────────────────────────────
+  6) [iphone-se] › visit.spec.mjs:184:1 › a stream says Visit too ──────────────────────────────────
+  7) [iphone-15] › visit.spec.mjs:196:1 › a link shared with the old give= still gets Visit ────────
+  8) [iphone-se] › visit.spec.mjs:196:1 › a link shared with the old give= still gets Visit ────────
+  9) [pixel-7] › visit.spec.mjs:63:1 › the host sets a Visit link, and a viewer opens it during the service 
+  10) [android-360] › visit.spec.mjs:63:1 › the host sets a Visit link, and a viewer opens it during the service 
+  11) [pixel-7] › visit.spec.mjs:169:1 › someone who opens the link after it ended still gets Visit 
+  12) [android-360] › visit.spec.mjs:169:1 › someone who opens the link after it ended still gets Visit 
+  13) [pixel-7] › visit.spec.mjs:184:1 › a stream says Visit too ───────────────────────────────────
+  14) [android-360] › visit.spec.mjs:184:1 › a stream says Visit too ───────────────────────────────
+  15) [pixel-7] › visit.spec.mjs:196:1 › a link shared with the old give= still gets Visit ─────────
+  16) [android-360] › visit.spec.mjs:196:1 › a link shared with the old give= still gets Visit ─────
+  16 failed
+    [iphone-se] › visit.spec.mjs:63:1 › the host sets a Visit link, and a viewer opens it during the service 
+    [iphone-se] › visit.spec.mjs:169:1 › someone who opens the link after it ended still gets Visit 
+    [iphone-se] › visit.spec.mjs:184:1 › a stream says Visit too ───────────────────────────────────
+    [iphone-se] › visit.spec.mjs:196:1 › a link shared with the old give= still gets Visit ─────────
+    [iphone-15] › visit.spec.mjs:63:1 › the host sets a Visit link, and a viewer opens it during the service 
+    [iphone-15] › visit.spec.mjs:169:1 › someone who opens the link after it ended still gets Visit 
+    [iphone-15] › visit.spec.mjs:184:1 › a stream says Visit too ───────────────────────────────────
+    [iphone-15] › visit.spec.mjs:196:1 › a link shared with the old give= still gets Visit ─────────
+    [pixel-7] › visit.spec.mjs:63:1 › the host sets a Visit link, and a viewer opens it during the service 
+    [pixel-7] › visit.spec.mjs:169:1 › someone who opens the link after it ended still gets Visit ──
+    [pixel-7] › visit.spec.mjs:184:1 › a stream says Visit too ─────────────────────────────────────
+    [pixel-7] › visit.spec.mjs:196:1 › a link shared with the old give= still gets Visit ───────────
+    [android-360] › visit.spec.mjs:63:1 › the host sets a Visit link, and a viewer opens it during the service 
+    [android-360] › visit.spec.mjs:169:1 › someone who opens the link after it ended still gets Visit 
+    [android-360] › visit.spec.mjs:184:1 › a stream says Visit too ─────────────────────────────────
+    [android-360] › visit.spec.mjs:196:1 › a link shared with the old give= still gets Visit ───────
+  8 passed (1.9m)

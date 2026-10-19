@@ -1,0 +1,2 @@
+FAIL mic has no label; cam has no label; reactbtn has no label; bartoggle has no label; leavebtn has no label; header Unmute is showing; a second Unmute is showing (unmute)
+{"rows":[{"id":"mic","label":"Mic","missing":true},{"id":"cam","label":"Video","missing":true},{"id":"reactbtn","label":"React","missing":true},{"id":"bartoggle","label":"More","missing":true},{"id":"leavebtn","label":"Leave","missing":true}],"headerUnmute":true,"headerCam":false,"pills":["unmute"]}

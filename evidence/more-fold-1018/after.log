@@ -1,0 +1,16 @@
+PASS pixel5 1/5
+PASS pixel5 2/5
+PASS pixel5 3/5
+PASS pixel5 4/5
+PASS pixel5 5/5
+PASS desktop 1/5
+PASS desktop 2/5
+PASS desktop 3/5
+PASS desktop 4/5
+PASS desktop 5/5
+GREEN 10/10 -> evidence/more-fold-1018/after.json
+
+Seated relay meeting (Pixel 5, DEBUG=on, ws://127.0.0.1:9018, room morefold-seat-1018):
+seat 0/0.1, participants 2, No blur pressed, More collapsed, stored 1, reload stayed closed.
+meet.js phone Pat seated 0/0.0, bar collapsed, stored 1, barmore display none, debugDump function.
+meet.js then exited 1 because browser.close trips its "browser died" handler. The eval had already printed.

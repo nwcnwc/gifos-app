@@ -1,0 +1,273 @@
+/* 0.9.23b meeting look: Stage, Row, Stadium; calm by default; tap a tile
+   for its controls. Loaded after run.html's own <style>, so equal
+   specificity wins here. Geometry is js/meet-zones.js. */
+
+/* A pull down on the grid was Chrome's pull-to-refresh, which reloaded
+   the meeting. none stops that chain on the page and on the gallery
+   (#feed around #grid). Gallery scroll stays overflow-y: auto. */
+html, body { overscroll-behavior: none; }
+#feed, #grid { overscroll-behavior: none; }
+
+/* ---- zones ---------------------------------------------------------- */
+body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; overflow: hidden; padding: 0 !important; margin: 0; display: block; }
+body.comfy.show-stage #stagefeed { display: contents !important; }
+body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] {
+  position: absolute; aspect-ratio: auto; max-height: none; min-height: 0; z-index: 2;
+  background: #000; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
+body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] video {
+  width: 100%; height: 100%; object-fit: contain; background: #000; }
+/* Row and Stadium tiles are squares (meet-zones) with soft corners. */
+body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-comfy="1"],
+body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-comfy="1"],
+body.comfy .stadface[data-comfy="1"] { border-radius: 12px; overflow: hidden; }
+body.comfy .stadface[data-comfy="1"] { border-radius: 8px; }
+@media (max-width: 700px), (max-height: 500px) {
+  body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-comfy="1"],
+  body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-comfy="1"] { border-radius: 10px; }
+}
+/* The largest centered square of whatever arrives (viewer crop moves it). */
+body.comfy .tile[data-fit="cover"] > video { object-fit: cover; object-position: 50% 50%; }
+body.comfy .tile[data-vcrop="1"] > video { object-fit: fill !important; }
+/* The old "you are in the row" dot is a badge; names say who is who. */
+body.comfy .tile[data-tier="row"]::after { display: none !important; }
+/* Speaking: a green frame, drawn above the picture. */
+body.comfy .tile.speaking, body.comfy .tile.me.speaking, body.comfy .stadface.speaking {
+  outline: 3px solid #34d672 !important; outline-offset: -3px;
+  box-shadow: inset 0 0 0 3px #34d672, inset 0 0 22px rgba(52,214,114,.3) !important; }
+
+/* ---- calm by default ------------------------------------------------ */
+/* Badges and info show while you touch, scroll or move the mouse, then
+   fade after 3 s (body.meet-awake, run.html). Names stay. Per-person
+   buttons never sit on a tile: they live in the tile's control window. */
+body.comfy .tile > .chips, body.comfy .tile > .botbadge, body.comfy .tile > .cap,
+body.comfy #stagefeed .stagemark, body.comfy .stad-band {
+  transition: opacity .45s ease; }
+body.comfy:not(.meet-awake) .tile > .chips, body.comfy:not(.meet-awake) .tile > .botbadge,
+body.comfy:not(.meet-awake) .stad-band {
+  opacity: 0 !important; pointer-events: none !important; }
+body.comfy .tile > .blurbox, body.comfy .tile > .modbar, body.comfy .tile.menu > .modbar {
+  display: none !important; }
+body.comfy .tile .name, body.comfy .stadface .name { opacity: 1 !important; }
+@media (prefers-reduced-motion: reduce) {
+  body.comfy .tile > .chips, body.comfy .tile > .botbadge, body.comfy .stad-band { transition: none; }
+}
+
+/* ---- tap a tile: explode + control window -------------------------- */
+body.comfy .tile[data-comfy="1"], body.comfy .stadface[data-comfy="1"],
+body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] { cursor: pointer; }
+#tilewin-veil { position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 39; background: rgba(6,8,12,.55);
+  backdrop-filter: none; }
+#tilewin-veil[hidden], #tilewin[hidden] { display: none !important; }
+#tilewin {
+  position: fixed; z-index: 41; width: min(400px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px); overflow: auto;
+  background: #f7f8fa; color: #1d1d1f; border-radius: 16px;
+  box-shadow: 0 18px 48px rgba(0,0,0,.45); padding: 14px 14px 12px;
+  font: 15px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; }
+#tilewin .tw-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+#tilewin .tw-name { flex: 1 1 auto; min-width: 0; font-weight: 700; font-size: 17px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tilewin .tw-close { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; border: 0;
+  background: #e6e8ec; color: #1d1d1f; font-size: 18px; cursor: pointer; }
+#tilewin .tw-info { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+#tilewin .tw-info span { background: #e9ecf1; color: #2a2f38; border-radius: 999px; padding: 3px 10px; font-size: 13px; }
+#tilewin .tw-sec { border-top: 1px solid #e3e5ea; padding-top: 10px; margin-top: 10px; }
+#tilewin .tw-sec > b { display: block; font-size: 12px; letter-spacing: .05em; text-transform: uppercase;
+  color: #6a707c; margin-bottom: 6px; }
+#tilewin .tw-help { margin: 0 0 8px; font-size: 13px; color: #555b66; }
+#tilewin .tw-row { display: flex; flex-wrap: wrap; gap: 8px; }
+#tilewin button.tw-btn, #tilewin .modbar button {
+  flex: 1 1 calc(50% - 4px); min-height: 44px; padding: 8px 12px; border-radius: 12px; border: 0;
+  background: #e6e8ec; color: #1d1d1f; font: 600 16px/1.2 system-ui, sans-serif; cursor: pointer; text-align: center; }
+#tilewin button.tw-btn.on, #tilewin .modbar button.on { background: #1d1d1f; color: #fff; }
+#tilewin .modbar button.banbtn, #tilewin button.tw-btn.danger { background: #fde8e8; color: #b3261e; }
+#tilewin .modbar { position: static !important; display: flex !important; flex-wrap: wrap; gap: 8px;
+  opacity: 1 !important; pointer-events: auto !important; transform: none !important;
+  background: transparent !important; padding: 0 !important; top: auto !important; right: auto !important; bottom: auto !important; left: auto !important; inset: auto !important; box-shadow: none !important;
+  width: auto !important; height: auto !important; }
+#tilewin .modbar button[hidden], #tilewin .modbar button[style*="display: none"] { display: none !important; }
+/* Pin's row and the per-person buttons under it keep the row gap; they sat
+   glued together (Firefox drew them overlapping by a fraction). */
+#tilewin .tw-row + .modbar { margin: 8px 0 0 !important; }
+#tilewin .tw-zoom { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+#tilewin .tw-zoom input[type=range] { flex: 1 1 auto; accent-color: #1d1d1f; }
+#tilewin .tw-pad { position: relative; width: 100%; margin: 0 auto; aspect-ratio: 16 / 9; background: #111; border-radius: 10px;
+  overflow: hidden; touch-action: none; cursor: grab; }
+#tilewin .tw-pad video { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+#tilewin .tw-pad .tw-win { position: absolute; border: 2px solid #fff; border-radius: 4px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,.5); pointer-events: none; }
+@media (max-width: 700px), (max-height: 500px) {
+  #tilewin { left: 12px !important; right: 12px !important; width: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    top: auto !important; max-height: 58dvh; border-radius: 18px; }
+}
+#tilewin .tw-face { display: flex; justify-content: center; margin: 4px 0 10px; }
+#tilewin .tw-face-av { width: 120px; height: 120px; border-radius: 50%; display: flex !important; align-items: center; justify-content: center;
+  background: #3b4d78; color: #fff; font: 700 48px/1 system-ui, sans-serif; overflow: hidden; }
+#tilewin .tw-face-av img { width: 100%; height: 100%; object-fit: cover; }
+body.tw-open .fitbtn, body.tw-open .topchip { visibility: hidden; }
+/* ONE header, the OS runtime's (#appbar): Invite, Help and Full screen are
+   the same buttons for every app. With no app running the meeting is the
+   app, so the header lies over the top of the call, and Meet's manifest
+   capability header=auto-hide (data-hide="auto") fades it with the dock.
+   It is an overlay: waking it never moves a tile. --osw keeps the meeting's
+   own top row clear of the three buttons. */
+body:not(.has-app):not(.solo-app):not(.app-room) { --osw: 210px; }
+body:not(.has-app):not(.solo-app):not(.app-room) #apppane { display: block; position: fixed; top: var(--gtop, 0px); left: 0; right: 0; z-index: 7; pointer-events: none; }
+body:not(.has-app):not(.solo-app):not(.app-room) #appmount { display: none; }
+body:not(.has-app):not(.solo-app):not(.app-room) #appbar { justify-content: flex-end; background: transparent; border-bottom-color: transparent; }
+/* An unseen strut: the bar is as tall as a solo app's, so the buttons sit on the same pixels. */
+body:not(.has-app):not(.solo-app):not(.app-room) #appbar::before { content: '\200b'; display: inline-flex; padding: .2rem 0; border: 1px solid transparent; font-size: 16px; }
+#appbar #apphelp, #appbar #appfull, #appbar #appinvite { background: var(--surface, #14141f); color: var(--text, #e0e0f0); }
+#appbar #appinvite { min-height: 44px; min-width: 44px; padding: .45rem .85rem; box-sizing: border-box; font-size: 1rem; }
+body:not(.has-app):not(.solo-app):not(.app-room) #appbar > :not(#apphelp):not(#appfull):not(#appinvite) { display: none !important; }
+body:not(.has-app):not(.solo-app):not(.app-room) #appbar > * { pointer-events: auto; }
+#appbar[data-hide="auto"] { transition: opacity .2s ease; }
+body:not(.has-app):is(.dock-calm, .chrome-away) #appbar[data-hide="auto"] { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+body:not(.has-app):is(.dock-calm, .chrome-away) #appbar[data-hide="auto"] > * { pointer-events: none; }
+/* capabilities.header "larger": a taller bar. Meet does not declare it. */
+#appbar[data-header="larger"] { padding: .6rem 1rem; }
+#appbar[data-header="larger"] button { font-size: 1.05rem; padding: .45rem .85rem; min-height: 40px; }
+#appbar[data-header="larger"] #appname { font-size: 1.15rem; }
+/* Broadcast is calm too: the airbar already says "You are watching", and the
+   lobby showed the full note before joining. */
+body.broadcast #bc-join-note { display: none !important; }
+/* Broadcast calm: the status bar fades with the dock; the on-air lamp stays. */
+#airbar { transition: opacity .8s ease; }
+body.broadcast.dock-calm #airbar, body.broadcast.chrome-away #airbar { opacity: 0; pointer-events: none; }
+/* You are always in your own Row: the old Tile / Float / Strip / Hide
+   choice and its size and edge rows are retired. */
+#selfctl, #selfsize, #selfedge, #selfcorner { display: none !important; }
+/* Pop-ups share one look with the tile window: rounded, soft shadow. */
+.name-modal .name-box { border-radius: 16px; box-shadow: 0 18px 48px rgba(0,0,0,.45); }
+/* While you share, your tile shows your face over the outbound screen. */
+.tile.me > video.selfcam { position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; z-index: 1; pointer-events: none; background: #000; }
+/* No Blur box sits on a tile any more, so the chips use the full width and
+   wrap whole on a small square instead of being cut. */
+body.comfy .tile > .chips { right: 6px !important; flex-wrap: wrap; align-content: flex-start; gap: 3px; }
+body.comfy .tile > .chips span:not(.ico) { white-space: normal; max-width: 100%; }
+/* A small square (under 200px) wears its marks as icons only. */
+body.comfy .tile.slim > .chips span.ico { width: 22px; height: 22px; padding: 0; }
+body.comfy .tile.slim > .chips span.ico i.w { display: none; }
+/* While your screen is on the Stage, the Stage carries "Stop sharing";
+   your own small square does not repeat it. */
+body.comfy.show-stage .tile.me > .chips .stopshare { display: none; }
+/* The Stage's share line is read from across the room: 16px, not the
+   small label size an older rule gave every stage label. */
+#stagefeed .rowtile .rlabel.sharelabel { font-size: 16px; }
+/* The meeting is always being written down, so it always says so: a
+   "📝 Transcribing" mark in the header that stays when the call goes calm
+   (the rest of the header fades around it). */
+#txmark { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; white-space: nowrap;
+  padding: 3px 10px; border-radius: 999px; background: rgba(12,14,18,.92); color: #f4f7fb;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.28); font: 700 14px/1.2 system-ui, sans-serif; }
+body.head-calm .topchip, body.chrome-away .topchip { opacity: 1 !important; visibility: visible !important; background: transparent !important; box-shadow: none !important; }
+/* The room line (#status) stays: on a phone it is the tap that opens the
+   full sentence (who tried to reach you). Fading it left the chip's parent
+   taking the tap. */
+body.head-calm .topchip > :not(#txmark):not(#status), body.chrome-away .topchip > :not(#txmark):not(#status) { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+/* A shared screen is laid out by the zones like any Stage: the feed fills
+   the screen (the older phone share band pinned it 76-110px down). */
+body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
+  top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; display: block !important; }
+body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll { bottom: var(--comfy-clip, 0px) !important; }
+/* A sideways phone: the tile window is a panel on the right, full height. */
+@media (max-height: 500px) and (orientation: landscape) {
+  #tilewin { left: auto !important; right: calc(12px + env(safe-area-inset-right, 0px)) !important; top: 8px !important;
+    bottom: 8px !important; width: min(360px, 62vw); max-height: none; }
+}
+/* A narrow phone: while the header is awake the mark is its 📝 (still
+   labelled Transcribing); the word comes back whenever the call is calm. */
+@media (max-width: 999px) {
+  body:not(.head-calm):not(.chrome-away) #txmark span { display: none; }
+  body:not(.head-calm):not(.chrome-away) #txmark { padding: 3px 8px; }
+}
+/* The people count ends inside its line instead of running under the buttons beside it. */
+@media (max-width: 700px), (max-height: 500px) {
+  .topchip #statuscount { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+}
+/* Raised hands: a desktop reads the line in the header row beside Fit
+   (placeHandq); a phone taps the header's "✋ 1" to open it under the header. */
+body.desk-ptr.comfy #handq.on, body.desk-ptr.comfy #handq.on.open { display: block !important; left: auto !important;
+  top: calc(14px + var(--gtop, 0px)) !important; }
+body.desk-ptr #hdrhand.on { display: none !important; }
+/* The Stage frame: a free rectangle with a corner grip. */
+#tilewin .tw-rect { box-shadow: 0 0 0 9999px rgba(0,0,0,.5); }
+#tilewin .tw-grip { position: absolute; right: -9px; bottom: -9px; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+/* Broadcast calm, at every screen size: the host's panels (the stream link,
+   Order of service, song words) fade with the dock so the Stage is the
+   picture; any touch, scroll, mouse move or key brings them back. */
+#bc-link, #rundown, #lyrics, #songedit { transition: opacity .6s ease; }
+body.broadcast.dock-calm #bc-link, body.broadcast.chrome-away #bc-link,
+body.broadcast.dock-calm #rundown, body.broadcast.chrome-away #rundown,
+body.broadcast.dock-calm #lyrics, body.broadcast.chrome-away #lyrics {
+  opacity: 0 !important; pointer-events: none !important; }
+/* On a narrow screen the Order of service is the booth's short card: the
+   item on now and the one after it, sitting above Live / Record so neither
+   covers the other. The whole list is the same card on a wider screen. */
+@media (max-width: 700px) {
+  body.broadcast #rundown { bottom: calc(118px + var(--stateh, 0px)); max-height: calc(100vh - 240px - var(--stateh, 0px)); gap: 6px; padding: 12px 14px; }
+  body.broadcast #rundown li { display: none; }
+  body.broadcast #rundown li.now, body.broadcast #rundown li.now + li { display: flex; }
+  body.broadcast #rundown li.now .rdname { font-size: 22px; }
+  /* The link is one line, the link and Copy, as it is once live. */
+  body.broadcast #bc-link.on { flex-direction: row; align-items: center; padding: 8px; gap: 8px; }
+  body.broadcast #bc-link.on p { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  body.broadcast #bc-link.on input { flex: 1 1 auto; min-width: 0; }
+  body.broadcast #bc-link.on button { padding: 0 18px; }
+}
+/* The Stage fills the broadcast screen, so its plain "On stage" tag says
+   nothing; a shared screen keeps its name. */
+body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
+/* The on-air bar's pills wrap under the words on a narrow screen instead of
+   making the page wider than the phone. */
+@media (max-width: 700px) {
+  #airbar { flex-wrap: wrap; row-gap: 6px; max-width: 100vw; box-sizing: border-box; }
+  #airbar .airacts { flex-wrap: wrap; min-width: 0; max-width: 100%; }
+}
+/* A short phone keeps just the item on now and the two buttons. */
+@media (max-width: 700px) and (max-height: 620px) {
+  body.broadcast #rundown h3, body.broadcast #rundown li.now + li { display: none; }
+}
+/* Sideways on a phone the link and the Order of service share one band
+   under the title, side by side, each one line: the item on now and Next. */
+@media (max-height: 500px) {
+  body.broadcast #bc-link.on { flex-direction: row; align-items: center; padding: 4px; gap: 6px;
+    left: 14px; right: auto; width: calc(50% - 21px); margin: 0; }
+  body.broadcast #bc-link.on p { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  body.broadcast #bc-link.on input { flex: 1 1 auto; min-width: 0; }
+  body.broadcast #bc-link.on button { padding: 0 14px; }
+  body.broadcast #rundown { top: var(--bclinktop, 64px); bottom: auto; left: calc(50% + 7px); right: 14px; width: auto;
+    max-height: none; flex-direction: row; align-items: center; padding: 4px 4px 4px 14px; gap: 8px; }
+  body.broadcast #rundown h3, body.broadcast #rundown li, body.broadcast #rundown #song-edit { display: none; }
+  body.broadcast #rundown ol { flex: 1 1 auto; min-width: 0; }
+  body.broadcast #rundown li.now { display: flex; }
+  body.broadcast #rundown li.now .rdname { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.broadcast #rundown-next { padding: 0 16px; }
+}
+/* The lobby, one design at every size.
+   Town hall and Stream to friends are doors like Host this call: one
+   centred link per line, 44px to tap. */
+#lobby.show #lob-th-btn.lob-link, #lobby.show #lob-stream.lob-link { display: block; width: 100%; min-height: 44px; margin: 0 0 2px;
+  color: #0064c8; font-weight: 700; font-size: 1rem; text-align: center; text-decoration: underline; background: transparent; border: 0; }
+/* "This is how you'll appear" sits in the card, never over the camera
+   preview's own words: the words above, your picture and name below. */
+#lobby.show .lob-appear { position: static !important; width: auto !important; margin: 12px 0 0 !important;
+  flex-direction: column; align-items: stretch; gap: 6px; box-shadow: none !important; background: #f4f7fb !important; }
+#lobby.show .lob-appear-k { margin: 0; }
+#lobby.show .lob-appear-row { min-width: 0; }
+#lobby.show .lob-appear .lob-face { width: 48px; height: 48px; font-size: 20px; }
+#lobby.show #lob-name-in { min-width: 0; width: 100%; box-sizing: border-box; }
+/* A service sheet: Go live is a button, not the rest of the card. */
+#lobby.form-open.service-ready #lob-admin .lob-row { flex: 0 0 auto; }
+#lobby.form-open.service-ready #lob-admin-go { min-height: 56px; }
+/* A short sideways phone has no preview row: the service sheet takes the
+   whole screen and scrolls if it must. */
+@media (max-height: 430px) {
+  #lobby.form-open.service-ready.show { grid-template-rows: minmax(0, 1fr); }
+  #lobby.form-open.service-ready .lobby-card { overflow: auto; }
+}
+/* An open form parks the other doors, town hall and stream included. */
+#lobby.form-open #lob-th-btn, #lobby.form-open #lob-stream { display: none !important; }

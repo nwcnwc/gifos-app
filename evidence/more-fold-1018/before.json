@@ -1,0 +1,666 @@
+{
+  "bad": 10,
+  "total": 10,
+  "runs": [
+    {
+      "profile": "pixel5",
+      "i": 1,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": [
+        "No blur left More open",
+        "No blur left More saved open (0)",
+        "reload restored More open",
+        "reload still has More saved open",
+        "Min left More open",
+        "threw locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('[data-self-arr=\"tile\"]')\n    - locator resolved to <button type=\"button\" class=\"seg sel\" aria-pressed=\"true\" data-self-arr=\"tile\" title=\"A normal tile, first in the grid\">Tile</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n",
+        "stored open restored More on load",
+        "stored open survived the load"
+      ]
+    },
+    {
+      "profile": "pixel5",
+      "i": 2,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": [
+        "No blur left More open",
+        "No blur left More saved open (0)",
+        "reload restored More open",
+        "reload still has More saved open",
+        "Min left More open",
+        "threw locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('[data-self-arr=\"tile\"]')\n    - locator resolved to <button type=\"button\" class=\"seg sel\" aria-pressed=\"true\" data-self-arr=\"tile\" title=\"A normal tile, first in the grid\">Tile</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n",
+        "stored open restored More on load",
+        "stored open survived the load"
+      ]
+    },
+    {
+      "profile": "pixel5",
+      "i": 3,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": [
+        "No blur left More open",
+        "No blur left More saved open (0)",
+        "reload restored More open",
+        "reload still has More saved open",
+        "Min left More open",
+        "threw locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('[data-self-arr=\"tile\"]')\n    - locator resolved to <button type=\"button\" class=\"seg sel\" aria-pressed=\"true\" data-self-arr=\"tile\" title=\"A normal tile, first in the grid\">Tile</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n",
+        "stored open restored More on load",
+        "stored open survived the load"
+      ]
+    },
+    {
+      "profile": "pixel5",
+      "i": 4,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": [
+        "No blur left More open",
+        "No blur left More saved open (0)",
+        "reload restored More open",
+        "reload still has More saved open",
+        "Min left More open",
+        "threw locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('[data-self-arr=\"tile\"]')\n    - locator resolved to <button type=\"button\" class=\"seg sel\" aria-pressed=\"true\" data-self-arr=\"tile\" title=\"A normal tile, first in the grid\">Tile</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n",
+        "stored open restored More on load",
+        "stored open survived the load"
+      ]
+    },
+    {
+      "profile": "pixel5",
+      "i": 5,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": [
+        "No blur left More open",
+        "No blur left More saved open (0)",
+        "reload restored More open",
+        "reload still has More saved open",
+        "Min left More open",
+        "threw locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('[data-self-arr=\"tile\"]')\n    - locator resolved to <button type=\"button\" class=\"seg sel\" aria-pressed=\"true\" data-self-arr=\"tile\" title=\"A normal tile, first in the grid\">Tile</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n",
+        "stored open restored More on load",
+        "stored open survived the load"
+      ]
+    },
+    {
+      "profile": "desktop",
+      "i": 1,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": [
+        "No blur left More open",
+        "No blur left More saved open (0)",
+        "reload restored More open",
+        "reload still has More saved open",
+        "Min left More open",
+        "threw locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('[data-self-arr=\"tile\"]')\n    - locator resolved to <button type=\"button\" class=\"seg sel\" aria-pressed=\"true\" data-self-arr=\"tile\" title=\"A normal tile, first in the grid\">Tile</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n",
+        "stored open restored More on load",
+        "stored open survived the load"
+      ]
+    },
+    {
+      "profile": "desktop",
+      "i": 2,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": [
+        "No blur left More open",
+        "No blur left More saved open (0)",
+        "reload restored More open",
+        "reload still has More saved open",
+        "Min left More open",
+        "threw locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('[data-self-arr=\"tile\"]')\n    - locator resolved to <button type=\"button\" class=\"seg sel\" aria-pressed=\"true\" data-self-arr=\"tile\" title=\"A normal tile, first in the grid\">Tile</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n",
+        "stored open restored More on load",
+        "stored open survived the load"
+      ]
+    },
+    {
+      "profile": "desktop",
+      "i": 3,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": [
+        "No blur left More open",
+        "No blur left More saved open (0)",
+        "reload restored More open",
+        "reload still has More saved open",
+        "Min left More open",
+        "threw locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('[data-self-arr=\"tile\"]')\n    - locator resolved to <button type=\"button\" class=\"seg sel\" aria-pressed=\"true\" data-self-arr=\"tile\" title=\"A normal tile, first in the grid\">Tile</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n",
+        "stored open restored More on load",
+        "stored open survived the load"
+      ]
+    },
+    {
+      "profile": "desktop",
+      "i": 4,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": [
+        "No blur left More open",
+        "No blur left More saved open (0)",
+        "reload restored More open",
+        "reload still has More saved open",
+        "Min left More open",
+        "threw locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('[data-self-arr=\"tile\"]')\n    - locator resolved to <button type=\"button\" class=\"seg sel\" aria-pressed=\"true\" data-self-arr=\"tile\" title=\"A normal tile, first in the grid\">Tile</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n",
+        "stored open restored More on load",
+        "stored open survived the load"
+      ]
+    },
+    {
+      "profile": "desktop",
+      "i": 5,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": [
+        "No blur left More open",
+        "No blur left More saved open (0)",
+        "reload restored More open",
+        "reload still has More saved open",
+        "Min left More open",
+        "threw locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('[data-self-arr=\"tile\"]')\n    - locator resolved to <button type=\"button\" class=\"seg sel\" aria-pressed=\"true\" data-self-arr=\"tile\" title=\"A normal tile, first in the grid\">Tile</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not visible\n    - retrying click action\n      - waiting 100ms\n    57 × waiting for element to be visible, enabled and stable\n       - element is not visible\n     - retrying click action\n       - waiting 500ms\n",
+        "stored open restored More on load",
+        "stored open survived the load"
+      ]
+    }
+  ]
+}

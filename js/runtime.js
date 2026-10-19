@@ -93,15 +93,24 @@
     const out = String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
     return /[a-z0-9]/.test(out) ? out : 'app';
   }
-  // The link carries the SECRET (lsec); the relay-facing sid/token derive from
-  // it at connect time and never appear anywhere. Two app-link shapes:
-  //   self-healing — lsec IS the whole link:  /join/<lsec>            (#j=<lsec>)
-  //   owned — "<room>.<verifier>" sid + lsec: /join/<room>/<verifier>/<lsec>
-  //                                           (#s=<room>.<verifier>&k=<lsec>)
-  // The owned sid itself holds no secret (the verifier is a public hash of the
-  // HOST secret, which is a different key than lsec and never in any link).
+  // Lane URL, not the room invite. This formats a path from the app-session
+  // sid + lsec that becomeHost returns as shareUrl. run.html never puts that
+  // string in the address bar or the invite sheet. The link people share is
+  // minted in inviteFromSolo and printed by bootAppRoom from <fileId>::room:
+  //   owned room     /join/<short>/<av>/<k>   (#s=<short>.<av>&k=<k>)
+  //   resilient room /join/<k>                (#j=<k>)
+  // That k is a room code. It is not this lsec. runApp calls
+  // becomeHost({lifetime:'forever', resilient:true, noRelay:true}), so the
+  // lane sid is 'j' + lsec even inside an owned room.
+  // Shapes THIS function still emits, from those session arguments:
+  //   resilient session — /join/<lsec>                 (#j=<lsec>)
+  //   dotted sid        — /join/<room>/<verifier>/<lsec>
+  //                       (#s=<room>.<verifier>&k=<lsec>)
+  // A dotted sid holds no secret (the verifier is a public hash of a host
+  // secret, a different key than lsec, and never in any link).
   // gifos.app pretty paths route through 404.html; hash form everywhere else
-  // (local dev, custom relays).
+  // (local dev, custom relays). page 'meet' or legacy 'video' formats
+  // /meet/<sid> here; run.html builds the real meeting link itself.
   function buildJoinUrl(page, sid, lsec, relay) {
     const meet = page === 'video' || page === 'meet'; // 'video' kept as a legacy alias
     const onProd = /(^|\.)gifos\.app$/.test(location.hostname) && relay === root.GIFOS_RELAY;
@@ -131,6 +140,18 @@
   // Per-browser identity (defined in gifos-store.js so the desktop shares it).
   const identity = store.identity;
   const setName = store.setName;
+  const identFrames = new Set();
+  function publishIdentity() {
+    let ident;
+    try { ident = identity(); } catch (e) { return; }
+    identFrames.forEach((ifr) => {
+      try {
+        const w = ifr && ifr.contentWindow;
+        if (w) w.postMessage({ ns: 'gifos', type: 'identity', identity: ident }, '*');
+      } catch (e) {}
+    });
+  }
+  try { if (store.onIdentity) store.onIdentity(publishIdentity); } catch (e) {}
 
   // ---- app-facing shim injected into the sandboxed iframe -----------------
   function clientShim(gen, nonce) {
@@ -201,15 +222,25 @@
       // A slower answer from an earlier put used to land last and paint over
       // the newer rows. The last write of a round (dawn) then stuck on the
       // previous screen, because nothing else was left to ask for a paint.
+      // So every ask is numbered, and a subscriber is never handed an answer
+      // OLDER than one it has already been shown.
+      // The test is against what was SHOWN, not against the newest ASK: in a
+      // busy shared room the changes arrive faster than one answer can come
+      // back, and "only the newest ask may paint" then drops every answer,
+      // so the subscriber stops hearing the collection at all.
       var dbWave = {};
+      function paintIf(sub, wave, rows){
+        if (wave <= sub.shown) return;
+        sub.shown = wave;
+        sub.cb(rows);
+      }
       function refresh(collection){
         var list = subs[collection]||[];
         if (!list.length) return;
         var wave = (dbWave[collection] = (dbWave[collection]||0) + 1);
-        list.forEach(function(cb){
+        list.forEach(function(sub){
           rpc({ type:'db', op:'getAll', collection:collection }).then(function(rows){
-            if (wave !== dbWave[collection]) return;
-            cb(rows);
+            paintIf(sub, wave, rows);
           });
         });
       }
@@ -228,6 +259,10 @@
         // capture, delivered the moment it is taken.
         if(d.type==='part' && pending[d.id] && pending[d.id].part){
           try { pending[d.id].part(d.shot !== undefined ? d.shot : (d.text || '')); } catch(err){}
+        }
+        if(d.type==='identity'){
+          var cbs = window.__gifosIdentCbs || [];
+          for (var ii = 0; ii < cbs.length; ii++) { try { cbs[ii](d.identity); } catch (err) {} }
         }
         if(d.type==='db-change'){
           if(d.collection==='*'){ Object.keys(subs).forEach(refresh); }
@@ -401,11 +436,11 @@
           // Owner-only — the host runs it; on a guest it is refused. Use it to
           // "make visible" (opt a private item in) or to flip who may write.
           setVisibility: function(id, level){ return rpc({type:'db',op:'setVisibility',collection:collection,key:id,value:level}); },
-          subscribe: function(cb){ (subs[collection]=subs[collection]||[]).push(cb);
+          subscribe: function(cb){ var sub = { cb: cb, shown: 0 };
+            (subs[collection]=subs[collection]||[]).push(sub);
             var wave = (dbWave[collection] = (dbWave[collection]||0) + 1);
             rpc({type:'db',op:'getAll',collection:collection}).then(function(rows){
-              if (wave !== dbWave[collection]) return;
-              cb(rows);
+              paintIf(sub, wave, rows);
             }); }
         }; },
         // The bridge hands back the RAW BYTES and the decode happens here, so the
@@ -441,6 +476,16 @@
         assetHas: function(path){ return rpc({type:'asset-has', path:path}).then(function(r){ return !!(r && r.present); }); },
         info: function(){ return rpc({type:'info'}); },
         me: function(){ return rpc({type:'me'}); },
+        onIdentity: function(cb){
+          if (typeof cb !== 'function') return function(){};
+          if (!window.__gifosIdentCbs) window.__gifosIdentCbs = [];
+          window.__gifosIdentCbs.push(cb);
+          rpc({type:'me'}).then(function(id){ try { cb(id); } catch (e) {} });
+          return function(){
+            var i = window.__gifosIdentCbs.indexOf(cb);
+            if (i >= 0) window.__gifosIdentCbs.splice(i, 1);
+          };
+        },
         // What the LINK that opened this app asked for — an object of the
         // arguments declared in this app's manifest "launch" block, or null if
         // the link said nothing (the ordinary case) or the person declined.
@@ -450,6 +495,7 @@
         // drawing something.
         launch: function(){ return rpc({type:'launch'}); },
         setName: function(n){ return rpc({type:'setName', name:n}); },
+        setAvatar: function(url){ return rpc({type:'setAvatar', url:url==null?'':String(url)}); },
         // APP -> APP HANDOFF (manifest "handoff", docs/app-handoff.md). One
         // structured document, of a kind GifOS itself names, put on a shelf
         // the OS owns so another app can pick it up. Neither app can read the
@@ -613,6 +659,21 @@
           },
           list: function(){ return rpc({ type:'meet', op:'list' }); },
           setControl: function(id){ return rpc({ type:'meet', op:'setControl', meetingId: id }); },
+          // The same controls a person has on the meeting page. Speech is audio
+          // the app already produced (gifos.ai); this page only plays it.
+          raiseHand: function(id, on){ return rpc({ type:'meet', op:'raiseHand', meetingId: id, on: !!on }); },
+          setMic: function(id, on){ return rpc({ type:'meet', op:'setMic', meetingId: id, on: !!on }); },
+          setCamera: function(id, on){ return rpc({ type:'meet', op:'setCamera', meetingId: id, on: !!on }); },
+          speak: function(id, audio){
+            audio = audio || {};
+            return rpc({ type:'meet', op:'speak', meetingId: id, bytes: audio.bytes || null, mime: audio.mime || '', text: audio.text == null ? '' : String(audio.text), filler: !!audio.filler });
+          },
+          stopSpeaking: function(id){ return rpc({ type:'meet', op:'stopSpeaking', meetingId: id }); },
+          // The thought bubble on the bot's tile. The next spoken line ends it.
+          thinking: function(id, on){ return rpc({ type:'meet', op:'thinking', meetingId: id, on: !!on }); },
+          watch: function(id, on){ return rpc({ type:'meet', op:'watch', meetingId: id, on: !!on }); },
+          meetingState: function(id){ return rpc({ type:'meet', op:'meetingState', meetingId: id }); },
+          snapshot: function(id){ return rpc({ type:'meet', op:'snapshot', meetingId: id }); },
           onTranscriptLine: function(cb){ if (typeof cb === 'function') meetSubs.tr.push(cb); },
           onParticipants: function(cb){ if (typeof cb === 'function') meetSubs.pe.push(cb); },
           onChat: function(cb){ if (typeof cb === 'function') meetSubs.ch.push(cb); },
@@ -1948,6 +2009,15 @@
       const armIdle = () => { if (idleT) clearTimeout(idleT); idleT = setTimeout(() => { if (pending.size) { armIdle(); return; } root.removeEventListener('message', handler); try { iframe.remove(); } catch (e) {} providerServices.delete(fileId); provArchives.delete(fileId); }, PROVIDER_IDLE_MS); };
       armIdle();
       const service = {
+        // Unload on request (GifOS.providers.stop): the frame goes, and with it
+        // whatever the engine was computing; every waiting call is refused.
+        stop: () => {
+          if (idleT) clearTimeout(idleT);
+          root.removeEventListener('message', handler);
+          try { iframe.remove(); } catch (e) {}
+          if (providerServices.get(fileId) === p) providerServices.delete(fileId);
+          for (const [id, pend] of pending) { pending.delete(id); clearTimeout(pend.timer); try { pend.rej(new Error('PROVIDER_STOPPED: ' + label + ' was unloaded.')); } catch (e) {} }
+        },
         call: (role, req, onNote, onDelta) => new Promise((res, rej) => {
           armIdle();
           const w = iframe.contentWindow;
@@ -1979,8 +2049,16 @@
   }
   // `emit` is the asking app's onDelta, or null. It reaches the provider's
   // ctx.delta and comes back out fragment by fragment.
+  // A stop() bumps the provider's epoch; a call that began before it is
+  // refused at its next step, even while its model is still downloading.
+  const providerEpochs = new Map(); // fileId -> number
   function providerCall(c, role, req, emit) {
     const cfgName = c.appName || 'Your provider app';
+    const epoch = providerEpochs.get(c.app) || 0;
+    const live = (v) => {
+      if ((providerEpochs.get(c.app) || 0) !== epoch) throw new Error('PROVIDER_STOPPED: ' + cfgName + ' was unloaded.');
+      return v;
+    };
     return providerArchive(c.app).then((arc) => {
       if (!arc || !arc.files) {
         showSystemSetup({ kind: 'provider', name: cfgName, role, problem: 'missing' });
@@ -2034,7 +2112,9 @@
                 : null)
             : Promise.resolve();
           return prep
+            .then(live)
             .then(() => { if (cold) busyNote('Starting ' + name + '…', null); return providerService(c.app, arc.files, m); })
+            .then(live)
             .then((svc) => svc.call(role, req, (note, frac) => busyNote(note, frac), emit || null))
             .then(
               (out) => { recordTiming(c.app, cold, Date.now() - t0); busyEnd(); return out; },
@@ -2119,6 +2199,17 @@
       const c = aiConfig()[role];
       if (!c || !c.app) return Promise.reject(new Error('NOT_CONFIGURED:ai:' + role));
       return providerCall(c, role, Object.assign({ op: role, role }, req || {}), null);
+    },
+    // Unload the provider assigned to a role, now: its frame and the work in
+    // it go, its waiting calls are refused (PROVIDER_STOPPED), and the next
+    // call mounts it afresh. The way a page hands the processor back.
+    stop: (role) => {
+      const c = aiConfig()[role];
+      if (!c || !c.app) return false;
+      providerEpochs.set(c.app, (providerEpochs.get(c.app) || 0) + 1);
+      const svc = providerServices.get(c.app);
+      if (svc) svc.then((s) => s.stop(), () => {});
+      return true;
     },
   };
   // gifos.assets(path) — hand an app the bytes for a hash-pinned path
@@ -2787,6 +2878,35 @@
       } catch (e) { resolve(false); }
     });
   }
+  // The picture sheet: same consent as a rename. The preview is a real <img>
+  // of the data URL, so a GIF keeps animating while the person decides.
+  function confirmAvatar(manifest, url) {
+    return new Promise(function (resolve) {
+      try {
+        const doc = root.document; if (!doc || !doc.body) return resolve(false);
+        const old = doc.getElementById('gifos-avatar-modal'); if (old) old.remove();
+        const app = escHtml((manifest && (manifest.shortName || manifest.name || manifest.appId)) || 'This app');
+        const safe = /^data:image\/(gif|png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(String(url || ''));
+        const bg = doc.createElement('div'); bg.id = 'gifos-avatar-modal'; bg.className = 'perm-modal';
+        bg.setAttribute('style', 'position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:1.2rem;');
+        const box = doc.createElement('div'); box.className = 'perm-box';
+        box.setAttribute('style', 'background:#14141f;color:#e8e8f4;border:1px solid #2a2a3f;border-radius:.8rem;max-width:23rem;width:100%;padding:1.2rem;font:15px/1.55 system-ui,-apple-system,sans-serif;');
+        box.innerHTML = '<h3 style="margin:0 0 .5rem;font-size:1.1rem">' + app + ' wants to change your picture</h3>' +
+          '<p style="color:#b6b6cf;font-size:.9rem;margin:0 0 .9rem">' + (url
+            ? 'This picture would be saved on this computer, next to your name. Every app and meeting here would see it.'
+            : 'It would remove the picture you use on this computer. Every app and meeting here would see you without it.') + '</p>' +
+          (safe ? '<img id="gifos-avatar-preview" alt="" style="width:96px;height:96px;object-fit:cover;border-radius:.6rem;display:block;margin:0 0 .9rem">' : '') +
+          '<div style="display:flex;gap:.6rem;justify-content:flex-end"><button id="gifos-avatar-no" style="padding:.5rem 1.1rem;border-radius:.5rem;border:1px solid #2a2a3f;background:transparent;color:#b6b6cf;cursor:pointer;font:inherit">Keep my picture</button>' +
+          '<button id="gifos-avatar-yes" style="padding:.5rem 1.3rem;border-radius:.5rem;border:none;background:#7b5cff;color:#fff;cursor:pointer;font:inherit">' + (url ? 'Use this picture' : 'Remove it') + '</button></div>';
+        bg.appendChild(box); doc.body.appendChild(bg);
+        if (safe) { const img = box.querySelector('#gifos-avatar-preview'); if (img) img.src = url; }
+        const done = function (yes) { bg.remove(); resolve(yes); };
+        box.querySelector('#gifos-avatar-yes').onclick = function () { done(true); };
+        box.querySelector('#gifos-avatar-no').onclick = function () { done(false); };
+        bg.addEventListener('click', function (e) { if (e.target === bg) done(false); });
+      } catch (e) { resolve(false); }
+    });
+  }
 
   function showSystemSetup(opts) {
     try {
@@ -3037,7 +3157,14 @@
       };
       ws.onclose = (ev) => {
         if (done) return;
-        if (opened && finals.length) return finish(); // closed after answering — tolerate a missing Metadata
+        // Closed after answering. Metadata is the end-of-stream marker and can
+        // already be queued behind this close; finishing in this turn publishes
+        // an empty request id. One turn lets that frame land and finish the
+        // call. If it never comes, finish without it.
+        if (opened && finals.length) {
+          setTimeout(() => { if (!done) finish(); }, 0);
+          return;
+        }
         if (root.navigator && root.navigator.onLine === false) {
           return fail(new Error('OFFLINE: you are offline — the entry is set up; it will work when the connection returns.'));
         }
@@ -3333,6 +3460,7 @@
     const nonce = mountNonce();
     const teardown = () => {
       if (torn) return; torn = true; live = 0;
+      identFrames.delete(iframe);
       root.removeEventListener('message', handler);
       try { if (root.GifOS && root.GifOS.meetHost) { root.GifOS.meetHost.clearApp(); root.GifOS.meetHost.leaveAll(); } } catch (e) {}
       try { iframe.srcdoc = LEFT_FRAME_HTML; } catch (e) {}
@@ -3356,7 +3484,7 @@
         return;
       }
       if (!iframe.contentWindow || e.source !== iframe.contentWindow) return;
-      if (d.type === 'hello') { if (d.gen === gen) { live = gen; retry = false; } return; }
+      if (d.type === 'hello') { if (d.gen === gen) { live = gen; retry = false; identFrames.add(iframe); publishIdentity(); } return; }
       if (!live) return;
       // Guard at REPLY time, not just receipt: async ops (db/fetch/…) can
       // resolve after the iframe was torn out of the DOM (app takeover /
@@ -3464,6 +3592,28 @@
           }
         }
       }
+      else if (d.type === 'setAvatar') {
+        const url = String(d.url == null ? '' : d.url);
+        const cur = identity();
+        const have = (cur.avatar && cur.avatar.url) || '';
+        if (url === have) reply({ ok: true, result: cur });
+        else {
+          const nowMs = Date.now();
+          if (nowMs - setupShownAt < 5000) reply({ ok: true, result: identity() });
+          else {
+            setupShownAt = nowMs;
+            confirmAvatar(manifest, url).then((yes) => {
+              if (!yes) { reply({ ok: true, result: identity() }); return; }
+              if (!url) { reply({ ok: true, result: store.setAvatar(null) }); return; }
+              const prep = (root.GifOS && root.GifOS.avatar && root.GifOS.avatar.prepareDataUrl) ? root.GifOS.avatar.prepareDataUrl(url) : Promise.resolve({ ok: false, error: 'Choose a GIF, PNG, JPG, or WebP.' });
+              Promise.resolve(prep).then((res) => {
+                if (!res || !res.ok) reply({ ok: false, error: (res && res.error) || 'Choose a GIF, PNG, JPG, or WebP.' });
+                else reply({ ok: true, result: store.setAvatar({ mime: res.mime, hash: res.hash, b64: res.b64 }) });
+              }).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
+            });
+          }
+        }
+      }
       // App -> app handoff. Both directions are refused unless the manifest
       // declared this exact kind, and an offer always raises the sheet.
       else if (d.type === 'handoffOffer') brokerHandoffOffer(manifest, db, d).then((result) => reply({ ok: true, result })).catch((err) => reply({ ok: false, error: String(err && err.message || err) }));
@@ -3515,6 +3665,15 @@
             else if (op === 'sendXfer') done(host.sendXfer(d.meetingId, { id: d.xferId, name: d.name, mime: d.mime, bytes: d.bytes }));
             else if (op === 'list') reply({ ok: true, result: host.list() });
             else if (op === 'setControl') { host.setControl(d.meetingId); reply({ ok: true, result: true }); }
+            else if (op === 'raiseHand') done(host.raiseHand(d.meetingId, !!d.on));
+            else if (op === 'setMic') done(host.setMic(d.meetingId, !!d.on));
+            else if (op === 'setCamera') done(host.setCamera(d.meetingId, !!d.on));
+            else if (op === 'speak') done(host.speak(d.meetingId, { bytes: d.bytes, mime: d.mime, text: d.text, filler: !!d.filler }));
+            else if (op === 'stopSpeaking') done(host.stopSpeaking(d.meetingId));
+            else if (op === 'thinking') done(host.thinking(d.meetingId, !!d.on));
+            else if (op === 'watch') done(host.watch(d.meetingId, !!d.on));
+            else if (op === 'meetingState') done(host.meetingState(d.meetingId));
+            else if (op === 'snapshot') done(host.snapshot(d.meetingId));
             else reply({ ok: false, error: 'Unknown meet op.' });
           }
         }
@@ -3929,6 +4088,8 @@
         if (hop && target.indexOf('#') !== -1) location.reload();
         return noop;
       }
+      // Header chrome follows this app's manifest (capabilities.header), not a setting.
+      try { if (typeof root.__gifosHeaderFromManifest === 'function') root.__gifosHeaderFromManifest(manifest); } catch (e) {}
       document.title = (manifest.name || 'App') + ' — GifOS';
 
       const hasEntry = !!files[norm(manifest.entry || 'index.html')] || !!files['index.html'];
@@ -4660,10 +4821,22 @@
     });
   }
 
+  // Header chrome is one capability, a small set (Nathan 2026-10-18 21:19):
+  // capabilities.header is "auto-hide" or "larger", or absent for the ordinary
+  // always-shown bar. Not a user setting and not per device. The two do not
+  // combine. Meet declares auto-hide; the meeting page is that app, so a
+  // link that opens run.html wears the same choice (SYSTEM_HEADER).
+  const HEADER_CHOICES = { 'auto-hide': 1, larger: 1 };
+  function headerChoice(manifest) {
+    const h = manifest && manifest.capabilities && manifest.capabilities.header;
+    return HEADER_CHOICES[h] ? h : '';
+  }
+  const SYSTEM_HEADER = { meet: 'auto-hide' };
+
   // poolHosts is EXPORTED because it is the enforcement point for the three
   // pool rules (⊆ network, never keyed, GET only) and a rule nothing can call
   // is a rule nothing can test. poolStats is the same argument for the
   // algorithm: "did the room actually save a fetch" is not visible from
   // outside otherwise.
-  GifOS.runtime = { boot, bootClientBus, buildAppHtml, buildFolderHtml, norm, slug, poolHosts, poolStats };
+  GifOS.runtime = { boot, bootClientBus, buildAppHtml, buildFolderHtml, norm, slug, poolHosts, poolStats, headerChoice, SYSTEM_HEADER };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -1,0 +1,1 @@
+FAIL iphone-se: sheet is not white (rgb(232, 236, 241)); Ruth's bubble matches the sheet (rgb(232, 236, 241)) | iphone-15-land: sheet is not white (rgb(232, 236, 241)); Ruth's bubble matches the sheet (rgb(232, 236, 241))

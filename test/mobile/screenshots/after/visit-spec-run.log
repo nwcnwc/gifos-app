@@ -1,0 +1,25 @@
+[1/24] [iphone-se] › visit.spec.mjs:63:1 › the host sets a Visit link, and a viewer opens it during the service
+[2/24] [iphone-15] › visit.spec.mjs:63:1 › the host sets a Visit link, and a viewer opens it during the service
+[3/24] [iphone-se] › visit.spec.mjs:169:1 › someone who opens the link after it ended still gets Visit
+[4/24] [iphone-15] › visit.spec.mjs:169:1 › someone who opens the link after it ended still gets Visit
+[5/24] [iphone-se] › visit.spec.mjs:184:1 › a stream says Visit too
+[6/24] [iphone-15] › visit.spec.mjs:184:1 › a stream says Visit too
+[7/24] [iphone-se] › visit.spec.mjs:196:1 › a link shared with the old give= still gets Visit
+[8/24] [iphone-15] › visit.spec.mjs:196:1 › a link shared with the old give= still gets Visit
+[9/24] [iphone-se] › visit.spec.mjs:211:1 › a link that is not https gets no Visit
+[10/24] [iphone-15] › visit.spec.mjs:211:1 › a link that is not https gets no Visit
+[11/24] [iphone-se] › visit.spec.mjs:221:1 › a meeting never shows Visit
+[12/24] [iphone-15] › visit.spec.mjs:221:1 › a meeting never shows Visit
+[13/24] [pixel-7] › visit.spec.mjs:63:1 › the host sets a Visit link, and a viewer opens it during the service
+[14/24] [android-360] › visit.spec.mjs:63:1 › the host sets a Visit link, and a viewer opens it during the service
+[15/24] [pixel-7] › visit.spec.mjs:169:1 › someone who opens the link after it ended still gets Visit
+[16/24] [android-360] › visit.spec.mjs:169:1 › someone who opens the link after it ended still gets Visit
+[17/24] [pixel-7] › visit.spec.mjs:184:1 › a stream says Visit too
+[18/24] [android-360] › visit.spec.mjs:184:1 › a stream says Visit too
+[19/24] [pixel-7] › visit.spec.mjs:196:1 › a link shared with the old give= still gets Visit
+[20/24] [android-360] › visit.spec.mjs:196:1 › a link shared with the old give= still gets Visit
+[21/24] [pixel-7] › visit.spec.mjs:211:1 › a link that is not https gets no Visit
+[22/24] [android-360] › visit.spec.mjs:211:1 › a link that is not https gets no Visit
+[23/24] [pixel-7] › visit.spec.mjs:221:1 › a meeting never shows Visit
+[24/24] [android-360] › visit.spec.mjs:221:1 › a meeting never shows Visit
+  24 passed (39.0s)

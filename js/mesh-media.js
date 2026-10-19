@@ -150,6 +150,7 @@
           // A matching stream id can still be unfolded: the first add records
           // nothing when the audio track has not arrived yet.
           if (sid && !fold.has('c' + i)) fold.add('c' + i, stream, opts.gain == null ? 1 : opts.gain);
+          else if (sid) fold.follow('c' + i, stream);
         }
         cells[i] = { el, streamId: sid };
       },
@@ -617,6 +618,31 @@
       const order = [...tiles.values()].sort((a, b) => (a.ord < b.ord ? -1 : a.ord > b.ord ? 1 : 0));
       const dense = DENSE && T > STAD_CAP;
       let cell, W, H, geo = null, dl = null;
+      // ONE STAGER, THEIR OWN SHAPE (opts.native, the Stage strip): a lone
+      // camera leaf is sent at its native aspect, with the same pixel area as
+      // the square cell it replaces, so the bandwidth does not change. A
+      // screen (contain), a dark cell or a moderator's blur keeps the square.
+      const solo = order[0];
+      const soloEl = solo && solo.el;
+      const nsw = soloEl ? (soloEl.videoWidth || soloEl.width || 0) : 0, nsh = soloEl ? (soloEl.videoHeight || soloEl.height || 0) : 0;
+      const native = !!(opts.native && shape === 'bar' && T === 1 && solo && solo.n === 1 && solo.fit !== 'contain' && !solo.dark && !solo.blur && nsw > 0 && nsh > 0);
+      if (native) {
+        cell = cellSize(shape, cellPref, maxW, 1);
+        const a = nsw / nsh;
+        W = Math.max(2, Math.round(cell * Math.sqrt(a) / 2) * 2); H = Math.max(2, Math.round(cell / Math.sqrt(a) / 2) * 2);
+        denseNow = false; cellNow = cell;
+        const sig = frameSig();
+        const sizeDue = canvas.width !== W || canvas.height !== H;
+        if (!sizeDue && sig !== null && sig === lastSig && now - lastRealPaint < STILL_MAX_MS) { still++; last = now; return; }
+        lastSig = sig === null ? '' : sig; lastRealPaint = now;
+        if (canvas.width !== W) canvas.width = W;
+        if (canvas.height !== H) canvas.height = H;
+        try { ctx.drawImage(soloEl, 0, 0, nsw, nsh, 0, 0, W, H); } catch (e) {}
+        const c = Math.min(W, H);
+        drawOverlay(0, H - c, c, solo.lbl);
+        last = now; cost = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - now; costAvg = packAvg(costAvg, cost, costN++); drawn++;
+        return;
+      }
       if (dense) {
         // Fixed footprint, one drawImage per tile (see DENSE MODE above).
         geo = denseItems(order, false);
@@ -699,14 +725,18 @@
           // A matching stream id can still be unfolded: the first add records
           // nothing when the audio track has not arrived yet.
           if (sid && !fold.has('t' + id)) fold.add('t' + id, stream, opts.gain == null ? 1 : opts.gain);
+          else if (sid) fold.follow('t' + id, stream);
         }
         const n = Math.max(1, (meta && meta.n) | 0 || 1);
         const cols = Math.max(1, (meta && meta.cols) | 0 || n); // a bar's cols = n
         // dark: an admin turned this face's video off. blur: a moderator blurred
         // it (1 or 2). Both apply to a leaf face only; run.html decides them
         // from the room's moderation table, the same on every compositing seat.
+        // ids: who sits in each of this tile's n cells (a leaf's pid, a block's
+        // relayed cell list) — read back by cellIds() for the pack's own meta.
+        const ids = (meta && Array.isArray(meta.ids) && meta.ids.length === n) ? meta.ids.slice() : (n === 1 && meta && meta.pid != null) ? [String(meta.pid)] : null;
         tiles.set(id, { ord, el, streamId: sid, n, cols, lbl: (meta && meta.lbl) || null, fit: (meta && meta.fit) || null,
-          dark: !!(meta && meta.dark), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)) });
+          dark: !!(meta && meta.dark), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)), ids });
       },
       // Update just the overlay (name/hand/talking) without touching the source
       // — called every tick from status/audio so the frame tracks speech live.
@@ -741,6 +771,17 @@
       },
       clearTiles() { for (const id of [...tiles.keys()]) pk.delTile(id); },
       ids: () => [...tiles.keys()],
+      // STADIUM-FACES: the person in each cell 0..count()-1, in paint order
+      // (tiles by ord, a block's faces in its own order; null = unknown).
+      // Only for the regular grid: the dense layout places blocks by
+      // geometry, not in sequence, so a dense pack names no cells.
+      cellIds() {
+        if (DENSE && total() > STAD_CAP) return null;   // paint's own dense rule, decided here without waiting for a paint
+        const out = [];
+        const order = [...tiles.values()].sort((a, b) => (a.ord < b.ord ? -1 : a.ord > b.ord ? 1 : 0));
+        for (const t of order) for (let j = 0; j < t.n; j++) out.push(t.ids ? (t.ids[j] == null ? null : String(t.ids[j])) : null);
+        return out;
+      },
       count: total, cols: () => G, rows: () => R,
       start() {
         if (timer || !canvas) return pk;
@@ -817,6 +858,7 @@
         if (fold) {
           if (prev && prev.sid !== sid) fold.remove('p' + key);
           if (sid && !fold.has('p' + key)) fold.add('p' + key, stream, 1);
+          else if (sid) fold.follow('p' + key, stream);
         }
         parts.set(key, { el, ord, sid, n: (meta && meta.n) || 1, cols: (meta && meta.cols) || 1 });
       },
@@ -1001,6 +1043,17 @@
           try { t.addEventListener('unmute', s.onUnmute); } catch (e) {}
         }
         return true;
+      },
+      // The SAME container id can come back as a NEW object with new tracks:
+      // a rebuilt pair hands a row head that seat's stream again under its
+      // old id. The node bound at add() then reads the old pc's track, which
+      // has ended, and the band drops that voice (e2e-sixth-rebuild). Follow
+      // the container's live track. Same track: no-op.
+      follow(key, stream) {
+        if (!srcs.has(key) || !stream) return false;
+        const t = liveAudioTrack(stream);
+        if (!t || t === srcs.get(key).track) return false;
+        return this.rebind(key, t);
       },
       // Drive a folded source's gain in place. 0 silences it and the node stays.
       // An unknown key is a no-op.

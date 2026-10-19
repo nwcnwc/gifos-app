@@ -124,7 +124,9 @@ details.adv.danger-zone[open] summary { color: color-mix(in srgb, #ff5c5c 62%, v
 
 /* desktop surface */
 #desktop {
-  position: absolute; inset: 2.5rem 0 0 0; /* matches the menubar height (scales with text size) */
+  /* matches the menubar height (scales with text size), plus the update
+     header bar while it shows (--updh, set by desktop.js) */
+  position: absolute; inset: calc(2.5rem + var(--updh, 0px)) 0 0 0;
   /* Both axes scroll: an icon dragged far right in landscape must stay reachable
      after rotating back to portrait (it sits beyond the viewport, so the surface
      has to scroll to it — same as icons dragged below the fold). */
@@ -132,7 +134,7 @@ details.adv.danger-zone[open] summary { color: color-mix(in srgb, #ff5c5c 62%, v
 }
 #desktop.dragover::after {
   content: 'Drop files to add them to your Home Screen';
-  position: fixed; inset: calc(2.5rem + 1.2rem) 1.2rem 1.2rem; border: 2px dashed var(--accent); border-radius: 1rem;
+  position: fixed; inset: calc(2.5rem + var(--updh, 0px) + 1.2rem) 1.2rem 1.2rem; border: 2px dashed var(--accent); border-radius: 1rem;
   display: flex; align-items: center; justify-content: center; color: var(--accent);
   font-size: 1.1rem; background: rgba(123,92,255,.06); pointer-events: none; z-index: 4;
 }
@@ -578,6 +580,11 @@ button.row-del svg { display: block; pointer-events: none; }
 }
 .settings-sheet #set-backup { margin-top: 18px; }
 .settings-sheet #set-erase { margin-top: 10px; }
+.settings-sheet .set-avatar-row { display: flex; align-items: center; gap: 12px; margin: 6px 0 4px; }
+.settings-sheet #set-avatar-preview { width: 72px; height: 72px; object-fit: cover; border-radius: 12px; background: #e8e8ef; flex: 0 0 auto; }
+.settings-sheet .set-avatar-actions { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.settings-sheet #set-avatar-file { max-width: 100%; }
+.settings-sheet #set-avatar-remove { min-height: 44px; align-self: flex-start; }
 .settings-sheet .add-help { color: #3a3a3f; }
 .settings-sheet :focus-visible { outline: 3px solid #0071e3; outline-offset: 2px; }
 .settings-sheet input, .settings-sheet select, .settings-sheet .bg-row button, .settings-sheet .ts-row button {
@@ -623,4 +630,55 @@ button.row-del { min-width: 48px; min-height: 48px; display: inline-flex; align-
     width: 100%; max-width: none; height: 100%; max-height: none;
     border-radius: 0;
   }
+}
+
+/* Settings → Updates: "Latest release (recommended)" is the one choice in
+   view; edge and older releases sit in the collapsed Advanced / testing
+   section, each behind a confirm (desktop.js confirmPin). */
+.vlatest { display: flex; align-items: center; gap: .6rem; padding: .6rem .75rem; margin-bottom: .45rem;
+  border: 1px solid var(--border); border-radius: .5rem; font-size: .85rem; }
+.vlatest.on { border-color: color-mix(in srgb, #22a559 55%, var(--border)); background: color-mix(in srgb, #22a559 7%, transparent); }
+.vlatest-mark { width: 1.1rem; flex: none; text-align: center; font-weight: 800; color: #1f9d55; }
+.vlatest-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
+.vlatest-t > span { color: var(--muted); font-size: .78rem; }
+.vlatest-t > .vlatest-away { color: color-mix(in srgb, #d97706 75%, var(--text)); }
+.vtesting { margin-top: 1.2rem; border-top: 1px solid var(--border); padding-top: .3rem; }
+.vtesting > summary.vhead { display: flex; align-items: center; gap: .5rem; cursor: pointer; list-style: none;
+  min-height: 40px; color: var(--muted); font-size: .8rem; }
+.vtesting > summary.vhead::-webkit-details-marker { display: none; }
+.vtesting > summary.vhead::marker { content: ''; }
+.vtesting[open] > summary.vhead { color: var(--text); }
+.vtesting[open] > summary .vcaret { transform: rotate(90deg); }
+.vtype-row { display: flex; gap: .4rem; }
+.vtype-row input { flex: 1; min-width: 0; }
+
+/* The switch confirm. */
+.pin-confirm { text-align: left; }
+.pin-confirm h3 { text-align: center; }
+.pin-confirm .pin-risks { margin: .3rem 0 .8rem; padding-left: 1.1rem; font-size: .85rem; line-height: 1.4; }
+.pin-confirm .pin-risks li { margin: .2rem 0; }
+.pin-confirm .set-label { display: block; font-size: .85rem; margin: .2rem 0 .3rem; }
+.pin-confirm .pin-word { box-sizing: border-box; width: 100%; padding: .55rem .65rem; font-size: 1rem; border-radius: .45rem;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .06em; }
+.pin-confirm .pin-ack-row { display: flex; gap: .5rem; align-items: center; font-size: .85rem; margin: .3rem 0; }
+.pin-confirm .pin-go { position: relative; overflow: hidden; }
+.pin-confirm .pin-go:disabled { opacity: .45; cursor: not-allowed; }
+.pin-confirm .pin-go-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(255,255,255,.28); pointer-events: none; }
+.pin-confirm .pin-go-t { position: relative; }
+
+/* Pinned to edge or an older release: a chip in the header, never a banner
+   and never dismissible. The short label is only for a narrow header. */
+.pin-head { display: inline-flex; align-items: center; gap: .3rem; min-width: 0; flex: 0 1 auto; }
+.pin-head-t { font-size: .72rem; font-weight: 700; white-space: nowrap; color: #9a3412; }
+.menubar .pin-head button { padding: .12rem .5rem; font-size: .72rem; line-height: 1.2;
+  white-space: nowrap; border-color: #b45309; background: #b45309; color: #fff; font-weight: 600; }
+.pin-head .pin-back-narrow { display: none; }
+@media (max-width: 700px) {
+  .menubar:has(#pin-head) { gap: .25rem; padding: 0 .35rem; }
+  .menubar:has(#pin-head) .crumbs { display: none; }
+  .menubar:has(#pin-head) #history-btn,
+  .menubar:has(#pin-head) #add-btn { padding: .12rem .35rem; font-size: .68rem; }
+  .pin-head .pin-back-wide { display: none; }
+  .pin-head .pin-back-narrow { display: inline; }
 }

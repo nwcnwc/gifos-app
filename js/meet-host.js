@@ -45,6 +45,78 @@
     if (sess.onMsg) root.removeEventListener('message', sess.onMsg);
     if (sess.timer) clearTimeout(sess.timer);
     try { sess.iframe.remove(); } catch (e) {}
+    try { if (sess.eye && sess.eye.parentNode) sess.eye.parentNode.removeChild(sess.eye); } catch (e) {}
+  }
+
+  function eyeOf(sess) {
+    if (sess.eye) return sess.eye;
+    var box = root.document.createElement('section');
+    box.setAttribute('data-gifos-bot-eye', sess.id);
+    box.style.cssText = 'position:fixed;right:16px;bottom:16px;width:380px;z-index:40;background:#161622;color:#eceef8;border:1px solid #2c2c44;border-radius:12px;overflow:hidden;font:14px/1.4 system-ui,sans-serif;box-shadow:0 12px 32px rgba(0,0,0,.5)';
+    var head = root.document.createElement('div');
+    head.textContent = "Through the bot's eyes";
+    head.style.cssText = 'padding:10px 12px 0;font-weight:700';
+    var note = root.document.createElement('div');
+    note.textContent = 'Watch and listen only';
+    note.style.cssText = 'padding:2px 12px 8px;color:#a8adc4;font-size:12px';
+    var stage = root.document.createElement('div');
+    stage.style.cssText = 'height:220px;background:#0e0e16';
+    box.appendChild(head);
+    box.appendChild(note);
+    box.appendChild(stage);
+    sess.eye = box;
+    sess.eyeStage = stage;
+    return box;
+  }
+
+  function placeIdle(iframe) {
+    var x = (seq % 8) * 3;
+    iframe.style.cssText = 'position:fixed;left:' + x + 'px;bottom:0;width:2px;height:2px;border:0;opacity:0.02;pointer-events:none;z-index:1';
+  }
+
+  // The session frame stays in its original parent. Moving an iframe reloads
+  // it and drops the meeting. The tile is chrome around a hole, and the frame
+  // is only restyled so it covers that hole.
+  function placeEye(sess) {
+    var frame = sess.iframe;
+    var stage = sess.eyeStage;
+    var rect = stage && stage.getBoundingClientRect ? stage.getBoundingClientRect() : null;
+    if (rect && rect.width) {
+      frame.style.cssText = 'position:fixed;left:' + rect.left + 'px;top:' + rect.top + 'px;width:' + rect.width + 'px;height:' + rect.height + 'px;border:0;opacity:1;pointer-events:none;z-index:41';
+    } else {
+      frame.style.cssText = 'position:fixed;right:16px;bottom:16px;width:380px;height:220px;border:0;opacity:1;pointer-events:none;z-index:41';
+    }
+    frame.setAttribute('title', "Meeting through the bot's eyes");
+    if (frame.dataset) frame.dataset.eye = '1';
+  }
+
+  function syncEyes() {
+    sessions.forEach(function (sess) {
+      if (!sess.iframe || !sess.eye || !sess.eye.parentNode) return;
+      if (!sess.iframe.dataset || sess.iframe.dataset.eye !== '1') return;
+      placeEye(sess);
+    });
+  }
+  root.addEventListener('resize', syncEyes);
+
+  function setWatch(id, on) {
+    var sess = sessions.get(id);
+    if (!sess || !sess.iframe) return Promise.reject(new Error('No such meeting.'));
+    var frame = sess.iframe;
+    if (on) {
+      var box = eyeOf(sess);
+      if (!box.parentNode) root.document.body.appendChild(box);
+      placeEye(sess);
+    } else {
+      placeIdle(frame);
+      if (frame.dataset) frame.dataset.eye = '0';
+      if (sess.eye && sess.eye.parentNode) sess.eye.parentNode.removeChild(sess.eye);
+    }
+    return call(id, 'watch', { on: !!on }).then(function () {
+      return { id: id, watch: !!on, eyes: true };
+    }, function () {
+      return { id: id, watch: !!on, eyes: true };
+    });
   }
 
   function join(opts) {
@@ -54,7 +126,7 @@
       var iframe = root.document.createElement('iframe');
       iframe.setAttribute('data-gifos-meet', id);
       iframe.setAttribute('title', 'Meeting session');
-      iframe.setAttribute('allow', 'microphone; autoplay');
+      iframe.setAttribute('allow', 'microphone; camera; autoplay');
       var x = (seq % 8) * 3;
       iframe.style.cssText = 'position:fixed;left:' + x + 'px;bottom:0;width:2px;height:2px;border:0;opacity:0.02;pointer-events:none;z-index:1';
       var sess = {
@@ -136,6 +208,38 @@
   var xferDone = new Set();
   var xferBags = new Map();
 
+  function normLine(t) {
+    return String(t || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  }
+  // A bot's own microphone is never a transcript line. A line that repeats
+  // one of the last things the bot spoke is the same voice, whoever it was
+  // attributed to. The host still forwards a transcript the session already
+  // emitted: the app made that audio and may want the line.
+  function suppressBotLine(bot, text, forId, myId, recent) {
+    if (!bot) return false;
+    if (!forId || forId === myId) return true;
+    var n = normLine(text);
+    if (!n) return false;
+    var list = recent || [];
+    for (var i = 0; i < list.length; i++) if (normLine(list[i]) === n) return true;
+    return false;
+  }
+  // Whisper writes silence and room noise as the captions it saw most in
+  // training: "you", "you you", "Thank you.", "Thanks for watching!". A line
+  // made only of those is not a line. A lowercase "you" after a finished
+  // sentence ("Okay. you") is the same noise on the end of a real line.
+  // -> the line to keep, or '' for none.
+  var WHISPER_SILENCE = /^(?:(?:you )*you|thank you|thanks for watching|thank you for watching)$/;
+  function dropWhisperNoise(text) {
+    var t = String(text || '').replace(/\[[^\]]*\]|\([^)]*\)|[♪♫*]/g, ' ').replace(/\s+/g, ' ').trim()
+      .replace(/([.!?])(?:\s+you)+\s*$/, '$1');
+    var n = normLine(t);
+    if (!n || WHISPER_SILENCE.test(n)) return '';
+    var words = n.split(' ');
+    if (words.length && words.every(function (w) { return w === 'you' || w === 'thank'; })) return '';
+    return t;
+  }
+
   root.GifOS = root.GifOS || {};
   root.GifOS.meetHost = {
     join: join,
@@ -157,6 +261,25 @@
       sessions.forEach(function (s) { s.control = s.id === id; });
     },
     setRemoteAllowed: function (on) { remoteOk = !!on; },
+    raiseHand: function (id, on) { return call(id, 'raiseHand', { on: !!on }); },
+    setMic: function (id, on) { return call(id, 'setMic', { on: !!on }); },
+    setCamera: function (id, on) { return call(id, 'setCamera', { on: !!on }); },
+    speak: function (id, audio) {
+      audio = audio || {};
+      return call(id, 'speak', {
+        bytes: audio.bytes || null,
+        mime: audio.mime ? String(audio.mime) : '',
+        text: audio.text == null ? '' : String(audio.text),
+        filler: !!audio.filler
+      });
+    },
+    stopSpeaking: function (id) { return call(id, 'stopSpeaking'); },
+    thinking: function (id, on) { return call(id, 'thinking', { on: !!on }); },
+    watch: function (id, on) { return setWatch(id, !!on); },
+    meetingState: function (id) { return call(id, 'meetingState', {}); },
+    snapshot: function (id) { return call(id, 'snapshot', {}); },
+    suppressBotLine: suppressBotLine,
+    dropWhisperNoise: dropWhisperNoise,
     onApp: function (win) { appWin = win || null; },
     clearApp: function () { appWin = null; },
     leaveAll: function () {

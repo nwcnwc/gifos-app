@@ -49,6 +49,21 @@
   const EDGE = 'edge';
   const onSnapshot = () => location.pathname.indexOf('/versions/') !== -1;
   const runningEdge = () => VERSION === EDGE || !onSnapshot();
+  // WHO RUNS WHAT. Everybody should run the latest release. The edge build and
+  // older releases are for people testing GifOS before a release, so they sit
+  // in a collapsed "Advanced / testing" section of Settings → Updates, every
+  // switch needs a confirm that states the risks, and while one is in effect the
+  // header says so and offers "Back to current release". A pin does not expire.
+  // A link never switches anyone (see the channel loader). Each choice below is one constant.
+  const PIN_CONFIRM = 'type';          // confirm by: 'type' (type EDGE or the version), 'checkbox', or 'hold' (press and hold)
+  const PIN_OLDER_PICKER = 'list';     // older releases: 'list' (pick one) or 'type' (type the exact version)
+  const PIN_LINK_OPENS_CONFIRM = true; // ?edge opens the edge confirm (never switches by itself); false ignores it
+  const PIN_HOLD_MS = 2000;            // 'hold' confirm: how long to hold
+  const PIN_BANNER_SINCE = '0.9.23';   // older releases than this have no header indicator of their own
+  // What this computer is switched to: EDGE, a pinned version, or null (latest).
+  const attachedTo = () => {
+    try { return localStorage.getItem('gifos_pin') || (localStorage.getItem('gifos_channel') === EDGE ? EDGE : null); } catch (e) { return null; }
+  };
   // Compare dotted versions: >0 if a>b.
   function cmpVer(a, b) {
     const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
@@ -75,7 +90,7 @@
     '     • "private"    — never leaves the owner\'s tab; each participant keeps their OWN copy (personal prefs, font size, a private library). This is the DEFAULT for any collection you don\'t list.',
     '   So: split personal state (prefs) into its own PRIVATE collection, and shared state into read-write/read-only ones — never mix them in one collection. The HOST is always the authority: enforcement is host-side, so a guest can be refused but never override. To flip one record at runtime (e.g. "make this item visible", or a leader toggling "only I lead" on a shared cursor), the host calls db.setVisibility(id, level) — owner-only; it is refused on a guest. Read a record\'s current level from its reserved _vis field.',
     '   HONESTY RULE for any in-app copy about saving: there is NO cloud and NO automatic cross-device sync. Data stays on THIS device only. It reaches other devices exactly two ways: live while people are connected through an invite link, or when someone sends their copy of the app. Never claim the app "syncs across your devices" or "backs up to the cloud". Never write "the file is the save" or "lives in the file" — those phrases mean nothing to a person. Say something true instead, like "Saved on this device. Close it, come back, it is still there."',
-    '3. Identity: const me = await gifos.me(); → { id, name }. Stamp me.id/me.name on records so every player sees who did what.',
+    '3. Identity: const me = await gifos.me(); → { id, name, avatar }. avatar is null or { mime, hash, url } (url is a data URL; a GIF stays a GIF). gifos.onIdentity(cb) fires when the name or picture changes. gifos.setAvatar(dataUrl) asks first, the same sheet as setName. Stamp me.id/me.name on records so every player sees who did what.',
     '4. If window.gifos is undefined (opened outside GifOS), degrade gracefully to in-memory state. Mobile-friendly, dark theme (#0a0a0f) by default.',
     '4b. BACK BUTTON: the GifOS shell traps the phone\'s Back button, so a reflex press never closes your app — by default it is simply swallowed. Register gifos.onBack(() => { ... }) to make Back meaningful: close the topmost modal, back out one screen/level. Apps with internal navigation SHOULD register it.',
     '5. LIVE MEDIA IS OFF-LIMITS, by design: the sandbox blocks camera, microphone, screen capture, and WebRTC, so a video/voice/streaming app cannot work as a GifOS app — do not attempt one; if I ask for video chat, tell me GifOS already ships it (the Meeting icon on my Home Screen) — and that any app can be run INSIDE a Meeting, gaining shared audio/video/recording around it without the app touching the camera itself. Apps CAN bundle and display static media (images, GIFs, audio files) inside the GIF and store binary blobs (base64) in gifos.db — but keep hot collections lean: put big blobs (over ~100KB) in their OWN collection, fetched with db.get(), because subscribers re-download a whole collection on every change, and relay-fallback bandwidth is strictly throttled — bloated hot collections make an app slow for everyone.',
@@ -2699,19 +2714,55 @@
 
   // ---------- version: update nudge + pinning ----------
   // The check, the decision and the bar are js/gifos-update.js, shared with
-  // run.html and sign.html. The Home Screen keeps its own action: the bar only
-  // INFORMS, and the update itself is a proactive choice on the Advanced →
-  // Version page, where the changelog (and any critical notes) show before
-  // anything changes — the computer is never updated behind your back.
+  // every other page. The Home Screen's header bar says what is new and its
+  // Update button updates right here: the same Home Screen, on the live
+  // release. "What's new" opens Settings → Updates with the full notes. An
+  // EMERGENCY release (version.json "emergency") moves an unpinned computer
+  // at once; a computer pinned to a release or to edge is never moved, it
+  // keeps the bar (and the pin banner).
   const updateBar = document.getElementById('update-bar');
+  // The bar sits in the flow above the menu bar; the icon surface is placed
+  // under the menu bar, so while the bar shows --updh moves it down by the
+  // bar's height (and back when it is dismissed).
+  if (updateBar) {
+    const syncUpdh = () => {
+      const h = updateBar.style.display !== 'none' ? Math.ceil(updateBar.getBoundingClientRect().height) : 0;
+      document.documentElement.style.setProperty('--updh', h + 'px');
+    };
+    new MutationObserver(syncUpdh).observe(updateBar, { attributes: true, attributeFilter: ['style', 'class'], childList: true, subtree: true });
+    if (root.ResizeObserver) new ResizeObserver(syncUpdh).observe(updateBar);
+    syncUpdh();
+  }
+  let emergencyFloor = null;        // version.json.emergency — releases under it move now
+  let updateMoving = false;
+  function updateInPlace() {
+    if (updateMoving || !GifOS.update) return;
+    updateMoving = true;
+    GifOS.update.go(latestVersion);
+  }
   function applyUpdateBar() {
     const U = GifOS.update;
     if (!U) return;
-    const d = U.decide({ version: VERSION, edge: runningEdge(), pinned: pinnedVersion(), latest: latestVersion, changelog });
-    U.paint(updateBar, d, d && {
-      label: d.critical.length ? 'See what changed' : 'What’s new',
-      run: () => showSettings({ focus: 'version' }),
-    });
+    let d = U.decide({ version: VERSION, edge: runningEdge(), pinned: pinnedVersion(), latest: latestVersion, changelog, emergency: emergencyFloor });
+    if (d && d.emergency) {
+      // Once per tab per release: a Home Screen that comes back still behind
+      // shows the bar instead of reloading in a loop.
+      let tried = null;
+      try { tried = JSON.parse(sessionStorage.getItem('gifos_update_tried') || 'null'); } catch (e) {}
+      if (!(tried && tried.to === d.latest && Date.now() - (+tried.at || 0) < 600000)) {
+        try { sessionStorage.setItem('gifos_update_tried', JSON.stringify({ to: d.latest, at: Date.now() })); } catch (e) {}
+        updateInPlace();
+        return;
+      }
+    }
+    // The pin banner already says "pinned, latest is vX" and offers the way
+    // back; the update bar only adds to it for a critical release.
+    if (d && d.pinned && !d.critical.length && document.getElementById('pin-head')) d = null;
+    // A pinned computer changes build only by its own choice in Settings.
+    U.paint(updateBar, d, d && (d.pinned
+      ? { label: d.critical.length ? 'See what changed' : 'What’s new', run: () => showSettings({ focus: 'version' }) }
+      : { label: 'Update now', run: updateInPlace }),
+    d && !d.pinned ? { run: () => showSettings({ focus: 'version' }) } : undefined);
   }
 
   // The whole computer — every HTML page, js/ module, css and theme file — is
@@ -2780,7 +2831,7 @@
   // swept (see eraseComputer).
   const ERASE_KEEP = new Set([
     'gifos_ui_scale', 'gifos_meet_bar',
-    'gifos_pin', 'gifos_channel', 'gifos_current',
+    'gifos_pin', 'gifos_channel', 'gifos_current', 'gifos_pin_until',
   ]);
 
   // Erase the WHOLE computer, not just the Home Screen data. clearAll() wipes
@@ -2832,7 +2883,7 @@
       const chan = localStorage.getItem('gifos_channel');
       const ts = Date.now();
       if (pin) return '/versions/' + encodeURIComponent(pin) + '/?ts=' + ts;
-      if (chan === 'edge') return '/?edge&ts=' + ts;
+      if (chan === 'edge') return '/?ts=' + ts;
     } catch (e) {}
     return '/?ts=' + Date.now();
   }
@@ -2859,23 +2910,36 @@
     else location.reload();
   }
 
-  async function checkForUpdate() {
-    // GifOS.update.check() fetches version.json + changelog.json (both
-    // network-first) and persists the live-release pointer (gifos_current) so
-    // the root loader can redirect default visitors instantly on the next visit.
-    const got = GifOS.update ? await GifOS.update.check() : null;
+  async function checkForUpdate(withNotes) {
+    // GifOS.update.check() fetches version.json (revalidated, not re-sent)
+    // and persists the live-release pointer (gifos_current) so the root loader
+    // can redirect default visitors instantly on the next visit. The release
+    // notes come along only when Settings is open or the bar has news.
+    const U = GifOS.update;
+    const notes = withNotes === true ? undefined : (info) => {
+      const d = U.decide({ version: VERSION, edge: runningEdge(), pinned: pinnedVersion(), latest: info.current, changelog: null, emergency: info.emergency });
+      return !!d && !d.emergency;
+    };
+    const got = U ? await U.check({ notes }) : null;
     if (!got) return false;   // offline or no version.json — stay silent
     const info = got.info;
     versionChecked = true;
     latestVersion = info.current || VERSION;
+    emergencyFloor = info.emergency || null;
     edgeBuild = Number(info.edgeBuild) || BUILD;   // latest edge build number, live
     releaseBuilds = (info.builds && typeof info.builds === 'object') ? info.builds : {};
     availableVersions = Array.isArray(info.versions) && info.versions.length ? info.versions : [VERSION];
     // Release notes are best-effort: the Version panel still works without them.
     if (got.changelog) changelog = got.changelog;
+    paintPinHead();
     applyUpdateBar();
     return true;
   }
+  // Check again every minute while the Home Screen is in view, and at once
+  // when it comes back into view. Reads are cheap: version.json is
+  // revalidated by the browser, the notes are read once per release.
+  setInterval(() => { if (!document.hidden) checkForUpdate().catch(() => {}); }, (GifOS.update && GifOS.update.MINUTE) || 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate().catch(() => {}); });
 
   // One-line, non-technical summary of the last paint for Settings → Advanced.
   function perfLine(s) {
@@ -2962,12 +3026,14 @@
   // (docs/providers.md). This is the Settings picker's option list; the
   // runtime broker re-checks all of it at serve time, so the picker is UX,
   // not the enforcement.
-  async function scanProviders() {
+  // `list` defaults to the in-memory items; the store-default seed passes the
+  // database's own rows so it can decide without reloading `items`.
+  async function scanProviders(list) {
     const out = [];
     try {
       const files = await store.allFiles();
       const fileById = {}; for (const f of files) fileById[f.id] = f;
-      for (const it of items) {
+      for (const it of (list || items)) {
         if ((it.parent || null) !== 'sys_providers' || it.kind !== 'file' || !it.fileId) continue;
         const f = fileById[it.fileId];
         if (!f || !f.isApp || f.kind !== 'gif' || !f.bytes) continue;
@@ -3443,6 +3509,16 @@
           '<p class="add-help">Friends see this name when you play or work together. It stays on this computer.</p>' +
           '<label class="set-label" for="set-name">Name</label>' +
           '<input id="set-name" maxlength="40" aria-label="Name" placeholder="Your name" value="' + escapeHtml(store.identity().name) + '">' +
+          '<label class="set-label" for="set-avatar-file">Picture</label>' +
+          '<p class="add-help">Friends see this when your camera is off. An animated GIF stays animated.</p>' +
+          '<div class="set-avatar-row">' +
+            '<img id="set-avatar-preview" alt="" hidden>' +
+            '<div class="set-avatar-actions">' +
+              '<input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Picture">' +
+              '<button type="button" id="set-avatar-remove">Remove</button>' +
+            '</div>' +
+          '</div>' +
+          '<p id="set-avatar-err" class="add-help" role="alert"></p>' +
         '</section>' +
         '<section data-page="look" hidden>' +
           '<p class="add-help">Changes apply as you make them, on every GifOS page in this browser.</p>' +
@@ -3467,7 +3543,7 @@
         '<section data-page="system" hidden>' +
           '<div class="set-card">' +
             '<button type="button" class="set-row" id="set-go-storage"><span class="set-row-t"><b>Storage</b><span>' + storageLine.replace(/<[^>]+>/g, '') + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
-            '<button type="button" class="set-row" id="set-go-updates"><span class="set-row-t"><b>Updates</b><span>Releases and the edge build</span></span><span class="chev" aria-hidden="true">›</span></button>' +
+            '<button type="button" class="set-row" id="set-go-updates"><span class="set-row-t"><b>Updates</b><span>Latest release and what’s new</span></span><span class="chev" aria-hidden="true">›</span></button>' +
             '<button type="button" class="set-row" id="set-go-connection"><span class="set-row-t"><b>Invite connection</b><span>' + escapeHtml(relayStatus) + '</span></span><span class="chev" aria-hidden="true">›</span></button>' +
           '</div>' +
           '<div class="set-gap"></div>' +
@@ -3507,8 +3583,17 @@
     // One save model on every page. Name, the invite connection, and AI wait
     // for Save. Look, payments, and connected accounts still apply on their
     // own controls (a tested account is the only way an account is stored).
+    // undefined = the picture was not touched. null = Remove. An object is a new file.
+    const avatarHashNow = () => {
+      if (box._avatarDraft === undefined) {
+        const a = store.identity().avatar;
+        return (a && a.hash) || '';
+      }
+      return (box._avatarDraft && box._avatarDraft.hash) || '';
+    };
     const readDeferred = () => ({
       name: (box.querySelector('#set-name') || {}).value || '',
+      avatar: avatarHashNow(),
       relay: (box.querySelector('#set-relay') || {}).value || '',
       ai: AI_TYPES.map((t) => {
         const sel = box.querySelector('.ai-src[data-ai="' + t.key + '"]');
@@ -3568,11 +3653,52 @@
     wireAiSection(box);
     wireApiSection(box);
     wirePaySection(box);
+    const paintAvatar = () => {
+      const img = box.querySelector('#set-avatar-preview');
+      if (!img) return;
+      let url = '';
+      if (box._avatarDraft === undefined) {
+        const a = store.identity().avatar;
+        url = (a && a.url) || '';
+      } else if (box._avatarDraft && box._avatarDraft.b64) {
+        url = 'data:' + box._avatarDraft.mime + ';base64,' + box._avatarDraft.b64;
+      }
+      if (url) { img.src = url; img.hidden = false; }
+      else { img.removeAttribute('src'); img.hidden = true; }
+    };
+    const avatarErr = box.querySelector('#set-avatar-err');
+    const avatarFile = box.querySelector('#set-avatar-file');
+    if (avatarFile) avatarFile.addEventListener('change', () => {
+      const f = avatarFile.files && avatarFile.files[0];
+      avatarFile.value = '';
+      if (!f) return;
+      if (avatarErr) avatarErr.textContent = '';
+      const go = (GifOS.avatar && GifOS.avatar.prepareFile) ? GifOS.avatar.prepareFile(f) : Promise.resolve({ ok: false, error: 'Choose a GIF, PNG, JPG, or WebP.' });
+      Promise.resolve(go).then((res) => {
+        if (!box.isConnected) return;
+        if (!res || !res.ok) { if (avatarErr) avatarErr.textContent = (res && res.error) || 'Choose a GIF, PNG, JPG, or WebP.'; return; }
+        box._avatarDraft = { mime: res.mime, hash: res.hash, b64: res.b64 };
+        paintAvatar();
+        const note = box.querySelector('#set-save-note');
+        if (note && note.textContent === 'Saved') note.textContent = '';
+        paintActions();
+      });
+    });
+    const avatarRemove = box.querySelector('#set-avatar-remove');
+    if (avatarRemove) avatarRemove.onclick = () => {
+      box._avatarDraft = null;
+      if (avatarErr) avatarErr.textContent = '';
+      paintAvatar();
+      const note = box.querySelector('#set-save-note');
+      if (note && note.textContent === 'Saved') note.textContent = '';
+      paintActions();
+    };
+    paintAvatar();
     snapNow();
     const markDirty = (e) => {
       const t = e.target;
       if (!t || !t.matches) return;
-      if (t.matches('#set-name, #set-relay, .ai-f, .ai-src')) {
+      if (t.matches('#set-name, #set-relay, #set-avatar-file, .ai-f, .ai-src')) {
         const note = box.querySelector('#set-save-note');
         if (note && note.textContent === 'Saved') note.textContent = '';
         paintActions();
@@ -3594,9 +3720,19 @@
       if (h && h.scrollIntoView) h.scrollIntoView({ block: 'start' });
     };
     const unfoldNew = opts.focus === 'version';
-    paintVersion(vc, null, unfoldNew);
+    // An ?edge link lands here: Updates, Advanced / testing open, and the edge
+    // confirm up. It never switches anything by itself.
+    const revealTesting = () => {
+      if (opts.focus !== 'testing') return;
+      stack = ['root', 'system', 'updates'];
+      showPage('updates');
+      const t = box.querySelector('#set-testing');
+      if (t) { t.open = true; if (t.scrollIntoView) t.scrollIntoView({ block: 'start' }); }
+    };
+    paintVersion(vc, null, unfoldNew, opts.focus === 'testing');
     revealVersion();
-    checkForUpdate().then((ok) => { paintVersion(vc, ok ? null : 'offline', unfoldNew); revealVersion(); });
+    revealTesting();
+    checkForUpdate(true).then((ok) => { paintVersion(vc, ok ? null : 'offline', unfoldNew); revealVersion(); });
     box.querySelector('#set-bg-color').addEventListener('input', (e) => setBackgroundColor(e.target.value));
     box.querySelector('#set-bg-image').onclick = () => {
       const inp = document.createElement('input');
@@ -3650,8 +3786,13 @@
       const v = relayEl ? relayEl.value.trim() : '';
       try { if (v) localStorage.setItem('gifos_relay', v); else localStorage.removeItem('gifos_relay'); } catch (e) {}
       if (nameEl) store.setName(nameEl.value);
+      if (box._avatarDraft !== undefined) {
+        store.setAvatar(box._avatarDraft);
+        box._avatarDraft = undefined;
+      }
       if (box._saveAi) box._saveAi();
       snapNow();
+      paintAvatar();
       paintNameStatus();
       const note = box.querySelector('#set-save-note');
       if (note) note.textContent = 'Saved';
@@ -3663,6 +3804,9 @@
       const relayEl = box.querySelector('#set-relay');
       if (nameEl) nameEl.value = snap.name || '';
       if (relayEl) relayEl.value = snap.relay || '';
+      box._avatarDraft = undefined;
+      paintAvatar();
+      if (avatarErr) avatarErr.textContent = '';
       (snap.ai || []).forEach((row, i) => {
         const t = AI_TYPES[i];
         if (!t || !row) return;
@@ -3698,59 +3842,263 @@
     });
     showPage('root');
     if (opts.focus === 'version') revealVersion();
+    if (opts.focus === 'testing') revealTesting();
+    // Opened over the sheet, so it is the dialog in front.
+    if (opts.pin) confirmPin(opts.pin);
   }
 
   // ----- the three version moves, all channel-aware (see the root loader) -----
-  // PIN to an immutable /versions/<v>/ snapshot (roll back, or stick to the live
-  // release). Clears the edge channel so the loader honours the pin.
+  // Edge and older releases are reached only through confirmPin() below. Each
+  // switch records gifos_pin_until — the loader's proof that it was confirmed.
+  // A pin never expires, so the receipt stored here is always '0'.
   // gifos_reseed tells the build we're switching TO to re-bake its default apps on
   // first load (see reseedDefaultsIfNeeded) — set on every build move so the new
   // build's default apps actually land instead of the ones baked at seed time.
+  const pinUntil = () => '0';
+  // PIN to an immutable /versions/<v>/ snapshot (an older release, for testing).
+  // Clears the edge channel so the loader honours the pin.
   function pinTo(v) {
-    try { localStorage.setItem('gifos_pin', v); localStorage.removeItem('gifos_channel'); localStorage.setItem('gifos_reseed', '1'); } catch (e) {}
+    try { localStorage.setItem('gifos_pin', v); localStorage.setItem('gifos_pin_until', pinUntil()); localStorage.removeItem('gifos_channel'); localStorage.setItem('gifos_reseed', '1'); } catch (e) {}
     location.replace('/versions/' + v + '/');
   }
   // USE THE LIVE RELEASE: default channel (no pin, no edge). The loader resolves
   // version.json.current and lands on that snapshot.
   function useRelease() {
-    try { localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_channel'); localStorage.setItem('gifos_reseed', '1'); } catch (e) {}
+    try { localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin_until'); localStorage.setItem('gifos_reseed', '1'); } catch (e) {}
     location.replace('/?stable&ts=' + Date.now());
   }
   // LOAD THE UNRELEASED EDGE build at the site root. Opt into the edge channel and
-  // re-pull the whole shell fresh so the newest root code actually lands.
+  // re-pull the whole shell fresh so the newest root code actually lands. A
+  // re-pull while already on edge keeps the time the switch ends.
   async function loadEdge() {
     if (!(await reachable())) {
       showConfirm('Can’t reach gifos.app', 'You appear to be offline. Reconnect and try again — the unreleased build has to download from the site.', [{ label: 'OK' }]);
       return;
     }
-    try { localStorage.setItem('gifos_channel', 'edge'); localStorage.removeItem('gifos_pin'); localStorage.setItem('gifos_reseed', '1'); } catch (e) {}
+    const already = attachedTo() === EDGE;
+    try {
+      localStorage.setItem('gifos_channel', 'edge'); localStorage.removeItem('gifos_pin'); localStorage.setItem('gifos_reseed', '1');
+      if (!already || localStorage.getItem('gifos_pin_until') === null) localStorage.setItem('gifos_pin_until', pinUntil());
+    } catch (e) {}
     await refreshShell();
-    location.replace('/?edge&ts=' + Date.now());
+    location.replace('/?ts=' + Date.now());
   }
 
-  // Render the Advanced → Version panel: ONE picker list, no summary block above
-  // it. Every row says its own state inline — the running build carries a
-  // "running" pill, the live release a "latest" pill, the edge row an "attached"
-  // marker — so there is nothing to repeat up top. `net` is 'offline' when the
-  // live version.json check just failed. `unfoldNew` (the update bar's
-  // "What's new" deep-link) unfolds the notes of every release newer than the
-  // running build, so the click lands on readable release notes, not on a list
-  // of folded rows.
-  function paintVersion(container, net, unfoldNew) {
+  // THE CONFIRM for leaving the latest release (v = EDGE or an older version).
+  // It states the risks, and its button stays off until the PIN_CONFIRM step is
+  // done, so no single tap, stray click or link can switch a computer.
+  function confirmPin(v) {
+    const edge = v === EDGE;
+    const word = edge ? 'EDGE' : v;
+    const noBanner = !edge && cmpVer(v, PIN_BANNER_SINCE) < 0;
+    const risks = edge ? [
+      'It is <b>unreleased</b>: it changes without notice and can have bugs that break apps or meetings.',
+      'Things you save on it may not open the same way on the latest release.',
+      'People on the latest release may not be able to join your meetings, or you theirs.',
+    ] : [
+      'It is <b>older</b> than the latest release and misses its fixes, including security fixes.',
+      'Apps and files made with newer releases may not work on it. Meetings still run on the latest release.',
+      noBanner
+        ? 'v' + escapeHtml(v) + ' was made before the header shows a pin. To come back, choose “Use latest” in its Settings, or visit <b>gifos.app/?latest</b>.'
+        : 'The header will say you are pinned, with <b>Back to current release</b> right there.',
+    ];
+    const step = PIN_CONFIRM === 'checkbox'
+      ? '<label class="pin-ack-row"><input type="checkbox" class="pin-ack"> I understand the risks and I’m testing GifOS</label>'
+      : PIN_CONFIRM === 'hold'
+        ? '<p class="add-help">Press and hold the button to switch.</p>'
+        : '<label class="set-label" for="pin-word">Type <b class="mono">' + escapeHtml(word) + '</b> to confirm</label>' +
+          '<input id="pin-word" class="pin-word" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Type ' + escapeHtml(word) + ' to confirm">';
+    const goLabel = edge ? 'Switch to edge' : 'Switch to v' + v;
+    const bg = document.createElement('div'); bg.className = 'modal-bg';
+    const box = document.createElement('div'); box.className = 'modal pin-confirm';
+    box.dataset.style = PIN_CONFIRM;
+    box.innerHTML =
+      '<h3>' + (edge ? 'Switch to the edge build?' : 'Switch to v' + escapeHtml(v) + '?') + '</h3>' +
+      '<p class="add-help">This is for people testing GifOS before a release. Most people should stay on the latest release.</p>' +
+      '<ul class="pin-risks">' + risks.map((r) => '<li>' + r + '</li>').join('') + '</ul>' + step +
+      '<div class="modal-actions">' +
+        '<button type="button" class="danger pin-go"' + (PIN_CONFIRM === 'hold' ? '' : ' disabled') + '>' +
+          '<span class="pin-go-fill" aria-hidden="true"></span><span class="pin-go-t">' + escapeHtml(PIN_CONFIRM === 'hold' ? 'Hold to switch' : goLabel) + '</span></button>' +
+        '<button type="button" class="ghost pin-cancel">Cancel</button>' +
+      '</div>';
+    bg.appendChild(box);
+    const go = box.querySelector('.pin-go');
+    const cancel = box.querySelector('.pin-cancel');
+    const dlg = armDialog(bg, box, { label: edge ? 'Switch to the edge build' : 'Switch to v' + v, initial: cancel });
+    let done = false;
+    const commit = () => {
+      if (done) return;
+      done = true;
+      dlg.close();
+      if (edge) loadEdge(); else pinTo(v);
+    };
+    cancel.onclick = () => dlg.close();
+    bg.addEventListener('click', (e) => { if (e.target === bg) dlg.close(); });
+    if (PIN_CONFIRM === 'hold') {
+      let t = null;
+      const fill = box.querySelector('.pin-go-fill');
+      const stop = () => { clearTimeout(t); t = null; fill.style.transition = 'none'; fill.style.width = '0'; };
+      const start = (e) => {
+        if (e) e.preventDefault();
+        if (t) return;
+        fill.style.transition = 'width ' + PIN_HOLD_MS + 'ms linear'; fill.style.width = '100%';
+        t = setTimeout(commit, PIN_HOLD_MS);
+      };
+      go.addEventListener('pointerdown', start);
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => go.addEventListener(ev, stop));
+      go.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') start(e); });
+      go.addEventListener('keyup', stop);
+      go.addEventListener('contextmenu', (e) => e.preventDefault());
+      return;
+    }
+    const ok = () => {
+      if (PIN_CONFIRM === 'checkbox') return box.querySelector('.pin-ack').checked;
+      return box.querySelector('.pin-word').value.trim().toUpperCase() === word.toUpperCase();
+    };
+    box.addEventListener('input', () => { go.disabled = !ok(); });
+    box.addEventListener('change', () => { go.disabled = !ok(); });
+    go.onclick = () => { if (ok()) commit(); };
+    const w = box.querySelector('.pin-word');
+    if (w) w.addEventListener('keydown', (e) => { if (e.key === 'Enter' && ok()) commit(); });
+  }
+
+  // THE HEADER INDICATOR: while this computer is on edge or an older release,
+  // the menubar itself says "Pinned: edge" or "Pinned: v0.9.x" and offers
+  // "Back to current release". It is never dismissible, and it does not add a
+  // second row. Narrow headers show a shorter label; the button's name stays.
+  // A pin does not end, so this copy has no time input: while attached, it shows.
+  function pinHeadCopy(to) {
+    if (!to) return null;
+    return {
+      label: to === EDGE ? 'Pinned: edge' : ('Pinned: v' + to),
+      action: 'Back to current release',
+    };
+  }
+  function paintPinHead() {
+    const to = attachedTo();
+    const old = document.getElementById('pin-bar');
+    if (old) old.remove();
+    document.body.style.removeProperty('--pinbar-h');
+    let el = document.getElementById('pin-head');
+    const copy = pinHeadCopy(to);
+    if (!copy) { if (el) el.remove(); return; }
+    const menu = document.querySelector('.menubar');
+    if (!menu) return;
+    if (!el) {
+      el = document.createElement('span');
+      el.id = 'pin-head'; el.className = 'pin-head'; el.setAttribute('role', 'status');
+      const crumbs = document.getElementById('crumbs');
+      menu.insertBefore(el, crumbs && crumbs.nextSibling ? crumbs.nextSibling : menu.firstChild);
+    }
+    el.innerHTML =
+      '<span class="pin-head-t">' + escapeHtml(copy.label) + '</span>' +
+      '<button type="button" id="pin-back" aria-label="' + escapeHtml(copy.action) + '">' +
+        '<span class="pin-back-wide">' + escapeHtml(copy.action) + '</span>' +
+        '<span class="pin-back-narrow">Use latest</span></button>';
+    el.querySelector('#pin-back').onclick = () => useRelease();
+  }
+
+  // gifos_pin_ended — a build that predates the confirm sent this computer
+  // back to latest (reset:). A pin does not end on its own, so nothing here
+  // clears one. An expired: note left by a build that used to time a pin out
+  // is still explained once, then dropped.
+  function notePinEnded() {
+    let v = '';
+    try { v = localStorage.getItem('gifos_pin_ended') || ''; localStorage.removeItem('gifos_pin_ended'); } catch (e) {}
+    const m = /^(expired|reset):(.+)$/.exec(v);
+    if (!m) return;
+    const what = m[2] === EDGE ? 'the edge build' : 'v' + escapeHtml(m[2]);
+    showModal('Back on the latest release',
+      (m[1] === 'expired'
+        ? 'This computer’s switch to <b>' + what + '</b> has ended, so it runs the latest release again.'
+        : 'This computer was set to <b>' + what + '</b>. That is now only for people testing GifOS, so it runs the latest release again.') +
+      ' Your files, apps and settings are untouched. Testers can switch again in <b>Settings → System → Updates → Advanced / testing</b>.');
+  }
+
+  // ?edge (query or hash) never switches anyone — the loader stores nothing for
+  // it. At most it opens the edge confirm, so a tester's link lands on the same
+  // deliberate step as everyone else. The flag is stripped so a reload does not
+  // ask again.
+  function handleEdgeLink() {
+    const inQuery = /[?&]edge(=|&|$)/.test(location.search);
+    const inHash = /[#&]edge(=[^&]*)?(&|$)/.test(location.hash);
+    if (!inQuery && !inHash) return;
+    try {
+      const q = new URLSearchParams(location.search); q.delete('edge');
+      const qs = q.toString();
+      const h = location.hash.replace(/([#&])edge(=[^&]*)?(&|$)/, (all, a, b, c) => (c ? a : '')).replace(/^#$/, '');
+      history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + h);
+    } catch (e) {}
+    if (!PIN_LINK_OPENS_CONFIRM || attachedTo() === EDGE) return;
+    showSettings({ focus: 'testing', pin: EDGE });
+  }
+
+  // Render Settings → Updates. On top, the one choice for everybody: "Latest
+  // release (recommended)", with its notes folded behind it and, when this
+  // computer is switched away, "Return to latest". Below, collapsed, "Advanced
+  // / testing": the edge build and the older releases, each behind confirmPin.
+  // Rows say their own state inline (running / latest pills). `net` is
+  // 'offline' when the live version.json check just failed. `unfoldNew` (the
+  // update bar's "What's new" deep-link) unfolds the latest release's notes.
+  // `openTesting` opens the testing section (an ?edge link); otherwise a
+  // repaint keeps whatever the person left open.
+  function paintVersion(container, net, unfoldNew, openTesting) {
     if (!container) return;
     const pinned = pinnedVersion();
     const offline = net === 'offline';
     const onEdge = runningEdge();
+    const to = attachedTo();
+    const prevTesting = container.querySelector('#set-testing');
+    const testingOpen = !!openTesting || !!(prevTesting && prevTesting.open);
     // Edge builds carry a monotonic build number (build.js), not a release version.
     const newerEdge = onEdge && edgeBuild > BUILD;   // a fresher edge build is out
 
-    // ---- EDGE row: the moving unreleased build, kept visually distinct at the
-    // top of the picker so "the edge channel vs a numbered release" is obvious.
-    // Load the LATEST edge build (site root) — a single moving target you can only
-    // move forward to, never a specific past build. Notes fold behind it. ----
-    const edgeLabel = !onEdge ? 'Load edge' : (newerEdge ? 'Update' : 'Re-pull');
-    // The numeric build stamp stays off the row title. The channel name is
-    // "Edge build", with a running pill when this page is the edge channel.
+    // ---- LATEST: the recommended (and default) choice ----
+    const latestLine = !versionChecked
+      ? (offline ? 'Couldn’t check which release is latest.' : 'Checking gifos.app for the latest…')
+      : 'v' + escapeHtml(latestVersion) + (to ? '' : ' · this computer follows it');
+    const away = to === EDGE ? 'This computer is on the edge build.'
+      : to ? 'This computer is pinned to v' + escapeHtml(to) + '.' : '';
+    const latestCard =
+      '<div class="vlatest' + (to ? '' : ' on') + '" data-selected="' + (to ? '0' : '1') + '">' +
+        '<span class="vlatest-mark" aria-hidden="true">' + (to ? '' : '✓') + '</span>' +
+        '<span class="vlatest-t"><b>Latest release (recommended)</b><span>' + latestLine + '</span>' +
+          (away ? '<span class="vlatest-away">' + away + '</span>' : '') + '</span>' +
+        (to ? '<button type="button" class="vbtn" id="set-latest">Return to latest</button>' : '') +
+      '</div>';
+
+    // ---- RELEASE rows, newest first, notes FOLDED behind each. A row is
+    // "running" only when it's the pinned/current build. Until version.json
+    // has been read, latestVersion is only this build's own VERSION ('edge' on
+    // the root): no row may claim "latest", and the edge sentinel is never a
+    // release row. ----
+    const sorted = availableVersions.filter((v) => versionChecked || v !== EDGE).slice().sort(cmpVer).reverse();
+    const rowHtml = (v, action) => {
+      const isLive = versionChecked && v === latestVersion;
+      const isRunning = !onEdge && (pinned ? v === pinned : v === VERSION);
+      const e = notesFor(v);
+      const hasNotes = entryHasNotes(e);
+      const critical = !!(e && e.critical && !onEdge && cmpVer(v, VERSION) > 0);
+      const dateTag = (e && e.date) ? '<span class="cl-date">' + escapeHtml(e.date) + '</span>' : '';
+      const tags = (isLive ? '<span class="vpill live">latest</span>' : '') +
+                   (isRunning ? '<span class="vpill run">running</span>' : '') +
+                   (critical ? '<span class="vpill crit">critical</span>' : '');
+      const head =
+        '<span class="vcaret' + (hasNotes ? '' : ' vcaret-empty') + '" aria-hidden="true">▸</span>' +
+        '<span class="vlabel">v' + escapeHtml(v) + ' ' + tags + dateTag + '</span>';
+      const row = !hasNotes
+        ? '<div class="vrow vrow-plain"><div class="vhead">' + head + '</div></div>'
+        : '<details class="vrow"' + (critical || (unfoldNew && isLive) ? ' open' : '') + '>' +
+            '<summary class="vhead">' + head + '</summary>' +
+            '<div class="vnotes">' + releaseNotesHtml(e) + '</div></details>';
+      return '<div class="vitem">' + row + (isRunning ? '' : action) + '</div>';
+    };
+    const main = sorted.filter((v) => versionChecked && v === latestVersion).map((v) => rowHtml(v, ''));
+    const older = sorted.filter((v) => !(versionChecked && v === latestVersion));
+
+    // ---- ADVANCED / TESTING (collapsed): edge, then older releases ----
+    const edgeOn = to === EDGE;
+    const edgeLabel = edgeOn ? (newerEdge ? 'Update' : 'Re-pull') : 'Use edge…';
     const edgeRow =
       '<div class="vitem"><details class="vrow vedge">' +
         '<summary class="vhead">' +
@@ -3760,64 +4108,41 @@
         '</summary>' +
         '<div class="vnotes"><p class="add-help">The unreleased build at the site root, ahead of every release. You can jump to the latest, but edge builds aren’t archived — you can’t pin or roll back to a specific one.</p></div>' +
       '</details>' +
-      '<button type="button" class="vbtn' + (onEdge && !newerEdge ? ' ghost' : '') + '" id="set-edge">' + edgeLabel + '</button></div>';
-
-    // ---- RELEASE rows: newest first, each with its release notes FOLDED behind
-    // it. A row is "running" only when it's the pinned/current build (on the edge
-    // root you're running the moving root, not a frozen snapshot). A critical
-    // release newer than what you run opens on its own so the must-read shows. ----
-    // Until version.json has been read, latestVersion is only this build's own
-    // VERSION ('edge' on the root): no row may claim "latest" or offer "Use
-    // latest", and the edge sentinel is not a release row (the edge row above
-    // already shows the running build).
-    const sorted = availableVersions.filter((v) => versionChecked || v !== EDGE).slice().sort(cmpVer).reverse();
-    const newest = sorted[0];
-    const visible = [];
-    const earlier = [];
-    sorted.forEach((v) => {
-      const isLive = versionChecked && v === latestVersion;
-      const isRunning = !onEdge && (pinned ? v === pinned : v === VERSION);
-      const e = notesFor(v);
-      const hasNotes = entryHasNotes(e);
-      const critical = !!(e && e.critical && !onEdge && cmpVer(v, VERSION) > 0);
-      // "New to you": newer than what you run, no newer than the live release.
-      const newSince = !onEdge && cmpVer(v, VERSION) > 0 && cmpVer(v, latestVersion) <= 0;
-      const dateTag = (e && e.date) ? '<span class="cl-date">' + escapeHtml(e.date) + '</span>' : '';
-      const tags = (isLive ? '<span class="vpill live">latest</span>' : '') +
-                   (isRunning ? '<span class="vpill run">running</span>' : '') +
-                   (critical ? '<span class="vpill crit">critical</span>' : '');
-      // The switch sits beside the row, not inside the summary, so the row's
-      // name is the version — and Roll back is never a filled primary button.
-      const action = isRunning ? ''
-        : '<button type="button" data-v="' + escapeHtml(v) + '" class="vbtn' + (isLive ? '' : ' rollback') + '">' + (isLive ? 'Use latest' : 'Roll back') + '</button>';
-      const head =
-        '<span class="vcaret' + (hasNotes ? '' : ' vcaret-empty') + '" aria-hidden="true">▸</span>' +
-        '<span class="vlabel">v' + escapeHtml(v) + ' ' + tags + dateTag + '</span>';
-      const row = !hasNotes
-        ? '<div class="vrow vrow-plain"><div class="vhead">' + head + '</div></div>'
-        : '<details class="vrow"' + (critical || (unfoldNew && newSince) ? ' open' : '') + '>' +
-            '<summary class="vhead">' + head + '</summary>' +
-            '<div class="vnotes">' + releaseNotesHtml(e) + '</div></details>';
-      const item = '<div class="vitem">' + row + action + '</div>';
-      // Current, latest, and running stay in view. Older releases fold away.
-      const keepOut = isLive || isRunning || v === newest || critical || (unfoldNew && newSince);
-      (keepOut ? visible : earlier).push(item);
-    });
-    const earlierHtml = earlier.length
-      ? '<details class="v-earlier"><summary class="vhead">Earlier versions</summary>' + earlier.join('') + '</details>'
-      : '';
+      '<button type="button" class="vbtn' + (edgeOn && !newerEdge ? ' ghost' : '') + '" id="set-edge">' + edgeLabel + '</button></div>';
+    const olderHtml = PIN_OLDER_PICKER === 'type'
+      ? '<div class="vtype"><label class="set-label" for="set-pin-version">Older release</label>' +
+          '<div class="vtype-row"><input id="set-pin-version" class="mono" placeholder="e.g. ' + escapeHtml(older[0] || '0.0.0') + '" autocomplete="off" spellcheck="false" aria-label="Exact older version">' +
+          '<button type="button" class="vbtn" id="set-pin-go">Pin…</button></div>' +
+          '<p class="add-help" id="set-pin-note" aria-live="polite"></p></div>'
+      : older.map((v) => rowHtml(v, '<button type="button" data-v="' + escapeHtml(v) + '" class="vbtn rollback">Pin…</button>')).join('');
+    const testing =
+      '<details class="vtesting" id="set-testing"' + (testingOpen ? ' open' : '') + '>' +
+        '<summary class="vhead"><span class="vcaret" aria-hidden="true">▸</span>Advanced / testing</summary>' +
+        '<p class="add-help">For people testing GifOS before it is released. Most people never need this. Every switch asks you to confirm. A pin stays until you come back.</p>' +
+        '<div class="vlist">' + edgeRow + olderHtml + '</div>' +
+      '</details>';
 
     container.innerHTML =
       (offline ? '<p class="add-help bad">Couldn’t reach gifos.app to check the latest release — you may be offline. The snapshots below still work.</p>' : '') +
-      '<div class="vlist">' + edgeRow + visible.join('') + earlierHtml + '</div>';
+      latestCard + '<div class="vlist">' + main.join('') + '</div>' + testing;
+    const lb = container.querySelector('#set-latest');
+    if (lb) lb.onclick = (ev) => { ev.preventDefault(); useRelease(); };
     const eb = container.querySelector('#set-edge');
-    if (eb) eb.onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); loadEdge(); };
+    if (eb) eb.onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); if (edgeOn) loadEdge(); else confirmPin(EDGE); };
     container.querySelectorAll('.vbtn[data-v]').forEach((b) => {
       const v = b.getAttribute('data-v');
       // preventDefault so a click on the button inside a <summary> switches builds
       // instead of toggling the fold; stopPropagation keeps it off the summary too.
-      b.onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); (v === latestVersion ? useRelease() : pinTo(v)); };
+      b.onclick = (ev) => { ev.preventDefault(); ev.stopPropagation(); confirmPin(v); };
     });
+    const tg = container.querySelector('#set-pin-go');
+    if (tg) tg.onclick = () => {
+      const v = (container.querySelector('#set-pin-version').value || '').trim().replace(/^v/i, '');
+      const note = container.querySelector('#set-pin-note');
+      if (older.indexOf(v) === -1) { note.textContent = 'Type an older release number exactly, like ' + (older[0] || '0.0.0') + '.'; return; }
+      note.textContent = '';
+      confirmPin(v);
+    };
   }
 
   // The changelog entry for a specific release version (or null).
@@ -4527,8 +4852,15 @@
         const triedAt = /^tried:(\d+)$/.test(stamp) ? Number(stamp.slice(6)) : 0;
         if (stamp === 'done' || (triedAt && Date.now() - triedAt < 86400000)) { storeDefaultsState.results[d.slug] = stamp; return; }
         try {
-          // Already here (installed by hand, or by a meeting's own seed)? Stamp and move on.
-          const have = (await scanProviders()).find((p) => p.appId === d.slug);
+          // The stamp alone cannot decide: the browser copies a localStorage
+          // write to other tabs LATER, so the tab that takes the lock next can
+          // still read it empty — and its item list waits on a debounced
+          // repaint. The database is shared and current: read its rows under
+          // the lock, so an app the other tab just filed is seen here. Read,
+          // not load(): a reload could land mid-drag (the up-hole race).
+          // Already here (installed by hand, by a meeting's own seed, or by
+          // another tab a moment ago)? Stamp and move on.
+          const have = (await scanProviders(await store.allItems())).find((p) => p.appId === d.slug);
           let fileId = have ? have.fileId : '', name = have ? have.name : '';
           if (!have) {
             if (!navigator.onLine) { storeDefaultsState.results[d.slug] = 'offline'; return; }
@@ -4579,7 +4911,8 @@
 
   // ---------- boot ----------
   requestPersistence();
-  load().then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(handleRunParam).then(handlePlaceParam).then(checkForUpdate).then(reclaimOrphanAssets).then(backfillOrnaments);
+  paintPinHead();
+  load().then(seedIfEmpty).then(reseedDefaultsIfNeeded).then(ensureSystemItems).then(drainPendingReceipts).then(destackForThisScreen).then(render).then(() => { scheduleStoreDefaults(); }).then(noteRetiredBuild).then(notePinEnded).then(handleRunParam).then(handlePlaceParam).then(handleEdgeLink).then(() => checkForUpdate()).then(reclaimOrphanAssets).then(backfillOrnaments);
 
   GifOS.desktop = { render, load, backfillOrnaments, get stats() { return renderStats; },
     // The lazy seed, awaitable: the promise the boot armed (resolves once it has run), and what it decided.

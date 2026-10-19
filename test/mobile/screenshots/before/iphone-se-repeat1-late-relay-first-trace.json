@@ -1,0 +1,282 @@
+{
+ "hostId": "k_cb2878cbf5ab9a40f42dfd9bdb227e97730cf155",
+ "aId": "k_cf62f022c4db22bbcf3ca106b5e8837aec1346a6",
+ "bId": "k_9dd102acf0b131d6ce4c815398461ea06ca681f7",
+ "bPc": 2,
+ "toB": 90599,
+ "via": {
+  "via": "k_cf62f0",
+  "me": "k_9dd102"
+ },
+ "log": [
+  {
+   "t": 13.8,
+   "phase": "B hears the host spare",
+   "bClaims": [
+    {
+     "rk": "stg:k_cb2878cbf5ab9a40f42dfd9bdb227e97730cf155",
+     "via": "k_cb2878cbf5ab9a40f42dfd9bdb227e97730cf155",
+     "sid": "ff6b167c-09e7-4573-a198-b251f3baf758"
+    }
+   ]
+  },
+  {
+   "t": 15.8,
+   "phase": "relay released",
+   "bClaims": [
+    {
+     "rk": "stg:k_cb2878cbf5ab9a40f42dfd9bdb227e97730cf155",
+     "via": "k_cb2878cbf5ab9a40f42dfd9bdb227e97730cf155",
+     "sid": "ff6b167c-09e7-4573-a198-b251f3baf758"
+    }
+   ]
+  },
+  {
+   "t": 15.9,
+   "toB": 34464,
+   "via": {
+    "via": "k_cb2878",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 16.9,
+   "toB": 42432,
+   "via": {
+    "via": "k_cb2878",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 18,
+   "toB": 49646,
+   "via": {
+    "via": "k_cb2878",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 19,
+   "toB": 58153,
+   "via": {
+    "via": "k_cb2878",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 20.1,
+   "toB": 64853,
+   "via": {
+    "via": "k_cb2878",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 21.2,
+   "toB": 72215,
+   "via": {
+    "via": "k_cb2878",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 22.2,
+   "toB": 80838,
+   "via": {
+    "via": "k_cb2878",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 23.3,
+   "toB": 87275,
+   "via": {
+    "via": "k_cb2878",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 24.3,
+   "toB": 90599,
+   "via": {
+    "via": "k_cf62f0",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 25.4,
+   "toB": 90599,
+   "via": {
+    "via": "k_cf62f0",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 26.4,
+   "toB": 90599,
+   "via": {
+    "via": "k_cf62f0",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 27.5,
+   "toB": 90599,
+   "via": {
+    "via": "k_cf62f0",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 28.6,
+   "toB": 90599,
+   "via": {
+    "via": "k_cf62f0",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 29.6,
+   "toB": 90599,
+   "via": {
+    "via": "k_cf62f0",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 30.7,
+   "toB": 90599,
+   "via": {
+    "via": "k_cf62f0",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 31.8,
+   "toB": 90599,
+   "via": {
+    "via": "k_cf62f0",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 32.8,
+   "toB": 90599,
+   "via": {
+    "via": "k_cf62f0",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 33.9,
+   "toB": 90599,
+   "via": {
+    "via": "k_cf62f0",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 34.9,
+   "toB": 90599,
+   "via": {
+    "via": "k_cf62f0",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 36,
+   "toB": 90599,
+   "via": {
+    "via": "k_cf62f0",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 37,
+   "toB": 90599,
+   "via": {
+    "via": "k_cf62f0",
+    "me": "k_9dd102"
+   }
+  },
+  {
+   "t": 38.1,
+   "toB": 90599,
+   "via": {
+    "via": "k_cf62f0",
+    "me": "k_9dd102"
+   }
+  }
+ ],
+ "bState": {
+  "claimVia": [
+   {
+    "rk": "stg:k_cb2878cbf5ab9a40f42dfd9bdb227e97730cf155",
+    "via": "k_cf62f022c4db22bbcf3ca106b5e8837aec1346a6",
+    "sid": "072bb69f-5cdb-4e56-8608-3c90ba7359cb"
+   }
+  ],
+  "standbyVia": [
+   {
+    "rk": "stg:k_cb2878cbf5ab9a40f42dfd9bdb227e97730cf155",
+    "via": "k_cb2878cbf5ab9a40f42dfd9bdb227e97730cf155",
+    "sid": "ff6b167c-09e7-4573-a198-b251f3baf758"
+   }
+  ],
+  "fb": [
+   {
+    "rk": "stg:k_cb2878cbf5ab9a40f42dfd9bdb227e97730cf155",
+    "wakeAt": 0,
+    "prefSince": 0,
+    "lastSwitch": 1792251880010,
+    "dark": false,
+    "lastAdvanceAt": 1792251894721,
+    "lastBytes": 143535,
+    "d0": -1,
+    "stdFdec": -1,
+    "flowSince": 1792251880294,
+    "q": 17,
+    "fp": 0
+   }
+  ],
+  "demand": [
+   "k_cb2878cbf5ab9a40f42dfd9bdb227e97730cf155|stg:k_cb2878cbf5ab9a40f42dfd9bdb227e97730cf155|ff6b167c-09e7-4573-a198-b251f3baf758=i",
+   "k_cf62f022c4db22bbcf3ca106b5e8837aec1346a6|stg:k_cb2878cbf5ab9a40f42dfd9bdb227e97730cf155|072bb69f-5cdb-4e56-8608-3c90ba7359cb=w"
+  ],
+  "cands": [
+   {
+    "key": "stg:k_cb2878cbf5ab9a40f42dfd9bdb227e97730cf155",
+    "from": "k_cb2878",
+    "want": "ff6b167c",
+    "peer": true,
+    "conn": true,
+    "own": "f1c32ed3",
+    "incoming": [
+     "f1c32ed3",
+     "ff6b167c"
+    ],
+    "h": 0,
+    "sb": 1,
+    "at": 1792251893956,
+    "live": true
+   },
+   {
+    "key": "stg:k_cb2878cbf5ab9a40f42dfd9bdb227e97730cf155",
+    "from": "k_cf62f0",
+    "want": "072bb69f",
+    "peer": true,
+    "conn": true,
+    "own": "null",
+    "incoming": [
+     "072bb69f"
+    ],
+    "h": 1,
+    "vp": [
+     "k_cf62f022"
+    ],
+    "at": 1792251891948,
+    "live": true
+   }
+  ]
+ }
+}

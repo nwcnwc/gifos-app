@@ -602,15 +602,15 @@
         33
       ],
       "cover": "/apps/battle-city/cover.jpg",
-      "bytes": 282733,
+      "bytes": 282903,
       "download": 0,
       "provides": null,
       "signature": {
         "type": "domain",
         "id": "gifos.app",
-        "ts": "2026-10-08"
+        "ts": "2026-10-15"
       },
-      "sha256": "11a40adcdf5997d871ad398793e7247a9b900decd01ccb96f597247a221ccc30"
+      "sha256": "16535fbc7d865c82bc89ac5f1a0a7e6f4ba84c69c29862b960863ffe508ba95e"
     },
     {
       "slug": "battleboat",
@@ -4727,6 +4727,46 @@
         "ts": "2026-10-08"
       },
       "sha256": "c756d54d25ade85d9bdfa2aabc9b44e392fcd9b51c966a04d39402683b77a230"
+    },
+    {
+      "slug": "meeting-bot",
+      "appId": "meeting-bot",
+      "name": "Meeting Bot",
+      "shortName": "Meet Bot",
+      "version": "0.9.23",
+      "tagline": "A meeting bot you drive from another device.",
+      "author": {
+        "name": "GifOS",
+        "url": "https://gifos.app"
+      },
+      "minBuild": 2723,
+      "offline": true,
+      "releaseDate": "2026-10-14",
+      "updated": "2026-10-14",
+      "categories": [
+        "Utilities"
+      ],
+      "tags": [
+        "meeting",
+        "bot",
+        "transcript",
+        "recording"
+      ],
+      "accent": [
+        92,
+        160,
+        255
+      ],
+      "cover": "/apps/meeting-bot/cover.jpg",
+      "bytes": 45302,
+      "download": 0,
+      "provides": null,
+      "signature": {
+        "type": "domain",
+        "id": "gifos.app",
+        "ts": "2026-10-19"
+      },
+      "sha256": "4475184afa938fb1032a785c3d9f0b51146b8085374d968fb09da237c4433f56"
     },
     {
       "slug": "memory",
@@ -9188,7 +9228,7 @@
       "appId": "tip-creators",
       "name": "Tip GifOS Creators",
       "shortName": "Tip",
-      "version": "1.0",
+      "version": "1.1",
       "tagline": "Like GifOS? Buy the people who make it a coffee.",
       "author": {
         "name": "GifOS",
@@ -9206,8 +9246,7 @@
         "support",
         "donate",
         "thanks",
-        "paypal",
-        "usdc"
+        "paypal"
       ],
       "accent": [
         255,

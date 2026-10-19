@@ -1,0 +1,34 @@
+PASS lift: const wspCaps = new Map();
+FAIL whisperForTest exposes inFlight, behind, paused, lastLatencyMs and model — whisperForTest: () => ({ engine: ccEngine(), live: !!wsp, ready: whisperReady(), queue: wspQ.items.length, sent: wspQ.sent, dropped: wspQ.dropped, rate: wsp ? wsp.rate : 0, capture
+FAIL the tile chip can say transcription is behind or paused
+FAIL a 4-core device asks Whisper for tiny — base
+FAIL gifos_cc_whisper_model overrides the core count — base
+PASS more than 4 cores ask for base
+PASS the first clip is the only call in flight
+PASS the first answer is written and Whisper stays up
+PASS three queued clips still make one provider call
+PASS the warm budget is the short clip timeout, not the cold download
+STATE after two warm budgets: {"inFlight":2,"maxInFlight":2,"busy":false,"paused":true,"behind":false,"chip":"transcribing","sent":3,"queue":0,"statuses":["Whisper captions stalled — browser captions are on."],"syncs":1,"stops":0}
+FAIL never two provider calls in flight — 2
+FAIL the queue stays busy until the provider answers — {"busy":false,"inFlight":2}
+FAIL slowness does not pause Whisper — true
+FAIL Whisper does not give up while the chip still says transcribing — {"paused":true,"chip":"transcribing"}
+FAIL a slow call is shown as behind, not as plain transcribing — transcribing
+FAIL the status line says transcription is skipping old audio — Whisper captions stalled — browser captions are on.
+FAIL the late answer is still written — ready
+FAIL after that answer still only one call runs at a time — 2
+FAIL later clips are written too — ready
+FAIL Whisper is still not paused once the backlog clears — true
+STATE after hard cap: {"inFlight":1,"maxInFlight":1,"busy":false,"paused":false,"stops":0,"sent":2,"statuses":[]}
+FAIL a dead provider is stopped so the next call can start fresh — 0
+PASS the hard cap does not pause Whisper
+PASS the dead call was not joined by a second one
+FAIL the queue is free after the dead call is released — {"busy":false,"inFlight":1}
+FAIL with no SpeechRecognition, give-up does not start browser captions — 1
+FAIL …and the chip says transcription is paused — transcribing
+FAIL …and the status says transcription is paused — Whisper captions stalled — browser captions are on.
+FAIL a gifos_cc_stt_url receives one POST and no local provider call — {"posts":0,"calls":1}
+FAIL the remote JSON text is written — 
+FAIL the posted body is 16 kHz float PCM
+8 passed, 22 failed
+EXIT:1

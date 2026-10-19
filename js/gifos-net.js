@@ -613,7 +613,22 @@
     // a natural number reads as deeper than any real seat (MAXDEPTH is 12).
     const pcDepth = (pc) => { if (!Number.isInteger(pc) || pc < 0) return 99; let d = 0; while (pc > 0) { pc = parentPath(pc); d++; } return d; };
     const isRoot = (c) => c.pc === 0;
-    const ckey = (c) => c.pc + '_' + c.r + '_' + c.i;                 // Map key (string, not uint64)
+    // Map key (string, not uint64). The same coord is asked for this string
+    // on every beat — intern it. r/i are columns of C (5, and the K-sweep's
+    // small C); anything wider skips the cache and still returns the string.
+    const ckCache = new Map();
+    const ckey = (c) => {
+      if ((c.r | 0) === c.r && (c.i | 0) === c.i && c.r >= 0 && c.r < 256 && c.i >= 0 && c.i < 256 && (c.pc | 0) === c.pc && c.pc >= 0 && c.pc < 0x8000000) {
+        const n = c.pc * 65536 + c.r * 256 + c.i;
+        let s = ckCache.get(n);
+        if (s !== undefined) return s;
+        s = c.pc + '_' + c.r + '_' + c.i;
+        if (ckCache.size > 16384) ckCache.clear();
+        ckCache.set(n, s);
+        return s;
+      }
+      return c.pc + '_' + c.r + '_' + c.i;
+    };
     const unck = (k) => { const p = k.split('_'); return { pc: +p[0], r: +p[1], i: +p[2] }; };
     const eq = (a, b) => a.pc === b.pc && a.r === b.r && a.i === b.i;
     // up: column-0 (head) only, and Section 1 (pc==0) has no up. null if none.
@@ -711,6 +726,7 @@
   // checks it before it parses anything, and a page never sends more.
   const RELAY_ID_RE = /^[A-Za-z0-9_.-]{1,64}$/;          // a peer id (k_ + 40 hex) or a test id
   const RELAY_DEV_RE = /^[A-Za-z0-9_.-]{1,16}$/;         // a device tag
+  const RELAY_ABS_RE = /^(\*|[A-Za-z0-9_.-]{1,16})$/;    // an abstain: a device tag, or '*' (every vote)
   const RELAY_GK_RE = /^[A-Za-z0-9_.-]{1,128}$/;         // a genesis key
   const RELAY_PROOF_RE = /^[\x21-\x7e]{0,64}$/;          // a password proof (printable, no spaces)
   const RELAY_SIG_RE = /^[A-Za-z0-9+/]{86}==$/;          // an Ed25519 signature, base64
@@ -723,8 +739,13 @@
     setpw: { pw: { str: 64, re: RELAY_PROOF_RE }, w: { obj: RELAY_ORDER, opt: 1 } },
     ban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
     unban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
-    votekick: { devs: { list: 24, item: { str: 16, re: RELAY_DEV_RE } } },
+    votekick: { devs: { list: 24, item: { str: 16, re: RELAY_DEV_RE } }, abs: { list: 24, item: { str: 16, re: RELAY_ABS_RE }, opt: 1 } },
     banlist: { devs: { list: 20, item: { obj: { d: { str: 16, re: RELAY_DEV_RE } } } }, w: { obj: RELAY_ORDER } },
+    // Waiting room (relay-admit.js). Admin-signed. `on` is '1' or '0'.
+    // `id` is the knocker the admin is admitting or turning away.
+    waitroom: { on: { str: 1, re: /^[01]$/ }, w: { obj: RELAY_ORDER } },
+    admit: { id: { str: 64, re: RELAY_ID_RE }, w: { obj: RELAY_ORDER } },
+    deny: { id: { str: 64, re: RELAY_ID_RE }, w: { obj: RELAY_ORDER } },
   };
   function sealedOk(m) {
     if (!m || typeof m !== 'object' || Array.isArray(m) || m.e !== 1 || typeof m.iv !== 'string' || typeof m.ct !== 'string') return false;

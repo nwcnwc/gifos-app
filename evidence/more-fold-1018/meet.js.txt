@@ -1,0 +1,28 @@
+---
+pid: 3602071
+cwd: "/home/nathan/rel23-gate-1017/wt/more-fold"
+command: "cd /home/nathan/rel23-gate-1017/gifos && node test/swarm/meet.js --base http://127.0.0.1:9017 --relay ws://127.0.0.1:9018 --room morefold-seat-1018 --name Pat --profile phone --script \"sleep 18; state; eval ({collapsed:document.querySelector('.bar').classList.contains('collapsed'), expanded:document.getElementById('bartoggle').getAttribute('aria-expanded'), stored:localStorage.getItem('gifos_meet_bar'), open:getComputedStyle(document.getElementById('barmore')).display, debug:typeof window.__gifosVideo.debugDump}); shot /home/nathan/rel23-gate-1017/wt/more-fold/evidence/more-fold-1018/meet-phone.png\""
+title: "Join DEBUG phone meeting with meet.js"
+status: failed   
+started_at: 2026-10-19T06:22:37.942Z
+running_for_ms: 19560    
+---
+[meet] joining http://127.0.0.1:9017/run.html#v=morefold-seat-1018&relay=ws%3A%2F%2F127.0.0.1%3A9018&DEBUG=on as "Pat" [chromium] (observer)
+[meet] seated at 0/0.0
+[meet] sleep 18s
+[meet] > state
+  me Pat @ 0/0.0  links=0 occ=1
+  inMeeting=1 participants=1  video=0/0  consent=true  ghosts=0 dups=0
+  grid(Channel R)=1/1 shown  composites: section=false stadium=false stage=false
+  net: relay-sig=9  dc-sig=2  sponsor-fwd=0  relay-status=0 dc-status=3
+[meet] > eval ({collapsed:document.querySelector('.bar').classList.contains('collapsed'), expanded:document.getElementById('bartoggle').getAttribute('aria-expanded'), stored:localStorage.getItem('gifos_meet_bar'), open:getComputedStyle(document.getElementById('barmore')).display, debug:typeof window.__gifosVideo.debugDump})
+  @@eval {"collapsed":true,"expanded":"false","stored":"1","open":"none","debug":"function"}
+[meet] > shot /home/nathan/rel23-gate-1017/wt/more-fold/evidence/more-fold-1018/meet-phone.png
+  screenshot (whole window, 1064px tall) → /home/nathan/rel23-gate-1017/wt/more-fold/evidence/more-fold-1018/meet-phone.png
+[meet] browser died unexpectedly — exiting so the supervisor respawns
+
+---
+exit_code: 1
+elapsed_ms: 19560
+ended_at: 2026-10-19T06:22:57.502Z
+---

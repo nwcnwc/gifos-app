@@ -622,6 +622,33 @@
 
     // Per-browser identity, shared by every app on this origin (this "computer").
     // Deliberately NOT namespaced: a booted image is still being driven by you.
+    // The picture lives in gifos_avatar, beside gifos_name. The parsed value is
+    // cached: identity().name is on the meeting's hot path and must not re-parse
+    // a 256KB GIF on every tile paint. Listeners hear same-tab writes here;
+    // other tabs hear them through the storage event below.
+    const AVATAR_MIMES = ['image/gif', 'image/png', 'image/jpeg', 'image/webp'];
+    const AVATAR_B64_MAX = 349528; // base64 of 256KB
+    let avatarCacheOn = false, avatarCacheRaw = null, avatarCacheVal = null;
+    const identListeners = [];
+    function readAvatar() {
+      let raw = null;
+      try { raw = localStorage.getItem('gifos_avatar'); } catch (e) {}
+      if (avatarCacheOn && raw === avatarCacheRaw) return avatarCacheVal;
+      avatarCacheOn = true;
+      avatarCacheRaw = raw;
+      avatarCacheVal = null;
+      if (!raw) return null;
+      try {
+        const o = JSON.parse(raw);
+        if (!o || AVATAR_MIMES.indexOf(o.mime) < 0 || typeof o.b64 !== 'string' || o.b64.length > AVATAR_B64_MAX || !/^[0-9a-f]{64}$/.test(o.hash || '')) return null;
+        avatarCacheVal = { mime: o.mime, hash: o.hash, url: 'data:' + o.mime + ';base64,' + o.b64 };
+      } catch (e) { avatarCacheVal = null; }
+      return avatarCacheVal;
+    }
+    function notifyIdentity(idn) {
+      const cur = idn || store.identity();
+      for (let i = 0; i < identListeners.length; i++) { try { identListeners[i](cur); } catch (e) {} }
+    }
     store.identity = function () {
       let id = '', name = '';
       try {
@@ -629,13 +656,50 @@
         if (!id) { id = uid('user'); localStorage.setItem('gifos_uid', id); }
         name = localStorage.getItem('gifos_name') || '';
       } catch (e) { if (!id) id = 'user_anon'; }
-      return { id, name };
+      const a = readAvatar();
+      return { id, name, avatar: a ? { mime: a.mime, hash: a.hash, url: a.url } : null };
     };
     store.setName = function (name) {
       const n = String(name || '').trim().slice(0, 40);
       try { if (n) localStorage.setItem('gifos_name', n); else localStorage.removeItem('gifos_name'); } catch (e) {}
-      return store.identity();
+      const idn = store.identity();
+      notifyIdentity(idn);
+      return idn;
     };
+    // rec is null to clear, or { mime, hash, b64 } already checked by gifos-avatar.js.
+    // A bad or oversized record is ignored so a caller cannot plant a huge string.
+    store.setAvatar = function (rec) {
+      try {
+        if (!rec || !rec.b64) localStorage.removeItem('gifos_avatar');
+        else {
+          const b64 = String(rec.b64);
+          const mime = String(rec.mime || '');
+          const hash = String(rec.hash || '');
+          if (AVATAR_MIMES.indexOf(mime) < 0 || b64.length > AVATAR_B64_MAX || !/^[0-9a-f]{64}$/.test(hash)) return store.identity();
+          localStorage.setItem('gifos_avatar', JSON.stringify({ mime: mime, hash: hash, b64: b64 }));
+        }
+      } catch (e) { return store.identity(); }
+      avatarCacheOn = false;
+      const idn = store.identity();
+      notifyIdentity(idn);
+      return idn;
+    };
+    store.onIdentity = function (cb) {
+      if (typeof cb !== 'function') return function () {};
+      identListeners.push(cb);
+      return function () {
+        const i = identListeners.indexOf(cb);
+        if (i >= 0) identListeners.splice(i, 1);
+      };
+    };
+    if (root.addEventListener) {
+      root.addEventListener('storage', function (e) {
+        if (!e || e.key == null || e.key === 'gifos_name' || e.key === 'gifos_avatar') {
+          avatarCacheOn = false;
+          notifyIdentity();
+        }
+      });
+    }
 
     store.namespace = makeStore;
     return store;

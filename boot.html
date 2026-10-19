@@ -41,13 +41,27 @@ window.GIFOS_VERSION = 'edge';
     // into the hash it builds (/meet/<room>?edge -> /run.html#v=<room>&edge),
     // so a channel flag must be honored from either place.
     function has(k) { return !!(q && q.has(k)) || new RegExp('[#&]' + k + '(&|=|$)').test(hash); }
+    // A LINK NEVER ATTACHES ANYONE. Everybody runs the latest release; the edge
+    // build and older releases are for testers, chosen only in Settings →
+    // Updates → Advanced / testing, behind a confirm. So ?edge stores nothing
+    // here: it rides along in the address, and the Home Screen may at most open
+    // that confirm. ?stable / ?unpin / ?latest still go back to latest.
     var cleared = false;
     try {
-      if (has('edge')) { localStorage.setItem('gifos_channel', 'edge'); localStorage.removeItem('gifos_pin'); }
-      if (has('stable') || has('unpin') || has('latest')) { localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin'); cleared = true; }
+      if (has('stable') || has('unpin') || has('latest')) { localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_pin_until'); cleared = true; }
     } catch (e) {}
-    var pin = null, chan = null, cur = null;
-    try { pin = localStorage.getItem('gifos_pin'); chan = localStorage.getItem('gifos_channel'); cur = localStorage.getItem('gifos_current'); } catch (e) {}
+    var pin = null, chan = null, cur = null, until = null;
+    try { pin = localStorage.getItem('gifos_pin'); chan = localStorage.getItem('gifos_channel'); cur = localStorage.getItem('gifos_current'); until = localStorage.getItem('gifos_pin_until'); } catch (e) {}
+    // gifos_pin_until is only the confirm's receipt. Any stored value means
+    // this computer chose the pin on purpose, and the pin stays. The value
+    // is never an end. A choice with no record predates the confirm (a stray
+    // ?edge link could have made it), so on gifos.app it is reset once
+    // (RESET_UNCONFIRMED). The Home Screen says so once.
+    var RESET_UNCONFIRMED = true;
+    if ((pin || chan === 'edge') && until === null && RESET_UNCONFIRMED && /(^|\.)gifos\.app$/.test(location.hostname)) {
+      try { localStorage.setItem('gifos_pin_ended', 'reset:' + (pin || 'edge')); localStorage.removeItem('gifos_pin'); localStorage.removeItem('gifos_channel'); localStorage.removeItem('gifos_pin_until'); } catch (e) {}
+      pin = null; chan = null;
+    }
     var stay = cleared ? { clear: true } : null;
     // A PRETTY router path (/meet/<room>, /join/<code>[/…]) is NOT a
     // file — Pages 404s it and 404.html routes it to a real page. If we ever run at
@@ -68,9 +82,10 @@ window.GIFOS_VERSION = 'edge';
     var pm = pathname.match(/^\/(?:join|meet|cast)\/([a-zA-Z0-9-]{1,64})(?:\/([a-fA-F0-9]{16,64})(?:\/([a-zA-Z0-9]{1,64}))?)?\/?$/);
     var here;
     if (pm) {
+      var extra = search ? '&' + search.replace(/^\?/, '') : '';
       here = /^\/(?:meet|cast)\//.test(pathname)
-        ? '/run.html#v=' + pm[1] + (pm[2] ? '&av=' + pm[2].toLowerCase() : '') + (/^\/cast\//.test(pathname) ? '&bc=1' : '')
-        : '/run.html#' + (pm[2] && pm[3] ? 's=' + pm[1] + '.' + pm[2].toLowerCase() + '&k=' + pm[3] : 'j=' + pm[1]);
+        ? '/run.html#v=' + pm[1] + (pm[2] ? '&av=' + pm[2].toLowerCase() : '') + (/^\/cast\//.test(pathname) ? '&bc=1' : '') + extra
+        : '/run.html#' + (pm[2] && pm[3] ? 's=' + pm[1] + '.' + pm[2].toLowerCase() + '&k=' + pm[3] : 'j=' + pm[1]) + extra;
     } else {
       // Carry the page + invite hash across (snapshots ship run.html too —
       // flag day above) AND THE QUERY. The query used to be dropped here,
@@ -157,9 +172,10 @@ window.GIFOS_VERSION = 'edge';
     <button id="vm-reboot" title="Wipe this booted computer's changes and re-hydrate it from the image bytes">Reboot fresh</button>
   </div>
   <div class="update-bar" id="update-bar" style="display:none">
-    <span id="update-msg"></span>
-    <button id="update-action">Reload</button>
-    <button class="dismiss" id="update-dismiss" title="Dismiss">✕</button>
+    <span id="update-msg">A new version of GifOS is available.</span>
+    <button id="update-more" class="more" type="button">What’s new</button>
+    <button id="update-action" type="button">Update now</button>
+    <button class="dismiss" id="update-dismiss" type="button" title="Dismiss" aria-label="Dismiss">✕</button>
   </div>
   <div class="menubar">
     <button class="brand-btn" id="sys-menu-btn"><span class="brand">GifOS</span><span class="caret">▾</span></button>

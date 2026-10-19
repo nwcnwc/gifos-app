@@ -1,0 +1,222 @@
+
+Running 30 tests using 1 worker
+
+
+(node:3536812) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1/30] [chromium] › test/desktop/alone-invite.spec.js:17:1 › alone, Invite copies the link in one click and leaves when someone else is here
+[2/30] [chromium] › test/desktop/alone-invite.spec.js:60:3 › German alone invite › the alone button says Einladen
+[3/30] [chromium] › test/desktop/invite-slot.spec.js:64:3 › laptop: the owner reopens Invite in the app room, and it is the same link
+[4/30] [chromium] › test/desktop/invite-slot.spec.js:92:3 › laptop: a guest in an app room has no Invite
+[5/30] [chromium] › test/desktop/invite-slot.spec.js:110:3 › laptop: an app inside a meeting offers only the meeting's Invite and never mints a room
+[6/30] [chromium] › test/desktop/invite-slot.spec.js:64:3 › phone: the owner reopens Invite in the app room, and it is the same link
+[7/30] [chromium] › test/desktop/invite-slot.spec.js:92:3 › phone: a guest in an app room has no Invite
+[8/30] [chromium] › test/desktop/invite-slot.spec.js:110:3 › phone: an app inside a meeting offers only the meeting's Invite and never mints a room
+[9/30] [chromium] › test/desktop/invite-slot.spec.js:130:1 › laptop: app-room owner Invite survives reload
+[10/30] [chromium] › test/desktop/more-groups.spec.js:46:1 › More shows every group, in meeting order, on one sheet
+[11/30] [chromium] › test/desktop/more-groups.spec.js:65:1 › a phone gets the same groups, with the dock buttons in theirs
+[12/30] [chromium] › test/desktop/more-groups.spec.js:102:1 › the More sheet fits a 1280x720 screen for a guest
+[13/30] [chromium] › test/desktop/more-groups.spec.js:111:3 › German › the More sheet fits a 1280x720 screen in German
+[14/30] [chromium] › test/desktop/more-groups.spec.js:118:1 › the More sheet fits a 1280x720 screen for a host
+[15/30] [chromium] › test/desktop/os-header.spec.js:59:3 › Help and Full screen are the same OS header buttons in a solo app, an app room and Meet at 1280
+[16/30] [chromium] › test/desktop/os-header.spec.js:59:3 › Help and Full screen are the same OS header buttons in a solo app, an app room and Meet at 390
+[17/30] [chromium] › test/desktop/os-header.spec.js:121:1 › Help in a meeting opens the meeting's own help, and Alt+/ does too
+  1) [chromium] › test/desktop/os-header.spec.js:121:1 › Help in a meeting opens the meeting's own help, and Alt+/ does too 
+
+    Error: page.click: Target page, context or browser has been closed
+    Browser logs:
+
+    [pid=3536823][err] [1018/222838.798574:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222839.378879:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222839.381362:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222839.381371:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222839.427919:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222839.437757:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222839.437827:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222839.553928:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222839.896403:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222839.899202:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222839.899212:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222839.955811:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222839.960143:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222839.960249:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222840.128066:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222840.128390:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222840.157292:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222840.157378:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222840.259859:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222840.574961:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222840.577322:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222840.577332:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222840.594616:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222840.614540:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222840.614702:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222840.640091:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222840.643656:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222840.803145:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222840.803169:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222840.808351:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222840.808509:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222840.815053:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222840.815237:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222841.267699:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222841.270237:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222841.270245:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222841.317922:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222841.328538:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222841.328987:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222841.444767:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222841.767468:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222841.769930:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222841.769940:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222841.826863:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222841.832340:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222841.832389:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222842.005329:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222842.005829:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222842.028732:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222842.028831:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222842.126681:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222842.468350:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222842.470734:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222842.470742:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222842.487538:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222842.508611:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222842.508688:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222842.529844:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222842.530044:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222842.667259:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222842.667295:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222842.829234:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222842.831508:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222842.831516:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222842.869303:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222842.872516:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222842.872721:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222842.891178:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222842.891559:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222842.903598:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222842.903762:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222843.222659:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222843.225130:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222843.225139:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222843.315013:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222843.315289:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222843.737983:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222843.740274:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222843.740283:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222843.824598:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222843.824632:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222844.231179:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222844.233982:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222844.233993:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222844.316204:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222844.316491:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222845.074612:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222845.077241:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222845.077251:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222845.163107:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222845.163138:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222845.915935:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222845.918622:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222845.918633:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222846.542978:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222846.545046:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222846.545057:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222846.614865:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222846.615212:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222847.094144:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222847.425197:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222847.427367:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222847.427376:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222847.443729:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222847.468582:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222847.468690:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222847.490570:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222847.490750:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222847.671920:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222847.671945:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222847.678647:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': Access is denied for this document.", source:  (6)
+    [pid=3536823][err] [1018/222847.838014:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222847.840317:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222847.840327:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222847.891167:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222847.894753:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222847.894773:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222847.940719:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222847.941101:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222847.953181:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222847.953334:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222848.126015:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222848.451749:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222848.454468:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222848.454477:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222848.470704:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222848.497889:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222848.498068:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222848.519233:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222848.519357:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222848.705105:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222848.705127:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222848.709782:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': Access is denied for this document.", source:  (6)
+    [pid=3536823][err] [1018/222848.867809:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222848.870069:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222848.870079:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222848.923281:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222848.927633:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222848.927934:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222848.968157:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222848.968521:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222848.982186:INFO:CONSOLE:3] "Uncaught SecurityError: Failed to read the 'serviceWorker' property from 'Navigator': Service worker is disabled because the context is sandboxed and lacks the 'allow-same-origin' flag.", source:  (3)
+    [pid=3536823][err] [1018/222848.982360:INFO:CONSOLE:6] "Uncaught SecurityError: Failed to read the 'localStorage' property from 'Window': The document is sandboxed and lacks the 'allow-same-origin' flag.", source:  (6)
+    [pid=3536823][err] [1018/222849.353073:INFO:third_party/blink/renderer/modules/peerconnection/peer_connection_dependency_factory.cc:941] Running WebRTC with a combined Network and Worker thread.
+    [pid=3536823][err] [1018/222849.355761:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222849.355771:ERROR:content/public/browser/web_contents_delegate.cc:310] WebContentsDelegate::CheckMediaAccessPermission: Not supported.
+    [pid=3536823][err] [1018/222849.417327:INFO:CONSOLE:3] "Service Worker registration blocked by Playwright", source:  (3)
+    [pid=3536823][err] [1018/222849.436807:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222849.436825:INFO:services/network/p2p/socket_udp.cc:618] sendto() has failed twice returning a  transient error net::ERR_ADDRESS_UNREACHABLE. Dropping the packet.
+    [pid=3536823][err] [1018/222849.514913:FATAL:components/services/font_data/font_data_service_impl.cc:379] Check failed: . : Disk quota exceeded (122)
+    Call log:
+      - waiting for locator('#apphelp')
+        - locator resolved to <button id="apphelp" data-t="help" aria-keyshortcuts="Alt+/" title="How this small group works">Help</button>
+      - attempting click action
+        - waiting for element to be visible, enabled and stable
+        - element is visible, enabled and stable
+        - scrolling into view if needed
+        - done scrolling
+        - performing click action
+
+
+      121 | test('Help in a meeting opens the meeting\'s own help, and Alt+/ does too', async ({ page }) => {
+      122 |   await meet(page, 1280, 720);
+    > 123 |   await page.click('#apphelp');
+          |              ^
+      124 |   await expect(page.locator('#help-modal')).toBeVisible();
+      125 |   await expect(page.locator('#apphelp-modal')).toBeHidden();
+      126 |   await page.click('#help-close');
+        at /home/nathan/rel23-gate-1017/wt/hdr-invite/test/desktop/os-header.spec.js:123:14
+
+    Error Context: test-results/os-header-Help-in-a-meetin-97381-s-own-help-and-Alt-does-too-chromium/error-context.md
+
+
+
+(node:3538702) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[18/30] [chromium] › test/desktop/os-header.spec.js:137:3 › the meeting header auto-hides over the call and waking it moves no face at 1280x720
+[19/30] [chromium] › test/desktop/os-header.spec.js:137:3 › the meeting header auto-hides over the call and waking it moves no face at 390x844
+[20/30] [chromium] › test/desktop/os-header.spec.js:137:3 › the meeting header auto-hides over the call and waking it moves no face at 844x390
+[21/30] [chromium] › test/desktop/os-header.spec.js:158:1 › iPhone: Full screen opens the in-page view when the browser has none
+[22/30] [chromium] › test/desktop/pw-inv-locale.spec.js:36:3 › German password and invite › Password and Invite follow a German device
+[23/30] [chromium] › test/desktop/pw-inv-locale.spec.js:91:3 › Spanish password and invite › Password and Invite follow a Spanish device
+[24/30] [chromium] › test/desktop/shortcuts.spec.js:25:1 › alt shortcuts run the dock and skip the keys while typing
+[25/30] [chromium] › test/desktop/shortcuts.spec.js:110:1 › the rest of More has a key
+[26/30] [chromium] › test/desktop/shortcuts.spec.js:144:3 › German shortcuts › the share key is named in German
+[27/30] [chromium] › test/desktop/shortcuts.spec.js:167:3 › Spanish shortcuts › the invite key is named in Spanish
+[28/30] [chromium] › test/desktop/shortcuts.spec.js:192:1 › a host blurs guests, turns guest video off, and allows shares by key
+[29/30] [chromium] › test/desktop/shortcuts.spec.js:234:1 › a guest does not see or fire the host keys
+[30/30] [chromium] › test/desktop/shortcuts.spec.js:252:1 › a host mutes every guest by key, and lifts it
+  1 failed
+    [chromium] › test/desktop/os-header.spec.js:121:1 › Help in a meeting opens the meeting's own help, and Alt+/ does too 
+  29 passed (30.2s)

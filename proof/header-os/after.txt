@@ -1,0 +1,12 @@
+Chromium, http://127.0.0.1:8924 serving this tree, 2026-10-18:
+  invite-slot.spec.js: 6 passed (4.4s)
+    Owner reopens the same app-room link on laptop and phone.
+    Guest, with the status line kind "alone" and Talk on, has no Invite.
+    An app inside a meeting opens the meeting's invite sheet and does not mint a room.
+  os-header.spec.js: 7 passed, inside the 13-test run below (14.4s)
+    Help and Full screen match across solo, app room, and Meet at 1280 and 390.
+    Meeting Help opens the meeting's own help; Alt+/ does too.
+    The header auto-hides and waking it moves no face at 1280x720, 390x844, and 844x390.
+    iPhone path: with element fullscreen disabled, #appfull opens the in-page view and Close leaves it. This is Chromium with fullscreen forced off, not a physical iPhone.
+  app-bar.spec.js: 6 passed in that same 13-test run. Invite words still read, and the test no longer forces #appinvite visible.
+Logs: evidence/header-os/invite-after.txt, evidence/header-os/os-header-appbar-after.txt

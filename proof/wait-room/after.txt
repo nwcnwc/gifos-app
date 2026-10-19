@@ -1,0 +1,22 @@
+PASS unseated while waiting — no HOME roster on WHOHOME
+PASS unseated while waiting — answerDoor sends nothing
+PASS unseated while waiting — knocker state stays at the door
+PASS open door still answers WHOHOME
+PASS relay admission module is loaded
+PASS wire asks the admit door before seating
+PASS page loads the admit door
+PASS password required to enter the waiting room
+PASS wrong password does not restart the room
+PASS admit token required
+PASS waiting knocker gets no roster, media, or chat
+PASS admit issues one token to that knocker
+PASS token is bound to that knocker
+PASS right token seats that knocker
+PASS token is single-use
+PASS deny leaves them unseated
+PASS only an admin toggles the waiting room
+PASS client stays unseated on a wait frame
+PASS client does not mint while the door is holding
+PASS client does not mint after a bad password
+20 passed, 0 failed
+EXIT:0

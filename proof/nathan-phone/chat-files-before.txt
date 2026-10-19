@@ -1,0 +1,2 @@
+FAIL empty files tray is showing ("Files pinned to this meeting 🔒 Set a room password (the Password button) to sha"); empty copy is on screen
+{"empty":{"text":"Files pinned to this meeting 🔒 Set a room password (the Password button) to share files here. Files are off in open rooms.","shown":true,"gap":79,"logH":278},"pinned":null}

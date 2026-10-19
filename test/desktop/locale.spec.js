@@ -1,0 +1,142 @@
+const { test, expect } = require('@playwright/test');
+
+async function openJoin(page) {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.addInitScript(() => { localStorage.setItem('gifos_name', 'Avery Chen'); });
+  await page.goto('/run.html#v=qalang&debug=on', { waitUntil: 'domcontentloaded' });
+  await expect(page.locator('#appear-modal')).toBeVisible();
+}
+
+test.describe('German', () => {
+  test.use({ locale: 'de-DE' });
+  test('join card and dock follow German', async ({ page }) => {
+    await openJoin(page);
+    await expect(page.locator('#appear-title')).toHaveText('So sehen Sie aus');
+    await expect(page.locator('#nmok')).toHaveText('Speichern');
+    await expect(page.locator('#nmcancel')).toHaveText('Leeren');
+    await page.click('#nmok');
+    await expect(page.locator('#mic .dockword')).toHaveText('Ton an');
+    await expect(page.locator('#reactbtn .dockword')).toHaveText('Reaktionen');
+    await expect(page.locator('#cam .dockword')).toHaveText('Kamera');
+    await expect(page.locator('#leavebtn .dockword')).toHaveText('Ende');
+    await expect(page.locator('#bartoggle .dockword')).toHaveText('Mehr');
+    await page.click('#bartoggle');
+    await expect(page.locator('#hand')).toHaveText('Hand');
+    await expect(page.locator('#barmore .moregroup h4').first()).toHaveText('Leute');
+    await expect(page.locator('#barmore .moregroup[data-group="talk"] h4')).toHaveText('Gespräch');
+    await expect(page.locator('#barmore .moregroup[data-group="video"] h4')).toHaveText('Ihr Video');
+    await expect(page.locator('#barmore .moregroup[data-group="setup"] h4')).toHaveText('Einstellungen und Hilfe');
+    await expect(page.locator('#whobtn')).toHaveText('Wer');
+    await expect(page.locator('#votebtn')).toHaveText('Abstimmung');
+    await expect(page.locator('#setbtn')).toHaveText('Einstellungen');
+    await expect(page.locator('#apphelp')).toHaveText('Hilfe');
+    await expect(page.locator('#sharebtn')).toHaveText('Bildschirm');
+    const overflow = await page.evaluate(() => {
+      const bad = [];
+      document.querySelectorAll('#barmore .morerow > button, #barmore .blurlbl, #barmore .seg').forEach((b) => {
+        if (getComputedStyle(b).display === 'none') return;
+        if (b.scrollWidth > b.clientWidth + 2) bad.push((b.id || b.className) + ' ' + b.textContent);
+      });
+      return bad;
+    });
+    expect(overflow).toEqual([]);
+    const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4, connected: false }));
+    expect(seeded && seeded.ok).toBe(true);
+    await expect(page.locator('#statuscount')).toHaveText('5 im Meeting');
+    await expect(page.locator('#statusrest')).toContainText('Gesichter weich bis zum Passwort');
+    await expect(page.locator('#statusrest')).not.toContainText('Passwort für klares Video');
+    await expect(page.locator('#statusrest')).not.toContainText('reconnecting');
+    expect(await page.evaluate(() => document.getElementById('statusrest').scrollWidth <= document.getElementById('statusrest').clientWidth + 1)).toBe(true);
+    expect(await page.locator('html').getAttribute('lang')).toBe('de');
+  });
+});
+
+test.describe('Spanish', () => {
+  test.use({ locale: 'es-MX' });
+  test('join card and dock follow Spanish', async ({ page }) => {
+    await openJoin(page);
+    await expect(page.locator('#appear-title')).toHaveText('Así te verán');
+    await expect(page.locator('#nmok')).toHaveText('Guardar');
+    await expect(page.locator('#nmcancel')).toHaveText('Limpiar');
+    await page.click('#nmok');
+    await expect(page.locator('#mic .dockword')).toHaveText('Activar');
+    await expect(page.locator('#reactbtn .dockword')).toHaveText('Reacciones');
+    await expect(page.locator('#cam .dockword')).toHaveText('Cámara');
+    await expect(page.locator('#bartoggle .dockword')).toHaveText('Más');
+    await page.click('#bartoggle');
+    await expect(page.locator('#barmore .moregroup[data-group="talk"] h4')).toHaveText('Conversación');
+    await expect(page.locator('#barmore .moregroup[data-group="video"] h4')).toHaveText('Tu video');
+    await expect(page.locator('#barmore .moregroup[data-group="setup"] h4')).toHaveText('Ajustes y ayuda');
+    await expect(page.locator('#whobtn')).toHaveText('Quién');
+    await expect(page.locator('#pwbtn')).toHaveText('Contraseña');
+    await expect(page.locator('#setbtn')).toHaveText('Ajustes');
+    await expect(page.locator('#sharebtn')).toHaveText('Pantalla');
+    const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4, connected: false }));
+    expect(seeded && seeded.ok).toBe(true);
+    await expect(page.locator('#statuscount')).toHaveText('5 en la reunión');
+    await expect(page.locator('#statusrest')).toContainText('caras suaves hasta una contraseña');
+    await expect(page.locator('#statusrest')).not.toContainText('video nítido');
+    await expect(page.locator('#statusrest')).not.toContainText('reconnecting');
+    expect(await page.evaluate(() => document.getElementById('statusrest').scrollWidth <= document.getElementById('statusrest').clientWidth + 1)).toBe(true);
+    expect(await page.locator('html').getAttribute('lang')).toBe('es');
+  });
+});
+
+test('the in-call line talks about faces', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 720 });
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.setItem('gifos_appeared', '1');
+  });
+  await page.goto('/run.html#v=qawarm&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#statuscount', { state: 'visible' });
+  await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4, connected: false }));
+  await expect(page.locator('#statusrest')).toContainText('faces stay soft until a password');
+  await expect(page.locator('#statusrest')).not.toContainText('unlocks clear video');
+  await expect(page.locator('#statusrest')).not.toContainText('reconnecting');
+  expect(await page.evaluate(() => document.getElementById('statusrest').scrollWidth <= document.getElementById('statusrest').clientWidth + 1)).toBe(true);
+});
+
+// A face's own words (its tip, its spoken name, its chips, "(you)") follow the
+// page's language, like the dock: an English "Full screen" tip and "hand
+// raised" chip on a German face is a mixed screen for the people it serves.
+const FACE_WORDS = {
+  'de-DE': { you: '(Sie)', full: 'Vollbild', controls: 'Steuerung für diese Person.', hand: '✋ Hand gehoben', muted: 'Stumm', camOff: 'Kamera aus' },
+  'es-MX': { you: '(tú)', full: 'Pantalla completa', controls: 'Controles para esta persona.', hand: '✋ mano levantada', muted: 'En silencio', camOff: 'Cámara apagada' },
+};
+for (const [locale, want] of Object.entries(FACE_WORDS)) {
+  test.describe('face words ' + locale, () => {
+    test.use({ locale });
+    test('a face says its tip, its name line, and its chips in ' + locale, async ({ page }) => {
+      await openJoin(page);
+      await page.click('#nmok');
+      const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 3, connected: false }));
+      expect(seeded && seeded.ok).toBe(true);
+      await page.waitForFunction(() => document.querySelectorAll('#feed .tile:not(.me)').length >= 3);
+      // My own raised hand is the sure chip (a seeded peer's can be repainted away).
+      await page.evaluate(() => window.__gifosVideo.raiseHand(true));
+      await page.waitForFunction(() => [...document.querySelectorAll('#feed .tile .chips span')].some((s) => s.textContent.indexOf('✋') === 0));
+      const got = await page.evaluate(() => {
+        const me = document.querySelector('#feed .tile.me');
+        const others = [...document.querySelectorAll('#feed .tile:not(.me)')];
+        const titles = (t) => [...t.querySelectorAll('.chips .ico')].map((e) => e.getAttribute('aria-label'));
+        return {
+          meName: me.querySelector('.name').textContent,
+          meChips: titles(me),
+          fullTips: [...document.querySelectorAll('#appfull')].map((b) => b.title + '|' + b.getAttribute('aria-label')),
+          tileLabels: others.map((t) => t.getAttribute('aria-label')),
+          hands: [...document.querySelectorAll('#feed .tile .chips span')].map((s) => s.textContent).filter((s) => s.indexOf('✋') === 0),
+        };
+      });
+      await page.screenshot({ path: 'test/desktop/shots/face-lang-' + locale.slice(0, 2) + '-1280.png' });
+      expect(got.meName).toBe('Avery Chen ' + want.you);
+      expect(got.meChips).toEqual([want.muted, want.camOff]);
+      expect(got.fullTips.length).toBe(1);
+      for (const t of got.fullTips) expect(t).toBe(want.full + '|' + want.full);
+      for (const l of got.tileLabels) expect(l).toMatch(/^\S.*\. /);
+      expect(got.tileLabels.map((l) => l.slice(l.indexOf('. ') + 2))).toEqual(got.tileLabels.map(() => want.controls));
+      expect(got.hands.length).toBeGreaterThanOrEqual(1);
+      expect(got.hands).toEqual(got.hands.map(() => want.hand));
+    });
+  });
+}

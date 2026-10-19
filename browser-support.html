@@ -296,5 +296,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <a href="https://github.com/nwcnwc/gifos-app">source on GitHub</a> ·
   <a href="https://github.com/nwcnwc/gifos-app/issues/new">report a problem</a>. Contact: support@gifos.app.</p>
 </nav>
+<!-- A newer GifOS release: the same header bar and Update as every page
+     (js/gifos-update.js). A page served from the site root names the release
+     that was live when it loaded; a later one is news. -->
+<script src="js/gifos-update.js"></script>
+<script>if (window.GifOS && GifOS.update) GifOS.update.watch({ root: true });</script>
 </body>
 </html>
