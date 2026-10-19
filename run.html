@@ -30844,12 +30844,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         if (!document.body.classList.contains('chrome-away')) armChrome();
       }
+      // Waking on pointerdown reflows the header before pointerup. The click
+      // is then aimed at .topchip (the gap the count button just left), so a
+      // tap on the status chip never reaches it and the sheet stays shut.
+      // Wake from the click instead: the target is already the control.
+      let wakeOnClick = false;
       document.addEventListener('pointerdown', (e) => {
         if (!callOpen() || !phoneCall()) return;
         if (!document.body.classList.contains('chrome-away')) return;
         const t = e.target;
         if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin')) {
-          showChrome();
+          wakeOnClick = true;
           return;
         }
         swallowClick = true;
@@ -30857,6 +30862,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
       }, true);
       document.addEventListener('click', (e) => {
+        if (wakeOnClick) { wakeOnClick = false; showChrome(); }
         if (!swallowClick) return;
         swallowClick = false;
         try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
