@@ -10034,36 +10034,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}
         let bottom = 0, holdBottom = 0;
         try {
-          // Tucked chrome is off the call. Measuring the sliding dock would
-          // keep the empty band, so a quiet call uses only the home indicator.
+          // The band the dock and Record/Captions take when they are shown,
+          // from where they REST (a fixed box's offsetTop skips the tuck's
+          // slide), on every layout. A sideways stage is that band whether
+          // the controls are up or tucked: one short row fills it, a share
+          // stays in it, and a wake does not resize a tile or cover the
+          // bottom row. Remembering the band from the last time the controls
+          // were up at this exact size made the first wake after a float or
+          // a share move every tile (Moto g24, 2026-10-19).
           const away = document.body.classList.contains('chrome-away');
           const safeEl = document.getElementById('gifos-safe-b');
           const safe = (safeEl && safeEl.offsetHeight) || 0;
-          let rowN = 0;
-          for (let i = 0; i < tiles.length; i++) if (!tiles[i].stage && !tiles[i].share) rowN++;
-          const bandH = vhNow - (topInset > 0 ? topInset : 64) - safe;
-          // Sideways, face size comes from how many people are here and
-          // whether a share is up, not from the dock. One row as tall as the
-          // stage fits beside itself (you and one other): it fills the stage,
-          // the dock wakes over it, and a tuck does not resize it or leave a
-          // black band. A second row stays in the band above the dock. A
-          // share stays there too (floor stays 0). 4px is the phone row gap.
-          const fillHeight = shortLand && !sgsOn && !appOn && rowN > 0 &&
-            (rowN * bandH + Math.max(0, rowN - 1) * 4) <= (vwNow - 4);
-          if (fillHeight) {
-            bottom = safe;
-          } else {
-            // The band the dock and Record/Captions take when they are up,
-            // worked out from where they REST (a fixed box's offsetTop skips
-            // the tuck's slide), whether they are up or tucked right now. It
-            // used to be remembered from the last time the controls were up
-            // at this exact size, so the first wake after any size change
-            // (a page float, full screen, turning the phone, a share) found
-            // no band, and waking moved every tile (Moto g24, 2026-10-19).
-            const band = comfyRestBand();
-            if (!away) bottom = band;
-            else { bottom = safe; holdBottom = band; }
-          }
+          const band = comfyRestBand();
+          if (!away) bottom = band;
+          else { bottom = safe; holdBottom = band; }
           const note = document.getElementById('chatnote');
           if (note && !note.hidden && note.getClientRects().length) {
             const nr = note.getBoundingClientRect();

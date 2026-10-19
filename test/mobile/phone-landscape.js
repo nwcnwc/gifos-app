@@ -1,10 +1,14 @@
 /*
- * A phone on its side left two faces as small squares in a black band.
- * 844x390 held them at 205px with the desktop 18px name. A Pixel 7
- * (915x412) and Nathan's phone (~960x430) were not treated as phones, so
- * waking the dock resized the faces (229px to 347px, 247px to 365px).
- * The faces now fill the height under the header, names stay at 12px,
- * and waking the dock does not move a face. More stays on the screen.
+ * A sideways phone's stage is the band between the header and the resting
+ * dock, the same with the controls woken or tucked.
+ *
+ * Why: STEERING 14:37 — a tile's size comes only from how many people are
+ * here and whether a share is up. STEERING 15:37 — the controls never cover
+ * the bottom row. One short row fills that band (wider than tall; the video
+ * is object-fit cover) instead of squares that run under the dock.
+ *
+ * Names stay at 12px. Fit stays clear of the room name. More, including
+ * No blur, stays on the screen, and opening More does not move a face.
  *
  *   NODE_PATH=/home/nathan/rel23-gate-1017/node_modules node test/mobile/phone-landscape.js
  */
@@ -32,13 +36,22 @@ function look() {
     const r = t.getBoundingClientRect();
     const n = t.querySelector('.name');
     const cs = n ? getComputedStyle(n) : null;
+    const v = t.querySelector('video');
     return {
       name: n ? n.textContent.replace(/\s+/g, ' ').trim() : '',
       x: r.left, y: r.top, w: r.width, h: r.height,
+      right: r.right, bottom: r.bottom,
       font: cs ? parseFloat(cs.fontSize) : 0,
       clipped: !!(n && (n.scrollWidth > n.clientWidth + 2 || n.scrollHeight > n.clientHeight + 2)),
+      fit: v ? getComputedStyle(v).objectFit : '',
     };
   });
+  const bar = document.querySelector('.bar');
+  let dockRest = 0;
+  if (bar) {
+    dockRest = bar.getBoundingClientRect().top;
+    if (getComputedStyle(bar).position === 'fixed') dockRest = bar.offsetTop;
+  }
   const more = document.getElementById('barmore');
   const mr = more ? more.getBoundingClientRect() : null;
   const open = !!(more && more.offsetParent && mr && mr.height > 20);
@@ -46,6 +59,9 @@ function look() {
     vw: innerWidth, vh: innerHeight,
     away: document.body.classList.contains('chrome-away'),
     tiles,
+    dockRest,
+    dock: box(bar),
+    header: box(document.querySelector('.topchip')),
     chip: box(document.querySelector('.topchip')),
     fit: box(document.getElementById('fitbtn')),
     more: open ? { top: mr.top, bottom: mr.bottom, left: mr.left, right: mr.right, h: mr.height } : null,
@@ -87,13 +103,32 @@ function look() {
     if (!away.away) bad.push('controls did not tuck');
     if (away.tiles.length !== 2) bad.push('only ' + away.tiles.length + ' faces');
     const want = ['Nathan (you)', 'Meeting Bot'];
+    const rowGap = 4;
+    const hits = (a, b) => b && a.right > b.left + 0.5 && a.left < b.right - 0.5 && a.bottom > b.top + 0.5 && a.top < b.bottom - 0.5;
     for (const state of [['up', up], ['away', away]]) {
-      for (const t of state[1].tiles) {
-        if (t.h < state[1].vh * 0.72) bad.push(state[0] + ' ' + (t.name || 'face') + ' is ' + Math.round(t.w) + 'x' + Math.round(t.h) + ' on a ' + state[1].vh + 'px screen');
-        if (t.y + t.h < state[1].vh - 2) bad.push(state[0] + ' ' + (t.name || 'face') + ' leaves ' + Math.round(state[1].vh - (t.y + t.h)) + 'px black below');
-        if (Math.abs(t.w / t.h - 1) > 0.04) bad.push(state[0] + ' ' + (t.name || 'face') + ' is not square');
+      const info = state[1];
+      const headerBottom = Math.max(info.header ? info.header.bottom : 0, (info.fit && info.fit.top >= -1 && info.fit.top < info.vh * 0.45) ? info.fit.bottom : 0);
+      const band = info.dockRest - headerBottom;
+      const ord = info.tiles.slice().sort((a, b) => a.x - b.x);
+      if (!(band > 0)) bad.push(state[0] + ' band is ' + Math.round(band) + 'px');
+      for (const t of info.tiles) {
+        if (Math.abs(t.bottom - info.dockRest) > 2) bad.push(state[0] + ' ' + (t.name || 'face') + ' bottom ' + Math.round(t.bottom) + ' is not the resting dock ' + Math.round(info.dockRest));
+        if (t.h < band * 0.95) bad.push(state[0] + ' ' + (t.name || 'face') + ' is ' + Math.round(t.h) + 'px in a ' + Math.round(band) + 'px band');
+        if (t.w + 0.5 < t.h) bad.push(state[0] + ' ' + (t.name || 'face') + ' is taller than wide (' + Math.round(t.w) + 'x' + Math.round(t.h) + ')');
         if (t.font > 14) bad.push(state[0] + ' ' + (t.name || 'face') + ' name is ' + t.font + 'px');
         if (t.clipped) bad.push(state[0] + ' ' + t.name + ' is cut');
+        if (t.fit && t.fit !== 'cover') bad.push(state[0] + ' ' + (t.name || 'face') + ' video is ' + t.fit);
+        if (hits(t, info.dock)) bad.push(state[0] + ' dock covers ' + (t.name || 'a face'));
+        if (hits(t, info.header)) bad.push(state[0] + ' header covers ' + (t.name || 'a face'));
+      }
+      if (ord.length) {
+        if (ord[0].x > rowGap + 1) bad.push(state[0] + ' leaves ' + Math.round(ord[0].x) + 'px black left of the row');
+        const right = ord[ord.length - 1].x + ord[ord.length - 1].w;
+        if (info.vw - right > rowGap + 1) bad.push(state[0] + ' leaves ' + Math.round(info.vw - right) + 'px black right of the row');
+        for (let i = 1; i < ord.length; i++) {
+          const gap = ord[i].x - (ord[i - 1].x + ord[i - 1].w);
+          if (gap > rowGap + 1.5) bad.push(state[0] + ' leaves ' + Math.round(gap) + 'px black between faces');
+        }
       }
     }
     for (const who of want) {
@@ -155,5 +190,5 @@ function look() {
     console.error('FAIL\n' + failures.join('\n'));
     process.exit(1);
   }
-  console.log('PASS phone landscape fills the height');
+  console.log('PASS phone landscape fills the band above the dock');
 })().catch((e) => { console.error(e); process.exit(1); });

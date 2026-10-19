@@ -96,8 +96,30 @@
     return { rects: out, y: ids.length ? y - gap : y };
   }
 
-  function people(row, stad, box, phone, gallery, gap, avoidLone) {
+  // A short sideways row is as tall as the band and wide enough to meet
+  // both edges. object-fit cover crops the video, so a face may be wider
+  // than it is tall. The phone row gap stays between the faces.
+  function wideRow(ids, box, gap) {
+    const n = ids.length;
+    const gaps = Math.max(0, n - 1) * gap;
+    const w = n ? (box.w - gaps) / n : 0;
+    const out = [];
+    let x = box.x;
+    for (let i = 0; i < n; i++) {
+      out.push({ id: ids[i], tier: 'row', x: x, y: box.y, w: w, h: box.h, fit: 'cover' });
+      x += w + gap;
+    }
+    return out;
+  }
+
+  function people(row, stad, box, phone, gallery, gap, avoidLone, contain, bandFill) {
     const nr = row.length, ns = stad.length;
+    // No share, sideways: one row that fits at the band's height takes the
+    // whole band. A crowd that cannot be that tall stays squares.
+    if (bandFill && gallery !== 'scroll' && !ns && nr > 0 && box.h > 0 &&
+        (nr * box.h + Math.max(0, nr - 1) * gap) <= box.w + 0.01) {
+      return { rects: wideRow(row, box, gap), contentH: box.h, side: box.h, stadSide: 0, tooSmall: false };
+    }
     let s, t;
     if (gallery === 'scroll') {
       const k = phone ? 'phone' : 'desk';
@@ -114,8 +136,15 @@
       const k2 = phone ? 'phone' : 'desk';
       const rowMin = Math.min(box.w, FIT_ROW_MIN[k2]);
       if (s < rowMin) {
-        s = snap(box.w, rowMin, gap);
-        t = ns ? snap(box.w, Math.min(s, Math.max(FIT_STAD_MIN[k2], s * STAD_RATIO)), gap) : 0;
+        const grown = snap(box.w, rowMin, gap);
+        const tGrown = ns ? snap(box.w, Math.min(grown, Math.max(FIT_STAD_MIN[k2], grown * STAD_RATIO)), gap) : 0;
+        // Beside a share the column is the band above the dock. Growing to
+        // the phone minimum pushed the next row under the dock (Moto 829x311,
+        // eight seats: bottoms 302, dock top 193).
+        if (!(contain && peopleH(nr, ns, box.w, grown, tGrown, gap, avoidLone) > box.h + 0.5)) {
+          s = grown;
+          t = tGrown;
+        }
       } else if (ns && t < FIT_STAD_MIN[k2]) {
         // The Row keeps its size; a crowd of small Stadium faces scrolls.
         t = snap(box.w, FIT_STAD_MIN[k2], gap);
@@ -186,7 +215,7 @@
     const gallery = opts.gallery === 'scroll' ? 'scroll' : 'fit';
     const phone = !!opts.phone;
     if (!stage.length) {
-      const p = people(row, stad, box, phone, gallery, gap);
+      const p = people(row, stad, box, phone, gallery, gap, false, false, phone && box.w > box.h);
       return { rects: p.rects, contentH: p.contentH, regions: { stage: null, people: box }, side: p.side, stadSide: p.stadSide, tooSmall: p.tooSmall && gallery === 'fit', gallery: gallery };
     }
     // With a Stage: side by side when the screen is wide, stacked when tall.
@@ -223,7 +252,7 @@
       pb = { x: box.x, y: box.y + sh + gap, w: box.w, h: Math.max(1, box.h - sh - gap) };
       sr = stageRects(stage, sb, gap, phone);
     }
-    const p = people(row, stad, pb, phone, gallery, gap, true);
+    const p = people(row, stad, pb, phone, gallery, gap, true, !!phone, false);
     const rects = sr.concat(p.rects);
     const contentH = (pb.y - box.y) + p.contentH;
     return { rects: rects, contentH: Math.max(box.h, contentH), regions: { stage: sb, people: pb }, side: p.side, stadSide: p.stadSide, tooSmall: p.tooSmall && gallery === 'fit', gallery: gallery };
