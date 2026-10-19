@@ -27538,6 +27538,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       showCaption(m.byId, m.text);
       if (typeof window !== 'undefined' && typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'transcript', line: { by: m.by, text: m.text, at: m.at, scribeBy: m.scribeBy || '' } });
     }
+    // What the bot SAYS is written down by the bot, from the words it was
+    // handed: its microphone is never captioned (above), so this is the only
+    // way the room's transcript holds the bot's side. A spoken line goes to
+    // the whole room, not the section: it is one line per reply, not a stream.
+    // Lines over a caption's 400 characters are cut at a space into several.
+    function writeBotSpoken(text) {
+      let rest = String(text || '').replace(/\s+/g, ' ').trim();
+      const at = Date.now();
+      for (let i = 0; rest; i++) {
+        let cut = rest.length <= 400 ? rest.length : rest.lastIndexOf(' ', 400);
+        if (cut <= 0) cut = 400;
+        const m = { id: uid('t'), byId: myId, by: myName(), at: at + i, text: rest.slice(0, cut).trim() };
+        rest = rest.slice(cut).trim();
+        if (keepOwnTranscript(m)) sendAll({ k: 'tr', m });
+      }
+      renderTranscript();
+    }
     // THE LANGUAGE IS A CHOICE, NOT A GUESS. The engine listens for ONE
     // language and cannot detect it; navigator.language was the silent
     // default, so a phone set to Russian wrote English down as Cyrillic
@@ -28003,7 +28020,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (done) return;
         wspQ.stalls = 0;
         wspQ.lastLatencyMs = Math.max(0, Date.now() - t0);
-        const text = r && r.text ? String(r.text).trim() : '';
+        let text = r && r.text ? String(r.text).trim() : '';
+        if (text && GifOS.meetHost && typeof GifOS.meetHost.dropWhisperNoise === 'function') text = GifOS.meetHost.dropWhisperNoise(text);
         if (text && wspCaps.has(job.id)) {
           if (job.id === 'me') { addTranscriptLine(text, job.at); }
           else if (scribeOn() && (peers.has(job.id) || job.stage)) addTranscriptLine(text, job.at, job.id);
@@ -33152,7 +33170,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { paintControls(); broadcastStatus(); } catch (e) {}
         rememberBotSpoken(msg && msg.text);
         const said = { spoken: true, text: (msg && msg.text) || '' };
-        const go = () => audio.play().then(() => said);
+        const go = () => audio.play().then(() => { try { writeBotSpoken(said.text); } catch (e) {} return said; });
         return go().catch(() => ctx.resume().then(go));
       }
       GifOS.meetSession.install({

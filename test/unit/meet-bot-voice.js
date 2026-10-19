@@ -75,7 +75,7 @@ function world() {
     BROADCAST: false, bcRole: () => 'host',
     // No free-pool anchor in this world: no mix-minus sender ever replaces the voice.
     turnMixSenders: new WeakSet(), turnMixTrack: () => null,
-    paintControls() {}, broadcastStatus() { w.beats++; }, rememberBotSpoken() {},
+    paintControls() {}, broadcastStatus() { w.beats++; }, rememberBotSpoken() {}, writeBotSpoken() {},
     // refreshOutbound opens the Stage frame on a step-up; a bot is never on the Stage.
     meOnStage: () => false,
     Blob: function () {}, URL: { createObjectURL: () => 'blob:x', revokeObjectURL() {} },

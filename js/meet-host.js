@@ -224,6 +224,18 @@
     for (var i = 0; i < list.length; i++) if (normLine(list[i]) === n) return true;
     return false;
   }
+  // Whisper writes silence and room noise as the captions it saw most in
+  // training: "you", "you you", "Thank you.", "Thanks for watching!". A line
+  // made only of those is not a line. A lowercase "you" after a finished
+  // sentence ("Okay. you") is the same noise on the end of a real line.
+  // -> the line to keep, or '' for none.
+  var WHISPER_SILENCE = /^(?:(?:you )*you|thank you|thanks for watching|thank you for watching)$/;
+  function dropWhisperNoise(text) {
+    var t = String(text || '').trim().replace(/([.!?])(?:\s+you)+\s*$/, '$1');
+    var n = normLine(t);
+    if (!n || WHISPER_SILENCE.test(n)) return '';
+    return t;
+  }
 
   root.GifOS = root.GifOS || {};
   root.GifOS.meetHost = {
@@ -262,6 +274,7 @@
     meetingState: function (id) { return call(id, 'meetingState', {}); },
     snapshot: function (id) { return call(id, 'snapshot', {}); },
     suppressBotLine: suppressBotLine,
+    dropWhisperNoise: dropWhisperNoise,
     onApp: function (win) { appWin = win || null; },
     clearApp: function () { appWin = null; },
     leaveAll: function () {
