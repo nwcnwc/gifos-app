@@ -480,8 +480,12 @@
      rules below are written `.solo-app .bar` (descendant), so they match whether
      the class sits on <html> or on <body>, and the boot script's later
      body.classList.add stays exactly as it was — this is a paint-time head
-     start, not a second source of truth. -->
-<style id="entry-chrome">html.solo-app .bar,html.solo-app #grid,html.solo-app #feed{display:none!important}</style>
+     start, not a second source of truth.
+     The header pill (.topchip: "GifOS · Joining…") and Fit sit OUTSIDE .bar
+     since the 0.9.23 header, so this list must name them too: a phone on a
+     slow link sat on a solo launch reading "GifOS Joining… / Fit" over a
+     black page — a meeting it was never in — until the boot script got here. -->
+<style id="entry-chrome">html.solo-app .bar,html.solo-app #grid,html.solo-app #feed,html.solo-app .topchip,html.solo-app .fitbtn{display:none!important}</style>
 <script>(function(){try{
   // SOLO ONLY, deliberately. The three body.solo-app rules below hold for as
   // long as the page IS solo — and there is exactly one path that ends that:
