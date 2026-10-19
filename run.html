@@ -2812,8 +2812,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.comfy.gallery-scroll #feed.can-scroll::after {
     content: ''; position: fixed; z-index: 5; left: 0; right: 0; height: 36px; pointer-events: none;
     bottom: 112px; background: linear-gradient(to bottom, rgba(12,14,18,0), rgba(12,14,18,.92)); }
-  @media (min-width: 701px) {
+  @media (min-width: 701px) and (min-height: 501px) {
     body.comfy.gallery-scroll #feed.can-scroll::after { bottom: 128px; }
+  }
+  /* A sideways phone is 700-900px wide and under 500px tall: the desktop
+     128px put this band a third of the way up the screen, across the share
+     and the faces (the 2026-10-18 landscape "dark band"). Short and wide has
+     no room for a fade: the dock already marks the bottom. */
+  @media (max-height: 500px) {
+    body.comfy.gallery-scroll #feed.can-scroll::after { display: none; }
   }
   /* Desktop gallery: a gutter between faces (meet-views.js) and soft corners. */
   body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-gutter="1"],
