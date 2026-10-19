@@ -110,11 +110,9 @@ function overlaps(a, b) {
       continue;
     }
     await page.waitForTimeout(280);
-    // The build name fades with the header (0.8s). Wait it out, then read.
-    await page.waitForFunction(() => {
-      const el = document.getElementById('gifos-build-float');
-      return !el || parseFloat(getComputedStyle(el).opacity) < 0.05;
-    }, null, { timeout: 2000 }).catch(() => {});
+    // The build name fades with the header (0.8s). The dock tuck is already
+    // done; this extra wait is only so the label's fade has finished.
+    await page.waitForTimeout(900);
     const tucked = await read();
     const quiet = [];
     if (!tucked.away) quiet.push('call did not tuck');
