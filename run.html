@@ -6535,6 +6535,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // PiP/full-screen and dropped it from the composite at exactly the moment
     // it carried the thing the room came to look at.
     const seatDark = (st) => !!(st && st.camOff && !st.scr && !st.rb);
+    // THE ROW FACE IS NOT THE SHARE. seatDark stays false while a screen is up
+    // so PiP, full screen and the stage composite keep the picture (the screen
+    // is what the room came to look at). The row tile is the face. A share
+    // steps the sharer onto the stage and parks the camera sender, so the row
+    // <video> has no frames. Treating the share as a picture there hid the
+    // letter and left a black tile (chaos-1019-0630: Host Laptop black on
+    // row-mates, the letter on everyone else). Camera off means the letter,
+    // including during the share. A rebroadcast is still the picture.
+    const rowFaceDark = (st) => !!(st && st.camOff && !st.rb);
     // The host's rebroadcast (Q77) and the host's kept copy of the service
     // that just ended. Declared here because the badge reads them early.
     let rbNow = null;
@@ -9621,7 +9630,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const chipHtml = chips.join('');
       if (t.chipsHtml !== chipHtml) { t.chipsHtml = chipHtml; t.chips.innerHTML = chipHtml; reactStats.chipWrites++; }
       try { paintTileChrome(t, id, isMe, st); } catch (e) {}
-      const dark = seatDark(st) || !!gCam || (!isMe && typeof shareBlocked === 'function' && !!shareBlocked(id));
+      const dark = rowFaceDark(st) || !!gCam || (!isMe && typeof shareBlocked === 'function' && !!shareBlocked(id));
       if (dark && t.avatar && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.paintShade) {
         const sid = shadeKey(isMe ? 'me' : id);
         try {
@@ -9869,9 +9878,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           let name = '\u2026';
           try { name = displayName(id) || name; } catch (e) {}
           // A camera-off face (or one we have not heard from yet) shows
-          // initials. The composite cell for that person is black.
+          // initials. The composite cell for that person is black. A share
+          // does not change that: the screen is the stage strip, and the
+          // parked camera sender would paint this cell black over the letter.
           const st = statusOf.get(id) || null;
-          const off = !st || (!!st.camOff && !st.scr);
+          const off = !st || (!!st.camOff && !st.rb);
           let avatar = '';
           try { avatar = (MV.avatarUrl && MV.avatarUrl(st || {}, null)) || ''; } catch (e2) {}
           // A camera on the Stage holds this stadium seat empty. A screen
@@ -11191,7 +11202,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function syncAvatarFeed(id, t, isMe, st, gCam) {
       if (!t || !t.video) return;
       const blockedShare = !isMe && typeof shareBlocked === 'function' && !!shareBlocked(id);
-      const dark = !!(seatDark(st) || gCam || blockedShare);
+      const dark = !!(rowFaceDark(st) || gCam || blockedShare);
       if (isMe) {
         let vt = null;
         try { vt = sentVideoTrack(); } catch (e) {}
