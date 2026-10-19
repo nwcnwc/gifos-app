@@ -16563,7 +16563,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // bridge switches to the standby and sticks (the no-flap rule keeps
       // the carry while the "dead" end sits in its cell) — that page's
       // bridge view then never rejoins the room's.
-      try { if (netRoom && (why === 'left' || why === 'ban')) netRoom.noteDeath(pid); } catch (e) {}
+      try { if (netRoom && (why === 'left' || why === 'ban' || why === 'bye')) netRoom.noteDeath(pid); } catch (e) {}
       meshGone.set(pid, Date.now());
       { const s = meshSeat(); meshGoneTick.set(pid, s && typeof s.TICK === 'number' ? s.TICK : -1); }
       if (typeof meshGoneSilent === 'object' && meshGoneSilent) { if (why === 'vouch-reap') meshGoneSilent.add(pid); else meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid); } // typeof: as dropStatus below

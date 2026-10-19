@@ -1989,6 +1989,7 @@
     // seed 10 #1: 10.5 s; the runs whose LEAVE arrived took 4.2 s).
     goodbye(pid) {
       if (pid == null || pid === this.id || !this.hasCoord || this.state !== 3) return;
+      if (this.env.NET) this.env.NET.noteDeath(pid);   // the peer's own farewell: announced, counts a bridge end down at once
       for (const [k, v] of Array.from(this.occ)) {
         if (v !== pid || k === ck(this.coord)) continue;
         this.linkedBy.delete(k); this.tenOf.delete(k); this.occ.delete(k); this.live.delete(k); this.kidful.delete(k); this.s1seen.delete(k); this.tlForget(k, 'goodbye'); this.healTry.delete(k); this.digForget(k);
@@ -4374,6 +4375,12 @@
           // cell this way (sec finding Y1/Y2), or into mine (Y4), or grow my
           // occ without bound with fresh deep cells (Y3).
           const mvdFrom = mine && m.mvd != null && !!ten && ten.id === m.id && m.tn != null && String(m.tn) === ten.tn && this.linkedBy.get(m.ck) === m.id && this.mvdOk(m.ck, m.mvd, m.id);
+          // An announced departure (a goodbye with nowhere it went) counts its
+          // bridge end down HERE, before the cell frees: the heal that follows
+          // erases the seat from this page's view, and a death verdict that
+          // lands after that reads as "unseated by a move" — the standby
+          // hand-over then degrades to a cold structural re-dial.
+          if (mine && m.mvd == null && this.env.NET) this.env.NET.noteDeath(m.id);
           if (mvdFrom) this.carryLinked(m.ck, m.mvd, m.id);
           if (mine) { this.linkedBy.delete(m.ck); this.tenOf.delete(m.ck); this.occ.delete(m.ck); this.live.delete(m.ck); this.kidful.delete(m.ck); this.s1seen.delete(m.ck); this.tlForget(m.ck, 'leave'); this.healTry.delete(m.ck); this.digForget(m.ck); } // freed ⇒ admissible now
           // ...unless a claimant was waiting on it (waitClaim, the HELLO branch): it is the cell's hint now
