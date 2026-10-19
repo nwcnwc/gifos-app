@@ -14433,11 +14433,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // A pair is covered when either end holds a live pass.
     function vaPassCovers(pid) { return vaMyPassLive() || vaPassLive(pid); }
     function vaPassAny() { return vaMyPassLive() || vaPasses.size > 0; }
-    // The far end holds a pass and this page cannot reach it except through
-    // the paid pool: dial it there (never my anchor or a bridge the seating
-    // names: those pairs are on a server path already).
+    // A pass covers this pair (the far end's, or my own) and this page
+    // cannot reach them except through the paid pool: dial it there (never
+    // my anchor or a bridge the seating names: those pairs are on a server
+    // path already).
     function vaOnServerPath(p) { const li = netSeated() ? netLinkInfo(p.id) : null; return !!p.turnAnchor || !!(li && (li.bridge || li.standby) && li.turnClient); }
-    function vaDialFor(p) { return !!p && VA.passDial({ blocked: directPath === 'blocked', theirPass: vaPassLive(p.id), anchor: vaOnServerPath(p) }); }
+    function vaDialFor(p) { return !!p && VA.passDial({ blocked: directPath === 'blocked', covered: vaPassCovers(p.id), anchor: vaOnServerPath(p) }); }
     // With paid credentials for such a pair in hand: build it on the paid servers (iceFor), at most every 10 s.
     function vaPassDialNow(p, now) {
       if (!p || p.turnMine || (p.connected && !p.turnAudio) || !vaDialFor(p) || !vaServersFor(p)) return;

@@ -236,11 +236,13 @@
   function farPaid(f) { return !!(f && f.said && (f.room === 'live' || f.pass)); }
 
   // passDial(f) → does this page dial this pair through the paid pool for a
-  // pass? f = { blocked: this page cannot be reached directly, theirPass: the
-  // far end holds a live pass, anchor: the pair is already on a server path
-  // (my anchor, or a bridge the seating names) }. A holder who can be
-  // reached has no server path to anyone: the blocked end dials them.
-  function passDial(f) { return !!(f && f.blocked && f.theirPass && !f.anchor); }
+  // pass? f = { blocked: this page cannot be reached directly, covered: a
+  // live pass covers this pair (the far end's, or this page's own), anchor:
+  // the pair is already on a server path (my anchor, or a bridge the seating
+  // names) }. A holder who can be reached has no server path to anyone: the
+  // blocked end dials them. A holder who is herself blocked dials too —
+  // when both ends are blocked, nobody else can start that pair.
+  function passDial(f) { return !!(f && f.blocked && f.covered && !f.anchor); }
 
   // carryPicture(f) → may a friend's carry of one person to another include
   // the picture? f = { room: roomState, turnHop: either hop is on a server
