@@ -21,9 +21,11 @@ test.describe('German', () => {
     await expect(page.locator('#leavebtn .dockword')).toHaveText('Ende');
     await expect(page.locator('#bartoggle .dockword')).toHaveText('Mehr');
     await page.click('#bartoggle');
-    await expect(page.locator('#moretools')).toHaveText('Alle Funktionen');
     await expect(page.locator('#hand')).toHaveText('Hand');
     await expect(page.locator('#barmore .moregroup h4').first()).toHaveText('Leute');
+    await expect(page.locator('#barmore .moregroup[data-group="talk"] h4')).toHaveText('Gespräch');
+    await expect(page.locator('#barmore .moregroup[data-group="video"] h4')).toHaveText('Ihr Video');
+    await expect(page.locator('#barmore .moregroup[data-group="setup"] h4')).toHaveText('Einstellungen und Hilfe');
     await expect(page.locator('#whobtn')).toHaveText('Wer');
     await expect(page.locator('#votebtn')).toHaveText('Abstimmung');
     await expect(page.locator('#setbtn')).toHaveText('Einstellungen');
@@ -62,7 +64,9 @@ test.describe('Spanish', () => {
     await expect(page.locator('#cam .dockword')).toHaveText('Cámara');
     await expect(page.locator('#bartoggle .dockword')).toHaveText('Más');
     await page.click('#bartoggle');
-    await expect(page.locator('#moretools')).toHaveText('Todas las funciones');
+    await expect(page.locator('#barmore .moregroup[data-group="talk"] h4')).toHaveText('Conversación');
+    await expect(page.locator('#barmore .moregroup[data-group="video"] h4')).toHaveText('Tu video');
+    await expect(page.locator('#barmore .moregroup[data-group="setup"] h4')).toHaveText('Ajustes y ayuda');
     await expect(page.locator('#whobtn')).toHaveText('Quién');
     await expect(page.locator('#pwbtn')).toHaveText('Contraseña');
     await expect(page.locator('#setbtn')).toHaveText('Ajustes');

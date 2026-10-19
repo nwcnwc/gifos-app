@@ -2,7 +2,8 @@
  * A service host's dock fits the window. When it does not, Share, then
  * Reactions, then Step off move into More, where a stand-in presses the real
  * button; Camera, Mic, More, End and the grip stay on the dock. A dock that
- * fits (a small group, a wide window) moves nothing. 412, 600 and 1280 wide.
+ * fits (a small group, a wide window) moves nothing. 412, 390, 600 and 1280
+ * wide; on a phone the open More sheet stays inside the screen.
  *
  * Gate: NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/host-dock-fit.js
  * MEET_RELAY defaults to a closed local port, so nothing reaches a real relay.
@@ -26,7 +27,9 @@ async function ackRecNotice(pg, ms) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let fails = 0; const errs = [];
 const check = (n, c, d) => { console.log((c ? 'PASS' : 'FAIL') + ' — ' + n + (d !== undefined ? '  ' + JSON.stringify(d) : '')); if (!c) fails++; };
-const PROFILES = { phone: Object.assign({}, devices['Pixel 7']), wide: { viewport: { width: 1280, height: 800 } }, mid: { viewport: { width: 600, height: 900 } } };
+// phone390: Nathan's Android phone, where the More sheet ran off the left edge.
+const PROFILES = { phone: Object.assign({}, devices['Pixel 7']), phone390: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2.75, isMobile: true, hasTouch: true, userAgent: devices['Pixel 7'].userAgent }, wide: { viewport: { width: 1280, height: 800 } }, mid: { viewport: { width: 600, height: 900 } } };
+const isPhone = (prof) => prof.indexOf('phone') === 0;
 const dockOf = (pg) => pg.evaluate(() => {
   const bar = document.querySelector('.bar'); const vw = window.innerWidth;
   const kids = [...bar.children].filter((e) => e.id !== 'barmore' && getComputedStyle(e).display !== 'none' && e.getClientRects().length)
@@ -71,7 +74,7 @@ async function meeting(browser, prof) {
   const dump = {};
   const STAY = ['bargrip', 'cam', 'mic', 'bartoggle', 'leavebtn'];
   const ORDER = ['sharebtn', 'reactbtn', 'stagebtn'];
-  for (const prof of ['phone', 'mid', 'wide']) {
+  for (const prof of ['phone', 'phone390', 'mid', 'wide']) {
     const { ctx, h } = await host(browser, prof);
     const d = await dockOf(h); dump['host-' + prof] = d;
     const ids = d.kids.map((k) => k.id);
@@ -80,12 +83,12 @@ async function meeting(browser, prof) {
     const k = d.moved.length;
     check(prof + ' host: only Share, Reactions, Step off move, in that order', d.moved.every((id, i) => id === ORDER[i]), d.moved);
     if (prof === 'wide') check('wide host: nothing moves into More (it fits)', k === 0, d.moved);
-    if (prof === 'phone') check('phone host: something had to move (the dock did not fit)', k > 0, d.moved);
+    if (isPhone(prof)) check(prof + ' host: something had to move (the dock did not fit)', k > 0, d.moved);
     // each moved button has its stand-in in More, and it presses the real one
     if (k) {
       await wakeDock(h);
       await h.locator('#bartoggle').click();
-      if (prof === 'phone') {
+      if (isPhone(prof)) {
         const sheet = await h.evaluate(() => {
           const s = document.querySelector('.barmore');
           s.scrollTop = s.scrollHeight;
@@ -116,19 +119,21 @@ async function meeting(browser, prof) {
           const ag = air ? air.getBoundingClientRect() : null;
           const dockHits = btns.filter((b) => hit(b.getBoundingClientRect(), dock) && b.getBoundingClientRect().top < dock.top).map((b) => (b.innerText || '').trim().slice(0, 18));
           return {
-            l: Math.round(r.left), right: Math.round(r.right), bottom: Math.round(r.bottom), dockTop: Math.round(dock.top), vw, box,
+            l: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom), dockTop: Math.round(dock.top), vw, box,
+            pageW: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth), sheetW: s.scrollWidth - s.clientWidth,
             fields: fields.map(({ rect, ...rest }) => rest), overlaps, dockHits,
             statusRight: sr ? Math.round(sr.right) : 0, statusOver: status ? status.scrollWidth > status.clientWidth + 1 || status.scrollHeight > status.clientHeight + 1 : false,
             chipBottom: cg ? Math.round(cg.bottom) : 0, airTop: ag ? Math.round(ag.top) : 0,
             airText: air ? (air.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 80) : '',
           };
         });
-        check('phone host: the More sheet fits the screen width', sheet.l >= -1 && sheet.right <= sheet.vw + 1 && sheet.bottom <= sheet.dockTop + 1, sheet);
-        check('phone host: every More button is on screen, 64px, and its text fits', sheet.box.length > 0 && sheet.box.every((b) => b.left >= -1 && b.right <= sheet.vw + 1 && b.h === 64 && !b.over), sheet.box);
-        check('phone host: start time, Visit, Rebroadcast and Questions do not overlap', sheet.overlaps.length === 0 && sheet.fields.every((f) => f.r <= sheet.vw + 1 && !f.in), sheet.fields.concat(sheet.overlaps));
-        check('phone host: no More tile sits on the dock', sheet.dockHits.length === 0, sheet.dockHits);
-        check('phone host: the header sentence stays inside the screen', sheet.statusRight <= sheet.vw + 1 && !sheet.statusOver, { statusRight: sheet.statusRight, vw: sheet.vw, statusOver: sheet.statusOver });
-        check('phone host: the header sits above the on-air title', sheet.airTop >= sheet.chipBottom - 1 && sheet.airTop > 0, { chipBottom: sheet.chipBottom, airTop: sheet.airTop, airText: sheet.airText });
+        check(prof + ' host: the More sheet fits the screen width', sheet.l >= -1 && sheet.right <= sheet.vw + 1 && sheet.top >= -1 && sheet.bottom <= sheet.dockTop + 1, sheet);
+        check(prof + ' host: neither the page nor the sheet scrolls sideways', sheet.pageW <= sheet.vw + 1 && sheet.sheetW <= 1, { pageW: sheet.pageW, sheetW: sheet.sheetW, vw: sheet.vw });
+        check(prof + ' host: every More button is on screen, 64px, and its text fits', sheet.box.length > 0 && sheet.box.every((b) => b.left >= -1 && b.right <= sheet.vw + 1 && b.h === 64 && !b.over), sheet.box);
+        check(prof + ' host: start time, Visit, Rebroadcast and Questions do not overlap', sheet.overlaps.length === 0 && sheet.fields.every((f) => f.r <= sheet.vw + 1 && !f.in), sheet.fields.concat(sheet.overlaps));
+        check(prof + ' host: no More tile sits on the dock', sheet.dockHits.length === 0, sheet.dockHits);
+        check(prof + ' host: the header sentence stays inside the screen', sheet.statusRight <= sheet.vw + 1 && !sheet.statusOver, { statusRight: sheet.statusRight, vw: sheet.vw, statusOver: sheet.statusOver });
+        check(prof + ' host: the header sits above the on-air title', sheet.airTop >= sheet.chipBottom - 1 && sheet.airTop > 0, { chipBottom: sheet.chipBottom, airTop: sheet.airTop, airText: sheet.airText });
       }
       const sh = await h.evaluate((m) => m.map((id) => { const p = document.querySelector('#barmore .dockmore[data-dock="' + id + '"]'); return { id, shown: !!(p && !p.hidden && p.getClientRects().length), text: p && p.textContent }; }), d.moved);
       check(prof + ' host: More shows a stand-in for each moved button', sh.every((s) => s.shown), sh);
@@ -149,7 +154,7 @@ async function meeting(browser, prof) {
     }
     await ctx.close();
   }
-  for (const prof of ['phone', 'mid', 'wide']) {
+  for (const prof of ['phone', 'phone390', 'mid', 'wide']) {
     const { ctx, pg } = await meeting(browser, prof);
     const d = await dockOf(pg); dump['meet-' + prof] = d;
     check(prof + ' small group: nothing moves into More, every button inside the window', d.moved.length === 0 && d.out.length === 0, d);

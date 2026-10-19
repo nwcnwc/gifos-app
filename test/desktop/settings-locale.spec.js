@@ -9,7 +9,6 @@ async function openSettings(page) {
   await page.goto('/run.html#v=qaset&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#leavebtn', { state: 'visible' });
   await page.click('#bartoggle');
-  await page.click('#moretools');
   await page.click('#setbtn');
   await expect(page.locator('#set-modal')).toBeVisible();
 }

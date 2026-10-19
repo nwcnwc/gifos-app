@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
-async function boot(page) {
-  await page.setViewportSize({ width: 1280, height: 720 });
+async function boot(page, width = 1280, height = 720) {
+  await page.setViewportSize({ width, height });
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Jordan Lee');
     sessionStorage.setItem('gifos_appeared', '1');
@@ -11,54 +11,80 @@ async function boot(page) {
   await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4 }));
 }
 
-test('More opens to Hand, Invite, and Help', async ({ page }) => {
-  await boot(page);
-  await page.click('#bartoggle');
-  const closed = await page.evaluate(() => {
-    const shown = (id) => {
-      const el = document.getElementById(id);
+// The groups, in the order a meeting is used, and where each control lives.
+function readGroups(page) {
+  return page.evaluate(() => {
+    const shown = (el) => {
       if (!el) return false;
       const cs = getComputedStyle(el);
       return cs.display !== 'none' && cs.visibility !== 'hidden' && el.getClientRects().length > 0;
     };
     const heads = [...document.querySelectorAll('#barmore .moregroup h4')]
-      .filter((h) => getComputedStyle(h.closest('.moregroup')).display !== 'none')
+      .filter((h) => shown(h.closest('.moregroup')))
       .map((h) => h.textContent.trim());
+    const groupOf = (id) => {
+      const g = document.getElementById(id) && document.getElementById(id).closest('.moregroup');
+      return g ? g.querySelector('h4').textContent.trim() : '(not in More)';
+    };
+    const ids = ['invite', 'whobtn', 'chatbtn', 'hand', 'ccbtn', 'trbtn', 'blurseg', 'selfstage', 'sharebtn',
+      'pwbtn', 'recbtn', 'votebtn', 'stagebtn', 'appbtn', 'setbtn', 'keysbtn', 'helpbtn', 'fsbtn'];
+    const groups = {};
+    for (const id of ids) groups[id] = groupOf(id);
+    const order = (head) => {
+      const g = [...document.querySelectorAll('#barmore .moregroup')].find((s) => s.querySelector('h4').textContent.trim() === head);
+      return g ? [...g.querySelectorAll('.morerow > button')].filter(shown).map((b) => b.id) : [];
+    };
     return {
-      heads,
-      hand: shown('hand'),
-      invite: shown('invite'),
-      help: shown('helpbtn'),
-      tools: (document.querySelector('#moretools') || {}).textContent || '',
-      buried: ['whobtn', 'appbtn', 'votebtn', 'pwbtn', 'stagebtn', 'recbtn', 'ccbtn', 'setbtn', 'keysbtn', 'trbtn'].filter(shown),
+      heads, groups,
+      talk: order('Talk'),
+      hidden: ids.filter((id) => groups[id] !== '(not in More)' && !shown(document.getElementById(id))),
+      tools: !!document.getElementById('moretools'),
     };
   });
-  expect(closed.hand).toBe(true);
-  expect(closed.invite).toBe(true);
-  expect(closed.help).toBe(true);
-  expect(closed.tools.trim()).toBe('All tools');
-  expect(closed.heads).toEqual([]);
-  expect(closed.buried).toEqual([]);
-  await page.click('#moretools');
-  const open = await page.evaluate(() => {
-    const heads = [...document.querySelectorAll('#barmore .moregroup h4')]
-      .filter((h) => getComputedStyle(h.closest('.moregroup')).display !== 'none')
-      .map((h) => h.textContent.trim());
-    const vote = document.getElementById('votebtn');
-    const g = vote && vote.closest('.moregroup');
-    return { heads, vote: g && g.querySelector('h4') ? g.querySelector('h4').textContent.trim() : '', word: document.getElementById('moretools').textContent.trim() };
+}
+
+test('More shows every group, in meeting order, on one sheet', async ({ page }) => {
+  await boot(page);
+  await page.click('#bartoggle');
+  const got = await readGroups(page);
+  expect(got.heads).toEqual(['People', 'Talk', 'Your video', 'Room', 'Settings and help']);
+  expect(got.groups).toEqual({
+    invite: 'People', whobtn: 'People',
+    chatbtn: '(not in More)', hand: 'Talk', ccbtn: 'Talk', trbtn: 'Talk',
+    blurseg: 'Your video', selfstage: 'Your video', sharebtn: '(not in More)',
+    pwbtn: 'Room', recbtn: 'Room', votebtn: 'Room', stagebtn: 'Room', appbtn: 'Room',
+    setbtn: 'Settings and help', keysbtn: 'Settings and help', helpbtn: 'Settings and help', fsbtn: '(not in More)',
   });
-  expect(open.heads).toEqual(['People', 'Share', 'Room', 'Help']);
-  expect(open.vote).toBe('Room');
-  expect(open.word).toBe('Fewer tools');
+  expect(got.talk).toEqual(['hand', 'ccbtn', 'trbtn']);
+  expect(got.hidden).toEqual([]);
+  expect(got.tools).toBe(false);
 });
 
-// All tools, open, is the whole list on a 1280x720 laptop: no scrolling to find
-// Keys or Transcript, for a guest and for a host (who has a Host row too). Each
+// One design: a phone has the same groups in the same order. Chat, Share
+// screen and Full screen leave the phone's dock for their groups.
+test('a phone gets the same groups, with the dock buttons in theirs', async ({ page }) => {
+  await boot(page, 390, 844);
+  await page.click('#bartoggle');
+  const got = await readGroups(page);
+  expect(got.heads).toEqual(['People', 'Talk', 'Your video', 'Room', 'Settings and help']);
+  expect(got.groups).toMatchObject({ chatbtn: 'Talk', sharebtn: 'Your video', fsbtn: 'Settings and help', pwbtn: 'Room', invite: 'People' });
+  expect(got.talk).toEqual(['chatbtn', 'hand', 'ccbtn', 'trbtn']);
+  const fit = await page.evaluate(() => {
+    const m = document.getElementById('barmore').getBoundingClientRect();
+    const dock = document.getElementById('leavebtn').getBoundingClientRect();
+    return { left: m.left, right: m.right, bottom: m.bottom, dockTop: dock.top, vw: innerWidth, ovx: document.getElementById('barmore').scrollWidth - document.getElementById('barmore').clientWidth };
+  });
+  expect(fit.left).toBeGreaterThanOrEqual(-1);
+  expect(fit.right).toBeLessThanOrEqual(fit.vw + 1);
+  expect(fit.bottom).toBeLessThanOrEqual(fit.dockTop + 1);
+  expect(fit.ovx).toBe(0);
+});
+
+// The whole sheet fits a 1280x720 laptop: no scrolling to find Keys or
+// Transcript, for a guest and for a host (who has a Host row too). Each
 // button stays a big target with 16px words, and a German word is whole.
 async function toolsFit(page, shot) {
   if (!(await page.locator('#barmore').isVisible())) await page.click('#bartoggle');
-  if ((await page.locator('#moretools').getAttribute('aria-expanded')) !== 'true') await page.click('#moretools');
   await page.waitForTimeout(300);
   if (shot) await page.screenshot({ path: 'test/desktop/shots/' + shot });
   return page.evaluate(() => {
@@ -73,7 +99,7 @@ async function toolsFit(page, shot) {
   });
 }
 
-test('All tools fits a 1280x720 screen for a guest', async ({ page }) => {
+test('the More sheet fits a 1280x720 screen for a guest', async ({ page }) => {
   await boot(page);
   const got = await toolsFit(page, 'all-tools-guest-1280.png');
   expect(got.n).toBeGreaterThan(14);
@@ -82,14 +108,14 @@ test('All tools fits a 1280x720 screen for a guest', async ({ page }) => {
 
 test.describe('German', () => {
   test.use({ locale: 'de-DE' });
-  test('All tools fits a 1280x720 screen in German', async ({ page }) => {
+  test('the More sheet fits a 1280x720 screen in German', async ({ page }) => {
     await boot(page);
     const got = await toolsFit(page, 'all-tools-de-1280.png');
     expect(got).toMatchObject({ scrolls: 0, cut: [], small: [], spill: [] });
   });
 });
 
-test('All tools fits a 1280x720 screen for a host', async ({ page }) => {
+test('the More sheet fits a 1280x720 screen for a host', async ({ page }) => {
   test.setTimeout(90000);
   const room = 'qatoolsfit' + Date.now().toString(36);
   await page.setViewportSize({ width: 1280, height: 720 });

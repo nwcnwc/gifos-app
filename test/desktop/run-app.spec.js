@@ -16,7 +16,6 @@ async function boot(page) {
   await page.waitForSelector('#mic', { state: 'visible' });
   await page.waitForFunction(() => window.__gifosVideo.canRunApp());
   await page.click('#bartoggle');
-  await page.click('#moretools');
   await page.click('#appbtn');
   await expect(page.locator('#app-modal')).toBeVisible();
 }
@@ -137,11 +136,14 @@ test('a running app\'s face strip shows each face\'s marks whole, with no cut te
   expect(got.noteCut).toBe(false);
 });
 
-// Run app lives in All tools, so the More sheet is open when the app starts.
-// It stayed open on top of the app (a grid of buttons over the 2048 board) until
-// you found Hide. Starting an app folds the sheet, like starting a screen share.
+// The More sheet stayed open on top of the app (a grid of buttons over the 2048
+// board) until you found Hide. Starting an app folds the sheet, like starting a
+// screen share. Picking Run app folds it already, so it is opened again here
+// to check the app start itself.
 test('starting an app folds the More sheet off the app', async ({ page }) => {
   await boot(page);
+  await page.evaluate(() => document.getElementById('bartoggle').click());
+  await expect(page.locator('#bartoggle')).toHaveAttribute('aria-expanded', 'true');
   await page.setInputFiles('#app-file-input', 'apps/2048/2048.gif');
   await page.waitForFunction(() => document.body.classList.contains('has-app'), null, { timeout: 30000 });
   await page.waitForFunction(() => document.getElementById('appstop').getClientRects().length > 0);
@@ -209,7 +211,6 @@ for (const [locale, lang, want] of [
       await page.waitForSelector('#mic', { state: 'visible' });
       await page.waitForFunction(() => window.__gifosVideo.canRunApp());
       await page.click('#bartoggle');
-      await page.click('#moretools');
       await page.click('#appbtn');
       await page.setInputFiles('#app-file-input', 'apps/2048/2048.gif');
       await page.waitForFunction(() => document.body.classList.contains('has-app'), null, { timeout: 30000 });

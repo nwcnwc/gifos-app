@@ -1,16 +1,9 @@
 const { test, expect } = require('@playwright/test');
 
-// A small-group More sheet opens on Hand, Invite and Help; the rest sits behind
-// All tools (qa-meet-desktop). A service shows every tool. Reach a tool either way.
+// More shows every tool, and a pick folds it, so each tool opens More again.
 async function moreTool(page, id) {
   const sel = '#' + id;
-  if (!(await page.locator(sel).isVisible())) {
-    if (!(await page.locator('#barmore').isVisible())) await page.locator('#bartoggle').click();
-    if (!(await page.locator(sel).isVisible())) {
-      const t = page.locator('#moretools');
-      if (await t.isVisible()) await t.click();
-    }
-  }
+  if (!(await page.locator(sel).isVisible()) && !(await page.locator('#barmore').isVisible())) await page.locator('#bartoggle').click();
   await page.locator(sel).click();
 }
 
@@ -1877,8 +1870,6 @@ test('captions and record stay readable when they are on', async ({ page }) => {
     await page.waitForSelector('body.broadcast.bc-watching #leavebtn .docklab');
     await page.locator('#bartoggle').click();
     await expect(page.locator('#barmore')).toBeVisible();
-    // Captions sits behind All tools on a wide window (qa-meet-desktop).
-    if (!(await page.locator('#ccbtn').isVisible())) await page.locator('#moretools').click();
     await expect(page.locator('#ccbtn')).toHaveText('Captions');
     const off = await readOn();
     expect(off.cc.fg).toBe('rgb(29, 29, 31)');
@@ -1886,6 +1877,9 @@ test('captions and record stay readable when they are on', async ({ page }) => {
     expect(off.cc.in, JSON.stringify(off.cc)).toBe(true);
     await moreTool(page, 'ccbtn');
     await expect(page.locator('#ccbtn')).toHaveClass(/on/);
+    // Picking Captions folds More; open it again to read the pressed buttons.
+    await expect(page.locator('#barmore')).toBeHidden();
+    await page.locator('#bartoggle').click();
     await page.evaluate(() => document.getElementById('recbtn').classList.add('on'));
     const on = await readOn();
     expect(on.cc.text).toBe('Captions');

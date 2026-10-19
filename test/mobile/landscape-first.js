@@ -1,6 +1,7 @@
 /*
- * Sideways, the first screen of More has to show Invite and Room password.
- * On an SE those two sat under the blur row and Float, so you had to scroll.
+ * Sideways, the first screen of More has to show the groups it leads with:
+ * People (Invite, People) and Talk (Chat, Hand). On an SE the lead buttons
+ * once sat under the blur row and Float, so you had to scroll.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/landscape-first.js
  */
@@ -10,7 +11,7 @@ const { chromium, devices } = require('playwright');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
-const NEED = ['invite', 'pwbtn', 'recbtn', 'chatbtn'];
+const NEED = ['invite', 'whobtn', 'chatbtn', 'hand'];
 
 function land(device) {
   const o = Object.assign({}, device);

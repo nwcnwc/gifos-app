@@ -11,7 +11,6 @@ async function boot(page, width, height) {
 test('starting a vote puts the More sheet away so faces stay visible', async ({ page }) => {
   await boot(page, 1280, 720);
   await page.click('#bartoggle');
-  await page.click('#moretools');
   await page.click('#votebtn');
   await page.click('#vote-modal .voteopt.up');
   await expect(page.locator('#votebanner')).toBeVisible();
@@ -30,6 +29,29 @@ test('starting a vote puts the More sheet away so faces stay visible', async ({ 
   });
   expect(cover.hits).toBe(0);
   expect(cover.word).toBe('More');
+});
+
+// Nathan: "when you select them, it should fold the menu back so that's
+// doesn't have to be done manually." A pick folds More; a choice that answers
+// inside the sheet (blur) keeps it up. The saved open/closed choice is kept.
+test('a pick in More folds the sheet, and a blur choice keeps it open', async ({ page }) => {
+  await boot(page, 1280, 720);
+  await page.click('#bartoggle');
+  await page.click('#blur-min');
+  await expect(page.locator('#bartoggle')).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#barmore')).toBeVisible();
+  await page.click('#keysbtn');
+  await expect(page.locator('#shortcutsheet')).toBeVisible();
+  await expect(page.locator('#barmore')).toBeHidden();
+  await expect(page.locator('#bartoggle')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#bartoggle .dockword')).toHaveText('More');
+  expect(await page.evaluate(() => localStorage.getItem('gifos_meet_bar'))).toBe('0');
+  await page.keyboard.press('Escape');
+  await page.click('#bartoggle');
+  await page.focus('#ccbtn');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#barmore')).toBeHidden();
+  expect(await page.evaluate(() => document.activeElement && document.activeElement.id)).toBe('bartoggle');
 });
 
 test('the More sheet stays inside a short window', async ({ page }) => {

@@ -46,7 +46,6 @@ test('the Fit control is 16px and clears the top chips and tile buttons', async 
 test('every word in the open More sheet is 16px', async ({ page }) => {
   await boot(page, 1280, 720);
   await page.click('#bartoggle');
-  await page.click('#moretools');
   const small = await page.evaluate(() => {
     const out = [];
     const walk = document.createTreeWalker(document.getElementById('barmore'), NodeFilter.SHOW_TEXT);
@@ -64,7 +63,7 @@ test('every word in the open More sheet is 16px', async ({ page }) => {
   const heads = await page.evaluate(() => [...document.querySelectorAll('#barmore .moregroup h4')]
     .filter((h) => getComputedStyle(h.closest('.moregroup')).display !== 'none')
     .map((h) => ({ t: h.textContent.trim(), caps: getComputedStyle(h).textTransform })));
-  expect(heads.length).toBe(4);
+  expect(heads.length).toBe(5);
   for (const h of heads) expect(h.caps, h.t).toBe('none');
 });
 

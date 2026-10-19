@@ -9,7 +9,6 @@ async function boot(page, room) {
   await page.goto('/run.html#v=' + room + '&av=0123456789abcdef&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#mic', { state: 'visible' });
   await page.click('#bartoggle');
-  await page.click('#moretools');
   await page.click('#admbtn');
   await expect(page.locator('#adm-modal')).toBeVisible();
 }

@@ -428,11 +428,13 @@
       top: opts.top > 0 ? opts.top : undefined,
     });
     // opts.holdBottom: where the tucked-away buttons stood (phone gallery).
-    const hold = !!opts.phone && (opts.mode || 'gallery') === 'gallery' && opts.gallery !== 'scroll' &&
+    // Fit and Scroll both size faces from the band, so both hold it: a tap
+    // that wakes the buttons never reshapes a face.
+    const MZ = GifOS.meetZones;
+    const hold = !!opts.phone && (opts.mode || 'gallery') === 'gallery' && (MZ || opts.gallery !== 'scroll') &&
       +opts.holdBottom > Math.max(0, +opts.bottom || 0);
     const byId = {};
     for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
-    const MZ = GifOS.meetZones;
     let lay = MZ ? zonesLayout(MZ, tiles, hold ? ML.viewBox(opts.vw || 1, opts.vh || 1, {
       phone: true, pill: !!opts.pill, bottom: +opts.holdBottom,
       top: opts.top > 0 ? opts.top : undefined,
