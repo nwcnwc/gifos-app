@@ -1,8 +1,8 @@
 const { test, expect } = require('@playwright/test');
 const path = require('path');
 
-// A share fills the left side (share-seat). "Show me on stage" puts your own
-// tile on your own stage; it must not shrink that share into a side box.
+// A share fills the left side (share-seat). A local self-view pin puts your
+// own tile on your own stage; it must not shrink that share into a side box.
 test.use({
   launchOptions: { args: ['--disable-gpu', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] },
 });
@@ -30,15 +30,19 @@ function readSeat() {
   };
   const share = box(document.querySelector('#stagefeed [data-row="sgs"]'));
   const me = box(document.querySelector('#feed .tile.me'));
-  const pressed = document.getElementById('selfstage').getAttribute('aria-pressed');
+  const pressed = (window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage)) ? 'true' : 'false';
   return { share, me, pressed, vw: innerWidth, vh: innerHeight };
 }
 
-test('a share still fills the left when Show me on stage is on', async ({ page, browserName }) => {
+test('a share still fills the left when your own tile is pinned on your stage', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'canvas captureStream');
   await boot(page);
-  await page.evaluate(() => document.getElementById('selfstage').click());
-  await expect.poll(() => page.evaluate(() => document.getElementById('selfstage').getAttribute('aria-pressed'))).toBe('true');
+  await page.evaluate(() => {
+    window.__meetSwapSelf = true;
+    if (window.__meetSelf) window.__meetSelf.onStage = true;
+    if (typeof window.__meetRelayout === 'function') window.__meetRelayout();
+  });
+  await expect.poll(() => page.evaluate(() => (window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage)) ? 'true' : 'false')).toBe('true');
   await page.evaluate(() => {
     const c = document.createElement('canvas');
     c.width = 1280;

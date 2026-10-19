@@ -3982,12 +3982,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button type="button" class="seg" data-self-edge="top">Top</button>
       </span>
     </span>
-    <span class="blurctl selfctl" id="selfstage-row" title="Puts your tile on the stage. Off until you turn it on. Stage only is the view that hides everyone else.">
-      <span class="blurlbl">Stage</span>
-      <span class="segwrap" role="group" aria-label="Put your video on the stage">
-        <button type="button" class="seg" id="selfstage" data-self-stage="1">Show me on stage</button>
-      </span>
-    </span>
       </div>
       <div class="morerow">
         <button id="flipcam" class="iconbtn" aria-label="Switch camera" title="Switch between front and back camera" style="display:none">
@@ -4121,6 +4115,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           <button class="seg" data-vq="240p">240p</button>
           <button class="seg" data-vq="144p">144p</button>
         </span>
+      </div>
+      <div class="set-sec" id="set-stage-video">
+        <button type="button" id="adjust-stage" class="seg" data-t="adjustStage" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;align-self:flex-start">Adjust stage video</button>
+        <p class="set-help" data-t="adjustStageHelp">Preview and frame what your camera would send on the stage. This does not put anyone on the stage.</p>
       </div>
       <div class="set-sec">
         <b data-t="setName">Your name</b>
@@ -5771,6 +5769,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         lyProgram: 'Programm', lyPreview: 'Vorschau', lyNext: 'Nächste Zeile',
         songWords: 'Liedtext', songNote: 'Eine Zeile pro Zeile. Lied liest sie der Reihe nach.', songSave: 'Speichern', songCancel: 'Abbrechen',
         setTitle: 'Einstellungen', setVideo: 'Videoqualität',
+        adjustStage: 'Bühnenvideo anpassen',
+        adjustStageHelp: 'So sähe Ihre Kamera auf der Bühne aus. Das setzt niemanden auf die Bühne.',
         setVideoHelp: 'Was Ihre eigene Kamera aufnimmt und sendet. Automatisch passt sich der Größe des Raums und Ihrem Akku an. Eine feste Wahl bleibt stehen.',
         setAuto: 'Automatisch', setName: 'Ihr Name',
         setNameHelp: 'Was alle auf Ihrem Feld sehen:',
@@ -6083,6 +6083,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         lyProgram: 'Programa', lyPreview: 'Vista previa', lyNext: 'Siguiente línea',
         songWords: 'Letra', songNote: 'Una línea por renglón. Canción las lee en orden.', songSave: 'Guardar', songCancel: 'Cancelar',
         setTitle: 'Ajustes', setVideo: 'Calidad de video',
+        adjustStage: 'Ajustar video del escenario',
+        adjustStageHelp: 'Así se vería tu cámara en el escenario. Esto no pone a nadie en el escenario.',
         setVideoHelp: 'Lo que graba y envía tu propia cámara. Automático se adapta al tamaño de la sala y a tu batería. Una elección fija se queda.',
         setAuto: 'Automático', setName: 'Tu nombre',
         setNameHelp: 'Lo que todos ven en tu cuadro:',
@@ -9791,7 +9793,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const selfPin = !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage));
           tiles.push({ id: 'me', el: meTile.tile, tier: myStatus.bot ? 'bot' : 'row', me: true, bot: !!myStatus.bot, shade: shadeKey('me'),
             hand: !!myStatus.hand, handOrd: myStatus.hand || 0,
-            // Your tile stays off the stage unless you turned on "Show me on stage".
+            // A self-view pin can place your tile on your own stage. It is not room membership.
             stage: !myStatus.bot && selfPin,
             shareFace: !myStatus.bot && !!myStatus.scr,
             stageOrd: Math.max(0, stg.indexOf(myId)),
@@ -10280,19 +10282,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function openTileWin(el) {
       if (tileWin.el === el) return;
       if (tileWin.el) closeTileWin();
-      const feed = document.getElementById('feed');
-      let veil = document.getElementById('tilewin-veil'), win = document.getElementById('tilewin');
-      if (!veil) {
-        veil = document.createElement('div'); veil.id = 'tilewin-veil'; veil.hidden = true;
-        veil.addEventListener('click', (e) => { e.stopPropagation(); closeTileWin(); });
-        document.body.appendChild(veil);
-      }
-      if (!win) {
-        win = document.createElement('div'); win.id = 'tilewin'; win.hidden = true;
-        win.setAttribute('role', 'dialog'); win.setAttribute('aria-modal', 'true'); win.setAttribute('aria-labelledby', 'tilewin-title');
-        win.addEventListener('click', (e) => e.stopPropagation());
-        document.body.appendChild(win);
-      }
+      const chrome = ensureTileChrome();
+      const veil = chrome.veil, win = chrome.win;
       tileWin.el = el;
       const vw = window.innerWidth, vh = window.innerHeight;
       // A broadcast Stage already fills the screen: its window opens beside
@@ -10342,7 +10333,52 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       wakeMeet();
       try { el.focus({ preventScroll: true }); } catch (e) {}
     }
-    window.__tileWin = { open: openTileWin, close: closeTileWin, isOpen: () => !!tileWin.el, applyViewerCrops: applyViewerCrops };
+    function ensureTileChrome() {
+      let veil = document.getElementById('tilewin-veil'), win = document.getElementById('tilewin');
+      if (!veil) {
+        veil = document.createElement('div'); veil.id = 'tilewin-veil'; veil.hidden = true;
+        veil.addEventListener('click', (e) => { e.stopPropagation(); closeTileWin(); });
+        document.body.appendChild(veil);
+      }
+      if (!win) {
+        win = document.createElement('div'); win.id = 'tilewin'; win.hidden = true;
+        win.setAttribute('role', 'dialog'); win.setAttribute('aria-modal', 'true'); win.setAttribute('aria-labelledby', 'tilewin-title');
+        win.addEventListener('click', (e) => e.stopPropagation());
+        document.body.appendChild(win);
+      }
+      return { veil: veil, win: win };
+    }
+    // Settings → Adjust stage video. Same Stage frame as a step-up, and no
+    // step-up: does not call setStage and does not pin the local self-view.
+    function openStageAdjust() {
+      const modal = document.getElementById('set-modal');
+      if (modal) modal.style.display = 'none';
+      if (tileWin.el) closeTileWin();
+      const chrome = ensureTileChrome();
+      const veil = chrome.veil, win = chrome.win;
+      const anchor = (meTile && meTile.tile) || document.getElementById('feed') || document.body;
+      tileWin.el = anchor;
+      veil.hidden = false;
+      document.body.classList.add('tw-open', 'meet-awake');
+      win.textContent = '';
+      const head = document.createElement('div'); head.className = 'tw-head';
+      const nm = document.createElement('div'); nm.className = 'tw-name'; nm.id = 'tilewin-title';
+      nm.textContent = (meTile && meTile.tile) ? twName(meTile.tile, 'me') : 'Stage video';
+      const x = document.createElement('button'); x.type = 'button'; x.className = 'tw-close'; x.textContent = '✕';
+      x.setAttribute('aria-label', 'Close'); x.addEventListener('click', (e) => { e.stopPropagation(); closeTileWin(); });
+      head.appendChild(nm); head.appendChild(x); win.appendChild(head);
+      twStageFrameSection(win);
+      if (!win.querySelector('.tw-stageframe')) {
+        const p = document.createElement('p'); p.className = 'tw-help';
+        p.textContent = 'Turn your camera on to preview what the stage would show.';
+        win.appendChild(p);
+      }
+      win.hidden = false;
+      const vw = window.innerWidth, vh = window.innerHeight;
+      placeTileWin(win, { x: vw / 2, y: vh / 2, w: 0, h: 0 });
+      const first = win.querySelector('.tw-close'); if (first) try { first.focus({ preventScroll: true }); } catch (e) {}
+    }
+    window.__tileWin = { open: openTileWin, close: closeTileWin, isOpen: () => !!tileWin.el, applyViewerCrops: applyViewerCrops, openStageAdjust: openStageAdjust };
     (function () {
       const feed = document.getElementById('feed');
       if (!feed) return;
@@ -27393,6 +27429,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof applyCcAll === 'function') applyCcAll();
       setModal.style.display = 'flex';
     };
+    const adjustStageBtn = document.getElementById('adjust-stage');
+    if (adjustStageBtn) adjustStageBtn.onclick = () => { setModal.style.display = 'none'; openStageAdjust(); };
     // Your name, changeable mid-meeting: a guest who typed the room password
     // into the name box was "Password1" for the whole call with no way out.
     document.getElementById('set-rename').onclick = () => renameFlow(() => {
