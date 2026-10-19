@@ -4,7 +4,9 @@
  * sideways phone the faces start at y=66, so it runs across the first two
  * faces: over your own tile and Pastor Dave's mute chip (SE, iPhone 12 and
  * Pixel 5, with 3 or 7 on the call, buttons up or tucked away).
- * The build name stays on screen and lies over no face, button or header.
+ * With the buttons up the build name stays on screen and lies over no face,
+ * button or header. It tucks with the dock, so once the buttons are away
+ * it is gone and cannot cover a face.
  *
  * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/build-tag-clear.js
  */
@@ -73,6 +75,10 @@ async function run(browser, dev, tag, count, bad) {
   const away = await look(page);
   const awayShot = await page.screenshot();
   for (const [state, s] of [['buttons up', up], ['buttons away', away]]) {
+    if (state === 'buttons away') {
+      if (!s.gone) bad.push(label + ', buttons away: the build tag stays up (' + (s.text || '') + ' at ' + s.box + ')');
+      continue;
+    }
     if (s.gone) { bad.push(label + ', ' + state + ': ' + s.gone); continue; }
     if (s.text.indexOf('43210') < 0) bad.push(label + ', ' + state + ': the build tag reads "' + s.text + '"');
     if (s.hits.length) bad.push(label + ', ' + state + ': "' + s.text + '" at ' + s.box + ' lies over ' + s.hits.join(', '));

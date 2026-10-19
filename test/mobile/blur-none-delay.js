@@ -58,9 +58,13 @@ function stamp(page, ageMs) {
   await page.locator('#bartoggle').tap();
   await page.locator('#blur-min').scrollIntoViewIfNeeded();
   await page.locator('#blur-min').tap();
+  // More folds after a blur pick. No blur is the next pick, so the sheet opens again.
+  if ((await page.locator('#bartoggle').getAttribute('aria-expanded')) !== 'true') await page.locator('#bartoggle').tap();
   await page.locator('#blur-none').scrollIntoViewIfNeeded();
   await page.locator('#blur-none').tap();
   await page.waitForTimeout(250);
+  // The pick folds More. The selected fill is the one a person sees on the open sheet.
+  if ((await page.locator('#bartoggle').getAttribute('aria-expanded')) !== 'true') await page.locator('#bartoggle').tap();
   const read = () => page.evaluate(() => {
     const el = document.getElementById('blur-none');
     const cs = getComputedStyle(el);
@@ -83,7 +87,11 @@ function stamp(page, ageMs) {
   const duringOk = during.wait === false && during.sel && during.bg === 'rgb(29, 29, 31)';
   const shotDuring = duringOk ? 'after-blur-wait-pixel-7.png' : 'before-blur-wait-pixel-7.png';
   await page.screenshot({ path: path.join(SHOTS, shotDuring) });
-  if (duringOk) await page.locator('#blurseg').screenshot({ path: path.join(SHOTS, 'after-blur-wait-seg.png') });
+  if (duringOk) {
+    if ((await page.locator('#bartoggle').getAttribute('aria-expanded')) !== 'true') await page.locator('#bartoggle').tap();
+    await page.locator('#blurseg').scrollIntoViewIfNeeded();
+    await page.locator('#blurseg').screenshot({ path: path.join(SHOTS, 'after-blur-wait-seg.png') });
+  }
   await stamp(page, 61000);
   await page.waitForFunction(() => {
     const api = window.__gifosVideo;
@@ -92,9 +100,12 @@ function stamp(page, ageMs) {
     return !sam && api.blurClassOf('me') === 0;
   }, { timeout: 8000 }).catch(() => {});
   await page.waitForTimeout(400);
+  if ((await page.locator('#bartoggle').getAttribute('aria-expanded')) !== 'true') await page.locator('#bartoggle').tap();
   const later = await read();
   if (later.feed === 0 && !later.wait && later.sel) {
     await page.screenshot({ path: path.join(SHOTS, 'after-blur-clear-pixel-7.png') });
+    if ((await page.locator('#bartoggle').getAttribute('aria-expanded')) !== 'true') await page.locator('#bartoggle').tap();
+    await page.locator('#blurseg').scrollIntoViewIfNeeded();
     await page.locator('#blurseg').screenshot({ path: path.join(SHOTS, 'after-blur-clear-seg.png') });
   }
   const bad = [];

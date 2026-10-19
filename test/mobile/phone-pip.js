@@ -10,7 +10,7 @@
  *
  *   1. Float, then a touch on the meeting: the tile plays again.
  *   2. Float floats again after that, and the next touch closes it.
- *   3. Full screen, then switch apps: no tile float is asked for, and the
+ *   3. Full screen (the header button), then switch apps: no tile float is asked for, and the
  *      dock and call buttons leave the picture the browser floats.
  *   4. Back from the other app: the dock comes back.
  *
@@ -98,11 +98,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const off2 = await state();
   if (off2.floating) bad.push('the second float did not close on a touch');
 
-  // 3. Full screen, then switch apps.
+  // 3. Full screen is the one header button, then switch apps.
   if (off2.floating) await page.evaluate(() => document.exitPictureInPicture().catch(() => {}));
-  await openMore();
-  const fsb = page.locator('#fsbtn');
-  if (!(await fsb.isVisible().catch(() => false))) bad.push('Full screen is not in More');
+  await wake();
+  const fsb = page.locator('#appfull');
+  if (!(await fsb.isVisible().catch(() => false))) bad.push('Full screen is not on the header');
   else await fsb.tap({ timeout: 5000 });
   await page.waitForFunction(() => !!document.fullscreenElement, null, { timeout: 5000 }).catch(() => {});
   await sleep(500);

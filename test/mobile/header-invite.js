@@ -1,7 +1,7 @@
 /*
- * Alone on a phone, Invite lives in the OS header (#appinvite): the link is
- * copied, or the phone share sheet opens. With other people here, the button
- * is gone and the count stays.
+ * Invite lives in the OS header (#appinvite) alone and with other people.
+ * A tap opens the share sheet: Share hands the link to the phone share
+ * sheet, Copy puts it on the clipboard. The count stays "N in call".
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/header-invite.js
  */
@@ -120,17 +120,17 @@ async function measure(page) {
         navigator.share = (payload) => { window.__shared = payload; return Promise.resolve(); };
       });
       await page.locator('#appinvite').tap();
+      await page.locator('#inv-share').waitFor({ state: 'visible' });
+      await page.locator('#inv-share').tap();
       await page.waitForTimeout(80);
       const shared = await page.evaluate(() => window.__shared);
       if (!shared || String(shared.url || '').indexOf('#v=sunday') < 0) bad.push('share sheet did not get the link');
-      await page.evaluate(() => { navigator.share = undefined; });
-      await page.waitForTimeout(2100);
-      await page.locator('#appinvite').tap();
+      await page.locator('#inv-copy').tap();
       await page.waitForTimeout(120);
       const copied = await page.evaluate(async () => {
         let clip = '';
         try { clip = await navigator.clipboard.readText(); } catch (e) { clip = 'ERR ' + e; }
-        return { clip: clip, label: document.getElementById('appinvite').textContent };
+        return { clip: clip, label: document.getElementById('inv-copy').textContent };
       });
       if (String(copied.clip).indexOf('#v=sunday') < 0) bad.push('copy missed the link (' + copied.clip + ')');
       if (copied.label !== 'Copied ✓') bad.push('copy label "' + copied.label + '"');
@@ -148,7 +148,11 @@ async function measure(page) {
   await page.waitForTimeout(200);
   const crowded = await measure(page);
   const bad = [];
-  if (!crowded.hidden) bad.push('Invite stays up with other people');
+  if (crowded.hidden) bad.push('Invite is gone with other people');
+  if (crowded.label !== 'Invite') bad.push('Invite label "' + crowded.label + '" with people here');
+  if (crowded.btn.w < 44 || crowded.btn.h < 44) bad.push('Invite is ' + Math.round(crowded.btn.w) + 'x' + Math.round(crowded.btn.h) + ' with people here');
+  if (!crowded.inHeader) bad.push('Invite leaves the OS header with people here');
+  if (overlaps(crowded.btn, crowded.fit)) bad.push('Invite covers Fit with people here');
   if (crowded.status !== 'sunday · 4 in call') bad.push('header "' + crowded.status + '"');
   if (bad.length) failures.push('with-people: ' + bad.join('; '));
   await context.close();

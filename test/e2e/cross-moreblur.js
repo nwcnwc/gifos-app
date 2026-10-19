@@ -16,7 +16,7 @@ run('cross-moreblur', async (hb, vb, shoot) => {
   const got = await host.evaluate(() => {
     const px = (el) => parseFloat(getComputedStyle(el).fontSize);
     const sheet = document.getElementById('barmore');
-    const btn = sheet.querySelector(':scope > button:not([hidden])');
+    const btn = sheet.querySelector('.morerow > button:not([hidden])');
     const lbl = sheet.querySelector('.blurlbl');
     const segs = Array.from(sheet.querySelectorAll('.seg')).filter((s) => s.getClientRects().length);
     return { btn: px(btn), lbl: px(lbl), seg: Math.min(...segs.map(px)), segH: Math.min(...segs.map((s) => Math.round(s.getBoundingClientRect().height))), segs: segs.length };
