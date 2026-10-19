@@ -231,9 +231,12 @@
   // -> the line to keep, or '' for none.
   var WHISPER_SILENCE = /^(?:(?:you )*you|thank you|thanks for watching|thank you for watching)$/;
   function dropWhisperNoise(text) {
-    var t = String(text || '').trim().replace(/([.!?])(?:\s+you)+\s*$/, '$1');
+    var t = String(text || '').replace(/\[[^\]]*\]|\([^)]*\)|[♪♫*]/g, ' ').replace(/\s+/g, ' ').trim()
+      .replace(/([.!?])(?:\s+you)+\s*$/, '$1');
     var n = normLine(t);
     if (!n || WHISPER_SILENCE.test(n)) return '';
+    var words = n.split(' ');
+    if (words.length && words.every(function (w) { return w === 'you' || w === 'thank'; })) return '';
     return t;
   }
 
@@ -266,10 +269,12 @@
       return call(id, 'speak', {
         bytes: audio.bytes || null,
         mime: audio.mime ? String(audio.mime) : '',
-        text: audio.text == null ? '' : String(audio.text)
+        text: audio.text == null ? '' : String(audio.text),
+        filler: !!audio.filler
       });
     },
     stopSpeaking: function (id) { return call(id, 'stopSpeaking'); },
+    thinking: function (id, on) { return call(id, 'thinking', { on: !!on }); },
     watch: function (id, on) { return setWatch(id, !!on); },
     meetingState: function (id) { return call(id, 'meetingState', {}); },
     snapshot: function (id) { return call(id, 'snapshot', {}); },

@@ -657,9 +657,11 @@
           setCamera: function(id, on){ return rpc({ type:'meet', op:'setCamera', meetingId: id, on: !!on }); },
           speak: function(id, audio){
             audio = audio || {};
-            return rpc({ type:'meet', op:'speak', meetingId: id, bytes: audio.bytes || null, mime: audio.mime || '', text: audio.text == null ? '' : String(audio.text) });
+            return rpc({ type:'meet', op:'speak', meetingId: id, bytes: audio.bytes || null, mime: audio.mime || '', text: audio.text == null ? '' : String(audio.text), filler: !!audio.filler });
           },
           stopSpeaking: function(id){ return rpc({ type:'meet', op:'stopSpeaking', meetingId: id }); },
+          // The thought bubble on the bot's tile. The next spoken line ends it.
+          thinking: function(id, on){ return rpc({ type:'meet', op:'thinking', meetingId: id, on: !!on }); },
           watch: function(id, on){ return rpc({ type:'meet', op:'watch', meetingId: id, on: !!on }); },
           meetingState: function(id){ return rpc({ type:'meet', op:'meetingState', meetingId: id }); },
           snapshot: function(id){ return rpc({ type:'meet', op:'snapshot', meetingId: id }); },
@@ -3657,8 +3659,9 @@
             else if (op === 'raiseHand') done(host.raiseHand(d.meetingId, !!d.on));
             else if (op === 'setMic') done(host.setMic(d.meetingId, !!d.on));
             else if (op === 'setCamera') done(host.setCamera(d.meetingId, !!d.on));
-            else if (op === 'speak') done(host.speak(d.meetingId, { bytes: d.bytes, mime: d.mime, text: d.text }));
+            else if (op === 'speak') done(host.speak(d.meetingId, { bytes: d.bytes, mime: d.mime, text: d.text, filler: !!d.filler }));
             else if (op === 'stopSpeaking') done(host.stopSpeaking(d.meetingId));
+            else if (op === 'thinking') done(host.thinking(d.meetingId, !!d.on));
             else if (op === 'watch') done(host.watch(d.meetingId, !!d.on));
             else if (op === 'meetingState') done(host.meetingState(d.meetingId));
             else if (op === 'snapshot') done(host.snapshot(d.meetingId));
