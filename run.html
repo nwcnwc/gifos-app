@@ -2871,6 +2871,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     border: 1.5px solid #8d93a0; background: #fff; color: #1d1d1f;
     font: 700 1rem/1.2 system-ui, sans-serif; cursor: pointer;
   }
+  /* A solo link (#id=) whose app this device cannot open. The solo chrome
+     hides the status line, so this page is the only place the reason shows. */
+  #appmissing {
+    position: fixed; z-index: 70; top: 0; right: 0; bottom: 0; left: 0; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; padding: 24px; text-align: center;
+    background: var(--bg, #0a0a0f); color: var(--text, #e0e0f0);
+  }
+  #appmissing[hidden] { display: none !important; }
+  #appmissing h1 { margin: 0; max-width: 28rem; font: 700 1.35rem/1.3 system-ui, sans-serif; }
+  #appmissing p { margin: 0; max-width: 28rem; font: 400 1rem/1.45 system-ui, sans-serif; }
+  #appmissing-home {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 44px; min-height: 44px; padding: 8px 20px; border-radius: 999px;
+    background: #2436d6; color: #fff; text-decoration: none;
+    font: 700 1rem/1.2 system-ui, sans-serif;
+  }
+  body.app-missing #fitbtn { display: none !important; }
   .wait-head { font-weight: 800; font-size: 1.05rem; line-height: 1.3; }
   .wait-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .wait-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -3992,6 +4010,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <h1>Waiting for the host</h1>
     <p>You'll join when the host lets you in. This meeting can't see or hear you yet.</p>
     <button type="button" id="waitdoor-leave">Leave</button>
+  </div>
+  <div id="appmissing" hidden role="alert">
+    <h1></h1>
+    <p></p>
+    <a id="appmissing-home" href="index.html">Go to Home Screen</a>
   </div>
   <div class="share" id="share">
     <span class="hint">Send this link to friends — opening it brings them right in:</span>
@@ -5648,6 +5671,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         fullScreen: 'Vollbild', leaveFullScreen: 'Vollbild beenden',
         appWhoHost: '· Sie stellen sie der Besprechung bereit', appWhoPinned: 'Sie stellen sie bereit',
         appWhoShared: '· mit der Besprechung geteilt', appWhoSharedBy: '· mit der Besprechung geteilt von ', appWhoDevice: 'auf diesem Gerät',
+        appMissingTitle: 'Diese App ist nicht auf diesem Gerät',
+        appMissingBody: 'Dieser Link öffnet eine App, die auf einem anderen Gerät oder in einem anderen Browser gespeichert ist. GifOS behält Apps auf dem Gerät, auf dem sie gespeichert sind, deshalb kann sie hier nicht geöffnet werden. Öffnen Sie den Link dort, oder bitten Sie die Person, die sie hat, Ihnen einen Einladungslink zu schicken.',
+        appMissingHome: 'Zum Startbildschirm',
+        appSlowTitle: 'Die App wird noch gesucht',
+        appSlowBody: 'GifOS liest noch die Apps, die auf diesem Gerät gespeichert sind. Sie können weiter warten oder zum Startbildschirm zurückkehren.',
+        appFailTitle: 'Diese App konnte nicht geöffnet werden',
+        appFailBody: 'Beim Öffnen auf diesem Gerät ist etwas schiefgelaufen. Laden Sie die Seite neu, um es noch einmal zu versuchen, oder kehren Sie zum Startbildschirm zurück.',
         tileControls: 'Steuerung für diese Person.', handChip: 'Hand gehoben', handUpOne: 'Hand oben', handUpMany: 'Hände oben', stageFull: 'Bühne voll', leavingChip: 'geht…', recChip: 'nimmt dieses Meeting auf', scribeChip: 'schreibt alle mit', stopShareTip: 'Ihre Bildschirmfreigabe beenden',
         stealData: '+ Daten', stealDataTip: 'Die App und alles, was jetzt darin ist',
         stealJoined: 'wie ich kam', stealJoinedTip: 'Die App und der Raum, wie er war, als Sie kamen',
@@ -5943,6 +5973,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         fullScreen: 'Pantalla completa', leaveFullScreen: 'Salir de pantalla completa',
         appWhoHost: '· tú la alojas para la reunión', appWhoPinned: 'tú la alojas',
         appWhoShared: '· compartida con la reunión', appWhoSharedBy: '· compartida con la reunión por ', appWhoDevice: 'en este dispositivo',
+        appMissingTitle: 'Esta app no está en este dispositivo',
+        appMissingBody: 'Este enlace abre una app guardada en otro dispositivo o en otro navegador. GifOS deja las apps en el dispositivo donde se guardaron, así que aquí no se puede abrir. Abre el enlace allí o pide a quien la tiene que te mande un enlace de invitación.',
+        appMissingHome: 'Ir a la pantalla de inicio',
+        appSlowTitle: 'Todavía buscando esta app',
+        appSlowBody: 'GifOS todavía está leyendo las apps guardadas en este dispositivo. Puedes seguir esperando o volver a la pantalla de inicio.',
+        appFailTitle: 'Esta app no se pudo abrir',
+        appFailBody: 'Algo salió mal al abrirla en este dispositivo. Recarga la página para intentarlo de nuevo o vuelve a la pantalla de inicio.',
         tileControls: 'Controles para esta persona.', handChip: 'mano levantada', handUpOne: 'mano levantada', handUpMany: 'manos levantadas', stageFull: 'escenario lleno', leavingChip: 'saliendo…', recChip: 'grabando esta reunión', scribeChip: 'anotando a todos', stopShareTip: 'Dejar de compartir tu pantalla',
         stealData: '+ datos', stealDataTip: 'La app y todo lo que hay ahora',
         stealJoined: 'como entré', stealJoinedTip: 'La app y la sala como estaban cuando entraste',
@@ -19717,13 +19754,46 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // slug + appId ride along for the Help's "Report a problem" link (apps/<slug>).
       return { installedAt: sm.installedAt || '', signedBy, slug: sm.slug || '', appId: sm.appId || rec.appId || '' };
     }
+    // A solo link names a file in THIS browser's store. Opened anywhere else
+    // (another phone, another browser, another host) there is nothing to run,
+    // and the solo chrome hides the status line — so say it on a page of its
+    // own, with the way Home. Never a room: this page opens no socket.
+    function showAppMissing(title, body) {
+      const el = document.getElementById('appmissing');
+      el.querySelector('h1').textContent = title;
+      el.querySelector('p').textContent = body;
+      el.querySelector('a').textContent = uiText('appMissingHome', 'Go to Home Screen');
+      el.hidden = false;
+      document.body.classList.add('app-missing');
+      document.title = title + ' — GifOS';
+      try { el.querySelector('a').focus(); } catch (e) {}
+    }
+    function hideAppMissing() {
+      document.getElementById('appmissing').hidden = true;
+      document.body.classList.remove('app-missing');
+    }
+    // The store lookup is local and normally answers at once; past this, the
+    // person is told it is still looking rather than left on a black page.
+    const SOLO_LOOKUP_SLOW_MS = 10000;
     function bootSoloApp() {
       document.body.classList.add('solo-app');
       // Off the camera FIRST: a solo entry is never a meeting, and the file may
       // be missing or slow — the ornament replaces this again once bytes land.
       setAppFavicon(null);
-      GifOS.store.getFile(ROOM.fileId).then((rec) => {
-        if (!rec) throw new Error('file not found on this desktop');
+      const slow = setTimeout(() => showAppMissing(
+        uiText('appSlowTitle', 'Still looking for this app'),
+        uiText('appSlowBody', 'GifOS is still reading the apps saved on this device. You can keep waiting, or go back to your Home Screen.')
+      ), SOLO_LOOKUP_SLOW_MS);
+      Promise.resolve().then(() => GifOS.store.getFile(ROOM.fileId)).then((rec) => {
+        clearTimeout(slow);
+        if (!rec) {
+          showAppMissing(
+            uiText('appMissingTitle', 'This app isn\u2019t on this device'),
+            uiText('appMissingBody', 'This link opens an app that is saved on another device or in another browser. GifOS keeps apps on the device that saved them, so it can\u2019t open here. Open the link there, or ask the person who has it to send you an Invite link.')
+          );
+          return;
+        }
+        hideAppMissing();
         appInstall = installFactsOf(rec);
         const nm = (rec.name && rec.name.replace(/\.gif$/i, '')) || 'App';
         document.title = nm + ' — GifOS';
@@ -19759,7 +19829,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           });
         }
         return mount();
-      }).catch((e) => setStatus('Could not open the app: ' + (e && e.message || e)));
+      }).catch((e) => {
+        clearTimeout(slow);
+        const why = String(e && e.message || e);
+        setStatus('Could not open the app: ' + why);
+        showAppMissing(
+          uiText('appFailTitle', 'This app couldn\u2019t open'),
+          uiText('appFailBody', 'Something went wrong opening it on this device. Reload the page to try again, or go back to your Home Screen.') + ' (' + why + ')'
+        );
+      });
     }
 
     // ---- ONE RUNTIME steps 2+4: app rooms (docs/one-runtime.md) --------------
