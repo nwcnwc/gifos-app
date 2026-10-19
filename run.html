@@ -3184,6 +3184,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* pre-wrap keeps the leading " · 360p" and lets the sentence take a second
      line. One line at 900px clipped "faces stay soft until a password". */
   @media (min-width: 701px) and (min-height: 501px) { .topchip #statusrest { flex: 1 1 auto; min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; } }
+  /* A share and a broadcast stay one line. The feed reserves a single header
+     row, and the On-air bar sits under that row: a second line covered the
+     slide and ran under the bar. A plain meeting still wraps. */
+  @media (min-width: 701px) and (min-height: 501px) {
+    body.screen-on .topchip .status,
+    body.broadcast .topchip .status {
+      display: flex; align-items: center; overflow: hidden; white-space: nowrap; height: auto;
+      -webkit-line-clamp: unset; line-clamp: unset; -webkit-box-orient: unset;
+    }
+    body.screen-on .topchip #statusrest,
+    body.broadcast .topchip #statusrest {
+      overflow: hidden; text-overflow: ellipsis; white-space: pre;
+    }
+  }
   @media (min-width: 701px) and (min-height: 501px) {
     .topchip button#status { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); }
   }
