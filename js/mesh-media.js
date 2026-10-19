@@ -150,6 +150,7 @@
           // A matching stream id can still be unfolded: the first add records
           // nothing when the audio track has not arrived yet.
           if (sid && !fold.has('c' + i)) fold.add('c' + i, stream, opts.gain == null ? 1 : opts.gain);
+          else if (sid) fold.follow('c' + i, stream);
         }
         cells[i] = { el, streamId: sid };
       },
@@ -699,6 +700,7 @@
           // A matching stream id can still be unfolded: the first add records
           // nothing when the audio track has not arrived yet.
           if (sid && !fold.has('t' + id)) fold.add('t' + id, stream, opts.gain == null ? 1 : opts.gain);
+          else if (sid) fold.follow('t' + id, stream);
         }
         const n = Math.max(1, (meta && meta.n) | 0 || 1);
         const cols = Math.max(1, (meta && meta.cols) | 0 || n); // a bar's cols = n
@@ -817,6 +819,7 @@
         if (fold) {
           if (prev && prev.sid !== sid) fold.remove('p' + key);
           if (sid && !fold.has('p' + key)) fold.add('p' + key, stream, 1);
+          else if (sid) fold.follow('p' + key, stream);
         }
         parts.set(key, { el, ord, sid, n: (meta && meta.n) || 1, cols: (meta && meta.cols) || 1 });
       },
@@ -1001,6 +1004,17 @@
           try { t.addEventListener('unmute', s.onUnmute); } catch (e) {}
         }
         return true;
+      },
+      // The SAME container id can come back as a NEW object with new tracks:
+      // a rebuilt pair hands a row head that seat's stream again under its
+      // old id. The node bound at add() then reads the old pc's track, which
+      // has ended, and the band drops that voice (e2e-sixth-rebuild). Follow
+      // the container's live track. Same track: no-op.
+      follow(key, stream) {
+        if (!srcs.has(key) || !stream) return false;
+        const t = liveAudioTrack(stream);
+        if (!t || t === srcs.get(key).track) return false;
+        return this.rebind(key, t);
       },
       // Drive a folded source's gain in place. 0 silences it and the node stays.
       // An unknown key is a no-op.

@@ -695,9 +695,21 @@
       if (iAmInsideTheRoom()) return false;             // I am inside — use the mesh
       if (m.t !== 'WHOHOME' && m.t !== 'FIND' && !(m.t === 'HOME' && !m.roster)) return false;  // entry asks only
       if (entryDelivered(to, m)) return true;
-      pendingEntry.set(to + '|' + m.t, { to, m, at: Date.now() });
+      const e = { to, m, at: Date.now(), handed: false };
+      handOnce(e);
+      pendingEntry.set(to + '|' + m.t, e);
       askDial(to);
       return true;
+    }
+    // No channel to that greeter yet: still hand the ask, once, to a channel
+    // I hold (sendDC's forward). A member on the far end forwards it and the
+    // answer comes back the same way, so a greeter I may never reach directly
+    // (a pair that cannot connect) still answers at once instead of being
+    // waited out as dark. The ask stays pending and keeps dialing, for when
+    // the channel I hold leads only to another knocker.
+    function handOnce(e) {
+      if (e.handed || typeof opts.dcOpen !== 'function' || !opts.sendDC) return;
+      try { e.handed = !!opts.sendDC(e.to, e.m, peer); } catch (x) {}
     }
     function askDial(to) {
       const now = Date.now();
@@ -715,7 +727,7 @@
       for (const [k, e] of pendingEntry) {
         if (now - e.at > ENTRY_WAIT_MS) { pendingEntry.delete(k); continue; }
         if (entryDelivered(e.to, e.m)) pendingEntry.delete(k);
-        else askDial(e.to);
+        else { handOnce(e); askDial(e.to); }
       }
     }
 
@@ -1164,7 +1176,7 @@
       // holding the new password can't decrypt any greeter blob (R6 reads as
       // "wrong password") until every greeter's E3 re-knock… which would also
       // have used the stale key, locking them out until a reload.
-      setKey(k) { if (k) { if (k !== roomKey) { oldKeys.unshift(roomKey); if (oldKeys.length > 4) oldKeys.length = 4; keySetAt = Date.now(); } roomKey = k; sealedSoloRuns = 0; /* the counter means "sealed replies under MY CURRENT key" — evidence gathered under the old key must not fire a challenge past a re-key */ try { if (sock && sock.rejected) sock.kick(); } catch (e) {} /* credential change: the ONE sanctioned re-arm of a policy-rejected socket */ try { if (seat && seat.hasCoord && seat.state === 3 && seat.coord.pc === 0) env.knock(peer, seat.genKey || myKey); } catch (e) {} } },
+      setKey(k) { if (k) { if (k !== roomKey) { oldKeys.unshift(roomKey); if (oldKeys.length > 4) oldKeys.length = 4; keySetAt = Date.now(); lockedFired = false; /* a new key re-arms the door challenge: a seated page re-keys in place (no new node), and a later change it misses must still ask */ } roomKey = k; sealedSoloRuns = 0; /* the counter means "sealed replies under MY CURRENT key" — evidence gathered under the old key must not fire a challenge past a re-key */ try { if (sock && sock.rejected) sock.kick(); } catch (e) {} /* credential change: the ONE sanctioned re-arm of a policy-rejected socket */ try { if (seat && seat.hasCoord && seat.state === 3 && seat.coord.pc === 0) env.knock(peer, seat.genKey || myKey); } catch (e) {} } },
       stats() { return { peer, state: seat ? seat.state : 0, coord: (seat && seat.hasCoord) ? { pc: seat.coord.pc, r: seat.coord.r, i: seat.coord.i } : null, stranded: !!(seat && seat.stranded), tick: env.TICK, relayRefused, relayUnsent, pendingEntry: pendingEntry.size, closes: relayCloses.slice() }; },
       // Greeter-list forensics: ring of recent onGreeters outcomes (listLen /
       // open / founded / action). See greeterTrace push in onGreeters.

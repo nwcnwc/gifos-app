@@ -201,15 +201,25 @@
       // A slower answer from an earlier put used to land last and paint over
       // the newer rows. The last write of a round (dawn) then stuck on the
       // previous screen, because nothing else was left to ask for a paint.
+      // So every ask is numbered, and a subscriber is never handed an answer
+      // OLDER than one it has already been shown.
+      // The test is against what was SHOWN, not against the newest ASK: in a
+      // busy shared room the changes arrive faster than one answer can come
+      // back, and "only the newest ask may paint" then drops every answer,
+      // so the subscriber stops hearing the collection at all.
       var dbWave = {};
+      function paintIf(sub, wave, rows){
+        if (wave <= sub.shown) return;
+        sub.shown = wave;
+        sub.cb(rows);
+      }
       function refresh(collection){
         var list = subs[collection]||[];
         if (!list.length) return;
         var wave = (dbWave[collection] = (dbWave[collection]||0) + 1);
-        list.forEach(function(cb){
+        list.forEach(function(sub){
           rpc({ type:'db', op:'getAll', collection:collection }).then(function(rows){
-            if (wave !== dbWave[collection]) return;
-            cb(rows);
+            paintIf(sub, wave, rows);
           });
         });
       }
@@ -392,11 +402,11 @@
           // Owner-only — the host runs it; on a guest it is refused. Use it to
           // "make visible" (opt a private item in) or to flip who may write.
           setVisibility: function(id, level){ return rpc({type:'db',op:'setVisibility',collection:collection,key:id,value:level}); },
-          subscribe: function(cb){ (subs[collection]=subs[collection]||[]).push(cb);
+          subscribe: function(cb){ var sub = { cb: cb, shown: 0 };
+            (subs[collection]=subs[collection]||[]).push(sub);
             var wave = (dbWave[collection] = (dbWave[collection]||0) + 1);
             rpc({type:'db',op:'getAll',collection:collection}).then(function(rows){
-              if (wave !== dbWave[collection]) return;
-              cb(rows);
+              paintIf(sub, wave, rows);
             }); }
         }; },
         // The bridge hands back the RAW BYTES and the decode happens here, so the
@@ -1902,6 +1912,15 @@
       const armIdle = () => { if (idleT) clearTimeout(idleT); idleT = setTimeout(() => { if (pending.size) { armIdle(); return; } root.removeEventListener('message', handler); try { iframe.remove(); } catch (e) {} providerServices.delete(fileId); provArchives.delete(fileId); }, PROVIDER_IDLE_MS); };
       armIdle();
       const service = {
+        // Unload on request (GifOS.providers.stop): the frame goes, and with it
+        // whatever the engine was computing; every waiting call is refused.
+        stop: () => {
+          if (idleT) clearTimeout(idleT);
+          root.removeEventListener('message', handler);
+          try { iframe.remove(); } catch (e) {}
+          if (providerServices.get(fileId) === p) providerServices.delete(fileId);
+          for (const [id, pend] of pending) { pending.delete(id); clearTimeout(pend.timer); try { pend.rej(new Error('PROVIDER_STOPPED: ' + label + ' was unloaded.')); } catch (e) {} }
+        },
         call: (role, req, onNote, onDelta) => new Promise((res, rej) => {
           armIdle();
           const w = iframe.contentWindow;
@@ -1933,8 +1952,16 @@
   }
   // `emit` is the asking app's onDelta, or null. It reaches the provider's
   // ctx.delta and comes back out fragment by fragment.
+  // A stop() bumps the provider's epoch; a call that began before it is
+  // refused at its next step, even while its model is still downloading.
+  const providerEpochs = new Map(); // fileId -> number
   function providerCall(c, role, req, emit) {
     const cfgName = c.appName || 'Your provider app';
+    const epoch = providerEpochs.get(c.app) || 0;
+    const live = (v) => {
+      if ((providerEpochs.get(c.app) || 0) !== epoch) throw new Error('PROVIDER_STOPPED: ' + cfgName + ' was unloaded.');
+      return v;
+    };
     return providerArchive(c.app).then((arc) => {
       if (!arc || !arc.files) {
         showSystemSetup({ kind: 'provider', name: cfgName, role, problem: 'missing' });
@@ -1988,7 +2015,9 @@
                 : null)
             : Promise.resolve();
           return prep
+            .then(live)
             .then(() => { if (cold) busyNote('Starting ' + name + '…', null); return providerService(c.app, arc.files, m); })
+            .then(live)
             .then((svc) => svc.call(role, req, (note, frac) => busyNote(note, frac), emit || null))
             .then(
               (out) => { recordTiming(c.app, cold, Date.now() - t0); busyEnd(); return out; },
@@ -2073,6 +2102,17 @@
       const c = aiConfig()[role];
       if (!c || !c.app) return Promise.reject(new Error('NOT_CONFIGURED:ai:' + role));
       return providerCall(c, role, Object.assign({ op: role, role }, req || {}), null);
+    },
+    // Unload the provider assigned to a role, now: its frame and the work in
+    // it go, its waiting calls are refused (PROVIDER_STOPPED), and the next
+    // call mounts it afresh. The way a page hands the processor back.
+    stop: (role) => {
+      const c = aiConfig()[role];
+      if (!c || !c.app) return false;
+      providerEpochs.set(c.app, (providerEpochs.get(c.app) || 0) + 1);
+      const svc = providerServices.get(c.app);
+      if (svc) svc.then((s) => s.stop(), () => {});
+      return true;
     },
   };
   // gifos.assets(path) — hand an app the bytes for a hash-pinned path
@@ -2991,7 +3031,14 @@
       };
       ws.onclose = (ev) => {
         if (done) return;
-        if (opened && finals.length) return finish(); // closed after answering — tolerate a missing Metadata
+        // Closed after answering. Metadata is the end-of-stream marker and can
+        // already be queued behind this close; finishing in this turn publishes
+        // an empty request id. One turn lets that frame land and finish the
+        // call. If it never comes, finish without it.
+        if (opened && finals.length) {
+          setTimeout(() => { if (!done) finish(); }, 0);
+          return;
+        }
         if (root.navigator && root.navigator.onLine === false) {
           return fail(new Error('OFFLINE: you are offline — the entry is set up; it will work when the connection returns.'));
         }

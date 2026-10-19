@@ -1083,6 +1083,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: rgba(111,123,212,.10); border-radius: .45rem; padding: .55rem .7rem;
     font-size: .84rem; line-height: 1.4; margin: .2rem 0 .7rem; }
   .share-note.running { border-left-color: #37d67a; background: rgba(55,214,122,.10); }
+  #ccwsp-off { position: fixed; left: .6rem; bottom: .6rem; z-index: 90; max-width: calc(100vw - 1.2rem); padding: .45rem .8rem; border-radius: 999px;
+    border: 1px solid #ffd23c; background: rgba(20,20,32,.92); color: #fff; font: inherit; font-size: .85rem; cursor: pointer; touch-action: manipulation; }
   #callbanner { display: none; align-items: center; gap: .6rem; padding: .4rem .9rem;
     background: var(--surface, #14141f); border-bottom: 1px solid var(--border, #2a2a3f); font-size: .85rem; }
   #callbanner button { padding: .25rem .7rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f);
@@ -1274,7 +1276,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="hand" title="Raise your hand — raised hands float to the top">Hand</button>
     <button id="chatbtn" title="Chat and share files — stays between the people on this meeting, not on a server">Chat</button>
     <button id="recbtn" title="Record this meeting ON YOUR DEVICE (everyone sees that you're recording; blurred feeds stay blurred)">Record</button>
-    <button id="ccbtn" title="Live captions: your device writes down what you say and shares them with the meeting's transcript">CC</button>
+    <button id="ccbtn" title="Live captions: your device writes down everyone it hears in this meeting and shares the lines with the meeting's transcript">CC</button>
     <button id="stagebtn" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
     <button id="setbtn" title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
     <button id="trbtn" title="The meeting's live transcript" style="display:none">Transcript</button>
@@ -1287,6 +1289,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <button id="copy">Copy</button>
   </div>
   <div id="callbanner"><span id="callbanner-txt"></span><button id="callbanner-join">Join the call</button></div>
+  <button id="ccwsp-off" type="button" style="display:none" title="Stop Whisper on this device and write captions with the browser">Whisper captions · <b>Switch to browser captions</b></button>
   <div id="apppane">
     <div id="appbar">
       <a class="brand" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
@@ -1339,15 +1342,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <div id="ccengine-row" style="margin-top:.6rem">
           <label class="rec-opt"><input type="radio" name="ccengine" value="browser"><span><b>Browser captions</b><small>Instant. One fixed language, picked above; two-word lines without punctuation on some devices. Your browser may send your voice to its maker's speech service (Chrome: Google).</small></span></label>
           <label class="rec-opt"><input type="radio" name="ccengine" value="whisper"><span><b>Whisper on this device</b><small>Any language, found by itself. Real sentences with punctuation. Your own names and words. Can write everything in English. A sentence appears a few seconds after it is said; on a phone it is slower and uses battery. Nothing leaves the device.</small></span></label>
+          <div id="ccwhisper-weak" class="set-help" style="display:none;margin:.2rem 0 0 1.6rem"></div>
           <div id="ccwhisper" style="display:none;margin:.2rem 0 0 1.6rem">
             <div id="ccwhisper-state" class="set-help" style="margin-bottom:.4rem"></div>
             <label class="rec-opt inline"><input type="checkbox" id="cctranslate"><span>Write everything in English</span></label>
             <textarea id="ccwords" rows="2" placeholder="Names and words to recognise: Siobhan, Kubernetes, GifOS…" style="width:100%;margin-top:.4rem;padding:.4rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);font:inherit;font-size:.85rem"></textarea>
-            <label class="rec-opt" id="ccscribe-row" style="margin-top:.4rem"><input type="checkbox" id="ccscribe"><span><b>Write down everyone here (scribe)</b><small>Your device transcribes every voice it hears and offers the lines to the others, who choose whether to use them. The most work a device can do here — best on a strong computer.</small></span></label>
+            <label class="rec-opt" id="ccscribe-row" style="margin-top:.4rem"><input type="checkbox" id="ccscribe"><span><b>Write down everyone here (scribe)</b><small>Your device transcribes every voice it hears with Whisper and offers to be the others' captions, so their devices can stop transcribing. The most work a device can do here — best on a strong computer.</small></span></label>
           </div>
         </div>
         <div id="ccsource" style="margin-top:.5rem;display:none"></div>
-        <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span>Admins only — every unmuted device starts writing down its own person. Anyone can tap CC to opt out.</span></p>
+        <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span>Admins only — every device starts writing down the voices it hears. Anyone can tap CC to opt out.</span></p>
       </div>
       <div id="mixpanel">
         <b>Sound mix</b>
@@ -1416,7 +1420,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button id="chatclose">✕</button></div>
     <div id="chatlog"></div>
     <div id="trwrap">
-      <div id="trlog"><small style="color:#667">Tap CC in the bar and each phone writes down what its own person says — the lines gather here with names. Muted phones do not caption: unmute to be written down.</small></div>
+      <div id="trlog"><small style="color:#667">Tap CC in the bar and your device writes down everyone it hears — the lines gather here under each speaker's name, on every device in the meeting.</small></div>
       <div id="trfoot"><button id="trdl">Download transcript</button></div>
     </div>
     <div id="cfiles"><h4>Files pinned to this meeting</h4><div id="cfilelist"><small style="color:#667">No files yet — attach one below.</small></div></div>
@@ -4282,6 +4286,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A Whisper capture taps this meter's source node; the old node was
       // just disconnected, so the capture went deaf. Re-cut it on the new one.
       if (typeof wspRebind === 'function') wspRebind(id);
+      // The room ear mixes this meter's source node too: re-seat it on the new one.
+      try { ccMixSync(); } catch (e) {}
     }
     let meterHiddenTick = 0, meterQuietTick = 0, meterAnyLive = false;
     setInterval(() => {
@@ -5626,12 +5632,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const relayTxCount = { boot: 'relayBoot', fp: 'relayFp', ice: 'relayIce', name: 'relayName', password: 'relayPassword', pwsig: 'relayPassword', pwpub: 'relayPassword', pwby: 'relayPassword' };
     function relaySendSealed(to, ty, obj, key) {
       if (!RELAY_TYPES.has(ty) || !obj || obj.k !== ty) return Promise.resolve(false);
-      return txm(() => net.sealFixed(key || roomE2E, obj).then((env) => {
+      // Call order is the send order. The page's txm is already a FIFO, but
+      // the gate stubs it as identity, and a later smaller seal can resolve
+      // first — the end mark then lands between the candidates it closes.
+      // A refused type never takes a slot. The chain hangs off relayTxCount,
+      // which the gate already extracts with this function.
+      const run = () => txm(() => net.sealFixed(key || roomE2E, obj).then((env) => {
         if (!env) { txStats.relayUnfit++; return false; }
         txStats[relayTxCount[ty]]++;
         relaySendObj({ t: 'peer', to, ty, msg: env });
         return true;
       }));
+      const q = relayTxCount._q || Promise.resolve();
+      const n = q.then(run, run);
+      relayTxCount._q = n.catch(() => {});
+      return n;
     }
     // The password grant as the relay carries it: one `password` frame (the
     // password and its epoch) and, for a signed grant, the fields the
@@ -6193,6 +6208,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // Sealed frame over this pair's DataChannel (chat, files, relay control).
     const dcSend = (p, msg) => {
+      if (p && p.wireHold) return p.wireHold.then(() => dcSend(p, msg)); // DEBUG lever, see renegotiate
       if (!p || !p.dc || p.dc.readyState !== 'open') return Promise.resolve();
       const dc = p.dc;
       return txm(() => net.seal(roomE2E, msg).then((env) =>
@@ -6423,6 +6439,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // new one: its offer describes m-lines the fresh pc never had.
       try { if (p.rofferYieldTimer) clearTimeout(p.rofferYieldTimer); } catch (e) {}
       p.rofferYieldTimer = null; p.rofferYield = null; p.kickVideo = false;
+      // Offer turns belong to the old pc. turnSeen/turnLegacy describe the peer and stay.
+      clearTimeout(p.turnAskT); clearTimeout(p.turnOkT); clearTimeout(p.turnGivenT);
+      p.turnAskT = p.turnOkT = p.turnGivenT = null; p.turnOk = p.turnGiven = p.turnWanted = false; p.offeredPend = "";
       p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
       p.offering = null; // an offer still minting belongs to the closed pc (sendOffer drops it)
       p.offerFp = ''; // no remote offer has landed on this pc yet (onSignal's new-pc rule)
@@ -6554,7 +6573,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (p.headless || !p.tile || p.tile.parentNode) return;
       grid.appendChild(p.tile);
     }
+    // Peer ids whose device was banned on this page. dropPeer alone loses to
+    // the next occ tick: the mesh still names the seat until ring-confirmed
+    // death, and that tick rebuilds the tile. The id stays dead. A reload
+    // mints a new id, which is the person coming back after unban.
+    const bannedSeat = new Set();
     function makePeer(peerId, name, headless) {
+      if (bannedSeat.has(peerId)) return null;
       if (peers.has(peerId)) return peers.get(peerId);
       if ((typeof isEjected === 'function' && isEjected(peerId) === true)) return null; // never a connection to a forger
       // The name frame is what the status line quotes. It often lands before
@@ -6699,6 +6724,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function sendOffer(peerId, iceRestart) {
       if ((typeof isEjected === 'function' && isEjected(peerId) === true)) return; // never dial a forger
       const p = makePeer(peerId, null);
+      if (!p) return; // banned seat or forger
       // ONE OFFER AT A TIME PER PC. A second createOffer→setLocalDescription
       // while the first is still minting on the same pc fails in Chromium
       // ("the order of m-lines in subsequent offer doesn't match order from
@@ -6756,6 +6782,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         .then(() => {
           settled();
           if (p.pc !== pc) return; // rebuilt while minting: this offer belongs to a closed pc
+          p.offerSentAt = Date.now(); p.offerSentPc = pc;
           sendSig(peerId, { kind: 'offer', sdp: pc.localDescription, ib: 1, name: myName(), ip: myIp, st: myStatus, mod: modTable, modw: gossipModW(), conns: myConns(), sid: mySid() });
         })
         .catch((e) => { settled(); if (p.pc === pc) noteNegFail('offer', peerId, e); });
@@ -6990,7 +7017,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // the sweeper retires any link the arithmetic ends up not wanting.
         if (!linkTo(from) && meshKnows(from)) { rxStats.offerRejected++; return; }
         const p = makePeer(from, msg.name);
-        if (p && !linkTo(from) && !meshKnows(from)) p.boot = true; // a knocker's door, seen from the greeter: kept while it serves, never rebuilt once the knocker is seated elsewhere
+        if (!p) return; // banned seat or forger: no pair, no negotiation
+        if (!linkTo(from) && !meshKnows(from)) p.boot = true; // a knocker's door, seen from the greeter: kept while it serves, never rebuilt once the knocker is seated elsewhere
         // A fresh offer onto a LONG-DEAD local pc negotiates into a corpse:
         // the tunnel-return stall (behavior battery 06c, 2026-07-26) — the
         // evicted side's zombie ate the returning offers until the vouch
@@ -7286,10 +7314,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // at all, so whatever pc I hold toward it faces one it has closed. The
     // id-order initiator dials; a pair still forming (built under 5 s ago)
     // is the dial the request asks for, and re-offering would restart it.
+    // Not so an offer still unanswered when the request comes: a peer that
+    // had it would be answering, not asking, and the relay carries both in
+    // well under a second. An offer sent a second or more before the request,
+    // or while this peer's silence had fired the transport-death edge
+    // (tlFiredPid, cleared by its next mesh frame), went into the dark; the
+    // request is the peer back with no pair. Waiting it out held a returning
+    // member off a newcomer until the next re-offer, seconds later.
+    const LOST_OFFER_MS = 1000;
     function onDialRequest(p) {
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
-      if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive);
-      const forming = !pLive && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer');
+      const darkOffer = unanswered && (tlFiredPid.has(p.id) || (p.offerSentPc === p.pc && Date.now() - (p.offerSentAt || 0) >= LOST_OFFER_MS));
+      const forming = !pLive && p.pc && !darkOffer && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
+        + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
+        + ' age=' + Math.round((Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
       if ((participantCount() <= 1 || !pLive) && !forming && iInitiate(p.id) && Date.now() - (p.fragDialAt || 0) > 5000) {
         p.fragDialAt = Date.now();
         if (!pLive && p.pc) newPcFor(p);
@@ -7353,7 +7393,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // dark spell — is rebuilt: the door needs a fresh bootstrap, not a
       // renegotiation of a corpse.
       if (p && p.pc) { newPcFor(p); if (p.neverUp === true && manyDoors) p.dialWait = Math.min(DOOR_REDIAL_CAP, (p.dialWait || 5000) * 2); }
-      sendOffer(pid, false);
+      // THE INITIATOR DIALS THE DOOR. A knocker's offer is also a name, and
+      // that name is a dial request: the id-order initiator offers back
+      // (onDialRequest). A polite knocker that offers too crosses that offer
+      // at birth. Chromium rolls the first one back and the remote mic stays
+      // muted (e2e-sixth-audio). The polite side only asks.
+      if (iInitiate(pid)) sendOffer(pid, false);
+      else { const q0 = makePeer(pid, null); if (q0) askDial(pid, q0); }
       const q = peers.get(pid); if (q) { q.boot = true; if (!manyDoors) armDoorRetry(pid, q); } // the door I came in by: retired once a seat's own link is open (retireBootPairs), unless the arithmetic names it
     }
     // The bootstrap channel to a greeter has done its work once I am seated
@@ -7367,28 +7413,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function ensureLink(pid, name) {
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return; // never link to a forger
+      if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) return; // this id was banned; the occ tick must not rebuild it
       if (!linkTo(pid)) return; // the sweeper retires unwanted links, with grace
       let p = peers.get(pid);
       if (!p) {
-        // THE NEWCOMER DIALS (2026-08-02, the ghost-churn join wedge). The
-        // id-order rule ("higher id offers") assumes BOTH sides know the pair
-        // exists — but a just-seated newcomer's CLAIM/HELLO are DC-only and
-        // its neighbours may not learn its seat for many beats, so when the
-        // id-order pointed at the side that had never heard of us, nobody
-        // dialled and the pair sat half-open until the 12s starve watchdog
-        // (measured: owner occ=1 forever, guest CLAIM/HELLO/PHONE all
-        // dropped). A seat with NO open DataChannel at all is still ARRIVING:
-        // it dials every neighbour its PLACE taught it, id order be damned —
-        // it is the one node guaranteed to know the pair should exist, and
-        // the offer rides the sanctioned first-contact signaling path.
-        // Perfect negotiation (the glare rollback in onSignal) absorbs the
-        // rare double-dial; id order governs everything after first wiring.
-        // (A bootstrap channel to a greeter that is not one of my links does
-        // not count: it is the door I came in by, not a wired seat.)
-        let anyDc = false; for (const q of peers.values()) if (q.dc && q.dc.readyState === 'open' && linkTo(q.id)) { anyDc = true; break; }
-        if (iInitiate(pid) || !anyDc) { sendOffer(pid, false); p = peers.get(pid); }
+        // THE INITIATOR DIALS. Both sides used to offer when the caller had
+        // no open channel yet: a just-seated newcomer offered every neighbour
+        // it knew, because the other side may not have learned the seat, and
+        // the pair then starved at 12s. The two birth offers crossed, and
+        // onSignal rolled the polite one back. Chromium does not survive
+        // that rollback of a pc's first offer: the remote mic stays muted and
+        // the channel closes a second later (e2e-sixth-audio). The
+        // non-initiator asks (askDial) so the initiator is the only side
+        // that offers. A greeter door is not a wired seat and is not handled
+        // here.
+        if (iInitiate(pid)) { sendOffer(pid, false); p = peers.get(pid); }
         else {
           p = makePeer(pid, name); // their offer is on its way...
+          if (!p) return;
           // ...IF they know the pair exists. The mesh may have named this
           // seat to me alone: a head back from a dead spot learns the
           // newcomer its row admitted from the ring (HOME), and the newcomer
@@ -7400,6 +7442,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // initiator already dialing.
           askDial(pid, p);
         }
+        if (!p) return;
         // Newcomers can't trust gossip for moderation in admin rooms — an
         // admin hands them the signed table the moment their channel opens
         // (wireDc onopen); the relay carries no mod table.
@@ -7525,6 +7568,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return false;
     };
     const notTomb = (pid) => {
+      if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) return false; // a ban sticks: a late status or mesh hearing must not lift this seat
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return false; // ejected: gone for good, whatever it says
       const g = meshGone.get(pid); if (g === undefined) return true;
       const st = statusOf.get(pid); const p = peers.get(pid);
@@ -7587,12 +7631,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // transport event the mesh's D5 confirm needs, so the SEAT heals
       // through the ordinary law path too. A pocketed-but-alive phone (G1)
       // keeps beating and is never eligible.
+      // SILENCE IS EVIDENCE ONLY WHERE A BEAT IS OWED. A heartbeat's direct
+      // leg rides my own links and nothing else, so a pair the tree does not
+      // name as my link hears nothing after its first status, by design: the
+      // door a member came in by, kept open because my view never learns
+      // their seat in another section. Reading that quiet as death
+      // tombstoned a live member on both sides of the door at once, and the
+      // tombstone then refused the very link a promotion needed, splitting
+      // the room. A quiet door is left open and unjudged: when a deep seat's
+      // parent dies, the door is the one channel its new parent can still
+      // signal it over. A pair that only just became a link is judged from
+      // that moment, not from the quiet it kept while it was a door.
       const REAP_MS = 195000; // vouch cap + pulse slack
-      for (const [pid, p] of peers) {
+      for (const [pid, p] of Array.from(peers)) {
+        const owed = linkTo(pid);
+        if (!owed) p.owedAt = 0; else if (!p.owedAt) p.owedAt = nowMs;
         if (rosterIds.includes(pid)) continue;
         const st = statusOf.get(pid);
         const heard = Math.max(p.lastHeard || 0, (st && st.rx) || 0);
-        if (heard && nowMs - heard > REAP_MS) confirmGone(pid, 'vouch-reap');
+        if (!heard || nowMs - heard <= REAP_MS) continue;
+        if (owed && nowMs - p.owedAt > REAP_MS) confirmGone(pid, 'vouch-reap');
       }
     }
     // ---- JOINING MUST LOOK LIKE JOINING (Fix 2, 2026-07-26) -----------------
@@ -7700,6 +7758,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function renderFromOcc() {
       const s = meshSeat();
       if (!s) return;
+      if (typeof bannedSeat !== 'undefined') for (const pid of bannedSeat) if (peers.has(pid)) dropPeer(pid); // a ban's seat stays down even if a tick rebuilt it
       // FRESHLY SEATED, ONE FLUSH. Before hasCoord is true, gossip() has no
       // section to speak to and drops the frame silently (sc === null) — so
       // a status authored in that window, including scheduleNewPeerBeat's
@@ -9157,7 +9216,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       else if (m.t === 'ban') {
         // A ban is not just signaling: sever the banned device's live P2P links.
-        for (const pid of Object.keys(devOf)) if (devOf[pid] === m.dev) dropPeer(pid);
+        // Remember the id and confirm it gone. dropPeer alone is undone by the
+        // next occ tick while the mesh still names the seat (RING_HOLD).
+        for (const pid of Object.keys(devOf)) if (devOf[pid] === m.dev && pid !== myId) {
+          bannedSeat.add(pid);
+          confirmGone(pid, 'ban');
+        }
         const voted = m.by === 'the room (vote)';
         if (m.dev === myDevHash) {
           bannedOut = true;
@@ -9166,7 +9230,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           setStatus(voted ? '\u26d4 The people on this meeting voted you off.' : '\u26d4 You were banned from this room by ' + (nameForPeer(m.by) || 'an admin'));
         } else setStatus(voted ? '\u26d4 ' + (nameForDev(m.dev) || 'Someone') + ' was voted off the meeting.' : '\u26d4 ' + (nameForDev(m.dev) || banNames()[m.dev] || 'A device') + ' was banned by ' + (nameForPeer(m.by) || 'an admin'));
       }
-      else if (m.t === 'unban') setStatus('\u2705 ' + (nameForDev(m.dev) || banNames()[m.dev] || 'A device') + ' was unbanned by ' + (nameForPeer(m.by) || 'an admin'));
+      else if (m.t === 'unban') {
+        // The old peer id stays in bannedSeat. Unban admits the device; the
+        // reload mints a new id. Clearing the set would raise the ghost tile.
+        setStatus('\u2705 ' + (nameForDev(m.dev) || banNames()[m.dev] || 'A device') + ' was unbanned by ' + (nameForPeer(m.by) || 'an admin'));
+      }
       else if (m.t === 'votes') { voteTally = m.tally || {}; voteNeed = m.need || 0; refreshAllTiles(); }
       else if (m.t === 'peer-join') {
         // Greeters only: a socket joined the session. Keeps the full list
@@ -9217,6 +9285,107 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The sweeper heals what it can and buries what's really gone:
     //  - absent + link down past grace → tile removed
     //  - present + link down → the initiator side re-offers with an ICE restart
+    // Why the frozen-tile check is NOT watching this pair ('' = watching):
+    // only a visible row-mate tile that has painted, whose camera is meant
+    // to be on and reaching me directly, can be judged frozen.
+    function frozenTileSkip(pid, p) {
+      const fst = statusOf.get(pid);
+      const vtr = p.stream && p.stream.getVideoTracks()[0];
+      if (!p.connected || p.relayed) return 'link';
+      if (document.hidden) return 'hidden';
+      if (!vtr || vtr.readyState !== 'live') return 'track';
+      if (!p.video || p.video.srcObject !== p.stream || p.video.paused || p.video.readyState === 0) return 'element';
+      if (!p.dc || p.dc.readyState !== 'open') return 'dc';
+      if (!camPeer(pid) || mediaOk(pid) === false) return 'mate';
+      if (!fst || fst.camOff || fst.scr || forcedCamOff(pid)) return 'cam';
+      if (peerAway(pid)) return 'away';
+      if (stageIds().includes(pid)) return 'staged';
+      return '';
+    }
+    // Its own 1s clock (the sweep's 2s beat would add up to 2s to every
+    // detection), over the same pairs the sweep walks.
+    function frozenTileTick(pid, p) {
+      if (!p || !p.pc) return;
+      const ft0 = p.freezeTick;
+      p.freezeTick = { at: Date.now(), skip: frozenTileSkip(pid, p), statsAt: ft0 ? ft0.statsAt : 0, hist: ft0 ? ft0.hist : [] };
+      p.freezeTick.hist.push(Math.round(p.freezeTick.at / 100) % 1000 + ':' + (p.freezeTick.skip || '-')); if (p.freezeTick.hist.length > 12) p.freezeTick.hist.shift();
+      // A FROZEN TILE. A row-mate's tile that HAD a picture (readyState
+      // past 0, so not the sweep's dead sink) stops decoding while the pair
+      // is up, the far camera is on and their voice keeps playing. The
+      // usual cause is a sender that went quiet toward us and does not
+      // know it: a park lift ({k:'vis'}) is unacked, so one sent into a
+      // channel that cannot deliver (a phone back from the background on a
+      // radio still waking) leaves the far main parked for good; a far
+      // rollback can do the same to its encoder. Neither full screen nor
+      // a stage step-down touches either. No frame decoded for 3s, 1.5s of
+      // it watchable: re-assert the lift and ask the far side to re-seat
+      // its camera (vkick), again every 3s; 8s after the first ask with
+      // still nothing, rebuild the pair (the NEW-PC RULE resets the park).
+      // The evidence survives a spell hidden or on stage (the far main is
+      // meant to be parked then, so nothing is judged), and a stale park
+      // is caught 1.5-2.5s after the tile is watchable again. A busy phone can
+      // decode nothing for a second or two; a wrong ask costs one re-seat,
+      // and only 8s more of nothing rebuilds the pair.
+      {
+        const skip = frozenTileSkip(pid, p);
+        const keep = skip === 'hidden' || skip === 'staged';
+        const vtr = p.stream && p.stream.getVideoTracks()[0];
+        const rx = (!skip || keep) && vtr && p.pc.getReceivers().find((r) => r.track === vtr);
+        if (rx) {
+          const pc0 = p.pc;
+          rx.getStats().then((st) => {
+            let fd = -1; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
+            if (p.freezeTick) p.freezeTick.statsAt = Date.now();
+            // No inbound video entry at all is no frames, not no evidence: a
+            // renegotiation can move the far sender to a stream that has not
+            // carried one packet yet (it is parked), and the receiver then
+            // reports nothing for it.
+            if (fd < 0) fd = 0;
+            if (p.pc !== pc0) return;
+            const t = Date.now(), fz = p.freezeProbe, judged = !frozenTileSkip(pid, p);
+            // THE SINK, AFTER A PICTURE. The sweep's dead sink, on a tile that
+            // had already painted: frames decode, the element presents none
+            // (its frame count and clock stand still at readyState 4), and
+            // nothing on this pc revives it. 3s of that on a tile in view:
+            // rebuild the pair, once per 30s like the dead sink.
+            {
+              const v = p.video, q = v.getVideoPlaybackQuality ? v.getVideoPlaybackQuality() : null, r = v.getBoundingClientRect();
+              const inView = r.width > 0 && r.height > 0 && r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
+              const pv = q ? q.totalVideoFrames : -1, sp = p.paintProbe;
+              if (!judged || !inView || pv < 0) p.paintProbe = null;
+              else if (!sp || sp.pc !== pc0 || sp.track !== vtr || pv !== sp.pv || v.currentTime !== sp.ct) p.paintProbe = { pc: pc0, track: vtr, pv, ct: v.currentTime, fd, at: t };
+              else if (t - sp.at >= 3000 && fd - sp.fd >= 3 && t - (p.sinkRebuiltAt || 0) > 30000) {
+                p.sinkRebuiltAt = t; p.paintProbe = null; p.freezeProbe = null;
+                if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' painted tile: decoded ' + (fd - sp.fd) + ' in ' + Math.round((t - sp.at) / 1000) + 's, none shown: rebuild');
+                newPcFor(p);
+                sendOffer(pid, false);
+                return;
+              }
+            }
+            if (!fz || fz.pc !== pc0 || fz.track !== vtr || fd !== fz.fd) { p.freezeProbe = { fd, at: t, pc: pc0, track: vtr, seenAt: judged ? t : 0, askAt: 0, firstAsk: 0 }; return; }
+            if (!judged) { fz.seenAt = 0; fz.askAt = 0; fz.firstAsk = 0; return; }
+            if (!fz.seenAt) { fz.seenAt = t; return; }
+            if (t - fz.at < 3000 || t - fz.seenAt < 1500) return;
+            if (fz.firstAsk && t - fz.firstAsk >= 8000) {
+              if (t - (p.sinkRebuiltAt || 0) < 30000) return;
+              p.sinkRebuiltAt = t; p.freezeProbe = null;
+              if (typeof clog === 'function') clog('frozen-tile ' + String(pid).slice(0, 6) + ' no frame in ' + Math.round((t - fz.at) / 1000) + 's after re-seat asks: rebuild');
+              newPcFor(p);
+              sendOffer(pid, false);
+              return;
+            }
+            if (t - fz.askAt < 3000) return;
+            fz.askAt = t; if (!fz.firstAsk) fz.firstAsk = t;
+            if (typeof clog === 'function') clog('frozen-tile ' + String(pid).slice(0, 6) + ' no frame in ' + Math.round((t - fz.at) / 1000) + 's: vkick');
+            visParkSent.set(pid, false);
+            dcSend(p, { k: 'vis', park: false });
+            dcSend(p, { k: 'vkick' });
+          }).catch(() => {});
+        }
+        else { p.freezeProbe = null; p.paintProbe = null; }
+      }
+    }
+    GifOS.meshMedia.workerClock(1000, () => { for (const [pid, p] of peers) { try { frozenTileTick(pid, p); } catch (e) {} } });
     let lastRmSig = ''; // row-mate set signature — refreshOutbound on change (became/stopped-being a mate)
     // THE SWEEP RIDES A WORKER CLOCK (2026-10-03). It was a page setInterval,
     // which Chrome throttles to once a minute after five minutes hidden; the
@@ -9382,6 +9551,55 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           p.altPath = !p.altPath; // §FWD transport rotation — a rotting relay path must not eat every retry
           sendOffer(pid, st !== 'new' && st !== 'connecting');
         }
+        // A RENEGOTIATION LOST IN THE DARK. roffer/ranswer ride the channel
+        // once, unacked: one sent while the far radio is out is simply gone,
+        // and this pc sits in have-local-offer on a pair that is otherwise
+        // connected, which nothing above ever revisits. The offer's media
+        // then never runs (06c: Ju's camera never reached Aki after her
+        // tunnels). Unanswered past two glare yields: take it back, offer
+        // again. A late answer to the old offer lands on 'stable' and fails
+        // harmlessly (ranswer-FAIL).
+        {
+          const lsd = p.pc.signalingState === 'have-local-offer' && p.pc.localDescription;
+          if (lsd && p.connected && p.dc && p.dc.readyState === 'open' && !p.makingOffer && !p.glareTimer && !p.rofferYieldTimer) {
+            if (p.staleOfferSdp !== lsd.sdp) { p.staleOfferSdp = lsd.sdp; p.staleOfferAt = now; }
+            else if (now - p.staleOfferAt > 2 * GLARE_YIELD_MS + 2000) {
+              p.staleOfferSdp = null;
+              if (typeof clog === 'function') clog('offer-stale ' + String(pid).slice(0, 6) + ' ' + Math.round((now - p.staleOfferAt) / 1000) + 's: re-offer');
+              p.kickVideo = true; // a rollback stops the video encoder; reseat once the new answer lands
+              Promise.resolve(p.pc.setLocalDescription({ type: 'rollback' })).then(() => renegotiate(p)).catch(() => {});
+            }
+          } else p.staleOfferSdp = null;
+        }
+        // A DEAD SINK. After a rollback on a pair already carrying media,
+        // Chromium can leave the receiver decoding while its track hands no
+        // frame to anything: the tile stays at readyState 0, and a fresh
+        // element or a track reader on that track reads nothing either
+        // (measured, 06c: framesDecoded climbing, 0 frames out for 60s+).
+        // Nothing on this pc revives that track. Two samples 4s apart with
+        // frames decoded and none shown: rebuild the pair; the far side
+        // takes a new fingerprint as a new pc (the NEW-PC RULE).
+        if (p.connected && !document.hidden && p.stream && !p.relayed && p.video && p.video.srcObject === p.stream
+            && !p.video.paused && p.video.readyState === 0 && mediaOk(pid) !== false && now - (p.sinkRebuiltAt || 0) > 30000) {
+          const vtr = p.stream.getVideoTracks()[0];
+          const rx = vtr && vtr.readyState === 'live' && p.pc.getReceivers().find((r) => r.track === vtr);
+          if (rx) {
+            const pc0 = p.pc;
+            rx.getStats().then((st) => {
+              let fd = 0; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
+              const t = Date.now(), prev = p.sinkProbe;
+              if (!prev || prev.pc !== pc0) { p.sinkProbe = { fd, at: t, pc: pc0 }; return; } // the baseline holds until 4s have passed
+              if (p.pc !== pc0 || t - prev.at < 4000) return;
+              p.sinkProbe = { fd, at: t, pc: pc0 };
+              if (fd - prev.fd < 3) return;
+              if (p.video.readyState !== 0 || p.video.paused || p.video.srcObject !== p.stream || document.hidden) return;
+              p.sinkRebuiltAt = t; p.sinkProbe = null;
+              if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown: rebuild');
+              newPcFor(p);
+              sendOffer(pid, false);
+            }).catch(() => {});
+          }
+        } else p.sinkProbe = null;
         // Direct route recovered → drop any friend-relay for this peer.
         if (p.connected && relayVia.has(pid)) stopRelayFor(pid, true);
         // Our relayer for this peer vanished → fall back and re-elect.
@@ -11450,7 +11668,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // down, and a deeper seat would crop them with the old order.
         const stripReorder = m.key === 'sgs' && !!prevAnn && !annNew
           && ((prevAnn.ids || []).join(',') !== (annIds || []).join(',') || prevAnn.n !== m.n || prevAnn.cols !== m.cols);
-        mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), ids: annIds, at: Date.now() });
+        mosAnn.set(ak, { streamId: m.streamId, col: m.col, row: m.row, n: m.n, cols: m.cols, mt: m.mt, h: (typeof m.h === 'number' ? m.h : undefined), ao: (m.ao === 1 ? 1 : undefined), sb: (m.sb === 1 ? 1 : undefined), vp: mxPath(m.vp), ids: annIds, at: Date.now() });
         if (annNew || stripReorder) schedReconcile(); else schedClaim();
       } else if (m.k === 'mx-end' && typeof m.key === 'string') {
         mosAnn.delete(p.id + '|' + m.key);
@@ -11519,8 +11737,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Audio never parks (the call goes on in a pocket); their return is
         // a pure replaceTrack, the m-line never leaves. Old clients simply
         // never send this — pure opportunistic watts.
+        if (p.remoteParkMain && !m.park) p.visLiftAt = Date.now();
         p.remoteParkMain = !!m.park;
         refreshOutbound();
+      } else if (m.k === 'vkick') {
+        // The far side sees my main video frozen on its tile (its frozen-tile
+        // check). Re-seat the camera on that sender: a fresh encoder start
+        // with a keyframe. kickMainVideo leaves parked, staged and cam-off
+        // senders alone. One per 2s per pair. A park this ask's own lift
+        // just ended has already re-seated the camera: a second seat on top
+        // of that fresh start only stalls it.
+        const t = Date.now();
+        if (t - (p.visLiftAt || 0) >= 1500 && t - (p.vkickAt || 0) >= 2000) { p.vkickAt = t; kickMainVideo(p); }
       } else if (m.k === 'sga' && typeof m.sid === 'string') {
         // Stage data lane (§11): app-state frame — dedup, deliver, re-fan.
         sgaRecv(p.id, m);
@@ -11583,6 +11811,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (m.m && (m.m.t === 'FIND' || m.m.t === 'WHOHOME')) noteCrumb(m.m.t === 'FIND' ? m.m.nc : m.m.from, p.id);
         if (m.to === myId) { if (meshNode && m.m) meshNode.recvCtl(m.m, m.from); return; } // the envelope's origin is its sender's own claim: never `direct` (any member can write it)
         fwdOnward('fmesh', m, p.id);
+      } else if (m.k === 'rreq') { // OFFER TURNS: the polite side asks
+        if (p.pc && iInitiate(p.id)) giveTurn(p);
+      } else if (m.k === 'rgo') {
+        if (p.pc && !iInitiate(p.id)) gotTurn(p);
+      } else if (m.k === 'rwait') {
+        if (p.pc && !iInitiate(p.id)) turnWait(p);
       } else if (m.k === 'rkick') {
         // The far side has a streamless mapping from me: if any of my sender
         // m-lines toward them never negotiated (rolled back in a glare),
@@ -11627,16 +11861,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // challenge having actually fired — an ordinary rotation must not
         // churn every member's socket.
         const wasBlocked = pwBlocked;
+        // A SEATED page keeps its node. The challenge also fires for a seated
+        // member who missed the change (mesh-wire: behind the room's key), and
+        // a new node closes the old relay socket first: the relay announces
+        // the departure, the room probes the seat while its pairs rebuild and
+        // takes it, and the member knocks again into a new cell the room
+        // learns slowly (30-54 s after a radio return). The new key on the
+        // node I have is the whole answer; setKey re-knocks the door.
+        const ms = meshSeat();
+        const restart = wasBlocked && !(ms && ms.state === 3 && ms.hasCoord);
         // Adopt the new password's KEY too (§8) — this sealed frame arrived
         // under the old key; from here on the room speaks the new one.
-        const rk = rekeyRoom(wasBlocked); // wasBlocked ⇒ startMesh() below replaces this node
+        const rk = rekeyRoom(restart); // restart ⇒ startMesh() below replaces this node
         net.meetPwProof(room, av, roomPw).then(async (pr) => {
           pwProof = pr;
           if (wasBlocked) {
             await rk;
             pwBlocked = false;
             if (pwModal.dataset.mode === 'join') pwModal.style.display = 'none';
-            startMesh(); // same re-entry as typing it — state intact
+            if (restart) startMesh(); // same re-entry as typing it — state intact
+            else if (meshNode && meshNode.setKey) meshNode.setKey(roomE2E); // the proof is ready now: a socket the door refused re-arms with it
           }
         }).catch((err) => pwChainFailed(err, wasBlocked));
         const purged = cleared ? purgeAllFiles(false) : 0; // password gone → shared files go with it
@@ -11646,6 +11890,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         reactRoomState(); // the password is the key to clear video
       } else if (m.k === 'roffer') {
         if (!p.pc) return; // relay-only pseudo-peer — media relay needs a channel pair
+        turnBack(p);
         // Glare: if I have my own offer in flight and I'm the IMPOLITE side
         // (the pair's initiator), their offer loses — they'll roll back and
         // answer mine, then re-offer. The polite side falls through: spec'd
@@ -11740,7 +11985,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         applyRoffer(m);
       } else if (m.k === 'ranswer') {
-        if (p.pc) p.pc.setRemoteDescription(m.sdp)
+        if (!p.pc) return;
+        const carried = p.connected || (p.dc && p.dc.readyState === 'open');
+        const srd = () => p.pc.setRemoteDescription(m.sdp);
+        // A renegotiation answer that never settles (lost on the wire, or a
+        // test harness that swallows it) leaves have-local-offer on a live
+        // pair forever and offer-stale rollback races the hung promise (06d:
+        // roffer/ranswer storms after a long tunnel wake). Same budget as
+        // offer-stale: if it has not applied by then, take the offer back.
+        const applyRanswer = (carried && p.pc.signalingState === 'have-local-offer')
+          ? Promise.race([
+            srd(),
+            new Promise((_, rej) => setTimeout(() => {
+              const err = new Error('ranswer-timeout');
+              err.name = 'RanswerTimeout';
+              rej(err);
+            }, 2 * GLARE_YIELD_MS + 2000))
+          ])
+          : srd();
+        applyRanswer
           .then(() => {
             // A held Firefox offer must not be applied after our own offer
             // was answered. A bootstrap twin is the same: the answer means
@@ -11750,7 +12013,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (p.rofferYield) {
               const ym = p.rofferYield;
               const fx = /o=mozilla/i.test(String((ym.sdp && ym.sdp.sdp) || '').slice(0, 80));
-              const carried = p.connected || (p.dc && p.dc.readyState === 'open');
               if (fx || !carried) {
                 p.rofferYield = null;
                 if (p.rofferYieldTimer) { clearTimeout(p.rofferYieldTimer); p.rofferYieldTimer = null; }
@@ -11759,7 +12021,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (typeof clog === 'function') clog('ranswer←' + String(p.id).slice(0, 6));
             afterNeg(p);
           })
-          .catch((e) => { if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140)); });
+          .catch((e) => {
+            if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name) + ' ' + String((e && e.message) || '').slice(0, 140));
+            if (e && e.name === 'RanswerTimeout' && carried && p.pc && p.pc.signalingState === 'have-local-offer'
+                && !p.makingOffer && !p.glareTimer && !p.rofferYieldTimer) {
+              p.staleOfferSdp = null;
+              p.kickVideo = true;
+              Promise.resolve(p.pc.setLocalDescription({ type: 'rollback' })).then(() => renegotiate(p)).catch(() => maybeRebuildNeg(p, e));
+            }
+          });
       }
     }
     // A peer's lines are bounded two ways: per sender per window (a script
@@ -12221,10 +12491,107 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (sender.track !== vt) { seat(); return; }
       sender.replaceTrack(null).then(seat).catch(() => {});
     }
+    // The same rollback silences the main AUDIO sender the same way: the mic
+    // stays attached and enabled, the link stays sendrecv, and no packet
+    // leaves, so a person in my row stops hearing me while still seeing me.
+    // Seat the mic again the same way. A staged sender is parked on purpose
+    // and stays parked; mute is the track's enabled flag, so it carries over.
+    function kickMainAudio(p) {
+      if (!p || !p.mainA || stageIds().includes(myId)) return;
+      const at = localStream && localStream.getAudioTracks()[0];
+      if (!at || at.readyState !== 'live') return;
+      const sender = p.mainA;
+      const seat = () => sender.replaceTrack(at).catch(() => {});
+      if (sender.track !== at) { seat(); return; }
+      sender.replaceTrack(null).then(seat).catch(() => {});
+    }
+    // OFFER TURNS. Both ends of a link may offer (a fold sender opens its own
+    // m-lines), and two offers that cross are a glare: one side rolls its own
+    // back. Chromium does not survive that rollback on a live link. At link
+    // birth it leaves the polite side's received mic MUTED for good (RTP
+    // decodes, 'unmute' never comes: e2e-glare-first-offer); later it stops a
+    // video sink (the dead-sink watchdog rebuilds the pair). A new row starts
+    // jobs on every row link at once, so the sixth person's arrival collided
+    // offers all over row 0 (e2e-sixth-audio).
+    //   So offers on a link take turns. The initiator offers when it likes.
+    // The polite side asks first ('rreq') and offers on 'rgo'. The initiator
+    // gives a turn only while stable and not offering, and makes no offer of
+    // its own until the polite offer arrives (or the turn runs out). Busy, it
+    // says 'rwait' and gives the turn when it is stable. An older initiator
+    // says nothing: after TURN_ASK_MS the polite side offers as it always did
+    // (glare rules still apply), and stops asking that peer.
+    const TURN_ASK_MS = 2500, TURN_BUSY_MS = 8000, TURN_MS = 3000;
+    function askTurn(p) {
+      if (p.turnAskT || !p.dc || p.dc.readyState !== 'open') return;
+      dcSend(p, { k: 'rreq' });
+      const pc0 = p.pc;
+      p.turnAskT = setTimeout(() => {
+        p.turnAskT = null;
+        if (p.pc !== pc0 || leaving) return;
+        if (!p.turnSeen) p.turnLegacy = true; // never answered: an older client
+        p.turnOk = true; // offer anyway, as before turns
+        renegotiate(p);
+      }, TURN_ASK_MS);
+    }
+    function gotTurn(p) {
+      clearTimeout(p.turnAskT); p.turnAskT = null;
+      p.turnSeen = true; p.turnLegacy = false;
+      p.turnOk = true;
+      clearTimeout(p.turnOkT);
+      p.turnOkT = setTimeout(() => { p.turnOk = false; p.turnOkT = null; }, TURN_MS - 500);
+      renegotiate(p); // even with nothing new: the offer hands the turn back
+    }
+    function turnWait(p) { // the initiator is busy; it will give the turn
+      p.turnSeen = true; p.turnLegacy = false;
+      if (!p.turnAskT) return;
+      clearTimeout(p.turnAskT);
+      const pc0 = p.pc;
+      p.turnAskT = setTimeout(() => { p.turnAskT = null; if (p.pc !== pc0 || leaving) return; p.turnOk = true; renegotiate(p); }, TURN_BUSY_MS);
+    }
+    function endTurn(p) {
+      if (iInitiate(p.id)) return;
+      p.turnOk = false; clearTimeout(p.turnOkT); p.turnOkT = null;
+    }
+    function giveTurn(p) {
+      if (!p.pc || !p.dc || p.dc.readyState !== 'open') return;
+      if (p.makingOffer || p.pc.signalingState !== 'stable') {
+        if (!p.turnWanted) dcSend(p, { k: 'rwait' });
+        p.turnWanted = true;
+        return;
+      }
+      p.turnWanted = false;
+      p.turnGiven = true;
+      clearTimeout(p.turnGivenT);
+      const pc0 = p.pc;
+      p.turnGivenT = setTimeout(() => { p.turnGivenT = null; p.turnGiven = false; if (p.pc === pc0) afterNeg(p); }, TURN_MS);
+      dcSend(p, { k: 'rgo' });
+    }
+    function turnBack(p) { // their offer arrived: the turn is over
+      if (!p.turnGiven) return;
+      p.turnGiven = false; clearTimeout(p.turnGivenT); p.turnGivenT = null;
+    }
+    function pendingSig(p) {
+      try {
+        return p.pc.getTransceivers().map((tr) => (tr.mid || "?") + ":" + ((tr.sender && tr.sender.track && tr.sender.track.id) || "") + ":" + (tr.currentDirection || "")).join("|");
+      } catch (e) { return ""; }
+    }
     function afterNeg(p) {
       if (!p) return;
-      if (p.renegAgain || hasPendingTx(p)) { p.renegAgain = false; renegotiate(p); return; }
-      if (p.kickVideo) { p.kickVideo = false; kickMainVideo(p); }
+      if (p.turnWanted) giveTurn(p);
+      // An offer that was just answered and left the same senders pending
+      // must not be sent again. Repeating it is how a fresh link's channel
+      // closes (fault 2b): the answer did not clear the pending set, so the
+      // next offer is the same one, and the pair dies a few seconds in.
+      const pend = hasPendingTx(p);
+      const sig = pend ? pendingSig(p) : "";
+      if (p.renegAgain || (pend && sig !== p.offeredPend)) {
+        p.renegAgain = false;
+        if (pend) p.offeredPend = sig;
+        renegotiate(p);
+        return;
+      }
+      if (!pend) p.offeredPend = "";
+      if (p.kickVideo) { p.kickVideo = false; kickMainVideo(p); kickMainAudio(p); }
     }
     // createOffer/setRemoteDescription failed in a way this pc will repeat.
     // An m-line order mismatch on a channel that just opened wedges the
@@ -12270,14 +12637,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // added tracks (composite folds!) were orphaned with no retry. Standard
       // perfect-negotiation: at most one offer in flight; re-check stability
       // after the async createOffer; any failure re-arms renegAgain.
+      if (!iInitiate(p.id) && !p.turnOk && !p.turnLegacy) { p.renegAgain = true; askTurn(p); return; } // OFFER TURNS
+      if (iInitiate(p.id) && p.turnGiven) { p.renegAgain = true; return; } // their turn is out: mine waits for their offer
       if (p.makingOffer || p.pc.signalingState !== 'stable') { p.renegAgain = true; return; }
       p.makingOffer = true;
       preferHwVideo(p.pc); // renegotiations add fresh m-lines (folds, stg, relay jobs) — they must inherit the preference
       p.pc.createOffer()
         .then((o) => { if (p.pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return p.pc.setLocalDescription(o); })
-        .then(() => { dcSend(p, { k: 'roffer', sdp: p.pc.localDescription }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); })
+        .then(() => {
+          endTurn(p); // this offer is the turn's one offer
+          const send = () => { dcSend(p, { k: 'roffer', sdp: p.pc.localDescription }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); };
+          // DEBUG lever (e2e-glare-first-offer): hold the wire to this peer
+          // (this offer and everything after it, in order). When both ends
+          // offer within the hold of each other, as they do the moment a
+          // link's channel opens, each offer lands while the other is still
+          // out: the offers cross (forced glare at link birth).
+          const hold = DEBUG_ON ? +window.__offerHoldMs || 0 : 0;
+          if (hold > 0 && !p.wireHold) p.wireHold = new Promise((r) => setTimeout(() => { p.wireHold = null; r(); }, hold));
+          send();
+        })
         .catch((e) => { if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
-        .finally(() => { p.makingOffer = false; });
+        .finally(() => { p.makingOffer = false; if (p.turnWanted) giveTurn(p); });
     }
     function startRelayJob(reqP, target) {
       const key = target + '>' + reqP.id;
@@ -12383,6 +12763,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const subWant = new Map();    // from + '|' + key + '|' + sid -> 'w'|'i' (last demand sent — debounce)
     const mosJobs = new Map();  // key + '>' + to -> { senders, trackList, active, sig, to, key, meta } (outbound ships)
     let prodPack = null, sdPack = null, stripPack = null; // GAPLESS packers (approach A)
+    // MY VOICE IN MY OWN CELL. A head's composites (its row's product, the
+    // down-mixes for its children) fold each cell's audio from the cell's
+    // stream. My self-view is picture-only (refreshOutbound gives it the sent
+    // video track alone), so folding it carried no voice: every seat beyond
+    // my row saw me and never heard me — and a head alone on its row shipped
+    // a silent band. The fold gets the mic track the main senders carry, so
+    // mute (track.enabled) and a mic re-grab (a new track) reach it the same
+    // way. Cached by track identity: a fresh stream id would re-fold every
+    // sweep.
+    let selfFoldSt = null;
+    function selfFoldStream() {
+      const at = (localStream && localStream.getAudioTracks()[0]) || null;
+      const vs = meTile && meTile.video ? meTile.video.srcObject : null;
+      if (!at || at.readyState === 'ended') { selfFoldSt = null; return vs || localStream; }
+      if (!selfFoldSt || selfFoldSt.getAudioTracks()[0] !== at) selfFoldSt = new MediaStream([at]);
+      return selfFoldSt;
+    }
     let dbgRowFaces = []; // test observability: {i, pid8} the head drew this sweep (stale-seat dup guard)
     let mosBeyondAt = 0; // last time beyondRow was RAW-true (teardown hysteresis)
     let sdEmptyAt = 0;   // since when a head's sdPack has been EMPTY (blank-tile grace)
@@ -13697,7 +14094,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the row+column fabric, two link-disjoint paths. Structural relay slots
     // (sub/x1/x2) keep the plain single sticky claim.
     const isRedun = (rk) => rk === 'sdm' || rk === 'sdx' || rk === 'sdn' || rk === 'sgs' || rk.indexOf('stg:') === 0 || rk.indexOf('sdrow:') === 0;
-    const annMeta = (ann) => ({ col: ann.col, row: ann.row, n: ann.n, cols: ann.cols, mt: ann.mt, h: ann.h, ids: ann.ids, ao: ann.ao, sb: ann.sb });
+    const annMeta = (ann) => ({ col: ann.col, row: ann.row, n: ann.n, cols: ann.cols, mt: ann.mt, h: ann.h, ids: ann.ids, ao: ann.ao, sb: ann.sb, vp: ann.vp });
     // The strip's CELL ORDER (STAGE-FACES): who sits in cell 0..n-1, as the
     // compositing seat packed it. At most C peer ids, each a short string;
     // anything else is dropped, and a receiver without it falls back to the
@@ -13728,6 +14125,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // ~10 s into a stationary stage (e2e-stage-onerow, 4 Oct 2026). One rank
     // per holder, whichever of its two paths it holds: no second hop of churn.
     const stgHop = (f) => ((f && f.meta && typeof f.meta.h === 'number') ? f.meta.h : 998) + 1 + ((f && f.meta && f.meta.sb === 1) ? 1 : 0);
+    // A RELAYED STAGE FEED NAMES THE SEATS IT CAME THROUGH (vp). The Section 1
+    // flood re-ships every held stg feed to every row and column mate,
+    // including the one it came from, so two or three mates can end up taking
+    // the feed from each other — a ring with no seat still fed by the stager.
+    // A ring keeps re-sending whatever it held when it closed: the stager's
+    // voice from before they muted, played to the whole room while their tile
+    // says muted. So each relay announces the path its copy took (its own
+    // claim's path plus itself), and a seat never takes a copy whose path
+    // already holds it: that copy depends on this seat. Bounded: the last
+    // STG_VP_MAX seats, short ids; a longer loop still escapes on the hop
+    // count. A copy with no path (an older client) is judged as before.
+    const STG_VP_MAX = 12;
+    const vpId = (pid) => String(pid || '').slice(0, 10);
+    const stgPath = (f) => ((f && f.meta && Array.isArray(f.meta.vp)) ? f.meta.vp : []).concat(vpId(myId)).slice(-STG_VP_MAX);
+    const stgLoopsBack = (key, ann) => typeof key === 'string' && key.indexOf('stg:') === 0 && !!ann && Array.isArray(ann.vp) && ann.vp.indexOf(vpId(myId)) >= 0;
+    const mxPath = (v) => (Array.isArray(v) && v.length <= STG_VP_MAX && v.every((x) => typeof x === 'string' && x.length <= 10)) ? v.slice() : undefined;
     // Send a want/idle demand to a redundant feed's announcer, debounced so the
     // message only rides the DC on a state flip — but RE-ASSERTED every few
     // seconds even without one: a demand that raced a closed DC or a transport
@@ -13798,6 +14211,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // object identity names ONE pipe. A rebuilt transport simply misses the
     // lookup and skips — the rebuilt pipe re-baselines when it flows again.
     let dogBusy = false;
+    async function sampleStandby(rk, fb) {
+      if (fb.dark || fb.wakeAt) {
+        const std = mosStandby.get(rk);
+        const s = std ? await pipeBytes(std) : -1;
+        if (s !== -1 && s.d >= 0) {
+          // First post-wake sample IS the baseline; a sample BELOW the
+          // baseline means the standby's receiver was renegotiated and its
+          // counters restarted — re-baseline, or the advance test can
+          // never pass and the dark swap wedges (seen live: d0=16, fdec=13).
+          if (fb.d0 === -1 || s.d < fb.d0) { fb.d0 = s.d; fb.b0 = s.b; }
+          fb.stdFdec = s.d; fb.stdB = s.b;
+        }
+      } else if (fb.d0 !== -1 || fb.stdFdec !== -1) { fb.d0 = -1; fb.stdFdec = -1; fb.stdB = -1; }
+    }
     async function mosWatchdog() {
       if (dogBusy) return; // single flight — stats are async, the loop must not stack
       dogBusy = true;
@@ -13823,7 +14250,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // for audio (inbound AUDIO bytes here, and the same in claimRedun's
           // `flowing` test, which today counts decoded video frames) is the
           // follow-up that would restore it.
-          if (pri.stream && !pri.stream.getVideoTracks().length) continue;
+          // The STANDBY is still sampled during a wake or failback: that
+          // sample is the flow evidence claimRedun's swap waits for, and
+          // without it a voice-only slot could never leave its primary — not
+          // even for the stager's own copy when the primary is a relay ring
+          // that no longer reaches the stager (its muted voice kept playing).
+          if (pri.stream && !pri.stream.getVideoTracks().length) { await sampleStandby(rk, fb); continue; }
           const bytes = await pipeBytes(pri);
           // Forensics ring (frza17: a husk claim's standby was never woken and
           // no theory survived — record what each sample actually SAW). Widened
@@ -13941,18 +14373,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // the strict "demonstrably FLOWS" evidence a dark-initiated swap
           // requires. v1's re-park break lived here: the videoWidth>0 swap
           // fallback read a camOff standby's STALE last frame as flowing.
-          if (fb.dark || fb.wakeAt) {
-            const std = mosStandby.get(rk);
-            const s = std ? await pipeBytes(std) : -1;
-            if (s !== -1 && s.d >= 0) {
-              // First post-wake sample IS the baseline; a sample BELOW the
-              // baseline means the standby's receiver was renegotiated and its
-              // counters restarted — re-baseline, or the advance test can
-              // never pass and the dark swap wedges (seen live: d0=16, fdec=13).
-              if (fb.d0 === -1 || s.d < fb.d0) { fb.d0 = s.d; fb.b0 = s.b; }
-              fb.stdFdec = s.d; fb.stdB = s.b;
-            }
-          } else if (fb.d0 !== -1 || fb.stdFdec !== -1) { fb.d0 = -1; fb.stdFdec = -1; fb.stdB = -1; }
+          await sampleStandby(rk, fb);
         }
         // ADAPTIVE CADENCE (2026-07-30 power work). This loop was a flat
         // 300ms getStats() sweep, forever, on every device — 3.3 wakeups/sec
@@ -13981,13 +14402,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       dogT = setTimeout(mosWatchdog, dogEvery);
     }
     let dogEvery = 300;
-    // One pipe's inbound video counters, by receiver-track OBJECT identity.
-    // Returns -1 when the pipe has no video receiver (audio-only, forming, or
-    // a rebuilt transport whose receivers no longer carry this track).
+    // One pipe's inbound counters, by receiver-track OBJECT identity: video
+    // (bytes, framesDecoded) for a feed that has video, audio (bytes,
+    // packetsReceived) for a voice-only feed. Returns -1 when the pipe has no
+    // receiver for that track (forming, or a rebuilt transport whose
+    // receivers no longer carry it).
     async function pipeBytes(ent) {
       try {
         const p = peers.get(ent.via); if (!p || !p.pc || !ent.stream) return -1;
-        const vt = ent.stream.getVideoTracks()[0]; if (!vt) return -1;
+        const vt = ent.stream.getVideoTracks()[0];
+        if (!vt) return pipeAudioBytes(p, ent.stream.getAudioTracks()[0]);
         const rcv = p.pc.getReceivers().find((r) => r.track === vt); if (!rcv) return -1;
         const rep = await rcv.getStats();
         // A receiver with NO inbound-rtp row yet has received NOTHING — that
@@ -13999,6 +14423,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // standby that was never woken).
         let out = { b: 0, d: 0 };
         rep.forEach((s) => { if (s.type === 'inbound-rtp' && s.kind === 'video') out = { b: s.bytesReceived || 0, d: s.framesDecoded || 0 }; });
+        return out;
+      } catch (e) { return -1; }
+    }
+    // A voice-only feed's pipe: packets received stand in for decoded frames.
+    // A muted stager still sends (silence frames), so a live voice pipe always
+    // advances.
+    async function pipeAudioBytes(p, at) {
+      try {
+        if (!at) return -1;
+        const rcv = p.pc.getReceivers().find((r) => r.track === at); if (!rcv) return -1;
+        const rep = await rcv.getStats();
+        let out = { b: 0, d: 0 };
+        rep.forEach((s) => { if (s.type === 'inbound-rtp' && s.kind === 'audio') out = { b: s.bytesReceived || 0, d: s.packetsReceived || 0 }; });
         return out;
       } catch (e) { return -1; }
     }
@@ -14167,7 +14604,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const a of arr) {
         const p = peers.get(a.from);
         const st = (p && p.incoming) ? p.incoming.find((s) => s.id === a.ann.streamId && s.id !== p.ownSid) : null;
-        cand.push({ from: a.from, key: a.key, sid: a.ann.streamId, ann: a.ann, st, live: !!st });
+        cand.push({ from: a.from, key: a.key, sid: a.ann.streamId, ann: a.ann, st, live: !!st && !stgLoopsBack(rk, a.ann) });
       }
       const inCand = (e) => e && cand.some((x) => x.from === e.via && x.sid === e.streamId && x.live);
       const mkEnt = (pick) => ({ via: pick.from, key: pick.key, streamId: pick.sid, stream: pick.st, el: mosVideo(pick.st), meta: annMeta(pick.ann), deadAt: 0 });
@@ -14245,7 +14682,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // tore the audio-only stg claim in the gate. The husk-promotion case
         // it targeted (redun hunt hr2) belongs to the SENDER-side container-
         // identity campaign; see known-unfixed.sh FAILOVER-WAKE.)
-        const flowing = (fb.dark && priLive)
+        // A VOICE-ONLY standby has no frames to count: its evidence is the
+        // audio packets the watchdog sampled since the wake. Without it a
+        // camera-off stager's slot never swapped at all — a primary that had
+        // become a relay ring (members re-flooding the feed to each other,
+        // none still fed by the stager) stayed claimed for good, and the
+        // ring kept replaying the stager's voice after they muted.
+        const voiceOnly = !!(std.stream && !std.stream.getVideoTracks().length);
+        const flowing = (voiceOnly || (fb.dark && priLive))
           ? (fb.d0 >= 0 && fb.stdFdec > fb.d0)
           : (frames(std.el) > fb.f0 || (std.el && std.el.videoWidth > 0 && now - fb.wakeAt > 1500));
         // A dead-or-dark primary swaps the moment the standby flows; a live one
@@ -14573,7 +15017,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // directly-linked peer. Stream carries the audio the fold sums; el is the
       // drawImage source (a <video> or a nested composite's <canvas>).
       const srcFor = (pid, feedKey) => {
-        if (pid === myId) return { el: meTile.video, stream: meTile.video.srcObject || localStream };
+        if (pid === myId) return { el: meTile.video, stream: selfFoldStream() };
         const f = feedKey ? mosIn.get(feedKey) : null;
         if (f) return { el: f.el, stream: f.stream };
         const p = peers.get(pid);
@@ -14997,10 +15441,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // ao: the held copy is an audio-only down copy (stgDownMeta). It came
         // from above and has no face, so it goes down only; up or across it
         // would become a Section 1 standby that fails over to no picture.
-        const relayStg = (key, stream, via, h, ao) => {
+        const relayStg = (key, stream, via, h, ao, vp) => {
           const owner = key.indexOf('stg:') === 0 ? key.slice(4).split('^')[0] : null;
           const skip = (t) => !t || t === via || (owner && t === owner);
-          const hm = { h }; // hop count from the producer — claims prefer min-h (see prefCand)
+          const hm = vp ? { h, vp } : { h }; // hop count from the producer — claims prefer min-h (see prefCand); vp: the seats this copy came through
           if (!ao && upTgt && !skip(upTgt)) { const jk = shipMos(key, upTgt, stream, hm, key); if (jk) wanted.add(jk); }
           if (!ao && xUpPid && xUpPid !== upTgt && !skip(xUpPid)) { const jk = shipMos(key + '^x', xUpPid, stream, hm, key); if (jk) wanted.add(jk); }
           // and DOWN: the strip is video-only — the per-stager feeds must
@@ -15012,7 +15456,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         };
         if (amStager) { const st = mySelfStream(); if (st) relayStg('stg:' + myId, st, null, 0); }
-        for (const k of heldStg) { const f = mosIn.get(k); relayStg(k, f.stream, f.via, stgHop(f), !!(f.meta && f.meta.ao)); }
+        for (const k of heldStg) { const f = mosIn.get(k); relayStg(k, f.stream, f.via, stgHop(f), !!(f.meta && f.meta.ao), stgPath(f)); }
         if (iAmHead) for (const k of heldStg) { // my row folds at its ears too
           const f = mosIn.get(k);
           const owner = k.slice(4).split('^')[0];
@@ -15021,7 +15465,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (!mate || mate === f.via || mate === owner) continue; // never back to the sender, never to the stager itself
             const earSt = stgDownShip(k, f.stream, sharingScreen(owner), stgAudioMemo);
             if (!earSt) continue;
-            const jm = shipMos(k, mate, earSt, stgDownMeta({ h: stgHop(f) }, earSt, f.stream), k); if (jm) wanted.add(jm);
+            const jm = shipMos(k, mate, earSt, stgDownMeta({ h: stgHop(f), vp: stgPath(f) }, earSt, f.stream), k); if (jm) wanted.add(jm);
           }
         }
       } else {
@@ -15042,11 +15486,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Skipping it silently deleted the stage lane's redundancy, and
         // redun-drill caught it as "no receiver holding a relayed stg primary
         // + standby".
-        const floodOne = (key, stream, via, h) => {
+        const floodOne = (key, stream, via, h, vp) => {
           if (!stream || flooded.has(stream.id)) return; flooded.add(stream.id);
           const owner = key.indexOf('stg:') === 0 ? key.slice(4).split('^')[0] : null;
           const skip = (t) => !t || (owner && t === owner);
-          const hm = { h }; // hop count from the producer — claims prefer min-h (see prefCand)
+          const hm = vp ? { h, vp } : { h }; // hop count from the producer — claims prefer min-h (see prefCand); vp: the seats this copy came through
           // My OWN feed: two neighbours watch it directly, the rest get an
           // sb:1 copy they keep parked (STG-DIRECT).
           const direct = owner === myId ? stgDirectSet(T.rowMates(c).map((m) => occPid(m)), T.colMates(c).map((m) => occPid(m)),
@@ -15060,7 +15504,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         };
         if (amStager) { const st = mySelfStream(); if (st) floodOne('stg:' + myId, st, null, 0); }
-        for (const k of heldStg) { const hf = mosIn.get(k); floodOne(k, hf.stream, hf.via, stgHop(hf)); }
+        for (const k of heldStg) { const hf = mosIn.get(k); floodOne(k, hf.stream, hf.via, stgHop(hf), stgPath(hf)); }
         // composite the strip in stage order; fan 'sgs' down my subtree
         const selfSt = soloSelf ? selfStageStream() : null;
         if (!stagers.length) { paintStageStrip(null); }
@@ -15302,6 +15746,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (pid === fromPid) continue;
         const p = peers.get(pid);
         if (p && p.dc && p.dc.readyState === 'open') { dcSend(p, m); sent++; }
+      }
+      // A frame I ORIGINATED that no structural neighbour could take goes to
+      // every open channel instead (the same widening as sgaAskTargets). A
+      // joiner has open channels before it has a seat, and the app mounts in
+      // that gap: its first write found no target, was queued, and the queue
+      // flushes only when a channel opens. The last joiner has no channel left
+      // to open, so its write never reached the owner (e2e-irl's 4th chip).
+      if (!sent && fromPid == null) {
+        for (const [pid, p] of peers) {
+          if (pid !== myId && p && p.dc && p.dc.readyState === 'open') { dcSend(p, m); sent++; }
+        }
       }
       // Only frames I ORIGINATED are worth holding (fromPid == null). A relayed
       // frame that finds no onward peer is just the edge of the fan.
@@ -16584,7 +17039,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const [tid, si] of stgTracks) if (si.via === pid) stgOn[tid] = Math.max(0, Math.round(stageT - stgIncurred(si) - GRID.JB_BASE));
         const stgSig = JSON.stringify(stgOn);
         const was = prevGrid.get(pid);
-        if (was && was.set && was.bus === bus && was.jbt === jbt && was.stgSig === stgSig) { gridApplied.set(pid, was); continue; }
+        // The skipped link still reports THIS tick's stage target: a link
+        // that carries no stage track keeps its bus and jbt when my stage
+        // path changes, and used to report the old target from then on.
+        if (was && was.set && was.bus === bus && was.jbt === jbt && was.stgSig === stgSig) { was.stageT = stageT; gridApplied.set(pid, was); continue; }
         let set = false;
         try {
           for (const r of p.pc.getReceivers()) {
@@ -16700,11 +17158,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     });
     paintTiming();
 
-    // ---- live transcript: each phone transcribes ITS OWN speaker -------------
-    // The browser's speech engine hears only this device's microphone; final
-    // lines gossip over the DataChannels (dedupe by id, exactly like chat) and
-    // merge into one attributed transcript on every phone. No server anywhere —
-    // though note the browser itself may use its vendor's speech service.
+    // ---- live transcript: ONE device's CC writes down EVERYONE it hears ------
+    // A captioning device transcribes its own voice AND every voice it hears
+    // first-hand (its direct links and the Stage), each line attributed to the
+    // speaker. A person who never pressed CC is written down by whoever did.
+    // Final lines gossip over the DataChannels (dedupe by id, exactly like
+    // chat) and merge into one attributed transcript on every phone. No server
+    // anywhere — though the browser itself may use its vendor's speech service.
     const trs = new Map(); // id -> { id, byId, by, at, text }
     // ONE VOICE, WRITTEN DOWN ONCE (2026-10-02, the first customer meeting).
     // The speech engine listens to the device's raw microphone, not to the
@@ -16719,17 +17179,40 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     //     different device within 8s are one utterance. The earlier line wins
     //     — the real speaker's engine fires first, the echo lags by the
     //     speaker path — and a late-arriving earlier line replaces the echo.
-    // A SCRIBE writes down OTHER people: a line then carries byId (who spoke)
-    // and scribe (whose device wrote it). Two devices writing the same voice —
-    // the speaker's own and a scribe's — are told apart by src, the writing
-    // device, so the dedupe below treats them as one utterance.
+    // A line about ANOTHER person carries byId (who spoke) and scribe (whose
+    // device wrote it). Several devices that caption all hear the same voice,
+    // so one utterance arrives once per writer, worded a little differently by
+    // each engine: trSameVoice keeps ONE line per utterance, and as for echoes
+    // the earlier line wins.
     const trNorm = (t) => String(t || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
     const trSrc = (m) => String(m.scribe || m.byId);
     const trSeen = new Map(); // normalized text -> { at, src, id } of the line that holds it
     let trDrops = 0;
     var ccSourceId = null; // the scribe whose lines I chose to take instead of my own device's (per meeting)
+    const trWords = (n) => new Set(n.split(' ').filter(Boolean));
+    // The same utterance heard by two writers: same speaker, within 8s, and
+    // most of the shorter line's words are in the longer one (engines cut and
+    // spell differently). -> the held line it duplicates, or null.
+    function trSameVoice(m, n, src) {
+      const w = trWords(n);
+      if (!w.size) return null;
+      for (const l of trs.values()) {
+        if (l.byId !== m.byId || trSrc(l) === src || Math.abs((l.at || 0) - (m.at || 0)) >= 8000) continue;
+        const lw = trWords(trNorm(l.text));
+        let both = 0; for (const x of w) if (lw.has(x)) both++;
+        const small = Math.min(w.size, lw.size);
+        if (small && both / small >= 0.6 && (small >= 3 || both === Math.max(w.size, lw.size))) return l;
+      }
+      return null;
+    }
     function trEcho(m) { // -> false (new), true (drop: an echo), or the entry this earlier line should replace
       const n = trNorm(m.text);
+      const same = trSameVoice(m, n, trSrc(m));
+      if (same) {
+        if (clog) clog('cc same-voice', String(m.byId).slice(0, 6), 'by', trSrc(m).slice(0, 6), m.at, 'held', trSrc(same).slice(0, 6), same.at);
+        if ((m.at || 0) + 300 >= (same.at || 0)) { trDrops++; return true; }
+        trs.delete(same.id); // a late-arriving earlier line replaces the copy
+      }
       if (n.length < 12) return false; // "yes", "okay", "can you hear me" legitimately repeat
       const s = trSeen.get(n), src = trSrc(m);
       if (s && s.src !== src && Math.abs((m.at || 0) - s.at) < 8000) {
@@ -16742,11 +17225,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function takeTr(m, backfill) { // backfill: a 'hi' replay — see takeChat
       if (!m || !m.id || trs.has(m.id)) return false;
       const writer = String(m.scribe || m.byId);
-      if (!backfill && writer !== myId && !chatRateOk('tr:' + writer)) return false;
-      // A scribe can OFFER lines, never impose them: another device's scribed
-      // line is kept only if I chose that scribe under Settings → Captions.
-      if (m.scribe && m.scribe !== myId && ccSourceId !== m.scribe) return false;
-      if (m.scribe && m.scribe === m.byId) return false; // a scribe's own voice rides as their own plain line
+      // The flood limit is per writer AND voice: one captioning device writes
+      // down a whole row, and a single shared budget dropped real sentences.
+      if (!backfill && writer !== myId && !chatRateOk('tr:' + writer + '>' + String(m.byId))) return false;
+      // Every captioning device's lines are taken, whoever wrote them: that is
+      // how a person who never pressed CC reaches the transcript. A line
+      // written for someone else shows its writer (✍) on every device.
+      if (m.scribe && m.scribe === m.byId) return false; // a writer's own voice rides as their own plain line
       const line = { id: m.id, byId: m.byId, by: String(m.by || '?').slice(0, 40), at: m.at || 0, text: String(m.text || '').slice(0, 400) };
       if (m.scribe) { line.scribe = String(m.scribe); line.scribeBy = String(m.scribeBy || '?').slice(0, 40); }
       if (trEcho(line) === true) return false;
@@ -16791,7 +17276,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const lines = trBlocks();
       const html = lines.length
         ? lines.map((l) => '<div class="trline"><b>' + esc(l.by) + '</b>' + esc(l.text) + (l.scribeBy ? ' <small style="color:var(--muted,#8888aa)">✍ ' + esc(l.scribeBy) + '</small>' : '') + '</div>').join('')
-        : '<small style="color:#667">Tap CC in the bar and each phone writes down what its own person says — the lines gather here with names. Muted phones do not caption: unmute to be written down.</small>';
+        : '<small style="color:#667">Tap CC in the bar and your device writes down everyone it hears — the lines gather here under each speaker\'s name, on every device in the meeting.</small>';
       paintLog(log, html);
     }
     // CAPTIONS FOLLOW THE EAR (2026-10-03). A caption line was a room-wide
@@ -16833,7 +17318,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       sel.value = saved;
       sel.onchange = () => {
         try { if (sel.value) localStorage.setItem(CC_LANG_KEY, sel.value); else localStorage.removeItem(CC_LANG_KEY); } catch (e) {}
-        if (speechRunning()) { stopSpeech(); startSpeech(); }
+        if (speechRunning()) { stopSpeech(); syncSpeech(); }
         setStatus('Captions now listen for ' + ccLangLabel() + '.');
       };
     })();
@@ -16853,7 +17338,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const CC_ENGINE_KEY = 'gifos_cc_engine', CC_TRANSLATE_KEY = 'gifos_cc_translate', CC_WORDS_KEY = 'gifos_cc_words';
     const lsGet = (k) => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
     const lsSet = (k, v) => { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {} };
-    const ccEngine = () => (lsGet(CC_ENGINE_KEY) === 'whisper' ? 'whisper' : 'browser');
+    // WHO MAY RUN WHISPER. Whisper runs on the processor that also encodes the
+    // call and answers its heartbeats. On a phone, or a computer with few cores
+    // or little memory, it starves the meeting and drains the battery, so such
+    // a device is not offered Whisper: it runs only after an explicit "use it
+    // anyway" on this browser. A choice stored before that does not count.
+    const CC_WHISPER_ANYWAY_KEY = 'gifos_cc_whisper_anyway';
+    function whisperWeakWhy(nav) {
+      nav = nav || {};
+      if (mobileDevice(nav)) return 'phone';
+      const cores = Number(nav.hardwareConcurrency) || 0, mem = Number(nav.deviceMemory) || 0;
+      if (cores && cores < 4) return 'cores';
+      if (mem && mem < 4) return 'memory';
+      return '';
+    }
+    const WSP_WEAK = whisperWeakWhy(navigator);
+    const whisperAllowed = () => !WSP_WEAK || lsGet(CC_WHISPER_ANYWAY_KEY) === '1';
+    const ccEngine = () => (lsGet(CC_ENGINE_KEY) === 'whisper' && whisperAllowed() ? 'whisper' : 'browser');
     const WHISPER_APP_ID = 'offline-stt-whisper';
     const whisperReady = () => !!(window.GifOS && GifOS.providers && GifOS.providers.assigned('stt'));
     const WSP_PRE_MS = 400, WSP_GAP_MS = 700, WSP_MAX_S = 15, WSP_MIN_S = 0.4, WSP_BACKLOG = 3, WSP_SCRIBE_MAX = 8;
@@ -17069,8 +17570,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (wspPaused) return;
       wspPaused = true;
       try { stopWhisper(); } catch (e) {}
+      wspRelease();
       try { syncSpeech(); } catch (e) {}
       setStatus('Whisper captions stalled — browser captions are on.', 10000);
+    }
+    // Unload the speech-to-text provider: a clip it is still working on, or a
+    // model it is still loading, stops now instead of finishing for nobody.
+    function wspRelease() {
+      try { if (window.GifOS && GifOS.providers && typeof GifOS.providers.stop === 'function') GifOS.providers.stop('stt'); } catch (e) {}
+    }
+    // THE WAY BACK. One tap, from the meeting itself or from the guard below:
+    // browser captions take over at once, Whisper stops listening and its
+    // provider is unloaded. The choice is saved, so the next meeting starts
+    // with browser captions too.
+    function wspToBrowser(say) {
+      lsSet(CC_ENGINE_KEY, '');
+      speechGaveUp = false;
+      try { stopWhisper(); } catch (e) {}
+      wspRelease();
+      if (myStatus.scribe) { myStatus.scribe = false; try { broadcastStatus(); } catch (e) {} }
+      try { paintCcState(); } catch (e) {}
+      try { syncSpeech(); } catch (e) {}
+      if (say) setStatus(say, 10000);
     }
     function wspDrain() {
       if (wspQ.busy || !wspQ.items.length) return;
@@ -17080,15 +17601,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pcm = wspPcm16k(job.chunks, job.rate);
       const lang = ccLang();
       const req = { bytes: pcm.buffer, mime: 'audio/pcm;rate=16000;bits=32', language: lang === 'auto' ? 'auto' : lang,
-        task: lsGet(CC_TRANSLATE_KEY) === '1' ? 'translate' : 'transcribe', prompt: lsGet(CC_WORDS_KEY).slice(0, 400), model: IS_MOBILE ? 'tiny' : 'base' };
+        task: lsGet(CC_TRANSLATE_KEY) === '1' ? 'translate' : 'transcribe', prompt: lsGet(CC_WORDS_KEY).slice(0, 400), model: WSP_WEAK ? 'tiny' : 'base' };
       wspQ.sent++;
       let settled = false;
+      const t0 = Date.now();
       const finish = () => {
         if (settled) return;
         settled = true;
         if (timer) clearTimeout(timer);
-        wspQ.busy = false;
-        wspDrain();
+        // A device that runs Whisper only by override rests as long as the clip
+        // took before the next one, so inference holds at most half its processor.
+        const rest = WSP_WEAK ? Math.min(10000, Date.now() - t0) : 0;
+        if (rest < 50) { wspQ.busy = false; wspDrain(); return; }
+        setTimeout(() => { wspQ.busy = false; wspDrain(); }, rest);
       };
       const clipMs = pcm.length / 16; // 16 kHz samples → milliseconds
       // Until the provider first answers, a call can carry the one-time model
@@ -17114,6 +17639,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }).catch((e) => {
         if (settled) return;
         const msg = (e && e.message) || String(e);
+        if (/PROVIDER_STOPPED/.test(msg)) return; // unloaded on purpose (wspRelease)
         if (/NOT_CONFIGURED|PROVIDER_MISSING|PROVIDER_NOT_IN_FOLDER/.test(msg)) { wspProviderGone(); return; }
         setStatus('Whisper captions failed: ' + msg.slice(0, 160), 10000);
       }).then(() => finish());
@@ -17125,7 +17651,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // attributed to the SPEAKER and stamped with the scribe; a receiver keeps
     // them only if it chose this scribe (takeTr) — a scribe can offer, never
     // impose, because a scribe could also lie.
-    function scribeOn() { return !!myStatus.scribe && ccEngine() === 'whisper' && whisperReady(); }
+    // CC with Whisper writes down every voice too: a scribe is CC that also
+    // offers itself as the others' captions. A device that chose a scribe who
+    // hears it directly leaves the room to that scribe.
+    function scribeOn() { return (!!myStatus.scribe || (!!myStatus.cc && !ccSourceWritesMe())) && ccEngine() === 'whisper' && whisperReady(); }
     function wspSync() {
       const want = new Set();
       if (!wspPaused && myStatus.cc && !myStatus.muted && ccEngine() === 'whisper' && (!ccSourceId || !ccSourceWritesMe()) && whisperReady()) want.add('me');
@@ -17138,6 +17667,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (!pid || (typeof myId !== 'undefined' && pid === myId) || queued.indexOf(pid) >= 0) return;
           const st = statusOf.get(pid) || {};
           if (st.muted || (modOf(pid).mute && modOf(pid).mute.on)) return;
+          if (ccWrittenElsewhere(pid)) return;
           const p = peers.get(pid);
           const onStage = stageSet.has(pid) && !!wspStageSid(pid);
           if (!onStage && !(p && p.connected && wspSource(pid))) return;
@@ -17161,6 +17691,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (cap && (cap.stageSid || null) !== (sid || null)) wspStop(id);
         if (!wspCaps.has(id)) wspStart(id);
       }
+      ccvPublish();
     }
     const scribeSeen = new Set();
     const scribeOffers = new Map(); // pid -> { name, at, rx } from the room-wide advert
@@ -17261,7 +17792,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           : 'Using ' + (rosterNames[ccSourceId] || 'their') + '’s captions — ' + (ccSourceWritesMe() ? 'your device is no longer transcribing.' : 'your own device still writes you down.'), 6000);
       };
     }
-    setInterval(() => { if (ccSourceId && ccSourceWritesMe() !== ccSrcDirect) syncSpeech(); if (wspCaps.size || scribeOn() || ccSourceId) wspSync(); if (scribeSeen.size || ccSourceId || anyScribeStatus || scribeOffers.size) scribeWatch(); }, 2000);
+    setInterval(() => { if (ccSourceId && ccSourceWritesMe() !== ccSrcDirect) syncSpeech(); if (wspCaps.size || scribeOn() || ccSourceId) wspSync(); if (ccMix.dest) ccMixSync(); if (!ccOthers) ccFillOptOut = false; if (ccFilling() !== ccFillOn) syncSpeech(); if (scribeSeen.size || ccSourceId || anyScribeStatus || scribeOffers.size) scribeWatch(); }, 2000);
     // ONE TAP TO INSTALL. The provider is a signed 13 MB GIF on this very site:
     // GifOS.providers.install downloads, checks the catalog hash and the
     // gifos.app signature, files it into the Providers folder and we assign it
@@ -17308,6 +17839,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const on = ccEngine() === 'whisper';
       for (const r of radios) r.checked = (r.value === 'whisper') === on;
       box.style.display = on ? '' : 'none';
+      // A weak device: the Whisper row is not selectable; a plain warning and
+      // an explicit "use it anyway" stand in for it.
+      const allowed = whisperAllowed();
+      for (const r of radios) if (r.value === 'whisper') r.disabled = !allowed;
+      const weak = document.getElementById('ccwhisper-weak');
+      if (weak) {
+        if (allowed) { weak.style.display = 'none'; weak.innerHTML = ''; }
+        else {
+          weak.style.display = '';
+          weak.innerHTML = '<span style="color:#ffd23c">⚠ Not offered on ' + (WSP_WEAK === 'phone' ? 'a phone' : WSP_WEAK === 'cores' ? 'a device with this few processor cores' : 'a device with this little memory')
+            + '.</span> Whisper runs on the processor: it slows the call for you and everyone you talk to, and it drains the battery. Browser captions stay instant. '
+            + '<button id="ccwhisper-anyway" class="seg" style="border:1px solid #ffd23c;border-radius:.4rem">Use Whisper anyway</button>';
+          document.getElementById('ccwhisper-anyway').onclick = () => {
+            lsSet(CC_WHISPER_ANYWAY_KEY, '1');
+            lsSet(CC_ENGINE_KEY, 'whisper');
+            wspPaused = false; wspQ.stalls = 0;
+            setStatus('Whisper is on by your choice. If the call gets slow, tap “Switch to browser captions” at the bottom of the screen.', 12000);
+            paintCcState();
+            syncSpeech();
+          };
+        }
+      }
       const sc = document.getElementById('ccscribe'); if (sc) sc.checked = !!myStatus.scribe;
       const scRow = document.getElementById('ccscribe-row');
       if (!on) return;
@@ -17325,12 +17878,41 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       armWhisperRescan();
     }
     function whisperSeedBlocked() {
-      // A phone, a data-saver flag, or a cellular link does not fetch the 13 MB app on its own.
-      if (IS_MOBILE) return true;
+      // A phone or a weak computer, a data-saver flag, or a cellular link does not fetch the 13 MB app on its own.
+      if (IS_MOBILE || WSP_WEAK) return true;
       const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
       if (c && (c.saveData || c.type === 'cellular' || c.type === 'wimax')) return true;
       return false;
     }
+    // The one-tap chip on the meeting surface, outside every menu, for as long
+    // as Whisper is chosen, loading or working.
+    function paintWspChip() {
+      const chip = document.getElementById('ccwsp-off'); if (!chip) return;
+      const on = (myStatus.cc && ccEngine() === 'whisper' && !wspPaused) || wspCaps.size > 0;
+      const want = on ? '' : 'none';
+      if (chip.style.display !== want) chip.style.display = want;
+    }
+    // THE MEETING COMES FIRST. A 250 ms tick that lands more than a second late
+    // means the page missed its heartbeats and media work; on a phone the
+    // provider runs on this very thread. Two such stalls within 30 s while
+    // Whisper is working, and it stands down for browser captions. The same
+    // tick keeps the chip in step with the engine.
+    const WSP_TICK_MS = 250, WSP_STARVE_MS = 1000, WSP_STARVE_N = 2, WSP_STARVE_WIN = 30000;
+    let wspTickAt = 0, wspStarved = [];
+    setInterval(() => {
+      paintWspChip();
+      const now = Date.now();
+      const late = wspTickAt ? now - wspTickAt - WSP_TICK_MS : 0;
+      // A hidden tab's timers are throttled on purpose; that is not a stall.
+      if (document.visibilityState !== 'visible' || !(wspCaps.size || wspQ.busy)) { wspTickAt = document.visibilityState === 'visible' ? now : 0; wspStarved.length = 0; return; }
+      wspTickAt = now;
+      if (late < WSP_STARVE_MS) return;
+      wspStarved = wspStarved.filter((t) => now - t < WSP_STARVE_WIN);
+      wspStarved.push(now);
+      if (wspStarved.length < WSP_STARVE_N) return;
+      wspStarved.length = 0;
+      wspToBrowser('Whisper was slowing this device and the call down — browser captions are on. Settings → Captions to try it again.');
+    }, WSP_TICK_MS);
     (function wireCcEngine() {
       const radios = Array.from(document.querySelectorAll('input[name="ccengine"]')); if (!radios.length) return;
       const tr = document.getElementById('cctranslate'), words = document.getElementById('ccwords'), scribe = document.getElementById('ccscribe');
@@ -17345,6 +17927,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       for (const r of radios) r.onchange = () => {
         if (!r.checked) return;
+        if (r.value === 'whisper' && !whisperAllowed()) { paintCcState(); return; } // only the explicit override turns it on here
         lsSet(CC_ENGINE_KEY, r.value === 'whisper' ? 'whisper' : '');
         if (r.value !== 'whisper') speechGaveUp = false;
         if (r.value === 'whisper') { wspPaused = false; wspQ.stalls = 0; } // a deliberate re-pick retries a stalled Whisper
@@ -17355,6 +17938,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       paintCcState();
       document.getElementById('setbtn').addEventListener('click', () => { paintCcState(); paintCcSource(); });
+      document.getElementById('ccwsp-off').onclick = () => { wspToBrowser('Browser captions are on. Whisper is off on this device.'); paintWspChip(); };
       // The quiet seed: 20 s into a meeting, on an unmetered computer, once. Idle, so it
       // does not compete with the call. A phone or a cellular link never starts it.
       setTimeout(() => {
@@ -17370,10 +17954,163 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else run();
       }, 20000);
     })();
+    // ---- ONE WRITER PER VOICE ------------------------------------------------
+    // Every captioning device could write down every voice it hears, and two
+    // engines cut and word the same sentence differently, so text matching
+    // alone leaves copies. Each writing device publishes the voices it is
+    // writing down (status ccv, peer ids). A voice is left to its own device
+    // when that device captions itself, else to the writer with the lowest id
+    // that hears it; everyone else stops writing it. A writer that leaves, or
+    // stops hearing the voice, drops it from its list, and the next device in
+    // line takes it on the following tick.
+    //   A device FILLING IN (ccFilling: CC is on elsewhere in my section, not
+    // here) also yields every voice a captioning device writes, its own
+    // included: it writes only what no captioning device hears.
+    function ccWrittenElsewhere(pid) {
+      const filling = !myStatus.cc;
+      for (const [w, ws] of statusOf) {
+        if (w === myId || !ws || !Array.isArray(ws.ccv) || ws.ccv.indexOf(pid) < 0) continue;
+        if (ws.cc && (filling || w === pid)) return true;
+        if (w !== pid && String(w) < String(myId)) return true;
+      }
+      return false;
+    }
+    // CC ON ANYWHERE IN MY SECTION COVERS ME TOO. A captioning device hears
+    // its own row first-hand; a voice in another row reaches it only inside
+    // that row's mix, with no name on it. So while some device in my section
+    // captions, this one writes down the voices it alone hears directly (its
+    // own included) — the gaps, never a voice a captioning device writes.
+    // Lines stay in the section (captionScope), so this never runs for a
+    // captioning device past it. Tapping CC on and off again opts out until
+    // the section's captions stop.
+    var ccFillOptOut = false, ccFillSaid = false, ccFillOn = false;
+    function ccFilling() { return !myStatus.cc && !ccFillOptOut && !speechGaveUp && ccOthers > 0; }
+    function ccvPublish() {
+      const ids = new Set();
+      if (myStatus.cc || ccFilling()) {
+        for (const id of ccMix.ins.keys()) ids.add(id === 'me' ? myId : id);
+        for (const id of wspCaps.keys()) ids.add(id === 'me' ? myId : id);
+        if (speech && !speech.input && !myStatus.muted) ids.add(myId);
+      }
+      const next = Array.from(ids).filter(Boolean).sort();
+      const prev = myStatus.ccv || [];
+      if (next.length === prev.length && next.every((x, i) => x === prev[i])) return;
+      if (next.length) myStatus.ccv = next; else delete myStatus.ccv;
+      if (clog) clog('cc writes', next.map((x) => String(x).slice(0, 6)).join(','));
+      broadcastStatus();
+    }
+    // ---- THE ROOM EAR: one browser engine hears every voice ------------------
+    // A browser runs ONE speech session at a time (a second start aborts the
+    // first), so CC cannot open an engine per voice. Where start() takes a
+    // MediaStreamTrack, the engine is fed one MIX instead: my own echo-cancelled
+    // microphone (when unmuted) plus every voice this device hears first-hand —
+    // each direct link's audio and the Stage feeds. Each input keeps its own
+    // level meter, and a final line is written down under the voice that talked
+    // most since the previous line; with nobody talking it is dropped. A
+    // browser without track input keeps the old engine: the raw microphone,
+    // my own voice only, behind the echo gate (see trEcho).
+    // Track input and processLocally arrived together in Chrome's engine; an
+    // engine without them would ignore the track and listen to the microphone.
+    function ccTrackInput() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      return !!(SR && SR.prototype && 'processLocally' in SR.prototype);
+    }
+    const ccMix = { dest: null, ins: new Map(), talk: new Map(), tick: null, at: 0, last: null, lastAt: 0 };
+    const CC_TALK_RMS = 5 / 128; // the talking ring's threshold (meter loop), on float samples
+    function ccMixVoices() { // id ('me' | pid) -> a source node in ac
+      const out = new Map();
+      const meM = meters.get('me');
+      if (!myStatus.muted && meM && meM.src && (myStatus.cc || !ccWrittenElsewhere(myId))) out.set('me', { node: meM.src });
+      const stagers = (typeof stageIds === 'function') ? stageIds() : [];
+      for (const pid of stagers) {
+        if (pid === myId) continue;
+        const stg = wspStageStream(pid);
+        if (stg) out.set(pid, { stage: stg });
+      }
+      for (const [pid, p] of peers) {
+        if (out.has(pid) || !p || !p.connected) continue;
+        const st = statusOf.get(pid) || {};
+        if (st.muted || (modOf(pid).mute && modOf(pid).mute.on)) continue;
+        const m = meters.get(pid);
+        if (m && m.src) out.set(pid, { node: m.src });
+      }
+      for (const id of Array.from(out.keys())) if (id !== 'me' && ccWrittenElsewhere(id)) out.delete(id);
+      return out;
+    }
+    function ccMixDrop(id) {
+      const i = ccMix.ins.get(id); if (!i) return;
+      ccMix.ins.delete(id); ccMix.talk.delete(id);
+      if (ccMix.last === id) ccMix.last = null;
+      try { i.node.disconnect(i.an); } catch (e) {}
+      try { i.node.disconnect(i.g); } catch (e) {}
+      try { i.g.disconnect(); } catch (e) {}
+      if (i.own) { try { i.node.disconnect(); } catch (e) {} }
+    }
+    function ccMixSync() {
+      if (!ccMix.dest) return;
+      const want = ccMixVoices();
+      for (const [id, i] of Array.from(ccMix.ins)) {
+        const w = want.get(id);
+        if (!w || (w.node && w.node !== i.node) || (w.stage && w.stage.id !== i.sid)) ccMixDrop(id);
+      }
+      for (const [id, w] of want) {
+        if (ccMix.ins.has(id)) continue;
+        let node = w.node, own = false;
+        if (!node) {
+          try { node = ac.createMediaStreamSource(new MediaStream([w.stage.getAudioTracks()[0]])); own = true; } catch (e) { continue; }
+        }
+        try {
+          const an = ac.createAnalyser(); an.fftSize = 512;
+          const g = ac.createGain();
+          node.connect(an); node.connect(g); g.connect(ccMix.dest);
+          ccMix.ins.set(id, { node, an, g, own, sid: w.stage ? w.stage.id : null, buf: new Float32Array(an.fftSize) });
+        } catch (e) { if (own) { try { node.disconnect(); } catch (x) {} } }
+      }
+      ccvPublish();
+    }
+    function ccMixStart() {
+      if (ccMix.dest) return ccMix.dest.stream.getAudioTracks()[0] || null;
+      if (!ccTrackInput() || !ensureAc()) return null;
+      try { ccMix.dest = ac.createMediaStreamDestination(); } catch (e) { ccMix.dest = null; return null; }
+      ccMix.at = Date.now();
+      ccMixSync();
+      ccMix.tick = setInterval(() => {
+        const now = Date.now(), dt = now - ccMix.at; ccMix.at = now;
+        for (const [id, i] of ccMix.ins) {
+          i.an.getFloatTimeDomainData(i.buf);
+          let acc = 0; for (let k = 0; k < i.buf.length; k++) acc += i.buf[k] * i.buf[k];
+          if (Math.sqrt(acc / i.buf.length) > CC_TALK_RMS) ccMix.talk.set(id, (ccMix.talk.get(id) || 0) + dt);
+        }
+      }, 150);
+      return ccMix.dest.stream.getAudioTracks()[0] || null;
+    }
+    function ccMixStop() {
+      if (!ccMix.dest) return;
+      for (const id of Array.from(ccMix.ins.keys())) ccMixDrop(id);
+      clearInterval(ccMix.tick); ccMix.tick = null;
+      ccMix.dest = null; ccMix.talk.clear(); ccMix.last = null;
+      ccvPublish();
+    }
+    // Who said the line the engine just finished: the voice that talked most
+    // since the previous line. An engine also hands over one long utterance
+    // as several finals in a burst; a final with no talk of its own within
+    // 2 s of the previous one continues that speaker. null: nobody talked
+    // (noise, or a voice now gone).
+    const CC_BURST_MS = 2000;
+    function ccMixSpeaker() {
+      let best = null, ms = 0;
+      for (const [id, t] of ccMix.talk) if (t > ms) { ms = t; best = id; }
+      const now = Date.now();
+      if (!best && ccMix.last && now - ccMix.lastAt < CC_BURST_MS) best = ccMix.last;
+      if (clog) clog('cc line by', String(best).slice(0, 6), Array.from(ccMix.talk).map(([id, t]) => String(id).slice(0, 6) + ':' + t).join(' '));
+      ccMix.talk.clear();
+      if (best) { ccMix.last = best; ccMix.lastAt = now; }
+      return best;
+    }
     let speech = null, speechFails = 0, speechRetry = null, speechGaveUp = false;
     function speechRunning() { return !!speech; }
     function speechRetryDelay(n) { return Math.min(30000, 1000 * Math.pow(2, Math.max(0, n - 1))); }
-    function startSpeech() {
+    function startSpeech(input) { // input: the room ear's mix track; none = the raw microphone
       if (speechGaveUp) return false;
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) { setStatus('This browser cannot write down what people say.'); return false; }
@@ -17381,11 +18118,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try {
         speech = new SR();
         const rec = speech;
+        rec.input = input || null;
+        const go = () => { if (rec.input) rec.start(rec.input); else rec.start(); };
         speech.continuous = true;
         speech.interimResults = false;
         speech.lang = ccLang() === 'auto' ? (navigator.language || 'en-US') : ccLang();
         speech.onresult = (e) => {
           speechFails = 0;
+          if (rec.input) {
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+              if (!e.results[i].isFinal) continue;
+              const who = ccMixSpeaker();
+              if (!who) { trDrops++; continue; }
+              if (who === 'me') addTranscriptLine(e.results[i][0].transcript);
+              else addTranscriptLine(e.results[i][0].transcript, 0, who);
+            }
+            return;
+          }
           // THE GATE (see trEcho): no voice on my own echo-cancelled mic in
           // the last 3s means I only heard this through the speakers. No
           // meter yet (AudioContext not born) ⇒ no verdict ⇒ let it through.
@@ -17397,16 +18146,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         };
         speech.onend = () => {
-          if (!(myStatus.cc && !myStatus.muted && speech)) return;
+          if (!((myStatus.cc || ccFilling()) && speech === rec && (rec.input || !myStatus.muted))) return;
           if (speechFails > 0) {
             const wait = speechRetryDelay(speechFails);
             speechRetry = setTimeout(() => {
               speechRetry = null;
-              if (myStatus.cc && !myStatus.muted && speech) { try { speech.start(); } catch (err) {} }
+              if ((myStatus.cc || ccFilling()) && speech === rec && (rec.input || !myStatus.muted)) { try { go(); } catch (err) {} }
             }, wait);
             return;
           }
-          try { speech.start(); } catch (err) {}
+          try { go(); } catch (err) {}
         };
         speech.onerror = (e) => {
           if (speech !== rec) return;
@@ -17436,7 +18185,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             }
           }
         };
-        speech.start();
+        go();
         return true;
       } catch (e) { speech = null; return false; }
     }
@@ -17445,6 +18194,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       speech = null; // onend sees null → no restart
       if (speechRetry) { clearTimeout(speechRetry); speechRetry = null; }
       if (sp) { try { sp.stop(); } catch (e) {} }
+      ccMixStop();
+      ccvPublish(); // a stopped engine writes nobody: the others take its voices on
     }
     // A chosen scribe writes me down only if it hears me: its wspSync captures
     // its direct, connected peers (and stagers, capped). A far scribe picked
@@ -17457,34 +18208,58 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const p = ccSourceId ? peers.get(ccSourceId) : null;
       return !!(p && p.connected);
     }
-    function syncSpeech() { // CC follows the mic: muted people aren't transcribed
-      const want = myStatus.cc && !myStatus.muted;
+    function syncSpeech() { // CC writes down my voice while I am unmuted, and every voice this device hears
+      paintWspChip(); // the way back shows the moment Whisper is chosen; the 250 ms tick keeps it in step
+      const mine = myStatus.cc && !myStatus.muted;
       ccSrcDirect = ccSourceWritesMe();
       if (ccSrcDirect) { // the chosen scribe hears me directly: no engine of my own
         if (speechRunning()) stopSpeech();
+        ccMixStop();
         wspStop('me'); wspSync();
         return;
       }
-      if (want && ccEngine() === 'whisper') {
-        if (!wspPaused) {
+      if (myStatus.cc && ccEngine() === 'whisper' && !wspPaused && whisperReady()) {
+        // Whisper cuts each voice on its own capture (wspSync): mine while
+        // unmuted, and every voice I hear first-hand (scribeOn).
+        if (!mine || wspCaps.has('me') || startWhisper()) {
           if (speechRunning()) stopSpeech();
-          if (wspCaps.has('me') || startWhisper()) { wspSync(); return; }
+          ccMixStop();
+          if (!mine) wspStop('me');
+          wspSync();
+          return;
         }
         // Whisper is chosen but cannot run here (no provider yet, no mic
         // track, or the provider stalled): the browser engine carries on.
       }
       wspStop('me'); wspSync();
-      if (want && !speechRunning()) startSpeech();
-      if (!want && speechRunning()) stopSpeech();
+      const filling = ccFilling();
+      ccFillOn = filling;
+      if (!myStatus.cc && !filling) { if (speechRunning()) stopSpeech(); ccvPublish(); return; }
+      if (filling && !ccFillSaid) { ccFillSaid = true; setStatus('Captions are on in this meeting — this device also writes down the voices only it hears. Tap CC twice to opt out.', 8000); }
+      if (ccTrackInput()) {
+        if (speechRunning() && !speech.input) stopSpeech(); // a raw-microphone engine hands over to the room ear
+        const input = ccMixStart();
+        if (input) {
+          ccMixSync();
+          if (!speechRunning()) startSpeech(input);
+          return;
+        }
+      }
+      // No track input: this engine hears my own microphone only.
+      const meToo = !myStatus.muted && (myStatus.cc || !ccWrittenElsewhere(myId));
+      if (meToo && !speechRunning()) startSpeech();
+      if (!meToo && speechRunning()) stopSpeech();
+      ccvPublish();
     }
     document.getElementById('ccbtn').onclick = () => {
       myStatus.cc = !myStatus.cc;
       if (myStatus.cc) { speechGaveUp = false; wspPaused = false; wspQ.stalls = 0; } // turning CC on retries both engines
+      else if (ccOthers > 0) ccFillOptOut = true; // CC off while others caption: this device stops filling in too
       ccByOrder = false;
       if (!myStatus.cc && ccAllInfo()) ccOptOutAt = Date.now(); // opting out of a room-wide order holds until the next order
       document.getElementById('ccbtn').classList.toggle('on', myStatus.cc);
       syncSpeech();
-      if (myStatus.cc && myStatus.muted) setStatus('Captions are on — but you are muted, so nothing gets written down. Unmute to caption yourself.');
+      if (myStatus.cc && myStatus.muted) setStatus((ccMix.dest || scribeOn()) ? 'Captions are on — you are muted, so your own voice is not written down; everyone else your device hears still is.' : 'Captions are on — but you are muted, so nothing gets written down. Unmute to caption yourself.');
       broadcastStatus();
     };
     // CAPTIONS FOR EVERYONE. Each person had to find CC alone, and one never
@@ -17508,7 +18283,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       myStatus.cc = true; ccByOrder = true; speechGaveUp = false;
       cc.classList.add('on');
       syncSpeech();
-      setStatus((m.by || 'An admin') + ' turned captions on for everyone — this device writes down what you say' + (myStatus.muted ? ' once you unmute' : '') + '. Tap CC to opt out.', 8000);
+      setStatus((m.by || 'An admin') + ' turned captions on for everyone — this device writes down the voices it hears. Tap CC to opt out.', 8000);
       broadcastStatus();
     }
     (function wireCcAll() {
@@ -17536,11 +18311,31 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const anyCc = myStatus.cc || trs.size > 0 || ccOthers > 0;
       document.getElementById('trbtn').style.display = anyCc ? '' : 'none';
     }
+    // Every meeting download (transcript, recording) is filed as
+    // <YYYY_MM_DD>_<Room>_gifos_<Kind>.<ext>: the LOCAL date the meeting (or
+    // recording) started, then the room's name. Only the name is passed in —
+    // the admin verifier and the password never reach a file name. The name is
+    // cut to [A-Za-z0-9._-] so it saves on every filesystem; with nothing left
+    // the file is <YYYY_MM_DD>_gifos_<Kind>.<ext>.
+    function meetDownloadName(kind, roomName, date, ext) {
+      let d = new Date(date || Date.now());
+      if (isNaN(d.getTime())) d = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const day = d.getFullYear() + '_' + pad(d.getMonth() + 1) + '_' + pad(d.getDate());
+      let name = String(roomName || '');
+      try { name = decodeURIComponent(name); } catch (e) {}
+      name = name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Za-z0-9._-]/g, '_').replace(/_+/g, '_').replace(/^[._-]+|[._-]+$/g, '')
+        .slice(0, 80).replace(/[._-]+$/, '');
+      const dot = String(ext || 'txt').replace(/^\.+/, '').replace(/[^A-Za-z0-9]/g, '').toLowerCase() || 'txt';
+      return day + (name ? '_' + name : '') + '_gifos_' + kind + '.' + dot;
+    }
     document.getElementById('trdl').onclick = () => {
-      const lines = trBlocks().map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.scribeBy ? ' (written down by ' + l.scribeBy + ')' : '') + ': ' + l.text);
+      const blocks = trBlocks();
+      const lines = blocks.map((l) => '[' + new Date(l.at).toLocaleTimeString() + '] ' + l.by + (l.scribeBy ? ' (written down by ' + l.scribeBy + ')' : '') + ': ' + l.text);
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([lines.join('\n') + '\n'], { type: 'text/plain' }));
-      a.download = 'gifos-meeting-transcript.txt';
+      a.download = meetDownloadName('Transcript', room, blocks.length ? blocks[0].at : 0, 'txt');
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     };
@@ -17648,7 +18443,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
     }
     function recFileName() {
-      return 'gifos-meeting-' + room + '-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19) + (String(recType).indexOf('mp4') >= 0 ? '.mp4' : '.webm');
+      return meetDownloadName('Recording', room, Date.now(), String(recType).indexOf('mp4') >= 0 ? 'mp4' : 'webm');
     }
     function recDeliver(saved) {
       if (saved && saved.href) {
@@ -18473,7 +19268,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       track.enabled = !track.enabled;
       myStatus.muted = !track.enabled;
       paintControls();
-      syncSpeech(); // CC pauses while muted, resumes on unmute
+      syncSpeech(); // my own voice leaves the captions while muted; the others' voices stay
       broadcastStatus();
       updateMediaSession();
       // shipMos treats an enabled-flip as the same track set and does not
@@ -20391,6 +21186,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         sendOffer(pid, false);
         return { ok: true, dc: (p.dc && p.dc.readyState) || 'none' };
       },
+      // DEBUG: perfect-negotiation re-offer on an open channel (roffer path).
+      // behavior 06d uses this after a0fc973: the polite side no longer offers
+      // at the door, so the forced lost-answer wedge needs a live renegotiation.
+      renegForTest: (pid) => {
+        if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
+        const p = peers.get(pid); if (!p) return { err: 'no such peer' };
+        renegotiate(p);
+        return { ok: true, sig: p.pc && p.pc.signalingState, dc: (p.dc && p.dc.readyState) || 'none' };
+      },
       // DEBUG: kill ONLY the DataChannel, leaving the pc and ICE untouched —
       // the state a real phone landed in (2026-08-17: `dc=closed/connected`
       // held for twenty minutes while the guest sat in a room it could see and
@@ -20398,6 +21202,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // correctly reads as a death; this manufactures the far nastier shape
       // where every health signal still says connected and only the lane that
       // carries app state is gone. e2e-dc-reopen.js is the guard.
+      // DEBUG: rebuild the pair to pid now, the way the dead-sink watchdog
+      // does (a fresh pc, re-offered). e2e-sixth-rebuild.
+      rebuildPairForTest: (pid) => {
+        if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
+        const p = peers.get(pid); if (!p) return { err: 'no such peer' };
+        newPcFor(p); sendOffer(pid, false);
+        return { ok: true };
+      },
       killDcForTest: (pid) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
         const p = peers.get(pid); if (!p) return { err: 'no such peer' };
@@ -20618,7 +21430,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           me: { peer: myId, name: myName(), coord: c ? (c.pc + '/' + c.r + '.' + c.i) : null,
             depth: c ? net.topo.pcDepth(c.pc) : null, compactMoves: s ? (s.compactMoves || 0) : 0,   // Q2 observability: my tree depth + how many times I have compacted upward
             state: (meshSeat() || {}).state, links: s ? [...s.linkPeers()].length : 0, occ: s ? s.occ.size : 0 },
-          participants: participantCount(), inMeeting: rosterIds.length + 1,
+          // The ROOM as this page counts it, the number its status line shows.
+          // Past one section that is the fold's n (G2: a label, never a gate);
+          // localCount is the section-local working count decisions read.
+          participants: displayCount(), localCount: participantCount(), inMeeting: rosterIds.length + 1,
           rows: (() => { if (!c) return []; const g = []; for (let r = 0; r < SCALE.C; r++) { const row = []; for (let i = 0; i < SCALE.C; i++) { const pid = meshOccAt({ pc: c.pc, r, i }); row.push(pid ? String(pid).slice(0, 8) : null); } g.push(row); } return g; })(), // real C×C section grid
           // rowsFh: the same grid FILTERED to first-hand-live seats (the seat's
           // own `live` map, direct-contact evidence only, 60-tick freshness —
@@ -20697,7 +21512,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const want = String(v && v.streamId).slice(0, 8);
           return { key, from: from.slice(0, 8), want,
             peer: !!p, conn: !!(p && p.connected), own: String(p && p.ownSid).slice(0, 8),
-            incoming: inc,
+            incoming: inc, h: v ? v.h : undefined, sb: v ? v.sb : undefined, vp: v ? v.vp : undefined, at: v ? v.at : undefined,
             live: !!(p && p.incoming && p.incoming.find((s) => s.id === (v && v.streamId) && s.id !== p.ownSid)) };
         }),
         standbyVia: [...mosStandby.entries()].map(([rk, c]) => ({ rk, via: c.via, sid: c.streamId })),
@@ -20835,10 +21650,35 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       camTrackLive: () => !!(localStream && localStream.getVideoTracks()[0] && localStream.getVideoTracks()[0].readyState === 'live'),
       // hidden-viewer dormancy forensics: mains I parked at the far side's
       // request / parks I asked for / is my main video toward pid carrying
+      frozenTile: (pid) => { const p = peers.get(pid); return p ? { skip: frozenTileSkip(pid, p), probe: p.freezeProbe ? { fd: p.freezeProbe.fd, ageMs: Date.now() - p.freezeProbe.at, seen: !!p.freezeProbe.seenAt, asks: !!p.freezeProbe.firstAsk } : null, rs: p.video ? p.video.readyState : null, tick: p.freezeTick ? { hist: p.freezeTick.hist.join(' '), ago: Date.now() - p.freezeTick.at, skip: p.freezeTick.skip, statsAgo: p.freezeTick.statsAt ? Date.now() - p.freezeTick.statsAt : null } : null } : null; },
       visParked: () => Array.from(peers.entries()).filter(([, p]) => p.remoteParkMain).map(([id]) => id),
       visParkAsked: () => Array.from(visParkSent.entries()).filter(([, v]) => v).map(([id]) => id),
       mainSending: (pid) => { const p = peers.get(pid); return !!(p && p.mainV && p.mainV.track); },
       mainAudioSending: (pid) => { const p = peers.get(pid); return !!(p && p.mainA && p.mainA.track); },
+      dcOpenForTest: (pid) => { const p = peers.get(pid); return !!(p && p.dc && p.dc.readyState === 'open'); },
+      // Every audio m-line on the link to pid, both directions: which track
+      // each sender carries and each receiver holds, whether that receiver
+      // track is the one in the tile's stream, and the RTP counters per mid.
+      audioLinesForTest: async (pid) => {
+        const p = peers.get(pid);
+        if (!p || !p.pc) return null;
+        const tr = (t) => t ? { id: String(t.id).slice(0, 8), rs: t.readyState, en: t.enabled, mu: t.muted } : null;
+        const tile = p.video && p.video.srcObject;
+        const tileA = tile ? tile.getAudioTracks().map((t) => String(t.id).slice(0, 8)) : null;
+        const local = localStream && localStream.getAudioTracks()[0];
+        const rtp = new Map();
+        try { (await p.pc.getStats()).forEach((s) => { if ((s.type === 'outbound-rtp' || s.type === 'inbound-rtp') && s.kind === 'audio' && s.mid != null) rtp.set(s.type[0] + String(s.mid), s.type === 'outbound-rtp' ? { pk: s.packetsSent, by: s.bytesSent } : { pk: s.packetsReceived, by: s.bytesReceived, lvl: s.audioLevel }); }); } catch (e) {}
+        const lines = [];
+        for (const t of p.pc.getTransceivers()) {
+          const k = (t.receiver && t.receiver.track && t.receiver.track.kind) || (t.sender && t.sender.track && t.sender.track.kind);
+          if (k !== 'audio') continue;
+          lines.push({ mid: t.mid, dir: t.direction, cur: t.currentDirection, stopped: !!t.stopped,
+            send: tr(t.sender && t.sender.track), mainA: t.sender === p.mainA, sendIsMic: !!(t.sender && t.sender.track && t.sender.track === local),
+            recv: tr(t.receiver && t.receiver.track), inTile: !!(tileA && t.receiver && t.receiver.track && tileA.includes(String(t.receiver.track.id).slice(0, 8))),
+            out: rtp.get('o' + t.mid) || null, in: rtp.get('i' + t.mid) || null });
+        }
+        return { conn: p.pc.connectionState, sig: p.pc.signalingState, tileSid: tile ? String(tile.id).slice(0, 8) : null, tileA, mainA: !!p.mainA, mainATrack: tr(p.mainA && p.mainA.track), lines };
+      },
       room: () => room,
       roomPw: () => roomPw,
       pwLockedOut: () => pwBlocked,   // the door asked this page for the room password (it holds none that opens it)
@@ -20879,6 +21719,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       transcriptTexts: () => Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => l.by + ': ' + l.text),
       transcriptBlocks: () => trBlocks().map((l) => l.by + ': ' + l.text),
       transcriptDrops: () => trDrops,
+      captionsForTest: () => ({ writes: myStatus.ccv || [], mix: Array.from(ccMix.ins.keys()), drops: trDrops,
+        lines: Array.from(trs.values()).sort((a, b) => a.at - b.at).map((l) => ({ by: l.by, byId: l.byId, scribe: l.scribe || null, at: l.at, text: l.text })) }),
       whisperForTest: () => ({ engine: ccEngine(), live: !!wsp, ready: whisperReady(), queue: wspQ.items.length, sent: wspQ.sent, dropped: wspQ.dropped, rate: wsp ? wsp.rate : 0, captures: Array.from(wspCaps.keys()), scribe: scribeOn(), source: ccSourceId, scribes: ccScribes().map((x) => x.id) }),
       whisperFeedForTest: (f32, rate, forId) => { const w = wspCaps.get(forId || 'me'); if (!w) return false; wspEnqueue(w, [Float32Array.from(f32)], Date.now(), rate || 16000, true); return true; },
       scribeForTest: (on) => { myStatus.scribe = !!on; if (on && !myStatus.cc) { myStatus.cc = true; document.getElementById('ccbtn').classList.add('on'); } broadcastStatus(); syncSpeech(); },
