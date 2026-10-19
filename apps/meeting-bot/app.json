@@ -43,13 +43,13 @@
   "cover": "/apps/meeting-bot/cover.jpg",
   "screenshots": [],
   "gif": "/apps/meeting-bot/meeting-bot.gif",
-  "bytes": 42781,
+  "bytes": 45232,
   "download": 0,
   "provides": null,
-  "sha256": "cd3a0c15482ca8205ef4ab6118e64970ee4692835cf16efb9f2ac6b911d2d422",
+  "sha256": "495a0151f82dd1bbd2273310fc42d47fa1c739f873e8487d69640b8b2038fc41",
   "signature": {
     "type": "domain",
     "id": "gifos.app",
-    "ts": "2026-10-18"
+    "ts": "2026-10-19"
   }
 }
