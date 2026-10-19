@@ -938,10 +938,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #appbar .fs-btn { padding: .2rem .4rem; line-height: 0; color: var(--muted, #8888aa); }
   #appbar .fs-btn:hover { color: var(--text, #e0e0f0); }
   #appbar .fs-btn.on { color: var(--accent, #7b5cff); border-color: var(--accent, #7b5cff); }
-  body.app-full #apppane { position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 29; background: var(--bg, #0a0a0f); }
+  body.app-full.has-app #apppane { position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 29; background: var(--bg, #0a0a0f); }
   /* The chat panel hangs from the meeting bar's measured height — and that bar
      is under the app now, so the gap it leaves would be a strip of nothing. */
-  body.app-full #chatpanel { top: 0; }
+  body.app-full.has-app #chatpanel { top: 0; }
   #appmount iframe { width: 100%; height: 100%; border: 0; }
   /* The guest's wait while the App GIF crosses the mesh (APP-COPY PROGRESS). */
   #appcopy { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .7rem; padding: 1.5rem; text-align: center; }
@@ -1472,7 +1472,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar.dockslim { gap: 6px; padding: 0 10px; }
     .bar.dockslim #cam, .bar.dockslim #mic, .bar.dockslim #reactbtn, .bar.dockslim #invite, .bar.dockslim #chatbtn, .bar.dockslim #bartoggle,
     .bar.dockslim > #sharebtn { width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
-    .bar.dockslim #fsbtn { height: 56px; min-height: 56px; min-width: 56px; padding: 0 6px; }
     .bar.dockslim > #stagebtn, .bar.dockslim > #hand { height: 56px; min-height: 56px; padding: 0 8px; }
     .bar.dockslim #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; margin-left: 4px; }
     .bar.dockslim > .inmore { display: none !important; }
@@ -1679,8 +1678,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* An app-PINNED room is AUDIO-ONLY in 0.9.12. The app host flips room audio
      with #appaudio; the flag rides the host's app ad (myStatus.app.audio), so
      guests learn it from the ad that won. While it is on, the meeting bar
-     shows and everyone owns their own mic. Video — with its blur / password /
-     admin rules — is ROADMAP for app rooms; the button says Talk, not Audio,
+     shows and everyone owns their own mic. An app room has no video, so there
+     is no blur; the button says Talk, not Audio,
      because a game has its own audio; a regular meeting that runs the
      app has all of it today. */
   body.app-room:not(.audio-on) .bar { display: none !important; }
@@ -2228,14 +2227,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-height: 500px) and (orientation: landscape) {
     /* The room name and the count share the header row with Fit.
        Unmute sits in the gap between them, and the chip stops short of it. */
-    .topchip { max-width: calc(100% - 12rem - 48px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
+    .topchip { max-width: calc(100% - 12rem - 48px - var(--osw, 0px) - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
     /* No Unmute in the gap: the chip runs up to Fit (room for "▦ Scroll"). */
     body:not(:has(#unmute:not([hidden]), #showcam:not([hidden]))) .topchip {
-      max-width: calc(100% - 5rem - 60px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
+      max-width: calc(100% - 5rem - 60px - var(--osw, 0px) - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
     #unmute, #showcam {
       top: calc(14px + var(--gtop));
       left: auto;
-      right: calc(5rem + 24px + env(safe-area-inset-right, 0px));
+      right: calc(5rem + 24px + var(--osw, 0px) + env(safe-area-inset-right, 0px));
       transform: none;
     }
   }
@@ -2258,7 +2257,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      the CC and Chat dock buttons, the room bar, and the booth cards there. */
   @media (min-width: 701px) and (min-height: 501px) { #callstate, #chatnote { display: none !important; } }
   /* A phone dock holds five buttons; Full screen and CC live in More there (placeDockForWidth). */
-  @media (max-width: 700px), (max-height: 500px) { .bar > #fsbtn, .bar > #ccdock { display: none !important; } }
+  @media (max-width: 700px), (max-height: 500px) { .bar > #ccdock { display: none !important; } }
   /* A 320px phone: Video, Mic, React, More and Leave fit in one row (qa-meet-mobile). */
   /* These two bands repeat the phone pass's sizes with body in the selector so
      they outrank the 700px block that follows them in the sheet. */
@@ -2382,7 +2381,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      name is a faint line under that row, not a second button. */
   /* A wide window wears the build name as a pill at the top right, beside Fit (qa-meet-desktop). */
   @media (min-width: 701px) and (min-height: 501px) {
-    #gifos-build-float { top: calc(14px + var(--gtop, 0px)) !important; right: 14px !important; bottom: auto !important; left: auto !important;
+    #gifos-build-float { top: calc(14px + var(--gtop, 0px)) !important; right: calc(14px + var(--osw, 0px)) !important; bottom: auto !important; left: auto !important;
       opacity: 1 !important; color: #e7ebf2 !important; background: rgba(12,14,18,.92); padding: 4px 10px;
       border-radius: 999px; z-index: 6 !important; text-shadow: none !important; }
   }
@@ -2408,14 +2407,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     max-width: calc(100% - 16px - var(--inset-left, 0px) - var(--inset-right, 0px)); padding: 0 16px 0 18px; margin: 0;
     background: rgba(255,255,255,.94); border: 0; border-radius: 32px;
     box-shadow: 0 10px 30px rgba(0,0,0,.28); overflow: visible; }
-  /* Nine worded buttons on a 900px window: a tighter gap, and Full screen (a
-     service control; a small-group tile has its own Max) steps off a narrow
-     small-group dock so Leave stays on screen. */
-  @media (min-width: 701px) and (max-width: 1100px) { .bar { gap: 6px; } body:not(.broadcast) .bar #fsbtn { display: none !important; } }
-  /* A service dock under 1100px (Step on, Invite, Full screen too): compact buttons and words. */
+  /* Eight worded buttons on a 900px window: a tighter gap. */
+  @media (min-width: 701px) and (max-width: 1100px) { .bar { gap: 6px; } }
+  /* A service dock under 1100px (Step on and Invite too): compact buttons and words. */
   @media (min-width: 701px) and (max-width: 1100px) {
     body.broadcast .bar #cam, body.broadcast .bar #mic, body.broadcast .bar #reactbtn, body.broadcast .bar #stagebtn, body.broadcast .bar #invite,
-    body.broadcast .bar #fsbtn, body.broadcast .bar #chatbtn, body.broadcast .bar #ccdock, body.broadcast .bar #sharebtn, body.broadcast .bar #hand, body.broadcast .bar #bartoggle, body.broadcast .bar #leavebtn {
+    body.broadcast .bar #chatbtn, body.broadcast .bar #ccdock, body.broadcast .bar #sharebtn, body.broadcast .bar #hand, body.broadcast .bar #bartoggle, body.broadcast .bar #leavebtn {
       min-width: 56px; padding: 6px 4px 4px; }
     body.broadcast .bar .docklab { font-size: 12px; }
     body.broadcast .bar #bargrip { width: 18px; min-width: 18px; }
@@ -2463,7 +2460,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.head-calm #gifos-build-float { opacity: 0 !important; transition: opacity .8s ease; }
   @media (prefers-reduced-motion: reduce) { .bar, body.dock-calm .bar, body.dock-calm .fitbtn,
     .tile > .blurbox, .tile .modbar, .topchip, #gifos-build-float { transition: none !important; } }
-  .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #fsbtn, .bar #bartoggle {
+  .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
     width: 68px; height: 68px; min-width: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%;
     background: #e8ecf1; color: #1d1d1f; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; flex: 0 0 auto;
     font-size: 11px; font-weight: 700; line-height: 1; letter-spacing: 0;
@@ -2471,14 +2468,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar .docklab { display: block; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
   /* A wide window reads whole dock words (qa-meet-desktop); the phone dock clips its short ones. */
   @media (min-width: 701px) and (min-height: 501px) { .bar .docklab { max-width: none; } }
-  .bar #fsbtn { width: auto; min-width: 68px; padding: 0 8px; }
-  .bar #fsbtn .docklab { max-width: none; }
   .bar #reactbtn .dockface { font-size: 26px; line-height: 1; pointer-events: none; }
   /* Off is a filled red button, on is filled green — the same read as Zoom
      and Meet, not a small slash on a gray circle. */
   .bar #mic.iconbtn:not(.off), .bar #cam.iconbtn:not(.off) { background: #146c36; color: #fff; }
   .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { background: #b61622; color: #fff; border-color: transparent; }
-  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #chatbtn svg, .bar #ccdock svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 28px; height: 28px; }
+  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #chatbtn svg, .bar #ccdock svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 28px; height: 28px; }
   /* Share screen is a worded dock button like the rest (qa-meet-desktop); only its colour is its own. */
   .bar > #sharebtn { border: 0; }
   .bar > #sharebtn svg { width: 28px; height: 28px; }
@@ -2507,7 +2502,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #left-rejoin { background: #0064c8; color: #fff; border: 0; }
   #left-close { margin-left: 12px; background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; }
   /* Unmute, camera, Reactions, Share screen, Chat, More, and Leave say what they do. */
-  .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #fsbtn, .bar #bartoggle {
+  .bar #cam, .bar #mic, .bar #reactbtn, .bar #sharebtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
     height: 76px; width: auto; min-width: 72px; min-height: 76px;
     padding: 8px 10px 6px; flex-direction: column; gap: 2px; border-radius: 22px;
   }
@@ -2664,7 +2659,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .topchip .title { font-size: 20px; }
     .topchip .status { font-size: 17px; }
     .bar { height: 88px; gap: 8px; padding: 0 10px; }
-    .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #fsbtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
+    .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
     .bar > #sharebtn { width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
     .bar > #sharebtn svg { width: 26px; height: 26px; }
@@ -2672,8 +2667,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar > #stagebtn svg { width: 22px; height: 22px; }
     .bar > #hand { height: 56px; min-height: 56px; padding: 0 8px; }
     .bar > #hand .dockface { font-size: 22px; }
-    .bar #fsbtn { width: auto; min-width: 56px; padding: 0 6px; }
-    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #fsbtn svg, .bar #chatbtn svg, .bar #ccdock svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
+    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #chatbtn svg, .bar #ccdock svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
     .bar #bargrip { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
     .bar:not(.collapsed) .barmore { bottom: 102px; width: calc(100vw - 24px); }
@@ -2706,7 +2700,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      use the width and the room name can sit beside the count. Any upright
      height: an SE in Safari (320x460) kept the 140px cap and showed "h…". */
   @media (max-width: 700px) and (orientation: portrait) {
-    .topchip { max-width: calc(100% - 28px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
+    .topchip { max-width: calc(100% - 28px - var(--osw, 0px) - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
   }
   /* Comfy: every face on screen, tiles touch. The long :not chain is what
      the older gallery rule uses; matching it is what lets these win.
@@ -3205,7 +3199,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* On a short landscape phone the chip and Fit share one row, so the
      faces can start higher. Portrait keeps Fit under the chip. */
   @media (max-height: 500px) and (orientation: landscape) {
-    .fitbtn { top: calc(14px + var(--gtop)); }
+    .fitbtn { top: calc(14px + var(--gtop)); right: calc(14px + var(--osw, 0px) + env(safe-area-inset-right, 0px)); }
   }
   .bar:not(.collapsed) .barmore {
     bottom: calc(122px + env(safe-area-inset-bottom, 0px));
@@ -3853,10 +3847,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 14.2c1.1 1.4 2.4 2 4 2s2.9-.6 4-2"/><circle cx="9" cy="10" r=".9" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r=".9" fill="currentColor" stroke="none"/></svg>
       <span class="docklab dockword" data-t="react">Reactions</span>
     </button>
-    <button id="fsbtn" type="button" class="iconbtn" aria-label="Full screen" aria-keyshortcuts="F" title="Watch full screen. Follows whoever is speaking.">
-      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
-      <span class="docklab dockword">Full screen</span>
-    </button>
     <button id="chatbtn" type="button" class="iconbtn" aria-label="Chat" aria-keyshortcuts="Alt+C" title="Chat and share files — stays between the people on this meeting, not on a server">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>
       <span class="docklab dockword">Chat</span>
@@ -3870,7 +3860,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
       <span class="docklab dockword" data-t="shareScreen">Share screen</span>
     </button>
-    <!-- One Full screen for the whole screen; the faces carry none. -->
     <button id="bartoggle" type="button" class="bartoggle" aria-expanded="false" aria-label="More" title="More">
       <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
       <span class="docklab dockword" data-t="more">More</span>
@@ -3882,7 +3871,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div class="barmore" id="barmore">
     <!-- Dock buttons that do not fit the window wait here (fitDock). -->
     <div class="morerow dockrow" id="dockrow" hidden>
-      <button type="button" class="dockmore" data-dock="fsbtn" hidden>Full screen</button>
       <button type="button" class="dockmore" data-dock="ccdock" hidden>CC</button>
       <button type="button" class="dockmore" data-dock="chatbtn" hidden>Chat</button>
       <button type="button" class="dockmore" data-dock="invite" hidden>Invite</button>
@@ -3892,8 +3880,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     </div>
     <!-- One sheet for every width, grouped the way a meeting is used. A button
          pick folds the sheet unless it sits in [data-stay]. placeDockForWidth
-         moves Chat, Share screen and Full screen into their groups when the
-         dock is a phone's. -->
+         moves Chat and Share screen into their groups when the dock is a
+         phone's. -->
     <section class="moregroup" data-group="people">
       <h4 data-t="people">People</h4>
       <div class="morerow">
@@ -4007,7 +3995,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <div class="morerow">
         <button id="setbtn" data-t="settings" aria-keyshortcuts="Alt+," title="Meeting settings — your sound mix, timing, and the video quality your camera records">Settings</button>
         <button id="keysbtn" data-t="keys" type="button" title="Keyboard shortcuts">Keys</button>
-        <button id="helpbtn" data-t="help" aria-keyshortcuts="Alt+/" title="How this meeting works — the stadium, the sound mix, singing together, and the dream">Help</button>
       </div>
     </section>
     </div>
@@ -4050,14 +4037,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span id="appwho"></span>
       <button id="appinvite" style="display:none" data-t="invite" data-ti="barInviteTip" title="Share this app live — friends join with one link">Invite</button>
       <button id="appsave" style="display:none" data-t="barSave" data-ti="barSaveTip" title="Save a snapshot GIF — the app with its data, yours to keep">Save</button>
-      <button id="apphelp" data-t="help" data-ti="appHelpTip" title="How this app works">Help</button>
+      <button id="apphelp" data-t="help" aria-keyshortcuts="Alt+/" title="How this app works">Help</button>
       <button id="appaudio" style="display:none" data-t="barTalkOff" data-ti="barTalkTip" title="Talk with the people in this app — when on, everyone here gets their own mic control (host only)">Talk: off</button>
       <button id="appsteal" style="display:none" data-t="barSteal" data-ti="barStealTip" title="Steal a copy of this app — it goes to your desktop's Stolen Apps, data and all">Steal</button>
       <button class="perms" id="appperms" title="What this app can do — review or turn things off" style="display:none"></button>
       <button id="applead" style="display:none"></button>
       <button id="apphide" style="display:none" data-t="barHide" data-ti="barHideTip" title="Hide this app on my screen only — the meeting keeps sharing it">Hide</button>
       <button id="appstop" data-t="stopApp" data-ti="stopAppTip" title="Stop sharing this app with the meeting">Stop app</button>
-      <button class="fs-btn" id="appfull" style="display:none" title="Full screen" aria-label="Full screen" aria-pressed="false"></button>
+      <button class="fs-btn" id="appfull" style="display:none" title="Full screen" aria-label="Full screen" aria-keyshortcuts="F" aria-pressed="false"></button>
     </div>
     <div id="appmount"></div>
   </div>
@@ -4460,7 +4447,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <h3 id="apphelp-title" style="text-align:center">Help</h3>
       <div class="help-scroll help-md" id="apphelp-body"></div>
       <div style="display:flex;justify-content:center;margin-top:1rem">
-        <button id="apphelp-close" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
+        <button id="apphelp-close" data-t="helpGot" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
       </div>
     </div>
   </div>
@@ -4946,7 +4933,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // A phone dock holds Video, Mic, React, More and Leave (qa-meet-mobile):
     // the desktop's Invite, Chat and Share move into the More rows there, and
-    // the dock's Full screen and CC buttons hide (CC stays in More).
+    // the dock's CC button hides (CC stays in More).
     function phoneLayout() {
       try { return window.matchMedia('(max-width: 700px), (max-height: 500px)').matches; } catch (e) { return false; }
     }
@@ -4982,14 +4969,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           inv.setAttribute('aria-label', 'Invite');
           inv.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0z"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/><path d="M19 8v6M16 11h6"/></svg><span class="docklab dockword" data-t="invite">Invite</span>';
         }
-        put('invite', 'people', 'fsbtn', true);
+        put('invite', 'people', 'chatbtn', true);
       }
       // Hand leads Talk unless it is a viewer's, on the dock; Chat goes ahead
       // of it when the dock is a phone's.
       const hand = document.getElementById('hand'), talk = moreRow('talk');
       if (hand && talk && hand.parentElement !== bar && hand.parentElement !== talk) talk.insertBefore(hand, talk.firstChild);
       put('chatbtn', 'talk', 'ccdock', true);
-      put('fsbtn', 'setup', 'bartoggle');
       // Plain words a volunteer knows (qa-meet-mobile) on a phone; the short
       // labels, and their translations, on a wide screen.
       const words = phone
@@ -5098,8 +5084,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         paintLeave('group');
         // An app room keeps its own Help (applyRoomHelp); only a meeting is a small group.
-        const help = ROOM.kind === 'app' ? null : document.getElementById('helpbtn');
-        if (help) help.title = 'How this small group works';
         const nameLead = document.getElementById('set-name-lead');
         if (nameLead) nameLead.textContent = 'What everyone sees on your tile:';
         const helpH = ROOM.kind === 'app' ? null : document.querySelector('#help-modal h3');
@@ -5119,8 +5103,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       say('left-title', 'You left the service');
       say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
       say('chatprivacy', 'Private to this service, gone when everyone leaves');
-      const help = document.getElementById('helpbtn');
-      if (help) help.title = 'How this service works';
       const nameLead = document.getElementById('set-name-lead');
       if (nameLead) nameLead.textContent = 'What everyone sees on the stage:';
       const setBtn = document.getElementById('setbtn');
@@ -5141,8 +5123,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (inv) inv.textContent = 'Share this service';
       const inviteBtn = document.getElementById('invite');
       if (inviteBtn) inviteBtn.title = 'Invite someone to this service — one link';
-      const fsDockBtn = document.getElementById('fsbtn');
-      if (fsDockBtn) fsDockBtn.title = 'Watch the stage full screen.';
       const pw = document.getElementById('pwbtn');
       if (pw) pw.title = 'Viewer password. Optional. It is not part of the link.';
       const files = document.querySelector('#cfiles h4');
@@ -8645,7 +8625,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
 
     // ---- FULLSCREEN VIEW with a filmstrip (standard call UX) ------------------
-    // The dock's Full screen opens ONE fullscreen surface: the chosen feed big,
+    // One fullscreen surface: the chosen feed big,
     // every other live feed (stage, row-mates, stadium, my preview) as
     // floating thumbs on the right (landscape) or bottom (portrait); tapping
     // a thumb swaps the big view. Pure DISPLAY layer — srcObjects are
@@ -8861,6 +8841,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       fsAskAt = Date.now();
       if (fsview.requestFullscreen) fsview.requestFullscreen().catch(() => {});
       try { fsclose.focus(); } catch (e) {} // the keyboard goes where the picture is
+      paintInPageFull();
     }
     function closeFsView() {
       if (fsTick) { clearInterval(fsTick); fsTick = null; }
@@ -8871,52 +8852,33 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       fsname.classList.remove('on', 'ident', 'pic');
       for (const tv of fsstrip.querySelectorAll('video')) tv.srcObject = null; // no leftover sinks — decode work ends with the view
       fsstrip.textContent = ''; fsstrip.dataset.set = '';
-      // Back to Full screen, as a closed sheet returns to its button (More
-      // when it waits there). While the view is still the full-screen
+      // Back to the controls. While the view is still the full-screen
       // element the rest of the page is inert, so focus moves once the exit
       // lands.
       const lost = !document.activeElement || document.activeElement === document.body || fsview.contains(document.activeElement);
       const refocus = () => {
         if (!lost) return;
-        const fb = document.getElementById('fsbtn');
-        const back = fb && fb.offsetParent !== null ? fb : document.getElementById('bartoggle');
+        const back = document.getElementById('bartoggle');
         if (back && back.offsetParent !== null) try { back.focus(); } catch (e) {}
       };
       if (document.fullscreenElement === fsview) { fsOwnExit = true; document.exitFullscreen().then(refocus, () => { fsOwnExit = false; refocus(); }); }
       else refocus();
+      paintInPageFull();
+    }
+    // iPhone Safari has no element fullscreen. The OS header button opens this
+    // in-page view there; paintInPageFull is a no-op until that path arms it.
+    function paintInPageFull() {
+      const fb = document.getElementById('appfull');
+      if (!fb || fb.dataset.fsMode !== 'inpage') return;
+      const on = fsview.classList.contains('on');
+      const word = on ? uiText('leaveFullScreen', 'Leave full screen') : uiText('fullScreen', 'Full screen');
+      if (window.GifOS && GifOS.fullscreen && GifOS.fullscreen.glyph) fb.innerHTML = GifOS.fullscreen.glyph(on);
+      fb.title = word;
+      fb.setAttribute('aria-label', word);
+      fb.setAttribute('aria-pressed', on ? 'true' : 'false');
+      fb.classList.toggle('on', on);
     }
     fsclose.onclick = () => closeFsView();
-    // The one Full screen for the whole screen (dock or More): the in-page
-    // view, following the speaker, with the strip to switch people. On an
-    // iPhone with no element full screen it is still this fixed overlay,
-    // never one raw <video>, so blur and camera-off hold.
-    // 0.9.23b: ONE Full screen. It takes the whole page full screen (the
-    // meeting as laid out, or the app when one runs). Only a browser with
-    // no element full screen (iPhone) gets the in-page view instead.
-    function toggleFsView() {
-      if (fsview.classList.contains('on')) { closeFsView(); return; }
-      const FS = window.GifOS && GifOS.fullscreen;
-      if (FS && FS.supported()) { FS.toggle(document.documentElement); return; }
-      openFsView('auto');
-    }
-    function paintFsDock() {
-      const b = document.getElementById('fsbtn');
-      if (!b) return;
-      const on = !!(document.fullscreenElement || document.webkitFullscreenElement) || fsview.classList.contains('on');
-      b.classList.toggle('on', on);
-      b.setAttribute('aria-pressed', on ? 'true' : 'false');
-      const lab = b.querySelector('.docklab');
-      const word = on ? uiText('leaveFullScreen', 'Exit full screen') : uiText('fullScreen', 'Full screen');
-      if (lab && lab.textContent !== word) lab.textContent = word;
-      b.setAttribute('aria-label', word);
-      b.title = word;
-      document.body.classList.toggle('app-full', on && document.body.classList.contains('has-app') && !fsview.classList.contains('on'));
-    }
-    document.addEventListener('fullscreenchange', paintFsDock);
-    document.addEventListener('webkitfullscreenchange', paintFsDock);
-    paintFsDock(); // also puts the dock's word in this device's language
-    const fsDock = document.getElementById('fsbtn');
-    if (fsDock) fsDock.onclick = toggleFsView;
     // Only the browser's own exit (its Escape, a swipe) closes the view
     // here. The exit closeFsView asked for can land after F opened the view
     // again, and used to close it a moment later. A full screen that lands
@@ -12160,7 +12122,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const hostAlone = !!(hostHere && statusKind === 'alone');
       // On a phone, anyone alone gets the Invite button beside the chip (qa-meet-mobile).
       const phoneAlone = statusKind === 'alone' && window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
-      const inviteChip = hostAlone || phoneAlone;
+      // An app room's Invite is the header's #appinvite, and only its owner has it.
+      const inviteChip = (hostAlone || phoneAlone) && ROOM.kind !== 'app';
       const chip = statusEl.closest('.topchip');
       if (chip) {
         if (inviteChip) chip.dataset.invite = '1';
@@ -12189,7 +12152,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (deskInvite) {
         // One Invite: the chip's button wins, and a service viewer has no link to send.
-        const deskAlone = statusKind === 'alone' && !inviteChip && !BROADCAST;
+        const deskAlone = statusKind === 'alone' && !inviteChip && !BROADCAST && ROOM.kind !== 'app';
         deskInvite.hidden = !deskAlone;
         if (!deskAlone) { delete deskInvite.dataset.copied; if (deskInvite.textContent) deskInvite.textContent = ''; }
         else if (!deskInvite.dataset.copied) {
@@ -17970,7 +17933,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { placeFit(); } catch (e) {}
         return;
       }
-      let edge = window.innerWidth - 14;
+      let edge = window.innerWidth - 14 - (parseFloat(getComputedStyle(document.body).getPropertyValue('--osw')) || 0);
       for (const id of ['fitbtn', 'gifos-build-float']) {
         const el = document.getElementById(id);
         if (!el || !el.getClientRects().length) continue;
@@ -18854,9 +18817,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     whoModal.onclick = (e) => { if (e.target === whoModal) whoModal.style.display = 'none'; }; // tap the backdrop to dismiss
 
     // Help: the stadium vocabulary, the four-bus mix, the non-obvious buttons,
-    // and the dream — a whole-Earth meeting. Static content; open/close only.
+    // and the dream — a whole-Earth meeting. Static content; the OS header's
+    // Help opens it while no app is running (openAppHelp).
     const helpModal = document.getElementById('help-modal');
-    document.getElementById('helpbtn').onclick = () => { helpModal.style.display = 'flex'; helpModal.querySelector('.help-scroll').scrollTop = 0; };
+    function openMeetHelp() { helpModal.style.display = 'flex'; helpModal.querySelector('.help-scroll').scrollTop = 0; }
+    function paintHelpTip() {
+      document.getElementById('apphelp').title = document.body.classList.contains('has-app') ? uiText('appHelpTip', 'How this app works')
+        : BROADCAST ? 'How this service works' : ROOM.kind === 'app' ? 'How this app room works' : 'How this small group works';
+    }
     document.getElementById('help-close').onclick = () => { helpModal.style.display = 'none'; };
     // The Help screen matches WHAT THIS PAGE IS: a meeting keeps the authored
     // stadium explainer in the markup; a BROADCAST and an APP ROOM each swap
@@ -18864,9 +18832,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function applyRoomHelp() {
       const h3 = document.querySelector('#help-modal h3');
       const hs = document.querySelector('#help-modal .help-scroll');
-      const hb = document.getElementById('helpbtn');
+      paintHelpTip();
       if (BROADCAST) {
-        hb.title = 'How this service works — the Stage, the viewer password, raising your hand';
         h3.textContent = 'How this service works';
         hs.innerHTML =
           '<p class="help-lead">This is a <b>service</b>: one host (and anyone they call up) on the <b>Stage</b>, and everyone else watching. Two people or a full room, it runs the same — every phone talks only to a handful of neighbors, and the service reaches everyone.</p>'
@@ -18892,7 +18859,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + '</ul>'
           + '<p>Underneath it is the same thing as a GifOS Meeting: everything goes straight between the people here, no accounts, no company keeping your video.</p>';
       } else if (ROOM.kind === 'app') {
-        hb.title = 'How this app room works — the shared app, the optional call, invites';
         h3.textContent = 'How this app room works';
         hs.innerHTML =
           '<p class="help-lead">This room exists around a <b>shared app</b>: everyone here sees and uses the <b>same live app together</b> — moves, edits and state flow between every phone directly.</p>'
@@ -18901,10 +18867,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + '<li>The app fills the screen. One person <b>hosts</b> it (their device runs its engine); everyone else interacts live.</li>'
           + '<li>If the host drops off, what happens is the room’s choice at creation: an <b>owned</b> app pauses until its owner returns; a <b>resilient</b> one lets a friend still here take over hosting.</li>'
           + '</ul>'
-          + '<h4>The call is optional</h4>'
+          + '<h4>No camera</h4>'
           + '<ul class="help-list">'
-          + '<li>Joining costs nothing: <b>no camera or microphone until YOU join the call</b> (the banner, or the camera/mic buttons). You can use the app and chat without ever being seen or heard.</li>'
-          + '<li>Once on the call, it works like a GifOS Meeting: blur by default, clear video only in a password-locked room with everyone consenting.</li>'
+          + '<li>This room has <b>no camera and no video</b>. Nothing here is blurred, because there is no picture to blur.</li>'
+          + '<li><b>Talk</b>, when the host turns it on, is voice only. You can use the app and chat without joining it.</li>'
           + '</ul>'
           + '<h4>Chat, files, invites</h4>'
           + '<ul class="help-list">'
@@ -18923,8 +18889,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (ROOM.kind === 'app') {
         h3.textContent = uiText('appHelpTitle', 'How this app room works');
         hs.innerHTML = uiLang() === 'de'
-          ? '<p class="help-lead">Dieser Raum lebt um eine <b>gemeinsame App</b>: alle sehen und benutzen dieselbe App live.</p><h4>Die App ist die Sendung</h4><p>Eine Person führt sie. Fällt sie weg, pausiert eine eigene App, oder eine belastbare lässt jemand anderen weiterführen.</p><h4>Der Anruf ist freiwillig</h4><p>Keine Kamera und kein Mikrofon, bis Sie dem Anruf beitreten.</p>'
-          : '<p class="help-lead">Esta sala vive alrededor de una <b>app compartida</b>: todos ven y usan la misma app en vivo.</p><h4>La app es el show</h4><p>Una persona la dirige. Si se va, una app propia pausa, o una resistente deja que otra persona siga.</p><h4>La llamada es opcional</h4><p>Ni cámara ni micrófono hasta que entres a la llamada.</p>';
+          ? '<p class="help-lead">Dieser Raum lebt um eine <b>gemeinsame App</b>: alle sehen und benutzen dieselbe App live.</p><h4>Die App ist die Sendung</h4><p>Eine Person führt sie. Fällt sie weg, pausiert eine eigene App, oder eine belastbare lässt jemand anderen weiterführen.</p><h4>Keine Kamera</h4><p>Dieser Raum hat keine Kamera und kein Video. Sprechen, wenn es eingeschaltet ist, ist nur Stimme.</p>'
+          : '<p class="help-lead">Esta sala vive alrededor de una <b>app compartida</b>: todos ven y usan la misma app en vivo.</p><h4>La app es el show</h4><p>Una persona la dirige. Si se va, una app propia pausa, o una resistente deja que otra persona siga.</p><h4>Sin cámara</h4><p>Esta sala no tiene cámara ni video. Hablar, cuando está activado, es solo voz.</p>';
       }
     }
     applyRoomHelp();
@@ -19864,17 +19830,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const mount = () => {
           showAppPane(nm, uiText('appWhoDevice', 'on this device'));
           setAppGif(rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes), nm);
-          const inv = document.getElementById('appinvite');
-          // THE deferred preflight gate (see the top of this file): a solo app
-          // never saw the too-old wall at load, so the Share-live button — the
-          // solo entry's first and only network act — is where a browser that
-          // cannot meet finds out, over a still-working app.
-          inv.style.display = '';
-          inv.onclick = () => {
-            const P = window.GifOSPreflight;
-            if (P && typeof P.requireMeeting === 'function') P.requireMeeting(inviteFromSolo);
-            else inviteFromSolo();
-          };
           return GifOS.runtime.boot(appMountEl, ROOM.fileId, statusEl, ROOM.solo ? LAUNCH : null).then((ctl) => {
             soloCtl = ctl;
             // AFTER the app is up, never before: is there a newer version of a
@@ -19919,7 +19874,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { refreshAudioBtn(); } catch (e) {}
       return ensureName().then(() => {
         meTile = makeTile('me', myName() + ' ' + uiText('whoYou', '(you)'), true);
-        tileNote(meTile, 'This is an app room — no camera until you join the call (banner or the camera button).');
+        tileNote(meTile, 'This is an app room — no camera, and no video. Talk, if the host turns it on, is voice only.');
         updateTile('me');
         const j = ROOM.join;
         room = appRoomStr(j); av = null;
@@ -19950,6 +19905,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // room's lane. The owned/resilient choice IS the succession class:
     // owned rooms freeze when the owner leaves; resilient rooms heal.
     function inviteFromSolo() {
+      if (!ROOM.solo) return; // an app inside a room never mints a room of its own
       GifOS.store.allItems().then((all) => {
         const it = GifOS.lock && GifOS.lock.itemOfFile(all, ROOM.fileId);
         if (it && GifOS.lock.isLockedItem(it)) {
@@ -20017,7 +19973,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // is really RENDERED in an app room (its point is that Share screen
             // is missing BY RULE, not because no bar was drawn).
             document.documentElement.classList.remove('solo-app');
-            document.getElementById('appinvite').style.display = 'none';
             // startMesh() mints the S4 identity ASYNC — myId lands a beat after
             // bootAppRoom resolves, and runApp refuses without it (canIRunApp).
             const ID_WAIT_MS = 10000;
@@ -20036,6 +19991,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         };
       }).catch((e) => setStatus('Could not share the app: ' + (e && e.message || e)));
     }
+    // THE HEADER'S INVITE follows the ROOM, never the app. Solo: mint the
+    // room. App room: only its owner (the page that minted it) has Invite,
+    // the room's own link, as often as they like; guests forward the link
+    // they came in on. Meeting: the meeting's own Invite (the dock's).
+    function paintInviteSlot() {
+      document.getElementById('appinvite').style.display = ROOM.solo || (ROOM.kind === 'app' && ROOM.founder) ? '' : 'none';
+    }
+    document.getElementById('appinvite').onclick = () => {
+      if (!ROOM.solo) { share.classList.add('show'); showInviteModal(); return; }
+      // THE deferred preflight gate (see the top of this file): a solo app
+      // never saw the too-old wall at load, so the Share-live button — the
+      // solo entry's first and only network act — is where a browser that
+      // cannot meet finds out, over a still-working app.
+      const P = window.GifOSPreflight;
+      if (P && typeof P.requireMeeting === 'function') P.requireMeeting(inviteFromSolo);
+      else inviteFromSolo();
+    };
     // The CALL LAYER in an app room is opt-in, always: the plane being
     // available obligates nobody's camera. A quiet member sees who's live and
     // chooses; their own mic/cam tap opts them in too. Never silent tiles.
@@ -29951,7 +29923,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // When the whole dock is wider than the call beside the chat, it goes to
       // the phone sizes (.dockslim) and moves these into More, one at a time,
       // until it fits; More shows a stand-in that presses the real button.
-      const slimOrder = ['chatbtn', 'invite', 'fsbtn', 'sharebtn'];
+      const slimOrder = ['chatbtn', 'invite', 'sharebtn'];
       const fitOrder = ['sharebtn', 'reactbtn', 'stagebtn'];
       // The width the dock's own buttons need, even when the dock is capped
       // to the window and they run past its edge. More's panel is not counted.
@@ -30360,6 +30332,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let dockCalmMs = 3000; // 0.9.23b: calm after 3 s
     (function () {
       document.body.classList.toggle('desk-ptr', !IS_MOBILE);
+      document.getElementById('appbar').dataset.hide = 'auto'; // Meet's OS header option
       const bar = document.querySelector('.bar');
       let lastInput = Date.now();
       const wake = () => {
@@ -31023,7 +30996,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (chatB && chatB.offsetParent !== null) rows.push(['C', 'Open or close the chat']);
       if (reactB && reactB.offsetParent !== null) rows.push(['R', 'Open Reactions']);
       if (canRaiseHand()) rows.push(['H', 'Raise or lower your hand']);
-      const fsB = document.getElementById('fsbtn');
+      const fsB = document.getElementById('appfull');
       if (fsB && fsB.offsetParent !== null) rows.push(['F', 'Open or close Full screen']);
       if (shareOffered()) rows.push(['S', 'Share your screen, or stop sharing']);
       rows.push(['Esc', 'Close a sheet or the chat, then fold More']);
@@ -31509,7 +31482,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const ppl = others > 1 ? 'people' : 'person';
       // Same copy modal everywhere you can mint a link. An APP room gets its own
       // copy: a room you run is a meeting idea, so an app does not offer it.
-      const isApp = document.body.classList.contains('app-room');
+      const isApp = ROOM.kind === 'app' || document.body.classList.contains('app-room');
       document.querySelector('#inv-modal h3').textContent =
         isApp ? uiText('invTitleApp', 'Share this app') : BROADCAST ? 'Share this service' : uiText('invTitle', 'Share this small group');
       const closeRow = '<div class="appear-actions"><button id="inv-done" type="button" class="appear-secondary">' + esc(uiText('invClose', 'Close')) + '</button></div>';
@@ -32135,7 +32108,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return false;
     }
-    const SHORTCUT_IDS = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'invite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', Slash: 'helpbtn', KeyM: 'muteall', KeyB: 'blurall', KeyX: 'camall', KeyP: 'shareall' };
+    const SHORTCUT_IDS = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'invite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', Slash: 'apphelp', KeyM: 'muteall', KeyB: 'blurall', KeyX: 'camall', KeyP: 'shareall' };
     // The control an Alt chord presses, or null when that chord does nothing
     // for this person right now.
     function shortcutTarget(id) {
@@ -32161,7 +32134,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const id = SHORTCUT_IDS[codeOf[m[1]] || ('Key' + m[1].toUpperCase())];
           ok = !!(id && shortcutTarget(id));
         } else if (k === 'F') {
-          const fb = document.getElementById('fsbtn');
+          const fb = document.getElementById('appfull');
           ok = !!(fb && getComputedStyle(fb).display !== 'none');
         }
         li.hidden = !ok;
@@ -32192,12 +32165,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       if (!e.altKey && !e.shiftKey && e.code === 'KeyF' && !shortcutTyping(e) && !shortcutBlocked()) {
-        // Full screen, as Zoom and YouTube give it a key; F again closes. It
-        // works while the button waits in More too.
+        // Full screen, as Zoom and YouTube give it a key; F again closes.
+        // It is the OS header's button, so it is the same key in every app.
         const lob = document.getElementById('lobby');
-        const fb = document.getElementById('fsbtn');
-        const barEl = document.querySelector('.bar');
-        if (!fb || !barEl || getComputedStyle(barEl).display === 'none' || (lob && lob.classList.contains('show'))) return;
+        const fb = document.getElementById('appfull');
+        if (!fb || getComputedStyle(fb).display === 'none' || (lob && lob.classList.contains('show'))) return;
         e.preventDefault();
         fb.click();
         return;
@@ -32452,6 +32424,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.body.classList.add('has-app');
       document.getElementById('appname').textContent = name || 'App';
       document.getElementById('appwho').textContent = who || '';
+      paintInviteSlot();
+      paintHelpTip();
       // ONE RUNTIME: app-PINNED rooms never show unmount affordances — the room
       // IS the app (belt for updateAppButtons' braces; that runs on beats).
       if (ROOM.appPinned) { document.getElementById('appstop').style.display = 'none'; document.getElementById('apphide').style.display = 'none'; }
@@ -32473,7 +32447,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // by construction, with no new identity plumbing. On: the bar shows and
     // everyone controls their OWN mic (lateMedia asks for audio only here —
     // an app room never touches a camera). Off: every mic goes quiet and the
-    // bar folds away; a guest cannot unmute. Video for app rooms is roadmap.
+    // bar folds away; a guest cannot unmute. An app room has no video.
     function roomAudioOn() {
       if (!document.body.classList.contains('app-room')) return false;
       if (appMode === 'host') return !!(myStatus.app && myStatus.app.audio);
@@ -32538,6 +32512,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return Object.assign({}, c, appInstall || {});
     }
     function openAppHelp() {
+      if (!(soloCtl || appHostCtl || appClientCtl) && !ROOM.solo) { openMeetHelp(); return; }
       const H = window.GifOS && GifOS.help;
       const ctxName = (document.getElementById('appname').textContent || '').trim();
       const md = (H && H.withOsFooter) ? H.withOsFooter(currentAppHelpMd(), currentAppCredits(), { from: 'app Help window', name: ctxName }) : (currentAppHelpMd() || '');
@@ -32555,12 +32530,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     document.getElementById('apphelp').onclick = openAppHelp;
     // The DOCUMENT takes the screen and body.app-full gives the pane the glass —
     // fullscreening the pane itself banished every modal on this page into the
-    // dark behind the top layer (see #appbar .fs-btn above). Hidden outright
-    // where the browser has no fullscreen at all — gifos-fullscreen.js decides.
-    if (window.GifOS && GifOS.fullscreen) {
-      GifOS.fullscreen.attach(document.getElementById('appfull'), document.documentElement, {
-        fill: 'app-full', enterLabel: uiText('fullScreen', 'Full screen'), exitLabel: uiText('leaveFullScreen', 'Leave full screen') });
-    }
+    // dark behind the top layer (see #appbar .fs-btn above). Where the browser
+    // has no element fullscreen (iPhone Safari), this same button opens the
+    // in-page filmstrip, which is what the old dock button did.
+    (function wireAppFull() {
+      const fb = document.getElementById('appfull');
+      const FS = window.GifOS && GifOS.fullscreen;
+      if (FS && FS.supported()) {
+        FS.attach(fb, document.documentElement, {
+          fill: 'app-full', enterLabel: uiText('fullScreen', 'Full screen'), exitLabel: uiText('leaveFullScreen', 'Leave full screen') });
+        return;
+      }
+      if (!fb) return;
+      fb.dataset.fsMode = 'inpage';
+      fb.style.display = '';
+      fb.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (fsview.classList.contains('on')) closeFsView();
+        else openFsView('auto');
+      });
+      paintInPageFull();
+    })();
     document.getElementById('apphelp-close').onclick = () => { document.getElementById('apphelp-modal').style.display = 'none'; };
     document.getElementById('apphelp-modal').onclick = (e) => {
       if (e.target && e.target.id === 'apphelp-modal') e.target.style.display = 'none';
@@ -32647,6 +32637,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       refreshStealBtn();
       appMountEl.innerHTML = '';
       document.body.classList.remove('has-app');
+      paintHelpTip();
       const ap = document.getElementById('appperms'); if (ap) ap.style.display = 'none';
       appMode = null; appKey = null;
     }
@@ -34921,7 +34912,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         showAppPane('Notes', '');
         appLeadable = true; appLeadOn = false; appLeadSet = () => {};
         updateAppButtons(myStatus.app);
-        document.getElementById('appinvite').style.display = '';
+        // Invite follows the room (paintInviteSlot). A meeting must not force it on.
         if (tap) document.getElementById('applead').click();
         const read = (id) => {
           const b = document.getElementById(id);

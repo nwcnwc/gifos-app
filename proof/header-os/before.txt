@@ -1,0 +1,7 @@
+invite-slot.spec.js, Chromium, unfixed tree (before the Invite patch):
+  4 failed / 2 passed
+  Owner, laptop and phone: after Close, no Invite is visible (shown = []).
+  An app inside a meeting, laptop and phone: the header slot does not open the invite sheet.
+  Guest, laptop and phone: passed, without the alone line armed.
+Full log: evidence/header-os/invite-before.txt
+Handoff shots: questions/header-os-handoff/invslot-before-*.png

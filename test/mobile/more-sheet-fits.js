@@ -1,5 +1,5 @@
 /*
- * Landscape More sheet: Password, Invite, Captions, and Help stay reachable.
+ * Landscape More sheet: Password, Invite, Captions, and Record stay reachable.
  * The sheet must sit inside the screen and scroll, not draw off the top.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/more-sheet-fits.js
@@ -10,7 +10,7 @@ const { chromium, devices } = require('playwright');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
-const NEED = ['pwbtn', 'invite', 'ccbtn', 'helpbtn', 'recbtn', 'stagebtn'];
+const NEED = ['pwbtn', 'invite', 'ccbtn', 'recbtn', 'stagebtn'];
 
 function land(device) {
   const o = Object.assign({}, device);

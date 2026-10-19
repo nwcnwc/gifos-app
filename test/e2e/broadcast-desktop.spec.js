@@ -131,11 +131,11 @@ test('the More sheet stays on screen when the window is short', async ({ page })
   expect(info.bad, JSON.stringify(info)).toEqual([]);
   expect(info.top).toBeGreaterThanOrEqual(0);
   // Every control can be scrolled into view.
-  const help = page.locator('#helpbtn');
-  await help.scrollIntoViewIfNeeded();
-  const helpBox = await help.boundingBox();
-  expect(helpBox.y).toBeGreaterThanOrEqual(0);
-  expect(helpBox.y + helpBox.height).toBeLessThanOrEqual(360);
+  const last = page.locator('#keysbtn');
+  await last.scrollIntoViewIfNeeded();
+  const lastBox = await last.boundingBox();
+  expect(lastBox.y).toBeGreaterThanOrEqual(0);
+  expect(lastBox.y + lastBox.height).toBeLessThanOrEqual(360);
 });
 
 test('chat composer stays clear of the dock at 900px', async ({ page }) => {
@@ -342,43 +342,23 @@ test('reactions and More never stack', async ({ page }) => {
   await expect(page.locator('#reacttray')).toBeHidden();
 });
 
-test('the dock has a full-screen button', async ({ page }) => {
+test('the OS header has the one full-screen button', async ({ page }) => {
   for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
     await bootSession(page, w, h);
-    const fs = page.locator('#fsbtn');
+    await expect(page.locator('#fsbtn')).toHaveCount(0);
+    const fs = page.locator('#appfull');
     await expect(fs).toBeVisible();
     await expect(fs).toHaveAttribute('aria-label', 'Full screen');
-    await expect(fs.locator('.docklab')).toHaveText('Full screen');
-    const clip = await fs.locator('.docklab').evaluate((el) => el.scrollWidth <= el.clientWidth + 1);
-    expect(clip).toBe(true);
-    const nested = await fs.evaluate((el) => !!el.closest('#barmore'));
-    expect(nested).toBe(false);
-    const bar = await page.locator('.bar').boundingBox();
     const box = await fs.boundingBox();
-    const lab = await fs.locator('.docklab').boundingBox();
-    expect(box.x).toBeGreaterThanOrEqual(bar.x - 1);
-    expect(box.x + box.width).toBeLessThanOrEqual(bar.x + bar.width + 1);
-    expect(lab.x).toBeGreaterThanOrEqual(box.x - 1);
-    expect(lab.x + lab.width).toBeLessThanOrEqual(box.x + box.width + 1);
-    expect(lab.y + lab.height).toBeLessThanOrEqual(box.y + box.height + 1);
-    expect(bar.x).toBeGreaterThanOrEqual(-1);
-    expect(bar.x + bar.width).toBeLessThanOrEqual(w + 1);
+    expect(await fs.evaluate((el) => !!el.closest('#appbar') && !el.closest('.bar'))).toBe(true);
+    expect(box.x + box.width).toBeLessThanOrEqual(w + 1);
+    expect(box.y).toBeGreaterThanOrEqual(0);
   }
-  await page.setViewportSize({ width: 1920, height: 1080 });
-  await page.setViewportSize({ width: 900, height: 720 });
-  const resized = await page.evaluate(() => {
-    const lab = document.querySelector('#fsbtn .docklab');
-    const bar = document.querySelector('.bar').getBoundingClientRect();
-    return { text: lab.textContent, clip: lab.scrollWidth <= lab.clientWidth + 1, barIn: bar.left >= -1 && bar.right <= innerWidth + 1 };
-  });
-  expect(resized.text).toBe('Full screen');
-  expect(resized.clip).toBe(true);
-  expect(resized.barIn).toBe(true);
-  await page.locator('#fsbtn').click();
-  await expect(page.locator('body')).toHaveClass(/fsopen/);
-  await expect(page.locator('#fsview')).toHaveClass(/on/);
-  await page.locator('#fsclose').click();
-  await expect(page.locator('body')).not.toHaveClass(/fsopen/);
+  await page.locator('#appfull').click();
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement === document.documentElement)).toBe(true);
+  await expect(page.locator('#appfull')).toHaveAttribute('aria-pressed', 'true');
+  await page.evaluate(() => document.exitFullscreen());
+  await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(false);
 });
 
 test('a service password is the viewer password', async ({ page }) => {
@@ -470,7 +450,6 @@ test('full screen on a service shows the stage', async ({ page }) => {
         stripShown: getComputedStyle(strip).display !== 'none',
         line: nm ? nm.textContent : '',
         nameOn: name.classList.contains('on'),
-        title: document.getElementById('fsbtn').title,
         closeIn: close.top >= -1 && close.left >= -1 && close.right <= innerWidth + 1 && close.bottom <= innerHeight + 1,
       };
     });
@@ -481,14 +460,13 @@ test('full screen on a service shows the stage', async ({ page }) => {
     await page.waitForSelector('body.broadcast #onair.watch');
     // The host is here, off the stage: the stage is known to be clear.
     await page.evaluate(() => window.__gifosVideo.stageHostForTest('host-here', 'Pastor Kim', 0));
-    await page.locator('#fsbtn').click();
+    await page.evaluate(() => window.__gifosVideo.openFsForTest('auto'));
     await expect(page.locator('#fsview')).toHaveClass(/on/);
     const clear = await readFs();
     expect(clear.follow, JSON.stringify(clear)).toBe(false);
     expect(clear.stripShown, JSON.stringify(clear)).toBe(false);
     expect(clear.line).toBe('The stage is clear.');
     expect(clear.nameOn).toBe(true);
-    expect(clear.title).toBe('Watch the stage full screen.');
     expect(clear.closeIn, JSON.stringify(clear)).toBe(true);
     await page.locator('#fsclose').click();
     await expect(page.locator('body')).not.toHaveClass(/fsopen/);
@@ -497,18 +475,17 @@ test('full screen on a service shows the stage', async ({ page }) => {
   await page.goto('/run.html?desk=fsstagehost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#onair.off');
   await page.evaluate(() => window.__gifosVideo.setStageForTest(true));
-  await page.locator('#fsbtn').click();
+  await page.evaluate(() => window.__gifosVideo.openFsForTest('auto'));
   const onStage = await readFs();
   expect(onStage.line).toBe('You are on stage. Your camera is off.');
   expect(onStage.follow).toBe(false);
   await page.locator('#fsclose').click();
   await page.goto('/run.html?desk=fssg#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airbar.on.group');
-  await page.locator('#fsbtn').click();
+  await page.evaluate(() => window.__gifosVideo.openFsForTest('auto'));
   const group = await readFs();
   expect(group.follow, JSON.stringify(group)).toBe(true);
   expect(group.stripShown).toBe(true);
-  expect(group.title).toContain('speaking');
 });
 
 test('guest moderation tools are in the keyboard tab order', async ({ page }) => {
@@ -907,7 +884,7 @@ test('a watching viewer keeps Hand and loses the publish controls', async ({ pag
   expect(leaked.stage).toBe(0);
   await moreTool(page, 'hand');
   await expect(page.locator('#hand')).toContainText('Lower hand');
-  await moreTool(page, 'helpbtn');
+  await page.locator('#apphelp').click();
   const help = page.locator('#help-modal .help-scroll');
   await expect(help).toBeVisible();
   await expect(help).not.toContainText('Ban lives on each tile');
@@ -1264,8 +1241,7 @@ test('service help names Raise hand and Step off', async ({ page }) => {
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/run.html?desk=help' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('body.broadcast .bar');
-    await page.locator('#bartoggle').click();
-    await moreTool(page, 'helpbtn');
+    await page.locator('#apphelp').click();
     await expect(page.locator('#help-modal h3')).toHaveText('How this service works');
     const scroll = page.locator('#help-modal .help-scroll');
     await expect(scroll).toContainText('Raise hand');
@@ -1281,8 +1257,7 @@ test('service help names Raise hand and Step off', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/run.html?desk=helpsg#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airbar.on.group');
-  await page.locator('#bartoggle').click();
-  await moreTool(page, 'helpbtn');
+  await page.locator('#apphelp').click();
   await expect(page.locator('#help-modal h3')).toHaveText('How this small group works');
   await expect(page.locator('#help-modal .help-scroll')).toContainText('stadium');
   await expect(page.locator('#help-modal .help-scroll')).not.toContainText('Tap Raise hand');
@@ -2506,8 +2481,7 @@ test('a host ends the service and a viewer still leaves', async ({ page }) => {
     expect(lay.barIn, JSON.stringify(lay)).toBe(true);
     expect(lay.on, JSON.stringify(lay)).toBe(true);
     if (w === 1280) {
-      await page.locator('#bartoggle').click();
-      await page.locator('#helpbtn').click();
+      await page.locator('#apphelp').click();
       await expect(page.locator('#help-modal .help-scroll')).toContainText('five-minute countdown');
       await page.locator('#help-close').click();
       await page.locator('#bartoggle').click();
@@ -3776,59 +3750,35 @@ test('C, H and R open Chat, raise a hand and open Reactions', async ({ page }) =
   }
 });
 
-test('F opens Full screen, Escape closes it, and its close button is named', async ({ page }) => {
-  // Full screen took a Tab walk through the dock (Zoom and YouTube give it
-  // a key), its close button read only "✕", and when the browser kept the
-  // page out of real full screen, Escape folded More under the black view
-  // instead of closing it. Closing left the keyboard on nothing.
+test('F is the OS header\'s Full screen, and typing an f in the chat stays there', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
     localStorage.setItem('gifos_meet_bar', '1');
     const key = 'gifos_vadm_sunday.0123456789abcdef';
     if (location.search.indexOf('host=1') !== -1) localStorage.setItem(key, 'host-key');
     else localStorage.removeItem(key);
-    // Stand in for a browser that declines real full screen, so Escape
-    // reaches the page as it does when the view could not go full screen.
-    if (location.search.indexOf('nofs=1') !== -1) Element.prototype.requestFullscreen = function () { return Promise.reject(new Error('denied')); };
   });
   for (const who of ['host', 'view', 'group']) {
     await page.setViewportSize({ width: 1280, height: 720 });
     const url = who === 'group'
-      ? '/run.html?desk=fskeyg&nofs=1#mb=1&v=sunday&av=0123456789abcdef'
-      : '/run.html?desk=fskey' + who + '&nofs=1' + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
+      ? '/run.html?desk=fskeyg#mb=1&v=sunday&av=0123456789abcdef'
+      : '/run.html?desk=fskey' + who + (who === 'host' ? '&host=1' : '') + '#mb=1&v=sunday&av=0123456789abcdef&bc=1';
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#airbar.on');
+    await expect(page.locator('#appfull'), who).toHaveAttribute('aria-keyshortcuts', 'F');
     await page.evaluate(() => document.activeElement && document.activeElement.blur());
-    // F opens the full-screen view with the keyboard on its close button.
     await page.keyboard.press('f');
-    if (who === 'host') {
-      await page.waitForTimeout(300);
-      await page.screenshot({ path: 'artifacts/fskey-' + (process.env.SHOT_TAG || 'run') + '.png' });
-    }
-    await expect(page.locator('#fsview'), who + ': F opens Full screen').toHaveClass(/on/);
-    const close = page.locator('#fsclose');
-    await expect(close, who + ': the close button is named').toHaveAccessibleName('Exit full screen');
-    await expect(close, who + ': focus moves into the view').toBeFocused();
-    // Escape closes the view (not More beneath it) and lands on Full screen.
-    const barOpen = await page.evaluate(() => !document.querySelector('.bar').classList.contains('collapsed'));
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#fsview'), who + ': Escape closes Full screen').not.toHaveClass(/on/);
-    await expect(page.locator('body'), who).not.toHaveClass(/fsopen/);
-    const barNow = await page.evaluate(() => !document.querySelector('.bar').classList.contains('collapsed'));
-    expect(barNow, who + ': Escape leaves More as it was').toBe(barOpen);
-    await expect(page.locator('#fsbtn'), who + ': focus returns to Full screen').toBeFocused();
-    // F toggles: open, then F again closes.
+    await expect.poll(() => page.evaluate(() => document.fullscreenElement === document.documentElement), who + ': F opens Full screen').toBe(true);
+    await expect(page.locator('#appfull'), who).toHaveAttribute('aria-pressed', 'true');
+    await page.waitForTimeout(300);
     await page.keyboard.press('f');
-    await expect(page.locator('#fsview'), who).toHaveClass(/on/);
-    await page.keyboard.press('f');
-    await expect(page.locator('#fsview'), who + ': F closes Full screen').not.toHaveClass(/on/);
-    await expect(page.locator('#fsbtn'), who).toBeFocused();
+    await expect.poll(() => page.evaluate(() => !!document.fullscreenElement), who + ': F closes Full screen').toBe(false);
     // Typing an f in the chat stays in the chat.
     await page.keyboard.press('c');
     await expect(page.locator('#chat-in'), who).toBeFocused();
     await page.keyboard.type('f');
     await expect(page.locator('#chat-in'), who).toHaveValue('f');
-    await expect(page.locator('#fsview'), who).not.toHaveClass(/on/);
+    expect(await page.evaluate(() => !!document.fullscreenElement), who).toBe(false);
     await page.locator('#chat-in').fill('');
     await page.keyboard.press('Escape');
     // The ? list names it.
@@ -3836,7 +3786,6 @@ test('F opens Full screen, Escape closes it, and its close button is named', asy
     const keys = await page.locator('#keys-modal kbd').allTextContents();
     expect(keys, who).toContain('F');
     await page.keyboard.press('Escape');
-    await expect(page.locator('#fsbtn'), who).toHaveAttribute('aria-keyshortcuts', 'F');
   }
 });
 
@@ -3924,8 +3873,7 @@ test('Full screen of a camera-off host shows who it is, not a black screen', asy
     window.__gifosVideo.camOffPeerForTest('host-dark', 'Pastor Kim');
   });
   await expect(page.locator('#bc-ident')).toBeVisible();
-  await page.evaluate(() => document.activeElement && document.activeElement.blur());
-  await page.keyboard.press('f');
+  await page.evaluate(() => window.__gifosVideo.openFsForTest('auto'));
   await expect(page.locator('#fsview')).toHaveClass(/on/);
   await page.waitForTimeout(300);
   await page.screenshot({ path: 'artifacts/fs-camoff-' + (process.env.SHOT_TAG || 'run') + '.png' });
