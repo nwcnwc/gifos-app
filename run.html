@@ -11501,7 +11501,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (p.mainV) {
           // remoteParkMain: hidden-viewer dormancy — the far side told us it
           // can't see this feed right now ({k:'vis'}); park the encoder.
-          if (!cam || !vt || p.remoteParkMain || p.turnAudio) { if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {}); }
+          // mainHoldUntil: a held re-seat a peer asked for (vkick hold) — the
+          // park must outlive this beat, or the beat seats the camera back
+          // before the far side has re-bound its tile.
+          if (!cam || !vt || p.remoteParkMain || p.turnAudio || (p.mainHoldUntil && p.mainHoldUntil > Date.now())) { if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {}); }
           else if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {});
         }
         if (p.mainA) {
@@ -17935,13 +17938,45 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               p.sinkProbe = { fd, at: t, pc: pc0 };
               if (fd - prev.fd < 3) return;
               if (p.video.readyState !== 0 || p.video.paused || p.video.srcObject !== p.stream || document.hidden) return;
-              p.sinkRebuiltAt = t; p.sinkProbe = null;
-              if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown: rebuild');
+              // NOT A REBUILD FIRST, AND NEVER A REBUILD LOOP. On Safari/WebKit
+              // this signature is the ELEMENT, not the pc: a player bound to a
+              // track that is already flowing never starts, on this pc and on
+              // every fresh one (hard-bugs-1019-1108 bug 2: a WebKit seat
+              // rebuilt its pair to the stadium's announcer every 30 s, each
+              // rebuild re-delivered the composites onto decoders that could not
+              // start, every face was a letter and the page crashed). So: ask
+              // the sender for a HELD re-seat (vkick hold: it parks the camera,
+              // we re-bind the tile while nothing flows, it resumes — the cure
+              // the mosaic decoders use), twice. Only then the pair is rebuilt,
+              // ONCE: Chromium's dead sink (06c) is cured by one rebuild, and a
+              // fresh pc that shows the same signature proves the pc was never
+              // the problem. The count resets when the tile paints.
+              p.sinkProbe = null;
+              if ((p.sinkKicks || 0) < 2) {
+                if (t - (p.sinkKickAt || 0) < 8000) return;
+                p.sinkKicks = (p.sinkKicks || 0) + 1; p.sinkKickAt = t;
+                if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown: held re-seat ' + p.sinkKicks);
+                visParkSent.set(pid, false);
+                dcSend(p, { k: 'vis', park: false });
+                dcSend(p, { k: 'vkick', hold: 2500 });
+                const st0 = p.stream, v0 = p.video;
+                setTimeout(() => {
+                  if (!v0 || v0.srcObject !== st0 || p.stream !== st0 || v0.readyState !== 0) return;
+                  try { v0.srcObject = null; v0.srcObject = st0; const pr = v0.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
+                }, 1000);
+                return;
+              }
+              if (p.sinkRebuilt) return;
+              p.sinkRebuilt = true; p.sinkRebuiltAt = t;
+              if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown after re-seats: rebuild (once)');
               newPcFor(p);
               sendOffer(pid, false);
             }).catch(() => {});
           }
-        } else p.sinkProbe = null;
+        } else {
+          p.sinkProbe = null;
+          if (p.video && p.video.videoWidth > 0 && (p.sinkKicks || p.sinkRebuilt)) { p.sinkKicks = 0; p.sinkRebuilt = false; } // it paints: a later dead sink is a new case
+        }
         // Direct route recovered → drop any friend-relay for this peer.
         if (p.connected && relayVia.has(pid)) stopRelayFor(pid, true);
         // Our relayer for this peer vanished → fall back and re-elect.
@@ -21226,7 +21261,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // just ended has already re-seated the camera: a second seat on top
         // of that fresh start only stalls it.
         const t = Date.now();
-        if (t - (p.visLiftAt || 0) >= 1500 && t - (p.vkickAt || 0) >= 2000) { p.vkickAt = t; kickMainVideo(p); }
+        if (t - (p.visLiftAt || 0) >= 1500 && t - (p.vkickAt || 0) >= 2000) {
+          p.vkickAt = t;
+          // A HELD re-seat (hold: ms). The far side's tile never started on a
+          // flowing track (its receiver decodes, the element stays at
+          // readyState 0 — a Safari/WebKit player cannot be started on a
+          // track already flowing, measured 2026-10-19). The cure is the one
+          // the mosaic decoders use: park the sender, let the far side re-bind
+          // its tile while nothing flows, resume so the first frame lands in a
+          // settled player. refreshOutbound honours the hold (it would re-seat
+          // the camera on its next beat otherwise), then seats it again.
+          const hold = typeof m.hold === 'number' && m.hold >= 500 && m.hold <= 6000 ? m.hold : 0;
+          if (hold && p.mainV && p.mainV.track) {
+            p.mainHoldUntil = t + hold;
+            p.mainV.replaceTrack(null).catch(() => {});
+            setTimeout(() => { if (p.mainHoldUntil && p.mainHoldUntil <= Date.now()) { p.mainHoldUntil = 0; try { refreshOutbound(); } catch (e) {} } }, hold + 50);
+          } else kickMainVideo(p);
+        }
       } else if (m.k === 'sga' && typeof m.sid === 'string') {
         // Stage data lane (§11): app-state frame — dedup, deliver, re-fan.
         sgaRecv(p.id, m);
@@ -23235,13 +23286,44 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // their counts.
     const MOS_RESTART_HOLD = 2500;   // ms the feed stays parked: re-bind at 1 s, resume at 2.5 s
     const mosHeld = (e) => !!(e && e.el && e.el._mosHold);
+    // THE FEED'S SINKS (2026-10-19, hard-bugs-1019-1108 bug 2b). A mosaic feed
+    // plays in more than its 2x2 decoder: every stadium face plays the
+    // composite stream (meet-views playStream), the Stage strip plays the
+    // sharer's stg feed through a video-only wrapper (stageDirect), a
+    // non-comfy stadium tile plays it plain. On Safari/WebKit each of those
+    // is bound AFTER the feed flows (the faces when the roster lays out, the
+    // strip once the decoder has pixels) and a player bound to a flowing
+    // remote track never starts: the decoder painted while the share stayed
+    // black and every face fell back to initials, all meeting. The park is
+    // the one cure, and it cures any element re-bound while nothing flows,
+    // so the sweep judges and re-binds ALL of a feed's sinks, found by track
+    // identity. A sink is the decoder itself or an element on screen at 16
+    // px or more: the 4x4 .stad-src source never loads on WebKit and is
+    // nobody's picture (meet-views stadFrameSize), so it is not judged.
+    function mosSinks(ent, vt) {
+      const out = [ent.el];
+      let all = null; try { all = document.querySelectorAll('video'); } catch (e) {}
+      if (!all) return out;
+      for (const x of all) {
+        if (x === ent.el || !x.isConnected) continue;
+        const so = x.srcObject; const t = so && so.getVideoTracks ? so.getVideoTracks()[0] : null;
+        if (!t || t !== vt) continue;
+        if (!(x.clientWidth >= 16 && x.clientHeight >= 16)) continue;
+        out.push(x);
+      }
+      return out;
+    }
     function mosDecoderSweep() {
       const now = Date.now();
       const ents = [...mosIn.entries(), ...mosStandby.entries()];
       for (const [rk, ent] of ents) {
         const v = ent && ent.el, st = v && (ent.stream || v.srcObject);
         if (!st || !v.isConnected) continue;
-        const rebind = () => { try { v.srcObject = null; v.srcObject = st; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} };
+        const vt = st.getVideoTracks ? st.getVideoTracks()[0] : null;
+        // Every sink is re-bound: the decoder to the ENTRY's stream, each
+        // other sink to the stream it holds (a face shares the entry's, the
+        // strip holds its own wrapper of the same track).
+        const rebind = () => { for (const x of (vt ? mosSinks(ent, vt) : [v])) { const own = x === v ? st : x.srcObject; try { x.srcObject = null; x.srcObject = own; const pr = x.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} } };
         const dmd = (want) => { if (ent.key && ent.via) { try { demand(ent.via, ent.key, ent.streamId, want); } catch (e) {} } };
         if (v._mosHold) {
           const age = now - v._mosHold;
@@ -23253,15 +23335,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
           continue;
         }
-        const vt = st.getVideoTracks ? st.getVideoTracks()[0] : null;
         if (!vt || vt.readyState !== 'live' || vt.muted) { v._mosFlowAt = 0; continue; } // nothing arriving: nothing to restart
-        if (v.videoWidth > 0) { v._mosFlowAt = 0; continue; }                                 // it paints
+        const sinks = mosSinks(ent, vt);
+        const dead = sinks.filter((x) => !(x.videoWidth > 0));
+        if (!dead.length) { v._mosFlowAt = 0; continue; }                                    // every sink paints
         if (!v._mosFlowAt) { v._mosFlowAt = now; continue; }
         if (v._mosRestarts >= 8 || now - v._mosFlowAt < 1500 * Math.pow(2, v._mosRestarts)) continue;
         v._mosRestarts++; v._mosFlowAt = now;
         if (ent.key && ent.via) { v._mosHold = now; v._mosRebound = false; dmd(false); }
         else rebind();
-        if (window.__mosRestartLog) window.__mosRestartLog.push({ t: now, n: v._mosRestarts, key: rk, sid: String(st.id).slice(0, 8), park: !!v._mosHold });
+        if (window.__mosRestartLog) window.__mosRestartLog.push({ t: now, n: v._mosRestarts, key: rk, sid: String(st.id).slice(0, 8), park: !!v._mosHold, sinks: sinks.length, dead: dead.length });
       }
     }
     setInterval(mosDecoderSweep, 1000);
@@ -25426,7 +25509,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // the blur baked into that cell.
         if (modBlurOn(sid)) return null;
         const sc = srcFor(sid, 'stg:' + sid);
-        if (!sc || !sc.el || !sc.stream || !sc.el.videoWidth) return null; // no pixels yet — the strip stands, the next sweep switches
+        // A HELD decoder keeps the direct screen (2026-10-19, bug 2b, WebKit):
+        // mosDecoderSweep parks the feed to restart a sink that never
+        // started (this strip, on a player bound after flow), and the
+        // decoder has no pixels while parked. Falling back to the composite
+        // here re-bound the strip to another flowing stream mid-park and
+        // back to the wrapper after the resume, after flow both times, so
+        // the park could never cure it (a4 W1: four restarts, the strip
+        // 0x0 all share). Held: stay on the wrapper the sweep re-binds.
+        if (!sc || !sc.el || !sc.stream || (!sc.el.videoWidth && !sc.el._mosHold)) return null; // no pixels yet — the strip stands, the next sweep switches
         const vt = sc.stream.getVideoTracks ? sc.stream.getVideoTracks()[0] : null;
         if (!vt || vt.readyState === 'ended') return null;
         if (!stageDirectSt || stageDirectSt.getVideoTracks()[0] !== vt) stageDirectSt = new MediaStream([vt]);

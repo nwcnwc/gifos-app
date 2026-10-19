@@ -237,6 +237,20 @@
     if (shape === 'stad') return Math.max(1, Math.min(cellPref, Math.floor((STAD_COLS * cellPref) / G)));
     return Math.max(24, Math.min(cellPref, Math.floor(maxW / G)));
   }
+  // EVERY PACKED FRAME IS A MULTIPLE OF 16 PX WIDE (2026-10-19). A Safari/
+  // WebKit receiver's H.264 decode copies each frame with a buffer over-read
+  // when the frame width is not a multiple of 16 (the coded macroblock
+  // stride): with 16-20 such decoders open the page hangs or the web process
+  // crashes (evidence/hard-bugs-1019-1108/2b-webkit, the crash model: 330 and
+  // 440 px wide crash or hang by the fifth step, 336 and 320 run 52 decoders
+  // clean; the height does not matter). The width is aligned DOWN from
+  // cols x cell and the drawn cell becomes width / cols, never padding: a
+  // receiver cuts face j at j x (frame width / cols) (faceSrcRect), so the
+  // drawn cell and the cut cell must be the same number. With the default
+  // 112 px cell (five of them are 560 = 16 x 35) the stadium's cell stays a
+  // whole number; a 110 px cell packs 544 wide with 108.8 px cells.
+  const ALIGN = 16;
+  function alignW(w) { return Math.max(ALIGN, Math.floor(w / ALIGN) * ALIGN); }
   // faceSrcRect(j, n, cols, sw, sh): source rect of face j inside a packed block
   // (row-major). Cells are square by construction; derive size from the block.
   function faceSrcRect(j, n, cols, sw, sh) {
@@ -361,7 +375,7 @@
     // SECONDARY-TILE defaults: right for the stadium's tapestry of onlookers,
     // wrong for a feed the room is looking AT. The Stage strip passes its own
     // (run.html, "THE STAGE IS NOT A SECONDARY TILE"); everything else inherits.
-    let cellPref = opts.cell || 110; // composite face cell px — small secondary tiles, keep encode/ship cheap (was COMP_W/C=151)
+    let cellPref = opts.cell || 112; // composite face cell px — small secondary tiles, keep encode/ship cheap (was COMP_W/C=151; 110 until 2026-10-19: 112 keeps the 5-wide stadium frame a multiple of 16, see alignW)
     const maxW = opts.maxW || 640; // cap composite canvas width — bounds encode CPU + bandwidth at scale (was 1080)
     // THE RATE IS A CEILING AT start(), A DIAL AFTERWARDS (see setFps): opts.fps
     // is what captureStream is told, and the paint loop may only run at or below
@@ -629,7 +643,7 @@
       if (native) {
         cell = cellSize(shape, cellPref, maxW, 1);
         const a = nsw / nsh;
-        W = Math.max(2, Math.round(cell * Math.sqrt(a) / 2) * 2); H = Math.max(2, Math.round(cell / Math.sqrt(a) / 2) * 2);
+        W = alignW(Math.round(cell * Math.sqrt(a))); H = Math.max(2, Math.round(cell / Math.sqrt(a) / 2) * 2); // width a multiple of 16 (see alignW); the height is free
         denseNow = false; cellNow = cell;
         const sig = frameSig();
         const sizeDue = canvas.width !== W || canvas.height !== H;
@@ -651,8 +665,8 @@
         // product changes the block shapes the next level must fit.
         const geoS = shape === 'stad' ? denseItems(order, true) : geo;
         if (geoS !== geo) { const dlS = denseLayout(geoS); if (dlS.sc > dl.sc) { geo = geoS; dl = dlS; } }
-        G = dl.G; R = dl.R; cell = dl.c;
-        W = Math.max(1, Math.round(G * cell)); H = Math.max(1, Math.round(R * cell));
+        G = dl.G; R = dl.R;
+        W = alignW(G * dl.c); cell = W / G; H = Math.max(1, Math.round(R * cell)); // the dense cell is fractional already; the width a multiple of 16 (alignW)
       } else {
         const g = packGrid(T, shape); G = g.cols; R = g.rows;
         cell = cellSize(shape, cellPref, maxW, G);
@@ -660,7 +674,7 @@
         // The stad canvas then rounds UP to a 4-row step. The dark rows under the
         // real grid are not faces; faceSrcRect sizes a face from the block width.
         const rowsDrawn = shape === 'stad' ? stadRows(R, now) : R;
-        W = Math.max(1, G * cell); H = Math.max(1, rowsDrawn * cell);
+        W = alignW(G * cell); cell = W / G; H = Math.max(1, Math.round(rowsDrawn * cell)); // a multiple of 16 wide (alignW): a whole cell at the 112 default, fractional otherwise
       }
       denseNow = dense; cellNow = cell;
       const sig = frameSig();
