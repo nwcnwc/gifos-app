@@ -11385,7 +11385,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (typeof clog === 'function') clog('ranswer→' + String(p.id).slice(0, 6));
             afterNeg(p);
           })
-          .catch((e) => { if (typeof clog === 'function') clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); maybeRebuildNeg(p, e); });
+          .catch((e) => {
+            if (typeof clog === 'function') {
+              const brief = (s) => String(s && s.sdp || '').split('\nm=').slice(1).map((b) => {
+                const kind = b.slice(0, b.indexOf(' '));
+                const mid = (b.match(/\na=mid:(\S+)/) || [])[1] || '?';
+                return mid + ':' + kind;
+              }).join(',');
+              clog('roffer-APPLY-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' cs=' + (p.pc && p.pc.connectionState) + ' dc=' + (p.dc && p.dc.readyState) + ' boot=' + !!p.boot + ' ' + (e && e.name) + ' ' + String(e && e.message || '').slice(0, 140)
+                + ' local=' + brief(p.pc && p.pc.localDescription) + ' remote=' + brief(p.pc && p.pc.remoteDescription) + ' offer=' + brief(msg.sdp));
+            }
+            maybeRebuildNeg(p, e, true);
+          });
         const armRofferYield = () => {
           if (p.rofferYieldTimer || !p.rofferYield) return;
           // The first wait is the glare yield. A later one is only because
@@ -11437,7 +11448,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (typeof clog === 'function') clog('ranswer←' + String(p.id).slice(0, 6));
             afterNeg(p);
           })
-          .catch((e) => { if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); maybeRebuildNeg(p, e); });
+          .catch((e) => { if (typeof clog === 'function') clog('ranswer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' cs=' + (p.pc && p.pc.connectionState) + ' dc=' + (p.dc && p.dc.readyState) + ' boot=' + !!p.boot + ' ' + (e && e.name) + ' ' + String(e && e.message || '').slice(0, 180)); maybeRebuildNeg(p, e); });
       }
     }
     // A peer's lines are bounded two ways: per sender per window (a script
@@ -11913,13 +11924,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const msg = String((e && e.message) || '');
       return /m-line|order of|extension ID reassignment/i.test(msg);
     }
-    function maybeRebuildNeg(p, e) {
+    function maybeRebuildNeg(p, e, rejectedOffer) {
       if (!p || !p.pc || leaving || !p.id) return;
       if (e && e.name === 'GlareRace') return;
-      if (!negPoisoned(e) && !noLiveTransport(p)) return;
+      const msg = String((e && e.message) || '');
+      const poison = negPoisoned(e), dead = noLiveTransport(p);
+      if (!poison && !dead) {
+        if (typeof clog === 'function') clog('neg-skip ' + String(p.id).slice(0, 6) + ' sig=' + p.pc.signalingState + ' cs=' + p.pc.connectionState + ' dc=' + (p.dc && p.dc.readyState) + ' boot=' + !!p.boot);
+        return;
+      }
+      // The offer was refused and did not land. A channel that is still up
+      // keeps carrying the door; replacing the pc is what leaves the joiner
+      // with nothing to retry. An extension-id collision is the exception:
+      // every later offer on this pc throws it, so the pc has to go.
+      if (rejectedOffer && !dead && p.pc.signalingState === 'stable' && !/extension ID reassignment/i.test(msg)) {
+        if (typeof clog === 'function') clog('neg-keep ' + String(p.id).slice(0, 6) + ' boot=' + !!p.boot);
+        return;
+      }
       const now = Date.now();
-      if (p.rebuildNegAt && now - p.rebuildNegAt < 8000) return;
+      if (p.rebuildNegAt && now - p.rebuildNegAt < 8000) {
+        if (typeof clog === 'function') clog('neg-cool ' + String(p.id).slice(0, 6) + ' poison=' + poison + ' dead=' + dead);
+        return;
+      }
       p.rebuildNegAt = now;
+      if (typeof clog === 'function') clog('neg-rebuild ' + String(p.id).slice(0, 6) + ' poison=' + poison + ' dead=' + dead + ' boot=' + !!p.boot);
       try { newPcFor(p); sendOffer(p.id, false); } catch (e2) {}
     }
     // PERFECT NEGOTIATION over the DataChannel: EITHER side may re-offer (a
@@ -11944,7 +11972,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       p.pc.createOffer()
         .then((o) => { if (p.pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return p.pc.setLocalDescription(o); })
         .then(() => { dcSend(p, { k: 'roffer', sdp: p.pc.localDescription }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); })
-        .catch((e) => { if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
+        .catch((e) => { if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' cs=' + (p.pc && p.pc.connectionState) + ' dc=' + (p.dc && p.dc.readyState) + ' boot=' + !!p.boot + ' ' + (e && e.name) + ' ' + String(e && e.message || '').slice(0, 180)); p.renegAgain = true; maybeRebuildNeg(p, e); })
         .finally(() => { p.makingOffer = false; });
     }
     function startRelayJob(reqP, target) {
