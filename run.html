@@ -30787,7 +30787,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The dock sits at the bottom, so a panel that used to clear a top bar
       // starts at the top of the page instead.
       let lastDock = -1;
-      let dockShown = -1;
       function safeBottomPx() {
         let probe = document.getElementById('gifos-safe-b');
         if (!probe) {
@@ -30806,11 +30805,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (away) {
             dock = safeBottomPx();
           } else {
-            const r = bar.getBoundingClientRect();
-            const measured = Math.max(0, Math.round(window.innerHeight - r.top));
-            // While the dock slides back, the rect is short. Keep the last full height.
-            if (dockShown < 0 || measured >= dockShown - 2) dockShown = measured;
-            dock = dockShown;
+            // Where the dock RESTS: a fixed box's offsetTop skips the slide
+            // transform, so there is nothing to wait out. Measured fresh each
+            // time. Keeping the largest height ever seen let one stale reading
+            // around a picture-in-picture float pin Record and Captions over
+            // the system header and shrink the solo tile until a reload
+            // (Nathan, 2026-10-19).
+            const rest = getComputedStyle(bar).position === 'fixed' ? bar.offsetTop : bar.getBoundingClientRect().top;
+            dock = Math.max(0, Math.min(window.innerHeight, Math.round(window.innerHeight - rest)));
           }
           document.documentElement.style.setProperty('--dockh', dock + 'px');
           if (dock !== lastDock) {
@@ -30841,7 +30843,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       window.__gifosKb = { sync: syncKb };
       // A wider dock can push Record/Captions back into their row (placeCallState).
       if (window.ResizeObserver) { try { new ResizeObserver(() => { setBarH(); try { paintCallState(); } catch (e2) {} }).observe(bar); } catch (e) {} }
-      window.addEventListener('resize', () => { setBarH(); syncKb(); try { paintCallState(); } catch (e) {} });
+      // A phone can hand over the new size before its layout has caught up
+      // (around a float). Measure again once the frame after it has laid out.
+      let barReT = 0;
+      const barRemeasure = () => {
+        if (barReT) cancelAnimationFrame(barReT);
+        barReT = requestAnimationFrame(() => { barReT = requestAnimationFrame(() => { barReT = 0; setBarH(); try { paintCallState(); } catch (e) {} }); });
+      };
+      window.addEventListener('resize', () => { setBarH(); syncKb(); try { paintCallState(); } catch (e) {} barRemeasure(); });
+      window.addEventListener('focus', barRemeasure);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) barRemeasure(); });
       if (window.visualViewport) {
         visualViewport.addEventListener('resize', () => { setBarH(); syncKb(); });
         visualViewport.addEventListener('scroll', syncKb);
