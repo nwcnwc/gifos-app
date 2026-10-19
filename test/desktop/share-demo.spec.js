@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { SEAT_VIEWS, seatPage, seatAndWake } = require('../shared/share-seat');
 
 async function boot(page) {
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -170,6 +171,30 @@ test('the menu steps aside once the slide is up, and the Stage can stop it', asy
   await expect(page.locator('#stagefeed video')).toHaveCount(0);
   await expect(page.locator('body')).not.toHaveClass(/screen-on/);
 });
+
+// A shared screen and an app take the same seat (Nathan 19:02): sideways the
+// slide is the whole left side, flush left, with the faces on the right (a
+// phone at 844x390 had it centred at 366x206); upright it is the top band.
+// Waking the buttons moves nothing (a 915x412 phone, read as a desktop,
+// shrank the slide and moved every face on each tap).
+for (const view of SEAT_VIEWS) {
+  test('a shared screen takes the share seat at ' + view.tag + ' and a wake moves nothing', async ({ browser, browserName }) => {
+    test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
+    const { ctx, page } = await seatPage(browser, browserName, view, 'qashareseat');
+    await consentedRoom(page);
+    await armSlide(page);
+    await page.evaluate(() => document.getElementById('sharebtn').click());
+    await page.waitForFunction(() => document.body.classList.contains('show-stage'), null, { timeout: 15000 });
+    const got = await seatAndWake(page, view, 'screen');
+    await page.screenshot({ path: 'test/desktop/shots/share-seat-' + view.tag + '.png' });
+    await ctx.close();
+    expect(got.problems).toEqual([]);
+    expect(got.rested).toBe(true);
+    expect(got.woke).toBe(true);
+    if (view.phone) expect([got.calm.away, got.after.away]).toEqual([true, false]);
+    expect(got.moved).toEqual([]);
+  });
+}
 
 test.describe('the stage line follows the device', () => {
   test.use({ locale: 'de-DE' });

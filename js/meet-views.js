@@ -7,7 +7,9 @@
   const GifOS = root.GifOS = root.GifOS || {};
 
   const GUTTER = 8;
-  const BLOCK = ['has-app', 'broadcast', 'app-room', 'solo-app'];
+  // An app in a meeting is laid out here like a shared screen (the page hands
+  // it in as a Stage tile); only the app-only and broadcast pages are not.
+  const BLOCK = ['broadcast', 'app-room', 'solo-app'];
 
   function comfyAllowed(body) {
     // A normal #v= room never gets body.meet-session (only an mb=1 frame
@@ -387,11 +389,11 @@
     for (let i = 0; i < tiles.length; i++) {
       const t = tiles[i];
       if (t.tier === 'stad') stad.push(t.id);
-      else if (t.stage || t.share) stage.push({ id: t.id, aspect: t.aspect > 0 ? t.aspect : 16 / 9 });
+      else if (t.stage || t.share) stage.push({ id: t.id, aspect: t.aspect > 0 ? t.aspect : 16 / 9, fill: !!t.fill });
       else row.push(t.id);
     }
     const z = MZ.layout({ box: box, stage: stage, row: row, stad: stad, phone: !!opts.phone,
-      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit', gap: opts.phone ? 4 : MZ.GAP });
+      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit', gap: opts.phone ? 4 : MZ.GAP, floor: +opts.floor || 0 });
     let band = null;
     if (z.tooSmall) band = { text: 'faces tiny \u00b7 Scroll is in \u25a6', x: box.x + 6, y: box.y + 6 };
     return { mode: stage.length ? 'stage' : 'gallery', gallery: z.gallery, rects: z.rects, crowd: false, band: band,
