@@ -81,7 +81,12 @@ for (const [w, hgt] of [[1280, 720], [390, 844]]) {
     expect(got.solo.help).toMatchObject({ shown: true, inHeader: true, keys: 'Alt+/' });
     expect(got.solo.full).toMatchObject({ shown: true, inHeader: true, keys: 'F', label: 'Full screen' });
     expect(got.solo.others).toEqual([]);
-    for (const k of ['room', 'meet']) expect(same(got[k]), k + ' ' + JSON.stringify(got[k])).toEqual(same(got.solo));
+    // The tip follows the room. The buttons themselves stay the same control.
+    const geom = (h) => { const s = same(h); delete s.help.title; delete s.full.title; return s; };
+    for (const k of ['room', 'meet']) expect(geom(got[k]), k + ' ' + JSON.stringify(got[k])).toEqual(geom(got.solo));
+    expect(got.solo.help.title).toBe('How this app works');
+    expect(got.room.help.title).toBe('How this app works');
+    expect(got.meet.help.title).toBe('How this small group works');
     // A meeting's host also gets Stop app, between the two: Help sits one button further in.
     const moved = (h) => { const s = same(h); delete s.help.right; return s; };
     expect(moved(got.meetApp), JSON.stringify(got.meetApp)).toEqual(moved(got.solo));
@@ -139,3 +144,38 @@ for (const [w, h] of [[1280, 720], [390, 844], [844, 390]]) {
     expect(woke).toEqual(awake);
   });
 }
+
+// iPhone Safari exposes no element fullscreen. The OS header's Full screen
+// still opens the in-page filmstrip, which is what the dock button used to do.
+test('iPhone: Full screen opens the in-page view when the browser has none', async ({ page }) => {
+  await page.addInitScript(() => {
+    const deny = { configurable: true, get: () => false };
+    for (const k of ['fullscreenEnabled', 'webkitFullscreenEnabled']) {
+      try { Object.defineProperty(Document.prototype, k, deny); } catch (e) {}
+      try { Object.defineProperty(document, k, deny); } catch (e) {}
+    }
+    const nope = () => Promise.reject(new Error('no element fullscreen'));
+    Element.prototype.requestFullscreen = nope;
+    try { Element.prototype.webkitRequestFullscreen = nope; } catch (e) {}
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    localStorage.setItem('gifos_name', 'Jordan Lee');
+    sessionStorage.setItem('gifos_appeared', '1');
+  });
+  await page.goto('/run.html#v=qaosiphone&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#leavebtn', { state: 'visible' });
+  await expect(page.locator('#appfull')).toBeVisible();
+  expect(await page.evaluate(() => document.getElementById('appfull').dataset.fsMode)).toBe('inpage');
+  await page.click('#appfull');
+  await expect.poll(() => page.evaluate(() => ({
+    on: document.getElementById('fsview').classList.contains('on'),
+    el: !!document.fullscreenElement,
+    pressed: document.getElementById('appfull').getAttribute('aria-pressed'),
+  }))).toEqual({ on: true, el: false, pressed: 'true' });
+  await page.click('#fsclose');
+  await expect.poll(() => page.evaluate(() => ({
+    on: document.getElementById('fsview').classList.contains('on'),
+    pressed: document.getElementById('appfull').getAttribute('aria-pressed'),
+  }))).toEqual({ on: false, pressed: 'false' });
+});

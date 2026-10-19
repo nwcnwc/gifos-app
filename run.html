@@ -1678,8 +1678,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* An app-PINNED room is AUDIO-ONLY in 0.9.12. The app host flips room audio
      with #appaudio; the flag rides the host's app ad (myStatus.app.audio), so
      guests learn it from the ad that won. While it is on, the meeting bar
-     shows and everyone owns their own mic. Video — with its blur / password /
-     admin rules — is ROADMAP for app rooms; the button says Talk, not Audio,
+     shows and everyone owns their own mic. An app room has no video, so there
+     is no blur; the button says Talk, not Audio,
      because a game has its own audio; a regular meeting that runs the
      app has all of it today. */
   body.app-room:not(.audio-on) .bar { display: none !important; }
@@ -4033,7 +4033,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span id="appwho"></span>
       <button id="appinvite" style="display:none" data-t="invite" data-ti="barInviteTip" title="Share this app live — friends join with one link">Invite</button>
       <button id="appsave" style="display:none" data-t="barSave" data-ti="barSaveTip" title="Save a snapshot GIF — the app with its data, yours to keep">Save</button>
-      <button id="apphelp" data-t="help" data-ti="appHelpTip" aria-keyshortcuts="Alt+/" title="How this app works">Help</button>
+      <button id="apphelp" data-t="help" aria-keyshortcuts="Alt+/" title="How this app works">Help</button>
       <button id="appaudio" style="display:none" data-t="barTalkOff" data-ti="barTalkTip" title="Talk with the people in this app — when on, everyone here gets their own mic control (host only)">Talk: off</button>
       <button id="appsteal" style="display:none" data-t="barSteal" data-ti="barStealTip" title="Steal a copy of this app — it goes to your desktop's Stolen Apps, data and all">Steal</button>
       <button class="perms" id="appperms" title="What this app can do — review or turn things off" style="display:none"></button>
@@ -8809,6 +8809,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       fsAskAt = Date.now();
       if (fsview.requestFullscreen) fsview.requestFullscreen().catch(() => {});
       try { fsclose.focus(); } catch (e) {} // the keyboard goes where the picture is
+      paintInPageFull();
     }
     function closeFsView() {
       if (fsTick) { clearInterval(fsTick); fsTick = null; }
@@ -8830,6 +8831,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       if (document.fullscreenElement === fsview) { fsOwnExit = true; document.exitFullscreen().then(refocus, () => { fsOwnExit = false; refocus(); }); }
       else refocus();
+      paintInPageFull();
+    }
+    // iPhone Safari has no element fullscreen. The OS header button opens this
+    // in-page view there; paintInPageFull is a no-op until that path arms it.
+    function paintInPageFull() {
+      const fb = document.getElementById('appfull');
+      if (!fb || fb.dataset.fsMode !== 'inpage') return;
+      const on = fsview.classList.contains('on');
+      const word = on ? uiText('leaveFullScreen', 'Leave full screen') : uiText('fullScreen', 'Full screen');
+      if (window.GifOS && GifOS.fullscreen && GifOS.fullscreen.glyph) fb.innerHTML = GifOS.fullscreen.glyph(on);
+      fb.title = word;
+      fb.setAttribute('aria-label', word);
+      fb.setAttribute('aria-pressed', on ? 'true' : 'false');
+      fb.classList.toggle('on', on);
     }
     fsclose.onclick = () => closeFsView();
     // Only the browser's own exit (its Escape, a swipe) closes the view
@@ -12071,7 +12086,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const hostAlone = !!(hostHere && statusKind === 'alone');
       // On a phone, anyone alone gets the Invite button beside the chip (qa-meet-mobile).
       const phoneAlone = statusKind === 'alone' && window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
-      const inviteChip = hostAlone || phoneAlone;
+      // An app room's Invite is the header's #appinvite, and only its owner has it.
+      const inviteChip = (hostAlone || phoneAlone) && ROOM.kind !== 'app';
       const chip = statusEl.closest('.topchip');
       if (chip) {
         if (inviteChip) chip.dataset.invite = '1';
@@ -12100,7 +12116,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (deskInvite) {
         // One Invite: the chip's button wins, and a service viewer has no link to send.
-        const deskAlone = statusKind === 'alone' && !inviteChip && !BROADCAST;
+        const deskAlone = statusKind === 'alone' && !inviteChip && !BROADCAST && ROOM.kind !== 'app';
         deskInvite.hidden = !deskAlone;
         if (!deskAlone) { delete deskInvite.dataset.copied; if (deskInvite.textContent) deskInvite.textContent = ''; }
         else if (!deskInvite.dataset.copied) {
@@ -18769,6 +18785,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Help opens it while no app is running (openAppHelp).
     const helpModal = document.getElementById('help-modal');
     function openMeetHelp() { helpModal.style.display = 'flex'; helpModal.querySelector('.help-scroll').scrollTop = 0; }
+    function paintHelpTip() {
+      document.getElementById('apphelp').title = document.body.classList.contains('has-app') ? uiText('appHelpTip', 'How this app works')
+        : BROADCAST ? 'How this service works' : ROOM.kind === 'app' ? 'How this app room works' : 'How this small group works';
+    }
     document.getElementById('help-close').onclick = () => { helpModal.style.display = 'none'; };
     // The Help screen matches WHAT THIS PAGE IS: a meeting keeps the authored
     // stadium explainer in the markup; a BROADCAST and an APP ROOM each swap
@@ -18776,6 +18796,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function applyRoomHelp() {
       const h3 = document.querySelector('#help-modal h3');
       const hs = document.querySelector('#help-modal .help-scroll');
+      paintHelpTip();
       if (BROADCAST) {
         h3.textContent = 'How this service works';
         hs.innerHTML =
@@ -18810,10 +18831,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + '<li>The app fills the screen. One person <b>hosts</b> it (their device runs its engine); everyone else interacts live.</li>'
           + '<li>If the host drops off, what happens is the room’s choice at creation: an <b>owned</b> app pauses until its owner returns; a <b>resilient</b> one lets a friend still here take over hosting.</li>'
           + '</ul>'
-          + '<h4>The call is optional</h4>'
+          + '<h4>No camera</h4>'
           + '<ul class="help-list">'
-          + '<li>Joining costs nothing: <b>no camera or microphone until YOU join the call</b> (the banner, or the camera/mic buttons). You can use the app and chat without ever being seen or heard.</li>'
-          + '<li>Once on the call, it works like a GifOS Meeting: blur by default, clear video only in a password-locked room with everyone consenting.</li>'
+          + '<li>This room has <b>no camera and no video</b>. Nothing here is blurred, because there is no picture to blur.</li>'
+          + '<li><b>Talk</b>, when the host turns it on, is voice only. You can use the app and chat without joining it.</li>'
           + '</ul>'
           + '<h4>Chat, files, invites</h4>'
           + '<ul class="help-list">'
@@ -18832,8 +18853,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (ROOM.kind === 'app') {
         h3.textContent = uiText('appHelpTitle', 'How this app room works');
         hs.innerHTML = uiLang() === 'de'
-          ? '<p class="help-lead">Dieser Raum lebt um eine <b>gemeinsame App</b>: alle sehen und benutzen dieselbe App live.</p><h4>Die App ist die Sendung</h4><p>Eine Person führt sie. Fällt sie weg, pausiert eine eigene App, oder eine belastbare lässt jemand anderen weiterführen.</p><h4>Der Anruf ist freiwillig</h4><p>Keine Kamera und kein Mikrofon, bis Sie dem Anruf beitreten.</p>'
-          : '<p class="help-lead">Esta sala vive alrededor de una <b>app compartida</b>: todos ven y usan la misma app en vivo.</p><h4>La app es el show</h4><p>Una persona la dirige. Si se va, una app propia pausa, o una resistente deja que otra persona siga.</p><h4>La llamada es opcional</h4><p>Ni cámara ni micrófono hasta que entres a la llamada.</p>';
+          ? '<p class="help-lead">Dieser Raum lebt um eine <b>gemeinsame App</b>: alle sehen und benutzen dieselbe App live.</p><h4>Die App ist die Sendung</h4><p>Eine Person führt sie. Fällt sie weg, pausiert eine eigene App, oder eine belastbare lässt jemand anderen weiterführen.</p><h4>Keine Kamera</h4><p>Dieser Raum hat keine Kamera und kein Video. Sprechen, wenn es eingeschaltet ist, ist nur Stimme.</p>'
+          : '<p class="help-lead">Esta sala vive alrededor de una <b>app compartida</b>: todos ven y usan la misma app en vivo.</p><h4>La app es el show</h4><p>Una persona la dirige. Si se va, una app propia pausa, o una resistente deja que otra persona siga.</p><h4>Sin cámara</h4><p>Esta sala no tiene cámara ni video. Hablar, cuando está activado, es solo voz.</p>';
       }
     }
     applyRoomHelp();
@@ -19773,17 +19794,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const mount = () => {
           showAppPane(nm, uiText('appWhoDevice', 'on this device'));
           setAppGif(rec.bytes instanceof Uint8Array ? rec.bytes : new Uint8Array(rec.bytes), nm);
-          const inv = document.getElementById('appinvite');
-          // THE deferred preflight gate (see the top of this file): a solo app
-          // never saw the too-old wall at load, so the Share-live button — the
-          // solo entry's first and only network act — is where a browser that
-          // cannot meet finds out, over a still-working app.
-          inv.style.display = '';
-          inv.onclick = () => {
-            const P = window.GifOSPreflight;
-            if (P && typeof P.requireMeeting === 'function') P.requireMeeting(inviteFromSolo);
-            else inviteFromSolo();
-          };
           return GifOS.runtime.boot(appMountEl, ROOM.fileId, statusEl, ROOM.solo ? LAUNCH : null).then((ctl) => {
             soloCtl = ctl;
             // AFTER the app is up, never before: is there a newer version of a
@@ -19828,7 +19838,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { refreshAudioBtn(); } catch (e) {}
       return ensureName().then(() => {
         meTile = makeTile('me', myName() + ' ' + uiText('whoYou', '(you)'), true);
-        tileNote(meTile, 'This is an app room — no camera until you join the call (banner or the camera button).');
+        tileNote(meTile, 'This is an app room — no camera, and no video. Talk, if the host turns it on, is voice only.');
         updateTile('me');
         const j = ROOM.join;
         room = appRoomStr(j); av = null;
@@ -19859,6 +19869,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // room's lane. The owned/resilient choice IS the succession class:
     // owned rooms freeze when the owner leaves; resilient rooms heal.
     function inviteFromSolo() {
+      if (!ROOM.solo) return; // an app inside a room never mints a room of its own
       GifOS.store.allItems().then((all) => {
         const it = GifOS.lock && GifOS.lock.itemOfFile(all, ROOM.fileId);
         if (it && GifOS.lock.isLockedItem(it)) {
@@ -19926,7 +19937,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // is really RENDERED in an app room (its point is that Share screen
             // is missing BY RULE, not because no bar was drawn).
             document.documentElement.classList.remove('solo-app');
-            document.getElementById('appinvite').style.display = 'none';
             // startMesh() mints the S4 identity ASYNC — myId lands a beat after
             // bootAppRoom resolves, and runApp refuses without it (canIRunApp).
             const ID_WAIT_MS = 10000;
@@ -19945,6 +19955,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         };
       }).catch((e) => setStatus('Could not share the app: ' + (e && e.message || e)));
     }
+    // THE HEADER'S INVITE follows the ROOM, never the app. Solo: mint the
+    // room. App room: only its owner (the page that minted it) has Invite,
+    // the room's own link, as often as they like; guests forward the link
+    // they came in on. Meeting: the meeting's own Invite (the dock's).
+    function paintInviteSlot() {
+      document.getElementById('appinvite').style.display = ROOM.solo || (ROOM.kind === 'app' && ROOM.founder) ? '' : 'none';
+    }
+    document.getElementById('appinvite').onclick = () => {
+      if (!ROOM.solo) { share.classList.add('show'); showInviteModal(); return; }
+      // THE deferred preflight gate (see the top of this file): a solo app
+      // never saw the too-old wall at load, so the Share-live button — the
+      // solo entry's first and only network act — is where a browser that
+      // cannot meet finds out, over a still-working app.
+      const P = window.GifOSPreflight;
+      if (P && typeof P.requireMeeting === 'function') P.requireMeeting(inviteFromSolo);
+      else inviteFromSolo();
+    };
     // The CALL LAYER in an app room is opt-in, always: the plane being
     // available obligates nobody's camera. A quiet member sees who's live and
     // chooses; their own mic/cam tap opts them in too. Never silent tiles.
@@ -31401,7 +31428,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const ppl = others > 1 ? 'people' : 'person';
       // Same copy modal everywhere you can mint a link. An APP room gets its own
       // copy: a room you run is a meeting idea, so an app does not offer it.
-      const isApp = document.body.classList.contains('app-room');
+      const isApp = ROOM.kind === 'app' || document.body.classList.contains('app-room');
       document.querySelector('#inv-modal h3').textContent =
         isApp ? uiText('invTitleApp', 'Share this app') : BROADCAST ? 'Share this service' : uiText('invTitle', 'Share this small group');
       const closeRow = '<div class="appear-actions"><button id="inv-done" type="button" class="appear-secondary">' + esc(uiText('invClose', 'Close')) + '</button></div>';
@@ -32343,6 +32370,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.body.classList.add('has-app');
       document.getElementById('appname').textContent = name || 'App';
       document.getElementById('appwho').textContent = who || '';
+      paintInviteSlot();
+      paintHelpTip();
       // ONE RUNTIME: app-PINNED rooms never show unmount affordances — the room
       // IS the app (belt for updateAppButtons' braces; that runs on beats).
       if (ROOM.appPinned) { document.getElementById('appstop').style.display = 'none'; document.getElementById('apphide').style.display = 'none'; }
@@ -32364,7 +32393,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // by construction, with no new identity plumbing. On: the bar shows and
     // everyone controls their OWN mic (lateMedia asks for audio only here —
     // an app room never touches a camera). Off: every mic goes quiet and the
-    // bar folds away; a guest cannot unmute. Video for app rooms is roadmap.
+    // bar folds away; a guest cannot unmute. An app room has no video.
     function roomAudioOn() {
       if (!document.body.classList.contains('app-room')) return false;
       if (appMode === 'host') return !!(myStatus.app && myStatus.app.audio);
@@ -32447,12 +32476,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     document.getElementById('apphelp').onclick = openAppHelp;
     // The DOCUMENT takes the screen and body.app-full gives the pane the glass —
     // fullscreening the pane itself banished every modal on this page into the
-    // dark behind the top layer (see #appbar .fs-btn above). Hidden outright
-    // where the browser has no fullscreen at all — gifos-fullscreen.js decides.
-    if (window.GifOS && GifOS.fullscreen) {
-      GifOS.fullscreen.attach(document.getElementById('appfull'), document.documentElement, {
-        fill: 'app-full', enterLabel: uiText('fullScreen', 'Full screen'), exitLabel: uiText('leaveFullScreen', 'Leave full screen') });
-    }
+    // dark behind the top layer (see #appbar .fs-btn above). Where the browser
+    // has no element fullscreen (iPhone Safari), this same button opens the
+    // in-page filmstrip, which is what the old dock button did.
+    (function wireAppFull() {
+      const fb = document.getElementById('appfull');
+      const FS = window.GifOS && GifOS.fullscreen;
+      if (FS && FS.supported()) {
+        FS.attach(fb, document.documentElement, {
+          fill: 'app-full', enterLabel: uiText('fullScreen', 'Full screen'), exitLabel: uiText('leaveFullScreen', 'Leave full screen') });
+        return;
+      }
+      if (!fb) return;
+      fb.dataset.fsMode = 'inpage';
+      fb.style.display = '';
+      fb.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (fsview.classList.contains('on')) closeFsView();
+        else openFsView('auto');
+      });
+      paintInPageFull();
+    })();
     document.getElementById('apphelp-close').onclick = () => { document.getElementById('apphelp-modal').style.display = 'none'; };
     document.getElementById('apphelp-modal').onclick = (e) => {
       if (e.target && e.target.id === 'apphelp-modal') e.target.style.display = 'none';
@@ -32539,6 +32583,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       refreshStealBtn();
       appMountEl.innerHTML = '';
       document.body.classList.remove('has-app');
+      paintHelpTip();
       const ap = document.getElementById('appperms'); if (ap) ap.style.display = 'none';
       appMode = null; appKey = null;
     }
@@ -34813,7 +34858,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         showAppPane('Notes', '');
         appLeadable = true; appLeadOn = false; appLeadSet = () => {};
         updateAppButtons(myStatus.app);
-        document.getElementById('appinvite').style.display = '';
+        // Invite follows the room (paintInviteSlot). A meeting must not force it on.
         if (tap) document.getElementById('applead').click();
         const read = (id) => {
           const b = document.getElementById(id);
