@@ -12085,6 +12085,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const lm = document.getElementById('left-modal');
       return !!(lm && lm.style.display && lm.style.display !== 'none');
     }
+    // How many people are still in the room after this page leaves. Taken
+    // before the farewell drops the tiles, so the header does not keep the
+    // old total and does not fall back to "Just you".
+    let leftBehind = 0;
     function updateStatus() {
       refreshTrBtn();
       if (bannedOut) return;                      // the ban notice is permanent
@@ -12172,7 +12176,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const reachLine = !!(reachState && !inlineReach && !leftUp);
       const partial = reachState === 'partial' ? reachNote(reach.dead) : reachState === 'heard-not-seen' ? ' · ' + REACH_MSG['heard-not-seen'] : '';
       // shown is the room you can see: the count, or the faces on the wall (qa-meet-desktop).
-      const shown = headerCount();
+      // You left on purpose: the number is the room without you, frozen at
+      // the click, not the tiles this page still has up behind the dialog.
+      const shown = (leftUp && leftBehind > 0) ? leftBehind : headerCount();
       const tail = partial + link + savedLock + extra;
       let countText = '';
       let restText = '';
@@ -32406,6 +32412,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (DEBUG_ON) { try { (window.__bcTrace = window.__bcTrace || []).push({ ev: 'leave', t: Date.now(), seeding: bcSeeding, seed: bcSeedOnLeave(), kept: bcKept, host: !!bcHostStored(), rec: recRec ? recRec.state : 'none' }); } catch (e) {} }
       try { updateLeaving = false; sessionStorage.removeItem(UPDATE_RESUME_KEY); } catch (e) {} // a real leave: the next join starts at Max blur
       if (!bcSeeding && bcSeedOnLeave()) return endServiceKeepSeat();
+      leftBehind = Math.max(0, headerCount() - 1);
       const flushing = stopLocalCapture();
       sendMeshLeave();
       try { if (typeof stopRoomClocks === 'function') stopRoomClocks(); } catch (e) {}
@@ -32413,6 +32420,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       afterFarewell(() => { for (const pid of Array.from(peers.keys())) { try { dropPeer(pid); } catch (e) {} } });
       try { releaseAudioContext(); } catch (e) {}
       const lm = document.getElementById('left-modal'); if (lm) lm.style.display = 'flex';
+      try { updateStatus(); } catch (e) {}
       return flushing;
     }
     const leaveBtn = document.getElementById('leavebtn');
