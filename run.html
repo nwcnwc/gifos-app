@@ -23069,14 +23069,40 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return true;
     }
     // END-STAGE-MOS-EL
+    const mosVids = new Set(); // every mosVideo decoder, for the re-bind below
     function mosVideo(stream) {
       const v = document.createElement('video');
       v.muted = true; v.autoplay = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
       v.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1';
       v.srcObject = stream; document.body.appendChild(v);
       const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
+      v._mosBoundAt = Date.now(); v._mosRebinds = 0; mosVids.add(v);
       return v;
     }
+    // A DECODER THAT NEVER STARTED IS RE-BOUND (2026-10-19, chaos-1019 lone
+    // row-3, the WebKit leg). WebKit fails to start most newly attached tiny
+    // muted stream videos, at random (1-2 of 6 in a standalone page, the
+    // same shape as above): a head's sdrow feed sat at readyState 0 for the
+    // whole meeting and its five cells were black in the composite. A second
+    // play(), a bigger or brighter element, autoplay off, or spacing the
+    // attaches out all changed nothing; setting srcObject to null and back
+    // to the same stream loaded 10 of 10, and they stayed loaded. Chromium
+    // loads them first time, so this never fires there except on a copy
+    // that carries no media yet (a parked standby), where the re-bind is a
+    // no-op on the wire; the backoff keeps that cheap (1.2, 2.4, 4.8 … s,
+    // six tries) and a removed element leaves the set.
+    setInterval(() => {
+      const now = Date.now();
+      for (const v of mosVids) {
+        if (!v.isConnected) { mosVids.delete(v); continue; }
+        const st = v.srcObject;
+        if (!st || v.readyState > 0 || v._mosRebinds >= 6) continue;
+        if (now - (v._mosBoundAt || 0) < 1200 * Math.pow(2, v._mosRebinds || 0)) continue;
+        try { v.srcObject = null; v.srcObject = st; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
+        v._mosBoundAt = now; v._mosRebinds = (v._mosRebinds || 0) + 1;
+        if (window.__mosRebindLog) window.__mosRebindLog.push({ t: now, n: v._mosRebinds, sid: String(st.id).slice(0, 8) });
+      }
+    }, 1000);
     // ---- ENCODED PASSTHROUGH (roadmap §9a, mesh-pipe.js) --------------------
     // A forwarded feed's video used to be re-encoded at every hop — the browser
     // gives ontrack only raw frames, so addAux(remoteTrack) silently runs a
@@ -34849,6 +34875,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         me: String(myId || '').slice(0, 8),
         up: c ? tgt(T.up(c)) : null, down: c ? tgt(T.down(c)) : null,
         prodStream: !!(prodPack && prodPack.stream), sdStream: !!(sdPack && sdPack.stream),
+        rebinds: [...mosVids].map((v) => ({ sid: v.srcObject ? String(v.srcObject.id).slice(0, 8) : null, rs: v.readyState, n: v._mosRebinds || 0 })), // decoders re-bound because they never started (WebKit)
         jobs: [...mosJobs.keys()], claims: [...mosIn.keys()], ann: [...mosAnn.keys()],
         // An announcer is only a CANDIDATE if its announced streamId resolves
         // to one of that peer's incoming streams (claimRedun's `live`). The
