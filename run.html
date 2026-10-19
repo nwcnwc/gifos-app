@@ -9794,6 +9794,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const appSeat = document.getElementById('appseat');
         const appOn = !!appSeat && document.body.classList.contains('has-app');
         if (appOn) tiles.unshift({ id: 'stage:app', el: appSeat, tier: 'row', stage: true, share: true, fill: true, pz: 'stage:app' });
+        // A share, or an app in that seat, fills the left side. Show me on
+        // stage keeps your tile with the people until that share ends.
+        if (sgsOn || appOn) {
+          for (let i = 0; i < tiles.length; i++) if (tiles[i].me) tiles[i].stage = false;
+        }
         document.body.classList.toggle('show-stage', sgsOn);
         const meta = comfyStadMeta();
         const roster = comfyStadRoster();
