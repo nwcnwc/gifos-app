@@ -3359,6 +3359,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     transform: translateY(16px);
   }
   body.chrome-away #callstate > * { pointer-events: none; }
+  /* A full-screen phone page that is away is the browser's float: faces only. */
+  body.away-full .bar, body.away-full #callstate, body.away-full #livecap, body.away-full #chatnote,
+  body.away-full .topchip, body.away-full #fitbtn, body.away-full #gifos-build-float,
+  body.away-full #chatpanel, body.away-full #tilewin, body.away-full #roster { visibility: hidden !important; }
   /* The preview was taking more than half of a short phone, so Join a link
      sat below the fold (SE portrait bottom 661 on a 568px screen, and in
      landscape the first action was already off screen). */
@@ -7884,7 +7888,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // pipManual: the float was asked for with the Float button while the tab
     // was in view. Only then may it stay up while the meeting is on screen.
     let pipManual = false;
+    const pageFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+    // A phone browser floats a full-screen page as it is when you switch
+    // apps (Android Chrome, Nathan 2026-10-18). Its float shows the page, so
+    // the dock and the call buttons leave it while the page is away.
+    function awayFull(on) {
+      document.body.classList.toggle('away-full', !!on && IS_MOBILE && pageFull());
+    }
     async function enterPip(manual) {
+      // A tile floated from that page only paints "Playing in
+      // picture-in-picture" into the browser's float, and leaves the tile
+      // black when you come back.
+      if (!manual && IS_MOBILE && pageFull()) return;
       const v = pipSource();
       if (!v || document.pictureInPictureElement === v) {
         // A tap with no picture used to do nothing. Auto-float on leaving the
@@ -7908,7 +7923,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else for (const v of document.querySelectorAll('video')) if (v.webkitPresentationMode === 'picture-in-picture') v.webkitSetPresentationMode('inline');
       } catch (e) {}
     }
-    try { navigator.mediaSession.setActionHandler('enterpictureinpicture', () => { enterPip(); }); } catch (e) {}
+    try { navigator.mediaSession.setActionHandler('enterpictureinpicture', () => { awayFull(true); enterPip(); }); } catch (e) {}
     // The FLOAT button: Chrome's AUTO PiP on tab-leave is chrome-gated (the
     // per-site "Automatic picture-in-picture" permission plus site-engagement
     // heuristics — a first-visit phone often gets nothing), and on Android
@@ -7962,9 +7977,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     document.addEventListener('visibilitychange', () => {
+      awayFull(document.hidden);
       if (document.hidden) enterPip(); else exitPip();
       sendVisPark();
     });
+    document.addEventListener('fullscreenchange', () => { if (!pageFull()) awayFull(false); });
+    // On a phone a float is for when you are away. A touch on the meeting
+    // means you are back, and your tile must not stay black under the
+    // label. Float itself (and the tile window's Float) toggles on click.
+    document.addEventListener('pointerdown', (e) => {
+      if (!IS_MOBILE) return;
+      awayFull(false);
+      const t = e.target;
+      if (t && t.closest && t.closest('#pipbtn, [data-pip]')) return;
+      if (document.pictureInPictureElement
+        || Array.from(document.querySelectorAll('video')).some((v) => v.webkitPresentationMode === 'picture-in-picture')) exitPip();
+    }, true);
+    window.addEventListener('pageshow', () => { awayFull(false); if (IS_MOBILE) exitPip(); });
     // The floated element can die mid-background (a stage strip teardown pulls
     // its tile). Element gone from the doc = not a user close — re-aim at the
     // next candidate. A float the USER dismissed stays dismissed.
@@ -7991,16 +8020,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (pipAwayT) clearTimeout(pipAwayT);
       pipAwayT = setTimeout(() => {
         pipAwayT = 0;
-        if (document.hidden || document.hasFocus() || pipManual) return;
+        if (document.hidden || document.hasFocus()) return;
         // An iframe inside the page (an app) takes focus without leaving.
         const ae = document.activeElement;
         if (ae && ae.tagName === 'IFRAME') return;
+        awayFull(true);
+        if (pipManual) return;
         pipAwayAt = Date.now();
         enterPip();
       }, 250);
     });
     window.addEventListener('focus', () => {
       if (pipAwayT) { clearTimeout(pipAwayT); pipAwayT = 0; }
+      awayFull(false);
       if (!pipAwayAt) return;
       pipAwayAt = 0;
       if (!document.hidden && !pipManual) exitPip();
@@ -10137,7 +10169,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const wr = document.createElement('div'); wr.className = 'tw-row';
         const shown = (id2) => { const b = document.getElementById(id2); return b && b.offsetParent !== null ? b : null; };
         const pip = document.getElementById('pipbtn');
-        if (pip && pip.style.display !== 'none') wr.appendChild(twButton(document.pictureInPictureElement ? 'Stop floating' : 'Float', !!document.pictureInPictureElement, () => { pip.click(); closeTileWin(); }));
+        if (pip && pip.style.display !== 'none') {
+          const fb = twButton(document.pictureInPictureElement ? 'Stop floating' : 'Float', !!document.pictureInPictureElement, () => { pip.click(); closeTileWin(); });
+          fb.dataset.pip = '1';
+          wr.appendChild(fb);
+        }
         const snd = shown('airsound');
         if (snd) wr.appendChild(twButton(snd.textContent || 'Sound', snd.getAttribute('aria-pressed') === 'true', () => { snd.click(); closeTileWin(); }));
         const cc = shown('bc-cap-btn');
