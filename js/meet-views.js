@@ -648,11 +648,23 @@
         }
         const sc = (bw > 0 ? bw : 100) / 100;
         applyCrop(v, { x: cell.x * sc, y: cell.y * sc, w: cell.w * sc, h: cell.h * sc });
-        v.style.visibility = 'visible';
+        v.style.visibility = '';
+        v.style.opacity = '';
+        // A face that has its cut but no media yet (WebKit, after a hold):
+        // ask again now that it shows.
+        if (v.readyState === 0 && v.srcObject && typeof v.play === 'function') { try { const pr = v.play(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {} }
         el.classList.remove('cam-off');
         if (av) av.style.display = 'none';
       } else if (v) {
-        v.style.visibility = 'hidden';
+        // FADED, NOT HIDDEN (2026-10-19, chaos-1019 lone row-3): a face
+        // waits here for its cut during the 2.5 s hold with its stream
+        // already attached. WebKit never starts a muted <video> that was
+        // handed its stream while visibility:hidden, not even once it shows
+        // (play() never settles): after the hold every face painted black.
+        // An element at opacity 0 is on screen for the engine, loads, and
+        // is also the frame-size source above for a seat with no canvas.
+        v.style.visibility = '';
+        v.style.opacity = '0';
         applyCrop(v, null);
         el.classList.add('cam-off');
         paintShade(el, faces[j].shade || faces[j].id);
