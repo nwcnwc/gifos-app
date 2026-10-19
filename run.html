@@ -9810,6 +9810,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const appSeat = document.getElementById('appseat');
         const appOn = !!appSeat && document.body.classList.contains('has-app');
         if (appOn) tiles.unshift({ id: 'stage:app', el: appSeat, tier: 'row', stage: true, share: true, fill: true, pz: 'stage:app' });
+        // A share, or an app in that seat, fills the left side. Show me on
+        // stage keeps your tile with the people until that share ends.
+        if (sgsOn || appOn) {
+          for (let i = 0; i < tiles.length; i++) if (tiles[i].me) tiles[i].stage = false;
+        }
         document.body.classList.toggle('show-stage', sgsOn);
         const meta = comfyStadMeta();
         const roster = comfyStadRoster();
@@ -12069,6 +12074,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { if (typeof paintStagePlate === 'function') paintStagePlate(); } catch (e) {}
       try { paintBcVisit(bq.viewer, on); } catch (e) {}
     }
+    function leftDialogUp() {
+      const lm = document.getElementById('left-modal');
+      return !!(lm && lm.style.display && lm.style.display !== 'none');
+    }
     function updateStatus() {
       refreshTrBtn();
       if (bannedOut) return;                      // the ban notice is permanent
@@ -12092,7 +12101,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // phone cuts further). Reporting the baseline meant the status lied by
       // up to three rungs and never moved when the battery state did.
       const q = lastQ || rung(linked);
-      const link = (relayUp() || (meshSeat() && meshSeat().state === 3 && meshCoord() && meshCoord().pc !== 0)) ? '' : ' · reconnecting to the room…';
+      // You left on purpose. A dead pair after that is not a network the
+      // device cannot reach, and that long line was cut off in the header.
+      const leftUp = leftDialogUp();
+      const link = leftUp ? '' : ((relayUp() || (meshSeat() && meshSeat().state === 3 && meshCoord() && meshCoord().pc !== 0)) ? '' : ' · reconnecting to the room…');
       // A SERVICE VIEWER sends no video: the quality rung and the password
       // hint are the host's business, and the room bar counts who is watching.
       const bcWatcher = !!(BROADCAST && !(typeof bcHostStored === 'function' && bcHostStored())
@@ -12150,13 +12162,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // 'partial' and 'heard-not-seen' add a note to the count line; every
       // other reach state replaces the line.
       const inlineReach = reachState === 'partial' || reachState === 'heard-not-seen';
+      const reachLine = !!(reachState && !inlineReach && !leftUp);
       const partial = reachState === 'partial' ? reachNote(reach.dead) : reachState === 'heard-not-seen' ? ' · ' + REACH_MSG['heard-not-seen'] : '';
       // shown is the room you can see: the count, or the faces on the wall (qa-meet-desktop).
       const shown = headerCount();
       const tail = partial + link + savedLock + extra;
       let countText = '';
       let restText = '';
-      if (reachState && !inlineReach) {
+      if (reachLine) {
         restText = REACH_MSG[reachState] + (reachState === 'outsiders-cannot-reach-me' || reachState === 'turn-unavailable' ? '' : reachTriedSentence()) + tail;
       } else if (typeof iAmWaiting === 'function' && iAmWaiting()) {
         // A person in the waiting room is not alone and has no one to invite.
@@ -12187,7 +12200,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         countText = shown + ' ' + (BROADCAST ? 'in this service' : uiText('inMeeting', 'in this small group'));
         restText = ' · ' + q.label + reachTriedSentence() + tail;
       }
-      const bq = bcQuietLine(shown, !!(reachState && !inlineReach), atDoor);
+      const bq = bcQuietLine(shown, reachLine, atDoor);
       const bcQuiet = bq.text;
       if (bcQuiet) restText = bcQuiet + reachTriedSentence() + tail;
       const statusText = countText + restText;
@@ -12196,7 +12209,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // sentence is the status sheet a tap opens, and the title.
       const roomLabel = String((params.get('v') || '')).replace(/\s+/g, ' ').trim();
       let phoneDetail = detail;
-      if (phoneLayout() && !BROADCAST && !(reachState && !inlineReach)) {
+      if (phoneLayout() && !BROADCAST && !reachLine) {
         const head = roomLabel ? roomLabel + ' · ' : '';
         phoneDetail = head + (shown <= 1 ? countText : shown + ' ' + uiText('inMeeting', 'in the meeting')) + restText;
         countText = head + (shown <= 1 ? (atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you')) : shown + ' in call');
@@ -12206,16 +12219,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
       // of the reach states that replace the line. Tests and styling read
       // this, never the sentence.
-      const statusKind = reachState && !inlineReach ? reachState : shown === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
+      const statusKind = reachLine ? reachState : shown === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
       const statusShown = statusText;
       const shownDetail = phoneDetail;
       if (statusEl.dataset) {
         if (statusEl.dataset.kind !== statusKind) statusEl.dataset.kind = statusKind;
-        const dr = reachState || '', du = reachState === 'partial' ? String(reach.dead) : '';
+        const dr = leftUp ? '' : (reachState || ''), du = !leftUp && reachState === 'partial' ? String(reach.dead) : '';
         if (statusEl.dataset.reach !== dr) statusEl.dataset.reach = dr;
         if (statusEl.dataset.unreached !== du) statusEl.dataset.unreached = du;
       }
-      if (reachState && !inlineReach) statusEl.classList.add('alert');
+      if (reachLine) statusEl.classList.add('alert');
       if (statusEl.title !== shownDetail) statusEl.title = shownDetail;
       const countEl = document.getElementById('statuscount');
       const restEl = document.getElementById('statusrest');
@@ -30687,6 +30700,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const st = document.getElementById('status');
           head = !!st && st.dataset.kind === 'meeting' && !st.classList.contains('alert') && Date.now() >= statusHoldUntil;
         }
+        // A bot page has nobody to wake the header. The logo and the count
+        // stay, or the page looks like it has only the transcribing mark.
+        if (head && typeof myStatus !== 'undefined' && myStatus.bot) head = false;
         if (head !== document.body.classList.contains('head-calm')) document.body.classList.toggle('head-calm', head);
       }, 250);
     })();
@@ -34031,8 +34047,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const s = spec || {};
         if ('relayed' in s) p.relayed = s.relayed || null;
         if ('noRoute' in s) p.noRoute = !!s.noRoute;
+        if ('connected' in s) p.connected = !!s.connected;
+        if ('neverUp' in s) p.neverUp = s.neverUp === true;
         if (s.votes) { devOf[id] = devOf[id] || ('qadev-' + id); voteTally[devOf[id]] = s.votes[0]; voteNeed = s.votes[1]; }
         try { refreshAllTiles(); } catch (e) {}
+        try { if ('connected' in s || 'neverUp' in s) updateStatus(); } catch (e) {}
         return true;
       },
       // Lock or open the room on this page only (memory: no store, no door),
