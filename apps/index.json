@@ -4758,7 +4758,7 @@
         255
       ],
       "cover": "/apps/meeting-bot/cover.jpg",
-      "bytes": 45232,
+      "bytes": 45302,
       "download": 0,
       "provides": null,
       "signature": {
@@ -4766,7 +4766,7 @@
         "id": "gifos.app",
         "ts": "2026-10-19"
       },
-      "sha256": "495a0151f82dd1bbd2273310fc42d47fa1c739f873e8487d69640b8b2038fc41"
+      "sha256": "4475184afa938fb1032a785c3d9f0b51146b8085374d968fb09da237c4433f56"
     },
     {
       "slug": "memory",
