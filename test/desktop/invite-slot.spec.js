@@ -123,7 +123,7 @@ for (const [w, h, label] of [[1280, 720, 'laptop'], [390, 844, 'phone']]) {
       title: document.querySelector('#inv-modal h3').textContent,
       url: document.getElementById('inv-url').value,
     }));
-    expect(sheet.title).toBe('Share this small group');
+    expect(sheet.title).toBe('Share this meeting');
     expect(sheet.url).toMatch(/#v=/);
     expect(sheet.url).not.toMatch(/[#&](j|s|id)=/);
     const after = await page.evaluate(invites);

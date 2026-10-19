@@ -141,7 +141,7 @@ async function run(browser, dev, tag, vp, bad) {
           x.fillStyle = '#20304a'; x.fillRect(0, 0, 1280, 720);
           x.fillStyle = '#ffd23c'; x.fillRect(0, 0, 1280, 120);
           x.fillStyle = '#10141c'; x.font = '700 80px sans-serif'; x.textAlign = 'center';
-          x.fillText('Hymn 245', 640, 90);
+          x.fillText('Song 1', 640, 90);
         };
         draw();
         window.__qaDraw = setInterval(draw, 250);

@@ -50,7 +50,7 @@ test('alone, Invite copies the link in one click and leaves when someone else is
   expect(sent.shared).toContain('qaalone');
 
   await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 2, connected: false }));
-  await expect(page.locator('#statuscount')).toHaveText('3 in this small group');
+  await expect(page.locator('#statuscount')).toHaveText('3 in this meeting');
   await expect(btn).toBeHidden();
   await expect(page.locator('#status')).not.toContainText('Just you');
 });

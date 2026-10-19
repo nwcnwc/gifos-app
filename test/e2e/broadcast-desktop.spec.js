@@ -160,19 +160,19 @@ test('a broadcast host is marked Live and the room is not called a meeting', asy
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(HOST_SESSION);
   await page.waitForSelector('body.broadcast.meet-session');
-  await expect(page).toHaveTitle('Service — GifOS');
-  await expect(page.locator('#paneltitle')).toHaveText('Service chat');
+  await expect(page).toHaveTitle('Broadcast — GifOS');
+  await expect(page.locator('#paneltitle')).toHaveText('Broadcast chat');
   // A host whose camera and microphone are still off is off air (confirmed design).
-  await expect(page.locator('#airkind')).toHaveText('Service · You are off air');
+  await expect(page.locator('#airkind')).toHaveText('Broadcast · You are off air');
   await expect(page.locator('#onair')).toHaveText('Off air');
   await expect(page.locator('#onair')).toHaveClass(/off/);
-  await expect(page.locator('#leavebtn')).toHaveAttribute('title', /service/i);
+  await expect(page.locator('#leavebtn')).toHaveAttribute('title', /broadcast/i);
   await expect(page.locator('#leavebtn .docklab')).toHaveText('End');
-  await expect(page.locator('#leave-ask-title')).toHaveText('End the service?');
+  await expect(page.locator('#leave-ask-title')).toHaveText('End the broadcast?');
   expect((await page.locator('#leavebtn').getAttribute('title')).toLowerCase()).not.toContain('meeting');
-  expect((await page.locator('#airbar').textContent()).toLowerCase()).not.toContain('small group');
+  expect((await page.locator('#airbar').textContent()).toLowerCase()).not.toContain('meeting');
   await page.locator('#bartoggle').click();
-  await expect(page.locator('#bartoggle')).toHaveAttribute('aria-label', /service/i);
+  await expect(page.locator('#bartoggle')).toHaveAttribute('aria-label', /broadcast/i);
   const box = await page.locator('#onair').boundingBox();
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(1280);
@@ -185,9 +185,9 @@ test('a broadcast viewer is Watching, including at 900px', async ({ page }) => {
   await page.waitForSelector('body.broadcast');
   await expect(page.locator('#onair')).toHaveText('Watching');
   await expect(page.locator('#onair')).toHaveClass(/watch/);
-  await expect(page).toHaveTitle('Service — GifOS');
-  await expect(page.locator('#paneltitle')).toHaveText('Service chat');
-  await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+  await expect(page).toHaveTitle('Broadcast — GifOS');
+  await expect(page.locator('#paneltitle')).toHaveText('Broadcast chat');
+  await expect(page.locator('#airkind')).toHaveText('Broadcast · You are watching');
   const box = await page.locator('#onair').boundingBox();
   expect(box.y).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(900);
@@ -209,7 +209,7 @@ test('a Watching viewer has no camera or mic on the dock and does not publish', 
   await page.goto(SESSION);
   await page.waitForSelector('#onair.watch');
   await expect(page.locator('#onair')).toHaveText('Watching');
-  await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+  await expect(page.locator('#airkind')).toHaveText('Broadcast · You are watching');
   // The old hide waited for body.notadmin. This session never gets that class.
   const seat = await page.evaluate(() => {
     document.body.classList.remove('notadmin');
@@ -254,12 +254,12 @@ test('a meeting keeps meeting words and hides the on-air pill', async ({ page })
   await page.goto(MEET_SESSION);
   await page.waitForSelector('body.meet-session');
   await expect(page.locator('body')).not.toHaveClass(/broadcast/);
-  await expect(page).toHaveTitle('Small group — GifOS');
-  await expect(page.locator('#paneltitle')).toHaveText('Small group chat');
+  await expect(page).toHaveTitle('Meeting — GifOS');
+  await expect(page.locator('#paneltitle')).toHaveText('Meeting chat');
   await expect(page.locator('#onair')).toBeHidden();
-  await expect(page.locator('#airkind')).toHaveText('Small group');
+  await expect(page.locator('#airkind')).toHaveText('Meeting');
   await expect(page.locator('#airbar')).toHaveClass(/group/);
-  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the small group?');
+  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the meeting?');
 });
 
 test('invite is one tap in the OS header, not inside More', async ({ page }) => {
@@ -280,7 +280,7 @@ test('invite is one tap in the OS header, not inside More', async ({ page }) => 
   await bootSession(page, 1280, 720);
   await page.click('#appinvite', { modifiers: ['Shift'] });
   await expect(page.locator('#inv-modal')).toBeVisible();
-  await expect(page.locator('#inv-modal h3')).toHaveText('Share this service');
+  await expect(page.locator('#inv-modal h3')).toHaveText('Share this broadcast');
 });
 
 test('reactions are emoji under a smiley, and the sparkle stays off this control', async ({ page }) => {
@@ -404,7 +404,7 @@ test('who is watching talks about the service', async ({ page }) => {
     await moreTool(page, 'whobtn');
     await expect(page.locator('#who-modal h3')).toHaveText('Who is watching');
     const note = page.locator('#who-modal .name-box p');
-    await expect(note).toContainText('storing this service');
+    await expect(note).toContainText('storing this broadcast');
     await expect(note).not.toContainText('meeting');
     const box = await page.locator('#who-modal .name-box').boundingBox();
     expect(box.y).toBeGreaterThanOrEqual(0);
@@ -530,7 +530,7 @@ test('a family call and a church broadcast start from a plain lobby', async ({ p
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/run.html?desk=family' + w);
     await page.waitForSelector('#lobby.show');
-    await expect(page.locator('#lobby h1')).toHaveText('Small group');
+    await expect(page.locator('#lobby h1')).toHaveText('Meeting');
     await expect(page.locator('#lob-open')).toHaveText(/Start a call/);
     await expect(page.locator('#lob-admin-btn')).toHaveText('Host this call');
     await expect(page.locator('#lob-join-btn')).toHaveText('Join a link');
@@ -572,7 +572,7 @@ test('a family call and a church broadcast start from a plain lobby', async ({ p
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/run.html?desk=church#bc=1');
   await page.waitForSelector('#lobby.show h1');
-  await expect(page.locator('#lobby h1')).toHaveText('Service');
+  await expect(page.locator('#lobby h1')).toHaveText('Broadcast');
   await expect(page.locator('#lob-admin-btn')).toBeVisible();
   await expect(page.locator('#lob-admin-btn')).toHaveText(/Go live/);
   await expect(page.locator('#lob-admin-btn')).toHaveClass(/lob-primary/);
@@ -610,7 +610,7 @@ test('the screen-name step prefills your GifOS name and picture', async ({ page 
   await page.evaluate(() => { window.__gifosNameP = window.__gifosVideo.ensureNameForTest(); return null; });
   const dialog = page.locator('#appear-modal .appear-box');
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('h3')).toHaveText('Watching the service');
+  await expect(dialog.locator('h3')).toHaveText('Watching the broadcast');
   await expect(dialog.locator('#appear-note')).toHaveText('You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.');
   await expect(page.locator('#nm')).toHaveValue('Avery Chen');
   await expect(page.locator('#appear-face img')).toHaveAttribute('src', new RegExp(png.slice(0, 24)));
@@ -668,7 +668,7 @@ test('a broadcast viewer is told their picture stays off the stage', async ({ pa
     await expect(note).toBeVisible();
     // The viewer's join step wording from desktop-watching-gaps (newer).
     await expect(note).toHaveText('You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.');
-    await expect(page.locator('#appear-title')).toHaveText('Watching the service');
+    await expect(page.locator('#appear-title')).toHaveText('Watching the broadcast');
     const fit = await page.evaluate(() => {
       const box = document.querySelector('#appear-modal .appear-box').getBoundingClientRect();
       const line = document.getElementById('appear-note').getBoundingClientRect();
@@ -849,7 +849,7 @@ test('a watching viewer keeps Hand and loses the publish controls', async ({ pag
   await page.goto(SESSION, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('body.broadcast.bc-watching #onair.watch');
   await page.waitForFunction(() => window.__gifosVideo && window.__gifosVideo.stageFlagForTest);
-  await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+  await expect(page.locator('#airkind')).toHaveText('Broadcast · You are watching');
   await expect(page.locator('#mic')).toBeHidden();
   await expect(page.locator('#cam')).toBeHidden();
   await expect(page.locator('#stagebtn')).toBeHidden();
@@ -890,7 +890,7 @@ test('a watching viewer keeps Hand and loses the publish controls', async ({ pag
   await page.waitForSelector('#lobby.show');
   await page.locator('#lob-join-btn').click();
   await expect(page.locator('#lob-watch-note')).toBeVisible();
-  await expect(page.locator('#lob-watch-note')).toHaveText('Watching the service. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.');
+  await expect(page.locator('#lob-watch-note')).toHaveText('Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.');
   await page.locator('#lob-admin-btn').click();
   await expect(page.locator('#lob-admin')).toBeVisible();
   await expect(page.locator('#lob-admin')).not.toContainText('only seen if you raise a hand');
@@ -1041,7 +1041,7 @@ test('a volunteer cannot miss whether they are on air', async ({ page }) => {
     await page.goto('/run.html?desk=air' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#onair.off');
     const live = await readBar();
-    expect(live.text).toBe('Service · You are off air');
+    expect(live.text).toBe('Broadcast · You are off air');
     expect(live.bg).toBe('rgb(42, 42, 63)');
     expect(live.fg).toBe('rgb(224, 224, 240)');
     expect(live.h).toBeGreaterThanOrEqual(44);
@@ -1055,7 +1055,7 @@ test('a volunteer cannot miss whether they are on air', async ({ page }) => {
   await page.goto('/run.html?desk=airview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#onair.watch');
   const watch = await readBar();
-  expect(watch.text).toBe('Service · You are watching');
+  expect(watch.text).toBe('Broadcast · You are watching');
   expect(watch.bg).toBe('rgb(232, 236, 241)');
   expect(watch.fg).toBe('rgb(29, 29, 31)');
   expect(watch.h).toBeGreaterThanOrEqual(44);
@@ -1063,7 +1063,7 @@ test('a volunteer cannot miss whether they are on air', async ({ page }) => {
   await page.goto(MEET_SESSION, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('body.meet-session .bar');
   const group = await readBar();
-  expect(group.text).toBe('Small group');
+  expect(group.text).toBe('Meeting');
   expect(group.bg).toBe('rgb(20, 48, 36)');
   expect(group.bg).not.toBe('rgb(182, 22, 34)');
   expect(group.h).toBeGreaterThanOrEqual(44);
@@ -1132,12 +1132,12 @@ test('recording and who is here sit on the room bar', async ({ page }) => {
   await page.locator('#who-close').click();
   await expect(page.locator('#who-modal')).toBeHidden();
   await page.locator('#airrec').click();
-  await expect(page.locator('#rec-options h3')).toHaveText('Record this small group');
+  await expect(page.locator('#rec-options h3')).toHaveText('Record this meeting');
   await page.locator('#ro-cancel').click();
   await expect(page.locator('#rec-options')).toHaveCount(0);
   await page.goto('/run.html?desk=trustsvc#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airkind');
-  await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+  await expect(page.locator('#airkind')).toHaveText('Broadcast · You are watching');
   await expect(page.locator('#airrec')).toHaveText('Not recording');
   // A Watching viewer does not record (confirmed design): the bar still says
   // whether the service is being recorded, but a tap opens no card.
@@ -1196,7 +1196,7 @@ test('chat is one tap on the dock, and a prayer is its own line', async ({ page 
   await expect(lines.nth(1)).toContainText('See you after');
 });
 
-test('a service chat tip talks about the people watching', async ({ page }) => {
+test('a broadcast chat tip talks about the people watching', async ({ page }) => {
   const serviceTip = 'Chat with everyone watching — stays between the people here, not on a server';
   const meetingTip = 'Chat and share files — stays between the people on this meeting, not on a server';
   await page.addInitScript(() => {
@@ -1236,7 +1236,7 @@ test('service help names Raise hand and Step off', async ({ page }) => {
     await page.goto('/run.html?desk=help' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('body.broadcast .bar');
     await page.locator('#apphelp').click();
-    await expect(page.locator('#help-modal h3')).toHaveText('How this service works');
+    await expect(page.locator('#help-modal h3')).toHaveText('How this broadcast works');
     const scroll = page.locator('#help-modal .help-scroll');
     await expect(scroll).toContainText('Raise hand');
     await expect(scroll).toContainText('Step off');
@@ -1252,12 +1252,12 @@ test('service help names Raise hand and Step off', async ({ page }) => {
   await page.goto('/run.html?desk=helpsg#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airbar.on.group');
   await page.locator('#apphelp').click();
-  await expect(page.locator('#help-modal h3')).toHaveText('How this small group works');
+  await expect(page.locator('#help-modal h3')).toHaveText('How this meeting works');
   await expect(page.locator('#help-modal .help-scroll')).toContainText('stadium');
   await expect(page.locator('#help-modal .help-scroll')).not.toContainText('Tap Raise hand');
 });
 
-test('service chat keeps the title on one line', async ({ page }) => {
+test('broadcast chat keeps the title on one line', async ({ page }) => {
   async function headBox() {
     return page.evaluate(() => {
       const title = document.getElementById('paneltitle');
@@ -1293,8 +1293,8 @@ test('service chat keeps the title on one line', async ({ page }) => {
     await page.locator('#chatbtn').click();
     await page.waitForSelector('#chatpanel.open');
     const m = await headBox();
-    expect(m.title).toBe('Service chat');
-    expect(m.priv).toBe('Private. Gone when everyone leaves.'); // one short 16px line (qa-meet-desktop)
+    expect(m.title).toBe('Broadcast chat');
+    expect(m.priv).toBe('Private to this broadcast, gone when everyone leaves');
     expect(m.oneLine, JSON.stringify(m)).toBe(true);
     expect(m.privBelow, JSON.stringify(m)).toBe(true);
     expect(m.privWide, JSON.stringify(m)).toBe(true);
@@ -1312,7 +1312,7 @@ test('service chat keeps the title on one line', async ({ page }) => {
   await page.locator('#chatbtn').click();
   await page.waitForSelector('#chatpanel.open');
   const group = await headBox();
-  expect(group.title).toBe('Small group chat');
+  expect(group.title).toBe('Meeting chat');
   expect(group.priv).toBe('Private. Gone when everyone leaves.');
   expect(group.oneLine, JSON.stringify(group)).toBe(true);
   expect(group.privBelow, JSON.stringify(group)).toBe(true);
@@ -1356,7 +1356,7 @@ test('leaving and rejoining a personal call is obvious', async ({ page }) => {
   await page.locator('#leavebtn').click();
   await expect(page.locator('#leave-ask')).toBeHidden();
   await expect(page.locator('#left-modal')).toBeVisible();
-  await expect(page.locator('#left-title')).toHaveText('You left the small group');
+  await expect(page.locator('#left-title')).toHaveText('You left the meeting');
   await expect(page.locator('#left-note')).toContainText('Rejoin');
   const back = await page.evaluate(() => {
     const re = document.getElementById('left-rejoin');
@@ -1379,12 +1379,12 @@ test('leaving and rejoining a personal call is obvious', async ({ page }) => {
   await page.locator('#left-rejoin').click();
   await page.waitForSelector('#airbar.on.group');
   await expect(page.locator('#left-modal')).toBeHidden();
-  await expect(page.locator('#airkind')).toHaveText('Small group');
+  await expect(page.locator('#airkind')).toHaveText('Meeting');
   await page.goto('/run.html?desk=leavesvc#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airkind');
   await page.locator('#leavebtn').click();
   await expect(page.locator('#leave-ask')).toBeVisible();
-  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the service?');
+  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the broadcast?');
   const ask = await page.evaluate(() => {
     const go = getComputedStyle(document.getElementById('leave-go'));
     const stay = getComputedStyle(document.getElementById('leave-cancel'));
@@ -1393,7 +1393,7 @@ test('leaving and rejoining a personal call is obvious', async ({ page }) => {
   expect(ask.go).toBe('rgb(182, 22, 34)');
   expect(ask.stay).not.toBe(ask.go);
   await page.locator('#leave-go').click();
-  await expect(page.locator('#left-title')).toHaveText('You left the service');
+  await expect(page.locator('#left-title')).toHaveText('You left the broadcast');
 });
 
 test('the status line fits beside Fit', async ({ page }) => {
@@ -1477,7 +1477,7 @@ test('a service alone says you are live or you are watching', async ({ page }) =
   await page.goto('/run.html?desk=liveview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('watching') !== -1);
   const viewer = await readStatus();
-  expect(viewer.text).toContain('You are watching this service.');
+  expect(viewer.text).toContain('You are watching this broadcast.');
   expect(viewer.text).not.toContain('Just you');
   expect(viewer.text).not.toContain('You are live');
   expect(viewer.clip, JSON.stringify(viewer)).toBe(false);
@@ -1620,7 +1620,7 @@ test('microphone and camera off are a line you cannot miss', async ({ page }) =>
   await expect(page.locator('#avstate')).toBeHidden();
   await page.goto('/run.html?desk=avhost#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#avstate.on');
-  await expect(page.locator('#airkind')).toHaveText('Service · You are off air');
+  await expect(page.locator('#airkind')).toHaveText('Broadcast · You are off air');
   await expect(page.locator('#avmic')).toHaveText('Microphone off');
   await page.goto('/run.html?desk=avview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#onair.watch');
@@ -1642,7 +1642,7 @@ test('a recording is a card everyone has to see', async ({ page }) => {
     await page.evaluate(() => window.__gifosRoomTrust.setRecording(true));
     const card = page.locator('#rec-notice .appear-box');
     await expect(card).toBeVisible();
-    await expect(page.locator('#rec-notice-title')).toHaveText('You are recording this small group');
+    await expect(page.locator('#rec-notice-title')).toHaveText('You are recording this meeting');
     await expect(page.locator('#airrec')).toHaveText('Recording');
     const lay = await page.evaluate(() => {
       const box = document.querySelector('#rec-notice .appear-box').getBoundingClientRect();
@@ -1661,18 +1661,18 @@ test('a recording is a card everyone has to see', async ({ page }) => {
   }
   await page.evaluate(() => window.__gifosRoomTrust.setRecording(false));
   await page.evaluate(() => window.__gifosRoomTrust.setPeerRecording('Jordan Lee', true));
-  await expect(page.locator('#rec-notice-title')).toHaveText('Jordan Lee is recording this small group');
+  await expect(page.locator('#rec-notice-title')).toHaveText('Jordan Lee is recording this meeting');
   await page.locator('#rec-notice-ok').click();
   await page.locator('#airrec').click();
-  await expect(page.locator('#rec-options h3')).toHaveText('Record this small group');
-  await expect(page.locator('#rec-options p').first()).toContainText('this small group is being recorded');
+  await expect(page.locator('#rec-options h3')).toHaveText('Record this meeting');
+  await expect(page.locator('#rec-options p').first()).toContainText('this meeting is being recorded');
   await expect(page.locator('#ro-start')).toHaveClass(/appear-primary/);
   await expect(page.locator('#ro-cancel')).toHaveClass(/appear-secondary/);
   await page.locator('#ro-cancel').click();
   await page.goto('/run.html?desk=recnotesvc#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airkind');
   await page.evaluate(() => window.__gifosRoomTrust.setRecording(true));
-  await expect(page.locator('#rec-notice-title')).toHaveText('You are recording this service');
+  await expect(page.locator('#rec-notice-title')).toHaveText('You are recording this broadcast');
 });
 
 test('someone else recording you gets Stay or Leave, as in Zoom and Teams', async ({ page }) => {
@@ -1699,7 +1699,7 @@ test('someone else recording you gets Stay or Leave, as in Zoom and Teams', asyn
     await page.goto('/run.html?desk=recleave' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#airbar.on.group');
     await page.evaluate(() => { try { sessionStorage.removeItem('gifos_rec_seen'); } catch (e) {} window.__gifosRoomTrust.setPeerRecording('Jordan Lee', true); });
-    await expect(page.locator('#rec-notice-title')).toHaveText('Jordan Lee is recording this small group');
+    await expect(page.locator('#rec-notice-title')).toHaveText('Jordan Lee is recording this meeting');
     if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/rec-leave-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
     const got = await card();
     expect({ consent: /Staying means you agree to be recorded/.test(got.text), stay: got.ok, leave: got.leave, fits: got.fits }, JSON.stringify(got))
@@ -1707,18 +1707,18 @@ test('someone else recording you gets Stay or Leave, as in Zoom and Teams', asyn
   }
   await page.locator('#rec-notice-leave').click();
   await expect(page.locator('#left-modal')).toBeVisible();
-  await expect(page.locator('#left-title')).toHaveText('You left the small group');
+  await expect(page.locator('#left-title')).toHaveText('You left the meeting');
   // The person recording, and a viewer who is not in a service recording,
   // only read the card.
   await page.goto('/run.html?desk=recleaveme#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airbar.on.group');
   await page.evaluate(() => { try { sessionStorage.removeItem('gifos_rec_seen'); } catch (e) {} window.__gifosRoomTrust.setRecording(true); });
-  await expect(page.locator('#rec-notice-title')).toHaveText('You are recording this small group');
+  await expect(page.locator('#rec-notice-title')).toHaveText('You are recording this meeting');
   expect(await card()).toMatchObject({ ok: 'OK', leave: '' });
   await page.goto('/run.html?desk=recleaveview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#onair.watch');
   await page.evaluate(() => { try { sessionStorage.removeItem('gifos_rec_seen'); } catch (e) {} window.__gifosRoomTrust.setPeerRecording('Pastor Kim', true); });
-  await expect(page.locator('#rec-notice-title')).toHaveText('Pastor Kim is recording this service');
+  await expect(page.locator('#rec-notice-title')).toHaveText('Pastor Kim is recording this broadcast');
   expect(await card()).toMatchObject({ ok: 'OK', leave: '' });
 });
 
@@ -1749,7 +1749,7 @@ test('sharing a personal call is the link and a blue Copy', async ({ page }) => 
     await page.goto('/run.html?desk=inv' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#airbar.on.group');
     await page.click('#appinvite', { modifiers: ['Shift'] });
-    await expect(page.locator('#inv-modal h3')).toHaveText('Share this small group');
+    await expect(page.locator('#inv-modal h3')).toHaveText('Share this meeting');
     await expect(page.locator('#inv-modal')).toContainText('Send this link. Anyone who opens it joins you.');
     await expect(page.locator('#inv-modal')).not.toContainText(/troublemaker|blur|in charge|mute/i);
     await expect(page.locator('#inv-copy')).toHaveClass(/appear-primary/);
@@ -1784,7 +1784,7 @@ test('sharing a personal call is the link and a blue Copy', async ({ page }) => 
   await page.goto('/run.html?desk=invsvc#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airkind');
   await page.click('#appinvite', { modifiers: ['Shift'] });
-  await expect(page.locator('#inv-modal h3')).toHaveText('Share this service');
+  await expect(page.locator('#inv-modal h3')).toHaveText('Share this broadcast');
   await expect(page.locator('#inv-modal')).toContainText('People who open it are watching');
   await expect(page.locator('#inv-modal')).not.toContainText(/troublemaker|blur|in charge/i);
   await expect(page.locator('#inv-mkadm')).toHaveCount(0);
@@ -1889,7 +1889,7 @@ test('a service hides the row and the stadium, and a small group keeps the grid'
     await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
     await page.goto('/run.html?desk=surf' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('body.broadcast');
-    await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+    await expect(page.locator('#airkind')).toHaveText('Broadcast · You are watching');
     const svc = await surfaces();
     expect(svc.broadcast).toBe(true);
     expect(svc.grid.display).toBe('none');
@@ -2033,7 +2033,7 @@ test('settings names the stage on a service', async ({ page }) => {
 });
 
 test('settings on a service is not called a meeting', async ({ page }) => {
-  const serviceTip = 'Service settings — the picture you send, and the name people see on the stage.';
+  const serviceTip = 'Broadcast settings — the picture you send, and the name people see on the stage.';
   const meetingTip = 'Meeting settings — your sound mix, timing, and the video quality your camera records';
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
@@ -2060,7 +2060,7 @@ test('settings on a service is not called a meeting', async ({ page }) => {
   await expect(page.locator('#setbtn')).toHaveAttribute('title', meetingTip);
 });
 
-test('a service chat pins a file to the service', async ({ page }) => {
+test('a broadcast chat pins a file to the service', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
     localStorage.setItem('gifos_meet_bar', '1');
@@ -2072,7 +2072,7 @@ test('a service chat pins a file to the service', async ({ page }) => {
     await page.locator('#chatbtn').click();
     const pin = page.locator('#cattach');
     await expect(pin).toBeVisible();
-    await expect(pin).toHaveAttribute('title', 'Pin a file to this service');
+    await expect(pin).toHaveAttribute('title', 'Pin a file to this broadcast');
     const lay = await page.evaluate(() => {
       const r = document.getElementById('cattach').getBoundingClientRect();
       const form = document.getElementById('chatform').getBoundingClientRect();
@@ -2088,7 +2088,7 @@ test('a service chat pins a file to the service', async ({ page }) => {
 });
 
 test('run app and float talk about the service', async ({ page }) => {
-  const appTip = 'Run an app on this service — everyone watching shares it and can use it.';
+  const appTip = 'Run an app on this broadcast — everyone watching shares it and can use it.';
   const floatTip = 'Float the stage in a mini window. It stays on screen while you use other apps.';
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
@@ -2104,7 +2104,7 @@ test('run app and float talk about the service', async ({ page }) => {
     await expect(page.locator('#appbtn')).toHaveAttribute('title', appTip);
     await expect(page.locator('#pipbtn')).toHaveAttribute('title', floatTip);
     await expect(page.locator('#pipbtn')).toHaveAttribute('aria-label', 'Float the stage');
-    await expect(page.locator('#app-title')).toHaveText('Run an app on this service');
+    await expect(page.locator('#app-title')).toHaveText('Run an app on this broadcast');
     await expect(page.locator('#app-note')).toContainText('everyone watching');
     await expect(page.locator('#app-note')).toContainText('stage');
     const note = await page.locator('#app-note').innerText();
@@ -2185,7 +2185,7 @@ test('a host steps on and off the stage from the dock', async ({ page }) => {
   expect(steppedOn).toBe(true);
   const onAir = await page.evaluate(() => getComputedStyle(document.querySelector('.bar > #stagebtn')).backgroundColor);
   expect(onAir).toBe('rgb(182, 22, 34)');
-  await expect(page.locator('#airkind')).toHaveText('Service · You are off air');
+  await expect(page.locator('#airkind')).toHaveText('Broadcast · You are off air');
   await step.click();
   await expect(step.locator('.docklab')).toHaveText('Step on');
   const steppedOff = await step.evaluate((el) => el.classList.contains('on'));
@@ -2376,7 +2376,7 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
       };
     });
     expect(lay.bg).toBe('rgb(182, 22, 34)');
-    await expect(page.locator('#airkind')).toHaveText('Service · You are on stage');
+    await expect(page.locator('#airkind')).toHaveText('Broadcast · You are on stage');
     await expect(page.locator('#airbar')).toHaveClass(/off/);
     const air = await page.evaluate(() => {
       const bar = document.getElementById('airbar');
@@ -2427,9 +2427,9 @@ test('a promoted viewer steps off from the dock', async ({ page }) => {
   // The host is here, off the stage: the stage is known to be clear.
   await page.evaluate(() => window.__gifosVideo.stageHostForTest('host-here', 'Pastor Kim', 0));
   await expect(page.locator('#bc-stage-line')).toHaveText('The stage is clear.');
-  await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+  await expect(page.locator('#airkind')).toHaveText('Broadcast · You are watching');
   await expect(page.locator('#airbar')).toHaveClass(/watch/);
-  await expect(page.locator('#status')).toContainText('You are watching this service.');
+  await expect(page.locator('#status')).toContainText('You are watching this broadcast.');
   // The seat still holds the stage grant, so the lamp keeps the confirmed
   // stage-guest rule: Off air until a camera or a microphone sends.
   await expect(page.locator('#onair')).toHaveText('Off air');
@@ -2448,7 +2448,7 @@ test('a host ends the service and a viewer still leaves', async ({ page }) => {
     await page.waitForSelector('body.broadcast');
     const leave = page.locator('#leavebtn');
     await expect(leave.locator('.docklab')).toHaveText('End');
-    await expect(leave).toHaveAttribute('aria-label', 'End the service');
+    await expect(leave).toHaveAttribute('aria-label', 'End the broadcast');
     const tip = (await leave.getAttribute('title')).toLowerCase();
     expect(tip).toContain('everyone watching');
     expect(tip).not.toContain('meeting');
@@ -2474,7 +2474,7 @@ test('a host ends the service and a viewer still leaves', async ({ page }) => {
     await leave.click();
     const ask = page.locator('#leave-ask');
     await expect(ask).toBeVisible();
-    await expect(page.locator('#leave-ask-title')).toHaveText('End the service?');
+    await expect(page.locator('#leave-ask-title')).toHaveText('End the broadcast?');
     await expect(page.locator('#leave-ask-note')).toBeVisible();
     await expect(page.locator('#leave-ask-note')).toContainText('five-minute countdown');
     await expect(page.locator('#leave-ask-note')).not.toContainText('meeting');
@@ -2505,20 +2505,20 @@ test('a host ends the service and a viewer still leaves', async ({ page }) => {
   await page.locator('#leavebtn').click();
   await page.locator('#leave-go').click();
   await expect(page.locator('#left-modal')).toBeVisible();
-  await expect(page.locator('#left-title')).toHaveText('You ended the service');
+  await expect(page.locator('#left-title')).toHaveText('You ended the broadcast');
   await expect(page.locator('#left-note')).toContainText('five-minute countdown');
   await expect(page.locator('#left-note')).toContainText('Rejoin');
   await page.goto('/run.html?desk=endview#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('body.broadcast');
   await expect(page.locator('#leavebtn .docklab')).toHaveText('Leave');
-  await expect(page.locator('#leavebtn')).toHaveAttribute('aria-label', 'Leave the service');
+  await expect(page.locator('#leavebtn')).toHaveAttribute('aria-label', 'Leave the broadcast');
   await expect(page.locator('#leave-ask-note')).toBeHidden();
   await page.locator('#leavebtn').click();
-  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the service?');
+  await expect(page.locator('#leave-ask-title')).toHaveText('Leave the broadcast?');
   await expect(page.locator('#leave-go')).toHaveText('Leave');
   await expect(page.locator('#leave-ask-note')).toBeHidden();
   await page.locator('#leave-go').click();
-  await expect(page.locator('#left-title')).toHaveText('You left the service');
+  await expect(page.locator('#left-title')).toHaveText('You left the broadcast');
 });
 
 test('a service recording captures the stage', async ({ page }) => {
@@ -2528,7 +2528,7 @@ test('a service recording captures the stage', async ({ page }) => {
     await page.goto('/run.html?desk=recstage' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('body.broadcast');
     await page.locator('#airrec').click();
-    await expect(page.locator('#rec-options h3')).toHaveText('Record this service');
+    await expect(page.locator('#rec-options h3')).toHaveText('Record this broadcast');
     await expect(page.locator('#rec-stage-only')).toHaveText('Only the stage.');
     await expect(page.locator('#rec-options')).not.toContainText('my row');
     await expect(page.locator('#rec-options')).not.toContainText('stadium');
@@ -2554,7 +2554,7 @@ test('a service recording captures the stage', async ({ page }) => {
   await page.goto('/run.html?desk=recstagegroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airbar.on.group');
   await page.locator('#airrec').click();
-  await expect(page.locator('#rec-options h3')).toHaveText('Record this small group');
+  await expect(page.locator('#rec-options h3')).toHaveText('Record this meeting');
   await expect(page.locator('#rec-options')).toContainText('Stage + my row');
   await expect(page.locator('#rec-options')).toContainText('Everything I see');
   await expect(page.locator('#rec-stage-only')).toHaveCount(0);
@@ -2692,7 +2692,7 @@ test('a viewer clap reaches the stage as a count', async ({ page }) => {
   }
   await page.goto('/run.html?desk=agghost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('body.broadcast');
-  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+  await expect(page.locator('#airkind')).toHaveText('Broadcast · You are live');
   await page.evaluate(() => {
     for (let i = 0; i < 12; i++) window.__gifosVideo.audienceReactForTest('👏', 'watch-' + i);
   });
@@ -2742,7 +2742,7 @@ test('a service can mute the stage on this device', async ({ page }) => {
     await expect(btn).toBeVisible();
     await expect(btn).toHaveText('Sound on');
     await expect(btn).toHaveAttribute('aria-pressed', 'false');
-    await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+    await expect(page.locator('#airkind')).toHaveText('Broadcast · You are watching');
     const lay = await soundLay();
     expect(lay.inside, JSON.stringify(lay)).toBe(true);
     expect(lay.on, JSON.stringify(lay)).toBe(true);
@@ -2763,7 +2763,7 @@ test('a service can mute the stage on this device', async ({ page }) => {
       await expect(btn).toHaveText('Muted');
       await expect(btn).toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('#status')).toHaveText('The stage is muted on this device. Everyone else still hears it.');
-      await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+      await expect(page.locator('#airkind')).toHaveText('Broadcast · You are watching');
       const muted = await page.evaluate(() => {
         const v = document.getElementById('qa-stage-vid');
         return {
@@ -2798,17 +2798,17 @@ test('a service can mute the stage on this device', async ({ page }) => {
   }
   await page.goto('/run.html?desk=soundhost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airbar.on.live');
-  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+  await expect(page.locator('#airkind')).toHaveText('Broadcast · You are live');
   await expect(page.locator('#airsound')).toHaveText('Sound on');
   await page.locator('#airsound').click();
   await expect(page.locator('#airsound')).toHaveText('Muted');
-  await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+  await expect(page.locator('#airkind')).toHaveText('Broadcast · You are live');
   const hostLay = await soundLay();
   expect(hostLay.inside, JSON.stringify(hostLay)).toBe(true);
   expect(hostLay.dock, JSON.stringify(hostLay)).toBe(false);
   await page.goto('/run.html?desk=soundgroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airbar.on.group');
-  await expect(page.locator('#airkind')).toHaveText('Small group');
+  await expect(page.locator('#airkind')).toHaveText('Meeting');
   const groupSound = await page.locator('#airsound').evaluate((el) => el.hidden || getComputedStyle(el).display === 'none');
   expect(groupSound).toBe(true);
   await expect(page.locator('#mixpanel')).toBeAttached();
@@ -2838,7 +2838,7 @@ test('a service room bar counts the people watching, not the host', async ({ pag
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/run.html?desk=watch' + w + '&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#airbar.on.live');
-    await expect(page.locator('#airkind')).toHaveText('Service · You are live');
+    await expect(page.locator('#airkind')).toHaveText('Broadcast · You are live');
     await expect(who).toHaveText('0 watching');
     await expect(who).toHaveAttribute('title', 'Who is watching');
     await expect(who).toHaveAttribute('aria-label', 'Who is watching, 0');
@@ -3040,7 +3040,7 @@ test('a joining viewer is not told the stage is clear while the host is live', a
   const line = page.locator('#bc-stage-line');
   await expect(plate).toBeVisible();
   await page.screenshot({ path: 'artifacts/join-plate-' + (process.env.SHOT_TAG || 'run') + '.png' });
-  await expect(line, 'nobody heard yet').toHaveText('Joining the service…');
+  await expect(line, 'nobody heard yet').toHaveText('Joining the broadcast…');
   // The host's status lands: on stage, camera on, no picture yet.
   const stagers = await page.evaluate(() => window.__gifosVideo.stageHostForTest('host-live', 'Pastor Kim'));
   expect(stagers).toContain('host-live');
@@ -3091,7 +3091,7 @@ test('a viewer at the name card has no camera or mic on the dock', async ({ page
 
 test('a viewer at the name card is told they are joining, not watching', async ({ page }) => {
   // Seen across two machines: behind "This is how you'll appear" the viewer
-  // read "You are watching this service. · reconnecting to the room…" and
+  // read "You are watching this broadcast. · reconnecting to the room…" and
   // "1 watching". They had not joined, nothing had dropped, and the one
   // counted was themselves.
   await page.addInitScript(() => {
@@ -3103,7 +3103,7 @@ test('a viewer at the name card is told they are joining, not watching', async (
   await expect(page.locator('#appear-modal')).toBeVisible();
   await page.waitForSelector('#airbar.on.watch');
   const status = page.locator('#status');
-  await expect(status).toHaveText('Joining the service…');
+  await expect(status).toHaveText('Joining the broadcast…');
   await expect(page.locator('#airwho')).toBeHidden();
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.locator('#airwho')).toBeVisible();
@@ -3112,7 +3112,7 @@ test('a viewer at the name card is told they are joining, not watching', async (
 
 test('a joined viewer is told they are watching, not the video quality', async ({ page }) => {
   // Seen across two machines: a viewer in a service with its host read
-  // "2 in this service · 720p · a password unlocks clear video". A viewer
+  // "2 in this broadcast · 720p · a password unlocks clear video". A viewer
   // sends no video, so the quality and the password hint were host talk,
   // and the room bar already counts who is watching.
   await page.addInitScript(() => {
@@ -3128,8 +3128,8 @@ test('a joined viewer is told they are watching, not the video quality', async (
     await page.waitForFunction(() => window.__gifosVideo && window.__gifosVideo.livePeerForTest);
     const n = await page.evaluate(() => window.__gifosVideo.livePeerForTest('hostpeer', 'Pastor Sam'));
     expect(n).toBe(2);
-    await expect(status).toContainText('You are watching this service.');
-    await expect(status).not.toContainText('in this service');
+    await expect(status).toContainText('You are watching this broadcast.');
+    await expect(status).not.toContainText('in this broadcast');
     await expect(status).not.toContainText('720p');
     await expect(status).not.toContainText(/\d+p\b/);
     await expect(status).not.toContainText('password');
@@ -3160,7 +3160,7 @@ test('a live host with viewers is told they are live, not the meeting count', as
     if (w === 1280) { await page.waitForTimeout(500); await page.screenshot({ path: 'artifacts/host-line-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
     await expect(status).toHaveText(/^You are live · \d+p\b/);
     await expect(status).toContainText('blurred until you set a viewer password');
-    await expect(status).not.toContainText('in this service');
+    await expect(status).not.toContainText('in this broadcast');
     await expect(status).not.toContainText('a password unlocks');
   }
 });
@@ -3394,7 +3394,7 @@ test('a clap on the stage names who clapped', async ({ page }) => {
 
 test('a joined viewer reads who is live, not watching three times', async ({ page }) => {
   // Seen across two machines: a viewer's header read "WATCHING · You are
-  // watching this service." beside "Service · You are watching". The badge
+  // watching this broadcast." beside "Broadcast · You are watching". The badge
   // and the room bar already say watching; the line now names the host.
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Jordan Lee');
@@ -3414,7 +3414,7 @@ test('a joined viewer reads who is live, not watching three times', async ({ pag
       if (v.hostPeerForTest) v.hostPeerForTest('hostpeer');
     });
     await expect(page.locator('#onair')).toHaveText('Watching');
-    await expect(page.locator('#airkind')).toHaveText('Service · You are watching');
+    await expect(page.locator('#airkind')).toHaveText('Broadcast · You are watching');
     // The host is not watching: this viewer and Sam Lee are.
     await expect(page.locator('#airwho')).toHaveText('2 watching');
     if (w === 1280) { await page.waitForTimeout(300); await page.screenshot({ path: 'artifacts/who-live-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
@@ -3450,7 +3450,7 @@ test('the lobby preview says you join muted with the camera off', async ({ page 
       });
       expect(box.inside).toBe(true);
       expect(box.apart).toBe(true);
-      if (bc) await expect(page.locator('#lob-empty')).toHaveText('Services you start or watch show up here.');
+      if (bc) await expect(page.locator('#lob-empty')).toHaveText('Broadcasts you start or watch show up here.');
       else await expect(page.locator('#lob-empty')).toHaveText('Calls you start or join show up here.');
     }
   }
@@ -3523,7 +3523,7 @@ test('the chat close and attach buttons have names, and closing returns to Chat'
       await expect(panel).toHaveClass(/open/);
       if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/chat-names-' + (process.env.SHOT_TAG || 'run') + '.png' });
       await expect(page.locator('#chatclose')).toHaveAccessibleName('Close chat');
-      await expect(page.locator('#cattach')).toHaveAccessibleName(who === 'group' ? 'Pin a file to the meeting' : 'Pin a file to this service');
+      await expect(page.locator('#cattach')).toHaveAccessibleName(who === 'group' ? 'Pin a file to the meeting' : 'Pin a file to this broadcast');
       await page.locator('#chatclose').focus();
       await page.keyboard.press('Enter');
       await expect(panel).not.toHaveClass(/open/);
@@ -3932,7 +3932,7 @@ test('the open chat sits beside the room bar and stage, not over them', async ({
 });
 
 test('the chat head keeps its buttons on one row beside the title', async ({ page }) => {
-  // Seen across two machines at 1280: the host's Service chat head put
+  // Seen across two machines at 1280: the host's Broadcast chat head put
   // Transcript and Turn chat off beside the title and wrapped the close ✕
   // alone onto a second row, and the privacy line under it began with a
   // stray "·" left from when it sat beside the title.
@@ -3980,7 +3980,7 @@ test('the chat head keeps its buttons on one row beside the title', async ({ pag
       }
       expect(head.titleH, tag + ' title one line').toBeLessThanOrEqual(24);
       // A small group says the short line (see 1351); a service names itself.
-      expect(head.privacy, tag).toMatch(/^(Private to this service, gone when everyone leaves|Private\. Gone when everyone leaves\.)$/);
+      expect(head.privacy, tag).toMatch(/^(Private to this broadcast, gone when everyone leaves|Private\. Gone when everyone leaves\.)$/);
       await page.keyboard.press('Escape');
     }
   }
@@ -4167,7 +4167,7 @@ test('with the chat open, the dock sits in the call beside it, not across its ed
 
 test('with the chat open, the room bar keeps each pill and its title on one line', async ({ page }) => {
   // Seen at 900 with the chat open: the call beside it is 560px, and the room
-  // bar broke "Service · You are watching" over two lines and every pill in
+  // bar broke "Broadcast · You are watching" over two lines and every pill in
   // two ("Not / recording", "1 / watching", "Sound / on").
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
@@ -4517,11 +4517,8 @@ test('Allow screen share in the More sheet stays on one line', async ({ page }) 
   }
 });
 
-test('the recording chip on a tile names the small group, not a meeting', async ({ page }) => {
-  // Seen on two machines (rec-leave-cross-after.png): while one person
-  // records a small group, their tile chip read "recording this meeting",
-  // under a card and a room bar that say "small group". The chip names the
-  // same room word as the card. A tile needs a real call (an mb=1 page never
+test('the recording chip on a tile names the meeting', async ({ page }) => {
+  // The tile chip uses the same room word as the bar and the card: meeting. A tile needs a real call (an mb=1 page never
   // joins), so this one opens a call from the lobby on a relay that is not
   // there; cross-recchip.js reads the chip on a real peer's tile.
   await page.addInitScript(() => {
@@ -4543,7 +4540,7 @@ test('the recording chip on a tile names the small group, not a meeting', async 
     const chip = page.locator('.tile.me .chips .warn', { hasText: '⏺' });
     await expect(chip).toHaveCount(1);
     if (w === 1280) await page.screenshot({ path: 'artifacts/rec-chip-' + (process.env.SHOT_TAG || 'run') + '.png' });
-    await expect(chip, 'at ' + w).toHaveText('⏺ recording this small group');
+    await expect(chip, 'at ' + w).toHaveText('⏺ recording this meeting');
     await expect(page.locator('#airrec')).toHaveText('Recording');
   }
 });

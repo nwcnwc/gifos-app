@@ -34,7 +34,7 @@ run('cross-chatnames', async (hb, vb, shoot) => {
   const out = { host: await closeChat(host), viewer: await closeChat(viewer) };
   await shoot();
   for (const [who, s] of Object.entries(out)) {
-    if (s.close !== 'Close chat' || s.attach !== 'Pin a file to this service' || s.open || s.focus !== 'chatbtn') {
+    if (s.close !== 'Close chat' || s.attach !== 'Pin a file to this broadcast' || s.open || s.focus !== 'chatbtn') {
       throw new Error(who + ' chat buttons: ' + JSON.stringify(out));
     }
   }

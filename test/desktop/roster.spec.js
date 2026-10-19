@@ -48,7 +48,7 @@ async function rosterBox(page) {
 
 test('twenty people open as a roster from the count', async ({ page }) => {
   await boot(page);
-  await expect(page.locator('#statuscount')).toHaveText('21 in this small group');
+  await expect(page.locator('#statuscount')).toHaveText('21 in this meeting');
   const closed = await rosterBox(page);
   expect(closed.missing).toBe(false);
   expect(closed.open).toBe(false);

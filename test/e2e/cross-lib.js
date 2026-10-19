@@ -80,7 +80,7 @@ async function goLive(hb, prefix, setup) {
   if (await host.locator('#lob-admin-pass').isVisible()) await host.locator('#lob-admin-pass').fill('host-pass-' + Math.random().toString(36).slice(2));
   await host.locator('#lob-admin-go').click();
   await host.waitForSelector('body.broadcast', { timeout: 30000 });
-  await until('host is live', async () => ({ ok: (await host.locator('#airkind').textContent()) === 'Service · You are live' }), 15000);
+  await until('host is live', async () => ({ ok: (await host.locator('#airkind').textContent()) === 'Broadcast · You are live' }), 15000);
   await ackRecording(host, 15000);
   return host;
 }
@@ -123,7 +123,7 @@ async function watch(vb, host) {
   const viewer = await user(vb, 'Jordan Lee');
   await viewer.goto(BASE + '/run.html?desk=crossview#' + host.url().split('#')[1]);
   await saveName(viewer);
-  await until('viewer is watching', async () => ({ ok: (await viewer.locator('#airkind').textContent()) === 'Service · You are watching' }), 15000);
+  await until('viewer is watching', async () => ({ ok: (await viewer.locator('#airkind').textContent()) === 'Broadcast · You are watching' }), 15000);
   await ackRecording(viewer, 10000);
   return viewer;
 }

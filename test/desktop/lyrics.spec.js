@@ -77,8 +77,8 @@ test('the booth reads the current line and the next one', async ({ page }) => {
   expect(song.display).not.toBe('none');
   expect(song.programK).toBe('Program');
   expect(song.previewK).toBe('Preview');
-  expect(song.program).toBe('Amazing grace, how sweet the sound');
-  expect(song.preview).toBe('That saved a wretch like me');
+  expect(song.program).toBe('The first line of the song is the one to sing');
+  expect(song.preview).toBe('The next line follows after it');
   expect(song.programFont).toBeGreaterThanOrEqual(28);
   expect(song.previewFont).toBeLessThan(song.programFont);
   expect(song.previewFont).toBeGreaterThanOrEqual(16);
@@ -94,13 +94,13 @@ test('the booth reads the current line and the next one', async ({ page }) => {
 
   await page.click('#lyrics-next');
   const second = await lyricBox(page);
-  expect(second.program).toBe('That saved a wretch like me');
-  expect(second.preview).toBe('I once was lost, but now am found');
+  expect(second.program).toBe('The next line follows after it');
+  expect(second.preview).toBe('Each line is one breath long');
 
   await page.click('#lyrics-next');
   await page.click('#lyrics-next');
   const last = await lyricBox(page);
-  expect(last.program).toBe('Was blind, but now I see.');
+  expect(last.program).toBe('And the last line ends the song.');
   expect(last.preview).toBe('');
   expect(last.next).toBe('Start over');
   expect(last.onScreen).toBe(true);
@@ -110,7 +110,7 @@ test('the booth reads the current line and the next one', async ({ page }) => {
 
   await page.click('#lyrics-next');
   const again = await lyricBox(page);
-  expect(again.program).toBe('Amazing grace, how sweet the sound');
+  expect(again.program).toBe('The first line of the song is the one to sing');
   expect(again.next).toBe('Next line');
 
   await page.click('#rundown-next');
@@ -120,7 +120,7 @@ test('the booth reads the current line and the next one', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 720 });
   for (let i = 0; i < 7; i++) await page.click('#rundown-next');
   const narrow = await lyricBox(page);
-  expect(narrow.program).toBe('Amazing grace, how sweet the sound');
+  expect(narrow.program).toBe('The first line of the song is the one to sing');
   expect(narrow.clipped).toBe(false);
   expect(narrow.onScreen).toBe(true);
   expect(narrow.coversDock).toBe(false);
@@ -129,7 +129,7 @@ test('the booth reads the current line and the next one', async ({ page }) => {
 
   await page.setViewportSize({ width: 1100, height: 600 });
   const short = await lyricBox(page);
-  expect(short.program).toBe('Amazing grace, how sweet the sound');
+  expect(short.program).toBe('The first line of the song is the one to sing');
   expect(short.programFont).toBeGreaterThanOrEqual(28);
   expect(short.previewFont).toBeGreaterThanOrEqual(16);
   expect(short.previewFont).toBeLessThan(short.programFont);
@@ -149,7 +149,7 @@ test.describe('German lyrics chrome', () => {
     expect(b.programK).toBe('Programm');
     expect(b.previewK).toBe('Vorschau');
     expect(b.next).toBe('Nächste Zeile');
-    expect(b.program).toBe('Amazing grace, how sweet the sound');
+    expect(b.program).toBe('The first line of the song is the one to sing');
     expect(b.programFont).toBeGreaterThanOrEqual(28);
   });
 });
@@ -164,7 +164,7 @@ test.describe('Spanish lyrics chrome', () => {
     expect(b.programK).toBe('Programa');
     expect(b.previewK).toBe('Vista previa');
     expect(b.next).toBe('Siguiente línea');
-    expect(b.program).toBe('Amazing grace, how sweet the sound');
+    expect(b.program).toBe('The first line of the song is the one to sing');
   });
 });
 
@@ -290,7 +290,7 @@ test('the booth enters its own song and Song reads it', async ({ page, browserNa
   await expect(text).toBeVisible();
   await expect(text).toBeFocused();
   // It opens on the song the booth would read now.
-  expect((await text.inputValue()).split('\n')[0]).toBe('Amazing grace, how sweet the sound');
+  expect((await text.inputValue()).split('\n')[0]).toBe('The first line of the song is the one to sing');
   expect(await text.evaluate((t) => parseFloat(getComputedStyle(t).fontSize))).toBeGreaterThanOrEqual(16);
   await page.screenshot({ path: 'test/desktop/shots/own-song-edit-1280.png' });
   // Blank lines and stray spaces do not become lines.
@@ -330,7 +330,7 @@ test('the booth enters its own song and Song reads it', async ({ page, browserNa
   await page.locator('#song-text').fill('\n  \n');
   await page.click('#song-save');
   const hymn = await lyricBox(page);
-  expect(hymn.program).toBe('Amazing grace, how sweet the sound');
+  expect(hymn.program).toBe('The first line of the song is the one to sing');
 });
 
 test('a viewer has no song words button', async ({ page }) => {
@@ -382,7 +382,7 @@ test('a service has a second song after the Message with its own words', async (
   // Take the before picture first: on base the next line fails.
   await shot('before');
   // The order of service has two songs, the second after the Message.
-  expect(await steps()).toEqual(['Welcome', 'Song 1', 'Prayer', 'Scripture', 'Message', 'Song 2', 'Closing']);
+  expect(await steps()).toEqual(['Welcome', 'Song 1', 'Break', 'Reading', 'Talk', 'Song 2', 'Closing']);
 
   // Before the service, Song words opens song 1.
   await page.click('#rundown #song-edit');
@@ -396,9 +396,9 @@ test('a service has a second song after the Message with its own words', async (
   expect(b.program).toBe(OWN_SONG[0]);
   await page.click('#lyrics-next');
 
-  // During Prayer, Song words opens the song that comes next.
+  // During Break, Song words opens the song that comes next.
   await page.click('#rundown-next');
-  expect(await now()).toBe('Prayer');
+  expect(await now()).toBe('Break');
   await page.click('#rundown #song-edit');
   await expect(page.locator('#songedit-title')).toHaveText('Song words · Song 2');
   const text = page.locator('#song-text');
@@ -410,7 +410,7 @@ test('a service has a second song after the Message with its own words', async (
   await shot('edit');
   await page.click('#song-save');
 
-  // Scripture, Message, then Song 2 reads the second song from its first line.
+  // Reading, Talk, then Song 2 reads the second song from its first line.
   for (let i = 0; i < 3; i++) await page.click('#rundown-next');
   expect(await now()).toBe('Song 2');
   b = await lyricBox(page);

@@ -38,7 +38,7 @@ run('cross-recleave', async (hb, vb, shoot) => {
   await sleep(300);
   await shoot();
   const g = card.got;
-  if (!/^Sam Rivera is recording this small group/.test(g.text)) throw new Error('the card does not name who is recording ' + JSON.stringify(g));
+  if (!/^Sam Rivera is recording this meeting/.test(g.text)) throw new Error('the card does not name who is recording ' + JSON.stringify(g));
   if (!/Staying means you agree to be recorded/.test(g.text) || g.ok !== 'Stay' || g.leave !== 'Leave') throw new Error('no way to say no to the recording ' + JSON.stringify(g));
   await b.locator('#rec-notice-leave').click();
   await until('the second person left', async () => ({ ok: await b.locator('#left-modal').isVisible() }), 10000);

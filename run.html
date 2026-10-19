@@ -1505,7 +1505,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   #chathead { display: flex; align-items: center; flex-wrap: wrap; gap: .35rem .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; }
   /* The privacy line used to sit beside the title and collapse into a narrow
-     column, so "Service chat" wrapped. It takes the row under the title. */
+     column, so "Broadcast chat" wrapped. It takes the row under the title. */
   #paneltitle { flex: none; white-space: nowrap; line-height: 1.2; }
   #chatprivacy { order: 1; flex: 1 0 100%; margin: 0; line-height: 1.35; }
   #chathead button { margin-left: auto; padding: .2rem .6rem; border-radius: .4rem; border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
@@ -2140,7 +2140,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #avstate span { display: inline-flex; align-items: center; gap: 8px; }
   #avstate span[hidden] { display: none !important; }
   #avstate span::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: #ffb4b4; flex: none; }
-  /* Order of service: the booth's list. Viewers never see it. While it is
+  /* Run of show: the booth's list. Viewers never see it. While it is
      open the off-air card moves to the right so the two do not stack. */
   #rundown { display: none; position: fixed; z-index: 24; left: 14px; bottom: 128px;
     width: min(260px, calc(100vw - 28px)); max-height: calc(100vh - 200px);
@@ -2577,7 +2577,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     pointer-events: none;
     max-height: calc(100vh - 140px); max-height: calc(100dvh - 140px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
   /* Phone: keep every More button (incl. dock stand-ins) fully in the sheet;
-     Order of service sits under the sheet while More is open. */
+     Run of show sits under the sheet while More is open. */
   @media (max-width: 700px), (max-height: 500px) {
     /* Fixed to the viewport so the short dock bar cannot clip the sheet
        (Share/React/Step off were cut off inside .bar's box on Pixel 7). */
@@ -3375,7 +3375,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     /* The sentence is a second chip row. Its height follows the words, so the
        air bar starts at the chip's measured bottom (--chip-bottom), not a
-       fixed guess that let a second line cover "Service · You are off air". */
+       fixed guess that let a second line cover "Broadcast · You are off air". */
     body.broadcast #airbar.on { margin-top: var(--chip-bottom, calc(var(--banner-h) + 120px)); }
     body:has(.bar:not(.collapsed)) #bc-link { display: none !important; }
   }
@@ -3787,7 +3787,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <span class="lob-pv-note">You join muted, with the camera off</span>
     </div>
     <div class="lobby-card">
-      <h1 data-t="lobTitle">Small group</h1>
+      <h1 data-t="lobTitle">Meeting</h1>
       <p class="lob-quiet" data-t="lobQuiet">Turn your mic and camera on from the call.</p>
       <button id="lob-open" class="lob-primary"><span data-t="lobStart">Start a call</span><small data-t="lobStartSub">Anyone with the link can join</small></button>
       <button type="button" id="lob-admin-btn" class="lob-link">Host this call</button>
@@ -3813,7 +3813,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button type="button" id="lob-join-btn" class="lob-link">Join a link</button>
       <div id="lob-join" class="lob-expand" style="display:none">
         <input id="lob-join-in" placeholder="Paste link or meeting id" autocomplete="off">
-        <p id="lob-watch-note" class="lob-watch-note" hidden>Watching the service. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>
+        <p id="lob-watch-note" class="lob-watch-note" hidden>Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>
         <div class="lob-row"><button id="lob-join-cancel" class="lob-ghost">Cancel</button><button id="lob-join-go">Join</button></div>
         <div id="lob-join-err" class="lob-err"></div>
       </div>
@@ -3853,8 +3853,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   </aside>
   <div id="waitself" aria-live="polite"><h3></h3><p></p></div>
   <button type="button" id="still">Still in the call</button>
-  <aside id="rundown" aria-label="Order of service">
-    <h3 id="rundown-title">Order of service</h3>
+  <aside id="rundown" aria-label="Run of show">
+    <h3 id="rundown-title">Run of show</h3>
     <ol id="rundown-list"></ol>
     <p id="rundown-end"></p>
     <button type="button" id="rundown-next">Next</button>
@@ -4037,8 +4037,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button id="votebtn" data-t="vote" data-ti="voteTip" aria-keyshortcuts="Alt+U" title="Vote someone onto the stage, off the stage, or out of the room — majorities decide">Vote</button>
         <button id="stagebtn" data-t="stage" aria-keyshortcuts="Alt+G" title="Step onto the stage — the whole room sees and hears the stage first">Stage</button>
         <button id="appbtn" data-t="runApp" aria-keyshortcuts="Alt+Y" title="Run an app inside this meeting — everyone here shares and interacts with it live">Run app</button>
-        <button id="rbbtn" title="Play the last service, or a video, into the broadcast. Viewers see Prerecorded.">Rebroadcast</button>
-        <label id="bcwhenrow" title="When the service starts. The viewer link and the room say so."><span id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
+        <button id="rbbtn" title="Play the last broadcast, or a video, into the broadcast. Viewers see Prerecorded.">Rebroadcast</button>
+        <label id="bcwhenrow" title="When the broadcast starts. The viewer link and the room say so."><span id="bcwhen-lbl">Start time</span><input type="datetime-local" id="bcwhen"></label>
         <label id="bcvisitrow" title="Link for viewers (opens in a new window)"><span id="bcvisit-lbl">Visit link</span><input type="url" id="bcvisit" inputmode="url" autocomplete="url" placeholder="https://" spellcheck="false"></label>
       </div>
     </section>
@@ -4124,7 +4124,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div id="stagefeed"></div>
     <div id="stagemod" hidden aria-label="On stage"></div>
     <div id="bc-ident"><img id="bc-ident-img" alt=""><div id="bc-ident-init" aria-hidden="true"></div><div id="bc-ident-name"></div><div id="bc-ident-note">Camera off</div></div>
-    <div id="bc-stage" hidden><p id="bc-stage-line">Joining the service…</p></div>
+    <div id="bc-stage" hidden><p id="bc-stage-line">Joining the broadcast…</p></div>
     <div id="bc-react" aria-hidden="true"></div>
     <div id="bc-reacts" hidden role="status" aria-label="Audience reactions"></div>
     <div id="appseat" aria-hidden="true"></div>
@@ -4397,7 +4397,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           conversation — you're directly connected to them.</li>
           <li><b>The stadium</b> — everyone beyond your row, packed into one mosaic of
           equal-size squares that grows downward as the room fills, plus a single summed
-          roar. A million-voice “Amen” reaches you as one sound.</li>
+          roar. A million voices answering at once reach you as one sound.</li>
         </ul>
         <p class="help-note">How does it scale? Each row automatically combines its
         members' video and voices, and rows fold up the tree into <b>one</b> Stadium
@@ -4430,7 +4430,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           <li><b>Conversation</b> (the usual) — replies come back as fast as your own
           connection allows. Best for talking.</li>
           <li><b>Unison</b> — every phone waits just long enough that the <i>whole room</i>
-          hears everything at the same instant. Shared laughter, an “Amen,” a reading
+          hears everything at the same instant. Shared laughter, a cheer, a reading
           answered together — they actually land together. The trade: replies arrive a
           blink later, set by the slowest connection in the room.</li>
           <li><b>🎵 Song</b> — tap it to <i>lead</i> the room in song yourself; it stays
@@ -4439,19 +4439,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
         <h4>Singing together — 🎵</h4>
         <p>Singing on a normal video call is famously awful: every voice arrives a
-        different beat late, so a hymn turns to mush — and phone microphones treat a held
+        different beat late, so a song turns to mush — and phone microphones treat a held
         note like background noise and try to erase it. This room does it differently.</p>
         <p>When someone taps <b>🎵 Song</b> (in <b>Settings</b>, under Timing), they step onto
         the stage as the song leader, their microphone switches to <b>music quality</b>,
         every other phone stops treating a held note as noise, and every phone quietly
-        lines the room up in time — the way sound behaves in a great stone church:</p>
+        lines the room up in time — the way sound behaves in a large hall:</p>
         <ul class="help-list">
           <li>Everyone hears the <b>leader at the same moment</b>, so the whole room is
           truly singing together, wherever everyone is.</li>
-          <li>The voices near you arrive as <b>one choir</b>, a beat behind your own —
+          <li>The voices near you arrive as <b>one sound</b>, a beat behind your own —
           like the room answering around you.</li>
-          <li>The leader hears the congregation answer from behind, the way a cantor
-          hears a cathedral.</li>
+          <li>The leader hears the room answer from behind, the way a conductor
+          hears a hall.</li>
         </ul>
         <p><b>Earbuds matter.</b> Any earbuds — even the cheap ones in a drawer — let your
         phone capture just <i>your</i> voice, making you part of the choir at full quality.
@@ -4469,7 +4469,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           <li><b>Password</b> — the key to <i>clear</i> video. Set one and faces sharpen for
           those who have it; without one, everyone stays fully blurred (Max). The Blur slider softens it.</li>
           <li><b>Invite</b> — one link brings people straight in.</li>
-          <li><b>Run app</b> — share an app (a Bible, a board, a game) that everyone in the
+          <li><b>Run app</b> — share an app (notes, a board, a game) that everyone in the
           room uses together, live.</li>
           <li><b>Record / CC</b> — record to <i>your own device</i>, or turn on live captions
           your phone writes from your own voice.</li>
@@ -4811,7 +4811,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return n ? out : null;
     })();
     const BROADCAST = BC_INTENT && !!params.get('v') && /^[a-f0-9]{16,64}$/.test((params.get('av') || '').toLowerCase());
-    const BC_WATCH_COPY = 'Watching the service. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.';
+    const BC_WATCH_COPY = 'Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.';
     if (BROADCAST) document.body.classList.add('broadcast');
     // A town hall is a skin on the same admin room, the way a broadcast is.
     // th rides the link (?th=1 on a pretty /meet path, &th=1 in the hash).
@@ -4901,7 +4901,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       maybeShowRecNotice();
     }
     function recRoomWord() {
-      return (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'service' : 'small group';
+      return (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'broadcast' : 'meeting';
     }
     function recNoticeTitle() {
       let subject = '';
@@ -4989,9 +4989,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const sending = bcSendingSafe();
       let onStage = false;
       try { onStage = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) { onStage = false; }
-      if (role === 'host') paintAirKind(sending ? 'live' : 'off', sending ? 'Service · You are live' : 'Service · You are off air');
-      else if (onStage) paintAirKind(sending ? 'live' : 'off', 'Service · You are on stage');
-      else paintAirKind('watch', 'Service · You are watching');
+      if (role === 'host') paintAirKind(sending ? 'live' : 'off', sending ? 'Broadcast · You are live' : 'Broadcast · You are off air');
+      else if (onStage) paintAirKind(sending ? 'live' : 'off', 'Broadcast · You are on stage');
+      else paintAirKind('watch', 'Broadcast · You are watching');
       try { paintOnAir(); } catch (e) {}
       if (typeof updateStatus === 'function') { try { updateStatus(); } catch (e) {} }
     }
@@ -5085,14 +5085,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const end = mode === 'end';
         if (leave) {
           if (end) {
-            leave.title = 'End the service. Everyone watching sees it close after you leave.';
-            leave.setAttribute('aria-label', 'End the service');
+            leave.title = 'End the broadcast. Everyone watching sees it close after you leave.';
+            leave.setAttribute('aria-label', 'End the broadcast');
           } else if (mode === 'watch') {
-            leave.title = 'Leave the service. Your camera and microphone stop.';
-            leave.setAttribute('aria-label', 'Leave the service');
+            leave.title = 'Leave the broadcast. Your camera and microphone stop.';
+            leave.setAttribute('aria-label', 'Leave the broadcast');
           } else {
-            leave.title = 'Leave the small group. Your camera and microphone stop.';
-            leave.setAttribute('aria-label', 'Leave the small group');
+            leave.title = 'Leave the meeting. Your camera and microphone stop.';
+            leave.setAttribute('aria-label', 'Leave the meeting');
           }
         }
         if (lab) lab.textContent = end ? 'End' : 'Leave';
@@ -5102,41 +5102,41 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           note.textContent = end ? 'Everyone watching sees a five-minute countdown after you leave, and then the room closes.' : '';
         }
         if (end) {
-          say('leave-ask-title', 'End the service?');
-          say('left-title', 'You ended the service');
+          say('leave-ask-title', 'End the broadcast?');
+          say('left-title', 'You ended the broadcast');
           say('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
         } else if (mode === 'watch') {
-          say('leave-ask-title', 'Leave the service?');
-          say('left-title', 'You left the service');
+          say('leave-ask-title', 'Leave the broadcast?');
+          say('left-title', 'You left the broadcast');
           say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
         } else {
-          say('leave-ask-title', 'Leave the small group?');
-          say('left-title', 'You left the small group');
+          say('leave-ask-title', 'Leave the meeting?');
+          say('left-title', 'You left the meeting');
           say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
         }
       };
       if (!BROADCAST) {
         if (!english) {
-          // A German or Spanish device keeps the translated chrome (applyChrome).
-          paintAirKind('group', 'Small group');
-          if (bar) bar.setAttribute('aria-label', 'Small group controls');
+          // A German or Spanish device keeps the translated room name (applyChrome).
+          paintAirKind('group', uiText('lobTitle', 'Meeting'));
+          if (bar) bar.setAttribute('aria-label', uiText('lobTitle', 'Meeting'));
           paintWatchingSeat();
           return;
         }
-        document.title = 'Small group — GifOS';
+        document.title = 'Meeting — GifOS';
         if (pill) { pill.hidden = true; pill.className = ''; }
-        paintAirKind('group', 'Small group');
+        paintAirKind('group', 'Meeting');
         const whoMeet = document.getElementById('whobtn');
         if (whoMeet) whoMeet.title = 'Who is here — names and internet addresses';
         const whoMeetH = document.querySelector('#who-modal h3');
         if (whoMeetH && !phoneLayout()) whoMeetH.textContent = 'Who is here';
-        if (bar) bar.setAttribute('aria-label', 'Small group controls');
+        if (bar) bar.setAttribute('aria-label', 'Meeting controls');
         const curTitle = document.getElementById('paneltitle');
-        if (curTitle && curTitle.textContent !== 'Transcript') curTitle.textContent = 'Small group chat';
+        if (curTitle && curTitle.textContent !== 'Transcript') curTitle.textContent = 'Meeting chat';
         const leave = document.getElementById('leavebtn');
         if (leave) {
-          leave.title = 'Leave the small group. Your camera and microphone stop.';
-          leave.setAttribute('aria-label', 'Leave the small group');
+          leave.title = 'Leave the meeting. Your camera and microphone stop.';
+          leave.setAttribute('aria-label', 'Leave the meeting');
         }
         say('chatprivacy', 'Private. Gone when everyone leaves.'); // before UI_TEXT exists; the data-t on the element localises it
         const chatMeet = document.getElementById('chatbtn');
@@ -5161,50 +5161,50 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const nameLead = document.getElementById('set-name-lead');
         if (nameLead) nameLead.textContent = 'What everyone sees on your tile:';
         const helpH = ROOM.kind === 'app' ? null : document.querySelector('#help-modal h3');
-        if (helpH) helpH.textContent = 'How this small group works';
+        if (helpH) helpH.textContent = 'How this meeting works';
         paintWatchingSeat();
         return;
       }
-      document.title = 'Service — GifOS';
+      document.title = 'Broadcast — GifOS';
       const svcTitle = document.getElementById('paneltitle');
-      if (svcTitle && svcTitle.textContent !== 'Transcript') svcTitle.textContent = 'Service chat';
+      if (svcTitle && svcTitle.textContent !== 'Transcript') svcTitle.textContent = 'Broadcast chat';
       const leaveSvc = document.getElementById('leavebtn');
       if (leaveSvc) {
-        leaveSvc.title = 'Leave the service. Your camera and microphone stop.';
-        leaveSvc.setAttribute('aria-label', 'Leave the service');
+        leaveSvc.title = 'Leave the broadcast. Your camera and microphone stop.';
+        leaveSvc.setAttribute('aria-label', 'Leave the broadcast');
       }
-      say('leave-ask-title', 'Leave the service?');
-      say('left-title', 'You left the service');
+      say('leave-ask-title', 'Leave the broadcast?');
+      say('left-title', 'You left the broadcast');
       say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
-      say('chatprivacy', 'Private to this service, gone when everyone leaves');
+      say('chatprivacy', 'Private to this broadcast, gone when everyone leaves');
       const nameLead = document.getElementById('set-name-lead');
       if (nameLead) nameLead.textContent = 'What everyone sees on the stage:';
       const setBtn = document.getElementById('setbtn');
-      if (setBtn) setBtn.title = 'Service settings — the picture you send, and the name people see on the stage.';
+      if (setBtn) setBtn.title = 'Broadcast settings — the picture you send, and the name people see on the stage.';
       const helpH = document.querySelector('#help-modal h3');
-      if (helpH) helpH.textContent = 'How this service works';
+      if (helpH) helpH.textContent = 'How this broadcast works';
       const who = document.getElementById('whobtn');
       if (who) who.title = 'Who is watching — names and internet addresses';
       const whoH = document.querySelector('#who-modal h3');
       if (whoH) whoH.textContent = 'Who is watching';
       const whoP = document.querySelector('#who-modal .name-box p');
-      if (whoP) whoP.textContent = 'There is no server in the middle storing this service. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone\u2019s internet address \u2014 nobody is anonymous. \u2713 marks an address the GifOS relay verified or this device saw directly; anything else is only what that person\u2019s device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.';
+      if (whoP) whoP.textContent = 'There is no server in the middle storing this broadcast. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone\u2019s internet address \u2014 nobody is anonymous. \u2713 marks an address the GifOS relay verified or this device saw directly; anything else is only what that person\u2019s device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.';
       const chat = document.getElementById('chatbtn');
       if (chat) chat.title = 'Chat with everyone watching — stays between the people here, not on a server';
       const rec = document.getElementById('recbtn');
-      if (rec) rec.title = 'Record this service ON YOUR DEVICE (everyone sees that you are recording)';
+      if (rec) rec.title = 'Record this broadcast ON YOUR DEVICE (everyone sees that you are recording)';
       const inv = document.querySelector('#inv-modal h3');
-      if (inv) inv.textContent = 'Share this service';
+      if (inv) inv.textContent = 'Share this broadcast';
       const pw = document.getElementById('pwbtn');
       if (pw) pw.title = 'Viewer password. Optional. It is not part of the link.';
       const files = document.querySelector('#cfiles h4');
-      if (files) files.textContent = 'Files pinned to this service';
+      if (files) files.textContent = 'Files pinned to this broadcast';
       const pin = document.getElementById('cattach');
-      if (pin) { pin.title = 'Pin a file to this service'; pin.setAttribute('aria-label', pin.title); }
+      if (pin) { pin.title = 'Pin a file to this broadcast'; pin.setAttribute('aria-label', pin.title); }
       const appBtn = document.getElementById('appbtn');
-      if (appBtn) appBtn.title = 'Run an app on this service — everyone watching shares it and can use it.';
+      if (appBtn) appBtn.title = 'Run an app on this broadcast — everyone watching shares it and can use it.';
       const appTitle = document.getElementById('app-title');
-      if (appTitle) appTitle.textContent = 'Run an app on this service';
+      if (appTitle) appTitle.textContent = 'Run an app on this broadcast';
       const appNote = document.getElementById('app-note');
       if (appNote) appNote.innerHTML = 'Pick one of your apps. It runs live for <b>everyone watching</b> — same state, same moves — around the stage. Anyone can interact.';
       const pipBtn = document.getElementById('pipbtn');
@@ -5213,10 +5213,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         pipBtn.setAttribute('aria-label', 'Float the stage');
       }
       const appHide = document.getElementById('apphide');
-      if (appHide) appHide.title = 'Hide this app on my screen only. The service keeps sharing it.';
+      if (appHide) appHide.title = 'Hide this app on my screen only. The broadcast keeps sharing it.';
       const appStop = document.getElementById('appstop');
-      if (appStop && appStop.title.indexOf('meeting') !== -1) appStop.title = 'Stop sharing this app with the service';
-      if (bar) bar.setAttribute('aria-label', 'Service controls');
+      if (appStop && appStop.title.indexOf('meeting') !== -1) appStop.title = 'Stop sharing this app with the broadcast';
+      if (bar) bar.setAttribute('aria-label', 'Broadcast controls');
       const shareOnDock = document.getElementById('sharebtn');
       const moreSheet = document.getElementById('barmore');
       const host = bcHostStored() || document.body.classList.contains('amadmin');
@@ -5795,8 +5795,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         waitLive: 'Die Sendung hat noch nicht begonnen.',
         orderOfService: 'Ablauf', rdNow: 'Jetzt', rdNext: 'Weiter', rdDone: 'Fertig',
         rdEnded: 'Zu Ende', rdAgain: 'Von vorn',
-        rdWelcome: 'Begrüßung', rdSong: 'Lied', rdPrayer: 'Gebet', rdScripture: 'Schrift',
-        rdMessage: 'Predigt', rdClosing: 'Segen',
+        rdWelcome: 'Begrüßung', rdSong: 'Lied', rdPrayer: 'Pause', rdScripture: 'Lesung',
+        rdMessage: 'Vortrag', rdClosing: 'Abschluss',
         lyProgram: 'Programm', lyPreview: 'Vorschau', lyNext: 'Nächste Zeile',
         songWords: 'Liedtext', songNote: 'Eine Zeile pro Zeile. Lied liest sie der Reihe nach.', songSave: 'Speichern', songCancel: 'Abbrechen',
         setTitle: 'Einstellungen', setVideo: 'Videoqualität',
@@ -6109,8 +6109,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         waitLive: 'La transmisión aún no empieza.',
         orderOfService: 'Programa', rdNow: 'Ahora', rdNext: 'Siguiente', rdDone: 'Listo',
         rdEnded: 'Terminó', rdAgain: 'Otra vez',
-        rdWelcome: 'Bienvenida', rdSong: 'Canción', rdPrayer: 'Oración', rdScripture: 'Lectura',
-        rdMessage: 'Mensaje', rdClosing: 'Cierre',
+        rdWelcome: 'Bienvenida', rdSong: 'Canción', rdPrayer: 'Pausa', rdScripture: 'Lectura',
+        rdMessage: 'Charla', rdClosing: 'Cierre',
         lyProgram: 'Programa', lyPreview: 'Vista previa', lyNext: 'Siguiente línea',
         songWords: 'Letra', songNote: 'Una línea por renglón. Canción las lee en orden.', songSave: 'Guardar', songCancel: 'Cancelar',
         setTitle: 'Ajustes', setVideo: 'Calidad de video',
@@ -6228,18 +6228,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     const HELP_HTML = {
       de: '<p class="help-lead">Diese Besprechung hat <b>kein Größenlimit</b>. Zwei Menschen oder zwei Millionen, sie läuft gleich. Gebaut für den Traum, die <b>ganze Erde in einer Besprechung</b> — jeder kann sprechen, alle teilen einen Raum. Der Raum faltet sich in sich selbst, deshalb spricht Ihr Telefon immer nur mit ein paar Nachbarn.</p>'
-        + '<h4>Das Stadion</h4><p>Stellen Sie sich ein Stadion vor. Sie treffen nicht eine Million Gesichter, sondern die wenigen um Sie herum. Der Rest ist die Kulisse.</p><ul class="help-list"><li><b>Bühne</b> — die Front. Wer hier hinauftritt, wird von <i>allen</i> zuerst gesehen und gehört.</li><li><b>Reihe</b> — die Menschen direkt neben Ihnen. Das ist das Gespräch, mit einer direkten Verbindung.</li><li><b>Das Stadion</b> — alle weiter weg, als Mosaik gleich großer Felder, plus ein gemeinsamer Klang. Ein Amen von einer Million Stimmen kommt als ein Ton an.</li></ul>'
+        + '<h4>Das Stadion</h4><p>Stellen Sie sich ein Stadion vor. Sie treffen nicht eine Million Gesichter, sondern die wenigen um Sie herum. Der Rest ist die Kulisse.</p><ul class="help-list"><li><b>Bühne</b> — die Front. Wer hier hinauftritt, wird von <i>allen</i> zuerst gesehen und gehört.</li><li><b>Reihe</b> — die Menschen direkt neben Ihnen. Das ist das Gespräch, mit einer direkten Verbindung.</li><li><b>Das Stadion</b> — alle weiter weg, als Mosaik gleich großer Felder, plus ein gemeinsamer Klang. Eine Million Stimmen, die zusammen antworten, kommen als ein Ton an.</li></ul>'
         + '<h4>Der Bildschirm</h4><p>Von oben nach unten, <b>das Nahe zuerst</b>: die <b>Bühne</b>, dann <b>Ihre Reihe</b>, dann <b>das Stadion</b>. Ab etwa hundert Menschen werden die Felder ein lebendiger Teppich. <b>Tippen Sie ein gefaltetes Feld an</b>, um es zu vergrößern.</p>'
         + '<h4>Der Klang</h4><p><b>Einstellungen</b> ist Ihr eigenes Mischpult. Es ändert nur, was <i>Sie</i> hören. Regler erscheinen, wenn der Raum sie braucht: Bühne, Ihre Reihe, das Stadion. Darunter liegt das <b>Timing</b>: Gespräch (schnell), Einklang (alle hören denselben Augenblick), und Lied.</p>'
-        + '<h4>Gemeinsam singen</h4><p>Singen in einem normalen Anruf wird Matsch, weil jede Stimme anders spät ankommt. Tippen Sie <b>Lied</b> in den Einstellungen: Sie treten auf die Bühne, das Mikrofon wird musiktauglich, und alle Telefone richten sich auf denselben Moment aus, wie in einer Steinkirche. Ohrhörer helfen. Nochmal tippen beendet das Lied.</p>'
+        + '<h4>Gemeinsam singen</h4><p>Singen in einem normalen Anruf wird Matsch, weil jede Stimme anders spät ankommt. Tippen Sie <b>Lied</b> in den Einstellungen: Sie treten auf die Bühne, das Mikrofon wird musiktauglich, und alle Telefone richten sich auf denselben Moment aus, wie in einem großen Saal. Ohrhörer helfen. Nochmal tippen beendet das Lied.</p>'
         + '<h4>Die Knöpfe</h4><ul class="help-list"><li><b>Unschärfe</b> — wie unscharf Ihr Bild für die anderen ist. Nur Sie können es scharf stellen.</li><li><b>Bühne</b> — hinauf, damit der ganze Raum Sie zuerst sieht. Nochmal tippen steigt ab.</li><li><b>Hand</b> — Sie wandern nach oben in die Warteschlange.</li><li><b>Passwort</b> — der Schlüssel zum scharfen Bild. Ohne Passwort bleiben alle unscharf.</li><li><b>Einladen</b> — ein Link.</li><li><b>App starten</b> — eine App, die alle hier gemeinsam benutzen.</li><li><b>Aufnahme / CC</b> — Aufnahme auf Ihr Gerät, oder Untertitel, die Ihr Telefon schreibt.</li></ul>'
         + '<h4>Kurz weg</h4><p>Wechseln Sie den Tab, und Sie <b>bleiben in der Besprechung</b>. Sie hören weiter, die anderen hören Sie, und Ihr Feld zeigt „weg“. Die Kamera pausiert und kommt zurück, wenn Sie zurück sind.</p>'
         + '<h4>Ihre Privatsphäre</h4><p><b>Bild und Stimme gehen direkt zu den Menschen im Raum.</b> Keine Firma sitzt dazwischen. Unterwegs ist alles verschlüsselt. Der eine ehrliche Preis: weil die Telefone sich direkt verbinden, kann jeder die <b>Internetadresse</b> der anderen sehen. Tippen Sie auf Wer.</p>',
       es: '<p class="help-lead">Esta reunión <b>no tiene límite de tamaño</b>. Dos personas o dos millones, funciona igual. Está hecha para el sueño de <b>toda la Tierra en una reunión</b>: todos pueden hablar, todos comparten una sala. La sala se pliega sobre sí misma, así que tu teléfono solo habla con unos pocos vecinos.</p>'
-        + '<h4>El estadio</h4><p>Imagina un estadio. No te encuentras con un millón de caras, sino con las pocas que tienes al lado. El resto es el fondo.</p><ul class="help-list"><li><b>Escenario</b> — el frente. Quien sube es visto y oído primero por <i>todos</i>.</li><li><b>Fila</b> — la gente justo a tu lado. Esa es la conversación, con una conexión directa.</li><li><b>El estadio</b> — todos los demás, en un mosaico de cuadros iguales, más un solo sonido. Un amén de un millón de voces llega como un solo tono.</li></ul>'
+        + '<h4>El estadio</h4><p>Imagina un estadio. No te encuentras con un millón de caras, sino con las pocas que tienes al lado. El resto es el fondo.</p><ul class="help-list"><li><b>Escenario</b> — el frente. Quien sube es visto y oído primero por <i>todos</i>.</li><li><b>Fila</b> — la gente justo a tu lado. Esa es la conversación, con una conexión directa.</li><li><b>El estadio</b> — todos los demás, en un mosaico de cuadros iguales, más un solo sonido. Un millón de voces que responden juntas llega como un solo tono.</li></ul>'
         + '<h4>La pantalla</h4><p>De arriba abajo, <b>lo cercano primero</b>: el <b>escenario</b>, luego <b>tu fila</b>, y al final <b>el estadio</b>. Pasadas unas cien personas los cuadros se vuelven un tapiz. <b>Toca un cuadro plegado</b> para agrandarlo.</p>'
         + '<h4>El sonido</h4><p><b>Ajustes</b> es tu propia mesa de mezcla. Solo cambia lo que <i>tú</i> oyes. Los controles aparecen cuando la sala los necesita: escenario, tu fila, el estadio. Debajo está el <b>tiempo</b>: conversación (rápida), al unísono (todos oyen el mismo instante) y canción.</p>'
-        + '<h4>Cantar juntos</h4><p>Cantar en una llamada normal se vuelve papilla, porque cada voz llega tarde de otra forma. Toca <b>Canción</b> en Ajustes: subes al escenario, el micrófono pasa a calidad de música y todos los teléfonos se alinean al mismo momento, como en una iglesia de piedra. Los audífonos ayudan. Tocar otra vez termina la canción.</p>'
+        + '<h4>Cantar juntos</h4><p>Cantar en una llamada normal se vuelve papilla, porque cada voz llega tarde de otra forma. Toca <b>Canción</b> en Ajustes: subes al escenario, el micrófono pasa a calidad de música y todos los teléfonos se alinean al mismo momento, como en una sala grande. Los audífonos ayudan. Tocar otra vez termina la canción.</p>'
         + '<h4>Los botones</h4><ul class="help-list"><li><b>Desenfoque</b> — qué tan borrosa ven los demás tu imagen. Solo tú puedes quitarlo.</li><li><b>Escenario</b> — sube para que toda la sala te vea primero. Toca otra vez para bajar.</li><li><b>Mano</b> — pasas arriba en la cola.</li><li><b>Contraseña</b> — la llave del video nítido. Sin ella, todos siguen borrosos.</li><li><b>Invitar</b> — un enlace.</li><li><b>Abrir app</b> — una app que todos usan juntos.</li><li><b>Grabar / CC</b> — grabar en tu dispositivo, o subtítulos que escribe tu teléfono.</li></ul>'
         + '<h4>Si te vas un momento</h4><p>Cambia de pestaña y <b>sigues en la reunión</b>. Sigues oyendo, los demás te oyen, y tu cuadro dice que te fuiste. La cámara pausa y vuelve cuando regresas.</p>'
         + '<h4>Tu privacidad</h4><p><b>Tu imagen y tu voz van directo a la gente de la sala.</b> Ninguna empresa está en medio. El camino va cifrado. El precio honesto: como los teléfonos se conectan directo, cada quien puede ver la <b>dirección de internet</b> de los demás. Toca Quién.</p>',
@@ -6296,7 +6296,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bg.setAttribute('aria-labelledby', 'appear-title');
       const viewerJoin = (typeof BROADCAST !== 'undefined' && BROADCAST) && !(typeof bcHostStored === 'function' && bcHostStored());
       if (viewerJoin) bg.setAttribute('aria-describedby', 'appear-note');
-      bg.innerHTML = '<div class="name-box appear-box"><h3 id="appear-title">' + (viewerJoin ? 'Watching the service' : uiText('appearTitle', 'This is how you\'ll appear')) + '</h3>' +
+      bg.innerHTML = '<div class="name-box appear-box"><h3 id="appear-title">' + (viewerJoin ? 'Watching the broadcast' : uiText('appearTitle', 'This is how you\'ll appear')) + '</h3>' +
         (viewerJoin ? '<p id="appear-note">You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.</p>' : '') +
         '<div class="appear-face" id="appear-face"></div>' +
         '<div class="appear-name" id="appear-name"></div>' +
@@ -6430,7 +6430,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const barTop = bar ? bar.getBoundingClientRect().top : window.innerHeight;
       const limit = (barTop > top + 48 && barTop < window.innerHeight) ? barTop : window.innerHeight;
       // A phone keeps the link under the title on air too: the band above
-      // the dock is Live / Record and the Order of service there.
+      // the dock is Live / Record and the Run of show there.
       const narrow = window.matchMedia && window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
       document.documentElement.style.setProperty('--bclinktop', top + 'px');
       if (onAir && !narrow) {
@@ -12166,7 +12166,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } catch (e) {}
       const out = { text: '', sched: null, viewer: viewer };
       if (!(viewer || watch) || reachBlocked || atDoor || onAir) return out;
-      const noun = watch ? 'town hall' : (params.has('st') ? 'stream' : 'service');
+      const noun = watch ? 'town hall' : (params.has('st') ? 'stream' : 'broadcast');
       let seen = false; try { seen = sessionStorage.getItem(seenKey) === '1'; } catch (e) {}
       const sched = viewer ? bcSchedule(Date.now()) : null;
       out.sched = sched;
@@ -12308,7 +12308,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // A service seat says what it is. The host's sentence follows the lamp.
           restText = (bcRoleSafe() === 'host'
             ? (bcSendingSafe() ? 'You are live. Send the link.' : 'Off air. Send the link.')
-            : ((typeof myStatus !== 'undefined' && myStatus.stg) ? 'You are on stage.' : 'You are watching this service.')) + reachTriedSentence() + tail;
+            : ((typeof myStatus !== 'undefined' && myStatus.stg) ? 'You are on stage.' : 'You are watching this broadcast.')) + reachTriedSentence() + tail;
         } else {
           // Alone, the count is a button that opens the roster, and Invite sits
           // beside the sentence. The long invite sheet stays in More.
@@ -12317,12 +12317,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       } else if (bcWatcher) {
         // The badge and room bar say watching; the line names who is live.
-        restText = (bcLiveName ? bcLiveName + ' is live.' : 'You are watching this service.') + reachTriedSentence() + tail;
+        restText = (bcLiveName ? bcLiveName + ' is live.' : 'You are watching this broadcast.') + reachTriedSentence() + tail;
       } else if (bcLive) {
         // The room bar counts who is watching; the host reads that she is live.
         restText = 'You are live · ' + q.label + reachTriedSentence() + tail;
       } else {
-        countText = shown + ' ' + (BROADCAST ? 'in this service' : uiText('inMeeting', 'in this small group'));
+        countText = shown + ' ' + (BROADCAST ? 'in this broadcast' : uiText('inMeeting', 'in this meeting'));
         restText = ' · ' + q.label + reachTriedSentence() + tail;
       }
       const bq = bcQuietLine(shown, reachLine, atDoor);
@@ -12411,9 +12411,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const RUNDOWN_STEPS = [
       ['rdWelcome', 'Welcome'],
       ['rdSong', 'Song'],
-      ['rdPrayer', 'Prayer'],
-      ['rdScripture', 'Scripture'],
-      ['rdMessage', 'Message'],
+      ['rdPrayer', 'Break'],
+      ['rdScripture', 'Reading'],
+      ['rdMessage', 'Talk'],
       ['rdSong', 'Song'],
       ['rdClosing', 'Closing'],
     ];
@@ -12461,7 +12461,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const at = rundownAt();
       const ended = at >= RUNDOWN_STEPS.length;
       const title = document.getElementById('rundown-title');
-      if (title) title.textContent = uiText('orderOfService', 'Order of service');
+      if (title) title.textContent = uiText('orderOfService', 'Run of show');
       const list = document.getElementById('rundown-list');
       if (list) {
         list.textContent = '';
@@ -12507,16 +12507,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The index lives in this tab. It is not sent to the room as data; the
     // current line is painted onto the outgoing camera (paintLyricOnAir).
     // Song 2 (after the Message) has its own built-in hymn.
-    const HYMN_LINES = [[
-      'Amazing grace, how sweet the sound',
-      'That saved a wretch like me',
-      'I once was lost, but now am found',
-      'Was blind, but now I see.',
+    const SONG_LINES = [[
+      'The first line of the song is the one to sing',
+      'The next line follows after it',
+      'Each line is one breath long',
+      'And the last line ends the song.',
     ], [
-      'Praise God, from whom all blessings flow;',
-      'Praise Him, all creatures here below;',
-      'Praise Him above, ye heavenly host;',
-      'Praise Father, Son, and Holy Ghost.',
+      'This is the second song to sing',
+      'It keeps its own words apart',
+      'Type your own before you start',
+      'They stay on this computer.',
     ]];
     // The booth's own song replaces the hymn: one line per line, blank lines
     // dropped. Kept per room and per song on this computer, so it can be typed
@@ -12529,7 +12529,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (slot === undefined) slot = songSlotAhead();
       let own = [];
       try { own = songLinesFrom(localStorage.getItem(songStoreKey(slot))); } catch (e) {}
-      return own.length ? own : (HYMN_LINES[slot] || HYMN_LINES[0]);
+      return own.length ? own : (SONG_LINES[slot] || SONG_LINES[0]);
     }
     function lyricStoreKey() { return 'gifos_lyric_' + (params.get('v') || ''); }
     function lyricAt() {
@@ -14210,7 +14210,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const heard = meHost || (hasAdminRoom() ? admins.some((id) => id !== myId) : Array.from(statusOf.keys()).some((id) => id !== myId));
       const wait = roomJoinedAt ? roomJoinedAt + STAGE_HEAR_MS - Date.now() : 1;
       if (!heard && wait > 0) {
-        line.textContent = 'Joining the service…';
+        line.textContent = 'Joining the broadcast…';
         clearTimeout(platePaintT);
         if (roomJoinedAt) platePaintT = setTimeout(paintStagePlate, wait + 50);
         return;
@@ -19023,7 +19023,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const appRoom = ROOM.kind === 'app' || document.body.classList.contains('app-room');
       el.title = appRoom ? (uiLang() === 'en' ? 'How this app room works' : uiText('appHelpTitle', 'How this app room works'))
         : document.body.classList.contains('has-app') ? uiText('appHelpTip', 'How this app works')
-        : BROADCAST ? 'How this service works' : 'How this small group works';
+        : BROADCAST ? 'How this broadcast works' : 'How this meeting works';
     }
     document.getElementById('help-close').onclick = () => { helpModal.style.display = 'none'; };
     // The Help screen matches WHAT THIS PAGE IS: a meeting keeps the authored
@@ -19034,9 +19034,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const hs = document.querySelector('#help-modal .help-scroll');
       paintHelpTip();
       if (BROADCAST) {
-        h3.textContent = 'How this service works';
+        h3.textContent = 'How this broadcast works';
         hs.innerHTML =
-          '<p class="help-lead">This is a <b>service</b>: one host (and anyone they call up) on the <b>Stage</b>, and everyone else watching. Two people or a full room, it runs the same — every phone talks only to a handful of neighbors, and the service reaches everyone.</p>'
+          '<p class="help-lead">This is a <b>broadcast</b>: one host (and anyone they call up) on the <b>Stage</b>, and everyone else watching. Two people or a full room, it runs the same — every phone talks only to a handful of neighbors, and the broadcast reaches everyone.</p>'
           + '<h4>Watching</h4>'
           + '<ul class="help-list">'
           + '<li>The link is all you need. Your <b>camera and microphone are not used</b> — watching asks no permissions at all.</li>'
@@ -19701,12 +19701,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function showLobby() {
       const streamLobby = BC_INTENT && params.has('st');
-      document.title = (streamLobby ? 'Stream' : BC_INTENT ? 'Service' : 'Small group') + ' — GifOS';
+      document.title = (streamLobby ? 'Stream' : BC_INTENT ? 'Broadcast' : 'Meeting') + ' — GifOS';
       // The Broadcast app opens THIS page with #bc=1 and no room: same lobby,
       // reworded — no open rooms (a broadcast without a host is nothing), and
       // creating one mints the same admin room with &bc=1 riding the link.
       if (BC_INTENT) {
-        document.querySelector('#lobby h1').textContent = 'Service';
+        document.querySelector('#lobby h1').textContent = 'Broadcast';
         const quiet = document.querySelector('#lobby .lob-quiet');
         if (quiet) quiet.textContent = 'You host. People watch with the link.';
         document.getElementById('lob-open').style.display = 'none';
@@ -19726,7 +19726,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         watch.classList.remove('lob-link');
         watch.classList.add('lob-action');
         watch.innerHTML = 'Watch<small>Paste a link someone sent you</small>';
-        document.getElementById('lob-empty').textContent = 'Services you start or watch show up here.';
+        document.getElementById('lob-empty').textContent = 'Broadcasts you start or watch show up here.';
         const watchNote = document.getElementById('lob-watch-note');
         if (watchNote) { watchNote.hidden = false; watchNote.textContent = BC_WATCH_COPY; }
         ['lob-th-btn', 'lob-stream'].forEach((id) => { const b = document.getElementById(id); if (b) b.style.display = 'none'; });
@@ -19808,11 +19808,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           updateTile('me');
           joinRoom();
           updateStatus();
-          document.title = (typeof TOWNHALL !== 'undefined' && TOWNHALL) ? 'Town hall — GifOS' : BROADCAST ? (params.has('st') ? 'Stream — GifOS' : 'Service — GifOS') : 'Small group — GifOS';
+          document.title = (typeof TOWNHALL !== 'undefined' && TOWNHALL) ? 'Town hall — GifOS' : BROADCAST ? (params.has('st') ? 'Stream — GifOS' : 'Broadcast — GifOS') : 'Meeting — GifOS';
           if (BROADCAST) {
             const hint = document.querySelector('.share .hint');
             if (hint) hint.textContent = 'Share this link — anyone who opens it is watching:';
-            if (!bcHostStored()) setStatus('Joining the service…');
+            if (!bcHostStored()) setStatus('Joining the broadcast…');
             else {
               // The HOST auto-steps onto the Stage: a broadcast page's whole
               // point, and the Stage is where their camera reaches the room.
@@ -20277,7 +20277,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const tip = (ROOM.kind === 'app' || document.body.classList.contains('app-room'))
         ? 'barInviteTip'
         : (typeof BROADCAST !== 'undefined' && BROADCAST)
-          ? 'Invite someone to this service — one link'
+          ? 'Invite someone to this broadcast — one link'
           : 'invTip';
       if (tip === 'invTip' || tip === 'barInviteTip') {
         btn.setAttribute('data-ti', tip);
@@ -21844,7 +21844,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Sideways, Find steps aside while the keyboard is up. The title is
       // still on screen, so it says the log is cut down.
       const title = document.getElementById('paneltitle');
-      if (title && !transcriptShown()) title.textContent = text ? 'Lines with “' + text + '”' : (BROADCAST ? 'Service chat' : uiText('chatTitle', 'Small group chat'));
+      if (title && !transcriptShown()) title.textContent = text ? 'Lines with “' + text + '”' : (BROADCAST ? 'Broadcast chat' : uiText('chatTitle', 'Meeting chat'));
     }
     function renderChat() {
       if (!chatPanelOpen() || transcriptShown()) return;
@@ -26989,7 +26989,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // re-ships down every relayer (see selfShipMemo). Pause holds the same
     // tracks; the picture just stops changing.
     const rbBtn = document.getElementById('rbbtn');
-    const rbNoun = () => (params.has('st') ? 'stream' : 'service');
+    const rbNoun = () => (params.has('st') ? 'stream' : 'broadcast');
     function rbFmt(sec) {
       const t = Math.max(0, Math.floor(sec || 0));
       const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, x = t % 60;
@@ -29321,7 +29321,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const w = document.getElementById('trwrap'), c = document.getElementById('chatlog');
       w.classList.toggle('show', showTr);
       c.style.display = showTr ? 'none' : '';
-      document.getElementById('paneltitle').innerHTML = showTr ? (AI_SPARK_SVG + 'Transcript') : (BROADCAST ? 'Service chat' : 'Small group chat');
+      document.getElementById('paneltitle').innerHTML = showTr ? (AI_SPARK_SVG + 'Transcript') : (BROADCAST ? 'Broadcast chat' : 'Meeting chat');
       document.getElementById('trtab').innerHTML = showTr ? 'Chat' : (AI_SPARK_SVG + 'Transcript');
       const find = document.getElementById('chatfind');
       if (find) find.hidden = !!showTr;
@@ -29544,7 +29544,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bg.innerHTML = '<p class="rec-replay-title">Replay</p>' +
         '<video id="rec-replay-vid" playsinline></video>' +
         '<div class="rec-replay-bar">' +
-        (saved && saved.seed ? '<p id="rec-replay-seed" class="rec-replay-seed">The ' + ((typeof params !== 'undefined' && params.has('st')) ? 'stream' : 'service') + ' has ended.</p>' : '') +
+        (saved && saved.seed ? '<p id="rec-replay-seed" class="rec-replay-seed">The ' + ((typeof params !== 'undefined' && params.has('st')) ? 'stream' : 'broadcast') + ' has ended.</p>' : '') +
         '<input id="rec-replay-scrub" type="range" min="0" max="1000" value="0" aria-label="Replay position">' +
         '<div class="rec-replay-actions">' +
         '<button type="button" id="rec-replay-share" hidden>Share</button>' +
@@ -29630,7 +29630,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function showServiceEnded(saved) {
       const old = document.getElementById('rb-sheet');
       if (old) old.remove();
-      const noun = (typeof params !== 'undefined' && params.has('st')) ? 'stream' : 'service';
+      const noun = (typeof params !== 'undefined' && params.has('st')) ? 'stream' : 'broadcast';
       const bg = document.createElement('div');
       bg.id = 'rb-sheet'; bg.className = 'rb-sheet';
       bg.setAttribute('role', 'dialog'); bg.setAttribute('aria-modal', 'true'); bg.setAttribute('aria-label', 'The ' + noun + ' has ended');
@@ -30170,8 +30170,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         : v === 'app' ? 'This records the shared app as well.'
         : 'This records everyone you can see.';
       bg.innerHTML = '<div class="name-box rec-box">' +
-        '<h3>Record this ' + (BROADCAST ? 'service' : 'small group') + '</h3>' +
-        '<p class="rec-note">Saved on this device only. Everyone here will see that this ' + (BROADCAST ? 'service' : 'small group') + ' is being recorded.</p>' +
+        '<h3>Record this ' + (BROADCAST ? 'broadcast' : 'meeting') + '</h3>' +
+        '<p class="rec-note">Saved on this device only. Everyone here will see that this ' + (BROADCAST ? 'broadcast' : 'meeting') + ' is being recorded.</p>' +
         '<p id="rec-now">' + scopeLine(scopeDefault) + '</p>' +
         '<div class="rec-scroll">' +
         '<div class="rec-sec"><b>What to capture</b>' +
@@ -30343,13 +30343,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         bar.classList.toggle('collapsed', collapsed);
         toggle.setAttribute('aria-expanded', String(!collapsed));
         const service = typeof BROADCAST !== 'undefined' && BROADCAST;
-        const surface = service ? 'service' : 'small group';
-        bar.setAttribute('aria-label', service ? 'Service controls' : 'Small group controls');
+        const surface = service ? 'broadcast' : 'meeting';
+        bar.setAttribute('aria-label', service ? 'Broadcast controls' : 'Meeting controls');
         toggle.setAttribute('aria-label', collapsed ? 'More' : 'Hide ' + surface + ' controls');
         toggle.title = collapsed ? 'More' : 'Hide ' + surface + ' controls';
         const word = toggle.querySelector('.docklab');
         if (word) word.textContent = collapsed ? uiText('more', 'More') : uiText('hide', 'Hide');
-        // Opening More covers the Order of service / lyrics cards so every
+        // Opening More covers the Run of show / lyrics cards so every
         // dock stand-in on the sheet is fully visible (Pixel 7 host dock).
         if (!collapsed) {
           try { const rd = document.getElementById('rundown'); if (rd) rd.classList.remove('open'); } catch (e) {}
@@ -30845,7 +30845,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (joinVeilEl) return true;
         const b = document.body.classList;
         // 0.9.23b: a shared screen and a broadcast are calm too.
-        // Song words being typed hold the call up; an open Order of service
+        // Song words being typed hold the call up; an open Run of show
         // fades with the dock like the rest (it is back on any move).
         for (const c of ['app-room', 'solo-app', 'songedit']) if (b.contains(c)) return true;
         if (!bar.classList.contains('collapsed')) return true; // More is open
@@ -32032,7 +32032,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // copy: a room you run is a meeting idea, so an app does not offer it.
       const isApp = ROOM.kind === 'app' || document.body.classList.contains('app-room');
       document.querySelector('#inv-modal h3').textContent =
-        isApp ? uiText('invTitleApp', 'Share this app') : BROADCAST ? 'Share this service' : uiText('invTitle', 'Share this small group');
+        isApp ? uiText('invTitleApp', 'Share this app') : BROADCAST ? 'Share this broadcast' : uiText('invTitle', 'Share this meeting');
       const closeRow = '<div class="appear-actions"><button id="inv-done" type="button" class="appear-secondary">' + esc(uiText('invClose', 'Close')) + '</button></div>';
       if (isApp) {
         body.innerHTML = '<p>' + uiText('invApp', 'Send this link. They join you live inside this app.') + '</p>' + linkRowHtml() + closeRow;
@@ -32073,7 +32073,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const inviteSharePayload = () => {
         const field = document.getElementById('inv-url');
         const url = (field && field.value) || inviteLinkForModal();
-        return { title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS service' : 'Join my GifOS small group', text: 'Tap this link and you’re in:', url: url };
+        return { title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : 'Join my GifOS meeting', text: 'Tap this link and you’re in:', url: url };
       };
       if (shareInviteBtn && navigator.share) {
         shareInviteBtn.style.display = '';
@@ -32296,7 +32296,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       bcCalFor = at + link;
       const stamp = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
       const esc = (s) => String(s).replace(/([\\;,])/g, '\\$1').replace(/\n/g, '\\n');
-      const noun = params.has('st') ? 'stream' : 'service';
+      const noun = params.has('st') ? 'stream' : 'broadcast';
       const name = String(params.get('v') || '').trim();
       const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GifOS//Broadcast//EN', 'BEGIN:VEVENT',
         'UID:' + at + '-' + name.replace(/[^a-z0-9]/gi, '') + '@gifos.app', 'DTSTAMP:' + stamp(Date.now()),
@@ -33679,7 +33679,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const SYSTEM_APPS = { meet: 1, video: 1, broadcast: 1, appstore: 1 };
       const apps = (files || []).filter((f) => f.isApp && !SYSTEM_APPS[f.appId]);
       if (!apps.length) {
-        const where = (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'on this service' : 'in a meeting';
+        const where = (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'on this broadcast' : 'in a meeting';
         list.innerHTML = '<small style="color:#667">No apps on this computer yet. Make one with ＋ Add on your Home Screen, then run it ' + where + '.</small>';
         return;
       }

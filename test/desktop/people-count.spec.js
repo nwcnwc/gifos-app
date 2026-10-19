@@ -39,7 +39,7 @@ test('four people in the room are not "Just you", and the count is not cut off',
   expect(box.tiles).toBe(5);
   expect(box.missing).toBe(false);
   expect(box.full).not.toContain('Just you');
-  expect(box.count).toBe('5 in this small group');
+  expect(box.count).toBe('5 in this meeting');
   expect(box.clipped).toBe(false);
   expect(box.onScreen).toBe(true);
   expect(box.font).toBeGreaterThanOrEqual(16);
@@ -47,7 +47,7 @@ test('four people in the room are not "Just you", and the count is not cut off',
   await page.setViewportSize({ width: 900, height: 720 });
   await page.waitForTimeout(200);
   const narrow = await countBox(page);
-  expect(narrow.count).toBe('5 in this small group');
+  expect(narrow.count).toBe('5 in this meeting');
   expect(narrow.clipped).toBe(false);
   expect(narrow.onScreen).toBe(true);
 });

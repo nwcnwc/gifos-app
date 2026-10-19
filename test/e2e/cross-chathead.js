@@ -38,7 +38,7 @@ run('cross-chathead', async (hb, vb, shoot) => {
   const out = { host: await openChat(host), viewer: await openChat(viewer) };
   await shoot();
   for (const [who, s] of Object.entries(out)) {
-    if (s.off.length || s.small.length || !/^Private to this service, gone when everyone leaves$/.test(s.privacy)) throw new Error(who + ': the chat head is untidy or small ' + JSON.stringify(out));
+    if (s.off.length || s.small.length || !/^Private to this broadcast, gone when everyone leaves$/.test(s.privacy)) throw new Error(who + ': the chat head is untidy or small ' + JSON.stringify(out));
   }
   return 'the chat head is tidy and 16px on both: ' + JSON.stringify(out);
 });

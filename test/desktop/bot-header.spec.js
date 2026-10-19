@@ -51,7 +51,7 @@ test('a bot header keeps the GifOS logo and the status line when calm', async ({
   expect(await page.evaluate(shown, '.topchip .title')).toBe(true);
   expect(await page.evaluate(shown, '.topchip #status')).toBe(true);
   expect(await page.evaluate(shown, '#txmark')).toBe(true);
-  expect(await page.evaluate(() => document.getElementById('status').textContent)).toContain('in this small group');
+  expect(await page.evaluate(() => document.getElementById('status').textContent)).toContain('in this meeting');
 });
 
 test('a person\'s header still fades to the transcribing mark when calm', async ({ page, browserName }) => {

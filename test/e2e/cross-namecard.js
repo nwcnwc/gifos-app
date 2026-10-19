@@ -24,7 +24,7 @@ run('cross-namecard', async (hb, vb, shoot) => {
   const atCard = await dock(viewer);
   await shoot();
   await saveName(viewer);
-  await until('viewer is watching', async () => ({ ok: (await viewer.locator('#airkind').textContent()) === 'Service · You are watching' }), 15000);
+  await until('viewer is watching', async () => ({ ok: (await viewer.locator('#airkind').textContent()) === 'Broadcast · You are watching' }), 15000);
   const watching = await dock(viewer);
   const hostDock = await dock(host);
   const seen = { atCard, watching, hostDock };
