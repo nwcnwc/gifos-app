@@ -4694,917 +4694,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
    *    being locked out
    */
   (function () {
-    const net = GifOS.net; // the shared transport fabric (also under runtime.js)
-    const ICE_SERVERS = net.ICE_SERVERS;
-    // ---- FREE AUDIO OVER TURN: the state (rules in js/meet-turn.js) --------
-    // TURN is the last rung: a pair uses it only after the direct path and a
-    // friend have both failed, only from the end that cannot be reached
-    // directly, and in a free room only for audio, through one anchor.
-    const MT = GifOS.meetTurn;
-    let turnCred = null, turnCredRoom = null;  // the credential client (asks only after joining, only from a blocked network)
-    let turnAnchorId = null;                   // the seat this page sends its voice to, and hears the room from
-    let turnAnchorSince = 0, turnAnchorUpAt = 0, turnAnchorFails = 0, turnEverServed = false;
-    const turnDownAt = new Map();      // peer id -> since when that pair has had no working path (kept across redials)
-    const turnAnchorDead = new Map();  // peer id -> an anchor that failed is not chosen again before this time
-    const turnMixes = new Map();       // client id -> { fold, keys }: the mix-minus this page sends a client it anchors
-    const turnMixSenders = new WeakSet(); // senders carrying a mix-minus: a microphone swap never touches them
-    // ---- VIDEO ANYWHERE: the state (rules in js/meet-video-anywhere.js) ----
-    // A room whose admin presented a Video Anywhere receipt carries video
-    // across networks that block direct connections. The admin's signed
-    // launch order { receipt, ticket } travels peer to peer over the
-    // meeting's own encrypted channels; a page that dials a pair through a
-    // server shows it to the credential service for that pair.
-    const VA = GifOS.meetVA;
-    let vaOrder = null;            // the best checked launch order this page holds
-    const vaPaid = new Map();      // peer id -> { bridge, cred, orderSig }: paid credentials for a pair this page dials through a server
-    const vaChecking = new Map();  // order signature -> { at, stage, done }: being checked, or refused for good
-    let vaSigning = null, vaForceSign = false;     // the admin's launch in progress; sign again now (a top-up)
-    let vaMeter = null, vaMeterAt = 0, vaMeterBusy = false, vaUsedAtStart = null, vaMeterAsks = 0;
-    let vaTerms = null, vaTermsAt = 0, vaTermsBusy = false;
-    let vaBuying = false, vaResumed = false, vaNudged = '', vaTopupRetry = false;
-    // Quality ladder: live links → per-link video constraints. adapt() passes
-    // n = 1 + peers.size, the direct links, bounded by the row, not the room.
-    // Upload cost grows with those links, so both resolution and each link's
-    // bitrate step down to keep total upstream roughly flat.
-    // NOTE: the link-count rung is only the STARTING POINT — adapt() then steps
-    // further down this same ladder by the device's power tier (on battery /
-    // battery low / charger losing / phone at all / parked phone). See the
-    // battery-tier block above adapt().
-    const LADDER = [
-      { max: 2, w: 1280, h: 720, fps: 30, kbps: 1800, label: '720p' },
-      { max: 4, w: 854,  h: 480, fps: 24, kbps: 800,  label: '480p' },
-      { max: 6, w: 640,  h: 360, fps: 20, kbps: 450,  label: '360p' },
-      { max: 99, w: 426, h: 240, fps: 15, kbps: 250,  label: '240p' },
-      // BELOW THE OLD FLOOR (2026-07-30). 240p was never a technical limit —
-      // it was simply the last entry, so on a phone in any 3+ person meeting
-      // the power tier SATURATED: battery state changed nothing, because
-      // LADDER[index+tier] clamped to the last rung and 240p is already
-      // 15fps. These two rungs give the tier somewhere to go. Encoder cost
-      // tracks pixels x fps, so 240p -> 144p is ~2.8x fewer pixels and 2/3
-      // the frames — the deepest cut available without killing the picture.
-      // rung(n) still floors at 240p for the link count (find() takes the first
-      // max>=n), so these are reachable ONLY by power tier / tune — nobody
-      // lands here just for being in a big room.
-      { max: 99, w: 320, h: 180, fps: 12, kbps: 150,  label: '180p' },
-      { max: 99, w: 256, h: 144, fps: 10, kbps: 100,  label: '144p' },
-    ];
-    // Never undefined: above the last rung's max (a stadium can carry a
-    // million) every node just sits on the lowest per-link tier. Returning
-    // undefined here threw on q.w/q.label at every status + adapt tick once a
-    // room crossed ~99, taking the whole client down as a section filled.
-    const rung = (n) => LADDER.find((r) => n <= r.max) || LADDER[LADDER.length - 1];
-    // A SHARED SCREEN IS NOT A FACE, AND THE LADDER IS ABOUT FACES. Every rung
-    // above trades resolution away first, because a face stays a face at 360p —
-    // the information is the motion. A slide, a terminal or a spreadsheet is the
-    // opposite: the information IS the spatial detail, and the moment the
-    // encoder scales 1920x1080 down to fit a face's budget the text stops being
-    // text. It is also cheap to hold: a still document sends almost nothing
-    // between changes, so a high CAP costs the radio only while the picture
-    // actually moves. Hence a separate lane — a cap, not a target, like every
-    // other maxBitrate here.
-    const SCREEN_KBPS = 2500;
-    // ---- VIDEO QUALITY (Settings): what YOUR OWN camera records --------------
-    // Auto (the default, and the whole behavior until 2026-08-03) = the LADDER
-    // above: the link count picks the rung, the power tier and tune cut deeper. A
-    // MANUAL choice pins capture + encode to that rung instead — the user's
-    // deliberate knob, so it overrides the room-size and power stepping. Two
-    // laws still apply on top of a manual rung: blur's fps honesty caps (a
-    // blurred feed never pays for frames) and the aux/fold budgets (carried
-    // media was never the user's own camera). 1080p exists ONLY here — no
-    // room size ever auto-picks it; it is a broadcaster's deliberate spend.
-    // Manual only ever shapes MY outgoing camera; receivers are untouched.
-    const VQ_KEY = 'gifos_vq';
-    const VQ_1080 = { max: 0, w: 1920, h: 1080, fps: 30, kbps: 3500, label: '1080p' };
-    const VQ_CHOICES = [VQ_1080].concat(LADDER.filter((r) => r.label !== '180p')); // 180p is power-tier internal, not a human choice
-    let vqManual = (() => { try { return localStorage.getItem(VQ_KEY) || ''; } catch (e) { return ''; } })();
-    if (!VQ_CHOICES.some((r) => r.label === vqManual)) vqManual = '';
-    const vqRung = () => VQ_CHOICES.find((r) => r.label === vqManual) || null;
-    function setVq(label) {
-      vqManual = VQ_CHOICES.some((r) => r.label === label) ? label : '';
-      try { vqManual ? localStorage.setItem(VQ_KEY, vqManual) : localStorage.removeItem(VQ_KEY); } catch (e) {}
-      paintVq();
-      adapt(); // re-ask the camera + re-cap every sender now, not on the next beat
-    }
-    function paintVq() {
-      for (const b of document.querySelectorAll('#vqrow button')) b.classList.toggle('sel', (b.dataset.vq || '') === vqManual);
-    }
-
-    const params = new URLSearchParams(location.hash.slice(1));
-    // A session document is srcdoc (the host page's frame-src is about: only).
-    // The hash cannot carry mb=1, so the host stamps the flag before boot.
-    if (window.__gifosMb === '1' && params.get('mb') !== '1') params.set('mb', '1');
-    // The real file we're served from (/run.html at load — a pretty /meet/<room>
-    // link 404-routes here; the legacy meet.html shim is DELETED, no-shims flag
-    // day 2026-08-05). We
-    // keep this because on prod we rewrite the address bar to the pretty path, so
-    // location.pathname stops being a reliable base for building runtime URLs;
-    // MEET_PATH always is.
-    // about:srcdoc (a meeting session) has no path of its own. Links and the
-    // address it would show are still the meeting page.
-    const MEET_PATH = location.protocol === 'about:' ? '/run.html' : location.pathname;
-    // about:srcdoc's location.origin is the string "null" even when the
-    // document is same-origin with the page that framed it.
-    const pageOrigin = () => {
-      if (location.origin && location.origin !== 'null') return location.origin;
-      try { if (window.parent && window.parent !== window && window.parent.location && window.parent.location.origin) return window.parent.location.origin; } catch (e) {}
-      return '';
-    };
-    // ---- ONE RUNTIME: the entry mints the room's TRAITS (docs/one-runtime.md).
-    // The link is the promise — which component is pinned is decided HERE, at
-    // entry, and is immutable for the page's life:
-    //   #v=<room>[&av=]        → meeting entry: media plane PINNED, app slot free
-    //   #id=<fileId>           → an app from MY desktop, SOLO: no room, no relay,
-    //                            no mesh — Invite mints the room later
-    //   #s=<short.ver>&k=<c>   → owned app room: app PINNED (no succession)
-    //   #j=<code>              → anyone-owns app room: app PINNED (succession)
-    const ROOM = (() => {
-      const id = params.get('id'), j = params.get('j'), s = params.get('s'), k = params.get('k');
-      if (id) return { kind: 'app', solo: true, appPinned: true, mediaPinned: false, fileId: id, join: null };
-      if (s && k) {
-        const dot = s.lastIndexOf('.');
-        return { kind: 'app', solo: false, appPinned: true, mediaPinned: false, fileId: null,
-          join: { short: s.slice(0, dot), av: s.slice(dot + 1).toLowerCase(), k: k, owned: true } };
-      }
-      if (j) return { kind: 'app', solo: false, appPinned: true, mediaPinned: false, fileId: null, join: { short: null, av: null, k: j, owned: false } };
-      return { kind: 'meet', solo: false, appPinned: false, mediaPinned: true, fileId: null, join: null };
-    })();
-    // ---- BROADCAST (the Broadcast app — a SKIN of this page) ----------------
-    // #bc=1 on an ADMIN room (v+av): one host live on the Stage, unlimited
-    // viewers who bring no media of their own. The flag rides the HASH so it
-    // survives the version-channel redirect and travels inside the share link
-    // (/cast/<room>/<V> pretty form). It is a skin, not a security boundary:
-    // a client that strips it lands in the plain meeting UI of the SAME room,
-    // and every rule that matters — signed authority, admin-only stage entry,
-    // receiver-side moderation — is the admin room's, enforced as ever.
-    // BC_INTENT alone (bare meet.html#bc=1) opens the broadcast-flavored lobby.
-    const BC_INTENT = params.has('bc');
-    // ---- LINK-BORNE LAUNCH ARGUMENTS: #id=<file>&go.<key>=<value> -----------
-    // "Open Anyroad" is a link anyone can already send. This is how a link says
-    // WHERE to open it — go.at=36.06,-112.14&go.fly=1 — without becoming a
-    // second, weaker way to run code: the values are inert strings, the runtime
-    // drops every key the app's manifest did not declare, and nothing reaches
-    // the app until the consent sheet is answered (runtime.js declaredLaunch /
-    // gifos-perms.js). SOLO ONLY, enforced at the boot call below: in a joined
-    // room the app is somebody else's mount and my URL must not arm it.
-    // In the hash for the usual reason — the version channel drops the query.
-    const LAUNCH = (() => {
-      const out = {}; let n = 0;
-      params.forEach((v, k) => { if (k.length > 3 && k.slice(0, 3) === 'go.') { out[k.slice(3)] = v; n++; } });
-      return n ? out : null;
-    })();
-    const BROADCAST = BC_INTENT && !!params.get('v') && /^[a-f0-9]{16,64}$/.test((params.get('av') || '').toLowerCase());
-    const BC_WATCH_COPY = 'Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.';
-    if (BROADCAST) document.body.classList.add('broadcast');
-    // A town hall is a skin on the same admin room, the way a broadcast is.
-    // th rides the link (?th=1 on a pretty /meet path, &th=1 in the hash).
-    // It does not change who can be a viewer, on stage, or the host.
-    const TOWNHALL = !BROADCAST && params.has('th');
-    if (TOWNHALL) document.body.classList.add('townhall');
-    // The lobby is renamed when you arrive wanting a broadcast. The room used
-    // to keep saying "meeting" on the chat, the leave dialog, and Help, and
-    // nothing told a host they were on air. Paint that chrome once the host
-    // key helper exists (just below) and again whenever admin state changes.
-    function someoneRecording() {
-      try {
-        if (typeof myStatus !== 'undefined' && myStatus && myStatus.rec) return true;
-        if (typeof statusOf !== 'undefined' && statusOf && typeof statusOf.forEach === 'function') {
-          let on = false;
-          statusOf.forEach((st) => { if (st && st.rec) on = true; });
-          return on;
-        }
-      } catch (e) {}
-      return false;
-    }
-    // A service mute is this device only. It does not write the shared mix,
-    // so a small group still opens at the fader the person last set.
-    let serviceHeard = true;
-    function paintServiceSound() {
-      const btn = document.getElementById('airsound');
-      if (!btn) return;
-      let bc = false;
-      try { bc = typeof BROADCAST !== 'undefined' && !!BROADCAST; } catch (e) { bc = false; }
-      btn.hidden = !bc;
-      if (!bc) return;
-      const muted = !serviceHeard;
-      btn.setAttribute('aria-pressed', muted ? 'true' : 'false');
-      btn.textContent = muted ? 'Muted' : 'Sound on';
-      btn.title = muted
-        ? 'The stage is muted on this device. Tap to hear it. Everyone else still hears it.'
-        : 'You can hear the stage. Tap to mute it on this device. Everyone else still hears it.';
-      btn.setAttribute('aria-label', muted ? 'Stage muted on this device' : 'Mute the stage on this device');
-    }
-    let headCountOverride = 0; // headCountForTest: stands in for the live count
-    function roomHeadCount() {
-      if (headCountOverride > 0) return headCountOverride;
-      try {
-        if (typeof displayCount === 'function') {
-          const n = displayCount();
-          if (n > 0) return n;
-        }
-      } catch (e) {}
-      return 1;
-    }
-    // A service counts the people watching. The host and everyone on the
-    // stage are not watching, so a host alone reads 0. null off a service.
-    function serviceWatchCount() {
-      let bc = false;
-      try { bc = typeof BROADCAST !== 'undefined' && !!BROADCAST; } catch (e) { bc = false; }
-      if (!bc) return null;
-      const up = new Set();
-      try { stageIds().forEach((id) => up.add(id)); } catch (e) {}
-      try { adminsNow().forEach((id) => up.add(id)); } catch (e) {}
-      try {
-        if ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')) up.add(myId || 'me');
-      } catch (e) {}
-      return Math.max(0, roomHeadCount() - up.size);
-    }
-    function paintRoomTrust() {
-      const rec = document.getElementById('airrec');
-      const who = document.getElementById('airwho');
-      const on = someoneRecording();
-      if (rec) {
-        rec.setAttribute('aria-pressed', on ? 'true' : 'false');
-        rec.textContent = on ? 'Recording' : 'Not recording';
-        rec.title = on
-          ? 'Recording on this device. Everyone here can see it. Tap to stop.'
-          : 'Not recording. Tap to record on this device. Everyone here will see it.';
-      }
-      if (who) {
-        // Not joined yet, so there is nobody to count.
-        who.hidden = !!(serviceWatchCount() !== null && document.getElementById('appear-modal'));
-        const watch = serviceWatchCount();
-        const n = watch === null ? roomHeadCount() : watch;
-        const word = watch === null ? 'here' : 'watching';
-        who.textContent = n + ' ' + word;
-        who.title = 'Who is ' + word;
-        who.setAttribute('aria-label', 'Who is ' + word + ', ' + n);
-      }
-      paintServiceSound();
-      maybeShowRecNotice();
-    }
-    function recRoomWord() {
-      return (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'broadcast' : 'meeting';
-    }
-    function recNoticeTitle() {
-      let subject = '';
-      try {
-        if (typeof myStatus !== 'undefined' && myStatus && myStatus.rec) subject = 'You are';
-        else if (typeof statusOf !== 'undefined' && statusOf && statusOf.forEach) {
-          // A real peer's status carries no name; the roster has it.
-          statusOf.forEach((st, pid) => {
-            const name = st && st.rec ? (st.name || (typeof nameForPeer === 'function' ? nameForPeer(pid) : '')) : '';
-            if (!subject && name) subject = name + ' is';
-          });
-        }
-      } catch (e) {}
-      const kind = recRoomWord();
-      return subject ? (subject + ' recording this ' + kind) : ('This ' + kind + ' is being recorded');
-    }
-    function maybeShowRecNotice() {
-      const on = someoneRecording();
-      const existing = document.getElementById('rec-notice');
-      if (!on) {
-        try { sessionStorage.removeItem('gifos_rec_seen'); } catch (e) {}
-        if (existing) existing.remove();
-        return;
-      }
-      let seen = false;
-      try { seen = sessionStorage.getItem('gifos_rec_seen') === '1'; } catch (e) {}
-      if (seen) { if (existing) existing.remove(); return; }
-      const left = document.getElementById('left-modal');
-      if (left && left.style.display === 'flex') { if (existing) existing.remove(); return; }
-      if (existing) {
-        // The recorder's name can land after their status.
-        const t = existing.querySelector('#rec-notice-title');
-        if (t && t.textContent !== recNoticeTitle()) t.textContent = recNoticeTitle();
-        return;
-      }
-      // Someone else is recording you (Zoom and Teams ask the same): staying
-      // is consent, and Leave is right there. The recorder, and a viewer who
-      // is not in a service recording, only read it.
-      let mine = false, onStage = false, host = false;
-      try { mine = !!(typeof myStatus !== 'undefined' && myStatus && myStatus.rec); } catch (e) {}
-      try { onStage = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) {}
-      try { host = (typeof bcHostStored === 'function' && !!bcHostStored()) || document.body.classList.contains('amadmin'); } catch (e) {}
-      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
-      const ask = !mine && (!service || (onStage && !host));
-      const bg = document.createElement('div');
-      bg.id = 'rec-notice';
-      bg.className = 'name-modal';
-      bg.setAttribute('role', 'dialog');
-      bg.setAttribute('aria-modal', 'true');
-      bg.setAttribute('aria-labelledby', 'rec-notice-title');
-      bg.innerHTML = '<div class="name-box appear-box"><h3 id="rec-notice-title"></h3>' +
-        '<p>Saved on a device in this room. The bar keeps saying Recording until it stops.</p>' +
-        (ask
-          ? '<p>Staying means you agree to be recorded.</p><div class="appear-actions">' +
-            '<button id="rec-notice-leave" type="button" class="appear-secondary">Leave</button>' +
-            '<button id="rec-notice-ok" type="button" class="appear-primary">Stay</button></div></div>'
-          : '<button id="rec-notice-ok" type="button" class="appear-primary">OK</button></div>');
-      bg.querySelector('#rec-notice-title').textContent = recNoticeTitle();
-      const leave = bg.querySelector('#rec-notice-leave');
-      if (leave) leave.onclick = () => {
-        bg.remove();
-        const btn = document.getElementById('leavebtn');
-        if (btn) btn.click();
-      };
-      bg.querySelector('#rec-notice-ok').onclick = () => {
-        try { sessionStorage.setItem('gifos_rec_seen', '1'); } catch (e) {}
-        bg.remove();
-      };
-      document.body.appendChild(bg);
-    }
-    function paintAirKind(cls, text) {
-      const air = document.getElementById('airbar');
-      const kind = document.getElementById('airkind');
-      if (!air || !kind) return;
-      air.hidden = false;
-      air.className = 'on ' + cls;
-      kind.textContent = text;
-      paintRoomTrust();
-    }
-    // The full-width bar names the room and the seat. Its colour follows the
-    // lamp: live only while a camera or a microphone is actually sending.
-    function paintBroadcastAir() {
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) return;
-      const role = bcRoleSafe();
-      const sending = bcSendingSafe();
-      let onStage = false;
-      try { onStage = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) { onStage = false; }
-      if (role === 'host') paintAirKind(sending ? 'live' : 'off', sending ? 'Broadcast · You are live' : 'Broadcast · You are off air');
-      else if (onStage) paintAirKind(sending ? 'live' : 'off', 'Broadcast · You are on stage');
-      else paintAirKind('watch', 'Broadcast · You are watching');
-      try { paintOnAir(); } catch (e) {}
-      if (typeof updateStatus === 'function') { try { updateStatus(); } catch (e) {} }
-    }
-    // Watching is the seat, not body.notadmin. A session frame never joins,
-    // so it never grows notadmin, and the dock would keep Unmute, Video,
-    // and Stage. Hand stays on that seat.
-    function bcWatchingViewer() {
-      if (typeof BROADCAST === 'undefined' || !BROADCAST) return false;
-      // Watching is the viewer role itself (bcRole), so a stage grant or the
-      // host key, pending or verified, takes the seat off bc-watching.
-      return bcRoleSafe() === 'viewer';
-    }
-    function paintWatchingSeat() {
-      document.body.classList.toggle('bc-watching', bcWatchingViewer());
-    }
-    // A phone dock holds Video, Mic, React, More and Leave (qa-meet-mobile):
-    // the desktop's Invite, Chat and Share move into the More rows there, and
-    // the dock's CC button hides (CC stays in More).
-    function phoneLayout() {
-      try { return window.matchMedia('(max-width: 700px), (max-height: 500px)').matches; } catch (e) { return false; }
-    }
-    // The row of a More group (data-group in the sheet's markup). A control
-    // that leaves the dock goes back to its group, never the sheet's root.
-    function moreRow(group) {
-      return document.querySelector('#barmore .moregroup[data-group="' + group + '"] > .morerow');
-    }
-    function placeDockForWidth() {
-      const bar = document.querySelector('.bar');
-      const more = document.getElementById('barmore');
-      if (!bar || !more) return;
-      const phone = phoneLayout();
-      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
-      const put = (id, group, before, lead) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        if (phone) {
-          const row = moreRow(group);
-          if (row && el.parentElement !== row) row.insertBefore(el, lead ? row.firstChild : null);
-        } else if (el.parentElement !== bar) {
-          const anchor = document.getElementById(before);
-          if (anchor && anchor.parentElement === bar) bar.insertBefore(el, anchor); else bar.insertBefore(el, document.getElementById('bartoggle'));
-        }
-      };
-      if (!service) put('sharebtn', 'video', 'bartoggle');
-      // Hand leads Talk unless it is a viewer's, on the dock; Chat goes ahead
-      // of it when the dock is a phone's.
-      const hand = document.getElementById('hand'), talk = moreRow('talk');
-      if (hand && talk && hand.parentElement !== bar && hand.parentElement !== talk) talk.insertBefore(hand, talk.firstChild);
-      put('chatbtn', 'talk', 'ccdock', true);
-      // Plain words a volunteer knows (qa-meet-mobile) on a phone; the short
-      // labels, and their translations, on a wide screen.
-      const words = phone
-        ? { whobtn: 'People', pwbtn: 'Room password', votebtn: 'Vote on someone' }
-        : { whobtn: uiText('who', 'Who'), pwbtn: uiText('password', 'Password'), votebtn: uiText('vote', 'Vote') };
-      Object.keys(words).forEach((id) => { const el = document.getElementById(id); if (el && el.textContent !== words[id]) el.textContent = words[id]; });
-      // Dock words: short on a phone (five buttons in 320px), whole on a wide
-      // window where older eyes read them at 16px (qa-meet-desktop).
-      // A service dock carries Step on, Invite and Full screen too: under 1100px
-      // it keeps the short words so Leave stays on screen.
-      const narrowService = typeof BROADCAST !== 'undefined' && BROADCAST && window.innerWidth < 1100;
-      const dockWords = (phone || narrowService)
-        ? { reactbtn: 'React', sharebtn: 'Share' }
-        : { reactbtn: uiText('react', 'Reactions'), sharebtn: uiText('shareScreen', 'Share screen') };
-      Object.keys(dockWords).forEach((id) => { const el = document.querySelector('#' + id + ' .dockword'); if (el && el.textContent !== dockWords[id]) el.textContent = dockWords[id]; });
-      try { paintStage(); } catch (e) {}
-    }
-    window.addEventListener('resize', () => { try { placeDockForWidth(); } catch (e) {} });
-    function paintBroadcastChrome() {
-      try { placeDockForWidth(); } catch (e) {}
-      // An open room (no av=) has no files and no Chat options. The desk
-      // preview paints before the mesh joins, so the paperclip is hidden here
-      // too; paintChatGate repeats it once the call is up.
-      if (!/(?:^|[#&?])av=/.test(location.hash)) {
-        const pinEarly = document.getElementById('cattach');
-        if (pinEarly) pinEarly.hidden = true;
-        const chatSec = document.getElementById('adm-chat');
-        if (chatSec) chatSec.hidden = true;
-      }
-      const pill = document.getElementById('onair');
-      const say = (id, text) => { const el = document.getElementById(id); if (el && text) el.textContent = text; };
-      const bar = document.querySelector('.bar');
-      const english = (typeof uiLang === 'function') ? uiLang() === 'en' : true;
-      // A host ends the service for everyone watching. A viewer only leaves.
-      // The room does not cut at once: admin-absence runs a silent grace, then
-      // the five-minute countdown in #admcount, then closeRoomNoHost().
-      const paintLeave = (mode) => {
-        const leave = document.getElementById('leavebtn');
-        const lab = leave && leave.querySelector('.docklab');
-        const go = document.getElementById('leave-go');
-        const note = document.getElementById('leave-ask-note');
-        const end = mode === 'end';
-        if (leave) {
-          if (end) {
-            leave.title = 'End the broadcast. Everyone watching sees it close after you leave.';
-            leave.setAttribute('aria-label', 'End the broadcast');
-          } else if (mode === 'watch') {
-            leave.title = 'Leave the broadcast. Your camera and microphone stop.';
-            leave.setAttribute('aria-label', 'Leave the broadcast');
-          } else {
-            leave.title = 'Leave the meeting. Your camera and microphone stop.';
-            leave.setAttribute('aria-label', 'Leave the meeting');
-          }
-        }
-        if (lab) lab.textContent = end ? 'End' : 'Leave';
-        if (go) go.textContent = end ? 'End' : 'Leave';
-        if (note) {
-          note.hidden = !end;
-          note.textContent = end ? 'Everyone watching sees a five-minute countdown after you leave, and then the room closes.' : '';
-        }
-        if (end) {
-          say('leave-ask-title', 'End the broadcast?');
-          say('left-title', 'You ended the broadcast');
-          say('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
-        } else if (mode === 'watch') {
-          say('leave-ask-title', 'Leave the broadcast?');
-          say('left-title', 'You left the broadcast');
-          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
-        } else {
-          say('leave-ask-title', 'Leave the meeting?');
-          say('left-title', 'You left the meeting');
-          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
-        }
-      };
-      if (!BROADCAST) {
-        if (!english) {
-          // A German or Spanish device keeps the translated room name (applyChrome).
-          paintAirKind('group', uiText('lobTitle', 'Meeting'));
-          if (bar) bar.setAttribute('aria-label', uiText('lobTitle', 'Meeting'));
-          paintWatchingSeat();
-          return;
-        }
-        document.title = 'Meeting — GifOS';
-        if (pill) { pill.hidden = true; pill.className = ''; }
-        paintAirKind('group', 'Meeting');
-        const whoMeet = document.getElementById('whobtn');
-        if (whoMeet) whoMeet.title = 'Who is here — names and internet addresses';
-        const whoMeetH = document.querySelector('#who-modal h3');
-        if (whoMeetH && !phoneLayout()) whoMeetH.textContent = 'Who is here';
-        if (bar) bar.setAttribute('aria-label', 'Meeting controls');
-        const curTitle = document.getElementById('paneltitle');
-        if (curTitle && curTitle.textContent !== 'Transcript') curTitle.textContent = 'Meeting chat';
-        const leave = document.getElementById('leavebtn');
-        if (leave) {
-          leave.title = 'Leave the meeting. Your camera and microphone stop.';
-          leave.setAttribute('aria-label', 'Leave the meeting');
-        }
-        say('chatprivacy', 'Private. Gone when everyone leaves.'); // before UI_TEXT exists; the data-t on the element localises it
-        const chatMeet = document.getElementById('chatbtn');
-        if (chatMeet) chatMeet.title = 'Chat and share files — stays between the people on this meeting, not on a server';
-        const setMeet = document.getElementById('setbtn');
-        if (setMeet) setMeet.title = 'Meeting settings — your sound mix, timing, and the video quality your camera records';
-        const pinMeet = document.getElementById('cattach');
-        if (pinMeet) { pinMeet.title = 'Pin a file to the meeting'; pinMeet.setAttribute('aria-label', pinMeet.title); }
-        const appMeet = document.getElementById('appbtn');
-        if (appMeet) appMeet.title = 'Run an app inside this meeting — everyone here shares and interacts with it live';
-        const appTitle = document.getElementById('app-title');
-        if (appTitle) appTitle.textContent = 'Run an app in this meeting';
-        const appNote = document.getElementById('app-note');
-        if (appNote) appNote.innerHTML = 'Pick one of your apps. It runs live for <b>everyone here</b> — same state, same moves — with the meeting\'s audio, video and recording around it. Anyone can interact.';
-        const pipMeet = document.getElementById('pipbtn');
-        if (pipMeet) {
-          pipMeet.title = 'Float the meeting in a mini window — it stays on screen while you use other apps';
-          pipMeet.setAttribute('aria-label', 'Float the meeting');
-        }
-        paintLeave('group');
-        // An app room keeps its own Help (applyRoomHelp); only a meeting is a small group.
-        const nameLead = document.getElementById('set-name-lead');
-        if (nameLead) nameLead.textContent = 'What everyone sees on your tile:';
-        const helpH = ROOM.kind === 'app' ? null : document.querySelector('#help-modal h3');
-        if (helpH) helpH.textContent = 'How this meeting works';
-        paintWatchingSeat();
-        return;
-      }
-      document.title = 'Broadcast — GifOS';
-      const svcTitle = document.getElementById('paneltitle');
-      if (svcTitle && svcTitle.textContent !== 'Transcript') svcTitle.textContent = 'Broadcast chat';
-      const leaveSvc = document.getElementById('leavebtn');
-      if (leaveSvc) {
-        leaveSvc.title = 'Leave the broadcast. Your camera and microphone stop.';
-        leaveSvc.setAttribute('aria-label', 'Leave the broadcast');
-      }
-      say('leave-ask-title', 'Leave the broadcast?');
-      say('left-title', 'You left the broadcast');
-      say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
-      say('chatprivacy', 'Private to this broadcast, gone when everyone leaves');
-      const nameLead = document.getElementById('set-name-lead');
-      if (nameLead) nameLead.textContent = 'What everyone sees on the stage:';
-      const setBtn = document.getElementById('setbtn');
-      if (setBtn) setBtn.title = 'Broadcast settings — the picture you send, and the name people see on the stage.';
-      const helpH = document.querySelector('#help-modal h3');
-      if (helpH) helpH.textContent = 'How this broadcast works';
-      const who = document.getElementById('whobtn');
-      if (who) who.title = 'Who is watching — names and internet addresses';
-      const whoH = document.querySelector('#who-modal h3');
-      if (whoH) whoH.textContent = 'Who is watching';
-      const whoP = document.querySelector('#who-modal .name-box p');
-      if (whoP) whoP.textContent = 'There is no server in the middle storing this broadcast. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone\u2019s internet address \u2014 nobody is anonymous. \u2713 marks an address the GifOS relay verified or this device saw directly; anything else is only what that person\u2019s device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.';
-      const chat = document.getElementById('chatbtn');
-      if (chat) chat.title = 'Chat with everyone watching — stays between the people here, not on a server';
-      const rec = document.getElementById('recbtn');
-      if (rec) rec.title = 'Record this broadcast ON YOUR DEVICE (everyone sees that you are recording)';
-      const inv = document.querySelector('#inv-modal h3');
-      if (inv) inv.textContent = 'Share this broadcast';
-      const pw = document.getElementById('pwbtn');
-      if (pw) pw.title = 'Viewer password. Optional. It is not part of the link.';
-      const files = document.querySelector('#cfiles h4');
-      if (files) files.textContent = 'Files pinned to this broadcast';
-      const pin = document.getElementById('cattach');
-      if (pin) { pin.title = 'Pin a file to this broadcast'; pin.setAttribute('aria-label', pin.title); }
-      const appBtn = document.getElementById('appbtn');
-      if (appBtn) appBtn.title = 'Run an app on this broadcast — everyone watching shares it and can use it.';
-      const appTitle = document.getElementById('app-title');
-      if (appTitle) appTitle.textContent = 'Run an app on this broadcast';
-      const appNote = document.getElementById('app-note');
-      if (appNote) appNote.innerHTML = 'Pick one of your apps. It runs live for <b>everyone watching</b> — same state, same moves — around the stage. Anyone can interact.';
-      const pipBtn = document.getElementById('pipbtn');
-      if (pipBtn) {
-        pipBtn.title = 'Float the stage in a mini window. It stays on screen while you use other apps.';
-        pipBtn.setAttribute('aria-label', 'Float the stage');
-      }
-      const appHide = document.getElementById('apphide');
-      if (appHide) appHide.title = 'Hide this app on my screen only. The broadcast keeps sharing it.';
-      const appStop = document.getElementById('appstop');
-      if (appStop && appStop.title.indexOf('meeting') !== -1) appStop.title = 'Stop sharing this app with the broadcast';
-      if (bar) bar.setAttribute('aria-label', 'Broadcast controls');
-      const shareOnDock = document.getElementById('sharebtn');
-      const moreSheet = document.getElementById('barmore');
-      const host = bcHostStored() || document.body.classList.contains('amadmin');
-      // A viewer is known at boot; don't wait for the join (applyAdminUi) to
-      // take the camera and mic off their dock, or the name card shows them.
-      if (!host) document.body.classList.add('notadmin');
-      paintLeave(host ? 'end' : 'watch');
-      // Slides and a window are how a host fills the stage. Share sits on the
-      // host dock, the same place a small group already has it. A viewer keeps
-      // it in More until they are allowed to share.
-      if (shareOnDock && moreSheet && bar && !phoneLayout()) {
-        if (host) {
-          const moreBtn = document.getElementById('bartoggle');
-          if (shareOnDock.parentElement !== bar && moreBtn) bar.insertBefore(shareOnDock, moreBtn);
-        } else if (!moreSheet.contains(shareOnDock) && moreRow('video')) moreRow('video').appendChild(shareOnDock);
-      }
-      if (host && bar) {
-        const stage = document.getElementById('stagebtn');
-        const anchor = document.getElementById('reactbtn');
-        if (stage && anchor && stage.parentElement !== bar) bar.insertBefore(stage, anchor);
-        // A service host has no hand to raise, so H is not theirs.
-        for (const id of ['hand', 'react-hand']) { const h = document.getElementById(id); if (h) h.removeAttribute('aria-keyshortcuts'); }
-        if (stage && !stage.querySelector('.docklab')) {
-          stage.classList.add('iconbtn');
-          stage.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="2.4"/><path d="M8.2 13.2c.5-1.5 1.9-2.4 3.8-2.4s3.3.9 3.8 2.4"/><path d="M4 17.5h16"/></svg><span class="docklab dockword">Step on</span>';
-          stage.setAttribute('aria-label', 'Step on the stage');
-        }
-      } else if (bar) {
-        const hand = document.getElementById('hand');
-        const anchor = document.getElementById('reactbtn');
-        if (hand && anchor && hand.parentElement !== bar) bar.insertBefore(hand, anchor);
-        if (hand && !hand.querySelector('.docklab')) {
-          hand.classList.add('iconbtn');
-          hand.innerHTML = '<span class="dockface" aria-hidden="true">\u270B</span><span class="docklab dockword">Raise hand</span>';
-          hand.setAttribute('aria-label', 'Raise hand');
-          hand.setAttribute('aria-pressed', 'false');
-        }
-      }
-      paintBroadcastAir();
-      const plate = document.getElementById('bc-stage');
-      if (plate) plate.hidden = false;
-      const stageWatch = document.getElementById('stagefeed');
-      if (stageWatch && window.MutationObserver) {
-        // The card too, not only the plate: when the feed lands after the
-        // host's camera-off status, nothing else repaints it, and the stage
-        // stayed a bare frame (Q87). paintBroadcastIdent ends in the plate.
-        new MutationObserver(() => { if (typeof paintBroadcastIdent === 'function') paintBroadcastIdent(); }).observe(stageWatch, { childList: true });
-      }
-      paintWatchingSeat();
-    }
-    // The HOST is whoever holds this room's stored admin key — known before
-    // any network exists, which is what lets the boot skip the viewer's
-    // camera ask entirely (below) while the host boots like a meeting.
-    const bcHostStored = () => {
-      try { return !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()); }
-      catch (e) { return false; }
-    };
-    if (TOWNHALL && !bcHostStored()) document.body.classList.add('th-watch');
-    // THE VISIT LINK rides the link as visit=<https url>, set by the host in
-    // More: the church's or streamer's own site. We can't vouch for where it
-    // goes, so it is only a link. Only an https page is offered, and the
-    // button names its site, because anyone can hand someone a link. Links
-    // shared before the rename carry give=; they still work.
-    if (params.get('give') && !params.get('visit')) params.set('visit', params.get('give'));
-    params.delete('give');
-    const BC_VISIT_KEY = 'gifos_bcvisit_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
-    if (BROADCAST && !params.get('visit') && bcHostStored()) {
-      try {
-        const s = localStorage.getItem(BC_VISIT_KEY) || localStorage.getItem(BC_VISIT_KEY.replace('_bcvisit_', '_bcgive_'));
-        if (s) params.set('visit', s);
-      } catch (e) {}
-    }
-    function bcVisitCheck(raw) {
-      raw = String(raw || '').trim();
-      if (!raw || raw.length > 512) return null;
-      try {
-        const u = new URL(raw);
-        if (u.protocol !== 'https:' || !u.hostname || u.username || u.password) return null;
-        return { href: u.href, site: u.hostname };
-      } catch (e) { return null; }
-    }
-    // The host's own values also ride its status gossip (the existing
-    // fan-out), so a viewer who opened a bare link still gets them.
-    function bcHostGossip(field) {
-      try { for (const st of statusOf.values()) if (st && st[field]) return st[field]; } catch (e) {}
-      return null;
-    }
-    function bcVisit() { return BROADCAST ? (bcVisitCheck(params.get('visit')) || bcVisitCheck(bcHostGossip('bcvisit'))) : null; }
-    // THE START TIME rides the link as at=<unix seconds> (and the host's
-    // status), set by the host in More. A church shares Sunday's link
-    // midweek: an early viewer reads when it starts and a countdown, and
-    // someone who opens it hours later reads that it ended.
-    const BC_AT_KEY = 'gifos_bcat_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
-    if (BROADCAST && !params.get('at') && bcHostStored()) {
-      try { const s0 = localStorage.getItem(BC_AT_KEY); if (s0) params.set('at', s0); } catch (e) {}
-    }
-    function bcStartAt() {
-      let n = Number(params.get('at'));
-      if (!(n > 0)) n = Number(bcHostGossip('bcat')) || 0;
-      return BROADCAST && Number.isFinite(n) && n > 0 ? n * 1000 : 0;
-    }
-    // "today at 6:30 PM", "tomorrow at 9:00 AM", "Sunday at 10:00 AM", or a
-    // date past the coming week. Intl's narrow spaces read as plain spaces.
-    function bcWhenWords(ms, now) {
-      const d = new Date(ms), n = new Date(now);
-      const plain = (x) => x.replace(/[\u202f\u00a0]/g, ' ');
-      const time = plain(d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }));
-      const day0 = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-      const days = Math.round((day0(d) - day0(n)) / 86400000);
-      const day = days === 0 ? 'today' : days === 1 ? 'tomorrow'
-        : days > 1 && days < 7 ? d.toLocaleDateString(undefined, { weekday: 'long' })
-        : plain(d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }));
-      return day + ' at ' + time;
-    }
-    // "in 2 h 5 min", "in 4 min", "in under a minute".
-    function bcCountdown(ms, now) {
-      const m = Math.ceil((ms - now) / 60000);
-      if (m <= 1) return 'in under a minute';
-      if (m < 60) return 'in ' + m + ' min';
-      const h = Math.floor(m / 60), r = m % 60;
-      if (h < 48) return 'in ' + h + ' h' + (r ? ' ' + r + ' min' : '');
-      return 'in ' + Math.round(h / 24) + ' days';
-    }
-    // Before the time: when it starts. From 15 minutes before to 3 hours
-    // after: about to start (the host may be late). Later: it has ended.
-    function bcSchedule(now) {
-      const at = bcStartAt();
-      if (!at) return null;
-      if (now < at - 15 * 60000) return { phase: 'future', words: bcWhenWords(at, now), countdown: bcCountdown(at, now) };
-      if (now < at + 3 * 3600000) return { phase: 'soon', countdown: now < at ? bcCountdown(at, now) : '' };
-      return { phase: 'ended' };
-    }
-    // none until joinRoom starts the adopt; pending while the stored key is
-    // still being checked, so a host is not treated as a viewer in that gap.
-    // ok after it verifies; no after it does not.
-    let bcAdoptState = 'none';
-    let bcSeatLock = false;
-    let bcTestGrant = false; // broadcastGrantForTest on a frame that holds no seat id yet
-    let bcCamLiveForTest = false; // setCamLiveForTest: a camera the test says is sending
-    if (BROADCAST) document.body.classList.add(bcHostStored() ? 'bc-host' : 'bc-viewer');
-    // A broadcast seat. Hosts hold the admin key (or are still proving it).
-    // Stage guests hold the signed app grant. Everyone else watches.
-    // canStage is true for the whole page until joinRoom sets `av`, so a
-    // viewer is not a stage guest before the room exists.
-    function bcRole() {
-      if (!BROADCAST) return 'meet';
-      if (amAdmin || (myId && admins.includes(myId))) return 'host';
-      if (bcAdoptState === 'pending' || bcAdoptState === 'ok') return 'host';
-      if (bcAdoptState === 'none' && bcHostStored()) return 'host';
-      if (bcTestGrant) return 'stage';
-      if (av && canStage(myId)) return 'stage';
-      return 'viewer';
-    }
-    function bcMayPublishAv() {
-      const r = bcRole();
-      return r === 'host' || r === 'stage' || r === 'meet';
-    }
-    function paintBroadcastRole() {
-      if (!BROADCAST) return;
-      const role = bcRole();
-      document.body.classList.toggle('bc-viewer', role === 'viewer');
-      document.body.classList.toggle('bc-stage', role === 'stage');
-      document.body.classList.toggle('bc-host', role === 'host');
-      document.body.classList.toggle('stage-granted', role === 'stage');
-      document.body.classList.toggle('bc-watching', role === 'viewer');
-      try { paintHand(); } catch (e) {}
-      try { paintOnAir(); } catch (e) {}
-      try { paintBroadcastJoinNote(role); } catch (e) {}
-    }
-    function bcSending() {
-      if (bcCamLiveForTest) return true;
-      const live = (kind) => {
-        if (!localStream) return false;
-        const tr = (kind === 'video' ? localStream.getVideoTracks() : localStream.getAudioTracks())[0];
-        return !!(tr && tr.readyState === 'live' && tr.enabled);
-      };
-      if (!myStatus.camOff && live('video')) return true;
-      if (!myStatus.muted && live('audio')) return true;
-      return false;
-    }
-    // bcRole reads admin state that is declared further down. The chrome
-    // painter runs before that, so a role asked for too early falls back to
-    // the stored host key.
-    function bcRoleSafe() {
-      try { return bcRole(); } catch (e) { return !BROADCAST ? 'meet' : (bcHostStored() ? 'host' : 'viewer'); }
-    }
-    function bcSendingSafe() {
-      try { return bcSending(); } catch (e) { return false; }
-    }
-    // The lamp (confirmed design): a viewer reads Watching; a host or a stage
-    // guest who is sending a camera or a microphone reads Live, and one who
-    // is not reads Off air. Meetings hide the lamp.
-    function paintOnAir() {
-      const el = document.getElementById('onair');
-      if (!el) return;
-      if (!BROADCAST) { el.hidden = true; return; }
-      const role = bcRoleSafe();
-      let kind = 'off', words = 'Off air';
-      if (role === 'viewer') { kind = 'watch'; words = 'Watching'; }
-      else if (bcSendingSafe()) { kind = 'live'; words = 'Live'; }
-      el.hidden = false;
-      el.className = kind;
-      el.setAttribute('role', 'status');
-      const w = el.querySelector('.words');
-      if (w && w.textContent !== words) w.textContent = words;
-      el.setAttribute('aria-label', words);
-          try { paintOnAirSide(); } catch (e) {}
-      try { bcKeepSync(); } catch (e) {}
-    }
-    function paintBroadcastJoinNote(role) {
-      const note = document.getElementById('bc-join-note');
-      if (!note) return;
-      if (!BROADCAST || role !== 'viewer') { note.hidden = true; return; }
-      if (note.textContent !== BC_WATCH_COPY) note.textContent = BC_WATCH_COPY;
-      note.hidden = false;
-    }
-    // A viewer publishes nothing, including after a bypass. Stops tracks and
-    // parks the main senders. Does not run against a host whose key is still
-    // being checked (bcRole stays 'host' while the adopt is pending).
-    function enforceBroadcastSeat() {
-      if (!BROADCAST || bcSeatLock) return;
-      try { paintBroadcastRole(); } catch (e) {}
-      if (bcRole() !== 'viewer') return;
-      bcSeatLock = true;
-      try {
-        if ((myStatus.scr || screenStream) && typeof stopScreenShare === 'function') {
-          try { stopScreenShare('viewers do not publish'); } catch (e) {}
-        }
-        if (myStatus.stg) myStatus.stg = 0;
-        if (myStatus.cc) {
-          myStatus.cc = false;
-          try { syncSpeech(); } catch (e) {}
-        }
-        if (localStream) {
-          for (const tr of localStream.getTracks()) { try { tr.enabled = false; tr.stop(); } catch (e) {} }
-          localStream = null;
-        }
-        myStatus.muted = true;
-        myStatus.camOff = true;
-        try { refreshOutbound(); } catch (e) {}
-      } finally { bcSeatLock = false; }
-    }
-    paintBroadcastChrome();
-    const grid = document.getElementById('grid');
-    const statusEl = document.getElementById('status');
-    // The text lives in an inner span: a phone makes the button a flex box
-    // for its 44px tap, and "…" is never drawn on a flex box (or on a
-    // WebKit button), so a long message was cut mid-word.
-    const writeStatus = (t) => {
-      let span = statusEl.querySelector('.statustext');
-      if (!span) { span = document.createElement('span'); span.className = 'statustext'; statusEl.replaceChildren(span); }
-      span.textContent = t;
-    };
-    const share = document.getElementById('share');
-    const shareUrl = document.getElementById('share-url');
-    // ONE rule, ONE sentence: the password button's own guard and the door's
-    // refusal of the same act say exactly this, so a person never sees the same
-    // rule twice in two voices (nor the door's machine wording).
-    const PW_ADMIN_ONLY = '⛔ Only the person who runs this room can change its password.';
-    // Explicit messages ("Wrong admin password.", "You were banned…") HOLD the
-    // pill briefly so the ambient counter (updateStatus) can't eat them the
-    // moment any gossip arrives.
-    let statusHoldUntil = 0;
-    let statusDetail = '';
-    // A broadcast viewer who has shared the room with someone, then finds it
-    // empty, is watching an ending. A fresh visit is a service that has not
-    // started. The mark lives for this tab, so next week's visit starts clean.
-    let broadcastSawCompany = false;
-    // A message that STOPS someone (🛡 a refusal, 📷 an admin's video-off) is
-    // the one message that must be read: it holds 12s and wears the warn
-    // colour. Ordinary notices keep the 4s beat. An explicit hold wins.
-    // .bar .status is nowrap + ellipsis: the title carries the whole line
-    // (a long refusal on a phone), written only when it changes.
-    const setStatus = (m, hold) => {
-      const blocking = /^(🛡|📷)/.test(String(m));
-      const countEl = document.getElementById('statuscount');
-      const restEl = document.getElementById('statusrest');
-      // #status is the phone's line, #statusrest the wide window's. Write
-      // both: a phone hides #statusrest, and a refusal there went unread.
-      // The count and the rest are children of #status: writing the span's own
-      // text would delete them (and Invite) for good.
-      if (countEl && restEl) { countEl.textContent = ''; countEl.hidden = true; restEl.textContent = m; }
-      else statusEl.textContent = m;
-      if (statusEl.title !== String(m)) statusEl.title = String(m);
-      statusEl.classList.toggle('alert', blocking || !!hold);
-      statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
-      // The OFF AIR / LIVE banner follows the line (and the camera) on every paint.
-      if (typeof paintLiveBadge === 'function') paintLiveBadge();
-      try { paintStatusSheet(); } catch (e) {}
-    };
-    // The chip is one line. The title holds the whole sentence (a refusal,
-    // "No blur picked…", or "4 in the meeting · 180p …"). A tap opens it.
-    function statusMessage() {
-      const title = (statusEl.getAttribute('title') || '').trim();
-      const text = (statusEl.textContent || '').trim();
-      return (title && title.length >= text.length) ? title : (text || title);
-    }
-    function paintStatusSheet() {
-      const el = document.getElementById('status-full');
-      const p = document.getElementById('status-full-text');
-      if (!el || !p || el.style.display === 'none') return;
-      p.textContent = statusMessage();
-    }
-    function openStatusSheet() {
-      const el = document.getElementById('status-full');
-      const p = document.getElementById('status-full-text');
-      if (!el || !p) return;
-      p.textContent = statusMessage();
-      el.style.display = 'flex';
-      statusEl.setAttribute('aria-expanded', 'true');
-    }
-    function closeStatusSheet() {
-      const el = document.getElementById('status-full');
-      if (el) el.style.display = 'none';
-      statusEl.setAttribute('aria-expanded', 'false');
-    }
-    // The count opens the roster; the rest of the line opens the full status
-    // sheet (qa-meet-mobile). Invite is the header's button, not this line.
-    statusEl.addEventListener('click', (e) => {
-      // On a wide screen the count opens the roster; on a phone the whole chip opens the sheet.
-      if (!phoneLayout() && e.target && e.target.closest && e.target.closest('#statuscount')) return;
-      e.preventDefault(); openStatusSheet();
-    });
-    const statusFullClose = document.getElementById('status-full-close');
-    if (statusFullClose) statusFullClose.onclick = () => closeStatusSheet();
-    const statusFullPeople = document.getElementById('status-full-people');
-    if (statusFullPeople) statusFullPeople.onclick = () => { closeStatusSheet(); toggleRoster(true); };
-    const uid = (p) => p + '_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
-    // The one standard row-delete glyph (see button.row-del in the styles).
-    const DEL_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
-
-    let myId = null, localStream = null, meTile = null, leaving = false;
-    // Set while "Leave the meeting?" is up. Repair loops must not put a
-    // track back on a sender until Cancel (DESIGN §11).
-    let outgoingHeld = false, leaveSnap = null, leavingForAsk = false;
-    // startMesh resolves this when myId is minted. inviteFromSolo awaits it
-    // instead of polling. A fresh socket arms a new promise only while myId
-    // is still unset.
-    let myIdReady = Promise.resolve();
-    let myIdReadyResolve = null;
-    const peers = new Map(); // peerId -> { pc, tile, video, name, connected, absentSince, lastKick }
-    const avInboxes = new Map(); // peer id -> avatar chunk inbox (gifos-avatar.js)
-    const ABSENT_GRACE = 12000; // BACKSTOP ONLY: roster-absent AND link-down this long → tile drops. Announced (D2) and probe-confirmed (D5) departures remove the tile event-driven, within a beat (see departSweep/confirmGone).
-
     // Visible chrome for a German or Spanish device. English stays in the
     // markup. Anything without a translation stays English on purpose.
+    // Declared first: paintBroadcastChrome() and placeDockForWidth() run at load and call uiText().
     const UI_TEXT = {
       de: {
         mic: 'Mikro', unmute: 'Ton an', mute: 'Stumm', micHeld: 'Stumm', cam: 'Kamera', react: 'Reaktionen', more: 'Mehr', hide: 'Weniger', leave: 'Ende',
@@ -6245,6 +5337,916 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pack = UI_TEXT[uiLang()];
       return (pack && pack[key]) || en || '';
     }
+
+    const net = GifOS.net; // the shared transport fabric (also under runtime.js)
+    const ICE_SERVERS = net.ICE_SERVERS;
+    // ---- FREE AUDIO OVER TURN: the state (rules in js/meet-turn.js) --------
+    // TURN is the last rung: a pair uses it only after the direct path and a
+    // friend have both failed, only from the end that cannot be reached
+    // directly, and in a free room only for audio, through one anchor.
+    const MT = GifOS.meetTurn;
+    let turnCred = null, turnCredRoom = null;  // the credential client (asks only after joining, only from a blocked network)
+    let turnAnchorId = null;                   // the seat this page sends its voice to, and hears the room from
+    let turnAnchorSince = 0, turnAnchorUpAt = 0, turnAnchorFails = 0, turnEverServed = false;
+    const turnDownAt = new Map();      // peer id -> since when that pair has had no working path (kept across redials)
+    const turnAnchorDead = new Map();  // peer id -> an anchor that failed is not chosen again before this time
+    const turnMixes = new Map();       // client id -> { fold, keys }: the mix-minus this page sends a client it anchors
+    const turnMixSenders = new WeakSet(); // senders carrying a mix-minus: a microphone swap never touches them
+    // ---- VIDEO ANYWHERE: the state (rules in js/meet-video-anywhere.js) ----
+    // A room whose admin presented a Video Anywhere receipt carries video
+    // across networks that block direct connections. The admin's signed
+    // launch order { receipt, ticket } travels peer to peer over the
+    // meeting's own encrypted channels; a page that dials a pair through a
+    // server shows it to the credential service for that pair.
+    const VA = GifOS.meetVA;
+    let vaOrder = null;            // the best checked launch order this page holds
+    const vaPaid = new Map();      // peer id -> { bridge, cred, orderSig }: paid credentials for a pair this page dials through a server
+    const vaChecking = new Map();  // order signature -> { at, stage, done }: being checked, or refused for good
+    let vaSigning = null, vaForceSign = false;     // the admin's launch in progress; sign again now (a top-up)
+    let vaMeter = null, vaMeterAt = 0, vaMeterBusy = false, vaUsedAtStart = null, vaMeterAsks = 0;
+    let vaTerms = null, vaTermsAt = 0, vaTermsBusy = false;
+    let vaBuying = false, vaResumed = false, vaNudged = '', vaTopupRetry = false;
+    // Quality ladder: live links → per-link video constraints. adapt() passes
+    // n = 1 + peers.size, the direct links, bounded by the row, not the room.
+    // Upload cost grows with those links, so both resolution and each link's
+    // bitrate step down to keep total upstream roughly flat.
+    // NOTE: the link-count rung is only the STARTING POINT — adapt() then steps
+    // further down this same ladder by the device's power tier (on battery /
+    // battery low / charger losing / phone at all / parked phone). See the
+    // battery-tier block above adapt().
+    const LADDER = [
+      { max: 2, w: 1280, h: 720, fps: 30, kbps: 1800, label: '720p' },
+      { max: 4, w: 854,  h: 480, fps: 24, kbps: 800,  label: '480p' },
+      { max: 6, w: 640,  h: 360, fps: 20, kbps: 450,  label: '360p' },
+      { max: 99, w: 426, h: 240, fps: 15, kbps: 250,  label: '240p' },
+      // BELOW THE OLD FLOOR (2026-07-30). 240p was never a technical limit —
+      // it was simply the last entry, so on a phone in any 3+ person meeting
+      // the power tier SATURATED: battery state changed nothing, because
+      // LADDER[index+tier] clamped to the last rung and 240p is already
+      // 15fps. These two rungs give the tier somewhere to go. Encoder cost
+      // tracks pixels x fps, so 240p -> 144p is ~2.8x fewer pixels and 2/3
+      // the frames — the deepest cut available without killing the picture.
+      // rung(n) still floors at 240p for the link count (find() takes the first
+      // max>=n), so these are reachable ONLY by power tier / tune — nobody
+      // lands here just for being in a big room.
+      { max: 99, w: 320, h: 180, fps: 12, kbps: 150,  label: '180p' },
+      { max: 99, w: 256, h: 144, fps: 10, kbps: 100,  label: '144p' },
+    ];
+    // Never undefined: above the last rung's max (a stadium can carry a
+    // million) every node just sits on the lowest per-link tier. Returning
+    // undefined here threw on q.w/q.label at every status + adapt tick once a
+    // room crossed ~99, taking the whole client down as a section filled.
+    const rung = (n) => LADDER.find((r) => n <= r.max) || LADDER[LADDER.length - 1];
+    // A SHARED SCREEN IS NOT A FACE, AND THE LADDER IS ABOUT FACES. Every rung
+    // above trades resolution away first, because a face stays a face at 360p —
+    // the information is the motion. A slide, a terminal or a spreadsheet is the
+    // opposite: the information IS the spatial detail, and the moment the
+    // encoder scales 1920x1080 down to fit a face's budget the text stops being
+    // text. It is also cheap to hold: a still document sends almost nothing
+    // between changes, so a high CAP costs the radio only while the picture
+    // actually moves. Hence a separate lane — a cap, not a target, like every
+    // other maxBitrate here.
+    const SCREEN_KBPS = 2500;
+    // ---- VIDEO QUALITY (Settings): what YOUR OWN camera records --------------
+    // Auto (the default, and the whole behavior until 2026-08-03) = the LADDER
+    // above: the link count picks the rung, the power tier and tune cut deeper. A
+    // MANUAL choice pins capture + encode to that rung instead — the user's
+    // deliberate knob, so it overrides the room-size and power stepping. Two
+    // laws still apply on top of a manual rung: blur's fps honesty caps (a
+    // blurred feed never pays for frames) and the aux/fold budgets (carried
+    // media was never the user's own camera). 1080p exists ONLY here — no
+    // room size ever auto-picks it; it is a broadcaster's deliberate spend.
+    // Manual only ever shapes MY outgoing camera; receivers are untouched.
+    const VQ_KEY = 'gifos_vq';
+    const VQ_1080 = { max: 0, w: 1920, h: 1080, fps: 30, kbps: 3500, label: '1080p' };
+    const VQ_CHOICES = [VQ_1080].concat(LADDER.filter((r) => r.label !== '180p')); // 180p is power-tier internal, not a human choice
+    let vqManual = (() => { try { return localStorage.getItem(VQ_KEY) || ''; } catch (e) { return ''; } })();
+    if (!VQ_CHOICES.some((r) => r.label === vqManual)) vqManual = '';
+    const vqRung = () => VQ_CHOICES.find((r) => r.label === vqManual) || null;
+    function setVq(label) {
+      vqManual = VQ_CHOICES.some((r) => r.label === label) ? label : '';
+      try { vqManual ? localStorage.setItem(VQ_KEY, vqManual) : localStorage.removeItem(VQ_KEY); } catch (e) {}
+      paintVq();
+      adapt(); // re-ask the camera + re-cap every sender now, not on the next beat
+    }
+    function paintVq() {
+      for (const b of document.querySelectorAll('#vqrow button')) b.classList.toggle('sel', (b.dataset.vq || '') === vqManual);
+    }
+
+    const params = new URLSearchParams(location.hash.slice(1));
+    // A session document is srcdoc (the host page's frame-src is about: only).
+    // The hash cannot carry mb=1, so the host stamps the flag before boot.
+    if (window.__gifosMb === '1' && params.get('mb') !== '1') params.set('mb', '1');
+    // The real file we're served from (/run.html at load — a pretty /meet/<room>
+    // link 404-routes here; the legacy meet.html shim is DELETED, no-shims flag
+    // day 2026-08-05). We
+    // keep this because on prod we rewrite the address bar to the pretty path, so
+    // location.pathname stops being a reliable base for building runtime URLs;
+    // MEET_PATH always is.
+    // about:srcdoc (a meeting session) has no path of its own. Links and the
+    // address it would show are still the meeting page.
+    const MEET_PATH = location.protocol === 'about:' ? '/run.html' : location.pathname;
+    // about:srcdoc's location.origin is the string "null" even when the
+    // document is same-origin with the page that framed it.
+    const pageOrigin = () => {
+      if (location.origin && location.origin !== 'null') return location.origin;
+      try { if (window.parent && window.parent !== window && window.parent.location && window.parent.location.origin) return window.parent.location.origin; } catch (e) {}
+      return '';
+    };
+    // ---- ONE RUNTIME: the entry mints the room's TRAITS (docs/one-runtime.md).
+    // The link is the promise — which component is pinned is decided HERE, at
+    // entry, and is immutable for the page's life:
+    //   #v=<room>[&av=]        → meeting entry: media plane PINNED, app slot free
+    //   #id=<fileId>           → an app from MY desktop, SOLO: no room, no relay,
+    //                            no mesh — Invite mints the room later
+    //   #s=<short.ver>&k=<c>   → owned app room: app PINNED (no succession)
+    //   #j=<code>              → anyone-owns app room: app PINNED (succession)
+    const ROOM = (() => {
+      const id = params.get('id'), j = params.get('j'), s = params.get('s'), k = params.get('k');
+      if (id) return { kind: 'app', solo: true, appPinned: true, mediaPinned: false, fileId: id, join: null };
+      if (s && k) {
+        const dot = s.lastIndexOf('.');
+        return { kind: 'app', solo: false, appPinned: true, mediaPinned: false, fileId: null,
+          join: { short: s.slice(0, dot), av: s.slice(dot + 1).toLowerCase(), k: k, owned: true } };
+      }
+      if (j) return { kind: 'app', solo: false, appPinned: true, mediaPinned: false, fileId: null, join: { short: null, av: null, k: j, owned: false } };
+      return { kind: 'meet', solo: false, appPinned: false, mediaPinned: true, fileId: null, join: null };
+    })();
+    // ---- BROADCAST (the Broadcast app — a SKIN of this page) ----------------
+    // #bc=1 on an ADMIN room (v+av): one host live on the Stage, unlimited
+    // viewers who bring no media of their own. The flag rides the HASH so it
+    // survives the version-channel redirect and travels inside the share link
+    // (/cast/<room>/<V> pretty form). It is a skin, not a security boundary:
+    // a client that strips it lands in the plain meeting UI of the SAME room,
+    // and every rule that matters — signed authority, admin-only stage entry,
+    // receiver-side moderation — is the admin room's, enforced as ever.
+    // BC_INTENT alone (bare meet.html#bc=1) opens the broadcast-flavored lobby.
+    const BC_INTENT = params.has('bc');
+    // ---- LINK-BORNE LAUNCH ARGUMENTS: #id=<file>&go.<key>=<value> -----------
+    // "Open Anyroad" is a link anyone can already send. This is how a link says
+    // WHERE to open it — go.at=36.06,-112.14&go.fly=1 — without becoming a
+    // second, weaker way to run code: the values are inert strings, the runtime
+    // drops every key the app's manifest did not declare, and nothing reaches
+    // the app until the consent sheet is answered (runtime.js declaredLaunch /
+    // gifos-perms.js). SOLO ONLY, enforced at the boot call below: in a joined
+    // room the app is somebody else's mount and my URL must not arm it.
+    // In the hash for the usual reason — the version channel drops the query.
+    const LAUNCH = (() => {
+      const out = {}; let n = 0;
+      params.forEach((v, k) => { if (k.length > 3 && k.slice(0, 3) === 'go.') { out[k.slice(3)] = v; n++; } });
+      return n ? out : null;
+    })();
+    const BROADCAST = BC_INTENT && !!params.get('v') && /^[a-f0-9]{16,64}$/.test((params.get('av') || '').toLowerCase());
+    const BC_WATCH_COPY = 'Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.';
+    if (BROADCAST) document.body.classList.add('broadcast');
+    // A town hall is a skin on the same admin room, the way a broadcast is.
+    // th rides the link (?th=1 on a pretty /meet path, &th=1 in the hash).
+    // It does not change who can be a viewer, on stage, or the host.
+    const TOWNHALL = !BROADCAST && params.has('th');
+    if (TOWNHALL) document.body.classList.add('townhall');
+    // The lobby is renamed when you arrive wanting a broadcast. The room used
+    // to keep saying "meeting" on the chat, the leave dialog, and Help, and
+    // nothing told a host they were on air. Paint that chrome once the host
+    // key helper exists (just below) and again whenever admin state changes.
+    function someoneRecording() {
+      try {
+        if (typeof myStatus !== 'undefined' && myStatus && myStatus.rec) return true;
+        if (typeof statusOf !== 'undefined' && statusOf && typeof statusOf.forEach === 'function') {
+          let on = false;
+          statusOf.forEach((st) => { if (st && st.rec) on = true; });
+          return on;
+        }
+      } catch (e) {}
+      return false;
+    }
+    // A service mute is this device only. It does not write the shared mix,
+    // so a small group still opens at the fader the person last set.
+    let serviceHeard = true;
+    function paintServiceSound() {
+      const btn = document.getElementById('airsound');
+      if (!btn) return;
+      let bc = false;
+      try { bc = typeof BROADCAST !== 'undefined' && !!BROADCAST; } catch (e) { bc = false; }
+      btn.hidden = !bc;
+      if (!bc) return;
+      const muted = !serviceHeard;
+      btn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+      btn.textContent = muted ? 'Muted' : 'Sound on';
+      btn.title = muted
+        ? 'The stage is muted on this device. Tap to hear it. Everyone else still hears it.'
+        : 'You can hear the stage. Tap to mute it on this device. Everyone else still hears it.';
+      btn.setAttribute('aria-label', muted ? 'Stage muted on this device' : 'Mute the stage on this device');
+    }
+    let headCountOverride = 0; // headCountForTest: stands in for the live count
+    function roomHeadCount() {
+      if (headCountOverride > 0) return headCountOverride;
+      try {
+        if (typeof displayCount === 'function') {
+          const n = displayCount();
+          if (n > 0) return n;
+        }
+      } catch (e) {}
+      return 1;
+    }
+    // A service counts the people watching. The host and everyone on the
+    // stage are not watching, so a host alone reads 0. null off a service.
+    function serviceWatchCount() {
+      let bc = false;
+      try { bc = typeof BROADCAST !== 'undefined' && !!BROADCAST; } catch (e) { bc = false; }
+      if (!bc) return null;
+      const up = new Set();
+      try { stageIds().forEach((id) => up.add(id)); } catch (e) {}
+      try { adminsNow().forEach((id) => up.add(id)); } catch (e) {}
+      try {
+        if ((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')) up.add(myId || 'me');
+      } catch (e) {}
+      return Math.max(0, roomHeadCount() - up.size);
+    }
+    function paintRoomTrust() {
+      const rec = document.getElementById('airrec');
+      const who = document.getElementById('airwho');
+      const on = someoneRecording();
+      if (rec) {
+        rec.setAttribute('aria-pressed', on ? 'true' : 'false');
+        rec.textContent = on ? 'Recording' : 'Not recording';
+        rec.title = on
+          ? 'Recording on this device. Everyone here can see it. Tap to stop.'
+          : 'Not recording. Tap to record on this device. Everyone here will see it.';
+      }
+      if (who) {
+        // Not joined yet, so there is nobody to count.
+        who.hidden = !!(serviceWatchCount() !== null && document.getElementById('appear-modal'));
+        const watch = serviceWatchCount();
+        const n = watch === null ? roomHeadCount() : watch;
+        const word = watch === null ? 'here' : 'watching';
+        who.textContent = n + ' ' + word;
+        who.title = 'Who is ' + word;
+        who.setAttribute('aria-label', 'Who is ' + word + ', ' + n);
+      }
+      paintServiceSound();
+      maybeShowRecNotice();
+    }
+    function recRoomWord() {
+      return (typeof BROADCAST !== 'undefined' && BROADCAST) ? 'broadcast' : 'meeting';
+    }
+    function recNoticeTitle() {
+      let subject = '';
+      try {
+        if (typeof myStatus !== 'undefined' && myStatus && myStatus.rec) subject = 'You are';
+        else if (typeof statusOf !== 'undefined' && statusOf && statusOf.forEach) {
+          // A real peer's status carries no name; the roster has it.
+          statusOf.forEach((st, pid) => {
+            const name = st && st.rec ? (st.name || (typeof nameForPeer === 'function' ? nameForPeer(pid) : '')) : '';
+            if (!subject && name) subject = name + ' is';
+          });
+        }
+      } catch (e) {}
+      const kind = recRoomWord();
+      return subject ? (subject + ' recording this ' + kind) : ('This ' + kind + ' is being recorded');
+    }
+    function maybeShowRecNotice() {
+      const on = someoneRecording();
+      const existing = document.getElementById('rec-notice');
+      if (!on) {
+        try { sessionStorage.removeItem('gifos_rec_seen'); } catch (e) {}
+        if (existing) existing.remove();
+        return;
+      }
+      let seen = false;
+      try { seen = sessionStorage.getItem('gifos_rec_seen') === '1'; } catch (e) {}
+      if (seen) { if (existing) existing.remove(); return; }
+      const left = document.getElementById('left-modal');
+      if (left && left.style.display === 'flex') { if (existing) existing.remove(); return; }
+      if (existing) {
+        // The recorder's name can land after their status.
+        const t = existing.querySelector('#rec-notice-title');
+        if (t && t.textContent !== recNoticeTitle()) t.textContent = recNoticeTitle();
+        return;
+      }
+      // Someone else is recording you (Zoom and Teams ask the same): staying
+      // is consent, and Leave is right there. The recorder, and a viewer who
+      // is not in a service recording, only read it.
+      let mine = false, onStage = false, host = false;
+      try { mine = !!(typeof myStatus !== 'undefined' && myStatus && myStatus.rec); } catch (e) {}
+      try { onStage = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) {}
+      try { host = (typeof bcHostStored === 'function' && !!bcHostStored()) || document.body.classList.contains('amadmin'); } catch (e) {}
+      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const ask = !mine && (!service || (onStage && !host));
+      const bg = document.createElement('div');
+      bg.id = 'rec-notice';
+      bg.className = 'name-modal';
+      bg.setAttribute('role', 'dialog');
+      bg.setAttribute('aria-modal', 'true');
+      bg.setAttribute('aria-labelledby', 'rec-notice-title');
+      bg.innerHTML = '<div class="name-box appear-box"><h3 id="rec-notice-title"></h3>' +
+        '<p>Saved on a device in this room. The bar keeps saying Recording until it stops.</p>' +
+        (ask
+          ? '<p>Staying means you agree to be recorded.</p><div class="appear-actions">' +
+            '<button id="rec-notice-leave" type="button" class="appear-secondary">Leave</button>' +
+            '<button id="rec-notice-ok" type="button" class="appear-primary">Stay</button></div></div>'
+          : '<button id="rec-notice-ok" type="button" class="appear-primary">OK</button></div>');
+      bg.querySelector('#rec-notice-title').textContent = recNoticeTitle();
+      const leave = bg.querySelector('#rec-notice-leave');
+      if (leave) leave.onclick = () => {
+        bg.remove();
+        const btn = document.getElementById('leavebtn');
+        if (btn) btn.click();
+      };
+      bg.querySelector('#rec-notice-ok').onclick = () => {
+        try { sessionStorage.setItem('gifos_rec_seen', '1'); } catch (e) {}
+        bg.remove();
+      };
+      document.body.appendChild(bg);
+    }
+    function paintAirKind(cls, text) {
+      const air = document.getElementById('airbar');
+      const kind = document.getElementById('airkind');
+      if (!air || !kind) return;
+      air.hidden = false;
+      air.className = 'on ' + cls;
+      kind.textContent = text;
+      paintRoomTrust();
+    }
+    // The full-width bar names the room and the seat. Its colour follows the
+    // lamp: live only while a camera or a microphone is actually sending.
+    function paintBroadcastAir() {
+      if (typeof BROADCAST === 'undefined' || !BROADCAST) return;
+      const role = bcRoleSafe();
+      const sending = bcSendingSafe();
+      let onStage = false;
+      try { onStage = typeof myStatus !== 'undefined' && !!myStatus.stg; } catch (e) { onStage = false; }
+      if (role === 'host') paintAirKind(sending ? 'live' : 'off', sending ? 'Broadcast · You are live' : 'Broadcast · You are off air');
+      else if (onStage) paintAirKind(sending ? 'live' : 'off', 'Broadcast · You are on stage');
+      else paintAirKind('watch', 'Broadcast · You are watching');
+      try { paintOnAir(); } catch (e) {}
+      if (typeof updateStatus === 'function') { try { updateStatus(); } catch (e) {} }
+    }
+    // Watching is the seat, not body.notadmin. A session frame never joins,
+    // so it never grows notadmin, and the dock would keep Unmute, Video,
+    // and Stage. Hand stays on that seat.
+    function bcWatchingViewer() {
+      if (typeof BROADCAST === 'undefined' || !BROADCAST) return false;
+      // Watching is the viewer role itself (bcRole), so a stage grant or the
+      // host key, pending or verified, takes the seat off bc-watching.
+      return bcRoleSafe() === 'viewer';
+    }
+    function paintWatchingSeat() {
+      document.body.classList.toggle('bc-watching', bcWatchingViewer());
+    }
+    // A phone dock holds Video, Mic, React, More and Leave (qa-meet-mobile):
+    // the desktop's Invite, Chat and Share move into the More rows there, and
+    // the dock's CC button hides (CC stays in More).
+    function phoneLayout() {
+      try { return window.matchMedia('(max-width: 700px), (max-height: 500px)').matches; } catch (e) { return false; }
+    }
+    // The row of a More group (data-group in the sheet's markup). A control
+    // that leaves the dock goes back to its group, never the sheet's root.
+    function moreRow(group) {
+      return document.querySelector('#barmore .moregroup[data-group="' + group + '"] > .morerow');
+    }
+    function placeDockForWidth() {
+      const bar = document.querySelector('.bar');
+      const more = document.getElementById('barmore');
+      if (!bar || !more) return;
+      const phone = phoneLayout();
+      const service = typeof BROADCAST !== 'undefined' && BROADCAST;
+      const put = (id, group, before, lead) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (phone) {
+          const row = moreRow(group);
+          if (row && el.parentElement !== row) row.insertBefore(el, lead ? row.firstChild : null);
+        } else if (el.parentElement !== bar) {
+          const anchor = document.getElementById(before);
+          if (anchor && anchor.parentElement === bar) bar.insertBefore(el, anchor); else bar.insertBefore(el, document.getElementById('bartoggle'));
+        }
+      };
+      if (!service) put('sharebtn', 'video', 'bartoggle');
+      // Hand leads Talk unless it is a viewer's, on the dock; Chat goes ahead
+      // of it when the dock is a phone's.
+      const hand = document.getElementById('hand'), talk = moreRow('talk');
+      if (hand && talk && hand.parentElement !== bar && hand.parentElement !== talk) talk.insertBefore(hand, talk.firstChild);
+      put('chatbtn', 'talk', 'ccdock', true);
+      // Plain words a volunteer knows (qa-meet-mobile) on a phone; the short
+      // labels, and their translations, on a wide screen.
+      const words = phone
+        ? { whobtn: 'People', pwbtn: 'Room password', votebtn: 'Vote on someone' }
+        : { whobtn: uiText('who', 'Who'), pwbtn: uiText('password', 'Password'), votebtn: uiText('vote', 'Vote') };
+      Object.keys(words).forEach((id) => { const el = document.getElementById(id); if (el && el.textContent !== words[id]) el.textContent = words[id]; });
+      // Dock words: short on a phone (five buttons in 320px), whole on a wide
+      // window where older eyes read them at 16px (qa-meet-desktop).
+      // A service dock carries Step on, Invite and Full screen too: under 1100px
+      // it keeps the short words so Leave stays on screen.
+      const narrowService = typeof BROADCAST !== 'undefined' && BROADCAST && window.innerWidth < 1100;
+      const dockWords = (phone || narrowService)
+        ? { reactbtn: 'React', sharebtn: 'Share' }
+        : { reactbtn: uiText('react', 'Reactions'), sharebtn: uiText('shareScreen', 'Share screen') };
+      Object.keys(dockWords).forEach((id) => { const el = document.querySelector('#' + id + ' .dockword'); if (el && el.textContent !== dockWords[id]) el.textContent = dockWords[id]; });
+      try { paintStage(); } catch (e) {}
+    }
+    window.addEventListener('resize', () => { try { placeDockForWidth(); } catch (e) {} });
+    function paintBroadcastChrome() {
+      try { placeDockForWidth(); } catch (e) {}
+      // An open room (no av=) has no files and no Chat options. The desk
+      // preview paints before the mesh joins, so the paperclip is hidden here
+      // too; paintChatGate repeats it once the call is up.
+      if (!/(?:^|[#&?])av=/.test(location.hash)) {
+        const pinEarly = document.getElementById('cattach');
+        if (pinEarly) pinEarly.hidden = true;
+        const chatSec = document.getElementById('adm-chat');
+        if (chatSec) chatSec.hidden = true;
+      }
+      const pill = document.getElementById('onair');
+      const say = (id, text) => { const el = document.getElementById(id); if (el && text) el.textContent = text; };
+      const bar = document.querySelector('.bar');
+      const english = (typeof uiLang === 'function') ? uiLang() === 'en' : true;
+      // A host ends the service for everyone watching. A viewer only leaves.
+      // The room does not cut at once: admin-absence runs a silent grace, then
+      // the five-minute countdown in #admcount, then closeRoomNoHost().
+      const paintLeave = (mode) => {
+        const leave = document.getElementById('leavebtn');
+        const lab = leave && leave.querySelector('.docklab');
+        const go = document.getElementById('leave-go');
+        const note = document.getElementById('leave-ask-note');
+        const end = mode === 'end';
+        if (leave) {
+          if (end) {
+            leave.title = 'End the broadcast. Everyone watching sees it close after you leave.';
+            leave.setAttribute('aria-label', 'End the broadcast');
+          } else if (mode === 'watch') {
+            leave.title = 'Leave the broadcast. Your camera and microphone stop.';
+            leave.setAttribute('aria-label', 'Leave the broadcast');
+          } else {
+            leave.title = 'Leave the meeting. Your camera and microphone stop.';
+            leave.setAttribute('aria-label', 'Leave the meeting');
+          }
+        }
+        if (lab) lab.textContent = end ? 'End' : 'Leave';
+        if (go) go.textContent = end ? 'End' : 'Leave';
+        if (note) {
+          note.hidden = !end;
+          note.textContent = end ? 'Everyone watching sees a five-minute countdown after you leave, and then the room closes.' : '';
+        }
+        if (end) {
+          say('leave-ask-title', 'End the broadcast?');
+          say('left-title', 'You ended the broadcast');
+          say('left-note', 'Everyone watching sees a five-minute countdown, and then the room closes. Rejoin to keep it open.');
+        } else if (mode === 'watch') {
+          say('leave-ask-title', 'Leave the broadcast?');
+          say('left-title', 'You left the broadcast');
+          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+        } else {
+          say('leave-ask-title', 'Leave the meeting?');
+          say('left-title', 'You left the meeting');
+          say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+        }
+      };
+      if (!BROADCAST) {
+        if (!english) {
+          // A German or Spanish device keeps the translated room name (applyChrome).
+          paintAirKind('group', uiText('lobTitle', 'Meeting'));
+          if (bar) bar.setAttribute('aria-label', uiText('lobTitle', 'Meeting'));
+          paintWatchingSeat();
+          return;
+        }
+        document.title = 'Meeting — GifOS';
+        if (pill) { pill.hidden = true; pill.className = ''; }
+        paintAirKind('group', 'Meeting');
+        const whoMeet = document.getElementById('whobtn');
+        if (whoMeet) whoMeet.title = 'Who is here — names and internet addresses';
+        const whoMeetH = document.querySelector('#who-modal h3');
+        if (whoMeetH && !phoneLayout()) whoMeetH.textContent = 'Who is here';
+        if (bar) bar.setAttribute('aria-label', 'Meeting controls');
+        const curTitle = document.getElementById('paneltitle');
+        if (curTitle && curTitle.textContent !== 'Transcript') curTitle.textContent = 'Meeting chat';
+        const leave = document.getElementById('leavebtn');
+        if (leave) {
+          leave.title = 'Leave the meeting. Your camera and microphone stop.';
+          leave.setAttribute('aria-label', 'Leave the meeting');
+        }
+        say('chatprivacy', 'Private. Gone when everyone leaves.'); // English here; applyChrome() runs later and the data-t on the element localises it
+        const chatMeet = document.getElementById('chatbtn');
+        if (chatMeet) chatMeet.title = 'Chat and share files — stays between the people on this meeting, not on a server';
+        const setMeet = document.getElementById('setbtn');
+        if (setMeet) setMeet.title = 'Meeting settings — your sound mix, timing, and the video quality your camera records';
+        const pinMeet = document.getElementById('cattach');
+        if (pinMeet) { pinMeet.title = 'Pin a file to the meeting'; pinMeet.setAttribute('aria-label', pinMeet.title); }
+        const appMeet = document.getElementById('appbtn');
+        if (appMeet) appMeet.title = 'Run an app inside this meeting — everyone here shares and interacts with it live';
+        const appTitle = document.getElementById('app-title');
+        if (appTitle) appTitle.textContent = 'Run an app in this meeting';
+        const appNote = document.getElementById('app-note');
+        if (appNote) appNote.innerHTML = 'Pick one of your apps. It runs live for <b>everyone here</b> — same state, same moves — with the meeting\'s audio, video and recording around it. Anyone can interact.';
+        const pipMeet = document.getElementById('pipbtn');
+        if (pipMeet) {
+          pipMeet.title = 'Float the meeting in a mini window — it stays on screen while you use other apps';
+          pipMeet.setAttribute('aria-label', 'Float the meeting');
+        }
+        paintLeave('group');
+        // An app room keeps its own Help (applyRoomHelp); only a meeting is a small group.
+        const nameLead = document.getElementById('set-name-lead');
+        if (nameLead) nameLead.textContent = 'What everyone sees on your tile:';
+        const helpH = ROOM.kind === 'app' ? null : document.querySelector('#help-modal h3');
+        if (helpH) helpH.textContent = 'How this meeting works';
+        paintWatchingSeat();
+        return;
+      }
+      document.title = 'Broadcast — GifOS';
+      const svcTitle = document.getElementById('paneltitle');
+      if (svcTitle && svcTitle.textContent !== 'Transcript') svcTitle.textContent = 'Broadcast chat';
+      const leaveSvc = document.getElementById('leavebtn');
+      if (leaveSvc) {
+        leaveSvc.title = 'Leave the broadcast. Your camera and microphone stop.';
+        leaveSvc.setAttribute('aria-label', 'Leave the broadcast');
+      }
+      say('leave-ask-title', 'Leave the broadcast?');
+      say('left-title', 'You left the broadcast');
+      say('left-note', 'Your camera and microphone are off. Rejoin to come back.');
+      say('chatprivacy', 'Private to this broadcast, gone when everyone leaves');
+      const nameLead = document.getElementById('set-name-lead');
+      if (nameLead) nameLead.textContent = 'What everyone sees on the stage:';
+      const setBtn = document.getElementById('setbtn');
+      if (setBtn) setBtn.title = 'Broadcast settings — the picture you send, and the name people see on the stage.';
+      const helpH = document.querySelector('#help-modal h3');
+      if (helpH) helpH.textContent = 'How this broadcast works';
+      const who = document.getElementById('whobtn');
+      if (who) who.title = 'Who is watching — names and internet addresses';
+      const whoH = document.querySelector('#who-modal h3');
+      if (whoH) whoH.textContent = 'Who is watching';
+      const whoP = document.querySelector('#who-modal .name-box p');
+      if (whoP) whoP.textContent = 'There is no server in the middle storing this broadcast. The phones and computers of the people in it are the servers: they connect straight to each other. That is also why everyone here can see everyone\u2019s internet address \u2014 nobody is anonymous. \u2713 marks an address the GifOS relay verified or this device saw directly; anything else is only what that person\u2019s device reported. People who left stay on the list. To report illegal activity to law enforcement, download this list and include it.';
+      const chat = document.getElementById('chatbtn');
+      if (chat) chat.title = 'Chat with everyone watching — stays between the people here, not on a server';
+      const rec = document.getElementById('recbtn');
+      if (rec) rec.title = 'Record this broadcast ON YOUR DEVICE (everyone sees that you are recording)';
+      const inv = document.querySelector('#inv-modal h3');
+      if (inv) inv.textContent = 'Share this broadcast';
+      const pw = document.getElementById('pwbtn');
+      if (pw) pw.title = 'Viewer password. Optional. It is not part of the link.';
+      const files = document.querySelector('#cfiles h4');
+      if (files) files.textContent = 'Files pinned to this broadcast';
+      const pin = document.getElementById('cattach');
+      if (pin) { pin.title = 'Pin a file to this broadcast'; pin.setAttribute('aria-label', pin.title); }
+      const appBtn = document.getElementById('appbtn');
+      if (appBtn) appBtn.title = 'Run an app on this broadcast — everyone watching shares it and can use it.';
+      const appTitle = document.getElementById('app-title');
+      if (appTitle) appTitle.textContent = 'Run an app on this broadcast';
+      const appNote = document.getElementById('app-note');
+      if (appNote) appNote.innerHTML = 'Pick one of your apps. It runs live for <b>everyone watching</b> — same state, same moves — around the stage. Anyone can interact.';
+      const pipBtn = document.getElementById('pipbtn');
+      if (pipBtn) {
+        pipBtn.title = 'Float the stage in a mini window. It stays on screen while you use other apps.';
+        pipBtn.setAttribute('aria-label', 'Float the stage');
+      }
+      const appHide = document.getElementById('apphide');
+      if (appHide) appHide.title = 'Hide this app on my screen only. The broadcast keeps sharing it.';
+      const appStop = document.getElementById('appstop');
+      if (appStop && appStop.title.indexOf('meeting') !== -1) appStop.title = 'Stop sharing this app with the broadcast';
+      if (bar) bar.setAttribute('aria-label', 'Broadcast controls');
+      const shareOnDock = document.getElementById('sharebtn');
+      const moreSheet = document.getElementById('barmore');
+      const host = bcHostStored() || document.body.classList.contains('amadmin');
+      // A viewer is known at boot; don't wait for the join (applyAdminUi) to
+      // take the camera and mic off their dock, or the name card shows them.
+      if (!host) document.body.classList.add('notadmin');
+      paintLeave(host ? 'end' : 'watch');
+      // Slides and a window are how a host fills the stage. Share sits on the
+      // host dock, the same place a small group already has it. A viewer keeps
+      // it in More until they are allowed to share.
+      if (shareOnDock && moreSheet && bar && !phoneLayout()) {
+        if (host) {
+          const moreBtn = document.getElementById('bartoggle');
+          if (shareOnDock.parentElement !== bar && moreBtn) bar.insertBefore(shareOnDock, moreBtn);
+        } else if (!moreSheet.contains(shareOnDock) && moreRow('video')) moreRow('video').appendChild(shareOnDock);
+      }
+      if (host && bar) {
+        const stage = document.getElementById('stagebtn');
+        const anchor = document.getElementById('reactbtn');
+        if (stage && anchor && stage.parentElement !== bar) bar.insertBefore(stage, anchor);
+        // A service host has no hand to raise, so H is not theirs.
+        for (const id of ['hand', 'react-hand']) { const h = document.getElementById(id); if (h) h.removeAttribute('aria-keyshortcuts'); }
+        if (stage && !stage.querySelector('.docklab')) {
+          stage.classList.add('iconbtn');
+          stage.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="2.4"/><path d="M8.2 13.2c.5-1.5 1.9-2.4 3.8-2.4s3.3.9 3.8 2.4"/><path d="M4 17.5h16"/></svg><span class="docklab dockword">Step on</span>';
+          stage.setAttribute('aria-label', 'Step on the stage');
+        }
+      } else if (bar) {
+        const hand = document.getElementById('hand');
+        const anchor = document.getElementById('reactbtn');
+        if (hand && anchor && hand.parentElement !== bar) bar.insertBefore(hand, anchor);
+        if (hand && !hand.querySelector('.docklab')) {
+          hand.classList.add('iconbtn');
+          hand.innerHTML = '<span class="dockface" aria-hidden="true">\u270B</span><span class="docklab dockword">Raise hand</span>';
+          hand.setAttribute('aria-label', 'Raise hand');
+          hand.setAttribute('aria-pressed', 'false');
+        }
+      }
+      paintBroadcastAir();
+      const plate = document.getElementById('bc-stage');
+      if (plate) plate.hidden = false;
+      const stageWatch = document.getElementById('stagefeed');
+      if (stageWatch && window.MutationObserver) {
+        // The card too, not only the plate: when the feed lands after the
+        // host's camera-off status, nothing else repaints it, and the stage
+        // stayed a bare frame (Q87). paintBroadcastIdent ends in the plate.
+        new MutationObserver(() => { if (typeof paintBroadcastIdent === 'function') paintBroadcastIdent(); }).observe(stageWatch, { childList: true });
+      }
+      paintWatchingSeat();
+    }
+    // The HOST is whoever holds this room's stored admin key — known before
+    // any network exists, which is what lets the boot skip the viewer's
+    // camera ask entirely (below) while the host boots like a meeting.
+    const bcHostStored = () => {
+      try { return !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase()); }
+      catch (e) { return false; }
+    };
+    if (TOWNHALL && !bcHostStored()) document.body.classList.add('th-watch');
+    // THE VISIT LINK rides the link as visit=<https url>, set by the host in
+    // More: the church's or streamer's own site. We can't vouch for where it
+    // goes, so it is only a link. Only an https page is offered, and the
+    // button names its site, because anyone can hand someone a link. Links
+    // shared before the rename carry give=; they still work.
+    if (params.get('give') && !params.get('visit')) params.set('visit', params.get('give'));
+    params.delete('give');
+    const BC_VISIT_KEY = 'gifos_bcvisit_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
+    if (BROADCAST && !params.get('visit') && bcHostStored()) {
+      try {
+        const s = localStorage.getItem(BC_VISIT_KEY) || localStorage.getItem(BC_VISIT_KEY.replace('_bcvisit_', '_bcgive_'));
+        if (s) params.set('visit', s);
+      } catch (e) {}
+    }
+    function bcVisitCheck(raw) {
+      raw = String(raw || '').trim();
+      if (!raw || raw.length > 512) return null;
+      try {
+        const u = new URL(raw);
+        if (u.protocol !== 'https:' || !u.hostname || u.username || u.password) return null;
+        return { href: u.href, site: u.hostname };
+      } catch (e) { return null; }
+    }
+    // The host's own values also ride its status gossip (the existing
+    // fan-out), so a viewer who opened a bare link still gets them.
+    function bcHostGossip(field) {
+      try { for (const st of statusOf.values()) if (st && st[field]) return st[field]; } catch (e) {}
+      return null;
+    }
+    function bcVisit() { return BROADCAST ? (bcVisitCheck(params.get('visit')) || bcVisitCheck(bcHostGossip('bcvisit'))) : null; }
+    // THE START TIME rides the link as at=<unix seconds> (and the host's
+    // status), set by the host in More. A church shares Sunday's link
+    // midweek: an early viewer reads when it starts and a countdown, and
+    // someone who opens it hours later reads that it ended.
+    const BC_AT_KEY = 'gifos_bcat_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase();
+    if (BROADCAST && !params.get('at') && bcHostStored()) {
+      try { const s0 = localStorage.getItem(BC_AT_KEY); if (s0) params.set('at', s0); } catch (e) {}
+    }
+    function bcStartAt() {
+      let n = Number(params.get('at'));
+      if (!(n > 0)) n = Number(bcHostGossip('bcat')) || 0;
+      return BROADCAST && Number.isFinite(n) && n > 0 ? n * 1000 : 0;
+    }
+    // "today at 6:30 PM", "tomorrow at 9:00 AM", "Sunday at 10:00 AM", or a
+    // date past the coming week. Intl's narrow spaces read as plain spaces.
+    function bcWhenWords(ms, now) {
+      const d = new Date(ms), n = new Date(now);
+      const plain = (x) => x.replace(/[\u202f\u00a0]/g, ' ');
+      const time = plain(d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }));
+      const day0 = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+      const days = Math.round((day0(d) - day0(n)) / 86400000);
+      const day = days === 0 ? 'today' : days === 1 ? 'tomorrow'
+        : days > 1 && days < 7 ? d.toLocaleDateString(undefined, { weekday: 'long' })
+        : plain(d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }));
+      return day + ' at ' + time;
+    }
+    // "in 2 h 5 min", "in 4 min", "in under a minute".
+    function bcCountdown(ms, now) {
+      const m = Math.ceil((ms - now) / 60000);
+      if (m <= 1) return 'in under a minute';
+      if (m < 60) return 'in ' + m + ' min';
+      const h = Math.floor(m / 60), r = m % 60;
+      if (h < 48) return 'in ' + h + ' h' + (r ? ' ' + r + ' min' : '');
+      return 'in ' + Math.round(h / 24) + ' days';
+    }
+    // Before the time: when it starts. From 15 minutes before to 3 hours
+    // after: about to start (the host may be late). Later: it has ended.
+    function bcSchedule(now) {
+      const at = bcStartAt();
+      if (!at) return null;
+      if (now < at - 15 * 60000) return { phase: 'future', words: bcWhenWords(at, now), countdown: bcCountdown(at, now) };
+      if (now < at + 3 * 3600000) return { phase: 'soon', countdown: now < at ? bcCountdown(at, now) : '' };
+      return { phase: 'ended' };
+    }
+    // none until joinRoom starts the adopt; pending while the stored key is
+    // still being checked, so a host is not treated as a viewer in that gap.
+    // ok after it verifies; no after it does not.
+    let bcAdoptState = 'none';
+    let bcSeatLock = false;
+    let bcTestGrant = false; // broadcastGrantForTest on a frame that holds no seat id yet
+    let bcCamLiveForTest = false; // setCamLiveForTest: a camera the test says is sending
+    if (BROADCAST) document.body.classList.add(bcHostStored() ? 'bc-host' : 'bc-viewer');
+    // A broadcast seat. Hosts hold the admin key (or are still proving it).
+    // Stage guests hold the signed app grant. Everyone else watches.
+    // canStage is true for the whole page until joinRoom sets `av`, so a
+    // viewer is not a stage guest before the room exists.
+    function bcRole() {
+      if (!BROADCAST) return 'meet';
+      if (amAdmin || (myId && admins.includes(myId))) return 'host';
+      if (bcAdoptState === 'pending' || bcAdoptState === 'ok') return 'host';
+      if (bcAdoptState === 'none' && bcHostStored()) return 'host';
+      if (bcTestGrant) return 'stage';
+      if (av && canStage(myId)) return 'stage';
+      return 'viewer';
+    }
+    function bcMayPublishAv() {
+      const r = bcRole();
+      return r === 'host' || r === 'stage' || r === 'meet';
+    }
+    function paintBroadcastRole() {
+      if (!BROADCAST) return;
+      const role = bcRole();
+      document.body.classList.toggle('bc-viewer', role === 'viewer');
+      document.body.classList.toggle('bc-stage', role === 'stage');
+      document.body.classList.toggle('bc-host', role === 'host');
+      document.body.classList.toggle('stage-granted', role === 'stage');
+      document.body.classList.toggle('bc-watching', role === 'viewer');
+      try { paintHand(); } catch (e) {}
+      try { paintOnAir(); } catch (e) {}
+      try { paintBroadcastJoinNote(role); } catch (e) {}
+    }
+    function bcSending() {
+      if (bcCamLiveForTest) return true;
+      const live = (kind) => {
+        if (!localStream) return false;
+        const tr = (kind === 'video' ? localStream.getVideoTracks() : localStream.getAudioTracks())[0];
+        return !!(tr && tr.readyState === 'live' && tr.enabled);
+      };
+      if (!myStatus.camOff && live('video')) return true;
+      if (!myStatus.muted && live('audio')) return true;
+      return false;
+    }
+    // bcRole reads admin state that is declared further down. The chrome
+    // painter runs before that, so a role asked for too early falls back to
+    // the stored host key.
+    function bcRoleSafe() {
+      try { return bcRole(); } catch (e) { return !BROADCAST ? 'meet' : (bcHostStored() ? 'host' : 'viewer'); }
+    }
+    function bcSendingSafe() {
+      try { return bcSending(); } catch (e) { return false; }
+    }
+    // The lamp (confirmed design): a viewer reads Watching; a host or a stage
+    // guest who is sending a camera or a microphone reads Live, and one who
+    // is not reads Off air. Meetings hide the lamp.
+    function paintOnAir() {
+      const el = document.getElementById('onair');
+      if (!el) return;
+      if (!BROADCAST) { el.hidden = true; return; }
+      const role = bcRoleSafe();
+      let kind = 'off', words = 'Off air';
+      if (role === 'viewer') { kind = 'watch'; words = 'Watching'; }
+      else if (bcSendingSafe()) { kind = 'live'; words = 'Live'; }
+      el.hidden = false;
+      el.className = kind;
+      el.setAttribute('role', 'status');
+      const w = el.querySelector('.words');
+      if (w && w.textContent !== words) w.textContent = words;
+      el.setAttribute('aria-label', words);
+          try { paintOnAirSide(); } catch (e) {}
+      try { bcKeepSync(); } catch (e) {}
+    }
+    function paintBroadcastJoinNote(role) {
+      const note = document.getElementById('bc-join-note');
+      if (!note) return;
+      if (!BROADCAST || role !== 'viewer') { note.hidden = true; return; }
+      if (note.textContent !== BC_WATCH_COPY) note.textContent = BC_WATCH_COPY;
+      note.hidden = false;
+    }
+    // A viewer publishes nothing, including after a bypass. Stops tracks and
+    // parks the main senders. Does not run against a host whose key is still
+    // being checked (bcRole stays 'host' while the adopt is pending).
+    function enforceBroadcastSeat() {
+      if (!BROADCAST || bcSeatLock) return;
+      try { paintBroadcastRole(); } catch (e) {}
+      if (bcRole() !== 'viewer') return;
+      bcSeatLock = true;
+      try {
+        if ((myStatus.scr || screenStream) && typeof stopScreenShare === 'function') {
+          try { stopScreenShare('viewers do not publish'); } catch (e) {}
+        }
+        if (myStatus.stg) myStatus.stg = 0;
+        if (myStatus.cc) {
+          myStatus.cc = false;
+          try { syncSpeech(); } catch (e) {}
+        }
+        if (localStream) {
+          for (const tr of localStream.getTracks()) { try { tr.enabled = false; tr.stop(); } catch (e) {} }
+          localStream = null;
+        }
+        myStatus.muted = true;
+        myStatus.camOff = true;
+        try { refreshOutbound(); } catch (e) {}
+      } finally { bcSeatLock = false; }
+    }
+    paintBroadcastChrome();
+    const grid = document.getElementById('grid');
+    const statusEl = document.getElementById('status');
+    // The text lives in an inner span: a phone makes the button a flex box
+    // for its 44px tap, and "…" is never drawn on a flex box (or on a
+    // WebKit button), so a long message was cut mid-word.
+    const writeStatus = (t) => {
+      let span = statusEl.querySelector('.statustext');
+      if (!span) { span = document.createElement('span'); span.className = 'statustext'; statusEl.replaceChildren(span); }
+      span.textContent = t;
+    };
+    const share = document.getElementById('share');
+    const shareUrl = document.getElementById('share-url');
+    // ONE rule, ONE sentence: the password button's own guard and the door's
+    // refusal of the same act say exactly this, so a person never sees the same
+    // rule twice in two voices (nor the door's machine wording).
+    const PW_ADMIN_ONLY = '⛔ Only the person who runs this room can change its password.';
+    // Explicit messages ("Wrong admin password.", "You were banned…") HOLD the
+    // pill briefly so the ambient counter (updateStatus) can't eat them the
+    // moment any gossip arrives.
+    let statusHoldUntil = 0;
+    let statusDetail = '';
+    // A broadcast viewer who has shared the room with someone, then finds it
+    // empty, is watching an ending. A fresh visit is a service that has not
+    // started. The mark lives for this tab, so next week's visit starts clean.
+    let broadcastSawCompany = false;
+    // A message that STOPS someone (🛡 a refusal, 📷 an admin's video-off) is
+    // the one message that must be read: it holds 12s and wears the warn
+    // colour. Ordinary notices keep the 4s beat. An explicit hold wins.
+    // .bar .status is nowrap + ellipsis: the title carries the whole line
+    // (a long refusal on a phone), written only when it changes.
+    const setStatus = (m, hold) => {
+      const blocking = /^(🛡|📷)/.test(String(m));
+      const countEl = document.getElementById('statuscount');
+      const restEl = document.getElementById('statusrest');
+      // #status is the phone's line, #statusrest the wide window's. Write
+      // both: a phone hides #statusrest, and a refusal there went unread.
+      // The count and the rest are children of #status: writing the span's own
+      // text would delete them (and Invite) for good.
+      if (countEl && restEl) { countEl.textContent = ''; countEl.hidden = true; restEl.textContent = m; }
+      else statusEl.textContent = m;
+      if (statusEl.title !== String(m)) statusEl.title = String(m);
+      statusEl.classList.toggle('alert', blocking || !!hold);
+      statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
+      // The OFF AIR / LIVE banner follows the line (and the camera) on every paint.
+      if (typeof paintLiveBadge === 'function') paintLiveBadge();
+      try { paintStatusSheet(); } catch (e) {}
+    };
+    // The chip is one line. The title holds the whole sentence (a refusal,
+    // "No blur picked…", or "4 in the meeting · 180p …"). A tap opens it.
+    function statusMessage() {
+      const title = (statusEl.getAttribute('title') || '').trim();
+      const text = (statusEl.textContent || '').trim();
+      return (title && title.length >= text.length) ? title : (text || title);
+    }
+    function paintStatusSheet() {
+      const el = document.getElementById('status-full');
+      const p = document.getElementById('status-full-text');
+      if (!el || !p || el.style.display === 'none') return;
+      p.textContent = statusMessage();
+    }
+    function openStatusSheet() {
+      const el = document.getElementById('status-full');
+      const p = document.getElementById('status-full-text');
+      if (!el || !p) return;
+      p.textContent = statusMessage();
+      el.style.display = 'flex';
+      statusEl.setAttribute('aria-expanded', 'true');
+    }
+    function closeStatusSheet() {
+      const el = document.getElementById('status-full');
+      if (el) el.style.display = 'none';
+      statusEl.setAttribute('aria-expanded', 'false');
+    }
+    // The count opens the roster; the rest of the line opens the full status
+    // sheet (qa-meet-mobile). Invite is the header's button, not this line.
+    statusEl.addEventListener('click', (e) => {
+      // On a wide screen the count opens the roster; on a phone the whole chip opens the sheet.
+      if (!phoneLayout() && e.target && e.target.closest && e.target.closest('#statuscount')) return;
+      e.preventDefault(); openStatusSheet();
+    });
+    const statusFullClose = document.getElementById('status-full-close');
+    if (statusFullClose) statusFullClose.onclick = () => closeStatusSheet();
+    const statusFullPeople = document.getElementById('status-full-people');
+    if (statusFullPeople) statusFullPeople.onclick = () => { closeStatusSheet(); toggleRoster(true); };
+    const uid = (p) => p + '_' + Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6);
+    // The one standard row-delete glyph (see button.row-del in the styles).
+    const DEL_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+
+    let myId = null, localStream = null, meTile = null, leaving = false;
+    // Set while "Leave the meeting?" is up. Repair loops must not put a
+    // track back on a sender until Cancel (DESIGN §11).
+    let outgoingHeld = false, leaveSnap = null, leavingForAsk = false;
+    // startMesh resolves this when myId is minted. inviteFromSolo awaits it
+    // instead of polling. A fresh socket arms a new promise only while myId
+    // is still unset.
+    let myIdReady = Promise.resolve();
+    let myIdReadyResolve = null;
+    const peers = new Map(); // peerId -> { pc, tile, video, name, connected, absentSince, lastKick }
+    const avInboxes = new Map(); // peer id -> avatar chunk inbox (gifos-avatar.js)
+    const ABSENT_GRACE = 12000; // BACKSTOP ONLY: roster-absent AND link-down this long → tile drops. Announced (D2) and probe-confirmed (D5) departures remove the tile event-driven, within a beat (see departSweep/confirmGone).
+
     function applyChrome() {
       document.documentElement.lang = uiLang();
       document.querySelectorAll('[data-t]').forEach((el) => {
