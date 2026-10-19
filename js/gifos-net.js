@@ -726,6 +726,7 @@
   // checks it before it parses anything, and a page never sends more.
   const RELAY_ID_RE = /^[A-Za-z0-9_.-]{1,64}$/;          // a peer id (k_ + 40 hex) or a test id
   const RELAY_DEV_RE = /^[A-Za-z0-9_.-]{1,16}$/;         // a device tag
+  const RELAY_ABS_RE = /^(\*|[A-Za-z0-9_.-]{1,16})$/;    // an abstain: a device tag, or '*' (every vote)
   const RELAY_GK_RE = /^[A-Za-z0-9_.-]{1,128}$/;         // a genesis key
   const RELAY_PROOF_RE = /^[\x21-\x7e]{0,64}$/;          // a password proof (printable, no spaces)
   const RELAY_SIG_RE = /^[A-Za-z0-9+/]{86}==$/;          // an Ed25519 signature, base64
@@ -738,7 +739,7 @@
     setpw: { pw: { str: 64, re: RELAY_PROOF_RE }, w: { obj: RELAY_ORDER, opt: 1 } },
     ban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
     unban: { dev: { str: 16, re: RELAY_DEV_RE }, w: { obj: RELAY_ORDER } },
-    votekick: { devs: { list: 24, item: { str: 16, re: RELAY_DEV_RE } } },
+    votekick: { devs: { list: 24, item: { str: 16, re: RELAY_DEV_RE } }, abs: { list: 24, item: { str: 16, re: RELAY_ABS_RE }, opt: 1 } },
     banlist: { devs: { list: 20, item: { obj: { d: { str: 16, re: RELAY_DEV_RE } } } }, w: { obj: RELAY_ORDER } },
     // Waiting room (relay-admit.js). Admin-signed. `on` is '1' or '0'.
     // `id` is the knocker the admin is admitting or turning away.

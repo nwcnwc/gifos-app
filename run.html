@@ -6882,10 +6882,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (hasAdminRoom() || !relayUp()) return;
       const present = new Set(Object.values(devOf));
       const relevant = Array.from(myVoteoffs).filter((d) => present.has(d)).sort();
-      const sig = relevant.join(',');
+      // ABSTAIN: '*' takes me out of the relay's majority bar for every
+      // vote-off. The Meeting Bot never votes, so it always abstains.
+      const abs = (myStatus.bot || myStageVotes.ab.has('*')) ? ['*'] : [];
+      const sig = relevant.join(',') + '|' + abs.join(',');
       if (sig === lastVoteSync) return;
       lastVoteSync = sig;
-      relaySendObj({ t: 'votekick', devs: relevant });
+      relaySendObj(abs.length ? { t: 'votekick', devs: relevant, abs } : { t: 'votekick', devs: relevant });
     }
     // ---- STAGE votes (open rooms): onto the stage / off the stage -----------
     // Same trust shape as vote-off: each voter carries ONLY their own vote
