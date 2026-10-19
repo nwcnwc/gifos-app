@@ -23094,8 +23094,66 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       v.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1';
       v.srcObject = stream; document.body.appendChild(v);
       const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
+      v._mosFlowAt = 0; v._mosRestarts = 0;
       return v;
     }
+    // A DECODER THAT SHOWS NO PICTURE WHILE ITS FEED FLOWS IS RESTARTED
+    // THROUGH THE SENDER. WebKit starts a newly bound stream <video> only
+    // most of the time: a head's incoming row feed can decode normally
+    // (inbound frames climbing, no keyframe asks) into an element that stays
+    // at readyState 0 / videoWidth 0 for the whole meeting, and that row of
+    // the stadium then packs black. Nothing done to the ELEMENT cures it once
+    // the remote track is flowing: re-binding srcObject, a new MediaStream,
+    // cloned tracks, load(), a fresh element and an enabled toggle all stay
+    // dark (binding an already-flowing remote track into any element is dead
+    // on that engine). What does start it is the mesh's own demand flip: the
+    // sender PARKS the feed (mx-idle, a replaceTrack(null)), the decoder is
+    // re-bound while nothing flows, and 1.5 s later the sender RESUMES it
+    // (mx-want), so the first frame lands in a settled player, as on a normal
+    // first claim. The restart waits for FLOW (the video track live and
+    // unmuted, which a remote track becomes on its first RTP), judges on
+    // PICTURE (videoWidth) not readyState, and repeats on a doubling backoff
+    // (1.5, 3, 6 ... s, eight tries) while the picture is missing. While a
+    // feed is held the claim sweep does not demand it hot and the pipe
+    // watchdog does not read its byte silence as death (it is re-baselined
+    // when the feed resumes). A claim with no announcer key (nothing to
+    // demand) gets a plain re-bind. Chromium starts first time, so this never
+    // fires there outside a feed that truly delivers nothing to an unmuted
+    // track, where the demand flip starts a fresh GOP and the re-bind is a
+    // no-op on the wire. debugDump().mosaic.restarts lists the decoders and
+    // their counts.
+    const MOS_RESTART_HOLD = 2500;   // ms the feed stays parked: re-bind at 1 s, resume at 2.5 s
+    const mosHeld = (e) => !!(e && e.el && e.el._mosHold);
+    function mosDecoderSweep() {
+      const now = Date.now();
+      const ents = [...mosIn.entries(), ...mosStandby.entries()];
+      for (const [rk, ent] of ents) {
+        const v = ent && ent.el, st = v && (ent.stream || v.srcObject);
+        if (!st || !v.isConnected) continue;
+        const rebind = () => { try { v.srcObject = null; v.srcObject = st; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} };
+        const dmd = (want) => { if (ent.key && ent.via) { try { demand(ent.via, ent.key, ent.streamId, want); } catch (e) {} } };
+        if (v._mosHold) {
+          const age = now - v._mosHold;
+          if (!v._mosRebound && age >= 1000) { rebind(); v._mosRebound = true; }
+          if (age >= MOS_RESTART_HOLD) {
+            v._mosHold = 0; v._mosRebound = false; v._mosFlowAt = 0;
+            const fb = mosFb.get(rk); if (fb) { fb.lastAdvanceAt = now; fb.q = 0; } // the silence was ours, not the pipe's
+            dmd(true);
+          }
+          continue;
+        }
+        const vt = st.getVideoTracks ? st.getVideoTracks()[0] : null;
+        if (!vt || vt.readyState !== 'live' || vt.muted) { v._mosFlowAt = 0; continue; } // nothing arriving: nothing to restart
+        if (v.videoWidth > 0) { v._mosFlowAt = 0; continue; }                                 // it paints
+        if (!v._mosFlowAt) { v._mosFlowAt = now; continue; }
+        if (v._mosRestarts >= 8 || now - v._mosFlowAt < 1500 * Math.pow(2, v._mosRestarts)) continue;
+        v._mosRestarts++; v._mosFlowAt = now;
+        if (ent.key && ent.via) { v._mosHold = now; v._mosRebound = false; dmd(false); }
+        else rebind();
+        if (window.__mosRestartLog) window.__mosRestartLog.push({ t: now, n: v._mosRestarts, key: rk, sid: String(st.id).slice(0, 8), park: !!v._mosHold });
+      }
+    }
+    setInterval(mosDecoderSweep, 1000);
     // ---- ENCODED PASSTHROUGH (roadmap §9a, mesh-pipe.js) --------------------
     // A forwarded feed's video used to be re-encoded at every hop — the browser
     // gives ontrack only raw frames, so addAux(remoteTrack) silently runs a
@@ -24327,6 +24385,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // even for the stager's own copy when the primary is a relay ring
           // that no longer reaches the stager (its muted voice kept playing).
           if (pri.stream && !pri.stream.getVideoTracks().length) { await sampleStandby(rk, fb); continue; }
+          if (mosHeld(pri)) continue; // parked on purpose while its decoder restarts (mosDecoderSweep): this silence is not death
           const bytes = await pipeBytes(pri);
           // Forensics ring (frza17: a husk claim's standby was never woken and
           // no theory survived — record what each sample actually SAW). Widened
@@ -24830,8 +24889,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // second read would see the state the first one just changed.
       const stdHot = standbyStaysHot(fb, now, WAKE_MAX);
       const hot = new Set();
-      if (pri && inCand(pri)) hot.add(pri.via + '|' + pri.streamId);
-      if (std && stdHot) hot.add(std.via + '|' + std.streamId);
+      if (pri && inCand(pri) && !mosHeld(pri)) hot.add(pri.via + '|' + pri.streamId); // a held feed (mosDecoderSweep) stays parked until its decoder is re-bound
+      if (std && stdHot && !mosHeld(std)) hot.add(std.via + '|' + std.streamId);
       // YOU CANNOT CLAIM WHAT YOU HAVE TOLD THE SENDER NOT TO SEND.
       //
       // With no primary, `hot` was EMPTY, so every announcer for this slot was
@@ -34906,6 +34965,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         me: String(myId || '').slice(0, 8),
         up: c ? tgt(T.up(c)) : null, down: c ? tgt(T.down(c)) : null,
         prodStream: !!(prodPack && prodPack.stream), sdStream: !!(sdPack && sdPack.stream),
+        restarts: [...mosIn.entries(), ...mosStandby.entries()].filter(([, e]) => e && e.el).map(([rk, e]) => ({ key: rk, sid: e.el.srcObject ? String(e.el.srcObject.id).slice(0, 8) : null, vw: e.el.videoWidth, rs: e.el.readyState, n: e.el._mosRestarts || 0, held: !!e.el._mosHold })), // decoders restarted (parked, re-bound, resumed) because they showed no picture while the feed flowed (WebKit)
         jobs: [...mosJobs.keys()], claims: [...mosIn.keys()], ann: [...mosAnn.keys()],
         // An announcer is only a CANDIDATE if its announced streamId resolves
         // to one of that peer's incoming streams (claimRedun's `live`). The
