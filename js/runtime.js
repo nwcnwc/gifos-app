@@ -93,15 +93,24 @@
     const out = String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
     return /[a-z0-9]/.test(out) ? out : 'app';
   }
-  // The link carries the SECRET (lsec); the relay-facing sid/token derive from
-  // it at connect time and never appear anywhere. Two app-link shapes:
-  //   self-healing — lsec IS the whole link:  /join/<lsec>            (#j=<lsec>)
-  //   owned — "<room>.<verifier>" sid + lsec: /join/<room>/<verifier>/<lsec>
-  //                                           (#s=<room>.<verifier>&k=<lsec>)
-  // The owned sid itself holds no secret (the verifier is a public hash of the
-  // HOST secret, which is a different key than lsec and never in any link).
+  // Lane URL, not the room invite. This formats a path from the app-session
+  // sid + lsec that becomeHost returns as shareUrl. run.html never puts that
+  // string in the address bar or the invite sheet. The link people share is
+  // minted in inviteFromSolo and printed by bootAppRoom from <fileId>::room:
+  //   owned room     /join/<short>/<av>/<k>   (#s=<short>.<av>&k=<k>)
+  //   resilient room /join/<k>                (#j=<k>)
+  // That k is a room code. It is not this lsec. runApp calls
+  // becomeHost({lifetime:'forever', resilient:true, noRelay:true}), so the
+  // lane sid is 'j' + lsec even inside an owned room.
+  // Shapes THIS function still emits, from those session arguments:
+  //   resilient session — /join/<lsec>                 (#j=<lsec>)
+  //   dotted sid        — /join/<room>/<verifier>/<lsec>
+  //                       (#s=<room>.<verifier>&k=<lsec>)
+  // A dotted sid holds no secret (the verifier is a public hash of a host
+  // secret, a different key than lsec, and never in any link).
   // gifos.app pretty paths route through 404.html; hash form everywhere else
-  // (local dev, custom relays).
+  // (local dev, custom relays). page 'meet' or legacy 'video' formats
+  // /meet/<sid> here; run.html builds the real meeting link itself.
   function buildJoinUrl(page, sid, lsec, relay) {
     const meet = page === 'video' || page === 'meet'; // 'video' kept as a legacy alias
     const onProd = /(^|\.)gifos\.app$/.test(location.hostname) && relay === root.GIFOS_RELAY;
