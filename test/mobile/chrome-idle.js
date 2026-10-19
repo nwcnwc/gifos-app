@@ -75,6 +75,7 @@ function overlaps(a, b) {
         cc: box(document.getElementById('call-cc')),
         leave: box(leave),
         status: box(document.getElementById('status')),
+        build: box(document.getElementById('gifos-build-float')),
         leaveHit: !!(hit && (hit.id === 'leavebtn' || (hit.closest && hit.closest('#leavebtn')))),
         vh: window.innerHeight,
         vw: window.innerWidth,
@@ -109,12 +110,18 @@ function overlaps(a, b) {
       continue;
     }
     await page.waitForTimeout(280);
+    // The build name fades with the header (0.8s). Wait it out, then read.
+    await page.waitForFunction(() => {
+      const el = document.getElementById('gifos-build-float');
+      return !el || parseFloat(getComputedStyle(el).opacity) < 0.05;
+    }, null, { timeout: 2000 }).catch(() => {});
     const tucked = await read();
     const quiet = [];
     if (!tucked.away) quiet.push('call did not tuck');
     if (tucked.moreOpen) quiet.push('More opened itself');
     if (tucked.leaveHit) quiet.push('Hang up still takes the tap');
     if (tucked.bar && tucked.bar.pe !== 'none') quiet.push('dock still takes taps');
+    if (tucked.build && +tucked.build.op > 0.05) quiet.push('the edge label stays when the header hides');
     if (tucked.live && tucked.live.h > 1 && tucked.live.vis !== 'hidden' && tucked.live.op !== '0' && tucked.live.pe !== 'none') quiet.push('LIVE still takes taps');
     const covered = tucked.tiles.some((t) => overlaps(t, tucked.bar) && tucked.bar.op !== '0' && tucked.bar.top < tucked.vh);
     if (covered) quiet.push('dock still covers a face');
@@ -133,6 +140,7 @@ function overlaps(a, b) {
     await page.waitForTimeout(300);
     const back = await read();
     if (back.away) quiet.push('a tap left the controls tucked');
+    if (back.build && +back.build.op < 0.2) quiet.push('the edge label did not come back');
     if (back.moreOpen) quiet.push('a tap opened More');
     if (!back.leaveHit) quiet.push('Hang up did not come back');
     for (const part of [back.rec, back.cc, back.leave]) {
