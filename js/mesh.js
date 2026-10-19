@@ -3833,19 +3833,41 @@
           // scenario and perturbed its pinned settle. A rival ring is a
           // STABLE state: nothing churns, and the strangers persist —
           // exactly what this detector should see.
-          if (this.state === 3 && this.coord.pc === 0 && TICK - this.seatedAt > 80 && TICK - this.lastChurn > 300 && TICK - this.healAt > 300) {
+          if (this.state === 3 && this.coord.pc === 0 && TICK - this.seatedAt > 80) {
             let full = true;
             for (let r = 0; r < C() && full; r++) for (let i = 0; i < C() && full; i++) if (!this.occ.has(ck({ pc: 0, r, i }))) full = false;
-            if (full) {
-              const known = new Set(this.occ.values());
-              const next = new Map();
-              for (const g of m.list) if (g != null && g !== this.id && !known.has(g)) {
-                const seen = (this.strangeSeen && this.strangeSeen.get(g) || 0) + 1; next.set(g, seen);
-                if (seen >= 2) { this.xrOk.set(g, TICK); if (this.xrOk.size > RELAY_CAP) for (const [x, t] of this.xrOk) if (TICK - t > 2 * RELAY_TTL) this.xrOk.delete(x); } // a persistent stranger: its door greeting counts (strangerOk)
-                if (seen >= 8) { this.emit(g, { t: 'HELLO', ck: ck(this.coord), id: this.id }); next.delete(g); } // 8 consecutive E3 cycles ≈ 1600-3200 ticks: an order past any legit staleness window (live mates' S1SYNC overwrites a non-first-hand corpse cell within beats), far inside a standoff's lifetime
-              }
-              this.strangeSeen = next; // ids no longer listed/known drop out
-            } else if (this.strangeSeen) this.strangeSeen.clear();
+            // …and a SMALL room (home not full) is torn the same way. The full-
+            // home gate assumed a holed home means a join is still settling;
+            // but a greeter only registers once SEATED in Section 1, and a
+            // seat that joined MY ring reaches my occ by S1SYNC within beats —
+            // long before the door lists it in TWO replies an E3 cycle apart.
+            // A stranger that survives that is a seat of a ring I cannot see,
+            // whatever my home's size (2026-10-18: an outage cut a 4-person
+            // room into two pairs, each healed into 0/0.0+0/0.1 under one room
+            // key and one door, neither alone (no lone-greet), neither full
+            // (no two-ring), no heal for minutes until the phones reloaded;
+            // test/mesh/small-fork.js). A full home keeps its proven dwell
+            // (quiescence + 8 sightings); a holed home greets at the second
+            // sighting, the dwell strangerOk needs — a holed home's head is
+            // rarely quiet for 300 ticks (its mate's stale hints of the other
+            // half keep it probing), so quiescence is not asked of it.
+            // KNOWN means held somewhere I can still believe: a seat I hold
+            // only at a cell it has since answered my PHONE from elsewhere
+            // (elsewhere, the misdirected PONG) is as much a stranger as one
+            // my occ never named — the pair in the other half kept the cells
+            // they had before the cut, and the stale hint hid them.
+            const quiet = TICK - this.lastChurn > 300 && TICK - this.healAt > 300;
+            if (full && !quiet) return;
+            const known = new Set();
+            for (const [k2, v2] of this.occ) { if (v2 == null) continue; const ew = this.elsewhere && this.elsewhere.get(v2); if (ew !== undefined && TICK - ew <= RELAY_TTL && !this.firstHandLive(k2)) continue; known.add(v2); }
+            const next = new Map();
+            const need = full ? 8 : 2;
+            for (const g of m.list) if (g != null && g !== this.id && !known.has(g)) {
+              const seen = (this.strangeSeen && this.strangeSeen.get(g) || 0) + 1; next.set(g, seen);
+              if (seen >= 2) { this.xrOk.set(g, TICK); if (this.xrOk.size > RELAY_CAP) for (const [x, t] of this.xrOk) if (TICK - t > 2 * RELAY_TTL) this.xrOk.delete(x); } // a persistent stranger: its door greeting counts (strangerOk)
+              if (seen >= need) { this.emit(g, { t: 'HELLO', ck: ck(this.coord), id: this.id }); next.delete(g); } // full home: 8 consecutive E3 cycles ≈ 1600-3200 ticks, an order past any legit staleness window (live mates' S1SYNC overwrites a non-first-hand corpse cell within beats), far inside a standoff's lifetime
+            }
+            this.strangeSeen = next; // ids no longer listed/known drop out
           }
           return;
         }
@@ -4444,6 +4466,11 @@
           // first-hand; a bare "not here" is not acted on (deleting the stale
           // hint left row-mates anchorless — ancDead — and a 45% churn
           // drained 52 of 76 survivors, c-sweep C=5 seed 1).
+          // ...but the misdirection itself is remembered (elsewhere): a seat I
+          // hold at a cell it answers from another cell is, until it tells me
+          // otherwise, a seat of a ring I cannot see (two-ring reconciliation
+          // treats it as a stranger — the small-room fork, test/mesh/small-fork.js).
+          if (this.linkIs(m, pid) && m.id != null) for (const [k2, v2] of this.occ) if (v2 === pid && k2 !== pk && !this.firstHandLive(k2)) { if (!this.elsewhere) this.elsewhere = new Map(); if (this.elsewhere.size >= 64) this.elsewhere.delete(this.elsewhere.keys().next().value); this.elsewhere.set(pid, TICK); break; }
           if (this.linkIs(m, pid) && m.oCk != null && m.owner != null && m.owner !== this.id && m.owner !== pid) { const oc = ownerCoordOf(m.coord); const K = oc ? ck(oc) : null;
             if (K != null && K !== pk && m.oCk === K && this.ownedLinkCell(K) && this.occGet(K) === pid && !this.firstHandLive(K)) { this.setOcc(K, m.owner); this.noteS1(K); if (isS1key(K)) this.s1told.set(K, this.TICK); } }   // its word, not a sighting: off my room list (s1told)
           if (!this.ownedLinkCell(pk)) return;
