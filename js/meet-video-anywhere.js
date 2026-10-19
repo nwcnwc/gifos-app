@@ -17,6 +17,11 @@
  *     refusal leaves the pair on the free voice-only path.
  *   - Hours count only while video crosses networks; the admin sees the
  *     count on their own screen.
+ *   - Anyone in any room can also buy a one-hour pass for themselves. The
+ *     pass names the room and a key kept in that browser for that room; its
+ *     holder signs a ticket and a statement naming their own seat, and every
+ *     crossing with the holder at one end carries video until the hour ends.
+ *     Nobody else's crossings change.
  *
  * Everything here is a pure decision with its clock passed in, so it runs
  * the same in a page and in Node.
@@ -26,6 +31,7 @@
 
   const BASE_PRODUCT = 'va-month';
   const TOPUP_PRODUCT = 'va-topup';
+  const PASS_PRODUCT = 'va-hour';
   const SELLER = 'gifos.app';
   const APP = 'meet';
   const TICKET_S = 12 * 3600;      // a room ticket lasts at most 12 hours
@@ -45,6 +51,8 @@
     zero: 'Your Video Anywhere hours for this period are used up. Video across networks stops within 10 minutes; voices continue. You are never billed afterwards.',
     topUp: 'Your Video Anywhere hours are running low. A top-up adds hours without interrupting the meeting.',
     // On a tile whose video the network blocks, for everyone who sees that tile.
+    passOn: 'Video is unblocked for you in this meeting for the next hour. Pictures come through in a few seconds.',
+    passWaiting: 'Finish the payment in the PayPal window. Video unblocks here as soon as it is paid.',
     blockedTile: 'Your network or theirs (often a work VPN or office network) blocks direct video between you. Getting video across it means sending it through our servers, which costs us real money, so this meeting needs Video Anywhere. Voices still come through.',
   };
   const people = (n) => n + (n === 1 ? ' person' : ' people');
@@ -66,6 +74,53 @@
     if (!(typeof r.hours === 'number' && r.hours > 0)) return null;
     if (!intS(r.periodEnd) || !(nowS + MIN_LEFT_S < r.periodEnd)) return null;
     return r;
+  }
+
+  // checkPass(r, nowS, roomTag) → the parsed one-hour pass for this room, or
+  // null. r is the PARSED receipt (its signature is checked by the caller);
+  // roomTag is passRoomTag(this room). The credential service's field rules.
+  function checkPass(r, nowS, roomTag) {
+    if (!r || typeof r !== 'object') return null;
+    if (r.kind !== 'gifos-pay-receipt' || r.appId !== APP || r.payeeId !== SELLER) return null;
+    if (r.product !== PASS_PRODUCT || r.productKind !== 'pass') return null;
+    if (typeof r.tx !== 'string' || !TX_RE.test(r.tx)) return null;
+    if (typeof r.buyerKey !== 'string' || !KEY_RE.test(r.buyerKey)) return null;
+    if (!(typeof r.hours === 'number' && r.hours > 0)) return null;
+    if (typeof r.room !== 'string' || !roomTag || r.room !== roomTag) return null;
+    if (!intS(r.periodEnd) || !(nowS + MIN_LEFT_S < r.periodEnd)) return null;
+    return r;
+  }
+
+  // passRoomTag(room) → Promise of the tag a pass names its room by: the
+  // first 32 hex digits of SHA-256 over 'gifos-va-pass-room:' + the room id.
+  // The payment service only ever sees the tag; the credential service
+  // derives it again from the room a page asks for.
+  function passRoomTag(room) {
+    const c = root.crypto || globalThis.crypto;
+    return c.subtle.digest('SHA-256', new TextEncoder().encode('gifos-va-pass-room:' + String(room))).then((buf) => {
+      const d = new Uint8Array(buf); let h = '';
+      for (let i = 0; i < 16; i++) h += d[i].toString(16).padStart(2, '0');
+      return h;
+    });
+  }
+
+  // passTicketFor(room, pass, nowS) → the room ticket a pass holder signs:
+  // { v:1, room, receiptId, end } ending with the pass, or null when under a
+  // minute is left.
+  function passTicketFor(room, pass, nowS) {
+    if (!room || !pass || !intS(nowS) || !intS(pass.periodEnd)) return null;
+    if (!(pass.periodEnd - nowS >= MIN_LEFT_S)) return null;
+    return { v: 1, room: String(room), receiptId: pass.tx, end: pass.periodEnd };
+  }
+  // The holder's statement, signed with the pass's key: which seat in this
+  // room holds this pass. The exact string signed (fixed key order).
+  function passByJson(o) { return JSON.stringify({ v: 1, t: 'va-pass-by', by: o.by, room: o.room, receiptId: o.receiptId, ts: o.ts }); }
+  // checkPassBy(o, pub, pass, room) → is o (the PARSED statement, signed by
+  // pub, checked by the caller) the pass holder's word for this room?
+  function checkPassBy(o, pub, pass, room) {
+    if (!o || !pass || o.v !== 1 || o.t !== 'va-pass-by') return false;
+    if (pub !== pass.buyerKey || o.room !== room || o.receiptId !== pass.tx) return false;
+    return typeof o.by === 'string' && o.by.length > 0 && o.by.length <= 128;
   }
 
   // checkTopup(t, base) → the parsed top-up receipt when it adds to that
@@ -163,17 +218,40 @@
 
   // wantPaid(f) → should this page ask for the paid pool on this pair?
   // f = { room: roomState, blocked: this page cannot be reached directly,
-  //       onTurn: this page already put TURN on this pair, bridge: an id }
-  // Only the end that cannot be reached asks (never double TURN), only on a
-  // pair already on the free path, only in a live paid room.
+  //       onTurn: this page already put TURN on this pair, bridge: an id,
+  //       pass: a live one-hour pass covers this pair (either end holds it),
+  //       dial: this page dials this pair through the paid pool (passDial) }
+  // Only the end that cannot be reached asks (never double TURN), on a pair
+  // already on the free path in a live paid room or under a pass, or on a
+  // pair it dials for a pass.
   function wantPaid(f) {
-    return !!(f && f.room === 'live' && f.blocked && f.onTurn && typeof f.bridge === 'string' && f.bridge.length > 0);
+    if (!f || !f.blocked || typeof f.bridge !== 'string' || f.bridge.length === 0) return false;
+    if (f.onTurn && (f.room === 'live' || f.pass)) return true;
+    return !!(f.pass && f.dial);
   }
 
   // farPaid(f) → may the reachable end send video on a pair the far end says
-  // is paid? f = { said: the far end said so, room: roomState }. The far end's
-  // word alone is not enough: this page must hold a live order too.
-  function farPaid(f) { return !!(f && f.said && f.room === 'live'); }
+  // is paid? f = { said: the far end said so, room: roomState, pass: a live
+  // pass covers this pair }. The far end's word alone is not enough: this
+  // page must hold a live order, or know a live pass for this pair, too.
+  function farPaid(f) { return !!(f && f.said && (f.room === 'live' || f.pass)); }
+
+  // passDial(f) → does this page dial this pair through the paid pool for a
+  // pass? f = { blocked: this page cannot be reached directly, theirPass: the
+  // far end holds a live pass, anchor: the pair is already on a server path
+  // (my anchor, or a bridge the seating names) }. A holder who can be
+  // reached has no server path to anyone: the blocked end dials them.
+  function passDial(f) { return !!(f && f.blocked && f.theirPass && !f.anchor); }
+
+  // carryPicture(f) → may a friend's carry of one person to another include
+  // the picture? f = { room: roomState, turnHop: either hop is on a server
+  // path, targetPass / requesterPass: the person carried / asking holds a
+  // live pass }. A pass pays for its holder's crossings only, so a server hop
+  // paid by someone else's pass carries voice only.
+  function carryPicture(f) {
+    if (!f || !f.turnHop) return true;
+    return f.room === 'live' || !!f.targetPass || !!f.requesterPass;
+  }
 
   // peopleCounting(countingNow, people) → N for the meter line: the people
   // known to be on a paid crossing, and at least one while the count runs
@@ -253,33 +331,62 @@
     return m ? { kind: 'month', product: BASE_PRODUCT, price: m.price, label: 'Get Video Anywhere, ' + m.price + '/month' } : null;
   }
 
-  // receiptQuery(claim, buyerKey, base) → the query that reads a GifOS
-  // product's receipt (base: the parsed month a top-up adds to, or null).
-  function receiptQuery(claim, buyerKey, base) {
+  // tilePass(f) → the pass button on a blocked tile, for anyone, or null.
+  // f = { terms: termsOf(...), sub (as tileButton), covered: a live pass
+  //       already covers this pair (mine or theirs) }
+  // Offered only when the live terms list the pass.
+  function tilePass(f) {
+    if (!f || !f.terms || !f.terms.pass || f.sub === 'live' || f.covered) return null;
+    const p = f.terms.pass;
+    return { kind: 'pass', product: PASS_PRODUCT, price: p.price, label: shortPrice(p.price) + ', unblock video for ' + fmtSpan(p.periodSeconds) };
+  }
+  // tileHostLine(f) → the one line everyone but the admin sees on a blocked
+  // tile in an admin room: the host can pay for the whole room. Or null.
+  function tileHostLine(f) {
+    if (!f || f.amAdmin || !f.adminRoom || !f.terms || !f.terms.month || f.sub === 'live') return null;
+    return 'The host can get Video Anywhere for everyone, ' + f.terms.month.price + '/month.';
+  }
+  // "$1.00" → "$1"; "$2.50" stays.
+  function shortPrice(p) { return String(p).replace(/\.00$/, ''); }
+  // 3600 → "1 hour", 7200 → "2 hours", 1800 → "30 minutes".
+  function fmtSpan(sec) {
+    const s = Number(sec) || 0;
+    if (s >= 3600 && s % 3600 === 0) { const h = s / 3600; return h === 1 ? '1 hour' : h + ' hours'; }
+    const m = Math.round(s / 60); return m === 1 ? '1 minute' : m + ' minutes';
+  }
+
+  // receiptQuery(claim, buyerKey, base, room) → the query that reads a GifOS
+  // product's receipt (base: the parsed month a top-up adds to, or null;
+  // room: a pass's room tag, or null).
+  function receiptQuery(claim, buyerKey, base, room) {
     let q = 'claim=' + encodeURIComponent(claim) + '&id=' + SELLER + '&type=domain&buyerKey=' + encodeURIComponent(buyerKey);
     if (base) q += '&baseReceiptId=' + encodeURIComponent(base.tx) + '&basePeriodEnd=' + encodeURIComponent(String(base.periodEnd));
+    if (room) q += '&room=' + encodeURIComponent(room);
     return q;
   }
 
-  // termsOf(body) → { month, topup } from the payment service's terms, each
-  // { id, name, price, hours, periodDays } or null.
+  // termsOf(body) → { month, topup, pass } from the payment service's terms,
+  // each { id, name, price, hours, periodDays, periodSeconds } or null. A pass
+  // needs its period in seconds.
   function termsOf(body) {
-    const out = { month: null, topup: null };
+    const out = { month: null, topup: null, pass: null };
     const list = body && Array.isArray(body.products) ? body.products : [];
     for (const p of list) {
       if (!p || typeof p.price !== 'string' || !(typeof p.hours === 'number' && p.hours > 0)) continue;
-      const t = { id: p.id, name: String(p.name || ''), price: p.price, hours: p.hours, periodDays: p.periodDays || null };
+      const t = { id: p.id, name: String(p.name || ''), price: p.price, hours: p.hours, periodDays: p.periodDays || null, periodSeconds: p.periodSeconds || null };
       if (p.id === BASE_PRODUCT) out.month = t;
       else if (p.id === TOPUP_PRODUCT) out.topup = t;
+      else if (p.id === PASS_PRODUCT && Number.isInteger(p.periodSeconds) && p.periodSeconds > 0) out.pass = t;
     }
     return out;
   }
 
   const api = {
-    BASE_PRODUCT, TOPUP_PRODUCT, TICKET_S, MIN_LEFT_S, RESIGN_BEFORE_S, METER_EVERY_MS, TOPUP_MARK_HOURS, TEXT,
+    BASE_PRODUCT, TOPUP_PRODUCT, PASS_PRODUCT, TICKET_S, MIN_LEFT_S, RESIGN_BEFORE_S, METER_EVERY_MS, TOPUP_MARK_HOURS, TEXT,
     countingText, waitingText, checkReceipt, checkTopup, ticketFor, ticketJson, checkTicket, needsResign, better,
     roomState, bridgeIdFor, seatBridgeId, haltsOn, wantPaid, farPaid, peopleCounting, fmtHours, topUpDue, meterView,
     receiptQuery, termsOf, tileBlocked, tileButton,
+    checkPass, passRoomTag, passTicketFor, passByJson, checkPassBy, passDial, carryPicture, tilePass, tileHostLine,
   };
   const GifOS = (root.GifOS = root.GifOS || {});
   GifOS.meetVA = api;
