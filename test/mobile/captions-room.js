@@ -29,7 +29,7 @@ const BOT = 'notes-7597fb';
   const before = await page.evaluate((bot) => {
     const api = window.__gifosVideo;
     const tr = document.getElementById('trbtn');
-    const call = document.getElementById('call-cc');
+    const call = document.getElementById('ccbtn');
     api.presentPeers([{ id: bot, name: 'bot notes' }]);
     api._ghostStatus(bot, 0, { bot: true, cc: true, scribe: true, camOff: true });
     api.addTranscript('written before captions');
@@ -41,6 +41,7 @@ const BOT = 'notes-7597fb';
     return {
       trShown: tr.style.display !== 'none',
       callOn: call.classList.contains('on'),
+      onCall: !!document.getElementById('call-cc'),
       mine: api.ccOn(),
       view: api.ccViewOn ? api.ccViewOn() : null,
       me: tile('me'),
@@ -51,6 +52,7 @@ const BOT = 'notes-7597fb';
   const bad = [];
   if (!before.trShown) bad.push('Transcript is hidden before anyone taps CC');
   if (before.callOn) bad.push('Captions is on because someone else is writing');
+  if (before.onCall) bad.push('Captions is a button on the call (it lives in More, Talk)');
   if (before.mine) bad.push('this phone advertised transcription');
   if (before.view !== false) bad.push('captions view is not off (' + before.view + ')');
   if (/transcribing|Captions paused|Captions behind|📝/.test(before.me)) bad.push('Nathan tile has a transcription chip ("' + before.me + '")');
@@ -59,11 +61,22 @@ const BOT = 'notes-7597fb';
   const shot = bad.length ? 'before-captions-room-pixel-7.png' : 'after-captions-room-pixel-7.png';
   await page.screenshot({ path: path.join(SHOTS, shot) });
   if (!bad.length) {
-    await page.locator('#call-cc').tap();
+    // Captions is in More (Talk). The tap folds the sheet; open it again to
+    // read the selected colors there.
+    const tapCc = async () => {
+      if ((await page.locator('#bartoggle').getAttribute('aria-expanded')) !== 'true') await page.locator('#bartoggle').tap();
+      await page.locator('#ccbtn').scrollIntoViewIfNeeded();
+      await page.locator('#ccbtn').tap();
+    };
+    await tapCc();
     await page.waitForTimeout(200);
+    const folded = await page.evaluate(() => document.querySelector('.bar').classList.contains('collapsed'));
+    if (!folded) bad.push('More stayed open after Captions');
+    await page.locator('#bartoggle').tap();
+    await page.locator('#ccbtn').scrollIntoViewIfNeeded();
     const on = await page.evaluate(() => {
-      const call = document.getElementById('call-cc');
-      const btn = document.getElementById('ccbtn');
+      const call = document.getElementById('ccbtn');
+      const dock = document.getElementById('ccdock');
       const cs = getComputedStyle(call);
       window.__gifosVideo.addTranscript('shown on this screen');
       return {
@@ -71,7 +84,7 @@ const BOT = 'notes-7597fb';
         pressed: call.getAttribute('aria-pressed'),
         bg: cs.backgroundColor,
         color: cs.color,
-        btnOn: btn.classList.contains('on'),
+        btnOn: !dock || dock.classList.contains('on'),
         mine: window.__gifosVideo.ccOn(),
         view: window.__gifosVideo.ccViewOn(),
         bar: document.getElementById('livecap').classList.contains('show'),
@@ -79,16 +92,16 @@ const BOT = 'notes-7597fb';
     });
     if (!on.callOn || on.pressed !== 'true') bad.push('CC did not select on this screen');
     if (on.bg !== 'rgb(0, 100, 200)' || on.color !== 'rgb(255, 255, 255)') bad.push('CC selected ' + on.bg + ' / ' + on.color);
-    if (!on.btnOn) bad.push('More Captions did not match the on-call button');
+    if (!on.btnOn) bad.push('the dock CC did not match More Captions');
     if (on.mine) bad.push('tapping CC turned transcription on for the room');
     if (on.view !== true) bad.push('CC view did not turn on');
     if (!on.bar) bad.push('captions stayed hidden after CC on');
-    await page.locator('#call-cc').tap();
+    await tapCc();
     await page.waitForTimeout(150);
     const off = await page.evaluate(() => {
       window.__gifosVideo.addTranscript('hidden again');
       return {
-        on: document.getElementById('call-cc').classList.contains('on'),
+        on: document.getElementById('ccbtn').classList.contains('on'),
         view: window.__gifosVideo.ccViewOn(),
         bar: document.getElementById('livecap').classList.contains('show'),
         mine: window.__gifosVideo.ccOn(),
