@@ -12328,7 +12328,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const fold = MM.createAudioFold(ac);
       const el = new Audio(); el.autoplay = true;
       el.srcObject = fold.dest.stream;
-      stageEar = { fold, el, sids: new Map() };
+      stageEar = { fold, el, sids: new Map(), spoke: new Map() };
       const pr = el.play(); if (pr && pr.catch) pr.catch((e) => audioBlocked(el, e)); // the stage ear is the one element a sharer's voice rides
     }
     // What the ear folds, re-derived every sweep from the stg claims I hold.
@@ -12342,6 +12342,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // stage lane gives a client that ignores the moderator no second mouth.
     function syncStageEar(stagers) {
       if (!stageEar) return;
+      if (!stageEar.spoke) stageEar.spoke = new Map();
       const onStage = new Set(stagers);
       const want2 = new Map();
       for (const [k2, f2] of mosIn) {
@@ -12349,10 +12350,78 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!onStage.has(k2.slice(4).split('^')[0])) continue;
         want2.set(k2, f2.stream);
       }
-      for (const [k2, sid] of [...stageEar.sids]) { const st2 = want2.get(k2); if (!st2 || st2.id !== sid) { stageEar.fold.remove(k2); stageEar.sids.delete(k2); } }
+      for (const [k2, sid] of [...stageEar.sids]) { const st2 = want2.get(k2); if (!st2 || st2.id !== sid) { stageEar.fold.remove(k2); stageEar.sids.delete(k2); stageEar.spoke.delete(k2); } }
       for (const [k2, st2] of want2) {
+        const owner = k2.slice(4).split('^')[0];
+        const stt = statusOf.get(owner);
+        const spoke = !!(stt && stt.muted);
+        const was = stageEar.spoke.get(k2);
+        // A source node built while this stager was self-muted stays silent
+        // after the samples start, and the track's unmute event often never
+        // fires (silence frames, not a mute edge). Rebuild when that bit
+        // clears: once now, and once more after the encoder restart's packets.
+        // The first sweep (was undefined) does not churn a feed that is
+        // already live.
+        // Rebuild the source after the encoder's packets, not only on the
+        // mute edge. A new stream that shows up already unmuted (the edge was
+        // cleared with the old id) is still silence for a moment, and one
+        // rebuild can land before those packets. A steady unmuted sweep does
+        // not arm this.
+        // A source built on silence stays silent. Probe the ear and rebuild
+        // only while it is quiet, so a later pass cannot replace a live node
+        // during an encoder gap. Stop once the ear is loud, or after a few tries.
+        const armEar = (sid) => {
+          const attempt = (delay, left) => {
+            setTimeout(() => {
+              if (!stageEar || left <= 0 || stageEar.sids.get(k2) !== sid) return;
+              const stNow = statusOf.get(owner);
+              if (stNow && stNow.muted) return;
+              const f = mosIn.get(k2);
+              if (!f || !f.stream || f.stream.id !== sid || !ac || !stageEar.el.srcObject) return;
+              let probe = null, an = null;
+              try {
+                probe = ac.createMediaStreamSource(stageEar.el.srcObject);
+                an = ac.createAnalyser(); an.fftSize = 256; probe.connect(an);
+              } catch (e) { probe = null; }
+              const rebuild = () => {
+                try { if (probe) probe.disconnect(); } catch (e) {}
+                if (!stageEar || stageEar.sids.get(k2) !== sid) return;
+                stageEar.fold.remove(k2);
+                stageEar.sids.delete(k2);
+                stageEar.fold.add(k2, f.stream, 1);
+                stageEar.sids.set(k2, sid);
+                const gm2 = modOf(owner).mute;
+                if (stageEar.fold.setGain) stageEar.fold.setGain(k2, (gm2 && gm2.on) ? 0 : 1);
+                attempt(1500, left - 1);
+              };
+              if (!an) { rebuild(); return; }
+              const buf = new Uint8Array(an.fftSize);
+              setTimeout(() => {
+                let peak = 0;
+                try {
+                  an.getByteTimeDomainData(buf);
+                  for (let i = 0; i < buf.length; i++) {
+                    const d = Math.abs(buf[i] - 128) / 128;
+                    if (d > peak) peak = d;
+                  }
+                } catch (e) {}
+                if (peak > 0.02) { try { probe.disconnect(); } catch (e) {} return; }
+                rebuild();
+              }, 300);
+            }, delay);
+          };
+          attempt(400, 8);
+        };
+        if (was === true && !spoke) {
+          stageEar.fold.remove(k2);
+          stageEar.sids.delete(k2);
+          armEar(st2.id);
+        } else if (!stageEar.sids.has(k2) && !spoke && was !== false) {
+          armEar(st2.id);
+        }
+        stageEar.spoke.set(k2, spoke);
         if (!stageEar.sids.has(k2)) { stageEar.fold.add(k2, st2, 1); stageEar.sids.set(k2, st2.id); }
-        const gm = modOf(k2.slice(4).split('^')[0]).mute;
+        const gm = modOf(owner).mute;
         if (stageEar.fold.setGain) stageEar.fold.setGain(k2, (gm && gm.on) ? 0 : 1); // a cached older fold lacks it: held at 1, as before
       }
       stageEar.el.volume = mix.stage;
@@ -18147,6 +18216,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         });
     }
 
+    // A stage sender built while the microphone was off kept sending silence
+    // after the microphone was switched on. Seat the track again so the
+    // encoder restarts. Parked senders (a different track, or none) stay put.
+    function kickStageMic(track) {
+      if (!track || track.kind !== 'audio' || track.readyState !== 'live' || !track.enabled) return;
+      for (const sd of stageSenders) {
+        if (!sd || sd.track !== track) continue;
+        const seat = () => sd.replaceTrack(track).catch(() => {});
+        sd.replaceTrack(null).then(seat).catch(() => {});
+      }
+    }
     micBtn.onclick = () => {
       if (document.body.classList.contains('app-room') && !roomAudioOn()) { setStatus('Talk is off — only the app host can turn it on.'); return; }
       if (!localStream) return lateMedia('mic');
@@ -18162,6 +18242,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       syncSpeech(); // CC pauses while muted, resumes on unmute
       broadcastStatus();
       updateMediaSession();
+      if (track.enabled) kickStageMic(track);
     };
     camBtn.onclick = () => {
       if (document.body.classList.contains('app-room')) { setStatus('Video is not available in an app room yet — start a meeting and run the app from there.'); return; }

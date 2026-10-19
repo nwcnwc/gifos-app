@@ -913,10 +913,32 @@
       const t = stream.getAudioTracks()[0];
       if (!t) return false;
       try {
-        const src = ac.createMediaStreamSource(new MediaStream([t]));
         const g = ac.createGain(); g.gain.value = gain == null ? 1 : gain;
-        src.connect(g); g.connect(dest);
-        srcs.set(key, { src, gain: g });
+        g.connect(dest);
+        // A track that arrives muted stays silent in the source node that
+        // was built against that silence. When it starts producing samples,
+        // build a new source into the same gain. A track that is already
+        // live is connected once and left alone.
+        const rec = { src: null, gain: g, track: t, onUnmute: null };
+        const bind = () => {
+          const src = ac.createMediaStreamSource(new MediaStream([t]));
+          src.connect(g);
+          return src;
+        };
+        rec.src = bind();
+        srcs.set(key, rec);
+        if (t.muted) {
+          rec.onUnmute = () => {
+            const cur = srcs.get(key);
+            if (!cur || cur.track !== t) return;
+            try { t.removeEventListener('unmute', cur.onUnmute); } catch (e) {}
+            cur.onUnmute = null;
+            try { cur.src.disconnect(); } catch (e) {}
+            try { cur.src = bind(); } catch (e) {}
+          };
+          try { t.addEventListener('unmute', rec.onUnmute); } catch (e) {}
+          if (!t.muted) rec.onUnmute();
+        }
         return true;
       } catch (e) { return false; }
     }
@@ -944,7 +966,8 @@
         dropWait(key);
         const s = srcs.get(key);
         if (!s) return;
-        try { s.src.disconnect(); s.gain.disconnect(); } catch (e) {}
+        if (s.onUnmute && s.track) { try { s.track.removeEventListener('unmute', s.onUnmute); } catch (e) {} }
+        try { if (s.src) s.src.disconnect(); s.gain.disconnect(); } catch (e) {}
         srcs.delete(key);
       },
       // Drive a folded source's gain in place. 0 silences it and the node stays.
