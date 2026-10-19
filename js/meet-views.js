@@ -401,7 +401,21 @@
       self: { arrangement: 'tile' }, zones: true, side: z.side, stadSide: z.stadSide };
   }
 
-  // opts: { feed, tiles, faces, video, cols, orderKey, holdMs, vw, vh, phone, pill, mode, now, onSettle }
+  // The stadium frame's size, for cutting faces: the composite's own canvas
+  // when the page knows it (srcW/srcH, a head), else the first face <video>
+  // playing the same stream with a size, else the hidden source element.
+  // { w, h, from: 'pack' | 'face' | 'source' | 'none' }.
+  function stadFrameSize(srcW, srcH, faceEls, stream, video) {
+    if (srcW > 2 && srcH > 2) return { w: srcW | 0, h: srcH | 0, from: 'pack' }; // 2x2 is an empty packer, not a frame
+    for (let j = 0; j < (faceEls ? faceEls.length : 0); j++) {
+      const fv = faceEls[j] && faceEls[j].querySelector ? faceEls[j].querySelector('video') : null;
+      if (fv && stream && fv.srcObject === stream && fv.videoWidth > 0 && fv.videoHeight > 0) return { w: fv.videoWidth, h: fv.videoHeight, from: 'face' };
+    }
+    const w = video && video.videoWidth || 0, h = video && video.videoHeight || 0;
+    return (w > 0 && h > 0) ? { w: w, h: h, from: 'source' } : { w: 0, h: 0, from: 'none' };
+  }
+
+  // opts: { feed, tiles, faces, video, srcW, srcH, cols, orderKey, holdMs, vw, vh, phone, pill, mode, now, onSettle }
   // tiles: [{ id, el, tier, me, stage, stageOrd, hand, handOrd, speaker, pz }]
   // faces: [{ id, name, initials }] in stadium order
   function apply(opts) {
@@ -577,8 +591,21 @@
     }
 
     const video = opts.video || null;
-    const vw = video && video.videoWidth || 0;
-    const vh = video && video.videoHeight || 0;
+    const stream = video && video.srcObject;
+    // THE FRAME SIZE DOES NOT COME FROM THE HIDDEN SOURCE (2026-10-19,
+    // chaos-1019: the lone row-3 seat saw letters for all 10 faces for 12
+    // minutes). The source tile sits off screen at 4x4 (.stad-src), and
+    // its <video> is the one element here no one can see: WebKit never
+    // loads a canvas stream into it (0x0 for good), and the fleet's Chrome
+    // left it at the FIRST frame's size (330 wide) after the composite grew
+    // to 440x440 (the trace's tile.w against sd.w, four of four dumps). A
+    // 330x220 frame for a 4x3 grid nulls every cell, so every face stayed
+    // on initials. The composite's own canvas is the truth at a head
+    // (opts.srcW/srcH); failing that, a face's own <video> plays the same
+    // stream ON screen and follows every resize; the hidden source is the
+    // last resort.
+    const fsz = stadFrameSize(opts.srcW, opts.srcH, faceEls, stream, video);
+    const vw = fsz.w, vh = fsz.h, srcFrom = fsz.from;
     // STADIUM-FACES: opts.cellN cells in the composite and opts.cellOf[j] the
     // cell face j is cut from (-1: not in it, initials); without them a face
     // is cell j of faces.length (the count rule).
@@ -593,7 +620,6 @@
     const ready = n > 0 && faces.length > 0 && !lay.crowd && !holding && vw > 0 && vh > 0 && cols > 0 && MM && typeof MM.cellCrop === 'function';
     let slices = null;
     if (ready) slices = ML.stadiumSlices(n, vw, vh, 100, MM.stadiumGrid, MM.cellCrop);
-    const stream = video && video.srcObject;
     for (let j = 0; j < faceEls.length; j++) {
       const el = faceEls[j];
       if (lay.crowd) break;
@@ -601,7 +627,18 @@
       const av = el.querySelector('.avatar');
       const cj = cellOf ? cellOf[j] : j;
       const cell = slices && cj >= 0 ? slices.cells[cj] : null;
-      if (stream && !faces[j].off) playStream(v, stream);
+      if (stream && !faces[j].off) {
+        playStream(v, stream);
+        // A face's <video> is a frame-size source above: when it learns or
+        // changes its size, lay out again (the hidden source's own resize
+        // never fires on the engines that broke).
+        if (v && !v._stadRz && typeof v.addEventListener === 'function') {
+          v._stadRz = true;
+          const again = function () { if (typeof opts.onSettle === 'function') { try { opts.onSettle(); } catch (e) {} } };
+          v.addEventListener('resize', again);
+          v.addEventListener('loadedmetadata', again);
+        }
+      }
       // Camera-off (and not-yet-heard) faces stay on initials. A black
       // cell from the composite would hide the name.
       if (cell && v && !faces[j].off) {
@@ -611,11 +648,23 @@
         }
         const sc = (bw > 0 ? bw : 100) / 100;
         applyCrop(v, { x: cell.x * sc, y: cell.y * sc, w: cell.w * sc, h: cell.h * sc });
-        v.style.visibility = 'visible';
+        v.style.visibility = '';
+        v.style.opacity = '';
+        // A face that has its cut but no media yet (WebKit, after a hold):
+        // ask again now that it shows.
+        if (v.readyState === 0 && v.srcObject && typeof v.play === 'function') { try { const pr = v.play(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {} }
         el.classList.remove('cam-off');
         if (av) av.style.display = 'none';
       } else if (v) {
-        v.style.visibility = 'hidden';
+        // FADED, NOT HIDDEN (2026-10-19, chaos-1019 lone row-3): a face
+        // waits here for its cut during the 2.5 s hold with its stream
+        // already attached. WebKit never starts a muted <video> that was
+        // handed its stream while visibility:hidden, not even once it shows
+        // (play() never settles): after the hold every face painted black.
+        // An element at opacity 0 is on screen for the engine, loads, and
+        // is also the frame-size source above for a seat with no canvas.
+        v.style.visibility = '';
+        v.style.opacity = '0';
         applyCrop(v, null);
         el.classList.add('cam-off');
         paintShade(el, faces[j].shade || faces[j].id);
@@ -638,6 +687,7 @@
       box: box,
       crowd: !!lay.crowd,
       holding: holding,
+      src: { w: vw, h: vh, from: srcFrom },
       tier: lay.tier,
       scroll: { sh: sh, ch: ch },
     };
@@ -869,6 +919,7 @@
     avatarUrl: avatarUrl,
     paintAvatar: paintAvatar,
     apply: apply,
+    stadFrameSize: stadFrameSize,
     installBar: installBar,
     installSelf: installSelf,
     applyCrop: applyCrop,

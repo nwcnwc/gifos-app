@@ -9749,13 +9749,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return out;
     }
     function comfyStadMeta() {
-      let n = 0, cols = 0, video = null, srcEl = null, ids = null;
+      let n = 0, cols = 0, video = null, srcEl = null, ids = null, w = 0, h = 0;
       try {
         srcEl = document.querySelector('#stadium [data-row="sd"]');
         video = srcEl ? srcEl.querySelector('video') : null;
       } catch (e) {}
       try {
-        if (sdPack && sdPack.count && sdPack.count() > 0) { n = sdPack.count(); cols = sdPack.cols() || 0; const ci = sdPack.cellIds ? sdPack.cellIds() : null; if (ci && ci.length === n) ids = ci; }
+        if (sdPack && sdPack.count && sdPack.count() > 0) {
+          n = sdPack.count(); cols = sdPack.cols() || 0; const ci = sdPack.cellIds ? sdPack.cellIds() : null; if (ci && ci.length === n) ids = ci;
+          // The composite's own canvas is the frame size (the hidden source
+          // <video> lies on an engine that never loads it, or stops following
+          // its growth: chaos-1019, the lone row-3 letters).
+          if (video && video.srcObject === sdPack.stream && sdPack.canvas) { w = sdPack.canvas.width | 0; h = sdPack.canvas.height | 0; }
+        }
       } catch (e) {}
       try {
         if (!(n > 0) && mosIn) {
@@ -9763,7 +9769,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (m && m.meta) { if (m.meta.n) n = m.meta.n; if (m.meta.cols) cols = m.meta.cols; if (Array.isArray(m.meta.ids) && m.meta.ids.length === m.meta.n) ids = m.meta.ids.slice(); }
         }
       } catch (e) {}
-      return { n: n | 0, cols: cols | 0, ids: ids, video: video, srcEl: srcEl };
+      return { n: n | 0, cols: cols | 0, ids: ids, video: video, srcEl: srcEl, w: w > 2 ? w : 0, h: h > 2 ? h : 0 };
     }
     let comfyBusy = false;
     // Where the call's buttons stood last, per screen size, so the faces
@@ -9949,7 +9955,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           floor = vhNow - ((probe && probe.offsetHeight) || 0);
         }
         window.__comfyLast = MV.apply({
-          feed: feed, tiles: tiles, faces: faces, video: meta.video, cols: cols, cellN: cellOf ? meta.n : 0, cellOf: cellOf,
+          feed: feed, tiles: tiles, faces: faces, video: meta.video, srcW: meta.w, srcH: meta.h, cols: cols, cellN: cellOf ? meta.n : 0, cellOf: cellOf,
           orderKey: roster.length + ':' + roster.join(',') + (cellOf ? '|' + cellOf.join(',') : ''), holdMs: holdMs, floor: floor,
           vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: shadeKey('me'),
           pill: document.body.classList.contains('has-pill'), bottom: bottom, holdBottom: holdBottom, top: topInset,
@@ -34958,7 +34964,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         fb: [...mosFb.entries()].map(([rk, f]) => ({ rk, wakeAt: f.wakeAt, prefSince: f.prefSince, lastSwitch: f.lastSwitch, dark: !!f.dark, lastAdvanceAt: f.lastAdvanceAt || 0, lastBytes: f.lastBytes != null ? f.lastBytes : -1, d0: f.d0 != null ? f.d0 : -1, stdFdec: f.stdFdec != null ? f.stdFdec : -1, flowSince: f.flowSince || 0, q: f.q || 0, fp: f.fp || 0 })),
         prod: prodPack && prodPack.stats(), sd: sdPack && sdPack.stats(),
         rowFaces: dbgRowFaces.slice(), // which pid the packer drew at each of my row's seats (test observability, 2026-07-29 stale-seat dup)
-        tile: (() => { const v = stadiumEl.querySelector('[data-row="sd"] video'); return v ? { live: v.videoWidth > 0, w: v.videoWidth } : null; })(),
+        // w/h: the hidden source <video>'s own size; pack: the local composite's canvas; src: what the face cut used (chaos-1019: the two disagreed, 330 against 440)
+        tile: (() => { const v = stadiumEl.querySelector('[data-row="sd"] video'); const cl = window.__comfyLast; return v ? { live: v.videoWidth > 0, w: v.videoWidth, h: v.videoHeight, pack: (sdPack && sdPack.canvas) ? [sdPack.canvas.width, sdPack.canvas.height] : null, src: cl && cl.src ? cl.src : null } : null; })(),
         strip: (() => { const v = stagefeedEl.querySelector('[data-row="sgs"] video'); return v ? { live: v.videoWidth > 0 } : null; })(), stagers: stageIds().length }; },
       // Every sender on every link, and who owns it: which media a link
       // carries, and why (Q80: a parked job's link still carried media).
