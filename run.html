@@ -30669,6 +30669,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const st = document.getElementById('status');
           head = !!st && st.dataset.kind === 'meeting' && !st.classList.contains('alert') && Date.now() >= statusHoldUntil;
         }
+        // A bot page has nobody to wake the header. The logo and the count
+        // stay, or the page looks like it has only the transcribing mark.
+        if (head && typeof myStatus !== 'undefined' && myStatus.bot) head = false;
         if (head !== document.body.classList.contains('head-calm')) document.body.classList.toggle('head-calm', head);
       }, 250);
     })();
