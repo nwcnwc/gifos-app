@@ -1298,14 +1298,27 @@
       stop() { stopped = true; if (timer && timer.worker) { try { timer.worker.terminate(); } catch (e) {} } else if (timer) clearInterval(timer); timer = null; if (sock) { try { sock.close(); } catch (e) {} sock = null; } },
     };
 
+    // The ticket ask (/t) finishes BEFORE this node is ready and BEFORE its
+    // upgrade is opened. whenReady used to resolve while that ask was still
+    // in flight, and the caller — the door harness, a second tab — started
+    // the next member then. The next member's /t was the warm one, so its
+    // handshake arrived first and it founded the room. Healing-laws R2:
+    // arrival order alone decides genesis, so the member that got here
+    // first has to be the one whose upgrade is already on the wire.
+    // Tokens-on is unchanged: prepare still resolves with &jt= in hand, and
+    // the first upgrade carries it (relay-page-ticket).
+    const openDoor = () => prepareTicket().then(() => { if (!stopped) build(); }, () => { if (!stopped) build(); });
     if (wantMint) {
       Promise.all([ident.mint(), rsFor()]).then(([id]) => {
         if (stopped) return;
         identity = id; peer = id.peerId; node.peer = peer;
-        return ipProofFor().then(() => { if (!stopped) build(); });
+        // ip proof and the ticket ask together, then the upgrade. The proof
+        // has to be on the URL the upgrade opens; the ask has to be done so
+        // that URL is opened before whenReady returns.
+        return Promise.all([ipProofFor(), prepareTicket()]).then(() => { if (!stopped) build(); }, () => { if (!stopped) build(); });
       }).catch(() => {});
     } else {
-      Promise.all([rsFor(), ipProofFor()]).then(() => { if (!stopped) build(); }, () => { if (!stopped) build(); });
+      Promise.all([rsFor(), ipProofFor()]).then(openDoor, openDoor);
     }
     return node;
   }
