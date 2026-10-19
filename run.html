@@ -9068,7 +9068,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const renamed = hostRename(pid);
       if (renamed) return renamed;
       if (pid === myId) return myName() || '\u2026';
-      return rosterNames[pid] || (peers.get(pid) || {}).name || '\u2026';
+      const named = rosterNames[pid] || (peers.get(pid) || {}).name;
+      if (named) return named;
+      // A connected seat already sent its offer or answer, and a name rides
+      // on those. One still without a name has none: "Guest", the same word
+      // as the tile label and People. "…" stays only while still connecting.
+      const p = peers.get(pid);
+      if (p && p.connected) return 'Guest';
+      return '\u2026';
     }
     // A host's per-person controls say "for all" (hostWords, below).
     const MODBAR_HTML = '<button data-mod="mute" aria-label="Mute for all">Mute for all</button><button data-mod="blur" aria-label="Blur for all">Blur for all</button>'
