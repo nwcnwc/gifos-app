@@ -110,9 +110,6 @@ function overlaps(a, b) {
       continue;
     }
     await page.waitForTimeout(280);
-    // The build name fades with the header (0.8s). The dock tuck is already
-    // done; this extra wait is only so the label's fade has finished.
-    await page.waitForTimeout(900);
     const tucked = await read();
     const quiet = [];
     if (!tucked.away) quiet.push('call did not tuck');
