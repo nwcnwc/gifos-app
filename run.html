@@ -6581,7 +6581,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // It is not a general pass onto the stage.
         if (botOf(id)) continue;
         if (!t || !(canStage(id) || hostSpot(id) || (shareClaim(id) && mayShareScreen(id)))) continue;
-        if (vt) { const dv = devFor(id); if (dv && (vt.down[dv] || 0) >= vt.need) continue; }
+        if (vt) { const dv = devFor(id); if (dv && (vt.down[dv] || 0) >= stageNeed(vt, dv)) continue; }
         out.push([id, t]);
       }
       // Stagers beyond my section arrive as the fold's 2C earliest claims (G9);
@@ -6592,7 +6592,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const have = new Set(out.map((x) => x[0]));
         for (const e of dg.stage) {
           if (!e.id || have.has(e.id) || e.id === myId || botOf(e.id) || stHold(e.id) || !notTomb(e.id) || !(canStage(e.id) || ((e.f & 2) && mayShareScreen(e.id)))) continue;
-          if (vt) { const dv = e.dv || devFor(e.id); if (dv && (vt.down[dv] || 0) >= vt.need) continue; }
+          if (vt) { const dv = e.dv || devFor(e.id); if (dv && (vt.down[dv] || 0) >= stageNeed(vt, dv)) continue; }
           out.push([e.id, e.k]);
         }
       }
@@ -6858,51 +6858,76 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // side backstop: stageIds() excludes a majority-voted-down dev on every
     // phone, so a hacked client that refuses to step down is simply no longer
     // painted or mixed as stage by anyone.
-    const myStageVotes = { up: new Set(), down: new Set() };
+    // ABSTAIN (Nathan, 2026-10-18): a voter's state per vote is yes / no /
+    // empty / abstain. Empty stays in the bar; abstain leaves it, and with it
+    // the voter's own yes or no on that vote — the away symmetry below, one
+    // target at a time, so abstaining can never manufacture a majority. `vab`
+    // on the pulse lists the device tags I abstain on; '*' is every vote,
+    // which sits me out exactly like away. The Meeting Bot never votes, so its
+    // own page abstains on everything; the tally has no bot rule.
+    const myStageVotes = { up: new Set(), down: new Set(), ab: new Set() };
     const STAGE_VOTE_CAP = 8; // per-voter active targets — bounds the heartbeat payload
-    let stgTallyCache = { at: 0, up: {}, down: {}, upVoters: {}, need: 2 };
+    const abstainsAll = (vab) => Array.isArray(vab) && vab.includes('*');
+    const stageMajority = (n) => Math.max(2, Math.floor(n / 2) + 1);
+    let stgTallyCache = { at: 0, up: {}, down: {}, upVoters: {}, ab: {}, roomN: 0, need: 2 };
+    // The bar for ONE target: the room minus everyone abstaining on it.
+    const stageNeed = (vt, dv) => (dv && vt.ab[dv] ? stageMajority(vt.roomN - vt.ab[dv]) : vt.need);
     function stageVoteTallies() {
       const now = Date.now();
       if (now - stgTallyCache.at < 500) return stgTallyCache;
       // PAST ONE SECTION the tallies are the fold's (docs/vote-scale.md V1-V3,
       // healing-laws G9): per-target sums over the whole room, truncated to the
       // most-voted K and clamped by population — they may only UNDER-count — and
-      // the bar is measured against the folded room minus its away devices.
+      // the bar is measured against the folded room minus its away devices
+      // (an abstain-on-everything device folds as away) and, per target, minus
+      // the devices abstaining on it.
       if (roomPastSection()) {
-        const dg = roomDig(), up = {}, down = {};
-        for (const v of dg.votes) { if (v.up) up[v.tgt] = v.up; if (v.dn) down[v.tgt] = v.dn; }
+        const dg = roomDig(), up = {}, down = {}, ab = {};
+        for (const v of dg.votes) { if (v.up) up[v.tgt] = v.up; if (v.dn) down[v.tgt] = v.dn; if (v.ab) ab[v.tgt] = v.ab; }
         const roomN = Math.max(1, dg.n - dg.awayN);
-        stgTallyCache = { at: now, up, down, upVoters: {}, need: Math.max(2, Math.floor(roomN / 2) + 1), folded: true };
+        stgTallyCache = { at: now, up, down, upVoters: {}, ab, roomN, need: stageMajority(roomN), folded: true };
         return stgTallyCache;
       }
-      const bagUp = Object.create(null), bagDn = Object.create(null); // a peer's vup:['__proto__'] must not find Object.prototype here
-      const add = (bag, voterDev, list) => {
+      const bagUp = Object.create(null), bagDn = Object.create(null), bagAb = Object.create(null); // a peer's vup:['__proto__'] must not find Object.prototype here
+      const add = (bag, voterDev, list, ab) => {
         for (const d of (Array.isArray(list) ? list : [])) {
-          if (typeof d !== 'string' || !d || d === voterDev) continue; // a self-vote counts for nothing
+          if (typeof d !== 'string' || !d || d === voterDev || ab.has(d)) continue; // a self-vote counts for nothing
           (bag[d] = bag[d] || new Set()).add(voterDev || 'x');
         }
+      };
+      // One voter's pulse. An abstain takes out only a device the bar counts
+      // (pop below), so it never removes more than it put in.
+      const take = (voterDev, s) => {
+        const ab = new Set((Array.isArray(s.vab) ? s.vab : []).filter((d) => typeof d === 'string' && d && d !== '*'));
+        add(bagUp, voterDev, s.vup, ab); add(bagDn, voterDev, s.vdn, ab);
+        if (voterDev) for (const d of ab) (bagAb[d] = bagAb[d] || new Set()).add(voterDev);
       };
       // An AWAY device sits out voting ENTIRELY — vote and denominator both
       // (G1). Symmetry is the security property: marking yourself away costs
       // you your standing votes in the same breath it removes you from the
       // majority bar, so away can never be used to manufacture a majority —
       // it is exactly equivalent to briefly leaving. (away is self-reported
-      // on your own pulse; nobody can mark someone ELSE away.)
+      // on your own pulse; nobody can mark someone ELSE away.) Abstaining on
+      // every vote ('*') is the same thing for the vote.
       const awayDevs = new Set(), engagedDevs = new Set();
-      if (!myStatus.away) { add(bagUp, myDevHash, myStatus.vup); add(bagDn, myDevHash, myStatus.vdn); if (myDevHash) engagedDevs.add(myDevHash); }
+      const sitsOut = (s) => !!s.away || abstainsAll(s.vab);
+      if (!sitsOut(myStatus)) { take(myDevHash, myStatus); if (myDevHash) engagedDevs.add(myDevHash); }
       else if (myDevHash) awayDevs.add(myDevHash);
       for (const [pid, st] of statusOf) {
         // Freshness before away. A dead phone's old away pulse used to sit
         // its device out of the bar for as long as the occ echo kept the
         // status. stHold is the 15s / holdover rule the vote itself uses.
         if (!stHold(pid)) continue;
-        if (st.away) { if (devOf[pid]) awayDevs.add(devOf[pid]); continue; }
-        add(bagUp, devOf[pid], st.vup); add(bagDn, devOf[pid], st.vdn);
+        if (sitsOut(st)) { if (devOf[pid]) awayDevs.add(devOf[pid]); continue; }
+        take(devOf[pid], st);
         if (devOf[pid]) engagedDevs.add(devOf[pid]);
       }
       // one DEVICE, two sessions (a stale away pid + a fresh one): present wins
       for (const d of engagedDevs) awayDevs.delete(d);
-      const cnt = (bag) => { const t = {}; for (const d in bag) t[d] = bag[d].size; return t; };
+      // ...but an abstain beats the same device's yes or no from another
+      // session: out of the bar is out of the count.
+      for (const d in bagAb) for (const v of bagAb[d]) { if (bagUp[d]) bagUp[d].delete(v); if (bagDn[d]) bagDn[d].delete(v); }
+      const cnt = (bag) => { const t = {}; for (const d in bag) if (bag[d].size) t[d] = bag[d].size; return t; };
       // SCALE GUARD (the C-nary tree matters here): tallies come from the
       // statuses I can SEE, but the majority is measured against the ROOM —
       // participantCount(), which rides the tree's aggregated counting. The
@@ -6919,8 +6944,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A silently-frozen phone (no away pulse got out) stays in the bar —
       // conservative, and ICE death heals it out of the count in ~1-2 min.
       const roomN = Math.max(pop.size, ((typeof participantCount === 'function' ? participantCount() : 0) || 0) - awayDevs.size);
-      stgTallyCache = { at: now, up: cnt(bagUp), down: cnt(bagDn), upVoters: bagUp,
-        need: Math.max(2, Math.floor(roomN / 2) + 1) };
+      const ab = {};
+      for (const d in bagAb) { let k = 0; for (const v of bagAb[d]) if (pop.has(v)) k++; if (k) ab[d] = k; }
+      stgTallyCache = { at: now, up: cnt(bagUp), down: cnt(bagDn), upVoters: bagUp, ab, roomN,
+        need: stageMajority(roomN) };
       return stgTallyCache;
     }
     const devFor = (id) => (id === myId ? myDevHash : (devOf[id] || (digStageEntry(id) || {}).dv));
@@ -6936,7 +6963,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function reactStageVotes() {
       if (hasAdminRoom() || !myDevHash) return;
       const vt = stageVoteTallies();
-      const votedDown = (vt.down[myDevHash] || 0) >= vt.need;
+      const need = stageNeed(vt, myDevHash);
+      const votedDown = (vt.down[myDevHash] || 0) >= need;
       if (myStatus.stg && votedDown) {
         // A vote-off dismisses the standing up-tally exactly as declining
         // does: the same up-voters cannot bounce me straight back (a new
@@ -6949,7 +6977,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       // Down is the standing verdict: while a down-majority holds, an up-
       // majority steps nobody up (every receiver excludes me anyway).
-      if (!myStatus.stg && !votedDown && (vt.up[myDevHash] || 0) >= vt.need
+      if (!myStatus.stg && !votedDown && (vt.up[myDevHash] || 0) >= need
           && canStage(myId) && stageIds().length < SCALE.C
           && myUpVoteSig() !== vupDismissedSig) {
         setStage(true);
@@ -7004,7 +7032,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const slice = (s) => Array.from(s).filter((d) => present.has(d)).slice(0, STAGE_VOTE_CAP);
         myStatus.vup = slice(myStageVotes.up);
         myStatus.vdn = slice(myStageVotes.down);
-      } else { delete myStatus.vup; delete myStatus.vdn; }
+        // A bot never votes, so it abstains on every vote (its own choice, on its own pulse).
+        const vab = (myStatus.bot || myStageVotes.ab.has('*')) ? ['*'] : slice(myStageVotes.ab);
+        if (vab.length) myStatus.vab = vab; else delete myStatus.vab;
+      } else { delete myStatus.vup; delete myStatus.vdn; delete myStatus.vab; }
       // The heartbeat also re-gossips room moderation (group mute/blur) and the
       // admin guest-blur level. Both are timestamped and idempotent, so a lost
       // 'mod' message heals on the next tick instead of leaving one phone
@@ -7076,7 +7107,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         sf: (myStatus.sing ? 1 : 0) | (myStatus.scr ? 2 : 0) | (a ? 4 : 0),
         app: a ? (a.ts || 0) : 0,
         ad: a ? { s: a.s, k: a.k, relay: a.relay, name: a.name, mesh: !!a.mesh, pk: a.pk, ts: a.ts, byName: a.byName, audio: !!a.audio } : null,
-        away: !!myStatus.away, vup: myStatus.vup || [], vdn: myStatus.vdn || [] });
+        away: !!myStatus.away, vup: myStatus.vup || [], vdn: myStatus.vdn || [], vab: myStatus.vab || [] });
       if (typeof meshNode.setRefuses === 'function') meshNode.setRefuses(!consents(myStatus));
     }
     // Presence: the mesh occ map IS the count — distinct peers at distinct
@@ -9439,9 +9470,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!isMe && voteNeed && dv && voteTally[dv]) chips.push('<span class="tx warn long" title="' + voteTally[dv] + '/' + voteNeed + ' to remove" aria-label="' + voteTally[dv] + '/' + voteNeed + ' votes to remove"><b>🗳 ' + voteTally[dv] + '/' + voteNeed + '</b> to remove</span>');
       // stage-vote progress: everyone watches the same arithmetic converge
       if (!hasAdminRoom()) {
-        const vt = stageVoteTallies(), sdv = isMe ? myDevHash : dv;
-        if (sdv && vt.up[sdv]) chips.push('<span class="tx long" title="' + vt.up[sdv] + '/' + vt.need + ' to the stage" aria-label="' + vt.up[sdv] + '/' + vt.need + ' votes to the stage"><b>🗳 ' + vt.up[sdv] + '/' + vt.need + '</b> to the stage</span>');
-        if (sdv && vt.down[sdv]) chips.push('<span class="tx warn long" title="' + vt.down[sdv] + '/' + vt.need + ' off the stage" aria-label="' + vt.down[sdv] + '/' + vt.need + ' votes off the stage"><b>🗳 ' + vt.down[sdv] + '/' + vt.need + '</b> off the stage</span>');
+        const vt = stageVoteTallies(), sdv = isMe ? myDevHash : dv, sneed = stageNeed(vt, sdv);
+        if (sdv && vt.up[sdv]) chips.push('<span class="tx long" title="' + vt.up[sdv] + '/' + sneed + ' to the stage" aria-label="' + vt.up[sdv] + '/' + sneed + ' votes to the stage"><b>🗳 ' + vt.up[sdv] + '/' + sneed + '</b> to the stage</span>');
+        if (sdv && vt.down[sdv]) chips.push('<span class="tx warn long" title="' + vt.down[sdv] + '/' + sneed + ' off the stage" aria-label="' + vt.down[sdv] + '/' + sneed + ' votes off the stage"><b>🗳 ' + vt.down[sdv] + '/' + sneed + '</b> off the stage</span>');
       }
       // Write the chips only when they changed: a repaint runs on every gossip
       // pass, and rebuilding identical spans drops keyboard focus from the
@@ -25994,7 +26025,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // standing votes don't bounce me straight back onto the stage. A NEW
         // voter re-arms the invitation.
         const vt = stageVoteTallies();
-        if ((vt.up[myDevHash] || 0) >= vt.need) vupDismissedSig = myUpVoteSig();
+        if ((vt.up[myDevHash] || 0) >= stageNeed(vt, myDevHash)) vupDismissedSig = myUpVoteSig();
         if (myStatus.scr) stopScreenShare('you stepped down');
         if (myStatus.stg) setStage(false);
         return;
@@ -31050,11 +31081,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // standing up-vote for them (and vice versa). With both on the pulse
         // the target's tallies could pass in both directions at once.
         myStageVotes[voteMode === 'up' ? 'down' : 'up'].delete(dev);
+        myStageVotes.ab.delete(dev);
         set.add(dev);
       }
       stgTallyCache.at = 0;  // my own vote shows instantly
       recSrcDirty = true;
       broadcastStatus();     // it rides the pulse to everyone else
+      refreshAllTiles();
+    }
+    // Abstain on one person's stage vote (a device tag), or on every vote ('*').
+    // Abstaining withdraws my yes or no on it: one state per voter per vote.
+    function setStageAbstain(dev, on) {
+      if (!dev || hasAdminRoom()) return;
+      if (on) {
+        if (dev !== '*' && myStageVotes.ab.size >= STAGE_VOTE_CAP) return;
+        myStageVotes.ab.add(dev);
+        if (dev === '*') { myStageVotes.up.clear(); myStageVotes.down.clear(); }
+        else { myStageVotes.up.delete(dev); myStageVotes.down.delete(dev); }
+      } else myStageVotes.ab.delete(dev);
+      stgTallyCache.at = 0;
+      recSrcDirty = true;
+      broadcastStatus();
       refreshAllTiles();
     }
     let closeVoteModal = () => { const m = document.getElementById('vote-modal'); if (m) m.style.display = 'none'; };
@@ -34947,7 +34994,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         w: blurPipe.canvas.width, h: blurPipe.canvas.height, srcW: blurPipe.src.videoWidth, srcState: blurPipe.srcTrack && blurPipe.srcTrack.readyState,
         srcMuted: !!(blurPipe.srcTrack && blurPipe.srcTrack.muted), hidden: document.hidden } : null),
       voteNeed: () => voteNeed,
-      stageVotes: () => { const vt = stageVoteTallies(); return { up: Object.assign({}, vt.up), down: Object.assign({}, vt.down), need: vt.need }; },
+      stageVotes: () => {
+        const vt = stageVoteTallies(), needOf = {};
+        for (const d of new Set([...Object.keys(vt.up), ...Object.keys(vt.down), ...Object.keys(vt.ab)])) needOf[d] = stageNeed(vt, d);
+        return { up: Object.assign({}, vt.up), down: Object.assign({}, vt.down), ab: Object.assign({}, vt.ab), need: vt.need, needOf, folded: !!vt.folded };
+      },
+      // Abstain as this page's voter: a peer id, or '*' for every vote.
+      stageAbstainForTest: (id, on) => { setStageAbstain(id === '*' ? '*' : devOf[id], on); return Array.from(myStageVotes.ab); },
+      myStageVotesForTest: () => ({ up: Array.from(myStageVotes.up), down: Array.from(myStageVotes.down), ab: Array.from(myStageVotes.ab) }),
       voteMode: () => voteMode,
       votesAgainst: (id) => voteTally[devOf[id]] || 0,
       myVoteCount: () => myVoteoffs.size,

@@ -164,7 +164,10 @@
   // The digest record (sim struct Dig). by=null is the sim's by=-1; at=-1 means "never computed".
   // § G9 ROOM-GLOBAL LISTS (healing-laws G9; sim: mesh.cpp LE/VE, listMerge,
   // digFold, digTrim, listHolds, votesHold — same rules). hands {id,k,nm},
-  // stage {id,k,f,nm,dv}, apps {id,k,a}, votes {tgt,up,dn}; handN/awayN counts.
+  // stage {id,k,f,nm,dv}, apps {id,k,a}, votes {tgt,up,dn[,ab]}; handN/awayN counts.
+  // ab counts the voters abstaining on tgt (present only when > 0, so a room
+  // without abstains folds byte-for-byte as before); awayN also counts the
+  // devices abstaining on every vote — both leave the majority bar.
   // The browser entries carry payload the sim does not — nm a short name, dv the
   // stager's room-salted device tag (vote exclusion is keyed by device), a the
   // whole app ad a joiner needs to enter the app (its session secret included:
@@ -184,7 +187,11 @@
     for (const e of all) { if (out.length >= K) break; if (!seen.has(e.id)) { seen.add(e.id); out.push(e); } }
     return out;
   };
-  const voteAdd = (acc, v) => { for (const a of acc) if (a.tgt === v.tgt) { a.up += v.up; a.dn += v.dn; return; } acc.push({ tgt: v.tgt, up: v.up, dn: v.dn }); };
+  const voteAdd = (acc, v) => {
+    for (const a of acc) if (a.tgt === v.tgt) { a.up += v.up; a.dn += v.dn; if (v.ab) a.ab = (a.ab || 0) + v.ab; return; }
+    const e = { tgt: v.tgt, up: v.up, dn: v.dn }; if (v.ab) e.ab = v.ab; acc.push(e);
+  };
+  const voteCopy = (v) => { const e = { tgt: v.tgt, up: v.up, dn: v.dn }; if (v.ab) e.ab = v.ab; return e; };
   const digFold = (dst, s) => {
     dst.n += s.n; dst.refuse += s.refuse; dst.freeC += s.freeC; if (s.dmin < dst.dmin) dst.dmin = s.dmin; if (s.part) dst.part = 1;
     // POPULATION-BOUNDED CLAIMS, per INPUT: no more hands, away devices or votes
@@ -192,13 +199,13 @@
     const cap = s.n < 0 ? 0 : s.n;
     dst.handN += Math.min(s.handN || 0, cap); dst.awayN += Math.min(s.awayN || 0, cap);
     dst.hands = listMerge(dst.hands, s.hands, K_HAND, true); dst.stage = listMerge(dst.stage, s.stage, K_STAGE(), true); dst.apps = listMerge(dst.apps, s.apps, K_APP, false);
-    for (const v of (s.votes || [])) voteAdd(dst.votes, { tgt: v.tgt, up: Math.min(v.up, cap), dn: Math.min(v.dn, cap) });
+    for (const v of (s.votes || [])) voteAdd(dst.votes, { tgt: v.tgt, up: Math.min(v.up, cap), dn: Math.min(v.dn, cap), ab: Math.min(v.ab || 0, cap) });
   };
   // Close a level: population clamps, then the ONE vote truncation (sums may only UNDER-count).
   const digTrim = (d) => {
     const cap = d.n < 0 ? 0 : d.n;
     if (d.handN > cap) d.handN = cap; if (d.awayN > cap) d.awayN = cap;
-    for (const v of d.votes) { if (v.up > cap) v.up = cap; if (v.dn > cap) v.dn = cap; }
+    for (const v of d.votes) { if (v.up > cap) v.up = cap; if (v.dn > cap) v.dn = cap; if (v.ab > cap) { if (cap) v.ab = cap; else delete v.ab; } }
     d.votes.sort(veOrd); if (d.votes.length > K_VOTE) d.votes.length = K_VOTE;
   };
   // G4 fidelity key over the list fields (sim: digListHash): an echo must reproduce what I sent.
@@ -228,7 +235,7 @@
   const votesHold = (pub, mine) => {
     for (const v of (mine || [])) {
       const hit = (pub || []).find((p) => p.tgt === v.tgt);
-      if (hit) { if (hit.up < v.up || hit.dn < v.dn) return false; continue; }
+      if (hit) { if (hit.up < v.up || hit.dn < v.dn || (hit.ab || 0) < (v.ab || 0)) return false; continue; }
       if (!pub || pub.length < K_VOTE) return false;
       for (const p of pub) if (p.up + p.dn < v.up + v.dn) return false;
     }
@@ -259,8 +266,8 @@
       o[f] = a.map((e) => { const c = { id: e.id, k: e.k }; if (e.f !== undefined) c.f = e.f; if (e.nm !== undefined) c.nm = e.nm; if (e.dv !== undefined) c.dv = e.dv; if (e.a !== undefined) c.a = copyAd(e.a); return c; });
     }
     if (d.votes !== undefined) {
-      if (!Array.isArray(d.votes) || d.votes.length > K_VOTE || !d.votes.every((v) => v && STR(v.tgt, 16) && INT(v.up) && v.up >= 0 && INT(v.dn) && v.dn >= 0)) return null;
-      o.votes = d.votes.map((v) => ({ tgt: v.tgt, up: v.up, dn: v.dn }));
+      if (!Array.isArray(d.votes) || d.votes.length > K_VOTE || !d.votes.every((v) => v && STR(v.tgt, 16) && INT(v.up) && v.up >= 0 && INT(v.dn) && v.dn >= 0 && (v.ab === undefined || (INT(v.ab) && v.ab >= 0)))) return null;
+      o.votes = d.votes.map(voteCopy);
     }
     return o;
   };
@@ -337,7 +344,7 @@
   };
   const leCopy = (e) => { const c = Object.assign({}, e); if (e.a) c.a = Object.assign({}, e.a); return c; };
   const digCopy = (d) => ({ n: d.n, refuse: d.refuse, freeC: d.freeC, at: d.at, by: d.by, dmin: d.dmin, part: d.part, handN: d.handN || 0, awayN: d.awayN || 0,
-    hands: (d.hands || []).map(leCopy), stage: (d.stage || []).map(leCopy), apps: (d.apps || []).map(leCopy), votes: (d.votes || []).map((v) => ({ tgt: v.tgt, up: v.up, dn: v.dn })) });
+    hands: (d.hands || []).map(leCopy), stage: (d.stage || []).map(leCopy), apps: (d.apps || []).map(leCopy), votes: (d.votes || []).map(voteCopy) });
 
   // A Section-1 key has pc==0 — its string ckey starts "0_".
   const isS1key = (k) => k.charCodeAt(0) === 48 && k.charCodeAt(1) === 95;
@@ -549,7 +556,7 @@
       // § G9 MY OWN leaf facts (setLeaf — the application's, never a digest's):
       // hand/stage/app times, stage flags, my short name and app session id,
       // away, and my votes (device tags).
-      this.leaf = { hand: 0, stage: 0, sf: 0, app: 0, ad: null, nm: '', dv: '', away: false, vup: [], vdn: [] };
+      this.leaf = { hand: 0, stage: 0, sf: 0, app: 0, ad: null, nm: '', dv: '', away: false, vup: [], vdn: [], vab: [] };
       this.upLogI = 0; this.upSince = -1; this.lastAgg = null; this.emptyEcho = 0;
       this.digHoldUntil = -1; this.lastPubAt = -1; this.lastPubDepth = 0; // § G handover hold (sim Seat::digHoldUntil)
       this.downUsed = dig0(); this.rowUsed = new Map();
@@ -2900,6 +2907,7 @@
       if ('away' in f) L.away = !!f.away;
       if ('vup' in f) L.vup = tags(f.vup);
       if ('vdn' in f) L.vdn = tags(f.vdn);
+      if ('vab' in f) L.vab = tags(f.vab);
     }
     // G4: remember every report I published upward, keyed by its own stamp —
     // the ground truth the aggregator's echo is checked against.
@@ -3011,7 +3019,7 @@
         let sig = (this.refuses ? 1 : 0) + ',' + hold + ',' + freeC + ',' + dmin + ',' + (childFresh ? digHash(this.downDig) : '-') + ',' + childGap
           + ',' + (L.hand || 0) + ',' + (L.stage || 0) + ',' + (L.sf | 0) + ',' + (L.app || 0) + ',' + (L.away ? 1 : 0)
           + ',' + L.nm + ',' + L.dv + ',' + (L.ad ? JSON.stringify(L.ad) : '')
-          + ',' + L.vup.join('\n') + ',' + L.vdn.join('\n');
+          + ',' + L.vup.join('\n') + ',' + L.vdn.join('\n') + ',' + L.vab.join('\n');
         if (this.coord.pc !== 0 && this.coord.i === 0) {
           for (let j = 1; j < C(); j++) {
             const rk = ck({ pc: this.coord.pc, r: this.coord.r, i: j }); const it = this.rowKids.get(rk);
@@ -3049,11 +3057,16 @@
         }
         const d = dig0(); d.n = 1; d.refuse = this.refuses ? 1 : 0; d.at = LT; d.rx = LT; d.by = this.id;
         // G9 my own leaf facts. An away device sits out voting — its votes and its place in the denominator both.
+        // Abstaining on every vote ('*') is away for the vote; abstaining on one target drops my vote on it and counts me out of its bar.
         if (L.hand) { d.handN = 1; d.hands.push({ id: this.id, k: L.hand, nm: L.nm }); }
         if (L.stage) d.stage.push({ id: this.id, k: L.stage, f: L.sf, nm: L.nm, dv: L.dv });
         if (L.app && L.ad) d.apps.push({ id: this.id, k: L.app, a: copyAd(L.ad) });
-        if (L.away) d.awayN = 1;
-        else { for (const t of L.vup) voteAdd(d.votes, { tgt: t, up: 1, dn: 0 }); for (const t of L.vdn) voteAdd(d.votes, { tgt: t, up: 0, dn: 1 }); }
+        if (L.away || L.vab.includes('*')) d.awayN = 1;
+        else {
+          for (const t of L.vup) if (!L.vab.includes(t)) voteAdd(d.votes, { tgt: t, up: 1, dn: 0 });
+          for (const t of L.vdn) if (!L.vab.includes(t)) voteAdd(d.votes, { tgt: t, up: 0, dn: 1 });
+          for (const t of L.vab) voteAdd(d.votes, { tgt: t, up: 0, dn: 0, ab: 1 });
+        }
         // THE HANDOVER HOLD (sim rollup). Just after a cell change I am still
         // counted at the old cell until my vacate climbs the old chain, and the
         // new chain is shorter (compaction moves strictly up): the room saw me
