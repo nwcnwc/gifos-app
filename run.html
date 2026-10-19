@@ -25424,11 +25424,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // { el, stream } for a cell: my own live view, a claimed mosaic feed, or a
       // directly-linked peer. Stream carries the audio the fold sums; el is the
       // drawImage source (a <video> or a nested composite's <canvas>).
-      const srcFor = (pid, feedKey) => {
+      // feedOnly: the claimed feed or nothing, never the row <video>.
+      const srcFor = (pid, feedKey, feedOnly) => {
         // Someone in the waiting room is in no composite: no face, no voice.
         if (pid === myId) return iAmWaiting() ? { el: null, stream: null } : { el: meTile.video, stream: selfFoldStream() };
         const f = feedKey ? mosIn.get(feedKey) : null;
         if (f) return { el: f.el, stream: f.stream };
+        if (feedOnly) return { el: null, stream: null };
         if (peerWaits(pid)) return { el: null, stream: null };
         const p = peers.get(pid);
         return p ? { el: p.video, stream: p.video.srcObject } : { el: null, stream: null };
@@ -25487,7 +25489,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // and the share bit is the sender's own claim; the strip stands, with
         // the blur baked into that cell.
         if (modBlurOn(sid)) return null;
-        const sc = srcFor(sid, 'stg:' + sid);
+        // THE STG FEED OR THE STRIP, NEVER THE ROW VIDEO. A stager's row
+        // senders park (refreshOutbound), so their row <video> holds the last
+        // camera frame and never the screen. The share's status can arrive
+        // before the stg feed does, and in that gap a viewer's Stage showed
+        // the sharer's frozen camera picture labelled as their screen. The
+        // stg feed is the one that carries the screen.
+        const sc = srcFor(sid, 'stg:' + sid, true);
         if (!sc || !sc.el || !sc.stream || !sc.el.videoWidth) return null; // no pixels yet — the strip stands, the next sweep switches
         const vt = sc.stream.getVideoTracks ? sc.stream.getVideoTracks()[0] : null;
         if (!vt || vt.readyState === 'ended') return null;
