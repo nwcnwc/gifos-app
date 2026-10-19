@@ -133,19 +133,14 @@ test('Pin puts that person on my own Stage at the true aspect of their video', a
   for (const o of others) expect(Math.abs(o.w - o.h)).toBeLessThan(1.5);
 });
 
-test('one Full screen button: the dock, and it takes the whole page', async ({ page, browserName }) => {
+test('one Full screen button: the OS header\'s, and it takes the whole page', async ({ page }) => {
   await boot(page, 2);
   await page.mouse.move(640, 300);
   const labels = await page.evaluate(() => [...document.querySelectorAll('button')].filter((b) => b.getClientRects().length && getComputedStyle(b).visibility !== 'hidden'
     && /full screen/i.test(b.getAttribute('aria-label') || b.title || b.textContent)).map((b) => b.id));
-  expect(labels).toEqual(['fsbtn']);
-  await page.click('#fsbtn');
-  if (browserName === 'chromium') {
-    await expect.poll(() => page.evaluate(() => document.fullscreenElement && document.fullscreenElement.tagName)).toBe('HTML');
-    await page.click('#fsbtn');
-    await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(false);
-  } else {
-    // An engine with no element full screen in headless gets the in-page view.
-    await expect.poll(() => page.evaluate(() => !!document.fullscreenElement || document.getElementById('fsview').classList.contains('on'))).toBe(true);
-  }
+  expect(labels).toEqual(['appfull']);
+  await page.click('#appfull');
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement && document.fullscreenElement.tagName)).toBe('HTML');
+  await page.click('#appfull');
+  await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(false);
 });

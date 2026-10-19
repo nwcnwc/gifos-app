@@ -47,7 +47,7 @@ function serve() {
       localStorage.setItem('gifos_meet_bar', '0');
     }, async (page) => {
       await page.waitForSelector('#onair.watch');
-      await page.click('#helpbtn');
+      await page.click('#apphelp');
       await page.waitForSelector('#help-modal', { state: 'visible' });
     }],
     ['viewer-join.png', '/run.html?desk=gapjoin#mb=1&v=sunday&av=0123456789abcdef&bc=1', () => {

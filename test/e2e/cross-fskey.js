@@ -17,19 +17,19 @@
 const { goLive, watch, until, run } = require('./cross-lib.js');
 
 const read = (pg) => pg.evaluate(() => {
-  const b = document.getElementById('fsbtn');
+  const b = document.getElementById('appfull');
   return { full: !!document.fullscreenElement, name: b.getAttribute('aria-label'), pressed: b.getAttribute('aria-pressed'),
     focus: document.activeElement ? (document.activeElement.id || document.activeElement.tagName) : '', clicks: window.__fsClicks || 0 };
 });
 const settle = (pg, full) => until('full screen is ' + full, async () => {
   const s = await read(pg);
-  return { ok: s.full === full && s.name === (full ? 'Exit full screen' : 'Full screen'), ...s };
+  return { ok: s.full === full && s.name === (full ? 'Leave full screen' : 'Full screen'), ...s };
 }, 3000).catch((e) => ({ ok: false, err: e.message }));
 
 async function fsKey(pg) {
   await pg.evaluate(() => {
     window.__fsClicks = 0;
-    document.getElementById('fsbtn').addEventListener('click', () => { window.__fsClicks++; }, true);
+    document.getElementById('appfull').addEventListener('click', () => { window.__fsClicks++; }, true);
     if (document.activeElement) document.activeElement.blur();
   });
   const before = (await read(pg)).focus;
@@ -55,7 +55,7 @@ run('cross-fskey', async (hb, vb, shoot) => {
   const bad = [];
   for (const who of ['host', 'viewer']) {
     const s = out[who];
-    if (!s.open.ok) { bad.push(who + ': F opens no Full screen (or the button does not read Exit full screen)'); continue; }
+    if (!s.open.ok) { bad.push(who + ': F opens no Full screen (or the button does not read Leave full screen)'); continue; }
     if (s.open.pressed !== 'true') bad.push(who + ': the button is not pressed while full screen');
     if (s.open.clicks !== 1) bad.push(who + ': one F ran the button ' + s.open.clicks + ' times');
     if (!s.shut.ok) bad.push(who + ': F again leaves Full screen on');

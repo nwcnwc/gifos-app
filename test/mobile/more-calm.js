@@ -19,7 +19,7 @@ const { chromium, devices } = require('playwright');
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
 const FIRST = ['invite', 'whobtn', 'chatbtn', 'hand'];
-const LATER = ['stagebtn', 'votebtn', 'appbtn', 'helpbtn', 'setbtn', 'keysbtn'];
+const LATER = ['stagebtn', 'votebtn', 'appbtn', 'setbtn', 'keysbtn'];
 const MOST_FIRST = 8;
 
 const ANDROID_390 = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2.75, isMobile: true, hasTouch: true, userAgent: devices['Pixel 7'].userAgent };

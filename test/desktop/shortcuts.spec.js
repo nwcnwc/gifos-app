@@ -112,13 +112,13 @@ test('the rest of More has a key', async ({ page }) => {
   const chords = [
     ['whobtn', 'Alt+W'], ['invite', 'Alt+I'], ['appbtn', 'Alt+Y'], ['votebtn', 'Alt+U'],
     ['pwbtn', 'Alt+L'], ['stagebtn', 'Alt+G'], ['recbtn', 'Alt+R'], ['ccdock', 'Alt+K'],
-    ['setbtn', 'Alt+,'], ['helpbtn', 'Alt+/'], ['trbtn', 'Alt+T'],
+    ['setbtn', 'Alt+,'], ['apphelp', 'Alt+/'], ['trbtn', 'Alt+T'],
   ];
   for (const [id, chord] of chords) {
     expect(await page.getAttribute('#' + id, 'aria-keyshortcuts'), id).toBe(chord);
   }
   await page.evaluate(() => {
-    for (const id of ['whobtn', 'invite', 'appbtn', 'votebtn', 'pwbtn', 'stagebtn', 'recbtn', 'ccdock', 'setbtn', 'helpbtn', 'trbtn']) {
+    for (const id of ['whobtn', 'invite', 'appbtn', 'votebtn', 'pwbtn', 'stagebtn', 'recbtn', 'ccdock', 'setbtn', 'apphelp', 'trbtn']) {
       const el = document.getElementById(id);
       el.dataset.hits = '0';
       el.addEventListener('click', (ev) => {

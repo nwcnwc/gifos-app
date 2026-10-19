@@ -10,7 +10,7 @@ const { chromium, devices } = require('playwright');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
-const LABELS = ['ccbtn', 'pwbtn', 'recbtn', 'helpbtn', 'stagebtn'];
+const LABELS = ['ccbtn', 'pwbtn', 'recbtn', 'stagebtn'];
 
 const PHONES = [
   { name: 'iphone-se', device: devices['iPhone SE'] },

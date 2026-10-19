@@ -26,8 +26,7 @@ test.describe('German lobby, help, and shortcuts', () => {
     await expect(page.locator('#shortcutsheet')).toContainText('Stumm oder an');
     await expect(page.locator('#shortcutsheet')).toContainText('Alt+A');
     await page.click('#shortcut-cancel');
-    await page.click('#bartoggle');
-    await page.click('#helpbtn');
+    await page.click('#apphelp');
     await expect(page.locator('#help-modal h3')).toHaveText('So funktioniert diese Besprechung');
     await expect(page.locator('#help-modal .help-lead')).toContainText('kein Größenlimit');
     await expect(page.locator('#help-modal h4').first()).toHaveText('Das Stadion');

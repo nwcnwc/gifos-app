@@ -100,12 +100,23 @@ body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] { cursor: pointer; }
   background: #3b4d78; color: #fff; font: 700 48px/1 system-ui, sans-serif; overflow: hidden; }
 #tilewin .tw-face-av img { width: 100%; height: 100%; object-fit: cover; }
 body.tw-open .fitbtn, body.tw-open .topchip { visibility: hidden; }
-/* One Full screen. In a meeting it is the dock's; the app bar's copy is
-   retired. A solo app has no dock (run.html body.solo-app .bar), and an app
-   room's dock is hidden until Talk and never has More, so there the app bar's
-   is the one and the dock's stays out. */
-body:not(.solo-app):not(.app-room) #appfull { display: none !important; }
-body.app-room .bar #fsbtn { display: none !important; }
+/* ONE header, the OS runtime's (#appbar): Help and Full screen are the same
+   buttons for every app. With no app running the meeting is the app, so the
+   header lies over the top of the call with just those two, and Meet's
+   data-hide="auto" fades it with the dock. It is an overlay: waking it never
+   moves a tile. --osw keeps the meeting's own top row clear of it. */
+body:not(.has-app) { --osw: 110px; }
+body:not(.has-app) #apppane { display: block; position: fixed; top: var(--gtop, 0px); left: 0; right: 0; z-index: 7; pointer-events: none; }
+body:not(.has-app) #appmount { display: none; }
+body:not(.has-app) #appbar { justify-content: flex-end; background: transparent; border-bottom-color: transparent; }
+/* An unseen Invite-sized strut: the bar is as tall as a solo app's, so the two buttons sit on the same pixels. */
+body:not(.has-app) #appbar::before { content: '\200b'; display: inline-flex; padding: .2rem 0; border: 1px solid transparent; font-size: 16px; }
+#appbar #apphelp, #appbar #appfull { background: var(--surface, #14141f); color: var(--text, #e0e0f0); }
+body:not(.has-app) #appbar > :not(#apphelp):not(#appfull) { display: none !important; }
+body:not(.has-app) #appbar > * { pointer-events: auto; }
+#appbar[data-hide="auto"] { transition: opacity .2s ease; }
+body:not(.has-app):is(.dock-calm, .chrome-away) #appbar[data-hide="auto"] { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+body:not(.has-app):is(.dock-calm, .chrome-away) #appbar[data-hide="auto"] > * { pointer-events: none; }
 /* Broadcast is calm too: the airbar already says "You are watching", and the
    lobby showed the full note before joining. */
 body.broadcast #bc-join-note { display: none !important; }

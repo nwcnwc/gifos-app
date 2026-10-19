@@ -29,7 +29,7 @@ test.describe('German', () => {
     await expect(page.locator('#whobtn')).toHaveText('Wer');
     await expect(page.locator('#votebtn')).toHaveText('Abstimmung');
     await expect(page.locator('#setbtn')).toHaveText('Einstellungen');
-    await expect(page.locator('#helpbtn')).toHaveText('Hilfe');
+    await expect(page.locator('#apphelp')).toHaveText('Hilfe');
     await expect(page.locator('#sharebtn')).toHaveText('Bildschirm');
     const overflow = await page.evaluate(() => {
       const bad = [];
@@ -123,7 +123,7 @@ for (const [locale, want] of Object.entries(FACE_WORDS)) {
         return {
           meName: me.querySelector('.name').textContent,
           meChips: titles(me),
-          fullTips: [...document.querySelectorAll('#fsbtn')].map((b) => b.querySelector('.dockword').textContent + '|' + b.getAttribute('aria-label')),
+          fullTips: [...document.querySelectorAll('#appfull')].map((b) => b.title + '|' + b.getAttribute('aria-label')),
           tileLabels: others.map((t) => t.getAttribute('aria-label')),
           hands: [...document.querySelectorAll('#feed .tile .chips span')].map((s) => s.textContent).filter((s) => s.indexOf('✋') === 0),
         };
