@@ -2762,6 +2762,38 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-width: 700px) and (orientation: portrait) {
     .topchip { max-width: calc(100% - 28px - var(--osw, 0px) - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)); }
   }
+  /* --osw (210px) still reserved the top row for Invite, Help and Full
+     screen, so on a 320px phone the room line was 0px wide and the hand
+     button sat under Invite. Those buttons share Fit's row. The build
+     line moves into the strip above the chip: on Fit's row it would sit
+     under the buttons. 113px is the screen margin, the wider "▦ Scroll"
+     label, and a gap. Large text keeps the top-row buttons; they no
+     longer fit beside Fit. */
+  @media (max-width: 700px) and (orientation: portrait) {
+    html:not(.ui-large) body:not(.broadcast):not(.has-app):not(.solo-app):not(.app-room) .topchip {
+      max-width: calc(100% - 28px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+      /* "header-count · 4 in call" is 181px beside the logo. The old
+         14/12 padding and 8px gaps left the line 15px short on a 320px SE. */
+      padding-left: 8px;
+      padding-right: 4px;
+      gap: 6px;
+    }
+    html:not(.ui-large) body:not(.broadcast):not(.has-app):not(.solo-app):not(.app-room) #gifos-build-float {
+      top: var(--gtop, 0px) !important;
+    }
+    html:not(.ui-large) body:not(.broadcast):not(.has-app):not(.solo-app):not(.app-room) #apppane {
+      top: calc(58px + var(--gtop, 0px));
+    }
+    html:not(.ui-large) body:not(.broadcast):not(.has-app):not(.solo-app):not(.app-room) #appbar {
+      padding-top: 0;
+      padding-bottom: 0;
+      padding-right: calc(113px + env(safe-area-inset-right, 0px));
+      align-items: center;
+    }
+    html:not(.ui-large) body:not(.broadcast):not(.has-app):not(.solo-app):not(.app-room) #appbar::before {
+      display: none;
+    }
+  }
   /* Comfy: every face on screen, tiles touch. The long :not chain is what
      the older gallery rule uses; matching it is what lets these win.
      Padding stays zero. The dock band is a content-box inset in viewBox
@@ -9990,21 +10022,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // Tucked chrome is off the call. Measuring the sliding dock would
           // keep the empty band, so a quiet call uses only the home indicator.
           const away = document.body.classList.contains('chrome-away');
-          const safeEl = document.getElementById('gifos-safe-b');
-          const safe = (safeEl && safeEl.offsetHeight) || 0;
-          let rowN = 0;
-          for (let i = 0; i < tiles.length; i++) if (!tiles[i].stage && !tiles[i].share) rowN++;
-          const bandH = vhNow - (topInset > 0 ? topInset : 64) - safe;
-          // One row as tall as the screen fits beside itself (you and one
-          // other on a Pixel 7). The dock wakes over those faces, so the
-          // band does not change when the buttons tuck. A second row stays
-          // in the band above the dock, or it is painted under the buttons.
-          const fillHeight = shortLand && !sgsOn && !appOn && rowN > 0 &&
-            (rowN * bandH + Math.max(0, rowN - 1) * 4) <= (vwNow - 4);
-          if (fillHeight) {
-            bottom = safe;
-            comfyUpBottom = { key: vwNow + 'x' + vhNow, v: bottom };
-          } else if (!away) {
+          // Faces stay in the band above the dock. A sideways phone with one
+          // row used to stretch that row under the buttons so a tuck would
+          // not resize it; Video and Mic then covered the faces. holdBottom
+          // already keeps the band when the buttons tuck.
+          if (!away) {
             // Where the dock and Record/Captions rest, not where their slide
             // back has got to: a fixed box's offsetTop skips its transform.
             const restTop = (el) => getComputedStyle(el).position === 'fixed' ? el.offsetTop : el.getBoundingClientRect().top;
@@ -10029,13 +10051,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
           if (holdBottom) holdBottom = Math.max(holdBottom, bottom);
         } catch (e) {}
-        // Sideways on a phone the share runs to the bottom of the screen; the
-        // call's buttons wake over it and never move it.
+        // The sideways share stays in the band above the dock and the Record
+        // row. Running it to the bottom of the screen put the white share
+        // label on the dock gray, and the dock covered the slide. holdBottom
+        // keeps that band when the buttons tuck, so waking them does not
+        // move the slide.
         let floor = 0;
-        if (shortLand && (sgsOn || appOn)) {
-          const probe = document.getElementById('gifos-safe-b');
-          floor = vhNow - ((probe && probe.offsetHeight) || 0);
-        }
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: faces, video: meta.video, srcW: meta.w, srcH: meta.h, cols: cols, cellN: cellOf ? meta.n : 0, cellOf: cellOf,
           orderKey: roster.length + ':' + roster.join(',') + (cellOf ? '|' + cellOf.join(',') : ''), holdMs: holdMs, floor: floor,
