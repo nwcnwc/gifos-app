@@ -26,7 +26,7 @@ function readGroups(page) {
       const g = document.getElementById(id) && document.getElementById(id).closest('.moregroup');
       return g ? g.querySelector('h4').textContent.trim() : '(not in More)';
     };
-    const ids = ['whobtn', 'chatbtn', 'hand', 'ccbtn', 'trbtn', 'blurseg', 'selfstage', 'sharebtn',
+    const ids = ['whobtn', 'chatbtn', 'hand', 'ccbtn', 'trbtn', 'blurseg', 'sharebtn',
       'pwbtn', 'recbtn', 'votebtn', 'stagebtn', 'appbtn', 'setbtn', 'keysbtn'];
     const groups = {};
     for (const id of ids) groups[id] = groupOf(id);
@@ -51,7 +51,7 @@ test('More shows every group, in meeting order, on one sheet', async ({ page }) 
   expect(got.groups).toEqual({
     whobtn: 'People',
     chatbtn: '(not in More)', hand: 'Talk', ccbtn: 'Talk', trbtn: 'Talk',
-    blurseg: 'Your video', selfstage: 'Your video', sharebtn: '(not in More)',
+    blurseg: 'Your video', sharebtn: '(not in More)',
     pwbtn: 'Room', recbtn: 'Room', votebtn: 'Room', stagebtn: 'Room', appbtn: 'Room',
     setbtn: 'Settings and help', keysbtn: 'Settings and help',
   });

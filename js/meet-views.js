@@ -627,6 +627,14 @@
       const av = el.querySelector('.avatar');
       const cj = cellOf ? cellOf[j] : j;
       const cell = slices && cj >= 0 ? slices.cells[cj] : null;
+      // A camera on the Stage holds this seat empty: no second face, no letter.
+      if (faces[j].held) {
+        if (el.classList) { el.classList.add('seat-held'); el.classList.remove('cam-off'); }
+        if (v) { v.style.visibility = 'hidden'; v.style.opacity = '0'; applyCrop(v, null); }
+        if (av) av.style.display = 'none';
+        continue;
+      }
+      if (el.classList) el.classList.remove('seat-held');
       if (stream && !faces[j].off) {
         playStream(v, stream);
         // A face's <video> is a frame-size source above: when it learns or
@@ -790,7 +798,9 @@
     el.setAttribute('aria-pressed', on ? 'true' : 'false');
   }
 
-  // Size, corner, edge, hide, and "show me on stage". Float tiles drag.
+  // Size, corner, edge, and hide. Float tiles drag.
+  // "Show me on stage" is gone. A saved onStage pin is cleared: there is no
+  // control left to turn it off, and it was never room stage membership.
   function installSelf(opts) {
     opts = opts || {};
     const ML = GifOS.meetLayout;
@@ -798,6 +808,10 @@
     const store = opts.store || root.localStorage;
     const phoneNow = opts.phone || function () { return (root.innerWidth || 0) < 600; };
     let spec = ML.normalizeSelf(opts.spec || ML.loadSelf(store, phoneNow()));
+    if (spec.onStage) {
+      spec = ML.normalizeSelf(Object.assign({}, spec, { onStage: false }));
+      try { ML.saveSelf(store, phoneNow(), spec); } catch (e) {}
+    }
     const doc = root.document;
     function paint() {
       if (!doc || !doc.querySelectorAll) return;
@@ -813,8 +827,6 @@
         const name = edges[i].getAttribute('data-self-edge');
         pressSeg(edges[i], spec.arrangement === 'strip' && (spec.edge === name || (spec.edge === 'auto' && edgeNow === name)));
       }
-      const stageBtn = doc.getElementById('selfstage');
-      pressSeg(stageBtn, !!spec.onStage);
       const sizeRow = doc.getElementById('selfsize');
       const cornerRow = doc.getElementById('selfcorner');
       const edgeRow = doc.getElementById('selfedge');
@@ -828,9 +840,9 @@
       if (edgeLbl) edgeLbl.textContent = spec.edge === 'auto' ? ('Place · ' + edgeNow) : 'Place';
     }
     function publish(next) {
-      spec = ML.normalizeSelf(next);
+      spec = ML.normalizeSelf(Object.assign({}, next, { onStage: false }));
       root.__meetSelf = spec;
-      root.__meetSwapSelf = !!spec.onStage;
+      root.__meetSwapSelf = false;
       ML.saveSelf(store, phoneNow(), spec);
       paint();
       const relayout = opts.relayout || root.__meetRelayout;
@@ -850,7 +862,6 @@
         if (anchor) { publish(Object.assign({}, spec, { arrangement: 'float', anchor: anchor.getAttribute('data-self-anchor'), x: null, y: null })); return; }
         const edge = t.closest('[data-self-edge]');
         if (edge) { publish(Object.assign({}, spec, { arrangement: 'strip', edge: edge.getAttribute('data-self-edge') })); return; }
-        if (t.closest('#selfstage')) publish(Object.assign({}, spec, { onStage: !spec.onStage }));
       });
       let drag = null;
       doc.addEventListener('pointerdown', function (e) {

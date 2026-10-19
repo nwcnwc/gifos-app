@@ -61,7 +61,7 @@ test('a host steps through the order of service', async ({ page }) => {
   const open = await box(page);
   expect(open.missing).toBe(false);
   expect(open.display).not.toBe('none');
-  expect(open.title).toBe('Order of service');
+  expect(open.title).toBe('Run of show');
   expect(open.now).toBe('Welcome');
   expect(open.nowTag).toBe('Now');
   expect(open.font).toBeGreaterThanOrEqual(22);
@@ -70,7 +70,7 @@ test('a host steps through the order of service', async ({ page }) => {
   expect(open.coversDock).toBe(false);
   expect(open.coversAir).toBe(false);
   expect(open.next).toBe('Next');
-  expect(open.items).toEqual(['Welcome', 'Song 1', 'Prayer', 'Scripture', 'Message', 'Song 2', 'Closing']);
+  expect(open.items).toEqual(['Welcome', 'Song 1', 'Break', 'Reading', 'Talk', 'Song 2', 'Closing']);
 
   await page.click('#rundown-next');
   const song = await box(page);

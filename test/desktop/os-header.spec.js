@@ -91,7 +91,7 @@ for (const [w, hgt] of [[1280, 720], [390, 844]]) {
     for (const k of ['room', 'meet']) expect(geom(got[k]), k + ' ' + JSON.stringify(got[k])).toEqual(geom(got.solo));
     expect(got.solo.help.title).toBe('How this app works');
     expect(got.room.help.title).toBe('How this app works');
-    expect(got.meet.help.title).toBe('How this small group works');
+    expect(got.meet.help.title).toBe('How this meeting works');
     // A meeting's host also gets Stop app, between the two: Help sits one button further in.
     const moved = (h) => {
       const s = same(h);

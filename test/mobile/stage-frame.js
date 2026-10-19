@@ -5,8 +5,8 @@
  *   the screen, and my picture leaves as the whole camera at its own shape
  * - dragging the frame's corner changes the shape that leaves (not square)
  * - stepping off puts the saved square back
- * - on the Stage my tile leaves the Row (the Stage strip shows me), and it
- *   comes back when I step off
+ * - on the Stage my seat stays in the Row with no video and no initials
+ *   (the Stage strip shows me), and the video comes back when I step off
  *
  *   NODE_PATH=<playwright> node test/mobile/stage-frame.js
  */
@@ -27,11 +27,22 @@ const whereAmI = (page) => page.evaluate(() => {
   const sgs = document.querySelector('#stagefeed [data-row="sgs"]');
   const v = sgs && sgs.querySelector('video');
   const laid = (e) => !!e && e.getClientRects().length > 0 && getComputedStyle(e).display !== 'none';
-  return { tile: laid(me) && !me.classList.contains('comfy-off'), stage: laid(sgs) && !!(v && v.srcObject) };
+  const vid = me && me.querySelector('video');
+  const av = me && me.querySelector('.avatar');
+  const vcs = vid ? getComputedStyle(vid) : null;
+  const acs = av ? getComputedStyle(av) : null;
+  return {
+    tile: laid(me) && !me.classList.contains('comfy-off'),
+    held: !!(me && me.classList.contains('seat-held')),
+    video: !!(vid && vcs && vcs.visibility !== 'hidden' && vcs.display !== 'none' && +vcs.opacity > 0.05),
+    initials: !!(av && acs && acs.display !== 'none' && (av.textContent || '').trim()),
+    stage: laid(sgs) && !!(v && v.srcObject),
+  };
 });
 async function settle(page, want) {
   const end = Date.now() + 8000; let w;
-  do { w = await whereAmI(page); if (w.tile === want.tile && w.stage === want.stage) return w; await page.waitForTimeout(200); } while (Date.now() < end);
+  const keys = Object.keys(want);
+  do { w = await whereAmI(page); if (keys.every((k) => w[k] === want[k])) return w; await page.waitForTimeout(200); } while (Date.now() < end);
   return w;
 }
 
@@ -69,8 +80,8 @@ async function shape(page) {
     try { await page.locator('#tilewin .tw-stageframe').waitFor({ state: 'visible', timeout: 6000 }); }
     catch (e) { bad.push(tag + ': stepping on did not open "Frame what the Stage shows"'); }
     await page.waitForTimeout(600);
-    at = await settle(page, { tile: false, stage: true });
-    if (at.tile || !at.stage) bad.push(tag + ': on the Stage my tile should leave the Row while the Stage shows me ' + JSON.stringify(at));
+    at = await settle(page, { tile: true, stage: true, held: true, video: false, initials: false });
+    if (!at.tile || !at.held || at.video || at.initials || !at.stage) bad.push(tag + ': on the Stage my seat should stay, with no video and no initials, while the Stage shows me ' + JSON.stringify(at));
     const onScreen = await page.evaluate(() => { const w = document.getElementById('tilewin'); if (!w) return false; const r = w.getBoundingClientRect(); return r.width > 0 && r.left >= -0.5 && r.top >= -0.5 && r.right <= innerWidth + 0.5 && r.bottom <= innerHeight + 0.5; });
     if (!onScreen) bad.push(tag + ': the framing window runs off the screen');
     s = await shape(page);
@@ -101,13 +112,13 @@ async function shape(page) {
     await page.screenshot({ path: '/tmp/stage-frame-' + tag + '.png' });
     await page.evaluate(() => { window.__tileWin.close(); window.__gifosVideo.stageForTest(false); });
     s = await shape(page);
-    at = await settle(page, { tile: true, stage: false });
-    if (!at.tile) bad.push(tag + ': after stepping off my tile is not back in the Row ' + JSON.stringify(at));
+    at = await settle(page, { tile: true, stage: false, held: false, video: true, initials: false });
+    if (!at.tile || at.held || !at.video || at.initials) bad.push(tag + ': after stepping off my video is not back in the same seat ' + JSON.stringify(at));
     if (!s || s.w !== s.h) bad.push(tag + ': after stepping off the picture is ' + (s && s.w + 'x' + s.h) + ', not the saved square');
     if (errs.length) bad.push(tag + ': page error ' + errs[0].slice(0, 160));
     await ctx.close();
   }
   await browser.close();
   if (bad.length) { console.log('FAIL\n' + bad.join('\n')); process.exit(1); }
-  console.log('PASS the Stage sends the whole camera, framed at any shape, my tile leaves the Row while on the Stage, and the square and the tile come back after, on ' + CASES.map((c) => c[0]).join(', '));
+  console.log('PASS the Stage sends the whole camera, framed at any shape, my seat stays with no video or initials while on the Stage, and the square and the video come back after, on ' + CASES.map((c) => c[0]).join(', '));
 })().catch((e) => { console.log('FAIL ' + (e && e.stack || e)); process.exit(1); });

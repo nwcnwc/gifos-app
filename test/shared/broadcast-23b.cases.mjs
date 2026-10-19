@@ -127,7 +127,7 @@ async function noCover(page, tag) {
   }
 }
 
-test('the host sees the link, the Order of service and the call buttons on screen, none covering another', async ({ page }) => {
+test('the host sees the link, the run of show and the call buttons on screen, none covering another', async ({ page }) => {
   await host(page);
   await noCover(page, 'upright');
   // A phone turned sideways: the same screen, the other way round.

@@ -6,7 +6,7 @@
  *   2. the viewer opens the link and saves the name card
  *   3. once the room bar counts the viewer, the host's status says
  *      You are live · NNNp · blurred until you set a viewer password,
- *      never N in this service or a password unlocks clear video
+ *      never N in this broadcast or a password unlocks clear video
  *
  * Env: see cross-lib.js. Exit 0 on pass, 1 on fail.
  */
@@ -24,6 +24,6 @@ run('cross-hostline', async (hb, vb, shoot) => {
   const status = await host.locator('#status').textContent();
   await shoot();
   if (!/^You are live · \d+p\b/.test(status) || !/blurred until you set a viewer password/.test(status)
-    || /in this service|a password unlocks/.test(status)) throw new Error('host read ' + JSON.stringify(status));
+    || /in this broadcast|a password unlocks/.test(status)) throw new Error('host read ' + JSON.stringify(status));
   return 'host reads ' + JSON.stringify(status);
 });

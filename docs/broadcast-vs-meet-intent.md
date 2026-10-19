@@ -38,9 +38,9 @@ The lobby offers two ways to start: "Start a meeting" (an open room, anyone with
 
 The lobby drops the open room. Creating a broadcast mints an admin room, and the button says "You go live on the Stage; anyone with the link watches and chats." (`run.html` `showLobby`, the `#bc=1` rewording.) Nathan placed the Broadcast icon directly under Meeting on the Home Screen (`js/desktop.js`, `placeBroadcastBelowMeeting`, 2026-08-03).
 
-The mobile scorecard scores Broadcast against three audiences: Corporate, Church, and Personal. The rivals named for a broadcast are StreamYard, YouTube Live, and church streaming desks (Resi, BoxCast, and a ProPresenter-style go-live panel). The church volunteer is the person who should get "a short path: name the service, go on, read a link." (`origin/cursor/qa-broadcast-mobile` `BENCHMARK.md` and `QUIRKS.md`.) The phrases "town hall" and "personal stream" are not in the repo. The scorecard's matching rows are Corporate and Personal.
+The mobile scorecard scores Broadcast against three audiences: Corporate, Church, and Personal. The rivals named for a broadcast are StreamYard, YouTube Live, and church streaming desks (Resi, BoxCast, and a ProPresenter-style go-live panel). The church volunteer is one audience. The short path is: name the broadcast, go on, read a link. (`origin/cursor/qa-broadcast-mobile` `BENCHMARK.md` and `QUIRKS.md`.) The phrases "town hall" and "personal stream" are not in the repo. The scorecard's matching rows are Corporate and Personal.
 
-Church language inside Meeting Help ("a great stone church", a hymn, an "Amen") is about singing together in a meeting, not a statement that Broadcast is the church product. (`run.html` Help, "Singing together".)
+Meeting Help talks about singing together in a large hall. It does not use church words. A church is one audience for a broadcast, not the wording of the room. (`run.html` Help, "Singing together".)
 
 ## Roles, and what each role can see and do
 
@@ -109,7 +109,7 @@ Hidden or changed, from the shipped skin and Help:
 - No vote. No per-listener stadium mix. No blur-all and no video-off-all.
 - The host password and the viewer password are named differently from a meeting's admin password and guest password, and the lobby says so.
 - Share stays a separate grant. Record, captions, Run app, and Password stay off for non-hosts, including someone the host has called up. Whether that last part should change is still open (Still ambiguous).
-- The viewer's join step says their name and picture are seen only if they raise a hand and are promoted. It also says they are watching the service and staying off camera (Confirmed design).
+- The viewer's join step says their name and picture are seen only if they raise a hand and are promoted. It also says they are watching the broadcast and staying off camera (Confirmed design).
 - A lamp in the bar says Watching, Live, or Off air (Confirmed design).
 
 ## Meet layout notes that do not govern Broadcast
@@ -134,13 +134,13 @@ Nathan confirmed these. They settle the five earlier conflicts. Broadcast follow
 1. **Stage only.** A broadcast shows the stage. The row grid and the stadium stay off. Meet's "Stage only" choice and its strip of everyone else stay Meet's (`design/meet-selfview-stage.md`). They do not put viewer tiles back on a broadcast.
 2. **Host on stage, and promoting others.** The host goes on the stage when they adopt the admin key (`tryBroadcastStage`). Camera and microphone stay off until a tap. The host can step off and back on. A viewer raises and lowers a hand. The host sees a raised-hands list, with Promote on each person. Promote is the signed stage grant. Demote returns that person to a viewer, and that client stops publishing.
 3. **No other tiles.** A broadcast has only the stage, so Meet's gallery tile rules do not apply. The portrait-phone ratio on `cursor/meet-gallery-fit-scroll` stays Meet's.
-4. **Viewer join.** Name and picture are new. On the viewer's join step, the page says their name and picture are seen only if they raise a hand and the host promotes them to the stage. The same step says "Watching the service" and "You stay off camera". A search of `origin/cursor/qa-broadcast-mobile` (`run.html`, `QUIRKS.md`, `BENCHMARK.md`) did not find those two phrases as stored copy. They are written here because Nathan named them as the copy this step should match. The desktop line "This is how you'll appear" (`cursor/qa-broadcast-desktop` Q13) is not this step.
+4. **Viewer join.** Name and picture are new. On the viewer's join step, the page says their name and picture are seen only if they raise a hand and the host promotes them to the stage. The same step says "Watching the broadcast" and "You stay off camera". A search of `origin/cursor/qa-broadcast-mobile` (`run.html`, `QUIRKS.md`, `BENCHMARK.md`) did not find those two phrases as stored copy. They are written here because Nathan named them as the copy this step should match. The desktop line "This is how you'll appear" (`cursor/qa-broadcast-desktop` Q13) is not this step.
 5. **Sparkle.** Leave it. The reactions control is a face. The in-call sparkle stays on the transcript and the note bot (`7ae8c49`). The Home Screen aurora sparkle stays decoration, including on Meeting (`themes/icons.js`).
 
 Two earlier gaps are decided the same way:
 
 - **Where ban and the other tile actions go.** Mute, blur, demote, and ban sit on each stage seat (everyone on stage except you). The same actions, with Promote, sit on each row of the admin raised-hands list. The viewer list (Who) groups On stage, Raised hands, and Watching, and each other person there has the same actions. A broadcast still does not draw the row grid, so those buttons are not the hidden Meet tile menu.
-- **On-air words.** The page shows a lamp with words beside it. A viewer reads Watching. A host or a stage guest who is sending a camera or a microphone reads Live. A host or a stage guest who is not sending reads Off air. Meetings hide the lamp. The desktop QA bar "Service · You are live" is a different skin. Nathan asked for the words next to the lamp, not that bar.
+- **On-air words.** The page shows a lamp with words beside it. A viewer reads Watching. A host or a stage guest who is sending a camera or a microphone reads Live. A host or a stage guest who is not sending reads Off air. Meetings hide the lamp. The desktop QA bar "Broadcast · You are live" is a different skin. Nathan asked for the words next to the lamp, not that bar.
 
 The watching-viewer rule still holds. A viewer has no camera or microphone control and publishes nothing. On this page that seat is `bc-viewer`, from the viewer role itself, not from `body.notadmin`. `cursor/watching-viewer-no-av-f3b0` keys the same rule off `bc-watching` on the desktop skin.
 
@@ -153,5 +153,5 @@ The avatar rule above still holds. The letter is a frame of the video, so blur c
 - Promote on a person who has not raised a hand. Who still offers it. The grant is the right to step up. The hand is what makes their own client step up. Promote on the raised-hands list is the call-up.
 - The stage picture is still one strip. Seat actions are a row for each other person on that stage, because the strip is one picture and the row grid stays hidden.
 - The host does not get mute, blur, demote, or ban on their own seat.
-- Exact lamp words beyond Live, Off air, and Watching. "Service · You are live" and a full-width bar were not part of the confirmation.
+- Exact lamp words beyond Live, Off air, and Watching. "Broadcast · You are live" and a full-width bar were not part of the confirmation.
 - `nwcnwc/gifos` was not readable, and `docs/meeting.md` and `docs/media-plane.md` are cited in `run.html` but are not in any branch of this repo. If those files exist elsewhere, this note has not seen them.

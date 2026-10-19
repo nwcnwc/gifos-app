@@ -13,7 +13,7 @@ const { chromium } = require('playwright-core');
 
 const ROOT = path.join(__dirname, '..', '..');
 const PORT = Number(process.env.BC_DESIGN_PORT || 8769);
-const WATCH = 'Watching the service. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.';
+const WATCH = 'Watching the broadcast. You stay off camera. Your name and picture are only seen if you raise a hand and the host promotes you to the stage.';
 
 function serve() {
   const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };

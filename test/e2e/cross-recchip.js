@@ -37,6 +37,6 @@ run('cross-recchip', async (hb, vb, shoot) => {
   }, 20000);
   await sleep(300);
   await shoot();
-  if (got.chip !== '⏺ recording this small group') throw new Error('the chip does not name the small group: ' + JSON.stringify(got.chip));
+  if (got.chip !== '⏺ recording this meeting') throw new Error('the chip does not name the small group: ' + JSON.stringify(got.chip));
   return 'chip ' + JSON.stringify(got.chip);
 });

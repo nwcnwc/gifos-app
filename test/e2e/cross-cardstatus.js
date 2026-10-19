@@ -4,7 +4,7 @@
  *
  *   1. the host goes live (see cross-lib.js)
  *   2. the viewer opens the link and stops at "This is how you'll appear"
- *   3. the viewer's status says Joining the service…, and no count shows
+ *   3. the viewer's status says Joining the broadcast…, and no count shows
  *   4. after Save the viewer reads 1 watching (themselves; the host is not)
  *
  * Env: see cross-lib.js. Exit 0 on pass, 1 on fail.
@@ -31,6 +31,6 @@ run('cross-cardstatus', async (hb, vb, shoot) => {
     return { ok: r.who === '1 watching' && !/reconnecting|Joining/.test(r.status), ...r };
   }, 30000);
   const seen = { atCard, joined: { status: joined.status, who: joined.who } };
-  if (atCard.status !== 'Joining the service…' || atCard.who !== null) throw new Error('viewer read ' + JSON.stringify(seen));
+  if (atCard.status !== 'Joining the broadcast…' || atCard.who !== null) throw new Error('viewer read ' + JSON.stringify(seen));
   return 'viewer at the card reads joining with no count, then 1 watching ' + JSON.stringify(seen);
 });
