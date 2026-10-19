@@ -2573,7 +2573,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.broadcast.bc-watching .bar:not(.collapsed) .barmore .moregroup[data-group="video"]:not(:has(.morerow > button:not([style*="display:none"]):not([style*="display: none"]))) { display: none; }
   .bar:not(.collapsed) .barmore .moregroup h4 { margin: 0; padding: 0 4px; font: 700 16px/1.2 system-ui, sans-serif; color: #4a505c; }
   .bar:not(.collapsed) .barmore .moresegs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; min-width: 0; }
-  #blurnote { flex: 1 0 100%; margin: 0; padding: 6px 10px; border-radius: 10px; background: #fff4d6; color: #1d1d1f; font: 600 15px/1.35 system-ui, sans-serif; }
+  /* Sits above the dock, not inside #barmore — More folds after a blur pick. */
+  #blurnote { position: absolute; left: 50%; bottom: calc(122px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    width: min(520px, calc(100vw - 24px)); margin: 0; padding: 8px 12px; border-radius: 10px; z-index: 40;
+    background: #fff4d6; color: #1d1d1f; font: 600 15px/1.35 system-ui, sans-serif; box-sizing: border-box; pointer-events: none; }
   #blurnote[hidden] { display: none; }
   @media (min-width: 600px) {
     .bar:not(.collapsed) .barmore .moregroup { grid-template-columns: 7.5em minmax(0, 1fr); column-gap: 12px; align-items: center; }
@@ -3916,7 +3919,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button class="seg" id="blur-none" data-blur="0" data-t="noBlur">No blur</button>
       </span>
     </span>
-    <p id="blurnote" role="status" hidden></p>
     <span class="blurctl selfctl" id="selfctl" title="Where your own video sits. Tile is the default: you are a normal tile and you cover nobody.">
       <span class="blurlbl">You</span>
       <span class="segwrap" role="group" aria-label="Your video">
@@ -4005,6 +4007,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       </div>
     </section>
     </div>
+    <!-- Outside #barmore: More folds after No blur (STEERING 22:45 #8), but the
+         note must stay readable until its own timer clears it. -->
+    <p id="blurnote" role="status" hidden></p>
     <div id="reacttray" class="reacttray" hidden role="group" aria-label="Reactions">
       <button type="button" id="react-hand" aria-label="Raise hand" aria-keyshortcuts="H">✋</button>
       <button type="button" data-burst="👏" aria-label="Clap">👏</button>
