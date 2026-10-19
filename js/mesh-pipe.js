@@ -394,11 +394,23 @@ onrtctransform = (e) => {
           // Ask THIS hop's upstream (rate-limited by the counter shape); at a
           // piped upstream the ask re-tunnels the same way, hop by hop to the
           // producer's real encoder.
+          // THE COUNTER COUNTS PER GOP, NOT PER WRITE (2026-10-19, chaos-1019
+          // share black 14+ s). Chromium DOES latch the consumer's PLIs into
+          // the carrier encoder (measured: pliRx 209, kenc 105 on one hop),
+          // so the key templates arrive one between every two delta writes;
+          // the delta write below used to zero kdrop each time, so it went
+          // 0,1,0,1 and the ask at 3 never fired: one kf-need in 42 s, the
+          // viewer at fdec 0 behind 200 unanswered PLIs. A tunneled PLI
+          // means the consumer has no reference: restart the GOP like a
+          // keykick (seed the last key so a still share paints now, hold
+          // deltas until a fresh key lands) and ask upstream.
           p.kdrop = (p.kdrop || 0) + 1;
+          if (p.kdrop === 3) { p.q.length = 0; p.needKey = true; p.nkDrop = 0; p.seeded = false; seedKey(o.srcId, o.pipeId); }
           if (p.kdrop === 3 || p.kdrop % 30 === 0) askKey(o.srcId, o.pipeId);
           continue;
         }
-        p.q.shift(); p.kfAsk = 0; p.kdrop = 0;
+        p.q.shift(); p.kfAsk = 0;
+        if (head.type === 'key') p.kdrop = 0; // a key written is the consumer's reference restored; a delta is not
         // THE DETACHMENT COUNTER — the invariant that closed the stg freeze
         // (2026-08-10), kept because it is the only place the failure was ever
         // visible. Writing a frame DETACHES the buffer handed to the sink, so a
