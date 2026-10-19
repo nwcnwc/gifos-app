@@ -20152,8 +20152,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // THE HEADER'S INVITE is the same slot in every app. Solo: mint the
     // room. App room: only its owner has Invite (the stored <fileId>::room
     // owner, which survives a reload), and it reopens that room's link.
-    // Meeting, including an app running inside one: the meeting's link.
-    // A guest has no Invite. An app inside a meeting never mints a room.
+    // An app-room guest has no Invite. Meeting, including an app running
+    // inside one: the meeting's link, for everyone here. An app inside a
+    // meeting never mints a room.
     function paintInviteSlot() {
       const btn = document.getElementById('appinvite');
       if (!btn) return;
@@ -20166,9 +20167,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           && (((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
         const hostAlone = !!(hostHere && kind === 'alone');
         const phoneAlone = kind === 'alone' && phoneLayout();
-        if (document.body.classList.contains('has-app')) show = false;
-        else if (typeof BROADCAST !== 'undefined' && BROADCAST) show = hostAlone || phoneAlone;
-        else show = true; // a meeting shares its link alone or with people here
+        // A meeting keeps Invite while an app is shared. Hiding it here
+        // replaced the OS slot with the app bar (Help / Hide / Stop) and
+        // left guests with no way to share the meeting link.
+        if (typeof BROADCAST !== 'undefined' && BROADCAST) show = !document.body.classList.contains('has-app') && (hostAlone || phoneAlone);
+        else show = true;
       }
       btn.style.display = show ? '' : 'none';
       const tip = (ROOM.kind === 'app' || document.body.classList.contains('app-room'))

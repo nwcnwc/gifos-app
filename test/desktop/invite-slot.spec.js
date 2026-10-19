@@ -6,7 +6,8 @@ const path = require('path');
 // 2026-10-18 20:02): a solo app mints its room; in that app room only the
 // owner has Invite, and it opens the room's own link again, as often as they
 // like; a guest has no Invite at all (they forward the link); in a meeting the
-// only Invite is the meeting's, and an app running there never mints a room.
+// only Invite is the meeting's, it stays visible while an app runs there, and
+// that app never mints a room.
 // INV_SHOT=before names the pictures for a base run.
 const SHOT = process.env.INV_SHOT || 'after';
 const RELAY = 'ws://127.0.0.1:9/never';
@@ -114,13 +115,17 @@ for (const [w, h, label] of [[1280, 720, 'laptop'], [390, 844, 'phone']]) {
     await page.waitForFunction(() => document.body.classList.contains('has-app'), null, { timeout: 30000 });
     const before = await page.evaluate(invites);
     expect(before.kind).toBe('meet');
-    expect(before.shown).not.toContain('appinvite');
-    // Whatever reaches the header slot in a meeting is the meeting's Invite.
-    await page.evaluate(() => document.getElementById('appinvite').click());
+    expect(before.shown).toEqual(['appinvite']);
+    await page.click('#appinvite');
     await expect(page.locator('#inv-modal')).toBeVisible();
     expect(await page.locator('#inv-go').count()).toBe(0);
-    const t = await page.evaluate(() => document.querySelector('#inv-modal h3').textContent);
-    expect(t).not.toBe('Share this app');
+    const sheet = await page.evaluate(() => ({
+      title: document.querySelector('#inv-modal h3').textContent,
+      url: document.getElementById('inv-url').value,
+    }));
+    expect(sheet.title).toBe('Share this small group');
+    expect(sheet.url).toMatch(/#v=/);
+    expect(sheet.url).not.toMatch(/[#&](j|s|id)=/);
     const after = await page.evaluate(invites);
     expect(after.kind).toBe('meet');
     expect(after.hash).not.toMatch(/[#&](j|s|id)=/);
