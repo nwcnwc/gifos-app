@@ -2,8 +2,9 @@ const { test, expect } = require('@playwright/test');
 const path = require('path');
 
 // A bot page has no pointer to wake the header. The GifOS logo and the
-// count stay up with the transcribing mark. A person's page still fades
-// those two when the call goes calm.
+// count stay up with the transcribing mark. A person's page fades the
+// logo; the room line stays, because it is the tap that opens the full
+// sentence (bafc6b1). The transcribing mark stays on both.
 test.use({
   launchOptions: { args: ['--disable-gpu', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] },
 });
@@ -40,8 +41,11 @@ async function boot(page, bot) {
   await expect.poll(() => page.evaluate(() => document.body.classList.contains('dock-calm'))).toBe(true);
 }
 
+// Skip before the browser launches. An in-test skip still starts WebKit
+// with --disable-gpu (chat-options does the skip at describe scope).
+test.describe('chromium only', () => {
+  test.skip(({ browserName }) => browserName !== 'chromium', 'one engine is enough');
 test('a bot header keeps the GifOS logo and the status line when calm', async ({ page, browserName }) => {
-  test.skip(browserName !== 'chromium', 'one engine is enough');
   await boot(page, true);
   // Long enough for the header fade a person would get. A bot must still
   // be showing the logo and the count after that.
@@ -55,10 +59,10 @@ test('a bot header keeps the GifOS logo and the status line when calm', async ({
 });
 
 test('a person\'s header still fades to the transcribing mark when calm', async ({ page, browserName }) => {
-  test.skip(browserName !== 'chromium', 'one engine is enough');
   await boot(page, false);
   await expect.poll(() => page.evaluate(() => document.body.classList.contains('head-calm'))).toBe(true);
   await expect.poll(() => page.evaluate(shown, '#txmark')).toBe(true);
-  await expect.poll(() => page.evaluate(shown, '.topchip #status')).toBe(false);
+  await expect.poll(() => page.evaluate(shown, '.topchip #status')).toBe(true);
   await expect.poll(() => page.evaluate(shown, '.topchip .title')).toBe(false);
+});
 });

@@ -39,16 +39,30 @@ async function fullControls(page) {
 }
 
 // The call goes calm 3 s after the last move and the header fades with it;
-// a move wakes it, as a person reaches for it.
+// a move wakes the dock. A phone-sized window also tucks that header, and
+// the tuck hears a tap or a key, not the mouse. The tuck can land during
+// the move (a slow shot runs the clock out). Tap the middle when it is
+// tucked — the page swallows that tap — then Shift, which restarts the
+// tuck's clock, so the next click reaches the button.
 async function wake(page) {
   const vp = page.viewportSize();
-  if (await page.evaluate(() => document.body.classList.contains('chrome-away'))) {
+  const tucked = () => page.evaluate(() => document.body.classList.contains('chrome-away'));
+  const tap = async () => {
+    if (!(await tucked())) return;
     await page.mouse.click(vp.width / 2, vp.height / 2);
     await page.waitForFunction(() => !document.body.classList.contains('chrome-away'));
-  }
+  };
+  await tap();
   await page.mouse.move(vp.width / 2 - 3, vp.height / 3 - 3);
   await page.mouse.move(vp.width / 2, vp.height / 3, { steps: 2 });
   await page.waitForTimeout(150);
+  await tap();
+  if (vp.width <= 700 || vp.height <= 500) await page.keyboard.press('Shift');
+  await page.waitForFunction(() => {
+    const el = document.getElementById('appfull');
+    return !!el && getComputedStyle(el).pointerEvents !== 'none'
+      && !document.body.classList.contains('chrome-away');
+  });
 }
 
 // Let the browser's full screen finish changing before the next key, as a
@@ -70,6 +84,10 @@ async function oneButton(page, shot) {
   await page.screenshot({ path: 'test/desktop/shots/fsone-' + SHOT + '-' + shot + '.png' });
   expect(await fullControls(page)).toEqual(['appfull']);
   await expect(page.locator('#appfull')).toHaveAttribute('aria-keyshortcuts', 'F');
+  // The header fades with the dock after 3 s. A shot of the awake header
+  // can outlast that on WebKit, and a faded button lets the call take the
+  // click. Reach again, then press.
+  await wake(page);
   await page.click('#appfull');
   await openedUp(page);
   await expect(page.locator('#appfull')).toHaveAttribute('aria-pressed', 'true');
@@ -83,6 +101,7 @@ async function meetCase(page, width, height, shot) {
   await seed(page, 3);
   await oneButton(page, shot);
   // The meeting stays laid out as it was: every face is still on the page.
+  await wake(page);
   await page.click('#appfull');
   await openedUp(page);
   expect(await page.evaluate(() => document.querySelectorAll('#feed .tile[data-comfy="1"]').length)).toBeGreaterThanOrEqual(4);

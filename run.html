@@ -2037,7 +2037,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     text-align: left; cursor: pointer; appearance: none; -webkit-appearance: none; }
   /* A wide window lays the count and the rest side by side so the rest keeps
      its own width (it is the line tests measure); a phone truncates the chip. */
-  @media (min-width: 701px) and (min-height: 501px) { .topchip .status { display: flex; align-items: center; } }
+  @media (min-width: 701px) and (min-height: 501px) { .topchip .status { display: flex; align-items: flex-start; overflow: visible; white-space: normal; height: auto; } }
   /* A phone chip is one block line, so a long message ends in an ellipsis
      (text-overflow draws nothing on an inline or a flex box). */
   @media (max-width: 700px), (max-height: 500px) {
@@ -2117,6 +2117,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.comfy.has-app #airbar.on #airrec {
       background: rgba(12,14,18,.92);
       color: #f4f7fb;
+    }
+    /* Invite, Help and Full screen share Fit's row (under the chip), so the
+       pill that used to sit at 62px now lands on Invite. It steps under
+       that row. An app keeps the old place: its buttons stay in the top row. */
+    html:not(.ui-large) body.screen-on:not(.broadcast):not(.has-app):not(.solo-app):not(.app-room) #airbar.on {
+      top: calc(110px + var(--gtop, 0px));
     }
   }
   #airbar.live::before, #airbar.watch::before, #airbar.group::before {
@@ -3175,7 +3181,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .topchip #statuscount { flex: 0 0 auto; white-space: nowrap; background: transparent; border: 0; color: inherit;
     font: inherit; padding: 0; cursor: pointer; text-align: left; }
   /* pre, not nowrap: the rest starts with " · 360p" and a flex item drops a leading space. A phone's chip (below) truncates. */
-  @media (min-width: 701px) and (min-height: 501px) { .topchip #statusrest { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre; } }
+  /* pre-wrap keeps the leading " · 360p" and lets the sentence take a second
+     line. One line at 900px clipped "faces stay soft until a password". */
+  @media (min-width: 701px) and (min-height: 501px) { .topchip #statusrest { flex: 1 1 auto; min-width: 0; overflow: visible; text-overflow: clip; white-space: pre-wrap; } }
   @media (min-width: 701px) and (min-height: 501px) {
     .topchip button#status { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); }
   }
@@ -6462,11 +6470,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (hr.height > 0 && hr.bottom + 8 > top) top = Math.ceil(hr.bottom + 8);
       }
       const barTop = bar ? bar.getBoundingClientRect().top : window.innerHeight;
-      const limit = (barTop > top + 48 && barTop < window.innerHeight) ? barTop : window.innerHeight;
+      let limit = (barTop > top + 48 && barTop < window.innerHeight) ? barTop : window.innerHeight;
       // A phone keeps the link under the title on air too: the band above
       // the dock is Live / Record and the Run of show there.
       const narrow = window.matchMedia && window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
+      const land = window.innerHeight < 500 && window.innerWidth > window.innerHeight;
+      // Sideways the call buttons are a full-width row above the dock. The
+      // band ends above that row. The chip is one line here (meet-23b.css),
+      // so the link and the run of show fit in the gap.
+      if (land) {
+        const cs = document.getElementById('callstate');
+        if (cs && !cs.hidden && cs.offsetHeight > 0 && getComputedStyle(cs).visibility !== 'hidden') {
+          const floor = cs.getBoundingClientRect().top - 4;
+          if (floor > top + 32) limit = Math.min(limit, floor);
+        }
+      }
       document.documentElement.style.setProperty('--bclinktop', top + 'px');
+      document.documentElement.style.setProperty('--bclinkmax', Math.max(44, Math.floor(limit - top)) + 'px');
       if (onAir && !narrow) {
         card.style.top = 'auto';
         card.style.maxHeight = 'none';
@@ -6474,7 +6494,39 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else {
         card.style.bottom = '';
         card.style.top = top + 'px';
-        card.style.maxHeight = Math.max(96, Math.floor(limit - top - 8)) + 'px';
+        // Sideways, limit is already the call-button row. A second 8px
+        // would shrink the Copy control below its line.
+        const room = Math.floor(limit - top - (land ? 0 : 8));
+        card.style.maxHeight = (land ? Math.max(44, room) : Math.max(96, room)) + 'px';
+      }
+      // A short phone stacks the stream link under the title and the run of
+      // show under that. Anchoring the run of show only on the dock lifted it
+      // into the link once the call buttons woke (a 568px screen, 13px).
+      // The run of show takes the band between them and scrolls.
+      const rd = document.getElementById('rundown');
+      const away = document.body.classList.contains('chrome-away');
+      // Portrait only. Sideways the stylesheet already sits the link and the
+      // run of show on one band; pinning the run of show under the link
+      // stacked them onto the call buttons.
+      const portrait = window.innerHeight > window.innerWidth && window.innerWidth <= 700;
+      if (rd && portrait && !away && card.classList.contains('on') && rd.classList.contains('open')) {
+        const lb = card.getBoundingClientRect().bottom;
+        const cs = document.getElementById('callstate');
+        let floor = window.innerHeight - 8;
+        if (cs && !cs.hidden && cs.offsetHeight > 0 && getComputedStyle(cs).visibility !== 'hidden') {
+          floor = Math.min(floor, cs.getBoundingClientRect().top - 8);
+        }
+        const roomTop = Math.ceil(lb + 8);
+        const roomH = Math.floor(floor - roomTop);
+        if (roomH >= 72) {
+          rd.style.top = roomTop + 'px';
+          rd.style.bottom = 'auto';
+          rd.style.maxHeight = roomH + 'px';
+        }
+      } else if (rd && (rd.style.top || rd.style.bottom === 'auto')) {
+        rd.style.top = '';
+        rd.style.bottom = '';
+        rd.style.maxHeight = '';
       }
     }
 
@@ -9911,7 +9963,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const t of tiles) if (t.shareFace) t.stage = false;
         // Pin (the tile window) puts that person on my Stage only.
         for (const t of tiles) if (focusId && t.id === focusId) t.stage = true;
-        // The Stage strip (a shared screen, or the stage composite) at its true aspect.
+        // The Stage strip. The seat is the left side (the same seat an app
+        // takes). The picture inside keeps its aspect (object-fit contain).
+        // Sizing the seat to the picture made a sideways phone's share a
+        // short 16:9 once the dock band got shorter, and the faces took the
+        // width the slide is supposed to hold.
         const sgs = document.querySelector('#stagefeed [data-row="sgs"]');
         const sgsV = sgs && sgs.querySelector('video');
         const sgsOn = !!(sgsV && sgsV.srcObject);
@@ -9934,7 +9990,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             t.seatHeld = true;
             try { t.el.classList.add('seat-held'); t.el.classList.remove('comfy-off'); } catch (e) {}
           }
-          tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, pz: 'stage:sgs' });
+          tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, fill: true, pz: 'stage:sgs' });
         }
         // An app in the meeting takes the seat a shared screen takes. Its
         // pane stays where it is in the page (moving an iframe reloads it):
@@ -10002,8 +10058,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const e = document.querySelector(sel);
             if (!e || !e.getClientRects().length) continue;
             const cs = getComputedStyle(e);
-            if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) continue;
-            below = Math.max(below, e.getBoundingClientRect().bottom);
+            if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+            const r = e.getBoundingClientRect();
+            // A faded header line still holds its row. Skipping it while its
+            // opacity is 0 pulls the share up, and the wake drops it back.
+            // A label parked at the bottom (a solo app) is not this band.
+            if (+cs.opacity === 0 && r.top > 140) continue;
+            if (r.height < 1) continue;
+            below = Math.max(below, r.bottom);
           }
           if (below > 0) topInset = Math.ceil(below + 8);
         } else if (shortLand || updH > 0) {
@@ -10062,6 +10124,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             if (nr.height > 2) bottom = Math.max(bottom, window.innerHeight - nr.top);
           }
           if (holdBottom) holdBottom = Math.max(holdBottom, bottom);
+          // An upright phone share keeps the dock's resting band. The tucked
+          // dock is off the call, but using only the home indicator lengthens
+          // the share, and the wake shortens it.
+          if (stageUpright) {
+            // Resting places, not the tucked slide. offsetTop skips a
+            // transform, so a hidden Record row still reserves its band.
+            // Measuring only the dock left the share 32px too tall until
+            // the row came back (WebKit).
+            const restTopOf = (el) => getComputedStyle(el).position === 'fixed' ? el.offsetTop : el.getBoundingClientRect().top;
+            const reserve = (el) => {
+              if (!el || el.hidden) return;
+              const cs = getComputedStyle(el);
+              if (cs.display === 'none' || el.offsetHeight < 2) return;
+              const band = Math.max(0, window.innerHeight - restTopOf(el));
+              if (band > bottom) bottom = band;
+            };
+            reserve(document.querySelector('.bar'));
+            reserve(document.getElementById('callstate'));
+          }
         } catch (e) {}
         // The sideways share stays in the band above the dock and the Record
         // row. Running it to the bottom of the screen put the white share
@@ -16946,6 +17027,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof updateMuteAllBtn === 'function') updateMuteAllBtn();
       if (typeof updateBlurAllBtn === 'function') updateBlurAllBtn();
       if (typeof updateCamAllBtn === 'function') updateCamAllBtn();
+      // Allow screen share is the same host hammer. The tile refresh calls
+      // it; becoming admin did not, so the host's More sheet never showed it.
+      if (typeof updateShareAllBtn === 'function') updateShareAllBtn();
       paintChatGate(); renderChat(); // signing in as admin grows the chat toggle + per-line deletes
       try { waitPaint(); } catch (e) {}
       try { paintBroadcastRole(); } catch (e) {}
@@ -19075,12 +19159,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Help opens it while no app is running (openAppHelp).
     const helpModal = document.getElementById('help-modal');
     function openMeetHelp() { helpModal.style.display = 'flex'; helpModal.querySelector('.help-scroll').scrollTop = 0; }
+    // A solo app is the app, not a room. kind 'app' is both; solo is the launch
+    // from Home. An app room (and only that) keeps the room's Help story.
+    function appRoomPage() {
+      return !ROOM.solo && (ROOM.kind === 'app' || document.body.classList.contains('app-room'));
+    }
     function paintHelpTip() {
       const el = document.getElementById('apphelp');
       if (!el) return;
       // An app room keeps its own Help line after the app is on screen.
       // has-app is also true there; it must not replace the room's story.
-      const appRoom = ROOM.kind === 'app' || document.body.classList.contains('app-room');
+      const appRoom = appRoomPage();
       el.title = appRoom ? (uiLang() === 'en' ? 'How this app room works' : uiText('appHelpTitle', 'How this app room works'))
         : document.body.classList.contains('has-app') ? uiText('appHelpTip', 'How this app works')
         : BROADCAST ? 'How this broadcast works' : 'How this meeting works';
@@ -19118,7 +19207,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           + '<li>A broadcast lives while its host is present. <b>End</b> it, and everyone watching sees a five-minute countdown, then the room closes.</li>'
           + '</ul>'
           + '<p>Underneath it is the same thing as a GifOS Meeting: everything goes straight between the people here, no accounts, no company keeping your video.</p>';
-      } else if (ROOM.kind === 'app') {
+      } else if (appRoomPage()) {
         h3.textContent = 'How this app room works';
         hs.innerHTML =
           '<p class="help-lead">This room exists around a <b>shared app</b>: everyone here sees and uses the <b>same live app together</b> — moves, edits and state flow between every phone directly.</p>'
@@ -19146,7 +19235,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         hs.innerHTML = uiLang() === 'de'
           ? '<p class="help-lead">Das ist eine <b>Live-Sendung</b>: eine Leitung (und wen sie heraufruft) auf der <b>Bühne</b>, und ein <b>unbegrenztes Publikum</b>. Zwei Zuschauer oder zwei Millionen, es läuft gleich.</p><h4>Zuschauen</h4><ul class="help-list"><li>Der Link genügt. <b>Kamera und Mikrofon werden nicht benutzt.</b></li><li>Das Bild bleibt <b>unscharf</b>, bis die Leitung ein <b>Zuschauerpasswort</b> setzt. Es steht nicht im Link.</li><li><b>Chat</b> ist live und weg, wenn die Sendung endet.</li></ul><h4>Zu Wort kommen</h4><ul class="help-list"><li><b>Hand</b> bittet um die Bühne. Die Leitung kann Sie heraufrufen. Ihr Telefon fragt dann nach Kamera und Mikrofon.</li><li>Absteigen können Sie jederzeit. Die Leitung kann es auch zurücknehmen.</li></ul><h4>Für die Leitung</h4><ul class="help-list"><li>Das <b>Leitungspasswort</b> ist Ihres allein. Schicken Sie es nicht an Zuschauer.</li><li><b>Passwort</b> setzt das Zuschauerpasswort. Ohne eines bleibt das Bild unscharf.</li><li>Die Handliste steht oben. Tippen Sie einen Namen an, um ihn auf die Bühne zu holen.</li></ul>'
           : '<p class="help-lead">Esto es una <b>transmisión en vivo</b>: un anfitrión (y a quien llame) en el <b>escenario</b>, y un <b>público sin límite</b>. Dos espectadores o dos millones, funciona igual.</p><h4>Mirar</h4><ul class="help-list"><li>Basta el enlace. <b>No se usan la cámara ni el micrófono.</b></li><li>El video sigue <b>borroso</b> hasta que el anfitrión pone una <b>contraseña de espectadores</b>. No va en el enlace.</li><li>El <b>chat</b> es en vivo y se va cuando termina la transmisión.</li></ul><h4>Hablar</h4><ul class="help-list"><li><b>Mano</b> pide el escenario. El anfitrión puede llamarte. Tu teléfono entonces pide cámara y micrófono.</li><li>Bajar es tuyo en cualquier momento. El anfitrión también puede retirarlo.</li></ul><h4>Para el anfitrión</h4><ul class="help-list"><li>La <b>contraseña de anfitrión</b> es solo tuya. No se la envíes a los espectadores.</li><li><b>Contraseña</b> pone la de espectadores. Sin ella el video sigue borroso.</li><li>La cola de manos sube arriba. Toca un nombre para llamarlo al escenario.</li></ul>';
-      } else if (ROOM.kind === 'app') {
+      } else if (appRoomPage()) {
         h3.textContent = uiText('appHelpTitle', 'How this app room works');
         hs.innerHTML = uiLang() === 'de'
           ? '<p class="help-lead">Dieser Raum lebt um eine <b>gemeinsame App</b>: alle sehen und benutzen dieselbe App live.</p><h4>Die App ist die Sendung</h4><p>Eine Person führt sie. Fällt sie weg, pausiert eine eigene App, oder eine belastbare lässt jemand anderen weiterführen.</p><h4>Keine Kamera</h4><p>Dieser Raum hat keine Kamera und kein Video. Sprechen, wenn es eingeschaltet ist, ist nur Stimme.</p>'
@@ -20132,6 +20221,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const appRoomStr = (j) => 'app~' + (j.owned ? j.short + '~' + j.av + '~' : '') + j.k;
     function bootAppRoom() {
       document.body.classList.add('app-room');
+      // The class lands before the app mounts. Paint the Help tip in that
+      // same turn, or a phone still reads the solo line ("How this app works")
+      // for the beat until showAppPane.
+      try { paintHelpTip(); } catch (e) {}
       try { refreshAudioBtn(); } catch (e) {}
       return ensureName().then(() => {
         meTile = makeTile('me', myName() + ' ' + uiText('whoYou', '(you)'), true);
@@ -20331,6 +20424,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // replaced the OS slot with the app bar (Help / Hide / Stop) and
         // left guests with no way to share the meeting link.
         if (typeof BROADCAST !== 'undefined' && BROADCAST) show = !document.body.classList.contains('has-app') && (hostAlone || phoneAlone);
+        // A person in the waiting room is not alone and has no one to invite.
+        else if (iAmWaiting()) show = false;
         else show = true;
       }
       btn.style.display = show ? '' : 'none';
@@ -30902,6 +30997,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         document.body.classList.remove('chrome-away');
         if (was) {
           try { paintCallState(); } catch (e) {}
+          try { paintStreamLink(); } catch (e) {}
           setBarH();
         }
         armChrome();
@@ -30912,6 +31008,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (chromeHeld() || document.body.classList.contains('chrome-away')) return;
         document.body.classList.add('chrome-away');
         try { paintCallState(); } catch (e) {}
+        try { paintStreamLink(); } catch (e) {}
         setBarH();
       }
       function armChrome() {

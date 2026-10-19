@@ -10,8 +10,11 @@ test.use({
 const SHOT = process.env.SHOT || 'run';
 const EVID = process.env.EVID || path.join(__dirname, '..', '..', 'evidence-local');
 
+// Skip before the browser launches. An in-test skip still starts WebKit
+// with --disable-gpu (chat-options does the skip at describe scope).
+test.describe('chromium only', () => {
+  test.skip(({ browserName }) => browserName !== 'chromium', 'one engine is enough');
 test('You left does not show a cut-off cannot-connect banner', async ({ page, browserName }) => {
-  test.skip(browserName !== 'chromium', 'one engine is enough');
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Jamal Brooks');
@@ -59,4 +62,5 @@ test('You left does not show a cut-off cannot-connect banner', async ({ page, br
   expect(info.reach, JSON.stringify(info)).toBe('');
   expect(info.alert, JSON.stringify(info)).toBe(false);
   expect(info.cut, JSON.stringify(info)).toBe(false);
+});
 });

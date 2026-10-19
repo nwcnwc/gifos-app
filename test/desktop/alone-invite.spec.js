@@ -14,7 +14,7 @@ async function boot(page) {
   await expect(page.locator('#appinvite')).toBeVisible();
 }
 
-test('alone, Invite copies the link in one click and leaves when someone else is here', async ({ page }) => {
+test('alone, Invite opens the meeting link, and stays when someone else is here', async ({ page }) => {
   await boot(page);
   const btn = page.locator('#appinvite');
   await expect(btn).toHaveText('Invite');
@@ -41,17 +41,26 @@ test('alone, Invite copies the link in one click and leaves when someone else is
     navigator.clipboard.writeText = (t) => { window.__copied = String(t); return Promise.resolve(); };
     navigator.share = (p) => { window.__shared = p; return Promise.resolve(); };
   });
+  // The header slot opens the sheet. Copy and Share live on the sheet
+  // (bafc6b1). The header button stays "Invite".
   await page.click('#appinvite');
-  await expect(btn).toHaveText('Copied ✓');
-  await expect(page.locator('#inv-modal')).toBeHidden();
+  await expect(btn).toHaveText('Invite');
+  await expect(page.locator('#inv-modal')).toBeVisible();
+  await expect(page.locator('#inv-modal h3')).toHaveText('Share this meeting');
   await expect(page.locator('#roster')).toBeHidden();
+  await expect(page.locator('#inv-url')).toHaveValue(/qaalone/);
+  await expect(page.locator('#inv-share')).toBeVisible();
+  await page.click('#inv-copy');
+  await expect(page.locator('#inv-copy')).toHaveText('Copied ✓');
+  await page.click('#inv-share');
   const sent = await page.evaluate(() => ({ copied: window.__copied, shared: window.__shared && window.__shared.url }));
   expect(sent.copied).toContain('qaalone');
   expect(sent.shared).toContain('qaalone');
 
   await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 2, connected: false }));
   await expect(page.locator('#statuscount')).toHaveText('3 in this meeting');
-  await expect(btn).toBeHidden();
+  await expect(btn).toBeVisible();
+  await expect(btn).toHaveText('Invite');
   await expect(page.locator('#status')).not.toContainText('Just you');
 });
 

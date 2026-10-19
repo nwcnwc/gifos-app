@@ -9,12 +9,13 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   use: {
-    baseURL: 'http://127.0.0.1:8765',
+    baseURL: process.env.BASE_URL || 'http://127.0.0.1:8765',
     hasTouch: true,
     isMobile: true,
     defaultBrowserType: 'chromium',
   },
-  webServer: {
+  // A shared box already holds 8765. BASE_URL points at this run's server.
+  webServer: process.env.BASE_URL ? undefined : {
     command: 'python3 -m http.server 8765 --bind 127.0.0.1',
     cwd: '../..',
     port: 8765,

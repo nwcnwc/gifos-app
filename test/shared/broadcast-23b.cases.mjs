@@ -27,11 +27,11 @@ const card = (page) => page.evaluate(() => ({
   visit: document.getElementById('bc-visit').hidden ? '' : document.getElementById('bc-visit').getAttribute('href'),
 }));
 
-test('a viewer early for a service reads when it starts, a countdown, Add to calendar and Visit', async ({ page }) => {
+test('a viewer early for a broadcast reads when it starts, a countdown, Add to calendar and Visit', async ({ page }) => {
   await viewer(page);
   const at = Math.floor(Date.now() / 1000) + 2 * 3600 + 5 * 60;
   await page.evaluate((a) => window.__gifosVideo.setPeerStatusForTest('qa1', { bcat: a, bcvisit: 'https://example.org/church' }), at);
-  await expect.poll(async () => (await card(page)).text, { timeout: 15000 }).toMatch(/^The service starts .+ · in 2 h [0-9]+ min\.$/);
+  await expect.poll(async () => (await card(page)).text, { timeout: 15000 }).toMatch(/^The broadcast starts .+ · in 2 h [0-9]+ min\.$/);
   const c = await card(page);
   expect(c.on).toBe(true);
   expect(c.cal).toBe(true);
@@ -108,7 +108,15 @@ const boxes = (page) => page.evaluate(() => {
 });
 
 async function noCover(page, tag) {
-  await page.mouse.move(40, 40); await page.mouse.move(60, 60);
+  // A phone tucks the dock after a few seconds. A mouse move does not wake
+  // it; a finger does (the same wake the calm test uses). The buttons are
+  // then on screen. The tucked dock is supposed to sit below the fold.
+  if (test.info().project.use.hasTouch) {
+    const v = page.viewportSize();
+    await page.touchscreen.tap(Math.max(8, v.width - 12), Math.round(v.height / 2));
+  } else {
+    await page.mouse.move(40, 40); await page.mouse.move(60, 60);
+  }
   await page.waitForTimeout(800);
   await page.screenshot({ path: test.info().outputPath('host-' + tag + '.png') });
   const { out, w, h } = await boxes(page);
