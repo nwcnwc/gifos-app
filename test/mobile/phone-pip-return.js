@@ -138,6 +138,40 @@ const FLOAT = { width: 125, height: 223 };
   const calm = await read();
   if (calm.tile[2] < calm.vw * 0.9 || !same(calm.tile, before.tile)) bad.push('calm after the float: tile ' + JSON.stringify(before.tile) + ' -> ' + JSON.stringify(calm.tile));
   steps.again = await check('a tap after the float');
+  // Waking the controls never changes a tile (Nathan's rule), also the FIRST
+  // wake at a size the controls were never shown at. A page float (full
+  // screen, then Home: the whole page shrinks) laid out with the controls
+  // up, back with them tucked: the tucked tile, the woken tile and the first
+  // tile are the same (Moto g24, Chrome 155: the tile came back 77px lower
+  // and jumped up on the first wake).
+  const tucked = async () => {
+    await page.waitForFunction(() => document.body.classList.contains('chrome-away'), null, { timeout: 8000 }).catch(() => {});
+    await sleep(500);
+    return read();
+  };
+  const calm0 = await tucked();
+  if (!same(calm0.tile, before.tile)) bad.push('tucking the controls moved the tile ' + JSON.stringify(before.tile) + ' -> ' + JSON.stringify(calm0.tile));
+  await wake();
+  await size(FLOAT); await sleep(700);
+  await tucked(); // the controls tuck inside the float, as on the phone
+  await size(PHONE);
+  const tuckedBack = await tucked();
+  await wake();
+  const wokeBack = await read();
+  if (!tuckedBack.away) bad.push('precondition: the controls never tucked after the page float');
+  if (!same(tuckedBack.tile, before.tile)) bad.push('back from a page float (controls tucked): tile ' + JSON.stringify(before.tile) + ' -> ' + JSON.stringify(tuckedBack.tile));
+  if (!same(wokeBack.tile, tuckedBack.tile)) bad.push('the first wake after a page float moved the tile ' + JSON.stringify(tuckedBack.tile) + ' -> ' + JSON.stringify(wokeBack.tile));
+  // The height changes while the controls are tucked (full screen, the URL
+  // bar): the first wake at the new size keeps every tile.
+  const TALL = { width: PHONE.width, height: PHONE.height + 46 };
+  await tucked();
+  await size(TALL); await sleep(900);
+  const tuckedTall = await read();
+  await wake();
+  const wokeTall = await read();
+  if (!same(wokeTall.tile, tuckedTall.tile)) bad.push('the first wake after a tucked size change moved the tile ' + JSON.stringify(tuckedTall.tile) + ' -> ' + JSON.stringify(wokeTall.tile));
+  await size(PHONE); await sleep(600);
+  steps.wakes = { calm0: calm0.tile, tuckedBack: tuckedBack.tile, wokeBack: wokeBack.tile, tuckedTall: tuckedTall.tile, wokeTall: wokeTall.tile };
   if (errs.length) bad.push('page errors: ' + errs.join(' | '));
   console.log(JSON.stringify({ before, steps, inFloat, calm }));
   await context.close();

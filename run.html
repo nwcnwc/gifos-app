@@ -9873,7 +9873,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let comfyBusy = false;
     // Where the call's buttons stood last, per screen size, so the faces
     // keep their places while the buttons are tucked away.
-    let comfyUpBottom = { key: '', v: 0 };
+    // Where the dock and Record/Captions stand when they are up. Record/
+    // Captions sit 8px over the dock (bottom: --dockh + 8px) unless they
+    // stand beside it (a sideways phone: their own --csb bottom).
+    function comfyRestBand() {
+      const vh = window.innerHeight;
+      const restTop = (el) => getComputedStyle(el).position === 'fixed' ? el.offsetTop : el.getBoundingClientRect().top;
+      const bar = document.querySelector('.bar');
+      const dockUp = (bar && bar.getClientRects().length) ? Math.max(0, vh - restTop(bar)) : 0;
+      let band = dockUp;
+      const state = document.getElementById('callstate');
+      if (state && !state.hidden && state.getClientRects().length && state.offsetHeight > 2) {
+        const top = state.classList.contains('beside') ? restTop(state) : vh - dockUp - 8 - state.offsetHeight;
+        band = Math.max(band, vh - top);
+      }
+      return band;
+    }
     function applyComfy() {
       if (comfyBusy) return;
       const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
@@ -10037,24 +10052,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             (rowN * bandH + Math.max(0, rowN - 1) * 4) <= (vwNow - 4);
           if (fillHeight) {
             bottom = safe;
-            comfyUpBottom = { key: vwNow + 'x' + vhNow, v: bottom };
-          } else if (!away) {
-            // Where the dock and Record/Captions rest, not where their slide
-            // back has got to: a fixed box's offsetTop skips its transform.
-            const restTop = (el) => getComputedStyle(el).position === 'fixed' ? el.offsetTop : el.getBoundingClientRect().top;
-            const bar = document.querySelector('.bar');
-            if (bar) bottom = Math.max(0, window.innerHeight - restTop(bar));
-            const state = document.getElementById('callstate');
-            if (state && !state.hidden && state.getClientRects().length) {
-              const sr = state.getBoundingClientRect();
-              const vis = getComputedStyle(state).visibility;
-              if (sr.height > 2 && vis !== 'hidden') bottom = Math.max(bottom, window.innerHeight - restTop(state));
-            }
-            comfyUpBottom = { key: vwNow + 'x' + vhNow, v: bottom };
           } else {
-            const probe = document.getElementById('gifos-safe-b');
-            if (probe) bottom = probe.offsetHeight || 0;
-            if (comfyUpBottom.key === vwNow + 'x' + vhNow) holdBottom = comfyUpBottom.v;
+            // The band the dock and Record/Captions take when they are up,
+            // worked out from where they REST (a fixed box's offsetTop skips
+            // the tuck's slide), whether they are up or tucked right now. It
+            // used to be remembered from the last time the controls were up
+            // at this exact size, so the first wake after any size change
+            // (a page float, full screen, turning the phone, a share) found
+            // no band, and waking moved every tile (Moto g24, 2026-10-19).
+            const band = comfyRestBand();
+            if (!away) bottom = band;
+            else { bottom = safe; holdBottom = band; }
           }
           const note = document.getElementById('chatnote');
           if (note && !note.hidden && note.getClientRects().length) {
