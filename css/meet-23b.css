@@ -2,6 +2,12 @@
    for its controls. Loaded after run.html's own <style>, so equal
    specificity wins here. Geometry is js/meet-zones.js. */
 
+/* A pull down on the grid was Chrome's pull-to-refresh, which reloaded
+   the meeting. none stops that chain on the page and on the gallery
+   (#feed around #grid). Gallery scroll stays overflow-y: auto. */
+html, body { overscroll-behavior: none; }
+#feed, #grid { overscroll-behavior: none; }
+
 /* ---- zones ---------------------------------------------------------- */
 body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
   position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; overflow: hidden; padding: 0 !important; margin: 0; display: block; }
