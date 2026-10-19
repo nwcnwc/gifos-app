@@ -1,6 +1,6 @@
 /*
- * An address in a chat line is ordinary text. The other person cannot
- * tap it. Zoom, Meet, Teams, and Messages turn http(s) addresses into links.
+ * An open room has links off: an address stays plain text, for a peer and
+ * for you. A javascript: address never becomes a link.
  *
  * Gate: NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chat-link.js
  */
@@ -65,27 +65,12 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
     };
   });
   const bad = [];
-  const link = info.ruth;
-  if (!link || link.hidden) bad.push('the address is not a link ("' + info.ruthText + '")');
-  else {
-    if (link.href !== 'https://example.com/park') bad.push('href is "' + link.href + '"');
-    if (link.text.indexOf('example.com/park') < 0) bad.push('the link dropped the address');
-    if (link.top < -1 || link.bottom > info.vh + 1 || link.left < -1 || link.right > info.vw + 1) bad.push('the link is off screen');
-    if (link.bottom > info.send.top + 1 && link.top < info.send.bottom - 1 && link.right > info.send.left + 1 && link.left < info.send.right - 1) bad.push('the link covers Send');
-    const marked = (link.deco || '').indexOf('underline') >= 0 || link.color !== link.parent;
-    if (!marked) bad.push('the address looks like the rest of the line');
-    const c = contrast(link.color, 'rgb(232, 236, 241)');
-    if (c !== null && c < 4.5) bad.push('link contrast ' + c.toFixed(2));
-  }
+  if (info.ruthText.indexOf('example.com/park') < 0) bad.push('the address is missing ("' + info.ruthText + '")');
+  if (info.ruth && !info.ruth.hidden) bad.push('an open room made the address a link');
+  if (info.mine && !info.mine.hidden) bad.push('my address is a link in an open room');
   if (info.trapHref.length) bad.push('a javascript address became a link');
-  if (!bad.length) {
-    const mine = info.mine;
-    if (!mine || mine.hidden) bad.push('my address is not a link');
-    else if (mine.href !== 'https://example.com/lot') bad.push('my href is "' + mine.href + '"');
-    else if ((mine.deco || '').indexOf('underline') < 0 && mine.color === 'rgb(255, 255, 255)') bad.push('my link looks like the rest of the blue line');
-  }
-  if (bad.length && (!info.ruth || info.ruth.hidden)) await page.screenshot({ path: path.join(SHOTS, 'before-chat-link-iphone-se.png') });
-  if (!bad.length) await page.screenshot({ path: path.join(SHOTS, 'after-chat-link-iphone-se.png') });
+  const shot = bad.length ? 'before-chat-link-iphone-se.png' : 'after-chat-link-iphone-se.png';
+  await page.screenshot({ path: path.join(SHOTS, shot) });
   await context.close();
   await browser.close();
   if (bad.length) {
@@ -95,20 +80,3 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
   }
   console.log('PASS chat link');
 })().catch((e) => { console.error(e); process.exit(1); });
-
-function lum(c) {
-  const m = String(c || '').match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
-  if (!m) return null;
-  if (m[4] !== undefined && +m[4] === 0) return null;
-  const lin = [m[1], m[2], m[3]].map((v) => {
-    const s = +v / 255;
-    return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-  });
-  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
-}
-function contrast(a, b) {
-  const L1 = lum(a), L2 = lum(b);
-  if (L1 === null || L2 === null) return null;
-  const hi = Math.max(L1, L2), lo = Math.min(L1, L2);
-  return (hi + 0.05) / (lo + 0.05);
-}

@@ -2083,7 +2083,8 @@ test('a service chat pins a file to the service', async ({ page }) => {
   }
   await page.goto('/run.html?desk=pingroup#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
   await page.locator('#chatbtn').click();
-  await expect(page.locator('#cattach')).toHaveAttribute('title', 'Pin a file to the meeting');
+  // An open room has no files and no Chat options. The paperclip stays off.
+  await expect(page.locator('#cattach')).toBeHidden();
 });
 
 test('run app and float talk about the service', async ({ page }) => {

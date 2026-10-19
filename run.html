@@ -3630,7 +3630,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #bc-q.clip p { -webkit-mask-image: linear-gradient(#000 calc(100% - 1.2em), transparent); mask-image: linear-gradient(#000 calc(100% - 1.2em), transparent); }
   #bc-q-pad, #bc-q-fit { float: right; width: 0; height: 0; }
   #bc-q-fit { clear: right; }
-  body:not(.broadcast):not(.townhall) #qabtn { display: none !important; }
+  body:not(.broadcast):not(.townhall):not(.chat-qa-on) #qabtn { display: none !important; }
+  body.qa-chat-off #qabtn { display: none !important; }
   #qa { position: fixed; right: var(--inset-right, 0px); top: var(--inset-top, 0px); bottom: var(--dock-clear, 108px); width: min(360px, calc(100vw - var(--inset-left, 0px) - var(--inset-right, 0px))); z-index: 31; display: flex; flex-direction: column; background: var(--bg, #101018); color: var(--text, #e0e0f0); border-left: 1px solid var(--border, #2a2a3f); border-radius: 0 0 0 14px; }
   #qa[hidden] { display: none; }
   #qa-head { display: flex; align-items: center; flex-wrap: wrap; gap: .2rem .5rem; padding: .45rem .6rem; border-bottom: 1px solid var(--border, #2a2a3f); font-weight: 700; font-size: 1.1rem; }
@@ -4288,6 +4289,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           <label class="admopt"><input type="checkbox" id="adm-chat-guests"><span><span data-t="admChatGuests">Guests can chat</span><small data-t="admChatGuestsSub">Off: only admins can post.</small></span></label>
           <label class="admopt"><input type="checkbox" id="adm-chat-pray"><span><span data-t="admChatPray">Prayer button</span><small data-t="admChatPraySub">Anyone can mark a message as a prayer request.</small></span></label>
           <div class="admopt" id="adm-chat-files"><span><span data-t="admChatFiles">Files in chat</span><small id="adm-chat-files-sub"></small></span><button type="button" id="adm-chat-pw" data-t="admChatPw">Password</button></div>
+          <label class="admopt"><input type="checkbox" id="adm-chat-gfile"><span><span data-t="admChatGfile">Guests can send files</span><small data-t="admChatGfileSub">Off even when the room has a password.</small></span></label>
+          <label class="admopt"><input type="checkbox" id="adm-chat-greact"><span><span data-t="admChatGreact">Guests can react</span><small data-t="admChatGreactSub">Emoji reactions on chat lines.</small></span></label>
+          <label class="admopt"><input type="checkbox" id="adm-chat-qa"><span><span data-t="admChatQa">Questions button</span><small data-t="admChatQaSub">Show Questions in the chat bar.</small></span></label>
+          <label class="admopt"><input type="checkbox" id="adm-chat-chist"><span><span data-t="admChatChist">Late joiners see earlier messages</span><small data-t="admChatChistSub">Off: new arrivals start with an empty chat.</small></span></label>
+          <label class="admopt"><input type="checkbox" id="adm-chat-slow"><span><span data-t="admChatSlow">Slow mode</span><small data-t="admChatSlowSub">Guests post at most one line every 10 seconds.</small></span></label>
+          <label class="admopt"><input type="checkbox" id="adm-chat-clink"><span><span data-t="admChatClink">Links in chat</span><small data-t="admChatClinkSub">Off: a guest's links stay plain text.</small></span></label>
         </section>
         <p id="adm-banned-h" data-t="admBanned" style="margin-bottom:.2rem">Banned devices:</p>
         <div id="adm-banned"></div>
@@ -4992,6 +4999,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     window.addEventListener('resize', () => { try { placeDockForWidth(); } catch (e) {} });
     function paintBroadcastChrome() {
       try { placeDockForWidth(); } catch (e) {}
+      // An open room (no av=) has no files and no Chat options. The desk
+      // preview paints before the mesh joins, so the paperclip is hidden here
+      // too; paintChatGate repeats it once the call is up.
+      if (!/(?:^|[#&?])av=/.test(location.hash)) {
+        const pinEarly = document.getElementById('cattach');
+        if (pinEarly) pinEarly.hidden = true;
+        const chatSec = document.getElementById('adm-chat');
+        if (chatSec) chatSec.hidden = true;
+      }
       const pill = document.getElementById('onair');
       const say = (id, text) => { const el = document.getElementById(id); if (el && text) el.textContent = text; };
       const bar = document.querySelector('.bar');
@@ -5623,6 +5639,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         admChatPray: 'Gebet-Taste', admChatPraySub: 'Alle können eine Nachricht als Gebetsanliegen markieren.',
         admChatFiles: 'Dateien im Chat', admChatFilesOn: 'Erlaubt: dieser Raum hat ein Passwort.',
         admChatFilesOff: 'Erst wenn der Raum ein Passwort hat.', admChatPw: 'Passwort',
+        admChatGfile: 'Gäste dürfen Dateien senden', admChatGfileSub: 'Aus, auch wenn der Raum ein Passwort hat.',
+        admChatGreact: 'Gäste dürfen reagieren', admChatGreactSub: 'Emoji-Reaktionen auf Chat-Zeilen.',
+        admChatQa: 'Fragen-Taste', admChatQaSub: 'Fragen in der Chat-Leiste anzeigen.',
+        admChatChist: 'Spät Eingetretene sehen frühere Nachrichten', admChatChistSub: 'Aus: Neue starten mit leerem Chat.',
+        admChatSlow: 'Langsam-Modus', admChatSlowSub: 'Gäste höchstens eine Zeile alle 10 Sekunden.',
+        admChatClink: 'Links im Chat', admChatClinkSub: 'Aus: Links von Gästen sind nur Text.',
         admChecking: 'Wird geprüft…',
         admCheckingStatus: '🛡 Passwort wird geprüft… (dauert ein paar Sekunden)',
         admCheckFail: 'Das Passwort ließ sich nicht prüfen ({err}).',
@@ -5929,6 +5951,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         admChatPray: 'Botón de oración', admChatPraySub: 'Cualquiera puede marcar un mensaje como petición de oración.',
         admChatFiles: 'Archivos en el chat', admChatFilesOn: 'Permitidos: esta sala tiene contraseña.',
         admChatFilesOff: 'Solo cuando la sala tenga contraseña.', admChatPw: 'Contraseña',
+        admChatGfile: 'Los invitados pueden enviar archivos', admChatGfileSub: 'Apagado aunque la sala tenga contraseña.',
+        admChatGreact: 'Los invitados pueden reaccionar', admChatGreactSub: 'Reacciones con emoji en las líneas del chat.',
+        admChatQa: 'Botón de preguntas', admChatQaSub: 'Mostrar Preguntas en la barra del chat.',
+        admChatChist: 'Los que entran tarde ven mensajes anteriores', admChatChistSub: 'Apagado: empiezan con el chat vacío.',
+        admChatSlow: 'Modo lento', admChatSlowSub: 'Los invitados publican como mucho una línea cada 10 segundos.',
+        admChatClink: 'Enlaces en el chat', admChatClinkSub: 'Apagado: los enlaces de invitados quedan como texto.',
         admChecking: 'Comprobando…',
         admCheckingStatus: '🛡 Comprobando la contraseña… (tarda unos segundos)',
         admCheckFail: 'No se pudo comprobar la contraseña ({err}).',
@@ -8134,7 +8162,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // field (the admin's chat on/off switch). It rides the same signed
         // table as every per-target order, so it reaches late joiners on the
         // heartbeat and a forged copy dies in takeMod's admVerify.
-        for (const field of ['mute', 'blur', 'cam', 'app', 'share', 'chat', 'cc', 'wait', 'admit', 'rename', 'spot', 'pray']) {
+        for (const field of ['mute', 'blur', 'cam', 'app', 'share', 'chat', 'cc', 'wait', 'admit', 'rename', 'spot', 'pray', 'gfile', 'greact', 'qa', 'chist', 'slow', 'clink']) {
           const inc = incoming[target][field];
           if (!inc || typeof inc !== 'object') continue;
           if (goneAt != null && (+inc.at || 0) <= goneAt) continue;
@@ -8193,7 +8221,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if ((field === 'app' || field === 'share') && (!hasAdminRoom() || !amAdmin)) return;
       // The room-wide chat switch is the admin's alone, and only means
       // anything where there IS an admin to sign it.
-      if ((field === 'chat' || field === 'cc' || field === 'pray') && (!hasAdminRoom() || !amAdmin)) return;
+      if ((field === 'chat' || field === 'cc' || field === 'pray' || field === 'gfile' || field === 'greact' || field === 'qa' || field === 'chist' || field === 'slow' || field === 'clink') && (!hasAdminRoom() || !amAdmin)) return;
       if (hasAdminRoom() && !amAdmin) { setStatus('🛡 Only this room' + String.fromCharCode(39) + 's admins can ' + (field === 'mute' ? 'mute' : 'blur') + ' someone for all.'); return; }
       const mine = modTable[target] = modTable[target] || {};
       mine[field] = { on, by: myName(), byId: myId, at: Date.now() };
@@ -20211,15 +20239,73 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const m = modTable['*'] && modTable['*'].chat;
       return (m && m.on) ? m : null;
     };
-    // Prayer (#pray) is off until an admin turns it on for the room: the same
-    // signed '*' table, so a room with no admin never shows it.
-    let prayGateOverride = null; // prayGateForTest stands in for the signed switch
-    const prayOn = () => {
-      if (prayGateOverride != null) return prayGateOverride;
+    // Room-wide chat options live in modTable['*'] (signed in admin rooms).
+    // Open rooms have no switches — fixed policy only (STEERING 21:09).
+    const CHAT_SLOW_MS = 10000;
+    let chatSlowLast = 0;
+    const chatSlowSeen = new Map(); // byId -> receiver clock of their last kept line
+    let chatOptOverride = null; // chatOptForTest
+    function modStarOn(field, ifAdminUnset) {
+      if (chatOptOverride && Object.prototype.hasOwnProperty.call(chatOptOverride, field))
+        return !!chatOptOverride[field];
+      if (!hasAdminRoom()) {
+        if (field === 'pray' || field === 'gfile' || field === 'chist' || field === 'clink') return false;
+        if (field === 'greact') return true;
+        if (field === 'slow') return true;
+        return ifAdminUnset;
+      }
+      const m = modTable['*'] && modTable['*'][field];
+      if (!m || typeof m.on !== 'boolean') return ifAdminUnset;
+      return !!m.on;
+    }
+    const prayOn = () => modStarOn('pray', false);
+    const guestsMayReact = () => modStarOn('greact', true);
+    const lateJoinerSeesHistory = () => modStarOn('chist', true);
+    const slowModeOn = () => modStarOn('slow', false);
+    const chatLinksOn = () => modStarOn('clink', true);
+    // Unset keeps today's Questions button: on for a service, off for a small group.
+    // An admin's signed 'qa' order shows or hides it in every kind of room.
+    function qaChatOn() {
+      if (chatOptOverride && Object.prototype.hasOwnProperty.call(chatOptOverride, 'qa'))
+        return !!chatOptOverride.qa;
+      const svc = (typeof BROADCAST !== 'undefined' && BROADCAST) || (typeof TOWNHALL !== 'undefined' && TOWNHALL);
+      if (!hasAdminRoom()) return !!svc;
+      const m = modTable['*'] && modTable['*'].qa;
+      if (!m || typeof m.on !== 'boolean') return !!svc;
+      return !!m.on;
+    }
+    function isChatAdmin(byId) {
+      return !!(byId && (admins.includes(byId) || (byId === myId && amAdmin)));
+    }
+    function linksAllowed(byId) {
       if (!hasAdminRoom()) return false;
-      const m = modTable['*'] && modTable['*'].pray;
-      return !!(m && m.on);
-    };
+      if (chatLinksOn()) return true;
+      return isChatAdmin(byId);
+    }
+    function fileFromAllowed(byId) {
+      if (!hasAdminRoom() || !roomPw) return false;
+      if (isChatAdmin(byId)) return true;
+      return modStarOn('gfile', true);
+    }
+    function mayPinFiles() { return fileFromAllowed(myId); }
+    function viewerMayReact() {
+      if (amAdmin) return true;
+      return guestsMayReact();
+    }
+    function actorMayReact(byId) {
+      if (!byId) return false;
+      if (isChatAdmin(byId)) return true;
+      return guestsMayReact();
+    }
+    function slowBlocks(m) {
+      if (!slowModeOn() || !m || !m.byId || m.byId === myId || isChatAdmin(m.byId)) return false;
+      if (m.q === 1 || m.qv || m.qs != null) return false;
+      const now = Date.now();
+      const prev = chatSlowSeen.get(m.byId) || 0;
+      if (prev && now - prev < CHAT_SLOW_MS) return true;
+      chatSlowSeen.set(m.byId, now);
+      return false;
+    }
     function applyCdel(id, w) {
       if (!id || chatTombs.has(id)) return false;
       chatTombs.set(id, w);
@@ -20685,7 +20771,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         recvChatAck(m);
       } else if (m.k === 'creact') {
         // Only the person who reacted can put on or take off their reaction.
-        if (p && p.id && m.by === p.id && takeReact(m.id, m.e, m.by, !!m.on)) { renderChat(); noteReactToMe(m.id, m.e, !!m.on); }
+        if (p && p.id && m.by === p.id && actorMayReact(p.id) && takeReact(m.id, m.e, m.by, !!m.on)) { renderChat(); noteReactToMe(m.id, m.e, !!m.on); }
       } else if (m.k === 'cdel') {
         // The author may take their own line back. That frame is accepted
         // only from their channel. Anyone else's copy is ignored.
@@ -21267,11 +21353,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const old = Array.from(map.entries()).sort((a, b) => (a[1].at || 0) - (b[1].at || 0));
       for (let i = 0; i < old.length - max; i++) map.delete(old[i][0]);
     }
-    function takeChat(m, backfill) { // backfill: a 'hi' replay — bounded by its frame, not by the live limiter
+    function takeChat(m, backfill, opts) { // backfill: a 'hi' replay — bounded by its frame, not by the live limiter
       if (!m || !m.id || chat.has(m.id)) return false;
       const kept = chatTombs.get(m.id);
       if (kept && (!kept.ownBy || m.byId === kept.ownBy)) return false;
+      // History off drops the replay. A question still lands: it is the Questions sheet, not the log.
+      const qaEarly = m.q === 1 || !!m.qv || m.qs != null;
+      if (backfill && !lateJoinerSeesHistory() && !qaEarly) return false;
       if (!backfill && m.byId !== myId && !chatRateOk(m.byId)) return false;
+      // Slow mode is receiver-enforced. note() passes fixture so a test can plant several lines.
+      if (!backfill && !(opts && opts.fixture) && slowBlocks(m)) return false;
       // While the admin's chat-off stands, only a verified admin's NEW lines
       // land — receiver-enforced, so a DOM-hacked sender is still unheard by
       // everyone honest. Lines from BEFORE the switch stay: turning chat off
@@ -21283,7 +21374,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (co && !qa.q && !qa.qv && (m.at || 0) > co.at && !admins.includes(m.byId)) return false;
       // `link`, when present, renders as a "Join →" button — validate it is an
       // http(s) URL (never javascript:/data:) so a peer can't inject a live link.
-      const link = (typeof m.link === 'string' && /^https?:\/\//i.test(m.link)) ? m.link.slice(0, 400) : undefined;
+      let link = (typeof m.link === 'string' && /^https?:\/\//i.test(m.link)) ? m.link.slice(0, 400) : undefined;
+      if (!linksAllowed(m.byId)) link = undefined;
       let reply;
       if (m.reply && typeof m.reply === 'object' && !Array.isArray(m.reply)) {
         const id = String(m.reply.id || '').slice(0, 80);
@@ -21341,6 +21433,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const size = meta.size | 0;
       if (size < 0 || size > MAX_FILE) return false;
       const byId = (typeof meta.byId === 'string' && meta.byId) ? meta.byId : undefined;
+      if (!fileFromAllowed(byId)) return false;
       const f = { id: meta.id, name: String(meta.name || 'file').slice(0, 120), size: size, mime: meta.mime, by: meta.by, byId: byId, at: meta.at, bytes: null };
       files.set(meta.id, f);
       askFile(f, p);
@@ -21504,7 +21597,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       names.sort((a, b) => a.localeCompare(b));
       return names;
     }
-    function linkifyEscaped(escaped) {
+    function linkifyEscaped(escaped, allowLinks) {
+      if (!allowLinks) return String(escaped || '');
       return String(escaped || '').replace(/https?:\/\/[^\s<"]+/gi, (raw) => {
         let url = raw;
         let trail = '';
@@ -21514,8 +21608,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return '<a class="clink" href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>' + trail;
       });
     }
-    function withMentions(text) {
-      let html = linkifyEscaped(esc(text));
+    function withMentions(text, allowLinks) {
+      let html = linkifyEscaped(esc(text), allowLinks);
       const names = chatPeople().slice().sort((a, b) => b.length - a.length);
       for (const name of names) {
         const token = esc('@' + name);
@@ -21577,9 +21671,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         ? all.filter((m) => (String(m.text || '') + ' ' + String(m.by || '')).toLowerCase().indexOf(q) >= 0)
         : all).slice(-200);
       let html = ms.map((m) => {
-        const body = m.link
-          ? withMentions(m.text) + ' <a href="' + esc(m.link) + '" style="color:inherit;font-weight:700;text-decoration:underline">Join →</a>'
-          : withMentions(m.text);
+        const allowLinks = linksAllowed(m.byId);
+        const showReact = viewerMayReact();
+        const body = (allowLinks && m.link)
+          ? withMentions(m.text, true) + ' <a href="' + esc(m.link) + '" style="color:inherit;font-weight:700;text-decoration:underline">Join →</a>'
+          : withMentions(m.text, allowLinks);
         // The signed-in admin moderates line by line: the standard row-delete
         // glyph mints a signed 'cdel' (see the #chatlog click delegate).
         const del = amAdmin ? '<button class="row-del" data-cdel="' + esc(m.id) + '" title="Delete this message for everyone">' + DEL_ICON + '</button>' : '';
@@ -21601,13 +21697,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }).join('') + '</div>'
           : '';
         // Your own line takes a reaction too ("👍 if Tuesday works").
-        const reactBtn = '<button type="button" class="creact" data-react-open="' + attr + '" aria-expanded="' + (reactOpen === m.id) + '">React</button>';
+        const reactBtn = showReact ? '<button type="button" class="creact" data-react-open="' + attr + '" aria-expanded="' + (reactOpen === m.id) + '">React</button>' : '';
         const open = lineOpen === m.id || reactOpen === m.id;
         const whoR = open && per && per.size
           ? '<div class="cwhorx">' + REACTS.filter((e) => per.has(e)).map((e) => '<span>' + e + ' ' + esc(reactorNames(per.get(e))) + '</span>').join('') + '</div>'
           : '';
         const acts = open ? '<div class="cacts">' + replyBtn + reactBtn + ownDel + '</div>' : '';
-        const picks = reactOpen === m.id
+        const picks = showReact && reactOpen === m.id
           ? '<div class="cpicks">' + REACTS.map((e) => '<button type="button" class="cpick" data-react-pick="' + e + '" data-react-id="' + attr + '" aria-label="React ' + e + '">' + e + '</button>').join('') + '</div>'
           : '';
         return '<div class="cmsg' + (m.byId === myId ? ' mine' : '') + (m.prayer ? ' prayer' : '') + '" data-line="' + attr + '" tabindex="0" aria-expanded="' + open + '" title="Tap for Reply and React">' + who + quote + '<span class="cbody">' + body + '</span>' + chips + whoR + acts + del + picks + '</div>';
@@ -21662,7 +21758,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       inp.placeholder = locked ? uiText('chatOff', 'Chat is off for now')
         : (off ? uiText('chatOffHost', 'Chat is off for guests') : (praying ? 'Prayer request…' : uiText('chatPlaceholder', 'Message everyone…')));
       document.querySelector('#chatform button[type="submit"]').disabled = locked;
-      document.getElementById('cattach').disabled = locked;
+      const attach = document.getElementById('cattach');
+      if (attach) {
+        // Open rooms have no files. An admin room keeps the button so a click can say why.
+        attach.hidden = !hasAdminRoom();
+        attach.disabled = locked;
+      }
+      document.body.classList.toggle('chat-qa-on', qaChatOn() && hasAdminRoom() && !BROADCAST && !TOWNHALL);
+      document.body.classList.toggle('qa-chat-off', hasAdminRoom() && (BROADCAST || TOWNHALL) && !qaChatOn());
       const b = document.getElementById('chatmod');
       b.style.display = (hasAdminRoom() && amAdmin) ? '' : 'none';
       b.textContent = off ? uiText('chatModOn', 'Turn chat on') : uiText('chatModOff', 'Turn chat off');
@@ -21671,14 +21774,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // Room admin → Chat options: the room's chat switches in one place.
     function paintChatOptions() {
+      const sec = document.getElementById('adm-chat');
       const g = document.getElementById('adm-chat-guests');
-      if (!g) return;
+      if (sec) sec.hidden = !hasAdminRoom();
+      if (!g || !hasAdminRoom()) return;
       g.checked = !chatOffInfo();
       document.getElementById('adm-chat-pray').checked = prayOn();
       document.getElementById('adm-chat-files-sub').textContent = roomPw
         ? uiText('admChatFilesOn', 'Allowed: this room has a password.')
         : uiText('admChatFilesOff', 'Only once the room has a password.');
       document.getElementById('adm-chat-pw').disabled = !amAdmin;
+      const gf = document.getElementById('adm-chat-gfile');
+      if (gf) { gf.checked = modStarOn('gfile', true); gf.disabled = !roomPw; }
+      const gr = document.getElementById('adm-chat-greact');
+      if (gr) gr.checked = guestsMayReact();
+      const qa = document.getElementById('adm-chat-qa');
+      if (qa) qa.checked = qaChatOn();
+      const hi = document.getElementById('adm-chat-chist');
+      if (hi) hi.checked = lateJoinerSeesHistory();
+      const sl = document.getElementById('adm-chat-slow');
+      if (sl) sl.checked = slowModeOn();
+      const lk = document.getElementById('adm-chat-clink');
+      if (lk) lk.checked = chatLinksOn();
     }
     document.getElementById('chatmod').onclick = () => {
       setMod('*', 'chat', !chatOffInfo());
@@ -21696,6 +21813,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.getElementById('adm-modal').style.display = 'none';
       document.getElementById('pwbtn').click();
     };
+    document.getElementById('adm-chat-gfile').onchange = (e) => { setMod('*', 'gfile', !!e.target.checked); paintChatGate(); };
+    document.getElementById('adm-chat-greact').onchange = (e) => { setMod('*', 'greact', !!e.target.checked); paintChatGate(); renderChat(); };
+    document.getElementById('adm-chat-qa').onchange = (e) => { setMod('*', 'qa', !!e.target.checked); paintChatGate(); };
+    document.getElementById('adm-chat-chist').onchange = (e) => { setMod('*', 'chist', !!e.target.checked); };
+    document.getElementById('adm-chat-slow').onchange = (e) => { setMod('*', 'slow', !!e.target.checked); };
+    document.getElementById('adm-chat-clink').onchange = (e) => { setMod('*', 'clink', !!e.target.checked); renderChat(); };
     document.getElementById('chatlog').addEventListener('scroll', () => {
       const log = document.getElementById('chatlog');
       if (logNearBottom(log)) paintChatNew(true);
@@ -21737,6 +21860,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const id = rTap.getAttribute('data-react-id');
         const em = rTap.getAttribute('data-react-pick') || rTap.getAttribute('data-react-chip');
         if (!id || !chat.has(id)) return;
+        if (!viewerMayReact()) return;
         const per = chatReacts.get(id);
         const on = !(per && per.get(em) && per.get(em).has(myId));
         reactOpen = null;
@@ -21860,6 +21984,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const inp = document.getElementById('chat-in');
       const text = inp.value.trim();
       if (!text) return;
+      if (slowModeOn() && !amAdmin) {
+        const now = Date.now();
+        if (now - chatSlowLast < CHAT_SLOW_MS) { setStatus('Slow mode: wait a few seconds before posting again.'); return; }
+        chatSlowLast = now;
+      }
       const prayBtn = document.getElementById('pray');
       const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text };
       if (prayOn() && prayBtn && prayBtn.getAttribute('aria-pressed') === 'true') m.prayer = 1;
@@ -21901,11 +22030,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       });
     })();
     document.getElementById('cattach').onclick = () => {
-      if (!roomPw) { setStatus('Set a room password before sharing files — files are only allowed in password-protected meetings.'); return; }
+      if (!mayPinFiles()) { setStatus(hasAdminRoom() ? 'Guests cannot send files in this room.' : 'Files are not allowed in this meeting.'); return; }
       document.getElementById('cfile-in').click();
     };
     document.getElementById('cfile-in').addEventListener('change', (e) => {
-      if (!roomPw) { setStatus('Files need a room password first.'); e.target.value = ''; return; }
+      if (!mayPinFiles()) { setStatus('Files are not allowed here.'); e.target.value = ''; return; }
       for (const file of e.target.files) {
         if (file.size > MAX_FILE) { setStatus(file.name + ' is over the 25 MB pin limit.'); continue; }
         const reader = new FileReader();
@@ -21989,7 +22118,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           at: (o && typeof o.at === 'number' && o.at > 0) ? o.at : Date.now(),
           text: String((o && o.text) || '').slice(0, 2000),
         };
-        if (!takeChat(msg)) return unread;
+        if (!takeChat(msg, !!(o && o.backfill), { fixture: true })) return unread;
         renderChat();
         countClosedChat(msg);
         return unread;
@@ -35288,7 +35417,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       chatOff: () => !!chatOffInfo(),
       chatOffForTest: (on) => setMod('*', 'chat', !!on),
       prayOn: () => prayOn(),
-      prayGateForTest: (on) => { prayGateOverride = on == null ? null : !!on; paintChatGate(); return prayOn(); },
+      prayGateForTest: (on) => { chatOptOverride = on == null ? null : { pray: !!on }; paintChatGate(); return prayOn(); },
+      chatOptForTest: (o) => { chatOptOverride = o == null ? null : Object.assign({}, o); paintChatGate(); renderChat(); return { prayOn: prayOn(), guestsMayReact: guestsMayReact(), lateJoinerSeesHistory: lateJoinerSeesHistory(), slowModeOn: slowModeOn(), chatLinksOn: chatLinksOn(), mayPinFiles: mayPinFiles(), qaChatOn: qaChatOn() }; },
       sayForTest: (text) => { const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: String(text) }; chat.set(m.id, m); sendAll({ k: 'chat', m }); renderChat(); return m.id; },
       chatHas: (id) => chat.has(id),
       nameOf: (pid) => rosterNames[pid] || (peers.get(pid) || {}).name || '', // what this seat calls a peer (the sealed pulse teaches it)

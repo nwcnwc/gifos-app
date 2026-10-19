@@ -52,7 +52,7 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
   if (geo.sendH < 44 || geo.sendW < 44) bad.push('send ' + Math.round(geo.sendW) + 'x' + Math.round(geo.sendH));
   if (geo.sendRight > geo.vw + 1 || geo.sendLeft < -1) bad.push('send off screen (right ' + Math.round(geo.sendRight) + ')');
   if (geo.closeH < 44 || geo.closeW < 44) bad.push('close ' + Math.round(geo.closeW) + 'x' + Math.round(geo.closeH));
-  if (geo.attachH < 44 || geo.attachW < 44) bad.push('attach ' + Math.round(geo.attachW) + 'x' + Math.round(geo.attachH));
+  if (geo.attachH > 2 || geo.attachW > 2) bad.push('open room still shows attach ' + Math.round(geo.attachW) + 'x' + Math.round(geo.attachH));
   if (geo.moreOpen) bad.push('More sheet still covers chat');
   await page.evaluate(() => document.documentElement.style.setProperty('--kb', '240px'));
   await page.waitForTimeout(50);
