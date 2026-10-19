@@ -40,9 +40,13 @@ const LINE = 'No blur picked — turn your camera on to be ready for clear video
   await page.locator('#bartoggle').tap();
   await page.locator('#blur-min').scrollIntoViewIfNeeded();
   await page.locator('#blur-min').tap();
+  // More folds after a blur pick. No blur is the next pick, so the sheet opens again.
+  if ((await page.locator('#bartoggle').getAttribute('aria-expanded')) !== 'true') await page.locator('#bartoggle').tap();
   await page.locator('#blur-none').scrollIntoViewIfNeeded();
   await page.locator('#blur-none').tap();
   await page.waitForTimeout(250);
+  // The pick folds More. The selected fill is the one a person sees on the open sheet.
+  if ((await page.locator('#bartoggle').getAttribute('aria-expanded')) !== 'true') await page.locator('#bartoggle').tap();
   const info = await page.evaluate(() => {
     const seg = (id) => {
       const el = document.getElementById(id);
@@ -76,6 +80,9 @@ const LINE = 'No blur picked — turn your camera on to be ready for clear video
     bad.push('No blur selected fill is ' + info.none.bg + ' / ' + info.none.color);
   }
   const shot = bad.length ? 'before-blur-cam-pixel-7.png' : 'after-blur-cam-pixel-7.png';
+  // The pick folded More. Open it again so the selected segment can be seen.
+  if ((await page.locator('#bartoggle').getAttribute('aria-expanded')) !== 'true') await page.locator('#bartoggle').tap();
+  await page.locator('#blurseg').scrollIntoViewIfNeeded();
   await page.locator('#blurseg').screenshot({ path: path.join(SHOTS, shot.replace('.png', '-seg.png')) });
   await page.screenshot({ path: path.join(SHOTS, shot) });
   await context.close();

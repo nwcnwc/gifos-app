@@ -57,6 +57,8 @@ const ROOM = 'clear-ready';
   await page.locator('#blur-min').scrollIntoViewIfNeeded();
   await page.locator('#blur-min').tap();
   await page.waitForTimeout(150);
+  // More folds after a blur pick. No blur is the next pick, so the sheet opens again.
+  if ((await page.locator('#bartoggle').getAttribute('aria-expanded')) !== 'true') await page.locator('#bartoggle').tap();
   await page.locator('#blur-none').scrollIntoViewIfNeeded();
   const hit = await page.evaluate(() => {
     const el = document.getElementById('blur-none');

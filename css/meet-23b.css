@@ -114,6 +114,12 @@ body.tw-open .fitbtn, body.tw-open .topchip { visibility: hidden; }
    own top row clear of the three buttons. */
 body:not(.has-app):not(.solo-app):not(.app-room) { --osw: 210px; }
 body:not(.has-app):not(.solo-app):not(.app-room) #apppane { display: block; position: fixed; top: var(--gtop, 0px); left: 0; right: 0; z-index: 7; pointer-events: none; }
+/* Chat beside the call (a wide window): the OS header ends at the panel,
+   the same inset the meeting's own top row already takes. A phone keeps
+   the panel over the call. */
+@media (min-width: 800px) {
+  body.chatside:not(.has-app):not(.solo-app):not(.app-room) #apppane { right: 340px; }
+}
 body:not(.has-app):not(.solo-app):not(.app-room) #appmount { display: none; }
 body:not(.has-app):not(.solo-app):not(.app-room) #appbar { justify-content: flex-end; background: transparent; border-bottom-color: transparent; }
 /* An unseen strut: the bar is as tall as a solo app's, so the buttons sit on the same pixels. */

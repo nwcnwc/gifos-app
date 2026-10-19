@@ -34,7 +34,11 @@
   "capabilities": {
     "db": true,
     "meet": true,
-    "remote": true
+    "remote": true,
+    "ai": [
+      "smartest",
+      "tts"
+    ]
   },
   "cover": "/apps/meeting-bot/cover.jpg",
   "screenshots": [],

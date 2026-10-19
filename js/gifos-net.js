@@ -91,12 +91,22 @@
     const onClose = sockOpts && typeof sockOpts.onClose === 'function' ? sockOpts.onClose : null;
     // sockOpts.prepare() (optional, a Promise) runs before every connect, so
     // makeUrl() can carry what it fetched: the relay join ticket (relayTicket).
-    // It gets PREP_MS; past that the attempt goes without it.
+    // It gets PREP_MS; past that the attempt goes without it. A hidden page
+    // that is in a call uses the reconnect cap instead: this wait is part of
+    // the retry, and that call stays on the short cap.
     const prep = sockOpts && typeof sockOpts.prepare === 'function' ? sockOpts.prepare : null;
     const onBusy = sockOpts && typeof sockOpts.onBusy === 'function' ? sockOpts.onBusy : null;
     const onTokenRefused = sockOpts && typeof sockOpts.onTokenRefused === 'function' ? sockOpts.onTokenRefused : null;
     const PREP_MS = 20000;
     let ws = null, closed = false, attempt = 0, timer = null, slow = false, stableTimer = null, bornTimer = null, slowTimer = null, preparing = false;
+    const dutyNow = () => { try { return !!(duty && duty()); } catch (e) { return false; } };
+    // Hidden and off duty waits up to 60s. On duty keeps the visible cap,
+    // or the slow leash when the relay itself said not now.
+    const retryCap = () => {
+      const hidden = typeof document !== 'undefined' && document.hidden;
+      if (hidden && !dutyNow()) return 60000;
+      return slow ? 15000 : 5000;
+    };
     s.busy = false; // the relay's spend breaker said "very busy" (4015) and no socket has stayed open since
     const queue = [];
     const STABLE_MS = 5000; // how long a socket must stay open before the backoff resets
@@ -127,7 +137,8 @@
       preparing = true;
       let done = false;
       const go = () => { if (done) return; done = true; clearTimeout(pt); preparing = false; if (!closed) open(); };
-      const pt = setTimeout(go, PREP_MS);
+      const hiddenNow = typeof document !== 'undefined' && document.hidden;
+      const pt = setTimeout(go, (hiddenNow && dutyNow()) ? retryCap() : PREP_MS);
       let p;
       try { p = Promise.resolve(prep()); } catch (e) { p = Promise.resolve(); }
       p.then(go, go);
@@ -202,13 +213,9 @@
       // Backoff cap by context: snappy while someone is looking, patient when
       // the tab is hidden (an overnight background tab must not knock every
       // few seconds), extra patient when the relay itself said "not now".
-      const hidden = typeof document !== 'undefined' && document.hidden;
-      // A hidden tab waits up to 60s between reconnects. An on-duty
-      // greeter is the door, so it keeps the visible cap while onDuty()
-      // is true. No onDuty keeps the hidden cap.
-      let onDuty = false;
-      try { onDuty = !!(duty && duty()); } catch (e) { onDuty = false; }
-      const cap = (hidden && !onDuty) ? 60000 : slow ? 15000 : 5000;
+      // A hidden tab waits up to 60s between reconnects. On duty keeps the
+      // visible cap, so a live call stays reachable while the page is hidden.
+      const cap = retryCap();
       const delay = Math.min(cap, 500 * Math.pow(2, attempt++)) * (0.7 + Math.random() * 0.6);
       timer = setTimeout(() => { timer = null; connect(); }, delay);
     }

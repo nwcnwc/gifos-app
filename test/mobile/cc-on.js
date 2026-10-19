@@ -28,6 +28,9 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
   await page.locator('#ccbtn').scrollIntoViewIfNeeded();
   await page.locator('#ccbtn').tap();
   await page.waitForTimeout(200);
+  // More folds after the pick. The on-state colors live on this button; open the sheet to see it.
+  if ((await page.locator('#bartoggle').getAttribute('aria-expanded')) !== 'true') await page.locator('#bartoggle').tap();
+  await page.locator('#ccbtn').scrollIntoViewIfNeeded();
   const info = await page.evaluate(() => {
     const el = document.getElementById('ccbtn');
     const cs = getComputedStyle(el);
