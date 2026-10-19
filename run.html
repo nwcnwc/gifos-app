@@ -2103,6 +2103,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.comfy.has-app #airkind,
   body.screen-on:not(.broadcast) #airwho,
   body.comfy.has-app #airwho { display: none !important; }
+  /* Phone portrait: top-right is Invite, Help and Full screen. The recording
+     pill steps under that row, on the left, and keeps its own ink so it
+     still reads on the shared picture. */
+  @media (max-width: 700px) and (orientation: portrait) {
+    body.screen-on:not(.broadcast) #airbar.on,
+    body.comfy.has-app #airbar.on {
+      top: calc(62px + var(--gtop, 0px));
+      right: auto;
+      left: calc(12px + env(safe-area-inset-left, 0px));
+    }
+    body.screen-on:not(.broadcast) #airbar.on #airrec,
+    body.comfy.has-app #airbar.on #airrec {
+      background: rgba(12,14,18,.92);
+      color: #f4f7fb;
+    }
+  }
   #airbar.live::before, #airbar.watch::before, #airbar.group::before {
     content: ''; width: 12px; height: 12px; border-radius: 50%; flex: none; }
   #airbar.live::before { background: #fff; }
@@ -3187,6 +3203,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #chatpanel.open {
     top: 0; z-index: 31; overflow: clip; min-height: 0;
     bottom: max(var(--dockh, 108px), var(--kb, 0px));
+  }
+  /* The reaction tray hangs above the dock, in the same band as Send.
+     While it is open the composer steps up by the tray so Send stays a tap. */
+  @media (max-width: 700px) and (orientation: portrait) {
+    body:has(#reacttray:not([hidden])) #chatpanel.open {
+      bottom: calc(max(var(--dockh, 108px), var(--kb, 0px)) + 92px);
+    }
   }
   /* The desktop pads the panel for a floating dock; a phone stops above it instead. */
   #chatpanel, #chatpanel.open { padding-bottom: 0; }
