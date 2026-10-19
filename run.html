@@ -16065,14 +16065,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // A screen share keeps the face where comfy already put it. A camera
           // on the Stage holds its row seat (the strip is the only picture).
           // Another row holds that seat as a stadium face, so this tile stays off.
+          // That holds for a SHARER too: a direct tile from another row has no
+          // picture to show (their camera only ever went to row-mates, and the
+          // share parks even that), so it painted black with no letter
+          // (hard-bugs-1019-1108 bug 1). The stadium face stays instead.
           let show = false;
           try {
             const comfy = !!(meTile && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.comfyAllowed(document.body));
-            const sharing = typeof sharingScreen === 'function' && !!sharingScreen(pid);
             const k0 = coordOfPeer.get(pid);
             let mate = !k0;
             if (k0) { const cc0 = net.topo.unck(k0); mate = cc0.pc === c.pc && cc0.r === c.r; }
-            show = comfy && (sharing || mate);
+            show = comfy && mate;
           } catch (e) { show = false; }
           paintDisp(p.tile, show ? '' : 'none');
           continue;
