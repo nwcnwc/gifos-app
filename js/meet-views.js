@@ -579,14 +579,18 @@
     const video = opts.video || null;
     const vw = video && video.videoWidth || 0;
     const vh = video && video.videoHeight || 0;
-    const n = faces.length;
+    // STADIUM-FACES: opts.cellN cells in the composite and opts.cellOf[j] the
+    // cell face j is cut from (-1: not in it, initials); without them a face
+    // is cell j of faces.length (the count rule).
+    const cellOf = Array.isArray(opts.cellOf) && opts.cellOf.length === faces.length ? opts.cellOf : null;
+    const n = cellOf && opts.cellN > 0 ? (opts.cellN | 0) : faces.length;
     const cols = opts.cols | 0;
     const key = n + 'x' + cols + '@' + vw + 'x' + vh + '|' + (opts.orderKey || '');
     const now = opts.now || Date.now();
     if (key !== stadSeen.key) stadSeen = { key: key, at: now };
     const holdMs = opts.holdMs > 0 ? opts.holdMs : 2500;
     const holding = n > 0 && !lay.crowd && (now - stadSeen.at < holdMs);
-    const ready = n > 0 && !lay.crowd && !holding && vw > 0 && vh > 0 && cols > 0 && MM && typeof MM.cellCrop === 'function';
+    const ready = n > 0 && faces.length > 0 && !lay.crowd && !holding && vw > 0 && vh > 0 && cols > 0 && MM && typeof MM.cellCrop === 'function';
     let slices = null;
     if (ready) slices = ML.stadiumSlices(n, vw, vh, 100, MM.stadiumGrid, MM.cellCrop);
     const stream = video && video.srcObject;
@@ -595,7 +599,8 @@
       if (lay.crowd) break;
       const v = el.querySelector('video');
       const av = el.querySelector('.avatar');
-      const cell = slices && slices.cells[j];
+      const cj = cellOf ? cellOf[j] : j;
+      const cell = slices && cj >= 0 ? slices.cells[cj] : null;
       if (stream && !faces[j].off) playStream(v, stream);
       // Camera-off (and not-yet-heard) faces stay on initials. A black
       // cell from the composite would hide the name.

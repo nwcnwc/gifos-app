@@ -732,8 +732,11 @@
         // dark: an admin turned this face's video off. blur: a moderator blurred
         // it (1 or 2). Both apply to a leaf face only; run.html decides them
         // from the room's moderation table, the same on every compositing seat.
+        // ids: who sits in each of this tile's n cells (a leaf's pid, a block's
+        // relayed cell list) — read back by cellIds() for the pack's own meta.
+        const ids = (meta && Array.isArray(meta.ids) && meta.ids.length === n) ? meta.ids.slice() : (n === 1 && meta && meta.pid != null) ? [String(meta.pid)] : null;
         tiles.set(id, { ord, el, streamId: sid, n, cols, lbl: (meta && meta.lbl) || null, fit: (meta && meta.fit) || null,
-          dark: !!(meta && meta.dark), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)) });
+          dark: !!(meta && meta.dark), blur: Math.max(0, Math.min(2, (meta && meta.blur) | 0)), ids });
       },
       // Update just the overlay (name/hand/talking) without touching the source
       // — called every tick from status/audio so the frame tracks speech live.
@@ -768,6 +771,17 @@
       },
       clearTiles() { for (const id of [...tiles.keys()]) pk.delTile(id); },
       ids: () => [...tiles.keys()],
+      // STADIUM-FACES: the person in each cell 0..count()-1, in paint order
+      // (tiles by ord, a block's faces in its own order; null = unknown).
+      // Only for the regular grid: the dense layout places blocks by
+      // geometry, not in sequence, so a dense pack names no cells.
+      cellIds() {
+        if (DENSE && total() > STAD_CAP) return null;   // paint's own dense rule, decided here without waiting for a paint
+        const out = [];
+        const order = [...tiles.values()].sort((a, b) => (a.ord < b.ord ? -1 : a.ord > b.ord ? 1 : 0));
+        for (const t of order) for (let j = 0; j < t.n; j++) out.push(t.ids ? (t.ids[j] == null ? null : String(t.ids[j])) : null);
+        return out;
+      },
       count: total, cols: () => G, rows: () => R,
       start() {
         if (timer || !canvas) return pk;

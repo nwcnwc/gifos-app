@@ -9719,21 +9719,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return out;
     }
     function comfyStadMeta() {
-      let n = 0, cols = 0, video = null, srcEl = null;
+      let n = 0, cols = 0, video = null, srcEl = null, ids = null;
       try {
         srcEl = document.querySelector('#stadium [data-row="sd"]');
         video = srcEl ? srcEl.querySelector('video') : null;
       } catch (e) {}
       try {
-        if (sdPack && sdPack.count && sdPack.count() > 0) { n = sdPack.count(); cols = sdPack.cols() || 0; }
+        if (sdPack && sdPack.count && sdPack.count() > 0) { n = sdPack.count(); cols = sdPack.cols() || 0; const ci = sdPack.cellIds ? sdPack.cellIds() : null; if (ci && ci.length === n) ids = ci; }
       } catch (e) {}
       try {
         if (!(n > 0) && mosIn) {
           const m = mosIn.get('sdm') || mosIn.get('sd');
-          if (m && m.meta) { if (m.meta.n) n = m.meta.n; if (m.meta.cols) cols = m.meta.cols; }
+          if (m && m.meta) { if (m.meta.n) n = m.meta.n; if (m.meta.cols) cols = m.meta.cols; if (Array.isArray(m.meta.ids) && m.meta.ids.length === m.meta.n) ids = m.meta.ids.slice(); }
         }
       } catch (e) {}
-      return { n: n | 0, cols: cols | 0, video: video, srcEl: srcEl };
+      return { n: n | 0, cols: cols | 0, ids: ids, video: video, srcEl: srcEl };
     }
     let comfyBusy = false;
     // Where the call's buttons stood last, per screen size, so the faces
@@ -9819,7 +9819,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           try { avatar = (MV.avatarUrl && MV.avatarUrl(st || {}, null)) || ''; } catch (e2) {}
           faces.push({ id: id, name: name, initials: nameInitial(name), off: off, avatar: avatar, shade: shadeKey(id) });
         }
-        const cols = (meta.n === roster.length) ? (meta.cols || 0) : 0;
+        // STADIUM-FACES: with a cell order, face j is cut from the cell that
+        // names it (cellOf; -1 = not in this composite: initials), whatever
+        // the roster's order or length. Without one, the old rule: the
+        // packer's count drives the crop only when it matches this set.
+        const cellOf = (Array.isArray(meta.ids) && meta.ids.length === meta.n) ? faces.map((f) => meta.ids.indexOf(f.id)) : null;
+        const cols = cellOf ? (meta.cols || 0) : (meta.n === roster.length) ? (meta.cols || 0) : 0;
         if (meta.video && !meta.video._comfyRz) {
           meta.video._comfyRz = true;
           meta.video.addEventListener('resize', () => { try { layout(); } catch (e) {} });
@@ -9909,8 +9914,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           floor = vhNow - ((probe && probe.offsetHeight) || 0);
         }
         window.__comfyLast = MV.apply({
-          feed: feed, tiles: tiles, faces: faces, video: meta.video, cols: cols,
-          orderKey: roster.length + ':' + roster.join(','), holdMs: holdMs, floor: floor,
+          feed: feed, tiles: tiles, faces: faces, video: meta.video, cols: cols, cellN: cellOf ? meta.n : 0, cellOf: cellOf,
+          orderKey: roster.length + ':' + roster.join(',') + (cellOf ? '|' + cellOf.join(',') : ''), holdMs: holdMs, floor: floor,
           vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: shadeKey('me'),
           pill: document.body.classList.contains('has-pill'), bottom: bottom, holdBottom: holdBottom, top: topInset,
           mode: window.__meetViewMode || 'gallery',
@@ -20965,7 +20970,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const ak = p.id + '|' + m.key;
         const prevAnn = mosAnn.get(ak);
         const annNew = !prevAnn || prevAnn.streamId !== m.streamId;
-        const annIds = mxIds(m.ids);
+        const annIds = mxIds(m.ids, m.key === 'sgs' ? SCALE.C : MX_IDS_MAX); // a stadium composite names up to MX_IDS_MAX cells (STADIUM-FACES); the stage strip at most C
         if ((typeof mosHasEjected === 'function' && mosHasEjected(m.key, annIds) === true)) return; // a feed carrying a forger's picture: refused
         if ((typeof mediaOk === 'function' && mediaOk(p.id) === false)) return; // a feed from a forwarder this page has not verified: refused
         // STAGE-FACES: the strip's cell order (or count, or grid) changed under
@@ -24096,13 +24101,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // them (stg:<pid>) or its cell list does. A composite cannot be cut apart,
     // so the whole feed is refused; an honest producer has dropped the forger
     // too and its next composite comes without them.
+    const MX_IDS_MAX = 64; // the longest cell list an announce may carry: a stadium pack past this (dense-packed) names no cells, and its receivers fall back to the count rule
     function mosHasEjected(key, ids) {
       if (!ejected.size) return false;
       if (typeof key === 'string' && key.startsWith('stg:') && (typeof isEjected === 'function' && isEjected(key.slice(4).split('^')[0]) === true)) return true;
       return Array.isArray(ids) && ids.some((x) => (typeof isEjected === 'function' && isEjected(x) === true));
     }
-    function mxIds(v) {
-      if (!Array.isArray(v) || !v.length || v.length > SCALE.C) return undefined;
+    function mxIds(v, max) {
+      if (!Array.isArray(v) || !v.length || v.length > (max > 0 ? max : SCALE.C)) return undefined;
       for (let i = 0; i < v.length; i++) if (typeof v[i] !== 'string' || !v[i] || v[i].length > 64) return undefined;
       return v.slice();
     }
@@ -25242,7 +25248,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // internal holes; the announce meta carries {n, cols} so any receiver can
       // blit faces out by sub-rect and repack. Empty seats are never drawn.
       const blockMeta = (f) => {
-        if (f && f.meta && f.meta.n) return { n: f.meta.n, cols: f.meta.cols || f.meta.n };
+        if (f && f.meta && f.meta.n) { const m = { n: f.meta.n, cols: f.meta.cols || f.meta.n }; if (Array.isArray(f.meta.ids) && f.meta.ids.length === m.n) m.ids = f.meta.ids.slice(); return m; } // ids: who sits in each cell (STADIUM-FACES), relayed as the strip's are
         const w = f && f.el ? (f.el.videoWidth || 0) : 0, h = f && f.el ? (f.el.videoHeight || 0) : 0;
         const k = (w && h) ? Math.max(1, Math.round(Math.max(w, h) / Math.min(w, h))) : 1;
         return { n: k, cols: k }; // legacy bar self-describes via aspect (5 − max/min = free)
@@ -25278,12 +25284,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const pid = pid0 && stagers.includes(pid0) ? null : pid0; // stagers live on the Stage ONLY (docs/media-plane.md)
           const sc = pid ? srcFor(pid) : null;
           if (sc && sc.el) dbgRowFaces.push({ i: j, pid: String(pid).slice(0, 8) });
-          if (sc && sc.el) prodPack.setTile('r' + j, 'a' + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(pid), fit: fitFor(pid) });
+          if (sc && sc.el) prodPack.setTile('r' + j, 'a' + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(pid), fit: fitFor(pid), pid });
           else prodPack.delTile('r' + j);
           const sub = mosIn.get('sub:' + j);
           if (sub) setBlock(prodPack, 's' + j, 'b' + j, sub); else prodPack.delTile('s' + j);
         }
-        const prodMeta = () => ({ n: prodPack.count(), cols: prodPack.cols() });
+        // STADIUM-FACES: a pack's meta names who sits in cell 0..n-1 as it
+        // packed them (cellIds; absent while dense-packed), so a receiver cuts
+        // each face out BY ID. Before, a receiver matched its own roster to
+        // the cells by count and position: a different order drew faces under
+        // the wrong names, and a different count (a stager left out of the
+        // composite under a share) turned EVERY face into initials (2026-10-18
+        // fleet stadium: letter avatars under a share; the rejoiner's strip).
+        const packMeta = (pk) => { const m = { n: pk.count(), cols: pk.cols() }; const ids = pk.cellIds ? pk.cellIds() : null; if (ids && ids.length === m.n && ids.every((x) => typeof x === 'string' && x)) m.ids = ids; return m; }; // every cell named, or none: a receiver's mxIds takes only a whole list of ids
+        const prodMeta = () => packMeta(prodPack);
         if (c.pc !== 0 && beyondRow) {
           // ship my product UP (the up-seat relays it to ITS head)
           const up = T.up(c); const upPid = up ? occPid(up) : null;
@@ -25343,7 +25357,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const sdShown = !!stadiumEl.querySelector('[data-row="sd"]');
             if (sdShown) paintStadiumTile(Date.now() - sdEmptyAt > MOS_GRACE ? null : sdPack.stream);
           }
-          const sdMeta = () => ({ n: sdPack.count(), cols: sdPack.cols() });
+          const sdMeta = () => packMeta(sdPack);
           for (let j = 1; j < C; j++) {
             const mate = occPid({ pc: c.pc, r: c.r, i: j });
             const jk3 = shipMos('sdm', mate, sdPack.stream, sdMeta()); if (jk3) wanted.add(jk3);
@@ -25378,7 +25392,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               const fp0 = j === c.i ? myId : occPid({ pc: c.pc, r: c.r, i: j });
               const fp = fp0 && stagers.includes(fp0) ? null : fp0;
               const sc = fp ? srcFor(fp) : null;
-              if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp) });
+              if (sc && sc.el) pk.setTile('f' + j, 10 + j, sc.el, sc.stream, { n: 1, cols: 1, lbl: stadLbl(fp), fit: fitFor(fp), pid: fp });
               else pk.delTile('f' + j);
             }
             for (let j = 0; j < C; j++) {
@@ -25386,7 +25400,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               const sub = mosIn.get('sub:' + j);
               if (sub) setBlock(pk, 's' + j, 20 + j, sub); else pk.delTile('s' + j);
             }
-            const m = { n: pk.count(), cols: pk.cols() };
+            const m = packMeta(pk);
             const jk4 = i === c.i ? shipMos('sdn', childPid, pk.stream, m)
               : shipMos('sdx', occPid({ pc: c.pc, r: c.r, i }), pk.stream, Object.assign({ col: i }, m));
             if (jk4) wanted.add(jk4);
