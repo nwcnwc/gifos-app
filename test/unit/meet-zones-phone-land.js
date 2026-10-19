@@ -32,5 +32,31 @@ const tall = Z.layout({
 check('portrait scroll keeps a wide face', tall.rects.length === 2 && tall.rects.every((r) => r.h >= 180 && r.h <= 390),
   tall.rects.map((r) => Math.round(r.h)).join(','));
 
+// Beside a share, the people strip must not leave one face on its own line.
+function zoneLone(rects, tier) {
+  const faces = rects.filter((t) => t.tier === tier);
+  let n = 0;
+  for (const t of faces) {
+    const beside = faces.some((o) => o !== t && o.y < t.y + t.h - 1 && t.y < o.y + o.h - 1);
+    if (!beside) n++;
+  }
+  return n;
+}
+const strip = Z.layout({
+  box: { x: 4, y: 64, w: 1272, h: 528 },
+  stage: [{ id: 'share', aspect: 16 / 9 }],
+  row: ['a', 'b', 'c', 'd', 'e'],
+  stad: ['f', 'g', 'h', 'i', 'j', 'k'],
+  gallery: 'fit',
+});
+check('share strip row has no lone cell', zoneLone(strip.rects, 'row') === 0, zoneLone(strip.rects, 'row'));
+check('share strip stadium has no lone cell', zoneLone(strip.rects, 'stad') === 0, zoneLone(strip.rects, 'stad'));
+const open = Z.layout({
+  box: { x: 4, y: 64, w: 1272, h: 528 },
+  row: ['a', 'b', 'c', 'd', 'e'],
+  gallery: 'fit',
+});
+check('open gallery still lays out five', open.rects.length === 5, open.rects.length);
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -138,7 +138,7 @@ function median(xs) { const s = xs.slice().sort((a, b) => a - b); return s.lengt
 // Score already prefers equal tile areas. Ties (within TIE): prevRows,
 // plain rows over columns, equal over aspect sizing, tile shape closest
 // to the median source, fewer lines.
-function chooseRows(box, aspects, prevRows, minSide, phone) {
+function chooseRows(box, aspects, prevRows, minSide, phone, avoidLone) {
   const N = aspects.length; if (!N || box.w <= 0 || box.h <= 0) return null;
   const med = median(aspects);
   let cands = candidates(box, aspects, false, phone);
@@ -150,6 +150,13 @@ function chooseRows(box, aspects, prevRows, minSide, phone) {
   // 1/2/2, or a big tile beside smaller ones (cols + aspect sizing).
   if (!T.legacyRows && cands.some(c => c.skinny <= 1 + 1e-9)) cands = cands.filter(c => c.skinny <= 1 + 1e-9);
   if (minSide && cands.some(c => c.minShort >= minSide)) cands = cands.filter(c => c.minShort >= minSide);
+  // A strip beside a share must not leave one face on a row of its own
+  // (2/2/1, or five then one) when another legal packing fills every row.
+  // The open gallery keeps its equal-tile 2/2/1; only the strip asks for this.
+  if (avoidLone && N > 1) {
+    const singles = (c) => { let n = 0; for (let i = 0; i < c.counts.length; i++) if (c.counts[i] === 1) n++; return n; };
+    if (cands.some((c) => singles(c) === 0)) cands = cands.filter((c) => singles(c) === 0);
+  }
   const best = Math.max(...cands.map(c => c.score));
   cands = cands.filter(c => c.score >= best * (1 - TIE));
   const dev = c => Math.abs(Math.log(c.cells[0].w / c.cells[0].h / med));
@@ -159,7 +166,7 @@ function chooseRows(box, aspects, prevRows, minSide, phone) {
 }
 
 function packRegion(box, aspects, opts = {}) {
-  const pick = chooseRows(box, aspects, opts.prevRows, opts.minSide, opts.phone);
+  const pick = chooseRows(box, aspects, opts.prevRows, opts.minSide, opts.phone, opts.avoidLone);
   if (!pick) return { rows: 0, rects: [] };
   const rects = pick.cells.map((c, i) => {
     const a = aspects[i], t = c.w / c.h, keep = Math.min(t / a, a / t);
@@ -320,7 +327,7 @@ function layout(people, stage, opts) {
         const parts = splitBoxes(box, side, f);
         const strip = side ? parts.gb.w : parts.gb.h;
         if (strip + 0.5 < floor) continue;
-        const g = chooseRows(parts.gb, gA, null, null, phone);
+        const g = chooseRows(parts.gb, gA, null, null, phone, true);
         if (!g) continue;
         const st = stageScore(parts.sb, stageList, phone);
         const sv = stageViol(parts.sb, stageList, phone), bad = Math.max(sv, g.viol);
@@ -342,7 +349,7 @@ function layout(people, stage, opts) {
   const galleryMode = resolveGallery(opts.gallery);
   if (galBox && gallery.length) {
     out.regions.gallery = galBox;
-    const g = twoTier(galBox, gallery, me, { ...opts, gallery: galleryMode }, phone);
+    const g = twoTier(galBox, gallery, me, { ...opts, gallery: galleryMode, avoidLone: stageList.length > 0 }, phone);
     Object.assign(out, { rows: g.rows, split: g.split, contentH: g.contentH, minShort: g.minShort, tooSmall: g.tooSmall, gallery: galleryMode, paged: false });
     for (const t of g.tiles) out.tiles.push({ ...t, region: 'gallery', me: !!(byId.get(t.id) || {}).me, quality: t.tier === 'row' ? 'hi' : 'lo' });
   }
@@ -364,6 +371,7 @@ function twoTier(box, gallery, me, opts, phone) {
   return presentTiles(packTiers(box, gallery, me, opts || {}, phone));
 }
 function packTiers(box, gallery, me, opts, phone) {
+  const avoidLone = !!opts.avoidLone;
   const inRow = p => p === me || (opts.myRow != null && p.row === opts.myRow);
   const row = gallery.filter(inRow), stad = gallery.filter(p => !inRow(p));
   const emit = (list, rects, tier) => list.map((p, i) => ({ id: p.id, ...rects[i], tier }));
@@ -379,7 +387,7 @@ function packTiers(box, gallery, me, opts, phone) {
   if (!stad.length || !row.length) {
     const list = row.length ? row : stad, tier = row.length ? 'row' : 'stad';
     if (mode === 'scroll') return scrollStad(box, list, [], phone, box.y, 0, tier);
-    const p = packRegion(box, list.map(t => t.aspect), { prevRows: opts.prevRows, phone: phone });
+    const p = packRegion(box, list.map(t => t.aspect), { prevRows: opts.prevRows, phone: phone, avoidLone: avoidLone });
     // A short landscape phone cannot hold a legal tile if the grid is stretched
     // across the whole box. Cap the shape and let a later row scroll.
     if (phone && box.w > box.h && p && (p.viol > 1 || p.minShort < MIN_SIDE.phone)) return phoneFit(box, list, tier);
@@ -391,7 +399,7 @@ function packTiers(box, gallery, me, opts, phone) {
     // and it never takes more than 62% of the screen.
     const okH = (h) => {
       if (!(h > 48)) return false;
-      const c = chooseRows({ x: box.x, y: box.y, w: box.w, h: h }, row.map(t => t.aspect), null, null, phone);
+      const c = chooseRows({ x: box.x, y: box.y, w: box.w, h: h }, row.map(t => t.aspect), null, null, phone, avoidLone);
       return !!(c && c.viol <= 1);
     };
     const maxH = box.h * 0.62;
@@ -406,13 +414,13 @@ function packTiers(box, gallery, me, opts, phone) {
       }
       if (!picked) rh = maxH;
     }
-    const rp = packRegion({ x: box.x, y: box.y, w: box.w, h: rh }, row.map(t => t.aspect), { phone: phone });
+    const rp = packRegion({ x: box.x, y: box.y, w: box.w, h: rh }, row.map(t => t.aspect), { phone: phone, avoidLone: avoidLone });
     return scrollStad(box, stad, emit(row, rp.rects, 'row'), phone, box.y + rh, rp.rows);
   }
   let best = null;
   for (let i = 20; i <= 85; i++) {
     const f = i / 100, rb = { x: box.x, y: box.y, w: box.w, h: box.h * f }, sb = { x: box.x, y: box.y + rb.h, w: box.w, h: box.h - rb.h };
-    const rc = chooseRows(rb, row.map(t => t.aspect), null, null, phone), sc = chooseRows(sb, stad.map(t => t.aspect), null, null, phone);
+    const rc = chooseRows(rb, row.map(t => t.aspect), null, null, phone, avoidLone), sc = chooseRows(sb, stad.map(t => t.aspect), null, null, phone, avoidLone);
     if (!rc || !sc) continue;
     // tier ratio = row short side / stadium short side; must sit in [1.5, 2.5]
     const ratio = rc.minShort / Math.max(1e-9, sc.minShort);
@@ -422,7 +430,7 @@ function packTiers(box, gallery, me, opts, phone) {
     if (!best || val > best.val) best = { val, f, rb, sb };
   }
   if (best.val < -1e17) { // no band split gives legal tile shapes: one shared grid (row first), quality still differs
-    const all = [...row, ...stad], p = packRegion(box, all.map(t => t.aspect), { prevRows: opts.prevRows, phone: phone });
+    const all = [...row, ...stad], p = packRegion(box, all.map(t => t.aspect), { prevRows: opts.prevRows, phone: phone, avoidLone: avoidLone });
     if (phone && box.w > box.h && p && (p.viol > 1 || p.minShort < MIN_SIDE.phone)) {
       const laid = phoneFit(box, all, 'row');
       laid.tiles.forEach((t, i) => { t.tier = i < row.length ? 'row' : 'stad'; });
@@ -431,8 +439,8 @@ function packTiers(box, gallery, me, opts, phone) {
     }
     return { tiles: all.map((q, i) => ({ id: q.id, ...p.rects[i], tier: i < row.length ? 'row' : 'stad' })), rows: p.rows, split: null, merged: true, contentH: box.h, minShort: p.minShort, tooSmall: p.minShort < (phone ? FIT_FLOOR.phone : FIT_FLOOR.other) };
   }
-  const rp = packRegion(best.rb, row.map(t => t.aspect), { prevRows: opts.prevRows, phone: phone });
-  const sp = packRegion(best.sb, stad.map(t => t.aspect), { phone: phone });
+  const rp = packRegion(best.rb, row.map(t => t.aspect), { prevRows: opts.prevRows, phone: phone, avoidLone: avoidLone });
+  const sp = packRegion(best.sb, stad.map(t => t.aspect), { phone: phone, avoidLone: avoidLone });
   const minShort = Math.min(rp.minShort, sp.minShort);
   return { tiles: [...emit(row, rp.rects, 'row'), ...emit(stad, sp.rects, 'stad')], rows: rp.rows + '+' + sp.rows, split: best.f, contentH: box.h, minShort, tooSmall: minShort < (phone ? FIT_FLOOR.phone : FIT_FLOOR.other) };
 }

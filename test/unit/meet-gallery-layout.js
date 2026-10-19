@@ -149,5 +149,35 @@ const strip = L.layoutFor({
 const stripA = strip.rects[0].w / strip.rects[0].h;
 check('skinny box is inset to a portrait phone', Math.abs(stripA - P.ASPECT_MIN) < 1e-3, stripA.toFixed(3));
 
+// Beside a share, a face that shares its row with nobody is a gap. Column
+// stacks still overlap, so they are not that gap. The open gallery still
+// ends a square 5-up on a single cell so every face stays the same size.
+function shareStrip(rowN, stadN) {
+  const tiles = [{ id: 'share', aspect: 16 / 9, share: true, stage: true }];
+  for (let i = 0; i < rowN + stadN; i++) {
+    tiles.push({ id: 'p' + i, aspect: 16 / 9, me: i === 0, tier: i < rowN ? 'row' : 'stad' });
+  }
+  return L.layoutFor({ w: 1280, h: 720, mode: 'stageGallery', gallery: 'fit', tiles: tiles });
+}
+function loneFaces(rects, tier) {
+  const faces = (rects || []).filter((t) => t.tier === tier);
+  let n = 0;
+  for (const t of faces) {
+    const beside = faces.some((o) => o !== t && o.y < t.y + t.h - 1 && t.y < o.y + o.h - 1);
+    if (!beside) n++;
+  }
+  return n;
+}
+function noLoneRow(name, laid, tier) {
+  const faces = (laid.rects || []).filter((t) => t.tier === tier);
+  const lone = loneFaces(laid.rects, tier);
+  check(name, faces.length < 2 || lone === 0, 'lone=' + lone + ' of ' + faces.length);
+}
+check('open gallery 5-up may end on one', !!lead && lead.counts.indexOf(1) >= 0, lead && lead.counts.join(','));
+const shot46 = shareStrip(5, 6);
+noLoneRow('share strip 5 row faces fill their rows', shot46, 'row');
+noLoneRow('share strip 6 stadium faces fill their rows', shot46, 'stad');
+noLoneRow('share strip of 11 fills every row', shareStrip(11, 0), 'row');
+
 console.log(pass + ' passed, ' + fail + ' failed, ' + cases + ' viewport cases');
 process.exit(fail ? 1 : 0);

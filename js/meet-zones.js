@@ -25,8 +25,25 @@
   const FIT_ROW_MIN = { desk: 96, phone: 96 };
   const FIT_STAD_MIN = { desk: 40, phone: 40 };
 
-  function lines(n, perLine) { return n > 0 ? Math.ceil(n / Math.max(1, perLine)) : 0; }
   function perLine(w, side, gap) { return Math.max(1, Math.floor((w + gap) / (side + gap))); }
+  function lastCount(n, per) { const r = n % per; return r === 0 ? per : r; }
+  // Beside a share, do not leave one face on a line of its own (2/2/1, or
+  // five then one) when another count fills every line. Fewer across keeps
+  // the square; one more across shrinks it so the extra column fits.
+  function choosePer(n, w, side, gap, avoidLone) {
+    const fit = Math.max(1, perLine(w, Math.max(1, side), gap));
+    const per = Math.min(fit, Math.max(1, n));
+    if (!avoidLone || !(n > 1) || lastCount(n, per) !== 1) return { per: per, side: side };
+    for (let p = per - 1; p >= 2; p--) {
+      if (lastCount(n, p) !== 1) return { per: p, side: side };
+    }
+    for (let p = per + 1; p <= n; p++) {
+      if (lastCount(n, p) === 1) continue;
+      const shrunk = Math.floor((w - (p - 1) * gap) / p);
+      if (shrunk >= 1) return { per: p, side: shrunk };
+    }
+    return { per: per, side: side };
+  }
 
   // The side that fills a line exactly with as many tiles as fit at `side`.
   function snap(w, side, gap) {
@@ -35,32 +52,37 @@
   }
 
   // Height the people area needs with Row side s and Stadium side t.
-  function peopleH(nr, ns, w, s, t, gap) {
-    const lr = lines(nr, perLine(w, s, gap));
-    const ls = lines(ns, perLine(w, t, gap));
+  function peopleH(nr, ns, w, s, t, gap, avoidLone) {
+    const rs = nr ? choosePer(nr, w, s, gap, avoidLone) : null;
+    const ts = ns ? choosePer(ns, w, t, gap, avoidLone) : null;
+    const lr = rs ? Math.ceil(nr / rs.per) : 0;
+    const ls = ts ? Math.ceil(ns / ts.per) : 0;
+    const sh = rs ? rs.side : 0, th = ts ? ts.side : 0;
     let h = 0;
-    if (lr) h += lr * s + (lr - 1) * gap;
-    if (ls) h += (h ? gap : 0) + ls * t + (ls - 1) * gap;
+    if (lr) h += lr * sh + (lr - 1) * gap;
+    if (ls) h += (h ? gap : 0) + ls * th + (ls - 1) * gap;
     return h;
   }
 
   // Largest Row side that fits (Fit). Stadium follows at STAD_RATIO.
-  function fitSide(nr, ns, w, h, gap) {
+  function fitSide(nr, ns, w, h, gap, avoidLone) {
     let lo = 1, hi = Math.max(1, Math.min(w, h));
     if (!ns && nr === 1) return Math.floor(hi);
     for (let i = 0; i < 40; i++) {
       const mid = (lo + hi) / 2;
       const t = ns ? Math.max(1, mid * STAD_RATIO) : 0;
-      if (peopleH(nr, ns, w, mid, t, gap) <= h) lo = mid; else hi = mid;
+      if (peopleH(nr, ns, w, mid, t, gap, avoidLone) <= h) lo = mid; else hi = mid;
     }
     return Math.floor(lo);
   }
 
   // Lay n squares of side `side` in centered lines from y. Returns the rects
   // and the y under the last line.
-  function flow(ids, tier, box, side, y, gap) {
+  function flow(ids, tier, box, side, y, gap, avoidLone) {
     const out = [];
-    const per = perLine(box.w, side, gap);
+    const picked = choosePer(ids.length, box.w, side, gap, avoidLone);
+    side = picked.side;
+    const per = picked.per;
     for (let i = 0; i < ids.length; i += per) {
       const k = Math.min(per, ids.length - i);
       const lineW = k * side + (k - 1) * gap;
@@ -74,7 +96,7 @@
     return { rects: out, y: ids.length ? y - gap : y };
   }
 
-  function people(row, stad, box, phone, gallery, gap) {
+  function people(row, stad, box, phone, gallery, gap, avoidLone) {
     const nr = row.length, ns = stad.length;
     let s, t;
     if (gallery === 'scroll') {
@@ -99,12 +121,21 @@
         t = snap(box.w, FIT_STAD_MIN[k2], gap);
       }
     }
-    const total = peopleH(nr, ns, box.w, s, t, gap);
+    if (avoidLone) {
+      s = choosePer(nr, box.w, s, gap, true).side;
+      if (ns) {
+        const cap = Math.max(1, Math.floor(s * STAD_RATIO));
+        t = Math.min(t, cap);
+        t = choosePer(ns, box.w, t, gap, true).side;
+        if (t > cap) t = cap;
+      }
+    }
+    const total = peopleH(nr, ns, box.w, s, t, gap, avoidLone);
     // Fit centers the block; Scroll starts at the top.
     let y = box.y + (gallery === 'scroll' ? 0 : Math.max(0, (box.h - total) / 2));
-    const a = flow(row, 'row', box, s, y, gap);
+    const a = flow(row, 'row', box, s, y, gap, avoidLone);
     y = a.y + (a.rects.length && ns ? gap : 0);
-    const b = flow(stad, 'stad', box, t, y, gap);
+    const b = flow(stad, 'stad', box, t, y, gap, avoidLone);
     return { rects: a.rects.concat(b.rects), contentH: Math.max(box.h, total), side: s, stadSide: t, tooSmall: ns > 0 && t < 28 };
   }
 
@@ -192,7 +223,7 @@
       pb = { x: box.x, y: box.y + sh + gap, w: box.w, h: Math.max(1, box.h - sh - gap) };
       sr = stageRects(stage, sb, gap, phone);
     }
-    const p = people(row, stad, pb, phone, gallery, gap);
+    const p = people(row, stad, pb, phone, gallery, gap, true);
     const rects = sr.concat(p.rects);
     const contentH = (pb.y - box.y) + p.contentH;
     return { rects: rects, contentH: Math.max(box.h, contentH), regions: { stage: sb, people: pb }, side: p.side, stadSide: p.stadSide, tooSmall: p.tooSmall && gallery === 'fit', gallery: gallery };
