@@ -2086,9 +2086,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #airbar.watch { background: #e8ecf1; color: #1d1d1f; }
   #airbar.group { background: #143024; color: #e7f6ec; }
   #airbar.off { background: #2a2a3f; color: #e0e0f0; }
-  /* A shared slide needs the height: the small-group label bar steps aside
-     while a screen or an app is on the stage. A service keeps its on-air bar. */
-  body.screen-on:not(.broadcast) #airbar, body.comfy.has-app #airbar { display: none !important; }
+  /* A shared slide needs the height: the small-group label steps aside
+     while a screen or an app is on the stage. The Recording button stays
+     (a recording that hides its own indicator must not start). A service
+     keeps its on-air bar. */
+  body.screen-on:not(.broadcast) #airbar:not(.on),
+  body.comfy.has-app #airbar:not(.on) { display: none !important; }
+  body.screen-on:not(.broadcast) #airbar.on,
+  body.comfy.has-app #airbar.on {
+    display: flex !important; position: fixed; z-index: 30; top: 8px; right: 12px;
+    left: auto; margin: 0; width: auto; min-height: 0; padding: 0;
+    background: transparent; justify-content: flex-end; }
+  body.screen-on:not(.broadcast) #airbar.on::before,
+  body.comfy.has-app #airbar.on::before { content: none; }
+  body.screen-on:not(.broadcast) #airkind,
+  body.comfy.has-app #airkind,
+  body.screen-on:not(.broadcast) #airwho,
+  body.comfy.has-app #airwho { display: none !important; }
   #airbar.live::before, #airbar.watch::before, #airbar.group::before {
     content: ''; width: 12px; height: 12px; border-radius: 50%; flex: none; }
   #airbar.live::before { background: #fff; }

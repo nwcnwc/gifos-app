@@ -88,7 +88,10 @@
   // so bots can't conjure infinite computers.) window.GIFOS_THEME is a dev/test
   // override ('' or 'home' = the plain default).
   const parts = (((root.location && root.location.hostname) || '')).split('.');
-  const label = (parts.length >= 3 && parts[0] !== 'www') ? parts[0] : ''; // sub.domain.tld
+  // sub.domain.tld. An IPv4 address is four numbers (127.0.0.1), not a
+  // computer label — treating it as one asked for themes/127 and 404'd.
+  const ipv4 = parts.length === 4 && parts.every((p) => /^\d{1,3}$/.test(p));
+  const label = (!ipv4 && parts.length >= 3 && parts[0] !== 'www') ? parts[0] : '';
   let override = (root.GIFOS_THEME != null) ? root.GIFOS_THEME : label;
   if (override === 'home' || override === 'default') override = '';
 
