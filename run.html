@@ -18910,8 +18910,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const helpModal = document.getElementById('help-modal');
     function openMeetHelp() { helpModal.style.display = 'flex'; helpModal.querySelector('.help-scroll').scrollTop = 0; }
     function paintHelpTip() {
-      document.getElementById('apphelp').title = document.body.classList.contains('has-app') ? uiText('appHelpTip', 'How this app works')
-        : BROADCAST ? 'How this service works' : ROOM.kind === 'app' ? 'How this app room works' : 'How this small group works';
+      const el = document.getElementById('apphelp');
+      if (!el) return;
+      // An app room keeps its own Help line after the app is on screen.
+      // has-app is also true there; it must not replace the room's story.
+      const appRoom = ROOM.kind === 'app' || document.body.classList.contains('app-room');
+      el.title = appRoom ? (uiLang() === 'en' ? 'How this app room works' : uiText('appHelpTitle', 'How this app room works'))
+        : document.body.classList.contains('has-app') ? uiText('appHelpTip', 'How this app works')
+        : BROADCAST ? 'How this service works' : 'How this small group works';
     }
     document.getElementById('help-close').onclick = () => { helpModal.style.display = 'none'; };
     // The Help screen matches WHAT THIS PAGE IS: a meeting keeps the authored
@@ -20156,7 +20162,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const phoneAlone = kind === 'alone' && phoneLayout();
         if (document.body.classList.contains('has-app')) show = false;
         else if (typeof BROADCAST !== 'undefined' && BROADCAST) show = hostAlone || phoneAlone;
-        else if (kind === 'alone') show = true;
+        else show = true; // a meeting shares its link alone or with people here
       }
       btn.style.display = show ? '' : 'none';
       const tip = (ROOM.kind === 'app' || document.body.classList.contains('app-room'))
@@ -20195,8 +20201,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     };
     applyPageHeader();
     paintInviteSlot();
-    document.getElementById('appinvite').onclick = (e) => {
-      const btn = document.getElementById('appinvite');
+    document.getElementById('appinvite').onclick = () => {
       if (ROOM.solo) {
         // THE deferred preflight gate (see the top of this file): a solo app
         // never saw the too-old wall at load, so the Share-live button — the
@@ -20207,20 +20212,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else inviteFromSolo();
         return;
       }
-      if (ROOM.kind === 'app' || document.body.classList.contains('app-room')) {
-        share.classList.add('show');
-        showInviteModal();
-        return;
-      }
-      // An app running inside a meeting never mints a room; Invite is still
-      // the meeting's link, even when the header slot is hidden for layout.
-      if (document.body.classList.contains('has-app')) {
-        share.classList.add('show');
-        showInviteModal();
-        return;
-      }
-      const kind = (statusEl && statusEl.dataset && statusEl.dataset.kind) || '';
-      if (kind === 'alone' && !(e && e.shiftKey)) { shareMeetingLink(btn); return; }
+      // App room, a meeting (alone or with people), and an app inside a
+      // meeting: the same Invite sheet. showInviteModal keeps "a room you
+      // run" off an app room and off a room that already has a host.
       share.classList.add('show');
       showInviteModal();
     };
@@ -20348,6 +20342,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!hasAdminRoom()) return false;
       if (chatLinksOn()) return true;
       return isChatAdmin(byId);
+    }
+    // A plain room keeps ordinary links off. The follow-me line is the
+    // exception: the people left behind need the new room, and the link is
+    // only a meeting on this site (ackReq is that line, nothing else).
+    function followMoveLink(link) {
+      try {
+        const u = new URL(String(link || ''), location.origin);
+        if (u.origin !== location.origin) return false;
+        if (/[#&]v=[A-Za-z0-9-]+/.test(u.hash || '')) return true;
+        return /\/meet\/[A-Za-z0-9-]+\/[a-f0-9]+/.test(u.pathname);
+      } catch (e) { return false; }
     }
     function fileFromAllowed(byId) {
       if (!hasAdminRoom() || !roomPw) return false;
@@ -21442,7 +21447,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // `link`, when present, renders as a "Join →" button — validate it is an
       // http(s) URL (never javascript:/data:) so a peer can't inject a live link.
       let link = (typeof m.link === 'string' && /^https?:\/\//i.test(m.link)) ? m.link.slice(0, 400) : undefined;
-      if (!linksAllowed(m.byId)) link = undefined;
+      if (!linksAllowed(m.byId) && !(m.ackReq && followMoveLink(link))) link = undefined;
       let reply;
       if (m.reply && typeof m.reply === 'object' && !Array.isArray(m.reply)) {
         const id = String(m.reply.id || '').slice(0, 80);
@@ -33744,7 +33749,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (!text) return { ok: false };
           const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: text };
           chat.set(m.id, m);
-          sendAll({ k: 'chat', m });
+          // A bot posts one chat per spoken line. On the mesh that burst spends
+          // the author's flood budget, and the beats and commands after it
+          // never arrive. Line pushes go on the direct channel only. Beats,
+          // answers and a person's chat still use the room.
+          const linePush = text.indexOf('gb1 ') === 0 && text.indexOf('"op":"transcript"') > 0 && text.indexOf('"role":"bot"') > 0;
+          // Off the mesh (that budget is the room's) and off the chat seal
+          // chain, so a line per utterance cannot queue the beats and answers
+          // behind it. The file chain is the other ordered pipe.
+          if (linePush) {
+            for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open') dcSendFile(p, { k: 'chat', m });
+          } else sendAll({ k: 'chat', m });
           try { renderChat(); } catch (e) {}
           try {
             if (typeof window.__gifosMeetEmit === 'function') window.__gifosMeetEmit({ type: 'chat', text: text, by: m.by, byId: m.byId, at: m.at, self: true });
@@ -33774,13 +33789,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const id = x.id || uid('bx');
           const open = [];
           for (const p of peers.values()) if (p.dc && p.dc.readyState === 'open') open.push(p);
-          if (!open.length) return Promise.reject(new Error('No data channel yet.'));
+          // Control chat already rides the mesh (sendAll). A download that
+          // waits on a direct channel alone never arrives while that chat
+          // is flowing: the pair's channel can still be down. Same path.
+          if (!open.length && !(typeof meshNode !== 'undefined' && meshNode)) return Promise.reject(new Error('No data channel yet.'));
           for (let i = 0; i < n; i++) {
             const slice = bytes.subarray(i * CHUNK, Math.min(bytes.length, (i + 1) * CHUNK));
             let bin = '';
             for (let j = 0; j < slice.length; j++) bin += String.fromCharCode(slice[j]);
             const frame = { k: 'bx', id: id, i: i, n: n, name: x.name || 'download', mime: x.mime || 'application/octet-stream', b64: btoa(bin) };
-            for (const p of open) { try { dcSend(p, frame); } catch (e) {} }
+            sendAll(frame);
           }
           return { id: id, n: n, peers: open.length };
         },
