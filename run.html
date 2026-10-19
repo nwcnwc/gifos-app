@@ -6927,6 +6927,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const digLists = () => (foldIsRoom() ? roomDig() : null);
     const stSeen = (st) => (st ? (st.rx || st.at || 0) : 0); // when a status was said, on MY clock (takeStatus)
     let gossipAgeMs = 0; // set while a relayed gossip message is being handled
+    const chatHereSince = Date.now(); // this page's arrival; a gossip line held longer than this was said before we got here
     let admBeatAt = 0; // my last room-wide admin presence beat
     const freshSt = (id) => { const st = statusOf.get(id); return !!st && Date.now() - stSeen(st) <= 15000; };
     const digStageEntry = (id) => { const d = digLists(); return d ? d.stage.find((e) => e.id === id) || null : null; };
@@ -21540,6 +21541,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // History off drops the replay. A question still lands: it is the Questions sheet, not the log.
       const qaEarly = m.q === 1 || !!m.qv || m.qs != null;
       if (backfill && !lateJoinerSeesHistory() && !qaEarly) return false;
+      // The mesh also replays its gossip backlog to a new neighbour as ordinary
+      // chat, aged by how long relays held it (this page's clock). A line held
+      // longer than this page has been open was said before we arrived. A live
+      // hop is younger than the page, so it still lands.
+      if (!backfill && !lateJoinerSeesHistory() && !qaEarly && gossipAgeMs > (Date.now() - chatHereSince)) return false;
       if (!backfill && m.byId !== myId && !chatRateOk(m.byId)) return false;
       // Slow mode is receiver-enforced. note() passes fixture so a test can plant several lines.
       if (!backfill && !(opts && opts.fixture) && slowBlocks(m)) return false;
