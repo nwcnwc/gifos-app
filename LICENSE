@@ -1,0 +1,5 @@
+Copyright (c) 2026 Crowd Concepts, Inc. All rights reserved.
+
+This software and associated documentation files are proprietary to Crowd Concepts, Inc. No license, express or implied, is granted to use, copy, modify, merge, publish, distribute, sublicense, or sell copies of this software, in whole or in part, except with the prior written permission of Crowd Concepts, Inc.
+
+Third-party material in this repository is not covered by the paragraph above and is not claimed by Crowd Concepts, Inc.: each application under apps/ remains under the license recorded for that application, and each vendored library under js/vendor/ and versions/*/js/vendor/ remains under its own upstream license as stated in or alongside that file.
