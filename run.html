@@ -7076,13 +7076,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // stage votes simply cannot pass until a true room majority is visible.
       // Exact tallying beyond section scale is the tree-aggregation protocol
       // (docs/vote-scale.md) — sim-first, like every mesh law.
-      const pop = new Set(Object.values(devOf)); if (myDevHash) pop.add(myDevHash);
+      // A device tag outlives the pulse that vouched for it. Counting every
+      // devOf value let one page's leftover tag raise the bar after an
+      // abstain (that page stayed on 1/4 while the others, whose roster had
+      // already dropped the seat, read 1/3). A tag we no longer hold stays
+      // in the bar only when this page has no roster count — a stale away
+      // pulse must not shrink the bar by itself. A known roster is the floor
+      // below, never a ghost tag's ceiling.
+      const pop = new Set();
+      if (myDevHash) pop.add(myDevHash);
+      const rosterKnown = ((typeof participantCount === 'function' ? participantCount() : 0) || 0);
+      for (const pid of Object.keys(devOf)) {
+        const dv = devOf[pid];
+        if (!dv || dv === myDevHash) continue;
+        if (rosterKnown > 0 && !stHold(pid)) continue;
+        pop.add(dv);
+      }
       for (const d of awayDevs) pop.delete(d); // away devices leave the bar they can't vote against
       // The room-level count still includes away lurkers (they hold live
       // connections); subtract only the EXPLICITLY-away devices I can see.
       // A silently-frozen phone (no away pulse got out) stays in the bar —
       // conservative, and ICE death heals it out of the count in ~1-2 min.
-      const roomN = Math.max(pop.size, ((typeof participantCount === 'function' ? participantCount() : 0) || 0) - awayDevs.size);
+      const roomN = Math.max(pop.size, rosterKnown - awayDevs.size);
       const ab = {};
       for (const d in bagAb) { let k = 0; for (const v of bagAb[d]) if (pop.has(v)) k++; if (k) ab[d] = k; }
       stgTallyCache = { at: now, up: cnt(bagUp), down: cnt(bagDn), upVoters: bagUp, ab, roomN,
