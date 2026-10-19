@@ -5340,28 +5340,37 @@
       const settle = () => { this.comp = new Map(); for (const g of G) this.comp.set(g, find(g)); };
       if (!this.o.turn()) { this.bridges.clear(); settle(); return; }
       const next = new Map(); const old = this.bridges;
-      const mk = (a, b) => ({ a, b, ga: this.groupOf(a), gb: this.groupOf(b), sa: null, sb: null, since: T, switches: 0, lastSwitch: -1, standbySince: -1, standbyHole: null, holeSeatedAt: -1 });
+      // Each record carries its ends' cells (ca, cb). A page's view forgets a
+      // departed seat with its last status, so a dead end's CELL — the hole
+      // the standby watches — must live on the record, never be read back
+      // from the view at switch time.
+      const cellOf = (q) => { const s = this.seatOf(q); return s && s.hasCoord ? ck(s.coord) : null; };
+      const mk = (a, b) => ({ a, b, ca: cellOf(a), cb: cellOf(b), ga: this.groupOf(a), gb: this.groupOf(b), sa: null, sb: null, since: T, switches: 0, lastSwitch: -1, standbySince: -1, standbyHole: null, holeSeatedAt: -1 });
       const carry = (br) => { const o = old.get(pairKey(br.a, br.b)); if (o && o.a === br.a && o.b === br.b) { br.sa = o.sa; br.sb = o.sb; br.since = o.since; br.switches = o.switches; br.lastSwitch = o.lastSwitch; br.standbySince = o.standbySince; } };
-      const inherit = (br) => { const ha = ck(this.seatOf(br.a).coord), hb = ck(this.seatOf(br.b).coord); for (const o of old.values()) if (o.standbySince === -2 && (o.standbyHole === ha || o.standbyHole === hb)) { br.switches = o.switches; br.lastSwitch = o.lastSwitch; } };
+      const inherit = (br) => { const ha = br.ca, hb = br.cb; for (const o of old.values()) if (o.standbySince === -2 && (o.standbyHole === ha || o.standbyHole === hb)) { br.switches = o.switches; br.lastSwitch = o.lastSwitch; } };
       // Section-1 rows: any seated member stands for its row's group; rows whose members reach are one group
       const rowHead = [], rowRep = []; for (let t = 0; t < C(); t++) { rowHead.push(this.at(ck({ pc: 0, r: t, i: 0 }))); rowRep.push(this.rowRep(0, t, null)); }
       const rc = Array.from({ length: C() }, (_, t) => t); const rfind = (x) => { while (rc[x] !== x) { rc[x] = rc[rc[x]]; x = rc[x]; } return x; };
       for (let a = 0; a < C(); a++) for (let b = a + 1; b < C(); b++) { if (rowRep[a] == null || rowRep[b] == null) continue; if (this.reach(rowRep[a], rowRep[b])) { const x = rfind(a), y = rfind(b); if (x !== y) rc[x] = y; } }
       const rowOf = (q) => (this.seatedLive(q) && this.seatOf(q).coord.pc === 0) ? this.seatOf(q).coord.r : -1;
-      const s1unite = (a, b) => { const ra = rowOf(a), rb = rowOf(b); if (ra < 0 || rb < 0) return; const x = rfind(ra), y = rfind(rb); if (x !== y) rc[x] = y; };
+      const rowOfCell = (k) => { if (k == null) return -1; const c = topo.unck(k); return c.pc === 0 ? c.r : -1; };
+      // A kept bridge whose end the view no longer knows (it died) still joins
+      // its two rows: the end's recorded cell stands for it, or the dead-end
+      // bridge spawns a duplicate structural bridge beside itself.
+      const s1unite = (a, b, ca, cb) => { let ra = rowOf(a), rb = rowOf(b); if (ra < 0) ra = rowOfCell(ca); if (rb < 0) rb = rowOfCell(cb); if (ra < 0 || rb < 0) return; const x = rfind(ra), y = rfind(rb); if (x !== y) rc[x] = y; };
       // 1) a dead end hands its bridge to the heirs at once (rule 6)
       for (const [key, br] of old) {
         const aUp = this.endUp(br.a), bUp = this.endUp(br.b);
         if (aUp && bUp) {
-          if (br.standbySince === -2 && this.o.credOk(br.a, br.b)) { const kb = Object.assign({}, br); const occ = this.at(br.standbyHole); if (occ == null || occ === br.standbyDead) kb.holeSeatedAt = -1; else if (kb.holeSeatedAt < 0) kb.holeSeatedAt = T; if (occ == null || occ === br.standbyDead || T - kb.holeSeatedAt < NET_HEAL_SETTLE) { next.set(key, kb); s1unite(br.a, br.b); } }   // the standby keeps the bridge while the hole is open, or while the end that missed its beats is back in it (no switch back and forth); a new seat in the hole takes it over after NET_HEAL_SETTLE ticks
+          if (br.standbySince === -2 && this.o.credOk(br.a, br.b)) { const kb = Object.assign({}, br); kb.ca = cellOf(br.a) || br.ca; kb.cb = cellOf(br.b) || br.cb; const occ = this.at(br.standbyHole); if (occ == null || occ === br.standbyDead) kb.holeSeatedAt = -1; else if (kb.holeSeatedAt < 0) kb.holeSeatedAt = T; if (occ == null || occ === br.standbyDead || T - kb.holeSeatedAt < NET_HEAL_SETTLE) { next.set(key, kb); s1unite(kb.a, kb.b, kb.ca, kb.cb); } }   // the standby keeps the bridge while the hole is open, or while the end that missed its beats is back in it (no switch back and forth); a new seat in the hole takes it over after NET_HEAL_SETTLE ticks
           continue;
         }
         let dt = -1; for (const e of [br.a, br.b]) { const d = this.diedAt.get(e); if (d !== undefined && d > dt) dt = d; }
         if (dt < 0) continue;   // unseated by a heal or a move, not dead: the structure rebuilds its bridge
-        if (dt >= T) { next.set(key, br); s1unite(br.a, br.b); continue; }   // the heirs have not yet missed their beats: down this tick
+        if (dt >= T) { const kb = Object.assign({}, br); kb.ca = cellOf(br.a) || br.ca; kb.cb = cellOf(br.b) || br.cb; next.set(key, kb); s1unite(kb.a, kb.b, kb.ca, kb.cb); continue; }   // the heirs have not yet missed their beats: down this tick
         if (br.standbySince !== -2 && this.endUp(br.sa) && this.endUp(br.sb) && this.o.credOk(br.sa, br.sb)) {
-          const nb = Object.assign({}, br, { a: br.sa, b: br.sb, ga: this.groupOf(br.sa), gb: this.groupOf(br.sb), sa: null, sb: null, switches: br.switches + 1, lastSwitch: T, since: T, standbySince: -2, standbyHole: ck(this.seatOf(aUp ? br.b : br.a).coord), standbyDead: aUp ? br.b : br.a, holeSeatedAt: -1 });
-          const nk = pairKey(nb.a, nb.b); if (!next.has(nk)) { next.set(nk, nb); s1unite(nb.a, nb.b); }
+          const nb = Object.assign({}, br, { a: br.sa, b: br.sb, ca: cellOf(br.sa), cb: cellOf(br.sb), ga: this.groupOf(br.sa), gb: this.groupOf(br.sb), sa: null, sb: null, switches: br.switches + 1, lastSwitch: T, since: T, standbySince: -2, standbyHole: aUp ? br.cb : br.ca, standbyDead: aUp ? br.b : br.a, holeSeatedAt: -1 });
+          const nk = pairKey(nb.a, nb.b); if (!next.has(nk)) { next.set(nk, nb); s1unite(nb.a, nb.b, nb.ca, nb.cb); }
         }
       }
       // 2) deep subnets: every foreign head's owner link
