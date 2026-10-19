@@ -1182,6 +1182,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .vablock .vapass { pointer-events: auto; padding: .45rem 1rem; border-radius: .5rem; border: 1px solid #3fbf7f; background: #1d5a3c; color: #f2fff7; font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; }
   .tile .vablock .vapass[hidden], .tile .vablock .vahost[hidden] { display: none; }
   .tile .vablock .vahost { font-size: .72rem; opacity: .85; }
+  /* The same block, borrowed by the tile window for a person whose row tile
+     is hidden (they sit in another row): a section of the window, not an overlay. */
+  #tilewin .vablock { display: flex; flex-direction: column; align-items: center; gap: .6rem; padding: .6rem .2rem; text-align: center; }
+  #tilewin .vablock p { margin: 0; font-size: .78rem; line-height: 1.35; }
+  #tilewin .vablock .vabuy[hidden], #tilewin .vablock .vapass[hidden], #tilewin .vablock .vahost[hidden] { display: none; }
+  /* The mark on a stadium face whose person is heard, not seen: the pass
+     price when the live terms sell it (meet-views decorFace paints it). */
+  .stadface .va-mark { position: absolute; top: 4px; right: 4px; z-index: 2; padding: 0 .35rem; border-radius: .4rem;
+    border: 1px solid #3fbf7f; background: #1d5a3c; color: #f2fff7; font-size: .62rem; font-weight: 700; line-height: 1.5; pointer-events: none; }
   /* A camera-off seat paints its letter into the <video> (paintAvatarCanvas /
      syncAvatarFeed), so the blur classes on that video cover it like a camera.
      A picture avatar is an <img> of the original bytes, never drawn onto a
@@ -10171,7 +10180,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const sharing = id === myId ? !!myStatus.scr : (typeof sharingScreen === 'function' && !!sharingScreen(id));
             held = stageIds().indexOf(id) >= 0 && !sharing;
           } catch (e3) { held = false; }
-          faces.push({ id: id, name: name, initials: held ? '' : nameInitial(name), off: off || held, avatar: held ? '' : avatar, shade: shadeKey(id), held: held });
+          let vd = { blocked: false, mark: '' };
+          try { vd = vaFaceDecor(id); } catch (e4) {}
+          faces.push({ id: id, name: name, initials: held ? '' : nameInitial(name), off: off || held, avatar: held ? '' : avatar, shade: shadeKey(id), held: held, vaBlocked: vd.blocked, vaMark: vd.mark });
         }
         // STADIUM-FACES: with a cell order, face j is cut from the cell that
         // names it (cellOf; -1 = not in this composite: initials), whatever
@@ -10367,7 +10378,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
     // Tap a tile: it grows in place, then its control window opens. It stays
     // big until the window closes. Per-person buttons live here, not on tiles.
-    const tileWin = { el: null, modbar: null, home: null, winT: 0 };
+    const tileWin = { el: null, modbar: null, home: null, vablock: null, vbHome: null, winT: 0 };
     function twIdOf(el) {
       if (el.classList.contains('tile')) return el.dataset.peer || '';
       if (el.classList.contains('stadface')) return String(el.dataset.pzkey || '').replace(/^stad:/, '');
@@ -10562,6 +10573,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         sec.appendChild(p.modbar);
       }
       if (sec.childNodes.length > 1) win.appendChild(sec);
+      // A blocked person's explanation and offers come with them into the
+      // window: their row tile (which carries the block) is hidden when they
+      // sit in another row. The element is borrowed, like the modbar.
+      const vb = !isMe && p ? vaWindowBlock(p) : null;
+      if (vb) { tileWin.vablock = vb; tileWin.vbHome = p.tile; win.appendChild(vb); }
       // Broadcast: what a watcher can do with the Stage.
       if (document.body.classList.contains('broadcast')) {
         const w = document.createElement('div'); w.className = 'tw-sec';
@@ -10637,6 +10653,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const win = document.getElementById('tilewin'), veil = document.getElementById('tilewin-veil');
       if (tileWin.modbar && tileWin.home) { try { tileWin.home.appendChild(tileWin.modbar); } catch (e) {} }
       tileWin.modbar = tileWin.home = null;
+      if (tileWin.vablock && tileWin.vbHome) { try { tileWin.vbHome.appendChild(tileWin.vablock); } catch (e) {} }
+      tileWin.vablock = tileWin.vbHome = null;
       if (win) { win.querySelectorAll('video').forEach((v) => { try { v.srcObject = null; } catch (e) {} }); win.hidden = true; win.textContent = ''; }
       if (veil) veil.hidden = true;
       document.body.classList.remove('tw-open');
@@ -14143,6 +14161,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (p.tile.classList.contains('va-blocked') !== blocked) { p.tile.classList.toggle('va-blocked', blocked); updateTile(p.id); }
       if (!el) return;
+      // A block on loan to the tile window (twFill) goes home the moment the
+      // tile unblocks: whoever is looking sees the message leave.
+      if (!blocked && el.parentNode && el.parentNode !== p.tile) p.tile.appendChild(el);
       const b = el.querySelector('.vabuy'), hl = el.querySelector('.vahost'), pb = el.querySelector('.vapass');
       const key = (btn ? btn.kind + '|' + btn.price : '') + '/' + (host || '') + '/' + (pass ? pass.label : '');
       if (el.dataset.key !== key) {
@@ -14161,6 +14182,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let any = false;
       for (const p of peers.values()) { vaPaintTile(p, now); if (p.tile && p.tile.classList.contains('va-blocked')) any = true; }
       if (any) vaLoadTerms(); // the prices on the tile: the admin's month, the host line, the pass
+    }
+    // A blocked person seated in another row has no tile on screen (the grid
+    // is row-mates only — reconcileGrid): their stadium face wears the mark
+    // (the pass price, when the live terms sell it), and the tile window
+    // that opens from the face carries the tile's explanation and offers.
+    function vaFaceDecor(id) {
+      const p = peers.get(id);
+      if (!(p && p.tile && p.tile.classList.contains('va-blocked'))) return { blocked: false, mark: '' };
+      const pass = VA.tilePass({ terms: vaTerms, sub: vaSub(), covered: vaPassCovers(id) });
+      return { blocked: true, mark: pass ? pass.label.split(',')[0] : '' };
+    }
+    // The element the tile window borrows for a blocked person. vaPaintTile
+    // returns it home when the tile unblocks; closeTileWin always does.
+    function vaWindowBlock(p) {
+      return p && p.vaBlockEl && p.tile && p.tile.classList.contains('va-blocked') ? p.vaBlockEl : null;
     }
     // A friend carrying a person's voice to someone keeps carrying voice only
     // after that person's pair turns paid, unless the carry is rebuilt with
