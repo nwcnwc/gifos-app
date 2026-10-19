@@ -792,16 +792,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: none; border: 1px solid var(--border, #2a2a3f); color: var(--muted, #8a8aa8); }
   #timingrow button.on { border-color: var(--accent, #7b5cff); color: var(--text, #e0e0f0); background: rgba(123,92,255,.14); }
   #mixpanel input[type=range] { width: 120px; }
-  /* App-in-meeting: the shared app fills the stage; participant tiles shrink to
-     a scrolling filmstrip along the bottom so everyone stays visible. */
+  /* App-in-meeting: the app takes the Stage seat a shared screen takes
+     (meet-views lays out #appseat and the pane is pinned on it): the whole
+     left side sideways, the top band upright, the people beside or under it.
+     Without the comfy layout the faces fall back to a filmstrip under it. */
   #apppane { display: none; flex-direction: column; flex: 1; min-height: 0; }
   body.has-app #apppane { display: flex; }
-  body.has-app #feed { flex: 0 0 auto; height: 132px; overflow-y: hidden;
+  #appseat { visibility: hidden; pointer-events: none; }
+  body.comfy.has-app:not(.app-full) #apppane { position: fixed; z-index: 2; margin: 0; padding: 0;
+    left: var(--seat-x, 0px); top: var(--seat-y, 0px); width: var(--seat-w, 0px); height: var(--seat-h, 0px);
+    border-radius: 10px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
+  body.has-app:not(.comfy) #feed { flex: 0 0 auto; height: 132px; overflow-y: hidden;
     border-top: 1px solid var(--border, #2a2a3f); }
-  body.has-app #grid { grid-auto-flow: column; grid-template-columns: none;
+  body.has-app:not(.comfy) #grid { grid-auto-flow: column; grid-template-columns: none;
     grid-auto-columns: 180px; grid-template-rows: 1fr; height: 132px; padding: 8px;
     overflow-x: auto; overflow-y: hidden; }
-  body.has-app #stadium, body.has-app #stagefeed { display: none; }
+  body.has-app:not(.comfy) #stadium, body.has-app:not(.comfy) #stagefeed { display: none; }
   /* BROADCAST (the Broadcast app, #bc=1 on an admin room): the Stage is the
      show and chat is the back-channel — the row grid and the stadium strip
      never render. Roles are body classes, not a Meet share grant
@@ -877,7 +883,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* A desktop has the room: Help and the "you are hosting it" line read at
      16px like the rest of the bar (older eyes). Phones keep the small line. */
   @media (min-width: 900px) {
-    #appbar #apphelp, #appbar #appwho { font-size: 16px; }
+    #appbar #apphelp, #appbar #appwho, #appbar #appname { font-size: 16px; }
+  }
+  /* A narrow bar (a phone, or the app's seat beside the faces) cut the line
+     to "share…". There it takes its own line under the name and buttons,
+     whole; the buttons wrap rather than run off the edge. */
+  #appbar { container-type: inline-size; flex-wrap: wrap; row-gap: .2rem; }
+  @container (max-width: 720px) {
+    #appbar #appwho { order: 1; flex-basis: 100%; white-space: normal; overflow: visible; }
   }
   /* When the app bar is the ONLY bar (solo / app room before a call), it also
      carries the GifOS home link — same gradient wordmark as the meeting bar. */
@@ -885,9 +898,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: linear-gradient(135deg, var(--accent, #7b5cff), var(--accent2, #ff5caa));
     -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
   body.solo-app #appbar .brand, body.app-room #appbar .brand { display: inline; }
-  /* The app's own GIF stands in for its name — the file IS the app, and for a
+  /* The app's own GIF sits beside its name — the file IS the app, and for a
      guest the thumbnail rendering proves the bytes have landed (the same bytes
-     Steal copies). The name stays as the image's title/alt and the tab title. */
+     Steal copies). */
   #appgif { width: 22px; height: 22px; border-radius: 5px; object-fit: cover; display: none; flex: none; }
   /* ONE button voice in the app bar: every control wears the same quiet pill
      (the Abilities chip's geometry); .perms keeps its ok/unsafe accent colors. */
@@ -2075,8 +2088,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #airbar.group { background: #143024; color: #e7f6ec; }
   #airbar.off { background: #2a2a3f; color: #e0e0f0; }
   /* A shared slide needs the height: the small-group label bar steps aside
-     while a screen is on the stage. A service keeps its on-air bar. */
-  body.screen-on:not(.broadcast) #airbar { display: none !important; }
+     while a screen or an app is on the stage. A service keeps its on-air bar. */
+  body.screen-on:not(.broadcast) #airbar, body.comfy.has-app #airbar { display: none !important; }
   #airbar.live::before, #airbar.watch::before, #airbar.group::before {
     content: ''; width: 12px; height: 12px; border-radius: 50%; flex: none; }
   #airbar.live::before { background: #fff; }
@@ -2370,7 +2383,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (min-width: 601px) and (min-height: 501px) { .fitbtn { top: calc(14px + var(--gtop, 0px)); min-height: 44px; padding: 10px 16px; } }
   /* Same for an app in a meeting: its bar starts below the header row, and Fit
      (faces are a strip under the app, nothing to fit) leaves Stop app clear. */
-  body.desk-ptr.has-app:not(.solo-app):not(.app-room) #apppane,
+  body.desk-ptr.has-app:not(.solo-app):not(.app-room):not(.comfy) #apppane,
   body.desk-ptr.has-app.app-room.audio-on #apppane { padding-top: 70px; }
   body.has-app .fitbtn { display: none; }
   body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
@@ -2403,6 +2416,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-height: 500px) and (orientation: landscape) {
     #gifos-build-float { top: var(--gtop) !important; }
   }
+  /* A solo app or an app room has no header: its app bar is the top row,
+     and the top-corner label sat on the bar's Full screen button. There the
+     label goes back to the bottom-left corner build-badge.js draws it in. */
+  body.solo-app #gifos-build-float, body.app-room #gifos-build-float {
+    top: auto !important; right: auto !important;
+    bottom: calc(.3rem + env(safe-area-inset-bottom, 0px)) !important;
+    left: calc(.4rem + env(safe-area-inset-left, 0px)) !important; }
   .bar { position: fixed; z-index: 32; left: 50%; bottom: 14px; transform: translateX(-50%);
     display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; height: 104px; width: auto;
     max-width: calc(100% - 16px - var(--inset-left, 0px) - var(--inset-right, 0px)); padding: 0 16px 0 18px; margin: 0;
@@ -2715,11 +2735,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* Comfy: every face on screen, tiles the same size, the gallery stops
      above the dock so a name is not covered. The long :not chain is what
      the older gallery rule uses; matching it is what lets these win.
+     Comfy lays out an app in the meeting too, so where the gallery rule
+     names .has-app these name .app-full (the app over the whole call).
      Padding stays zero. The packer insets the bottom by the dock. */
-  body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
+  body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) #feed {
     position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; overflow: hidden; padding: 0 !important; margin: 0;
     display: block; background: #0d0f14; z-index: 1; }
-  body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll {
+  body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll {
     overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
     /* Ends at the dock band (meet-views sets it): no tile under the buttons. */
     bottom: var(--comfy-clip, 0px); }
@@ -2727,12 +2749,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     position: static; display: block; padding: 0; margin: 0; gap: 0; overflow: visible;
     height: auto; background: transparent; border: 0; }
   body.comfy #stadium.on { display: block; }
-  body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile,
+  body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile,
   body.comfy .stadface, body.comfy .rowtile {
     border-radius: 0; border: 0; aspect-ratio: auto; min-height: 0; box-shadow: none; }
-  body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
+  body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
     position: absolute; right: auto; bottom: auto; border: 0; border-radius: 0; box-shadow: none; }
-  body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-self="float"] {
+  body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-self="float"] {
     z-index: 7; border-radius: 16px; border: 2px solid #fff; overflow: hidden; cursor: grab; touch-action: none;
     box-shadow: 0 12px 28px rgba(0,0,0,.45); }
   body.comfy .comfy-off { display: none !important; }
@@ -2741,8 +2763,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      `.tile.speaking`, and an inset shadow would sit under the video that
      fills the tile. Outline paints above the picture. A negative offset
      keeps the frame inside this tile, where the neighbour cannot cover it. */
-  body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.speaking,
-  body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me.speaking,
+  body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile.speaking,
+  body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile.me.speaking,
   body.comfy .stadface.speaking {
     outline: 3px solid #7bffcf;
     outline-offset: -3px;
@@ -2785,7 +2807,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* Scroll is a manual gallery choice. Fit stays one screen (overflow hidden
      above). Scroll grows downward; it is not a pager and it is not applied
      just because faces got small. */
-  body.comfy.gallery-scroll:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
+  body.comfy.gallery-scroll:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) #feed {
     overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   /* A fade just above the dock when Scroll has more people below. */
   body.comfy.gallery-scroll #feed.can-scroll::after {
@@ -2795,7 +2817,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.comfy.gallery-scroll #feed.can-scroll::after { bottom: 128px; }
   }
   /* Desktop gallery: a gutter between faces (meet-views.js) and soft corners. */
-  body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-gutter="1"],
+  body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-gutter="1"],
   body.comfy .stadface[data-gutter="1"] { border-radius: 10px; overflow: hidden; }
   /* Gallery keeps the stage strip playing (PiP can aim it) but off the mosaic.
      A stage mode adds .show-stage and places that strip itself. */
@@ -2969,7 +2991,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       flex: 0 0 auto; height: auto; width: max-content; flex-direction: column;
       overflow-x: hidden; overflow-y: auto; padding: 0 8px; }
   }
-  body.has-app #feed { margin-bottom: 132px; }
+  body.has-app:not(.comfy) #feed { margin-bottom: 132px; }
   body.broadcast #feed { padding-bottom: 132px; box-sizing: border-box; }
   #joinveil { background: transparent; pointer-events: none; align-items: flex-start; justify-content: center; padding-top: 72px; z-index: 18; }
   #joinveil .jv-box { pointer-events: auto; background: #fff; color: #1d1d1f; border-radius: 16px; padding: 1.1rem 1.3rem;
@@ -4075,6 +4097,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div id="bc-stage" hidden><p id="bc-stage-line">Joining the service…</p></div>
     <div id="bc-react" aria-hidden="true"></div>
     <div id="bc-reacts" hidden role="status" aria-label="Audience reactions"></div>
+    <div id="appseat" aria-hidden="true"></div>
     <div id="grid"></div>
     <div id="stadium"></div>
   </div>
@@ -9790,6 +9813,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
           tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, pz: 'stage:sgs' });
         }
+        // An app in the meeting takes the seat a shared screen takes. Its
+        // pane stays where it is in the page (moving an iframe reloads it):
+        // a stand-in holds the seat in the layout and the pane is pinned on it.
+        const appSeat = document.getElementById('appseat');
+        const appOn = !!appSeat && document.body.classList.contains('has-app');
+        if (appOn) tiles.unshift({ id: 'stage:app', el: appSeat, tier: 'row', stage: true, share: true, fill: true, pz: 'stage:app' });
         document.body.classList.toggle('show-stage', sgsOn);
         const meta = comfyStadMeta();
         const roster = comfyStadRoster();
@@ -9814,7 +9843,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           meta.video.addEventListener('resize', () => { try { layout(); } catch (e) {} });
         }
         const vwNow = window.innerWidth, vhNow = window.innerHeight;
-        const shortLand = vhNow < 500 && vwNow > vhNow && vwNow < 900;
+        // A sideways phone is short whatever its width (a Pixel 7 is 915x412);
+        // a short desktop window under 900px wide is treated like one too.
+        const shortLand = vhNow < 500 && vwNow > vhNow && (vwNow < 900 || !document.body.classList.contains('desk-ptr'));
         const phone = vwNow < 600 || shortLand;
         let topInset = 0;
         // The "new version" bar moves the header down by --updh; the faces
@@ -9822,7 +9853,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const updH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--updh')) || 0;
         // A phone with a shared screen up: Fit is hidden, so the Stage starts
         // right under the header chip and the build line.
-        const stageUpright = phone && !shortLand && document.body.classList.contains('show-stage');
+        const stageUpright = phone && !shortLand && (sgsOn || appOn);
         if (stageUpright) {
           let below = 0;
           for (const sel of ['.topchip', '#gifos-build-float', '#unmute', '#showcam']) {
@@ -9874,9 +9905,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
           if (holdBottom) holdBottom = Math.max(holdBottom, bottom);
         } catch (e) {}
+        // Sideways on a phone the share runs to the bottom of the screen; the
+        // call's buttons wake over it and never move it.
+        let floor = 0;
+        if (shortLand && (sgsOn || appOn)) {
+          const probe = document.getElementById('gifos-safe-b');
+          floor = vhNow - ((probe && probe.offsetHeight) || 0);
+        }
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: faces, video: meta.video, cols: cols,
-          orderKey: roster.length + ':' + roster.join(','), holdMs: holdMs,
+          orderKey: roster.length + ':' + roster.join(','), holdMs: holdMs, floor: floor,
           vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: shadeKey('me'),
           pill: document.body.classList.contains('has-pill'), bottom: bottom, holdBottom: holdBottom, top: topInset,
           mode: window.__meetViewMode || 'gallery',
@@ -9885,6 +9923,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           gallery: window.__meetGallery || 'fit', now: Date.now(),
           onSettle: () => { try { layout(); } catch (e) {} },
         });
+        const pane = document.getElementById('apppane');
+        if (pane) {
+          for (const [k, v] of [['--seat-x', 'left'], ['--seat-y', 'top'], ['--seat-w', 'width'], ['--seat-h', 'height']]) {
+            if (appOn && appSeat.style[v]) pane.style.setProperty(k, appSeat.style[v]);
+            else pane.style.removeProperty(k);
+          }
+        }
         if (meta.srcEl) meta.srcEl.classList.toggle('stad-src', faces.length > 0);
         try { applyViewerCrops(); } catch (e) {}
       } finally { comfyBusy = false; }
@@ -32427,9 +32472,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } catch (e) {}
     }
 
-    // The bar shows the app's GIF itself instead of its name — the file IS the
-    // app, and on a guest's screen the thumbnail doubles as proof the bytes
-    // have arrived (they are the exact bytes Steal copies). Name → title/alt.
+    // The bar shows the app's GIF beside its name — the file IS the app, and
+    // on a guest's screen the thumbnail doubles as proof the bytes have
+    // arrived (they are the exact bytes Steal copies). The host and every
+    // guest read the same name.
     let appGifUrl = null;
     function setAppGif(bytes, name) {
       if (!bytes || !bytes.length) return;
@@ -32446,10 +32492,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // together above. Only ever the STRIPPED bytes.
       if (stripped) setAppFavicon(appGifUrl, 'image/gif');
       img.style.display = 'block';
-      document.getElementById('appname').style.display = 'none';
     }
     function showAppPane(name, who) {
       document.body.classList.add('has-app');
+      try { window.__meetRelayout(); } catch (e) {}
       document.getElementById('appname').textContent = name || 'App';
       document.getElementById('appwho').textContent = who || '';
       // ONE RUNTIME: app-PINNED rooms never show unmount affordances — the room
@@ -32647,6 +32693,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       refreshStealBtn();
       appMountEl.innerHTML = '';
       document.body.classList.remove('has-app');
+      try { window.__meetRelayout(); } catch (e) {}
       const ap = document.getElementById('appperms'); if (ap) ap.style.display = 'none';
       appMode = null; appKey = null;
     }

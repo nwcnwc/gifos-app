@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { SEAT_VIEWS, seatPage, seatAndWake } = require('../shared/share-seat');
 
 // Playwright's Linux WebKit does WebCrypto with libgcrypt, which aborts the
 // tab on an Ed25519 signature over 64 KB (an app's bytes); Safari does not.
@@ -94,20 +95,21 @@ test('a running app\'s bar is clear of the header, Fit, and the build label', as
   expect(got.covered).toEqual([]);
 });
 
-// With an app running, the faces are a 180px strip under it. The self tile's
-// "Muted" and "Camera off" words were cut at the tile's edge ("Camera"), and a
-// view-only note (no camera found) ran as unreadable text behind the chips and
-// the name. Every chip must sit whole inside its tile, and any note text shown
-// must fit inside the tile too.
-test('a running app\'s face strip shows each face\'s marks whole, with no cut text', async ({ page }) => {
+// With an app running, the faces stand beside it, as beside a shared screen.
+// The self tile's "Muted" and "Camera off" words were cut at the tile's edge
+// ("Camera"), and a view-only note (no camera found) ran as unreadable text
+// behind the chips and the name. Every chip must sit whole inside its tile,
+// and any note text shown must fit inside the tile too.
+test('a running app\'s faces show each face\'s marks whole, with no cut text', async ({ page }) => {
   await boot(page);
   await page.setInputFiles('#app-file-input', 'apps/2048/2048.gif');
   await page.waitForFunction(() => document.body.classList.contains('has-app'), null, { timeout: 30000 });
   await page.keyboard.press('Escape');
-  // The faces become a strip a moment after the app mounts: wait for it.
+  // The faces move beside the app a moment after it mounts: wait for it.
   await page.waitForFunction(() => {
-    const t = document.querySelector('.tile.me');
-    return t && t.querySelector('.chips span.ico') && t.getBoundingClientRect().width <= 200;
+    const t = document.querySelector('.tile.me[data-comfy="1"]');
+    const pane = document.getElementById('apppane').getBoundingClientRect();
+    return t && t.querySelector('.chips span.ico') && pane.width > 0 && t.getBoundingClientRect().left >= pane.right;
   });
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
   const got = await page.evaluate(() => {
@@ -128,10 +130,9 @@ test('a running app\'s face strip shows each face\'s marks whole, with no cut te
       const r = note.getBoundingClientRect();
       noteCut = !inside(r) || note.scrollHeight > note.clientHeight + 1;
     }
-    return { cut, noteCut, tileW: Math.round(t.width) };
+    return { cut, noteCut };
   });
-  await page.screenshot({ path: 'test/desktop/shots/app-strip-1280.png', clip: { x: 0, y: 420, width: 640, height: 300 } });
-  expect(got.tileW).toBeLessThanOrEqual(200);
+  await page.screenshot({ path: 'test/desktop/shots/app-strip-1280.png' });
   expect(got.cut).toEqual([]);
   expect(got.noteCut).toBe(false);
 });
@@ -190,6 +191,45 @@ test('every word on a running app\'s bar is 16px or more', async ({ page }) => {
   expect(got.small).toEqual([]);
   expect(got.offRight).toBe(0);
 });
+
+// An app in a meeting takes a shared screen's seat (Nathan 19:02): the left
+// side sideways, the top band upright, the faces beside or under it, and
+// waking the buttons moves nothing. Its bar keeps the app's name beside the
+// GIF (the host saw only the icon) and the "who" line whole (a phone read
+// "share…").
+for (const view of SEAT_VIEWS) {
+  test('a running app takes the share seat at ' + view.tag + ' and its bar reads whole', async ({ browser, browserName }) => {
+    const { ctx, page } = await seatPage(browser, browserName, view, 'qaappseat');
+    await page.waitForFunction(() => window.__gifosVideo.canRunApp());
+    await page.evaluate(() => document.getElementById('bartoggle').click());
+    await page.evaluate(() => document.getElementById('appbtn').click());
+    await page.setInputFiles('#app-file-input', 'apps/2048/2048.gif');
+    await page.waitForFunction(() => document.body.classList.contains('has-app') && document.getElementById('appgif').getClientRects().length > 0, null, { timeout: 30000 });
+    await page.keyboard.press('Escape');
+    const got = await seatAndWake(page, view, 'app');
+    const bar = await page.evaluate(() => {
+      const shown = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).display !== 'none';
+      const pane = document.getElementById('apppane').getBoundingClientRect();
+      const who = document.getElementById('appwho');
+      const off = [...document.querySelectorAll('#appbar > *')].filter(shown)
+        .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && (r.left < pane.left - 1 || r.right > pane.right + 1); })
+        .map((el) => el.id || el.className);
+      return {
+        name: shown(document.getElementById('appname')) ? document.getElementById('appname').textContent : '',
+        gif: shown(document.getElementById('appgif')),
+        who: who.textContent, whoCut: who.scrollWidth > who.clientWidth + 1, off,
+      };
+    });
+    await page.screenshot({ path: 'test/desktop/shots/app-seat-' + view.tag + '.png' });
+    await ctx.close();
+    expect(got.problems).toEqual([]);
+    expect(got.rested).toBe(true);
+    expect(got.woke).toBe(true);
+    if (view.phone) expect([got.calm.away, got.after.away]).toEqual([true, false]);
+    expect(got.moved).toEqual([]);
+    expect(bar).toEqual({ name: '2048', gif: true, who: '· you are hosting it for the meeting', whoCut: false, off: [] });
+  });
+}
 
 // The line beside a running app's name says who runs it: "· you are hosting
 // it for the meeting" for me, "· shared with the meeting by Jordan Lee" for a

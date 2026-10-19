@@ -108,7 +108,8 @@
   }
 
   // Stage items at their true aspect, side by side (or stacked when that is
-  // bigger), each contain-fit and centered in its cell.
+  // bigger), each contain-fit and centered in its cell. A `fill` item (an app
+  // in the meeting) has no aspect of its own and takes its whole cell.
   // top: the Stage hugs the top of its band (a phone, where the header sits
   // right above it) instead of centring in it.
   function stageRects(items, box, gap, top) {
@@ -121,6 +122,7 @@
       if (cw <= 0 || ch <= 0) continue;
       let area = 0;
       for (let i = 0; i < n; i++) {
+        if (items[i].fill) { area += cw * ch; continue; }
         const a = items[i].aspect > 0 ? items[i].aspect : 16 / 9;
         const w = Math.min(cw, ch * a);
         area += w * (w / a);
@@ -135,13 +137,16 @@
       const rowW = inRow * best.cw + (inRow - 1) * gap;
       const x0 = box.x + (box.w - rowW) / 2 + c * (best.cw + gap);
       const y0 = box.y + (top ? 0 : (box.h - (best.rows * best.ch + (best.rows - 1) * gap)) / 2) + r * (best.ch + gap);
-      const w = Math.min(best.cw, best.ch * a), h = w / a;
+      const w = items[i].fill ? best.cw : Math.min(best.cw, best.ch * a);
+      const h = items[i].fill ? best.ch : w / a;
       out.push({ id: items[i].id, tier: 'stage', x: x0 + (best.cw - w) / 2, y: y0 + (top ? 0 : (best.ch - h) / 2), w: w, h: h, fit: 'contain' });
     }
     return out;
   }
 
-  // opts: { box:{x,y,w,h}, stage:[{id,aspect}], row:[id], stad:[id], phone, gallery, gap }
+  // opts: { box:{x,y,w,h}, stage:[{id,aspect,fill}], row:[id], stad:[id], phone, gallery, gap, floor }
+  // floor: side by side, the Stage may run down to this y (past box, under
+  // the call's buttons, which then wake over it instead of moving it).
   function layout(opts) {
     const box = opts.box;
     const gap = opts.gap != null ? opts.gap : (opts.phone ? 4 : GAP);
@@ -156,23 +161,38 @@
     // The people get a band sized for their squares; the Stage takes the rest.
     const wide = box.w >= box.h * 1.15;
     const n = row.length + stad.length;
-    let sb, pb;
+    let sb, pb, sr;
     if (wide) {
+      // Sideways the Stage is the whole left side and the people stand on
+      // the right. A picture narrower than its side moves flush left and the
+      // width it leaves goes to the people.
       const frac = n <= 1 ? 0.2 : n <= 4 ? 0.24 : 0.3;
       const pw = Math.round(Math.max(phone ? 110 : 160, Math.min(box.w * frac, phone ? 260 : 440)));
-      sb = { x: box.x, y: box.y, w: box.w - pw - gap, h: box.h };
-      pb = { x: box.x + box.w - pw, y: box.y, w: pw, h: box.h };
+      const sh = opts.floor > box.y + box.h ? opts.floor - box.y : box.h;
+      sb = { x: box.x, y: box.y, w: box.w - pw - gap, h: sh };
+      sr = stageRects(stage, sb, gap, phone);
+      let x0 = Infinity, x1 = -Infinity;
+      for (let i = 0; i < sr.length; i++) { x0 = Math.min(x0, sr[i].x); x1 = Math.max(x1, sr[i].x + sr[i].w); }
+      const used = Math.round(x1 - x0);
+      if (used < sb.w) {
+        for (let i = 0; i < sr.length; i++) sr[i].x -= x0 - sb.x;
+        sb.w = used;
+      }
+      pb = { x: sb.x + sb.w + gap, y: box.y, w: box.x + box.w - (sb.x + sb.w + gap), h: box.h };
     } else {
+      const fill = stage.length === 1 && !!stage[0].fill;
       const a = stage.length === 1 && stage[0].aspect > 0 ? stage[0].aspect : 16 / 9;
       // The Stage band is the picture's own height (never more than 62% of
       // the screen), so it sits right under the header with no empty band.
-      const want = Math.min(box.h * 0.62, box.w / a);
+      // An app has no picture height: it takes the whole 62%.
+      const want = fill ? box.h * 0.62 : Math.min(box.h * 0.62, box.w / a);
       const sh = Math.round(want);
       sb = { x: box.x, y: box.y, w: box.w, h: sh };
       pb = { x: box.x, y: box.y + sh + gap, w: box.w, h: Math.max(1, box.h - sh - gap) };
+      sr = stageRects(stage, sb, gap, phone);
     }
     const p = people(row, stad, pb, phone, gallery, gap);
-    const rects = stageRects(stage, sb, gap, phone).concat(p.rects);
+    const rects = sr.concat(p.rects);
     const contentH = (pb.y - box.y) + p.contentH;
     return { rects: rects, contentH: Math.max(box.h, contentH), regions: { stage: sb, people: pb }, side: p.side, stadSide: p.stadSide, tooSmall: p.tooSmall && gallery === 'fit', gallery: gallery };
   }
