@@ -3886,7 +3886,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button type="button" class="dockmore" data-dock="stagebtn" hidden>Step off</button>
     </div>
     <!-- One sheet for every width, grouped the way a meeting is used. A button
-         pick folds the sheet unless it sits in [data-stay]. placeDockForWidth
+         pick folds the sheet. A text field does not. placeDockForWidth
          moves Chat and Share screen into their groups when the dock is a
          phone's. -->
     <section class="moregroup" data-group="people">
@@ -3906,7 +3906,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     </section>
     <section class="moregroup" data-group="video">
       <h4 data-t="yourVideo">Your video</h4>
-      <div class="moresegs" data-stay>
+      <div class="moresegs">
     <span class="blurctl" title="How much your own video is blurred to everyone else">
       <span class="blurlbl" data-t="blur">Blur</span>
       <span id="blurseg" class="segwrap" role="group" aria-label="Blur level">
@@ -3989,10 +3989,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <section class="moregroup" data-group="host">
       <h4 data-t="host">Host</h4>
       <div class="morerow">
-        <button id="muteall" data-stay data-t="muteGuests" aria-keyshortcuts="Alt+M" title="Mute every guest at once (admins). Only an admin can lift it, for one guest from their tile or for all with the same button." style="display:none">Mute guests</button>
-        <button id="blurall" data-stay data-t="blurGuests" aria-keyshortcuts="Alt+B" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
-        <button id="camall" data-stay data-t="videoOff" aria-keyshortcuts="Alt+X" title="Turn video off for every guest at once (admins) — stronger than blur" style="display:none">Turn video off</button>
-        <button id="shareall" data-stay data-t="allowShare" aria-keyshortcuts="Alt+P" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
+        <button id="muteall" data-t="muteGuests" aria-keyshortcuts="Alt+M" title="Mute every guest at once (admins). Only an admin can lift it, for one guest from their tile or for all with the same button." style="display:none">Mute guests</button>
+        <button id="blurall" data-t="blurGuests" aria-keyshortcuts="Alt+B" title="Blur every guest at once (admins) — same as blocking each of them by hand" style="display:none">Blur guests</button>
+        <button id="camall" data-t="videoOff" aria-keyshortcuts="Alt+X" title="Turn video off for every guest at once (admins) — stronger than blur" style="display:none">Turn video off</button>
+        <button id="shareall" data-t="allowShare" aria-keyshortcuts="Alt+P" title="Let every guest share their screen (admins). Off until you turn it on. One person can still be allowed or stopped from their tile." style="display:none">Allow screen share</button>
         <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
       </div>
     </section>
@@ -29984,7 +29984,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const blurSegs = Array.from(blurSeg.querySelectorAll('.seg'));
 
     // Collapsible header — keep it to a single row (mic / camera / blur) and
-    // fold the rest behind "More". The choice is remembered per browser.
+    // fold the rest behind "More". More always starts closed. A stored open
+    // used to come back after a reload, including after No blur.
     (function () {
       const bar = document.querySelector('.bar'), toggle = document.getElementById('bartoggle');
       function apply(collapsed) {
@@ -30008,8 +30009,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const next = !bar.classList.contains('collapsed'); apply(next);
         try { localStorage.setItem('gifos_meet_bar', next ? '1' : '0'); } catch (e) {}
       };
-      let saved = null; try { saved = localStorage.getItem('gifos_meet_bar'); } catch (e) {}
-      apply(saved === null ? true : saved !== '0'); // default: collapsed
+      // 0 meant "leave More open". A reload must not bring the sheet back.
+      try { if (localStorage.getItem('gifos_meet_bar') === '0') localStorage.setItem('gifos_meet_bar', '1'); } catch (e) {}
+      apply(true);
       const grip = document.getElementById('bargrip');
       let dockx = 0, docky = 0, tucked = false, idleTimer = 0, idleMs = 8000;
       // A small group tucks the dock once the call sits quiet. A service keeps
@@ -30275,16 +30277,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         grip.addEventListener('pointercancel', () => { drag = null; });
       }
       // A pick in More folds the sheet once the button has acted, so nobody
-      // has to press Hide after it. Choices that answer inside the sheet
-      // (blur, your video, the host switches) carry data-stay and keep it up.
-      // Fields are not buttons, so typing a start time never folds it.
-      // The saved open/closed choice is left alone, as the other folds do.
+      // has to press Hide after it. Blur, your video, and the host switches
+      // fold too. A text field is not a button, so typing a start time never
+      // folds it. The fold is saved closed, so a reload cannot open More.
       const moreSheet = document.getElementById('barmore');
       if (moreSheet) moreSheet.addEventListener('click', (e) => {
         if (!e.isTrusted || bar.classList.contains('collapsed')) return;
         const btn = e.target && e.target.closest ? e.target.closest('button') : null;
-        if (!btn || !moreSheet.contains(btn) || btn.closest('[data-stay]')) return;
+        if (!btn || !moreSheet.contains(btn)) return;
         apply(true);
+        try { localStorage.setItem('gifos_meet_bar', '1'); } catch (err) {}
         if (moreSheet.contains(document.activeElement)) toggle.focus();
       });
       // Publish the bar's own height so the fixed overlays that hang from the

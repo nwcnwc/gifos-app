@@ -1,0 +1,776 @@
+{
+  "bad": 0,
+  "total": 10,
+  "runs": [
+    {
+      "profile": "pixel5",
+      "i": 1,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMax": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterKeys": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": []
+    },
+    {
+      "profile": "pixel5",
+      "i": 2,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMax": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterKeys": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": []
+    },
+    {
+      "profile": "pixel5",
+      "i": 3,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMax": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterKeys": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": []
+    },
+    {
+      "profile": "pixel5",
+      "i": 4,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMax": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterKeys": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": []
+    },
+    {
+      "profile": "pixel5",
+      "i": 5,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMax": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterKeys": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": []
+    },
+    {
+      "profile": "desktop",
+      "i": 1,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMax": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterKeys": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": []
+    },
+    {
+      "profile": "desktop",
+      "i": 2,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMax": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterKeys": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": []
+    },
+    {
+      "profile": "desktop",
+      "i": 3,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMax": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterKeys": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": []
+    },
+    {
+      "profile": "desktop",
+      "i": 4,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMax": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterKeys": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": []
+    },
+    {
+      "profile": "desktop",
+      "i": 5,
+      "steps": {
+        "opened": {
+          "collapsed": false,
+          "expanded": "true",
+          "word": "Hide",
+          "display": "grid",
+          "open": true,
+          "stored": "0",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterNone": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "true",
+          "debug": "function"
+        },
+        "reloaded": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMin": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterMax": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "afterKeys": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        },
+        "seededOpen": {
+          "collapsed": true,
+          "expanded": "false",
+          "word": "More",
+          "display": "none",
+          "open": false,
+          "stored": "1",
+          "nonePressed": "false",
+          "debug": "function"
+        }
+      },
+      "fails": []
+    }
+  ]
+}

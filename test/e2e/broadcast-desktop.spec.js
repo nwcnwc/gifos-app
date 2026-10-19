@@ -842,7 +842,7 @@ test('a service hides Fit because the stage is one picture', async ({ page }) =>
 test('a watching viewer keeps Hand and loses the publish controls', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Pat');
-    localStorage.setItem('gifos_meet_bar', '0');
+    localStorage.setItem('gifos_meet_bar', '1');
     localStorage.removeItem('gifos_vadm_sunday.0123456789abcdef');
   });
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -853,6 +853,7 @@ test('a watching viewer keeps Hand and loses the publish controls', async ({ pag
   await expect(page.locator('#mic')).toBeHidden();
   await expect(page.locator('#cam')).toBeHidden();
   await expect(page.locator('#stagebtn')).toBeHidden();
+  await page.locator('#bartoggle').click();
   await expect(page.locator('#hand')).toBeVisible();
   await expect(page.locator('#hand')).toContainText('Raise hand');
   const leaked = await page.evaluate(() => {
@@ -898,7 +899,7 @@ test('a watching viewer keeps Hand and loses the publish controls', async ({ pag
 test('a host promotes from a raised-hands list', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('gifos_name', 'Avery Chen');
-    localStorage.setItem('gifos_meet_bar', '0');
+    localStorage.setItem('gifos_meet_bar', '1');
     const key = 'gifos_vadm_sunday.0123456789abcdef';
     if (location.hash.indexOf('who=view') === -1) localStorage.setItem(key, 'host-key');
     else localStorage.removeItem(key);

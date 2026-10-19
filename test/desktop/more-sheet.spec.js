@@ -31,27 +31,42 @@ test('starting a vote puts the More sheet away so faces stay visible', async ({ 
   expect(cover.word).toBe('More');
 });
 
-// Nathan: "when you select them, it should fold the menu back so that's
-// doesn't have to be done manually." A pick folds More; a choice that answers
-// inside the sheet (blur) keeps it up. The saved open/closed choice is kept.
-test('a pick in More folds the sheet, and a blur choice keeps it open', async ({ page }) => {
+// A pick folds More, including No blur. The fold is saved closed, and a
+// reload does not bring the sheet back.
+test('a pick in More folds the sheet, including No blur, and a reload stays closed', async ({ page }) => {
   await boot(page, 1280, 720);
   await page.click('#bartoggle');
-  await page.click('#blur-min');
-  await expect(page.locator('#bartoggle')).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.locator('#barmore')).toBeVisible();
+  await page.click('#blur-none');
+  await expect(page.locator('#blur-none')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#bartoggle')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#barmore')).toBeHidden();
+  await expect(page.locator('#bartoggle .dockword')).toHaveText('More');
+  expect(await page.evaluate(() => localStorage.getItem('gifos_meet_bar'))).toBe('1');
+  await page.reload();
+  await page.waitForSelector('#mic', { state: 'visible' });
+  await expect(page.locator('.bar')).toHaveClass(/collapsed/);
+  await expect(page.locator('#barmore')).toBeHidden();
+  await expect(page.locator('#bartoggle')).toHaveAttribute('aria-expanded', 'false');
+  await page.click('#bartoggle');
   await page.click('#keysbtn');
   await expect(page.locator('#shortcutsheet')).toBeVisible();
   await expect(page.locator('#barmore')).toBeHidden();
-  await expect(page.locator('#bartoggle')).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.locator('#bartoggle .dockword')).toHaveText('More');
-  expect(await page.evaluate(() => localStorage.getItem('gifos_meet_bar'))).toBe('0');
+  expect(await page.evaluate(() => localStorage.getItem('gifos_meet_bar'))).toBe('1');
   await page.keyboard.press('Escape');
   await page.click('#bartoggle');
   await page.focus('#ccbtn');
   await page.keyboard.press('Enter');
   await expect(page.locator('#barmore')).toBeHidden();
   expect(await page.evaluate(() => document.activeElement && document.activeElement.id)).toBe('bartoggle');
+});
+
+test('a stored open More does not come back on load', async ({ page }) => {
+  await page.addInitScript(() => { localStorage.setItem('gifos_meet_bar', '0'); });
+  await boot(page, 1280, 720);
+  await expect(page.locator('.bar')).toHaveClass(/collapsed/);
+  await expect(page.locator('#barmore')).toBeHidden();
+  await expect(page.locator('#bartoggle')).toHaveAttribute('aria-expanded', 'false');
+  expect(await page.evaluate(() => localStorage.getItem('gifos_meet_bar'))).toBe('1');
 });
 
 test('the More sheet stays inside a short window', async ({ page }) => {

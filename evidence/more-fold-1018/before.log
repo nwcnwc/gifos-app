@@ -1,0 +1,11 @@
+FAIL pixel5 1/5 No blur left More open; No blur left More saved open (0); reload restored More open; reload still has More saved open; Min left More open
+FAIL pixel5 2/5 No blur left More open; No blur left More saved open (0); reload restored More open; reload still has More saved open; Min left More open
+FAIL pixel5 3/5 No blur left More open; No blur left More saved open (0); reload restored More open; reload still has More saved open; Min left More open
+FAIL pixel5 4/5 No blur left More open; No blur left More saved open (0); reload restored More open; reload still has More saved open; Min left More open
+FAIL pixel5 5/5 No blur left More open; No blur left More saved open (0); reload restored More open; reload still has More saved open; Min left More open
+FAIL desktop 1/5 No blur left More open; No blur left More saved open (0); reload restored More open; reload still has More saved open; Min left More open
+FAIL desktop 2/5 No blur left More open; No blur left More saved open (0); reload restored More open; reload still has More saved open; Min left More open
+FAIL desktop 3/5 No blur left More open; No blur left More saved open (0); reload restored More open; reload still has More saved open; Min left More open
+FAIL desktop 4/5 No blur left More open; No blur left More saved open (0); reload restored More open; reload still has More saved open; Min left More open
+FAIL desktop 5/5 No blur left More open; No blur left More saved open (0); reload restored More open; reload still has More saved open; Min left More open
+RED 0/10 -> /home/nathan/rel23-gate-1017/wt/more-fold/evidence/more-fold-1018/before.json
