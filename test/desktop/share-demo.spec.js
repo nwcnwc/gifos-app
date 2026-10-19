@@ -172,6 +172,29 @@ test('the menu steps aside once the slide is up, and the Stage can stop it', asy
   await expect(page.locator('body')).not.toHaveClass(/screen-on/);
 });
 
+// Tapping the slide opens its control window. Stopping from the dock (the
+// browser's own bar uses the same stop) must take that window with the slide.
+test('stopping a share closes the stage control window', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
+  await boot(page);
+  await consentedRoom(page);
+  await armSlide(page);
+  await page.click('#sharebtn');
+  await expect.poll(async () => page.evaluate(() => {
+    const v = document.querySelector('#stagefeed video');
+    return v ? v.videoWidth : 0;
+  })).toBeGreaterThanOrEqual(640);
+  const box = await page.locator('#stagefeed video').boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + Math.min(box.height / 2, box.height - 30));
+  await expect(page.locator('#tilewin-title')).toContainText('Your screen');
+  await expect(page.locator('#tilewin button', { hasText: 'Stop sharing' })).toBeVisible();
+  await page.evaluate(() => document.getElementById('sharebtn').click());
+  await expect(page.locator('#tilewin')).toBeHidden();
+  await expect(page.locator('#stagefeed video')).toHaveCount(0);
+  const dock = await page.locator('#sharebtn .dockword').innerText();
+  expect(dock.trim()).toBe('Share screen');
+});
+
 // A shared screen and an app take the same seat (Nathan 19:02): sideways the
 // slide is the whole left side, flush left, with the faces on the right (a
 // phone at 844x390 had it centred at 366x206); upright it is the top band.

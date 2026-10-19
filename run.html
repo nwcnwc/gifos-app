@@ -10446,6 +10446,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       wakeMeet();
       try { el.focus({ preventScroll: true }); } catch (e) {}
     }
+    // The stage window is a snapshot taken while the share is up. Stopping
+    // from the dock or the browser's own bar removes the slide and used to
+    // leave "Your screen — on stage / Stop sharing" on screen. A copy of
+    // stopScreenShare lifted into a unit sandbox has no window, so the call
+    // there is a no-op.
+    function dropStaleShareWin() {
+      if (!tileWin.el || myStatus.scr) return;
+      const el = tileWin.el;
+      const strip = el.classList && el.classList.contains('rowtile') && el.dataset && el.dataset.row === 'sgs';
+      if (!el.isConnected || strip) { closeTileWin(); return; }
+      const win = document.getElementById('tilewin');
+      if (!win || win.hidden) return;
+      const word = uiText('stopShare', 'Stop sharing');
+      let stale = false;
+      win.querySelectorAll('button').forEach((b) => { if ((b.textContent || '').trim() === word) stale = true; });
+      if (stale) twFill(win, el);
+    }
     function ensureTileChrome() {
       let veil = document.getElementById('tilewin-veil'), win = document.getElementById('tilewin');
       if (!veil) {
@@ -27075,6 +27092,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!steppedDown) broadcastStatus(); // setStage already told the room
       refreshAllTiles();
       if (!screenSharers().length) paintStageStrip(null);
+      if (typeof dropStaleShareWin === 'function') dropStaleShareWin();
       setStatus(why
         ? uiText('shareStoppedWhy', 'Screen share stopped — {why}.').replace('{why}', why)
         : uiText('shareStopped', 'Screen share stopped.'));
