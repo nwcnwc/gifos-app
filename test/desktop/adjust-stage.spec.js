@@ -23,8 +23,11 @@ function membership() {
   };
 }
 
+// Skip before the browser launches. An in-test skip still starts WebKit
+// with --disable-gpu and Firefox with a camera permission (chat-options).
+test.describe('chromium fake camera', () => {
+  test.skip(({ browserName }) => browserName !== 'chromium', 'fake camera');
 test('Adjust stage video opens the adjust window and does not set stage membership', async ({ page, browserName }) => {
-  test.skip(browserName !== 'chromium', 'fake camera');
   const room = 'qaadjust' + Date.now().toString(36);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.addInitScript(() => {
@@ -94,4 +97,5 @@ test('Adjust stage video opens the adjust window and does not set stage membersh
   expect(box.x).toBeGreaterThanOrEqual(-1);
   expect(box.y).toBeGreaterThanOrEqual(-1);
   if (process.env.EVID) await page.screenshot({ path: path.join(process.env.EVID, 'adjust-open.png') });
+});
 });

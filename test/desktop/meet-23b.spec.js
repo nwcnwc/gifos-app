@@ -93,7 +93,10 @@ test('the meeting always says it is being transcribed, also when calm', async ({
   await page.waitForTimeout(3600);
   await page.evaluate(() => { const f = window.__gifosVideo.setDockCalmMsForTest; if (f) f(300); });
   await expect.poll(() => page.evaluate(() => document.body.classList.contains('head-calm'))).toBe(true);
-  await expect.poll(() => shown(page, '.topchip #status')).toBe(false);
+  // The room line stays up: fading it left the chip taking the tap (bafc6b1).
+  // The logo fades over 0.8s. The transcribing mark stays.
+  await expect.poll(() => shown(page, '.topchip #status')).toBe(true);
+  await expect.poll(() => shown(page, '.topchip .title')).toBe(false);
   expect(await shown(page, '#txmark')).toBe(true);
 });
 

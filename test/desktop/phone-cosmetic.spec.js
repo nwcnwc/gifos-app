@@ -33,8 +33,11 @@ async function tap(page, id) {
   await page.touchscreen.tap(box.x, box.y);
 }
 
+// Skip before the browser launches. An in-test skip still starts WebKit
+// with --disable-gpu (chat-options does the skip at describe scope).
+test.describe('chromium only', () => {
+  test.skip(({ browserName }) => browserName !== 'chromium', 'chromium-only media');
 test('a phone share keeps Not recording off Invite, Help and Full screen', async ({ page, browserName }) => {
-  test.skip(browserName !== 'chromium', 'canvas captureStream');
   await boot(page);
   await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 3, connected: true }));
   await page.evaluate(() => {
@@ -88,7 +91,6 @@ test('a phone share keeps Not recording off Invite, Help and Full screen', async
 });
 
 test('the reaction tray does not cover Send while chat is open', async ({ page, browserName }) => {
-  test.skip(browserName !== 'chromium', 'phone touch');
   await boot(page);
   await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 2, connected: true }));
   await tap(page, 'bartoggle');
@@ -131,4 +133,5 @@ test('the reaction tray does not cover Send while chat is open', async ({ page, 
   expect(geo.hitField, JSON.stringify(geo)).toBe('chat-in');
   expect(geo.send.y, JSON.stringify(geo)).toBeGreaterThanOrEqual(0);
   expect(geo.field.b, JSON.stringify(geo)).toBeLessThanOrEqual(geo.vh);
+});
 });

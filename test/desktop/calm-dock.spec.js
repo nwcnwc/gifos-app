@@ -115,36 +115,42 @@ test('a quiet small call keeps the names and shows no tile buttons', async ({ pa
   expect(quiet.names).toBe(quiet.n);
 });
 
-// Calm is a room, not a product: the header line (logo, count, resolution) and
-// the build label go with the dock. A notice on that line is the one thing that
-// must be read, so it keeps the header up until it has had its time.
-test('a quiet small call fades the header line and build label, but not a notice', async ({ page }) => {
+// Calm is a room, not a product: the logo and the build label go with the
+// dock. The room line stays fully up — it is the tap that opens the full
+// sentence, and fading it left the chip taking that tap (bafc6b1). A notice
+// on that line is still read while the dock stays down.
+test('a quiet small call fades the logo and build label, and the room line stays', async ({ page }) => {
   await boot(page, 2);
   await page.waitForSelector('#gifos-build-float');
   const read = () => page.evaluate(() => {
     const op = (el) => (el ? Number(getComputedStyle(el).opacity) : -1);
-    const chip = document.querySelector('.topchip');
-    // 0.9.23b: the chip stays for the "Transcribing" mark; the header line fades.
+    const status = document.getElementById('status');
+    const r = status.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + Math.min(r.width / 2, 24), r.top + r.height / 2);
     return {
-      chip: op(document.getElementById('status')),
+      chip: op(status),
       mark: op(document.getElementById('txmark')),
+      title: op(document.querySelector('.topchip .title')),
       build: op(document.getElementById('gifos-build-float')),
-      chipClicks: getComputedStyle(chip).pointerEvents !== 'none',
+      // The room line itself receives the tap, not the faded chip behind it.
+      statusHit: !!(hit && hit.closest && hit.closest('#status')),
       count: document.getElementById('statuscount').textContent,
     };
   });
   const awake = await read();
   expect(awake.chip).toBeGreaterThan(0.95);
+  expect(awake.title).toBeGreaterThan(0.95);
   expect(awake.build).toBeGreaterThan(0.95);
   await page.screenshot({ path: 'test/desktop/shots/calm-head-before-1280.png' });
   expect((await idleThenRead(page, 2000)).calm).toBe(true);
   await page.waitForTimeout(1000);
   const quiet = await read();
   await page.screenshot({ path: 'test/desktop/shots/calm-head-after-1280.png' });
-  expect(quiet.chip).toBeLessThan(0.05);
+  expect(quiet.chip).toBeGreaterThan(0.95);
   expect(quiet.mark).toBeGreaterThan(0.95);
+  expect(quiet.title).toBeLessThan(0.05);
   expect(quiet.build).toBeLessThan(0.05);
-  expect(quiet.chipClicks).toBe(false);
+  expect(quiet.statusHit).toBe(true);
 
   // A notice arrives while calm: the header comes back for it, the dock does not.
   await page.evaluate(() => window.__gifosVideo.statusNoticeForTest('Camera stopped — bringing it back'));

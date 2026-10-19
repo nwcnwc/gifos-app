@@ -95,7 +95,7 @@ async function toolsFit(page, shot) {
     const cut = btns.filter((b) => { const r = b.getBoundingClientRect(); return r.top < mr.top - 1 || r.bottom > mr.bottom + 1 || r.bottom > dock.top; }).map((b) => b.id);
     const small = btns.filter((b) => !b.classList.contains('seg') && (b.getBoundingClientRect().height < 48 || parseFloat(getComputedStyle(b).fontSize) < 16)).map((b) => b.id);
     const spill = btns.filter((b) => b.scrollWidth > b.clientWidth + 1).map((b) => b.id + ':' + b.textContent.trim());
-    return { scrolls: m.scrollHeight - m.clientHeight, cut, small, spill, n: btns.length };
+    return { scrolls: m.scrollHeight - m.clientHeight, cut, small, spill, n: btns.length, ids: btns.map((b) => b.id).filter(Boolean) };
   });
 }
 
@@ -129,6 +129,26 @@ test('the More sheet fits a 1280x720 screen for a host', async ({ page }) => {
   await page.waitForSelector('#leavebtn', { state: 'visible', timeout: 60000 });
   await page.waitForFunction(() => document.getElementById('blurall').style.display !== 'none' && document.getElementById('admbtn').style.display !== 'none', null, { timeout: 30000 });
   const got = await toolsFit(page, 'all-tools-host-1280.png');
-  expect(got.n).toBeGreaterThan(19);
+  // Every host tool, by name. Vote stays off: an admin room bans, it does
+  // not vote. The retired self-view segments are not buttons. Float is an
+  // extra where the browser can picture-in-picture (the page hides it on
+  // Firefox); a count of 19 was that button missing, or Allow screen share.
+  const tools = ['whobtn', 'hand', 'ccbtn', 'trbtn', 'blur-max', 'blur-min', 'blur-none',
+    'pwbtn', 'waitbtn', 'recbtn', 'stagebtn', 'appbtn',
+    'muteall', 'blurall', 'camall', 'shareall', 'admbtn', 'setbtn', 'keysbtn'];
+  expect(got.ids).toEqual(expect.arrayContaining(tools));
+  expect(got.ids).not.toEqual(expect.arrayContaining(['votebtn']));
+  expect(got.ids.length, 'retired self-view segments are not buttons').toBe(got.n);
+  const canPip = await page.evaluate(() => {
+    const testV = document.createElement('video');
+    return !!(document.pictureInPictureEnabled || typeof testV.webkitSetPresentationMode === 'function');
+  });
+  if (canPip) {
+    expect(got.ids).toContain('pipbtn');
+    expect(got.n).toBeGreaterThan(19);
+  } else {
+    expect(got.ids).not.toContain('pipbtn');
+    expect(got.n).toBe(tools.length);
+  }
   expect(got).toMatchObject({ scrolls: 0, cut: [], small: [], spill: [] });
 });

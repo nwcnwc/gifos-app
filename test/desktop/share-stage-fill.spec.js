@@ -34,8 +34,11 @@ function readSeat() {
   return { share, me, pressed, vw: innerWidth, vh: innerHeight };
 }
 
+// Skip before the browser launches. An in-test skip still starts WebKit
+// with --disable-gpu (chat-options does the skip at describe scope).
+test.describe('chromium only', () => {
+  test.skip(({ browserName }) => browserName !== 'chromium', 'canvas captureStream');
 test('a share still fills the left when your own tile is pinned on your stage', async ({ page, browserName }) => {
-  test.skip(browserName !== 'chromium', 'canvas captureStream');
   await boot(page);
   await page.evaluate(() => {
     window.__meetSwapSelf = true;
@@ -68,4 +71,5 @@ test('a share still fills the left when your own tile is pinned on your stage', 
   // Your tile stays with the people, to the right of the share.
   expect(seat.me.x, JSON.stringify(seat)).toBeGreaterThanOrEqual(seat.share.r - 1);
   expect(seat.me.w, JSON.stringify(seat)).toBeGreaterThan(40);
+});
 });
