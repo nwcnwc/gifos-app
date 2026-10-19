@@ -7833,8 +7833,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const v of stagefeedEl.querySelectorAll('.rowtile video')) if (pipReady(v) && !v.classList.contains('stageface')) return v;
       let first = null;
       for (const [pid, p] of peers) {
-        // a camOff peer's track still decodes (black) frames — skip by STATUS
-        if (!p.connected || seatDark(statusOf.get(pid)) || !pipReady(p.video)) continue;   // a screen sharer is the BEST float target, not a skipped one
+        // A camera-off seat (a bot included) still decodes black frames — skip
+        // by status. A relayed or sponsor-forwarded tile is that picture with
+        // the direct pair down, so p.connected is not required once video is ready.
+        // A screen sharer is the best float target, not a skipped one.
+        if (seatDark(statusOf.get(pid)) || !pipReady(p.video)) continue;
         // Moderation reaches the float: the PiP window paints the RAW frames
         // (no CSS there), so a peer an admin turned off, or one a moderator
         // blurred, is never floated — the receiver-side rule holds in every
@@ -7871,7 +7874,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!v || document.pictureInPictureElement === v) {
         // A tap with no picture used to do nothing. Auto-float on leaving the
         // tab stays quiet: there is still nothing to show.
-        if (manual && !v && typeof BROADCAST !== 'undefined' && BROADCAST) setStatus('Nothing on the stage to float yet.');
+        if (manual && !v) setStatus((typeof BROADCAST !== 'undefined' && BROADCAST) ? 'Nothing on the stage to float yet.' : 'Nothing to float yet.');
         return;
       }
       pipManual = !!manual;

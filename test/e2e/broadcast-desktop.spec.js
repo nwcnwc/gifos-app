@@ -2635,10 +2635,9 @@ test('float tells you when the stage has no picture', async ({ page }) => {
   await page.waitForSelector('#airbar.on.group');
   await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('Just you') !== -1);
   await page.evaluate(() => window.__gifosVideo.pipEnterForTest());
-  await expect(page.locator('#status')).toContainText('Just you');
+  await expect(page.locator('#status')).toHaveText('Nothing to float yet.');
   await expect(page.locator('#status')).not.toContainText('send the invite');
   await expect(page.locator('#appinvite')).toBeVisible();
-  await expect(page.locator('#status')).not.toContainText('float');
 });
 
 test('a viewer clap reaches the stage as a count', async ({ page }) => {
