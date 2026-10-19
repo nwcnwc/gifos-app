@@ -8025,7 +8025,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Switching to another window (the tab stays visible) floats the meeting
     // too, the way the tab switch does, as far as the browser allows; coming
     // back closes it.
-    let pipAwayAt = 0, pipAwayT = 0;
+    // pipLeftAt: the page lost the window's focus while a Float-button float
+    // was up. A PHONE back from Home never saw hidden -> visible: Chrome
+    // keeps a tab that hosts a float "visible" while the float plays, so the
+    // visibilitychange close above never ran and the floated tile stayed
+    // black in the room until a touch (2026-10-18, two phones, evidence/
+    // hard-bugs-1018/3-black-float-tile). Focus is the one sign of the
+    // return there: the float closes, the tile plays. A desktop float the
+    // person asked for still stays up across a window switch.
+    let pipAwayAt = 0, pipAwayT = 0, pipLeftAt = 0;
     window.addEventListener('blur', () => {
       if (pipAwayT) clearTimeout(pipAwayT);
       pipAwayT = setTimeout(() => {
@@ -8035,7 +8043,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const ae = document.activeElement;
         if (ae && ae.tagName === 'IFRAME') return;
         awayFull(true);
-        if (pipManual) return;
+        if (pipManual) { pipLeftAt = Date.now(); return; }
         pipAwayAt = Date.now();
         enterPip();
       }, 250);
@@ -8043,6 +8051,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     window.addEventListener('focus', () => {
       if (pipAwayT) { clearTimeout(pipAwayT); pipAwayT = 0; }
       awayFull(false);
+      if (pipLeftAt) { pipLeftAt = 0; if (IS_MOBILE && !document.hidden) exitPip(); }
       if (!pipAwayAt) return;
       pipAwayAt = 0;
       if (!document.hidden && !pipManual) exitPip();
@@ -17468,6 +17477,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const vtr = p.stream && p.stream.getVideoTracks()[0];
       if (!p.connected || p.relayed) return 'link';
       if (document.hidden) return 'hidden';
+      if (document.pictureInPictureElement && document.pictureInPictureElement === p.video) return 'pip'; // a floated tile paints in the float, not in the room: no frame count to judge here
       if (!vtr || vtr.readyState !== 'live') return 'track';
       if (!p.video || p.video.srcObject !== p.stream || p.video.paused || p.video.readyState === 0) return 'element';
       if (!p.dc || p.dc.readyState !== 'open') return 'dc';
