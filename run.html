@@ -1588,6 +1588,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #chatform { display: flex; gap: .4rem; padding: .5rem .6rem; border-top: 1px solid var(--border, #2a2a3f); min-width: 0; }
   #chatform input[type=text] { flex: 1 1 auto; width: 0; min-width: 0; min-height: 44px; padding: .4rem .6rem; border-radius: 12px; border: 1.5px solid #8d93a0; background: #fff; color: #1d1d1f; font: inherit; font-size: 1rem; } /* 1rem: 16px, and it grows with a large text setting */
   #pray { flex: none; }
+  #pray[hidden] { display: none; }
   #pray .pray-ico { display: none; }
   /* On a phone Prayer is its hands, so the message field keeps its width at any text size. */
   @media (max-width: 700px) {
@@ -1610,6 +1611,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     #chatform { display: grid; grid-template-columns: auto auto 1fr auto; gap: .4rem; }
     #chatform #pray { grid-area: 1 / 1; min-height: 36px; padding: .25rem .7rem; }
     #chatform #cattach { grid-area: 1 / 2; min-height: 36px; padding: .25rem .6rem; }
+    #chatform #pray[hidden] ~ #cattach { grid-area: 1 / 1; }
     #chatform input[type=text] { grid-area: 2 / 1 / 3 / 4; width: auto; }
     #chatform button[type=submit] { grid-area: 2 / 4; }
   }
@@ -1888,6 +1890,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     background: #fff; color: #1d1d1f; border: 1.5px solid #8d93a0; min-height: 44px; min-width: 44px; }
   #adm-banned .brow button { padding: .15rem .5rem; font-size: .72rem; border-radius: .35rem;
                              border: 1px solid var(--border, #2a2a3f); background: var(--surface, #1c1c2b); color: var(--text, #e0e0f0); cursor: pointer; }
+  #adm-chat { margin: 0 0 1rem; padding: .6rem 0 .2rem; border-top: 1px solid var(--border, #2a2a3f); border-bottom: 1px solid var(--border, #2a2a3f); }
+  #adm-chat h4 { margin: 0 0 .35rem; font-size: 16px; font-weight: 700; }
+  #adm-chat .admopt { display: flex; align-items: center; gap: .6rem; min-height: 44px; font-size: 16px; line-height: 1.3; cursor: pointer; }
+  #adm-chat .admopt input[type=checkbox] { width: 22px; height: 22px; min-height: 0; margin: 0; flex: none; }
+  #adm-chat .admopt small { display: block; color: var(--muted, #8888aa); font-size: 14px; }
+  #adm-chat #adm-chat-files { cursor: default; }
+  #adm-chat #adm-chat-pw { flex: none; margin-left: auto; min-height: 36px; padding: .2rem .7rem; font-size: 14px; }
   /* ---- the front-door lobby (cold open only) ---- */
   #lobby { position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 35; display: none; overflow-y: auto;
            background: var(--bg, #0a0a0f); padding: 2rem 1rem; }
@@ -2551,6 +2560,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.broadcast.bc-watching .bar:not(.collapsed) .barmore .moregroup[data-group="video"]:not(:has(.morerow > button:not([style*="display:none"]):not([style*="display: none"]))) { display: none; }
   .bar:not(.collapsed) .barmore .moregroup h4 { margin: 0; padding: 0 4px; font: 700 16px/1.2 system-ui, sans-serif; color: #4a505c; }
   .bar:not(.collapsed) .barmore .moresegs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; min-width: 0; }
+  #blurnote { flex: 1 0 100%; margin: 0; padding: 6px 10px; border-radius: 10px; background: #fff4d6; color: #1d1d1f; font: 600 15px/1.35 system-ui, sans-serif; }
+  #blurnote[hidden] { display: none; }
   @media (min-width: 600px) {
     .bar:not(.collapsed) .barmore .moregroup { grid-template-columns: 7.5em minmax(0, 1fr); column-gap: 12px; align-items: center; }
     .bar:not(.collapsed) .barmore .moregroup > :not(h4) { grid-column: 2; }
@@ -3906,6 +3917,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button class="seg" id="blur-none" data-blur="0" data-t="noBlur">No blur</button>
       </span>
     </span>
+    <p id="blurnote" role="status" hidden></p>
     <span class="blurctl selfctl" id="selfctl" title="Where your own video sits. Tile is the default: you are a normal tile and you cover nobody.">
       <span class="blurlbl">You</span>
       <span class="segwrap" role="group" aria-label="Your video">
@@ -3986,12 +3998,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button id="admbtn" title="Room admin controls" style="display:none">Admin</button>
       </div>
     </section>
-    <!-- TODO(0.9.23b, Chat options): a host-only "Chat options" group goes
-         here, after Host and hidden from guests like it. It gathers the chat
-         switches that already exist (Turn chat off, #chatmod in the chat
-         panel; files only in a password room) and adds Prayer (#pray), off
-         by default and turned on by the host for the room. Not built yet:
-         it waits on Nathan's answer about which further options to offer. -->
     <section class="moregroup" data-group="setup">
       <h4 data-t="setHelp">Settings and help</h4>
       <div class="morerow">
@@ -4208,7 +4214,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <button type="button" id="chatreply-x">Cancel</button>
     </div>
     <form id="chatform">
-      <button type="button" id="pray" aria-pressed="false" title="Mark messages as prayer requests" aria-label="Prayer"><span class="pray-ico" aria-hidden="true">🙏</span><span class="pray-word">Prayer</span></button>
+      <button type="button" id="pray" hidden aria-pressed="false" title="Mark messages as prayer requests" aria-label="Prayer"><span class="pray-ico" aria-hidden="true">🙏</span><span class="pray-word">Prayer</span></button>
       <button type="button" id="cattach" title="Pin a file to the meeting">📎</button>
       <input type="file" id="cfile-in" multiple style="display:none">
       <button type="button" id="cemoji" aria-label="Emoji" aria-expanded="false" title="Emoji">😊</button>
@@ -4279,6 +4285,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <button id="adm-enable" data-t="admEnable">Sign in as admin</button>
       </div>
       <div id="adm-panel" style="display:none;text-align:left">
+        <section id="adm-chat" aria-labelledby="adm-chat-h">
+          <h4 id="adm-chat-h" data-t="admChatH">Chat options</h4>
+          <label class="admopt"><input type="checkbox" id="adm-chat-guests"><span><span data-t="admChatGuests">Guests can chat</span><small data-t="admChatGuestsSub">Off: only admins can post.</small></span></label>
+          <label class="admopt"><input type="checkbox" id="adm-chat-pray"><span><span data-t="admChatPray">Prayer button</span><small data-t="admChatPraySub">Anyone can mark a message as a prayer request.</small></span></label>
+          <div class="admopt" id="adm-chat-files"><span><span data-t="admChatFiles">Files in chat</span><small id="adm-chat-files-sub"></small></span><button type="button" id="adm-chat-pw" data-t="admChatPw">Password</button></div>
+        </section>
         <p id="adm-banned-h" data-t="admBanned" style="margin-bottom:.2rem">Banned devices:</p>
         <div id="adm-banned"></div>
       </div>
@@ -5636,6 +5648,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         admHintOff: 'Dieser Raum hat einen Admin. Wenn Sie das Admin-Passwort kennen, geben Sie es hier ein, um die Steuerung zu bekommen. Ihr Passwort bleibt auf diesem Gerät.',
         admHintOn: 'Sie leiten diesen Raum. Admins können den Raum mit einem Passwort schließen (der Schlüssel zum scharfen Bild), jemanden für alle stummschalten oder weichzeichnen und Geräte sperren. Wer das Admin-Passwort kennt, kann Admin öffnen und sich auch anmelden.',
         admBanned: 'Gesperrte Geräte:', admNobody: 'Niemand ist gesperrt.', admUnban: 'Entsperren', admUnnamed: 'ohne Namen',
+        admChatH: 'Chat-Optionen', admChatGuests: 'Gäste dürfen chatten', admChatGuestsSub: 'Aus: nur Admins können schreiben.',
+        admChatPray: 'Gebet-Taste', admChatPraySub: 'Alle können eine Nachricht als Gebetsanliegen markieren.',
+        admChatFiles: 'Dateien im Chat', admChatFilesOn: 'Erlaubt: dieser Raum hat ein Passwort.',
+        admChatFilesOff: 'Erst wenn der Raum ein Passwort hat.', admChatPw: 'Passwort',
         admChecking: 'Wird geprüft…',
         admCheckingStatus: '🛡 Passwort wird geprüft… (dauert ein paar Sekunden)',
         admCheckFail: 'Das Passwort ließ sich nicht prüfen ({err}).',
@@ -5938,6 +5954,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         admHintOff: 'Esta sala tiene un anfitrión. Si sabes la contraseña, escríbela aquí para tener los controles. Tu contraseña se queda en este dispositivo.',
         admHintOn: 'Tú diriges esta sala. Los anfitriones pueden cerrarla con una contraseña (la llave del video nítido), silenciar o difuminar a alguien para todos, y bloquear dispositivos. Quien sepa la contraseña puede abrir Anfitrión y entrar también.',
         admBanned: 'Dispositivos bloqueados:', admNobody: 'Nadie está bloqueado.', admUnban: 'Desbloquear', admUnnamed: 'sin nombre',
+        admChatH: 'Opciones del chat', admChatGuests: 'Los invitados pueden chatear', admChatGuestsSub: 'Apagado: solo los anfitriones escriben.',
+        admChatPray: 'Botón de oración', admChatPraySub: 'Cualquiera puede marcar un mensaje como petición de oración.',
+        admChatFiles: 'Archivos en el chat', admChatFilesOn: 'Permitidos: esta sala tiene contraseña.',
+        admChatFilesOff: 'Solo cuando la sala tenga contraseña.', admChatPw: 'Contraseña',
         admChecking: 'Comprobando…',
         admCheckingStatus: '🛡 Comprobando la contraseña… (tarda unos segundos)',
         admCheckFail: 'No se pudo comprobar la contraseña ({err}).',
@@ -8112,7 +8132,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // field (the admin's chat on/off switch). It rides the same signed
         // table as every per-target order, so it reaches late joiners on the
         // heartbeat and a forged copy dies in takeMod's admVerify.
-        for (const field of ['mute', 'blur', 'cam', 'app', 'share', 'chat', 'cc', 'wait', 'admit', 'rename', 'spot']) {
+        for (const field of ['mute', 'blur', 'cam', 'app', 'share', 'chat', 'cc', 'wait', 'admit', 'rename', 'spot', 'pray']) {
           const inc = incoming[target][field];
           if (!inc || typeof inc !== 'object') continue;
           if (goneAt != null && (+inc.at || 0) <= goneAt) continue;
@@ -8171,7 +8191,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if ((field === 'app' || field === 'share') && (!hasAdminRoom() || !amAdmin)) return;
       // The room-wide chat switch is the admin's alone, and only means
       // anything where there IS an admin to sign it.
-      if ((field === 'chat' || field === 'cc') && (!hasAdminRoom() || !amAdmin)) return;
+      if ((field === 'chat' || field === 'cc' || field === 'pray') && (!hasAdminRoom() || !amAdmin)) return;
       if (hasAdminRoom() && !amAdmin) { setStatus('🛡 Only this room' + String.fromCharCode(39) + 's admins can ' + (field === 'mute' ? 'mute' : 'blur') + ' someone for all.'); return; }
       const mine = modTable[target] = modTable[target] || {};
       mine[field] = { on, by: myName(), byId: myId, at: Date.now() };
@@ -18563,6 +18583,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // moved to Invite), so there are just two moods: sign in, or manage.
       if (amAdmin) {
         setup.style.display = 'none'; panel.style.display = '';
+        paintChatOptions();
         document.getElementById('adm-hint').textContent = uiText('admHintOn', 'You are an admin of this room. Admins can lock the room with a password (the key to clear video), mute or blur someone for everyone, and ban devices. Anyone who knows the admin password can open Admin and sign in too.');
         renderBanned();
       } else {
@@ -20061,6 +20082,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const m = modTable['*'] && modTable['*'].chat;
       return (m && m.on) ? m : null;
     };
+    // Prayer (#pray) is off until an admin turns it on for the room: the same
+    // signed '*' table, so a room with no admin never shows it.
+    let prayGateOverride = null; // prayGateForTest stands in for the signed switch
+    const prayOn = () => {
+      if (prayGateOverride != null) return prayGateOverride;
+      if (!hasAdminRoom()) return false;
+      const m = modTable['*'] && modTable['*'].pray;
+      return !!(m && m.on);
+    };
     function applyCdel(id, w) {
       if (!id || chatTombs.has(id)) return false;
       chatTombs.set(id, w);
@@ -21493,7 +21523,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const locked = off && !(chatGateOverride ? chatGateOverride.admin : amAdmin);
       const inp = document.getElementById('chat-in');
       inp.disabled = locked;
-      const praying = document.getElementById('pray') && document.getElementById('pray').getAttribute('aria-pressed') === 'true';
+      const pb = document.getElementById('pray');
+      if (pb) {
+        pb.hidden = !prayOn();
+        if (pb.hidden) pb.setAttribute('aria-pressed', 'false');
+      }
+      const praying = !!pb && !pb.hidden && pb.getAttribute('aria-pressed') === 'true';
       // Short enough to read whole in the box beside Send.
       inp.placeholder = locked ? uiText('chatOff', 'Chat is off for now')
         : (off ? uiText('chatOffHost', 'Chat is off for guests') : (praying ? 'Prayer request…' : uiText('chatPlaceholder', 'Message everyone…')));
@@ -21503,10 +21538,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       b.style.display = (hasAdminRoom() && amAdmin) ? '' : 'none';
       b.textContent = off ? uiText('chatModOn', 'Turn chat on') : uiText('chatModOff', 'Turn chat off');
       b.title = off ? uiText('chatModTipOn', 'Let everyone post in chat again') : uiText('chatModTipOff', 'Silence the chat for everyone but you');
+      paintChatOptions();
+    }
+    // Room admin → Chat options: the room's chat switches in one place.
+    function paintChatOptions() {
+      const g = document.getElementById('adm-chat-guests');
+      if (!g) return;
+      g.checked = !chatOffInfo();
+      document.getElementById('adm-chat-pray').checked = prayOn();
+      document.getElementById('adm-chat-files-sub').textContent = roomPw
+        ? uiText('admChatFilesOn', 'Allowed: this room has a password.')
+        : uiText('admChatFilesOff', 'Only once the room has a password.');
+      document.getElementById('adm-chat-pw').disabled = !amAdmin;
     }
     document.getElementById('chatmod').onclick = () => {
       setMod('*', 'chat', !chatOffInfo());
       paintChatGate(); renderChat();
+    };
+    document.getElementById('adm-chat-guests').onchange = (e) => {
+      setMod('*', 'chat', !e.target.checked);
+      paintChatGate(); renderChat();
+    };
+    document.getElementById('adm-chat-pray').onchange = (e) => {
+      setMod('*', 'pray', !!e.target.checked);
+      paintChatGate();
+    };
+    document.getElementById('adm-chat-pw').onclick = () => {
+      document.getElementById('adm-modal').style.display = 'none';
+      document.getElementById('pwbtn').click();
     };
     document.getElementById('chatlog').addEventListener('scroll', () => {
       const log = document.getElementById('chatlog');
@@ -21674,7 +21733,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!text) return;
       const prayBtn = document.getElementById('pray');
       const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text };
-      if (prayBtn && prayBtn.getAttribute('aria-pressed') === 'true') m.prayer = 1;
+      if (prayOn() && prayBtn && prayBtn.getAttribute('aria-pressed') === 'true') m.prayer = 1;
       if (pendingReply) m.reply = { id: pendingReply.id, by: pendingReply.by, text: pendingReply.text };
       chat.set(m.id, m);
       sendAll({ k: 'chat', m });
@@ -30978,6 +31037,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The blur slider: pick Max / Min / No blur directly. It records YOUR choice;
     // whether a tile actually goes clear is the room rule's meeting — when your
     // No blur can't show yet, the status line says exactly why.
+    // A note under the blur buttons that goes away on its own.
+    const BLUR_NOTE_MS = 7000;
+    let blurNoteTimer = 0;
+    function blurNote(text) {
+      const el = document.getElementById('blurnote');
+      if (!el) return;
+      clearTimeout(blurNoteTimer);
+      el.textContent = text;
+      el.hidden = !text;
+      if (text) blurNoteTimer = setTimeout(() => { el.hidden = true; el.textContent = ''; }, BLUR_NOTE_MS);
+    }
     function setPersonalBlur(v) {
       if (BROADCAST && !bcMayPublishAv()) return;
       myStatus.blur = v;
@@ -30985,12 +31055,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       refreshOutbound(); // sender-side: broadcast blurred (or raw) to match
       broadcastStatus();
       reactRoomState();
+      blurNote('');
       if (v !== 0) return;
       const blocked = !!(modOf('me').blur && modOf('me').blur.on);
       if (!roomPw) {
-        setStatus('Faces stay blurred until this room has a password. ' + (hasAdminRoom()
+        const who = hasAdminRoom()
           ? (amAdmin ? 'Set one with the Password button.' : 'Only this room’s admin can set one.')
-          : 'Anyone here can set one with the Password button.'));
+          : 'Anyone here can set one with the Password button.';
+        blurNote('No blur is saved. It applies once this room has a password, and then right away. ' + who);
+        setStatus('No blur saved — it applies the moment this room has a password. ' + who);
       } else if (blocked) {
         setStatus('Someone in the room has blurred you for all — you stay blurred until that is lifted.');
       } else if (myStatus.camOff) {
@@ -34978,6 +35051,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       broadcast: () => BROADCAST,
       chatOff: () => !!chatOffInfo(),
       chatOffForTest: (on) => setMod('*', 'chat', !!on),
+      prayOn: () => prayOn(),
+      prayGateForTest: (on) => { prayGateOverride = on == null ? null : !!on; paintChatGate(); return prayOn(); },
       sayForTest: (text) => { const m = { id: uid('m'), by: myName(), byId: myId, at: Date.now(), text: String(text) }; chat.set(m.id, m); sendAll({ k: 'chat', m }); renderChat(); return m.id; },
       chatHas: (id) => chat.has(id),
       nameOf: (pid) => rosterNames[pid] || (peers.get(pid) || {}).name || '', // what this seat calls a peer (the sealed pulse teaches it)

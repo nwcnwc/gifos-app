@@ -22,6 +22,7 @@ async function openChat(pg) {
     const panel = document.getElementById('chatpanel').getBoundingClientRect();
     const out = [];
     for (const e of document.querySelectorAll('#chatform button, #chat-in')) {
+      if (e.hidden) continue;
       const r = e.getBoundingClientRect();
       if (r.left < panel.left || r.right > panel.right) out.push(e.id || e.type);
     }

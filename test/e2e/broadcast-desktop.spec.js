@@ -1205,6 +1205,9 @@ test('chat is one tap on the dock, and a prayer is its own line', async ({ page 
   const hit = await composerOverlap(page);
   expect(clearOfDock(hit.form), JSON.stringify(hit)).toBe(true);
   expect(clearOfDock(hit.send), JSON.stringify(hit)).toBe(true);
+  // Prayer is off until the host turns it on for the room.
+  await expect(page.locator('#pray')).toBeHidden();
+  await page.evaluate(() => window.__gifosVideo.prayGateForTest(true));
   await page.locator('#pray').click();
   await expect(page.locator('#pray')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#chat-in')).toHaveAttribute('placeholder', 'Prayer request…');
@@ -4081,6 +4084,7 @@ test('the chat box shows its whole placeholder beside Send', async ({ page }) =>
         const panel = document.getElementById('chatpanel').getBoundingClientRect();
         const ctl = {};
         for (const e of document.querySelectorAll('#chatform button, #chat-in')) {
+          if (e.hidden) continue;
           const r = e.getBoundingClientRect();
           ctl[e.id || e.type] = { l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), b: Math.round(r.bottom), w: Math.round(r.width), h: Math.round(r.height) };
         }
@@ -4100,6 +4104,8 @@ test('the chat box shows its whole placeholder beside Send', async ({ page }) =>
       if (w === 1280 && who === 'host') await page.screenshot({ path: 'artifacts/chat-box-' + (process.env.SHOT_TAG || 'run') + '.png', clip: { x: 900, y: 480, width: 380, height: 240 } });
       expect(plain.text).toBe('Message everyone…');
       check(plain, 'plain');
+      await page.evaluate(() => window.__gifosVideo.prayGateForTest(true));
+      check(await read(), 'prayer shown');
       await page.locator('#pray').click();
       const pray = await read();
       expect(pray.text).toBe('Prayer request…');

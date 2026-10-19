@@ -1,0 +1,6 @@
+test/desktop/chat-options.spec.js on e130918 run.html (Chromium), 2026-10-18:
+  3 failed
+  - a room with no admin shows no Prayer button: #pray visible (expected hidden)
+  - the host turns Prayer on for the room: #pray visible on the host and the guest before anyone turned it on
+  - No blur in a room with no password: #blurnote not found (no note under the blur buttons)
+Log: evidence/chat-options/chat-options-before-e130918.log

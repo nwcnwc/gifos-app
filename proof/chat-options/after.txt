@@ -1,0 +1,19 @@
+test/desktop/chat-options.spec.js on this commit, Chromium + Firefox, 2026-10-18:
+  6 passed
+  - open room: no Prayer button, 📎 moves to the row's start
+  - real admin room, two browsers (Jordan hosts, Avery is a guest): Prayer hidden for both; Room admin →
+    Chat options shows Guests can chat on, Prayer off, files need a password; the host checks Prayer and
+    Avery's button appears; Avery's prayer line reaches Jordan marked; the host unchecks Prayer and
+    Avery's button goes, the marked line stays marked, and the next line is not a prayer; Guests can
+    chat off locks Avery's box and is the same switch as Turn chat off
+  - passwordless No blur: the choice stays selected (myBlur 0, feed still blurred), a note says it
+    applies once the room has a password and goes away by itself; setting a password clears the feed at
+    once (blur 0, outbound raw)
+Related suites (same run, port 8917 serving this tree):
+  desktop admin-sheet, chat-dock, more-groups, more-sheet, self-blur, chat-options: 41/42 on the first
+    run (a lobby timeout in more-groups' host test on Chromium); more-groups again on Chromium: 5/5
+  e2e broadcast-desktop "chat|prayer|placeholder": 13/18 on Chromium; the 5 failures fail the same way
+    on e130918 (evidence/chat-options/e2e-broadcast-baseline.log). The three edited specs pass on Chromium
+    and Firefox.
+  test/mobile/header-ellipsis.js PASS; test/unit/*.js all pass
+Logs and screenshots: evidence/chat-options/
