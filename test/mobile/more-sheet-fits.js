@@ -19,6 +19,7 @@ function land(device) {
 }
 
 const PHONES = [
+  { name: 'iphone-12-land', device: land(devices['iPhone 12']) },
   { name: 'iphone-se-land', device: land(devices['iPhone SE']) },
   { name: 'iphone-15-land', device: land(devices['iPhone 15']) },
   { name: 'pixel-7-land', device: land(devices['Pixel 7']) },

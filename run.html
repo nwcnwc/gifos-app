@@ -2720,14 +2720,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     @media (max-height: 500px) and (orientation: landscape) {
       .tile > .blurbox { width: 64px; height: 44px; min-width: 44px; min-height: 44px; top: 8px; right: 8px; padding: 2px; font-size: 10px; line-height: 1.05; }
       .tile:not(.cam-off) .chips { left: 56px; right: 76px; }
-      .tile .name, html body.comfy .tile .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); font-size: .75rem; padding: 1px 4px; z-index: 5; }
-      /* One line cut "Margaret Johnson" (and "Nathan (you)" in Safari's
-         wider font). The name takes a second line; the 44px buttons end
-         52px down a 100px tile, so two lines still clear them. */
-      .tile .name, html body.comfy .tile .name { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
     }
     /* The phone pass pinned a fixed self tile here; the adjustable self-view
        (meet-selfview-stage, newer) places you instead. */
+  }
+  /* Every sideways phone, not only one under 700px: an 844 or 915 wide phone
+     got the 1.15rem desktop name, two lines across half a face.
+     One line cut "Margaret Johnson" (and "Nathan (you)" in Safari's wider
+     font). The name takes a second line; the 44px buttons end 52px down a
+     100px tile, so two lines still clear them. */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .tile .name, html body.comfy .tile .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); font-size: .75rem; padding: 1px 4px; z-index: 5;
+      white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
   }
   /* Fit sits on the next row when the phone is upright, so the chip can
      use the width and the room name can sit beside the count. Any upright
@@ -9868,7 +9872,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // Tucked chrome is off the call. Measuring the sliding dock would
           // keep the empty band, so a quiet call uses only the home indicator.
           const away = document.body.classList.contains('chrome-away');
-          if (!away) {
+          const safeEl = document.getElementById('gifos-safe-b');
+          const safe = (safeEl && safeEl.offsetHeight) || 0;
+          let rowN = 0;
+          for (let i = 0; i < tiles.length; i++) if (!tiles[i].stage && !tiles[i].share) rowN++;
+          const bandH = vhNow - (topInset > 0 ? topInset : 64) - safe;
+          // One row as tall as the screen fits beside itself (you and one
+          // other on a Pixel 7). The dock wakes over those faces, so the
+          // band does not change when the buttons tuck. A second row stays
+          // in the band above the dock, or it is painted under the buttons.
+          const fillHeight = shortLand && !sgsOn && !appOn && rowN > 0 &&
+            (rowN * bandH + Math.max(0, rowN - 1) * 4) <= (vwNow - 4);
+          if (fillHeight) {
+            bottom = safe;
+            comfyUpBottom = { key: vwNow + 'x' + vhNow, v: bottom };
+          } else if (!away) {
             // Where the dock and Record/Captions rest, not where their slide
             // back has got to: a fixed box's offsetTop skips its transform.
             const restTop = (el) => getComputedStyle(el).position === 'fixed' ? el.offsetTop : el.getBoundingClientRect().top;

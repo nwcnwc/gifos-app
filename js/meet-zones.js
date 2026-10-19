@@ -81,7 +81,8 @@
       const k = phone ? 'phone' : 'desk';
       // Never below the comfort size, and snapped so a line fills the width.
       s = Math.min(box.w, Math.max(SCROLL_ROW_MIN[k], fitSide(nr, 0, box.w, box.h, gap)));
-      s = snap(box.w, s, gap);
+      // Sideways, filling the width made two faces 329px in a 263px band, cut by the screen's edge.
+      s = phone && s <= box.h ? Math.min(box.h, snap(box.w, s, gap)) : snap(box.w, s, gap);
       t = ns ? snap(box.w, Math.min(s, Math.max(SCROLL_STAD_MIN[k], s * STAD_RATIO)), gap) : 0;
     } else {
       s = fitSide(nr, ns, box.w, box.h, gap);
