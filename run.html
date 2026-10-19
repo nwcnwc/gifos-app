@@ -21091,9 +21091,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (isChatAdmin(byId)) return true;
       return guestsMayReact();
     }
+    // The bot's admin room is an open room (a derived id, no verifier), so
+    // slow mode is on. Its control lines are the channel the controller
+    // uses, not guest posts: one kept list would otherwise drop the
+    // transcript command sent a moment later, and nothing resends it.
+    // A public meeting does not get this pass — no password, or not a bot
+    // session — so a guest cannot skip slow mode by prefixing gb1.
+    function botControlLine(m) {
+      if (!m || params.get('mb') !== '1' || !roomPw) return false;
+      const t = m.text;
+      if (typeof t !== 'string' || t.indexOf('gb1 ') !== 0) return false;
+      let o;
+      try { o = JSON.parse(t.slice(4)); } catch (e) { return false; }
+      if (!o || o.v !== 1) return false;
+      if (o.role !== 'bot' && o.role !== 'controller') return false;
+      return typeof o.op === 'string' && !!o.op;
+    }
     function slowBlocks(m) {
       if (!slowModeOn() || !m || !m.byId || m.byId === myId || isChatAdmin(m.byId)) return false;
       if (m.q === 1 || m.qv || m.qs != null) return false;
+      if (botControlLine(m)) return false;
       const now = Date.now();
       const prev = chatSlowSeen.get(m.byId) || 0;
       if (prev && now - prev < CHAT_SLOW_MS) return true;
