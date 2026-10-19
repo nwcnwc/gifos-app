@@ -30049,10 +30049,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const fitOrder = ['sharebtn', 'reactbtn', 'stagebtn'];
       // The width the dock's own buttons need, even when the dock is capped
       // to the window and they run past its edge. More's panel is not counted.
+      // The reaction tray is a popover on the bar, not a slot: counting it
+      // made the row look too wide the moment React opened, and React's slot
+      // collapsed under the finger.
       const dockNeed = () => {
         let lo = Infinity, hi = -Infinity;
         for (const el of bar.children) {
-          if (el.id === 'barmore') continue;
+          if (el.id === 'barmore' || el.id === 'reacttray') continue;
           for (const r of el.getClientRects()) { if (r.width) { lo = Math.min(lo, r.left); hi = Math.max(hi, r.right); } }
         }
         if (hi < lo) return bar.offsetWidth;
@@ -30075,8 +30078,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // off, Reactions and Share beside Camera and Mic) moves Share, then
         // Reactions, then Step off into More until it fits. Camera, Mic,
         // More, End and the grip stay on the dock.
+        // React keeps its slot when every button is already on the screen.
+        // A 16px gutter on top of the span dropped it on a 393px phone (Leave
+        // sat at 382 of 393): More slid onto Leave, and the tap meant for More
+        // left the call. The span alone is not enough either — on a 390px host
+        // it rounded to the window while Leave still stuck out — so the right
+        // edge decides. A dragged dock is not a reason to give the slot up.
+        const rowPast = () => {
+          if (dockNeed() > room + 0.5) return true;
+          if (side > 0 || dockx !== 0) return false;
+          let hi = -Infinity, lo = Infinity;
+          for (const el of bar.children) {
+            if (el.id === 'barmore' || el.id === 'reacttray' || el.classList.contains('inmore')) continue;
+            for (const r of el.getClientRects()) {
+              if (r.width) { lo = Math.min(lo, r.left); hi = Math.max(hi, r.right); }
+            }
+          }
+          return hi > window.innerWidth + 0.5 || lo < -0.5;
+        };
         for (const id of fitOrder) {
-          if (dockNeed() + 16 <= room) break;
+          if (!rowPast()) break;
           const b = document.getElementById(id);
           if (b && b.parentElement === bar && !b.classList.contains('inmore') && b.getClientRects().length) b.classList.add('inmore');
         }
