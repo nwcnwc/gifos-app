@@ -96,8 +96,7 @@
   // The payment service only ever sees the tag; the credential service
   // derives it again from the room a page asks for.
   function passRoomTag(room) {
-    const c = root.crypto || globalThis.crypto;
-    return c.subtle.digest('SHA-256', new TextEncoder().encode('gifos-va-pass-room:' + String(room))).then((buf) => {
+    return root.crypto.subtle.digest('SHA-256', new TextEncoder().encode('gifos-va-pass-room:' + String(room))).then((buf) => {
       const d = new Uint8Array(buf); let h = '';
       for (let i = 0; i < 16; i++) h += d[i].toString(16).padStart(2, '0');
       return h;
