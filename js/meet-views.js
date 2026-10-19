@@ -627,6 +627,14 @@
       const av = el.querySelector('.avatar');
       const cj = cellOf ? cellOf[j] : j;
       const cell = slices && cj >= 0 ? slices.cells[cj] : null;
+      // A camera on the Stage holds this seat empty: no second face, no letter.
+      if (faces[j].held) {
+        if (el.classList) { el.classList.add('seat-held'); el.classList.remove('cam-off'); }
+        if (v) { v.style.visibility = 'hidden'; v.style.opacity = '0'; applyCrop(v, null); }
+        if (av) av.style.display = 'none';
+        continue;
+      }
+      if (el.classList) el.classList.remove('seat-held');
       if (stream && !faces[j].off) {
         playStream(v, stream);
         // A face's <video> is a frame-size source above: when it learns or

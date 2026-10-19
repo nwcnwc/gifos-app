@@ -2776,6 +2776,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     z-index: 7; border-radius: 16px; border: 2px solid #fff; overflow: hidden; cursor: grab; touch-action: none;
     box-shadow: 0 12px 28px rgba(0,0,0,.45); }
   body.comfy .comfy-off { display: none !important; }
+  /* A camera on the Stage holds this seat. The picture is only on the Stage:
+     no video and no letter here, and the seat stays so nobody shifts into it. */
+  body.comfy .tile.seat-held > video,
+  body.comfy .stadface.seat-held > video { visibility: hidden !important; opacity: 0 !important; }
+  body.comfy .tile.seat-held .avatar,
+  body.comfy .stadface.seat-held .avatar { display: none !important; }
+  body.comfy .tile.seat-held,
+  body.comfy .stadface.seat-held { background: #0d0f14 !important; }
   .bar:not(.collapsed) .barmore .blurctl[hidden] { display: none !important; }
   /* The tile rules above zero the shadow at a higher specificity than
      `.tile.speaking`, and an inset shadow would sit under the video that
@@ -9818,18 +9826,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const sgs = document.querySelector('#stagefeed [data-row="sgs"]');
         const sgsV = sgs && sgs.querySelector('video');
         const sgsOn = !!(sgsV && sgsV.srcObject);
+        for (let i = 0; i < tiles.length; i++) {
+          tiles[i].seatHeld = false;
+          try { if (tiles[i].el) tiles[i].el.classList.remove('seat-held'); } catch (e) {}
+        }
         if (sgsOn) {
-          // Everyone on the Stage is shown by the Stage strip: their own tiles
-          // leave the Row until they step off. A sharer keeps their face in
-          // the Row (the Stage shows their screen); a Pin keeps its tile.
+          // The strip shows a camera that is on the Stage. That person keeps
+          // the same seat: video and initials off, nobody shifts into it.
+          // A sharer keeps their face (their camera is not the stage picture).
+          // A Pin keeps its tile.
           let stagersNow = [];
           try { stagersNow = stageIds(); } catch (e) {}
-          for (let i = tiles.length - 1; i >= 0; i--) {
+          for (let i = 0; i < tiles.length; i++) {
             const t = tiles[i];
             const sid = t.me ? myId : t.id;
             if (!sid || stagersNow.indexOf(sid) < 0 || t.shareFace || (focusId && t.id === focusId)) continue;
-            tiles.splice(i, 1);
-            try { t.el.classList.add('comfy-off'); } catch (e) {}
+            t.stage = false;
+            t.seatHeld = true;
+            try { t.el.classList.add('seat-held'); t.el.classList.remove('comfy-off'); } catch (e) {}
           }
           tiles.unshift({ id: 'stage:sgs', el: sgs, tier: 'row', stage: true, share: true, pz: 'stage:sgs' });
         }
@@ -9860,7 +9874,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const off = !st || (!!st.camOff && !st.scr);
           let avatar = '';
           try { avatar = (MV.avatarUrl && MV.avatarUrl(st || {}, null)) || ''; } catch (e2) {}
-          faces.push({ id: id, name: name, initials: nameInitial(name), off: off, avatar: avatar, shade: shadeKey(id) });
+          // A camera on the Stage holds this stadium seat empty. A screen
+          // share whose camera is not on stage is unchanged.
+          let held = false;
+          try {
+            const sharing = id === myId ? !!myStatus.scr : (typeof sharingScreen === 'function' && !!sharingScreen(id));
+            held = stageIds().indexOf(id) >= 0 && !sharing;
+          } catch (e3) { held = false; }
+          faces.push({ id: id, name: name, initials: held ? '' : nameInitial(name), off: off || held, avatar: held ? '' : avatar, shade: shadeKey(id), held: held });
         }
         // STADIUM-FACES: with a cell order, face j is cut from the cell that
         // names it (cellOf; -1 = not in this composite: initials), whatever
@@ -16002,15 +16023,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const [pid, p] of peers) {
         if (p.headless || !p.tile) continue;
         if (isHeld(pid)) { holdPeer(p); continue; }
-        // A STAGER's direct tile hides even for row-mates: they appear in the
-        // Stage strip instead ("stagers live on the Stage ONLY",
-        // docs/media-plane.md) — their main tracks are parked anyway, so the
-        // tile would be a black square. It returns the moment they step down.
+        // A camera on the Stage is only on the strip. The row seat stays
+        // (video off). It returns to a picture the moment they step down.
+        // ("stagers live on the Stage ONLY", docs/media-plane.md).
         if (stg.has(pid)) {
-          // Comfy gallery shows a stager in the row. The strip is a different mode.
-          let inGrid = false;
-          try { inGrid = !!(meTile && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.comfyAllowed(document.body)); } catch (e) { inGrid = false; }
-          paintDisp(p.tile, inGrid ? '' : 'none');
+          // A screen share keeps the face where comfy already put it. A camera
+          // on the Stage holds its row seat (the strip is the only picture).
+          // Another row holds that seat as a stadium face, so this tile stays off.
+          let show = false;
+          try {
+            const comfy = !!(meTile && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.comfyAllowed(document.body));
+            const sharing = typeof sharingScreen === 'function' && !!sharingScreen(pid);
+            const k0 = coordOfPeer.get(pid);
+            let mate = !k0;
+            if (k0) { const cc0 = net.topo.unck(k0); mate = cc0.pc === c.pc && cc0.r === c.r; }
+            show = comfy && (sharing || mate);
+          } catch (e) { show = false; }
+          paintDisp(p.tile, show ? '' : 'none');
           continue;
         }
         const k = coordOfPeer.get(pid);
