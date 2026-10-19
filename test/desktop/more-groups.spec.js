@@ -26,7 +26,7 @@ function readGroups(page) {
       const g = document.getElementById(id) && document.getElementById(id).closest('.moregroup');
       return g ? g.querySelector('h4').textContent.trim() : '(not in More)';
     };
-    const ids = ['invite', 'whobtn', 'chatbtn', 'hand', 'ccbtn', 'trbtn', 'blurseg', 'selfstage', 'sharebtn',
+    const ids = ['whobtn', 'chatbtn', 'hand', 'ccbtn', 'trbtn', 'blurseg', 'selfstage', 'sharebtn',
       'pwbtn', 'recbtn', 'votebtn', 'stagebtn', 'appbtn', 'setbtn', 'keysbtn'];
     const groups = {};
     for (const id of ids) groups[id] = groupOf(id);
@@ -49,7 +49,7 @@ test('More shows every group, in meeting order, on one sheet', async ({ page }) 
   const got = await readGroups(page);
   expect(got.heads).toEqual(['People', 'Talk', 'Your video', 'Room', 'Settings and help']);
   expect(got.groups).toEqual({
-    invite: 'People', whobtn: 'People',
+    whobtn: 'People',
     chatbtn: '(not in More)', hand: 'Talk', ccbtn: 'Talk', trbtn: 'Talk',
     blurseg: 'Your video', selfstage: 'Your video', sharebtn: '(not in More)',
     pwbtn: 'Room', recbtn: 'Room', votebtn: 'Room', stagebtn: 'Room', appbtn: 'Room',
@@ -67,7 +67,7 @@ test('a phone gets the same groups, with the dock buttons in theirs', async ({ p
   await page.click('#bartoggle');
   const got = await readGroups(page);
   expect(got.heads).toEqual(['People', 'Talk', 'Your video', 'Room', 'Settings and help']);
-  expect(got.groups).toMatchObject({ chatbtn: 'Talk', sharebtn: 'Your video', pwbtn: 'Room', invite: 'People' });
+  expect(got.groups).toMatchObject({ chatbtn: 'Talk', sharebtn: 'Your video', pwbtn: 'Room' });
   expect(got.talk).toEqual(['chatbtn', 'hand', 'ccbtn', 'trbtn']);
   const fit = await page.evaluate(() => {
     const m = document.getElementById('barmore').getBoundingClientRect();

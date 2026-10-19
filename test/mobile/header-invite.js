@@ -1,13 +1,13 @@
 /*
- * Alone on a phone, the header does not tell you to send the invite.
- * It is an Invite button: the link is copied, or the phone share sheet
- * opens. With other people here, the button is gone and the count stays.
+ * Alone on a phone, Invite lives in the OS header (#appinvite): the link is
+ * copied, or the phone share sheet opens. With other people here, the button
+ * is gone and the count stays.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/header-invite.js
  */
 const { chromium, devices } = require('playwright');
 
-const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
+const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8960';
 
 const PEOPLE = [
   { id: 'peer-ruth', name: 'Ruth' },
@@ -31,13 +31,13 @@ async function boot(browser, device, opts) {
   }, opts.scale || null);
   const page = await context.newPage();
   await page.goto(BASE + '/run.html#v=' + opts.room, { waitUntil: 'domcontentloaded', timeout: 20000 });
-  await page.waitForSelector('#hdrinvite', { timeout: 15000 });
+  await page.waitForSelector('#appinvite', { timeout: 15000 });
   const skip = page.locator('#nmok');
   if (await skip.count()) await skip.tap().catch(() => {});
   await page.waitForFunction(() => {
-    const btn = document.getElementById('hdrinvite');
+    const btn = document.getElementById('appinvite');
     const url = document.getElementById('share-url');
-    return btn && !btn.hidden && url && url.value.indexOf('#v=') >= 0;
+    return btn && btn.style.display !== 'none' && getComputedStyle(btn).display !== 'none' && url && url.value.indexOf('#v=') >= 0;
   }, { timeout: 8000 }).catch(() => {});
   await page.waitForTimeout(200);
   return { context, page };
@@ -45,32 +45,32 @@ async function boot(browser, device, opts) {
 
 async function measure(page) {
   return page.evaluate(() => {
-    const btn = document.getElementById('hdrinvite');
+    const btn = document.getElementById('appinvite');
     const status = document.getElementById('status');
-    const chipEl = document.querySelector('.topchip');
+    const bar = document.getElementById('appbar');
     const fit = document.getElementById('fitbtn').getBoundingClientRect();
     const unmuteEl = document.getElementById('unmute');
     const showcamEl = document.getElementById('showcam');
     const unmute = unmuteEl ? unmuteEl.getBoundingClientRect() : { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
     const showcam = showcamEl ? showcamEl.getBoundingClientRect() : { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
     const b = btn.getBoundingClientRect();
-    const chip = chipEl.getBoundingClientRect();
+    const header = bar.getBoundingClientRect();
     const st = status.getBoundingClientRect();
     const font = parseFloat(getComputedStyle(btn).fontSize);
+    const hidden = btn.style.display === 'none' || getComputedStyle(btn).display === 'none' || !btn.getClientRects().length;
     const box = (r) => ({ left: r.left, top: r.top, right: r.right, bottom: r.bottom, w: r.width, h: r.height });
     return {
       label: btn.textContent,
-      hidden: !!btn.hidden,
+      hidden: hidden,
       title: btn.title,
       status: status.textContent,
       statusTitle: status.title || '',
       kind: status.dataset.kind || '',
-      invite: chipEl.dataset.invite || '',
       font: font,
       clipped: btn.scrollWidth > btn.clientWidth + 2,
-      inChip: b.left >= chip.left - 1 && b.right <= chip.right + 1 && b.top >= chip.top - 1 && b.bottom <= chip.bottom + 1,
+      inHeader: b.left >= header.left - 1 && b.right <= header.right + 1 && b.top >= header.top - 1 && b.bottom <= header.bottom + 1,
       btn: box(b),
-      chip: box(chip),
+      header: box(header),
       statusBox: box(st),
       fit: box(fit),
       unmute: box(unmute),
@@ -85,7 +85,7 @@ async function measure(page) {
 (async () => {
   const browser = await chromium.launch({
     headless: true,
-    args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'],
+    args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--disable-gpu'],
   });
   const failures = [];
   const phones = [
@@ -103,12 +103,12 @@ async function measure(page) {
       bad.push('header still tells you to send the invite');
     }
     if (info.status.indexOf('sunday') < 0) bad.push('header dropped the room name "' + info.status + '"');
-    if (info.kind !== 'alone' || info.invite !== '1') bad.push('kind ' + info.kind + ' invite ' + info.invite);
+    if (info.kind !== 'alone') bad.push('kind ' + info.kind);
     if (info.btn.w < 44 || info.btn.h < 44) bad.push('Invite is ' + Math.round(info.btn.w) + 'x' + Math.round(info.btn.h));
     if (info.btn.left < -1 || info.btn.top < -1 || info.btn.right > info.vw + 1 || info.btn.bottom > info.vh + 1) {
       bad.push('Invite is off screen');
     }
-    if (!info.inChip) bad.push('Invite sits outside the chip');
+    if (!info.inHeader) bad.push('Invite sits outside the OS header');
     if (info.clipped) bad.push('Invite label is cut off');
     if (overlaps(info.btn, info.fit)) bad.push('Invite covers Fit');
     if (overlaps(info.btn, info.unmute)) bad.push('Invite covers Unmute');
@@ -119,22 +119,21 @@ async function measure(page) {
         window.__shared = null;
         navigator.share = (payload) => { window.__shared = payload; return Promise.resolve(); };
       });
-      await page.locator('#hdrinvite').tap();
+      await page.locator('#appinvite').tap();
       await page.waitForTimeout(80);
       const shared = await page.evaluate(() => window.__shared);
       if (!shared || String(shared.url || '').indexOf('#v=sunday') < 0) bad.push('share sheet did not get the link');
-      const still = await page.locator('#hdrinvite').innerText();
-      if (still !== 'Invite') bad.push('share changed the button to "' + still + '"');
       await page.evaluate(() => { navigator.share = undefined; });
-      await page.locator('#hdrinvite').tap();
+      await page.waitForTimeout(2100);
+      await page.locator('#appinvite').tap();
       await page.waitForTimeout(120);
       const copied = await page.evaluate(async () => {
         let clip = '';
         try { clip = await navigator.clipboard.readText(); } catch (e) { clip = 'ERR ' + e; }
-        return { clip: clip, label: document.getElementById('hdrinvite').textContent };
+        return { clip: clip, label: document.getElementById('appinvite').textContent };
       });
       if (String(copied.clip).indexOf('#v=sunday') < 0) bad.push('copy missed the link (' + copied.clip + ')');
-      if (copied.label !== 'Copied') bad.push('copy label "' + copied.label + '"');
+      if (copied.label !== 'Copied ✓') bad.push('copy label "' + copied.label + '"');
     }
     if (bad.length) failures.push(phone.name + ': ' + bad.join('; '));
     await context.close();

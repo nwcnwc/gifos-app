@@ -262,30 +262,23 @@ test('a meeting keeps meeting words and hides the on-air pill', async ({ page })
   await expect(page.locator('#leave-ask-title')).toHaveText('Leave the small group?');
 });
 
-test('invite is one tap on the dock, not inside More', async ({ page }) => {
+test('invite is one tap in the OS header, not inside More', async ({ page }) => {
   for (const [w, h] of [[1280, 720], [1920, 1080], [900, 720]]) {
     await bootSession(page, w, h);
-    const invite = page.locator('#invite');
+    const invite = page.locator('#appinvite');
     await expect(invite).toBeVisible();
-    await expect(invite.locator('.docklab')).toHaveText('Invite');
-    await expect(page.locator('.bar')).toHaveClass(/collapsed/);
-    const nested = await invite.evaluate((el) => !!el.closest('#barmore'));
-    expect(nested).toBe(false);
-    const bar = await page.locator('.bar').boundingBox();
+    await expect(invite).toHaveText('Invite');
+    await expect(page.locator('#invite')).toHaveCount(0);
+    const header = await page.locator('#appbar').boundingBox();
     const box = await invite.boundingBox();
     expect(box.width).toBeGreaterThan(40);
-    expect(box.x).toBeGreaterThanOrEqual(bar.x - 1);
-    expect(box.x + box.width).toBeLessThanOrEqual(bar.x + bar.width + 1);
-    expect(box.y).toBeGreaterThanOrEqual(bar.y - 1);
-    expect(box.y + box.height).toBeLessThanOrEqual(bar.y + bar.height + 1);
-    expect(bar.x).toBeGreaterThanOrEqual(-1);
-    expect(bar.x + bar.width).toBeLessThanOrEqual(w + 1);
-    const lab = await invite.locator('.docklab').boundingBox();
-    expect(lab.x).toBeGreaterThanOrEqual(box.x - 1);
-    expect(lab.x + lab.width).toBeLessThanOrEqual(box.x + box.width + 1);
+    expect(box.x).toBeGreaterThanOrEqual(header.x - 1);
+    expect(box.x + box.width).toBeLessThanOrEqual(header.x + header.width + 1);
+    expect(box.y).toBeGreaterThanOrEqual(header.y - 1);
+    expect(box.y + box.height).toBeLessThanOrEqual(header.y + header.height + 1);
   }
   await bootSession(page, 1280, 720);
-  await moreTool(page, 'invite');
+  await page.click('#appinvite', { modifiers: ['Shift'] });
   await expect(page.locator('#inv-modal')).toBeVisible();
   await expect(page.locator('#inv-modal h3')).toHaveText('Share this service');
 });
@@ -1490,7 +1483,7 @@ test('a service alone says you are live or you are watching', async ({ page }) =
   expect(viewer.hit, JSON.stringify(viewer)).toBe(false);
 });
 
-test('a host alone on a service gets Invite beside the live sentence', async ({ page }) => {
+test('a host alone on a service gets Invite in the OS header beside the live sentence', async ({ page }) => {
   const SECRET = 'viewer-secret-99';
   await page.addInitScript((secret) => {
     localStorage.setItem('gifos_name', 'Avery Chen');
@@ -1504,41 +1497,37 @@ test('a host alone on a service gets Invite beside the live sentence', async ({ 
   }, SECRET);
   async function place() {
     return page.evaluate(() => {
-      const el = document.getElementById('hdrinvite');
+      const el = document.getElementById('appinvite');
       const st = document.getElementById('status');
-      const chip = document.querySelector('.topchip');
+      const bar = document.getElementById('appbar');
       const b = el.getBoundingClientRect();
-      const c = chip.getBoundingClientRect();
+      const hdr = bar.getBoundingClientRect();
       const air = document.getElementById('onair').getBoundingClientRect();
       const overlap = (a, r) => a.width > 0 && r.width > 0 && !(a.right < r.left || r.right < a.left || a.bottom < r.top || r.bottom < a.top);
-      const shown = getComputedStyle(el).display !== 'none' && !el.hidden;
+      const shown = el.style.display !== 'none' && getComputedStyle(el).display !== 'none' && b.width > 0;
       return {
         shown,
         h: shown ? b.height : 0,
-        bg: shown ? getComputedStyle(el).backgroundColor : '',
         text: st.textContent,
         clip: st.scrollWidth > st.clientWidth + 1,
-        invite: chip.dataset.invite || '',
         kind: st.dataset.kind || '',
-        inChip: shown && b.left >= c.left - 1 && b.right <= c.right + 1 && b.top >= c.top - 1 && b.bottom <= c.bottom + 1,
+        inHeader: shown && b.left >= hdr.left - 1 && b.right <= hdr.right + 1 && b.top >= hdr.top - 1 && b.bottom <= hdr.bottom + 1,
         hitsLive: shown && overlap(b, air),
-        on: c.left >= -1 && c.right <= innerWidth + 1 && b.right <= innerWidth + 1,
+        on: hdr.left >= -1 && hdr.right <= innerWidth + 1 && b.right <= innerWidth + 1,
       };
     });
   }
   for (const w of [1280, 1920, 900]) {
     await page.setViewportSize({ width: w, height: w === 1920 ? 1080 : 720 });
     await page.goto('/run.html?desk=inv' + w + '#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
-    await page.locator('#hdrinvite').waitFor({ state: 'visible' });
+    await page.locator('#appinvite').waitFor({ state: 'visible' });
     const host = await place();
     expect(host.text).toContain('Off air. Send the link.');
     expect(host.text).not.toContain('Just you');
     expect(host.shown).toBe(true);
-    expect(host.h).toBeGreaterThanOrEqual(44);
-    expect(host.bg).toBe('rgb(0, 100, 200)');
-    expect(host.invite).toBe('1');
+    expect(host.h).toBeGreaterThanOrEqual(36);
     expect(host.kind).toBe('alone');
-    expect(host.inChip, JSON.stringify(host)).toBe(true);
+    expect(host.inHeader, JSON.stringify(host)).toBe(true);
     expect(host.hitsLive, JSON.stringify(host)).toBe(false);
     expect(host.clip, JSON.stringify(host)).toBe(false);
     expect(host.on, JSON.stringify(host)).toBe(true);
@@ -1550,36 +1539,30 @@ test('a host alone on a service gets Invite beside the live sentence', async ({ 
     let clip = '';
     navigator.share = (p) => { payload = p; return Promise.resolve(); };
     if (navigator.clipboard) navigator.clipboard.writeText = (t) => { clip = String(t); return Promise.resolve(); };
-    document.getElementById('hdrinvite').click();
+    document.getElementById('appinvite').click();
     navigator.share = undefined;
-    document.getElementById('hdrinvite').click();
-    return { payload, label: document.getElementById('hdrinvite').textContent, clip };
+    document.getElementById('appinvite').click();
+    return { payload, label: document.getElementById('appinvite').textContent, clip };
   }, SECRET);
   expect(shared.payload.url).toContain('sunday');
   expect(shared.payload.url).toContain('bc=1');
   expect(shared.payload.url).not.toContain(SECRET);
   expect(shared.payload.url).not.toContain('pw=');
   expect(shared.payload.text).not.toContain(SECRET);
-  expect(shared.label).toBe('Copied');
+  expect(shared.label).toBe('Copied ✓');
   expect(shared.clip).toContain('sunday');
   expect(shared.clip).toContain('bc=1');
   expect(shared.clip).not.toContain(SECRET);
   expect(shared.clip).not.toContain('pw=');
   const n = await page.evaluate(() => window.__gifosVideo.markJoinedForTest('peer-ruth'));
   expect(n).toBeGreaterThan(1);
-  await expect(page.locator('#hdrinvite')).toBeHidden();
-  const after = await page.evaluate(() => document.querySelector('.topchip').dataset.invite || '');
-  expect(after).toBe('');
+  await expect(page.locator('#appinvite')).toBeHidden();
   await page.goto('/run.html?desk=invview&view=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('watching') !== -1);
-  await expect(page.locator('#hdrinvite')).toBeHidden();
-  const viewerFlag = await page.evaluate(() => document.querySelector('.topchip').dataset.invite || '');
-  expect(viewerFlag).toBe('');
+  await expect(page.locator('#appinvite')).toBeHidden();
   await page.goto('/run.html?desk=invgroup&group=1#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('Just you') !== -1);
-  await expect(page.locator('#hdrinvite')).toBeHidden();
-  const groupFlag = await page.evaluate(() => document.querySelector('.topchip').dataset.invite || '');
-  expect(groupFlag).toBe('');
+  await expect(page.locator('#appinvite')).toBeVisible();
 });
 
 test('microphone and camera off are a line you cannot miss', async ({ page }) => {
@@ -1764,7 +1747,7 @@ test('sharing a personal call is the link and a blue Copy', async ({ page }) => 
     await page.setViewportSize({ width: w, height: h });
     await page.goto('/run.html?desk=inv' + w + '#mb=1&v=standup', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#airbar.on.group');
-    await moreTool(page, 'invite');
+    await page.click('#appinvite', { modifiers: ['Shift'] });
     await expect(page.locator('#inv-modal h3')).toHaveText('Share this small group');
     await expect(page.locator('#inv-modal')).toContainText('Send this link. Anyone who opens it joins you.');
     await expect(page.locator('#inv-modal')).not.toContainText(/troublemaker|blur|in charge|mute/i);
@@ -1799,7 +1782,7 @@ test('sharing a personal call is the link and a blue Copy', async ({ page }) => 
   await expect(page.locator('#inv-copy')).toHaveClass(/appear-primary/);
   await page.goto('/run.html?desk=invsvc#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airkind');
-  await moreTool(page, 'invite');
+  await page.click('#appinvite', { modifiers: ['Shift'] });
   await expect(page.locator('#inv-modal h3')).toHaveText('Share this service');
   await expect(page.locator('#inv-modal')).toContainText('People who open it are watching');
   await expect(page.locator('#inv-modal')).not.toContainText(/troublemaker|blur|in charge/i);
@@ -1810,7 +1793,7 @@ test('sharing a personal call is the link and a blue Copy', async ({ page }) => 
   expect(svc.in, JSON.stringify(svc)).toBe(true);
   await page.goto('/run.html?desk=invhost&host=1#mb=1&v=sunday&av=0123456789abcdef&bc=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#airbar.on.off');
-  await moreTool(page, 'invite');
+  await page.click('#appinvite', { modifiers: ['Shift'] });
   await expect(page.locator('#inv-modal')).toContainText('The host password stays with you.');
 });
 
@@ -2652,7 +2635,9 @@ test('float tells you when the stage has no picture', async ({ page }) => {
   await page.waitForSelector('#airbar.on.group');
   await page.waitForFunction(() => (document.getElementById('status').textContent || '').indexOf('Just you') !== -1);
   await page.evaluate(() => window.__gifosVideo.pipEnterForTest());
-  await expect(page.locator('#status')).toContainText('Just you. Send the invite.');
+  await expect(page.locator('#status')).toContainText('Just you');
+  await expect(page.locator('#status')).not.toContainText('send the invite');
+  await expect(page.locator('#appinvite')).toBeVisible();
   await expect(page.locator('#status')).not.toContainText('float');
 });
 
@@ -3330,9 +3315,9 @@ test('the Chat icon on the dock is as large as its neighbours', async ({ page })
     await expect(page.locator('.bar #chatbtn')).toBeVisible();
     const size = (sel) => page.locator(sel).evaluate((el) => Math.round(el.getBoundingClientRect().width));
     const chat = await size('.bar #chatbtn svg');
-    const invite = await size('.bar #invite svg');
+    const mic = await size('.bar #mic svg');
     if (who === 'viewer' && w === 1280) { await page.screenshot({ path: 'artifacts/chat-icon-' + (process.env.SHOT_TAG || 'run') + '.png' }); }
-    expect({ who, width: w, chat }).toEqual({ who, width: w, chat: invite });
+    expect({ who, width: w, chat }).toEqual({ who, width: w, chat: mic });
   }
 });
 
@@ -3503,10 +3488,8 @@ test('Escape closes the chat panel and returns to the Chat button', async ({ pag
       await page.locator('#chatbtn').click();
       await expect(panel).toHaveClass(/open/);
       await expect(page.locator('#chatbtn')).toHaveAttribute('aria-expanded', 'true');
-      // Beside the open chat at 900 Invite is under More (Q96).
-      if (await page.locator('#invite').isVisible()) await page.locator('#invite').click();
-      else { await page.locator('#bartoggle').click(); await page.locator('#barmore [data-dock="invite"]').click(); }
-      const sheet = page.locator('.name-modal:visible, #invite-modal:visible').first();
+      await page.click('#appinvite', { modifiers: ['Shift'] });
+      const sheet = page.locator('.name-modal:visible, #inv-modal:visible').first();
       await expect(sheet).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(sheet).toBeHidden();
@@ -3927,7 +3910,7 @@ test('the open chat sits beside the room bar and stage, not over them', async ({
         const edge = document.getElementById('chatpanel').getBoundingClientRect().left;
         const out = [];
         const seen = (e) => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
-        for (const e of document.querySelectorAll('#airbar *, #status, #hdrinvite, #fitbtn, #bc-stage, #bc-stage-line')) {
+        for (const e of document.querySelectorAll('#airbar *, #status, #appbar, #fitbtn, #bc-stage, #bc-stage-line')) {
           if (!seen(e)) continue;
           const r = e.getBoundingClientRect();
           if (r.width > 1 && r.right > edge + 1) out.push((e.id || e.className) + ' ' + Math.round(r.right));

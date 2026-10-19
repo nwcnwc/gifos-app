@@ -1496,7 +1496,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        Invite, Full screen, then Share into More until it fits (placeDock);
        it used to run over the chat with End on the panel. */
     .bar.dockslim { gap: 6px; padding: 0 10px; }
-    .bar.dockslim #cam, .bar.dockslim #mic, .bar.dockslim #reactbtn, .bar.dockslim #invite, .bar.dockslim #chatbtn, .bar.dockslim #bartoggle,
+    .bar.dockslim #cam, .bar.dockslim #mic, .bar.dockslim #reactbtn, .bar.dockslim #chatbtn, .bar.dockslim #bartoggle,
     .bar.dockslim > #sharebtn { width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
     .bar.dockslim > #stagebtn, .bar.dockslim > #hand { height: 56px; min-height: 56px; padding: 0 8px; }
     .bar.dockslim #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; margin-left: 4px; }
@@ -2064,19 +2064,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.broadcast .topchip .status { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical;
       -webkit-line-clamp: 2; line-clamp: 2; line-height: 1.35; }
   }
-  /* A broadcast host who is the only person here gets Invite in the chip.
-     The sentence stays. Wide screens show the same button the phone shows.
-     The viewer password is never part of this link. */
-  #hdrinvite {
-    display: none; flex: 0 0 auto; box-sizing: border-box;
-    min-width: 44px; min-height: 44px; height: 44px; margin: 0 0 0 4px; padding: 0 14px;
-    border: 0; border-radius: 999px; background: #0064c8; color: #fff; cursor: pointer;
-    font: 700 1rem/1 system-ui, sans-serif; white-space: nowrap;
-    align-items: center; justify-content: center;
-  }
-  #hdrinvite[hidden] { display: none !important; }
-  body.broadcast .topchip[data-invite="1"] { padding-top: 0; padding-bottom: 0; padding-right: 0; min-height: 44px; }
-  body.broadcast .topchip[data-invite="1"] #hdrinvite:not([hidden]) { display: inline-flex; }
   /* On air. Hosts wear Live (filled red, the same signal YouTube and a
      church stream use). Viewers wear Watching. Hidden outside a broadcast.
      [hidden] wins so a meeting never shows an empty pill. */
@@ -2230,8 +2217,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
        Padding made that hit 23px. The chip itself is the 44px target. */
     .topchip { min-height: 44px; padding-top: 0; padding-bottom: 0; align-items: stretch; }
     .topchip .title, .topchip button#status { display: inline-flex; align-items: center; min-height: 44px; box-sizing: border-box; }
-    .topchip[data-invite="1"] { padding-right: 0; }
-    .topchip[data-invite="1"] #hdrinvite:not([hidden]) { display: inline-flex; }
   }
   .fitbtn { position: fixed; z-index: 6; top: calc(58px + var(--gtop)); right: calc(14px + env(safe-area-inset-right, 0px)); min-width: 44px; min-height: 44px;
     border: 0; border-radius: 999px; padding: 8px 14px; cursor: pointer;
@@ -2444,7 +2429,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (min-width: 701px) and (max-width: 1100px) { .bar { gap: 6px; } }
   /* A service dock under 1100px (Step on and Invite too): compact buttons and words. */
   @media (min-width: 701px) and (max-width: 1100px) {
-    body.broadcast .bar #cam, body.broadcast .bar #mic, body.broadcast .bar #reactbtn, body.broadcast .bar #stagebtn, body.broadcast .bar #invite,
+    body.broadcast .bar #cam, body.broadcast .bar #mic, body.broadcast .bar #reactbtn, body.broadcast .bar #stagebtn,
     body.broadcast .bar #chatbtn, body.broadcast .bar #ccdock, body.broadcast .bar #sharebtn, body.broadcast .bar #hand, body.broadcast .bar #bartoggle, body.broadcast .bar #leavebtn {
       min-width: 56px; padding: 6px 4px 4px; }
     body.broadcast .bar .docklab { font-size: 12px; }
@@ -2506,7 +2491,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      and Meet, not a small slash on a gray circle. */
   .bar #mic.iconbtn:not(.off), .bar #cam.iconbtn:not(.off) { background: #146c36; color: #fff; }
   .bar #mic.iconbtn.off, .bar #cam.iconbtn.off { background: #b61622; color: #fff; border-color: transparent; }
-  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #chatbtn svg, .bar #ccdock svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 28px; height: 28px; }
+  .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #chatbtn svg, .bar #ccdock svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 28px; height: 28px; }
   /* Share screen is a worded dock button like the rest (qa-meet-desktop); only its colour is its own. */
   .bar > #sharebtn { border: 0; }
   .bar > #sharebtn svg { width: 28px; height: 28px; }
@@ -2692,7 +2677,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .topchip .title { font-size: 20px; }
     .topchip .status { font-size: 17px; }
     .bar { height: 88px; gap: 8px; padding: 0 10px; }
-    .bar #cam, .bar #mic, .bar #reactbtn, .bar #invite, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
+    .bar #cam, .bar #mic, .bar #reactbtn, .bar #chatbtn, .bar #ccdock, .bar #bartoggle {
       width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
     .bar > #sharebtn { width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
     .bar > #sharebtn svg { width: 26px; height: 26px; }
@@ -2700,7 +2685,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar > #stagebtn svg { width: 22px; height: 22px; }
     .bar > #hand { height: 56px; min-height: 56px; padding: 0 8px; }
     .bar > #hand .dockface { font-size: 22px; }
-    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #invite svg, .bar #chatbtn svg, .bar #ccdock svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
+    .bar #cam svg, .bar #mic svg, .bar #reactbtn svg, .bar #chatbtn svg, .bar #ccdock svg, .bar #bartoggle svg, .bar #leavebtn svg { width: 26px; height: 26px; }
     .bar #bargrip { width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
     .bar #leavebtn { width: 64px; height: 64px; min-width: 64px; min-height: 64px; }
     .bar:not(.collapsed) .barmore { bottom: 102px; width: calc(100vw - 24px); }
@@ -3104,16 +3089,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
      one status line (room name and count) and the Invite button. */
   .topchip #statuscount { flex: 0 0 auto; white-space: nowrap; background: transparent; border: 0; color: inherit;
     font: inherit; padding: 0; cursor: pointer; text-align: left; }
-  .topchip #statusinvite { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
-    min-height: 44px; margin-left: 8px; padding: 0 14px; border: 0; border-radius: 999px;
-    background: #0064c8; color: #fff; font: 700 16px/1 system-ui, sans-serif; cursor: pointer; }
-  .topchip #statusinvite[hidden] { display: none !important; }
   /* pre, not nowrap: the rest starts with " · 360p" and a flex item drops a leading space. A phone's chip (below) truncates. */
   @media (min-width: 701px) and (min-height: 501px) { .topchip #statusrest { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: pre; } }
-  /* A phone keeps the count and the sentence too; Invite is the chip's button there (hdrinvite). */
-  @media (max-width: 700px), (max-height: 500px) {
-    .topchip #statusinvite { display: none !important; }
-  }
   @media (min-width: 701px) and (min-height: 501px) {
     .topchip button#status { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); }
   }
@@ -3225,8 +3202,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .bar:not(.collapsed) .barmore > button,
   .bar:not(.collapsed) .barmore .seg,
   .bar:not(.collapsed) .barmore .blurlbl { font-size: 1rem; }
-  /* Invite is the one blue action in the sheet. The others stay gray. */
-  .bar:not(.collapsed) .barmore #invite { background: #0064c8; color: #fff; }
   /* Notch and home indicator. env() is 0 until viewport-fit=cover, which
      the viewport meta sets. The dock was 14px from the layout bottom, on
      top of a 34px home indicator, and the name chip sat at y=14 under a
@@ -3336,7 +3311,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.broadcast .topchip #statusrest {
       display: block; max-width: 100%; white-space: normal; overflow: hidden;
     }
-    body.broadcast #hdrinvite { order: 4; }
     /* The sentence is a second chip row. Its height follows the words, so the
        air bar starts at the chip's measured bottom (--chip-bottom), not a
        fixed guess that let a second line cover "Service · You are off air". */
@@ -3702,10 +3676,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   }
   body.townhall #grid, body.townhall #stadium { display: none !important; }
   body.broadcast #bc-ident img { width: 256px; width: min(256px, 70vw); height: 256px; height: min(256px, 46vh); object-fit: cover; border-radius: 1rem; background: #14141f; }
-  @media (max-width: 700px), (max-height: 500px) {
-    body.broadcast .topchip[data-invite="1"], body.townhall .topchip[data-invite="1"] { padding-top: 0; padding-bottom: 0; padding-right: 0; min-height: 44px; }
-    body.broadcast .topchip[data-invite="1"] #hdrinvite:not([hidden]), body.townhall .topchip[data-invite="1"] #hdrinvite:not([hidden]) { display: inline-flex; }
-  }
   #bcwhenrow { display: none; }
   body.broadcast.bc-host #bcwhenrow { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; flex-wrap: wrap; }
   #bcwhenrow input { min-height: 44px; font: inherit; border-radius: 10px; padding: 0 8px; }
@@ -3808,8 +3778,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <a class="title" href="index.html" target="_blank" rel="noopener" title="Open your GifOS computer in a new tab">GifOS</a>
     <span id="txmark" role="status" aria-label="Transcribing" title="This meeting is written down while people speak. Each browser writes its own voice; Meet Bot writes the rest.">📝 <span data-t="transcribing">Transcribing</span></span>
     <span id="onair" hidden><i class="lamp" aria-hidden="true"></i><span class="words"></span></span>
-    <span class="status" id="status"><button type="button" id="statuscount" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span><button type="button" id="statusinvite" hidden>Invite</button></span>
-    <button type="button" id="hdrinvite" hidden title="Share the viewer link">Invite</button>
+    <span class="status" id="status"><button type="button" id="statuscount" aria-expanded="false" aria-controls="roster">Joining…</button><span id="statusrest" class="statustext"></span></span>
     <button type="button" id="hdrhand" aria-expanded="false" aria-controls="handq"></button>
   </div>
   <aside id="roster" aria-label="People">
@@ -3912,7 +3881,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div class="morerow dockrow" id="dockrow" hidden>
       <button type="button" class="dockmore" data-dock="ccdock" hidden>CC</button>
       <button type="button" class="dockmore" data-dock="chatbtn" hidden>Chat</button>
-      <button type="button" class="dockmore" data-dock="invite" hidden>Invite</button>
       <button type="button" class="dockmore" data-dock="sharebtn" hidden>Share screen</button>
       <button type="button" class="dockmore" data-dock="reactbtn" hidden>Reactions</button>
       <button type="button" class="dockmore" data-dock="stagebtn" hidden>Step off</button>
@@ -3924,7 +3892,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <section class="moregroup" data-group="people">
       <h4 data-t="people">People</h4>
       <div class="morerow">
-        <button id="invite" data-t="invite" data-ti="invTip" aria-keyshortcuts="Alt+I" title="Friends join you live with one link">Invite</button>
         <button type="button" id="whobtn" data-t="who" data-ti="whoTip" aria-keyshortcuts="Alt+W" title="Who is on this meeting — names and internet addresses">Who</button>
       </div>
     </section>
@@ -4074,7 +4041,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       <img id="appgif" alt="">
       <span id="appname">App</span>
       <span id="appwho"></span>
-      <button id="appinvite" style="display:none" data-t="invite" data-ti="barInviteTip" title="Share this app live — friends join with one link">Invite</button>
+      <button id="appinvite" style="display:none" data-t="invite" data-ti="barInviteTip" aria-keyshortcuts="Alt+I" title="Share this app live — friends join with one link">Invite</button>
       <button id="appsave" style="display:none" data-t="barSave" data-ti="barSaveTip" title="Save a snapshot GIF — the app with its data, yours to keep">Save</button>
       <button id="apphelp" data-t="help" aria-keyshortcuts="Alt+/" title="How this app works">Help</button>
       <button id="appaudio" style="display:none" data-t="barTalkOff" data-ti="barTalkTip" title="Talk with the people in this app — when on, everyone here gets their own mic control (host only)">Talk: off</button>
@@ -5000,17 +4967,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       };
       if (!service) put('sharebtn', 'video', 'bartoggle');
-      // Invite: on the dock for a Broadcast (one tap, qa-broadcast-desktop);
-      // first in People everywhere else, which is where the markup has it.
-      const inv = document.getElementById('invite');
-      if (inv && service) {
-        if (!phone && !inv.querySelector('.docklab')) {
-          inv.classList.add('iconbtn');
-          inv.setAttribute('aria-label', 'Invite');
-          inv.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0z"/><path d="M4 21v-1a6 6 0 0 1 12 0v1"/><path d="M19 8v6M16 11h6"/></svg><span class="docklab dockword" data-t="invite">Invite</span>';
-        }
-        put('invite', 'people', 'chatbtn', true);
-      }
       // Hand leads Talk unless it is a viewer's, on the dock; Chat goes ahead
       // of it when the dock is a phone's.
       const hand = document.getElementById('hand'), talk = moreRow('talk');
@@ -5161,8 +5117,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (rec) rec.title = 'Record this service ON YOUR DEVICE (everyone sees that you are recording)';
       const inv = document.querySelector('#inv-modal h3');
       if (inv) inv.textContent = 'Share this service';
-      const inviteBtn = document.getElementById('invite');
-      if (inviteBtn) inviteBtn.title = 'Invite someone to this service — one link';
       const pw = document.getElementById('pwbtn');
       if (pw) pw.title = 'Viewer password. Optional. It is not part of the link.';
       const files = document.querySelector('#cfiles h4');
@@ -5468,17 +5422,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // text would delete them (and Invite) for good.
       if (countEl && restEl) { countEl.textContent = ''; countEl.hidden = true; restEl.textContent = m; }
       else statusEl.textContent = m;
-      const invHold = document.getElementById('statusinvite');
-      if (invHold) invHold.hidden = true;
       if (statusEl.title !== String(m)) statusEl.title = String(m);
       statusEl.classList.toggle('alert', blocking || !!hold);
       statusHoldUntil = Date.now() + (hold || (blocking ? 12000 : 4000));
       // The OFF AIR / LIVE banner follows the line (and the camera) on every paint.
       if (typeof paintLiveBadge === 'function') paintLiveBadge();
-      const holdChip = statusEl.closest('.topchip');
-      if (holdChip) delete holdChip.dataset.invite;
-      const holdInvite = document.getElementById('hdrinvite');
-      if (holdInvite) holdInvite.hidden = true;
       try { paintStatusSheet(); } catch (e) {}
     };
     // The chip is one line. The title holds the whole sentence (a refusal,
@@ -5507,10 +5455,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (el) el.style.display = 'none';
       statusEl.setAttribute('aria-expanded', 'false');
     }
-    // The count opens the roster and Invite shares the link; the rest of the
-    // line opens the full status sheet (qa-meet-mobile).
+    // The count opens the roster; the rest of the line opens the full status
+    // sheet (qa-meet-mobile). Invite is the header's button, not this line.
     statusEl.addEventListener('click', (e) => {
-      if (e.target && e.target.closest && e.target.closest('#statusinvite')) return;
       // On a wide screen the count opens the roster; on a phone the whole chip opens the sheet.
       if (!phoneLayout() && e.target && e.target.closest && e.target.closest('#statuscount')) return;
       e.preventDefault(); openStatusSheet();
@@ -12203,23 +12150,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // of the reach states that replace the line. Tests and styling read
       // this, never the sentence.
       const statusKind = reachState && !inlineReach ? reachState : shown === 1 ? (atDoor ? 'door' : 'alone') : 'meeting';
-      // A broadcast host who is the only person here gets Invite beside the
-      // sentence, at every width. The sentence stays. The viewer password is
-      // never part of the link this button shares.
-      const hostHere = typeof BROADCAST !== 'undefined' && BROADCAST
-        && (((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
-      const hostAlone = !!(hostHere && statusKind === 'alone');
-      // On a phone, anyone alone gets the Invite button beside the chip (qa-meet-mobile).
-      const phoneAlone = statusKind === 'alone' && window.matchMedia('(max-width: 700px), (max-height: 500px)').matches;
-      // An app room's Invite is the header's #appinvite, and only its owner has it.
-      const inviteChip = (hostAlone || phoneAlone) && ROOM.kind !== 'app';
-      const chip = statusEl.closest('.topchip');
-      if (chip) {
-        if (inviteChip) chip.dataset.invite = '1';
-        else delete chip.dataset.invite;
-      }
-      const hdrInvite = document.getElementById('hdrinvite');
-      if (hdrInvite) hdrInvite.hidden = !inviteChip;
       const statusShown = statusText;
       const shownDetail = phoneDetail;
       if (statusEl.dataset) {
@@ -12232,22 +12162,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (statusEl.title !== shownDetail) statusEl.title = shownDetail;
       const countEl = document.getElementById('statuscount');
       const restEl = document.getElementById('statusrest');
-      const deskInvite = document.getElementById('statusinvite');
       if (countEl && restEl) {
         if (countEl.textContent !== countText) countEl.textContent = countText;
         // An empty count is no button: Tab must not stop on nothing.
         if (countEl.hidden !== !countText) countEl.hidden = !countText;
         if (restEl.textContent !== restText) restEl.textContent = restText;
-      }
-      if (deskInvite) {
-        // One Invite: the chip's button wins, and a service viewer has no link to send.
-        const deskAlone = statusKind === 'alone' && !inviteChip && !BROADCAST && ROOM.kind !== 'app';
-        deskInvite.hidden = !deskAlone;
-        if (!deskAlone) { delete deskInvite.dataset.copied; if (deskInvite.textContent) deskInvite.textContent = ''; }
-        else if (!deskInvite.dataset.copied) {
-          const label = uiText('invite', 'Invite');
-          if (deskInvite.textContent !== label) deskInvite.textContent = label;
-        }
       }
       paintBcQuiet(bq);
       if (typeof paintLiveBadge === 'function') paintLiveBadge();
@@ -12257,6 +12176,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const chip = document.querySelector('body.broadcast .topchip');
         if (chip) document.documentElement.style.setProperty('--chip-bottom', Math.ceil(chip.getBoundingClientRect().bottom) + 'px');
       } catch (e2) {}
+      try { paintInviteSlot(); } catch (e3) {}
     }
     // The host's start time and Visit link can arrive by gossip after the
     // line was painted; the countdown moves on its own.
@@ -12881,25 +12801,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     const statusCountBtn = document.getElementById('statuscount');
     if (statusCountBtn) statusCountBtn.onclick = () => { if (!phoneLayout()) toggleRoster(); };
-    // One click while you are the only person here: the link is copied, and
-    // where the browser can share, the share sheet opens too. This is not the
-    // More → Invite sheet.
-    const statusInvite = document.getElementById('statusinvite');
-    if (statusInvite) statusInvite.onclick = () => {
-      const url = shareUrl ? shareUrl.value : '';
-      if (shareUrl) { try { shareUrl.select(); } catch (e) {} }
-      try { document.execCommand('copy'); } catch (e) {}
-      if (url && navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {});
-      const isApp = document.body.classList.contains('app-room');
-      const payload = { title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : 'Join my GifOS meeting', text: 'Tap this link and you’re in:', url: url };
-      if (url && navigator.share) navigator.share(payload).catch(() => {});
-      statusInvite.dataset.copied = '1';
-      statusInvite.textContent = uiText('invCopied', 'Copied ✓');
-      setTimeout(() => {
-        delete statusInvite.dataset.copied;
-        if (!statusInvite.hidden) statusInvite.textContent = uiText('invite', 'Invite');
-      }, 2000);
-    };
     const rosterClose = document.getElementById('roster-close');
     if (rosterClose) rosterClose.onclick = () => toggleRoster(false);
     const rosterFind = document.getElementById('roster-find');
@@ -19987,7 +19888,57 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           myDevHash = dh.slice(0, 16);
           startMesh();
           updateStatus();
+          return recallRoomOwner();
         });
+      });
+    }
+    // The device that minted this app's room, stored on <fileId>::room.
+    // A reload has no in-memory founder flag. A guest has no such record.
+    function roomRecordMatches(saved, j) {
+      if (!saved || !j || saved.k !== j.k) return false;
+      if (!!saved.owned !== !!j.owned) return false;
+      if (!j.owned) return true;
+      return saved.short === j.short && String(saved.av || '').toLowerCase() === String(j.av || '').toLowerCase();
+    }
+    function recallRoomOwner() {
+      if (ROOM.kind !== 'app' || ROOM.solo || ROOM.founder || !ROOM.join) {
+        try { paintInviteSlot(); } catch (e) {}
+        return Promise.resolve(false);
+      }
+      const j = ROOM.join;
+      return GifOS.store.allFiles().then((files) => {
+        const ids = (files || []).map((f) => f && f.id).filter(Boolean);
+        return Promise.all(ids.map((id) => GifOS.store.getState(id + '::room').then((saved) => ({ id, saved })).catch(() => ({ id, saved: null }))));
+      }).then((rows) => {
+        const me = deviceId();
+        for (const row of rows || []) {
+          if (!roomRecordMatches(row && row.saved, j)) continue;
+          const saved = row.saved;
+          if (saved.owner && saved.owner !== me) continue;
+          if (!saved.owner) {
+            saved.owner = me;
+            GifOS.store.setState(row.id + '::room', saved).catch(() => {});
+          }
+          ROOM.founder = true;
+          ROOM.fileId = row.id;
+          return row;
+        }
+        return null;
+      }).then((row) => {
+        try { paintInviteSlot(); } catch (e) {}
+        if (!row || document.body.classList.contains('has-app')) return !!row;
+        const waitMyId = () => {
+          if (myId) return Promise.resolve();
+          const timeout = new Promise((res) => setTimeout(res, 10000));
+          return Promise.race([myIdReady, timeout]);
+        };
+        return waitMyId().then(() => {
+          if (!myId) return true;
+          return GifOS.store.getFile(row.id).then((rec) => {
+            const nm = (rec && rec.name && rec.name.replace(/\.gif$/i, '')) || 'App';
+            return runApp(row.id, nm);
+          }).then(() => true);
+        }).catch(() => true).then((ok) => { try { paintInviteSlot(); } catch (e) {} return ok; });
       });
     }
     // Solo → shared: mint the room (stable per file — re-inviting reuses the
@@ -20036,13 +19987,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const fresh = !!(saved && bg.querySelector('input[name="rmlink"][value="fresh"]').checked);
           bg.remove();
           GifOS.store.getState(ROOM.fileId + '::room').then((saved2) => {
-            if (!fresh && saved2 && saved2.owned === owned && saved2.k) return saved2;
+            if (!fresh && saved2 && saved2.owned === owned && saved2.k) {
+              if (!saved2.owner) {
+                saved2.owner = deviceId();
+                return GifOS.store.setState(ROOM.fileId + '::room', saved2).then(() => saved2);
+              }
+              return saved2;
+            }
+            const owner = deviceId();
             const mint = owned
               ? (() => { const sec = net.randHex(24); return sha256hex(sec).then((h) => {
                   const signed = !!(GifOS.sign && GifOS.sign.readSig && GifOS.sign.readSig(rec.bytes));
-                  return { owned: true, short: GifOS.runtime.slug(signed ? nm : nm + '-anon'), av: h.slice(0, 24), sec: sec, k: shortCode() };
+                  return { owned: true, short: GifOS.runtime.slug(signed ? nm : nm + '-anon'), av: h.slice(0, 24), sec: sec, k: shortCode(), owner: owner };
                 }); })()
-              : Promise.resolve({ owned: false, k: shortCode() });
+              : Promise.resolve({ owned: false, k: shortCode(), owner: owner });
             return Promise.resolve(mint).then((m) => GifOS.store.setState(ROOM.fileId + '::room', m).then(() => m));
           }).then((m) => {
             ROOM.solo = false; ROOM.founder = true;
@@ -20081,22 +20039,92 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         };
       }).catch((e) => setStatus('Could not share the app: ' + (e && e.message || e)));
     }
-    // THE HEADER'S INVITE follows the ROOM, never the app. Solo: mint the
-    // room. App room: only its owner (the page that minted it) has Invite,
-    // the room's own link, as often as they like; guests forward the link
-    // they came in on. Meeting: the meeting's own Invite (the dock's).
+    // THE HEADER'S INVITE is the same slot in every app. Solo: mint the
+    // room. App room: only its owner has Invite (the stored <fileId>::room
+    // owner, which survives a reload), and it reopens that room's link.
+    // Meeting, including an app running inside one: the meeting's link.
+    // A guest has no Invite. An app inside a meeting never mints a room.
     function paintInviteSlot() {
-      document.getElementById('appinvite').style.display = ROOM.solo || (ROOM.kind === 'app' && ROOM.founder) ? '' : 'none';
+      const btn = document.getElementById('appinvite');
+      if (!btn) return;
+      let show = false;
+      if (ROOM.solo) show = true;
+      else if (ROOM.kind === 'app' && ROOM.founder) show = true;
+      else if (!document.body.classList.contains('app-room')) {
+        const kind = (statusEl && statusEl.dataset && statusEl.dataset.kind) || '';
+        const hostHere = typeof BROADCAST !== 'undefined' && BROADCAST
+          && (((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
+        const hostAlone = !!(hostHere && kind === 'alone');
+        const phoneAlone = kind === 'alone' && phoneLayout();
+        if (document.body.classList.contains('has-app')) show = false;
+        else if (typeof BROADCAST !== 'undefined' && BROADCAST) show = hostAlone || phoneAlone;
+        else if (kind === 'alone') show = true;
+      }
+      btn.style.display = show ? '' : 'none';
+      const tip = (ROOM.kind === 'app' || document.body.classList.contains('app-room'))
+        ? 'barInviteTip'
+        : (typeof BROADCAST !== 'undefined' && BROADCAST)
+          ? 'Invite someone to this service — one link'
+          : 'invTip';
+      if (tip === 'invTip' || tip === 'barInviteTip') {
+        btn.setAttribute('data-ti', tip);
+        const words = uiText(tip, tip === 'invTip' ? 'Friends join you live with one link' : 'Share this app live — friends join with one link');
+        if (words) btn.title = words;
+      } else btn.title = tip;
+      const label = uiText('invite', 'Invite');
+      if (show && btn.textContent !== label && !btn.dataset.copied) btn.textContent = label;
     }
-    document.getElementById('appinvite').onclick = () => {
-      if (!ROOM.solo) { share.classList.add('show'); showInviteModal(); return; }
-      // THE deferred preflight gate (see the top of this file): a solo app
-      // never saw the too-old wall at load, so the Share-live button — the
-      // solo entry's first and only network act — is where a browser that
-      // cannot meet finds out, over a still-working app.
-      const P = window.GifOSPreflight;
-      if (P && typeof P.requireMeeting === 'function') P.requireMeeting(inviteFromSolo);
-      else inviteFromSolo();
+    // Header chrome from the foreground app's manifest. Meet's page wears
+    // the choice Meet declares (capabilities.header = auto-hide). A running
+    // app's manifest replaces it until the app stops. Not a setting.
+    function applyHeaderChoice(choice) {
+      const bar = document.getElementById('appbar');
+      if (!bar || !GifOS.runtime || !GifOS.runtime.headerChoice) return;
+      const picked = GifOS.runtime.headerChoice({ capabilities: { header: choice } });
+      if (picked === 'auto-hide') { bar.dataset.hide = 'auto'; delete bar.dataset.header; }
+      else if (picked === 'larger') { delete bar.dataset.hide; bar.dataset.header = 'larger'; }
+      else { delete bar.dataset.hide; delete bar.dataset.header; }
+    }
+    function applyPageHeader() {
+      if (window.__gifosHeaderApp) { applyHeaderChoice(window.__gifosHeaderApp); return; }
+      if (typeof BROADCAST !== 'undefined' && BROADCAST) { applyHeaderChoice(''); return; }
+      if (ROOM.kind === 'meet') applyHeaderChoice(GifOS.runtime.SYSTEM_HEADER.meet);
+      else applyHeaderChoice('');
+    }
+    window.__gifosHeaderFromManifest = (manifest) => {
+      window.__gifosHeaderApp = GifOS.runtime.headerChoice(manifest);
+      applyHeaderChoice(window.__gifosHeaderApp);
+    };
+    applyPageHeader();
+    paintInviteSlot();
+    document.getElementById('appinvite').onclick = (e) => {
+      const btn = document.getElementById('appinvite');
+      if (ROOM.solo) {
+        // THE deferred preflight gate (see the top of this file): a solo app
+        // never saw the too-old wall at load, so the Share-live button — the
+        // solo entry's first and only network act — is where a browser that
+        // cannot meet finds out, over a still-working app.
+        const P = window.GifOSPreflight;
+        if (P && typeof P.requireMeeting === 'function') P.requireMeeting(inviteFromSolo);
+        else inviteFromSolo();
+        return;
+      }
+      if (ROOM.kind === 'app' || document.body.classList.contains('app-room')) {
+        share.classList.add('show');
+        showInviteModal();
+        return;
+      }
+      // An app running inside a meeting never mints a room; Invite is still
+      // the meeting's link, even when the header slot is hidden for layout.
+      if (document.body.classList.contains('has-app')) {
+        share.classList.add('show');
+        showInviteModal();
+        return;
+      }
+      const kind = (statusEl && statusEl.dataset && statusEl.dataset.kind) || '';
+      if (kind === 'alone' && !(e && e.shiftKey)) { shareMeetingLink(btn); return; }
+      share.classList.add('show');
+      showInviteModal();
     };
     // The CALL LAYER in an app room is opt-in, always: the plane being
     // available obligates nobody's camera. A quiet member sees who's live and
@@ -30014,7 +30042,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // When the whole dock is wider than the call beside the chat, it goes to
       // the phone sizes (.dockslim) and moves these into More, one at a time,
       // until it fits; More shows a stand-in that presses the real button.
-      const slimOrder = ['chatbtn', 'invite', 'sharebtn'];
+      const slimOrder = ['chatbtn', 'sharebtn'];
       const fitOrder = ['sharebtn', 'reactbtn', 'stagebtn'];
       // The width the dock's own buttons need, even when the dock is capped
       // to the window and they run past its edge. More's panel is not counted.
@@ -30423,7 +30451,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let dockCalmMs = 3000; // 0.9.23b: calm after 3 s
     (function () {
       document.body.classList.toggle('desk-ptr', !IS_MOBILE);
-      document.getElementById('appbar').dataset.hide = 'auto'; // Meet's OS header option
+      applyPageHeader(); // Meet's manifest says auto-hide; an app's manifest can say otherwise
       const bar = document.querySelector('.bar');
       let lastInput = Date.now();
       const wake = () => {
@@ -31562,10 +31590,58 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const copied = uiText('invCopied', 'Copied ✓');
       const copy = uiText('invCopy', 'Copy');
       btn.textContent = copied;
-      later(() => { if (btn.textContent === copied) btn.textContent = copy; }, 2000);
+      if (btn.dataset) btn.dataset.copied = '1';
+      later(() => {
+        if (btn.textContent === copied) btn.textContent = uiText('invite', 'Invite');
+        if (btn.dataset) delete btn.dataset.copied;
+      }, 2000);
+    }
+    function shareMeetingLink(btn) {
+      const url = viewerShareUrl();
+      if (!url) return;
+      const isApp = document.body.classList.contains('app-room');
+      const payload = {
+        title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : (typeof TOWNHALL !== 'undefined' && TOWNHALL ? 'Watch my GifOS town hall' : 'Join my GifOS meeting'),
+        text: BROADCAST && bcStartAt() > Date.now()
+          ? 'Live ' + bcWhenWords(bcStartAt(), Date.now()) + '. Tap this link to watch:'
+          : 'Tap this link and you’re in:',
+        url: url,
+      };
+      const copy = () => {
+        try {
+          if (shareUrl) {
+            const prev = shareUrl.value;
+            shareUrl.value = url;
+            shareUrl.focus();
+            shareUrl.select();
+            document.execCommand('copy');
+            shareUrl.value = prev;
+          }
+        } catch (e) {}
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).catch(() => {});
+        if (btn) armCopiedLabel(btn, setTimeout);
+      };
+      if (typeof navigator.share === 'function') {
+        copy();
+        navigator.share(payload).catch((err) => {
+          if (err && err.name === 'AbortError') return;
+        });
+        return;
+      }
+      copy();
+    }
+    // A meeting shares the viewer link (password stays off it). An app room
+    // shares the room link it already holds.
+    function inviteLinkForModal() {
+      const isApp = ROOM.kind === 'app' || document.body.classList.contains('app-room');
+      if (!isApp) {
+        const v = viewerShareUrl();
+        if (v) return v;
+      }
+      return (shareUrl && shareUrl.value) || '';
     }
     function linkRowHtml() {
-      return '<div class="inv-link"><input id="inv-url" readonly value="' + esc(shareUrl.value) + '"><button id="inv-copy" type="button" class="appear-primary">' + esc(uiText('invCopy', 'Copy')) + '</button><button id="inv-share" type="button" class="appear-secondary" style="display:none">' + esc(uiText('invShare', 'Share')) + '</button></div>';
+      return '<div class="inv-link"><input id="inv-url" readonly value="' + esc(inviteLinkForModal()) + '"><button id="inv-copy" type="button" class="appear-primary">' + esc(uiText('invCopy', 'Copy')) + '</button><button id="inv-share" type="button" class="appear-secondary" style="display:none">' + esc(uiText('invShare', 'Share')) + '</button></div>';
     }
     function showInviteModal() {
       const body = document.getElementById('inv-body');
@@ -31613,15 +31689,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       const copyBtn = document.getElementById('inv-copy');
       const shareInviteBtn = document.getElementById('inv-share');
-      const inviteSharePayload = () => ({ title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS service' : 'Join my GifOS small group', text: 'Tap this link and you’re in:', url: shareUrl.value });
+      const inviteSharePayload = () => {
+        const field = document.getElementById('inv-url');
+        const url = (field && field.value) || inviteLinkForModal();
+        return { title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS service' : 'Join my GifOS small group', text: 'Tap this link and you’re in:', url: url };
+      };
       if (shareInviteBtn && navigator.share) {
         shareInviteBtn.style.display = '';
         shareInviteBtn.onclick = () => { navigator.share(inviteSharePayload()).catch(() => {}); };
       }
       if (copyBtn) copyBtn.onclick = () => {
         const u = document.getElementById('inv-url'); u.select();
+        const text = u.value;
         try { document.execCommand('copy'); } catch (e) {}
-        if (navigator.clipboard) navigator.clipboard.writeText(shareUrl.value).catch(() => {});
+        if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
         armCopiedLabel(copyBtn, setTimeout);
       };
       const done = document.getElementById('inv-done');
@@ -31930,52 +32011,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       };
       paintBcVisitField();
     }
-    function shareMeetingLink(btn) {
-      const url = viewerShareUrl();
-      if (!url) return;
-      const isApp = document.body.classList.contains('app-room');
-      const payload = {
-        title: isApp ? 'Join me on GifOS' : BROADCAST ? 'Watch my GifOS broadcast' : (typeof TOWNHALL !== 'undefined' && TOWNHALL ? 'Watch my GifOS town hall' : 'Join my GifOS meeting'),
-        text: BROADCAST && bcStartAt() > Date.now()
-          ? 'Live ' + bcWhenWords(bcStartAt(), Date.now()) + '. Tap this link to watch:'
-          : 'Tap this link and you’re in:',
-        url: url,
-      };
-      const markCopied = () => {
-        if (!btn) return;
-        const prev = btn.getAttribute('data-label') || 'Invite';
-        btn.textContent = 'Copied';
-        setTimeout(() => { if (btn.textContent === 'Copied') btn.textContent = prev; }, 1600);
-      };
-      const copy = () => {
-        try {
-          if (shareUrl) {
-            const prev = shareUrl.value;
-            shareUrl.value = url;
-            shareUrl.focus();
-            shareUrl.select();
-            document.execCommand('copy');
-            shareUrl.value = prev;
-          }
-        } catch (e) {}
-        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).catch(() => {});
-        markCopied();
-      };
-      if (typeof navigator.share === 'function') {
-        navigator.share(payload).catch((err) => {
-          if (err && err.name === 'AbortError') return;
-          copy();
-        });
-        return;
-      }
-      copy();
-    }
-    const hdrInviteBtn = document.getElementById('hdrinvite');
-    if (hdrInviteBtn) hdrInviteBtn.onclick = () => shareMeetingLink(hdrInviteBtn);
-    document.getElementById('invite').onclick = () => {
-      share.classList.add('show'); // keep the top copy row visible/copyable behind the sheet
-      showInviteModal();
-    };
     document.getElementById('copy').onclick = () => {
       shareUrl.select(); try { document.execCommand('copy'); } catch (e) {}
       if (navigator.clipboard) navigator.clipboard.writeText(shareUrl.value).catch(() => {});
@@ -32199,7 +32234,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       return false;
     }
-    const SHORTCUT_IDS = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'invite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', Slash: 'apphelp', KeyM: 'muteall', KeyB: 'blurall', KeyX: 'camall', KeyP: 'shareall' };
+    const SHORTCUT_IDS = { KeyA: 'mic', KeyV: 'cam', KeyS: 'sharebtn', KeyC: 'chatbtn', KeyK: 'ccdock', KeyH: 'hand', KeyF: 'fitbtn', KeyQ: 'leavebtn', KeyW: 'whobtn', KeyI: 'appinvite', KeyY: 'appbtn', KeyU: 'votebtn', KeyL: 'pwbtn', KeyG: 'stagebtn', KeyR: 'recbtn', Comma: 'setbtn', KeyT: 'trbtn', Slash: 'apphelp', KeyM: 'muteall', KeyB: 'blurall', KeyX: 'camall', KeyP: 'shareall' };
     // The control an Alt chord presses, or null when that chord does nothing
     // for this person right now.
     function shortcutTarget(id) {
@@ -32729,6 +32764,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       refreshStealBtn();
       appMountEl.innerHTML = '';
       document.body.classList.remove('has-app');
+      window.__gifosHeaderApp = '';
+      try { applyPageHeader(); } catch (e) {}
       paintHelpTip();
       try { window.__meetRelayout(); } catch (e) {}
       const ap = document.getElementById('appperms'); if (ap) ap.style.display = 'none';
@@ -33859,7 +33896,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return { ok: true, ended: !vt || vt.readyState === 'ended', n: stopped.length };
       },
       participants: participantCount,
-      shareInvite: () => shareMeetingLink(document.getElementById('hdrinvite')),
+      shareInvite: () => { const b = document.getElementById('appinvite'); if (b) b.click(); },
       markJoinedForTest: (id) => {
         const pid = String(id || 'peer').slice(0, 80);
         if (pid && !rosterIds.includes(pid)) rosterIds.push(pid);

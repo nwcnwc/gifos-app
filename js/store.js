@@ -63,6 +63,8 @@
     const out = [];
     for (const k of Object.keys(caps || {})) {
       const v = caps[k];
+      // Header chrome (auto-hide, larger) is a capability, not a device power.
+      if (k === 'header') continue;
       if (v === false || (Array.isArray(v) && !v.length)) continue;
       let label = CAP_WORDS[k] || k;
       if (Array.isArray(v)) label += ' (' + v.join(', ') + ')';

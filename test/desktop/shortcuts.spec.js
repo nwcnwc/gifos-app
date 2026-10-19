@@ -110,7 +110,7 @@ test('alt shortcuts run the dock and skip the keys while typing', async ({ page 
 test('the rest of More has a key', async ({ page }) => {
   await boot(page);
   const chords = [
-    ['whobtn', 'Alt+W'], ['invite', 'Alt+I'], ['appbtn', 'Alt+Y'], ['votebtn', 'Alt+U'],
+    ['whobtn', 'Alt+W'], ['appinvite', 'Alt+I'], ['appbtn', 'Alt+Y'], ['votebtn', 'Alt+U'],
     ['pwbtn', 'Alt+L'], ['stagebtn', 'Alt+G'], ['recbtn', 'Alt+R'], ['ccdock', 'Alt+K'],
     ['setbtn', 'Alt+,'], ['apphelp', 'Alt+/'], ['trbtn', 'Alt+T'],
   ];
@@ -118,7 +118,7 @@ test('the rest of More has a key', async ({ page }) => {
     expect(await page.getAttribute('#' + id, 'aria-keyshortcuts'), id).toBe(chord);
   }
   await page.evaluate(() => {
-    for (const id of ['whobtn', 'invite', 'appbtn', 'votebtn', 'pwbtn', 'stagebtn', 'recbtn', 'ccdock', 'setbtn', 'apphelp', 'trbtn']) {
+    for (const id of ['whobtn', 'appinvite', 'appbtn', 'votebtn', 'pwbtn', 'stagebtn', 'recbtn', 'ccdock', 'setbtn', 'apphelp', 'trbtn']) {
       const el = document.getElementById(id);
       el.dataset.hits = '0';
       el.addEventListener('click', (ev) => {

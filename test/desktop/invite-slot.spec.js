@@ -50,7 +50,7 @@ function invites() {
     }
     return true;
   };
-  const ids = ['appinvite', 'invite', 'hdrinvite', 'statusinvite'];
+  const ids = ['appinvite'];
   return {
     shown: ids.filter((id) => seen(document.getElementById(id))),
     armed: ids.filter((id) => { const el = document.getElementById(id); return !!el && !el.hidden && el.style.display !== 'none' && getComputedStyle(el).display !== 'none'; }),
@@ -104,7 +104,7 @@ for (const [w, h, label] of [[1280, 720, 'laptop'], [390, 844, 'phone']]) {
     await page.screenshot({ path: 'test/desktop/shots/invslot-' + SHOT + '-guest-' + label + '.png' });
     const got = await page.evaluate(invites);
     expect(got.kind).toBe('app-room');
-    expect({ shown: got.shown, armed: got.armed.filter((id) => id !== 'invite'), roomYouRun: got.roomYouRun }).toEqual({ shown: [], armed: [], roomYouRun: 0 });
+    expect({ shown: got.shown, armed: got.armed, roomYouRun: got.roomYouRun }).toEqual({ shown: [], armed: [], roomYouRun: 0 });
   });
 
   test(label + ': an app inside a meeting offers only the meeting\'s Invite and never mints a room', async ({ page, browserName }) => {
@@ -126,3 +126,21 @@ for (const [w, h, label] of [[1280, 720, 'laptop'], [390, 844, 'phone']]) {
     expect(after.hash).not.toMatch(/[#&](j|s|id)=/);
   });
 }
+
+test('laptop: app-room owner Invite survives reload', async ({ page, browserName }) => {
+  await prime(page, browserName, 1280, 720);
+  const fileId = await install(page);
+  await page.goto('/run.html#id=' + encodeURIComponent(fileId) + '&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => document.body.classList.contains('has-app'), null, { timeout: 30000 });
+  await page.click('#appinvite');
+  await page.click('#inv-go');
+  await page.waitForFunction(() => document.body.classList.contains('app-room'), null, { timeout: 20000 });
+  const hashBefore = await page.evaluate(() => location.hash);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => document.body.classList.contains('app-room'), null, { timeout: 30000 });
+  await expect(page.locator('#appinvite')).toBeVisible({ timeout: 20000 });
+  const after = await page.evaluate(invites);
+  expect(after.kind).toBe('app-room');
+  expect(after.shown).toEqual(['appinvite']);
+  expect(after.hash).toBe(hashBefore);
+});

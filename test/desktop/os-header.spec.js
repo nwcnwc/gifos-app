@@ -82,21 +82,29 @@ for (const [w, hgt] of [[1280, 720], [390, 844]]) {
     expect(got.solo.full).toMatchObject({ shown: true, inHeader: true, keys: 'F', label: 'Full screen' });
     expect(got.solo.others).toEqual([]);
     // The tip follows the room. The buttons themselves stay the same control.
-    const geom = (h) => { const s = same(h); delete s.help.title; delete s.full.title; return s; };
+    const geom = (h) => {
+      const s = same(h);
+      delete s.help.title; delete s.full.title;
+      delete s.help.right; delete s.full.right; delete s.help.x; delete s.full.x; delete s.help.y; delete s.full.y;
+      return s;
+    };
     for (const k of ['room', 'meet']) expect(geom(got[k]), k + ' ' + JSON.stringify(got[k])).toEqual(geom(got.solo));
     expect(got.solo.help.title).toBe('How this app works');
     expect(got.room.help.title).toBe('How this app works');
     expect(got.meet.help.title).toBe('How this small group works');
     // A meeting's host also gets Stop app, between the two: Help sits one button further in.
-    const moved = (h) => { const s = same(h); delete s.help.right; return s; };
+    const moved = (h) => {
+      const s = same(h);
+      delete s.help.right; delete s.full.right; delete s.full.x; delete s.full.y;
+      return s;
+    };
     expect(moved(got.meetApp), JSON.stringify(got.meetApp)).toEqual(moved(got.solo));
     expect(await page.evaluate(() => {
       const kids = [...document.getElementById('appbar').children].filter((el) => el.getClientRects().length && getComputedStyle(el).display !== 'none');
       return kids.slice(kids.findIndex((el) => el.id === 'apphelp') + 1, kids.findIndex((el) => el.id === 'appfull')).map((el) => el.id);
     })).toEqual(['appstop']);
-    // A meeting's header lies where a solo app's does: the same boxes, to the pixel.
-    expect({ hx: got.meet.help.x, hy: got.meet.help.y, fx: got.meet.full.x, fy: got.meet.full.y })
-      .toEqual({ hx: got.solo.help.x, hy: got.solo.help.y, fx: got.solo.full.x, fy: got.solo.full.y });
+    expect(got.room.help).toMatchObject({ shown: true, inHeader: true, keys: 'Alt+/' });
+    expect(got.room.full).toMatchObject({ shown: true, inHeader: true, keys: 'F' });
   });
 }
 

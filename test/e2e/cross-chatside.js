@@ -17,7 +17,7 @@ async function openChat(pg) {
   return pg.evaluate(() => {
     const edge = document.getElementById('chatpanel').getBoundingClientRect().left;
     const under = [];
-    for (const e of document.querySelectorAll('#airbar *, #status, #hdrinvite, #fitbtn, #bc-stage, #bc-stage-line')) {
+    for (const e of document.querySelectorAll('#airbar *, #status, #appbar, #fitbtn, #bc-stage, #bc-stage-line')) {
       if (!e.getClientRects().length || getComputedStyle(e).visibility === 'hidden') continue;
       const r = e.getBoundingClientRect();
       if (r.width > 1 && r.right > edge + 1) under.push((e.id || e.className) + ' ' + Math.round(r.right));

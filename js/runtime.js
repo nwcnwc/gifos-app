@@ -4088,6 +4088,8 @@
         if (hop && target.indexOf('#') !== -1) location.reload();
         return noop;
       }
+      // Header chrome follows this app's manifest (capabilities.header), not a setting.
+      try { if (typeof root.__gifosHeaderFromManifest === 'function') root.__gifosHeaderFromManifest(manifest); } catch (e) {}
       document.title = (manifest.name || 'App') + ' — GifOS';
 
       const hasEntry = !!files[norm(manifest.entry || 'index.html')] || !!files['index.html'];
@@ -4819,10 +4821,22 @@
     });
   }
 
+  // Header chrome is one capability, a small set (Nathan 2026-10-18 21:19):
+  // capabilities.header is "auto-hide" or "larger", or absent for the ordinary
+  // always-shown bar. Not a user setting and not per device. The two do not
+  // combine. Meet declares auto-hide; the meeting page is that app, so a
+  // link that opens run.html wears the same choice (SYSTEM_HEADER).
+  const HEADER_CHOICES = { 'auto-hide': 1, larger: 1 };
+  function headerChoice(manifest) {
+    const h = manifest && manifest.capabilities && manifest.capabilities.header;
+    return HEADER_CHOICES[h] ? h : '';
+  }
+  const SYSTEM_HEADER = { meet: 'auto-hide' };
+
   // poolHosts is EXPORTED because it is the enforcement point for the three
   // pool rules (⊆ network, never keyed, GET only) and a rule nothing can call
   // is a rule nothing can test. poolStats is the same argument for the
   // algorithm: "did the room actually save a fetch" is not visible from
   // outside otherwise.
-  GifOS.runtime = { boot, bootClientBus, buildAppHtml, buildFolderHtml, norm, slug, poolHosts, poolStats };
+  GifOS.runtime = { boot, bootClientBus, buildAppHtml, buildFolderHtml, norm, slug, poolHosts, poolStats, headerChoice, SYSTEM_HEADER };
 })(typeof window !== 'undefined' ? window : globalThis);

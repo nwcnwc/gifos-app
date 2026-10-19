@@ -156,7 +156,11 @@ test('people in the waiting room take no space on any screen', async ({ browserN
     expect({ guest2AloneSize: same(g2.me, alone.me), guest2Others: g2.others, guest2Remotes: g2.remotes, g2: g2.me })
       .toMatchObject({ guest2AloneSize: true, guest2Others: [], guest2Remotes: '0' });
     // The waiting page says where it is, and offers no Invite.
-    const head = await G2.page.evaluate(() => ({ count: document.getElementById('statuscount').textContent, inviteShown: !document.getElementById('statusinvite').hidden }));
+    const head = await G2.page.evaluate(() => {
+      const btn = document.getElementById('appinvite');
+      const shown = !!(btn && btn.style.display !== 'none' && getComputedStyle(btn).display !== 'none' && btn.getClientRects().length);
+      return { count: document.getElementById('statuscount').textContent, inviteShown: shown };
+    });
     expect(head).toMatchObject({ count: 'In the waiting room', inviteShown: false });
   } finally {
     await H.b.close().catch(() => {});

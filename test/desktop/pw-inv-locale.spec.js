@@ -8,7 +8,6 @@ async function boot(page) {
   });
   await page.goto('/run.html#v=qapwinv&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#leavebtn', { state: 'visible' });
-  await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 2, connected: false }));
 }
 
 async function openMore(page, id) {
@@ -58,8 +57,9 @@ test.describe('German password and invite', () => {
     await page.click('#pw-cancel');
     await expect(pw).toBeHidden();
 
-    await expect(page.locator('#invite')).toHaveAttribute('title', 'Freunde kommen mit einem Link live dazu');
-    await openMore(page, '#invite');
+    await expect(page.locator('#appinvite')).toBeVisible();
+    await expect(page.locator('#appinvite')).toHaveAttribute('title', 'Freunde kommen mit einem Link live dazu');
+    await page.click('#appinvite', { modifiers: ['Shift'] });
     const inv = page.locator('#inv-modal');
     await expect(inv).toBeVisible();
     await expect(inv.locator('h3')).toHaveText('Diese Besprechung teilen');
@@ -106,8 +106,9 @@ test.describe('Spanish password and invite', () => {
     expect(pg.boxOnScreen).toBe(true);
     await page.click('#pw-cancel');
 
-    await expect(page.locator('#invite')).toHaveAttribute('title', 'Tus amigos entran en vivo con un enlace');
-    await openMore(page, '#invite');
+    await expect(page.locator('#appinvite')).toBeVisible();
+    await expect(page.locator('#appinvite')).toHaveAttribute('title', 'Tus amigos entran en vivo con un enlace');
+    await page.click('#appinvite', { modifiers: ['Shift'] });
     const inv = page.locator('#inv-modal');
     await expect(inv.locator('h3')).toHaveText('Compartir esta reunión');
     await expect(inv.locator('#inv-copy')).toHaveText('Copiar');

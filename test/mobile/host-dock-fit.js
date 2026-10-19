@@ -34,7 +34,7 @@ const dockOf = (pg) => pg.evaluate(() => {
   const bar = document.querySelector('.bar'); const vw = window.innerWidth;
   const kids = [...bar.children].filter((e) => e.id !== 'barmore' && getComputedStyle(e).display !== 'none' && e.getClientRects().length)
     .map((e) => { const r = e.getBoundingClientRect(); return { id: e.id, l: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width) }; });
-  const moved = ['sharebtn', 'reactbtn', 'stagebtn', 'chatbtn', 'invite'].filter((id) => { const b = document.getElementById(id); return b && b.classList.contains('inmore'); });
+  const moved = ['sharebtn', 'reactbtn', 'stagebtn', 'chatbtn'].filter((id) => { const b = document.getElementById(id); return b && b.classList.contains('inmore'); });
   return { vw, kids, moved, out: kids.filter((k) => k.l < 0 || k.r > vw).map((k) => k.id) };
 });
 async function open(browser, prof, name) {

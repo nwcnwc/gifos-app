@@ -6606,7 +6606,7 @@ The Store itself does not keep a shopping cart in this icon.
                'gifenc.js': GIFENC_JS }),
     }, {
       name: 'Meeting.gif', appId: 'meet', accent: [92, 160, 255],
-      files: withHelp('meet', { 'manifest.json': manifest('meet', 'Meeting', [92, 160, 255], { system: 'meet' }),
+      files: withHelp('meet', { 'manifest.json': manifest('meet', 'Meeting', [92, 160, 255], { system: 'meet', capabilities: { db: true, multiplayer: true, network: [], header: 'auto-hide' } }),
                'index.html': themeHtml(MEET_FALLBACK_HTML, 'full') }),
     }, {
       // Meeting's sibling: the same trusted page wearing the broadcast skin

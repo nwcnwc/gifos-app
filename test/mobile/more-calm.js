@@ -18,7 +18,7 @@ const { chromium, devices } = require('playwright');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
-const FIRST = ['invite', 'whobtn', 'chatbtn', 'hand'];
+const FIRST = ['whobtn', 'chatbtn', 'hand'];
 const LATER = ['stagebtn', 'votebtn', 'appbtn', 'setbtn', 'keysbtn'];
 const MOST_FIRST = 8;
 
@@ -146,10 +146,6 @@ async function moreOpen(page, open) {
       const b = info.want.find((x) => x.id === id);
       if (b && b.full) bad.push(id + ' is on the first screen');
     }
-    const invite = info.want.find((b) => b.id === 'invite');
-    const pw = info.want.find((b) => b.id === 'pwbtn');
-    if (invite && pw && invite.bg === pw.bg) bad.push('Invite looks the same as Room password');
-    if (invite && invite.bg !== 'rgb(0, 100, 200)') bad.push('Invite is not the blue action (' + (invite && invite.bg) + ')');
     if (overlaps(info.sheet, info.status)) bad.push('More covers the name');
     if (info.sheet.top < 80) bad.push('sheet top ' + Math.round(info.sheet.top) + ' covers the call');
     if (phone.name === 'iphone-15') {

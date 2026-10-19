@@ -11,7 +11,7 @@ const { chromium, devices } = require('playwright');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
-const NEED = ['invite', 'whobtn', 'chatbtn', 'hand'];
+const NEED = ['whobtn', 'chatbtn', 'hand'];
 
 function land(device) {
   const o = Object.assign({}, device);
