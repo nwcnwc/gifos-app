@@ -16554,11 +16554,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function confirmGone(pid, why) {
       if (!pid || pid === myId || meshGone.has(pid)) return;
       whoGone(pid); // the Who log keeps them, with what is about to be forgotten
-      // The seating counts a confirmed departure down NOW, on every page. The
-      // heir's missed-beat verdict alone (300 ms) races this table forgetting
-      // the seat, and no other page ever learned the end was dead at all — the
-      // standby hand-over then degraded to a cold structural re-dial.
-      try { if (netRoom) netRoom.noteDeath(pid); } catch (e) {}
+      // The seating counts an ANNOUNCED departure (the bye, a ban) down NOW,
+      // on every page. The heir's missed-beat verdict alone (300 ms) races
+      // this table forgetting the seat, and no other page ever learned the
+      // end was dead at all — the standby hand-over then degraded to a cold
+      // structural re-dial. Inferred verdicts (d5, vouch-reap) stay out: a
+      // false one is a permanent death mark, and one view flicker later the
+      // bridge switches to the standby and sticks (the no-flap rule keeps
+      // the carry while the "dead" end sits in its cell) — that page's
+      // bridge view then never rejoins the room's.
+      try { if (netRoom && (why === 'left' || why === 'ban')) netRoom.noteDeath(pid); } catch (e) {}
       meshGone.set(pid, Date.now());
       { const s = meshSeat(); meshGoneTick.set(pid, s && typeof s.TICK === 'number' ? s.TICK : -1); }
       if (typeof meshGoneSilent === 'object' && meshGoneSilent) { if (why === 'vouch-reap') meshGoneSilent.add(pid); else meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid); } // typeof: as dropStatus below
