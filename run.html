@@ -15,8 +15,11 @@
      the runtime's bridge with none of the app CSP (site/js/runtime.js,
      clientShim / mountApp): this policy makes every non-about: target a
      refused navigation, in the browser, before any script runs. Guarded by
-     test/browser/e2e-app-frame-navigate.js. -->
-<meta http-equiv="Content-Security-Policy" content="frame-src about:">
+     test/browser/e2e-app-frame-navigate.js. The one other source is the
+     relay join check's Cloudflare Turnstile widget (gifos-net.js
+     relayTicket): an app frame sent there stays in its sandbox, and the
+     page there is Cloudflare's challenge, not anything an app can write. -->
+<meta http-equiv="Content-Security-Policy" content="frame-src about: https://challenges.cloudflare.com">
 <meta name="referrer" content="same-origin">
 <meta name="robots" content="noindex">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
@@ -4702,11 +4705,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // directly, and in a free room only for audio, through one anchor.
     const MT = GifOS.meetTurn;
     let turnCred = null, turnCredRoom = null;  // the credential client (asks only after joining, only from a blocked network)
+    let turnFree = null;                        // its relay TURN ticket and slots (meetTurn.freeTicket)
     let turnAnchorId = null;                   // the seat this page sends its voice to, and hears the room from
     let turnAnchorSince = 0, turnAnchorUpAt = 0, turnAnchorFails = 0, turnEverServed = false;
     const turnDownAt = new Map();      // peer id -> since when that pair has had no working path (kept across redials)
     const turnAnchorDead = new Map();  // peer id -> an anchor that failed is not chosen again before this time
     const turnMixes = new Map();       // client id -> { fold, keys }: the mix-minus this page sends a client it anchors
+    let turnUp = null;                 // { fold, keys }: the mix a network's bridge sends its anchor (its voice and its network's)
+    let turnBridging = false;          // this page bridges its blocked network now (rides my status as tb)
     const turnMixSenders = new WeakSet(); // senders carrying a mix-minus: a microphone swap never touches them
     // ---- VIDEO ANYWHERE: the state (rules in js/meet-video-anywhere.js) ----
     // A room whose admin presented a Video Anywhere receipt carries video
@@ -7002,13 +7008,171 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     //   netBeatTarget()          the heir I beat every 100 ms while I end a bridge, or null
     //   netBeatFrom(pid)         a beat from bridge end pid arrived; netPulse() on a 100 ms clock
     let netRoom = null;
-    function netSeatingKeep() { const s = meshSeat(); if (s && s.env && s.env.NET !== (netRoom || undefined)) s.env.NET = netRoom || undefined; }   // a rebuilt seat keeps the room
-    function netSeatingInstall(view) { netRoom = view ? new GifOS.mesh.NetRoom(view) : null; netSeatingKeep(); return netRoom; }
+    function netSeatingKeep() { const s = meshSeat(); if (s && s.env && s.env.NET !== (netRoom || undefined)) s.env.NET = netRoom || undefined; if (netRoom && s && s.hasCoord && s.glabel == null) s.glabel = s.id; }   // a rebuilt seat keeps the room; a seat taken before the view attached heads its own group
+    function netSeatingInstall(view) { netRoom = view ? new GifOS.mesh.NetRoom(view) : null; if (netRoom) netBeatStart(); netSeatingKeep(); const s = meshSeat(); if (netRoom && s && s.hasCoord && s.glabel == null) s.glabel = s.id; return netRoom; }   // a seat taken before the view existed heads its own group
     function netLinks() { try { const s = meshSeat(); return s && netRoom ? s.netLinks() : []; } catch (e) { return []; } }
+    // A HOT STANDBY is connected and silent: no voice crosses it (one relayed
+    // pair carries audio between two networks) until the seating makes it
+    // the bridge. The pair I anchor on or serve is never a standby.
+    function netStandbyQuiet(p) { if (!p || p.turnAnchor || p.turnServe || !netRoom || !netSeated()) return false; for (const l of netLinks()) if (l.peer === p.id) return !!l.standby && !l.bridge; return false; }
     function netLinkInfo(pid) { try { const s = meshSeat(); return s && netRoom && pid != null ? netRoom.linkInfo(s.id, pid) : null; } catch (e) { return null; } }
     function netBeatTarget() { try { const s = meshSeat(); return s && netRoom ? netRoom.heirFor(s.id) : null; } catch (e) { return null; } }
     function netBeatFrom(pid) { if (netRoom && pid != null) netRoom.beat(pid, Date.now()); }
     function netPulse() { if (netRoom) netRoom.pulse(Date.now()); }
+    // THE BEAT: while I end a bridge I beat my heir every 100 ms over our
+    // direct link; the heir's pulse counts me down 300 ms after my link to it
+    // closed and its seating hands the bridge to the standby at once. A
+    // worker clock keeps the 100 ms in a background tab.
+    let netBeatClock = null;
+    function netBeatTick() {
+      if (!netRoom) return;
+      const h = netBeatTarget(); const q = h != null ? peers.get(h) : null;
+      if (q && q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'nb' });
+      // Beats arrive late on a loaded page; a late beat is no departure. My
+      // own view alone would hand the bridge over, so the other pages would
+      // still name the old one: two bridges. An end whose link to me is open
+      // keeps its bridge; its link closing (it left) counts it down at once.
+      const nowMs = Date.now();
+      for (const e of netRoom.beats.keys()) { const x = peers.get(e); if (x && x.connected && x.dc && x.dc.readyState === 'open') netRoom.beat(e, nowMs); }
+      netPulse();
+    }
+    function netBeatStart() {
+      if (netBeatClock) return;
+      try { const u = URL.createObjectURL(new Blob(['setInterval(function(){postMessage(0)},100)'], { type: 'text/javascript' })); const w = new Worker(u); w.onmessage = netBeatTick; netBeatClock = w; }
+      catch (e) { netBeatClock = setInterval(netBeatTick, 100); }
+    }
+    // The room view this page builds from what it knows itself. Nothing in it
+    // grows with the room beyond what the status pulse already carries:
+    //   reach(a, b)   my own pairs: the transport's word (a connected pair that
+    //                 is not relayed; a pair that never came up after a full
+    //                 dial is unreachable). Other pairs: the connectivity each
+    //                 peer gossips with its status, less the pairs either end
+    //                 reports relayed (st.rl); unknown pairs count as
+    //                 reachable (no bridge is built on a guess).
+    //   stun(id)      my own direct-path probe; a peer's as its pulse says.
+    //   seats()       my own seat, plus a bounded record per peer whose pulse
+    //                 names a seat (coord, label, anchored); their sitting-down
+    //                 marks and door knockers are not known here.
+    //   turn/credOk   the relay-pool state the pool code sets with
+    //                 netSeatingPool(level, credOk); 0 until it does, so no
+    //                 bridge is decided before a pool exists.
+    //   socketOpen    a peer whose status pulse reached me within 60 s.
+    let netPool = { level: 0, cred: false };
+    const doorWhy = new Map();   // peer -> why my last reach verdict for our pair was what it was (the debug view's door test)
+    const netSeated = () => { const s = meshSeat(); return !!(netRoom && s && s.hasCoord && s.state === 3); };
+    function netSeatingPool(level, credOk) { netPool = { level: level | 0, cred: !!credOk }; if (netRoom) netRoom.topoChanged(); }
+    const netPairRelayed = (p) => !!(p && (p.viaRelay || p.turnServe || turnInvited(p) || (p.viaRelay === undefined && (p.turnMine || p.turnAnchor))));   // viaRelay: the selected candidate pair's type (whoObserve); unobserved, a pair this page put TURN on counts as relayed; a client I serve over the pool, or a peer that dialled me through it, always does
+    // My connected pairs that run through a relay server, for my status
+    // (st.rl): a relayed pair joins two networks, it does not make them one,
+    // so another page's view never reads it as a direct path.
+    function netRelayedPeers() { const out = []; for (const [pid, p] of peers) if (p && p.connected && netPairRelayed(p)) out.push(pid); return out.sort(); }
+    function netStatusRelayed() { const rl = netRelayedPeers(); if (rl.length) { if (String(myStatus.rl || '') !== String(rl)) myStatus.rl = rl; } else if (myStatus.rl) delete myStatus.rl; }   // refreshed with every status I send, so st.rl and the conns beside it agree
+    function netSeatingLiveView() {
+      const me = () => meshSeat();
+      const rec = (pid, st) => ({ id: pid, alive: true, state: 3, hasCoord: true, coord: st.seat, glabel: st.lab != null ? st.lab : pid, anchored: !!st.anc, sitting: new Map(), glFind: -2, lastReached: -1 });
+      // A pulse names the seat its sender held when it spoke. My own seat's
+      // first-hand hearing outranks it: a cell I hold, or one where I hear
+      // someone else first hand, is no longer the sender's (a page that left
+      // keeps its last pulse in my table a while).
+      const pulseSeat = (s, pid, st) => {
+        if (!st || !st.seat || typeof st.seat.pc !== 'number') return false;
+        if (!s) return true; const k = net.topo.ckey(st.seat);
+        if (s.hasCoord && k === net.topo.ckey(s.coord)) return false;
+        const o = s.occ ? s.occ.get(k) : undefined; if (o == null || o === pid) return true;
+        return !(typeof s.firstHandLive === 'function' && s.firstHandLive(k));   // only a cell I hear its occupant in first hand overrules the pulse
+      };
+      // The ring as my own seat knows it before any pulse arrives: the HOME
+      // roster and my occ name the Section-1 cells and who holds them. A cell's
+      // label is its row head's when the pulse has not said otherwise.
+      const ringRecs = () => {
+        const s = me(); if (!s) return [];
+        const cells = new Map();   // ck -> pid
+        // Seated, my own seat's map names a cell first (what the mesh heard);
+        // the door's roster is the ring as it was when I knocked and only
+        // fills cells my map does not know (across a dark link it may know
+        // few). At the door the roster comes first. The cell I hold is mine.
+        const ro = s.netRoster || s.roster || [];
+        if (s.hasCoord) { if (s.occ) for (const [k, v] of s.occ) if (v != null && GifOS.mesh.isS1key(k)) cells.set(k, v); for (const e of ro) if (e && e.v != null && e.k != null && !cells.has(e.k)) cells.set(e.k, e.v); cells.delete(net.topo.ckey(s.coord)); }
+        else { for (const e of ro) if (e && e.v != null && e.k != null) cells.set(e.k, e.v); if (s.occ) for (const [k, v] of s.occ) if (v != null && GifOS.mesh.isS1key(k) && !cells.has(k)) cells.set(k, v); }
+        // A ring cell no pulse speaks for: its row's label. One label per row,
+        // so my own row's is mine; another row's is its head's, by the head's
+        // pulse when I hold one, else the head's id (a group's first member).
+        const myK = s.hasCoord ? net.topo.ckey(s.coord) : null;
+        const ringLabel = (c, pid) => {
+          if (s.hasCoord && c.pc === s.coord.pc && c.r === s.coord.r && s.glabel != null) return s.glabel;
+          const headK = net.topo.ckey({ pc: c.pc, r: c.r, i: 0 }); const head = headK === myK ? myId : cells.get(headK);
+          const hs = head != null && head !== myId ? statusOf.get(head) : null;
+          return hs && hs.lab != null ? hs.lab : head != null ? head : pid;
+        };
+        const out = [];
+        for (const [k, pid] of cells) {
+          if (pid === myId) continue;
+          const c = net.topo.unck(k); const st = statusOf.get(pid);
+          if (st && st.seat && typeof st.seat.pc === 'number') continue;   // its pulse speaks for it
+          out.push({ id: pid, alive: true, state: 3, hasCoord: true, coord: c, glabel: ringLabel(c, pid), anchored: false, sitting: new Map(), glFind: -2, lastReached: -1 });
+        }
+        return out;
+      };
+      // The door test's dials (rule 1): open a link to every ring member now;
+      // the seat decides from their state a few ticks later.
+      const probe = (ids) => {
+        if (!myId || !Array.isArray(ids) || !ids.length) return false;
+        let n = 0;
+        for (const id of ids) { if (!id || id === myId) continue; try { if (!peers.has(id)) makePeer(id, rosterNames[id] || null); bootDial(id); n++; } catch (e) {} }
+        return n > 0;
+      };
+      const PROBE_MS = 4500;   // a dialled pair not up after this is no direct path (the decision comes once every dial settled, or NET_PROBE ticks after them)
+      const settled = (p) => !!(p && ((p.connected && (p.viaRelay !== undefined || Date.now() - (p.bornAt || 0) > PROBE_MS)) || (p.pc && (p.pc.connectionState === 'failed' || p.pc.connectionState === 'closed')) || (p.neverUp && Date.now() - (p.bornAt || 0) > PROBE_MS)));
+      const probeDone = (ids) => Array.isArray(ids) && ids.every((id) => id === myId || settled(peers.get(id)));
+      const pairRelayed = netPairRelayed;
+      const view = {
+        tick: () => { const s = me(); return s ? s.TICK : 0; },
+        seats: () => { const s = me(); const out = s ? [s] : []; const best = new Map(); for (const [pid, st] of statusOf) if (pid !== myId && pulseSeat(s, pid, st)) { const k = net.topo.ckey(st.seat); const b = best.get(k); if (!b || (st.rx || 0) > (b.st.rx || 0)) best.set(k, { pid, st }); } for (const { pid, st } of best.values()) out.push(rec(pid, st)); for (const r of ringRecs()) if (!best.has(net.topo.ckey(r.coord))) out.push(r); return out; },   // two pulses naming one cell: the newer one holds it (a seat that moved on keeps its old pulse a while)
+        seat: (id) => { const s = me(); if (s && id === s.id) return s; const st = statusOf.get(id); if (pulseSeat(s, id, st)) { const k = net.topo.ckey(st.seat); for (const [q, o] of statusOf) if (q !== id && q !== myId && (o && o.rx || 0) > (st.rx || 0) && o.seat && typeof o.seat.pc === 'number' && net.topo.ckey(o.seat) === k && pulseSeat(s, q, o)) return null; return rec(id, st); } return ringRecs().find((r) => r.id === id) || null; },
+        probe, probeDone,
+        reach: (a, b) => {
+          if (a === b) return true;
+          const relayedBy = (x, y) => { const st = statusOf.get(x); return !!(st && ((Array.isArray(st.rl) && st.rl.includes(y)) || (Array.isArray(st.tl) && st.tl.includes(y)))); };   // st.rl: its relayed pairs; st.tl: its relay-pool pairs (the pool code's own list)
+          if (a === myId || b === myId) {
+            const pid = a === myId ? b : a; const p = peers.get(pid); const age = p ? Date.now() - (p.bornAt || 0) : -1; let r = true, why = 'no-pair';
+            if (p && turnInvited(p)) { r = false; why = 'via-pool'; }   // the far end dialled me through the relay pool: its network cannot reach mine, connected yet or not
+            else if (p && p.connected) { r = !pairRelayed(p) && !relayedBy(pid, myId); why = r ? 'up' : 'up-relayed'; }   // the far end's word counts too: a pair it reaches through the relay server is relayed at my end as well
+            else if (p && p.neverUp && age > PROBE_MS) { r = false; why = 'never-up'; }
+            else if (p) why = 'pending:' + (p.pc ? p.pc.connectionState : 'no-pc') + ':' + age;
+            if (doorWhy.size > 64) doorWhy.clear(); doorWhy.set(pid, why); return r;   // the debug view's reason for each of my own pairs' verdicts
+          }
+          if (relayedBy(a, b) || relayedBy(b, a)) return false;   // a pair either end reports relayed is no direct path
+          const ca = connsOf.get(a), cb = connsOf.get(b);
+          if ((ca && ca.includes(b)) || (cb && cb.includes(a))) return true;
+          return !(ca && cb);   // both maps known and neither names the other: unreachable; otherwise unknown counts as reachable
+        },
+        reachWhy: (id) => doorWhy.get(id) || null,
+        // The joiners still at the door I hold a direct link to: a connected
+        // pair that is not relayed, to a peer that no pulse, roster or cell of
+        // mine names as seated (mesh.js netDecide: the lowest id heads them).
+        doorKnown: () => {
+          const s = me(); const held = new Set();
+          if (s) { if (s.occ) for (const v of s.occ.values()) if (v != null) held.add(v); for (const e of (s.netRoster || s.roster || [])) if (e && e.v != null) held.add(e.v); }
+          const out = [];
+          for (const [pid, p] of peers) { if (pid === myId || !p || held.has(pid) || p.absentSince) continue; const st = statusOf.get(pid); if (st && st.seat && typeof st.seat.pc === 'number') continue; out.push(pid); }
+          return out.slice(0, 24);   // bounded: the door test dials them with the ring
+        },
+        doorPeers: () => {
+          const s = me(); const held = new Set();
+          if (s) { if (s.occ) for (const v of s.occ.values()) if (v != null) held.add(v); for (const e of (s.netRoster || s.roster || [])) if (e && e.v != null) held.add(e.v); }
+          const out = [];
+          for (const [pid, p] of peers) { if (pid === myId || !p || !p.connected || pairRelayed(p) || held.has(pid)) continue; const st = statusOf.get(pid); if (st && st.seat && typeof st.seat.pc === 'number') continue; out.push(pid); }
+          return out;
+        },
+        stun: (id) => { if (id === myId) return directPath !== 'blocked'; const st = statusOf.get(id); return !(st && st.net === 'blocked'); },
+        stunKnown: (id) => id === myId || !!(statusOf.get(id) && statusOf.get(id).net),   // a peer whose status has not reached me has no verdict yet
+        clientsOf: (a, b) => { let ca = !view.stun(a), cb = !view.stun(b); if (!ca && !cb) ca = true; return [ca, cb]; },   // never two relay clients where one end can be reached
+        turn: () => netPool.level,
+        credOk: () => netPool.cred,
+        socketOpen: (id) => { if (id === myId) return true; const st = statusOf.get(id); return !!(st && st.rx && Date.now() - st.rx < 60000); },
+      };
+      return view;
+    }
     // ── end NETWORK-AWARE SEATING ───────────────────────────────────────────
     function myRowIds() {
       const c = meshCoord();
@@ -7213,7 +7377,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let pulseHalt = false; // test hook: simulates a throttled phone's silent pulse gaps
     // My status pulse as one frame: what every beat carries, and what a pair
     // gets the moment its channel opens (wireDc onopen).
-    const statusPayload = () => ({ kind: 'status', s: myStatus, conns: myConns(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined });
+    const statusPayload = () => (netStatusRelayed(), { kind: 'status', s: myStatus, conns: myConns(), sid: mySid(), mod: modTable, modw: gossipModW(), name: myName(), ip: myIp, dv: myDevHash || undefined });
     function broadcastStatus(answer) {
       if (pulseHalt && !answer) return; // the halt models a throttled clock; an answer to a newcomer is driven by its frame, not the clock
       myStatus.at = Date.now(); // timestamped: out-of-order gossip can't roll me back
@@ -7228,6 +7392,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // presence is the mesh occ map now, not counting-by-aggregation.
       const c = meshCoord();
       myStatus.seat = c ? { pc: c.pc, r: c.r, i: c.i } : undefined;
+      // Network-aware seating: my seat's network label, whether I sit anchored
+      // in another network's row, and whether my network can be reached from
+      // outside. Three small fields; a peer's view of the room reads them.
+      { const ms = meshSeat(); if (ms && ms.hasCoord && ms.glabel != null) { myStatus.lab = ms.glabel; myStatus.anc = ms.anchored ? 1 : 0; } else { delete myStatus.lab; delete myStatus.anc; } myStatus.net = directPath === 'blocked' ? 'blocked' : 'ok'; }
       // My stage votes ride the pulse (open rooms): present targets only, so
       // a departed target's entry never lingers in the payload; capped so a
       // hoarder can't bloat everyone's gossip.
@@ -11573,8 +11741,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (p.mainA) {
           // A client I anchor on the free pool hears the mix-minus on this
           // sender instead of my microphone (my voice is in the mix).
-          const mixT = p.turnServe ? turnMixTrack(p.id) : null;
-          if (mixT) { turnMixSenders.add(p.mainA); if (p.mainA.track !== mixT) p.mainA.replaceTrack(mixT).catch(() => {}); }
+          // My anchor hears my network's voices with mine, when I bridge it.
+          // A row mate of a bridge end hears the other network in its feed.
+          const mixT = p.turnServe ? turnMixTrack(p.id) : p.turnAnchor ? turnUpTrack() : bridgeFeedTrack(p.id);
+          if (netStandbyQuiet(p)) { turnMixSenders.delete(p.mainA); if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
+          else if (mixT) { turnMixSenders.add(p.mainA); if (p.mainA.track !== mixT) p.mainA.replaceTrack(mixT).catch(() => {}); }
           else {
             turnMixSenders.delete(p.mainA);
             if (staged && !p.turnAudio) { if (p.mainA.track) p.mainA.replaceTrack(null).catch(() => {}); }
@@ -13270,16 +13441,29 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     //   4. The anchor sends back one stream, everything it hears except the
     //      client's own voice, and passes the client's voice on to the others
     //      the way a friend passes on media.
+    //   5. One page per blocked network does this for the whole network (its
+    //      bridge, meetTurn.networkBridge): it sends the anchor its network's
+    //      voices in one mix, and its neighbours hear the room through it by
+    //      friend carry, so S networks that cannot reach each other hold at
+    //      most S-1 TURN links.
     function turnServers() { return turnCred ? turnCred.servers() : null; }
     // A peer dialled this pair through TURN (its relay candidates arrived)
     // or I already anchor it. Only a page that cannot be reached acts on it.
-    function turnInvited(p) { return !!(p && (p.turnServe || (p.turnInvitedAt && Date.now() - p.turnInvitedAt < 60000))); }
+    function turnInvited(p) { return !!(p && (p.turnServe || p.turnStandby || (p.turnInvitedAt && Date.now() - p.turnInvitedAt < 60000))); }   // turnStandby: the seating's standby pair, dialled ahead of time by its relay end
     // iceFor(p) → the settings for this pair's next transport. The TURN
     // servers are added only where meetTurn.pairUsesTurn allows it.
     function iceFor(p) {
       const paid = vaServersFor(p); // Video Anywhere: this pair's paid credentials, when it holds them
       const servers = paid || turnServers();
-      const use = MT.pairUsesTurn({ mine: directPath, anchor: !!p.turnAnchor, invited: turnInvited(p), haveServers: !!servers });
+      // Network-aware seating: once this page sits in a room with a view, a
+      // pair carries TURN only where the seating names it a bridge or its
+      // standby (groups - 1 relayed links), and the standby's relay end puts
+      // TURN on it ahead of time. Unseated, or with no view, the pool rules
+      // alone decide, as before.
+      const li = netSeated() ? netLinkInfo(p.id) : null;
+      const named = !!(li && (li.bridge || li.standby));
+      let use = MT.pairUsesTurn({ mine: directPath, anchor: !!p.turnAnchor || (named && li.turnClient), invited: turnInvited(p), haveServers: !!servers });
+      if (netSeated() && !named) use = false;
       p.turnMine = use;
       p.turnPaid = use ? !!paid : vaFarPaid(p);
       p.turnAudio = (use || !!p.turnServe) && !p.turnPaid;
@@ -13306,7 +13490,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // audio sender (my voice, or the mix I send an anchored client) is
     // parked, video first of all.
     function parkTurnSenders(p) {
-      if (!p || !p.pc || !p.turnAudio) return;
+      if (!p || !p.pc || !(p.turnAudio || p.netQuiet)) return;
       let senders = [];
       try { senders = p.pc.getSenders(); } catch (e) {}
       for (const sd of senders) if (sd !== p.mainA && sd.track) sd.replaceTrack(null).catch(() => {});
@@ -13323,6 +13507,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       turnAnchorId = pid; turnAnchorSince = now; turnAnchorUpAt = 0;
       p.turnAnchor = true;
       if (typeof clog === 'function') clog('turn anchor ' + String(pid).slice(0, 6));
+      if (p.connected && p.turnMine) return;   // a standby already up through the pool carries the bridge as it is: no new transport (the hello follows on its open channel)
       newPcFor(p); // the new transport carries the pool's servers (iceFor)
       p.lastKick = now + Math.random() * 1500;
       sendOffer(pid, false);
@@ -13365,14 +13550,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const mic = localStream && localStream.getAudioTracks()[0];
       if (mic) out.push({ key: 'me:' + mic.id, owner: myId, stream: localStream, gain: 1 });
       const held = (pid) => { try { const gm = modOf(pid).mute; return !!(gm && gm.on); } catch (e) { return false; } }; // "mute for everyone" holds in the mix too
+      // A source is one live audio track, and its key names that track: a
+      // renegotiation that ends a pair's track and adds a new one to the same
+      // stream makes a new key, so every mix drops the ended track (which
+      // reads silence for ever) and folds the live one.
+      // A pair's stream can hold several audio tracks (one per m-line it ever
+      // received on): the one receiving packets is the voice; a track whose
+      // m-line went quiet reads muted.
+      const live = (st) => { let held = null; for (const t of st.getAudioTracks()) { if (t.readyState === 'ended') continue; if (!t.muted) return t; if (!held) held = t; } return held; };
       for (const q of peers.values()) {
-        if (!q.connected || q.relayed || !q.stream || !q.stream.getAudioTracks().length) continue;
+        if (!q.connected || q.relayed || !q.stream) continue;
         if (typeof mediaOk === 'function' && mediaOk(q.id) === false) continue;
-        out.push({ key: 'p:' + q.id + ':' + q.stream.id, owner: q.id, stream: q.stream, gain: held(q.id) ? 0 : 1 });
+        const t = live(q.stream); if (!t) continue;
+        out.push({ key: 'p:' + q.id + ':' + q.stream.id + ':' + t.id, owner: q.id, stream: new MediaStream([t]), gain: held(q.id) ? 0 : 1 });
       }
       for (const [target, r] of relayVia) {
-        if (!r.stream || !r.stream.getAudioTracks().length) continue;
-        out.push({ key: 'r:' + target + ':' + r.stream.id, owner: target, stream: r.stream, gain: held(target) ? 0 : 1 });
+        if (!r.stream) continue;
+        const t = live(r.stream); if (!t) continue;
+        out.push({ key: 'r:' + target + ':' + r.stream.id + ':' + t.id, owner: target, stream: new MediaStream([t]), gain: held(target) ? 0 : 1 });
       }
       if (stageEar && stageEar.fold && stageEar.fold.dest) out.push({ key: 'stage', owner: null, stream: stageEar.fold.dest.stream, gain: 1 });
       return out;
@@ -13400,31 +13595,162 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     function turnMixTrack(pid) { const mx = turnMixes.get(pid); return mx ? mx.fold.track() : null; }
+    // The bridge's uplink: on its anchor pair a network's bridge sends what
+    // it hears on its own network (its voice and its neighbours'), never
+    // what came from the anchor's side, so the room hears the whole network
+    // through one TURN link. Nobody else on my network: my microphone alone.
+    function syncTurnUpMix() {
+      const a = turnAnchorId != null ? peers.get(turnAnchorId) : null;
+      const drop = () => { if (turnUp) { turnUp.fold.clear(); turnUp = null; } };
+      if (!a || !a.turnAnchor) { drop(); return; }
+      if (!ensureAc()) return;
+      const want = new Map(MT.mixMinus(turnHeardSources(), a.id, (connsOf.get(a.id) || []).filter((x) => x !== myId)).map((x) => [x.key, x]));
+      if (![...want.values()].some((x) => x.owner !== myId)) { drop(); return; }
+      if (!turnUp) turnUp = { fold: MM.createAudioFold(ac), keys: new Set() };
+      for (const k of [...turnUp.keys]) if (!want.has(k)) { turnUp.fold.remove(k); turnUp.keys.delete(k); }
+      for (const [k, x] of want) {
+        if (!turnUp.keys.has(k)) { turnUp.fold.add(k, x.stream, x.gain); turnUp.keys.add(k); }
+        else if (turnUp.fold.setGain) turnUp.fold.setGain(k, x.gain);
+      }
+    }
+    function turnUpTrack() { return turnUp ? turnUp.fold.track() : null; }
+    // THE BRIDGE FEED. When the seating puts two networks in rows of their
+    // own, a bridge end is the one page of its row that hears the other
+    // network (its anchor's mix, or its client's uplink). Its row mates hear
+    // that network through it: on each row mate's pair it sends what it
+    // hears (its own voice and the bridge's stream) minus that mate's voice
+    // and anyone the mate hears directly. In a row that holds both ends of a
+    // pair nothing changes (each row mate hears the others directly).
+    const bridgeFeeds = new Map();   // row mate -> { fold, keys }: at most one row
+    let bridgeSelf = null;           // { fold, keys }: my voice and the bridge's stream, my cell's sound in my composites
+    const dbgFoldMeters = new WeakMap();   // fold -> analyser, for the debug view only (made on first read)
+    function bridgeCrossRow() { for (const p of peers.values()) if ((p.turnAnchor || p.turnServe) && p.connected && !isRowMate(p.id)) return true; return false; }
+    function syncBridgeFeeds() {
+      const on = bridgeCrossRow(); const mates = on ? new Set(rowMates()) : new Set();
+      // my own cell's sound for the composites I build: my voice and the bridge's stream
+      if (!on && bridgeSelf) { bridgeSelf.fold.clear(); bridgeSelf = null; }
+      if (on && ensureAc()) {
+        const ends = new Set(); for (const p of peers.values()) if ((p.turnAnchor || p.turnServe) && p.connected && !isRowMate(p.id)) ends.add(p.id);
+        const want = new Map(turnHeardSources().filter((x) => x.owner === myId && x.key.indexOf('me:') === 0 || ends.has(x.owner)).map((x) => [x.key, x]));
+        if (!bridgeSelf) bridgeSelf = { fold: MM.createAudioFold(ac), keys: new Set() };
+        for (const k of [...bridgeSelf.keys]) if (!want.has(k)) { bridgeSelf.fold.remove(k); bridgeSelf.keys.delete(k); }
+        for (const [k, x] of want) { if (!bridgeSelf.keys.has(k)) { bridgeSelf.fold.add(k, x.stream, x.gain); bridgeSelf.keys.add(k); } else if (bridgeSelf.fold.setGain) bridgeSelf.fold.setGain(k, x.gain); }
+      }
+      const fed = (q) => !!(q && q.connected && !q.turnAudio && !q.turnServe && !q.turnAnchor);
+      for (const [pid, fd] of [...bridgeFeeds]) if (!mates.has(pid) || !fed(peers.get(pid))) { fd.fold.clear(); bridgeFeeds.delete(pid); }
+      if (!on || !ensureAc()) return;
+      let src = null;
+      for (const pid of mates) {
+        const q = peers.get(pid); if (!fed(q)) continue;
+        if (!src) src = turnHeardSources();
+        let fd = bridgeFeeds.get(pid);
+        if (!fd) { fd = { fold: MM.createAudioFold(ac), keys: new Set() }; bridgeFeeds.set(pid, fd); }
+        const want = new Map(MT.mixMinus(src, pid, (connsOf.get(pid) || []).filter((x) => x !== myId)).map((x) => [x.key, x]));
+        for (const k of [...fd.keys]) if (!want.has(k)) { fd.fold.remove(k); fd.keys.delete(k); }
+        for (const [k, x] of want) {
+          if (!fd.keys.has(k)) { fd.fold.add(k, x.stream, x.gain); fd.keys.add(k); }
+          else if (fd.fold.setGain) fd.fold.setGain(k, x.gain);
+        }
+      }
+    }
+    function bridgeFeedTrack(pid) { const fd = bridgeFeeds.get(pid); return fd ? fd.fold.track() : null; }
     // The beat's TURN pass (the sweep calls it after the pair verdicts).
     function turnSweep(now) {
       if (myStatus.np !== directPath) myStatus.np = directPath; // my reachability rides my status: an anchor choice reads it
-      // 1. Credentials: only a page whose network blocks direct connections,
-      // only once it has joined, and asked in the background.
-      const want = directPath === 'blocked' && !!meshNode && !!sessId && !leaving;
-      if (want && (!turnCred || turnCredRoom !== sessId)) {
-        if (turnCred) turnCred.stop();
-        turnCredRoom = sessId;
-        turnCred = MT.createCredentials({ ask: MT.askIce(window.fetch.bind(window)), room: sessId, onChange: onTurnCred });
-        turnCred.start();
-      } else if (turnCred && directPath !== 'blocked') {
-        turnCred.stop(); turnCred = null; turnCredRoom = null; // this network can be reached now: no pool
-        onTurnCred('expired');
-      }
-      // 2. How long each pair has gone without a working path.
+      // My TURN pairs ride my status too: they join no networks, so the
+      // bridge choice below leaves them out of who reaches whom directly.
+      const myTl = []; for (const [pid, p] of peers) if (p.turnAnchor || p.turnServe || (p.turnMine && p.connected)) myTl.push(pid);
+      myTl.sort();
+      if (myTl.length) { if ((myStatus.tl || []).join(',') !== myTl.join(',')) myStatus.tl = myTl; } else if (myStatus.tl) delete myStatus.tl;
+      if (turnBridging) myStatus.tb = 1; else if (myStatus.tb) delete myStatus.tb;
+      // One bridge per blocked network (MT.networkBridge): the others on my
+      // network reach me directly and hear the room through it, so they ask
+      // the pool for nothing and anchor nobody.
+      // Once this page sits in a room with a view, the seating names the
+      // bridges by construction (docs: subnets by construction): this page
+      // bridges when the seating makes it the relay end of a bridge or its
+      // standby. Before a seat, or with no view, the lowest-id rule stands.
+      const seatLinks = netSeated() ? netLinks() : null;
+      const seatBridge = seatLinks ? seatLinks.find((l) => l.bridge && l.turnClient && peers.has(l.peer)) : null;
+      const seatStandby = seatLinks ? seatLinks.filter((l) => l.standby && l.turnClient && peers.has(l.peer)) : [];
+      const net = directPath === 'blocked' ? (seatLinks ? { bridge: (seatBridge || seatStandby.length) ? myId : null, bridges: new Set() } : MT.networkBridge({ me: myId, ids: [myId, ...peers.keys()],
+        blocked: (id) => (id === myId ? true : (statusOf.get(id) || {}).np === 'blocked'),
+        conns: (id) => (id === myId ? myConns() : connsOf.get(id)),
+        turn: (id) => (id === myId ? myTl : (statusOf.get(id) || {}).tl),
+        holds: (id) => (id === myId ? turnBridging : !!(statusOf.get(id) || {}).tb) })) : null;
+      const isBridge = !net || net.bridge === myId;
+      // A bridge carries the room to a few neighbours only (MAX_RELAY_JOBS:
+      // its upload stays bounded): a page it refused uses the pool itself,
+      // and keeps its anchor once it has one (no flapping as the refusal ages).
+      let spill = !isBridge && turnAnchorId != null;
+      if (!isBridge && net.bridge != null) for (const ref of relayRefusal.values()) if (ref[net.bridge] && now - ref[net.bridge] < 30000) spill = true;
+      const usePool = isBridge || spill;
+      // 1. How long each pair has gone without a working path.
       for (const [pid, p] of peers) {
         if (p.connected || p.relayed) turnDownAt.delete(pid);
         else if (!p.absentSince && !turnDownAt.has(pid)) turnDownAt.set(pid, now);
       }
       for (const [pid, t] of [...turnDownAt]) if (!peers.has(pid) && now - t > 120000) turnDownAt.delete(pid);
       for (const [pid, t] of [...turnAnchorDead]) if (t < now) turnAnchorDead.delete(pid);
+      const stageOf = (pid, p) => MT.pairStage({ connected: p.connected, relayed: !!p.relayed, downMs: turnDownAt.has(pid) ? now - turnDownAt.get(pid) : 0, friendPath: friendPathFor(pid, now) });
+      const anchorable = (pid, p) => !(p.absentSince || p.headless || !(linkTo(pid) || p.boot)) && !(typeof isEjected === 'function' && isEjected(pid) === true);
+      // 2. Credentials: only a page whose network blocks direct connections,
+      // only once it has joined, only once a pair it links to has failed its
+      // direct path or a peer dialled it through TURN (MT.poolNeeded: people
+      // on one blocked network reach each other directly and need none), and
+      // asked in the background.
+      const keep = !!turnCred && turnCredRoom === sessId;
+      let want = directPath === 'blocked' && !!meshNode && !!sessId && !leaving;
+      if (want && !keep) {
+        const stages = []; let invited = false;
+        for (const [pid, p] of peers) { if (!anchorable(pid, p)) continue; if (turnInvited(p)) invited = true; stages.push(stageOf(pid, p)); }
+        want = MT.poolNeeded(usePool ? stages : [], invited || !!seatBridge || seatStandby.length > 0); // a dial through TURN is answered whoever bridges; a bridge the seating names needs the pool now (its door test already found no direct path)
+      }
+      if (want && !keep) {
+        if (turnCred) turnCred.stop();
+        turnCredRoom = sessId;
+        // The free pool needs the relay's TURN ticket (workers turnstile): the
+        // one this page's join minted, or one traded for its rejoin token.
+        turnFree = MT.freeTicket(() => (meshNode && meshNode.turnTicket ? meshNode.turnTicket() : ''));
+        turnCred = MT.createCredentials({ ask: MT.askIce(window.fetch.bind(window)), room: sessId, onChange: onTurnCred, extra: turnFree.extra, granted: turnFree.granted });
+        turnCred.start();
+      } else if (turnCred && (directPath !== 'blocked' || (sessId && turnCredRoom !== sessId))) {
+        turnCred.stop(); turnCred = null; turnCredRoom = null; // this network can be reached now (or another room): no pool
+        onTurnCred('expired');
+      }
       const servers = turnServers();
+      // 2b. The seating's view of the pool: up when this page or any peer
+      // holds credentials, down when this page's own asks fail and nobody
+      // reports a grant, unknown otherwise (counted as up: no seat is refused
+      // on a guess). Video crosses only in a live paid room.
+      { const mine = turnCred ? turnCred.state() : 'idle';
+        let peerOk = false, peerDown = false;
+        for (const st of statusOf.values()) { if (!st) continue; if (st.tp === 'ok') peerOk = true; else if (st.tp === 'down') peerDown = true; }
+        const down = !peerOk && (mine === 'down' || (mine === 'idle' && peerDown));
+        const level = down ? 0 : (typeof vaRoom === 'function' && vaRoom() === 'live' ? 1 : 2);
+        if (netPool.level !== level || netPool.cred !== !down) netSeatingPool(level, !down);
+        const tp = directPath === 'blocked' ? turnReach() : null;
+        if (tp) { if (myStatus.tp !== tp) myStatus.tp = tp; } else if (myStatus.tp) delete myStatus.tp;
+        netStatusRelayed(); }
+      // 2c. The seating names this page's bridge: its far end is the anchor,
+      // whatever the pool rules would have picked; a standby pair is dialled
+      // through TURN ahead of time; every other pair stays off the pool.
+      if (seatLinks) {
+        const br = seatBridge;
+        for (const p of peers.values()) { const sb = seatStandby.find((l) => l.peer === p.id); if (!!p.turnStandby !== !!sb) { p.turnStandby = !!sb; if (p.turnStandby && !p.connected && !p.turnMine) { newPcFor(p); p.lastKick = now + Math.random() * 1500; sendOffer(p.id, false); } } }
+        if (br && turnAnchorId !== br.peer) {
+          // MAKE BEFORE BREAK: while my current anchor still carries me and
+          // the pair the seating now names is not up, keep the anchor and
+          // dial the new pair through the pool; the bridge moves once it is up.
+          const cur = turnAnchorId != null ? peers.get(turnAnchorId) : null, next = peers.get(br.peer);
+          if (cur && cur.connected && next && !next.connected && directPath === 'blocked' && servers) {
+            if (now - (next.turnPreDialAt || 0) > 10000) { next.turnPreDialAt = now; newPcFor(next); next.lastKick = now + Math.random() * 1500; sendOffer(next.id, false); }
+          } else { if (turnAnchorId != null) dropTurnAnchor(now, 0); if (directPath === 'blocked' && servers && !((turnAnchorDead.get(br.peer) || 0) > now)) setTurnAnchor(br.peer, now); }   // a bridge end that just failed keeps its dead hold; the seating's own heal moves the bridge
+        }
+        else if (!br && turnAnchorId != null) dropTurnAnchor(now, 0);
+      }
       // 3. The client side: one anchor, kept while it carries me.
-      if (directPath === 'blocked' && servers) {
+      if (directPath === 'blocked' && servers && usePool) {
         if (turnAnchorId != null) {
           const a = peers.get(turnAnchorId);
           if (a && !a.turnAnchor) { a.turnAnchor = true; newPcFor(a); sendOffer(turnAnchorId, false); } // the record was rebuilt by a redial
@@ -13436,22 +13762,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             dropTurnAnchor(now, 60000);
           }
         }
-        if (turnAnchorId == null) {
+        if (turnAnchorId == null && !seatLinks) {
           const cands = [];
           for (const [pid, p] of peers) {
-            if (p.absentSince || p.headless || !(linkTo(pid) || p.boot)) continue;
-            if (typeof isEjected === 'function' && isEjected(pid) === true) continue;
+            if (!anchorable(pid, p)) continue;
             const st = statusOf.get(pid);
             cands.push({ id: pid,
               reachable: st && st.np === 'ok' ? true : st && st.np === 'blocked' ? false : null,
               links: connsOf.has(pid) ? connsOf.get(pid).length : null,
               deadUntil: turnAnchorDead.get(pid) || 0,
-              stage: MT.pairStage({ connected: p.connected, relayed: !!p.relayed, downMs: turnDownAt.has(pid) ? now - turnDownAt.get(pid) : 0, friendPath: friendPathFor(pid, now) }) });
+              stage: stageOf(pid, p) });
           }
-          const pick = MT.chooseAnchor(cands, null, now);
+          // Nobody reachable to anchor on: the bridges link to each other,
+          // each to a lower one, and the lowest (the root) waits to be
+          // dialled, so S blocked networks make S-1 links and no loop.
+          // A page whose verdict never reached me (no pulse yet: a door
+          // dialled over the relay, before any mesh link) is unknown, not
+          // blocked: with no chain to dial, it is the candidate.
+          let pool = cands;
+          if (!cands.some((c) => c.reachable === true && c.stage === 'turn')) {
+            pool = cands.filter((c) => net.bridges.has(c.id) && c.id !== net.bridge && (spill || String(c.id) < String(myId)));
+            if (!pool.length) pool = cands.filter((c) => c.reachable == null);
+          }
+          const pick = MT.chooseAnchor(pool, null, now);
           if (pick != null) setTurnAnchor(pick, now);
         }
       } else if (turnAnchorId != null) dropTurnAnchor(now, 0);
+      let serving = false; for (const p of peers.values()) if (p.turnServe) serving = true;
+      turnBridging = isBridge && directPath === 'blocked' && (turnAnchorId != null || serving);
       const anchor = turnAnchorId != null ? peers.get(turnAnchorId) : null;
       if (anchor && anchor.dc && anchor.dc.readyState === 'open' && anchor.turnHelloDc !== anchor.dc) turnHello(anchor, true);
       // Heard through the anchor: no friend carries anyone else to me (one stream in).
@@ -13468,12 +13806,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       }
       // 5. Every free-pool pair: audio only, one stream each way.
-      for (const p of peers.values()) if (p.turnAudio) parkTurnSenders(p);
+      for (const p of peers.values()) { p.netQuiet = netStandbyQuiet(p); if (p.turnAudio || p.netQuiet) parkTurnSenders(p); }   // a hot standby carries nothing beyond its (silent) voice sender either
       // 6. The anchor side: one mix-minus per client, on that pair's audio sender.
       syncTurnMixes();
+      syncTurnUpMix(); // 7. A network's bridge: its network's voices up to its anchor, on that pair's audio sender
+      syncBridgeFeeds(); // 8. A bridge end in a row of its own network: the other network to its row mates
       let swap = false;
       for (const p of peers.values()) {
+        if (p.mainA && !p.turnServe && !p.turnAnchor) { const ft = bridgeFeedTrack(p.id); if (ft ? p.mainA.track !== ft : turnMixSenders.has(p.mainA)) swap = true; }
+        if (p.mainA && (netStandbyQuiet(p) ? !!p.mainA.track : (p.turnAudio && !p.mainA.track && !p.turnServe && !p.turnAnchor))) swap = true;   // a standby falls silent; a standby that is no longer one speaks again
         if (p.turnServe && p.mainA) { const mt = turnMixTrack(p.id); if (mt && p.mainA.track !== mt) swap = true; }
+        if (p.turnAnchor && p.mainA) { const ut = turnUpTrack(); if (ut ? p.mainA.track !== ut : turnMixSenders.has(p.mainA)) swap = true; }
         if (p.turnAudio && !p.mainA && localStream && p.dc && p.dc.readyState === 'open') swap = true; // the voice sender is missing: refreshOutbound adds it
       }
       if (swap) refreshOutbound();
@@ -13510,7 +13853,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const vaMineLive = () => { const m = vaMine(); return m && VA.checkReceipt(m.r, vaNowS()) ? m : null; };
     // The bridge a pair is counted as. Until the seating names real bridges,
     // a bridge is the pair itself; both ends compute the same id.
-    function vaBridge(pid) { return VA.bridgeIdFor(myId, pid); }
+    function vaBridge(pid) { const li = netSeated() ? netLinkInfo(pid) : null; return li && li.bridge ? VA.seatBridgeId(li.bridge) : VA.bridgeIdFor(myId, pid); }   // the seating's bridge when it names one (both ends compute the same id), else the pair's
     function vaOrderState() {
       if (!vaOrder) return null;
       const ns = vaNowS();
@@ -15080,7 +15423,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       p.turnServe = false; p.turnHelloDc = null;
       p.vaFarPaid = false; // a new transport is a new session: the far end says again whether it is paid
       p.rollbackRebuild = false; // a rebuild owed by the old transport is paid by this one
-      const pc = new RTCPeerConnection({ iceServers: iceFor(p) });
+      const pcCfg = { iceServers: iceFor(p) };
+      if (typeof DEBUG_ON !== 'undefined' && DEBUG_ON && typeof window.__gifosIcePolicyFor === 'function') { try { const pol = window.__gifosIcePolicyFor(p.id, p.name); if (pol === 'relay') pcCfg.iceTransportPolicy = 'relay'; } catch (e) {} }   // a test's network model: a pair to another network gathers relay candidates only
+      const pc = new RTCPeerConnection(pcCfg);
       // A glare yield armed against the OLD pc must never fire at the new
       // one: its rollback would target a connection that never offered.
       try { if (p.glareTimer) clearTimeout(p.glareTimer); } catch (e) {}
@@ -15092,7 +15437,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Offer turns belong to the old pc. turnSeen/turnLegacy describe the peer and stay.
       clearTimeout(p.turnAskT); clearTimeout(p.turnOkT); clearTimeout(p.turnGivenT);
       p.turnAskT = p.turnOkT = p.turnGivenT = null; p.turnOk = p.turnGiven = p.turnWanted = false; p.offeredPend = "";
-      p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now();
+      p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now(); p.viaRelay = undefined; // the new transport's path is unobserved until its first stats
       p.offering = null; // an offer still minting belongs to the closed pc (sendOffer drops it)
       p.offerFp = ''; // no remote offer has landed on this pc yet (onSignal's new-pc rule)
       // A new pc gathers afresh: its first host candidate must leave at once,
@@ -15190,8 +15535,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // deadSince: how long this transport has been in a HARD state — the
         // persistence gate for the rebuild-on-offer path (transients recover
         // via ICE restart and must never trigger a teardown)
-        if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); }
-        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} }
+        if (pc.connectionState === 'failed' || pc.connectionState === 'closed') { if (!p.deadSince) p.deadSince = Date.now(); p.viaRelay = false; }
+        else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} try { whoObserve(p.id).catch(() => {}); } catch (e) {} } // the selected path now, not at the next 15 s sweep: the door test reads it (viaRelay)
         updateStatus();
         if (p.connected) { p.altPath = false; p.tlAt = 0; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
@@ -15516,6 +15861,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (DEBUG_ON && (!cur || !!cur.bcend !== !!st.bcend || !!cur.bce !== !!st.bce || !!cur.rec !== !!st.rec || !!cur.stg !== !!st.stg)) { try { (window.__bcTrace = window.__bcTrace || []).push({ t: Date.now(), ev: 'st', from: String(from).slice(0, 8), bcend: st.bcend || 0, bce: st.bce || 0, rec: !!st.rec, stg: st.stg || 0, cam: !st.camOff }); } catch (e) {} }
       try { noteBcEnd(st); } catch (e) {} // a viewer keeps the host's ended word past its seat
       try { applySpotlightBit(from); } catch (e) {}
+      if (netRoom && st.seat) netRoom.fresh();   // the seating's cell map reads this seat now, not at the next tick
       // A share starting or stopping paints this tile now. The sharer list is
       // read live; a coalesced pass would leave the chip behind it.
       if (shareBit) { updateTile(from); if (typeof paintShare === 'function') paintShare(); }
@@ -16435,6 +16781,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // re-knocking underneath, and the veil lifts the instant the seat lands.
     // (Sits UNDER the password modal: typing the password IS joining.)
     let joinVeilEl = null, unseatedSince = 0, veilCeilLogged = false;
+    let relayBusyAt = 0; // the relay's last "very busy" (showRelayBusy), so the veil says that, not "your connection"
     setInterval(() => {
       if (!room || typeof meshSeat !== 'function') return;
       const s = meshSeat();
@@ -16460,7 +16807,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // console.debug notes the 210 s reap bound once. After that bound
       // the veil says the wait has run long. With the relay down, the
       // door line after 20 s is the message.
-      if (waited > 8000 && relayUp()) {
+      // THE RELAY IS VERY BUSY (showRelayBusy, renewed by every 4015): the
+      // door is not silent and the network is fine, so say what it said.
+      if (joinVeilEl.dataset) { const k = now - relayBusyAt < 40000 ? 'busy' : ''; if (joinVeilEl.dataset.kind !== k) joinVeilEl.dataset.kind = k; }
+      if (now - relayBusyAt < 40000) {
+        veilSay(net.BUSY_TEXT.replace(/, please try again later$/, ''), 'Please try again later. We keep trying, and you will be in the moment it lets new people in.');
+      } else if (waited > 8000 && relayUp()) {
         const left = Math.max(0, Math.ceil((210000 - waited) / 1000)); // reap bound, not a promise on screen
         const secs = Math.max(1, Math.ceil(waited / 1000));
         if (!veilCeilLogged) { veilCeilLogged = true; try { console.debug('seat ceiling 210s'); } catch (e) {} }
@@ -17129,6 +17481,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           stats.forEach((r) => { if (r.type === 'transport' && r.selectedCandidatePairId && !pair) pair = stats.get(r.selectedCandidatePairId) || null; });
           if (!pair) stats.forEach((r) => { if (!pair && r.type === 'candidate-pair' && r.nominated && r.state === 'succeeded' && r.selected !== false) pair = r; });
           const c = pair && stats.get(pair.remoteCandidateId);
+          { const lc = pair && stats.get(pair.localCandidateId); p.viaRelay = !!(pair && ((lc && lc.candidateType === 'relay') || (c && c.candidateType === 'relay'))); }   // network-aware seating: a pair whose selected path runs through a relay is no direct reach
           const addr = c && (c.address || c.ip);
           if (!addr) return;
           const e = whoEntry(pid); if (!e) return;
@@ -17962,10 +18315,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         },
         onUpdate: () => { renderFromOcc(); saveTreeMem(); try { reportDarkDeaths(); } catch (e) {} try { netSeatingKeep(); } catch (e) {} },
         onRelayMsg: onRelayFrame,
+        onBusy: showRelayBusy, // the relay's spend breaker: new joins wait, live meetings go on
         prevTree: readTreeMem(),
       });
+      try { if (window.GIFOS_NET_SEATING !== false && GifOS.mesh && GifOS.mesh.NetRoom) netSeatingInstall(netSeatingLiveView()); } catch (e) { if (typeof clog === 'function') clog('net seating view: ' + String(e).slice(0, 80)); }   // the room view for network-aware seating; window.GIFOS_NET_SEATING = false before boot leaves the rules off
       updateStatus(); applyAdminUi();
       });
+    }
+    // THE RELAY IS VERY BUSY (its spend breaker, close 4015 or a 503 from the
+    // join-token mint): it lets nobody new in until it recovers on its own,
+    // and the socket keeps trying on its slow leash. Say so in the relay's own
+    // words, held so the ambient line does not eat it between tries.
+    function showRelayBusy() {
+      relayBusyAt = Date.now();
+      setStatus('\u23f3 ' + net.BUSY_TEXT, 20000);
+      if (statusEl.dataset) statusEl.dataset.kind = 'busy';
     }
     // App-level relay frames the wire does not consume. The roster here is the
     // GREETER POOL, never the room \u2014 it drives door moderation only.
@@ -18193,6 +18557,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       else if (m.t === 'error') {
         pwLog('relay-error: ' + String(m.error || '?').slice(0, 60));
+        if (m.busy) { showRelayBusy(); return; }
         // Password gate is handled by the wire (onLocked / R6 sealing); bans
         // and vote-offs land here. No walk \u2014 the session cap is the greeter
         // pool\u2019s, and newcomers drop their socket after seating anyway.
@@ -21715,6 +22080,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (m.k === 'va') {
         // Video Anywhere: the admin's signed launch order, passed peer to peer.
         vaTake(m.w, p.id);
+      } else if (m.k === 'nb') {
+        netBeatFrom(p.id);   // a beat from the bridge end I am heir to
       } else if (m.k === 'va-pair') {
         // The far end of this pair dials it through a paid server (or stopped).
         p.vaFarPaid = m.paid === 1;
@@ -23180,7 +23547,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const t = pc.addTransceiver(tr, { streams: [container] });
       auxSenders.add(t.sender);
       // A free-pool pair carries one audio stream each way: anything more rides parked.
-      for (const q of peers.values()) if (q.pc === pc && q.turnAudio) { t.sender.replaceTrack(null).catch(() => {}); break; }
+      for (const q of peers.values()) if (q.pc === pc && (q.turnAudio || q.netQuiet)) { t.sender.replaceTrack(null).catch(() => {}); break; }
       return t.sender;
     };
 
@@ -23586,8 +23953,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // mute (track.enabled) and a mic re-grab (a new track) reach it the same
     // way. Cached by track identity: a fresh stream id would re-fold every
     // sweep.
-    let selfFoldSt = null;
+    let selfFoldSt = null, selfBridgeSt = null;
     function selfFoldStream() {
+      // A bridge end's own cell carries the other network too: every
+      // composite it builds (its row's product, its children's down-mix)
+      // folds its voice with the bridge's stream (syncBridgeFeeds).
+      const bt = bridgeSelf ? bridgeSelf.fold.track() : null;
+      if (bt && bt.readyState !== 'ended') { if (!selfBridgeSt || selfBridgeSt.getAudioTracks()[0] !== bt) selfBridgeSt = new MediaStream([bt]); return selfBridgeSt; }
       const at = (localStream && localStream.getAudioTracks()[0]) || null;
       const vs = meTile && meTile.video ? meTile.video.srcObject : null;
       if (!at || at.readyState === 'ended') { selfFoldSt = null; return vs || localStream; }
@@ -24690,8 +25062,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (on && jobPinned(jk)) return; // pinned parked — ignore the wake
       if (!!job.active === !!on) return;
       job.active = !!on;
+      const jq = peers.get(job.to); const quiet = !!(jq && (jq.turnAudio || jq.netQuiet));   // a free-pool pair or a hot standby carries no feed
       for (let i = 0; i < job.senders.length; i++) {
-        try { job.senders[i].replaceTrack(on ? (job.trackList[i] || null) : null); } catch (e) {}
+        try { job.senders[i].replaceTrack(on && !quiet ? (job.trackList[i] || null) : null); } catch (e) {}
       }
       // A PIPED job's dormancy must reach the worker: a parked pipe's minted
       // templates die at the detached track, so its tap must stop queueing
@@ -28154,7 +28527,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // composite carried them too).
         // Stagers' direct tracks are muted too: their voice arrives via the
         // per-stager feeds folded at the ear — the direct link would double it.
-        const bus = stg.has(pid) ? null : mates.has(pid) ? 'row' : null;
+        const bus = stg.has(pid) ? null : (mates.has(pid) || ((p.turnAnchor || p.turnServe) && p.connected)) ? 'row' : null;   // a pool pair I anchor or am anchored on (free or paid) carries the other network's voices: it plays wherever its far end sits
         // The voice is the person's own stream: the direct one, or the one a
         // friend carries (relayVia). The tile's element can hold a painted
         // picture instead (camera off), which has no sound.
@@ -35201,10 +35574,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         return null;
       },
+      myId: () => myId,
+      // network-aware seating, as a suite sees it: the view installed, the pool the seating counts, my seat, every link's bridge/standby/dark verdict
+      netSeating: () => { const s = meshSeat(); return { installed: !!netRoom, seated: netSeated(), pool: Object.assign({}, netPool), coord: s && s.hasCoord ? s.coord : null, label: s ? s.glabel : null, anchored: !!(s && s.anchored),
+        seat: s ? { state: s.state, tick: s.TICK, retryAt: s.retryAt, walkPending: !!s.walkPending, walkRounds: s.walkRounds, probeAt: s.netProbeAt, probeIds: (s.netProbeIds || []).length, door: (s.netTested || []).map((t) => [rosterNames[t[0]] || String(t[0]).slice(0, 8), t[1], t[2] != null ? String(t[2]).slice(2, 6) : null, t[3] || null, t[4]]), glFind: s.glFind, glHead: s.glHead || null, haveRoster: !!s.haveRoster, roster: (s.netRoster || s.roster || []).length, seatTries: s.seatTries } : null,
+        links: netLinks().map((l) => Object.assign({}, l, { name: rosterNames[l.peer] || (peers.get(l.peer) || {}).name || String(l.peer).slice(0, 8) })),
+        known: (() => { try { return netRoom ? netRoom.o.seats().slice(0, 30).map((x) => (rosterNames[x.id] || String(x.id).slice(0, 6)) + '@' + (x.hasCoord ? net.topo.ckey(x.coord) : '-') + ':' + String(x.glabel).slice(2, 6)) : []; } catch (e) { return []; } })(),
+        bridges: (() => { try { if (!netRoom) return []; netRoom.rebuild(); return [...netRoom.bridges.values()].map((b) => [b.a, b.b, b.sa, b.sb].map((x) => x == null ? '-' : (rosterNames[x] || String(x).slice(0, 6))).join('/') + (b.standbySince === -2 ? ' standby-carries' : '')); } catch (e) { return []; } })() }; },
       turnState: () => ({
         probe: directPath, cred: turnCred ? turnCred.state() : 'idle', reach: turnReach(), heard: turnHeard(),
         anchor: turnAnchorId != null ? (rosterNames[turnAnchorId] || (peers.get(turnAnchorId) || {}).name || String(turnAnchorId).slice(0, 8)) : null,
         serving: [...peers.values()].filter((p) => p.turnServe).map((p) => rosterNames[p.id] || p.name || String(p.id).slice(0, 8)),
+        // what this page plays from each pair: its sound element's state (missing, paused, muted, volume)
+        ears: [...peers.values()].map((p) => { const a = p.video && p.video._aud; return [rosterNames[p.id] || String(p.id).slice(0, 8), a ? (a.paused ? 'paused' : 'playing') + (a.muted ? '/muted' : '') + '/' + Math.round((a.volume || 0) * 100) + (a.srcObject ? '' : '/no-src') : 'none', (a && a.srcObject ? a.srcObject.getAudioTracks() : []).map((t) => t.id.slice(0, 8) + (t.muted ? ':muted' : '')).join(','), (p.stream ? p.stream.getAudioTracks() : []).map((t) => t.id.slice(0, 8) + (t.muted ? ':muted' : '')).join(','), (() => { try { return p.pc ? p.pc.getTransceivers().filter((x) => x.sender && x.sender.track && x.sender.track.kind === 'audio' && x.currentDirection && x.currentDirection.indexOf('send') >= 0).map((x) => x.mid + (x.sender === p.mainA ? '*' : '')).join(',') : ''; } catch (e) { return ''; } })()]; }),   // ...and the mids that send audio on the pair (* = the voice sender)
+        // the mixes this page sends: its uplink to its anchor, one mix-minus per client, one feed per row mate (source keys by owner name), and whether each sender carries it
+        mixes: (() => { const nm = (id) => rosterNames[id] || String(id).slice(0, 8); const keys = (ks) => [...ks].map((k) => { const m = /^(?:p|r):([^:]+):/.exec(k); return m ? nm(m[1]) : k.split(':')[0]; });
+          const sent = (pid, t) => { const q = peers.get(pid); return !!(q && q.mainA && t && q.mainA.track === t); };
+          const mid = (pid) => { const q = peers.get(pid); try { const tr = q && q.pc && q.mainA ? q.pc.getTransceivers().find((x) => x.sender === q.mainA) : null; return tr ? tr.mid : null; } catch (e) { return null; } };
+          const lvl = (fold) => { try { if (!ac || !fold || !fold.dest) return null; let an = dbgFoldMeters.get(fold); if (!an) { an = ac.createAnalyser(); an.fftSize = 2048; ac.createMediaStreamSource(fold.dest.stream).connect(an); dbgFoldMeters.set(fold, an); } const b = new Float32Array(an.fftSize); an.getFloatTimeDomainData(b); let e = 0; for (const x of b) e += x * x; return Math.round(Math.sqrt(e / b.length) * 1e4) / 1e4; } catch (e) { return null; } };
+          const a = turnAnchorId != null ? turnAnchorId : null;
+          return { up: turnUp ? { to: a != null ? nm(a) : null, keys: keys(turnUp.keys), sent: a != null && sent(a, turnUpTrack()), mid: a != null ? mid(a) : null, level: lvl(turnUp.fold), src: turnUp.fold.peek ? turnUp.fold.peek() : null } : null,
+            serve: [...turnMixes].map(([pid, mx]) => ({ to: nm(pid), keys: keys(mx.keys), sent: sent(pid, turnMixTrack(pid)), mid: mid(pid), level: lvl(mx.fold) })),
+            feeds: [...bridgeFeeds].map(([pid, fd]) => ({ to: nm(pid), keys: keys(fd.keys), sent: sent(pid, bridgeFeedTrack(pid)), mid: mid(pid), level: lvl(fd.fold), src: fd.fold.peek ? fd.fold.peek() : null })) }; })(),
         pairs: [...peers.values()].map((p) => {
           let urls = [];
           try { for (const sv of (p.pc && p.pc.getConfiguration().iceServers) || []) urls = urls.concat(Array.isArray(sv.urls) ? sv.urls : [sv.urls]); } catch (e) {}
@@ -35626,7 +36017,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const r0 = s.recv.bind(s), e0 = s.emit.bind(s); s.recv = (m) => { push('rx', m); s.rivalWhy = null; s.yieldWhy = null; const out = r0(m); if (m && m.t === 'HELLO' && s.rivalWhy) { ring.push([s.env.TICK, 'ev', 'rival', String(m.id || '').slice(0, 6), m.ck || '', '', '', String(s.rivalWhy).slice(0, 40), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } if (m && m.t === 'YIELD' && s.yieldWhy) { ring.push([s.env.TICK, 'ev', 'yield', String(m.id || '').slice(0, 6), m.ck || '', '', '', String(s.yieldWhy).slice(0, 60), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } return out; };   // ...and which exit the rival branch took for a HELLO about my own cell (mesh.js rivalWhy)
         s.emit = (to, m) => { push('tx', m, to); return e0(to, m); };
         // seat transitions (the frames say what was heard; these say what the seat DID with it): the method, its cell argument, and the calling method
-        for (const fn of ['heal', 'doMove', 'take', 'requeue', 'rollbackMove', 'confirmMove', 'reseatViaRoster']) { const f0 = s[fn]; if (typeof f0 !== 'function') continue; s[fn] = function (...a) { let by = ''; try { const st = String(new Error().stack).split('\n'); const ln = st[2] || ''; const mm = /at (?:Seat\.)?([\w$.]+)/.exec(ln); by = mm ? mm[1] : ''; } catch (e) {} const c = a[0] && typeof a[0] === 'object' && 'pc' in a[0] ? net.topo.ckey(a[0]) : ''; ring.push([s.env.TICK, 'ev', fn, '', c, '', s.hasCoord ? net.topo.ckey(s.coord) : '', by.slice(0, 24), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); return f0.apply(this, a); }; }
+        for (const fn of ['heal', 'doMove', 'take', 'requeue', 'rollbackMove', 'confirmMove', 'reseatViaRoster', 'admit']) { const f0 = s[fn]; if (typeof f0 !== 'function') continue; s[fn] = function (...a) { let by = ''; try { const st = String(new Error().stack).split('\n'); const ln = st[2] || ''; const mm = /at (?:Seat\.)?([\w$.]+)/.exec(ln); by = mm ? mm[1] : ''; } catch (e) {} const c = a[0] && typeof a[0] === 'object' && 'pc' in a[0] ? net.topo.ckey(a[0]) : ''; ring.push([s.env.TICK, 'ev', fn, '', c, '', s.hasCoord ? net.topo.ckey(s.coord) : '', by.slice(0, 24), fn === 'admit' && s.admitWhy ? String(s.admitWhy).slice(0, 80) : '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); return f0.apply(this, a); }; }
         // ...and any write that names ANOTHER seat at my own cell (my view of my own seat: never someone else's), with its caller
         { const so0 = s.setOcc; if (typeof so0 === 'function') s.setOcc = function (k, v) { if (s.hasCoord && k === net.topo.ckey(s.coord) && v != null && v !== s.id) { let by = ''; try { const st = String(new Error().stack).split('\n'); const ln = (st[2] || '') + ' ' + (st[3] || ''); const mm = ln.match(/at (?:Seat\.)?([\w$.]+)/g) || []; by = mm.map((x) => x.replace(/^at (?:Seat\.)?/, '')).join('<'); } catch (e) {} ring.push([s.env.TICK, 'ev', 'ownCellTo', String(v).slice(0, 6), k, '', '', by.slice(0, 40), '', '']); s.__traceSeq++; if (ring.length > 400) ring.shift(); } return so0.call(this, k, v); }; }
         // ...and every Section-1 death verdict a heal rests on, with the evidence it read (live stamp, hole clock, D5 record)

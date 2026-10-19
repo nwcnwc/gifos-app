@@ -277,17 +277,32 @@
     const ipProofFor = () => (identity && net.edSign
       ? net.edSign(identity.priv, JSON.stringify({ v: 1, act: 'ipatt', sid: opts.sid, peer: identity.peerId })).then((s) => { ipp = s || ''; }, () => {})
       : Promise.resolve());
+    // THE JOIN TICKET (relay lockdown, gifos-net.js relayTicket): a join token
+    // minted at the relay's /t after a person check, then the room's rejoin
+    // token, for THIS room and THIS device tag. The upgrade carries it as
+    // &jt=; a relay that issues none is joined without one.
+    const ticket = net.relayTicket ? net.relayTicket({ relayBase, sid: opts.sid, onBusy: () => { if (opts.onBusy) { try { opts.onBusy(); } catch (e) {} } } }) : null;
+    const devOfUrl = (extra) => { const m = /[&?]dev=([^&]*)/.exec(extra); return m ? decodeURIComponent(m[1]) : (devTag || ''); };
     const makeUrl = () => {
       const extra = opts.urlParams ? String(opts.urlParams() || '') : '';
+      if (!devTag && !/[&?]dev=/.test(extra)) devTag = net.randHex(8); // one tag per page, so the ticket and the upgrade name the same device
+      const jt = ticket ? ticket.token(devOfUrl(extra)) : '';
       return relayBase + '/s/' + opts.sid
         + '?role=mesh&token=' + encodeURIComponent(opts.tok || '')
         + '&peer=' + encodeURIComponent(peer)
         + '&gk=' + encodeURIComponent(seat.genKey || myKey)
         + (rs ? '&rs=' + rs : '')
-        + (/[&?]dev=/.test(extra) ? '' : '&dev=' + encodeURIComponent(devTag || net.randHex(8)))
+        + (/[&?]dev=/.test(extra) ? '' : '&dev=' + encodeURIComponent(devTag))
         + (ipp && identity ? '&pk=' + encodeURIComponent(identity.pubB64) + '&ipp=' + encodeURIComponent(ipp) : '')
         + (admitTok ? '&admit=' + encodeURIComponent(admitTok) : '')
-        + extra;
+        + extra
+        + (jt ? '&jt=' + encodeURIComponent(jt) : '');
+    };
+    const prepareTicket = () => {
+      if (!ticket) return Promise.resolve();
+      const extra = opts.urlParams ? String(opts.urlParams() || '') : '';
+      if (!devTag && !/[&?]dev=/.test(extra)) devTag = net.randHex(8);
+      return ticket.prepare(devOfUrl(extra));
     };
 
     // deliver(to, m): the raw transport step — DataChannel first, sealed relay
@@ -569,6 +584,9 @@
       sock = net.steadySocket(makeUrl, {
         onClose: (code) => { relayCloses.push({ code, at: Date.now() }); if (relayCloses.length > RELAY_CLOSES_KEPT) relayCloses.shift(); },
         onDuty: () => !stopped,
+        prepare: prepareTicket,
+        onTokenRefused: () => { if (ticket) ticket.drop(); },
+        onBusy: () => { if (opts.onBusy) { try { opts.onBusy(); } catch (e) {} } },
       });
       lastRelayRx = Date.now(); // fresh socket starts its idle clock now
       // EVERY (re)connect: if I am a seated Section-1 greeter, my pool entry
@@ -584,6 +602,7 @@
         if (stopped) return;
         lastRelayRx = Date.now();
         let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (m.t === 'joined' && m.rt && ticket) ticket.setRejoin(m.rt); // reconnects and reloads of this tab need no new person check
         if (m.t === 'greeters' || m.t === 'wait' || m.t === 'locked' || m.t === 'denied' || m.t === 'admit-tok') {
           const verdict = (GifOS.relayAdmit && GifOS.relayAdmit.clientDoor)
             ? GifOS.relayAdmit.clientDoor(m, { waitingHold: waitingHold, admitPresented: admitPresented, state: seat ? seat.state : 0, badPassword: lockedFired })
@@ -1112,6 +1131,11 @@
         }
         if (iAmAGreeter() && sock && !sock.rejected) {
           const nowMs = Date.now();
+          // A zombie reads OPEN. A registration sent into a socket that is down
+          // (refused 4015 by a stopped relay, reconnecting) proves nothing, and
+          // rebuilding it would restart steadySocket's backoff at 0.5 s: seated
+          // pages knocked a stopped relay every ~3 s instead of on the 15 s leash.
+          if (regPendingAt && sock.state !== 'up') regPendingAt = 0;
           if (regPendingAt && nowMs - regPendingAt > 12000) {
             // a registration the relay never answered ⇒ zombie socket:
             // rebuild it (the fresh socket's onopen re-registers).
@@ -1227,6 +1251,13 @@
       // when its switch is on.
       RAW_SOCKET_SEND_FOR_TEST(obj) { if (stopped) return { err: 'stopped' }; if (!sock) makeSock(); if (sock.rejected) return { err: 'rejected' }; sock.send(obj); return { ok: true }; },
       relayUp() { return !!(sock && sock.state === 'up'); },
+      // The free TURN pool's ticket for this room and device (gifos-net.js
+      // relayTicket.turnTicket; run.html turnSweep asks with it).
+      turnTicket() {
+        if (!ticket) return Promise.resolve('');
+        const extra = opts.urlParams ? String(opts.urlParams() || '') : '';
+        return ticket.turnTicket(devOfUrl(extra));
+      },
       // The network came back after a dark spell: read the door again now
       // (re-register as a door, or ask for the list), so a change made while
       // I was away — a new room password above all — shows at once (R6).

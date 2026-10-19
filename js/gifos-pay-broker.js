@@ -58,6 +58,16 @@
   // Where the x402 fee lands. A Base Sepolia TEST address — replace alongside
   // the mainnet flag day, never before (docs/payments.md "What this does NOT do").
   const TREASURY = '0x1111111111111111111111111111111111111111';
+  // THE USDC SWITCH. While false, the sheet never offers the USDC rails
+  // (x402 and wallet transfer), and the permission sheet does not list them,
+  // for any app; nothing else about them is removed. Flip to true only when
+  // the USDC rails point at mainnet and a real treasury address is set in
+  // both TREASURY above and the pay Worker's TREASURY_ADDRESS.
+  const USDC_ENABLED = false;
+  const USDC_RAILS = ['x402', 'transfer'];
+  const USDC_OFF = 'USDC payments are off until mainnet';
+  // The rails this OS will offer out of a list (the author's, or the Worker's).
+  const offeredRails = (rails) => (rails || []).filter((r) => USDC_ENABLED || USDC_RAILS.indexOf(r) === -1);
 
   const ls = () => root.localStorage;
 
@@ -177,6 +187,10 @@
       const s = body.rails[rail];
       if (s && s.ok === true) accepted[rail] = true; else why[rail] = (s && s.why) || 'unavailable';
     }
+    // A rail the switch above turns off is never accepted, whatever the
+    // Worker says, and the human is told why.
+    for (const rail of Object.keys(accepted)) if (offeredRails([rail]).length === 0) delete accepted[rail];
+    if (!USDC_ENABLED) for (const rail of USDC_RAILS) why[rail] = USDC_OFF;
     return { accepted, why, mode: body && body.mode === 'LIVE' ? 'LIVE' : 'test' };
   }
 
@@ -951,7 +965,7 @@
     sheetData.mode = now.mode;
     const r = sheetData.rails;
     if (!r.paypal && !r.x402 && !r.transfer && !r.fednow && !r.mpp) {
-      const reasons = elig.rails.map((k) => now.why[k]).filter(Boolean);
+      const reasons = elig.rails.map((k) => now.why[k]).filter((w, i, all) => w && all.indexOf(w) === i);
       throw new Error('this app cannot be paid right now: ' + (reasons.length ? reasons.join('; ') : 'no payment method is available'));
     }
 
@@ -1113,6 +1127,8 @@
     // storage of its own.
     purse, maxAmountFor, setMaxAmount, fmtUsd, entScope,
     DEFAULT_MAX, WORKER_KEY, POLICY_KEY,
+    // The permission sheet lists rails through this, so one switch rules both.
+    USDC_ENABLED, offeredRails,
     // GifOS's own products (Video Anywhere in a meeting) buy through the same
     // service and check their receipts against the same key.
     workerBase, verifyReceipt,
