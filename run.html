@@ -2303,7 +2303,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-width: 700px), (max-height: 500px) {
     #barmore { margin-left: calc(-1 * (var(--dockshift, 0px) + var(--dockx, 0px))); }
     /* A dock dragged up: the sheet fits the room on its larger side (placeDock). */
-    .bar.dock-raised:not(.collapsed) #barmore { max-height: var(--sheet-room, 50dvh); }
+    /* vh first: a floor that does not know dvh still caps the raised sheet. */
+    .bar.dock-raised:not(.collapsed) #barmore { max-height: var(--sheet-room, 50vh); max-height: var(--sheet-room, 50dvh); }
     .bar.dock-raised.sheet-below:not(.collapsed) #barmore { top: 100%; bottom: auto; }
   }
   body.solo-app #callstate { display: none !important; }
@@ -2615,7 +2616,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.desk-ptr .bar:not(.collapsed) .barmore { width: min(1180px, calc(100vw - 24px)); }
     /* Columns as wide as the longest label ("Allow screen share", "Stop
        guest shares" stay on one line); fewer per row on a narrower window. */
-    body.desk-ptr .bar:not(.collapsed) .barmore .moregroup .morerow { grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr)); }
+    /* 12rem first: a floor that does not know min() still gets columns. */
+    body.desk-ptr .bar:not(.collapsed) .barmore .moregroup .morerow { grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr)); }
     body.desk-ptr .bar:not(.collapsed) .barmore .moregroup .morerow > button { min-height: 52px; padding: 6px; }
   }
   .reacttray { position: absolute; z-index: 23; left: 50%; bottom: 122px; transform: translateX(-50%);
@@ -3289,6 +3291,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar:not(.collapsed) .barmore .morerow,
     .bar:not(.collapsed) .barmore .dockrow {
       width: 100%; min-width: 0; max-width: 100%;
+      /* 5.25rem first: a floor that does not know min() still gets columns. */
+      grid-template-columns: repeat(auto-fill, minmax(5.25rem, 1fr));
       grid-template-columns: repeat(auto-fill, minmax(min(100%, 5.25rem), 1fr));
     }
     /* A dock button that moved into the sheet says its word at the sheet's size. */
@@ -31802,7 +31806,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       btn.textContent = copied;
       if (btn.dataset) btn.dataset.copied = '1';
       later(() => {
-        if (btn.textContent === copied) btn.textContent = uiText('invite', 'Invite');
+        // Resting label is Copy, the word this button ships with.
+        if (btn.textContent === copied) btn.textContent = copy;
         if (btn.dataset) delete btn.dataset.copied;
       }, 2000);
     }
