@@ -30205,7 +30205,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // used to come back after a reload, including after No blur.
     (function () {
       const bar = document.querySelector('.bar'), toggle = document.getElementById('bartoggle');
+      // LM-44: the More sheet is fixed inside the dock's transform, so it
+      // rides wherever the dock goes. A dock tucked by the idle timer stands
+      // 128px under the screen; a sheet opened over it (an automation or
+      // accessibility click, not a finger: the tucked dock takes no taps)
+      // ran off the bottom and cut Settings and Keys. Opening More wakes
+      // the dock first (set below, once wakeDock exists).
+      let wakeForSheet = null;
       function apply(collapsed) {
+        if (!collapsed && wakeForSheet) wakeForSheet();
         bar.classList.toggle('collapsed', collapsed);
         toggle.setAttribute('aria-expanded', String(!collapsed));
         const service = typeof BROADCAST !== 'undefined' && BROADCAST;
@@ -30420,6 +30428,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (tucked) markTuck(false);
         scheduleIdle();
       };
+      wakeForSheet = wakeDock;
       window.addEventListener('pointerdown', wakeDock, true);
       window.addEventListener('pointermove', wakeDock, true);
       window.addEventListener('keydown', wakeDock, true);
