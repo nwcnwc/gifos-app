@@ -63,18 +63,29 @@ function keyOf(url) { return url.pathname; }
 // App GIFs are not — /apps/index.json, the covers and an 8 MB app are content
 // that must never be dragged into a precache on someone's phone.
 var CORE = [
-  '/', '/index.html', '/boot.html', '/run.html', '/sign.html', '/about.html', '/store.html', '/404.html',
+  '/', '/index.html', '/boot.html', '/run.html', '/sign.html', '/about.html', '/store.html',
   '/css/desktop.css',
   '/js/gifos-gif.js', '/js/gifos-help.js', '/js/gifos-charge.js', '/js/gifos-sign.js', '/js/gifos-ed.js', '/js/gifos-lock.js', '/js/gifos-zip.js', '/js/gifos-icons.js',
-  '/js/gifos-themes.js', '/js/gifos-avatar.js', '/js/gifos-store.js', '/js/gifos-install.js', '/js/gifos-fullscreen.js', '/js/irl-apps.js', '/js/sample-apps.js', '/js/store.js', '/js/pay.js', '/js/gifos-cash.js',
+  '/js/gifos-themes.js', '/js/gifos-avatar.js', '/js/gifos-store.js', '/js/gifos-install.js', '/js/gifos-fullscreen.js', '/js/irl-apps.js', '/js/sample-apps.js', '/js/store.js', '/js/gifos-cash.js',
   '/js/desktop.js', '/js/runtime.js', '/js/meet-host.js', '/js/camera-studio.js', '/js/relay-config.js', '/js/sw-register.js', '/js/build.js', '/js/build-badge.js', '/js/gifos-update.js',
   '/themes/theme.js', '/themes/icons.js', '/themes/eggs.js',
   '/gifos.key', '/version.json', '/changelog.json', '/og.png', '/manifest.webmanifest', '/icon.svg',
-  // The build guide, cached because it is no longer only a page to read: the
-  // packer copies it INTO every app GIF it makes (gifos-gif.js "remix doc"),
-  // so building an app offline would otherwise ship without it.
-  '/llms.txt',
 ];
+
+// A meeting join installs this worker too. These three are the desktop, not
+// the call: the pretty-link page, the store payer, and the build guide the
+// packer copies into an app GIF. install() adds them only when the client
+// is the desktop, so a clean join does not fetch them. An explicit shell
+// refresh still does, and the fetch handler caches each one on first use.
+var DESKTOP_SHELL = ['/404.html', '/js/pay.js', '/llms.txt'];
+
+function desktopClient(url) {
+  var path = '';
+  try { path = new URL(url).pathname; } catch (e) { return false; }
+  if (path.length > 1 && path.charAt(path.length - 1) === '/') path = path.slice(0, -1);
+  return path === '' || path === '/' || path === '/index.html' || path === '/boot.html'
+    || path === '/sign.html' || path === '/about.html' || path === '/store.html' || path === '/store';
+}
 
 // THIS computer's theme override files. The theme cascade (gifos-themes.js)
 // derives the folder from the SUBDOMAIN label and parser-blocking-loads
@@ -84,19 +95,34 @@ var CORE = [
 // computer — orrery.gifos.app and friends — fully self-contained offline.
 function themeOverride() {
   var parts = (self.location.hostname || '').split('.');
-  var label = (parts.length >= 3 && parts[0] !== 'www') ? parts[0] : '';
+  // Same label rule as gifos-themes.js: an IPv4 host, and a dashed
+  // four-number label (203-0-113-10.example.test), are numeric hosts.
+  var ipv4 = parts.length === 4 && parts.every(function (p) { return /^\d{1,3}$/.test(p); });
+  var dashedQuad = /^\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3}$/.test(parts[0] || '');
+  var label = (!ipv4 && !dashedQuad && parts.length >= 3 && parts[0] !== 'www') ? parts[0] : '';
   if (label === 'home' || label === 'default') label = '';
   if (!label || !/^[a-z0-9-]{1,32}$/i.test(label)) return [];
   var dir = '/themes/' + label + '/';
   return [dir + 'theme.js', dir + 'icons.js', dir + 'eggs.js', dir + 'wallpaper.js'];
 }
 
+// Install list: the meeting shell, this computer's theme, and the desktop
+// extras only when a desktop page is what installed the worker.
+async function installUrls() {
+  var list = CORE.concat(themeOverride());
+  var open = [];
+  try { open = await self.clients.matchAll({ includeUncontrolled: true }); } catch (e) { open = []; }
+  if (open.some(function (c) { return desktopClient(c && c.url); })) list = list.concat(DESKTOP_SHELL);
+  return list;
+}
+
 self.addEventListener('install', function (e) {
   e.waitUntil((async function () {
     var cache = await caches.open(CACHE);
+    var urls = await installUrls();
     // allSettled + per-file add: one missing/renamed asset can't abort the whole
     // precache (a half-cached shell is still better than none).
-    await Promise.allSettled(CORE.concat(themeOverride()).map(function (u) {
+    await Promise.allSettled(urls.map(function (u) {
       return cache.add(new Request(u, { cache: 'reload' }));
     }));
     // First-ever install (no prior shell): activate immediately so the very first
@@ -123,7 +149,7 @@ self.addEventListener('message', function (e) {
   if (data.type === 'gifos-refresh-shell') {
     e.waitUntil((async function () {
       var cache = await caches.open(CACHE);
-      await Promise.allSettled(CORE.concat(themeOverride()).map(function (u) {
+      await Promise.allSettled(CORE.concat(DESKTOP_SHELL).concat(themeOverride()).map(function (u) {
         return fetch(new Request(u, { cache: 'reload' })).then(function (r) {
           if (r && r.ok) return cache.put(u, r);
         }).catch(function () {});
