@@ -252,6 +252,22 @@
     return el;
   }
 
+  // The blocked-video mark on a stadium face: the page says whether this
+  // person is heard-not-seen (f.vaBlocked) and what the mark reads — the
+  // one-hour pass price when the live terms sell it (f.vaMark), else
+  // nothing. The explanation and the buttons live in the tile window the
+  // face opens; the face only signals them.
+  function decorFace(el, f) {
+    if (!el || !el.classList) return;
+    const on = !!(f && f.vaBlocked);
+    el.classList.toggle('va-blocked', on);
+    let m = el.querySelector('.va-mark');
+    const text = on && f.vaMark ? String(f.vaMark) : '';
+    if (!text) { if (m) m.remove(); return; }
+    if (!m) { m = document.createElement('span'); m.className = 'va-mark'; el.appendChild(m); }
+    if (m.textContent !== text) m.textContent = text;
+  }
+
   function syncFaces(feed, faces) {
     let host = feed.querySelector('#stadfaces');
     if (!host) {
@@ -280,6 +296,7 @@
       }
       el.dataset.pzkey = 'stad:' + id;
       el.style.display = '';
+      decorFace(el, f);
       els.push(el);
     }
     for (let i = host.children.length - 1; i >= 0; i--) {
@@ -1120,6 +1137,7 @@
     paintShade: paintShade,
     avatarUrl: avatarUrl,
     paintAvatar: paintAvatar,
+    decorFace: decorFace,
     apply: apply,
     stadFrameSize: stadFrameSize,
     installBar: installBar,

@@ -1178,6 +1178,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .tile .vablock p { margin: 0; font-size: .78rem; line-height: 1.35; max-width: 28rem; }
   .tile .vablock .vabuy { pointer-events: auto; padding: .4rem .9rem; border-radius: .5rem; border: 1px solid #5ca0ff; background: #1b2a44; color: #e8eeff; font: inherit; font-size: .8rem; cursor: pointer; }
   .tile .vablock .vabuy[hidden] { display: none; }
+  /* The one-hour pass: usable at once by anyone, so it stands out. */
+  .tile .vablock .vapass { pointer-events: auto; padding: .45rem 1rem; border-radius: .5rem; border: 1px solid #3fbf7f; background: #1d5a3c; color: #f2fff7; font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; }
+  .tile .vablock .vapass[hidden], .tile .vablock .vahost[hidden] { display: none; }
+  .tile .vablock .vahost { font-size: .72rem; opacity: .85; }
+  /* The same block, borrowed by the tile window for a person whose row tile
+     is hidden (they sit in another row): a section of the window, not an overlay. */
+  #tilewin .vablock { display: flex; flex-direction: column; align-items: center; gap: .6rem; padding: .6rem .2rem; text-align: center; }
+  #tilewin .vablock p { margin: 0; font-size: .78rem; line-height: 1.35; }
+  #tilewin .vablock .vabuy[hidden], #tilewin .vablock .vapass[hidden], #tilewin .vablock .vahost[hidden] { display: none; }
+  /* The mark on a stadium face whose person is heard, not seen: the pass
+     price when the live terms sell it (meet-views decorFace paints it). */
+  .stadface .va-mark { position: absolute; top: 4px; right: 4px; z-index: 2; padding: 0 .35rem; border-radius: .4rem;
+    border: 1px solid #3fbf7f; background: #1d5a3c; color: #f2fff7; font-size: .62rem; font-weight: 700; line-height: 1.5; pointer-events: none; }
   /* A camera-off seat paints its letter into the <video> (paintAvatarCanvas /
      syncAvatarFeed), so the blur classes on that video cover it like a camera.
      A picture avatar is an <img> of the original bytes, never drawn onto a
@@ -10207,7 +10220,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const sharing = id === myId ? !!myStatus.scr : (typeof sharingScreen === 'function' && !!sharingScreen(id));
             held = stagersFace.indexOf(id) >= 0 && !sharing;
           } catch (e3) { held = false; }
-          faces.push({ id: id, name: name, initials: held ? '' : nameInitial(name), off: off || held, avatar: held ? '' : avatar, shade: shadeKey(id), held: held });
+          let vd = { blocked: false, mark: '' };
+          try { vd = vaFaceDecor(id); } catch (e4) {}
+          faces.push({ id: id, name: name, initials: held ? '' : nameInitial(name), off: off || held, avatar: held ? '' : avatar, shade: shadeKey(id), held: held, vaBlocked: vd.blocked, vaMark: vd.mark });
         }
         // STADIUM-FACES: with a cell order, face j is cut from the cell that
         // names it (cellOf; -1 = not in this composite: initials), whatever
@@ -10335,7 +10350,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
 
     // Tap a tile: it grows in place, then its control window opens. It stays
     // big until the window closes. Per-person buttons live here, not on tiles.
-    const tileWin = { el: null, modbar: null, home: null, winT: 0 };
+    const tileWin = { el: null, modbar: null, home: null, vablock: null, vbHome: null, winT: 0 };
     function twIdOf(el) {
       if (el.classList.contains('tile')) return el.dataset.peer || '';
       if (el.classList.contains('stadface')) return String(el.dataset.pzkey || '').replace(/^stad:/, '');
@@ -10530,6 +10545,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         sec.appendChild(p.modbar);
       }
       if (sec.childNodes.length > 1) win.appendChild(sec);
+      // A blocked person's explanation and offers come with them into the
+      // window: their row tile (which carries the block) is hidden when they
+      // sit in another row. The element is borrowed, like the modbar.
+      const vb = !isMe && p ? vaWindowBlock(p) : null;
+      if (vb) { tileWin.vablock = vb; tileWin.vbHome = p.tile; win.appendChild(vb); }
+      else if (!isMe && id) {
+        // No peer tile to borrow: the roster face still owes the explanation.
+        let hb = null;
+        try { if (typeof vaRosterBlocked === 'function' && vaRosterBlocked(id)) hb = vaHoldBlock(id); } catch (e) {}
+        if (hb) { tileWin.vablock = hb; tileWin.vbHold = true; win.appendChild(hb); }
+      }
       // Broadcast: what a watcher can do with the Stage.
       if (document.body.classList.contains('broadcast')) {
         const w = document.createElement('div'); w.className = 'tw-sec';
@@ -10605,6 +10631,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const win = document.getElementById('tilewin'), veil = document.getElementById('tilewin-veil');
       if (tileWin.modbar && tileWin.home) { try { tileWin.home.appendChild(tileWin.modbar); } catch (e) {} }
       tileWin.modbar = tileWin.home = null;
+      if (tileWin.vablock && tileWin.vbHome) { try { tileWin.vbHome.appendChild(tileWin.vablock); } catch (e) {} }
+      else if (tileWin.vbHold && tileWin.vablock && tileWin.vablock.remove) { try { tileWin.vablock.remove(); } catch (e) {} }
+      tileWin.vablock = tileWin.vbHome = null; tileWin.vbHold = false;
       if (win) { win.querySelectorAll('video').forEach((v) => { try { v.srcObject = null; } catch (e) {} }); win.hidden = true; win.textContent = ''; }
       if (veil) veil.hidden = true;
       document.body.classList.remove('tw-open');
@@ -13487,8 +13516,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // alone decide, as before.
       const li = netSeated() ? netLinkInfo(p.id) : null;
       const named = !!(li && (li.bridge || li.standby));
-      let use = MT.pairUsesTurn({ mine: directPath, anchor: !!p.turnAnchor || (named && li.turnClient), invited: turnInvited(p), haveServers: !!servers });
-      if (netSeated() && !named) use = false;
+      // A one-hour pass: the far end holds one and I can reach it only through the paid pool.
+      const passDial = !!paid && vaDialFor(p);
+      let use = MT.pairUsesTurn({ mine: directPath, anchor: !!p.turnAnchor || (named && li.turnClient) || passDial, invited: turnInvited(p), haveServers: !!servers });
+      if (netSeated() && !named && !passDial) use = false;
       p.turnMine = use;
       p.turnPaid = use ? !!paid : vaFarPaid(p);
       p.turnAudio = (use || !!p.turnServe) && !p.turnPaid;
@@ -13893,7 +13924,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return VA.roomState({ order: vaOrderState(), paidUntil: typeof pu === 'number' ? pu : null, nowS: vaNowS() });
     }
     function vaServersFor(p) { const e = p && vaPaid.get(p.id); return e ? e.cred.servers() : null; }
-    function vaFarPaid(p) { return VA.farPaid({ said: !!(p && p.vaFarPaid), room: vaRoom() }); }
+    function vaFarPaid(p) { return VA.farPaid({ said: !!(p && p.vaFarPaid), room: vaRoom(), pass: !!p && vaPassCovers(p.id) }); }
     function vaSeen() { const a = turnAnchorId != null ? peers.get(turnAnchorId) : null; return !!(a && a.connected && a.turnMine && a.turnPaid); }
     function vaPost(path, body) {
       return fetch(MT.workerBase() + path, {
@@ -13956,6 +13987,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function vaGreet(p) {
       if (!p || !p.dc || p.dc.readyState !== 'open') return;
       if (vaOrder) dcSend(p, { k: 'va', w: vaOrder.w });
+      if (vaMyPassLive()) dcSend(p, { k: 'va-pass', w: vaMyPass.w });
+      for (const [pid, e] of vaPasses) if (pid !== p.id && vaPassLive(pid)) dcSend(p, { k: 'va-pass', w: e.w });
       if (p.turnMine && p.turnPaid) dcSend(p, { k: 'va-pair', paid: 1 });
     }
     // ---- the admin's launch
@@ -13982,14 +14015,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       })().catch(() => {}).finally(() => { vaSigning = null; });
     }
     // ---- paid credentials, per pair
+    // What a pair shows the credential service: the room's live order, else
+    // the pass that covers the pair (mine, or the far end's).
+    function vaPresent(pid) {
+      if (vaOrder && vaRoom() === 'live') return { kind: 'room', sig: vaOrder.sig, receipt: vaOrder.receipt, ticket: vaOrder.ticket };
+      const e = vaMyPassLive() ? vaMyPass : vaPassLive(pid) ? vaPasses.get(pid) : null;
+      return e ? { kind: 'pass', sig: e.sig, receipt: e.receipt, ticket: e.ticket } : null;
+    }
     function vaStart(pid, bridge) {
       const cred = MT.createCredentials({
         ask: MT.askIce(window.fetch.bind(window)), room: sessId, pool: 'paid',
-        extra: () => (vaOrder && vaRoom() === 'live' ? { receipt: vaOrder.receipt, ticket: vaOrder.ticket, bridge } : null),
+        extra: () => { const o = vaPresent(pid); return o ? { receipt: o.receipt, ticket: o.ticket, bridge } : null; },
         halts: VA.haltsOn,
-        onChange: (kind) => { const p = peers.get(pid); if (p) vaSwitchIfChanged(pid, p, kind === 'renewed'); },
+        onChange: (kind) => { const p = peers.get(pid); if (p) { vaSwitchIfChanged(pid, p, kind === 'renewed'); vaPassDialNow(p, Date.now()); } },
       });
-      vaPaid.set(pid, { bridge, cred, orderSig: vaOrder ? vaOrder.sig : null });
+      const o = vaPresent(pid);
+      vaPaid.set(pid, { bridge, cred, orderSig: o ? o.sig : null, kind: o ? o.kind : null });
       cred.start();
     }
     function vaDrop(pid) {
@@ -14037,20 +14078,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function vaSweep(now) {
       vaPaintTiles(now); // every room: a blocked picture is explained, whoever runs the room
       vaRefreshCarries(now);
-      if (!hasAdminRoom()) return;
+      vaPassSweep(now); // any room: the one-hour passes, mine and the room's
+      if (!hasAdminRoom() && !vaPassAny() && !vaPaid.size) return;
       const room = vaRoom();
       const blocked = directPath === 'blocked';
       for (const [pid, p] of peers) {
         const bridge = myId ? vaBridge(pid) : '';
-        const want = VA.wantPaid({ room, blocked, onTurn: !!p.turnMine, bridge });
+        const want = VA.wantPaid({ room, blocked, onTurn: !!p.turnMine, bridge, pass: vaPassCovers(pid), dial: vaDialFor(p) });
         const e = vaPaid.get(pid);
         if (e && (!want || e.bridge !== bridge)) vaDrop(pid);
         if (want && !vaPaid.has(pid)) vaStart(pid, bridge);
       }
       for (const pid of [...vaPaid.keys()]) if (!peers.has(pid)) vaDrop(pid);
-      for (const [pid, p] of peers) vaSwitchIfChanged(pid, p);
-      // My status says when I am on a paid crossing: the admin's meter counts people.
-      const vb = [...peers.values()].some((p) => p.turnMine && p.turnPaid && p.connected);
+      for (const [pid, p] of peers) { vaSwitchIfChanged(pid, p); vaPassDialNow(p, now); }
+      // My status says when I am on a crossing the room pays for: the admin's
+      // meter counts people (a crossing paid by a pass is not on it).
+      const vb = [...peers.values()].some((p) => p.turnMine && p.turnPaid && p.connected && (vaPaid.get(p.id) || {}).kind === 'room');
       if (vb && myStatus.vb !== 1) myStatus.vb = 1;
       else if (!vb && myStatus.vb) delete myStatus.vb;
       if (amAdmin) {
@@ -14109,7 +14152,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function vaPaintTile(p, now) {
       if (!p || !p.tile) return;
       const blocked = VA.tileBlocked(vaTileFacts(p, now));
-      const btn = blocked ? VA.tileButton({ amAdmin, adminRoom: hasAdminRoom(), terms: vaTerms, sub: vaSub() }) : null;
+      const sub = blocked ? vaSub() : 'none';
+      const btn = blocked ? VA.tileButton({ amAdmin, adminRoom: hasAdminRoom(), terms: vaTerms, sub }) : null;
+      // Anyone: one hour of video for their own crossings, when the live terms sell it.
+      const pass = blocked ? VA.tilePass({ terms: vaTerms, sub, covered: vaPassCovers(p.id) }) : null;
+      // Everyone but the admin, in an admin room: the host can pay for the whole room.
+      const host = blocked ? VA.tileHostLine({ amAdmin, adminRoom: hasAdminRoom(), terms: vaTerms, sub }) : null;
       let el = p.vaBlockEl;
       if (blocked && !el) {
         el = document.createElement('div');
@@ -14119,26 +14167,185 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const b = document.createElement('button');
         b.className = 'vabuy'; b.hidden = true;
         b.addEventListener('click', (e) => { e.stopPropagation(); if (b.dataset.product) vaBuy(b.dataset.product); });
-        el.appendChild(msg); el.appendChild(b);
+        const hl = document.createElement('p');
+        hl.className = 'vahost'; hl.hidden = true;
+        const pb = document.createElement('button');
+        pb.className = 'vapass'; pb.hidden = true;
+        pb.addEventListener('click', (e) => { e.stopPropagation(); if (pb.dataset.product) vaPassBuy(); });
+        el.appendChild(msg); el.appendChild(b); el.appendChild(hl); el.appendChild(pb);
         p.tile.appendChild(el);
         p.vaBlockEl = el;
       }
       if (p.tile.classList.contains('va-blocked') !== blocked) { p.tile.classList.toggle('va-blocked', blocked); updateTile(p.id); }
       if (!el) return;
-      const b = el.querySelector('button');
-      const key = btn ? btn.kind + '|' + btn.price : '';
+      // A block on loan to the tile window (twFill) goes home the moment the
+      // tile unblocks: whoever is looking sees the message leave.
+      if (!blocked && el.parentNode && el.parentNode !== p.tile) p.tile.appendChild(el);
+      const b = el.querySelector('.vabuy'), hl = el.querySelector('.vahost'), pb = el.querySelector('.vapass');
+      const key = (btn ? btn.kind + '|' + btn.price : '') + '/' + (host || '') + '/' + (pass ? pass.label : '');
       if (el.dataset.key !== key) {
         el.dataset.key = key;
         b.hidden = !btn;
         b.textContent = btn ? btn.label : '';
         b.dataset.kind = btn ? btn.kind : ''; b.dataset.price = btn ? btn.price : ''; b.dataset.product = btn ? btn.product : '';
+        hl.hidden = !host; hl.textContent = host || '';
+        pb.hidden = !pass; pb.textContent = pass ? pass.label : '';
+        pb.dataset.price = pass ? pass.price : ''; pb.dataset.product = pass ? pass.product : '';
       }
       b.disabled = vaBuying;
+      pb.disabled = vaPassBuying;
     }
     function vaPaintTiles(now) {
       let any = false;
       for (const p of peers.values()) { vaPaintTile(p, now); if (p.tile && p.tile.classList.contains('va-blocked')) any = true; }
-      if (any && amAdmin && hasAdminRoom()) vaLoadTerms(); // the button's price
+      // A heard person with no peer still wears the price, so the terms have
+      // to load even when no tile on this page carries the class.
+      if (!any) {
+        try {
+          for (const id of Object.keys(rosterNames)) {
+            if (id && id !== myId && !(peers && peers.has(id)) && vaRosterBlocked(id)) { any = true; break; }
+          }
+        } catch (e) {}
+      }
+      if (any) vaLoadTerms(); // the prices on the tile: the admin's month, the host line, the pass
+    }
+    // A person this page never keeps a peer for (another row, the mesh dropped
+    // the door) is still heard: a firewalled seat (status np blocked), or
+    // anyone a free-pool page hears only inside its anchor's mix. Their
+    // picture, when the room is paid, is the stadium cell, not a tile video.
+    // A flat or black cell is not a picture (the composite can be playing
+    // while that one face is still empty). Cached briefly: layout asks often.
+    const vaCellSeen = new Map();
+    function vaCellLively(v, face) {
+      const cssW = parseFloat(v.style.width) || 0, cssH = parseFloat(v.style.height) || 0;
+      const left = parseFloat(v.style.left) || 0, top = parseFloat(v.style.top) || 0;
+      const fw = face.clientWidth || face.offsetWidth || 0, fh = face.clientHeight || face.offsetHeight || 0;
+      if (!(cssW > 2 && cssH > 2 && fw > 4 && fh > 4 && v.videoWidth > 2 && v.videoHeight > 2)) return false;
+      const sx = v.videoWidth / cssW, sy = v.videoHeight / cssH;
+      let x = Math.max(0, Math.round(-left * sx)), y = Math.max(0, Math.round(-top * sy));
+      let w = Math.min(v.videoWidth - x, Math.round(fw * sx)), h = Math.min(v.videoHeight - y, Math.round(fh * sy));
+      if (w < 2 || h < 2) return false;
+      const c = vaCellLively.c || (vaCellLively.c = document.createElement('canvas'));
+      c.width = 8; c.height = 8;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      if (!g) return false;
+      g.drawImage(v, x + w * 0.25, y + h * 0.25, Math.max(1, w * 0.5), Math.max(1, h * 0.5), 0, 0, 8, 8);
+      const d = g.getImageData(0, 0, 8, 8).data;
+      let n = 0, s = 0, s2 = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        const yv = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+        s += yv; s2 += yv * yv; n++;
+      }
+      const mean = s / n;
+      return (s2 / n - mean * mean) > 80;
+    }
+    function vaFaceView(id) {
+      const now = Date.now(), hit = vaCellSeen.get(id);
+      if (hit && now - hit.at < 400) return hit;
+      const rec = { at: now, alive: false, frames: 0 };
+      try {
+        const face = document.querySelector('.stadface[data-stad="' + id + '"]');
+        const v = face && face.querySelector('video');
+        if (face && v && !face.classList.contains('cam-off') && v.videoWidth > 2) {
+          try { const q = v.getVideoPlaybackQuality(); if (q) rec.frames = q.totalVideoFrames || 0; } catch (e) {}
+          rec.alive = vaCellLively(v, face);
+        }
+      } catch (e) {}
+      vaCellSeen.set(id, rec);
+      return rec;
+    }
+    // True while this roster person is heard and their own picture is not
+    // here yet. A peer tile that already explains them is that tile's job.
+    function vaRosterBlocked(id) {
+      try {
+        if (!id || id === myId) return false;
+        const p = peers.get(id);
+        if (p && p.tile && p.tile.classList.contains('va-blocked')) return false;
+        if (p && p.connected && !p.turnAudio) return false;
+        const st = (statusOf && statusOf.get(id)) || {};
+        if (seatDark(st)) return false;
+        const npBlocked = st.np === 'blocked';
+        const mix = !!(turnHeard() && id !== turnAnchorId && !(p && p.connected));
+        if (!npBlocked && !mix) return false;
+        if (p && vaPictureLive(p, Date.now())) return false;
+        // A month marks the room live. A pass does not: it pays this
+        // person's crossings only, and their picture arrives in the row
+        // composite. Either way a flat cell stays blocked. A pass that
+        // does not cover them leaves the message up, even if the cell
+        // is already moving.
+        let passCover = false;
+        try { passCover = typeof vaPassCovers === 'function' && vaPassCovers(id); } catch (e) { passCover = false; }
+        if ((vaRoom() === 'live' || passCover) && vaFaceView(id).alive) return false;
+        return true;
+      } catch (e) { return false; }
+    }
+    // The explanation for a roster person who has no tile to borrow. The
+    // window loans it; until then it stays detached (a stray block on the
+    // body would sit on top of the meeting).
+    const vaHoldEls = new Map();
+    function vaHoldBlock(id) {
+      let el = vaHoldEls.get(id);
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'vablock';
+        const msg = document.createElement('p');
+        msg.textContent = VA.TEXT.blockedTile;
+        const b = document.createElement('button');
+        b.className = 'vabuy'; b.hidden = true;
+        b.addEventListener('click', (e) => { e.stopPropagation(); if (b.dataset.product) vaBuy(b.dataset.product); });
+        const hl = document.createElement('p');
+        hl.className = 'vahost'; hl.hidden = true;
+        const pb = document.createElement('button');
+        pb.className = 'vapass'; pb.hidden = true;
+        pb.addEventListener('click', (e) => { e.stopPropagation(); if (pb.dataset.product) vaPassBuy(); });
+        el.appendChild(msg); el.appendChild(b); el.appendChild(hl); el.appendChild(pb);
+        vaHoldEls.set(id, el);
+      }
+      const blocked = vaRosterBlocked(id);
+      const sub = blocked ? vaSub() : 'none';
+      const btn = blocked ? VA.tileButton({ amAdmin, adminRoom: hasAdminRoom(), terms: vaTerms, sub }) : null;
+      const pass = blocked ? VA.tilePass({ terms: vaTerms, sub, covered: vaPassCovers(id) }) : null;
+      const host = blocked ? VA.tileHostLine({ amAdmin, adminRoom: hasAdminRoom(), terms: vaTerms, sub }) : null;
+      const b = el.querySelector('.vabuy'), hl = el.querySelector('.vahost'), pb = el.querySelector('.vapass');
+      b.hidden = !btn; b.textContent = btn ? btn.label : '';
+      b.dataset.kind = btn ? btn.kind : ''; b.dataset.price = btn ? btn.price : ''; b.dataset.product = btn ? btn.product : '';
+      hl.hidden = !host; hl.textContent = host || '';
+      pb.hidden = !pass; pb.textContent = pass ? pass.label : '';
+      pb.dataset.price = pass ? pass.price : ''; pb.dataset.product = pass ? pass.product : '';
+      return el;
+    }
+    // A blocked person seated in another row has no tile on screen (the grid
+    // is row-mates only — reconcileGrid): their stadium face wears the mark
+    // (the pass price, when the live terms sell it), and the tile window
+    // that opens from the face carries the tile's explanation and offers.
+    // Someone the mesh no longer peers is the same face: the roster says
+    // they are heard and not seen, and the mark leaves when their cell
+    // actually shows a picture.
+    // Terms just arrived. Put the price on faces that are already showing,
+    // without laying the meeting out again (that restarts the stadium hold).
+    function vaRefreshFaceMarks() {
+      const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
+      if (!MV || typeof MV.decorFace !== 'function' || !document.querySelectorAll) return;
+      const faces = document.querySelectorAll('.stadface[data-stad]');
+      for (let i = 0; i < faces.length; i++) {
+        const el = faces[i];
+        const id = el.dataset && el.dataset.stad;
+        if (!id) continue;
+        const d = vaFaceDecor(id);
+        MV.decorFace(el, { id: id, vaBlocked: !!d.blocked, vaMark: d.mark || '' });
+      }
+    }
+    function vaFaceDecor(id) {
+      const p = peers.get(id);
+      const held = vaRosterBlocked(id);
+      if (!(held || (p && p.tile && p.tile.classList.contains('va-blocked')))) return { blocked: false, mark: '' };
+      const pass = VA.tilePass({ terms: vaTerms, sub: vaSub(), covered: vaPassCovers(id) });
+      return { blocked: true, mark: pass ? pass.label.split(',')[0] : '' };
+    }
+    // The element the tile window borrows for a blocked person. vaPaintTile
+    // returns it home when the tile unblocks; closeTileWin always does.
+    function vaWindowBlock(p) {
+      return p && p.vaBlockEl && p.tile && p.tile.classList.contains('va-blocked') ? p.vaBlockEl : null;
     }
     // A friend carrying a person's voice to someone keeps carrying voice only
     // after that person's pair turns paid, unless the carry is rebuilt with
@@ -14153,7 +14360,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // rebuilt from the current ones.
         const cur = tp.stream.getTracks();
         const stale = job.senders.some((sd) => sd.track && (sd.track.readyState === 'ended' || !cur.includes(sd.track)));
-        const wantsPicture = !tp.turnAudio && tp.stream.getVideoTracks().length > 0 && !job.senders.some((sd) => sd.track && sd.track.kind === 'video');
+        const wantsPicture = !tp.turnAudio && tp.stream.getVideoTracks().length > 0 && !job.senders.some((sd) => sd.track && sd.track.kind === 'video') && vaCarryOk(tp, rq);
         if (!stale && !wantsPicture) continue;
         // Rebuild only from something live: right after the person's connection
         // to me is replaced, the old tracks have ended and the new ones have not
@@ -14217,8 +14424,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       vaTermsBusy = true;
       fetch(br.workerBase() + '/gifos/terms', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b) => {
         const t = VA.termsOf(b);
-        vaTerms = t.month ? t : null; vaTermsAt = Date.now();
-      }).catch(() => { vaTerms = null; vaTermsAt = Date.now(); }).finally(() => { vaTermsBusy = false; vaPaintPanel(false); });
+        vaTerms = t.month || t.pass ? t : null; vaTermsAt = Date.now();
+      }).catch(() => { vaTerms = null; vaTermsAt = Date.now(); }).finally(() => {
+        vaTermsBusy = false;
+        vaPaintPanel(false);
+        // The price mark is a span on a face already on screen. A full
+        // layout here restarts the stadium hold and left the other row's
+        // faces black for the whole paid minute.
+        try { vaRefreshFaceMarks(); } catch (e) {}
+      });
     }
     async function vaBuy(product) {
       if (vaBuying || !amAdmin || !admKeys || !hasAdminRoom()) return;
@@ -14319,6 +14533,204 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         vaForceSign = true; vaLaunch();
       } catch (e) { vaSay('That file is not a receipt.'); }
       vaPaintPanel(false);
+    }
+    // ---- THE ONE-HOUR PASS (rules in js/meet-video-anywhere.js) ----
+    // Anyone in any room can buy one hour of video across networks that
+    // block direct connections, for their own crossings in this room. The
+    // pass is bought for a key this browser keeps for this room (a reload
+    // keeps the hour) and for the room's tag. Its holder signs a ticket for
+    // the room and a statement naming their seat; every page checks both and
+    // passes them on. A crossing with the holder at one end then carries
+    // video: the blocked end asks the paid pool for it (its anchor pair, or a
+    // pair it dials to a holder it could not reach); the reachable end sends
+    // video once the far end says the pair is paid and a pass covers it.
+    // Nobody else's crossings change: a friend's carry over a server hop paid
+    // by someone else's pass stays voice only.
+    const vaPassKey = () => 'gifos_vapass_' + roomKey();             // { seed, receiptJson, sig }: my pass for this room
+    const vaPassPendingKey = () => 'gifos_vapass_pending_' + roomKey(); // a pass purchase waiting for its receipt
+    let vaPassTag = null, vaPassTagFor = null, vaPassTagP = null;     // this room's tag, for the room it was made for
+    let vaMyPass = null;            // my live pass, signed for my current seat: { w, sig, r, receipt, ticket, end, by, room, tx }
+    const vaPasses = new Map();     // holder's peer id -> { w, sig, r, receipt, ticket, end, ts }: passes others hold
+    const vaPassSeen = new Map();   // holder statement signature -> when: each copy is checked once
+    let vaPassBuying = false, vaPassResumed = false, vaPassSigning = null;
+    let vaPassKeys = null;          // { seed, keys } for my pass key
+    function vaPassTagReady() {
+      if (!sessId) return Promise.resolve(null);
+      if (vaPassTagFor === sessId && vaPassTag) return Promise.resolve(vaPassTag);
+      if (vaPassTagFor !== sessId || !vaPassTagP) {
+        const room = sessId;
+        vaPassTagFor = room; vaPassTag = null;
+        vaPassTagP = VA.passRoomTag(room).then((t) => { if (vaPassTagFor === room) vaPassTag = t; vaPassLaunch(); return vaPassTag; }).catch(() => { vaPassTagP = null; return null; });
+      }
+      return vaPassTagP;
+    }
+    // My stored pass for this room, checked: { seed, receiptJson, sig, r } or null.
+    function vaPassMine() {
+      const w = vaRead(vaPassKey());
+      if (!w || typeof w.receiptJson !== 'string' || typeof w.sig !== 'string' || !/^[0-9a-f]{64}$/.test(String(w.seed || ''))) return null;
+      let r = null; try { r = JSON.parse(w.receiptJson); } catch (e) { return null; }
+      return vaPassTag && VA.checkPass(r, vaNowS(), vaPassTag) ? { seed: w.seed, receiptJson: w.receiptJson, sig: w.sig, r } : null;
+    }
+    async function vaPassKeysFor(seed) {
+      if (vaPassKeys && vaPassKeys.seed === seed) return vaPassKeys.keys;
+      const keys = await net.edKeysFromSeedHex(seed);
+      vaPassKeys = { seed, keys };
+      return keys;
+    }
+    function vaMyPassLive() {
+      const ns = vaNowS();
+      return !!(vaMyPass && vaMyPass.room === sessId && vaMyPass.by === myId && vaMyPass.end - ns >= VA.MIN_LEFT_S && VA.checkPass(vaMyPass.r, ns, vaPassTag));
+    }
+    function vaPassLive(pid) {
+      const e = pid != null ? vaPasses.get(pid) : null;
+      const ns = vaNowS();
+      return !!(e && e.room === sessId && e.end - ns >= VA.MIN_LEFT_S && VA.checkPass(e.r, ns, vaPassTag));
+    }
+    // A pair is covered when either end holds a live pass.
+    function vaPassCovers(pid) { return vaMyPassLive() || vaPassLive(pid); }
+    function vaPassAny() { return vaMyPassLive() || vaPasses.size > 0; }
+    // A pass covers this pair (the far end's, or my own) and this page
+    // cannot reach them except through the paid pool: dial it there (never
+    // my anchor or a bridge the seating names: those pairs are on a server
+    // path already).
+    function vaOnServerPath(p) { const li = netSeated() ? netLinkInfo(p.id) : null; return !!p.turnAnchor || !!(li && (li.bridge || li.standby) && li.turnClient); }
+    function vaDialFor(p) { return !!p && VA.passDial({ blocked: directPath === 'blocked', covered: vaPassCovers(p.id), anchor: vaOnServerPath(p) }); }
+    // With paid credentials for such a pair in hand: build it on the paid servers (iceFor), at most every 10 s.
+    function vaPassDialNow(p, now) {
+      if (!p || p.turnMine || (p.connected && !p.turnAudio) || !vaDialFor(p) || !vaServersFor(p)) return;
+      if (now - (p.vaDialAt || 0) < 10000) return;
+      p.vaDialAt = now;
+      if (typeof clog === 'function') clog('va pass dial ' + String(p.id).slice(0, 6));
+      newPcFor(p); p.lastKick = now + Math.random() * 1500;
+      sendOffer(p.id, false);
+    }
+    // A friend's carry of tp to rq may include the picture? (see VA.carryPicture)
+    function vaCarryOk(tp, rq) {
+      return VA.carryPicture({ room: vaRoom(), turnHop: !!(tp && (tp.turnMine || tp.turnServe)) || !!(rq && (rq.turnMine || rq.turnServe)),
+        targetPass: !!tp && vaPassLive(tp.id), requesterPass: !!rq && vaPassLive(rq.id) });
+    }
+    // Sign my pass for my current seat and send it to every open channel.
+    function vaPassLaunch() {
+      if (vaPassSigning || !myId || !sessId || !vaPassTag) return;
+      const m = vaPassMine();
+      if (!m) { if (vaMyPass && !vaMyPassLive()) vaMyPass = null; return; }
+      if (vaMyPass && vaMyPass.tx === m.r.tx && vaMyPass.by === myId && vaMyPass.room === sessId) return;
+      vaPassSigning = (async () => {
+        const keys = await vaPassKeysFor(m.seed);
+        if (!keys || keys.pubB64 !== m.r.buyerKey) return; // a pass for another key cannot be presented
+        const t = VA.passTicketFor(sessId, m.r, vaNowS());
+        if (!t) return;
+        const sp = VA.ticketJson(t);
+        const ticket = { sp, sig: await net.edSign(keys.priv, sp), pub: keys.pubB64 };
+        const bsp = VA.passByJson({ by: myId, room: sessId, receiptId: m.r.tx, ts: Date.now() });
+        const by = { sp: bsp, sig: await net.edSign(keys.priv, bsp) };
+        const receipt = { receiptJson: m.receiptJson, sig: m.sig };
+        const w = { receipt, ticket, by };
+        vaMyPass = { w, sig: by.sig, r: m.r, receipt, ticket, end: t.end, by: myId, room: sessId, tx: m.r.tx };
+        if (typeof clog === 'function') clog('va pass mine until ' + t.end);
+        for (const q of peers.values()) if (q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'va-pass', w });
+        for (const [pid, e] of [...vaPaid]) if (e.cred.halted() && e.orderSig !== by.sig) vaDrop(pid); // a pair stopped on a final refusal starts again
+        updateStatus();
+      })().catch(() => {}).finally(() => { vaPassSigning = null; });
+    }
+    // A pass someone holds, from a channel: checked, kept per holder, passed on once.
+    async function vaPassTake(w, from) {
+      if (!w || !w.by || typeof w.by.sp !== 'string' || typeof w.by.sig !== 'string' || w.by.sp.length > 400 || !w.receipt || !w.ticket) return vaNo('pass-shape');
+      const sig = w.by.sig;
+      if (vaPassSeen.has(sig)) return false;
+      vaPassSeen.set(sig, Date.now());
+      if (vaPassSeen.size > 128) vaPassSeen.delete(vaPassSeen.keys().next().value);
+      const tag = await vaPassTagReady();
+      if (!tag || !sessId) { vaPassSeen.delete(sig); return vaNo('pass-room'); }
+      let r = null;
+      try { r = await GifOS.payBroker.verifyReceipt(String(w.receipt.receiptJson), String(w.receipt.sig)); }
+      catch (e) { if (!/does not verify/.test(String(e && e.message))) vaPassSeen.delete(sig); return vaNo('pass-receipt'); } // a key that did not load may load next time
+      const ns = vaNowS();
+      if (!VA.checkPass(r, ns, tag)) return vaNo('pass-fields');
+      const tk = w.ticket;
+      if (typeof tk.sp !== 'string' || tk.sp.length > 400 || typeof tk.sig !== 'string' || tk.pub !== r.buyerKey) return vaNo('pass-ticket-shape');
+      if (!(await net.edVerify(tk.pub, tk.sig, tk.sp))) return vaNo('pass-ticket-signature');
+      let t = null; try { t = JSON.parse(tk.sp); } catch (e) { return vaNo('pass-ticket-json'); }
+      if (VA.checkTicket(t, tk.pub, r, sessId, ns) !== 'live') return vaNo('pass-ticket-fields');
+      if (!(await net.edVerify(r.buyerKey, sig, w.by.sp))) return vaNo('pass-by-signature');
+      let o = null; try { o = JSON.parse(w.by.sp); } catch (e) { return vaNo('pass-by-json'); }
+      if (!VA.checkPassBy(o, r.buyerKey, r, sessId)) return vaNo('pass-by-fields');
+      if (o.by === myId) return false; // my own pass, from another copy of this page
+      const cand = { w, sig, r, ts: +o.ts || 0, end: Math.min(t.end, r.periodEnd), room: sessId,
+        receipt: { receiptJson: String(w.receipt.receiptJson), sig: String(w.receipt.sig) }, ticket: { sp: tk.sp, sig: tk.sig, pub: tk.pub } };
+      const cur = vaPasses.get(o.by);
+      if (cur && cur.room === sessId && VA.better(cur, cand) !== cand) return false;
+      vaPasses.set(o.by, cand);
+      if (vaPasses.size > 64) vaPasses.delete(vaPasses.keys().next().value);
+      if (typeof clog === 'function') clog('va pass of ' + String(o.by).slice(0, 6) + ' until ' + cand.end);
+      for (const q of peers.values()) if (q.id !== from && q.dc && q.dc.readyState === 'open') dcSend(q, { k: 'va-pass', w });
+      for (const [pid, e] of [...vaPaid]) if (e.cred.halted() && e.orderSig !== sig) vaDrop(pid);
+      updateStatus();
+      return true;
+    }
+    // The beat: this room's tag, my pass signed for my seat, ended passes forgotten.
+    function vaPassSweep(now) {
+      if (!sessId) return;
+      vaPassTagReady();
+      const ns = vaNowS();
+      for (const [pid, e] of [...vaPasses]) if (e.room !== sessId || e.end - ns < VA.MIN_LEFT_S) vaPasses.delete(pid);
+      if (vaMyPass && !vaMyPassLive() && (vaMyPass.room !== sessId || vaMyPass.end - ns < VA.MIN_LEFT_S)) vaMyPass = null;
+      vaPassLaunch();
+      vaPassResume();
+    }
+    // ---- buying a pass: from a blocked tile, anyone
+    async function vaPassBuy() {
+      if (vaPassBuying || !sessId) return;
+      const win = window.open('', '_blank'); // opened inside the click, which is what lets the browser allow it
+      vaPassBuying = true;
+      try {
+        const room = await vaPassTagReady();
+        if (!room) throw new Error('no room');
+        const seed = net.randHex(32);
+        const keys = await vaPassKeysFor(seed);
+        const r = await fetch(GifOS.payBroker.workerBase() + '/gifos/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product: VA.PASS_PRODUCT, buyerKey: keys.pubB64, room }) });
+        if (!r.ok) throw new Error('checkout ' + r.status);
+        const co = await r.json();
+        if (!co || !co.id || !co.claim || !vaApproveOk(co.approveUrl)) throw new Error('no order');
+        const pend = { id: co.id, claim: co.claim, key: keys.pubB64, seed, room, at: Date.now() };
+        vaWrite(vaPassPendingKey(), pend); // remembered before the window leaves: a reload resumes it
+        if (win && !win.closed) win.location = co.approveUrl; else window.open(co.approveUrl, '_blank');
+        setStatus(VA.TEXT.passWaiting, 15000);
+        await vaPassPoll(pend);
+      } catch (e) {
+        try { if (win && !win.closed) win.close(); } catch (e2) {}
+        setStatus('The purchase could not start. Nothing was charged.', 8000);
+      } finally { vaPassBuying = false; }
+    }
+    function vaPassResume() {
+      if (vaPassResumed || vaPassBuying || !sessId) return;
+      vaPassResumed = true;
+      const pend = vaRead(vaPassPendingKey());
+      if (!pend || !pend.id || !/^[0-9a-f]{64}$/.test(String(pend.seed || '')) || Date.now() - (pend.at || 0) > 30 * 60000) { if (pend) vaWrite(vaPassPendingKey(), null); return; }
+      vaPassBuying = true;
+      vaPassPoll(pend).finally(() => { vaPassBuying = false; });
+    }
+    async function vaPassPoll(pend) {
+      const br = GifOS.payBroker;
+      const end = Date.now() + 10 * 60000;
+      while (Date.now() < end && !leaving) {
+        await new Promise((res) => setTimeout(res, 2500));
+        let st = null, code = 0;
+        try {
+          const rr = await fetch(br.workerBase() + '/receipt/' + encodeURIComponent(pend.id) + '?' + VA.receiptQuery(pend.claim, pend.key, null, pend.room), { cache: 'no-store' });
+          code = rr.status; st = await rr.json().catch(() => null);
+        } catch (e) { continue; }
+        if (code >= 400 && code < 500) { vaWrite(vaPassPendingKey(), null); setStatus('PayPal did not complete this payment. Nothing was charged.', 8000); return; }
+        if (!st || st.status !== 'COMPLETED' || !st.receiptJson || !st.sig) continue;
+        let r = null;
+        try { r = await br.verifyReceipt(st.receiptJson, st.sig); } catch (e) { setStatus('The receipt did not check out. Contact support with your PayPal receipt.', 10000); return; }
+        vaWrite(vaPassPendingKey(), null);
+        if (!VA.checkPass(r, vaNowS(), pend.room) || r.buyerKey !== pend.key) { setStatus('The receipt did not check out. Contact support with your PayPal receipt.', 10000); return; }
+        vaWrite(vaPassKey(), { seed: pend.seed, receiptJson: st.receiptJson, sig: st.sig });
+        setStatus(VA.TEXT.passOn, 10000);
+        vaPassLaunch();
+        return;
+      }
     }
     // ---- the admin's row in Settings
     const vaDate = (s) => { try { return new Date(s * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return ''; } };
@@ -22138,6 +22550,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (m.k === 'va') {
         // Video Anywhere: the admin's signed launch order, passed peer to peer.
         vaTake(m.w, p.id);
+      } else if (m.k === 'va-pass') {
+        // Video Anywhere: someone's one-hour pass, passed peer to peer.
+        vaPassTake(m.w, p.id);
       } else if (m.k === 'nb') {
         netBeatFrom(p.id);   // a beat from the bridge end I am heir to
       } else if (m.k === 'va-pair') {
@@ -23906,7 +24321,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const senders = [];
       // A voice that reached me over the free audio pool goes on as voice only.
       // A Video Anywhere client hears the room in its anchor's mix: pass it the picture only.
-      const relayTracks = tp.turnAudio ? tp.stream.getAudioTracks() : reqP.turnPaid && reqP.turnServe ? tp.stream.getVideoTracks() : tp.stream.getTracks();
+      // A picture crosses a server hop only where the room or a pass pays for it (vaCarryOk).
+      const picture = vaCarryOk(tp, reqP);
+      if (reqP.turnPaid && reqP.turnServe && !picture) { refuse(); return; }
+      const relayTracks = tp.turnAudio || !picture ? tp.stream.getAudioTracks() : reqP.turnPaid && reqP.turnServe ? tp.stream.getVideoTracks() : tp.stream.getTracks();
       for (const tr of relayTracks) { try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }
       if (!senders.length) { refuse(); return; }
       relayJobs.set(key, { senders, requester: reqP.id, target });
@@ -35622,7 +36040,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           mine: !!vaMine(), mineLive: !!vaMineLive(), panel: !!(row && row.style.display !== 'none'), meterAsks: vaMeterAsks,
           meter: vaMeter ? Object.assign({}, vaMeter.a) : null, view: v, waiting: (document.getElementById('status') || {}).dataset ? document.getElementById('status').dataset.va || '' : '',
           onBridge: !!myStatus.vb, seen: vaSeen(), why: vaWhy.slice(),
-          pairs: [...peers.values()].map((p) => { const e = vaPaid.get(p.id); return { name: rosterNames[p.id] || p.name || null, turnPaid: !!p.turnPaid, turnAudio: !!p.turnAudio, farPaid: !!p.vaFarPaid, cred: e ? e.cred.state() : null, refusal: e ? e.cred.refusal() : null, halted: e ? e.cred.halted() : false, bridge: e ? e.bridge : null,
+          pass: { tag: vaPassTag, mine: vaMyPassLive() ? { tx: vaMyPass.tx, end: vaMyPass.end } : null, stored: !!vaRead(vaPassKey()), buying: vaPassBuying,
+            holders: [...vaPasses.keys()].filter((id) => vaPassLive(id)).map((id) => rosterNames[id] || id) },
+          pairs: [...peers.values()].map((p) => { const e = vaPaid.get(p.id); return { name: rosterNames[p.id] || p.name || null, turnPaid: !!p.turnPaid, paidBy: e ? e.kind : null, passCovers: vaPassCovers(p.id), dial: vaDialFor(p), turnAudio: !!p.turnAudio, farPaid: !!p.vaFarPaid, cred: e ? e.cred.state() : null, refusal: e ? e.cred.refusal() : null, halted: e ? e.cred.halted() : false, bridge: e ? e.bridge : null,
             turnMine: !!p.turnMine, serve: !!p.turnServe, cam: camPeer(p.id), mainV: p.mainV ? (p.mainV.track ? p.mainV.track.kind : 'parked') : null, park: !!p.remoteParkMain,
             mainA: p.mainA ? (p.mainA.track ? (turnMixSenders.has(p.mainA) ? 'mix' : 'mic') + ':' + p.mainA.track.readyState + ':' + (p.mainA.track.enabled ? 'on' : 'off') + ':' + (p.mainA.track.muted ? 'muted' : 'live') : 'parked') : null,
             heardPair: p.vaPairHeard || 0, mix: turnMixes.has(p.id), ac: ac ? ac.state + '@' + ac.currentTime.toFixed(1) : null, mixHeld: !!(p.mainA && p.mainA.track && p.mainA.track === turnMixTrack(p.id)),
@@ -35632,21 +36052,52 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       vaMeterNow: () => { vaMeterTick(Date.now(), true); return true; },
       // The blocked-video tiles on this page: per person, whether the message
       // shows, the admin's button (kind, price) if any, and frames decoded.
-      vaTiles: () => [...peers.values()].map((p) => {
-        const el = p.vaBlockEl, b = el && el.querySelector('button');
-        let frames = null; try { frames = p.video && p.video.getVideoPlaybackQuality ? p.video.getVideoPlaybackQuality().totalVideoFrames : null; } catch (e) {}
-        return { id: p.id, name: rosterNames[p.id] || p.name || null, blocked: !!(p.tile && p.tile.classList.contains('va-blocked')),
-          message: !!(el && p.tile.classList.contains('va-blocked') && el.querySelector('p') && el.querySelector('p').textContent.length > 0),
-          button: b && !b.hidden ? { kind: b.dataset.kind, price: b.dataset.price } : null, frames, facts: vaTileFacts(p, Date.now()),
-          media: (() => { // which tracks the tile plays, and which m-line each came in on
-            try {
-              const so = p.video && p.video.srcObject;
-              const rx = new Map(); if (p.pc) for (const t of p.pc.getTransceivers()) if (t.receiver && t.receiver.track) rx.set(t.receiver.track.id, t.mid);
-              return { paused: !!(p.video && p.video.paused), ready: p.video ? p.video.readyState : null, streamIsPeer: !!(so && p.stream && so === p.stream), relayed: !!relayVia.get(p.id),
-                tracks: so && so.getTracks ? so.getTracks().map((t) => ({ kind: t.kind, mid: rx.has(t.id) ? rx.get(t.id) : null, state: t.readyState, muted: t.muted, enabled: t.enabled })) : null };
-            } catch (e) { return { err: String(e).slice(0, 60) }; }
-          })() };
-      }),
+      vaTiles: () => {
+        const rows = [...peers.values()].map((p) => {
+          const el = p.vaBlockEl, b = el && el.querySelector('.vabuy');
+          let frames = null; try { frames = p.video && p.video.getVideoPlaybackQuality ? p.video.getVideoPlaybackQuality().totalVideoFrames : null; } catch (e) {}
+          return { id: p.id, name: rosterNames[p.id] || p.name || null, blocked: !!(p.tile && p.tile.classList.contains('va-blocked')),
+            message: !!(el && p.tile.classList.contains('va-blocked') && el.querySelector('p') && el.querySelector('p').textContent.length > 0),
+            button: b && !b.hidden ? { kind: b.dataset.kind, price: b.dataset.price } : null, frames, facts: vaTileFacts(p, Date.now()),
+            pass: (() => { const pb = el && el.querySelector('.vapass'); return pb && !pb.hidden ? { label: pb.textContent, price: pb.dataset.price } : null; })(),
+            host: (() => { const hl = el && el.querySelector('.vahost'); return hl && !hl.hidden ? hl.textContent : null; })(),
+            media: (() => { // which tracks the tile plays, and which m-line each came in on
+              try {
+                const so = p.video && p.video.srcObject;
+                const rx = new Map(); if (p.pc) for (const t of p.pc.getTransceivers()) if (t.receiver && t.receiver.track) rx.set(t.receiver.track.id, t.mid);
+                return { paused: !!(p.video && p.video.paused), ready: p.video ? p.video.readyState : null, streamIsPeer: !!(so && p.stream && so === p.stream), relayed: !!relayVia.get(p.id),
+                  tracks: so && so.getTracks ? so.getTracks().map((t) => ({ kind: t.kind, mid: rx.has(t.id) ? rx.get(t.id) : null, state: t.readyState, muted: t.muted, enabled: t.enabled })) : null };
+              } catch (e) { return { err: String(e).slice(0, 60) }; }
+            })() };
+        });
+        // No peer (the door was dropped): the stadium face is the tile the
+        // viewer has. The message is the same block the window loans. Frames
+        // count only once that face's own cell shows a picture, so a playing
+        // composite of someone else does not clear the message.
+        try {
+          const have = new Set(rows.map((r) => r.id));
+          for (const id of Object.keys(rosterNames)) {
+            if (!id || id === myId || have.has(id)) continue;
+            const st = statusOf.get(id) || {};
+            const mix = !!(turnHeard() && id !== turnAnchorId);
+            if (st.np !== 'blocked' && !mix) continue;
+            if (seatDark(st)) continue;
+            const blocked = vaRosterBlocked(id);
+            const el = blocked ? vaHoldBlock(id) : (vaHoldEls.get(id) || null);
+            const b = el && el.querySelector('.vabuy');
+            const view = blocked ? { alive: false, frames: 0 } : vaFaceView(id);
+            rows.push({ id, name: rosterNames[id] || null, blocked,
+              message: !!(blocked && el && el.querySelector('p') && el.querySelector('p').textContent.length > 0),
+              button: b && !b.hidden ? { kind: b.dataset.kind, price: b.dataset.price } : null,
+              frames: blocked ? 0 : view.frames,
+              facts: { isMe: false, camOn: !seatDark(st), pictureLive: !blocked && !!view.alive, freePair: false, voiceCarry: false, inMixOnly: mix },
+              pass: (() => { const pb = el && el.querySelector('.vapass'); return pb && !pb.hidden ? { label: pb.textContent, price: pb.dataset.price } : null; })(),
+              host: (() => { const hl = el && el.querySelector('.vahost'); return hl && !hl.hidden ? hl.textContent : null; })(),
+              media: { relayed: false, face: true } });
+          }
+        } catch (e) {}
+        return rows;
+      },
 
       // Transport bytes on one pair's selected path, both directions (debug).
       wireBytes: async (name) => {
