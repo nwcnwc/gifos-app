@@ -10702,6 +10702,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         t.tile.classList.toggle('speaking', speaking);
         if (id === 'me' && speaking) { lastActive = Date.now(); myVoiceAt = lastActive; } // talking IS activity — a speaker's phone is never "parked"
         speakingOf.set(id, speaking); // fed to the packer overlay (green talking frame on composite faces)
+        if (speaking) ccGapSee(id, speaking); // a paused neighbour's voice is kept for the one speech session
       }
       if (fsSel === 'auto' && fsview.classList.contains('on')) fsRefresh();
     }, 180);
@@ -27846,6 +27847,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (n.length < 12) return false; // "yes", "okay", "can you hear me" legitimately repeat
       const s = trSeen.get(n), src = trSrc(m);
+      // The raw mic files a heard sentence under ME. A paused neighbour's clip
+      // files the same sentence under THEM, and this device is the scribe, so
+      // both lines share a source. One of them has a scribe and the other does
+      // not: that is one utterance, and the earlier stamp wins. Two scribed
+      // lines for two speakers stay (they may have said the same words).
+      if (s && Math.abs((m.at || 0) - s.at) < 8000) {
+        const held = trs.get(s.id);
+        if (held && held.byId !== m.byId && (!!m.scribe !== !!held.scribe)) {
+          if ((m.at || 0) + 300 < s.at) { trs.delete(s.id); trSeen.set(n, { at: m.at || 0, src, id: m.id }); return s; }
+          trDrops++; return true;
+        }
+      }
       if (s && s.src !== src && Math.abs((m.at || 0) - s.at) < 8000) {
         if ((m.at || 0) + 300 < s.at) { trs.delete(s.id); trSeen.set(n, { at: m.at || 0, src, id: m.id }); return s; }
         trDrops++; return true;
@@ -28979,8 +28992,129 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function speechRunning() { return !!speech; }
     function speechRetryDelay(n) { return Math.min(30000, 1000 * Math.pow(2, Math.max(0, n - 1))); }
-    function startSpeech(input) { // input: the room ear's mix track; none = the raw microphone
-      if (speechGaveUp) return false;
+    // A paused engine writes nothing (ccst 'paused'). The room still hears that
+    // voice. This browser keeps the utterance and, after it ends, plays it to
+    // the one speech session — a second live session would abort the first —
+    // and writes the line under that person. The raw mic keeps writing me.
+    const ccGap = new Map();
+    const ccGapQ = [];
+    const ccGapHold = [];
+    const ccGapLog = [];
+    let ccGapBusy = false;
+    function ccGapNote(m) {
+      ccGapLog.push(String(m));
+      if (ccGapLog.length > 40) ccGapLog.shift();
+      try { window.__ccGapLog = ccGapLog; } catch (e) {}
+    }
+    function ccGapSee(id, speaking) {
+      if (!speaking || id === 'me' || !id) return;
+      const st = (typeof statusOf !== 'undefined' && statusOf.get(id)) || {};
+      if (st.ccst !== 'paused' || st.muted) return;
+      if (typeof modOf === 'function' && modOf(id).mute && modOf(id).mute.on) return;
+      ccGapArm(id);
+    }
+    function ccGapArm(id) {
+      if (ccGap.has(id) || !ensureAc()) return;
+      const src = (typeof wspSource === 'function') ? wspSource(id) : null;
+      if (!src) return;
+      let node;
+      try { node = ac.createScriptProcessor(4096, 1, 1); } catch (e) { ccGapNote('no-proc'); return; }
+      const w = { id: id, src: src, node: node, pre: [], preMs: 0, utt: null, uttStart: 0, lastVoice: 0, rate: ac.sampleRate };
+      node.onaudioprocess = (e) => {
+        if (ccGap.get(id) !== w) return;
+        const ch = e.inputBuffer.getChannelData(0);
+        const out = e.outputBuffer.getChannelData(0);
+        for (let i = 0; i < out.length; i++) out[i] = 0;
+        ccGapOnChunk(w, new Float32Array(ch));
+      };
+      try { src.connect(node); node.connect(ac.destination); } catch (e) { return; }
+      ccGap.set(id, w);
+      ccGapNote('arm ' + String(id).slice(0, 6));
+    }
+    function ccGapOnChunk(w, chunk) {
+      const ms = chunk.length / w.rate * 1000;
+      const now = Date.now();
+      const talking = !!(typeof speakingOf !== 'undefined' && speakingOf && speakingOf.get(w.id));
+      if (w.utt) {
+        w.utt.push(chunk);
+        if (talking) w.lastVoice = now;
+        const secs = (now - w.uttStart) / 1000;
+        if (!talking && now - w.lastVoice > 700) {
+          const done = w.utt, at = w.uttStart;
+          w.utt = null;
+          if (secs >= 0.4) ccGapEnqueue(w, done, at);
+        } else if (secs >= 15) {
+          const done = w.utt, at = w.uttStart;
+          w.utt = null;
+          if (secs >= 0.4) ccGapEnqueue(w, done, at);
+        }
+      } else if (talking) {
+        w.utt = [];
+        w.utt.push(chunk);
+        w.uttStart = now;
+        w.lastVoice = now;
+      }
+    }
+    function ccGapEnqueue(w, chunks, at) {
+      const st = (typeof statusOf !== 'undefined' && statusOf.get(w.id)) || {};
+      if (st.ccst !== 'paused') return;
+      ccGapNote('clip ' + String(w.id).slice(0, 6) + ' ' + chunks.length);
+      // The raw mic's finals land on a short delay. Wait so this voice's own
+      // line, if any engine still wrote it, is already the earlier one.
+      setTimeout(() => {
+        ccGapQ.push({ id: w.id, chunks: chunks, at: at, rate: w.rate });
+        while (ccGapQ.length > 4) ccGapQ.shift();
+        ccGapDrain();
+      }, 800);
+    }
+    function ccGapPlay(job) {
+      if (!ensureAc() || !job.chunks || !job.chunks.length) return null;
+      let n = 0;
+      for (const c of job.chunks) n += c.length;
+      if (n < 1000) return null;
+      try {
+        const all = new Float32Array(n);
+        let o = 0;
+        for (const c of job.chunks) { all.set(c, o); o += c.length; }
+        const buf = ac.createBuffer(1, all.length, job.rate || ac.sampleRate);
+        buf.copyToChannel(all, 0);
+        const src = ac.createBufferSource();
+        src.buffer = buf;
+        const dest = ac.createMediaStreamDestination();
+        src.connect(dest);
+        src.start();
+        ccGapHold.push(src);
+        if (ccGapHold.length > 4) ccGapHold.shift();
+        return dest.stream.getAudioTracks()[0] || null;
+      } catch (e) { return null; }
+    }
+    function ccGapDone(rec) {
+      if (!rec || rec._gapDone) return;
+      rec._gapDone = true;
+      ccGapBusy = false;
+      if (speech === rec) { try { stopSpeech(); } catch (e) {} }
+      try { syncSpeech(); } catch (e) {}
+      setTimeout(ccGapDrain, 50);
+    }
+    function ccGapDrain() {
+      if (ccGapBusy || !ccGapQ.length) return;
+      if (typeof ccTrackInput === 'function' && !ccTrackInput()) { ccGapNote('no-track'); return; }
+      const job = ccGapQ.shift();
+      const st = (typeof statusOf !== 'undefined' && statusOf.get(job.id)) || {};
+      if (st.ccst !== 'paused') { ccGapDrain(); return; }
+      const track = ccGapPlay(job);
+      if (!track) { ccGapNote('silent ' + String(job.id).slice(0, 6)); ccGapDrain(); return; }
+      ccGapBusy = true;
+      ccGapNote('play ' + String(job.id).slice(0, 6));
+      if (speechRunning()) { try { stopSpeech(); } catch (e) {} }
+      const ok = startSpeech(track, { id: job.id, at: job.at || Date.now() });
+      if (!ok) { ccGapBusy = false; try { syncSpeech(); } catch (e) {} return; }
+      const rec = speech;
+      const dur = Math.min(20000, Math.round((job.chunks.reduce((s, c) => s + c.length, 0) / (job.rate || 48000)) * 1000) + 2500);
+      setTimeout(() => { if (rec && !rec._gapDone) ccGapDone(rec); }, dur);
+    }
+    function startSpeech(input, cover) { // input: a mix or a paused voice's clip; none = the raw microphone. cover: { id, at } attributes the clip to that person
+      if (speechGaveUp && !(cover && cover.id)) return false;
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) { setStatus('This browser cannot write down what people say.'); return false; }
       speechFails = 0;
@@ -28988,6 +29122,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         speech = new SR();
         const rec = speech;
         rec.input = input || null;
+        rec.coverId = cover && cover.id || null;
+        rec.coverAt = cover && cover.at || 0;
         const go = () => { if (rec.input) rec.start(rec.input); else rec.start(); };
         speech.continuous = true;
         speech.interimResults = false;
@@ -28997,6 +29133,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           speechProved = true;
           speechEngineUp();
           try { ccvPublish(); } catch (err) {}
+          if (rec.coverId) {
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+              if (!e.results[i].isFinal) continue;
+              addTranscriptLine(e.results[i][0].transcript, rec.coverAt, rec.coverId);
+            }
+            if (typeof ccGapDone === 'function') ccGapDone(rec);
+            return;
+          }
           if (rec.input) {
             for (let i = e.resultIndex; i < e.results.length; i++) {
               if (!e.results[i].isFinal) continue;
@@ -29018,6 +29162,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         };
         speech.onend = () => {
+          if (rec.coverId) { if (typeof ccGapDone === 'function') ccGapDone(rec); return; }
           if (!(speech === rec && speechKeep(rec))) return;
           if (speechFails > 0) {
             const wait = speechRetryDelay(speechFails);
@@ -29031,6 +29176,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         };
         speech.onerror = (e) => {
           if (speech !== rec) return;
+          if (rec.coverId) { if (typeof ccGapDone === 'function') ccGapDone(rec); return; }
           if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'language-not-supported') {
             stopSpeech();
             speechEngineDown();
