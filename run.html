@@ -2805,23 +2805,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       display: none;
     }
   }
-  /* Comfy: every face on screen, tiles touch. The long :not chain is what
-     the older gallery rule uses; matching it is what lets these win.
-     Padding stays zero. The dock band is a content-box inset in viewBox
-     (innerHeight - bar.top), so the packer itself is unchanged. */
-  /* Comfy: every face on screen, tiles the same size, the gallery stops
-     above the dock so a name is not covered. The long :not chain is what
-     the older gallery rule uses; matching it is what lets these win.
-     Comfy lays out an app in the meeting too, so where the gallery rule
-     names .has-app these name .app-full (the app over the whole call).
-     Padding stays zero. The packer insets the bottom by the dock. */
+  /* Comfy: every face on screen. The dock and the header float over the
+     tiles, so the feed is the whole screen. A wake does not resize it. */
   body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) #feed {
     position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; overflow: hidden; padding: 0 !important; margin: 0;
     display: block; background: #0d0f14; z-index: 1; }
   body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll {
     overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
-    /* Ends at the dock band (meet-views sets it): no tile under the buttons. */
-    bottom: var(--comfy-clip, 0px); }
+    /* Stay full-bleed while scrolling. The dock floats over the tiles. */
+    bottom: 0; }
   body.comfy #grid, body.comfy #stadium, body.comfy #stagefeed, body.comfy #stadfaces {
     position: static; display: block; padding: 0; margin: 0; gap: 0; overflow: visible;
     height: auto; background: transparent; border: 0; }
@@ -10107,24 +10099,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return { n: n | 0, cols: cols | 0, ids: ids, video: video, srcEl: srcEl, w: w > 2 ? w : 0, h: h > 2 ? h : 0 };
     }
     let comfyBusy = false;
-    // Where the call's buttons stood last, per screen size, so the faces
-    // keep their places while the buttons are tucked away.
-    // Where the dock and Record/Captions stand when they are up. Record/
-    // Captions sit 8px over the dock (bottom: --dockh + 8px) unless they
-    // stand beside it (a sideways phone: their own --csb bottom).
-    function comfyRestBand() {
-      const vh = window.innerHeight;
-      const restTop = (el) => getComputedStyle(el).position === 'fixed' ? el.offsetTop : el.getBoundingClientRect().top;
-      const bar = document.querySelector('.bar');
-      const dockUp = (bar && bar.getClientRects().length) ? Math.max(0, vh - restTop(bar)) : 0;
-      let band = dockUp;
-      const state = document.getElementById('callstate');
-      if (state && !state.hidden && state.getClientRects().length && state.offsetHeight > 2) {
-        const top = state.classList.contains('beside') ? restTop(state) : vh - dockUp - 8 - state.offsetHeight;
-        band = Math.max(band, vh - top);
-      }
-      return band;
-    }
     function applyComfy() {
       if (comfyBusy) return;
       const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
@@ -10248,84 +10222,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // a short desktop window under 900px wide is treated like one too.
         const shortLand = vhNow < 500 && vwNow > vhNow && (vwNow < 900 || !document.body.classList.contains('desk-ptr'));
         const phone = vwNow < 600 || shortLand;
-        let topInset = 0;
-        // The "new version" bar moves the header down by --updh; the faces
-        // start under the moved header, never under the bar.
-        const updH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--updh')) || 0;
-        // A phone with a shared screen up: Fit is hidden, so the Stage starts
-        // right under the header chip and the build line.
-        const stageUpright = phone && !shortLand && (sgsOn || appOn);
-        if (stageUpright) {
-          let below = 0;
-          for (const sel of ['.topchip', '#gifos-build-float', '#unmute', '#showcam']) {
-            const e = document.querySelector(sel);
-            if (!e || !e.getClientRects().length) continue;
-            const cs = getComputedStyle(e);
-            if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) continue;
-            below = Math.max(below, e.getBoundingClientRect().bottom);
-          }
-          if (below > 0) topInset = Math.ceil(below + 8);
-        } else if (shortLand || updH > 0) {
-          let below = 0;
-          const fitEl = document.getElementById('fitbtn');
-          const chipEl = document.querySelector('.topchip');
-          if (chipEl) below = Math.max(below, chipEl.getBoundingClientRect().bottom);
-          if (fitEl) below = Math.max(below, fitEl.getBoundingClientRect().bottom);
-          // Upright keeps meet-layout's 120 (Fit at 200% text) when it is lower.
-          if (below > 0) topInset = shortLand ? Math.ceil(below + 8) : Math.max(120, Math.ceil(below + 18));
-        }
         let holdMs = 2500;
         try { holdMs = STAGE_FACE_SETTLE_MS; } catch (e) {}
-        let bottom = 0, holdBottom = 0;
-        try {
-          // Tucked chrome is off the call. Measuring the sliding dock would
-          // keep the empty band, so a quiet call uses only the home indicator.
-          const away = document.body.classList.contains('chrome-away');
-          const safeEl = document.getElementById('gifos-safe-b');
-          const safe = (safeEl && safeEl.offsetHeight) || 0;
-          let rowN = 0;
-          for (let i = 0; i < tiles.length; i++) if (!tiles[i].stage && !tiles[i].share) rowN++;
-          const bandH = vhNow - (topInset > 0 ? topInset : 64) - safe;
-          // Sideways, face size comes from how many people are here and
-          // whether a share is up, not from the dock. One row as tall as the
-          // stage fits beside itself (you and one other): it fills the stage,
-          // the dock wakes over it, and a tuck does not resize it or leave a
-          // black band. A second row stays in the band above the dock. A
-          // share stays there too (floor stays 0). 4px is the phone row gap.
-          const fillHeight = shortLand && !sgsOn && !appOn && rowN > 0 &&
-            (rowN * bandH + Math.max(0, rowN - 1) * 4) <= (vwNow - 4);
-          if (fillHeight) {
-            bottom = safe;
-          } else {
-            // The band the dock and Record/Captions take when they are up,
-            // worked out from where they REST (a fixed box's offsetTop skips
-            // the tuck's slide), whether they are up or tucked right now. It
-            // used to be remembered from the last time the controls were up
-            // at this exact size, so the first wake after any size change
-            // (a page float, full screen, turning the phone, a share) found
-            // no band, and waking moved every tile (Moto g24, 2026-10-19).
-            const band = comfyRestBand();
-            if (!away) bottom = band;
-            else { bottom = safe; holdBottom = band; }
-          }
-          const note = document.getElementById('chatnote');
-          if (note && !note.hidden && note.getClientRects().length) {
-            const nr = note.getBoundingClientRect();
-            if (nr.height > 2) bottom = Math.max(bottom, window.innerHeight - nr.top);
-          }
-          if (holdBottom) holdBottom = Math.max(holdBottom, bottom);
-        } catch (e) {}
-        // The sideways share stays in the band above the dock and the Record
-        // row. Running it to the bottom of the screen put the white share
-        // label on the dock gray, and the dock covered the slide. holdBottom
-        // keeps that band when the buttons tuck, so waking them does not
-        // move the slide.
+        // The dock and the header float over the tiles. Passing a measured
+        // band here used to reserve that band in the gallery, so the tiles
+        // stopped short of the screen and a wake could resize them.
         let floor = 0;
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: faces, video: meta.video, srcW: meta.w, srcH: meta.h, cols: cols, cellN: cellOf ? meta.n : 0, cellOf: cellOf,
           holdMs: holdMs, floor: floor,
           vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: shadeKey('me'),
-          pill: document.body.classList.contains('has-pill'), bottom: bottom, holdBottom: holdBottom, top: topInset,
+          pill: document.body.classList.contains('has-pill'), bottom: 0, holdBottom: 0, top: 0,
           mode: window.__meetViewMode || 'gallery',
           swapSelf: !!(window.__meetSwapSelf || (window.__meetSelf && window.__meetSelf.onStage)),
           self: window.__meetSelf || 'tile',

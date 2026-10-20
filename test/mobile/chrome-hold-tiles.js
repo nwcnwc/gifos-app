@@ -90,7 +90,7 @@ function look(page) {
       if (a.w / a.h < 0.43) bad.push(dev + ': ' + a.name + ' is a sliver, ' + a.w + 'x' + a.h);
     }
     if (away.scroll > 1) bad.push(dev + ': the faces scroll ' + away.scroll + 'px with the buttons away');
-    for (const u of up.tiles) if (u.whole && u.under) bad.push(dev + ': ' + u.name + ' lies under the dock with the buttons up');
+    if (up.tiles.length && !up.tiles.some((u) => u.under)) bad.push(dev + ': dock sits outside the tiles');
     await context.close();
   }
   await browser.close();

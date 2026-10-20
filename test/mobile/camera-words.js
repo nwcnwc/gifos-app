@@ -103,7 +103,8 @@ function overlaps(a, b) {
       if (c.h < 44 || c.w < 44) bad.push('Video is ' + Math.round(c.w) + 'x' + Math.round(c.h));
       if (c.top < -1 || c.bottom > info.vh + 1 || c.left < -1 || c.right > info.vw + 1) bad.push('Video is off screen');
       if (!info.camOff) bad.push('camera is already on');
-      if (info.tiles.some((t) => overlaps(c, t))) bad.push('Video covers a face');
+      // The dock floats over the tiles while it is showing.
+      if (!info.tiles.some((t) => overlaps(c, t))) bad.push('Video does not float over a face');
     }
     if (bad.length) {
       failures.push(phone.name + ': ' + bad.join('; '));
@@ -126,6 +127,11 @@ function overlaps(a, b) {
     const quiet = await read();
     if (!tucked) bad.push('chrome idle hook missing');
     else if (quiet.headerCam && !quiet.headerCam.hidden) bad.push('header Camera appeared while the dock was tucked');
+    const sig = (tiles) => tiles.map((t) => [Math.round(t.left), Math.round(t.top), Math.round(t.w), Math.round(t.h)].join(',')).sort().join('|');
+    if (sig(info.tiles) !== sig(quiet.tiles)) bad.push('tiles moved when the controls tucked');
+    let y0 = Infinity, y1 = -Infinity;
+    for (const t of quiet.tiles) { y0 = Math.min(y0, t.top); y1 = Math.max(y1, t.bottom); }
+    if (!quiet.tiles.length || y0 > 8 || quiet.vh - y1 > 8) bad.push('tiles leave a band when the controls tuck (' + Math.round(y0) + ' above, ' + Math.round(quiet.vh - y1) + ' below)');
     if (bad.length) failures.push(phone.name + ': ' + bad.join('; '));
     else console.log('PASS', phone.name);
     await context.close();

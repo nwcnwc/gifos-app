@@ -105,16 +105,20 @@ const fitCrowd = L.layoutFor({ w: 390, h: 844, tiles: crowd, gallery: 'fit', mod
 const scrollCrowd = L.layoutFor({ w: 390, h: 844, tiles: crowd, gallery: 'scroll', mode: 'gallery' });
 check('crowded fit does not auto-scroll', fitCrowd.gallery === 'fit' && fitCrowd.contentH <= fitCrowd.box.h + 1.5, fitCrowd.gallery + ' h=' + fitCrowd.contentH);
 check('crowded scroll grows past one screen', scrollCrowd.gallery === 'scroll' && scrollCrowd.contentH > scrollCrowd.box.h + 8, scrollCrowd.contentH);
-const phoneBox = L.viewBox(390, 844, {});
-const deskBox = L.viewBox(1920, 1080, {});
-check('phone gallery clears the dock', phoneBox.y + phoneBox.h <= 844 - 100, phoneBox.h);
-check('desktop gallery clears the dock', deskBox.y + deskBox.h <= 1080 - 110, deskBox.h);
+const phoneBox = L.viewBox(390, 844, { top: 120, bottom: 154, phone: true });
+const deskBox = L.viewBox(1920, 1080, { top: 64, bottom: 128 });
+check('phone gallery is the whole screen', phoneBox.x === 0 && phoneBox.y === 0 && phoneBox.w === 390 && phoneBox.h === 844 && phoneBox.dock === 0, JSON.stringify(phoneBox));
+check('desktop gallery is the whole screen', deskBox.x === 0 && deskBox.y === 0 && deskBox.w === 1920 && deskBox.h === 1080 && deskBox.dock === 0, JSON.stringify(deskBox));
 const firstStad = scrollCrowd.rects.filter((t) => t.tier === 'stad').reduce((a, b) => (a && a.y < b.y ? a : b), null);
 check('scroll shows the crowd on the first screen', !!firstStad && firstStad.y + 8 < scrollCrowd.box.y + scrollCrowd.box.h, firstStad && firstStad.y);
 
 const rowCrowd = tilesFor(30, 16 / 9, 'row');
 const rowScroll = L.layoutFor({ w: 390, h: 844, tiles: rowCrowd, gallery: 'scroll', mode: 'gallery' });
-check('row-only scroll still grows', rowScroll.gallery === 'scroll' && rowScroll.contentH > rowScroll.box.h + 8, rowScroll.contentH);
+// Thirty faces fill a full phone screen at the scroll floor, so scroll does
+// not grow past it. A larger crowd still grows past the screen.
+check('row-only scroll fills the screen', rowScroll.gallery === 'scroll' && rowScroll.rects.length === 30 && rowScroll.contentH <= rowScroll.box.h + 1.5 && rowScroll.contentH >= rowScroll.box.h - 1, rowScroll.contentH);
+const rowMore = L.layoutFor({ w: 390, h: 844, tiles: tilesFor(48, 16 / 9, 'row'), gallery: 'scroll', mode: 'gallery' });
+check('row-only scroll still grows', rowMore.gallery === 'scroll' && rowMore.contentH > rowMore.box.h + 8, rowMore.contentH);
 
 // opts.page must not drop faces or flip the mode.
 const order = new P.Order();

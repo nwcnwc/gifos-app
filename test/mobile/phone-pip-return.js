@@ -60,7 +60,24 @@ const FLOAT = { width: 125, height: 223 };
 
   const cdp = await context.newCDPSession(page);
   const size = (s) => cdp.send('Emulation.setDeviceMetricsOverride', { width: s.width, height: s.height, deviceScaleFactor: 2.625, mobile: true });
-  const wake = async () => { await page.touchscreen.tap(200, 670); await sleep(700); };
+  // The face fills the screen, so a tap in the old band under the square
+  // opens that face and holds the controls up. Land on the dock, which
+  // floats over the tiles. A tucked dock ignores hits, so tap the middle.
+  const wake = async () => {
+    const pt = await page.evaluate(() => {
+      const away = document.body.classList.contains('chrome-away');
+      const bar = document.querySelector('.bar');
+      if (!away && bar) {
+        const r = bar.getBoundingClientRect();
+        if (r.top >= 0 && r.bottom <= innerHeight && r.height > 8) {
+          return { x: r.left + r.width / 2, y: r.top + Math.min(16, r.height / 2) };
+        }
+      }
+      return { x: innerWidth / 2, y: innerHeight / 2 };
+    });
+    await page.touchscreen.tap(pt.x, pt.y);
+    await sleep(700);
+  };
   // Awake chrome: the pills are shown, so their rest place is measurable.
   const read = () => page.evaluate(() => {
     const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return [Math.round(b.x), Math.round(b.y), Math.round(b.width), Math.round(b.height)]; };

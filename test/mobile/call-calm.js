@@ -62,10 +62,10 @@ function overlaps(a, b) {
   const bad = [];
   if (!info.fit || info.fit.h < 44) bad.push('Fit is missing');
   if (info.fit && overlaps(info.fit, info.chip)) bad.push('Fit covers the header');
-  for (const t of info.tiles) {
-    if (info.fit && overlaps(info.fit, t)) bad.push('Fit covers a face');
-    if (info.tag && overlaps(info.tag, t)) bad.push('build tag covers a face');
-  }
+  // Fit and the build line float over the faces. The line stays faint text.
+  let y0 = Infinity, y1 = -Infinity;
+  for (const t of info.tiles) { y0 = Math.min(y0, t.top); y1 = Math.max(y1, t.bottom); }
+  if (info.tiles.length && (y0 > 8 || info.vh - y1 > 8)) bad.push('faces leave a band (' + Math.round(y0) + ' above, ' + Math.round(info.vh - y1) + ' below)');
   if (info.tag && info.fit && overlaps(info.tag, info.fit)) bad.push('build tag covers Fit');
   if (info.tag && info.chip && overlaps(info.tag, info.chip)) bad.push('build tag covers the header');
   if (!info.tag || info.tag.text.indexOf('edge') < 0) bad.push('build tag is gone');

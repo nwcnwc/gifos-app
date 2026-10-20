@@ -96,6 +96,60 @@
     return { rects: out, y: ids.length ? y - gap : y };
   }
 
+  // Group rects into rows that share a y.
+  function rowsOf(rects) {
+    const rows = [];
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      let row = null;
+      for (let k = 0; k < rows.length; k++) if (Math.abs(rows[k].y - r.y) < 0.5) row = rows[k];
+      if (!row) { row = { y: r.y, items: [] }; rows.push(row); }
+      row.items.push(r);
+    }
+    rows.sort((a, b) => a.y - b.y);
+    return rows;
+  }
+
+  // Fit leaves no empty band under the last row. Leftover height goes into
+  // the rows, so the dock floats over the bottom faces instead of sitting
+  // past them. Width stays, so a square that already fills the height stays
+  // a square. Scroll is unchanged.
+  function fillBand(rects, box, gap) {
+    if (!rects.length) return;
+    const rows = rowsOf(rects);
+    let bottom = box.y;
+    for (let i = 0; i < rects.length; i++) bottom = Math.max(bottom, rects[i].y + rects[i].h);
+    const slack = box.y + box.h - bottom;
+    if (slack <= 1) return;
+    const extra = slack / rows.length;
+    let y = box.y;
+    for (let i = 0; i < rows.length; i++) {
+      const h = rows[i].items[0].h + extra;
+      for (let j = 0; j < rows[i].items.length; j++) {
+        rows[i].items[j].y = y;
+        rows[i].items[j].h = h;
+      }
+      y += h + gap;
+    }
+  }
+
+  // A people column beside a share is centered, which left a strip past the
+  // last face. Shift each row so it ends on the box edge. The share already
+  // meets the other edge, so the tiles together reach both sides.
+  function pinEnd(rects, box) {
+    const rows = rowsOf(rects);
+    const edge = box.x + box.w;
+    for (let k = 0; k < rows.length; k++) {
+      let right = -Infinity;
+      for (let j = 0; j < rows[k].items.length; j++) {
+        const r = rows[k].items[j];
+        right = Math.max(right, r.x + r.w);
+      }
+      const shift = edge - right;
+      if (shift > 0.5) for (let j = 0; j < rows[k].items.length; j++) rows[k].items[j].x += shift;
+    }
+  }
+
   function people(row, stad, box, phone, gallery, gap, avoidLone) {
     const nr = row.length, ns = stad.length;
     let s, t;
@@ -109,13 +163,18 @@
     } else {
       s = fitSide(nr, ns, box.w, box.h, gap);
       t = ns ? Math.max(1, Math.floor(s * STAD_RATIO)) : 0;
-      // A face is never smaller than FIT_ROW_MIN: when everyone cannot fit
-      // at that size, the whole faces that fit show and the rest scroll.
+      // Grow toward FIT_ROW_MIN when the larger faces still fit. If they
+      // would scroll off a screen the fitted faces already fill, keep the
+      // fitted side so the dock floats over the last row instead.
       const k2 = phone ? 'phone' : 'desk';
       const rowMin = Math.min(box.w, FIT_ROW_MIN[k2]);
       if (s < rowMin) {
-        s = snap(box.w, rowMin, gap);
-        t = ns ? snap(box.w, Math.min(s, Math.max(FIT_STAD_MIN[k2], s * STAD_RATIO)), gap) : 0;
+        const bumped = snap(box.w, rowMin, gap);
+        const tBump = ns ? snap(box.w, Math.min(bumped, Math.max(FIT_STAD_MIN[k2], bumped * STAD_RATIO)), gap) : 0;
+        if (peopleH(nr, ns, box.w, bumped, tBump, gap, avoidLone) <= box.h + 1) {
+          s = bumped;
+          t = tBump;
+        }
       } else if (ns && t < FIT_STAD_MIN[k2]) {
         // The Row keeps its size; a crowd of small Stadium faces scrolls.
         t = snap(box.w, FIT_STAD_MIN[k2], gap);
@@ -131,12 +190,15 @@
       }
     }
     const total = peopleH(nr, ns, box.w, s, t, gap, avoidLone);
-    // Fit centers the block; Scroll starts at the top.
-    let y = box.y + (gallery === 'scroll' ? 0 : Math.max(0, (box.h - total) / 2));
+    // Both modes start at the top of the band. Fit then absorbs leftover
+    // height so the block meets the bottom edge.
+    let y = box.y;
     const a = flow(row, 'row', box, s, y, gap, avoidLone);
     y = a.y + (a.rects.length && ns ? gap : 0);
     const b = flow(stad, 'stad', box, t, y, gap, avoidLone);
-    return { rects: a.rects.concat(b.rects), contentH: Math.max(box.h, total), side: s, stadSide: t, tooSmall: ns > 0 && t < 28 };
+    const rects = a.rects.concat(b.rects);
+    if (gallery !== 'scroll') fillBand(rects, box, gap);
+    return { rects: rects, contentH: Math.max(box.h, total), side: s, stadSide: t, tooSmall: ns > 0 && t < 28 };
   }
 
   // Stage items at their true aspect, side by side (or stacked when that is
@@ -224,6 +286,7 @@
       sr = stageRects(stage, sb, gap, phone);
     }
     const p = people(row, stad, pb, phone, gallery, gap, true);
+    if (wide && gallery !== 'scroll') pinEnd(p.rects, pb);
     const rects = sr.concat(p.rects);
     const contentH = (pb.y - box.y) + p.contentH;
     return { rects: rects, contentH: Math.max(box.h, contentH), regions: { stage: sb, people: pb }, side: p.side, stadSide: p.stadSide, tooSmall: p.tooSmall && gallery === 'fit', gallery: gallery };

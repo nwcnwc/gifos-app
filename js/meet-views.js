@@ -520,28 +520,21 @@
         t.el.dataset.tier = t.tier || 'row';
       }
     }
+    // viewBox ignores top and bottom: the dock and the header do not inset
+    // the tiles. A 0 here must not fall through to an old default band.
     const box = ML.viewBox(opts.vw || 1, opts.vh || 1, {
-      phone: !!opts.phone, pill: !!opts.pill, bottom: Math.max(0, +opts.bottom || 0),
-      top: opts.top > 0 ? opts.top : undefined,
+      phone: !!opts.phone, pill: !!opts.pill, bottom: 0, top: 0,
     });
-    // opts.holdBottom: where the tucked-away buttons stood (phone gallery).
-    // Fit and Scroll both size faces from the band, so both hold it: a tap
-    // that wakes the buttons never reshapes a face.
+    // The dock used to be held as an inset while it was tucked, so a wake
+    // would not resize faces. The box is the whole screen either way, so
+    // there is nothing to hold.
     const MZ = GifOS.meetZones;
-    const hold = !!opts.phone && (opts.mode || 'gallery') === 'gallery' && (MZ || opts.gallery !== 'scroll') &&
-      +opts.holdBottom > Math.max(0, +opts.bottom || 0);
     const byId = {};
     for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
-    let lay = MZ ? zonesLayout(MZ, tiles, hold ? ML.viewBox(opts.vw || 1, opts.vh || 1, {
-      phone: true, pill: !!opts.pill, bottom: +opts.holdBottom,
-      top: opts.top > 0 ? opts.top : undefined,
-    }) : box, opts) : ML.layoutFor({
+    let lay = MZ ? zonesLayout(MZ, tiles, box, opts) : ML.layoutFor({
       mode: opts.mode || 'gallery',
       tiles: tiles,
-      box: hold ? ML.viewBox(opts.vw || 1, opts.vh || 1, {
-        phone: true, pill: !!opts.pill, bottom: +opts.holdBottom,
-        top: opts.top > 0 ? opts.top : undefined,
-      }) : box,
+      box: box,
       phone: !!opts.phone,
       swapSelf: !!opts.swapSelf,
       self: opts.self != null ? opts.self : (opts.selfView || 'tile'),
@@ -549,13 +542,6 @@
     });
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i].me || tiles[i].id === 'me') markSelf(tiles[i].el, lay.self);
-    }
-    if (hold && !lay.crowd && !MZ) lay = holdRows(lay, box, byId, true);
-    if (hold && MZ && lay.zones) {
-      // Faces keep the places they had with the buttons up; whether they
-      // scroll is judged against what is visible now.
-      const hb = lay.box;
-      lay = Object.assign({}, lay, { box: box, contentH: Math.max(box.h, hb.y + lay.contentH - box.y) });
     }
     const used = [];
     let crowdEl = feed.querySelector('#stadcrowd');
