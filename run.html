@@ -16197,6 +16197,246 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // tap the console); production stays exactly as silent as before (null →
     // typeof 'object' → every guard stays false).
     const clog = DEBUG_ON ? function () { try { console.log.apply(console, ['[clog]'].concat(Array.from(arguments))); } catch (e) {} } : null;
+    // DEBUG-TRACE: inert unless DEBUG=on. Buffers meeting events and posts
+    // JSON batches to same-origin /__trace. No listener, timer, or request
+    // is installed when debug mode is off.
+    if (DEBUG_ON) {
+      try {
+        const q = [];
+        const session = (() => {
+          try {
+            if (crypto.randomUUID) return crypto.randomUUID().replace(/-/g, '');
+          } catch (e) {}
+          return Math.random().toString(36).slice(2) + Date.now().toString(36);
+        })();
+        const roomId = String((params && (params.get('v') || params.get('j') || params.get('s'))) || '').slice(0, 80);
+        const wired = new WeakSet();
+        const note = (kind, d) => {
+          try {
+            const ev = { t: Date.now(), kind: kind };
+            if (d !== undefined) ev.d = d;
+            q.push(ev);
+            if (q.length > 400) q.splice(0, q.length - 400);
+          } catch (e) {}
+        };
+        const trBrief = (tr) => ({
+          kind: tr.kind, en: !!tr.enabled, muted: !!tr.muted, rs: tr.readyState,
+        });
+        const watchTrack = (tr) => {
+          if (!tr || wired.has(tr)) return;
+          try { wired.add(tr); } catch (e) { return; }
+          const snapTr = () => trBrief(tr);
+          note('track', snapTr());
+          tr.addEventListener('mute', () => note('track-mute', snapTr()));
+          tr.addEventListener('unmute', () => note('track-unmute', snapTr()));
+          tr.addEventListener('ended', () => note('track-ended', snapTr()));
+        };
+        const trackSnap = () => {
+          try {
+            if (!localStream || !localStream.getTracks) return [];
+            return localStream.getTracks().map((tr) => { watchTrack(tr); return trBrief(tr); });
+          } catch (e) { return []; }
+        };
+        const sumC = (c) => {
+          const one = (x) => {
+            if (x === true || x === false || x == null) return x === true;
+            if (typeof x !== 'object') return !!x;
+            const o = {};
+            ['width', 'height', 'frameRate', 'facingMode'].forEach((k) => {
+              if (x[k] == null) return;
+              const v = x[k];
+              o[k] = (v && typeof v === 'object') ? (v.ideal || v.exact || v.max || v.min || 1) : v;
+            });
+            return o;
+          };
+          if (!c || typeof c !== 'object') return null;
+          return { a: one(c.audio), v: one(c.video) };
+        };
+        const btnState = (id) => {
+          const b = document.getElementById(id);
+          if (!b) return null;
+          return {
+            off: b.classList.contains('off'),
+            pressed: b.getAttribute('aria-pressed'),
+            label: String(b.getAttribute('aria-label') || '').slice(0, 60),
+          };
+        };
+        const localVid = () => {
+          let v = null;
+          try { if (meTile && meTile.video) v = meTile.video; } catch (e) {}
+          if (!v) v = document.querySelector('video.selfcam') || document.getElementById('lob-preview-vid');
+          if (!v) return null;
+          return { w: v.videoWidth || 0, h: v.videoHeight || 0, rs: v.readyState, paused: !!v.paused };
+        };
+        const stageRects = () => {
+          const out = [];
+          const seen = new Set();
+          let nodes;
+          try { nodes = document.querySelectorAll('#stagefeed .rowtile, .rowtile.stagetile, #grid .tile'); }
+          catch (e) { return out; }
+          nodes.forEach((el) => {
+            if (out.length >= 16 || seen.has(el)) return;
+            seen.add(el);
+            const r = el.getBoundingClientRect();
+            out.push({
+              k: String(el.dataset.peer || el.dataset.row || '').slice(0, 12),
+              st: el.classList.contains('stagetile') || !!(el.closest && el.closest('#stagefeed')),
+              x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height),
+            });
+          });
+          return out;
+        };
+        const snap = () => ({
+          vis: document.visibilityState,
+          w: window.innerWidth, h: window.innerHeight,
+          o: (screen.orientation && screen.orientation.type) || '',
+          fs: !!(document.fullscreenElement || document.webkitFullscreenElement),
+          pip: !!document.pictureInPictureElement,
+          docpip: !!(window.documentPictureInPicture && window.documentPictureInPicture.window),
+          cam: btnState('cam'), mic: btnState('mic'),
+          vid: localVid(), tracks: trackSnap(), stage: stageRects(),
+        });
+        const flush = (beacon) => {
+          if (!q.length) return;
+          const body = JSON.stringify({
+            session: session,
+            room: roomId,
+            ua: String(navigator.userAgent || '').slice(0, 300),
+            events: q.splice(0, 120),
+          });
+          const rest = () => { if (q.length) setTimeout(() => flush(beacon), 30); };
+          if (beacon && navigator.sendBeacon) {
+            try {
+              const blob = new Blob([body], { type: 'application/json' });
+              if (navigator.sendBeacon('/__trace', blob)) { rest(); return; }
+            } catch (e) {}
+          }
+          try {
+            fetch('/__trace', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: body,
+              keepalive: true,
+            }).catch(() => {});
+          } catch (e) {}
+          rest();
+        };
+        const md = navigator.mediaDevices;
+        if (md && typeof md.getUserMedia === 'function' && !md.getUserMedia.__dbgTrace) {
+          const orig = md.getUserMedia.bind(md);
+          const wrapped = function (constraints) {
+            note('gum', { phase: 'call', c: sumC(constraints) });
+            let p;
+            try { p = orig(constraints); }
+            catch (err) {
+              note('gum', { phase: 'err', name: err && err.name, msg: String(err && err.message || err).slice(0, 180) });
+              throw err;
+            }
+            return Promise.resolve(p).then((stream) => {
+              const tracks = stream && stream.getTracks ? stream.getTracks() : [];
+              tracks.forEach(watchTrack);
+              note('gum', { phase: 'ok', tracks: tracks.map(trBrief) });
+              return stream;
+            }, (err) => {
+              note('gum', { phase: 'err', name: err && err.name, msg: String(err && err.message || err).slice(0, 180) });
+              throw err;
+            });
+          };
+          wrapped.__dbgTrace = 1;
+          try { md.getUserMedia = wrapped; } catch (e) {}
+        }
+        document.addEventListener('visibilitychange', () => {
+          note('visibility', { state: document.visibilityState });
+          if (document.visibilityState === 'hidden') flush(true);
+        });
+        window.addEventListener('pagehide', (ev) => {
+          note('pagehide', { persisted: !!(ev && ev.persisted) });
+          flush(true);
+        });
+        window.addEventListener('pageshow', (ev) => {
+          note('pageshow', { persisted: !!(ev && ev.persisted) });
+        });
+        document.addEventListener('fullscreenchange', () => {
+          note('fullscreen', { on: !!document.fullscreenElement });
+        });
+        document.addEventListener('webkitfullscreenchange', () => {
+          note('fullscreen', { on: !!(document.fullscreenElement || document.webkitFullscreenElement) });
+        });
+        document.addEventListener('enterpictureinpicture', (ev) => {
+          note('pip-enter', { tag: ev && ev.target && ev.target.tagName });
+        });
+        document.addEventListener('leavepictureinpicture', (ev) => {
+          note('pip-leave', { tag: ev && ev.target && ev.target.tagName });
+        });
+        try {
+          const dpip = window.documentPictureInPicture;
+          if (dpip && dpip.addEventListener) {
+            dpip.addEventListener('enter', (ev) => {
+              note('docpip-enter', { w: ev && ev.window ? ev.window.innerWidth : 0 });
+              try {
+                if (ev && ev.window) ev.window.addEventListener('pagehide', () => note('docpip-leave', {}));
+              } catch (e) {}
+            });
+          }
+        } catch (e) {}
+        let rz = 0;
+        window.addEventListener('resize', () => {
+          if (rz) return;
+          rz = setTimeout(() => {
+            rz = 0;
+            note('resize', {
+              w: window.innerWidth, h: window.innerHeight,
+              o: (screen.orientation && screen.orientation.type) || '',
+            });
+          }, 300);
+        });
+        window.addEventListener('orientationchange', () => {
+          note('orient', {
+            o: (screen.orientation && screen.orientation.type) || String(window.orientation || ''),
+            w: window.innerWidth, h: window.innerHeight,
+          });
+        });
+        ['cam', 'mic'].forEach((id) => {
+          const b = document.getElementById(id);
+          if (!b) return;
+          b.addEventListener('click', () => {
+            note('toggle', { id: id });
+            setTimeout(() => note('toggle-state', { id: id, ui: btnState(id), tracks: trackSnap() }), 400);
+          }, true);
+        });
+        window.addEventListener('error', (ev) => {
+          if (!ev || (!ev.message && !ev.error)) return;
+          note('error', {
+            m: String(ev.message || (ev.error && ev.error.message) || '').slice(0, 300),
+            line: ev.lineno || 0,
+          });
+        });
+        window.addEventListener('unhandledrejection', (ev) => {
+          const r = ev && ev.reason;
+          note('rejection', { m: String((r && (r.message || r)) || '').slice(0, 300) });
+        });
+        try {
+          const origErr = console.error;
+          console.error = function () {
+            try {
+              const parts = [];
+              for (let i = 0; i < arguments.length && i < 4; i++) {
+                const a = arguments[i];
+                if (a instanceof Error) parts.push((a.name || 'Error') + ': ' + (a.message || ''));
+                else if (typeof a === 'string') parts.push(a);
+                else { try { parts.push(JSON.stringify(a)); } catch (e) { parts.push(String(a)); } }
+              }
+              note('console.error', { m: parts.join(' ').slice(0, 300) });
+            } catch (e) {}
+            return origErr.apply(console, arguments);
+          };
+        } catch (e) {}
+        setInterval(() => { try { if (!document.hidden) note('snap', snap()); } catch (e) {} }, 1000);
+        setInterval(() => { try { flush(false); } catch (e) {} }, 3000);
+        note('boot', { room: roomId, vis: document.visibilityState, w: window.innerWidth, h: window.innerHeight });
+        try { window.__debugTrace = { session: session, room: roomId }; } catch (e) {}
+      } catch (e) {}
+    }
     function meshSelfReport() { // DEBUG-TREE
       const c = meshCoord(), s = meshSeat();
       // `from` is the FULL peer id — the census doubles as an occ seed for the
