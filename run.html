@@ -13771,10 +13771,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!old || (!old.k && !old.kind)) return; // not a previous-generation frame — just noise
         const now = Date.now();
         if (now - (staleHealAt.get(pid) || 0) < 5000) return;
-        const p = peers.get(pid);
-        const knownBefore = !!(p && p.bornAt && p.bornAt <= rekeyAt);
-        if (!knownBefore && !rosterIds.includes(pid)) return;
-        if (!notTomb(pid)) return;
+        // ELIGIBILITY IS THE KEY ITSELF (2026-10-20). This used to ask
+        // for a pair older than the rotation, or a roster entry, and no
+        // tombstone — three liveness gates that FAIL for exactly the member
+        // this exists to cure: its frames cannot be opened, so it ages out of
+        // the roster and the mesh tombstones it, and a pair rebuilt after the
+        // rotation is younger than the rotation. In a real meeting the members
+        // that missed the change sent stale frames for ~100 s, were never
+        // healed, then requeued into a tree of their own. A frame that opens
+        // under the key I replaced is itself the proof its sender held that
+        // generation — a member — and the only ones never healed are those
+        // excluded on purpose: a banned / voted-off seat, or an ejected forger.
+        if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) return;
+        if (typeof isEjected === 'function' && isEjected(pid) === true) return;
         staleHealAt.set(pid, now);
         if (typeof clog === 'function') clog('grant-heal ' + String(pid).slice(0, 6) + ' (prev-key frame)');
       pwLog('grant-heal→' + String(pid).slice(0, 6) + ' ep=' + pwEpoch);
@@ -13782,6 +13791,39 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (pd && pd.dc && pd.dc.readyState === 'open') txm(() => net.seal(prevRoomE2E, retainedGrant).then((env) => net.sendChunked(env, (piece, str) => { try { pd.dc.send(str); } catch (e) {} })));
         else { const fs = pwFramesOf(retainedGrant); if (fs) for (const f of fs) relaySendSealed(pid, f.k, f, prevRoomE2E); }
       });
+    }
+    // §LOCK DOOR-SIDE HEAL (2026-10-20). A member that missed the
+    // grant and lost every pair to the room (its frames unreadable, its mates
+    // probing a corpse) requeues through the door, reads only the blobs its
+    // OLD key opens — the other members that missed it — and mints a second
+    // tree with them. From then on no stale frame of theirs ever reaches a
+    // holder of the grant: the pair path above has nothing to heal through.
+    // The greeter DOOR is the one rendezvous both trees still share: their
+    // Section-1 seats keep registering blobs under the old key, and my own
+    // E3 re-knock hands me those blobs. One that opens under a key I replaced
+    // names a writer BEHIND me (mesh-wire onGreeters → onBehind). Send it the
+    // retained signed grant over the relay, sealed under the key it still
+    // reads (it holds a socket: it registered). It adopts, re-keys, re-knocks
+    // under the room's key, and heals its own mates over their pairs. Paced
+    // per writer; the epoch guard absorbs a grant the writer already took.
+    const behindHealAt = new Map(); // pid -> last door-grant (throttle)
+    function healBehindDoor(list) {
+      if (!retainedGrant || !Array.isArray(list) || !list.length) return;
+      const fs = pwFramesOf(retainedGrant);
+      if (!fs) return;
+      const now = Date.now();
+      for (const b of list) {
+        const pid = b && b.p, key = b && b.key;
+        if (!pid || pid === myId || !key) continue;
+        if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) continue; // excluded on purpose — never healed
+        if (typeof isEjected === 'function' && isEjected(pid) === true) continue;
+        if (now - (behindHealAt.get(pid) || 0) < 30000) continue;
+        behindHealAt.set(pid, now);
+        if (behindHealAt.size > 256) for (const [k, t] of behindHealAt) if (now - t > 60000) behindHealAt.delete(k);
+        if (typeof clog === 'function') clog('door-grant ' + String(pid).slice(0, 6) + ' (blob under a key I replaced)');
+        pwLog('door-grant→' + String(pid).slice(0, 6) + ' ep=' + pwEpoch);
+        for (const f of fs) relaySendSealed(pid, f.k, f, key);
+      }
     }
     // DEBUG ONLY: plaintext bytes put on DataChannels, by message kind (mesh
     // frames by type, gossip by what it carries) — dcTally() in the test hooks.
@@ -16878,6 +16920,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // wire must not treat that as the door (mesh-wire entryDelivered).
         dcOpen: (to) => { const p = peers.get(to); return !!(p && p.dc && p.dc.readyState === 'open'); },
         dial: bootDial, // a knocker's entry ask has no channel to its greeter: open one (the bootstrap over the relay)
+        onBehind: healBehindDoor, // door blobs a key I replaced opens: their writers missed the grant (§LOCK door-side heal)
         // Deep-socket drop waits until at least one DataChannel is open (§FWD:
         // an unwired deep newcomer must stay relay-reachable or inbound
         // signaling answers die — the late-join deadlock).
