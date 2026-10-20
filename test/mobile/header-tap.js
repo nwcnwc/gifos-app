@@ -77,7 +77,7 @@ const phones = [
       if (s.w < 44) bad.push('room name is only ' + Math.round(s.w) + 'px wide');
       if (s.top < -1 || s.bottom > info.vh + 1 || s.left < -1 || s.right > info.vw + 1) bad.push('room name is off screen');
       if (s.clipped) bad.push('room name is cut off ("' + s.text + '")');
-      if (s.text.indexOf('in call') < 0) bad.push('header "' + s.text + '"');
+      if (s.text.indexOf('in this meeting') < 0) bad.push('header "' + s.text + '"');
       if (overlaps(s, info.fit)) bad.push('room name covers Fit');
       // The room name floats over the faces. The tap below proves it stays
       // the thing a finger hits.
@@ -100,7 +100,7 @@ const phones = [
         };
       });
       if (!opened.open) bad.push('tap did not open the status');
-      else if (opened.text.indexOf('in the meeting') < 0 && opened.text.indexOf('in call') < 0) bad.push('the sheet dropped the count ("' + opened.text.slice(0, 80) + '")');
+      else if (opened.text.indexOf('in this meeting') < 0) bad.push('the sheet dropped the count ("' + opened.text.slice(0, 80) + '")');
       if (opened.closeH < 44) bad.push('Close is ' + Math.round(opened.closeH) + 'px');
       if (phone.shot && !bad.length) {
         await page.locator('#status-full-close').tap();

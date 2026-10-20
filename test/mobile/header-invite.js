@@ -1,7 +1,7 @@
 /*
  * Invite lives in the OS header (#appinvite) alone and with other people.
  * A tap opens the share sheet: Share hands the link to the phone share
- * sheet, Copy puts it on the clipboard. The count stays "N in call".
+ * sheet, Copy puts it on the clipboard. The count stays "N in this meeting".
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/header-invite.js
  */
@@ -153,7 +153,7 @@ async function measure(page) {
   if (crowded.btn.w < 44 || crowded.btn.h < 44) bad.push('Invite is ' + Math.round(crowded.btn.w) + 'x' + Math.round(crowded.btn.h) + ' with people here');
   if (!crowded.inHeader) bad.push('Invite leaves the OS header with people here');
   if (overlaps(crowded.btn, crowded.fit)) bad.push('Invite covers Fit with people here');
-  if (crowded.status !== 'sunday · 4 in call') bad.push('header "' + crowded.status + '"');
+  if (crowded.status !== 'sunday · 4 in this meeting') bad.push('header "' + crowded.status + '"');
   if (bad.length) failures.push('with-people: ' + bad.join('; '));
   await context.close();
   await browser.close();

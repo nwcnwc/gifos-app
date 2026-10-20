@@ -79,11 +79,11 @@ const LINE = 'No blur picked — turn your camera on to be ready for clear video
     });
     await page.waitForFunction(() => {
       const s = document.getElementById('status');
-      return (s.title || '').indexOf('in the meeting') >= 0;
+      return (s.title || '').indexOf('in this meeting') >= 0;
     }, { timeout: 8000 });
     await page.locator('#status').tap();
     const detail = await page.evaluate(() => document.getElementById('status-full-text').textContent);
-    if (detail.indexOf('in the meeting') < 0) bad.push('meeting line "' + detail + '"');
+    if (detail.indexOf('in this meeting') < 0) bad.push('meeting line "' + detail + '"');
     if (detail.indexOf('…') >= 0 || detail.indexOf('...') >= 0) bad.push('sheet still cuts the line');
     await page.screenshot({ path: path.join(SHOTS, 'after-header-full-count-pixel-7.png') });
   }
