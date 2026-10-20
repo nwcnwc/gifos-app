@@ -119,8 +119,15 @@
       // Both halves, from the one source of truth, on every fullscreenchange —
       // so Esc and the browser's own affordance drop the fill class too.
       if (o.fill && doc.body) doc.body.classList.toggle(o.fill, on);
-      btn.innerHTML = glyph(on);
-      btn.title = on ? outLabel : inLabel;
+      const word = on ? outLabel : inLabel;
+      // A meeting header says the words. An app bar keeps the glyph: nine
+      // buttons have no room for "Leave full screen".
+      const b = doc.body;
+      const words = !!(o.words && b && !b.classList.contains('has-app')
+        && !b.classList.contains('solo-app') && !b.classList.contains('app-room'));
+      if (words) btn.textContent = word;
+      else btn.innerHTML = glyph(on);
+      btn.title = word;
       btn.setAttribute('aria-label', btn.title);
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
       btn.classList.toggle('on', on);
