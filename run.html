@@ -13680,12 +13680,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         turn: (id) => (id === myId ? myTl : (statusOf.get(id) || {}).tl),
         holds: (id) => (id === myId ? turnBridging : !!(statusOf.get(id) || {}).tb) })) : null;
       const isBridge = !net || net.bridge === myId;
-      // A bridge carries the room to a few neighbours only (MAX_RELAY_JOBS:
-      // its upload stays bounded): a page it refused uses the pool itself,
-      // and keeps its anchor once it has one (no flapping as the refusal ages).
-      let spill = !isBridge && turnAnchorId != null;
-      if (!isBridge && net.bridge != null) for (const ref of relayRefusal.values()) if (ref[net.bridge] && now - ref[net.bridge] < 30000) spill = true;
-      const usePool = isBridge || spill;
+      // Only the bridge touches the pool. Its neighbours hear the room
+      // through it — the friend carry before a seat (at most MAX_RELAY_JOBS,
+      // so the bridge's upload stays bounded), the seating's rows and
+      // composites once seated (syncBridgeFeeds, selfFoldStream) — and NEVER
+      // by a TURN link of their own: a carry refusal is waited out, not
+      // spilled to a per-person credential, so a room of S networks holds
+      // S-1 TURN links however many people each network holds.
+      const usePool = isBridge;
       // 1. How long each pair has gone without a working path.
       for (const [pid, p] of peers) {
         if (p.connected || p.relayed) turnDownAt.delete(pid);
@@ -13782,7 +13784,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // blocked: with no chain to dial, it is the candidate.
           let pool = cands;
           if (!cands.some((c) => c.reachable === true && c.stage === 'turn')) {
-            pool = cands.filter((c) => net.bridges.has(c.id) && c.id !== net.bridge && (spill || String(c.id) < String(myId)));
+            pool = cands.filter((c) => net.bridges.has(c.id) && c.id !== net.bridge && String(c.id) < String(myId));
             if (!pool.length) pool = cands.filter((c) => c.reachable == null);
           }
           const pick = MT.chooseAnchor(pool, null, now);
@@ -16555,6 +16557,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function confirmGone(pid, why) {
       if (!pid || pid === myId || meshGone.has(pid)) return;
       whoGone(pid); // the Who log keeps them, with what is about to be forgotten
+      // The seating counts a confirmed departure down NOW, on every page. The
+      // heir's missed-beat verdict alone (300 ms) races this table forgetting
+      // the seat, and no other page ever learned the end was dead at all — the
+      // standby hand-over then degraded to a cold structural re-dial.
+      try { if (netRoom) netRoom.noteDeath(pid); } catch (e) {}
       meshGone.set(pid, Date.now());
       { const s = meshSeat(); meshGoneTick.set(pid, s && typeof s.TICK === 'number' ? s.TICK : -1); }
       if (typeof meshGoneSilent === 'object' && meshGoneSilent) { if (why === 'vouch-reap') meshGoneSilent.add(pid); else meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid); } // typeof: as dropStatus below
