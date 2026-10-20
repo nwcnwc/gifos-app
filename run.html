@@ -14188,6 +14188,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function vaPaintTiles(now) {
       let any = false;
       for (const p of peers.values()) { vaPaintTile(p, now); if (p.tile && p.tile.classList.contains('va-blocked')) any = true; }
+      // A heard person with no peer still wears the price, so the terms have
+      // to load even when no tile on this page carries the class.
+      if (!any) {
+        try {
+          for (const id of Object.keys(rosterNames)) {
+            if (id && id !== myId && !(peers && peers.has(id)) && vaRosterBlocked(id)) { any = true; break; }
+          }
+        } catch (e) {}
+      }
       if (any) vaLoadTerms(); // the prices on the tile: the admin's month, the host line, the pass
     }
     // A person this page never keeps a peer for (another row, the mesh dropped
@@ -14392,7 +14401,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       fetch(br.workerBase() + '/gifos/terms', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((b) => {
         const t = VA.termsOf(b);
         vaTerms = t.month || t.pass ? t : null; vaTermsAt = Date.now();
-      }).catch(() => { vaTerms = null; vaTermsAt = Date.now(); }).finally(() => { vaTermsBusy = false; vaPaintPanel(false); });
+      }).catch(() => { vaTerms = null; vaTermsAt = Date.now(); }).finally(() => {
+        vaTermsBusy = false;
+        vaPaintPanel(false);
+        // An open room has no panel. The price on a stadium face is painted
+        // by layout, and a page whose only blocked people are roster faces
+        // gets no other reason to lay out when the terms arrive.
+        try { if (typeof layout === 'function') layout(); } catch (e) {}
+      });
     }
     async function vaBuy(product) {
       if (vaBuying || !amAdmin || !admKeys || !hasAdminRoom()) return;
