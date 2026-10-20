@@ -14311,6 +14311,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Someone the mesh no longer peers is the same face: the roster says
     // they are heard and not seen, and the mark leaves when their cell
     // actually shows a picture.
+    // Terms just arrived. Put the price on faces that are already showing,
+    // without laying the meeting out again (that restarts the stadium hold).
+    function vaRefreshFaceMarks() {
+      const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
+      if (!MV || typeof MV.decorFace !== 'function' || !document.querySelectorAll) return;
+      const faces = document.querySelectorAll('.stadface[data-stad]');
+      for (let i = 0; i < faces.length; i++) {
+        const el = faces[i];
+        const id = el.dataset && el.dataset.stad;
+        if (!id) continue;
+        const d = vaFaceDecor(id);
+        MV.decorFace(el, { id: id, vaBlocked: !!d.blocked, vaMark: d.mark || '' });
+      }
+    }
     function vaFaceDecor(id) {
       const p = peers.get(id);
       const held = vaRosterBlocked(id);
@@ -14404,10 +14418,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }).catch(() => { vaTerms = null; vaTermsAt = Date.now(); }).finally(() => {
         vaTermsBusy = false;
         vaPaintPanel(false);
-        // An open room has no panel. The price on a stadium face is painted
-        // by layout, and a page whose only blocked people are roster faces
-        // gets no other reason to lay out when the terms arrive.
-        try { if (typeof layout === 'function') layout(); } catch (e) {}
+        // The price mark is a span on a face already on screen. A full
+        // layout here restarts the stadium hold and left the other row's
+        // faces black for the whole paid minute.
+        try { vaRefreshFaceMarks(); } catch (e) {}
       });
     }
     async function vaBuy(product) {
