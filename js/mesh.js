@@ -2580,6 +2580,22 @@
       // refuse at the same depth or they diverge exactly where a dup storm goes.
       if (topo.pcDepth(this.coord.pc) >= 12) { this.noroomWhy = 'depth'; this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
       const rc = this.rosterCells(); const idx = this.shuf(Array.from({ length: C() }, (_, k) => k));
+      // A new head's first FIND is not a spread FIND: it has not been told
+      // NOROOM, and the only first-hand hop is the child head. Following that
+      // spine anchors the company at the bottom of a full tree, where the
+      // depth wall leaves 780 seats (1000+1000 seed 3: the head sat at depth
+      // 8 and 219 never seated). A childless sibling the head has phoned owns
+      // an empty row one level above the next spine hop. Offer that row first.
+      if (netOn && !netLab(gl)) {
+        for (const q of idx) {
+          if (q === 0) continue;
+          const cell = rc[q]; const rk = ck(cell); const x = this.occGet(rk); if (x == null || x === this.id) continue;
+          if (R.labelOf(x) !== this.glabel) continue;
+          if (topo.pcDepth(cell.pc) >= 12) continue;
+          if (this.hasDownChild(cell)) continue;
+          if (this.siblingViaHead(rk)) { this.handOn(mm, x, rk, true, true); return; }
+        }
+      }
       for (let pass = 0; pass < 2; pass++)
         for (const q of idx) {
           const rk = ck(rc[q]); const x = this.occGet(rk); if (x == null || x === this.id) continue;
@@ -5307,9 +5323,16 @@
     foreignBelow(id) { let n = 0; const rc = this.seatOf(id).coord; for (const s of this.o.seats()) { if (!this.seatedLive(s.id) || s.id === id) continue; if (this.below(rc, s.coord) && this.foreignHead(s.id)) n++; } return n; }
     // The deterministic HEIR of a bridge end, from its own row: a row head's
     // next seated row-mate of its label; an anchored head's own child head.
+    // A row head with no such row-mate still names the seat that owns its
+    // row, when that seat carries the same label and is not anchored. Both
+    // ends read it from the owner cell. A group of one has no such seat.
     heirOf(end, notThis) {
       if (!this.seatedLive(end)) return null; const s = this.seatOf(end); const c = s.coord;
-      if (c.i === 0 || !this.foreignHead(end)) { for (let d = 1; d < C(); d++) { const x = this.at(ck({ pc: c.pc, r: c.r, i: (c.i + d) % C() })); if (x == null || x === end || x === notThis) continue; const xs = this.seatOf(x); if (xs.glabel !== s.glabel || xs.anchored) continue; return x; } return null; }
+      if (c.i === 0 || !this.foreignHead(end)) {
+        for (let d = 1; d < C(); d++) { const x = this.at(ck({ pc: c.pc, r: c.r, i: (c.i + d) % C() })); if (x == null || x === end || x === notThis) continue; const xs = this.seatOf(x); if (xs.glabel !== s.glabel || xs.anchored) continue; return x; }
+        if (c.i === 0) { const up = topo.up(c); if (up) { const p = this.at(ck(up)); if (p != null && p !== end && p !== notThis && this.seatedLive(p)) { const ps = this.seatOf(p); if (ps.glabel === s.glabel && !ps.anchored) return p; } } }
+        return null;
+      }
       const x = this.at(ck(topo.down(c))); if (x != null && x !== notThis && this.seatOf(x).glabel === s.glabel) return x; return null;
     }
     // Joiners sitting down at depth `level` (a greeter's own vouches, not yet
