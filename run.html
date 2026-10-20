@@ -30503,13 +30503,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function ccFilling() { return false; } // a peer's captions do not start or stop this browser
     function ccvPublish() {
       const ids = new Set();
+      // Wanting to write is not writing. ownVoiceWanted is true as soon as the
+      // mic is on and a speech constructor exists, which is before any words.
+      // Publishing that wish as ccv made every scribe skip the person
+      // (ccWrittenElsewhere), so a constructor that never returned a result
+      // left captures empty for the whole meeting. A voice is claimed here
+      // only after a real line (speechProved) or while Whisper is capturing it.
+      const proved = (typeof speechProved !== 'undefined' && !!speechProved);
       if (myStatus.cc || ccFilling() || ownVoiceWanted()) {
         for (const id of ccMix.ins.keys()) ids.add(id === 'me' ? myId : id);
         for (const id of wspCaps.keys()) ids.add(id === 'me' ? myId : id);
-        if (speech && !speech.input && !myStatus.muted) ids.add(myId);
-        if (ownVoiceWanted() && typeof myId !== 'undefined' && myId) ids.add(myId);
+        if (speech && !speech.input && !myStatus.muted && proved) ids.add(myId);
       }
-      if (!myStatus.muted && (wspCaps.has('me') || (speech && !speech.input))) ids.add(myId);
+      if (!myStatus.muted && (wspCaps.has('me') || (speech && !speech.input && proved))) ids.add(myId);
       const next = Array.from(ids).filter(Boolean).sort();
       const prev = myStatus.ccv || [];
       if (next.length === prev.length && next.every((x, i) => x === prev[i])) return;
@@ -30625,14 +30631,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (best) { ccMix.last = best; ccMix.lastAt = now; }
       return best;
     }
-    let speech = null, speechFails = 0, speechRetry = null, speechGaveUp = false;
+    let speech = null, speechFails = 0, speechRetry = null, speechGaveUp = false, speechProved = false;
     // A browser whose speech engine cannot run tells the room so (ccst
     // 'paused'): it writes nothing, and a scribe takes its voice instead.
     // The first line it writes again takes the word back.
     let speechSaidPaused = false;
     function speechEngineDown() {
+      speechProved = false;
       if (typeof myStatus === 'undefined' || !myStatus || myStatus.ccst === 'paused') return;
       myStatus.ccst = 'paused'; speechSaidPaused = true;
+      try { ccvPublish(); } catch (e) {}
       try { if (typeof updateTile === 'function') updateTile('me'); } catch (e) {}
       try { if (typeof broadcastStatus === 'function') broadcastStatus(); } catch (e) {}
     }
@@ -30667,7 +30675,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         speech.lang = ccLang() === 'auto' ? (navigator.language || 'en-US') : ccLang();
         speech.onresult = (e) => {
           speechFails = 0;
+          speechProved = true;
           speechEngineUp();
+          try { ccvPublish(); } catch (err) {}
           if (rec.input) {
             for (let i = e.resultIndex; i < e.results.length; i++) {
               if (!e.results[i].isFinal) continue;
