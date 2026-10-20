@@ -376,7 +376,9 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 #set-modal #set-title { grid-column: 1 / -1; grid-row: 1; margin: 0; font-size: 16px; }
 #set-modal #set-video { grid-column: 1; grid-row: 2; }
 #set-modal #set-stage-video { grid-column: 2; grid-row: 2; }
-#set-modal .name-box > .set-sec:not([id]) { grid-column: 3; grid-row: 2; }
+#set-modal .set-sec:not([id]) { grid-column: 3; grid-row: 2; }
+/* The stage and name blocks share a wrapper. It is only a column on a phone. */
+#set-modal #set-col-a { display: contents; }
 #set-modal #set-captions { grid-column: 1 / span 2; grid-row: 3; }
 #set-modal #mixpanel { grid-column: 3; grid-row: 3; }
 #set-modal .name-box > div:last-child { grid-column: 1 / -1; grid-row: 4; margin-top: 0; }
@@ -385,6 +387,7 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 #set-modal .set-help, #set-modal .rec-opt small { font-size: 11px; line-height: 1.25; }
 #set-modal .rec-opt { min-height: 0; padding: 2px 0; }
 #set-modal #ccengine-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
+#set-modal #ccengine-row #ccsource { grid-column: 1 / -1; }
 #set-modal .seg { min-height: 28px; padding: 2px 6px; }
 #set-modal .name-box button { min-height: 32px; padding: 4px 8px; }
 #set-modal #mixpanel { gap: 4px; margin: 0; }
@@ -399,7 +402,7 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   #set-modal #vqrow .seg { flex: 1 1 0; min-width: 0; padding: 2px 1px; font-size: 11px; }
   #set-modal #set-stage-video { grid-column: 1; grid-row: 3; }
   #set-modal #mixpanel { grid-column: 2; grid-row: 3; }
-  #set-modal .name-box > .set-sec:not([id]) { grid-column: 1 / -1; grid-row: 4; }
+  #set-modal .set-sec:not([id]) { grid-column: 1 / -1; grid-row: 4; }
   #set-modal #set-captions { grid-column: 1 / -1; grid-row: 5; }
   #set-modal .name-box > div:last-child { grid-row: 6; }
   #set-modal #ccengine-row { max-height: 72px; overflow-y: auto; }
@@ -418,8 +421,31 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   #set-modal .name-box button, #set-modal .seg { min-height: 28px; }
   #set-modal #set-avatar-file { height: 24px; min-height: 0; }
   #set-modal .rec-opt input { min-height: 0; }
+  /* A phone that is offered a Meeting Bot's captions gets the Captions
+     source block, and the card ran 108px past a 773px screen. Two columns
+     hold the lower half: the name block sits under the stage block (one
+     column, so the two sides stack on their own), and the captions
+     language, its help and the language menu sit under the sound mix. The engine row spans the card, and the Captions source
+     block takes the empty column under Whisper, beside the phone's
+     Whisper warning. Close stays on screen without scrolling. */
+  #set-modal #set-captions { display: contents; }
+  #set-modal #set-col-a { display: flex; flex-direction: column; gap: 2px; grid-column: 1; grid-row: 3 / span 4; }
+  #set-modal #set-col-a > .set-sec { grid-column: auto; grid-row: auto; }
+  #set-modal #set-captions > b { grid-column: 2; grid-row: 4; }
+  #set-modal #set-captions > .set-help:not(#ccall-row) { grid-column: 2; grid-row: 5; }
+  #set-modal #cclang { grid-column: 2; grid-row: 6; }
+  #set-modal #ccengine-row { grid-column: 1 / -1; grid-row: 7; margin-top: 0 !important; }
+  #set-modal #ccall-row { grid-column: 1 / -1; grid-row: 8; }
+  #set-modal .name-box > div:last-child { grid-row: 9; }
+  #set-modal #ccengine-row #ccsource { grid-column: 2; grid-row: 2; margin-top: 0 !important; }
 }
 
+/* People is a column: the title, the lead and the buttons keep their height
+   and the list takes what is left, so the card never grows past the window.
+   Fifteen people at 1366x768 put the title above the top edge. */
+#who-modal .name-box { display: flex; flex-direction: column; }
+#who-modal .name-box > * { flex: 0 0 auto; }
+#who-modal .name-box > #who-list { flex: 0 1 auto; min-height: 0; }
 /* Short cards: the list inside may scroll. The card may not. */
 @media (max-height: 640px) {
   #who-modal .name-box { padding: 10px 12px; }

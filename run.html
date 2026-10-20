@@ -4205,6 +4205,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           <button class="seg" data-vq="144p">144p</button>
         </span>
       </div>
+      <div id="set-col-a">
       <div class="set-sec" id="set-stage-video">
         <button type="button" id="adjust-stage" class="seg" data-t="adjustStage" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;align-self:flex-start">Adjust stage video</button>
         <p class="set-help" data-t="adjustStageHelp">Preview and frame what your camera would send on the stage. This does not put anyone on the stage.</p>
@@ -4217,6 +4218,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         <input id="set-avatar-file" type="file" accept="image/gif,image/png,image/jpeg,image/webp,.gif,.png,.jpg,.jpeg,.webp" aria-label="Picture" data-al="setPicture">
         <button type="button" id="set-avatar-remove" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem;align-self:flex-start" data-t="setRemove">Remove</button>
         <p id="set-avatar-err" class="set-help" role="alert"></p>
+      </div>
       </div>
       <div class="set-sec" id="set-captions">
         <b data-t="setCcLang">Captions language</b>
@@ -4232,8 +4234,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             <textarea id="ccwords" rows="2" data-ph="setCcWords" placeholder="Names and words to recognise: Siobhan, Kubernetes, GifOS…" style="width:100%;margin-top:.4rem;padding:.4rem .5rem;border-radius:.4rem;border:1px solid var(--border,#2a2a3f);background:var(--surface,#1c1c2b);color:var(--text,#e0e0f0);font:inherit;font-size:.85rem"></textarea>
             <label class="rec-opt" id="ccscribe-row" style="margin-top:.4rem"><input type="checkbox" id="ccscribe"><span><b data-t="setCcScribe">Write down everyone here (scribe)</b><small data-t="setCcScribeHelp">Your device transcribes every voice it hears with Whisper and offers to be the others' captions, so their devices can stop transcribing. The most work a device can do here — best on a strong computer.</small></span></label>
           </div>
+          <div id="ccsource" style="margin-top:.5rem;display:none"></div>
         </div>
-        <div id="ccsource" style="margin-top:.5rem;display:none"></div>
         <p class="set-help" id="ccall-row" style="display:none;margin-top:.5rem"><button id="ccall" class="seg" style="border:1px solid var(--border,#2a2a3f);border-radius:.4rem">Captions for everyone: off</button> <span id="ccall-note">Admins only — every device starts writing down the voices it hears. Anyone can tap Captions to opt out.</span></p>
       </div>
       <!-- VIDEO ANYWHERE: the admin's own row (buy, receipt file, hours meter). Admins only. -->
