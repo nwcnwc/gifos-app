@@ -108,7 +108,7 @@ async function boot(browser, device) {
     });
     const bad = [];
     if (!presented.ok) bad.push(presented.why || 'could not present peers');
-    if (info.text !== 'header-count · 4 in call') bad.push('header "' + info.text + '"');
+    if (info.text !== 'header-count · 4 in this meeting') bad.push('header "' + info.text + '"');
     if (info.clipped) bad.push('header text is cut off');
     if (info.off || !info.inChip) bad.push('header sits outside the chip');
     if (info.coversFit) bad.push('header covers Fit');

@@ -36,7 +36,7 @@ function readGroups(page) {
     };
     return {
       heads, groups,
-      talk: order('Talk'),
+      meeting: order('Meeting'),
       hidden: ids.filter((id) => groups[id] !== '(not in More)' && !shown(document.getElementById(id))),
       tools: !!document.getElementById('moretools'),
     };
@@ -47,15 +47,15 @@ test('More shows every group, in meeting order, on one sheet', async ({ page }) 
   await boot(page);
   await page.click('#bartoggle');
   const got = await readGroups(page);
-  expect(got.heads).toEqual(['People', 'Talk', 'Your video', 'Room', 'Settings and help']);
+  expect(got.heads).toEqual(['Meeting', 'Your video', 'Room', 'Settings and help']);
   expect(got.groups).toEqual({
-    whobtn: 'People',
-    chatbtn: '(not in More)', hand: 'Talk', ccbtn: 'Talk', trbtn: 'Talk',
-    blurseg: 'Your video', sharebtn: '(not in More)',
+    whobtn: 'Meeting',
+    chatbtn: 'Meeting', hand: 'Meeting', ccbtn: 'Meeting', trbtn: 'Meeting', sharebtn: 'Meeting',
+    blurseg: 'Your video',
     pwbtn: 'Room', recbtn: 'Room', votebtn: 'Room', stagebtn: 'Room', appbtn: 'Room',
     setbtn: 'Settings and help', keysbtn: 'Settings and help',
   });
-  expect(got.talk).toEqual(['hand', 'ccbtn', 'trbtn']);
+  expect(got.meeting).toEqual(['chatbtn', 'sharebtn', 'hand', 'ccbtn', 'whobtn', 'trbtn']);
   expect(got.hidden).toEqual([]);
   expect(got.tools).toBe(false);
 });
@@ -66,9 +66,9 @@ test('a phone gets the same groups, with the dock buttons in theirs', async ({ p
   await boot(page, 390, 844);
   await page.click('#bartoggle');
   const got = await readGroups(page);
-  expect(got.heads).toEqual(['People', 'Talk', 'Your video', 'Room', 'Settings and help']);
-  expect(got.groups).toMatchObject({ chatbtn: 'Talk', sharebtn: 'Your video', pwbtn: 'Room' });
-  expect(got.talk).toEqual(['chatbtn', 'hand', 'ccbtn', 'trbtn']);
+  expect(got.heads).toEqual(['Meeting', 'Your video', 'Room', 'Settings and help']);
+  expect(got.groups).toMatchObject({ chatbtn: 'Meeting', sharebtn: 'Meeting', whobtn: 'Meeting', pwbtn: 'Room' });
+  expect(got.meeting).toEqual(['chatbtn', 'sharebtn', 'hand', 'ccbtn', 'whobtn', 'trbtn']);
   const fit = await page.evaluate(() => {
     const m = document.getElementById('barmore').getBoundingClientRect();
     const dock = document.getElementById('leavebtn').getBoundingClientRect();

@@ -4015,17 +4015,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
          pick folds the sheet. A text field does not. placeDockForWidth
          moves Chat and Share screen into their groups when the dock is a
          phone's. -->
-    <section class="moregroup" data-group="people">
-      <h4 data-t="people">People</h4>
-      <div class="morerow">
-        <button type="button" id="whobtn" data-t="who" data-ti="whoTip" aria-keyshortcuts="Alt+W" title="Who is on this meeting — names and internet addresses">Who</button>
-      </div>
-    </section>
-    <section class="moregroup" data-group="talk">
-      <h4 data-t="talk">Talk</h4>
-      <div class="morerow">
+    <section class="moregroup" data-group="use">
+      <h4 data-t="lobTitle">Meeting</h4>
+      <div class="morerow" id="userow">
         <button id="hand" data-t="hand" aria-keyshortcuts="Alt+H" title="Raise your hand — raised hands float to the top">Hand</button>
         <button id="ccbtn" type="button" aria-pressed="false" data-t="captions" data-ti="ccTip" title="Show or hide captions on your screen. This meeting is written down either way.">Captions</button>
+        <button type="button" id="whobtn" data-t="people" data-ti="whoTip" aria-keyshortcuts="Alt+W" title="Who is on this meeting — names and internet addresses">People</button>
         <button data-t="transcript" aria-keyshortcuts="Alt+T" title="The meeting's live transcript" id="trbtn"><svg class="ai-spark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l1.6 6.2L20 10l-6.4 1.8L12 18l-1.6-6.2L4 10l6.4-1.8z"/><path d="M18 15l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>Transcript</button>
         <button id="qabtn" type="button" title="Questions for the host: ask one, and vote up the ones you want answered">Questions</button>
       </div>
@@ -4195,7 +4190,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     <div id="stadium"></div>
   </div>
   <div class="name-modal" role="dialog" aria-modal="true" id="set-modal" style="display:none">
-    <div class="name-box" style="max-width:440px;text-align:left">
+    <div class="name-box" style="text-align:left">
       <h3 id="set-title" style="text-align:center" data-t="setTitle">Settings</h3>
       <div class="set-sec" id="set-video">
         <b data-t="setVideo">Video quality</b>
@@ -5766,6 +5761,41 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function moreRow(group) {
       return document.querySelector('#barmore .moregroup[data-group="' + group + '"] > .morerow');
     }
+    // Chat, Share screen, Hand, Captions, People, then Transcript and
+    // Questions. On a desktop the first two stay on the dock until More
+    // opens. A phone keeps them in this row. A broadcast does not use this
+    // (placeDockForWidth still parks a service's own buttons).
+    function seatUseRow() {
+      if (typeof BROADCAST !== 'undefined' && BROADCAST) return;
+      const bar = document.querySelector('.bar');
+      const row = moreRow('use');
+      if (!bar || !row) return;
+      const phone = phoneLayout();
+      const open = !bar.classList.contains('collapsed');
+      const skipHand = (id) => id === 'hand' && typeof viewerHandOnDock === 'function' && viewerHandOnDock();
+      if (phone || open) {
+        ['chatbtn', 'sharebtn', 'hand', 'ccbtn', 'whobtn', 'trbtn', 'qabtn'].forEach((id) => {
+          if (skipHand(id)) return;
+          const el = document.getElementById(id);
+          if (el) row.appendChild(el);
+        });
+      } else {
+        const chat = document.getElementById('chatbtn');
+        const share = document.getElementById('sharebtn');
+        const cc = document.getElementById('ccdock');
+        const toggle = document.getElementById('bartoggle');
+        if (chat && chat.parentElement !== bar) {
+          if (cc && cc.parentElement === bar) bar.insertBefore(chat, cc);
+          else if (toggle && toggle.parentElement === bar) bar.insertBefore(chat, toggle);
+        }
+        if (share && share.parentElement !== bar && toggle && toggle.parentElement === bar) bar.insertBefore(share, toggle);
+        ['hand', 'ccbtn', 'whobtn', 'trbtn', 'qabtn'].forEach((id) => {
+          if (skipHand(id)) return;
+          const el = document.getElementById(id);
+          if (el) row.appendChild(el);
+        });
+      }
+    }
     function placeDockForWidth() {
       const bar = document.querySelector('.bar');
       const more = document.getElementById('barmore');
@@ -5783,17 +5813,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (anchor && anchor.parentElement === bar) bar.insertBefore(el, anchor); else bar.insertBefore(el, document.getElementById('bartoggle'));
         }
       };
-      if (!service) put('sharebtn', 'video', 'bartoggle');
-      // Hand leads Talk unless it is a viewer's, on the dock; Chat goes ahead
-      // of it when the dock is a phone's.
-      const hand = document.getElementById('hand'), talk = moreRow('talk');
-      if (hand && talk && hand.parentElement !== bar && hand.parentElement !== talk) talk.insertBefore(hand, talk.firstChild);
-      put('chatbtn', 'talk', 'ccdock', true);
-      // Plain words a volunteer knows (qa-meet-mobile) on a phone; the short
-      // labels, and their translations, on a wide screen.
+      // A service keeps Share beside the video tools and Chat in the first
+      // group. A meeting seats Chat and Share with Hand while More is open
+      // (and on a phone the whole time). seatUseRow does that.
+      if (service) {
+        put('sharebtn', 'video', 'bartoggle');
+        const hand = document.getElementById('hand'), use = moreRow('use');
+        if (hand && use && hand.parentElement !== bar && hand.parentElement !== use) use.insertBefore(hand, use.firstChild);
+        put('chatbtn', 'use', 'ccdock', true);
+      } else {
+        try { seatUseRow(); } catch (e) {}
+      }
+      // Plain words a volunteer knows (qa-meet-mobile) on a phone; People on
+      // every width (the same word the phone already used).
       const words = phone
-        ? { whobtn: 'People', pwbtn: 'Room password', votebtn: 'Vote on someone' }
-        : { whobtn: uiText('who', 'Who'), pwbtn: uiText('password', 'Password'), votebtn: uiText('vote', 'Vote') };
+        ? { whobtn: uiText('people', 'People'), pwbtn: 'Room password', votebtn: 'Vote on someone' }
+        : { whobtn: uiText('people', 'People'), pwbtn: uiText('password', 'Password'), votebtn: uiText('vote', 'Vote') };
       Object.keys(words).forEach((id) => { const el = document.getElementById(id); if (el && el.textContent !== words[id]) el.textContent = words[id]; });
       // Dock words: short on a phone (five buttons in 320px), whole on a wide
       // window where older eyes read them at 16px (qa-meet-desktop).
@@ -5803,7 +5838,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const dockWords = (phone || narrowService)
         ? { reactbtn: 'React', sharebtn: 'Share' }
         : { reactbtn: uiText('react', 'Reactions'), sharebtn: uiText('shareScreen', 'Share screen') };
-      Object.keys(dockWords).forEach((id) => { const el = document.querySelector('#' + id + ' .dockword'); if (el && el.textContent !== dockWords[id]) el.textContent = dockWords[id]; });
+      Object.keys(dockWords).forEach((id) => {
+        const el = document.querySelector('#' + id + ' .dockword');
+        if (!el) return;
+        const inSheet = id === 'sharebtn' && el.closest && el.closest('#barmore');
+        const word = inSheet ? uiText('shareScreen', 'Share screen') : dockWords[id];
+        if (el.textContent !== word) el.textContent = word;
+      });
       try { paintStage(); } catch (e) {}
     }
     window.addEventListener('resize', () => { try { placeDockForWidth(); } catch (e) {} });
@@ -10417,7 +10458,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const vw = pv.videoWidth || (tv && tv.videoWidth) || 16, vh = pv.videoHeight || (tv && tv.videoHeight) || 9;
         pad.style.aspectRatio = vw + ' / ' + vh;
         const maxW = (pad.parentElement && pad.parentElement.clientWidth) || 360;
-        pad.style.width = Math.round(Math.min(maxW, (window.innerHeight * 0.46) * vw / vh)) + 'px';
+        const capH = 72;
+        pad.style.width = Math.round(Math.min(maxW, capH * vw / vh)) + 'px';
         crop = MZ.normCrop(crop, vw, vh);
         const pw = pad.clientWidth || 300, ph = pw * vh / vw;
         const side = crop.s * Math.min(vw, vh) * (pw / vw);
@@ -10463,7 +10505,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const vw = pv.videoWidth || 16, vh = pv.videoHeight || 9;
         pad.style.aspectRatio = vw + ' / ' + vh;
         const maxW = (pad.parentElement && pad.parentElement.clientWidth) || 360;
-        pad.style.width = Math.round(Math.min(maxW, (window.innerHeight * 0.46) * vw / vh)) + 'px';
+        const capH = 72;
+        pad.style.width = Math.round(Math.min(maxW, capH * vw / vh)) + 'px';
         const n = normStageFrame(f) || { x: 0.5, y: 0.5, w: 1, h: 1 };
         f = n;
         box.style.left = ((n.x - n.w / 2) * 100) + '%'; box.style.top = ((n.y - n.h / 2) * 100) + '%';
@@ -12638,8 +12681,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           countText = head + uiText('countPartial', 'Room count incomplete');
           restText = '';
         } else {
-          phoneDetail = head + (shown <= 1 ? countText : shown + ' ' + uiText('inMeeting', 'in the meeting')) + restText;
-          countText = head + (shown <= 1 ? (atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you')) : shown + ' in call');
+          phoneDetail = head + (shown <= 1 ? countText : shown + ' ' + uiText('inMeeting', 'in this meeting')) + restText;
+          countText = head + (shown <= 1 ? (atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you')) : shown + ' ' + uiText('inMeeting', 'in this meeting'));
           restText = '';
         }
       }
@@ -28053,7 +28096,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const hand = document.getElementById('hand');
       const bar = document.querySelector('.bar');
       const react = document.getElementById('reactbtn');
-      const talk = moreRow('talk');
+      const talk = moreRow('use') || moreRow('talk');
       const chat = document.getElementById('chatbtn');
       if (!hand || !bar || !react || !talk) return;
       if (viewerHandOnDock()) {
@@ -28313,29 +28356,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const on = !!myStatus.scr;
       shareBtn.classList.toggle('on', on);
       const sharingLabel = on ? 'Stop sharing' : 'Share screen';
-      const docked = shareBtn.parentElement && shareBtn.parentElement.classList.contains('bar');
       const shareLab = shareBtn.querySelector('.docklab');
-      if (docked && shareLab) {
-        // Whole words on the dock (qa-meet-desktop: older eyes read them at 16px).
-        // Short words on a phone and on a narrow service window (placeDockForWidth).
-        const shortShare = phoneLayout() || (typeof BROADCAST !== 'undefined' && BROADCAST && window.innerWidth < 1100);
+      if (shareLab) {
+        // Whole words on the dock and in the sheet. Short words only on the
+        // phone dock and a narrow service window (placeDockForWidth). Never
+        // textContent: that wipes the icon when the button moves into More.
+        const inSheet = shareBtn.closest && shareBtn.closest('#barmore');
+        const shortShare = !inSheet && (phoneLayout() || (typeof BROADCAST !== 'undefined' && BROADCAST && window.innerWidth < 1100));
         shareLab.textContent = on ? uiText('stopShare', shortShare ? 'Stop' : 'Stop sharing') : (shortShare ? 'Share' : uiText('shareScreen', 'Share screen'));
-        shareBtn.setAttribute('aria-label', sharingLabel);
-      } else {
-        shareBtn.textContent = sharingLabel;
-        shareBtn.setAttribute('aria-label', sharingLabel);
       }
+      shareBtn.setAttribute('aria-label', sharingLabel);
       shareBtn.title = (typeof BROADCAST !== 'undefined' && BROADCAST)
         ? (on ? 'You are sharing your screen on the stage. Tap to stop.' : 'Show the stage a window, a tab, or your desktop.')
         : (on
           ? uiText('shareTipOn', 'You are sharing your screen with the meeting — tap to stop')
           : uiText('shareTip', 'Show the whole room a window, a tab or your desktop. (To share a GifOS app, use Run app — everyone runs it themselves.)'));
-      // FEATURE DETECTION, NEVER A UA CHECK (the preflight's rule). A phone
-      // browser without getDisplayMedia used to HIDE the button, and the
-      // first customer meeting read that as "there is no share button at
-      // all". The button now stays, greyed; pressing it says why (2026-10-02).
-      shareBtn.classList.toggle('dim', !canScreenShare());
-      shareBtn.style.display = (BROADCAST && bcRole() !== 'host') ? 'none' : '';
+      // FEATURE DETECTION, NEVER A UA CHECK (the preflight's rule). Where the
+      // browser has no getDisplayMedia the control is hidden (STEERING 2105).
+      // A greyed button whose only explanation was a clipped banner read as
+      // broken. Where capture exists, Share screen stays in the first group.
+      shareBtn.classList.remove('dim');
+      shareBtn.style.display = (!canScreenShare() || (BROADCAST && bcRole() !== 'host')) ? 'none' : '';
       // A screen on the Stage wants height. This does not rebuild the layout —
       // it lets the strip grow the way the broadcast skin already does.
       document.body.classList.toggle('screen-on', screenSharers().length > 0);
@@ -28420,9 +28461,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (myStatus.scr) return;
       // No browser NAMES here (browser support is data — site/browser-support.json
        // — and a name in a string rots the same way a version number does). This
-       // line is nearly unreachable anyway: paintShare hides the control where
-       // the API is absent, so only a scripted caller gets here.
-      if (!canScreenShare()) { setStatus('This browser can’t share a screen — it has no screen-capture support. A computer browser can; several phone browsers cannot.'); return; }
+      // line is nearly unreachable anyway: paintShare hides the control where
+      // the API is absent. A scripted call returns without a status line.
+      if (!canScreenShare()) return;
       if (forcedCamOff('me')) { setStatus('📷 An admin turned your video off for the room — screen sharing is off too until they lift it.'); return; }
       // Already being on stage does not waive this. The stage grant and the
       // screen grant are different orders.
@@ -28536,7 +28577,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (BROADCAST && bcRole() !== 'host') return;
       if (myStatus.scr) { stopScreenShare(); return; }
       if (!canScreenShare()) {
-        setStatus(uiText('shareNoCapture', '🖥 This browser has no screen-capture support, so it cannot share a screen. Most phone browsers cannot; a computer browser can. To show a document from a phone, open it as an app with Run app.'), 15000);
+        const app = document.getElementById('appbtn');
+        if (app) app.click();
         return;
       }
       // One click on the dock opens the browser's own picker. The explanatory
@@ -31943,6 +31985,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         toggle.title = collapsed ? 'More' : 'Hide ' + surface + ' controls';
         const word = toggle.querySelector('.docklab');
         if (word) word.textContent = collapsed ? uiText('more', 'More') : uiText('hide', 'Hide');
+        try { seatUseRow(); } catch (e) {}
         // Opening More covers the Run of show / lyrics cards so every
         // dock stand-in on the sheet is fully visible (Pixel 7 host dock).
         if (!collapsed) {
