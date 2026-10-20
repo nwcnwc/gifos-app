@@ -346,9 +346,11 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   }
   .bar:not(.collapsed) #barmore .morerow > .iconbtn .docklab.dockword { font-size: 12px; font-weight: 650; }
   .bar:not(.collapsed) .barmore .seg { min-height: 36px; min-width: 36px; font-size: 13px; }
-  .topchip .status.alert { white-space: normal; overflow: visible; text-overflow: clip; height: auto; }
+  /* A wrapped alert grew this line over the top row and covered Open.
+     One line. The whole sentence is in the status sheet. */
+  .topchip .status.alert { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: 44px; }
   .topchip .status.alert #statusrest {
-    display: inline; max-width: 100%; white-space: normal; overflow: visible; text-overflow: clip;
+    display: inline-block; max-width: 100%; vertical-align: bottom; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 }
 @media (max-width: 700px) and (orientation: portrait) {
