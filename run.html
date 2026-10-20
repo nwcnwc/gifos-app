@@ -11062,6 +11062,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // which keeps ticking when the tab is hidden and main-thread timers are
       // clamped (a backgrounded phone used to broadcast a near-frozen blur).
       const onFrame = () => { if (blurPipe !== pipe) return; pipe.rvfcN = (pipe.rvfcN || 0) + 1; paint(); if (src.requestVideoFrameCallback) pipe.rvfc = src.requestVideoFrameCallback(onFrame); };
+      // The source never stays paused. Chrome pauses every playing <video>
+      // when it resumes a tab it froze in the background (a phone after an
+      // app switch). A paused source brings no frame callbacks, and while the
+      // tab is visible nothing else paints, so the room would get the last
+      // frame for good while the camera runs.
+      const keepPlaying = () => { if (blurPipe === pipe && src.paused && src.srcObject) src.play().catch(() => {}); };
+      src.addEventListener('pause', keepPlaying);
       src.play().catch(() => {});
       const stream = canvas.captureStream(15);
       pipe.track = stream.getVideoTracks()[0];
@@ -11095,6 +11102,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let metroOff = null;
       const syncMetro = () => {
         if (blurPipe !== pipe) return;
+        keepPlaying();
         if (!rvfcDrives || document.hidden) { if (!metroOff) metroOff = metroSub(tick); }
         else if (metroOff) { metroOff(); metroOff = null; }
       };
@@ -11102,6 +11110,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.addEventListener('visibilitychange', syncMetro);
       pipe.unsub = () => {
         document.removeEventListener('visibilitychange', syncMetro);
+        src.removeEventListener('pause', keepPlaying);
         if (metroOff) { metroOff(); metroOff = null; }
       };
       // A camera grabbed again feeds this same canvas, so the track the room
