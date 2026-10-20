@@ -1862,7 +1862,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   .lob-face { width: 64px; height: 64px; flex: none; border-radius: 50%; border: 0; padding: 0; background: #1a1d24; color: #fff;
     font-size: 26px; font-weight: 700; overflow: hidden; cursor: pointer; }
   #lob-name-in { flex: 1; min-height: 48px; border-radius: 12px; border: 1.5px solid #8d93a0; padding: 0 12px; font: inherit; color: #1d1d1f; background: #fff; }
-  /* Help: a longer, scrollable panel — same modal chrome, room to breathe. */
+  /* Help: the meeting list fits the card. Overflow stays available for a longer broadcast story. */
   .help-box { width: 92vw; }
   .help-scroll { max-height: 70vh; overflow-y: auto; padding-right: .4rem; }
   .help-box h4 { margin: 1.1rem 0 .35rem; font-size: .98rem; color: var(--text, #e0e0f0); }
@@ -4414,126 +4414,28 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div class="name-modal" role="dialog" aria-modal="true" id="help-modal" style="display:none">
     <div class="name-box help-box" style="max-width:600px;text-align:left">
       <h3 style="text-align:center" data-t="helpTitle">How this meeting works</h3>
-      <div class="help-scroll">
-        <p class="help-lead">This meeting has <b>no size limit</b>. Two people or two
-        million, it runs the same. The dream it is built for: the <b>whole Earth in
-        one meeting at once</b> — everyone able to speak, everyone sharing one live
-        room. It scales by folding the crowd into itself, so your phone only ever
-        talks to a handful of neighbors no matter how vast the room grows.</p>
-
-        <h4>The stadium — how a giant room is arranged</h4>
-        <p>Picture a stadium. You don't meet a million faces; you meet the few around you,
-        and the rest is a living backdrop.</p>
+      <div class="help-scroll help-meet">
+        <p class="help-lead">This meeting has <b>no size limit</b>. The dream: the <b>whole Earth in
+        one meeting at once</b> — everyone able to speak. Your phone talks only to a handful of neighbors.</p>
+        <h4>The room</h4>
         <ul class="help-list">
-          <li><b>Stage</b> — the front. Whoever steps up here is seen and heard first
-          by <i>everyone</i> in the whole stadium (the reader, a speaker, a shared app).</li>
-          <li><b>Row</b> — the handful of people right next to you. This is your real
-          conversation — you're directly connected to them.</li>
-          <li><b>The stadium</b> — everyone beyond your row, packed into one mosaic of
-          equal-size squares that grows downward as the room fills, plus a single summed
-          roar. A million voices answering at once reach you as one sound.</li>
+          <li><b>Stage</b> — step up to be seen and heard first by the whole room. Tap again to step down.</li>
+          <li><b>Row</b> — the people next to you.</li>
+          <li><b>The stadium</b> — everyone else, one mosaic and one roar.</li>
         </ul>
-        <p class="help-note">How does it scale? Each row automatically combines its
-        members' video and voices, and rows fold up the tree into <b>one</b> Stadium
-        mosaic. You always see how many people are here — but no single phone ever has to
-        carry more than its own little corner of the room, which is why two people and
-        two million feel exactly the same.</p>
-
-        <h4>The screen — one endless scroll</h4>
-        <p>Top to bottom, <b>nearest first</b>: the <b>stage</b>, then <b>your row</b>,
-        and finally <b>the stadium</b> — everyone else as equal squares, each person the
-        same size, the grid growing taller the more people arrive. Past about a hundred
-        people the squares shrink into a live <i>tapestry</i> (a small green dot marks who
-        is speaking). <b>Tap any folded tile to zoom</b> it larger; tap again to fold it
-        back.</p>
-
-        <h4>The sound mix — faders that grow in</h4>
-        <p>Tap <b>Settings</b> for your own private sound board (it only changes what
-        <i>you</i> hear — like your own volume knob). Faders appear as the room gets big enough
-        to need them:</p>
+        <h4>Controls</h4>
         <ul class="help-list">
-          <li><b>Stage</b> — the front of the room.</li>
-          <li><b>My row</b> — the people right beside you.</li>
-          <li><b>The stadium</b> — the far roar of everyone else (appears once the room
-          spans past your row). Turn it down during a quiet reading, then push it up
-          to let the whole crowd's response wash in.</li>
+          <li><b>Blur</b> — how blurred your video looks. Only you control your camera.</li>
+          <li><b>Hand</b> — join the queue.</li>
+          <li><b>Password</b> — the key to clear video.</li>
+          <li><b>Invite</b> — one link brings people in.</li>
+          <li><b>Run app</b> — an app the room uses together.</li>
+          <li><b>Record / CC</b> — record here, or captions from your voice.</li>
+          <li><b>Settings</b> — mix for Stage, My row, and the stadium. Timing: Conversation, Unison, or Song.</li>
+          <li><b>Admin</b> — a host can moderate. Most rooms stay open.</li>
         </ul>
-        <p>Below the faders sits <b>Timing</b>. Sound takes a moment to cross the
-        internet, and this chooses what to do with that moment:</p>
-        <ul class="help-list">
-          <li><b>Conversation</b> (the usual) — replies come back as fast as your own
-          connection allows. Best for talking.</li>
-          <li><b>Unison</b> — every phone waits just long enough that the <i>whole room</i>
-          hears everything at the same instant. Shared laughter, a cheer, a reading
-          answered together — they actually land together. The trade: replies arrive a
-          blink later, set by the slowest connection in the room.</li>
-          <li><b>🎵 Song</b> — tap it to <i>lead</i> the room in song yourself; it stays
-          lit for everyone while a song is on (see below).</li>
-        </ul>
-
-        <h4>Singing together — 🎵</h4>
-        <p>Singing on a normal video call is famously awful: every voice arrives a
-        different beat late, so a song turns to mush — and phone microphones treat a held
-        note like background noise and try to erase it. This room does it differently.</p>
-        <p>When someone taps <b>🎵 Song</b> (in <b>Settings</b>, under Timing), they step onto
-        the stage as the song leader, their microphone switches to <b>music quality</b>,
-        every other phone stops treating a held note as noise, and every phone quietly
-        lines the room up in time — the way sound behaves in a large hall:</p>
-        <ul class="help-list">
-          <li>Everyone hears the <b>leader at the same moment</b>, so the whole room is
-          truly singing together, wherever everyone is.</li>
-          <li>The voices near you arrive as <b>one sound</b>, a beat behind your own —
-          like the room answering around you.</li>
-          <li>The leader hears the room answer from behind, the way a conductor
-          hears a hall.</li>
-        </ul>
-        <p><b>Earbuds matter.</b> Any earbuds — even the cheap ones in a drawer — let your
-        phone capture just <i>your</i> voice, making you part of the choir at full quality.
-        No earbuds? Sing along anyway on speaker: you'll hear everything, and your voice
-        joins as part of the crowd. The song ends when the leader taps 🎵 again or steps
-        off the stage, and everything returns to normal by itself.</p>
-
-        <h4>The buttons worth knowing</h4>
-        <ul class="help-list">
-          <li><b>Blur</b> (Max / Min / None) — how blurred <i>your own</i> video looks to
-          everyone. You always control your own camera; nobody can un-blur you.</li>
-          <li><b>Stage</b> — step up to be seen and heard first by the whole room; tap
-          again to step down.</li>
-          <li><b>Hand</b> — raise it and you float to the top of a room-wide queue, in order.</li>
-          <li><b>Password</b> — the key to <i>clear</i> video. Set one and faces sharpen for
-          those who have it; without one, everyone stays fully blurred (Max). The Blur slider softens it.</li>
-          <li><b>Invite</b> — one link brings people straight in.</li>
-          <li><b>Run app</b> — share an app (notes, a board, a game) that everyone in the
-          room uses together, live.</li>
-          <li><b>Record / CC</b> — record to <i>your own device</i>, or turn on live captions
-          your phone writes from your own voice.</li>
-          <li><b>Admin</b> — some rooms have a host who can moderate; most rooms are open
-          and run on friendly anarchy.</li>
-        </ul>
-
-        <h4>Stepping away</h4>
-        <p>Flip to another tab or app and you <b>stay in the meeting</b>: you keep hearing
-        everyone, everyone keeps hearing you, and your tile politely shows “away” so
-        nobody wonders. Your camera pauses while you're gone — phones switch cameras off
-        for hidden apps to save battery — and comes back the moment you return. On
-        phones, the ongoing-call controls (mute, hang up) appear with your device's own
-        media controls.</p>
-
-        <h4>Your privacy</h4>
-        <p><b>Your picture and your voice go straight to the other people in the room —
-        there is no company in the middle.</b> They never pass through a computer of ours:
-        we run none for video, and the one small helper that introduces phones to each
-        other is deliberately too slow to carry a picture or a sound.</p>
-        <p><b>Everything is scrambled on the way</b>, with the same kind of lock a bank
-        uses, so the only people who can see or hear you are the <b>people in the room with
-        you</b>. That little helper is told as little as possible: never your video, your
-        voice, your name, the room's password, or even <i>which</i> room you are in. (In a
-        very big room, to save everyone's data, some of the far-away faces are bundled
-        together and passed along by <i>other people in the same room</i> — still never a
-        company's computer, and never anyone outside the room.)</p>
-        <p>The one honest trade for having no middleman: because phones connect straight to
-        each other, everyone on a call can see everyone's <b>internet address</b> — nobody
-        here is anonymous. Tap Who to see the list.</p>
+        <h4>Singing together</h4>
+        <p>Tap <b>Song</b> to lead. You step onto the stage as the song leader, and the room lines up so you are singing together, like a large hall.</p>
       </div>
       <div style="display:flex;justify-content:center;margin-top:1rem">
         <button id="help-close" data-t="helpGot" style="background:var(--surface,#1c1c2b);border:1px solid var(--border,#2a2a3f);color:var(--text,#e0e0f0)">Got it</button>
@@ -18856,6 +18758,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const h3 = document.querySelector('#help-modal h3');
       const hs = document.querySelector('#help-modal .help-scroll');
       paintHelpTip();
+      // Two columns fit the meeting list. A broadcast or app story is longer
+      // and keeps the vertical scroller; columns there spill sideways.
+      hs.classList.toggle('help-meet', !BROADCAST && ROOM.kind !== 'app');
       if (BROADCAST) {
         h3.textContent = 'How this broadcast works';
         hs.innerHTML =

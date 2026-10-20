@@ -366,8 +366,8 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 }
 
 /* Settings is one card. Desktop: video, stage and name on one row; captions
-   beside the mix. Phone: name beside the mix. The long caption choices
-   scroll inside their own block so the card itself does not. */
+   beside the mix. Phone: name beside the mix. Every control stays visible,
+   including both caption engines and the stadium fader. The card does not scroll. */
 #set-modal .name-box {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; align-items: start;
   width: min(1000px, calc(100vw - 16px)); max-width: min(1000px, calc(100vw - 16px));
@@ -404,6 +404,21 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   #set-modal .name-box > div:last-child { grid-row: 6; }
   #set-modal #ccengine-row { max-height: 72px; overflow-y: auto; }
 }
+/* A 360-wide phone. The 72px cap above clipped the caption engines (194>72),
+   and the stadium fader pushed the card 5px past the viewport (711>706).
+   Tighter rhythm lets both engines show in full and the card still fits.
+   A short wide window keeps the cap: this block is width only. */
+@media (max-width: 700px) {
+  #set-modal .name-box { padding: 4px 6px; gap: 2px 6px; }
+  #set-modal .set-sec { gap: 2px; }
+  #set-modal .set-help, #set-modal .rec-opt small { font-size: 10px; line-height: 1.15; }
+  #set-modal #ccengine-row { max-height: none; overflow: visible; margin-top: 2px; gap: 4px; }
+  #set-modal #mixpanel { gap: 1px; }
+  #set-modal #mixpanel input[type=range] { height: 16px; }
+  #set-modal .name-box button, #set-modal .seg { min-height: 28px; }
+  #set-modal #set-avatar-file { height: 24px; min-height: 0; }
+  #set-modal .rec-opt input { min-height: 0; }
+}
 
 /* Short cards: the list inside may scroll. The card may not. */
 @media (max-height: 640px) {
@@ -424,6 +439,19 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 #help-modal .name-box { padding: 10px 12px; }
 #help-modal h3 { margin: 0 0 6px; font-size: 1.15rem; }
 #help-modal .help-scroll { max-height: calc(100dvh - 250px); }
+/* The meeting help list shows its controls without scrolling. Two columns
+   keep that list inside the card on a short desktop and on a phone.
+   The people roster may still scroll; this list may not.
+   help-meet is the meeting story only. A broadcast story is longer, and
+   columns on it scroll sideways, so it keeps the vertical scroller. */
+#help-modal .help-scroll.help-meet { columns: 2; column-gap: 14px; }
+#help-modal .help-scroll.help-meet li,
+#help-modal .help-scroll.help-meet p,
+#help-modal .help-scroll.help-meet h4 { break-inside: avoid; }
+#help-modal .help-scroll.help-meet h4 { margin: .3rem 0 .1rem; font-size: .92rem; }
+#help-modal .help-meet .help-list { margin: 0 0 .25rem; }
+#help-modal .help-meet .help-list li { line-height: 1.25; padding: 0 0 1px .85rem; font-size: 13px; }
+#help-modal .help-meet p { margin-bottom: .25rem; font-size: 13px; line-height: 1.3; }
 #shortcutsheet .name-box { padding: 8px 12px; width: min(780px, calc(100vw - 16px)); max-width: min(780px, calc(100vw - 16px)); }
 #shortcutsheet h3 { font-size: 1.15rem; margin-bottom: 4px; }
 #shortcutsheet ul { columns: 2; column-gap: 16px; }
