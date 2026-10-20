@@ -17879,8 +17879,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // perfectly capable. The plain path stays throttled by lastKick (a
         // restart IS that beat's offer); only the ESCALATION reads its own
         // stamp, so it now actually fires at 12s/25s as designed.
+        // A never-connected pair still in new/connecting re-sends its whole
+        // gather on every restart: one relay frame per candidate, plus the
+        // name, boot, and fingerprint. On the 8s clock that stays above one
+        // frame a second for the whole call, so those pairs wait 30s. A pair
+        // that was up and then wedged keeps the 8s clock.
+        const stuckQuiet = p.neverUp === true && (st === 'new' || st === 'connecting');
         if (!p.absentSince && iInitiate(pid) && !p.connected && (st === 'connecting' || st === 'new')
-            && p.downSince && now - p.downSince > 12000 && now - (p.cureAt || 0) > 8000) {
+            && p.downSince && now - p.downSince > 12000 && now - (p.cureAt || 0) > (stuckQuiet ? 30000 : 8000)) {
           p.cureAt = now;
           p.lastKick = now + Math.random() * 1500;
           p.altPath = !p.altPath; // §FWD transport rotation — see sendSig
@@ -17898,7 +17904,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // 'new' means our offer was dropped on arrival (the receiver's roster
         // hadn't caught up, so its row-discipline guard refused us): re-offer
         // until both sides' arithmetic agrees. Deterministic rows guarantee
-        // convergence; the 6s throttle keeps it polite.
+        // convergence. A never-connected new/connecting pair waits 30s so that
+        // gather stays under one relay frame a second; every other state stays
+        // on the 6s throttle.
         //
         // Also: the LOWER-id side offers after a grace if it knows the neighbour
         // (linkTo) and they never dialled. Id-order initiation assumes both
@@ -17906,9 +17914,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // newcomer's HELLO can fail to reach a socketless peer, so the higher-id
         // side never learns and never offers. The lower-id side has the occ
         // seed and must break the deadlock. Glare is handled in onSignal.
+        const reofferGap = stuckQuiet ? 30000 : 6000;
         if (!p.absentSince && !p.connected && linkTo(pid)
             && (st === 'failed' || st === 'disconnected' || st === 'new' || st === 'connecting')
-            && now - p.lastKick > 6000
+            && now - p.lastKick > reofferGap
             && (iInitiate(pid) || (p.downSince && now - p.downSince > 4000))) {
           p.lastKick = now + Math.random() * 1500;
           p.altPath = !p.altPath; // §FWD transport rotation — a rotting relay path must not eat every retry
