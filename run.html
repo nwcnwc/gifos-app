@@ -10081,6 +10081,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       b.addEventListener('click', (e) => { e.stopPropagation(); fn(b); });
       return b;
     }
+    // The preview fills the card beside the control column. A 72px cap made
+    // it a postage stamp. The short landscape card still forces 40px in CSS.
+    function twSizePad(pad, vw, vh) {
+      const split = pad.closest ? pad.closest('.tw-split') : null;
+      const sideEl = split ? split.querySelector('.tw-side') : null;
+      const sideW = sideEl && sideEl.offsetWidth ? sideEl.offsetWidth : 0;
+      const splitW = (split && split.clientWidth) || (pad.parentElement && pad.parentElement.clientWidth) || 360;
+      const maxW = Math.max(80, splitW - sideW - (sideW ? 8 : 0));
+      const maxH = Math.min(Math.round((window.innerHeight || 800) * 0.42), 420);
+      let w = maxW;
+      let h = vw > 0 ? w * vh / vw : w * 9 / 16;
+      if (h > maxH && h > 0) { h = maxH; w = vw > 0 ? h * vw / vh : w; }
+      pad.style.aspectRatio = (vw || 16) + ' / ' + (vh || 9);
+      pad.style.width = Math.round(Math.max(1, w)) + 'px';
+      pad.style.height = Math.round(Math.max(1, h)) + 'px';
+    }
     function twCropSection(win, el, isMe) {
       const MZ = GifOS.meetZones;
       const tv = el.querySelector(':scope > video');
@@ -10089,8 +10105,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       else stream = tv && tv.srcObject;
       if (!MZ || !stream || el.classList.contains('cam-off')) return;
       const sec = document.createElement('div'); sec.className = 'tw-sec';
-      sec.innerHTML = '<b></b><p class="tw-help"></p><div class="tw-pad"><video muted playsinline autoplay></video><div class="tw-win"></div></div>'
-        + '<div class="tw-zoom"><span aria-hidden="true">−</span><input type="range" min="30" max="100" step="1"><span aria-hidden="true">+</span></div><div class="tw-row" style="margin-top:8px"></div>';
+      sec.innerHTML = '<b></b><p class="tw-help"></p><div class="tw-split"><div class="tw-pad"><video muted playsinline autoplay></video><div class="tw-win"></div></div>'
+        + '<div class="tw-side"><div class="tw-zoom"><span aria-hidden="true">−</span><input type="range" min="30" max="100" step="1"><span aria-hidden="true">+</span></div><div class="tw-row"></div></div></div>';
       sec.querySelector('b').textContent = isMe ? 'Crop what everyone sees' : 'Pan, zoom and crop';
       sec.querySelector('.tw-help').textContent = isMe
         ? 'Drag the square. Everyone gets exactly this part of your camera.'
@@ -10115,10 +10131,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The preview never shows more than the tile does: same blur.
         if (!isMe && tv) { try { const f = getComputedStyle(tv).filter; pv.style.filter = f && f !== 'none' ? f : ''; } catch (e) {} }
         const vw = pv.videoWidth || (tv && tv.videoWidth) || 16, vh = pv.videoHeight || (tv && tv.videoHeight) || 9;
-        pad.style.aspectRatio = vw + ' / ' + vh;
-        const maxW = (pad.parentElement && pad.parentElement.clientWidth) || 360;
-        const capH = 72;
-        pad.style.width = Math.round(Math.min(maxW, capH * vw / vh)) + 'px';
+        twSizePad(pad, vw, vh);
         crop = MZ.normCrop(crop, vw, vh);
         const pw = pad.clientWidth || 300, ph = pw * vh / vw;
         const side = crop.s * Math.min(vw, vh) * (pw / vw);
@@ -10154,7 +10167,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!cam || myStatus.camOff) return;
       const sec = document.createElement('div'); sec.className = 'tw-sec tw-stageframe';
       sec.innerHTML = '<b>Frame what the Stage shows</b><p class="tw-help">On the Stage everyone sees your whole camera at its own shape. Drag the frame to show less, or its corner to change its size and shape.</p>'
-        + '<div class="tw-pad"><video muted playsinline autoplay></video><div class="tw-win tw-rect"><i class="tw-grip" aria-hidden="true"></i></div></div><div class="tw-row" style="margin-top:8px"></div>';
+        + '<div class="tw-split"><div class="tw-pad"><video muted playsinline autoplay></video><div class="tw-win tw-rect"><i class="tw-grip" aria-hidden="true"></i></div></div><div class="tw-side"><div class="tw-row"></div></div></div>';
       const pad = sec.querySelector('.tw-pad'), pv = pad.querySelector('video'), box = pad.querySelector('.tw-rect');
       pv.muted = true; pv.srcObject = new MediaStream([cam]); const pr = pv.play(); if (pr && pr.catch) pr.catch(() => {});
       let f = Object.assign({ x: 0.5, y: 0.5, w: 1, h: 1 }, stageFrameVal || {});
@@ -10162,10 +10175,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const push = () => { if (pushT) clearTimeout(pushT); pushT = setTimeout(() => { pushT = 0; setStageFrame(f); }, 120); };
       const paint = () => {
         const vw = pv.videoWidth || 16, vh = pv.videoHeight || 9;
-        pad.style.aspectRatio = vw + ' / ' + vh;
-        const maxW = (pad.parentElement && pad.parentElement.clientWidth) || 360;
-        const capH = 72;
-        pad.style.width = Math.round(Math.min(maxW, capH * vw / vh)) + 'px';
+        twSizePad(pad, vw, vh);
         const n = normStageFrame(f) || { x: 0.5, y: 0.5, w: 1, h: 1 };
         f = n;
         box.style.left = ((n.x - n.w / 2) * 100) + '%'; box.style.top = ((n.y - n.h / 2) * 100) + '%';
@@ -10225,7 +10235,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (av) { const c = av.cloneNode(true); c.removeAttribute('style'); c.className = 'tw-face-av'; face.appendChild(c); }
         win.appendChild(face);
       }
-      if (info.childNodes.length) win.appendChild(info);
+      const side = win.querySelector('.tw-side');
       const sec = document.createElement('div'); sec.className = 'tw-sec';
       const lab = document.createElement('b'); lab.textContent = isMe ? 'You' : isStage ? 'Stage' : 'Person';
       sec.appendChild(lab);
@@ -10248,15 +10258,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           try { layout(); } catch (e) {}
         }));
       }
-      if (row.childNodes.length) sec.appendChild(row);
+      // Beside a preview, Mute, Camera and the recording pill stay in the
+      // narrow column. They used to be full-width rows under a 72px frame.
+      if (row.childNodes.length) (side || sec).appendChild(row);
+      if (info.childNodes.length) (side || win).appendChild(info);
       // The tile's own per-person controls (role-aware, painted by updateTile).
       const p = twPeer(id);
       if (!isMe && p && p.modbar) {
         tileWin.modbar = p.modbar; tileWin.home = p.tile;
         try { updateTile(id); } catch (e) {}
-        sec.appendChild(p.modbar);
+        (side || sec).appendChild(p.modbar);
       }
-      if (sec.childNodes.length > 1) win.appendChild(sec);
+      if (!side && sec.childNodes.length > 1) win.appendChild(sec);
       // Broadcast: what a watcher can do with the Stage.
       if (document.body.classList.contains('broadcast')) {
         const w = document.createElement('div'); w.className = 'tw-sec';

@@ -438,7 +438,8 @@
       else row.push(t.id);
     }
     const z = MZ.layout({ box: box, stage: stage, row: row, stad: stad, phone: !!opts.phone,
-      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit', gap: opts.phone ? 4 : MZ.GAP, floor: +opts.floor || 0 });
+      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit', gap: opts.phone ? 4 : MZ.GAP, floor: +opts.floor || 0,
+      stadCount: opts.stadCount > 0 ? opts.stadCount : 0 });
     let band = null;
     if (z.tooSmall) band = { text: 'faces tiny \u00b7 Scroll is in \u25a6', x: box.x + 6, y: box.y + 6 };
     return { mode: stage.length ? 'stage' : 'gallery', gallery: z.gallery, rects: z.rects, crowd: false, band: band,
@@ -503,7 +504,7 @@
     const MZ = GifOS.meetZones;
     const byId = {};
     for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
-    let lay = MZ ? zonesLayout(MZ, tiles, box, opts) : ML.layoutFor({
+    let lay = MZ ? zonesLayout(MZ, tiles, box, Object.assign({}, opts, { stadCount: allFaces.length })) : ML.layoutFor({
       mode: opts.mode || 'gallery',
       tiles: tiles,
       box: box,
