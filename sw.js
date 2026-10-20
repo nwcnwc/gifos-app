@@ -95,7 +95,11 @@ function desktopClient(url) {
 // computer — orrery.gifos.app and friends — fully self-contained offline.
 function themeOverride() {
   var parts = (self.location.hostname || '').split('.');
-  var label = (parts.length >= 3 && parts[0] !== 'www') ? parts[0] : '';
+  // Same label rule as gifos-themes.js: an IPv4 host, and a dashed
+  // four-number label (203-0-113-10.example.test), are numeric hosts.
+  var ipv4 = parts.length === 4 && parts.every(function (p) { return /^\d{1,3}$/.test(p); });
+  var dashedQuad = /^\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3}$/.test(parts[0] || '');
+  var label = (!ipv4 && !dashedQuad && parts.length >= 3 && parts[0] !== 'www') ? parts[0] : '';
   if (label === 'home' || label === 'default') label = '';
   if (!label || !/^[a-z0-9-]{1,32}$/i.test(label)) return [];
   var dir = '/themes/' + label + '/';

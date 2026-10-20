@@ -90,8 +90,11 @@
   const parts = (((root.location && root.location.hostname) || '')).split('.');
   // sub.domain.tld. An IPv4 address is four numbers (127.0.0.1), not a
   // computer label — treating it as one asked for themes/127 and 404'd.
+  // A dashed four-number label (203-0-113-10.example.test) is that same
+  // numeric host written so a DNS label can hold it, and it is not a theme.
   const ipv4 = parts.length === 4 && parts.every((p) => /^\d{1,3}$/.test(p));
-  const label = (!ipv4 && parts.length >= 3 && parts[0] !== 'www') ? parts[0] : '';
+  const dashedQuad = /^\d{1,3}-\d{1,3}-\d{1,3}-\d{1,3}$/.test(parts[0] || '');
+  const label = (!ipv4 && !dashedQuad && parts.length >= 3 && parts[0] !== 'www') ? parts[0] : '';
   let override = (root.GIFOS_THEME != null) ? root.GIFOS_THEME : label;
   if (override === 'home' || override === 'default') override = '';
 
