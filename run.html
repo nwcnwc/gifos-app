@@ -10578,6 +10578,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // sit in another row. The element is borrowed, like the modbar.
       const vb = !isMe && p ? vaWindowBlock(p) : null;
       if (vb) { tileWin.vablock = vb; tileWin.vbHome = p.tile; win.appendChild(vb); }
+      else if (!isMe && id) {
+        // No peer tile to borrow: the roster face still owes the explanation.
+        let hb = null;
+        try { if (typeof vaRosterBlocked === 'function' && vaRosterBlocked(id)) hb = vaHoldBlock(id); } catch (e) {}
+        if (hb) { tileWin.vablock = hb; tileWin.vbHold = true; win.appendChild(hb); }
+      }
       // Broadcast: what a watcher can do with the Stage.
       if (document.body.classList.contains('broadcast')) {
         const w = document.createElement('div'); w.className = 'tw-sec';
@@ -10654,7 +10660,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (tileWin.modbar && tileWin.home) { try { tileWin.home.appendChild(tileWin.modbar); } catch (e) {} }
       tileWin.modbar = tileWin.home = null;
       if (tileWin.vablock && tileWin.vbHome) { try { tileWin.vbHome.appendChild(tileWin.vablock); } catch (e) {} }
-      tileWin.vablock = tileWin.vbHome = null;
+      else if (tileWin.vbHold && tileWin.vablock && tileWin.vablock.remove) { try { tileWin.vablock.remove(); } catch (e) {} }
+      tileWin.vablock = tileWin.vbHome = null; tileWin.vbHold = false;
       if (win) { win.querySelectorAll('video').forEach((v) => { try { v.srcObject = null; } catch (e) {} }); win.hidden = true; win.textContent = ''; }
       if (veil) veil.hidden = true;
       document.body.classList.remove('tw-open');
@@ -14183,13 +14190,115 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const p of peers.values()) { vaPaintTile(p, now); if (p.tile && p.tile.classList.contains('va-blocked')) any = true; }
       if (any) vaLoadTerms(); // the prices on the tile: the admin's month, the host line, the pass
     }
+    // A person this page never keeps a peer for (another row, the mesh dropped
+    // the door) is still heard: a firewalled seat (status np blocked), or
+    // anyone a free-pool page hears only inside its anchor's mix. Their
+    // picture, when the room is paid, is the stadium cell, not a tile video.
+    // A flat or black cell is not a picture (the composite can be playing
+    // while that one face is still empty). Cached briefly: layout asks often.
+    const vaCellSeen = new Map();
+    function vaCellLively(v, face) {
+      const cssW = parseFloat(v.style.width) || 0, cssH = parseFloat(v.style.height) || 0;
+      const left = parseFloat(v.style.left) || 0, top = parseFloat(v.style.top) || 0;
+      const fw = face.clientWidth || face.offsetWidth || 0, fh = face.clientHeight || face.offsetHeight || 0;
+      if (!(cssW > 2 && cssH > 2 && fw > 4 && fh > 4 && v.videoWidth > 2 && v.videoHeight > 2)) return false;
+      const sx = v.videoWidth / cssW, sy = v.videoHeight / cssH;
+      let x = Math.max(0, Math.round(-left * sx)), y = Math.max(0, Math.round(-top * sy));
+      let w = Math.min(v.videoWidth - x, Math.round(fw * sx)), h = Math.min(v.videoHeight - y, Math.round(fh * sy));
+      if (w < 2 || h < 2) return false;
+      const c = vaCellLively.c || (vaCellLively.c = document.createElement('canvas'));
+      c.width = 8; c.height = 8;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      if (!g) return false;
+      g.drawImage(v, x + w * 0.25, y + h * 0.25, Math.max(1, w * 0.5), Math.max(1, h * 0.5), 0, 0, 8, 8);
+      const d = g.getImageData(0, 0, 8, 8).data;
+      let n = 0, s = 0, s2 = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        const yv = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+        s += yv; s2 += yv * yv; n++;
+      }
+      const mean = s / n;
+      return (s2 / n - mean * mean) > 80;
+    }
+    function vaFaceView(id) {
+      const now = Date.now(), hit = vaCellSeen.get(id);
+      if (hit && now - hit.at < 400) return hit;
+      const rec = { at: now, alive: false, frames: 0 };
+      try {
+        const face = document.querySelector('.stadface[data-stad="' + id + '"]');
+        const v = face && face.querySelector('video');
+        if (face && v && !face.classList.contains('cam-off') && v.videoWidth > 2) {
+          try { const q = v.getVideoPlaybackQuality(); if (q) rec.frames = q.totalVideoFrames || 0; } catch (e) {}
+          rec.alive = vaCellLively(v, face);
+        }
+      } catch (e) {}
+      vaCellSeen.set(id, rec);
+      return rec;
+    }
+    // True while this roster person is heard and their own picture is not
+    // here yet. A peer tile that already explains them is that tile's job.
+    function vaRosterBlocked(id) {
+      try {
+        if (!id || id === myId) return false;
+        const p = peers.get(id);
+        if (p && p.tile && p.tile.classList.contains('va-blocked')) return false;
+        if (p && p.connected && !p.turnAudio) return false;
+        const st = (statusOf && statusOf.get(id)) || {};
+        if (seatDark(st)) return false;
+        const npBlocked = st.np === 'blocked';
+        const mix = !!(turnHeard() && id !== turnAnchorId && !(p && p.connected));
+        if (!npBlocked && !mix) return false;
+        if (p && vaPictureLive(p, Date.now())) return false;
+        if (vaRoom() === 'live' && vaFaceView(id).alive) return false;
+        return true;
+      } catch (e) { return false; }
+    }
+    // The explanation for a roster person who has no tile to borrow. The
+    // window loans it; until then it stays detached (a stray block on the
+    // body would sit on top of the meeting).
+    const vaHoldEls = new Map();
+    function vaHoldBlock(id) {
+      let el = vaHoldEls.get(id);
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'vablock';
+        const msg = document.createElement('p');
+        msg.textContent = VA.TEXT.blockedTile;
+        const b = document.createElement('button');
+        b.className = 'vabuy'; b.hidden = true;
+        b.addEventListener('click', (e) => { e.stopPropagation(); if (b.dataset.product) vaBuy(b.dataset.product); });
+        const hl = document.createElement('p');
+        hl.className = 'vahost'; hl.hidden = true;
+        const pb = document.createElement('button');
+        pb.className = 'vapass'; pb.hidden = true;
+        pb.addEventListener('click', (e) => { e.stopPropagation(); if (pb.dataset.product) vaPassBuy(); });
+        el.appendChild(msg); el.appendChild(b); el.appendChild(hl); el.appendChild(pb);
+        vaHoldEls.set(id, el);
+      }
+      const blocked = vaRosterBlocked(id);
+      const sub = blocked ? vaSub() : 'none';
+      const btn = blocked ? VA.tileButton({ amAdmin, adminRoom: hasAdminRoom(), terms: vaTerms, sub }) : null;
+      const pass = blocked ? VA.tilePass({ terms: vaTerms, sub, covered: vaPassCovers(id) }) : null;
+      const host = blocked ? VA.tileHostLine({ amAdmin, adminRoom: hasAdminRoom(), terms: vaTerms, sub }) : null;
+      const b = el.querySelector('.vabuy'), hl = el.querySelector('.vahost'), pb = el.querySelector('.vapass');
+      b.hidden = !btn; b.textContent = btn ? btn.label : '';
+      b.dataset.kind = btn ? btn.kind : ''; b.dataset.price = btn ? btn.price : ''; b.dataset.product = btn ? btn.product : '';
+      hl.hidden = !host; hl.textContent = host || '';
+      pb.hidden = !pass; pb.textContent = pass ? pass.label : '';
+      pb.dataset.price = pass ? pass.price : ''; pb.dataset.product = pass ? pass.product : '';
+      return el;
+    }
     // A blocked person seated in another row has no tile on screen (the grid
     // is row-mates only — reconcileGrid): their stadium face wears the mark
     // (the pass price, when the live terms sell it), and the tile window
     // that opens from the face carries the tile's explanation and offers.
+    // Someone the mesh no longer peers is the same face: the roster says
+    // they are heard and not seen, and the mark leaves when their cell
+    // actually shows a picture.
     function vaFaceDecor(id) {
       const p = peers.get(id);
-      if (!(p && p.tile && p.tile.classList.contains('va-blocked'))) return { blocked: false, mark: '' };
+      const held = vaRosterBlocked(id);
+      if (!(held || (p && p.tile && p.tile.classList.contains('va-blocked')))) return { blocked: false, mark: '' };
       const pass = VA.tilePass({ terms: vaTerms, sub: vaSub(), covered: vaPassCovers(id) });
       return { blocked: true, mark: pass ? pass.label.split(',')[0] : '' };
     }
@@ -35862,23 +35971,52 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       vaMeterNow: () => { vaMeterTick(Date.now(), true); return true; },
       // The blocked-video tiles on this page: per person, whether the message
       // shows, the admin's button (kind, price) if any, and frames decoded.
-      vaTiles: () => [...peers.values()].map((p) => {
-        const el = p.vaBlockEl, b = el && el.querySelector('.vabuy');
-        let frames = null; try { frames = p.video && p.video.getVideoPlaybackQuality ? p.video.getVideoPlaybackQuality().totalVideoFrames : null; } catch (e) {}
-        return { id: p.id, name: rosterNames[p.id] || p.name || null, blocked: !!(p.tile && p.tile.classList.contains('va-blocked')),
-          message: !!(el && p.tile.classList.contains('va-blocked') && el.querySelector('p') && el.querySelector('p').textContent.length > 0),
-          button: b && !b.hidden ? { kind: b.dataset.kind, price: b.dataset.price } : null, frames, facts: vaTileFacts(p, Date.now()),
-          pass: (() => { const pb = el && el.querySelector('.vapass'); return pb && !pb.hidden ? { label: pb.textContent, price: pb.dataset.price } : null; })(),
-          host: (() => { const hl = el && el.querySelector('.vahost'); return hl && !hl.hidden ? hl.textContent : null; })(),
-          media: (() => { // which tracks the tile plays, and which m-line each came in on
-            try {
-              const so = p.video && p.video.srcObject;
-              const rx = new Map(); if (p.pc) for (const t of p.pc.getTransceivers()) if (t.receiver && t.receiver.track) rx.set(t.receiver.track.id, t.mid);
-              return { paused: !!(p.video && p.video.paused), ready: p.video ? p.video.readyState : null, streamIsPeer: !!(so && p.stream && so === p.stream), relayed: !!relayVia.get(p.id),
-                tracks: so && so.getTracks ? so.getTracks().map((t) => ({ kind: t.kind, mid: rx.has(t.id) ? rx.get(t.id) : null, state: t.readyState, muted: t.muted, enabled: t.enabled })) : null };
-            } catch (e) { return { err: String(e).slice(0, 60) }; }
-          })() };
-      }),
+      vaTiles: () => {
+        const rows = [...peers.values()].map((p) => {
+          const el = p.vaBlockEl, b = el && el.querySelector('.vabuy');
+          let frames = null; try { frames = p.video && p.video.getVideoPlaybackQuality ? p.video.getVideoPlaybackQuality().totalVideoFrames : null; } catch (e) {}
+          return { id: p.id, name: rosterNames[p.id] || p.name || null, blocked: !!(p.tile && p.tile.classList.contains('va-blocked')),
+            message: !!(el && p.tile.classList.contains('va-blocked') && el.querySelector('p') && el.querySelector('p').textContent.length > 0),
+            button: b && !b.hidden ? { kind: b.dataset.kind, price: b.dataset.price } : null, frames, facts: vaTileFacts(p, Date.now()),
+            pass: (() => { const pb = el && el.querySelector('.vapass'); return pb && !pb.hidden ? { label: pb.textContent, price: pb.dataset.price } : null; })(),
+            host: (() => { const hl = el && el.querySelector('.vahost'); return hl && !hl.hidden ? hl.textContent : null; })(),
+            media: (() => { // which tracks the tile plays, and which m-line each came in on
+              try {
+                const so = p.video && p.video.srcObject;
+                const rx = new Map(); if (p.pc) for (const t of p.pc.getTransceivers()) if (t.receiver && t.receiver.track) rx.set(t.receiver.track.id, t.mid);
+                return { paused: !!(p.video && p.video.paused), ready: p.video ? p.video.readyState : null, streamIsPeer: !!(so && p.stream && so === p.stream), relayed: !!relayVia.get(p.id),
+                  tracks: so && so.getTracks ? so.getTracks().map((t) => ({ kind: t.kind, mid: rx.has(t.id) ? rx.get(t.id) : null, state: t.readyState, muted: t.muted, enabled: t.enabled })) : null };
+              } catch (e) { return { err: String(e).slice(0, 60) }; }
+            })() };
+        });
+        // No peer (the door was dropped): the stadium face is the tile the
+        // viewer has. The message is the same block the window loans. Frames
+        // count only once that face's own cell shows a picture, so a playing
+        // composite of someone else does not clear the message.
+        try {
+          const have = new Set(rows.map((r) => r.id));
+          for (const id of Object.keys(rosterNames)) {
+            if (!id || id === myId || have.has(id)) continue;
+            const st = statusOf.get(id) || {};
+            const mix = !!(turnHeard() && id !== turnAnchorId);
+            if (st.np !== 'blocked' && !mix) continue;
+            if (seatDark(st)) continue;
+            const blocked = vaRosterBlocked(id);
+            const el = blocked ? vaHoldBlock(id) : (vaHoldEls.get(id) || null);
+            const b = el && el.querySelector('.vabuy');
+            const view = blocked ? { alive: false, frames: 0 } : vaFaceView(id);
+            rows.push({ id, name: rosterNames[id] || null, blocked,
+              message: !!(blocked && el && el.querySelector('p') && el.querySelector('p').textContent.length > 0),
+              button: b && !b.hidden ? { kind: b.dataset.kind, price: b.dataset.price } : null,
+              frames: blocked ? 0 : view.frames,
+              facts: { isMe: false, camOn: !seatDark(st), pictureLive: !blocked && !!view.alive, freePair: false, voiceCarry: false, inMixOnly: mix },
+              pass: (() => { const pb = el && el.querySelector('.vapass'); return pb && !pb.hidden ? { label: pb.textContent, price: pb.dataset.price } : null; })(),
+              host: (() => { const hl = el && el.querySelector('.vahost'); return hl && !hl.hidden ? hl.textContent : null; })(),
+              media: { relayed: false, face: true } });
+          }
+        } catch (e) {}
+        return rows;
+      },
 
       // Transport bytes on one pair's selected path, both directions (debug).
       wireBytes: async (name) => {
