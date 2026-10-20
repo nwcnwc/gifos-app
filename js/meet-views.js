@@ -7,6 +7,16 @@
   const GifOS = root.GifOS = root.GifOS || {};
 
   const GUTTER = 8;
+  // A big room: at most this many stadium cells on screen (faces plus the
+  // "+N" tile). Each face is a <video> on the composite and a box laid out
+  // on every pass; 240 of them made a phone hot and laggy (0.9.23 perf-240).
+  const FACE_CAP = 24;
+  // A join storm keeps changing the composite. The settle hold waits for
+  // its frame to match, but never longer than this in a row, so faces do
+  // not stay on initials while people keep arriving.
+  const HOLD_MAX_MS = 5000;
+  // One resize of the composite fires once, not once per face.
+  const RZ_DEBOUNCE_MS = 120;
   // An app in a meeting is laid out here like a shared screen (the page hands
   // it in as a Stage tile); only the app-only and broadcast pages are not.
   const BLOCK = ['broadcast', 'app-room', 'solo-app'];
@@ -225,14 +235,6 @@
     }
   }
 
-  function byStad(host, id) {
-    if (!host) return null;
-    for (let i = 0; i < host.children.length; i++) {
-      if (host.children[i].dataset && host.children[i].dataset.stad === id) return host.children[i];
-    }
-    return null;
-  }
-
   function makeFace(id, name, initials) {
     const el = document.createElement('div');
     el.className = 'stadface';
@@ -259,11 +261,16 @@
     }
     const keep = {};
     const els = [];
+    const have = {};
+    for (let i = 0; i < host.children.length; i++) {
+      const ch = host.children[i];
+      if (ch.dataset && ch.dataset.stad != null && !have[ch.dataset.stad]) have[ch.dataset.stad] = ch;
+    }
     for (let i = 0; i < faces.length; i++) {
       const f = faces[i];
       const id = String(f.id);
       keep[id] = true;
-      let el = byStad(host, id);
+      let el = have[id] || null;
       if (!el) { el = makeFace(id, f.name, f.initials); host.appendChild(el); }
       else {
         const lb = el.querySelector('.name');
@@ -282,21 +289,69 @@
     return els;
   }
 
-  function ensureCrowd(feed) {
+  // withVideo: the crowd plays the whole composite. Without it the tile is
+  // the "+N" seat for the people past FACE_CAP: no <video>, a count.
+  function ensureCrowd(feed, withVideo) {
     let el = feed.querySelector('#stadcrowd');
-    if (el) return el;
-    el = document.createElement('div');
-    el.id = 'stadcrowd';
-    el.className = 'stadface crowd';
-    el.dataset.pzkey = 'stad:crowd';
-    const v = document.createElement('video');
-    v.muted = true; v.autoplay = true; v.playsInline = true;
-    v.setAttribute('playsinline', '');
-    const lb = document.createElement('span');
-    lb.className = 'name';
-    el.appendChild(v); el.appendChild(lb);
-    feed.appendChild(el);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'stadcrowd';
+      el.className = 'stadface crowd';
+      el.dataset.pzkey = 'stad:crowd';
+      const lb = document.createElement('span');
+      lb.className = 'name';
+      el.appendChild(lb);
+      feed.appendChild(el);
+    }
+    let v = el.querySelector('video');
+    if (withVideo && !v) {
+      v = document.createElement('video');
+      v.muted = true; v.autoplay = true; v.playsInline = true;
+      v.setAttribute('playsinline', '');
+      el.insertBefore(v, el.firstChild);
+    } else if (!withVideo && v) {
+      try { v.srcObject = null; } catch (e) {}
+      v.remove();
+    }
+    let av = el.querySelector('.avatar');
+    if (!withVideo && !av) {
+      av = document.createElement('div');
+      av.className = 'avatar';
+      el.insertBefore(av, el.querySelector('.name'));
+    } else if (withVideo && av) av.remove();
     return el;
+  }
+
+  // The faces that get a cell on screen when there are more than cap: the
+  // ones the composite has a cell for first (they can show video), in
+  // roster order, then the rest. Returns indexes into faces, in order.
+  function pickFaces(faces, cellOf, keep) {
+    const pick = [];
+    if (cellOf) for (let j = 0; j < faces.length && pick.length < keep; j++) if (cellOf[j] >= 0) pick.push(j);
+    for (let j = 0; j < faces.length && pick.length < keep; j++) if (!(cellOf && cellOf[j] >= 0)) pick.push(j);
+    pick.sort((a, b) => a - b);
+    return pick;
+  }
+
+  // One resize listener, on the face <video> that sizes the frame (the
+  // others play the same stream: their resizes are the same event).
+  let rzVid = null, rzCb = null, rzTimer = 0;
+  function rzFire() {
+    if (rzTimer) return;
+    rzTimer = setTimeout(function () { rzTimer = 0; if (typeof rzCb === 'function') { try { rzCb(); } catch (e) {} } }, RZ_DEBOUNCE_MS);
+  }
+  function watchFrame(v, cb) {
+    rzCb = cb || null;
+    if (rzVid === v) return;
+    if (rzVid && typeof rzVid.removeEventListener === 'function') {
+      rzVid.removeEventListener('resize', rzFire);
+      rzVid.removeEventListener('loadedmetadata', rzFire);
+    }
+    rzVid = v || null;
+    if (rzVid && typeof rzVid.addEventListener === 'function') {
+      rzVid.addEventListener('resize', rzFire);
+      rzVid.addEventListener('loadedmetadata', rzFire);
+    }
   }
 
   function placeBand(feed, band) {
@@ -415,7 +470,7 @@
     return (w > 0 && h > 0) ? { w: w, h: h, from: 'source' } : { w: 0, h: 0, from: 'none' };
   }
 
-  // opts: { feed, tiles, faces, video, srcW, srcH, cols, orderKey, holdMs, vw, vh, phone, pill, mode, now, onSettle }
+  // opts: { feed, tiles, faces, video, srcW, srcH, cols, cellN, cellOf, holdMs, holdMaxMs, maxFaces, vw, vh, phone, pill, mode, now, onSettle }
   // tiles: [{ id, el, tier, me, stage, stageOrd, hand, handOrd, speaker, pz }]
   // faces: [{ id, name, initials }] in stadium order
   function apply(opts) {
@@ -424,11 +479,37 @@
     const MM = GifOS.meshMedia;
     const feed = opts.feed;
     if (!ML || !feed) return null;
-    const faces = opts.faces || [];
-    const faceEls = faces.length ? syncFaces(feed, faces) : syncFaces(feed, []);
+    const allFaces = opts.faces || [];
+    // STADIUM-FACES: opts.cellN cells in the composite and opts.cellOf[j] the
+    // cell face j is cut from (-1: not in it, initials); without them a face
+    // is cell j of faces.length (the count rule). Decided on the whole roster,
+    // before the cap picks who shows.
+    const cellOfAll = Array.isArray(opts.cellOf) && opts.cellOf.length === allFaces.length ? opts.cellOf : null;
+    const cap = opts.maxFaces > 1 ? (opts.maxFaces | 0) : FACE_CAP;
+    let faces = allFaces, cellIdx = null, over = 0;
+    if (allFaces.length > cap) {
+      // The rest of the room is one "+N" seat: the cap counts it.
+      const pick = pickFaces(allFaces, cellOfAll, cap - 1);
+      faces = pick.map((j) => allFaces[j]);
+      cellIdx = pick.map((j) => (cellOfAll ? cellOfAll[j] : j));
+      over = allFaces.length - faces.length;
+    } else cellIdx = cellOfAll ? cellOfAll.slice() : allFaces.map((f, j) => j);
+    const faceEls = syncFaces(feed, faces);
     const tiles = (opts.tiles || []).slice();
     for (let i = 0; i < faceEls.length; i++) {
       tiles.push({ id: 'stad:' + faces[i].id, tier: 'stad', el: faceEls[i], shade: faces[i].shade || '' });
+    }
+    let overEl = null;
+    if (over > 0) {
+      overEl = ensureCrowd(feed, false);
+      overEl.style.display = '';
+      overEl.classList.add('cam-off');
+      const olb = overEl.querySelector('.name');
+      if (olb) olb.textContent = 'Stadium \u00b7 ' + allFaces.length;
+      const oav = overEl.querySelector('.avatar');
+      if (oav) { oav.style.display = 'flex'; paintShade(oav, 'crowd'); paintAvatar(oav, '', '+' + over); }
+      overEl.setAttribute('aria-label', over + ' more in the stadium');
+      tiles.push({ id: 'stad:crowd', tier: 'stad', el: overEl, shade: 'crowd' });
     }
     for (let i = 0; i < tiles.length; i++) {
       const t = tiles[i];
@@ -479,17 +560,19 @@
     const used = [];
     let crowdEl = feed.querySelector('#stadcrowd');
     if (lay.crowd) {
-      crowdEl = ensureCrowd(feed);
+      crowdEl = ensureCrowd(feed, true);
+      crowdEl.classList.remove('cam-off');
+      crowdEl.removeAttribute('aria-label');
       for (let i = 0; i < faceEls.length; i++) faceEls[i].style.display = 'none';
       for (let i = 0; i < lay.rects.length; i++) if (lay.rects[i].id === 'crowd') placeEl(crowdEl, lay.rects[i]);
       used.push(crowdEl);
       const cv = crowdEl.querySelector('video');
       const lb = crowdEl.querySelector('.name');
-      if (lb) lb.textContent = 'Stadium · ' + faces.length;
+      if (lb) lb.textContent = 'Stadium · ' + allFaces.length;
       if (opts.video && opts.video.srcObject) playStream(cv, opts.video.srcObject);
       if (cv) applyCrop(cv, null);
       if (cv) { cv.style.width = '100%'; cv.style.height = '100%'; cv.style.objectFit = 'cover'; cv.style.position = 'absolute'; cv.style.left = '0'; cv.style.top = '0'; }
-    } else if (crowdEl) {
+    } else if (crowdEl && !overEl) {
       crowdEl.remove();
       crowdEl = null;
     }
@@ -506,8 +589,9 @@
       t.el.dataset.fit = r.fit || 'cover';
       used.push(t.el);
     }
+    const usedSet = new Set(used);
     for (let i = 0; i < tiles.length; i++) {
-      if (tiles[i].el && used.indexOf(tiles[i].el) < 0) parkEl(tiles[i].el);
+      if (tiles[i].el && !usedSet.has(tiles[i].el)) parkEl(tiles[i].el);
     }
     // Absolute tiles do not grow scrollHeight. A 1px spacer does, so Scroll
     // can move through the stadium without a pager.
@@ -606,27 +690,53 @@
     // last resort.
     const fsz = stadFrameSize(opts.srcW, opts.srcH, faceEls, stream, video);
     const vw = fsz.w, vh = fsz.h, srcFrom = fsz.from;
-    // STADIUM-FACES: opts.cellN cells in the composite and opts.cellOf[j] the
-    // cell face j is cut from (-1: not in it, initials); without them a face
-    // is cell j of faces.length (the count rule).
-    const cellOf = Array.isArray(opts.cellOf) && opts.cellOf.length === faces.length ? opts.cellOf : null;
-    const n = cellOf && opts.cellN > 0 ? (opts.cellN | 0) : faces.length;
+    const n = cellOfAll && opts.cellN > 0 ? (opts.cellN | 0) : allFaces.length;
     const cols = opts.cols | 0;
-    const key = n + 'x' + cols + '@' + vw + 'x' + vh + '|' + (opts.orderKey || '');
+    // The hold waits for the composite to match what the faces are cut by:
+    // its grid, its frame, and which cell each face ON SCREEN sits in. A
+    // join that adds nobody to the screen (past the cap, or with no cell)
+    // does not restart it (orderKey, the whole roster, did: a join every
+    // <2.5 s pinned every face to initials).
+    let cellKey = '';
+    for (let j = 0; j < faces.length; j++) cellKey += (j ? ',' : '') + faces[j].id + ':' + cellIdx[j];
+    const key = n + 'x' + cols + '@' + vw + 'x' + vh + '|' + cellKey;
     const now = opts.now || Date.now();
-    if (key !== stadSeen.key) stadSeen = { key: key, at: now };
     const holdMs = opts.holdMs > 0 ? opts.holdMs : 2500;
-    const holding = n > 0 && !lay.crowd && (now - stadSeen.at < holdMs);
+    const holdMax = opts.holdMaxMs > 0 ? opts.holdMaxMs : Math.max(HOLD_MAX_MS, holdMs);
+    if (key !== stadSeen.key) {
+      // A change before the last one settled continues the same hold.
+      const streak = !!stadSeen.key && (now - stadSeen.at < holdMs);
+      stadSeen = { key: key, at: now, since: streak ? stadSeen.since : now };
+    }
+    const settleLeft = holdMs - (now - stadSeen.at);
+    const capLeft = holdMax - (now - stadSeen.since);
+    const holding = n > 0 && !lay.crowd && settleLeft > 0 && capLeft > 0;
     const ready = n > 0 && faces.length > 0 && !lay.crowd && !holding && vw > 0 && vh > 0 && cols > 0 && MM && typeof MM.cellCrop === 'function';
     let slices = null;
     if (ready) slices = ML.stadiumSlices(n, vw, vh, 100, MM.stadiumGrid, MM.cellCrop);
+    // Reads before writes: each face's box side comes from its rect (one
+    // map, not a scan per face); a face with no rect reads its size here,
+    // before any style below is written (a read after a write is a reflow
+    // per face).
+    const rectOf = {};
+    for (let k = 0; k < lay.rects.length; k++) rectOf[lay.rects[k].id] = lay.rects[k];
+    const sides = new Array(faceEls.length);
+    if (!lay.crowd) {
+      for (let j = 0; j < faceEls.length; j++) {
+        const r = rectOf['stad:' + faces[j].id];
+        sides[j] = r ? Math.max(r.w, r.h) : (faceEls[j].offsetWidth || 0);
+      }
+    }
+    let frameVid = null;
     for (let j = 0; j < faceEls.length; j++) {
       const el = faceEls[j];
       if (lay.crowd) break;
       const v = el.querySelector('video');
       const av = el.querySelector('.avatar');
-      const cj = cellOf ? cellOf[j] : j;
-      const cell = slices && cj >= 0 ? slices.cells[cj] : null;
+      const cj = cellIdx[j];
+      // A face has a cell when the composite carries it and can be cut.
+      const hasCell = cj >= 0 && cj < n && cols > 0;
+      const cell = slices && hasCell ? slices.cells[cj] : null;
       // A camera on the Stage holds this seat empty: no second face, no letter.
       if (faces[j].held) {
         if (el.classList) { el.classList.add('seat-held'); el.classList.remove('cam-off'); }
@@ -635,25 +745,16 @@
         continue;
       }
       if (el.classList) el.classList.remove('seat-held');
-      if (stream && !faces[j].off) {
+      // Only a face with a cell plays the composite: one with no cell would
+      // decode and paint a frame it can never show.
+      if (stream && !faces[j].off && hasCell) {
         playStream(v, stream);
-        // A face's <video> is a frame-size source above: when it learns or
-        // changes its size, lay out again (the hidden source's own resize
-        // never fires on the engines that broke).
-        if (v && !v._stadRz && typeof v.addEventListener === 'function') {
-          v._stadRz = true;
-          const again = function () { if (typeof opts.onSettle === 'function') { try { opts.onSettle(); } catch (e) {} } };
-          v.addEventListener('resize', again);
-          v.addEventListener('loadedmetadata', again);
-        }
+        if (v && !frameVid) frameVid = v;
       }
       // Camera-off (and not-yet-heard) faces stay on initials. A black
       // cell from the composite would hide the name.
       if (cell && v && !faces[j].off) {
-        let bw = el.offsetWidth || 0;
-        for (let k = 0; k < lay.rects.length; k++) {
-          if (lay.rects[k].id === 'stad:' + faces[j].id) { bw = Math.max(lay.rects[k].w, lay.rects[k].h); break; }
-        }
+        const bw = sides[j] || 0;
         const sc = (bw > 0 ? bw : 100) / 100;
         applyCrop(v, { x: cell.x * sc, y: cell.y * sc, w: cell.w * sc, h: cell.h * sc });
         v.style.visibility = '';
@@ -683,8 +784,12 @@
         }
       }
     }
+    // A face's <video> is a frame-size source above: when it learns or
+    // changes its size, lay out again (the hidden source's own resize never
+    // fires on the engines that broke). One listener, debounced.
+    watchFrame(frameVid, typeof opts.onSettle === 'function' ? opts.onSettle : null);
     if (holding && typeof opts.onSettle === 'function') {
-      const wait = Math.max(16, holdMs - (now - stadSeen.at) + 30);
+      const wait = Math.max(16, Math.min(settleLeft, capLeft) + 30);
       if (stadTimer) clearTimeout(stadTimer);
       stadTimer = setTimeout(function () { stadTimer = 0; try { opts.onSettle(); } catch (e) {} }, wait);
     }
@@ -695,6 +800,7 @@
       box: box,
       crowd: !!lay.crowd,
       holding: holding,
+      faces: { all: allFaces.length, shown: faces.length, over: over },
       src: { w: vw, h: vh, from: srcFrom },
       tier: lay.tier,
       scroll: { sh: sh, ch: ch },
