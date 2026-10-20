@@ -10107,7 +10107,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let comfyBusy = false;
     // Where the call's buttons stood last, per screen size, so the faces
     // keep their places while the buttons are tucked away.
-    let comfyUpBottom = { key: '', v: 0 };
+    // Where the dock and Record/Captions stand when they are up. Record/
+    // Captions sit 8px over the dock (bottom: --dockh + 8px) unless they
+    // stand beside it (a sideways phone: their own --csb bottom).
+    function comfyRestBand() {
+      const vh = window.innerHeight;
+      const restTop = (el) => getComputedStyle(el).position === 'fixed' ? el.offsetTop : el.getBoundingClientRect().top;
+      const bar = document.querySelector('.bar');
+      const dockUp = (bar && bar.getClientRects().length) ? Math.max(0, vh - restTop(bar)) : 0;
+      let band = dockUp;
+      const state = document.getElementById('callstate');
+      if (state && !state.hidden && state.getClientRects().length && state.offsetHeight > 2) {
+        const top = state.classList.contains('beside') ? restTop(state) : vh - dockUp - 8 - state.offsetHeight;
+        band = Math.max(band, vh - top);
+      }
+      return band;
+    }
     function applyComfy() {
       if (comfyBusy) return;
       const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
@@ -10256,27 +10271,32 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // Tucked chrome is off the call. Measuring the sliding dock would
           // keep the empty band, so a quiet call uses only the home indicator.
           const away = document.body.classList.contains('chrome-away');
-          // Faces stay in the band above the dock. A sideways phone with one
-          // row used to stretch that row under the buttons so a tuck would
-          // not resize it; Video and Mic then covered the faces. holdBottom
-          // already keeps the band when the buttons tuck.
-          if (!away) {
-            // Where the dock and Record/Captions rest, not where their slide
-            // back has got to: a fixed box's offsetTop skips its transform.
-            const restTop = (el) => getComputedStyle(el).position === 'fixed' ? el.offsetTop : el.getBoundingClientRect().top;
-            const bar = document.querySelector('.bar');
-            if (bar) bottom = Math.max(0, window.innerHeight - restTop(bar));
-            const state = document.getElementById('callstate');
-            if (state && !state.hidden && state.getClientRects().length) {
-              const sr = state.getBoundingClientRect();
-              const vis = getComputedStyle(state).visibility;
-              if (sr.height > 2 && vis !== 'hidden') bottom = Math.max(bottom, window.innerHeight - restTop(state));
-            }
-            comfyUpBottom = { key: vwNow + 'x' + vhNow, v: bottom };
+          const safeEl = document.getElementById('gifos-safe-b');
+          const safe = (safeEl && safeEl.offsetHeight) || 0;
+          let rowN = 0;
+          for (let i = 0; i < tiles.length; i++) if (!tiles[i].stage && !tiles[i].share) rowN++;
+          const bandH = vhNow - (topInset > 0 ? topInset : 64) - safe;
+          // Sideways, face size comes from how many people are here and
+          // whether a share is up, not from the dock. One row as tall as the
+          // stage fits beside itself (you and one other): it fills the stage,
+          // the dock wakes over it, and a tuck does not resize it or leave a
+          // black band. A second row stays in the band above the dock. A
+          // share stays there too (floor stays 0). 4px is the phone row gap.
+          const fillHeight = shortLand && !sgsOn && !appOn && rowN > 0 &&
+            (rowN * bandH + Math.max(0, rowN - 1) * 4) <= (vwNow - 4);
+          if (fillHeight) {
+            bottom = safe;
           } else {
-            const probe = document.getElementById('gifos-safe-b');
-            if (probe) bottom = probe.offsetHeight || 0;
-            if (comfyUpBottom.key === vwNow + 'x' + vhNow) holdBottom = comfyUpBottom.v;
+            // The band the dock and Record/Captions take when they are up,
+            // worked out from where they REST (a fixed box's offsetTop skips
+            // the tuck's slide), whether they are up or tucked right now. It
+            // used to be remembered from the last time the controls were up
+            // at this exact size, so the first wake after any size change
+            // (a page float, full screen, turning the phone, a share) found
+            // no band, and waking moved every tile (Moto g24, 2026-10-19).
+            const band = comfyRestBand();
+            if (!away) bottom = band;
+            else { bottom = safe; holdBottom = band; }
           }
           const note = document.getElementById('chatnote');
           if (note && !note.hidden && note.getClientRects().length) {
@@ -10667,6 +10687,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { if (el.classList.contains('tile')) applyViewerCrop(el); } catch (e) {}
       wakeMeet();
       try { el.focus({ preventScroll: true }); } catch (e) {}
+    }
+    // The stage window is a snapshot taken while the share is up. Stopping
+    // from the dock or the browser's own bar removes the slide and used to
+    // leave "Your screen — on stage / Stop sharing" on screen. A copy of
+    // stopScreenShare lifted into a unit sandbox has no window, so the call
+    // there is a no-op.
+    function dropStaleShareWin() {
+      if (!tileWin.el || myStatus.scr) return;
+      const el = tileWin.el;
+      const strip = el.classList && el.classList.contains('rowtile') && el.dataset && el.dataset.row === 'sgs';
+      if (!el.isConnected || strip) { closeTileWin(); return; }
+      const win = document.getElementById('tilewin');
+      if (!win || win.hidden) return;
+      const word = uiText('stopShare', 'Stop sharing');
+      let stale = false;
+      win.querySelectorAll('button').forEach((b) => { if ((b.textContent || '').trim() === word) stale = true; });
+      if (stale) twFill(win, el);
     }
     function ensureTileChrome() {
       let veil = document.getElementById('tilewin-veil'), win = document.getElementById('tilewin');
@@ -26450,11 +26487,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // { el, stream } for a cell: my own live view, a claimed mosaic feed, or a
       // directly-linked peer. Stream carries the audio the fold sums; el is the
       // drawImage source (a <video> or a nested composite's <canvas>).
-      const srcFor = (pid, feedKey) => {
+      // feedOnly: the claimed feed or nothing, never the row <video>.
+      const srcFor = (pid, feedKey, feedOnly) => {
         // Someone in the waiting room is in no composite: no face, no voice.
         if (pid === myId) return iAmWaiting() ? { el: null, stream: null } : { el: meTile.video, stream: selfFoldStream() };
         const f = feedKey ? mosIn.get(feedKey) : null;
         if (f) return { el: f.el, stream: f.stream };
+        if (feedOnly) return { el: null, stream: null };
         if (peerWaits(pid)) return { el: null, stream: null };
         const p = peers.get(pid);
         return p ? { el: p.video, stream: p.video.srcObject } : { el: null, stream: null };
@@ -26513,7 +26552,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // and the share bit is the sender's own claim; the strip stands, with
         // the blur baked into that cell.
         if (modBlurOn(sid)) return null;
-        const sc = srcFor(sid, 'stg:' + sid);
+        // THE STG FEED OR THE STRIP, NEVER THE ROW VIDEO. A stager's row
+        // senders park (refreshOutbound), so their row <video> holds the last
+        // camera frame and never the screen. The share's status can arrive
+        // before the stg feed does, and in that gap a viewer's Stage showed
+        // the sharer's frozen camera picture labelled as their screen. The
+        // stg feed is the one that carries the screen.
+        const sc = srcFor(sid, 'stg:' + sid, true);
         if (!sc || !sc.el || !sc.stream || !sc.el.videoWidth) return null; // no pixels yet — the strip stands, the next sweep switches
         const vt = sc.stream.getVideoTracks ? sc.stream.getVideoTracks()[0] : null;
         if (!vt || vt.readyState === 'ended') return null;
@@ -28081,6 +28126,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!steppedDown) broadcastStatus(); // setStage already told the room
       refreshAllTiles();
       if (!screenSharers().length) paintStageStrip(null);
+      if (typeof dropStaleShareWin === 'function') dropStaleShareWin();
       setStatus(why
         ? uiText('shareStoppedWhy', 'Screen share stopped — {why}.').replace('{why}', why)
         : uiText('shareStopped', 'Screen share stopped.'));
@@ -31802,7 +31848,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The dock sits at the bottom, so a panel that used to clear a top bar
       // starts at the top of the page instead.
       let lastDock = -1;
-      let dockShown = -1;
       function safeBottomPx() {
         let probe = document.getElementById('gifos-safe-b');
         if (!probe) {
@@ -31821,11 +31866,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (away) {
             dock = safeBottomPx();
           } else {
-            const r = bar.getBoundingClientRect();
-            const measured = Math.max(0, Math.round(window.innerHeight - r.top));
-            // While the dock slides back, the rect is short. Keep the last full height.
-            if (dockShown < 0 || measured >= dockShown - 2) dockShown = measured;
-            dock = dockShown;
+            // Where the dock RESTS: a fixed box's offsetTop skips the slide
+            // transform, so there is nothing to wait out. Measured fresh each
+            // time. Keeping the largest height ever seen let one stale reading
+            // around a picture-in-picture float pin Record and Captions over
+            // the system header and shrink the solo tile until a reload
+            // (Nathan, 2026-10-19).
+            const rest = getComputedStyle(bar).position === 'fixed' ? bar.offsetTop : bar.getBoundingClientRect().top;
+            dock = Math.max(0, Math.min(window.innerHeight, Math.round(window.innerHeight - rest)));
           }
           document.documentElement.style.setProperty('--dockh', dock + 'px');
           if (dock !== lastDock) {
@@ -31856,7 +31904,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       window.__gifosKb = { sync: syncKb };
       // A wider dock can push Record/Captions back into their row (placeCallState).
       if (window.ResizeObserver) { try { new ResizeObserver(() => { setBarH(); try { paintCallState(); } catch (e2) {} }).observe(bar); } catch (e) {} }
-      window.addEventListener('resize', () => { setBarH(); syncKb(); try { paintCallState(); } catch (e) {} });
+      // A phone can hand over the new size before its layout has caught up
+      // (around a float). Measure again once the frame after it has laid out.
+      let barReT = 0;
+      const barRemeasure = () => {
+        if (barReT) cancelAnimationFrame(barReT);
+        barReT = requestAnimationFrame(() => { barReT = requestAnimationFrame(() => { barReT = 0; setBarH(); try { paintCallState(); } catch (e) {} }); });
+      };
+      window.addEventListener('resize', () => { setBarH(); syncKb(); try { paintCallState(); } catch (e) {} barRemeasure(); });
+      window.addEventListener('focus', barRemeasure);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) barRemeasure(); });
       if (window.visualViewport) {
         visualViewport.addEventListener('resize', () => { setBarH(); syncKb(); });
         visualViewport.addEventListener('scroll', syncKb);
