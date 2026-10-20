@@ -28,6 +28,39 @@
     return true;
   }
 
+  // Phone header rows are a fixed band: the status line, then Fit with
+  // Invite, Help and Full screen, ending at 102px. Sideways they share
+  // one row and end at 58px. --gtop is the notch or the update bar.
+  // The band does not follow a wake, so hiding the header does not resize
+  // the tiles. A wide window stays full-bleed.
+  function phoneHeaderBand(doc, vw, vh) {
+    let gtop = 0;
+    try {
+      const n = parseFloat(getComputedStyle(doc.documentElement).getPropertyValue('--gtop'));
+      if (n > 0) gtop = n;
+    } catch (e) {}
+    const land = vh < 500 && vw > vh;
+    return Math.round((land ? 58 : 102) + gtop);
+  }
+
+  // The feed starts below that band, so the top tile's Open (still the
+  // tile's upper-right corner) is not under the status line, and a scroll
+  // cannot slide a face into the band. A shared screen or an app keeps
+  // the full-bleed feed those layouts already size.
+  function reservePhoneHeader(feed, opts) {
+    if (!feed || !feed.style) return 0;
+    const doc = feed.ownerDocument || document;
+    const body = doc.body;
+    const skip = !opts || !opts.phone || (body && body.classList && (body.classList.contains('screen-on') || body.classList.contains('has-app')));
+    if (skip) { feed.style.top = ''; return 0; }
+    const view = doc.defaultView || root;
+    const vw = +opts.vw || (view && view.innerWidth) || 0;
+    const vh = +opts.vh || (view && view.innerHeight) || 0;
+    const header = phoneHeaderBand(doc, vw, vh);
+    feed.style.top = header + 'px';
+    return header;
+  }
+
   function placeEl(el, r) {
     if (!el || !r) return;
     const s = el.style;
@@ -99,6 +132,7 @@
     if (band) band.remove();
     const src = feed.querySelector('[data-row="sd"]');
     if (src && src.classList) src.classList.remove('stad-src');
+    if (feed.style) feed.style.top = '';
   }
 
   // Dark enough that white (#fff) initials clear WCAG AA (4.5:1) on both
@@ -446,9 +480,13 @@
       if (t.pz) t.el.dataset.pzkey = t.pz;
       t.el.dataset.tier = t.tier || 'row';
     }
-    const box = ML.viewBox(opts.vw || 1, opts.vh || 1, {
+    const box0 = ML.viewBox(opts.vw || 1, opts.vh || 1, {
       phone: !!opts.phone, pill: !!opts.pill, bottom: 0, top: 0,
     });
+    // Tiles are positioned inside the feed. y stays 0, which is the feed's
+    // top, already under the phone header.
+    const header = reservePhoneHeader(feed, opts);
+    const box = header > 0 ? Object.assign({}, box0, { y: 0, h: Math.max(1, box0.h - header) }) : box0;
     const MZ = GifOS.meetZones;
     const byId = {};
     for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
@@ -504,7 +542,10 @@
       // A face cut by the fold is below it too: the hint counts every face not whole.
       for (let i = 0; i < lay.rects.length; i++) if (lay.rects[i].y + lay.rects[i].h > clipY + 1) past++;
     }
-    if (feed.style && feed.style.setProperty) feed.style.setProperty('--comfy-clip', overflows ? Math.max(0, (+opts.vh || 0) - clipY) + 'px' : '0px');
+    // clipY is inside the feed. The phone feed starts `header` px down, so
+    // the bottom clip is measured from the viewport, not from the feed.
+    const viewClip = header + clipY;
+    if (feed.style && feed.style.setProperty) feed.style.setProperty('--comfy-clip', overflows ? Math.max(0, (+opts.vh || 0) - viewClip) + 'px' : '0px');
     if (feed.classList) { feed.classList.toggle('can-scroll', overflows); feed.classList.toggle('comfy-scroll', overflows); }
     let band = lay.band;
     // Short, in the bottom right corner, where a tile has no name or button.
