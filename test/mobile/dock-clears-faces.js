@@ -1,6 +1,6 @@
 /*
- * The dock must not cover the bottom row of faces. Four people on a phone
- * used to run under the controls.
+ * The dock floats over the bottom row. Four faces still fill the screen,
+ * and each one stays tall enough to read.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/dock-clears-faces.js
  */
@@ -63,10 +63,14 @@ const PHONES = [
     });
     const bad = [];
     if (info.tiles.length < 4) bad.push('only ' + info.tiles.length + ' faces');
+    let y0 = Infinity, y1 = -Infinity, over = false;
     for (const t of info.tiles) {
-      if (t.bottom > info.dockTop + 1) bad.push((t.name || t.id) + ' runs under the dock (bottom ' + Math.round(t.bottom) + ', dock ' + Math.round(info.dockTop) + ')');
+      if (t.bottom > info.dockTop + 1) over = true;
       if (t.h < 48) bad.push((t.name || t.id) + ' is only ' + Math.round(t.h) + 'px tall');
+      y0 = Math.min(y0, t.top); y1 = Math.max(y1, t.bottom);
     }
+    if (info.tiles.length && !over) bad.push('dock sits outside the tiles');
+    if (info.tiles.length && (y0 > 8 || info.vh - y1 > 8)) bad.push('faces leave a band (' + Math.round(y0) + ' above, ' + Math.round(info.vh - y1) + ' below)');
     if (phone.name === 'iphone-15') await page.screenshot({ path: path.join(SHOTS, 'after-dock-faces-iphone-15.png') });
     if (bad.length) failures.push(phone.name + ': ' + bad.join('; '));
     await context.close();

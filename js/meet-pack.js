@@ -154,8 +154,24 @@ function chooseRows(box, aspects, prevRows, minSide, phone, avoidLone) {
   // (2/2/1, or five then one) when another legal packing fills every row.
   // The open gallery keeps its equal-tile 2/2/1; only the strip asks for this.
   if (avoidLone && N > 1) {
-    const singles = (c) => { let n = 0; for (let i = 0; i < c.counts.length; i++) if (c.counts[i] === 1) n++; return n; };
-    if (cands.some((c) => singles(c) === 0)) cands = cands.filter((c) => singles(c) === 0);
+    // A face with nobody beside it is a gap, including a single column of
+    // faces (dir cols, one line). Count that from the cells, not from the
+    // line counts, which read backwards for a column.
+    const lone = (c) => {
+      let n = 0;
+      for (let i = 0; i < c.cells.length; i++) {
+        const t = c.cells[i];
+        let beside = false;
+        for (let j = 0; j < c.cells.length; j++) {
+          if (j === i) continue;
+          const o = c.cells[j];
+          if (o.y < t.y + t.h - 1 && t.y < o.y + o.h - 1) { beside = true; break; }
+        }
+        if (!beside) n++;
+      }
+      return n;
+    };
+    if (cands.some((c) => lone(c) === 0)) cands = cands.filter((c) => lone(c) === 0);
   }
   const best = Math.max(...cands.map(c => c.score));
   cands = cands.filter(c => c.score >= best * (1 - TIE));

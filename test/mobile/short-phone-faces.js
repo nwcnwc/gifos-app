@@ -105,9 +105,9 @@ function look(page) {
     console.log(tag + ': ' + whole.length + ' of ' + got.tiles.length + ' whole, ' + got.tiles.map((t) => t.w + 'x' + t.h).join(' ') + (got.hint ? ' hint ' + got.hint : ''));
     if (got.tiles.length !== 7) bad.push(tag + ': ' + got.tiles.length + ' tiles, want 7');
     if (whole.length < want) bad.push(tag + ': only ' + whole.length + ' of 7 faces show whole (' + whole.map((t) => t.name).join(', ') + '), want ' + want);
+    if (got.tiles.length && !got.tiles.some((t) => t.under)) bad.push(tag + ': dock sits outside the tiles');
     for (const t of got.tiles) {
       if (Math.min(t.w, t.h) < 96) bad.push(tag + ': ' + t.name + ' is ' + t.w + 'x' + t.h);
-      if (t.whole && t.under) bad.push(tag + ': ' + t.name + ' lies under the dock');
       if (t.whole) for (const c of t.clash) bad.push(tag + ': on ' + t.name + '\'s tile ' + c);
     }
     await context.close();

@@ -58,5 +58,40 @@ const open = Z.layout({
 });
 check('open gallery still lays out five', open.rects.length === 5, open.rects.length);
 
+// The dock and the header do not inset the box. A share plus eight faces
+// meets the screen edges, and two landscape faces stay square.
+function edges(laid, w, h) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const r of laid.rects) {
+    x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y);
+    x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h);
+  }
+  return y0 <= 1 && x0 <= 1 && y1 >= h - 1.5 && x1 >= w - 1.5;
+}
+const phoneShare = Z.layout({
+  box: { x: 0, y: 0, w: 390, h: 844 },
+  stage: [{ id: 'share', aspect: 16 / 9 }],
+  row: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'],
+  phone: true,
+  gallery: 'fit',
+});
+check('phone share fills the screen', edges(phoneShare, 390, 844), phoneShare.rects.length);
+const landShare = Z.layout({
+  box: { x: 0, y: 0, w: 844, h: 390 },
+  stage: [{ id: 'share', aspect: 16 / 9 }],
+  row: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'],
+  phone: true,
+  gallery: 'fit',
+});
+check('landscape share fills the screen', edges(landShare, 844, 390), landShare.rects.length);
+const two = Z.layout({
+  box: { x: 0, y: 0, w: 844, h: 390 },
+  row: ['a', 'b'],
+  phone: true,
+  gallery: 'fit',
+});
+check('two landscape faces stay square and reach the bottom', two.rects.length === 2 && two.rects.every((r) => Math.abs(r.w / r.h - 1) < 0.04 && r.y + r.h >= 388),
+  two.rects.map((r) => Math.round(r.w) + 'x' + Math.round(r.h) + '@' + Math.round(r.y)).join(' '));
+
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

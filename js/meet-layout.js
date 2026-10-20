@@ -159,35 +159,20 @@
     return { rects: emit(list, use, 'stad'), crowd: crowd, band: crowd ? { text: 'Stadium · ' + stad.length, x: (use[0] ? use[0].x : b.x) + 6, y: (use[0] ? use[0].y : b.y) + 6 } : band, tier: null };
   }
 
-  // Content box under the top chip and above the dock. opts.bottom is the
-  // measured dock band (innerHeight - bar.top) when the page has one; the
-  // dock constant stands in otherwise. Phone with the mode pill needs a taller
-  // top, and a phone clears Fit even at 200% text.
+  // The content box is the whole screen. The dock and the header float
+  // over the tiles, so they do not inset this box and a wake cannot move a
+  // face. opts.top and opts.bottom are ignored on purpose.
   function viewBox(vw, vh, opts) {
     opts = opts || {};
     const landscape = vw > vh;
-    const short = landscape && vh < 420;
     const phone = opts.phone != null ? !!opts.phone : (!landscape && vw < 700);
-    // 64 clears the header pill (it sits at y=14 and is about 40px tall) so
-    // the top row's chips are not drawn underneath it. The mode pill is taller.
-    // When Fit sits lower (200% text) the page measures and passes opts.top.
-    // A portrait phone starts under Fit (120, 140 with the mode pill, qa-meet-mobile);
-    // a short landscape phone keeps the band for the strip.
-    const top = opts.top != null ? opts.top : (phone ? (vh < 500 ? (opts.pill ? 92 : 64) : (opts.pill ? 140 : 120)) : 64);
-    const bottom = Math.max(0, +opts.bottom || 0);
-    // Dock: 88px pill + 14px bottom inset on a phone, 104px + 14px on a desk,
-    // plus a few pixels so a name chip is not tucked under the bar.
-    // A measured band (even 0, when the chrome is tucked away) is the truth;
-    // the constants stand in only when nothing was measured.
-    const dock = opts.dock != null ? opts.dock : (opts.bottom != null ? bottom : (phone ? 112 : 128));
-    const pad = phone ? 2 : 4;
     return {
-      x: pad,
-      y: top,
-      w: Math.max(1, vw - pad * 2),
-      h: Math.max(1, vh - top - dock),
+      x: 0,
+      y: 0,
+      w: Math.max(1, vw),
+      h: Math.max(1, vh),
       phone: phone,
-      dock: dock,
+      dock: 0,
     };
   }
 
@@ -464,8 +449,8 @@
       band = { text: 'faces tiny · Scroll is in ▦', x: box.x + 6, y: box.y + 6 };
     }
     let contentH = out.contentH || box.h;
-    // Scroll adds the dock height as trailing space so the last names can
-    // scroll clear of the bar. Fit already ends above the dock.
+    // The dock floats over the tiles, so scroll does not add a trailing band
+    // for it. A caller that still sets box.dock keeps the old clearance.
     if ((out.gallery === 'scroll') && contentH > box.h + 1 && box.dock) contentH += box.dock;
     const laid = {
       mode: mode,

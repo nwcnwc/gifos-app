@@ -1,8 +1,8 @@
 /*
  * cross-fithdr.js — in a small group of two on two machines, the second
- * person's Fit pill must not cover the first person's tile: the tile's top
- * right corner (where its marks sit) stays the thing under the pointer, and
- * Fit touches no tile. (0.9.23b took the "Blur for all" box off the tile;
+ * person's Fit pill stays readable above the video. Tiles fill the screen,
+ * so Fit floats over a face instead of reserving a band. (0.9.23b took the
+ * "Blur for all" box off the tile;
  * it lives in the tile's window now, see cross-tilemenu.)
  *
  *   1. the first person starts a call, the second opens its link
@@ -34,15 +34,13 @@ run('cross-fithdr', async (hb, vb, shoot) => {
       const fit = fitEl.getBoundingClientRect();
       const hit = (p, q) => Math.min(p.right, q.right) - Math.max(p.left, q.left) > 0 && Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top) > 0;
       const tr = t.getBoundingClientRect();
-      // The tile's top-right corner, where the tile's own marks sit: the
-      // tile, not Fit, is under the pointer there.
-      const corner = document.elementFromPoint(tr.right - 20, tr.top + 20);
+      const fitHit = document.elementFromPoint((fit.left + fit.right) / 2, (fit.top + fit.bottom) / 2);
       return {
         ok: true,
         fitShown: fitEl.getClientRects().length > 0 && getComputedStyle(fitEl).visibility !== 'hidden' && getComputedStyle(fitEl).opacity !== '0',
+        fitOnTop: !!(fitHit && (fitHit === fitEl || fitEl.contains(fitHit))),
         fit: [Math.round(fit.left), Math.round(fit.top), Math.round(fit.right), Math.round(fit.bottom)],
         tile: [Math.round(tr.left), Math.round(tr.top), Math.round(tr.right), Math.round(tr.bottom)],
-        cornerOnTile: !!(corner && t.contains(corner)),
         tilesUnderFit: Array.from(document.querySelectorAll('.tile')).filter((x) => x.getClientRects().length && hit(fit, x.getBoundingClientRect())).length,
       };
     });
@@ -51,6 +49,6 @@ run('cross-fithdr', async (hb, vb, shoot) => {
   await sleep(300);
   await shoot();
   if (!got.fitShown) throw new Error('Fit is not shown: ' + JSON.stringify(got));
-  if (!got.cornerOnTile || got.tilesUnderFit) throw new Error('Fit covers a tile: ' + JSON.stringify(got));
+  if (!got.fitOnTop) throw new Error('Fit is not readable above the video: ' + JSON.stringify(got));
   return JSON.stringify(got);
 });
