@@ -35364,11 +35364,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     })();
 
     function roomPeople() {
+      // The seat's WebRTC peers are its neighbours only. In a room past one
+      // row that is two or three people, while the roster (occupancy and
+      // fresh status) is the whole section. The bot's people list is this
+      // function. Walking peers left the speaker off it in a seven-person room.
       const meRow = { id: myId, name: myName(), bot: !!myStatus.bot, me: true };
       const people = [meRow];
-      for (const [pid, p] of peers) {
+      const seen = new Set([myId]);
+      for (const pid of rosterIds) {
+        if (!pid || seen.has(pid)) continue;
+        seen.add(pid);
+        const p = peers.get(pid);
         const st = statusOf.get(pid);
-        people.push({ id: pid, name: (p && p.name) || '', bot: !!(st && st.bot), me: false });
+        people.push({ id: pid, name: (p && p.name) || rosterNames[pid] || '', bot: !!(st && st.bot), me: false });
       }
       return people;
     }
@@ -35707,12 +35715,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setInterval(() => {
         try { if (ac && ac.state !== 'running' && ac.resume) ac.resume(); } catch (e) {}
         if (!meetJoined || typeof window.__gifosMeetEmit !== 'function') return;
-        const meRow = { id: myId, name: myName(), bot: !!myStatus.bot, me: true };
-        const people = [meRow];
-        for (const [pid, p] of peers) {
-          const st = statusOf.get(pid);
-          people.push({ id: pid, name: (p && p.name) || '', bot: !!(st && st.bot) });
-        }
+        const people = roomPeople();
         const sig = JSON.stringify(people);
         if (sig === peopleSig.last) return;
         peopleSig.last = sig;
