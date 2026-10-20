@@ -10082,11 +10082,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return b;
     }
     // The preview fills the card beside the control column. A 72px cap made
-    // it a postage stamp. The short landscape card still forces 40px in CSS.
+    // it a postage stamp. On a short landscape screen the card is the full
+    // height, so the preview takes that leftover height and the card widens
+    // to match. Portrait still sizes from the card's width.
     function twSizePad(pad, vw, vh) {
       const split = pad.closest ? pad.closest('.tw-split') : null;
       const sideEl = split ? split.querySelector('.tw-side') : null;
       const sideW = sideEl && sideEl.offsetWidth ? sideEl.offsetWidth : 0;
+      const win = pad.closest ? pad.closest('#tilewin') : null;
+      const shortLand = !!(window.matchMedia && matchMedia('(max-height: 500px) and (orientation: landscape)').matches);
+      if (shortLand && win && split && win.clientHeight > 80) {
+        const cs = getComputedStyle(win);
+        const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+        const padB = parseFloat(cs.paddingBottom) || 0;
+        const above = Math.max(0, split.getBoundingClientRect().top - win.getBoundingClientRect().top);
+        // A few pixels of slack: the help line can wrap after this measure, and
+        // a pad that ends in the padding makes the card report a scroll.
+        const maxH = Math.max(80, Math.floor(win.clientHeight - above - padB - 8));
+        const side = sideW > 40 ? sideW : 112;
+        const maxW = Math.max(80, Math.floor((window.innerWidth || 800) - 24 - padX - side - 8));
+        let w = maxW;
+        let h = vw > 0 ? w * vh / vw : w * 9 / 16;
+        if (h > maxH && h > 0) { h = maxH; w = vw > 0 ? h * vw / vh : w; }
+        if (w > maxW && w > 0) { w = maxW; h = vw > 0 ? w * vh / vw : h; }
+        pad.style.aspectRatio = (vw || 16) + ' / ' + (vh || 9);
+        pad.style.width = Math.round(Math.max(1, w)) + 'px';
+        pad.style.height = Math.round(Math.max(1, h)) + 'px';
+        const want = Math.ceil(w + 8 + side + padX);
+        win.style.width = Math.min(want, Math.floor((window.innerWidth || 800) - 24)) + 'px';
+        return;
+      }
+      if (win && win.style.width) win.style.width = '';
       const splitW = (split && split.clientWidth) || (pad.parentElement && pad.parentElement.clientWidth) || 360;
       const maxW = Math.max(80, splitW - sideW - (sideW ? 8 : 0));
       const maxH = Math.min(Math.round((window.innerHeight || 800) * 0.42), 420);
@@ -10221,7 +10247,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Info: the badges the tile no longer wears.
       const info = document.createElement('div'); info.className = 'tw-info';
       el.querySelectorAll(':scope > .chips span, :scope > .botbadge').forEach((c) => {
-        const t = (c.getAttribute('aria-label') || c.title || c.textContent || '').trim();
+        let t = (c.getAttribute('aria-label') || c.title || c.textContent || '').trim();
+        // The tile's sentence wraps into a tall pill. The sheet shows one short word.
+        if (/recording/i.test(t)) t = 'recording';
         if (t) { const sp = document.createElement('span'); sp.textContent = t; info.appendChild(sp); }
       });
       if (el.classList.contains('stadface')) { const sp = document.createElement('span'); sp.textContent = 'In the stadium'; info.appendChild(sp); }
@@ -10243,7 +10271,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (isMe) {
         const mic = document.getElementById('mic'), cam = document.getElementById('cam');
         if (mic) row.appendChild(twButton(myStatus.muted ? 'Unmute' : 'Mute', !myStatus.muted, () => { mic.click(); closeTileWin(); }));
-        if (cam) row.appendChild(twButton(myStatus.camOff ? 'Camera on' : 'Camera off', !myStatus.camOff, () => { cam.click(); closeTileWin(); }));
+        if (cam) row.appendChild(twButton(myStatus.camOff ? 'Cam on' : 'Cam off', !myStatus.camOff, () => { cam.click(); closeTileWin(); }));
         if (myStatus.scr) row.appendChild(twButton(uiText('stopShare', 'Stop sharing'), false, () => { try { stopScreenShare(); } catch (e) {} closeTileWin(); }, 'danger'));
       } else if (isStage) {
         if (myStatus.scr) row.appendChild(twButton(uiText('stopShare', 'Stop sharing'), false, () => { try { stopScreenShare(); } catch (e) {} closeTileWin(); }, 'danger'));
@@ -10345,7 +10373,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const win = document.getElementById('tilewin'), veil = document.getElementById('tilewin-veil');
       if (tileWin.modbar && tileWin.home) { try { tileWin.home.appendChild(tileWin.modbar); } catch (e) {} }
       tileWin.modbar = tileWin.home = null;
-      if (win) { win.querySelectorAll('video').forEach((v) => { try { v.srcObject = null; } catch (e) {} }); win.hidden = true; win.textContent = ''; }
+      if (win) { win.querySelectorAll('video').forEach((v) => { try { v.srcObject = null; } catch (e) {} }); win.hidden = true; win.textContent = ''; win.style.width = ''; }
       if (veil) veil.hidden = true;
       document.body.classList.remove('tw-open');
       try { if (el.classList.contains('tile')) applyViewerCrop(el); } catch (e) {}
