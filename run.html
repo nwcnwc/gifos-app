@@ -2844,8 +2844,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.comfy .stadface .avatar {
     position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; align-items: center; justify-content: center;
     font-size: 2.4rem; font-weight: 800; color: #fff; background: transparent; z-index: 1; }
-  /* The "+N" seat for the people past the stadium's on-screen cap. */
-  body.comfy #stadcrowd .avatar { font-size: 1.1rem; }
+  /* The stadium is one composite, shown whole in the zone's box. */
+  body.comfy #stadwhole { overflow: hidden; background: #0d0f14; }
+  body.comfy #stadwhole video { width: 100%; height: 100%; object-fit: contain; object-position: center center; }
+  body.comfy #stadwhole .name {
+    position: absolute; left: .4rem; bottom: .4rem; z-index: 2;
+    background: rgba(10,10,15,.72); color: #eceef8;
+    padding: .12rem .5rem; border-radius: .4rem; font-size: .75rem;
+    max-width: calc(100% - .8rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   body.comfy .stadface .name {
     position: absolute; left: .4rem; bottom: .4rem; z-index: 2;
     background: rgba(10,10,15,.72); color: #eceef8;
@@ -9971,10 +9978,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           } catch (e3) { held = false; }
           faces.push({ id: id, name: name, initials: held ? '' : nameInitial(name), off: off || held, avatar: held ? '' : avatar, shade: shadeKey(id), held: held });
         }
-        // STADIUM-FACES: with a cell order, face j is cut from the cell that
-        // names it (cellOf; -1 = not in this composite: initials), whatever
-        // the roster's order or length. Without one, the old rule: the
-        // packer's count drives the crop only when it matches this set.
+        // The view shows this composite whole. It does not cut a cell out of it.
         let cellOf = null;
         if (Array.isArray(meta.ids) && meta.ids.length === meta.n) {
           const at = new Map();
@@ -35698,7 +35702,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           });
         };
         document.querySelectorAll('#feed .tile').forEach(take);
-        document.querySelectorAll('#stadfaces .stadface, #stadcrowd').forEach(take);
+        document.querySelectorAll('#stadwhole, #stadfaces .stadface, #stadcrowd').forEach(take);
         const bar = document.querySelector('.bar');
         const br = bar ? bar.getBoundingClientRect() : null;
         let box = null;
