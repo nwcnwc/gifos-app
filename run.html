@@ -14249,7 +14249,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const mix = !!(turnHeard() && id !== turnAnchorId && !(p && p.connected));
         if (!npBlocked && !mix) return false;
         if (p && vaPictureLive(p, Date.now())) return false;
-        if (vaRoom() === 'live' && vaFaceView(id).alive) return false;
+        // A month marks the room live. A pass does not: it pays this
+        // person's crossings only, and their picture arrives in the row
+        // composite. Either way a flat cell stays blocked. A pass that
+        // does not cover them leaves the message up, even if the cell
+        // is already moving.
+        let passCover = false;
+        try { passCover = typeof vaPassCovers === 'function' && vaPassCovers(id); } catch (e) { passCover = false; }
+        if ((vaRoom() === 'live' || passCover) && vaFaceView(id).alive) return false;
         return true;
       } catch (e) { return false; }
     }
