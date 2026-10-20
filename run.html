@@ -2922,6 +2922,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-height: 500px) {
     body.comfy.gallery-scroll #feed.can-scroll::after { display: none; }
   }
+  /* An upright phone is full-bleed and the dock tucks, so bottom:112px
+     lands across the lower tile (the portrait dark band). The fold is
+     the scroll. No gradient on a face. */
+  @media (max-width: 700px) {
+    body.comfy.gallery-scroll #feed.can-scroll::after { display: none; }
+  }
   /* Desktop gallery: a gutter between faces (meet-views.js) and soft corners. */
   body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-gutter="1"],
   body.comfy .stadface[data-gutter="1"] { border-radius: 10px; overflow: hidden; }
