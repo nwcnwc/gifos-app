@@ -945,6 +945,23 @@
         // Non-empty ⇒ deliver greeter ids (gateway pick).
         if (!ids.length && m.founded) action = preState === 0 ? 'MINT' : 'empty-founded-noop';
         else action = 'deliver';
+        // A founder's seat is visible the instant take() returns, and the
+        // door list is what a probe reads then. emitRelay seals the greeter
+        // blob asynchronously, so the seat was observable while the list was
+        // still empty (ghost-genesis-client). The founder coord is 0/0.0
+        // (mesh.js GREETERS: an empty list at state 0). Put that blob on the
+        // wire before the seat exists.
+        if (action === 'MINT' && !stopped) {
+          try {
+            const b = await net.sealFixed(roomKey, { p: peer, c: { pc: 0, r: 0, i: 0 }, fa: 1 });
+            if (b && !stopped) {
+              const s = JSON.stringify(b);
+              greeterTrace.push({ t: Date.now(), tick: env.TICK, state: preState, post: seat.state, listLen: -1, open: -1, founded: true, action: 'register-blob:' + blobFp(s) });
+              if (greeterTrace.length > GREETER_TRACE_CAP) greeterTrace.shift();
+              sendRaw({ t: 'knock', gk: seat.genKey || myKey, gblob: s });
+            }
+          } catch (e) {}
+        }
         seat.recv({ t: 'GREETERS', list: ids, fa }); // fa: the doors whose build sends FINDACK
       }
       // `adm` is the relay's `admitted`: does my genesis key match the room's?
@@ -1298,14 +1315,27 @@
       stop() { stopped = true; if (timer && timer.worker) { try { timer.worker.terminate(); } catch (e) {} } else if (timer) clearInterval(timer); timer = null; if (sock) { try { sock.close(); } catch (e) {} sock = null; } },
     };
 
+    // The ticket ask (/t) finishes BEFORE this node is ready and BEFORE its
+    // upgrade is opened. whenReady used to resolve while that ask was still
+    // in flight, and the caller — the door harness, a second tab — started
+    // the next member then. The next member's /t was the warm one, so its
+    // handshake arrived first and it founded the room. Healing-laws R2:
+    // arrival order alone decides genesis, so the member that got here
+    // first has to be the one whose upgrade is already on the wire.
+    // Tokens-on is unchanged: prepare still resolves with &jt= in hand, and
+    // the first upgrade carries it (relay-page-ticket).
+    const openDoor = () => prepareTicket().then(() => { if (!stopped) build(); }, () => { if (!stopped) build(); });
     if (wantMint) {
       Promise.all([ident.mint(), rsFor()]).then(([id]) => {
         if (stopped) return;
         identity = id; peer = id.peerId; node.peer = peer;
-        return ipProofFor().then(() => { if (!stopped) build(); });
+        // ip proof and the ticket ask together, then the upgrade. The proof
+        // has to be on the URL the upgrade opens; the ask has to be done so
+        // that URL is opened before whenReady returns.
+        return Promise.all([ipProofFor(), prepareTicket()]).then(() => { if (!stopped) build(); }, () => { if (!stopped) build(); });
       }).catch(() => {});
     } else {
-      Promise.all([rsFor(), ipProofFor()]).then(() => { if (!stopped) build(); }, () => { if (!stopped) build(); });
+      Promise.all([rsFor(), ipProofFor()]).then(openDoor, openDoor);
     }
     return node;
   }
