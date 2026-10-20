@@ -96,7 +96,8 @@ function overlaps(a, b) {
       if (u.h < 44 || u.w < 44) bad.push('Mic is ' + Math.round(u.w) + 'x' + Math.round(u.h));
       if (u.top < -1 || u.bottom > info.vh + 1 || u.left < -1 || u.right > info.vw + 1) bad.push('Mic is off screen');
       if (!info.micOff) bad.push('mic is already on');
-      if (info.tiles.some((t) => overlaps(u, t))) bad.push('Mic covers a face');
+      // The dock floats over the tiles while it is showing.
+      if (!info.tiles.some((t) => overlaps(u, t))) bad.push('Mic does not float over a face');
     }
     if (bad.length) {
       failures.push(phone.name + ': ' + bad.join('; '));
@@ -119,6 +120,11 @@ function overlaps(a, b) {
     const quiet = await read();
     if (!tucked) bad.push('chrome idle hook missing');
     else if (quiet.unmute && !quiet.unmute.hidden) bad.push('header Unmute appeared while the dock was tucked');
+    const sig = (tiles) => tiles.map((t) => [Math.round(t.left), Math.round(t.top), Math.round(t.w), Math.round(t.h)].join(',')).sort().join('|');
+    if (sig(info.tiles) !== sig(quiet.tiles)) bad.push('tiles moved when the controls tucked');
+    let y0 = Infinity, y1 = -Infinity;
+    for (const t of quiet.tiles) { y0 = Math.min(y0, t.top); y1 = Math.max(y1, t.bottom); }
+    if (!quiet.tiles.length || y0 > 8 || quiet.vh - y1 > 8) bad.push('tiles leave a band when the controls tuck (' + Math.round(y0) + ' above, ' + Math.round(quiet.vh - y1) + ' below)');
     if (bad.length) failures.push(phone.name + ': ' + bad.join('; '));
     else console.log('PASS', phone.name);
     await context.close();

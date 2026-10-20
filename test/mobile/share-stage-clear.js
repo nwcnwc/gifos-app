@@ -5,9 +5,9 @@
  * drops the gallery layout and starts at the top of the screen, so the
  * header and Fit covered the top of the slide, the sharer's own
  * "Stop sharing" button, and (with no picture yet) the faces' strip.
- * Now the shared screen and the faces start below the header band, and
- * nothing of them sits under the header, Fit, Unmute, the dock or the
- * Record row.
+ * The header, Fit, Unmute, the dock and the Record row float over the
+ * slide. They stay the thing a tap hits. Tucking them does not move the
+ * slide or a face, and the tiles meet the screen edges.
  *
  * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/share-stage-clear.js
  */
@@ -33,7 +33,6 @@ function look(page) {
       return r.width >= 8 && r.height >= 8 && r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
     };
     const box = (r) => [r.left, r.top, r.right - r.left, r.bottom - r.top].map(Math.round).join(',');
-    const over = (a, b) => a.top < b.bottom - 0.5 && a.bottom > b.top + 0.5 && a.left < b.right - 0.5 && a.right > b.left + 0.5;
     const pinned = [];
     const pin = (what, el) => { if (seen(el)) pinned.push([what, el.getBoundingClientRect()]); };
     pin('the room header', document.querySelector('.topchip'));
@@ -75,9 +74,51 @@ function look(page) {
     const under = [];
     for (const [what, r] of parts) {
       if (r.bottom > innerHeight + 0.5 || r.top < -0.5) under.push(what + ' (' + box(r) + ') runs off the screen');
-      for (const [pw, pr] of pinned) if (over(r, pr)) under.push(pw + ' (' + box(pr) + ') covers ' + what + ' (' + box(r) + ')');
     }
-    return { stage: !!stage, slide: parts.some((p) => p[0] === 'the shared slide'), under, body: document.body.className };
+    // The Record row's middle is empty, so a tap there hits the face under
+    // it. Read each button. A button fails when the video is what a tap hits.
+    const controls = pinned.filter((p) => p[0] !== 'the Record row');
+    const row = document.getElementById('callstate');
+    if (row && !document.body.classList.contains('chrome-away')) {
+      for (const b of row.querySelectorAll('button')) {
+        if (seen(b)) controls.push([b.textContent.replace(/\s+/g, ' ').trim() || 'Record row', b.getBoundingClientRect()]);
+      }
+    }
+    for (const [pw, pr] of controls) {
+      const hit = document.elementFromPoint((pr.left + pr.right) / 2, (pr.top + pr.bottom) / 2);
+      const tile = hit && hit.closest && hit.closest('#feed .tile, #feed .stadface, #stagefeed .rowtile, video');
+      if (tile && !(hit.closest('button, a, .topchip, .bar'))) under.push(pw + ' is covered by the video');
+    }
+    // Full-bleed is the tile boxes. The slide picture stays 16:9 inside its
+    // tile, and the grid box is shorter than the faces it holds.
+    const tiles = [];
+    const pushTile = (el) => {
+      if (!seen(el)) return;
+      const b = el.getBoundingClientRect();
+      tiles.push({ left: b.left, top: b.top, right: b.right, bottom: b.bottom });
+    };
+    pushTile(stage);
+    document.querySelectorAll('#feed .tile').forEach(pushTile);
+    let y0 = Infinity, y1 = -Infinity;
+    for (const r of tiles) {
+      if (r.top < y0) y0 = r.top;
+      if (r.bottom > y1) y1 = r.bottom;
+    }
+    const bar = document.querySelector('.bar');
+    const br = bar && seen(bar) ? bar.getBoundingClientRect() : null;
+    const dockOver = !!(br && tiles.some((t) => t.left < br.right - 1 && br.left < t.right - 1 && t.top < br.bottom - 1 && br.top < t.bottom - 1));
+    const sig = tiles.map((r) => box(r)).sort().join('|');
+    return {
+      stage: !!stage,
+      slide: parts.some((p) => p[0] === 'the shared slide'),
+      under,
+      pinned: pinned.map((p) => p[0]),
+      sig,
+      dockOver,
+      gapTop: tiles.length ? y0 : null,
+      gapBottom: tiles.length ? innerHeight - y1 : null,
+      body: document.body.className,
+    };
   });
 }
 
@@ -121,6 +162,7 @@ async function run(browser, dev, tag, vp, bad) {
   }, null, { timeout: 15000 }).then(() => true, () => false);
   if (!up) { bad.push(tag + ': the shared screen never reached the stage'); await context.close(); return; }
   // Buttons up (any key brings them back), then tucked away as on a quiet call.
+  let upSig = '';
   for (const phase of ['buttons up', 'buttons away']) {
     if (phase === 'buttons away') await page.evaluate(() => window.__gifosChrome.idle());
     else await page.keyboard.press('Shift');
@@ -128,10 +170,15 @@ async function run(browser, dev, tag, vp, bad) {
     const l = await look(page);
     if (!l.slide) bad.push(tag + ', ' + phase + ': no slide on the stage');
     for (const u of l.under) bad.push(tag + ', ' + phase + ': ' + u);
+    if (l.gapTop == null || l.gapTop > 16 || l.gapBottom > 16) bad.push(tag + ', ' + phase + ': tiles leave a band (' + l.gapTop + ' above, ' + Math.round(l.gapBottom) + ' below)');
     if (phase === 'buttons up') {
+      upSig = l.sig;
+      if (l.pinned.indexOf('the room header') < 0) bad.push(tag + ': the room header is missing');
+      if (l.pinned.indexOf('the dock') < 0) bad.push(tag + ': the dock is missing');
+      if (!l.dockOver) bad.push(tag + ': dock sits outside the tiles');
       const shot = await page.screenshot();
       fs.writeFileSync(path.join(SHOTS, '__share-stage-clear-' + tag + '.png'), shot);
-    }
+    } else if (l.sig !== upSig) bad.push(tag + ': tiles moved when the controls tucked');
   }
   const pre = bad.length > was ? 'before' : 'after';
   fs.renameSync(path.join(SHOTS, '__share-stage-clear-' + tag + '.png'), path.join(SHOTS, pre + '-share-stage-clear-' + tag + '.png'));
@@ -148,5 +195,5 @@ async function run(browser, dev, tag, vp, bad) {
     console.error('FAIL ' + bad.join('; '));
     process.exit(1);
   }
-  console.log('PASS a shared slide, Stop sharing and the faces sit clear of the header, Fit, Unmute and the dock');
+  console.log('PASS a shared slide and the faces fill the screen, and the header and the dock float over them');
 })().catch((e) => { console.error(e); process.exit(1); });

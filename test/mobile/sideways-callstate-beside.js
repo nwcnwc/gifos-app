@@ -24,7 +24,8 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
 const NAMES = ['Pastor Dave', 'Ruth', 'Margaret Johnson', 'Lobby iPad', 'Grace', 'Tom & Linda Ruiz'];
 const LONG = ['Pastor Dave', 'Ruth', 'Margaret Johnson', 'Fellowship Hall iPad', 'Grace', 'Tom & Linda Ruiz'];
 // [device, shot tag, faces whole with the buttons up, guests]
-const PHONES = [['iPhone SE landscape', 'iphone-se-land', 5, NAMES], ['iPhone SE landscape', 'iphone-se-land-long', 5, LONG],
+// A full-screen gallery fits every face on these phones, including the SE.
+const PHONES = [['iPhone SE landscape', 'iphone-se-land', 7, NAMES], ['iPhone SE landscape', 'iphone-se-land-long', 7, LONG],
   ['iPhone 12 landscape', 'iphone-12-land', 7, NAMES], ['Pixel 5 landscape', 'pixel-5-land', 7, NAMES]];
 
 function look(page) {
@@ -115,10 +116,13 @@ function look(page) {
     if (whole.length < want) bad.push(dev + ': ' + whole.length + ' faces whole with the buttons up, want ' + want + ' (' + whole.map((t) => t.name + ' ' + t.h + 'px').join(', ') + ')');
     if (want === 7 && a.scroll > 1) bad.push(dev + ': the tiles scroll ' + a.scroll + 'px');
     if (a.hintOn.length) bad.push(dev + ': the "' + a.hint + '" hint sits on ' + a.hintOn.join(' and ') + '\'s name');
-    if (want < 7 && a.hint !== '\u2193' + (7 - want)) bad.push(dev + ': ' + (7 - want) + ' faces below and the hint says "' + a.hint + '"');
+    if (whole.length === a.tiles.length && a.hint) bad.push(dev + ': every face is on screen and the hint says "' + a.hint + '"');
+    if (whole.length < a.tiles.length && a.hint !== '\u2193' + (a.tiles.length - whole.length)) bad.push(dev + ': ' + (a.tiles.length - whole.length) + ' faces below and the hint says "' + a.hint + '"');
+    if (a.tiles.length && !a.tiles.some((t) => t.under)) bad.push(dev + ': dock sits outside the tiles');
     for (const t of a.tiles) {
-      if (t.under) bad.push(dev + ': ' + t.name + '\'s tile is under the dock or Record/Captions');
-      if (t.whole && !t.nameTop) bad.push(dev + ': ' + t.name + '\'s name is covered');
+      // A name under the dock is covered while the controls are up. Any other
+      // cover is a miss.
+      if (t.whole && !t.nameTop && !t.under) bad.push(dev + ': ' + t.name + '\'s name is covered');
       if (t.nameOnMax) bad.push(dev + ': ' + t.name + '\'s name runs over Full screen');
     }
     if (a.btns.length !== 2) bad.push(dev + ': ' + a.btns.length + ' Record/Captions buttons shown, want 2');

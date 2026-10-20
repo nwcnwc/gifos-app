@@ -92,10 +92,8 @@ function overlaps(a, b) {
       if (short < 96) bad.push((t.name || 'tile') + ' is ' + Math.round(t.w) + 'x' + Math.round(t.h));
       if (aspect > 1.05) bad.push((t.name || 'tile') + ' is a wide strip (' + aspect.toFixed(2) + ')');
       if (aspect < 0.44) bad.push((t.name || 'tile') + ' is thinner than a phone (' + aspect.toFixed(2) + ')');
-      if (info.state && t.bottom > info.state.top + 1) bad.push((t.name || 'tile') + ' runs under Live');
-      if (info.fit && overlaps(info.fit, t)) bad.push('Fit covers ' + (t.name || 'a face'));
-      if (info.bar && t.bottom > info.bar.top + 1) bad.push((t.name || 'tile') + ' runs under the dock');
     }
+    if (info.bar && info.tiles.length && !info.tiles.some((t) => t.bottom > info.bar.top + 1)) bad.push('dock sits outside the tiles');
     const shot = (bad.length ? 'before' : 'after') + '-sideways-tiles-' + phone.name + '.png';
     await page.screenshot({ path: path.join(SHOTS, shot) });
     if (bad.length) failures.push(phone.name + ': ' + bad.join('; '));
