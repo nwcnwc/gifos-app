@@ -4630,41 +4630,41 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (db && /^gifos_vm_[\w-]+$/.test(db)) window.GIFOS_DB_NAME = db;
     })();
   </script>
-  <script src="js/gifos-gif.js"></script>
-  <script src="js/gifos-help.js"></script>
-  <script src="js/gifos-fullscreen.js"></script>
-  <script src="js/gifos-ed.js"></script>
-  <script src="js/gifos-sign.js"></script>
-  <script src="js/gifos-x402.js"></script>
-  <script src="js/gifos-charge.js"></script>
-  <script src="js/gifos-purse.js"></script>
-  <script src="js/gifos-paywallet.js"></script>
-  <script src="js/gifos-pay-broker.js"></script>
-  <script src="js/gifos-assets.js"></script>
-  <script src="js/gifos-avatar.js"></script>
-  <script src="js/gifos-store.js"></script>
-  <script src="js/gifos-install.js"></script>
-  <script src="js/gifos-lock.js"></script>
-  <script src="js/app-update.js"></script>
-  <script src="js/gifos-update.js"></script>
-  <script src="js/gifos-net.js"></script>
-  <script src="js/mesh.js"></script>
-  <script src="js/relay-admit.js"></script>
-  <script src="js/mesh-identity.js"></script>
-  <script src="js/mesh-wire.js"></script>
-  <script src="js/mesh-media.js"></script>
-  <script src="js/meet-pack.js"></script>
-  <script src="js/meet-layout.js"></script>
-  <script src="js/meet-leave.js"></script>
-  <script src="js/meet-zones.js"></script>
-  <script src="js/meet-views.js"></script>
-  <script src="js/meet-turn.js"></script>
-  <script src="js/mesh-pipe.js"></script>
-  <script src="js/relay-config.js"></script>
-  <script src="js/runtime.js"></script>
-  <script src="js/meet-host.js"></script>
-  <script src="js/camera-studio.js"></script>
-  <script src="js/gifos-perms.js"></script>
+  <script src="js/gifos-gif.js" defer></script>
+  <script src="js/gifos-help.js" defer></script>
+  <script src="js/gifos-fullscreen.js" defer></script>
+  <script src="js/gifos-ed.js" defer></script>
+  <script src="js/gifos-sign.js" defer></script>
+  <script src="js/gifos-x402.js" defer></script>
+  <script src="js/gifos-charge.js" defer></script>
+  <script src="js/gifos-purse.js" defer></script>
+  <script src="js/gifos-paywallet.js" defer></script>
+  <script src="js/gifos-pay-broker.js" defer></script>
+  <script src="js/gifos-assets.js" defer></script>
+  <script src="js/gifos-avatar.js" defer></script>
+  <script src="js/gifos-store.js" defer></script>
+  <script src="js/gifos-install.js" defer></script>
+  <script src="js/gifos-lock.js" defer></script>
+  <script src="js/app-update.js" defer></script>
+  <script src="js/gifos-update.js" defer></script>
+  <script src="js/gifos-net.js" defer></script>
+  <script src="js/mesh.js" defer></script>
+  <script src="js/relay-admit.js" defer></script>
+  <script src="js/mesh-identity.js" defer></script>
+  <script src="js/mesh-wire.js" defer></script>
+  <script src="js/mesh-media.js" defer></script>
+  <script src="js/meet-pack.js" defer></script>
+  <script src="js/meet-layout.js" defer></script>
+  <script src="js/meet-leave.js" defer></script>
+  <script src="js/meet-zones.js" defer></script>
+  <script src="js/meet-views.js" defer></script>
+  <script src="js/meet-turn.js" defer></script>
+  <script src="js/mesh-pipe.js" defer></script>
+  <script src="js/relay-config.js" defer></script>
+  <script src="js/runtime.js" defer></script>
+  <script src="js/meet-host.js" defer></script>
+  <script src="js/camera-studio.js" defer></script>
+  <script src="js/gifos-perms.js" defer></script>
   <script>
   /*
    * GifOS Meeting — a SYSTEM app (first-party page, not a sandboxed GIF app).
@@ -4691,6 +4691,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
    *  - no camera permission at all → you still JOIN (view-only) instead of
    *    being locked out
    */
+  // The scripts above are deferred so they fetch together. This assigns the
+  // starter. The module after this script runs it once those libraries have
+  // executed, and before DOMContentLoaded.
+  window.__startMeet = function () {
   (function () {
     // Visible chrome for a German or Spanish device. English stays in the
     // markup. Anything without a translation stays English on purpose.
@@ -36197,7 +36201,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       },
     };
   })();
+  };
   </script>
+<script type="module">
+// The deferred libraries have run. Start the meeting before DOMContentLoaded.
+if (typeof window.__startMeet === 'function') window.__startMeet();
+</script>
 <!-- FOR AI AGENTS. Off-screen, not display:none — most agent fetchers read
      the raw HTML without running scripts (so the JS-painted build badge is
      invisible to them), and readability-style extractors DROP display:none
