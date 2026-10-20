@@ -160,6 +160,9 @@
   // the ON≡OFF trajectory identity that makes G0/G1 mechanical.
   const DIG_TTL = 60;        // test/sim/mesh.cpp DIG_TTL — a report older than this is stale (G3: stale ⇒ fail-closed)
   const DIG_LOSS_H = 300;    // test/sim/mesh.cpp DIG_LOSS_H — the fail-closed blur horizon (spans RING_HOLD, the longest confirm window)
+  const DARK_LEAVE = 60;     // D6: ticks with no owned link carrying a channel (after one did, at this cell) before a seat that still hears its neighbours' beats vacates and re-joins
+  const CHAN_UP = 32;        // a channel is still up only while its proof is this fresh (a few phone beats). A proof that has merely not yet reached DARK_LEAVE has already stopped.
+  const UNP_SIGN = 16;       // § G10: two beats of a peer's PHONE/PONG reaching me unproven, then my digest frames to it are signed
   const DIG_HOLD_LEVEL = 16; // test/sim/mesh.cpp DIG_HOLD_LEVEL — the handover hold: two pulse periods per tree level (see take())
   // The digest record (sim struct Dig). by=null is the sim's by=-1; at=-1 means "never computed".
   // § G9 ROOM-GLOBAL LISTS (healing-laws G9; sim: mesh.cpp LE/VE, listMerge,
@@ -471,6 +474,14 @@
       //              with a live id). Deliberately NOT `live` (E2 untouched):
       //              a probe answer travels the mesh, so it can only ever
       //              PREVENT an early eviction, never evict or resurrect.
+      // § G10 unp: peer id -> first tick of its current run of PHONE/PONG that
+      // reached me UNPROVEN (no channel names it). Ended by one link-proven frame.
+      this.unp = new Map(); this.lkAnyAt = -1; this.unpAnyAt = -1;
+      // Per owned-link cell, the last tick a channel named its occupant (D6).
+      // noChan: a peer whose channel died and stayed dead — not installed on an
+      // owned link again. darkHold: a cell we refused for that peer, so a heal
+      // does not treat the refusal as an empty chair.
+      this.lkAt = new Map(); this.unpAt = new Map(); this.noChan = new Set(); this.darkHold = new Map();
       this.translost = new Map(); this.tlProbeAt = new Map(); this.probeAck = new Map(); this.tlLog = []; // [k, tick, why] — last 24 forgotten observations (forensics)
       // PRODUCTION EXTENSION (no sim counterpart — the sim's harness reads occ
       // directly every tick; the app samples it). d5Deaths: each probe-
@@ -684,6 +695,8 @@
       // have seen my announce: a healed split's far side), so the loser can
       // count me (lateQuorum, arbOk).
       if (m.t === 'PONG' && m.yp === 1 && m.id === this.id && m.pp === undefined && this.pp && m.coord && ck(m.coord) === this.pp.ck) m.pp = this.pp.s4;
+      // § G10: a digest frame to a peer whose beats reach me unproven is signed (the wire signs dsg frames).
+      if ((m.t === 'PHONE' || m.t === 'PONG') && m.id === this.id && m.dsg === undefined && (m.dgUp || m.dgRoot || m.dgPub) && this.unpLong(to)) m.dsg = 1;
       if (this.env.peek && !m.routing && !m.direct && to !== this.id) {
         const st = this.env.peek(to);
         if (st) {
@@ -721,7 +734,14 @@
     occGet(k) { const v = this.occ.get(k); return v === undefined ? null : v; }
     // a seat can be in exactly ONE place: never store MYSELF at a coord I do not
     // hold (stale self-claims circulating back made invisible zombies)
-    setOcc(k, v) { if (v === this.id && (!this.hasCoord || k !== ck(this.coord))) return; if (this.occ.get(k) !== v) { this.tlForget(k, 'occ-change→' + (v == null ? 'null' : String(v).slice(0, 6))); this.born.set(k, this.LT()); this.pairAt.set(k, this.TICK); } this.occ.set(k, v); }
+    setOcc(k, v) {
+      if (v === this.id && (!this.hasCoord || k !== ck(this.coord))) return;
+      // A channel that died and stayed dead is not an owned link again. Holding
+      // the cell back from heal: the peer may still be sitting there.
+      if (v != null && this.noChan && this.noChan.has(v) && this.hasCoord && this.ownedLinkCell(k)) { this.darkHold.set(k, v); return; }
+      if (this.darkHold) this.darkHold.delete(k);
+      if (this.occ.get(k) !== v) { this.tlForget(k, 'occ-change→' + (v == null ? 'null' : String(v).slice(0, 6))); this.born.set(k, this.LT()); this.pairAt.set(k, this.TICK); } this.occ.set(k, v);
+    }
     noteS1(k) { if (isS1key(k)) { this.s1seen.set(k, this.TICK); this.s1told.delete(k); } }
     s1Told(k) { const t = this.s1told.get(k); return t !== undefined && t === this.s1seen.get(k); }
     s1Fresh(k) { const it = this.s1seen.get(k); return it !== undefined && this.TICK - it < 120 && this.occ.has(k); }
@@ -819,6 +839,105 @@
     // linkIs: the transport delivered m from x itself. proven: m speaks for x.
     linkIs(m, x) { return x != null && m.lk != null && m.lk === x; }
     proven(m, x) { return this.linkIs(m, x) || (x != null && m.s4ok === true && m.id === x); }
+    // § G10 SIGNED DIGEST PATH. The fold rides PHONE/PONG and is taken only
+    // from the frame's author. A pair with no DataChannel (an island pair, a
+    // starved tab's channels that never open) still trades its beats on routed
+    // or sponsored frames, and those name nobody: the fold was cut behind such
+    // a link for good, and everyone behind it counted only what they could see.
+    // So once a peer's beats have reached me unproven for UNP_SIGN ticks, the
+    // digest frames I send it are S4-signed (dsg); the wire signs them and
+    // commits the digest payload, the target cell and a fresh time. A signed
+    // digest frame from the peer I hold at that cell is its own word: its
+    // digest is taken exactly as over a link (G4's echo still runs, the author
+    // still refutes). It is still unproven for everything else: it installs,
+    // keeps alive, YIELDs and evicts nobody (G1).
+    digSigned(m, x) { return x != null && m.dsg === 1 && m.s4ok === true && m.s4from === x && m.id === x; }
+    noteUnp(m) {
+      const x = m.id; if (x == null || x === this.id) return;
+      const mine = this.hasCoord && this.state === 3 && m.coord && this.ownedLinkCell(ck(m.coord)) && this.occGet(ck(m.coord)) === x;   // D6: a beat from the seat I hold at one of my owned links
+      if (this.linkIs(m, x)) {
+        this.unp.delete(x); this.noChan.delete(x);
+        if (mine) {
+          this.lkAnyAt = this.TICK;
+          const k = ck(m.coord);
+          if (this.lkAt.size >= 64) this.lkAt.delete(this.lkAt.keys().next().value);
+          this.lkAt.set(k, this.TICK);
+          for (const hk of [...this.darkHold.keys()]) if (this.darkHold.get(hk) === x) this.darkHold.delete(hk);
+        }
+        return;
+      }
+      if (mine) {
+        this.unpAnyAt = this.TICK;
+        if (this.unpAt.size >= 64) this.unpAt.delete(this.unpAt.keys().next().value);
+        this.unpAt.set(x, this.TICK);
+      }
+      if (this.unp.has(x)) return;
+      if (this.unp.size >= 64) this.unp.delete(this.unp.keys().next().value);
+      this.unp.set(x, this.TICK);
+    }
+    // D6 A SEAT NO CHANNEL CARRIES MOVES (first-hand, self only). My owned
+    // links once spoke to me over their channels here, and for DARK_LEAVE
+    // ticks none has, while their beats still reach me unproven: every
+    // channel of mine died and stayed dead. My neighbours can no longer hear
+    // me first-hand (a routed beat proves nobody, R2), so they will heal my
+    // cell behind my back; kept, I would hold it beside its healer (a
+    // duplicate no frame of theirs can show me). So I vacate with a goodbye
+    // first and knock again: the new seat's pairings are new, and the channels
+    // get a fresh try. Only my own transports decide it; nobody can send it.
+    darkSeat() {
+      // The clock is the current occupant a channel proved, not the last proof
+      // from someone who has since left, and not a neighbour whose channel
+      // never opened.
+      if (!this.hasCoord || this.moving || this.state !== 3) return false;
+      let proven = 0, fresh = 0;
+      for (const olc of topo.ownedLinks(this.coord)) {
+        const k = ck(olc);
+        const x = this.occGet(k);
+        if (x == null || x === this.id || this.linkedBy.get(k) !== x) continue;
+        const at = this.lkAt.get(k);
+        if (at === undefined) continue;
+        proven++;
+        if (this.TICK - at <= DARK_LEAVE) fresh++;
+      }
+      return proven > 0 && fresh === 0 && this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16;
+    }
+    // One owned link lost its channel; another channel is still up. The higher
+    // id vacates so the chair is really empty. Both refuse to install the peer
+    // on an owned link again (setOcc). A link that never opened is not here.
+    retireDead() {
+      if (!this.hasCoord || this.moving || this.state !== 3) return false;
+      const T = this.TICK;
+      let fresh = 0, recent = 0;
+      const dead = [];
+      for (const olc of topo.ownedLinks(this.coord)) {
+        const k = ck(olc);
+        const x = this.occGet(k);
+        if (x == null || x === this.id || this.linkedBy.get(k) !== x) continue;
+        const at = this.lkAt.get(k);
+        if (at === undefined) continue;
+        const age = T - at;
+        const u = this.unpAt.get(x);
+        const hearing = u !== undefined && T - u <= 16;
+        if (age <= CHAN_UP) recent++;
+        if (age <= DARK_LEAVE) fresh++;
+        if (hearing && age > DARK_LEAVE) dead.push(x);
+      }
+      if (!fresh || !dead.length) return false;
+      let move = false;
+      for (const x of dead) {
+        this.noChan.add(x);
+        if (String(this.id) > String(x)) move = true;
+      }
+      if (!move) return false;
+      // Proofs of one cut do not cross DARK_LEAVE on the same tick. If none
+      // is still recent, every channel has stopped and this is the seat
+      // vacating itself; waiting for the youngest would leave it sitting
+      // while its neighbours leave around it.
+      if (!recent) this.dark6 = (this.dark6 || 0) + 1;
+      this.requeue();
+      return true;
+    }
+    unpLong(x) { const u = this.unp.get(x); return u !== undefined && this.TICK - u >= UNP_SIGN; }
     // An EVICTION frame (YIELD, CONFIRM, LEAVE, MOVED) frees or unseats a
     // seat. The DataChannel pair id is fixed by signaling, which a room member
     // can race (R4), so the transport's word is not enough here: the frame
@@ -1844,6 +1963,8 @@
       // The door may seat me elsewhere first and a FINDLEAF move me into the
       // hole later: the memory holds for one RING_HOLD, whatever seat I pass.
       { const x = this.exRow; if (x) { if (this.TICK - x.at > RING_HOLD) this.exRow = null; else if (x.oc === ck(c)) { this.exRow = null; const dk = ck(topo.down(c)); if (!this.occ.has(dk)) this.setOcc(dk, x.heir); } } }
+      this.lkAnyAt = -1; this.unpAnyAt = -1;   // D6: a new seat's channels have not spoken yet
+      this.lkAt = new Map(); this.unpAt = new Map(); this.darkHold = new Map();   // noChan survives: the dead pairing is not installed on the next chair
       this.drainAt = 0; this.seatTries = 0; this.seatedAt = this.TICK; this.rookSeenAt = this.TICK; this.estAt = this.TICK; this.nbrAt = this.TICK; this.pendY = null; this.challTo = null; this.lateY = null;
       // § G: a seat change re-parents me — new aggregator, new scope, new child
       // row. Every digest relationship starts over, including G4's grace
@@ -2510,6 +2631,7 @@
     // occupancy, and counting it kept the hole shut to the newcomer at the door for that whole hold.
     oneRowRoom() { for (const k of this.occ.keys()) if (k.slice(0, 4) !== '0_0_' && this.firstHandLive(k)) return false; return true; }
     heal(hole) {
+      if (hole && this.darkHold && this.darkHold.has(ck(hole))) return;   // refused a dead channel, not an empty chair
       const TICK = this.TICK;
       if (!this.hasCoord || this.state !== 3 || TICK - this.healAt < 12) return;
       this.lastChurn = TICK; // Q2 hysteresis: I'm healing — my region is churning
@@ -3126,11 +3248,50 @@
       } finally { this.findNc = svFind; }
     }
 
+    // The § G down-leg of a PONG from `pid` (the seat I hold at its cell): over
+    // its link, or (§ G10) its signed digest frame on an unproven path.
+    pongDig(m, pid) {
+      const TICK = this.TICK;
+      // ---- § G DOWN-LEG + the AUTHOR'S REFUTATION --------------------
+      // G4: I check ONE thing — that the fold my aggregator published
+      // still contains the contribution I authored. An owner's subtree is
+      // exactly 1 + the row digest I (its down-child) sent it; a head's
+      // row fold must contain my subtree digest. A SHORTFALL below what I
+      // sent is suppression; anything else is staleness or growth, never
+      // evidence. G5: the remedy is a counter and a diagnostic — it
+      // evicts NOTHING (an eviction lever here would hand an attacker
+      // exactly what G1 denies). G4 grace on a CHANGED AGGREGATOR: a
+      // healer just promoted into my owner's/head's cell has folded
+      // nothing from me yet and legitimately echoes nothing — the
+      // relationship, not my history, is what has to be 2*DIG_TTL old.
+      if (this.digOn() && this.hasCoord && this.coord.pc !== 0) {
+        const rootD = m.dgRoot ? (m.dgRoot.stub === 1 ? this.stubTake(m.dgRoot, this.rootDig, 'root', pid, 'root') : digTake(m.dgRoot, this.rootDig.at >= 0 ? this.rootDig : null)) : null, pubD = m.dgPub ? digTake(m.dgPub, this._pubHeld && this._pubHeld.at >= 0 ? this._pubHeld : null) : null;
+        if (pubD) this._pubHeld = pubD;
+        if (rootD && rootD.at >= 0) { if (m.dgRoot.stub !== 1) this.rxDig(rootD); if (this.rootDig.at < 0 || rootD.rx > this.rootDig.rx) this.rootDig = rootD; } // the room fold, one level per period (staleness O(depth x period)); fresher ON MY CLOCK wins (G0b)
+        if (pubD && pubD.at >= 0 && m.coord) {
+          const oc = this.ownerCoord();
+          const isOwner = this.coord.i === 0 && !!oc && ck(m.coord) === ck(oc);
+          const isHead = this.coord.i > 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i === 0;
+          if (isOwner || isHead) {
+            if (pid !== this.lastAgg) { this.lastAgg = pid; this.upSince = TICK; this.emptyEcho = 0; }
+            else {
+              const echo = (m.dgEcho && m.dgEcho.at != null) ? (digTake(m.dgEcho, this._echoHeld && this._echoHeld.at >= 0 ? this._echoHeld : null) || dig0()) : dig0();
+              if (m.dgEcho && echo.at >= 0) this._echoHeld = echo;
+              if (this.upRefuted(pubD, echo, isOwner ? 1 : 0)) {
+                this.digMismatch++;
+                if (this.onDigMismatch) { try { this.onDigMismatch({ arm: this.digArm, tick: TICK, meId: this.id, me: { pc: this.coord.pc, r: this.coord.r, i: this.coord.i }, aggId: pid, agg: { pc: m.coord.pc, r: m.coord.r, i: m.coord.i }, pub: m.dgPub, echo }); } catch (e) {} }
+              }
+            }
+          }
+        }
+      }
+    }
     onPhone(m) {
       const TICK = this.TICK;
       if (m.id == null || !m.coord) return;
       const sure = this.linkIs(m, m.id);
-      if (sure && m.dw) this._dwTake(m.id, m.dw);
+      const dsig = !sure && this.digSigned(m, m.id);   // § G10: its own signed word, for the digest only
+      if ((sure || dsig) && m.dw) this._dwTake(m.id, m.dw);
       if (this.hasCoord && this.moving && m.tock === this.oldCk && m.tock !== ck(this.coord)) { // T1 dual-hold: the OLD seat still answers while the claim is in flight
         this.emit(m.id, { t: 'PONG', coord: this.oldCoord, from: null, id: this.id, owner: null, oCk: null, row: [], nbrs: [] }); return; // id: the answer names its author (a routed PONG's last hop is not the responder)
       }
@@ -3186,7 +3347,7 @@
       // already sends (G0). Which scope it names is decided by the phoner's
       // RELATION to me, read from its coord — never from anything it asserts.
       let upD = null;
-      if (sure && this.digOn() && m.dgUp && m.coord) {
+      if ((sure || dsig) && this.digOn() && m.dgUp && m.coord) {
         const pkUp = ck(m.coord);
         if (m.dgUp.stub === 1) { if (this.coord.pc === 0 && m.coord.pc === 0) upD = this.stubTake(m.dgUp, this.s1tab.get(pkUp), undefined, m.id, 'up'); } // a rook peer's "unchanged" — only Section-1 digests are ever stubbed
         else {
@@ -3751,6 +3912,7 @@
       if (m.routing && !this.routeStep(m)) return; // Option A: in-transit routing frame — forward (or drop); fall through only when FOR me
       if (this.moving && this.state === 3 && this.moveEvidence(m)) this.confirmMove(); // T1: a new-neighbourhood frame is the claim's CONFIRMATION — vacate the old seat now
       const TICK = this.TICK, HEALING = this.env.HEALING;
+      if (m.t === 'PHONE' || m.t === 'PONG') this.noteUnp(m); // § G10: whose beats reach me with no channel naming them
       switch (m.t) {
         case 'GREETERS': {
           // An EMPTY list to a seated seat is news too: nobody else is registered.
@@ -4225,6 +4387,14 @@
           const ten = this.tenOf.get(m.ck);
           const tenOk = (ten && ten.id === m.id) ? (m.tn != null && String(m.tn) === ten.tn) : m.s4live === true;
           const mine = this.occGet(m.ck) === m.id && tenOk;
+          // The leaver's channel had already been dead. Remember them so the
+          // next chair does not install them on an owned link (the stayer's
+          // clock is a few ticks behind the one that vacated).
+          if (mine && this.linkedBy.get(m.ck) === m.id) {
+            const at = this.lkAt.get(m.ck);
+            if (at !== undefined && TICK - at > DARK_LEAVE / 2) this.noChan.add(m.id);
+          }
+          if (this.darkHold && this.darkHold.get(m.ck) === m.id) this.darkHold.delete(m.ck);
           // WHERE it went (`mvd`) is taken only from a stay a LINK proved, with
           // that stay's nonce, about a cell I relate to that no other seat I
           // hear holds, and never my own: a relay-only member that planted
@@ -4480,6 +4650,7 @@
             // Only for a pairing no link ever proved (entryOpen; the PHONE twin): a
             // seat's liveness after that is its own link's word.
             if (this.occGet(pk) !== pid) return;
+            if (this.digSigned(m, pid)) this.pongDig(m, pid);   // § G10: the fold only — liveness below stays the link's word
             this.upUsed.set(pk, TICK); if (!this.entryOpen(pk, pid)) return;
             this.lastAck = TICK;
             if (m.coord.pc === 0) { this.liveMark(pk); this.noteS1(pk); }
@@ -4516,39 +4687,7 @@
               if (!(Array.isArray(m.row) && m.row.some((e) => e && e.k === rk))) { this.occ.delete(rk); this.kidful.delete(rk); this.childOf.delete(rk); }
             }
           }
-          // ---- § G DOWN-LEG + the AUTHOR'S REFUTATION --------------------
-          // G4: I check ONE thing — that the fold my aggregator published
-          // still contains the contribution I authored. An owner's subtree is
-          // exactly 1 + the row digest I (its down-child) sent it; a head's
-          // row fold must contain my subtree digest. A SHORTFALL below what I
-          // sent is suppression; anything else is staleness or growth, never
-          // evidence. G5: the remedy is a counter and a diagnostic — it
-          // evicts NOTHING (an eviction lever here would hand an attacker
-          // exactly what G1 denies). G4 grace on a CHANGED AGGREGATOR: a
-          // healer just promoted into my owner's/head's cell has folded
-          // nothing from me yet and legitimately echoes nothing — the
-          // relationship, not my history, is what has to be 2*DIG_TTL old.
-          if (this.digOn() && this.hasCoord && this.coord.pc !== 0) {
-            const rootD = m.dgRoot ? (m.dgRoot.stub === 1 ? this.stubTake(m.dgRoot, this.rootDig, 'root', pid, 'root') : digTake(m.dgRoot, this.rootDig.at >= 0 ? this.rootDig : null)) : null, pubD = m.dgPub ? digTake(m.dgPub, this._pubHeld && this._pubHeld.at >= 0 ? this._pubHeld : null) : null;
-            if (pubD) this._pubHeld = pubD;
-            if (rootD && rootD.at >= 0) { if (m.dgRoot.stub !== 1) this.rxDig(rootD); if (this.rootDig.at < 0 || rootD.rx > this.rootDig.rx) this.rootDig = rootD; } // the room fold, one level per period (staleness O(depth x period)); fresher ON MY CLOCK wins (G0b)
-            if (pubD && pubD.at >= 0 && m.coord) {
-              const oc = this.ownerCoord();
-              const isOwner = this.coord.i === 0 && !!oc && ck(m.coord) === ck(oc);
-              const isHead = this.coord.i > 0 && m.coord.pc === this.coord.pc && m.coord.r === this.coord.r && m.coord.i === 0;
-              if (isOwner || isHead) {
-                if (pid !== this.lastAgg) { this.lastAgg = pid; this.upSince = TICK; this.emptyEcho = 0; }
-                else {
-                  const echo = (m.dgEcho && m.dgEcho.at != null) ? (digTake(m.dgEcho, this._echoHeld && this._echoHeld.at >= 0 ? this._echoHeld : null) || dig0()) : dig0();
-                  if (m.dgEcho && echo.at >= 0) this._echoHeld = echo;
-                  if (this.upRefuted(pubD, echo, isOwner ? 1 : 0)) {
-                    this.digMismatch++;
-                    if (this.onDigMismatch) { try { this.onDigMismatch({ arm: this.digArm, tick: TICK, meId: this.id, me: { pc: this.coord.pc, r: this.coord.r, i: this.coord.i }, aggId: pid, agg: { pc: m.coord.pc, r: m.coord.r, i: m.coord.i }, pub: m.dgPub, echo }); } catch (e) {} }
-                  }
-                }
-              }
-            }
-          }
+          this.pongDig(m, pid);
           return;
         }
         case 'ROUTE': {
@@ -4707,6 +4846,8 @@
         this.wake(); return;
       }
       if (this.evil) this.attack();
+      if (this.retireDead()) { this.wake(); return; }   // one owned link lost its channel; the higher id vacates
+      if (this.darkSeat()) { this.dark6 = (this.dark6 || 0) + 1; this.requeue(); this.wake(); return; }   // D6
       this.noteTree();   // the tree I sit in, for a later door round (foundDoor)
       // T: transit bookkeeping — a claim window that closes with NO
       // contradiction CONFIRMS (a wiped region has nobody to answer; a

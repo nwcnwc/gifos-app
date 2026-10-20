@@ -387,6 +387,14 @@
           ident.signFill(identity, m).then((s4) => { if (!stopped || m.t === 'LEAVE') { m.s4 = s4; deliver(to, m); } }).catch(() => {});
           return;
         }
+        // A DIGEST FRAME I AUTHOR to a peer my beats cannot reach over a
+        // channel (mesh.js marks it dsg): signed over a snapshot, so what is
+        // sent is what was signed.
+        if (s4on && identity && m.dsg === 1 && ident.DIG_T && ident.DIG_T.has(m.t) && !m.s4 && m.id === peer) {
+          let f; try { f = JSON.parse(JSON.stringify(m)); } catch (e) { deliver(to, m); return; }
+          ident.signDig(identity, f).then((s) => { if (!stopped) { f.s4 = s; deliver(to, f); } }).catch(() => { if (!stopped) { delete f.dsg; deliver(to, f); } });
+          return;
+        }
         // GOSSIP I AUTHOR is signed once per message and the block reused for
         // every link, re-fan and replay (the signature commits to the frame,
         // not the destination). A frame I merely forward already carries its
@@ -510,6 +518,12 @@
             seat.recv(m);
           } // else: forged / replayed / tampered — dropped
         }).catch(() => {}));
+        return;
+      }
+      // A signed digest frame (dsg): checked on the fill chain; a good one is
+      // stamped s4ok / s4from, a bad one still reaches the seat, unsigned.
+      if (s4on && m.dsg === 1 && m.s4 && ident.DIG_T && ident.DIG_T.has(m.t)) {
+        verifyChain(() => ident.verifyDig(seat.pins, m).then((v) => { if (stopped) return; if (v && v.ok) { m.s4ok = true; m.s4from = v.from; } seat.recv(m); }).catch(() => { if (!stopped) seat.recv(m); }));
         return;
       }
       if (ident.GOSSIP_T && ident.GOSSIP_T.has(m.t)) seat.gspInAll = (seat.gspInAll || 0) + 1; // every gossip frame that reached this seat, duplicates included (the traffic gauge)
