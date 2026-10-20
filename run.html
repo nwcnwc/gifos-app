@@ -17908,6 +17908,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // An alive peer answers the probe and keeps its seat; 'disconnected'
         // never reaches this (the restart path below owns blips).
         if (st === 'failed' && !p.connected && p.downSince && now - p.downSince > 9000) onTransportDead(pid, 'failed-persist');
+        // A FROZEN PEER NEVER LANDS IN 'failed' (ghost tiles, 2026-10-19). A
+        // tab whose renderer stopped (Android froze the app-switched tab)
+        // answers no ICE restart and no consent check, so Chromium parks our
+        // pc in 'disconnected' for good while the DataChannel stays 'open'
+        // and silent: no close, no 'failed', so no transport event ever
+        // reached the mesh, and the seat (with the tile, which follows
+        // linkTo) stood until the RING_HOLD horizon — 150-200 s of a face
+        // that had left (e2e-ghost-tile-depart MODE=freeze). 'disconnected'
+        // for a whole silence window (PEER_SILENT_MS, when the tile already
+        // says reconnecting) with NOTHING heard from the peer in that window
+        // is not a blip: hand the observation over. The probe gate still
+        // decides — a peer alive on any mesh path answers and keeps its seat.
+        if (st === 'disconnected' && !p.connected && p.downSince && now - p.downSince > PEER_SILENT_MS && now - peerHeardAt(p) > PEER_SILENT_MS) onTransportDead(pid, 'disconnected-persist');
         // 'failed'/'disconnected' heal with an ICE restart — and a pc STUCK in
         // 'new' means our offer was dropped on arrival (the receiver's roster
         // hadn't caught up, so its row-discipline guard refused us): re-offer
