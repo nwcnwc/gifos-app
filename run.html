@@ -9380,7 +9380,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // element, meters, chips — but never enter the grid: a fellow delegate
       // is plumbing, not a face on your wall.
       if (!headless) grid.appendChild(tile);
+      stampTileOpen(tile);
       return { tile, video, label, avatar, chips, cap, modbar, voteBtn };
+    }
+    // The sheet opens from this corner only. A tap on the picture does not.
+    function stampTileOpen(el) {
+      if (!el || !el.classList || el.id === 'stadcrowd') return;
+      if (el.querySelector(':scope > .tile-open')) return;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tile-open';
+      b.textContent = 'Open';
+      b.setAttribute('aria-label', 'Open');
+      b.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openTileWin(el);
+      });
+      el.appendChild(b);
     }
 
     // What the tile says. Captions and transcribing are one thing. The chip
@@ -10390,8 +10407,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const bc = document.body.classList.contains('broadcast');
         if (!document.body.classList.contains('comfy') && !bc) return;
         const t = e.target;
-        if (!t || !t.closest || t.closest('button, a, input, select, textarea, label')) return;
-        // A broadcast is the Stage: a tap anywhere on it opens its controls.
+        if (!t || !t.closest) return;
+        // Open is the only control that opens the sheet. Its own listener does.
+        if (t.closest('.tile-open')) return;
+        if (t.closest('button, a, input, select, textarea, label')) return;
         const bcStage = () => {
           const id = document.getElementById('bc-ident');
           if (id && id.offsetParent !== null) return id;
@@ -10403,14 +10422,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         e.stopPropagation();
         // The "+N" seat is the rest of the room, not a person: it opens People.
         if (!bc && el.id === 'stadcrowd' && el.querySelector('.avatar')) { const who = document.getElementById('whobtn'); if (who) who.click(); return; }
-        openTileWin(el);
       }, true);
-      feed.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter' && e.key !== ' ') return;
-        const el = e.target && e.target.closest && e.target.closest('.tile[data-comfy="1"]');
-        if (!el || e.target !== el) return;
-        e.preventDefault(); openTileWin(el);
-      });
+      const stampFeedOpens = () => {
+        feed.querySelectorAll('.tile, .stadface, #stagefeed > .rowtile').forEach(stampTileOpen);
+      };
+      stampFeedOpens();
+      if (window.MutationObserver) {
+        try { new MutationObserver(stampFeedOpens).observe(feed, { childList: true, subtree: true }); } catch (e) {}
+      }
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && tileWin.el) { e.stopPropagation(); closeTileWin(); } }, true);
     })();
     // The build label's width changes with the build, so Fit sits just left of it.
@@ -30605,7 +30624,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!callOpen() || !phoneCall()) return;
         if (!document.body.classList.contains('chrome-away')) return;
         const t = e.target;
-        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin')) {
+        if (t && t.closest && t.closest('.fitbtn, .topchip, #unmute, #showcam, #chatnote, #chatpanel, #chatbadge, #chatpreview, .name-modal, #waitlist, #tilewin, .tile-open')) {
           wakeOnClick = true;
           return;
         }
@@ -30615,9 +30634,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, true);
       document.addEventListener('click', (e) => {
         if (wakeOnClick) { wakeOnClick = false; showChrome(); }
-        if (!swallowClick) return;
-        swallowClick = false;
-        try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
+        if (swallowClick) {
+          swallowClick = false;
+          try { e.preventDefault(); e.stopPropagation(); } catch (err) {}
+          return;
+        }
+        // A phone's second tap on empty screen hides at once. A control,
+        // and Open, keep the chrome. A desktop hides only on the timeout,
+        // including a short window (IS_MOBILE is false there).
+        if (!IS_MOBILE || !callOpen() || !phoneCall()) return;
+        if (document.body.classList.contains('chrome-away') || chromeHeld()) return;
+        const t = e.target;
+        if (t && t.closest && t.closest('button, a, input, select, textarea, label, .bar, #appbar, .fitbtn, .topchip, .tile-open, .name-modal, #tilewin, #tilewin-veil, #waitlist, #chatpanel, #chatnote, #unmute, #showcam, #callstate')) return;
+        hideChrome();
       }, true);
       document.addEventListener('click', () => { try { syncChrome(); } catch (e) {} });
       document.addEventListener('keydown', () => {
@@ -32874,8 +32903,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const fb = document.getElementById('appfull');
       const FS = window.GifOS && GifOS.fullscreen;
       if (FS && FS.supported()) {
-        FS.attach(fb, document.documentElement, {
-          fill: 'app-full', enterLabel: uiText('fullScreen', 'Full screen'), exitLabel: uiText('leaveFullScreen', 'Leave full screen') });
+        const repaint = FS.attach(fb, document.documentElement, {
+          fill: 'app-full', words: true,
+          enterLabel: uiText('fullScreen', 'Full screen'), exitLabel: uiText('leaveFullScreen', 'Leave full screen') });
+        // An app bar is nine buttons: the glyph comes back while an app is up.
+        if (repaint && window.MutationObserver && document.body) {
+          try { new MutationObserver(() => { try { repaint(); } catch (err) {} }).observe(document.body, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
+        }
         return;
       }
       if (!fb) return;
