@@ -2863,6 +2863,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.comfy .stadface .avatar {
     position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; align-items: center; justify-content: center;
     font-size: 2.4rem; font-weight: 800; color: #fff; background: transparent; z-index: 1; }
+  /* The "+N" seat for the people past the stadium's on-screen cap. */
+  body.comfy #stadcrowd .avatar { font-size: 1.1rem; }
   body.comfy .stadface .name {
     position: absolute; left: .4rem; bottom: .4rem; z-index: 2;
     background: rgba(10,10,15,.72); color: #eceef8;
@@ -10202,6 +10204,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Faces are the people not already on screen. The packer's count
         // only drives the crop, and only when it names this same set.
         const faces = [];
+        // Once per pass, not once per face (a 240 roster called it 240 times).
+        let stagersFace = [];
+        try { stagersFace = stageIds(); } catch (e) {}
         for (let j = 0; j < roster.length; j++) {
           const id = roster[j];
           let name = '\u2026';
@@ -10219,7 +10224,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           let held = false;
           try {
             const sharing = id === myId ? !!myStatus.scr : (typeof sharingScreen === 'function' && !!sharingScreen(id));
-            held = stageIds().indexOf(id) >= 0 && !sharing;
+            held = stagersFace.indexOf(id) >= 0 && !sharing;
           } catch (e3) { held = false; }
           faces.push({ id: id, name: name, initials: held ? '' : nameInitial(name), off: off || held, avatar: held ? '' : avatar, shade: shadeKey(id), held: held });
         }
@@ -10227,7 +10232,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // names it (cellOf; -1 = not in this composite: initials), whatever
         // the roster's order or length. Without one, the old rule: the
         // packer's count drives the crop only when it matches this set.
-        const cellOf = (Array.isArray(meta.ids) && meta.ids.length === meta.n) ? faces.map((f) => meta.ids.indexOf(f.id)) : null;
+        let cellOf = null;
+        if (Array.isArray(meta.ids) && meta.ids.length === meta.n) {
+          const at = new Map();
+          for (let k = meta.ids.length - 1; k >= 0; k--) at.set(meta.ids[k], k); // first cell wins, as indexOf did
+          cellOf = faces.map((f) => (at.has(f.id) ? at.get(f.id) : -1));
+        }
         const cols = cellOf ? (meta.cols || 0) : (meta.n === roster.length) ? (meta.cols || 0) : 0;
         if (meta.video && !meta.video._comfyRz) {
           meta.video._comfyRz = true;
@@ -10313,7 +10323,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let floor = 0;
         window.__comfyLast = MV.apply({
           feed: feed, tiles: tiles, faces: faces, video: meta.video, srcW: meta.w, srcH: meta.h, cols: cols, cellN: cellOf ? meta.n : 0, cellOf: cellOf,
-          orderKey: roster.length + ':' + roster.join(',') + (cellOf ? '|' + cellOf.join(',') : ''), holdMs: holdMs, floor: floor,
+          holdMs: holdMs, floor: floor,
           vw: window.innerWidth, vh: window.innerHeight, phone: phone, selfId: shadeKey('me'),
           pill: document.body.classList.contains('has-pill'), bottom: bottom, holdBottom: holdBottom, top: topInset,
           mode: window.__meetViewMode || 'gallery',
@@ -10769,6 +10779,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           : t.closest('.tile[data-comfy="1"], .stadface[data-comfy="1"], #stagefeed > .rowtile[data-comfy="1"]');
         if (!el) return;
         e.stopPropagation();
+        // The "+N" seat is the rest of the room, not a person: it opens People.
+        if (!bc && el.id === 'stadcrowd' && el.querySelector('.avatar')) { const who = document.getElementById('whobtn'); if (who) who.click(); return; }
         openTileWin(el);
       }, true);
       feed.addEventListener('keydown', (e) => {
