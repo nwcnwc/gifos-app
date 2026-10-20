@@ -792,6 +792,14 @@
       if (!st || !st.alive) return false;
       return !!(st.hasCoord && ck(st.coord) === k);
     }
+    // A child-row cell I reach through its head: the head (my down link) is
+    // live first-hand and phoned me the row within the first-hand window, and
+    // no D5 observation stands against the cell. Local evidence only.
+    siblingViaHead(k) {
+      const x = this.occGet(k); if (x == null || x === this.id || this.translost.has(k)) return false;
+      const hk = ck(topo.down(this.coord));
+      return this.firstHandLive(hk) && this.occGet(hk) !== x && this.rowLedgerAt >= 0 && this.TICK - this.rowLedgerAt <= 60;
+    }
     // Soft or non-phantom occ. Requeue phantoms free for rejoin (atomic D).
     cellReserved(k) {
       if (this.softSitting(k)) return true;
@@ -2155,12 +2163,13 @@
       this.vouchDead.delete(nc); this.vouchDead.set(nc, this.TICK);
       if (this.vouchDead.size > 64) this.vouchDead.delete(this.vouchDead.keys().next().value);
     }
-    handOn(mm, to, cell, deep) {
+    handOn(mm, to, cell, deep, via) {
       if (this.handed.size >= 64) this.handed.delete(this.handed.keys().next().value);
-      this.handed.set(mm.nc, { to, cell, deep: !!deep, at: this.TICK });
+      this.handed.set(mm.nc, { to, cell, deep: !!deep, at: this.TICK, via: !!via });
       const f = { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }; if (mm.again) f.again = 1;
       if (mm.gl !== undefined) f.gl = mm.gl; if (mm.glc) f.glc = mm.glc;
-      this.emit(to, f); this.findAck(mm, cell, !!deep);
+      if (via) this.route(topo.unck(cell), null, f); else this.emit(to, f);   // via: a child-row cell I do not link, reached over my down link and its head's row link
+      this.findAck(mm, cell, !!deep);
       if (!deep) this.quietHeadAlso(f, to, cell);
     }
     // In a one-row room the head's right-hand seats the free chair once the
@@ -2203,7 +2212,7 @@
         const h = this.handed.get(mm.nc);
         const fresh = h && TICK - h.at <= KNOCK_FRESH && h.to !== this.id;
         const silentTarget = !!(h && this.silentFor(h.cell, LONE_GREET_AFTER));
-        if (fresh && this.occGet(h.cell) === h.to && !silentTarget) { this.handOn(mm, h.to, h.cell, h.deep); return; }
+        if (fresh && this.occGet(h.cell) === h.to && !silentTarget) { this.handOn(mm, h.to, h.cell, h.deep, h.via); return; }
         const left = !!(fresh && this.occGet(h.cell) !== h.to);
         const died = this.vouchDead.get(mm.nc);
         const mineDied = !h && died !== undefined && TICK - died <= SIT_TTL;
@@ -2582,6 +2591,15 @@
           // never gets here (it fails silent, not loud); the hop is still
           // strictly DOWNWARD, so no cycle is possible.
           if (pass === 0 ? (this.firstHandLive(rk) || (mm.spread && this.admitterReachable(rk))) : this.admitterReachable(rk)) { this.handOn(mm, x, rk, true); return; }
+          // T7b SPREAD THROUGH THE CHILD HEAD (sim mesh_seat.inc serveFind, twin):
+          // a spread FIND may compete for a child-row sibling I do not link,
+          // when its head (my down link) is live and phoned me the row lately:
+          // the FIND travels down to the head and along its row. Without it a
+          // page knows only its child head first-hand, so every descent
+          // followed the head chain to the depth wall while the siblings' rows
+          // stood empty (two blocked companies of 150+150 under one anchored
+          // head: 19 seated never, evidence/settle).
+          if (pass === 0 && mm.spread && q !== 0 && this.siblingViaHead(rk)) { this.handOn(mm, x, rk, true, true); return; }
         }
       let nd = this.hasCoord ? topo.pcDepth(this.coord.pc) : 0;
       if (netOn && netLab(gl) && gl === this.id) { const ch = R.at(ck(topo.down(this.coord))); if (ch != null && !R.sameGroup(R.labelOf(ch), gl, this)) nd = NET_DEAD; }   // I am this group's head and it has no room under me because my child row is another network's: the seeker counts these (another seat of the group refusing says nothing)
