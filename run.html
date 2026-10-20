@@ -30624,6 +30624,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (document.body.classList.contains('chrome-away')) showChrome();
         else syncChrome();
       });
+      // A short desktop window matches the phone query too. Its mouse wakes
+      // the dock on a move, as dock-calm does; a phone's touch still needs a tap.
+      document.addEventListener('pointermove', (e) => {
+        if (IS_MOBILE || e.pointerType !== 'mouse' || !callOpen() || !phoneCall()) return;
+        if (document.body.classList.contains('chrome-away')) showChrome();
+        else if (chromeTimer) armChrome();
+      }, { capture: true, passive: true });
       bar.addEventListener('transitionend', (e) => {
         if (e.propertyName !== 'transform' && e.propertyName !== 'opacity') return;
         if (!document.body.classList.contains('chrome-away')) setBarH();
