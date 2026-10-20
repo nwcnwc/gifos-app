@@ -33707,10 +33707,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { paintControls(); broadcastStatus(); } catch (e) {}
         rememberBotSpoken(msg && msg.text);
         const said = { spoken: true, text: (msg && msg.text) || '' };
-        // A filler ("One moment…") is played, not written down.
+        // A filler ("One moment…") is played, not written down. The answer is
+        // written when playback starts. A session frame is a few pixels tall,
+        // and play() can reject or never settle there: the words were already
+        // handed over, so the room still gets the one line.
         const filler = !!(msg && msg.filler);
-        const go = () => audio.play().then(() => { if (!filler) { try { writeBotSpoken(said.text); } catch (e) {} } return said; });
-        return go().catch(() => ctx.resume().then(go));
+        let wrote = false;
+        const writeOnce = () => { if (filler || wrote) return; wrote = true; try { writeBotSpoken(said.text); } catch (e) {} };
+        const go = () => audio.play().then(() => { if (!filler && !wrote) { wrote = true; try { writeBotSpoken(said.text); } catch (e) {} } return said; });
+        const played = go().catch(() => ctx.resume().then(go)).catch(() => { writeOnce(); return said; });
+        const late = new Promise((resolve) => setTimeout(() => { writeOnce(); resolve(said); }, 1500));
+        return Promise.race([played, late]);
       }
       // The thought bubble on the bot's tile rides its status, so every
       // device draws it. The next spoken line ends it, and a driver that

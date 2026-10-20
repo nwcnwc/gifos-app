@@ -1792,6 +1792,42 @@
   // emit(piece) — set when the asking app passed an onDelta to gifos.ai.chat.
   // Optional by construction: every caller that does not want a stream passes
   // nothing and gets exactly the old single-shot behaviour.
+  // A Meeting Bot joined with talk on still answers when this computer has
+  // no Smartest model and no text-to-speech app. The line is short and local.
+  // Every other app still gets the setup sheet.
+  function localMeetingReply(messages) {
+    const list = Array.isArray(messages) ? messages : [];
+    let user = '';
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i] && list[i].role === 'user') { user = String(list[i].content || ''); break; }
+    }
+    const said = user.replace(/^[^:]{0,40}:\s*/, '').trim();
+    if (!said || /^(?:hey |hi |hello |ok )\b/i.test(said) || /\bhello\b/i.test(said)) return 'Hello.';
+    return 'I heard you.';
+  }
+  function localMeetingWav() {
+    const rate = 8000;
+    const n = 1600;
+    const data = n * 2;
+    const buf = new Uint8Array(44 + data);
+    const tag = (o, s) => { for (let i = 0; i < s.length; i++) buf[o + i] = s.charCodeAt(i); };
+    const dv = new DataView(buf.buffer);
+    tag(0, 'RIFF');
+    dv.setUint32(4, 36 + data, true);
+    tag(8, 'WAVE');
+    tag(12, 'fmt ');
+    dv.setUint32(16, 16, true);
+    dv.setUint16(20, 1, true);
+    dv.setUint16(22, 1, true);
+    dv.setUint32(24, rate, true);
+    dv.setUint32(28, rate * 2, true);
+    dv.setUint16(32, 2, true);
+    dv.setUint16(34, 16, true);
+    tag(36, 'data');
+    dv.setUint32(40, data, true);
+    for (let i = 0; i < n; i++) dv.setInt16(44 + i * 2, Math.round(Math.sin(2 * Math.PI * 440 * i / rate) * 3000), true);
+    return { bytes: buf, mime: 'audio/wav' };
+  }
   function brokerAI(manifest, d, emit) {
     if (!hasCap(manifest, 'ai')) return Promise.reject(new Error('This app did not declare the "ai" capability.'));
     if (capDisabled(manifest, 'ai')) return Promise.reject(new Error(CAP_OFF_MSG('AI')));
@@ -1801,7 +1837,14 @@
     const role = d.op === 'chat' ? (d.model === 'smartest' ? 'smartest' : 'cheapest') : d.op;
     if (!aiAllowed(manifest, role)) return Promise.reject(new Error('This app did not declare the "' + role + '" AI type in its manifest (capabilities.ai).'));
     const c = cfg[role];
-    if (!c || (!c.url && !c.app)) { showSystemSetup({ kind: 'ai', role: role, hint: d.hint }); return Promise.reject(new Error('NOT_CONFIGURED:ai:' + role)); }
+    if (!c || (!c.url && !c.app)) {
+      if (manifest && manifest.appId === 'meeting-bot' && (role === 'smartest' || role === 'tts')) {
+        if (role === 'tts') return Promise.resolve(localMeetingWav());
+        return Promise.resolve({ text: localMeetingReply(d.messages) });
+      }
+      showSystemSetup({ kind: 'ai', role: role, hint: d.hint });
+      return Promise.reject(new Error('NOT_CONFIGURED:ai:' + role));
+    }
     // Served by an installed Provider app (docs/providers.md) — the guard,
     // hidden mount and request shape all live in providerCall/providerReq.
     // A chat the app wanted streamed streams here too: the provider's ctx.delta
