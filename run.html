@@ -9399,6 +9399,62 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       });
       el.appendChild(b);
     }
+    // The header floats over the faces: the room chip, Fit, Unmute, and the
+    // Invite/Help/Full screen row sit on the top tiles, and a phone's top
+    // tile had its Open corner under the chip, so the tap opened the room
+    // status. Each Open that a header control covers moves down its own tile
+    // to the first clear spot. The header keeps its place and its text; a
+    // tile wholly under the header keeps its corner (there is no clear spot).
+    // Runs after every layout pass, on scroll, on resize, and when the chip
+    // grows a line.
+    // The build label is not in the list: it takes no taps.
+    const OPEN_HEAD_SEL = '.topchip, .fitbtn, #unmute, #showcam, #livebadge, #update-bar, #handq, #appbar > button, #appbar > a';
+    function openHeadRects() {
+      const out = [];
+      document.querySelectorAll(OPEN_HEAD_SEL).forEach((el) => {
+        if (!el.getClientRects().length) return;
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden') return;
+        const r = el.getBoundingClientRect();
+        if (r.width < 1 || r.height < 1 || r.top > window.innerHeight / 2) return;
+        out.push(r);
+      });
+      return out;
+    }
+    function clearTileOpens() {
+      const feed = document.getElementById('feed');
+      const btns = feed ? feed.querySelectorAll('.tile-open') : [];
+      if (!btns.length) return;
+      const heads = openHeadRects();
+      const GAP = 4;
+      const plan = [];
+      btns.forEach((b) => {
+        const tile = b.parentElement;
+        if (!tile) return;
+        if (!b.dataset.top0) { b.style.top = ''; b.dataset.top0 = String(parseFloat(getComputedStyle(b).top) || 6); }
+        const tr = tile.getBoundingClientRect();
+        const br = b.getBoundingClientRect();
+        if (tr.width < 2 || tr.height < 2 || br.width < 1) return;
+        const h = br.height || 22, top0 = parseFloat(b.dataset.top0) || 6;
+        let y = tr.top + top0, moved = false;
+        for (let pass = 0; pass < 6; pass++) {
+          let hit = null;
+          for (const r of heads) {
+            if (r.left < br.right && r.right > br.left && r.top < y + h && r.bottom > y && (!hit || r.bottom > hit.bottom)) hit = r;
+          }
+          if (!hit) break;
+          y = hit.bottom + GAP; moved = true;
+        }
+        if (moved && y + h > tr.bottom - GAP) moved = false;
+        plan.push([b, moved ? Math.round(y - tr.top) + 'px' : '']);
+      });
+      for (const [b, t] of plan) if (b.style.top !== t) b.style.top = t;
+    }
+    let clearOpensRaf = 0;
+    function scheduleClearOpens() {
+      if (clearOpensRaf) return;
+      clearOpensRaf = requestAnimationFrame(() => { clearOpensRaf = 0; try { clearTileOpens(); } catch (e) {} });
+    }
 
     // What the tile says. Captions and transcribing are one thing. The chip
     // uses the word Captions, including when Whisper is paused or behind.
@@ -9784,6 +9840,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         t.classList.toggle('span-bottom', nRemote === 5 && i === remoteTiles.length - 1);
       });
       try { applyComfy(); } catch (e) {}
+      try { scheduleClearOpens(); } catch (e) {}
     }
 
     // People hidden from the row are the stadium. Stagers stay in the row
@@ -10425,10 +10482,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }, true);
       const stampFeedOpens = () => {
         feed.querySelectorAll('.tile, .stadface, #stagefeed > .rowtile').forEach(stampTileOpen);
+        scheduleClearOpens();
       };
       stampFeedOpens();
       if (window.MutationObserver) {
         try { new MutationObserver(stampFeedOpens).observe(feed, { childList: true, subtree: true }); } catch (e) {}
+      }
+      // Scroll slides the next row under the header; the chip, Unmute, and
+      // the hand line change size with the room.
+      feed.addEventListener('scroll', scheduleClearOpens, { passive: true });
+      window.addEventListener('resize', scheduleClearOpens);
+      if (window.ResizeObserver) {
+        try {
+          const ro = new ResizeObserver(scheduleClearOpens);
+          document.querySelectorAll('.topchip, #appbar, #unmute, #showcam, #handq').forEach((el) => ro.observe(el));
+        } catch (e) {}
       }
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && tileWin.el) { e.stopPropagation(); closeTileWin(); } }, true);
     })();
