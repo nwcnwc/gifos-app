@@ -289,8 +289,10 @@
     return els;
   }
 
-  // withVideo: the crowd plays the whole composite. Without it the tile is
-  // the "+N" seat for the people past FACE_CAP: no <video>, a count.
+  // withVideo: the seat plays the stadium composite (one <video>, the same
+  // stream the faces already decode). Without it the "+N" seat is a count.
+  // The count is only while the frame settles. A settled room shows the
+  // people past FACE_CAP in that one video.
   function ensureCrowd(feed, withVideo) {
     let el = feed.querySelector('#stadcrowd');
     if (!el) {
@@ -331,6 +333,55 @@
     for (let j = 0; j < faces.length && pick.length < keep; j++) if (!(cellOf && cellOf[j] >= 0)) pick.push(j);
     pick.sort((a, b) => a - b);
     return pick;
+  }
+
+  // Cells of the people who did not get their own face, in composite order.
+  function crowdRestCells(allFaces, picked, cellOfAll) {
+    const skip = {};
+    if (picked) for (let i = 0; i < picked.length; i++) skip[picked[i]] = 1;
+    const cells = [];
+    const seen = {};
+    for (let j = 0; j < allFaces.length; j++) {
+      if (skip[j]) continue;
+      const c = cellOfAll ? cellOfAll[j] : j;
+      if (!(c >= 0) || seen[c]) continue;
+      seen[c] = 1;
+      cells.push(c);
+    }
+    return cells;
+  }
+
+  // Cover boxW x boxH with the bounding box of `cells` inside the one
+  // composite. The <video> is the full frame, shifted and scaled; the seat
+  // clips it (overflow hidden). Same stream the faces play, not a video
+  // per person.
+  function crowdRegionCrop(MM, cells, n, cols, vw, vh, boxW, boxH) {
+    if (!MM || typeof MM.faceSrcRect !== 'function') return null;
+    if (!cells || !cells.length) return null;
+    if (!(n > 0) || !(cols > 0) || !(vw > 0) || !(vh > 0) || !(boxW > 0) || !(boxH > 0)) return null;
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, any = false;
+    for (let i = 0; i < cells.length; i++) {
+      const j = cells[i] | 0;
+      if (j < 0 || j >= n) continue;
+      const s = MM.faceSrcRect(j, n, cols, vw, vh);
+      if (!s || !(s.sw > 0) || !(s.sh > 0)) continue;
+      any = true;
+      if (s.sx < x0) x0 = s.sx;
+      if (s.sy < y0) y0 = s.sy;
+      if (s.sx + s.sw > x1) x1 = s.sx + s.sw;
+      if (s.sy + s.sh > y1) y1 = s.sy + s.sh;
+    }
+    if (!any) return null;
+    const rw = x1 - x0, rh = y1 - y0;
+    if (!(rw > 1) || !(rh > 1)) return null;
+    const k = Math.max(boxW / rw, boxH / rh);
+    const dispW = rw * k, dispH = rh * k;
+    return {
+      x: -x0 * k - (dispW - boxW) / 2,
+      y: -y0 * k - (dispH - boxH) / 2,
+      w: vw * k,
+      h: vh * k,
+    };
   }
 
   // One resize listener, on the face <video> that sizes the frame (the
@@ -486,12 +537,12 @@
     // before the cap picks who shows.
     const cellOfAll = Array.isArray(opts.cellOf) && opts.cellOf.length === allFaces.length ? opts.cellOf : null;
     const cap = opts.maxFaces > 1 ? (opts.maxFaces | 0) : FACE_CAP;
-    let faces = allFaces, cellIdx = null, over = 0;
+    let faces = allFaces, cellIdx = null, over = 0, picked = null;
     if (allFaces.length > cap) {
       // The rest of the room is one "+N" seat: the cap counts it.
-      const pick = pickFaces(allFaces, cellOfAll, cap - 1);
-      faces = pick.map((j) => allFaces[j]);
-      cellIdx = pick.map((j) => (cellOfAll ? cellOfAll[j] : j));
+      picked = pickFaces(allFaces, cellOfAll, cap - 1);
+      faces = picked.map((j) => allFaces[j]);
+      cellIdx = picked.map((j) => (cellOfAll ? cellOfAll[j] : j));
       over = allFaces.length - faces.length;
     } else cellIdx = cellOfAll ? cellOfAll.slice() : allFaces.map((f, j) => j);
     const faceEls = syncFaces(feed, faces);
@@ -501,13 +552,20 @@
     }
     let overEl = null;
     if (over > 0) {
-      overEl = ensureCrowd(feed, false);
+      // Keep a video a settled pass already attached. Creating it before the
+      // hold knows the frame would count it on every join-storm pass. Stripping
+      // it every pass would rebuild the one decoder.
+      const existing = feed.querySelector('#stadcrowd');
+      const keepVideo = !!(existing && existing.querySelector('video'));
+      overEl = ensureCrowd(feed, keepVideo);
       overEl.style.display = '';
-      overEl.classList.add('cam-off');
+      if (!keepVideo) overEl.classList.add('cam-off');
       const olb = overEl.querySelector('.name');
       if (olb) olb.textContent = 'Stadium \u00b7 ' + allFaces.length;
-      const oav = overEl.querySelector('.avatar');
-      if (oav) { oav.style.display = 'flex'; paintShade(oav, 'crowd'); paintAvatar(oav, '', '+' + over); }
+      if (!keepVideo) {
+        const oav = overEl.querySelector('.avatar');
+        if (oav) { oav.style.display = 'flex'; paintShade(oav, 'crowd'); paintAvatar(oav, '', '+' + over); }
+      }
       overEl.setAttribute('aria-label', over + ' more in the stadium');
       tiles.push({ id: 'stad:crowd', tier: 'stad', el: overEl, shade: 'crowd' });
     }
@@ -515,7 +573,9 @@
       const t = tiles[i];
       if (t.el) {
         const v = t.el.querySelector && t.el.querySelector('video');
-        if (v && v.videoWidth > 0 && v.videoHeight > 0) t.aspect = v.videoWidth / v.videoHeight;
+        // The crowd video is the whole composite (tall). Its aspect must not
+        // resize the seat: it stays one stadium square, like the faces.
+        if (v && t.id !== 'stad:crowd' && v.videoWidth > 0 && v.videoHeight > 0) t.aspect = v.videoWidth / v.videoHeight;
         if (t.pz) t.el.dataset.pzkey = t.pz;
         t.el.dataset.tier = t.tier || 'row';
       }
@@ -768,6 +828,45 @@
           paintShade(av, faces[j].shade || faces[j].id);
           paintAvatar(av, faces[j].avatar || '', faces[j].initials);
         }
+      }
+    }
+    // The "+N" seat plays the stadium composite: one <video>, cropped to the
+    // cells of the people who did not get a face. Same stream the 23 faces
+    // already decode. During the settle hold it stays a count, so a join
+    // storm does not paint a crop for a frame that has not arrived.
+    if (overEl && over > 0 && !lay.crowd) {
+      if (!holding && stream && vw > 0 && vh > 0) {
+        ensureCrowd(feed, true);
+        overEl.classList.remove('cam-off');
+        const cv = overEl.querySelector('video');
+        playStream(cv, stream);
+        const rect = rectOf['stad:crowd'];
+        const rest = crowdRestCells(allFaces, picked, cellOfAll);
+        const crop = rect ? crowdRegionCrop(MM, rest, n, cols, vw, vh, rect.w, rect.h) : null;
+        if (crop) applyCrop(cv, crop);
+        else if (cv) {
+          cv.style.position = 'absolute';
+          cv.style.left = '0';
+          cv.style.top = '0';
+          cv.style.width = '100%';
+          cv.style.height = '100%';
+          cv.style.objectFit = 'cover';
+          cv.style.objectPosition = 'center center';
+        }
+        if (cv) { cv.style.visibility = ''; cv.style.opacity = ''; }
+      } else {
+        const cv = overEl.querySelector('video');
+        if (cv) { cv.style.opacity = '0'; }
+        overEl.classList.add('cam-off');
+        let av = overEl.querySelector('.avatar');
+        if (!av) {
+          av = document.createElement('div');
+          av.className = 'avatar';
+          overEl.insertBefore(av, overEl.querySelector('.name'));
+        }
+        av.style.display = 'flex';
+        paintShade(av, 'crowd');
+        paintAvatar(av, '', '+' + over);
       }
     }
     // A face's <video> is a frame-size source above: when it learns or
