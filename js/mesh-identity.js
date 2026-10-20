@@ -235,5 +235,43 @@
     return { ok: true, from };
   }
 
-  GifOS.meshIdentity = { mint, peerIdOf, signFill, verifyFill, signPP, verifyPP, newPins, statement, signGossip, verifyGossip, GOSSIP_T, PIN_MAX };
+  // ---- SIGNED DIGEST FRAMES (PHONE / PONG with dsg) -------------------------
+  // The room fold rides the PHONE / PONG beat and is taken only from the
+  // frame's own author. A pair whose DataChannel never opens trades its beats
+  // over other peers, and those frames name nobody, so the seat marks its
+  // digest frames to such a peer `dsg` and they are signed here. The
+  // statement commits to the frame type, its cell and target cell, the author,
+  // a hash of the digest payload (dgUp, dgRoot, dgPub, dgEcho, dw) and the
+  // minting time; a carrier can neither rewrite the digest nor replay it
+  // later. A frame that fails is still delivered, unsigned: the seat then
+  // takes no digest from it, exactly as before.
+  const DIG_T = new Set(['PHONE', 'PONG']);
+  const DIG_WINDOW_MS = 30 * 1000;
+  const nz = (x) => (x === undefined ? null : x);
+  async function digStatement(from, m, ts) {
+    const dh = await net.sha256hex(JSON.stringify([nz(m.dgUp), nz(m.dgRoot), nz(m.dgPub), nz(m.dgEcho), nz(m.dw)]));
+    return JSON.stringify({ v: 2, t: m.t, k: fillKeyOf(m), tock: (m.tock == null ? null : String(m.tock)), id: (m.id != null ? m.id : null), from, dh, ts: (+ts || 0) });
+  }
+  async function signDig(identity, m) {
+    const sp = await digStatement(identity.peerId, m, Date.now());
+    const sig = await net.edSign(identity.priv, sp);
+    return { sp, sig, pub: identity.pubB64 };
+  }
+  async function verifyDig(pins, m) {
+    const s = m && m.s4;
+    if (!DIG_T.has(m && m.t) || !s || typeof s.sp !== 'string' || !s.sig || !s.pub) return { ok: false, from: null };
+    let sp; try { sp = JSON.parse(s.sp); } catch (e) { return { ok: false, from: null }; }
+    const from = sp.from;
+    if (!from || typeof from !== 'string' || m.id !== from) return { ok: false, from: null };   // the beat's author IS the signer
+    if (Math.abs((+sp.ts || 0) - Date.now()) > DIG_WINDOW_MS) return { ok: false, from: null };  // fresh: an old digest frame is not replayed as new
+    if ((await peerIdOf(s.pub)) !== from) return { ok: false, from: null };
+    if ((await digStatement(from, m, sp.ts)) !== s.sp) return { ok: false, from: null };
+    if (pins.seen && pins.seen(String(s.sig))) return { ok: false, from: null };
+    if (!(await net.edVerify(s.pub, s.sig, s.sp))) return { ok: false, from: null };
+    const p = pins.pin(from, s.pub);
+    if (!p.ok) return { ok: false, from: null };
+    return { ok: true, from };
+  }
+
+  GifOS.meshIdentity = { mint, peerIdOf, signFill, verifyFill, signPP, verifyPP, newPins, statement, signGossip, verifyGossip, GOSSIP_T, PIN_MAX, signDig, verifyDig, DIG_T };
 })(typeof window !== 'undefined' ? window : globalThis);

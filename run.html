@@ -4755,7 +4755,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         trDownload: 'Protokoll laden',
         muteGuests: 'Gäste stumm', unmuteGuests: 'Gäste laut', blurGuests: 'Weichzeichnen', unblurGuests: 'Schärfen', videoOff: 'Video aus', videoOn: 'Video an',
         allowShare: 'Freigeben', stopShares: 'Freigabe aus',
-        inMeeting: 'im Meeting', justYou: 'Nur Sie', backIn: 'Wieder dabei', waitHere: 'Im Warteraum',
+        inMeeting: 'im Meeting', countPartial: 'Anzahl unvollständig', justYou: 'Nur Sie', backIn: 'Wieder dabei', waitHere: 'Im Warteraum',
         away: 'Weg', stillHere: 'Sie sind noch dabei',
         unlockClear: 'Gesichter weich bis zum Passwort',
         onAir: 'Auf Sendung', offAir: 'Nicht live', watching: 'Live',
@@ -5069,7 +5069,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         trDownload: 'Descargar transcripción',
         muteGuests: 'Silenciar invitados', unmuteGuests: 'Activar invitados', blurGuests: 'Difuminar', unblurGuests: 'Quitar desenfoque', videoOff: 'Apagar video', videoOn: 'Encender video',
         allowShare: 'Permitir pantalla', stopShares: 'Parar pantallas',
-        inMeeting: 'en la reunión', justYou: 'Solo tú', backIn: 'Volviendo', waitHere: 'En la sala de espera',
+        inMeeting: 'en la reunión', countPartial: 'Número incompleto', justYou: 'Solo tú', backIn: 'Volviendo', waitHere: 'En la sala de espera',
         away: 'Fuera', stillHere: 'Sigues en la llamada',
         unlockClear: 'caras suaves hasta una contraseña',
         onAir: 'Al aire', offAir: 'Fuera del aire', watching: 'En vivo',
@@ -7526,10 +7526,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         away: !!myStatus.away, vup: myStatus.vup || [], vdn: myStatus.vdn || [], vab: myStatus.vab || [] });
       if (typeof meshNode.setRefuses === 'function') meshNode.setRefuses(!consents(myStatus));
     }
-    // Presence: the mesh occ map IS the count — distinct peers at distinct
-    // coords in my view of the tree, me included. (The deck aggregation
-    // machinery — leaf/branch sums, assertions vs display — died with the
-    // deck model; a deep stadium's total becomes a media-plane concern.)
+    // Presence: the mesh occ map IS the local count — distinct peers at
+    // distinct coords in my view of the tree, me included. Past one section
+    // the room size is the fold, and a partial fold is not this number: the
+    // label reads displayCount, which will not present a shortfall as the
+    // room. (The deck aggregation machinery — leaf/branch sums, assertions
+    // vs display — died with the deck model; a deep stadium's total becomes
+    // a media-plane concern.)
     function knownTotal() {
       const s = meshSeat();
       if (!s) return rosterIds.length || 1;
@@ -11831,9 +11834,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // The count people SEE. Past one section it is the fold's n — a LABEL (G2):
     // it may be displayed and may never gate behaviour, so the bitrate ladder and
     // every other decision keep reading participantCount(). It is never fewer
-    // than the faces on the grid (me + shownPeerCount).
+    // than the faces on the grid (me + shownPeerCount). A partial fold is a
+    // shortfall, not the room size (healing-laws: a shortfall is not the room):
+    // its n is what was heard. The line then says the count is incomplete.
     function displayCount() {
-      const n = roomPastSection() ? Math.max(participantCount(), roomDig().n) : participantCount();
+      const d = roomDig();
+      if (d && d.part) return Math.max(1, 1 + shownPeerCount());
+      const n = roomPastSection() ? Math.max(participantCount(), d.n) : participantCount();
       return Math.max(n, 1 + shownPeerCount());
     }
     // Faces the page itself has put on screen (me, plus each real peer tile).
@@ -12532,6 +12539,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // the click, not the tiles this page still has up behind the dialog.
       const shown = (leftUp && leftBehind > 0) ? leftBehind : headerCount();
       const tail = partial + link + savedLock + extra;
+      const foldNow = roomDig();
+      const foldPartial = !!(foldNow && foldNow.part); // a shortfall is not the room size
       let countText = '';
       let restText = '';
       if (reachLine) {
@@ -12540,6 +12549,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A person in the waiting room is not alone and has no one to invite.
         countText = uiText('waitHere', 'In the waiting room');
         restText = tail;
+      } else if (foldPartial) {
+        // The fold is missing someone. Do not word the short count, or the
+        // occ union behind it, as how many people are in the room.
+        countText = uiText('countPartial', 'Room count incomplete');
+        restText = ' · ' + q.label + reachTriedSentence() + tail;
       } else if (shown === 1) {
         if (atDoor) {
           countText = uiText('backIn', 'Getting you back in');
@@ -12576,9 +12590,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let phoneDetail = detail;
       if (phoneLayout() && !BROADCAST && !reachLine) {
         const head = roomLabel ? roomLabel + ' · ' : '';
-        phoneDetail = head + (shown <= 1 ? countText : shown + ' ' + uiText('inMeeting', 'in the meeting')) + restText;
-        countText = head + (shown <= 1 ? (atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you')) : shown + ' in call');
-        restText = '';
+        if (foldPartial) {
+          phoneDetail = head + uiText('countPartial', 'Room count incomplete') + restText;
+          countText = head + uiText('countPartial', 'Room count incomplete');
+          restText = '';
+        } else {
+          phoneDetail = head + (shown <= 1 ? countText : shown + ' ' + uiText('inMeeting', 'in the meeting')) + restText;
+          countText = head + (shown <= 1 ? (atDoor ? uiText('backIn', 'Getting you back in') : uiText('justYou', 'Just you')) : shown + ' in call');
+          restText = '';
+        }
       }
       // The line's KIND is state, not wording: 'door' (asking to be let back
       // in), 'alone' (seated, nobody else), 'meeting' (others here), or one
