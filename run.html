@@ -1187,10 +1187,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #tilewin .vablock { display: flex; flex-direction: column; align-items: center; gap: .6rem; padding: .6rem .2rem; text-align: center; }
   #tilewin .vablock p { margin: 0; font-size: .78rem; line-height: 1.35; }
   #tilewin .vablock .vabuy[hidden], #tilewin .vablock .vapass[hidden], #tilewin .vablock .vahost[hidden] { display: none; }
-  /* The mark on a stadium face whose person is heard, not seen: the pass
-     price when the live terms sell it (meet-views decorFace paints it). */
-  .stadface .va-mark { position: absolute; top: 4px; right: 4px; z-index: 2; padding: 0 .35rem; border-radius: .4rem;
-    border: 1px solid #3fbf7f; background: #1d5a3c; color: #f2fff7; font-size: .62rem; font-weight: 700; line-height: 1.5; pointer-events: none; }
+  /* The roster's mark for a person heard, not seen (the stadium is one
+     picture with no face to mark): "Video blocked", with the pass price when
+     the live terms sell it. It opens their window (vaPersonMark, paintRoster). */
+  .roster-row .vamark { min-height: 36px; padding: 0 .6rem; border-radius: .5rem; border: 1px solid #3fbf7f; background: #1d5a3c;
+    color: #f2fff7; font: 700 13px/1.2 system-ui, sans-serif; cursor: pointer; }
   /* A camera-off seat paints its letter into the <video> (paintAvatarCanvas /
      syncAvatarFeed), so the blur classes on that video cover it like a camera.
      A picture avatar is an <img> of the original bytes, never drawn onto a
@@ -5707,8 +5708,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A service keeps Share beside the video tools and Chat in the first
       // group. A meeting seats Chat and Share with Hand while More is open
       // (and on a phone the whole time). seatUseRow does that.
+      // A phone host is the exception: Share stays on the dock, and fitDock
+      // moves Share, then Reactions, then Step off when the row does not fit.
       if (service) {
-        put('sharebtn', 'video', 'bartoggle');
+        let serviceHost = document.body.classList.contains('amadmin');
+        if (!serviceHost) {
+          try {
+            serviceHost = !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase());
+          } catch (e) { serviceHost = false; }
+        }
+        if (phone && serviceHost) {
+          const share = document.getElementById('sharebtn');
+          const toggle = document.getElementById('bartoggle');
+          if (share && toggle && share.parentElement !== bar) bar.insertBefore(share, toggle);
+        } else put('sharebtn', 'video', 'bartoggle');
         const hand = document.getElementById('hand'), use = moreRow('use');
         if (hand && use && hand.parentElement !== bar && hand.parentElement !== use) use.insertBefore(hand, use.firstChild);
         put('chatbtn', 'use', 'ccdock', true);
@@ -5905,13 +5918,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!host) document.body.classList.add('notadmin');
       paintLeave(host ? 'end' : 'watch');
       // Slides and a window are how a host fills the stage. Share sits on the
-      // host dock, the same place a small group already has it. A viewer keeps
-      // it in More until they are allowed to share.
-      if (shareOnDock && moreSheet && bar && !phoneLayout()) {
-        if (host) {
-          const moreBtn = document.getElementById('bartoggle');
-          if (shareOnDock.parentElement !== bar && moreBtn) bar.insertBefore(shareOnDock, moreBtn);
-        } else if (!moreSheet.contains(shareOnDock) && moreRow('video')) moreRow('video').appendChild(shareOnDock);
+      // host dock on every width, including a phone, so fitDock can move it
+      // into More with Reactions and Step off. A viewer keeps it in More
+      // until they are allowed to share. placeDockForWidth already parked a
+      // phone viewer's Share; this puts a wide viewer's back if it wandered.
+      if (shareOnDock && moreSheet && bar && host) {
+        const moreBtn = document.getElementById('bartoggle');
+        if (shareOnDock.parentElement !== bar && moreBtn) bar.insertBefore(shareOnDock, moreBtn);
+      } else if (shareOnDock && moreSheet && bar && !phoneLayout() && !moreSheet.contains(shareOnDock) && moreRow('video')) {
+        moreRow('video').appendChild(shareOnDock);
       }
       if (host && bar) {
         const stage = document.getElementById('stagebtn');
@@ -10182,9 +10197,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const sharing = id === myId ? !!myStatus.scr : (typeof sharingScreen === 'function' && !!sharingScreen(id));
             held = stagersFace.indexOf(id) >= 0 && !sharing;
           } catch (e3) { held = false; }
-          let vd = { blocked: false, mark: '' };
-          try { vd = vaFaceDecor(id); } catch (e4) {}
-          faces.push({ id: id, name: name, initials: held ? '' : nameInitial(name), off: off || held, avatar: held ? '' : avatar, shade: shadeKey(id), held: held, vaBlocked: vd.blocked, vaMark: vd.mark });
+          faces.push({ id: id, name: name, initials: held ? '' : nameInitial(name), off: off || held, avatar: held ? '' : avatar, shade: shadeKey(id), held: held });
         }
         // The view shows this composite whole. It does not cut a cell out of it.
         let cellOf = null;
@@ -10312,6 +10325,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const tileWin = { el: null, modbar: null, home: null, vablock: null, vbHome: null, winT: 0 };
     function twIdOf(el) {
       if (el.classList.contains('tile')) return el.dataset.peer || '';
+      if (el.classList.contains('roster-row')) return el.dataset.person || ''; // a roster row's Video blocked mark
       return '';
     }
     function twPeer(id) { return id && peers.get(id); }
@@ -13120,6 +13134,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { const m = modOf(p.id).mute; roomMute = !!(m && m.on); } catch (e3) {}
         push({ id: p.id, name: hostRename(p.id) || p.name || rosterNames[p.id] || 'Guest', me: false, muted: !!st.muted, hand: !!st.hand, stage: onStage || hostSpot(p.id), roomMute: roomMute });
       }
+      // The list is the faces on the wall. A person whose video is blocked
+      // and who has no tile on it (another row, or no peer at all) is only a
+      // cell of the stadium picture; they are listed too, so their "Video
+      // blocked" mark and its window can reach them (vaPersonMark).
+      try {
+        const extra = new Set();
+        for (const p of peers.values()) {
+          if (p && !p.headless && !isHeld(p.id) && p.tile && p.tile.classList.contains('va-blocked')) extra.add(p.id);
+        }
+        for (const id of Object.keys(rosterNames)) {
+          if (id && id !== myId && !extra.has(id) && !(peers.get(id) && peers.get(id).headless) && typeof vaRosterBlocked === 'function' && vaRosterBlocked(id)) extra.add(id);
+        }
+        for (const id of extra) {
+          const st = statusOf.get(id) || {};
+          let roomMute = false;
+          try { const m = modOf(id).mute; roomMute = !!(m && m.on); } catch (e3) {}
+          const p = peers.get(id);
+          push({ id: id, name: hostRename(id) || (p && p.name) || rosterNames[id] || 'Guest', me: false, muted: !!st.muted, hand: !!st.hand, stage: false, roomMute: roomMute });
+        }
+      } catch (e) {}
       rows.sort((a, b) => {
         if (a.me !== b.me) return a.me ? -1 : 1;
         if (a.hand !== b.hand) return a.hand ? -1 : 1;
@@ -13226,6 +13260,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           f.className = 'flags';
           f.textContent = flags.join(' · ');
           row.appendChild(f);
+        }
+        // Video Anywhere: a person whose video this page cannot receive. The
+        // stadium has no face of theirs to mark, so the row says it, and a tap
+        // opens their window with the explanation and the offers.
+        let vm = { blocked: false, mark: '' };
+        try { if (!r.me && typeof vaPersonMark === 'function') vm = vaPersonMark(r.id); } catch (e) {}
+        if (vm.blocked) {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'vamark';
+          b.dataset.person = r.id;
+          b.textContent = VA.TEXT.rosterMark + (vm.mark ? ' · ' + vm.mark : '');
+          b.setAttribute('aria-label', VA.TEXT.rosterMark + ': ' + r.name);
+          b.onclick = (e) => { e.stopPropagation(); row.dataset.person = r.id; openTileWin(row); };
+          row.appendChild(b);
         }
         // As on the tile: no Mute for someone already muted by their own hand.
         const mayMute = !r.me && !(r.muted && !r.roomMute) && !(typeof hasAdminRoom === 'function' && hasAdminRoom() && !amAdmin);
@@ -13524,9 +13573,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (netSeated() && !named && !passDial) use = false;
       p.turnMine = use;
       p.turnPaid = use ? !!paid : vaFarPaid(p);
-      p.turnAudio = (use || !!p.turnServe) && !p.turnPaid;
+      p.turnAudio = turnAudioOf(p);
       return MT.iceServersFor(ICE_SERVERS, servers, use);
     }
+    // A free-pool pair: I put the pool on it, I serve its far end as an
+    // anchor, or its far end said it reaches me through the pool
+    // (turnFar, 'turn-free'), and nobody pays for it.
+    function turnAudioOf(p) { return (!!p.turnMine || !!p.turnServe || !!p.turnFar) && !p.turnPaid; }
     // The pool's state for the reach line: credentials that never once got
     // a pair through are no way in.
     function turnReach() {
@@ -13543,6 +13596,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!p || !p.dc || p.dc.readyState !== 'open') return;
       dcSend(p, { k: 'turn-anchor', on: on ? 1 : 0 });
       p.turnHelloDc = on ? p.dc : null;
+    }
+    // Every pair I put the free pool on, anchored or not (a seating bridge I
+    // hold dead, a standby, a bridge dialled ahead of a move), tells its far
+    // end so on each new channel, before my media: a reachable far end
+    // cannot see the pool from its side, and would send its camera.
+    function turnFreeHello(p) {
+      if (!p || !p.dc || p.dc.readyState !== 'open' || !p.turnMine || p.turnPaid || p.turnFreeDc === p.dc) return;
+      dcSend(p, { k: 'turn-free', on: 1 });
+      p.turnFreeDc = p.dc;
     }
     // One stream each way on a free-pool pair: every sender but the one
     // audio sender (my voice, or the mix I send an anchored client) is
@@ -13885,7 +13947,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       }
       // 5. Every free-pool pair: audio only, one stream each way.
-      for (const p of peers.values()) { p.netQuiet = netStandbyQuiet(p); if (p.turnAudio || p.netQuiet) parkTurnSenders(p); }   // a hot standby carries nothing beyond its (silent) voice sender either
+      for (const p of peers.values()) { turnFreeHello(p); p.netQuiet = netStandbyQuiet(p); if (p.turnAudio || p.netQuiet) parkTurnSenders(p); }   // a hot standby carries nothing beyond its (silent) voice sender either
       // 6. The anchor side: one mix-minus per client, on that pair's audio sender.
       syncTurnMixes();
       syncTurnUpMix(); // 7. A network's bridge: its network's voices up to its anchor, on that pair's audio sender
@@ -14088,7 +14150,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'va-pair', paid: p.turnPaid ? 1 : 0 });
       } else {
         p.turnPaid = want;
-        p.turnAudio = (!!p.turnMine || !!p.turnServe) && !p.turnPaid;
+        p.turnAudio = turnAudioOf(p);
       }
       if (typeof clog === 'function') clog('va pair ' + String(pid).slice(0, 6) + (p.turnPaid ? ' video' : ' voice only'));
       if (p.turnAudio) parkTurnSenders(p);
@@ -14229,28 +14291,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         } catch (e) {}
       }
       if (any) vaLoadTerms(); // the prices on the tile: the admin's month, the host line, the pass
+      vaRefreshRoster(false);
     }
     // A person this page never keeps a peer for (another row, the mesh dropped
     // the door) is still heard: a firewalled seat (status np blocked), or
     // anyone a free-pool page hears only inside its anchor's mix. Their
-    // picture, when the room is paid, is the stadium cell, not a tile video.
-    // A flat or black cell is not a picture (the composite can be playing
-    // while that one face is still empty). Cached briefly: layout asks often.
+    // picture, when the room is paid, is their cell of the stadium
+    // composite, not a tile video. The stadium is one whole picture (no
+    // per-person face), so the cell is read out of that picture where the
+    // packer painted it (meet-views wholeCell). A flat or black cell is not
+    // a picture (the composite can be playing while that one cell is still
+    // empty), and a pack that names no cells shows nobody's. Cached
+    // briefly: layout asks often.
     const vaCellSeen = new Map();
-    function vaCellLively(v, face) {
-      const cssW = parseFloat(v.style.width) || 0, cssH = parseFloat(v.style.height) || 0;
-      const left = parseFloat(v.style.left) || 0, top = parseFloat(v.style.top) || 0;
-      const fw = face.clientWidth || face.offsetWidth || 0, fh = face.clientHeight || face.offsetHeight || 0;
-      if (!(cssW > 2 && cssH > 2 && fw > 4 && fh > 4 && v.videoWidth > 2 && v.videoHeight > 2)) return false;
-      const sx = v.videoWidth / cssW, sy = v.videoHeight / cssH;
-      let x = Math.max(0, Math.round(-left * sx)), y = Math.max(0, Math.round(-top * sy));
-      let w = Math.min(v.videoWidth - x, Math.round(fw * sx)), h = Math.min(v.videoHeight - y, Math.round(fh * sy));
-      if (w < 2 || h < 2) return false;
+    function vaCellLively(v, r) {
+      const vw = v.videoWidth || 0, vh = v.videoHeight || 0;
+      if (!(vw > 2 && vh > 2 && r && r.w >= 2 && r.h >= 2)) return false;
       const c = vaCellLively.c || (vaCellLively.c = document.createElement('canvas'));
       c.width = 8; c.height = 8;
       const g = c.getContext('2d', { willReadFrequently: true });
       if (!g) return false;
-      g.drawImage(v, x + w * 0.25, y + h * 0.25, Math.max(1, w * 0.5), Math.max(1, h * 0.5), 0, 0, 8, 8);
+      g.drawImage(v, r.x + r.w * 0.25, r.y + r.h * 0.25, Math.max(1, r.w * 0.5), Math.max(1, r.h * 0.5), 0, 0, 8, 8);
       const d = g.getImageData(0, 0, 8, 8).data;
       let n = 0, s = 0, s2 = 0;
       for (let i = 0; i < d.length; i += 4) {
@@ -14260,16 +14321,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const mean = s / n;
       return (s2 / n - mean * mean) > 80;
     }
-    function vaFaceView(id) {
+    function vaCellView(id) {
       const now = Date.now(), hit = vaCellSeen.get(id);
       if (hit && now - hit.at < 400) return hit;
       const rec = { at: now, alive: false, frames: 0 };
       try {
-        const face = document.querySelector('.stadface[data-stad="' + id + '"]');
-        const v = face && face.querySelector('video');
-        if (face && v && !face.classList.contains('cam-off') && v.videoWidth > 2) {
+        const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
+        const meta = typeof comfyStadMeta === 'function' ? comfyStadMeta() : null;
+        const shown = document.querySelector('#stadwhole video');
+        // The video on screen; the hidden source only if that one has no frame.
+        const v = shown && shown.videoWidth > 2 ? shown : (meta && meta.video);
+        const r = MV && MV.wholeCell && meta && v ? MV.wholeCell(meta.ids, meta.cols, id, v.videoWidth, v.videoHeight) : null;
+        if (r) {
           try { const q = v.getVideoPlaybackQuality(); if (q) rec.frames = q.totalVideoFrames || 0; } catch (e) {}
-          rec.alive = vaCellLively(v, face);
+          rec.alive = vaCellLively(v, r);
         }
       } catch (e) {}
       vaCellSeen.set(id, rec);
@@ -14296,7 +14361,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // is already moving.
         let passCover = false;
         try { passCover = typeof vaPassCovers === 'function' && vaPassCovers(id); } catch (e) { passCover = false; }
-        if ((vaRoom() === 'live' || passCover) && vaFaceView(id).alive) return false;
+        if ((vaRoom() === 'live' || passCover) && vaCellView(id).alive) return false;
         return true;
       } catch (e) { return false; }
     }
@@ -14336,32 +14401,38 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       return el;
     }
     // A blocked person seated in another row has no tile on screen (the grid
-    // is row-mates only — reconcileGrid): their stadium face wears the mark
-    // (the pass price, when the live terms sell it), and the tile window
-    // that opens from the face carries the tile's explanation and offers.
-    // Someone the mesh no longer peers is the same face: the roster says
-    // they are heard and not seen, and the mark leaves when their cell
-    // actually shows a picture.
-    // Terms just arrived. Put the price on faces that are already showing,
-    // without laying the meeting out again (that restarts the stadium hold).
-    function vaRefreshFaceMarks() {
-      const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
-      if (!MV || typeof MV.decorFace !== 'function' || !document.querySelectorAll) return;
-      const faces = document.querySelectorAll('.stadface[data-stad]');
-      for (let i = 0; i < faces.length; i++) {
-        const el = faces[i];
-        const id = el.dataset && el.dataset.stad;
-        if (!id) continue;
-        const d = vaFaceDecor(id);
-        MV.decorFace(el, { id: id, vaBlocked: !!d.blocked, vaMark: d.mark || '' });
-      }
-    }
-    function vaFaceDecor(id) {
+    // is row-mates only — reconcileGrid), and the stadium is one whole
+    // picture with no face of theirs to mark. Their roster row carries the
+    // mark instead ("Video blocked", and the pass price when the live terms
+    // sell it); tapping it opens their window, which carries the tile's
+    // explanation and offers. Someone the mesh no longer peers is the same:
+    // the roster says they are heard and not seen, and the mark leaves when
+    // their cell of the composite actually shows a picture.
+    function vaPersonMark(id) {
       const p = peers.get(id);
       const held = vaRosterBlocked(id);
       if (!(held || (p && p.tile && p.tile.classList.contains('va-blocked')))) return { blocked: false, mark: '' };
       const pass = VA.tilePass({ terms: vaTerms, sub: vaSub(), covered: vaPassCovers(id) });
       return { blocked: true, mark: pass ? pass.label.split(',')[0] : '' };
+    }
+    // The open roster follows the marks: terms that arrive, a person who
+    // blocks or unblocks. A roster paint never lays the meeting out (that
+    // restarts the stadium hold).
+    let vaRosterSig = '';
+    function vaRefreshRoster(force) {
+      try {
+        const r = document.getElementById('roster');
+        if (!r || !r.classList.contains('open') || typeof paintRoster !== 'function') return;
+        let sig = '';
+        for (const id of Object.keys(rosterNames)) {
+          if (!id || id === myId) continue;
+          const m = vaPersonMark(id);
+          if (m.blocked) sig += id + '=' + m.mark + ';';
+        }
+        if (!force && sig === vaRosterSig) return;
+        vaRosterSig = sig;
+        paintRoster();
+      } catch (e) {}
     }
     // The element the tile window borrows for a blocked person. vaPaintTile
     // returns it home when the tile unblocks; closeTileWin always does.
@@ -14449,10 +14520,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }).catch(() => { vaTerms = null; vaTermsAt = Date.now(); }).finally(() => {
         vaTermsBusy = false;
         vaPaintPanel(false);
-        // The price mark is a span on a face already on screen. A full
-        // layout here restarts the stadium hold and left the other row's
-        // faces black for the whole paid minute.
-        try { vaRefreshFaceMarks(); } catch (e) {}
+        // The price is on the roster's mark. A full layout here restarts
+        // the stadium hold and left the other row black for the paid minute.
+        vaRefreshRoster(true);
       });
     }
     async function vaBuy(product) {
@@ -15924,6 +15994,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A new transport is a new pool session: the anchored client says so
       // again on the new channel (turnHello), and only then is it served.
       p.turnServe = false; p.turnHelloDc = null;
+      p.turnFar = false; p.turnFreeDc = null;
       p.vaFarPaid = false; // a new transport is a new session: the far end says again whether it is paid
       p.rollbackRebuild = false; // a rebuild owed by the old transport is paid by this one
       const pcCfg = { iceServers: iceFor(p) };
@@ -22300,6 +22371,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { sendAvatarTo(p); } catch (e) {}
         if (amAdmin) { try { dcSend(p, { k: 'sig', msg: { kind: 'mod', mod: modTable, modw: gossipModW() } }); } catch (e) {} }
         if (p.turnAnchor) turnHello(p, true); // before the media: the anchor parks its video for this pair from the start
+        turnFreeHello(p); // ...and so does the far end of any free-pool pair
         vaGreet(p); // Video Anywhere: the launch order, and whether this pair is paid
         try { if (enableMedia(p)) renegotiate(p); } catch (e) {}
         try { if (linkTo(p.id)) retireBootPairs(); } catch (e) {} // a seat's own link is open: the door I came in by closes
@@ -22609,10 +22681,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (!MT.mayServe(n, false)) { dcSend(p, { k: 'turn-anchor-no' }); return; }
         }
         p.turnServe = on;
-        p.turnAudio = (on || !!p.turnMine) && !p.turnPaid;
+        p.turnAudio = turnAudioOf(p);
         if (on) for (const job of [...relayJobs.values()]) if (job.requester === p.id) stopRelayJob(job.target, p.id, true); // the mix replaces every carried stream
         if (p.turnAudio) parkTurnSenders(p);
         syncTurnMixes(); refreshOutbound();
+      } else if (m.k === 'turn-free') {
+        // The far end reaches me through the free pool on this channel: the
+        // pair is audio only from now (design section 1), whoever anchors.
+        if (dc !== p.dc) return; // a closed transport's word is not this one's
+        p.turnFar = m.on === 1;
+        p.turnAudio = turnAudioOf(p);
+        if (p.turnAudio) parkTurnSenders(p);
+        refreshOutbound();
       } else if (m.k === 'turn-anchor-no') {
         if (turnAnchorId === p.id) dropTurnAnchor(Date.now(), 120000);
       } else if (m.k === 'va') {
@@ -36308,7 +36388,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           onBridge: !!myStatus.vb, seen: vaSeen(), why: vaWhy.slice(),
           pass: { tag: vaPassTag, mine: vaMyPassLive() ? { tx: vaMyPass.tx, end: vaMyPass.end } : null, stored: !!vaRead(vaPassKey()), buying: vaPassBuying,
             holders: [...vaPasses.keys()].filter((id) => vaPassLive(id)).map((id) => rosterNames[id] || id) },
-          pairs: [...peers.values()].map((p) => { const e = vaPaid.get(p.id); return { name: rosterNames[p.id] || p.name || null, turnPaid: !!p.turnPaid, paidBy: e ? e.kind : null, passCovers: vaPassCovers(p.id), dial: vaDialFor(p), turnAudio: !!p.turnAudio, farPaid: !!p.vaFarPaid, cred: e ? e.cred.state() : null, refusal: e ? e.cred.refusal() : null, halted: e ? e.cred.halted() : false, bridge: e ? e.bridge : null,
+          pairs: [...peers.values()].map((p) => { const e = vaPaid.get(p.id); return { name: rosterNames[p.id] || p.name || null, turnPaid: !!p.turnPaid, paidBy: e ? e.kind : null, passCovers: vaPassCovers(p.id), dial: vaDialFor(p), turnAudio: !!p.turnAudio, turnFar: !!p.turnFar, farPaid: !!p.vaFarPaid, cred: e ? e.cred.state() : null, refusal: e ? e.cred.refusal() : null, halted: e ? e.cred.halted() : false, bridge: e ? e.bridge : null,
             turnMine: !!p.turnMine, serve: !!p.turnServe, cam: camPeer(p.id), mainV: p.mainV ? (p.mainV.track ? p.mainV.track.kind : 'parked') : null, park: !!p.remoteParkMain,
             mainA: p.mainA ? (p.mainA.track ? (turnMixSenders.has(p.mainA) ? 'mix' : 'mic') + ':' + p.mainA.track.readyState + ':' + (p.mainA.track.enabled ? 'on' : 'off') + ':' + (p.mainA.track.muted ? 'muted' : 'live') : 'parked') : null,
             heardPair: p.vaPairHeard || 0, mix: turnMixes.has(p.id), ac: ac ? ac.state + '@' + ac.currentTime.toFixed(1) : null, mixHeld: !!(p.mainA && p.mainA.track && p.mainA.track === turnMixTrack(p.id)),
@@ -36319,10 +36399,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The blocked-video tiles on this page: per person, whether the message
       // shows, the admin's button (kind, price) if any, and frames decoded.
       vaTiles: () => {
+        // stadium: the stadium is on screen and this person has a cell of its composite.
+        const inStad = (id) => { try { const w = document.getElementById('stadwhole'); const m = comfyStadMeta();
+          return !!(w && w.isConnected && w.getBoundingClientRect().width > 0 && Array.isArray(m.ids) && m.ids.indexOf(String(id)) >= 0); } catch (e) { return false; } };
         const rows = [...peers.values()].map((p) => {
           const el = p.vaBlockEl, b = el && el.querySelector('.vabuy');
           let frames = null; try { frames = p.video && p.video.getVideoPlaybackQuality ? p.video.getVideoPlaybackQuality().totalVideoFrames : null; } catch (e) {}
-          return { id: p.id, name: rosterNames[p.id] || p.name || null, blocked: !!(p.tile && p.tile.classList.contains('va-blocked')),
+          return { id: p.id, name: rosterNames[p.id] || p.name || null, blocked: !!(p.tile && p.tile.classList.contains('va-blocked')), stadium: inStad(p.id),
             message: !!(el && p.tile.classList.contains('va-blocked') && el.querySelector('p') && el.querySelector('p').textContent.length > 0),
             button: b && !b.hidden ? { kind: b.dataset.kind, price: b.dataset.price } : null, frames, facts: vaTileFacts(p, Date.now()),
             pass: (() => { const pb = el && el.querySelector('.vapass'); return pb && !pb.hidden ? { label: pb.textContent, price: pb.dataset.price } : null; })(),
@@ -36336,10 +36419,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               } catch (e) { return { err: String(e).slice(0, 60) }; }
             })() };
         });
-        // No peer (the door was dropped): the stadium face is the tile the
-        // viewer has. The message is the same block the window loans. Frames
-        // count only once that face's own cell shows a picture, so a playing
-        // composite of someone else does not clear the message.
+        // No peer (the door was dropped): the roster row is where the viewer
+        // meets them, and the message is the same block their window loans.
+        // Frames count only once their own cell of the stadium composite
+        // shows a picture, so a playing composite of others does not clear it.
         try {
           const have = new Set(rows.map((r) => r.id));
           for (const id of Object.keys(rosterNames)) {
@@ -36351,15 +36434,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const blocked = vaRosterBlocked(id);
             const el = blocked ? vaHoldBlock(id) : (vaHoldEls.get(id) || null);
             const b = el && el.querySelector('.vabuy');
-            const view = blocked ? { alive: false, frames: 0 } : vaFaceView(id);
-            rows.push({ id, name: rosterNames[id] || null, blocked,
+            const view = blocked ? { alive: false, frames: 0 } : vaCellView(id);
+            rows.push({ id, name: rosterNames[id] || null, blocked, stadium: inStad(id),
               message: !!(blocked && el && el.querySelector('p') && el.querySelector('p').textContent.length > 0),
               button: b && !b.hidden ? { kind: b.dataset.kind, price: b.dataset.price } : null,
               frames: blocked ? 0 : view.frames,
               facts: { isMe: false, camOn: !seatDark(st), pictureLive: !blocked && !!view.alive, freePair: false, voiceCarry: false, inMixOnly: mix },
               pass: (() => { const pb = el && el.querySelector('.vapass'); return pb && !pb.hidden ? { label: pb.textContent, price: pb.dataset.price } : null; })(),
               host: (() => { const hl = el && el.querySelector('.vahost'); return hl && !hl.hidden ? hl.textContent : null; })(),
-              media: { relayed: false, face: true } });
+              media: { relayed: false, cell: true } });
           }
         } catch (e) {}
         return rows;
@@ -36694,6 +36777,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const p = peers.get(pid); if (!p) return { err: 'no such peer' };
         renegotiate(p);
         return { ok: true, sig: p.pc && p.pc.signalingState, dc: (p.dc && p.dc.readyState) || 'none' };
+      },
+      // DEBUG: let go of my free-pool anchor and hold it dead for ms, as the
+      // TURN sweep does once a lost anchor has stayed down 20 s (step 3).
+      // The seating may still name it my bridge. e2e-turn-rebuild.
+      dropTurnAnchorForTest: (ms) => {
+        if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
+        const was = turnAnchorId;
+        dropTurnAnchor(Date.now(), ms || 60000);
+        return { ok: true, dropped: was != null ? String(was).slice(0, 8) : null };
       },
       // DEBUG: kill ONLY the DataChannel, leaving the pc and ICE untouched —
       // the state a real phone landed in (2026-08-17: `dc=closed/connected`

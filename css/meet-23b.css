@@ -193,10 +193,19 @@ body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app)
   .topchip #statuscount { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 }
 /* Raised hands: a desktop reads the line in the header row beside Fit
-   (placeHandq); a phone taps the header's "✋ 1" to open it under the header. */
+   (placeHandq); a phone taps the header's "✋ 1" to open it under the header.
+   The count is flex 0 0 auto, so its box ran under that line (gallery, Fit
+   still in the row). The transcribing word yields, and the count stays
+   inside the chip instead of painting across the line. */
 body.desk-ptr.comfy #handq.on, body.desk-ptr.comfy #handq.on.open { display: block !important; left: auto !important;
   top: calc(14px + var(--gtop, 0px)) !important; }
 body.desk-ptr #hdrhand.on { display: none !important; }
+@media (min-width: 701px) and (min-height: 501px) {
+  body.desk-ptr:has(#handq.on) #txmark span { display: none; }
+  body.desk-ptr:has(#handq.on) .topchip #statuscount {
+    flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  }
+}
 /* The Stage frame: a free rectangle with a corner grip. */
 #tilewin .tw-rect { box-shadow: 0 0 0 9999px rgba(0,0,0,.5); }
 #tilewin .tw-grip { position: absolute; right: -9px; bottom: -9px; width: 18px; height: 18px; border-radius: 50%;
@@ -332,7 +341,9 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 }
 @media (max-width: 700px), (max-height: 500px) {
   .bar:not(.collapsed) .barmore {
-    max-height: calc(100dvh - 148px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    /* Height stays with run.html: a sideways phone caps under the header,
+       and an upright phone caps to two rows below. 100dvh-148px covered
+       the header and put every control on the first screen. */
     padding: 8px; gap: 4px; overflow-x: hidden; overflow-y: auto;
   }
   .bar:not(.collapsed) .barmore .moregroup h4 { font-size: 12px; }
@@ -341,7 +352,8 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   .bar:not(.collapsed) #barmore .dockrow { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
   .bar:not(.collapsed) #barmore .morerow > button,
   .bar:not(.collapsed) #barmore .dockmore {
-    min-height: 48px; height: auto; font-size: 12px; padding: 4px; border-radius: 10px;
+    /* 64px, or taller when a label needs another line. 48px failed the host sheet. */
+    min-height: 64px; height: auto; font-size: 12px; padding: 4px; border-radius: 10px;
   }
   /* Settings text size scales the root. A fixed 12px stayed 12px at 200%. */
   html.ui-large .bar:not(.collapsed) #barmore .morerow > button,
@@ -350,7 +362,7 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
     font-size: 1rem;
   }
   .bar:not(.collapsed) #barmore .morerow > .iconbtn .docklab.dockword { font-size: 12px; font-weight: 650; }
-  .bar:not(.collapsed) .barmore .seg { min-height: 36px; min-width: 36px; font-size: 13px; }
+  .bar:not(.collapsed) .barmore .seg { min-height: 48px; min-width: 44px; font-size: 13px; }
   /* A wrapped alert grew this line over the top row and covered Open.
      One line. The whole sentence is in the status sheet. */
   .topchip .status.alert { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: 44px; }
@@ -360,6 +372,9 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 }
 @media (max-width: 700px) and (orientation: portrait) {
   .topchip .status { font-size: clamp(12px, 3.6vw, 17px); }
+  /* Two rows of the first group stay on screen. Later groups scroll.
+     200px clears the second 64px row and stops before Flip. */
+  .bar:not(.collapsed) .barmore { max-height: 200px; /* dock-first-rows */ }
 }
 
 /* The crop preview shares the card with a narrow column of controls, so it
@@ -517,6 +532,24 @@ body:not(.canvote) .bar:not(.collapsed) #barmore #votebtn { display: none; }
   pointer-events: auto; text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 body.comfy .tile > .chips { right: 76px !important; }
+/* A tile under 200px is about 105px wide. The 76px inset that keeps chips
+   off Open, added to the 56px left inset, leaves the chip row 0px wide:
+   the hand icon is crushed (its text is cut) and a wrapped hand line sits
+   on the name. On these tiles Open is a 22px corner, the chips sit beside
+   it in one row, and a taller portrait tile already drops its chips under
+   the corner so they can use the full width. */
+@media (max-width: 700px), (max-height: 500px) {
+  body.comfy .tile.slim > .tile-open {
+    width: 22px; max-width: 22px; padding: 0; overflow: hidden; font-size: 0; line-height: 22px;
+  }
+  body.comfy .tile.slim > .tile-open::after {
+    content: '\2197'; font-size: 13px; line-height: 22px;
+  }
+  body.comfy .tile.slim > .chips { left: 6px !important; right: 32px !important; gap: 2px; }
+}
+@media (max-width: 700px) and (orientation: portrait) {
+  body.comfy .tile.slim:not(.short) > .chips { right: 6px !important; }
+}
 
 /* Meeting header: Help, Invite, and Full screen are one night pill.
    An app keeps the bar it already has. */

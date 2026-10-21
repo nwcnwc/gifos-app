@@ -1,6 +1,7 @@
 /*
- * The dock floats over the bottom row. Four faces still fill the screen,
- * and each one stays tall enough to read.
+ * Four faces fill the feed from the header band to the call chrome.
+ * The dock sits below that edge, so it does not cover a face, and each
+ * face stays tall enough to read.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/dock-clears-faces.js
  */
@@ -15,6 +16,14 @@ const PEOPLE = [
   { id: 'peer-david', name: 'David' },
   { id: 'peer-sam', name: 'Sam' },
 ];
+
+// Same band as meet-views headerBand: upright phone 102, sideways phone 58.
+function headerInset(vw, vh, gtop) {
+  const land = vh < 500 && vw > vh;
+  const phone = vw < 600 || land;
+  const base = phone ? (land ? 58 : 102) : ((vw > 600 && vh > 500) ? 64 : 102);
+  return Math.round(base + (gtop > 0 ? gtop : 0));
+}
 
 const PHONES = [
   { name: 'iphone-15', device: devices['iPhone 15'] },
@@ -59,7 +68,17 @@ const PHONES = [
           shown: b.width > 8 && b.height > 8 && el.style.display !== 'none',
         };
       }).filter((t) => t.shown);
-      return { dockTop: bar.top, vh: window.innerHeight, tiles: tiles };
+      const feed = document.getElementById('feed');
+      const fr = feed ? feed.getBoundingClientRect() : null;
+      let gtop = 0;
+      try {
+        const n = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gtop'));
+        if (n > 0) gtop = n;
+      } catch (e) {}
+      return {
+        dockTop: bar.top, vh: window.innerHeight, vw: window.innerWidth,
+        gtop: gtop, feedBottom: fr ? fr.bottom : window.innerHeight, tiles: tiles,
+      };
     });
     const bad = [];
     if (info.tiles.length < 4) bad.push('only ' + info.tiles.length + ' faces');
@@ -69,8 +88,9 @@ const PHONES = [
       if (t.h < 48) bad.push((t.name || t.id) + ' is only ' + Math.round(t.h) + 'px tall');
       y0 = Math.min(y0, t.top); y1 = Math.max(y1, t.bottom);
     }
-    if (info.tiles.length && !over) bad.push('dock sits outside the tiles');
-    if (info.tiles.length && (y0 > 8 || info.vh - y1 > 8)) bad.push('faces leave a band (' + Math.round(y0) + ' above, ' + Math.round(info.vh - y1) + ' below)');
+    if (info.tiles.length && over) bad.push('dock covers a face');
+    const inset = headerInset(info.vw, info.vh, info.gtop);
+    if (info.tiles.length && (Math.abs(y0 - inset) > 8 || Math.abs(y1 - info.feedBottom) > 8)) bad.push('faces leave a band (' + Math.round(y0) + ' above, ' + Math.round(info.feedBottom - y1) + ' below)');
     if (phone.name === 'iphone-15') await page.screenshot({ path: path.join(SHOTS, 'after-dock-faces-iphone-15.png') });
     if (bad.length) failures.push(phone.name + ': ' + bad.join('; '));
     await context.close();

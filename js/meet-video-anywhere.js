@@ -53,6 +53,9 @@
     // On a tile whose video the network blocks, for everyone who sees that tile.
     passOn: 'Video is unblocked for you in this meeting for the next hour. Pictures come through in a few seconds.',
     passWaiting: 'Finish the payment in the PayPal window. Video unblocks here as soon as it is paid.',
+    // The roster row of a person whose video is blocked (the stadium has no
+    // face of theirs to mark); the row's button opens the window with blockedTile.
+    rosterMark: 'Video blocked',
     blockedTile: 'Your network or theirs (often a work VPN or office network) blocks direct video between you. Getting video across it means sending it through our servers, which costs us real money, so this meeting needs Video Anywhere. Voices still come through.',
   };
   const people = (n) => n + (n === 1 ? ' person' : ' people');

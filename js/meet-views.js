@@ -74,6 +74,58 @@
     return header;
   }
 
+  // Last top of Live, Record, or the chat preview while they are showing.
+  // A tuck hides them and slides the dock, which moves that top. Holding
+  // the shown top keeps the faces still (the header band does the same).
+  let callChromeTop = 0;
+
+  function restingTop(el) {
+    if (!el || el.hidden) return 0;
+    let cs = null;
+    try { cs = getComputedStyle(el); } catch (e) { return 0; }
+    if (!cs || cs.display === 'none' || cs.visibility === 'hidden') return 0;
+    if ((el.offsetWidth || 0) < 8 || (el.offsetHeight || 0) < 8) return 0;
+    const prev = el.style.transform;
+    const moved = cs.transform && cs.transform !== 'none';
+    if (moved) el.style.transform = 'none';
+    let top = 0;
+    try { top = el.getBoundingClientRect().top; }
+    finally { if (moved) el.style.transform = prev; }
+    return top > 0 ? top : 0;
+  }
+
+  // Faces stop where the call's buttons start. A shared screen and an app
+  // stay full-bleed. Desktop has no call-state row (it is display:none).
+  function reserveCallChrome(feed, opts, header) {
+    if (!feed || !feed.style) return 0;
+    const doc = feed.ownerDocument || document;
+    const body = doc.body;
+    const skip = !opts || (body && body.classList && (body.classList.contains('screen-on') || body.classList.contains('has-app')));
+    if (skip) { feed.style.bottom = ''; return 0; }
+    const view = doc.defaultView || root;
+    const vh = +opts.vh || (view && view.innerHeight) || 0;
+    const away = body && body.classList && body.classList.contains('chrome-away');
+    if (!away) {
+      const note = doc.getElementById('chatnote');
+      const state = doc.getElementById('callstate');
+      const a = restingTop(note);
+      const b = restingTop(state);
+      let top = 0;
+      if (a > 0 && b > 0) top = Math.min(a, b);
+      else top = a > 0 ? a : b;
+      callChromeTop = top > 0 ? top : 0;
+    }
+    const top = callChromeTop;
+    // Nothing below the header, or a control with no room under it.
+    if (!(top >= header + 48) || !(vh > 0) || top >= vh - 8) {
+      feed.style.bottom = '';
+      return 0;
+    }
+    const reserve = Math.ceil(vh - top);
+    feed.style.bottom = reserve + 'px';
+    return reserve;
+  }
+
   function placeEl(el, r) {
     if (!el || !r) return;
     const s = el.style;
@@ -279,18 +331,18 @@
     }
   }
 
-  // The blocked-video mark. The restored stadium is one composite and
-  // has no per-person face, so this only paints a .stadface the page
-  // still has. The price is the one-hour pass when the terms sell it.
-  function decorFace(el, f) {
-    if (!el || !el.classList) return;
-    const on = !!(f && f.vaBlocked);
-    el.classList.toggle('va-blocked', on);
-    let m = el.querySelector('.va-mark');
-    const text = on && f.vaMark ? String(f.vaMark) : '';
-    if (!text) { if (m) m.remove(); return; }
-    if (!m) { m = document.createElement('span'); m.className = 'va-mark'; el.appendChild(m); }
-    if (m.textContent !== text) m.textContent = text;
+  // Where one person sits in the whole composite, in the composite's own
+  // pixels: the packer paints cell k row-major in square cells of
+  // width / cols (mesh-media paint). ids is the pack's cell list; a dense
+  // pack names no cells, and then nobody's cell is known (null).
+  function wholeCell(ids, cols, id, frameW, frameH) {
+    if (!Array.isArray(ids) || !id || !(cols > 0) || !(frameW > 2) || !(frameH > 2)) return null;
+    const k = ids.indexOf(String(id));
+    if (k < 0) return null;
+    const c = frameW / cols;
+    const x = (k % cols) * c, y = Math.floor(k / cols) * c;
+    if (y + c > frameH + 0.5) return null;
+    return { x: x, y: y, w: c, h: c };
   }
 
   // One stadium element. Repeat calls keep the same <video>, so a
@@ -504,9 +556,13 @@
       phone: !!opts.phone, pill: !!opts.pill, bottom: 0, top: 0,
     });
     // Tiles are positioned inside the feed. y stays 0, which is the feed's
-    // top, already under the header band.
+    // top, already under the header band. The feed ends at Live, Record,
+    // or the chat preview. That bottom is the shown edge, so a tuck does
+    // not resize the faces.
     const header = reserveHeader(feed, opts);
-    const box = header > 0 ? Object.assign({}, box0, { y: 0, h: Math.max(1, box0.h - header) }) : box0;
+    const chrome = reserveCallChrome(feed, opts, header);
+    const cut = header + chrome;
+    const box = cut > 0 ? Object.assign({}, box0, { y: 0, h: Math.max(1, box0.h - cut) }) : box0;
     const MZ = GifOS.meetZones;
     const byId = {};
     for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
@@ -896,7 +952,7 @@
     paintShade: paintShade,
     avatarUrl: avatarUrl,
     paintAvatar: paintAvatar,
-    decorFace: decorFace,
+    wholeCell: wholeCell,
     apply: apply,
     stadFrameSize: stadFrameSize,
     installBar: installBar,
