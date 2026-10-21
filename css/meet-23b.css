@@ -19,9 +19,7 @@ body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] video {
   width: 100%; height: 100%; object-fit: contain; background: #000; }
 /* Row and Stadium tiles are squares (meet-zones) with soft corners. */
 body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-comfy="1"],
-body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-comfy="1"],
-body.comfy .stadface[data-comfy="1"] { border-radius: 12px; overflow: hidden; }
-body.comfy .stadface[data-comfy="1"] { border-radius: 8px; }
+body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-comfy="1"] { border-radius: 12px; overflow: hidden; }
 @media (max-width: 700px), (max-height: 500px) {
   body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-comfy="1"],
   body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-comfy="1"] { border-radius: 10px; }
@@ -32,7 +30,7 @@ body.comfy .tile[data-vcrop="1"] > video { object-fit: fill !important; }
 /* The old "you are in the row" dot is a badge; names say who is who. */
 body.comfy .tile[data-tier="row"]::after { display: none !important; }
 /* Speaking: a green frame, drawn above the picture. */
-body.comfy .tile.speaking, body.comfy .tile.me.speaking, body.comfy .stadface.speaking {
+body.comfy .tile.speaking, body.comfy .tile.me.speaking {
   outline: 3px solid #34d672 !important; outline-offset: -3px;
   box-shadow: inset 0 0 0 3px #34d672, inset 0 0 22px rgba(52,214,114,.3) !important; }
 
@@ -48,13 +46,13 @@ body.comfy:not(.meet-awake) .stad-band {
   opacity: 0 !important; pointer-events: none !important; }
 body.comfy .tile > .blurbox, body.comfy .tile > .modbar, body.comfy .tile.menu > .modbar {
   display: none !important; }
-body.comfy .tile .name, body.comfy .stadface .name { opacity: 1 !important; }
+body.comfy .tile .name { opacity: 1 !important; }
 @media (prefers-reduced-motion: reduce) {
   body.comfy .tile > .chips, body.comfy .tile > .botbadge, body.comfy .stad-band { transition: none; }
 }
 
 /* ---- tap a tile: explode + control window -------------------------- */
-body.comfy .tile[data-comfy="1"], body.comfy .stadface[data-comfy="1"],
+body.comfy .tile[data-comfy="1"],
 body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] { cursor: pointer; }
 #tilewin-veil { position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 39; background: rgba(6,8,12,.55);
   backdrop-filter: none; }
@@ -505,7 +503,7 @@ body:not(.bc-host) .bar:not(.collapsed) #barmore #rbbtn,
 body:not(.canvote) .bar:not(.collapsed) #barmore #votebtn { display: none; }
 
 /* The picture does not open the sheet. This light corner does. */
-.tile > .tile-open, .stadface > .tile-open, .rowtile > .tile-open {
+.tile > .tile-open, .rowtile > .tile-open {
   position: absolute; top: 6px; right: 6px; z-index: 6; box-sizing: border-box;
   height: 22px; max-height: 28px; width: auto; max-width: 72px; margin: 0; padding: 0 8px;
   border: 0; border-radius: 999px; background: rgba(255,255,255,.28); color: #fff;

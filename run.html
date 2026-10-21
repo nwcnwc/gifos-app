@@ -2414,7 +2414,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.desk-ptr.has-app:not(.solo-app):not(.app-room):not(.comfy) #apppane,
   body.desk-ptr.has-app.app-room.audio-on #apppane { padding-top: 70px; }
   body.has-app .fitbtn { display: none; }
-  body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
+  body.comfy .tile[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: calc(14px + 2.75rem + var(--inset-top, 0px)); left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px)); }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
   body.app-room #reactbtn, body.app-room #reacttray { display: none !important; }
@@ -2803,12 +2803,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
     /* Stay full-bleed while scrolling. The dock floats over the tiles. */
     bottom: 0; }
-  body.comfy #grid, body.comfy #stadium, body.comfy #stagefeed, body.comfy #stadfaces {
+  body.comfy #grid, body.comfy #stadium, body.comfy #stagefeed {
     position: static; display: block; padding: 0; margin: 0; gap: 0; overflow: visible;
     height: auto; background: transparent; border: 0; }
   body.comfy #stadium.on { display: block; }
   body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile,
-  body.comfy .stadface, body.comfy .rowtile {
+  body.comfy .rowtile {
     border-radius: 0; border: 0; aspect-ratio: auto; min-height: 0; box-shadow: none; }
   body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
     position: absolute; right: auto; bottom: auto; border: 0; border-radius: 0; box-shadow: none; }
@@ -2818,32 +2818,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.comfy .comfy-off { display: none !important; }
   /* A camera on the Stage holds this seat. The picture is only on the Stage:
      no video and no letter here, and the seat stays so nobody shifts into it. */
-  body.comfy .tile.seat-held > video,
-  body.comfy .stadface.seat-held > video { visibility: hidden !important; opacity: 0 !important; }
-  body.comfy .tile.seat-held .avatar,
-  body.comfy .stadface.seat-held .avatar { display: none !important; }
-  body.comfy .tile.seat-held,
-  body.comfy .stadface.seat-held { background: #0d0f14 !important; }
+  body.comfy .tile.seat-held > video { visibility: hidden !important; opacity: 0 !important; }
+  body.comfy .tile.seat-held .avatar { display: none !important; }
+  body.comfy .tile.seat-held { background: #0d0f14 !important; }
   .bar:not(.collapsed) .barmore .blurctl[hidden] { display: none !important; }
   /* The tile rules above zero the shadow at a higher specificity than
      `.tile.speaking`, and an inset shadow would sit under the video that
      fills the tile. Outline paints above the picture. A negative offset
      keeps the frame inside this tile, where the neighbour cannot cover it. */
   body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile.speaking,
-  body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile.me.speaking,
-  body.comfy .stadface.speaking {
+  body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile.me.speaking {
     outline: 3px solid #7bffcf;
     outline-offset: -3px;
     box-shadow: inset 0 0 0 3px #7bffcf, inset 0 0 24px rgba(123,255,207,.35); }
-  body.comfy .tile video, body.comfy .stadface video { object-fit: cover; object-position: 50% 40%; }
-  body.comfy .tile.cam-off .avatar.has-img, body.comfy .stadface.cam-off .avatar.has-img {
+  body.comfy .tile video { object-fit: cover; object-position: 50% 40%; }
+  body.comfy .tile.cam-off .avatar.has-img {
     color: transparent; }
-  body.comfy .stadface { overflow: hidden; background: transparent; }
-  body.comfy .stadface.cam-off, body.comfy .tile.cam-off {
+  body.comfy .tile.cam-off {
     background-color: var(--tile-shade, #3b4d78); }
-  body.comfy .stadface .avatar {
-    position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; align-items: center; justify-content: center;
-    font-size: 2.4rem; font-weight: 800; color: #fff; background: transparent; z-index: 1; }
   /* The stadium is one composite, shown whole in the zone's box. */
   body.comfy #stadwhole { overflow: hidden; background: #0d0f14; }
   body.comfy #stadwhole video { width: 100%; height: 100%; object-fit: contain; object-position: center center; }
@@ -2853,14 +2845,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     padding: .12rem .5rem; border-radius: .4rem; font-size: .75rem;
     max-width: calc(100% - .8rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  body.comfy .stadface .name {
-    position: absolute; left: .4rem; bottom: .4rem; z-index: 2;
-    background: rgba(10,10,15,.72); color: #eceef8;
-    padding: .12rem .5rem; border-radius: .4rem; font-size: .75rem; }
   body.comfy .tile.me .name::before { content: '\2726 '; }
-  body.comfy .tile .name, body.comfy .stadface .name {
+  body.comfy .tile .name {
     max-width: calc(100% - .8rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  body.comfy .tile:not(.speaking), body.comfy .stadface:not(.speaking) {
+  body.comfy .tile:not(.speaking) {
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
   body.comfy .tile[data-tier="row"]::after {
     content: ''; position: absolute; top: 8px; right: 8px; width: 8px; height: 8px;
@@ -2905,8 +2893,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.comfy.gallery-scroll #feed.can-scroll::after { display: none; }
   }
   /* Desktop gallery: a gutter between faces (meet-views.js) and soft corners. */
-  body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-gutter="1"],
-  body.comfy .stadface[data-gutter="1"] { border-radius: 10px; overflow: hidden; }
+  body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-gutter="1"] { border-radius: 10px; overflow: hidden; }
   /* Gallery keeps the stage strip playing (PiP can aim it) but off the mosaic.
      A stage mode adds .show-stage and places that strip itself. */
   body.comfy:not(.show-stage) #stagefeed {
@@ -9387,7 +9374,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // The sheet opens from this corner only. A tap on the picture does not.
     function stampTileOpen(el) {
-      if (!el || !el.classList || el.id === 'stadcrowd') return;
+      if (!el || !el.classList) return;
       if (el.querySelector(':scope > .tile-open')) return;
       const b = document.createElement('button');
       b.type = 'button';
@@ -10063,7 +10050,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const tileWin = { el: null, modbar: null, home: null, winT: 0 };
     function twIdOf(el) {
       if (el.classList.contains('tile')) return el.dataset.peer || '';
-      if (el.classList.contains('stadface')) return String(el.dataset.pzkey || '').replace(/^stad:/, '');
       return '';
     }
     function twPeer(id) { return id && peers.get(id); }
@@ -10252,7 +10238,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (/recording/i.test(t)) t = 'recording';
         if (t) { const sp = document.createElement('span'); sp.textContent = t; info.appendChild(sp); }
       });
-      if (el.classList.contains('stadface')) { const sp = document.createElement('span'); sp.textContent = 'In the stadium'; info.appendChild(sp); }
       if ((isMe || isStage) && meOnStage() && !myStatus.scr) twStageFrameSection(win);
       else if (!isStage && (el.dataset.tier === 'row' || isMe)) twCropSection(win, el, isMe);
       if (!isStage && !win.querySelector('.tw-pad')) {
@@ -10460,14 +10445,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return document.querySelector('#stagefeed > .rowtile') || document.querySelector('#feed .tile.onstage');
         };
         const el = bc ? (t.closest('#feed .tile, #stagefeed > .rowtile, #bc-ident') || bcStage())
-          : t.closest('.tile[data-comfy="1"], .stadface[data-comfy="1"], #stagefeed > .rowtile[data-comfy="1"]');
+          : t.closest('.tile[data-comfy="1"], #stagefeed > .rowtile[data-comfy="1"]');
         if (!el) return;
         e.stopPropagation();
-        // The "+N" seat is the rest of the room, not a person: it opens People.
-        if (!bc && el.id === 'stadcrowd' && el.querySelector('.avatar')) { const who = document.getElementById('whobtn'); if (who) who.click(); return; }
       }, true);
       const stampFeedOpens = () => {
-        feed.querySelectorAll('.tile, .stadface, #stagefeed > .rowtile').forEach(stampTileOpen);
+        feed.querySelectorAll('.tile, #stagefeed > .rowtile').forEach(stampTileOpen);
       };
       stampFeedOpens();
       if (window.MutationObserver) {
@@ -35673,7 +35656,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           });
         };
         document.querySelectorAll('#feed .tile').forEach(take);
-        document.querySelectorAll('#stadwhole, #stadfaces .stadface, #stadcrowd').forEach(take);
+        document.querySelectorAll('#stadwhole').forEach(take);
         const bar = document.querySelector('.bar');
         const br = bar ? bar.getBoundingClientRect() : null;
         let box = null;

@@ -121,9 +121,10 @@ test('people in the waiting room take no space on any screen', async ({ browserN
   const screenOf = (page) => page.evaluate(() => {
     const r = (el) => { const b = el.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height) }; };
     const me = document.querySelector('#feed .tile.me');
-    const others = [...document.querySelectorAll('#feed .tile:not(.me), #stadfaces > *')]
+    const others = [...document.querySelectorAll('#feed .tile:not(.me), #stadwhole')]
       .filter((el) => el.isConnected && el.style.display !== 'none' && el.getBoundingClientRect().width > 0);
     return { me: me ? r(me) : null, others: others.map((el) => (el.querySelector('.name') || el).textContent.trim()),
+      noCutout: document.querySelectorAll('.stadface, #stadfaces, #stadcrowd').length === 0,
       remotes: (document.getElementById('grid') || {}).dataset ? document.getElementById('grid').dataset.remotes : null };
   });
   try {
@@ -149,12 +150,12 @@ test('people in the waiting room take no space on any screen', async ({ browserN
     await H.page.screenshot({ path: path.join(SHOTS, `lobby-room-${PHASE}-host-1280.png`) });
     await G2.page.screenshot({ path: path.join(SHOTS, `lobby-room-${PHASE}-guest-1280.png`) });
     const same = (a, b) => !!(a && b && Math.abs(a.x - b.x) <= 2 && Math.abs(a.y - b.y) <= 2 && Math.abs(a.w - b.w) <= 2 && Math.abs(a.h - b.h) <= 2);
-    expect({ hostKeepsAloneSize: same(host.me, alone.me), hostOthers: host.others, hostRemotes: host.remotes, alone: alone.me, host: host.me })
-      .toMatchObject({ hostKeepsAloneSize: true, hostOthers: [], hostRemotes: '0' });
-    expect({ guest1AloneSize: same(g1.me, alone.me), guest1Others: g1.others, guest1Remotes: g1.remotes, g1: g1.me })
-      .toMatchObject({ guest1AloneSize: true, guest1Others: [], guest1Remotes: '0' });
-    expect({ guest2AloneSize: same(g2.me, alone.me), guest2Others: g2.others, guest2Remotes: g2.remotes, g2: g2.me })
-      .toMatchObject({ guest2AloneSize: true, guest2Others: [], guest2Remotes: '0' });
+    expect({ hostKeepsAloneSize: same(host.me, alone.me), hostOthers: host.others, hostRemotes: host.remotes, hostNoCutout: host.noCutout, alone: alone.me, host: host.me })
+      .toMatchObject({ hostKeepsAloneSize: true, hostOthers: [], hostRemotes: '0', hostNoCutout: true });
+    expect({ guest1AloneSize: same(g1.me, alone.me), guest1Others: g1.others, guest1Remotes: g1.remotes, guest1NoCutout: g1.noCutout, g1: g1.me })
+      .toMatchObject({ guest1AloneSize: true, guest1Others: [], guest1Remotes: '0', guest1NoCutout: true });
+    expect({ guest2AloneSize: same(g2.me, alone.me), guest2Others: g2.others, guest2Remotes: g2.remotes, guest2NoCutout: g2.noCutout, g2: g2.me })
+      .toMatchObject({ guest2AloneSize: true, guest2Others: [], guest2Remotes: '0', guest2NoCutout: true });
     // The waiting page says where it is, and offers no Invite.
     const head = await G2.page.evaluate(() => {
       const btn = document.getElementById('appinvite');

@@ -135,10 +135,6 @@
     if (!feed || !feed.querySelectorAll) return;
     const placed = feed.querySelectorAll('[data-comfy], .comfy-off');
     for (let i = 0; i < placed.length; i++) clearEl(placed[i]);
-    const faces = feed.querySelector('#stadfaces');
-    if (faces) faces.remove();
-    const crowd = feed.querySelector('#stadcrowd');
-    if (crowd) crowd.remove();
     const whole = feed.querySelector('#stadwhole');
     if (whole) whole.remove();
     const band = root.document && root.document.getElementById('stadband');
@@ -470,10 +466,6 @@
     const feed = opts.feed;
     if (!ML || !feed) return null;
     const allFaces = opts.faces || [];
-    const sliced = feed.querySelector('#stadfaces');
-    if (sliced) sliced.remove();
-    const crowd = feed.querySelector('#stadcrowd');
-    if (crowd) crowd.remove();
     const tiles = (opts.tiles || []).slice();
     let stadEl = null;
     if (allFaces.length > 0) {
