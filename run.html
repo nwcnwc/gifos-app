@@ -7066,7 +7066,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const doorWhy = new Map();   // peer -> why my last reach verdict for our pair was what it was (the debug view's door test)
     const netSeated = () => { const s = meshSeat(); return !!(netRoom && s && s.hasCoord && s.state === 3); };
     function netSeatingPool(level, credOk) { netPool = { level: level | 0, cred: !!credOk }; if (netRoom) netRoom.topoChanged(); }
-    const netPairRelayed = (p) => !!(p && (p.viaRelay || p.turnServe || turnInvited(p) || (p.viaRelay === undefined && (p.turnMine || p.turnAnchor))));   // viaRelay: the selected candidate pair's type (whoObserve); unobserved, a pair this page put TURN on counts as relayed; a client I serve over the pool, or a peer that dialled me through it, always does
+    const netPairRelayed = (p) => !!(p && !(p.connected && p.viaRelay === false) && (p.viaRelay || p.turnServe || turnInvited(p) || (p.viaRelay === undefined && (p.turnMine || p.turnAnchor))));   // viaRelay: the selected candidate pair's type (whoObserve); unobserved, a pair this page put TURN on counts as relayed; a client I serve over the pool, or a peer that dialled me through it, always does — unless the SELECTED path is observed direct: two ends that connect host-to-host are one reachability group, whatever stale pool flags say (a blocked pair's host candidates cannot form its selected path)
     // My connected pairs that run through a relay server, for my status
     // (st.rl): a relayed pair joins two networks, it does not make them one,
     // so another page's view never reads it as a direct path.
@@ -7140,7 +7140,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const relayedBy = (x, y) => { const st = statusOf.get(x); return !!(st && ((Array.isArray(st.rl) && st.rl.includes(y)) || (Array.isArray(st.tl) && st.tl.includes(y)))); };   // st.rl: its relayed pairs; st.tl: its relay-pool pairs (the pool code's own list)
           if (a === myId || b === myId) {
             const pid = a === myId ? b : a; const p = peers.get(pid); const age = p ? Date.now() - (p.bornAt || 0) : -1; let r = true, why = 'no-pair';
-            if (p && turnInvited(p)) { r = false; why = 'via-pool'; }   // the far end dialled me through the relay pool: its network cannot reach mine, connected yet or not
+            if (p && turnInvited(p) && !(p.connected && p.viaRelay === false)) { r = false; why = 'via-pool'; }   // the far end dialled me through the relay pool: its network cannot reach mine, connected yet or not. A pool pair whose SELECTED path is observed direct is the exception: it proves the two ends reach, and falls to the connected branch below
             else if (p && p.connected) { r = !pairRelayed(p) && !relayedBy(pid, myId); why = r ? 'up' : 'up-relayed'; }   // the far end's word counts too: a pair it reaches through the relay server is relayed at my end as well
             else if (p && p.neverUp && age > PROBE_MS) { r = false; why = 'never-up'; }
             else if (p) why = 'pending:' + (p.pc ? p.pc.connectionState : 'no-pc') + ':' + age;
@@ -13843,6 +13843,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       { let served = false;
         for (const p of peers.values()) if (p.turnServe && !(p.connected && p.dc && p.dc.readyState === 'open')) { p.turnServe = false; p.turnAudio = !!p.turnMine && !p.turnPaid; served = true; }
         if (served) { syncTurnMixes(); refreshOutbound(); } }
+      // A free-pool role on a pair whose SELECTED path is observed direct is
+      // the leftover of a healed split (an off-hello lost on a torn channel,
+      // a bridge the view briefly named between row mates): two ends that
+      // connect host-to-host are one reachability group, and a bridge never
+      // joins seats inside one group (design section 1). Kept, the role makes
+      // both ends report the pair relayed, every view then reads them as
+      // unable to reach each other, and the seating re-derives the bogus
+      // bridge that keeps the role alive — a loop no other sweep exits. A
+      // real pool pair can never read direct: a blocked pair's host
+      // candidates cannot form its selected path.
+      { let ended = false;
+        for (const [pid, p] of peers) {
+          if (!(p.connected && p.viaRelay === false) || p.turnPaid) continue;
+          if (!(p.turnServe || p.turnMine || p.turnAnchor || p.turnStandby || p.turnFar || p.turnInvitedAt)) continue;
+          p.turnMine = false; p.turnInvitedAt = 0; p.turnStandby = false; p.turnFar = false; p.turnServe = false;
+          if (turnAnchorId === pid) dropTurnAnchor(now, 0); // turnMine already off: the direct transport is kept
+          else if (p.turnHelloDc) turnHello(p, false);
+          p.turnAnchor = false;
+          if (p.turnFreeDc && p.dc && p.dc.readyState === 'open') { dcSend(p, { k: 'turn-free', on: 0 }); p.turnFreeDc = null; }
+          p.turnAudio = turnAudioOf(p);
+          if (typeof clog === 'function') clog('turn role off (direct) ' + String(pid).slice(0, 6));
+          ended = true;
+        }
+        if (ended) { syncTurnMixes(); refreshOutbound(); } }
       for (const [pid, t] of [...turnAnchorDead]) if (t < now) turnAnchorDead.delete(pid);
       const stageOf = (pid, p) => MT.pairStage({ connected: p.connected, relayed: !!p.relayed, downMs: turnDownAt.has(pid) ? now - turnDownAt.get(pid) : 0, friendPath: friendPathFor(pid, now) });
       const anchorable = (pid, p) => !(p.absentSince || p.headless || !(linkTo(pid) || p.boot)) && !(typeof isEjected === 'function' && isEjected(pid) === true);
@@ -36822,6 +36846,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const was = turnAnchorId;
         dropTurnAnchor(Date.now(), ms || 60000);
         return { ok: true, dropped: was != null ? String(was).slice(0, 8) : null };
+      },
+      // DEBUG: send the free-pool client hello on an open channel without
+      // holding the anchor myself — the leftover a healed network split
+      // leaves behind (a 'turn-anchor' on-hello landed while a bogus bridge
+      // was briefly named; the off-hello rode a torn channel and never did).
+      // The far end then serves a peer it demonstrably reaches directly.
+      // e2e-net-samegroup-heal.js is the guard.
+      turnHelloForTest: (pid, on) => {
+        if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
+        const p = peers.get(pid); if (!p) return { err: 'no such peer' };
+        if (!p.dc || p.dc.readyState !== 'open') return { err: 'no open channel' };
+        dcSend(p, { k: 'turn-anchor', on: on ? 1 : 0 });
+        return { ok: true };
       },
       // DEBUG: kill ONLY the DataChannel, leaving the pc and ICE untouched —
       // the state a real phone landed in (2026-08-17: `dc=closed/connected`
