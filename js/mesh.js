@@ -551,6 +551,7 @@
       this.netTested = null; this.netProbeWaitFrom = 0;   // the last door test, for the debug view: [id, reached 0/1, label, the view's reason, ticks since the links opened] per seated ring member it tested (at most the ring)
       this.netProbeAt = -1; this.netProbeIds = null;   // the door test: the tick I asked the view to open links to the ring (and to whom); the decision waits for them, NET_PROBE ticks at most
       this.bcDead = 0; this.bcDeadAt = -1;   // refusals saying my group has no room under its head (its child row is another network's); three of them over NET_DEAD_WAIT ticks make me head a second subnet
+      this.regroupAt = -1;         // first tick an anchored single has directly reached a seated group member: held NET_REGROUP ticks, it rejoins through the door (netRegroup)
       this.ringMixed = false;      // my ring test saw a seat I do not reach (more than one network in this room)
       this.darkLeft = new Map();   // cell -> the peer whose knock at my door said it left that cell (held across a dark link)
       this.roster = []; this.haveRoster = false; this.lastGreeters = [];
@@ -2135,6 +2136,7 @@
     // seed 10 #1: 10.5 s; the runs whose LEAVE arrived took 4.2 s).
     goodbye(pid) {
       if (pid == null || pid === this.id || !this.hasCoord || this.state !== 3) return;
+      if (this.env.NET) this.env.NET.noteDeath(pid);   // the peer's own farewell: announced, counts a bridge end down at once
       for (const [k, v] of Array.from(this.occ)) {
         if (v !== pid || k === ck(this.coord)) continue;
         this.linkedBy.delete(k); this.tenOf.delete(k); this.occ.delete(k); this.live.delete(k); this.kidful.delete(k); this.s1seen.delete(k); this.tlForget(k, 'goodbye'); this.healTry.delete(k); this.digForget(k);
@@ -4621,6 +4623,12 @@
           // cell this way (sec finding Y1/Y2), or into mine (Y4), or grow my
           // occ without bound with fresh deep cells (Y3).
           const mvdFrom = mine && m.mvd != null && !!ten && ten.id === m.id && m.tn != null && String(m.tn) === ten.tn && this.linkedBy.get(m.ck) === m.id && this.mvdOk(m.ck, m.mvd, m.id);
+          // An announced departure (a goodbye with nowhere it went) counts its
+          // bridge end down HERE, before the cell frees: the heal that follows
+          // erases the seat from this page's view, and a death verdict that
+          // lands after that reads as "unseated by a move" — the standby
+          // hand-over then degrades to a cold structural re-dial.
+          if (mine && m.mvd == null && this.env.NET) this.env.NET.noteDeath(m.id);
           if (mvdFrom) this.carryLinked(m.ck, m.mvd, m.id);
           if (mine) { this.linkedBy.delete(m.ck); this.tenOf.delete(m.ck); this.occ.delete(m.ck); this.live.delete(m.ck); this.kidful.delete(m.ck); this.s1seen.delete(m.ck); this.tlForget(m.ck, 'leave'); this.healTry.delete(m.ck); this.digForget(m.ck); } // freed ⇒ admissible now
           // ...unless a claimant was waiting on it (waitClaim, the HELLO branch): it is the cell's hint now
@@ -5196,6 +5204,7 @@
         if (TICK >= this.xlinkAt) { this.xlinkAt = TICK + 150 + (this.rng() * 100 | 0); for (const cm of topo.colMates(this.coord)) if (this.occGet(ck(cm)) == null) this.routeTo(cm, 1); }
         if (this.s1CheckAt < 0) this.s1CheckAt = TICK + E3_PERIOD + (this.rng() * E3_PERIOD | 0);
         if (TICK >= this.s1CheckAt) { this.s1CheckAt = TICK + E3_PERIOD + (this.rng() * E3_PERIOD | 0); this.emitRelay(this.genKey); } // E3 re-knock: Section-1 seats ARE the greeter pool
+        this.netRegroup(); // an anchored single parked in a Section-1 host row rejoins its group once it reaches it
         this.wake(); return;
       }
       if (TICK - this.lastPhone >= 8) { this.lastPhone = TICK; this.rollup(); this.phoneHome(); this._gspRefan(); } // § G: ONE fold per node per period (<= C reports in, ONE out), then the beat carries it up
@@ -5272,8 +5281,31 @@
       let ancDead = false;
       if (this.hasCoord) { if (this.coord.i !== 0) ancDead = this.occGet(ck({ pc: this.coord.pc, r: this.coord.r, i: 0 })) == null; else { const anc = this.ownerCoord(); if (anc) ancDead = this.occGet(ck(anc)) == null; } }
       if (!didHeal && TICK - this.lastAck > 80 && (ancDead || TICK - this.lastAck > 220)) this.drainOrReenter();
-      else if (!didHeal) this.tryCompact(); // Q2: only when not draining/healing this tick — pack the tree upward when settled
+      else if (!didHeal) { this.tryCompact(); this.netRegroup(); } // Q2: only when not draining/healing this tick — pack the tree upward when settled
       this.wake();
+    }
+    // Rule 8's second half: a seat ANCHORED over the pool (its door test
+    // reached nobody) rejoins through the door once it holds a direct path to
+    // a seated, settled member of a group for NET_REGROUP ticks — the door
+    // test then finds the group and seats it in its own rows. A parked single
+    // otherwise keeps a TURN link of its own forever: one label never leaves
+    // the host row, and the room pays one bridge per parked person instead of
+    // one per network (the cost law). Leaf-only, like compaction: vacating
+    // strands nobody.
+    netRegroup() {
+      if (!this.env.NET || !this.anchored || !this.hasCoord || this.state !== 3 || this.moving) return;
+      const R = this.env.NET;
+      let seen = false;
+      for (const s of R.o.seats()) {
+        if (!s || s.id === this.id || !s.alive || s.state !== 3 || !s.hasCoord || s.anchored) continue;
+        if (R.reach(this.id, s.id)) { seen = true; break; }
+      }
+      if (!seen) { this.regroupAt = -1; return; }
+      if (this.regroupAt < 0) { this.regroupAt = this.TICK; return; }
+      if (this.TICK - this.regroupAt < NET_REGROUP) return;
+      if (this.hasChildren()) return;   // a parent waits; the heal would churn its row
+      this.regroupAt = -1;
+      this.requeue();
     }
     // Q2 — COMPACTION probe. A settled DEEP LEAF (childless: P — only leaves move,
     // so its departure strands nobody) periodically sends a probe UP its own ALIVE
@@ -5378,6 +5410,7 @@
   const NET_ROUND = 4;       // ticks one walk round costs (a signaling round trip through the door and the mesh)
   const NET_PROBE = 10;      // ticks the door test waits at most for the links it opened to the ring (the view's probe); it decides sooner once the view says every dialled pair has settled (o.probeDone)
   const NET_DEAD_WAIT = 300;    // ticks a labelled seeker is refused by its own head before it heads a second subnet (a dead end lasts; a refusal a heal or a move lifts clears sooner)
+  const NET_REGROUP = 12;       // ticks an anchored single must hold a direct path to a seated group member before it rejoins through the door (a flap rejoins nobody)
   const NET_HEAL_SETTLE = 12;   // ticks a healed bridge-end cell must hold its new seat before the standby hands the bridge back
   const NET_DEAD = 254;      // a NOROOM's nd: the seeker's own group has no room under its head (the head's child row is another network's)
   const netLab = (gl) => gl != null && gl !== NET_NONE && gl !== NET_OFF;
@@ -5396,6 +5429,7 @@
       this.atMap = new Map(); this.atTick = -1; this.atEpoch = -1;
       this.beats = new Map();     // bridge end -> the last beat its heir heard (ms)
       this.down = new Set();      // bridge ends whose heir missed three beats: the bridge goes to the standby
+      this.beatDead = new Set();  // ends whose death is ONLY the missed-beat verdict: a resumed beat withdraws it (an announced death never joins this set)
     }
     get TICK() { return this.o.tick(); }
     // A seeker that reaches nobody is anchored to a seated head over a relayed
@@ -5408,16 +5442,20 @@
     // ticks' worth of frames (a status naming a seat arrives mid-tick). A
     // decision made from it reads the view as it is now.
     fresh() { this.atTick = -1; }
-    noteDeath(id) { if (id != null) this.diedAt.set(id, this.TICK); this.epoch++; }
+    noteDeath(id) { if (id != null) { this.diedAt.set(id, this.TICK); this.beatDead.delete(id); } this.epoch++; }
     // HOT STANDBY HEARTBEAT. Each primary end beats its heir every NET_BEAT_MS
     // over their direct link; the page calls beat() when one arrives and
     // pulse() on its clock. Three missed beats (or a closed link) count the end
     // down at once and the standby pair takes the bridge.
-    beat(end, nowMs) { this.beats.set(end, nowMs); if (this.down.delete(end)) this.epoch++; }
+    // A beat is first-hand proof of life: it withdraws the missed-beat verdict
+    // it postdates (down AND the diedAt the pulse set). An ANNOUNCED death
+    // (noteDeath: the goodbye, a ban) is never withdrawn — the leaver's page
+    // is gone and sends no beats; a late buffered beat must not erase it.
+    beat(end, nowMs) { this.beats.set(end, nowMs); let ch = this.down.delete(end); if (this.beatDead.delete(end)) { this.diedAt.delete(end); ch = true; } if (ch) this.epoch++; }
     pulse(nowMs) {
       for (const br of this.bridges.values()) for (const e of [br.a, br.b]) {
         const t = this.beats.get(e);
-        if (t !== undefined && nowMs - t > 3 * NET_BEAT_MS && !this.down.has(e)) { this.down.add(e); this.diedAt.set(e, this.TICK - 1); this.epoch++; }
+        if (t !== undefined && nowMs - t > 3 * NET_BEAT_MS && !this.down.has(e)) { this.down.add(e); if (!this.diedAt.has(e)) { this.diedAt.set(e, this.TICK - 1); this.beatDead.add(e); } this.epoch++; }
       }
     }
     endUp(id) { return this.seatedLive(id) && !this.down.has(id); }
@@ -5517,10 +5555,15 @@
     // A row head with no such row-mate still names the seat that owns its
     // row, when that seat carries the same label and is not anchored. Both
     // ends read it from the owner cell. A group of one has no such seat.
+    // A row-mate's `anchored` is its last status pulse's word and may predate
+    // its un-anchoring (the walk seats a member anchored over the pool until
+    // its row links come up): one that reaches the end directly stands as
+    // heir whatever the bit says, or pages whose pulses differ name different
+    // standby pairs and neither end maintains the warm pair.
     heirOf(end, notThis) {
       if (!this.seatedLive(end)) return null; const s = this.seatOf(end); const c = s.coord;
       if (c.i === 0 || !this.foreignHead(end)) {
-        for (let d = 1; d < C(); d++) { const x = this.at(ck({ pc: c.pc, r: c.r, i: (c.i + d) % C() })); if (x == null || x === end || x === notThis) continue; const xs = this.seatOf(x); if (xs.glabel !== s.glabel || xs.anchored) continue; return x; }
+        for (let d = 1; d < C(); d++) { const x = this.at(ck({ pc: c.pc, r: c.r, i: (c.i + d) % C() })); if (x == null || x === end || x === notThis) continue; const xs = this.seatOf(x); if (xs.glabel !== s.glabel || (xs.anchored && !this.reach(x, end))) continue; return x; }
         if (c.i === 0) { const up = topo.up(c); if (up) { const p = this.at(ck(up)); if (p != null && p !== end && p !== notThis && this.seatedLive(p)) { const ps = this.seatOf(p); if (ps.glabel === s.glabel && !ps.anchored) return p; } } }
         return null;
       }
@@ -5594,7 +5637,7 @@
       for (const [key, br] of old) {
         const aUp = this.endUp(br.a), bUp = this.endUp(br.b);
         if (aUp && bUp) {
-          if (br.standbySince === -2 && this.o.credOk(br.a, br.b)) { const kb = Object.assign({}, br); kb.ca = cellOf(br.a) || br.ca; kb.cb = cellOf(br.b) || br.cb; const occ = this.at(br.standbyHole); if (occ == null || occ === br.standbyDead) kb.holeSeatedAt = -1; else if (kb.holeSeatedAt < 0) kb.holeSeatedAt = T; if (occ == null || occ === br.standbyDead || T - kb.holeSeatedAt < NET_HEAL_SETTLE) { next.set(key, kb); s1unite(kb.a, kb.b, kb.ca, kb.cb); } }   // the standby keeps the bridge while the hole is open, or while the end that missed its beats is back in it (no switch back and forth); a new seat in the hole takes it over after NET_HEAL_SETTLE ticks
+          if (br.standbySince === -2 && this.o.credOk(br.a, br.b)) { const kb = Object.assign({}, br); kb.ca = cellOf(br.a) || br.ca; kb.cb = cellOf(br.b) || br.cb; const occ = this.at(br.standbyHole); const held = occ === br.standbyDead && !this.endUp(br.standbyDead); if (occ == null || held) kb.holeSeatedAt = -1; else if (kb.holeSeatedAt < 0) kb.holeSeatedAt = T; if (occ == null || held || T - kb.holeSeatedAt < NET_HEAL_SETTLE) { next.set(key, kb); s1unite(kb.a, kb.b, kb.ca, kb.cb); } }   // the standby keeps the bridge while the hole is open, or while the end it switched over still sits in it counted down. An end BEATING AGAIN in its own seat is a withdrawn verdict: like a new seat, it takes the bridge back after NET_HEAL_SETTLE ticks — one page's false three-missed-beats verdict must not park its view on the standby for good while every other page keeps the primary (the views re-agree)
           continue;
         }
         let dt = -1; for (const e of [br.a, br.b]) { const d = this.diedAt.get(e); if (d !== undefined && d > dt) dt = d; }
@@ -5622,10 +5665,16 @@
         for (const c of cand) { if (rfind(c.ra) === rfind(c.rb)) continue; const a = rowEnd[c.ra], b = rowEnd[c.rb]; if (!this.o.credOk(a, b)) continue; const br = mk(a, b); carry(br); inherit(br); next.set(pairKey(a, b), br); const x = rfind(c.ra), y = rfind(c.rb); rc[x] = y; } }
       for (const [key, br] of old) { if (!this.seatedLive(br.a) || !this.seatedLive(br.b)) continue; if (!next.has(key)) this.upgrades++; }
       this.bridges = next;
-      // 4) the hot standby: the two ends' heirs, warmed straight after
+      // 4) the hot standby: the two ends' heirs, warmed straight after. The
+      // heirs are recomputed from the view every tick, never carried: a kept
+      // earlier choice is invisible to a page that built its record later
+      // (its fresh pick differs), the two ends then name different standby
+      // pairs, and neither maintains the warm pair. The pair's clock moves
+      // only when the pair itself changes.
       for (const br of this.bridges.values()) {
         if (br.standbySince === -2) continue;
-        if (!(this.endUp(br.sa) && this.endUp(br.sb) && br.sa !== br.a && br.sb !== br.b)) { br.sa = this.heirOf(br.a, br.b); br.sb = this.heirOf(br.b, br.a); br.standbySince = (br.sa != null && br.sb != null) ? T : -1; }
+        if (this.endUp(br.a) && this.endUp(br.b)) { const sa = this.heirOf(br.a, br.b), sb = this.heirOf(br.b, br.a); if (sa !== br.sa || sb !== br.sb) { br.sa = sa; br.sb = sb; br.standbySince = (sa != null && sb != null) ? T : -1; } }   // a bridge kept over a dead end holds the record the switch reads: the heir of a dead end is unknowable
+        if (br.sa != null && br.sb != null && !this.o.credOk(br.sa, br.sb)) { br.sa = null; br.sb = null; br.standbySince = -1; }
         if (br.sa != null && br.sb != null && !this.o.credOk(br.sa, br.sb)) { br.sa = null; br.sb = null; br.standbySince = -1; }
       }
       for (const br of this.bridges.values()) unite(br.ga, br.gb);
