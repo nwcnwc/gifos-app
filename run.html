@@ -13572,7 +13572,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const q of peers.values()) if (q && q.connected && !netPairRelayed(q)) return false;
       return true;
     }
-    const loneDark = new Set();   // blockedLone: peers whose link the view judged dark
+    const loneDark = new Set();   // blockedLone: peers whose link stayed dark past the direct window
+    const loneSeen = new Map();   // blockedLone: when each linked peer was first seen (a record made anew keeps it)
     // Lone on a blocked network: blockedAlone, and the room view names no
     // row mate of my own network (a link to me that is neither dark nor a
     // bridge or its standby). That is the host of an all-blocked room, the
@@ -13581,18 +13582,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // network reaches it directly in seconds, and the seating names its
     // bridge. Treating it as lone made every such page ask the pool, anchor
     // off the bridge, and hold its row links from their rebuild.
-    // A link the view once judged dark stays out (loneDark): a peer whose
-    // pair never came up is no row mate, and its record made anew (a door
-    // knocking again, a rebuild) reads as pending for seconds. Counted, it
-    // turned a lone page out of the chain for one sweep, and that sweep
-    // dropped the anchor pair that carried it.
+    // A dark link counts only once its peer has had the whole direct window
+    // (meetTurn P0_MS, from when I first saw it): the view marks a pair
+    // dark seconds after it was dialled, and a loaded office brings its
+    // direct pairs up later than that.
+    // A link that stayed dark stays out (loneDark): a peer whose pair never
+    // came up is no row mate, and its record made anew (a door knocking
+    // again, a rebuild) reads as pending for seconds. Counted, it turned a
+    // lone page out of the chain for one sweep, and that sweep dropped the
+    // anchor pair that carried it.
     function blockedLone() {
       if (!blockedAlone()) return false;
+      const now = Date.now(), p0 = (MT && MT.P0_MS) || 12000;
+      for (const pid of peers.keys()) if (linkTo(pid) && !loneSeen.has(pid)) { if (loneSeen.size > 256) loneSeen.clear(); loneSeen.set(pid, now); }
       for (const pid of peers.keys()) {
-        if (!linkTo(pid)) continue;
+        if (!linkTo(pid) || loneDark.has(pid)) continue;
         const li = netLinkInfo(pid);
-        if (li && li.dark) { if (loneDark.size > 256) loneDark.clear(); loneDark.add(pid); continue; }
-        if (li && !li.bridge && !li.standby && !loneDark.has(pid)) return false;
+        if (!li || li.bridge || li.standby) continue;
+        if (li.dark && now - (loneSeen.get(pid) || now) >= p0) { if (loneDark.size > 256) loneDark.clear(); loneDark.add(pid); continue; }
+        return false;
       }
       return true;
     }
