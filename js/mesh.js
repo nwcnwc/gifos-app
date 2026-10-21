@@ -2327,6 +2327,7 @@
     serveFind(mm) {
       const TICK = this.TICK;
       if (!this.hasCoord || mm.ttl <= 0) { this.noroomWhy = 'unseated'; this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
+      if (this.env.NET && mm.nc === this.id) return;   // my own FIND, handed back to me once I am seated (a greeter's view of the row I now head): nothing to seat, and serving it vouched me into a cell of my child row whose cooling then held the next seeker out
       for (const s of this.sitting.values()) if (s.joiner === mm.nc && s.assigner === this.id && s.pl && TICK - s.at <= SIT_TTL) { this.emit(mm.nc, Object.assign({}, s.pl)); return; } // FINDACK: a re-ask reaching the admitter that already vouches this seeker gets the SAME chair again (its PLACE was lost) — never a twin vouch
       // A marked re-ask follows the chain already taken while that hand-off is
       // fresh, its target still holds the cell, and that target is still
@@ -2378,6 +2379,12 @@
         let head = null; for (let t = 0; t < C(); t++) if (R.s1Row(gl, t, this)) { const h = R.cellOccOrSoft(ck({ pc: 0, r: t, i: 0 }), this); if (h != null && R.seatedLive(h)) { head = h; break; } }
         if (head != null && head !== this.id && mm.ttl > 1) { this.handOn(mm, head, ck({ pc: 0, r: 0, i: 0 }), false); return; }
         if (head == null) { this.noroomWhy = 'label-unseated'; this.emit(mm.nc, { t: 'NOROOM', nd: 0 }); return; } }
+      // A new head whose own FIND reached a greeter outsiders cannot reach goes
+      // on to a Section-1 row they can: anchored there, its bridge has one
+      // relay client, not two (meet-turn-design sections 3 and 6). Only the
+      // first hop: a FIND handed here by a greeter is for the empty row I admit.
+      const pubHead = netOn && !netLab(gl) && !glcHere && this.coord.pc === 0 && !R.stun(this.id) ? R.stunRowHead(this) : null;
+      if (pubHead != null && mm.from === mm.nc && mm.ttl > 1) { this.handOn(mm, pubHead, ck(R.seatOf(pubHead).coord), false); return; }
       let s1Why = glcHere ? 'glc' : this.coord.pc !== 0 ? 'deep-seat' : null;   // forensics for a deep admit (admitWhy): why Section 1 took nobody
       if (this.coord.pc === 0 && !glcHere) {
         const skip = [];   // forensics: why each Section-1 cell was passed over (noroomWhy, the test trace's NOROOM row)
@@ -2697,6 +2704,7 @@
         s1Why = 'free=' + s1admFree + ' ' + skip.join(' ');
         if (s1admFree > 0) { this.noroomWhy = 's1:' + skip.join(' '); this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
       }
+      if (pubHead != null) { this.noroomWhy = 'new-head-blocked'; this.emit(mm.nc, { t: 'NOROOM', nd: 0 }); return; }   // nor below me: my subtree is a network outsiders cannot reach
       const f = netOn ? this.firstFreeInRoster(gl, mm.nc) : this.firstFreeInRoster();
       if (f) {
         // Phantom occ on the admitted cell: clear it first-hand before the
@@ -2745,6 +2753,7 @@
           const rk = ck(rc[q]); const x = this.occGet(rk); if (x == null || x === this.id) continue;
           if (netOn && netLab(gl)) { const lx = R.labelOf(x); if (lx != null && lx !== gl && !R.sameGroup(lx, gl, this)) continue; }   // the descent stays inside my group's subtree: a row of mine under another group's seat would be a second head, a second bridge
           if (netOn && !netLab(gl) && (pass === 0 || mm.own) && R.labelOf(x) !== this.glabel) continue;   // a new head goes down its gateway's own subtree first (the gateway was picked for one relay client on the bridge)
+          if (netOn && !netLab(gl) && R.stun(this.id) && !R.stun(x)) continue;   // ...and never from a network outsiders reach into one they cannot (two relay clients on the bridge)
           // T7 (sim mesh_seat.inc serveFind): on a FIND whose seeker has ALREADY
           // been told NOROOM to its face, a reachable-but-unheard sibling may
           // compete in pass 0. First contact is untouched; a partitioned seeker
@@ -5487,7 +5496,12 @@
     s1GroupFull(gl, me) { for (let t = 0; t < C(); t++) { if (!this.s1Row(gl, t, me)) continue; if (this.rowCount(0, t, me) < C()) return false; } return true; }
     // A greeter outsiders can reach never anchors a new head in another row's
     // network that they cannot: one relay client on its bridge, not two.
-    rowNotForNewHead(me, t) { if (!me || !me.hasCoord || me.coord.pc !== 0 || t === me.coord.r || !this.stun(me.id)) return false; const rep = this.rowRep(0, t, me); return rep != null && !this.stun(rep); }
+    // A greeter they cannot reach, while a Section-1 row they can reach
+    // exists, never anchors one in a row of a network they cannot reach,
+    // its own included: there the bridge would have two relay clients.
+    rowNotForNewHead(me, t) { if (!me || !me.hasCoord || me.coord.pc !== 0) return false; const rep = this.rowRep(0, t, me); if (rep == null || this.stun(rep)) return false; if (this.stun(me.id)) return t !== me.coord.r; return this.stunRowHead(me) != null; }
+    // A seated Section-1 row whose network outsiders reach: its first seat.
+    stunRowHead(me) { for (let t = 0; t < C(); t++) { const h = this.rowRep(0, t, me); if (h != null && h !== me.id && this.seatedLive(h) && this.stun(h)) return h; } return null; }
     // BY CONSTRUCTION: the owner of a seat (the seat above a row head; the row
     // head for any other cell), and a FOREIGN HEAD: a seat that does not reach
     // its owner. Its owner link is its subnet's bridge; nobody elects it.
