@@ -13583,7 +13583,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // bridge. Treating it as lone made every such page ask the pool, anchor
     // off the bridge, and hold its row links from their rebuild.
     // A dark link counts only once its peer has had the whole direct window
-    // (meetTurn P0_MS, from when I first saw it): the view marks a pair
+    // (meetTurn P0_MS, from when I first saw it, before either of us sat:
+    // a page that sits after its relay pair is up must not start the window
+    // over, or it leaves the chain and drops that pair): the view marks a pair
     // dark seconds after it was dialled, and a loaded office brings its
     // direct pairs up later than that.
     // A link that stayed dark stays out (loneDark): a peer whose pair never
@@ -13594,7 +13596,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function blockedLone() {
       if (!blockedAlone()) return false;
       const now = Date.now(), p0 = (MT && MT.P0_MS) || 12000;
-      for (const pid of peers.keys()) if (linkTo(pid) && !loneSeen.has(pid)) { if (loneSeen.size > 256) loneSeen.clear(); loneSeen.set(pid, now); }
+      for (const [pid, p] of peers) if (linkTo(pid) && !loneSeen.has(pid)) { if (loneSeen.size > 256) loneSeen.clear(); loneSeen.set(pid, Math.min(now, (p && p.bornAt) || now)); }   // first sight is the record's birth: this runs only once I sit
       for (const pid of peers.keys()) {
         if (!linkTo(pid) || loneDark.has(pid)) continue;
         const li = netLinkInfo(pid);
