@@ -13725,6 +13725,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else if (!p.absentSince && !turnDownAt.has(pid)) turnDownAt.set(pid, now);
       }
       for (const [pid, t] of [...turnDownAt]) if (!peers.has(pid) && now - t > 120000) turnDownAt.delete(pid);
+      // A serve lives only while its hello channel does. The anchored client
+      // says 'turn-anchor' again on every new channel before it is served, so
+      // a serve whose pair lost its open channel is the leftover of a torn
+      // transport (the off-hello raced the teardown and lost). Kept, this
+      // page goes on building bridge-feed composites as if it still carried
+      // that client, and its row head mixes those out of its own serve (they
+      // hold the far network's voices) — this page's voice then never crosses.
+      { let served = false;
+        for (const p of peers.values()) if (p.turnServe && !(p.connected && p.dc && p.dc.readyState === 'open')) { p.turnServe = false; p.turnAudio = !!p.turnMine && !p.turnPaid; served = true; }
+        if (served) { syncTurnMixes(); refreshOutbound(); } }
       for (const [pid, t] of [...turnAnchorDead]) if (t < now) turnAnchorDead.delete(pid);
       const stageOf = (pid, p) => MT.pairStage({ connected: p.connected, relayed: !!p.relayed, downMs: turnDownAt.has(pid) ? now - turnDownAt.get(pid) : 0, friendPath: friendPathFor(pid, now) });
       const anchorable = (pid, p) => !(p.absentSince || p.headless || !(linkTo(pid) || p.boot)) && !(typeof isEjected === 'function' && isEjected(pid) === true);
