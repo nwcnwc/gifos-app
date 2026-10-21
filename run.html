@@ -13698,9 +13698,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const mic = localStream && localStream.getAudioTracks()[0];
       if (mic) out.push({ key: 'me:' + mic.id, owner: myId, stream: localStream, gain: 1 });
       // "mute for everyone" holds in the mix too, and so does a person's own
-      // mute (MT.mixGain: after a short tail, so their last words play out)
+      // mute (MT.mixGain: after a short tail, so their last words play out);
+      // a person's own mute never silences the other people their stream
+      // carries (MT.carriesMix: my anchor's mix, my client's uplink, a
+      // bridge end's feed).
       const now = Date.now();
-      const gainOf = (pid) => { let gm = null; try { gm = modOf(pid).mute; } catch (e) {} const at = turnMutedAt.get(pid); return MT.mixGain(!!(gm && gm.on), at != null ? now - at : null); };
+      const carries = (pid) => { const q = peers.get(pid); return MT.carriesMix(myId, { myAnchor: !!(q && q.turnAnchor), myClient: !!(q && q.turnServe), conns: connsOf.get(pid), tl: (statusOf.get(pid) || {}).tl }); };
+      const gainOf = (pid) => { let gm = null; try { gm = modOf(pid).mute; } catch (e) {} const at = turnMutedAt.get(pid); return MT.mixGain(!!(gm && gm.on), at != null ? now - at : null, carries(pid)); };
       // A source is one live audio track, and its key names that track: a
       // renegotiation that ends a pair's track and adds a new one to the same
       // stream makes a new key, so every mix drops the ended track (which
