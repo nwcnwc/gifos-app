@@ -279,18 +279,18 @@
     }
   }
 
-  // The blocked-video mark. The restored stadium is one composite and
-  // has no per-person face, so this only paints a .stadface the page
-  // still has. The price is the one-hour pass when the terms sell it.
-  function decorFace(el, f) {
-    if (!el || !el.classList) return;
-    const on = !!(f && f.vaBlocked);
-    el.classList.toggle('va-blocked', on);
-    let m = el.querySelector('.va-mark');
-    const text = on && f.vaMark ? String(f.vaMark) : '';
-    if (!text) { if (m) m.remove(); return; }
-    if (!m) { m = document.createElement('span'); m.className = 'va-mark'; el.appendChild(m); }
-    if (m.textContent !== text) m.textContent = text;
+  // Where one person sits in the whole composite, in the composite's own
+  // pixels: the packer paints cell k row-major in square cells of
+  // width / cols (mesh-media paint). ids is the pack's cell list; a dense
+  // pack names no cells, and then nobody's cell is known (null).
+  function wholeCell(ids, cols, id, frameW, frameH) {
+    if (!Array.isArray(ids) || !id || !(cols > 0) || !(frameW > 2) || !(frameH > 2)) return null;
+    const k = ids.indexOf(String(id));
+    if (k < 0) return null;
+    const c = frameW / cols;
+    const x = (k % cols) * c, y = Math.floor(k / cols) * c;
+    if (y + c > frameH + 0.5) return null;
+    return { x: x, y: y, w: c, h: c };
   }
 
   // One stadium element. Repeat calls keep the same <video>, so a
@@ -896,7 +896,7 @@
     paintShade: paintShade,
     avatarUrl: avatarUrl,
     paintAvatar: paintAvatar,
-    decorFace: decorFace,
+    wholeCell: wholeCell,
     apply: apply,
     stadFrameSize: stadFrameSize,
     installBar: installBar,
