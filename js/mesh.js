@@ -2118,6 +2118,7 @@
     // seed 10 #1: 10.5 s; the runs whose LEAVE arrived took 4.2 s).
     goodbye(pid) {
       if (pid == null || pid === this.id || !this.hasCoord || this.state !== 3) return;
+      if (this.env.NET) this.env.NET.noteDeath(pid);   // the peer's own farewell: announced, counts a bridge end down at once
       for (const [k, v] of Array.from(this.occ)) {
         if (v !== pid || k === ck(this.coord)) continue;
         this.linkedBy.delete(k); this.tenOf.delete(k); this.occ.delete(k); this.live.delete(k); this.kidful.delete(k); this.s1seen.delete(k); this.tlForget(k, 'goodbye'); this.healTry.delete(k); this.digForget(k);
@@ -4578,6 +4579,12 @@
           // cell this way (sec finding Y1/Y2), or into mine (Y4), or grow my
           // occ without bound with fresh deep cells (Y3).
           const mvdFrom = mine && m.mvd != null && !!ten && ten.id === m.id && m.tn != null && String(m.tn) === ten.tn && this.linkedBy.get(m.ck) === m.id && this.mvdOk(m.ck, m.mvd, m.id);
+          // An announced departure (a goodbye with nowhere it went) counts its
+          // bridge end down HERE, before the cell frees: the heal that follows
+          // erases the seat from this page's view, and a death verdict that
+          // lands after that reads as "unseated by a move" — the standby
+          // hand-over then degrades to a cold structural re-dial.
+          if (mine && m.mvd == null && this.env.NET) this.env.NET.noteDeath(m.id);
           if (mvdFrom) this.carryLinked(m.ck, m.mvd, m.id);
           if (mine) { this.linkedBy.delete(m.ck); this.tenOf.delete(m.ck); this.occ.delete(m.ck); this.live.delete(m.ck); this.kidful.delete(m.ck); this.s1seen.delete(m.ck); this.tlForget(m.ck, 'leave'); this.healTry.delete(m.ck); this.digForget(m.ck); } // freed ⇒ admissible now
           // ...unless a claimant was waiting on it (waitClaim, the HELLO branch): it is the cell's hint now
@@ -5469,10 +5476,15 @@
     // A row head with no such row-mate still names the seat that owns its
     // row, when that seat carries the same label and is not anchored. Both
     // ends read it from the owner cell. A group of one has no such seat.
+    // A row-mate's `anchored` is its last status pulse's word and may predate
+    // its un-anchoring (the walk seats a member anchored over the pool until
+    // its row links come up): one that reaches the end directly stands as
+    // heir whatever the bit says, or pages whose pulses differ name different
+    // standby pairs and neither end maintains the warm pair.
     heirOf(end, notThis) {
       if (!this.seatedLive(end)) return null; const s = this.seatOf(end); const c = s.coord;
       if (c.i === 0 || !this.foreignHead(end)) {
-        for (let d = 1; d < C(); d++) { const x = this.at(ck({ pc: c.pc, r: c.r, i: (c.i + d) % C() })); if (x == null || x === end || x === notThis) continue; const xs = this.seatOf(x); if (xs.glabel !== s.glabel || xs.anchored) continue; return x; }
+        for (let d = 1; d < C(); d++) { const x = this.at(ck({ pc: c.pc, r: c.r, i: (c.i + d) % C() })); if (x == null || x === end || x === notThis) continue; const xs = this.seatOf(x); if (xs.glabel !== s.glabel || (xs.anchored && !this.reach(x, end))) continue; return x; }
         if (c.i === 0) { const up = topo.up(c); if (up) { const p = this.at(ck(up)); if (p != null && p !== end && p !== notThis && this.seatedLive(p)) { const ps = this.seatOf(p); if (ps.glabel === s.glabel && !ps.anchored) return p; } } }
         return null;
       }
@@ -5574,10 +5586,16 @@
         for (const c of cand) { if (rfind(c.ra) === rfind(c.rb)) continue; const a = rowEnd[c.ra], b = rowEnd[c.rb]; if (!this.o.credOk(a, b)) continue; const br = mk(a, b); carry(br); inherit(br); next.set(pairKey(a, b), br); const x = rfind(c.ra), y = rfind(c.rb); rc[x] = y; } }
       for (const [key, br] of old) { if (!this.seatedLive(br.a) || !this.seatedLive(br.b)) continue; if (!next.has(key)) this.upgrades++; }
       this.bridges = next;
-      // 4) the hot standby: the two ends' heirs, warmed straight after
+      // 4) the hot standby: the two ends' heirs, warmed straight after. The
+      // heirs are recomputed from the view every tick, never carried: a kept
+      // earlier choice is invisible to a page that built its record later
+      // (its fresh pick differs), the two ends then name different standby
+      // pairs, and neither maintains the warm pair. The pair's clock moves
+      // only when the pair itself changes.
       for (const br of this.bridges.values()) {
         if (br.standbySince === -2) continue;
-        if (!(this.endUp(br.sa) && this.endUp(br.sb) && br.sa !== br.a && br.sb !== br.b)) { br.sa = this.heirOf(br.a, br.b); br.sb = this.heirOf(br.b, br.a); br.standbySince = (br.sa != null && br.sb != null) ? T : -1; }
+        if (this.endUp(br.a) && this.endUp(br.b)) { const sa = this.heirOf(br.a, br.b), sb = this.heirOf(br.b, br.a); if (sa !== br.sa || sb !== br.sb) { br.sa = sa; br.sb = sb; br.standbySince = (sa != null && sb != null) ? T : -1; } }   // a bridge kept over a dead end holds the record the switch reads: the heir of a dead end is unknowable
+        if (br.sa != null && br.sb != null && !this.o.credOk(br.sa, br.sb)) { br.sa = null; br.sb = null; br.standbySince = -1; }
         if (br.sa != null && br.sb != null && !this.o.credOk(br.sa, br.sb)) { br.sa = null; br.sb = null; br.standbySince = -1; }
       }
       for (const br of this.bridges.values()) unite(br.ga, br.gb);
