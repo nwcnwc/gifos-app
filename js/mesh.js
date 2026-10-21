@@ -2301,10 +2301,11 @@
       this.vouchDead.delete(nc); this.vouchDead.set(nc, this.TICK);
       if (this.vouchDead.size > 64) this.vouchDead.delete(this.vouchDead.keys().next().value);
     }
-    handOn(mm, to, cell, deep, via) {
+    handOn(mm, to, cell, deep, via, own) {
       if (this.handed.size >= 64) this.handed.delete(this.handed.keys().next().value);
-      this.handed.set(mm.nc, { to, cell, deep: !!deep, at: this.TICK, via: !!via });
-      const f = { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }; if (mm.again) f.again = 1;
+      own = !!(own || mm.own);
+      this.handed.set(mm.nc, { to, cell, deep: !!deep, at: this.TICK, via: !!via, own });
+      const f = { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }; if (mm.again) f.again = 1; if (own) f.own = 1;
       if (mm.gl !== undefined) f.gl = mm.gl; if (mm.glc) f.glc = mm.glc;
       if (via) this.route(topo.unck(cell), null, f); else this.emit(to, f);   // via: a child-row cell I do not link, reached over my down link and its head's row link
       this.findAck(mm, cell, !!deep);
@@ -2350,7 +2351,7 @@
         const h = this.handed.get(mm.nc);
         const fresh = h && TICK - h.at <= KNOCK_FRESH && h.to !== this.id;
         const silentTarget = !!(h && this.silentFor(h.cell, LONE_GREET_AFTER));
-        if (fresh && this.occGet(h.cell) === h.to && !silentTarget) { this.handOn(mm, h.to, h.cell, h.deep, h.via); return; }
+        if (fresh && this.occGet(h.cell) === h.to && !silentTarget) { this.handOn(mm, h.to, h.cell, h.deep, h.via, h.own); return; }
         const left = !!(fresh && this.occGet(h.cell) !== h.to);
         const died = this.vouchDead.get(mm.nc);
         const mineDied = !h && died !== undefined && TICK - died <= SIT_TTL;
@@ -2724,6 +2725,11 @@
       // depth wall leaves 780 seats (1000+1000 seed 3: the head sat at depth
       // 8 and 219 never seated). A childless sibling the head has phoned owns
       // an empty row one level above the next spine hop. Offer that row first.
+      // The offer reads the child head's ledger, which can be a minute old:
+      // another network's head may have taken the row since. The FIND then
+      // carries `own`, and no seat below crosses into another network's
+      // subtree for it (a blocked head under a blocked seat is a bridge with
+      // two relay clients; mix shape: a person alone under another).
       if (netOn && !netLab(gl)) {
         for (const q of idx) {
           if (q === 0) continue;
@@ -2731,14 +2737,14 @@
           if (R.labelOf(x) !== this.glabel) continue;
           if (topo.pcDepth(cell.pc) >= 12) continue;
           if (this.hasDownChild(cell)) continue;
-          if (this.siblingViaHead(rk)) { this.handOn(mm, x, rk, true, true); return; }
+          if (this.siblingViaHead(rk)) { this.handOn(mm, x, rk, true, true, true); return; }
         }
       }
       for (let pass = 0; pass < 2; pass++)
         for (const q of idx) {
           const rk = ck(rc[q]); const x = this.occGet(rk); if (x == null || x === this.id) continue;
           if (netOn && netLab(gl)) { const lx = R.labelOf(x); if (lx != null && lx !== gl && !R.sameGroup(lx, gl, this)) continue; }   // the descent stays inside my group's subtree: a row of mine under another group's seat would be a second head, a second bridge
-          if (netOn && !netLab(gl) && pass === 0 && R.labelOf(x) !== this.glabel) continue;   // a new head goes down its gateway's own subtree first (the gateway was picked for one relay client on the bridge)
+          if (netOn && !netLab(gl) && (pass === 0 || mm.own) && R.labelOf(x) !== this.glabel) continue;   // a new head goes down its gateway's own subtree first (the gateway was picked for one relay client on the bridge)
           // T7 (sim mesh_seat.inc serveFind): on a FIND whose seeker has ALREADY
           // been told NOROOM to its face, a reachable-but-unheard sibling may
           // compete in pass 0. First contact is untouched; a partitioned seeker
