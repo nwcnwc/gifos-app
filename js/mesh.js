@@ -478,10 +478,14 @@
       // reached me UNPROVEN (no channel names it). Ended by one link-proven frame.
       this.unp = new Map(); this.lkAnyAt = -1; this.unpAnyAt = -1;
       // Per owned-link cell, the last tick a channel named its occupant (D6).
-      // noChan: a peer whose channel died and stayed dead — not installed on an
-      // owned link again. darkHold: a cell we refused for that peer, so a heal
-      // does not treat the refusal as an empty chair.
-      this.lkAt = new Map(); this.unpAt = new Map(); this.noChan = new Set(); this.darkHold = new Map();
+      // unpSince: peer -> tick its current unproven streak started. A direct
+      // frame ends it; the next unproven beat starts another. A gap of more
+      // than 16 ticks starts one too. Silent ticks write nothing, so a sever
+      // does not advance it. noChan: a peer whose channel died and stayed
+      // dead — not installed on an owned link again. darkHold: a cell we
+      // refused for that peer, so a heal does not treat the refusal as an
+      // empty chair.
+      this.lkAt = new Map(); this.unpAt = new Map(); this.unpSince = new Map(); this.noChan = new Set(); this.darkHold = new Map();
       this.translost = new Map(); this.tlProbeAt = new Map(); this.probeAck = new Map(); this.tlLog = []; // [k, tick, why] — last 24 forgotten observations (forensics)
       // PRODUCTION EXTENSION (no sim counterpart — the sim's harness reads occ
       // directly every tick; the app samples it). d5Deaths: each probe-
@@ -877,7 +881,7 @@
       const x = m.id; if (x == null || x === this.id) return;
       const mine = this.hasCoord && this.state === 3 && m.coord && this.ownedLinkCell(ck(m.coord)) && this.occGet(ck(m.coord)) === x;   // D6: a beat from the seat I hold at one of my owned links
       if (this.linkIs(m, x)) {
-        this.unp.delete(x); this.noChan.delete(x);
+        this.unp.delete(x); this.noChan.delete(x); this.unpSince.delete(x);   // a direct frame ends the unproven streak
         if (mine) {
           this.lkAnyAt = this.TICK;
           const k = ck(m.coord);
@@ -889,7 +893,15 @@
       }
       if (mine) {
         this.unpAnyAt = this.TICK;
-        if (this.unpAt.size >= 64) this.unpAt.delete(this.unpAt.keys().next().value);
+        const prev = this.unpAt.get(x);
+        if (this.unpAt.size >= 64) {
+          const old = this.unpAt.keys().next().value;
+          this.unpAt.delete(old);
+          if (old !== x) this.unpSince.delete(old);
+        }
+        // First beat of a run, or the previous beat was a gap. Silence never
+        // writes unpAt, so a sever does not keep an old streak alive.
+        if (!this.unpSince.has(x) || prev === undefined || this.TICK - prev > 16) this.unpSince.set(x, this.TICK);
         this.unpAt.set(x, this.TICK);
       }
       if (this.unp.has(x)) return;
@@ -922,9 +934,12 @@
       }
       return proven > 0 && fresh === 0 && this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16;
     }
-    // One owned link lost its channel; another channel is still up. The higher
-    // id vacates so the chair is really empty. Both refuse to install the peer
-    // on an owned link again (setOcc). A link that never opened is not here.
+    // One owned link's direct proof and its unproven streak have both lasted
+    // DARK_LEAVE, while another channel is still up. The higher id vacates
+    // so the chair is really empty. The streak starts on the first unproven
+    // beat of a run and a direct frame ends it; silent ticks do not count.
+    // Both refuse to install the peer on an owned link again (setOcc). A
+    // link that never opened is not here.
     retireDead() {
       if (!this.hasCoord || this.moving || this.state !== 3) return false;
       const T = this.TICK;
@@ -939,9 +954,11 @@
         const age = T - at;
         const u = this.unpAt.get(x);
         const hearing = u !== undefined && T - u <= 16;
+        const since = this.unpSince.get(x);
+        const streak = since !== undefined && T - since > DARK_LEAVE;
         if (age <= CHAN_UP) recent++;
         if (age <= DARK_LEAVE) fresh++;
-        if (hearing && age > DARK_LEAVE) dead.push(x);
+        if (hearing && age > DARK_LEAVE && streak) dead.push(x);
       }
       if (!fresh || !dead.length) return false;
       let move = false;
@@ -2076,7 +2093,7 @@
       // hole later: the memory holds for one RING_HOLD, whatever seat I pass.
       { const x = this.exRow; if (x) { if (this.TICK - x.at > RING_HOLD) this.exRow = null; else if (x.oc === ck(c)) { this.exRow = null; const dk = ck(topo.down(c)); if (!this.occ.has(dk)) this.setOcc(dk, x.heir); } } }
       this.lkAnyAt = -1; this.unpAnyAt = -1;   // D6: a new seat's channels have not spoken yet
-      this.lkAt = new Map(); this.unpAt = new Map(); this.darkHold = new Map();   // noChan survives: the dead pairing is not installed on the next chair
+      this.lkAt = new Map(); this.unpAt = new Map(); this.unpSince = new Map(); this.darkHold = new Map();   // noChan survives: the dead pairing is not installed on the next chair
       this.drainAt = 0; this.seatTries = 0; this.seatedAt = this.TICK; this.rookSeenAt = this.TICK; this.estAt = this.TICK; this.nbrAt = this.TICK; this.pendY = null; this.challTo = null; this.lateY = null;
       // § G: a seat change re-parents me — new aggregator, new scope, new child
       // row. Every digest relationship starts over, including G4's grace
@@ -2286,10 +2303,11 @@
       this.vouchDead.delete(nc); this.vouchDead.set(nc, this.TICK);
       if (this.vouchDead.size > 64) this.vouchDead.delete(this.vouchDead.keys().next().value);
     }
-    handOn(mm, to, cell, deep, via) {
+    handOn(mm, to, cell, deep, via, own) {
       if (this.handed.size >= 64) this.handed.delete(this.handed.keys().next().value);
-      this.handed.set(mm.nc, { to, cell, deep: !!deep, at: this.TICK, via: !!via });
-      const f = { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }; if (mm.again) f.again = 1;
+      own = !!(own || mm.own);
+      this.handed.set(mm.nc, { to, cell, deep: !!deep, at: this.TICK, via: !!via, own });
+      const f = { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }; if (mm.again) f.again = 1; if (own) f.own = 1;
       if (mm.gl !== undefined) f.gl = mm.gl; if (mm.glc) f.glc = mm.glc;
       if (via) this.route(topo.unck(cell), null, f); else this.emit(to, f);   // via: a child-row cell I do not link, reached over my down link and its head's row link
       this.findAck(mm, cell, !!deep);
@@ -2311,6 +2329,7 @@
     serveFind(mm) {
       const TICK = this.TICK;
       if (!this.hasCoord || mm.ttl <= 0) { this.noroomWhy = 'unseated'; this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
+      if (this.env.NET && mm.nc === this.id) return;   // my own FIND, handed back to me once I am seated (a greeter's view of the row I now head): nothing to seat, and serving it vouched me into a cell of my child row whose cooling then held the next seeker out
       for (const s of this.sitting.values()) if (s.joiner === mm.nc && s.assigner === this.id && s.pl && TICK - s.at <= SIT_TTL) { this.emit(mm.nc, Object.assign({}, s.pl)); return; } // FINDACK: a re-ask reaching the admitter that already vouches this seeker gets the SAME chair again (its PLACE was lost) — never a twin vouch
       // A marked re-ask follows the chain already taken while that hand-off is
       // fresh, its target still holds the cell, and that target is still
@@ -2335,7 +2354,7 @@
         const h = this.handed.get(mm.nc);
         const fresh = h && TICK - h.at <= KNOCK_FRESH && h.to !== this.id;
         const silentTarget = !!(h && this.silentFor(h.cell, LONE_GREET_AFTER));
-        if (fresh && this.occGet(h.cell) === h.to && !silentTarget) { this.handOn(mm, h.to, h.cell, h.deep, h.via); return; }
+        if (fresh && this.occGet(h.cell) === h.to && !silentTarget) { this.handOn(mm, h.to, h.cell, h.deep, h.via, h.own); return; }
         const left = !!(fresh && this.occGet(h.cell) !== h.to);
         const died = this.vouchDead.get(mm.nc);
         const mineDied = !h && died !== undefined && TICK - died <= SIT_TTL;
@@ -2362,6 +2381,12 @@
         let head = null; for (let t = 0; t < C(); t++) if (R.s1Row(gl, t, this)) { const h = R.cellOccOrSoft(ck({ pc: 0, r: t, i: 0 }), this); if (h != null && R.seatedLive(h)) { head = h; break; } }
         if (head != null && head !== this.id && mm.ttl > 1) { this.handOn(mm, head, ck({ pc: 0, r: 0, i: 0 }), false); return; }
         if (head == null) { this.noroomWhy = 'label-unseated'; this.emit(mm.nc, { t: 'NOROOM', nd: 0 }); return; } }
+      // A new head whose own FIND reached a greeter outsiders cannot reach goes
+      // on to a Section-1 row they can: anchored there, its bridge has one
+      // relay client, not two (meet-turn-design sections 3 and 6). Only the
+      // first hop: a FIND handed here by a greeter is for the empty row I admit.
+      const pubHead = netOn && !netLab(gl) && !glcHere && this.coord.pc === 0 && !R.stun(this.id) ? R.stunRowHead(this) : null;
+      if (pubHead != null && mm.from === mm.nc && mm.ttl > 1) { this.handOn(mm, pubHead, ck(R.seatOf(pubHead).coord), false); return; }
       let s1Why = glcHere ? 'glc' : this.coord.pc !== 0 ? 'deep-seat' : null;   // forensics for a deep admit (admitWhy): why Section 1 took nobody
       if (this.coord.pc === 0 && !glcHere) {
         const skip = [];   // forensics: why each Section-1 cell was passed over (noroomWhy, the test trace's NOROOM row)
@@ -2681,6 +2706,7 @@
         s1Why = 'free=' + s1admFree + ' ' + skip.join(' ');
         if (s1admFree > 0) { this.noroomWhy = 's1:' + skip.join(' '); this.emit(mm.nc, { t: 'NOROOM', nd: this.hasCoord ? topo.pcDepth(this.coord.pc) : 0 }); return; }
       }
+      if (pubHead != null) { this.noroomWhy = 'new-head-blocked'; this.emit(mm.nc, { t: 'NOROOM', nd: 0 }); return; }   // nor below me: my subtree is a network outsiders cannot reach
       const f = netOn ? this.firstFreeInRoster(gl, mm.nc) : this.firstFreeInRoster();
       if (f) {
         // Phantom occ on the admitted cell: clear it first-hand before the
@@ -2709,6 +2735,11 @@
       // depth wall leaves 780 seats (1000+1000 seed 3: the head sat at depth
       // 8 and 219 never seated). A childless sibling the head has phoned owns
       // an empty row one level above the next spine hop. Offer that row first.
+      // The offer reads the child head's ledger, which can be a minute old:
+      // another network's head may have taken the row since. The FIND then
+      // carries `own`, and no seat below crosses into another network's
+      // subtree for it (a blocked head under a blocked seat is a bridge with
+      // two relay clients; mix shape: a person alone under another).
       if (netOn && !netLab(gl)) {
         for (const q of idx) {
           if (q === 0) continue;
@@ -2716,14 +2747,15 @@
           if (R.labelOf(x) !== this.glabel) continue;
           if (topo.pcDepth(cell.pc) >= 12) continue;
           if (this.hasDownChild(cell)) continue;
-          if (this.siblingViaHead(rk)) { this.handOn(mm, x, rk, true, true); return; }
+          if (this.siblingViaHead(rk)) { this.handOn(mm, x, rk, true, true, true); return; }
         }
       }
       for (let pass = 0; pass < 2; pass++)
         for (const q of idx) {
           const rk = ck(rc[q]); const x = this.occGet(rk); if (x == null || x === this.id) continue;
           if (netOn && netLab(gl)) { const lx = R.labelOf(x); if (lx != null && lx !== gl && !R.sameGroup(lx, gl, this)) continue; }   // the descent stays inside my group's subtree: a row of mine under another group's seat would be a second head, a second bridge
-          if (netOn && !netLab(gl) && pass === 0 && R.labelOf(x) !== this.glabel) continue;   // a new head goes down its gateway's own subtree first (the gateway was picked for one relay client on the bridge)
+          if (netOn && !netLab(gl) && (pass === 0 || mm.own) && R.labelOf(x) !== this.glabel) continue;   // a new head goes down its gateway's own subtree first (the gateway was picked for one relay client on the bridge)
+          if (netOn && !netLab(gl) && R.stun(this.id) && !R.stun(x)) continue;   // ...and never from a network outsiders reach into one they cannot (two relay clients on the bridge)
           // T7 (sim mesh_seat.inc serveFind): on a FIND whose seeker has ALREADY
           // been told NOROOM to its face, a reachable-but-unheard sibling may
           // compete in pass 0. First contact is untouched; a partitioned seeker
@@ -3919,6 +3951,17 @@
       if (this.live.has(hk) && mine) since = this.live.get(hk);
       else if (this.holeSince.has(hk)) since = this.holeSince.get(hk);
       else { since = this.TICK; this.holeSince.set(hk, since); }
+      // A RETURN IS NOT A HORIZON (LM-42, 2026-10-20). absence() aged this
+      // stamp by the gap my clock held still through, and the window below
+      // then read the gap as silence I had observed: a seat back from a 110 s
+      // freeze (220 ticks, the whole RING_HOLD) confirmed every live mate
+      // dead on its first tick back, before one probe could be answered,
+      // healed leftward into their cells one by one and founded a second
+      // ring under the room key with the other thawed seat ("2 in this
+      // meeting" beside ten for 4+ minutes). Silence in the gap is not
+      // evidence (absence): the window counts only from the return, and the
+      // probe above runs it (test/mesh/frozen-pair-rejoin.js).
+      if (this.backAt >= 0 && since < this.backAt) since = this.backAt;
       return this.TICK - since > RING_HOLD;
     }
 
@@ -5491,7 +5534,12 @@
     s1GroupFull(gl, me) { for (let t = 0; t < C(); t++) { if (!this.s1Row(gl, t, me)) continue; if (this.rowCount(0, t, me) < C()) return false; } return true; }
     // A greeter outsiders can reach never anchors a new head in another row's
     // network that they cannot: one relay client on its bridge, not two.
-    rowNotForNewHead(me, t) { if (!me || !me.hasCoord || me.coord.pc !== 0 || t === me.coord.r || !this.stun(me.id)) return false; const rep = this.rowRep(0, t, me); return rep != null && !this.stun(rep); }
+    // A greeter they cannot reach, while a Section-1 row they can reach
+    // exists, never anchors one in a row of a network they cannot reach,
+    // its own included: there the bridge would have two relay clients.
+    rowNotForNewHead(me, t) { if (!me || !me.hasCoord || me.coord.pc !== 0) return false; const rep = this.rowRep(0, t, me); if (rep == null || this.stun(rep)) return false; if (this.stun(me.id)) return t !== me.coord.r; return this.stunRowHead(me) != null; }
+    // A seated Section-1 row whose network outsiders reach: its first seat.
+    stunRowHead(me) { for (let t = 0; t < C(); t++) { const h = this.rowRep(0, t, me); if (h != null && h !== me.id && this.seatedLive(h) && this.stun(h)) return h; } return null; }
     // BY CONSTRUCTION: the owner of a seat (the seat above a row head; the row
     // head for any other cell), and a FOREIGN HEAD: a seat that does not reach
     // its owner. Its owner link is its subnet's bridge; nobody elects it.

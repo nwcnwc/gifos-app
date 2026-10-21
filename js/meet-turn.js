@@ -141,7 +141,9 @@
   // now, else its lowest id: a page joining later never takes the role from
   // a working bridge, and when the bridge leaves the next one takes over on
   // its own, with no message.
-  function networkBridge(f) {
+  // bridgeOf maps every blocked page this view knows to that page's bridge,
+  // so one pass answers every page that shares the view.
+  function bridgeComponents(f) {
     const ids = (f && f.ids) || [];
     const blocked = (id) => !!(f.blocked && f.blocked(id));
     const list = (fn, id) => { const v = fn ? fn(id) : null; return Array.isArray(v) ? v : []; };
@@ -154,19 +156,25 @@
       nbrs.get(a).add(b); nbrs.get(b).add(a);
     }
     const lower = (a, b) => (String(a) < String(b) ? a : b);
-    const seen = new Set(), bridges = new Set();
+    const seen = new Set(), bridges = new Set(), bridgeOf = new Map();
     let bridge = null;
     for (const start of known) {
       if (seen.has(start)) continue;
       const group = [start]; seen.add(start);
-      for (let i = 0; i < group.length; i++) for (const n of nbrs.get(group[i])) if (!seen.has(n)) { seen.add(n); group.push(n); }
+      for (let i = 0; i < group.length; i++) for (const nb of nbrs.get(group[i])) if (!seen.has(nb)) { seen.add(nb); group.push(nb); }
       let low = null, lowLinked = null;
       for (const id of group) { low = low == null ? id : lower(low, id); if (f.holds && f.holds(id)) lowLinked = lowLinked == null ? id : lower(lowLinked, id); }
       const b = lowLinked != null ? lowLinked : low;
       bridges.add(b);
-      if (group.includes(f.me)) bridge = b;
+      for (const id of group) bridgeOf.set(id, b);
+      if (bridge == null && group.includes(f.me)) bridge = b;
     }
-    return { bridge, bridges };
+    return { bridge, bridges, bridgeOf };
+  }
+
+  function networkBridge(f) {
+    const all = bridgeComponents(f);
+    return { bridge: all.bridge, bridges: all.bridges };
   }
 
   // mixMinus(sources, clientId, direct) → the sources an anchor mixes for one
@@ -184,6 +192,69 @@
   // TURN client's anchor? One session per person served, at most MAX_SERVED.
   function mayServe(servedCount, alreadyServing) {
     return !!alreadyServing || (servedCount || 0) < MAX_SERVED;
+  }
+
+  // ---- the smallest pipe: codec settings for a free-pool voice stream -----
+  // Opus, mono, 16 kbps target, DTX (silence suppression) on, 60 ms packets
+  // where the browser allows it (else its 20 ms): fewer packets, less header
+  // overhead. Free-pool pairs only: never a direct pair, never a paid Video
+  // Anywhere pair (the page decides which).
+  const T_AUDIO = { bitrate: 16000, ptime: 60 };
+
+  // turnAudioSdp(sdp) → the description with every Opus line in an audio
+  // section set to the free-pool settings. The fmtp a browser receives sets its
+  // own encoder: stereo=0 (mono), usedtx=1 (DTX), maxaveragebitrate (the
+  // target); a=ptime asks for 60 ms packets. Other codecs, other sections and
+  // the description's line ending are kept. Applying it twice changes nothing.
+  function turnAudioSdp(sdp) {
+    if (typeof sdp !== 'string' || !sdp) return sdp;
+    const eol = sdp.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
+    const parts = sdp.split(eol === '\r\n' ? /(?=\r\nm=)/ : /(?=\nm=)/);
+    return parts.map((sec) => {
+      if (!/^(\r?\n)?m=audio /.test(sec)) return sec;
+      const lines = sec.split(eol);
+      const pts = [];
+      for (const l of lines) { const m = /^a=rtpmap:(\d+) opus\/48000/i.exec(l); if (m) pts.push(m[1]); }
+      if (!pts.length) return sec;
+      const want = { stereo: '0', 'sprop-stereo': '0', usedtx: '1', maxaveragebitrate: String(T_AUDIO.bitrate) };
+      const out = [];
+      for (const l of lines) {
+        if (/^a=(max)?ptime:/.test(l)) continue;
+        const f = /^a=fmtp:(\d+) (.*)$/.exec(l);
+        if (f && pts.includes(f[1])) {
+          const kv = []; const seen = new Set();
+          for (const it of f[2].split(';')) {
+            const t = it.trim(); if (!t) continue;
+            const i = t.indexOf('='); const k = (i < 0 ? t : t.slice(0, i)).trim();
+            if (Object.prototype.hasOwnProperty.call(want, k)) { kv.push(k + '=' + want[k]); seen.add(k); } else kv.push(t);
+          }
+          for (const k of Object.keys(want)) if (!seen.has(k)) kv.push(k + '=' + want[k]);
+          out.push('a=fmtp:' + f[1] + ' ' + kv.join(';'));
+          continue;
+        }
+        out.push(l);
+        const r = /^a=rtpmap:(\d+) opus\/48000/i.exec(l);
+        if (r && !lines.some((x) => x.indexOf('a=fmtp:' + r[1] + ' ') === 0)) out.push('a=fmtp:' + r[1] + ' ' + Object.keys(want).map((k) => k + '=' + want[k]).join(';'));
+      }
+      // a=ptime goes last in the section's attributes (before a trailing empty line)
+      let end = out.length; while (end > 0 && out[end - 1] === '') end--;
+      out.splice(end, 0, 'a=ptime:' + T_AUDIO.ptime);
+      return out.join(eol);
+    }).join('');
+  }
+
+  // turnVoiceParams(prm, on) → the sender parameters to set on a pair's voice
+  // sender, or null when nothing must change: on a free-pool pair the one
+  // encoding is capped at the target; off it, a cap this rule set is lifted.
+  // A sender with no negotiated encoding is left alone (setting one then
+  // crashes Chromium's renderer; the next pass catches it).
+  function turnVoiceParams(prm, on) {
+    if (!prm || !prm.encodings || !prm.encodings.length) return null;
+    const e0 = prm.encodings[0];
+    if (on) { if (e0.maxBitrate === T_AUDIO.bitrate) return null; e0.maxBitrate = T_AUDIO.bitrate; return prm; }
+    if (e0.maxBitrate !== T_AUDIO.bitrate) return null;
+    delete e0.maxBitrate;
+    return prm;
   }
 
   // ---- credentials ---------------------------------------------------------
@@ -381,7 +452,8 @@
 
   const api = {
     ICE_URL, DEFAULT_WORKER, WORKER_KEY, workerBase, POOL, FETCH_TIMEOUT_MS, RETRY_MAX_MS, P0_MS, P1_MS, MAX_SERVED,
-    reachable, pairStage, poolNeeded, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, mayServe, networkBridge,
+    T_AUDIO, turnAudioSdp, turnVoiceParams,
+    reachable, pairStage, poolNeeded, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, mayServe, networkBridge, bridgeComponents,
     retryDelayMs, parseIce, createCredentials, askIce, freeTicket, TICKET_CREDS,
   };
   const GifOS = (root.GifOS = root.GifOS || {});

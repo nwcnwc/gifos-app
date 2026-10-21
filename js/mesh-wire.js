@@ -112,6 +112,8 @@
   //                   it: open one (the app's bootstrap over the relay)
   //   onUpdate(node)  per-tick UI hook
   //   onLocked()      R6: greeters exist but none decrypt — wrong password
+  //   onBehind(list)  door blobs a key I REPLACED opens: [{p, key}] — their
+  //                   writers missed a password change (§LOCK door-side heal)
   //   onStranded()    R6: meeting is live but unreachable a full TTL
   //   onClockSkew(ms, from) S4: while joining, a verified member's fill was minted outside the 10-min window; ms = its clock minus mine
   //   onFork(opts)    R5/E5§2: two+ door clusters — human pick-one
@@ -837,7 +839,7 @@
 
     async function onGreeters(m) {
       const list = m.list || [];
-      const ids = [], sealedFps = [], fa = [];
+      const ids = [], sealedFps = [], fa = [], behind = [];
       let olderSeen = 0;   // sealed blobs one of my replaced keys opens: their writers are behind me, not ahead
       for (const s of list) {
         try {
@@ -846,11 +848,17 @@
           else if (o && o.p === peer) sealedFps.push('SELF');
           else { /* net.open resolves NULL on wrong key — the sealed-under-a-different-key case */
             sealedFps.push('X' + blobFp(s));
-            for (const k of oldKeys) { try { if (await net.open(k, JSON.parse(s))) { olderSeen++; break; } } catch (e) {} }
+            for (const k of oldKeys) { try { const ob = await net.open(k, JSON.parse(s)); if (ob) { olderSeen++; if (ob.p && ob.p !== peer) behind.push({ p: ob.p, key: k }); break; } } catch (e) {} }
           }
         } catch (e) { sealedFps.push('E' + blobFp(s)); }
       }
       if (stopped || !seat) return;
+      // WRITERS BEHIND ME: a blob a key I replaced opens was written
+      // by a seat that missed the password change — a member sealed away,
+      // possibly in a tree of its own by now, that no pair of mine will ever
+      // carry a frame from. Hand the app the writer and the key it still
+      // reads; the app replays the signed grant to it over the relay.
+      if (behind.length && opts.onBehind) { try { opts.onBehind(behind); } catch (e) {} }
       // DEBUG sever (drill lever, mirrors ingest's drop): while a pid is
       // severed, the DOOR must not show it either. The fragment rescue reads
       // the pool as ground truth for "who is reachable", so a manufactured
