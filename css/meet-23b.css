@@ -378,6 +378,10 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
     max-height: calc(100vh - 148px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     max-height: calc(100dvh - 148px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   }
+  /* A sheet longer than that (a host's) covered the call to 46px from the
+     top. run.html marks it more-rows: two 64px rows of the first group
+     stay on screen and the later groups scroll (more-calm). */
+  .bar.more-rows:not(.collapsed) .barmore { max-height: 200px; }
 }
 
 /* The crop preview shares the card with a narrow column of controls, so it
