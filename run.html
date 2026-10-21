@@ -11279,10 +11279,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!dark) {
         clearPeerAvatar(t);
         const tr = own && own.getVideoTracks && own.getVideoTracks()[0];
-        if (tr && t.video.srcObject !== own) {
-          t.video.srcObject = own;
-          const pr = t.video.play(); if (pr && pr.catch) pr.catch(() => {});
-        }
+        if (tr && t.video._wrapOf !== own && t.video.srcObject !== own) playTileVideo(t.video, own);
         return;
       }
       const wire = (!gCam && !blockedShare) ? remoteWireTrack({ stream: own }) : null;
@@ -14170,8 +14167,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function claimOwnStream(p) {
       if (!p) return;
       // a stale claim lets go: their sid changed (reload) → old stream is void
-      if (p.stream && p.ownSid && p.stream.id !== p.ownSid) {
-        if (p.video.srcObject === p.stream) p.video.srcObject = null;
+        if (p.stream && p.ownSid && p.stream.id !== p.ownSid) {
+        if (p.video && (p.video.srcObject === p.stream || p.video._wrapOf === p.stream)) { p.video.srcObject = null; p.video._wrapOf = null; p.video._followId = ''; }
         p.stream = null;
       }
       if (!p.ownSid) { updateTile(p.id); return; } // wait for gossip to prove identity
@@ -14191,7 +14188,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (own && p.stream !== own) {
         p.stream = own;
         if (!p.relayed) { playTileVideo(p.video, own); meterFor(p.id, own); }
-      } else if (own && !p.relayed && p.video && p.video.srcObject === own && (p.video.paused || p.video.readyState === 0)) {
+      } else if (own && !p.relayed && p.video && (p.video.srcObject === own || p.video._wrapOf === own) && (p.video.paused || p.video.readyState === 0)) {
         // The stream was bound while its video track was still muted (no RTP
         // yet). A bare srcObject does not start decoding later — the element
         // stays paused at readyState 0 and videoWidth never leaves 0.
@@ -14409,7 +14406,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // Replay only a stream the claim already accepted. Unmute is not
             // a second claim: an unverified person's track must stay off the tile.
             if (typeof mediaOk === 'function' && mediaOk(p.id) === false) return;
-            if (!p.stream || p.relayed || p.stream.id !== p.ownSid || !p.video || p.video.srcObject !== p.stream) return;
+            if (!p.stream || p.relayed || p.stream.id !== p.ownSid || !p.video || (p.video.srcObject !== p.stream && p.video._wrapOf !== p.stream)) return;
             playTileVideo(p.video, p.stream);
           });
         }
@@ -17775,8 +17772,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Nothing on this pc revives that track. Two samples 4s apart with
         // frames decoded and none shown: rebuild the pair; the far side
         // takes a new fingerprint as a new pc (the NEW-PC RULE).
-        if (p.connected && !document.hidden && p.stream && !p.relayed && p.video && p.video.srcObject === p.stream
-            && !p.video.paused && p.video.readyState === 0 && mediaOk(pid) !== false && now - (p.sinkRebuiltAt || 0) > 30000) {
+        // sinkRebuiltAt does not gate this. The 30s pause used to sit here so a
+        // rebuild could not loop; it also ate the fresh pc's quiet re-seats, and
+        // that pc's tile is bound onto a track that is already flowing (the
+        // same WebKit element that never starts). The rebuild stays once
+        // (p.sinkRebuilt). The holds keep running.
+        if (p.connected && !document.hidden && p.stream && !p.relayed && p.video && (p.video.srcObject === p.stream || p.video._wrapOf === p.stream)
+            && !p.video.paused && p.video.readyState === 0 && mediaOk(pid) !== false) {
           const vtr = p.stream.getVideoTracks()[0];
           const rx = vtr && vtr.readyState === 'live' && p.pc.getReceivers().find((r) => r.track === vtr);
           if (rx) {
@@ -17810,15 +17812,56 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
                 visParkSent.set(pid, false);
                 dcSend(p, { k: 'vis', park: false });
                 dcSend(p, { k: 'vkick', hold: 2500 });
-                const st0 = p.stream, v0 = p.video;
-                setTimeout(() => {
-                  if (!v0 || v0.srcObject !== st0 || p.stream !== st0 || v0.readyState !== 0) return;
-                  try { v0.srcObject = null; v0.srcObject = st0; const pr = v0.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
-                }, 1000);
+                // A SAME-ELEMENT re-bind during the quiet gap does not start
+                // this tile (measured 2026-10-21: framesDecoded froze for ~2s,
+                // bind count rose, readyState stayed 0 after the resume). The
+                // element is the thing that is stuck. Swap in a new one once
+                // the video track is actually quiet — muted, or no new decoded
+                // frame for 400ms — and play the same stream into it, before
+                // the hold resumes at 2.5s. A swap onto a track that is still
+                // flowing is the failure the park exists to avoid.
+                const st0 = p.stream;
+                const trackNow = () => (st0.getVideoTracks ? st0.getVideoTracks()[0] : null);
+                let swapped = false, lastFd = null, stillSince = 0;
+                const swapQuiet = (why) => {
+                  if (swapped || p.stream !== st0) return;
+                  const old = p.video;
+                  if (!old || !old.parentNode) return;
+                  swapped = true;
+                  const v = document.createElement('video');
+                  v.autoplay = true; v.playsInline = true; v.muted = true;
+                  v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
+                  if (old._aud) v._aud = old._aud;
+                  if (old._gmute != null) v._gmute = old._gmute;
+                  old.parentNode.insertBefore(v, old);
+                  try { old.srcObject = null; } catch (e) {}
+                  old.remove();
+                  p.video = v;
+                  playTileVideo(v, st0);
+                  if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' quiet swap ' + why);
+                };
+                const tr0 = trackNow();
+                const onMute = () => swapQuiet('mute');
+                if (tr0) tr0.addEventListener('mute', onMute);
+                const quietIv = setInterval(() => {
+                  const tr = trackNow();
+                  if (!tr || tr.muted || tr.readyState !== 'live') { swapQuiet('mute'); return; }
+                  const rx = p.pc && p.pc.getReceivers && p.pc.getReceivers().find((r) => r.track === tr);
+                  if (!rx || !rx.getStats) return;
+                  rx.getStats().then((st) => {
+                    if (swapped || p.stream !== st0) return;
+                    let fd = 0; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
+                    const now = Date.now();
+                    if (lastFd === null || fd !== lastFd) { lastFd = fd; stillSince = now; return; }
+                    if (now - stillSince >= 400) swapQuiet('stall');
+                  }).catch(() => {});
+                }, 200);
+                setTimeout(() => { clearInterval(quietIv); if (tr0) tr0.removeEventListener('mute', onMute); }, 2200);
                 return;
               }
               if (p.sinkRebuilt) return;
               p.sinkRebuilt = true; p.sinkRebuiltAt = t;
+              p.sinkKicks = 0; p.sinkKickAt = 0; // the fresh element needs its own quiet re-seats; the rebuild does not repeat
               if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown after re-seats: rebuild (once)');
               newPcFor(p);
               sendOffer(pid, false);
@@ -21115,7 +21158,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // just ended has already re-seated the camera: a second seat on top
         // of that fresh start only stalls it.
         const t = Date.now();
-        if (t - (p.visLiftAt || 0) >= 1500 && t - (p.vkickAt || 0) >= 2000) {
+        const hold = typeof m.hold === 'number' && m.hold >= 500 && m.hold <= 6000 ? m.hold : 0;
+        // A plain reseat waits out a lift that just started the camera (a
+        // second seat on that fresh start only stalls it). A HELD re-seat is
+        // the quiet window the far tile rebinds inside, so that lift must not
+        // swallow it: the unpark and the hold arrive as one pair, and dropping
+        // the hold leaves the tile bound to a flowing track (WebKit stays at
+        // readyState 0 for the rest of the call — the row-mate tile, 2026-10-21).
+        if (t - (p.vkickAt || 0) >= 2000 && (hold || t - (p.visLiftAt || 0) >= 1500)) {
           p.vkickAt = t;
           // A HELD re-seat (hold: ms). The far side's tile never started on a
           // flowing track (its receiver decodes, the element stays at
@@ -21124,12 +21174,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // the mosaic decoders use: park the sender, let the far side re-bind
           // its tile while nothing flows, resume so the first frame lands in a
           // settled player. refreshOutbound honours the hold (it would re-seat
-          // the camera on its next beat otherwise), then seats it again.
-          const hold = typeof m.hold === 'number' && m.hold >= 500 && m.hold <= 6000 ? m.hold : 0;
-          if (hold && p.mainV && p.mainV.track) {
+          // the camera on its next beat otherwise), then seats it again. The
+          // hold is set even when the sender is already empty, so a beat
+          // cannot seat the camera back during the window.
+          if (hold && p.mainV) {
             p.mainHoldUntil = t + hold;
-            p.mainV.replaceTrack(null).catch(() => {});
-            setTimeout(() => { if (p.mainHoldUntil && p.mainHoldUntil <= Date.now()) { p.mainHoldUntil = 0; try { refreshOutbound(); } catch (e) {} } }, hold + 50);
+            if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {});
+            setTimeout(() => {
+              if (p.mainHoldUntil && p.mainHoldUntil > Date.now() + 250) return; // a later hold lengthened the window
+              p.mainHoldUntil = 0;
+              try { refreshOutbound(); } catch (e) {}
+            }, hold + 50);
           } else kickMainVideo(p);
         }
       } else if (m.k === 'sga' && typeof m.sid === 'string') {
@@ -22519,7 +22574,30 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pid = tile && tile.dataset && tile.dataset.peer;
       if (pid && pid !== myId && typeof mediaOk === 'function' && mediaOk(pid) === false) return;
       try { video.muted = true; } catch (e) {}
-      if (video.srcObject !== stream) video.srcObject = stream;
+      // The peer stream object often already held an ended track by the time
+      // the live camera track is added to it. WebKit will not connect that
+      // replacement to an element still pointing at the same stream: frames
+      // decode, the tile stays at videoWidth 0 (row-mate, 2026-10-21). A new
+      // MediaStream of the current live video track is a picture the element
+      // can start. Sound stays on the companion, which plays the peer stream.
+      if (!stream._picWatch) {
+        stream._picWatch = true;
+        stream.addEventListener('addtrack', (ev) => {
+          if (!ev.track || ev.track.kind !== 'video') return;
+          for (const q of peers.values()) if (q.stream === stream && q.video) playTileVideo(q.video, stream);
+        });
+      }
+      let tr = null;
+      if (stream.getVideoTracks) for (const t of stream.getVideoTracks()) if (t.readyState !== 'ended') tr = t;
+      if (tr && video._followId === tr.id && video.srcObject && video._wrapOf === stream) {
+        if (video.paused || video.readyState === 0) { const pr = video.play(); if (pr && pr.catch) pr.catch(() => {}); }
+        return;
+      }
+      const pic = tr ? new MediaStream([tr]) : stream;
+      video._wrapOf = stream;
+      video._followId = tr ? tr.id : '';
+      video.autoplay = true;
+      if (video.srcObject !== pic) video.srcObject = pic;
       const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
     }
     // A mic that was off when its stage sender was built keeps sending
@@ -22540,6 +22618,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // a parked, staged, or cam-off sender — those are supposed to be quiet.
     function kickMainVideo(p) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
+      if (p && p.mainHoldUntil && p.mainHoldUntil > Date.now()) return; // a held re-seat owns this quiet window
       if (!p || !p.mainV || p.remoteParkMain || myStatus.camOff || stageIds().includes(myId) || !camPeer(p.id)) return;
       let vt = null; try { vt = sentVideoTrack(); } catch (e) {}
       if (!vt || vt.readyState !== 'live') return;
