@@ -13861,8 +13861,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // page goes on building bridge-feed composites as if it still carried
       // that client, and its row head mixes those out of its own serve (they
       // hold the far network's voices) — this page's voice then never crosses.
+      // The channel decides, not the connection state: 'disconnected' or
+      // 'connecting' (an ICE restart) with the channel open is a blip the
+      // pair recovers from, and the client never asks again on that channel.
+      // A transport that stays dead is rebuilt (newPcFor ends the serve).
+      // The far end's pool word (turnFar) still makes the pair audio only.
       { let served = false;
-        for (const p of peers.values()) if (p.turnServe && !(p.connected && p.dc && p.dc.readyState === 'open')) { p.turnServe = false; p.turnAudio = !!p.turnMine && !p.turnPaid; served = true; }
+        for (const p of peers.values()) if (p.turnServe && !(p.dc && p.dc.readyState === 'open')) {
+          p.turnServe = false; p.turnAudio = (!!p.turnMine || !!p.turnFar) && !p.turnPaid; served = true;
+          if (typeof clog === 'function') clog('turn serve off ' + String(p.id).slice(0, 6));
+        }
         if (served) { syncTurnMixes(); refreshOutbound(); } }
       // A free-pool role on a pair whose SELECTED path is observed direct is
       // the leftover of a healed split (an off-hello lost on a torn channel,
