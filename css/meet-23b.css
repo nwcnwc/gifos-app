@@ -517,6 +517,24 @@ body:not(.canvote) .bar:not(.collapsed) #barmore #votebtn { display: none; }
   pointer-events: auto; text-shadow: 0 1px 2px rgba(0,0,0,.45);
 }
 body.comfy .tile > .chips { right: 76px !important; }
+/* A tile under 200px is about 105px wide. The 76px inset that keeps chips
+   off Open, added to the 56px left inset, leaves the chip row 0px wide:
+   the hand icon is crushed (its text is cut) and a wrapped hand line sits
+   on the name. On these tiles Open is a 22px corner, the chips sit beside
+   it in one row, and a taller portrait tile already drops its chips under
+   the corner so they can use the full width. */
+@media (max-width: 700px), (max-height: 500px) {
+  body.comfy .tile.slim > .tile-open {
+    width: 22px; max-width: 22px; padding: 0; overflow: hidden; font-size: 0; line-height: 22px;
+  }
+  body.comfy .tile.slim > .tile-open::after {
+    content: '\2197'; font-size: 13px; line-height: 22px;
+  }
+  body.comfy .tile.slim > .chips { left: 6px !important; right: 32px !important; gap: 2px; }
+}
+@media (max-width: 700px) and (orientation: portrait) {
+  body.comfy .tile.slim:not(.short) > .chips { right: 6px !important; }
+}
 
 /* Meeting header: Help, Invite, and Full screen are one night pill.
    An app keeps the bar it already has. */
