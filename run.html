@@ -13119,6 +13119,26 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         try { const m = modOf(p.id).mute; roomMute = !!(m && m.on); } catch (e3) {}
         push({ id: p.id, name: hostRename(p.id) || p.name || rosterNames[p.id] || 'Guest', me: false, muted: !!st.muted, hand: !!st.hand, stage: onStage || hostSpot(p.id), roomMute: roomMute });
       }
+      // The list is the faces on the wall. A person whose video is blocked
+      // and who has no tile on it (another row, or no peer at all) is only a
+      // cell of the stadium picture; they are listed too, so their "Video
+      // blocked" mark and its window can reach them (vaPersonMark).
+      try {
+        const extra = new Set();
+        for (const p of peers.values()) {
+          if (p && !p.headless && !isHeld(p.id) && p.tile && p.tile.classList.contains('va-blocked')) extra.add(p.id);
+        }
+        for (const id of Object.keys(rosterNames)) {
+          if (id && id !== myId && !extra.has(id) && !(peers.get(id) && peers.get(id).headless) && typeof vaRosterBlocked === 'function' && vaRosterBlocked(id)) extra.add(id);
+        }
+        for (const id of extra) {
+          const st = statusOf.get(id) || {};
+          let roomMute = false;
+          try { const m = modOf(id).mute; roomMute = !!(m && m.on); } catch (e3) {}
+          const p = peers.get(id);
+          push({ id: id, name: hostRename(id) || (p && p.name) || rosterNames[id] || 'Guest', me: false, muted: !!st.muted, hand: !!st.hand, stage: false, roomMute: roomMute });
+        }
+      } catch (e) {}
       rows.sort((a, b) => {
         if (a.me !== b.me) return a.me ? -1 : 1;
         if (a.hand !== b.hand) return a.hand ? -1 : 1;
