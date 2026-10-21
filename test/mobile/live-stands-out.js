@@ -1,8 +1,9 @@
 /*
  * LIVE belongs to Broadcast. On a regular meeting it is not on screen.
  * Record and Captions stay on the call, including sideways, and the faces
- * stay above that row. Sideways they stand in a column beside the dock
- * (sideways-callstate-beside.js), so there they must clear the dock's side.
+ * stay above that row upright. Sideways they stand in a column beside the
+ * dock (sideways-callstate-beside.js), so there they must clear the dock's
+ * side, and the faces fill the screen under them (sideways-tiles.js).
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/live-stands-out.js
  */
@@ -92,7 +93,11 @@ function overlaps(a, b) {
     }
     if (info.rec && info.rec.text !== 'Record') bad.push('record says "' + info.rec.text + '"');
     if (info.cc && info.cc.text !== 'Captions') bad.push('captions says "' + info.cc.text + '"');
-    if (info.state && info.tiles.some((t) => t.bottom > info.state.top + 1)) bad.push('a face runs under Record');
+    // Upright, the faces stop above Record. Sideways, the 16:42 rule (f0390c4,
+    // sideways-tiles.js): the faces fill the screen and the dock, Record and
+    // Captions float over them.
+    if (phone.band && info.state && info.tiles.some((t) => t.bottom > info.state.top + 1)) bad.push('a face runs under Record');
+    if (!phone.band && info.dock && info.tiles.length && !info.tiles.some((t) => t.bottom > info.dock.top + 1)) bad.push('dock sits outside the tiles');
     const shot = (bad.length ? 'before' : 'after') + '-live-stands-out-' + phone.name + '.png';
     if (phone.name === 'iphone-se' || phone.name === 'iphone-se-land') {
       await page.screenshot({ path: path.join(SHOTS, shot) });
