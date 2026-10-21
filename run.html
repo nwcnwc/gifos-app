@@ -16095,6 +16095,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       p.turnAskT = p.turnOkT = p.turnGivenT = null; p.turnOk = p.turnGiven = p.turnWanted = false; p.offeredPend = "";
       p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now(); p.viaRelay = undefined; // the new transport's path is unobserved until its first stats
       p.offering = null; // an offer still minting belongs to the closed pc (sendOffer drops it)
+      p.makingOffer = false; // ...and so does a renegotiation's (renegotiate: its chain never settles)
       p.offerFp = ''; // no remote offer has landed on this pc yet (onSignal's new-pc rule)
       // A new pc gathers afresh: its first host candidate must leave at once,
       // so the old pc's batch (sawHost, a pending flush) is dropped.
@@ -24540,17 +24541,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!iInitiate(p.id) && !p.turnOk && !p.turnLegacy) { p.renegAgain = true; askTurn(p); return; } // OFFER TURNS
       if (iInitiate(p.id) && p.turnGiven) { p.renegAgain = true; return; } // their turn is out: mine waits for their offer
       if (p.makingOffer || p.pc.signalingState !== 'stable') { p.renegAgain = true; return; }
-      p.makingOffer = true;
+      // The mark and the chain belong to this pc. A pc closed mid-offer never
+      // settles its createOffer/setLocalDescription in Chromium, so a rebuild
+      // drops the mark (newPcFor); left set, the new pc never offered and held
+      // then dropped every offer the far end sent (e2e-turn-codec m8after2).
+      const pc = p.pc, mark = {};
+      p.makingOffer = mark;
       // This offer carries every change made so far, so nothing is owed
       // after its answer. Left set, afterNeg re-offered on every answer and
       // a polite side looped rreq → rgo → roffer → ranswer for good (Q78).
       p.renegAgain = false;
-      preferHwVideo(p.pc); // renegotiations add fresh m-lines (folds, stg, relay jobs) — they must inherit the preference
-      p.pc.createOffer()
-        .then((o) => { if (p.pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return p.pc.setLocalDescription(o); })
+      preferHwVideo(pc); // renegotiations add fresh m-lines (folds, stg, relay jobs) — they must inherit the preference
+      pc.createOffer()
+        .then((o) => { if (pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return pc.setLocalDescription(o); })
         .then(() => {
           endTurn(p); // this offer is the turn's one offer
-          const send = () => { dcSend(p, { k: 'roffer', sdp: turnAudioDesc(p, p.pc.localDescription) }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); };
+          const send = () => { dcSend(p, { k: 'roffer', sdp: turnAudioDesc(p, pc.localDescription) }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); };
           // DEBUG lever (e2e-glare-first-offer): hold the wire to this peer
           // (this offer and everything after it, in order). When both ends
           // offer within the hold of each other, as they do the moment a
@@ -24560,8 +24566,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (hold > 0 && !p.wireHold) p.wireHold = new Promise((r) => setTimeout(() => { p.wireHold = null; r(); }, hold));
           send();
         })
-        .catch((e) => { if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
-        .finally(() => { p.makingOffer = false; if (p.turnWanted) giveTurn(p); });
+        .catch((e) => { if (p.pc !== pc) return; if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
+        .finally(() => { if (p.makingOffer === mark) p.makingOffer = false; if (p.turnWanted) giveTurn(p); });
     }
     function startRelayJob(reqP, target) {
       const key = target + '>' + reqP.id;
