@@ -19165,6 +19165,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const fst = statusOf.get(pid);
       const vtr = p.stream && p.stream.getVideoTracks()[0];
       if (!p.connected || p.relayed) return 'link';
+      if (p.turnAudio || p.netQuiet) return 'voice'; // a free-pool pair (or a quiet standby) carries no picture by design: a tile that painted while the pair was paid is not frozen once the hours run out
       if (document.hidden) return 'hidden';
       if (document.pictureInPictureElement && document.pictureInPictureElement === p.video) return 'pip'; // a floated tile paints in the float, not in the room: no frame count to judge here
       if (!vtr || vtr.readyState !== 'live') return 'track';
