@@ -13959,7 +13959,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // the chain (one lower bridge; the lowest dials the next) is what
       // joins it. A page that already has a direct neighbour, or a bridge
       // the seating named, does not take this path.
-      const chainFallback = !!((seatLinks || chainSitting()) && directPath === 'blocked' && !seatBridge && !seatStandby.length && blockedLone());
+      // MAKE BEFORE BREAK: a chain anchor stays the chain while this page
+      // still reaches nobody directly. A page that just sat is a row link
+      // inside its direct window, not yet a path: leaving the chain for it
+      // dropped the one pair that carried this page, at both ends. (An
+      // anchor that never connects still goes on the new-anchor limit.)
+      const chainFallback = !!((seatLinks || chainSitting()) && directPath === 'blocked' && !seatBridge && !seatStandby.length && ((turnAnchorId != null && blockedAlone()) || blockedLone()));
       const net = directPath === 'blocked' ? ((seatLinks && !chainFallback) ? { bridge: (seatBridge || seatStandby.length) ? myId : null, bridges: new Set() } : MT.networkBridge({ me: myId, ids: [myId, ...peers.keys()],
         blocked: (id) => (id === myId ? true : (statusOf.get(id) || {}).np === 'blocked'),
         conns: (id) => (id === myId ? myConns() : connsOf.get(id)),
