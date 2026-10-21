@@ -86,9 +86,10 @@ function look(page) {
     }
     for (const [pw, pr] of controls) {
       const hit = document.elementFromPoint((pr.left + pr.right) / 2, (pr.top + pr.bottom) / 2);
-      const tile = hit && hit.closest && hit.closest('#feed .tile, #feed .stadface, #stagefeed .rowtile, video');
+      const tile = hit && hit.closest && hit.closest('#feed .tile, #stadwhole, #stagefeed .rowtile, video');
       if (tile && !(hit.closest('button, a, .topchip, .bar'))) under.push(pw + ' is covered by the video');
     }
+    if (document.querySelectorAll('.stadface, #stadfaces, #stadcrowd').length !== 0) under.push('a cut-out stadium face is on the page');
     // Full-bleed is the tile boxes. The slide picture stays 16:9 inside its
     // tile, and the grid box is shorter than the faces it holds.
     const tiles = [];

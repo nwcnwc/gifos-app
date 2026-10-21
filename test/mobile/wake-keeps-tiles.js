@@ -27,7 +27,7 @@ for (const guests of [1, 2, 7, 12]) for (const gallery of ['fit', 'scroll']) ROO
 ROOMS.push({ guests: 2, gallery: 'fit', stage: true }, { guests: 2, gallery: 'scroll', stage: true });
 
 function boxes(page) {
-  return page.evaluate(() => [...document.querySelectorAll('#feed .tile, #feed .stadface, #stagefeed .tile')]
+  return page.evaluate(() => [...document.querySelectorAll('#feed .tile, #stadwhole, #stagefeed .tile')]
     .filter((t) => t.getClientRects().length && getComputedStyle(t).display !== 'none')
     .map((t) => {
       const r = t.getBoundingClientRect();
@@ -91,6 +91,7 @@ function reshaped(before, after) {
       await page.waitForFunction(() => document.body.classList.contains('chrome-away'), null, { timeout: 3000 }).catch(() => {});
       if (!(await settled(page))) bad.push(name + ': the faces never came to rest with the buttons away');
       const away = await boxes(page);
+      if (await page.evaluate(() => document.querySelectorAll('.stadface, #stadfaces, #stadcrowd').length !== 0)) bad.push(name + ': a cut-out stadium face is on the page');
       if (!(await page.evaluate(() => document.body.classList.contains('chrome-away')))) { bad.push(name + ': the buttons did not tuck away'); await context.close(); continue; }
       const shoot = tag === 'android-390' && room.guests === 2 && room.gallery === 'scroll' && !room.stage;
       if (shoot) await page.screenshot({ path: path.join(SHOTS, 'wake-keeps-tiles-android-390-away.png') });

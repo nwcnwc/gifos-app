@@ -926,10 +926,16 @@
     if (Object.keys(m).length !== 3) return false;
     return m.iv.length === RELAY_IV_B64_LEN && m.ct.length === RELAY_CT_B64_LEN;
   }
+  // A key whose value is `undefined` is NOT a field: JSON.stringify drops it,
+  // so the frame on the wire never carries it. Judged as present it failed
+  // the shape — a plain room's `{ t: 'setpw', pw, w: undefined }` (no admin
+  // signature to attach) was refused by the wire's outbound check and never
+  // sent, so a password set mid-call never reached the relay's door
+  // (2026-10-20). The check judges the bytes that would be sent.
   function objOk(v, shape) {
     if (!v || typeof v !== 'object' || Array.isArray(v)) return false;
-    for (const k of Object.keys(v)) if (!(k in shape)) return false;
-    for (const k in shape) { if (!(k in v)) { if (shape[k].opt) continue; return false; } if (!fieldOk(v[k], shape[k])) return false; }
+    for (const k of Object.keys(v)) if (v[k] !== undefined && !(k in shape)) return false;
+    for (const k in shape) { if (!(k in v) || v[k] === undefined) { if (shape[k].opt) continue; return false; } if (!fieldOk(v[k], shape[k])) return false; }
     return true;
   }
   function fieldOk(v, sp) {

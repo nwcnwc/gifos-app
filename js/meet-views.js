@@ -28,35 +28,48 @@
     return true;
   }
 
-  // Phone header rows are a fixed band: the status line, then Fit with
-  // Invite, Help and Full screen, ending at 102px. Sideways they share
-  // one row and end at 58px. --gtop is the notch or the update bar.
-  // The band does not follow a wake, so hiding the header does not resize
-  // the tiles. A wide window stays full-bleed.
-  function phoneHeaderBand(doc, vw, vh) {
+  // The header is a fixed band above the feed. Upright phone rows are the
+  // status line, then Fit with Invite, Help and Full screen, ending at
+  // 102px. A sideways phone shares one row that ends at 58px. A desktop
+  // window shares one row too: the chip (48px from 14), Fit, the hands
+  // line and the three pills all end by 62px, so the row starts at 64.
+  // A window the CSS dresses as a phone (600px or narrower, or 500px or
+  // shorter) keeps Fit on a second row, which ends at 102px. --gtop is
+  // the notch or the update bar. The band does not follow a wake, so
+  // hiding the header does not resize the tiles.
+  function headerBand(doc, vw, vh, phone) {
     let gtop = 0;
     try {
       const n = parseFloat(getComputedStyle(doc.documentElement).getPropertyValue('--gtop'));
       if (n > 0) gtop = n;
     } catch (e) {}
-    const land = vh < 500 && vw > vh;
-    return Math.round((land ? 58 : 102) + gtop);
+    if (phone) {
+      const land = vh < 500 && vw > vh;
+      return Math.round((land ? 58 : 102) + gtop);
+    }
+    let oneRow = vw > 600 && vh > 500;
+    try {
+      const view = doc.defaultView;
+      if (view && view.matchMedia) oneRow = view.matchMedia('(min-width: 601px) and (min-height: 501px)').matches;
+    } catch (e) {}
+    return Math.round((oneRow ? 64 : 102) + gtop);
   }
 
-  // The feed starts below that band, so the top tile's Open (still the
-  // tile's upper-right corner) is not under the status line, and a scroll
-  // cannot slide a face into the band. A shared screen or an app keeps
-  // the full-bleed feed those layouts already size.
-  function reservePhoneHeader(feed, opts) {
+  // The feed starts below that band, so a top-row tile's Open (still the
+  // tile's upper-right corner) is not under the room line, Fit, Invite,
+  // Help or Full screen, and a scroll cannot slide a face into the band.
+  // A shared screen or an app keeps the full-bleed feed those layouts
+  // already size.
+  function reserveHeader(feed, opts) {
     if (!feed || !feed.style) return 0;
     const doc = feed.ownerDocument || document;
     const body = doc.body;
-    const skip = !opts || !opts.phone || (body && body.classList && (body.classList.contains('screen-on') || body.classList.contains('has-app')));
+    const skip = !opts || (body && body.classList && (body.classList.contains('screen-on') || body.classList.contains('has-app')));
     if (skip) { feed.style.top = ''; return 0; }
     const view = doc.defaultView || root;
     const vw = +opts.vw || (view && view.innerWidth) || 0;
     const vh = +opts.vh || (view && view.innerHeight) || 0;
-    const header = phoneHeaderBand(doc, vw, vh);
+    const header = headerBand(doc, vw, vh, !!opts.phone);
     feed.style.top = header + 'px';
     return header;
   }
@@ -122,10 +135,6 @@
     if (!feed || !feed.querySelectorAll) return;
     const placed = feed.querySelectorAll('[data-comfy], .comfy-off');
     for (let i = 0; i < placed.length; i++) clearEl(placed[i]);
-    const faces = feed.querySelector('#stadfaces');
-    if (faces) faces.remove();
-    const crowd = feed.querySelector('#stadcrowd');
-    if (crowd) crowd.remove();
     const whole = feed.querySelector('#stadwhole');
     if (whole) whole.remove();
     const band = root.document && root.document.getElementById('stadband');
@@ -439,7 +448,8 @@
       else row.push(t.id);
     }
     const z = MZ.layout({ box: box, stage: stage, row: row, stad: stad, phone: !!opts.phone,
-      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit', gap: opts.phone ? 4 : MZ.GAP, floor: +opts.floor || 0 });
+      gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit', gap: opts.phone ? 4 : MZ.GAP, floor: +opts.floor || 0,
+      stadCount: opts.stadCount > 0 ? opts.stadCount : 0 });
     let band = null;
     if (z.tooSmall) band = { text: 'faces tiny \u00b7 Scroll is in \u25a6', x: box.x + 6, y: box.y + 6 };
     return { mode: stage.length ? 'stage' : 'gallery', gallery: z.gallery, rects: z.rects, crowd: false, band: band,
@@ -470,10 +480,6 @@
     const feed = opts.feed;
     if (!ML || !feed) return null;
     const allFaces = opts.faces || [];
-    const sliced = feed.querySelector('#stadfaces');
-    if (sliced) sliced.remove();
-    const crowd = feed.querySelector('#stadcrowd');
-    if (crowd) crowd.remove();
     const tiles = (opts.tiles || []).slice();
     let stadEl = null;
     if (allFaces.length > 0) {
@@ -498,13 +504,13 @@
       phone: !!opts.phone, pill: !!opts.pill, bottom: 0, top: 0,
     });
     // Tiles are positioned inside the feed. y stays 0, which is the feed's
-    // top, already under the phone header.
-    const header = reservePhoneHeader(feed, opts);
+    // top, already under the header band.
+    const header = reserveHeader(feed, opts);
     const box = header > 0 ? Object.assign({}, box0, { y: 0, h: Math.max(1, box0.h - header) }) : box0;
     const MZ = GifOS.meetZones;
     const byId = {};
     for (let i = 0; i < tiles.length; i++) byId[tiles[i].id] = tiles[i];
-    let lay = MZ ? zonesLayout(MZ, tiles, box, opts) : ML.layoutFor({
+    let lay = MZ ? zonesLayout(MZ, tiles, box, Object.assign({}, opts, { stadCount: allFaces.length })) : ML.layoutFor({
       mode: opts.mode || 'gallery',
       tiles: tiles,
       box: box,
@@ -556,8 +562,8 @@
       // A face cut by the fold is below it too: the hint counts every face not whole.
       for (let i = 0; i < lay.rects.length; i++) if (lay.rects[i].y + lay.rects[i].h > clipY + 1) past++;
     }
-    // clipY is inside the feed. The phone feed starts `header` px down, so
-    // the bottom clip is measured from the viewport, not from the feed.
+    // clipY is inside the feed. The feed starts `header` px down, so the
+    // bottom clip is measured from the viewport, not from the feed.
     const viewClip = header + clipY;
     if (feed.style && feed.style.setProperty) feed.style.setProperty('--comfy-clip', overflows ? Math.max(0, (+opts.vh || 0) - viewClip) + 'px' : '0px');
     if (feed.classList) { feed.classList.toggle('can-scroll', overflows); feed.classList.toggle('comfy-scroll', overflows); }

@@ -2438,7 +2438,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.desk-ptr.has-app:not(.solo-app):not(.app-room):not(.comfy) #apppane,
   body.desk-ptr.has-app.app-room.audio-on #apppane { padding-top: 70px; }
   body.has-app .fitbtn { display: none; }
-  body.comfy .tile[data-fit="contain"] > video, body.comfy .stadface[data-fit="contain"] > video { object-fit: contain; }
+  body.comfy .tile[data-fit="contain"] > video { object-fit: contain; }
   .admcount { position: fixed; z-index: 6; top: calc(14px + 2.75rem + var(--inset-top, 0px)); left: calc(14px + var(--inset-left, 0px)); right: calc(14px + var(--inset-right, 0px)); }
   body.solo-app .topchip, body.app-room:not(.audio-on) .topchip { display: none !important; }
   body.app-room #reactbtn, body.app-room #reacttray { display: none !important; }
@@ -2827,12 +2827,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch;
     /* Stay full-bleed while scrolling. The dock floats over the tiles. */
     bottom: 0; }
-  body.comfy #grid, body.comfy #stadium, body.comfy #stagefeed, body.comfy #stadfaces {
+  body.comfy #grid, body.comfy #stadium, body.comfy #stagefeed {
     position: static; display: block; padding: 0; margin: 0; gap: 0; overflow: visible;
     height: auto; background: transparent; border: 0; }
   body.comfy #stadium.on { display: block; }
   body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile,
-  body.comfy .stadface, body.comfy .rowtile {
+  body.comfy .rowtile {
     border-radius: 0; border: 0; aspect-ratio: auto; min-height: 0; box-shadow: none; }
   body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile.me {
     position: absolute; right: auto; bottom: auto; border: 0; border-radius: 0; box-shadow: none; }
@@ -2842,32 +2842,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   body.comfy .comfy-off { display: none !important; }
   /* A camera on the Stage holds this seat. The picture is only on the Stage:
      no video and no letter here, and the seat stays so nobody shifts into it. */
-  body.comfy .tile.seat-held > video,
-  body.comfy .stadface.seat-held > video { visibility: hidden !important; opacity: 0 !important; }
-  body.comfy .tile.seat-held .avatar,
-  body.comfy .stadface.seat-held .avatar { display: none !important; }
-  body.comfy .tile.seat-held,
-  body.comfy .stadface.seat-held { background: #0d0f14 !important; }
+  body.comfy .tile.seat-held > video { visibility: hidden !important; opacity: 0 !important; }
+  body.comfy .tile.seat-held .avatar { display: none !important; }
+  body.comfy .tile.seat-held { background: #0d0f14 !important; }
   .bar:not(.collapsed) .barmore .blurctl[hidden] { display: none !important; }
   /* The tile rules above zero the shadow at a higher specificity than
      `.tile.speaking`, and an inset shadow would sit under the video that
      fills the tile. Outline paints above the picture. A negative offset
      keeps the frame inside this tile, where the neighbour cannot cover it. */
   body.comfy:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile.speaking,
-  body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile.me.speaking,
-  body.comfy .stadface.speaking {
+  body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile.me.speaking {
     outline: 3px solid #7bffcf;
     outline-offset: -3px;
     box-shadow: inset 0 0 0 3px #7bffcf, inset 0 0 24px rgba(123,255,207,.35); }
-  body.comfy .tile video, body.comfy .stadface video { object-fit: cover; object-position: 50% 40%; }
-  body.comfy .tile.cam-off .avatar.has-img, body.comfy .stadface.cam-off .avatar.has-img {
+  body.comfy .tile video { object-fit: cover; object-position: 50% 40%; }
+  body.comfy .tile.cam-off .avatar.has-img {
     color: transparent; }
-  body.comfy .stadface { overflow: hidden; background: transparent; }
-  body.comfy .stadface.cam-off, body.comfy .tile.cam-off {
+  body.comfy .tile.cam-off {
     background-color: var(--tile-shade, #3b4d78); }
-  body.comfy .stadface .avatar {
-    position: absolute; top: 0; right: 0; bottom: 0; left: 0; inset: 0; display: flex; align-items: center; justify-content: center;
-    font-size: 2.4rem; font-weight: 800; color: #fff; background: transparent; z-index: 1; }
   /* The stadium is one composite, shown whole in the zone's box. */
   body.comfy #stadwhole { overflow: hidden; background: #0d0f14; }
   body.comfy #stadwhole video { width: 100%; height: 100%; object-fit: contain; object-position: center center; }
@@ -2877,14 +2869,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     padding: .12rem .5rem; border-radius: .4rem; font-size: .75rem;
     max-width: calc(100% - .8rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  body.comfy .stadface .name {
-    position: absolute; left: .4rem; bottom: .4rem; z-index: 2;
-    background: rgba(10,10,15,.72); color: #eceef8;
-    padding: .12rem .5rem; border-radius: .4rem; font-size: .75rem; }
   body.comfy .tile.me .name::before { content: '\2726 '; }
-  body.comfy .tile .name, body.comfy .stadface .name {
+  body.comfy .tile .name {
     max-width: calc(100% - .8rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  body.comfy .tile:not(.speaking), body.comfy .stadface:not(.speaking) {
+  body.comfy .tile:not(.speaking) {
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.16); }
   body.comfy .tile[data-tier="row"]::after {
     content: ''; position: absolute; top: 8px; right: 8px; width: 8px; height: 8px;
@@ -2929,8 +2917,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.comfy.gallery-scroll #feed.can-scroll::after { display: none; }
   }
   /* Desktop gallery: a gutter between faces (meet-views.js) and soft corners. */
-  body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-gutter="1"],
-  body.comfy .stadface[data-gutter="1"] { border-radius: 10px; overflow: hidden; }
+  body.comfy.has-peers:not(.app-full):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-gutter="1"] { border-radius: 10px; overflow: hidden; }
   /* Gallery keeps the stage strip playing (PiP can aim it) but off the mosaic.
      A stage mode adds .show-stage and places that strip itself. */
   body.comfy:not(.show-stage) #stagefeed {
@@ -9647,7 +9634,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     // The sheet opens from this corner only. A tap on the picture does not.
     function stampTileOpen(el) {
-      if (!el || !el.classList || el.id === 'stadcrowd') return;
+      if (!el || !el.classList) return;
       if (el.querySelector(':scope > .tile-open')) return;
       const b = document.createElement('button');
       b.type = 'button';
@@ -10325,7 +10312,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const tileWin = { el: null, modbar: null, home: null, vablock: null, vbHome: null, winT: 0 };
     function twIdOf(el) {
       if (el.classList.contains('tile')) return el.dataset.peer || '';
-      if (el.classList.contains('stadface')) return String(el.dataset.pzkey || '').replace(/^stad:/, '');
       return '';
     }
     function twPeer(id) { return id && peers.get(id); }
@@ -10343,6 +10329,48 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       b.addEventListener('click', (e) => { e.stopPropagation(); fn(b); });
       return b;
     }
+    // The preview fills the card beside the control column. A 72px cap made
+    // it a postage stamp. On a short landscape screen the card is the full
+    // height, so the preview takes that leftover height and the card widens
+    // to match. Portrait still sizes from the card's width.
+    function twSizePad(pad, vw, vh) {
+      const split = pad.closest ? pad.closest('.tw-split') : null;
+      const sideEl = split ? split.querySelector('.tw-side') : null;
+      const sideW = sideEl && sideEl.offsetWidth ? sideEl.offsetWidth : 0;
+      const win = pad.closest ? pad.closest('#tilewin') : null;
+      const shortLand = !!(window.matchMedia && matchMedia('(max-height: 500px) and (orientation: landscape)').matches);
+      if (shortLand && win && split && win.clientHeight > 80) {
+        const cs = getComputedStyle(win);
+        const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+        const padB = parseFloat(cs.paddingBottom) || 0;
+        const above = Math.max(0, split.getBoundingClientRect().top - win.getBoundingClientRect().top);
+        // A few pixels of slack: the help line can wrap after this measure, and
+        // a pad that ends in the padding makes the card report a scroll.
+        const maxH = Math.max(80, Math.floor(win.clientHeight - above - padB - 8));
+        const side = sideW > 40 ? sideW : 112;
+        const maxW = Math.max(80, Math.floor((window.innerWidth || 800) - 24 - padX - side - 8));
+        let w = maxW;
+        let h = vw > 0 ? w * vh / vw : w * 9 / 16;
+        if (h > maxH && h > 0) { h = maxH; w = vw > 0 ? h * vw / vh : w; }
+        if (w > maxW && w > 0) { w = maxW; h = vw > 0 ? w * vh / vw : h; }
+        pad.style.aspectRatio = (vw || 16) + ' / ' + (vh || 9);
+        pad.style.width = Math.round(Math.max(1, w)) + 'px';
+        pad.style.height = Math.round(Math.max(1, h)) + 'px';
+        const want = Math.ceil(w + 8 + side + padX);
+        win.style.width = Math.min(want, Math.floor((window.innerWidth || 800) - 24)) + 'px';
+        return;
+      }
+      if (win && win.style.width) win.style.width = '';
+      const splitW = (split && split.clientWidth) || (pad.parentElement && pad.parentElement.clientWidth) || 360;
+      const maxW = Math.max(80, splitW - sideW - (sideW ? 8 : 0));
+      const maxH = Math.min(Math.round((window.innerHeight || 800) * 0.42), 420);
+      let w = maxW;
+      let h = vw > 0 ? w * vh / vw : w * 9 / 16;
+      if (h > maxH && h > 0) { h = maxH; w = vw > 0 ? h * vw / vh : w; }
+      pad.style.aspectRatio = (vw || 16) + ' / ' + (vh || 9);
+      pad.style.width = Math.round(Math.max(1, w)) + 'px';
+      pad.style.height = Math.round(Math.max(1, h)) + 'px';
+    }
     function twCropSection(win, el, isMe) {
       const MZ = GifOS.meetZones;
       const tv = el.querySelector(':scope > video');
@@ -10351,8 +10379,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       else stream = tv && tv.srcObject;
       if (!MZ || !stream || el.classList.contains('cam-off')) return;
       const sec = document.createElement('div'); sec.className = 'tw-sec';
-      sec.innerHTML = '<b></b><p class="tw-help"></p><div class="tw-pad"><video muted playsinline autoplay></video><div class="tw-win"></div></div>'
-        + '<div class="tw-zoom"><span aria-hidden="true">−</span><input type="range" min="30" max="100" step="1"><span aria-hidden="true">+</span></div><div class="tw-row" style="margin-top:8px"></div>';
+      sec.innerHTML = '<b></b><p class="tw-help"></p><div class="tw-split"><div class="tw-pad"><video muted playsinline autoplay></video><div class="tw-win"></div></div>'
+        + '<div class="tw-side"><div class="tw-zoom"><span aria-hidden="true">−</span><input type="range" min="30" max="100" step="1"><span aria-hidden="true">+</span></div><div class="tw-row"></div></div></div>';
       sec.querySelector('b').textContent = isMe ? 'Crop what everyone sees' : 'Pan, zoom and crop';
       sec.querySelector('.tw-help').textContent = isMe
         ? 'Drag the square. Everyone gets exactly this part of your camera.'
@@ -10377,10 +10405,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // The preview never shows more than the tile does: same blur.
         if (!isMe && tv) { try { const f = getComputedStyle(tv).filter; pv.style.filter = f && f !== 'none' ? f : ''; } catch (e) {} }
         const vw = pv.videoWidth || (tv && tv.videoWidth) || 16, vh = pv.videoHeight || (tv && tv.videoHeight) || 9;
-        pad.style.aspectRatio = vw + ' / ' + vh;
-        const maxW = (pad.parentElement && pad.parentElement.clientWidth) || 360;
-        const capH = 72;
-        pad.style.width = Math.round(Math.min(maxW, capH * vw / vh)) + 'px';
+        twSizePad(pad, vw, vh);
         crop = MZ.normCrop(crop, vw, vh);
         const pw = pad.clientWidth || 300, ph = pw * vh / vw;
         const side = crop.s * Math.min(vw, vh) * (pw / vw);
@@ -10416,7 +10441,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!cam || myStatus.camOff) return;
       const sec = document.createElement('div'); sec.className = 'tw-sec tw-stageframe';
       sec.innerHTML = '<b>Frame what the Stage shows</b><p class="tw-help">On the Stage everyone sees your whole camera at its own shape. Drag the frame to show less, or its corner to change its size and shape.</p>'
-        + '<div class="tw-pad"><video muted playsinline autoplay></video><div class="tw-win tw-rect"><i class="tw-grip" aria-hidden="true"></i></div></div><div class="tw-row" style="margin-top:8px"></div>';
+        + '<div class="tw-split"><div class="tw-pad"><video muted playsinline autoplay></video><div class="tw-win tw-rect"><i class="tw-grip" aria-hidden="true"></i></div></div><div class="tw-side"><div class="tw-row"></div></div></div>';
       const pad = sec.querySelector('.tw-pad'), pv = pad.querySelector('video'), box = pad.querySelector('.tw-rect');
       pv.muted = true; pv.srcObject = new MediaStream([cam]); const pr = pv.play(); if (pr && pr.catch) pr.catch(() => {});
       let f = Object.assign({ x: 0.5, y: 0.5, w: 1, h: 1 }, stageFrameVal || {});
@@ -10424,10 +10449,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const push = () => { if (pushT) clearTimeout(pushT); pushT = setTimeout(() => { pushT = 0; setStageFrame(f); }, 120); };
       const paint = () => {
         const vw = pv.videoWidth || 16, vh = pv.videoHeight || 9;
-        pad.style.aspectRatio = vw + ' / ' + vh;
-        const maxW = (pad.parentElement && pad.parentElement.clientWidth) || 360;
-        const capH = 72;
-        pad.style.width = Math.round(Math.min(maxW, capH * vw / vh)) + 'px';
+        twSizePad(pad, vw, vh);
         const n = normStageFrame(f) || { x: 0.5, y: 0.5, w: 1, h: 1 };
         f = n;
         box.style.left = ((n.x - n.w / 2) * 100) + '%'; box.style.top = ((n.y - n.h / 2) * 100) + '%';
@@ -10473,10 +10495,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // Info: the badges the tile no longer wears.
       const info = document.createElement('div'); info.className = 'tw-info';
       el.querySelectorAll(':scope > .chips span, :scope > .botbadge').forEach((c) => {
-        const t = (c.getAttribute('aria-label') || c.title || c.textContent || '').trim();
+        let t = (c.getAttribute('aria-label') || c.title || c.textContent || '').trim();
+        // The tile's sentence wraps into a tall pill. The sheet shows one short word.
+        if (/recording/i.test(t)) t = 'recording';
         if (t) { const sp = document.createElement('span'); sp.textContent = t; info.appendChild(sp); }
       });
-      if (el.classList.contains('stadface')) { const sp = document.createElement('span'); sp.textContent = 'In the stadium'; info.appendChild(sp); }
       if ((isMe || isStage) && meOnStage() && !myStatus.scr) twStageFrameSection(win);
       else if (!isStage && (el.dataset.tier === 'row' || isMe)) twCropSection(win, el, isMe);
       if (!isStage && !win.querySelector('.tw-pad')) {
@@ -10487,7 +10510,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (av) { const c = av.cloneNode(true); c.removeAttribute('style'); c.className = 'tw-face-av'; face.appendChild(c); }
         win.appendChild(face);
       }
-      if (info.childNodes.length) win.appendChild(info);
+      const side = win.querySelector('.tw-side');
       const sec = document.createElement('div'); sec.className = 'tw-sec';
       const lab = document.createElement('b'); lab.textContent = isMe ? 'You' : isStage ? 'Stage' : 'Person';
       sec.appendChild(lab);
@@ -10495,7 +10518,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (isMe) {
         const mic = document.getElementById('mic'), cam = document.getElementById('cam');
         if (mic) row.appendChild(twButton(myStatus.muted ? 'Unmute' : 'Mute', !myStatus.muted, () => { mic.click(); closeTileWin(); }));
-        if (cam) row.appendChild(twButton(myStatus.camOff ? 'Camera on' : 'Camera off', !myStatus.camOff, () => { cam.click(); closeTileWin(); }));
+        if (cam) row.appendChild(twButton(myStatus.camOff ? 'Cam on' : 'Cam off', !myStatus.camOff, () => { cam.click(); closeTileWin(); }));
         if (myStatus.scr) row.appendChild(twButton(uiText('stopShare', 'Stop sharing'), false, () => { try { stopScreenShare(); } catch (e) {} closeTileWin(); }, 'danger'));
       } else if (isStage) {
         if (myStatus.scr) row.appendChild(twButton(uiText('stopShare', 'Stop sharing'), false, () => { try { stopScreenShare(); } catch (e) {} closeTileWin(); }, 'danger'));
@@ -10510,15 +10533,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           try { layout(); } catch (e) {}
         }));
       }
-      if (row.childNodes.length) sec.appendChild(row);
+      // Beside a preview, Mute, Camera and the recording pill stay in the
+      // narrow column. They used to be full-width rows under a 72px frame.
+      if (row.childNodes.length) (side || sec).appendChild(row);
+      if (info.childNodes.length) (side || win).appendChild(info);
       // The tile's own per-person controls (role-aware, painted by updateTile).
       const p = twPeer(id);
       if (!isMe && p && p.modbar) {
         tileWin.modbar = p.modbar; tileWin.home = p.tile;
         try { updateTile(id); } catch (e) {}
-        sec.appendChild(p.modbar);
+        (side || sec).appendChild(p.modbar);
       }
-      if (sec.childNodes.length > 1) win.appendChild(sec);
+      if (!side && sec.childNodes.length > 1) win.appendChild(sec);
       // A blocked person's explanation and offers come with them into the
       // window: their row tile (which carries the block) is hidden when they
       // sit in another row. The element is borrowed, like the modbar.
@@ -10608,7 +10634,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (tileWin.vablock && tileWin.vbHome) { try { tileWin.vbHome.appendChild(tileWin.vablock); } catch (e) {} }
       else if (tileWin.vbHold && tileWin.vablock && tileWin.vablock.remove) { try { tileWin.vablock.remove(); } catch (e) {} }
       tileWin.vablock = tileWin.vbHome = null; tileWin.vbHold = false;
-      if (win) { win.querySelectorAll('video').forEach((v) => { try { v.srcObject = null; } catch (e) {} }); win.hidden = true; win.textContent = ''; }
+      if (win) { win.querySelectorAll('video').forEach((v) => { try { v.srcObject = null; } catch (e) {} }); win.hidden = true; win.textContent = ''; win.style.width = ''; }
       if (veil) veil.hidden = true;
       document.body.classList.remove('tw-open');
       try { if (el.classList.contains('tile')) applyViewerCrop(el); } catch (e) {}
@@ -10695,14 +10721,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return document.querySelector('#stagefeed > .rowtile') || document.querySelector('#feed .tile.onstage');
         };
         const el = bc ? (t.closest('#feed .tile, #stagefeed > .rowtile, #bc-ident') || bcStage())
-          : t.closest('.tile[data-comfy="1"], .stadface[data-comfy="1"], #stagefeed > .rowtile[data-comfy="1"]');
+          : t.closest('.tile[data-comfy="1"], #stagefeed > .rowtile[data-comfy="1"]');
         if (!el) return;
         e.stopPropagation();
-        // The "+N" seat is the rest of the room, not a person: it opens People.
-        if (!bc && el.id === 'stadcrowd' && el.querySelector('.avatar')) { const who = document.getElementById('whobtn'); if (who) who.click(); return; }
       }, true);
       const stampFeedOpens = () => {
-        feed.querySelectorAll('.tile, .stadface, #stagefeed > .rowtile').forEach(stampTileOpen);
+        feed.querySelectorAll('.tile, #stagefeed > .rowtile').forEach(stampTileOpen);
       };
       stampFeedOpens();
       if (window.MutationObserver) {
@@ -10937,6 +10961,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         t.tile.classList.toggle('speaking', speaking);
         if (id === 'me' && speaking) { lastActive = Date.now(); myVoiceAt = lastActive; } // talking IS activity — a speaker's phone is never "parked"
         speakingOf.set(id, speaking); // fed to the packer overlay (green talking frame on composite faces)
+        if (speaking) ccGapSee(id, speaking); // a paused neighbour's voice is kept for the one speech session
       }
       if (fsSel === 'auto' && fsview.classList.contains('on')) fsRefresh();
     }, 180);
@@ -15367,10 +15392,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!old || (!old.k && !old.kind)) return; // not a previous-generation frame — just noise
         const now = Date.now();
         if (now - (staleHealAt.get(pid) || 0) < 5000) return;
-        const p = peers.get(pid);
-        const knownBefore = !!(p && p.bornAt && p.bornAt <= rekeyAt);
-        if (!knownBefore && !rosterIds.includes(pid)) return;
-        if (!notTomb(pid)) return;
+        // ELIGIBILITY IS THE KEY ITSELF (2026-10-20). This used to ask
+        // for a pair older than the rotation, or a roster entry, and no
+        // tombstone — three liveness gates that FAIL for exactly the member
+        // this exists to cure: its frames cannot be opened, so it ages out of
+        // the roster and the mesh tombstones it, and a pair rebuilt after the
+        // rotation is younger than the rotation. In a real meeting the members
+        // that missed the change sent stale frames for ~100 s, were never
+        // healed, then requeued into a tree of their own. A frame that opens
+        // under the key I replaced is itself the proof its sender held that
+        // generation — a member — and the only ones never healed are those
+        // excluded on purpose: a banned / voted-off seat, or an ejected forger.
+        if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) return;
+        if (typeof isEjected === 'function' && isEjected(pid) === true) return;
         staleHealAt.set(pid, now);
         if (typeof clog === 'function') clog('grant-heal ' + String(pid).slice(0, 6) + ' (prev-key frame)');
       pwLog('grant-heal→' + String(pid).slice(0, 6) + ' ep=' + pwEpoch);
@@ -15378,6 +15412,39 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (pd && pd.dc && pd.dc.readyState === 'open') txm(() => net.seal(prevRoomE2E, retainedGrant).then((env) => net.sendChunked(env, (piece, str) => { try { pd.dc.send(str); } catch (e) {} })));
         else { const fs = pwFramesOf(retainedGrant); if (fs) for (const f of fs) relaySendSealed(pid, f.k, f, prevRoomE2E); }
       });
+    }
+    // §LOCK DOOR-SIDE HEAL (2026-10-20). A member that missed the
+    // grant and lost every pair to the room (its frames unreadable, its mates
+    // probing a corpse) requeues through the door, reads only the blobs its
+    // OLD key opens — the other members that missed it — and mints a second
+    // tree with them. From then on no stale frame of theirs ever reaches a
+    // holder of the grant: the pair path above has nothing to heal through.
+    // The greeter DOOR is the one rendezvous both trees still share: their
+    // Section-1 seats keep registering blobs under the old key, and my own
+    // E3 re-knock hands me those blobs. One that opens under a key I replaced
+    // names a writer BEHIND me (mesh-wire onGreeters → onBehind). Send it the
+    // retained signed grant over the relay, sealed under the key it still
+    // reads (it holds a socket: it registered). It adopts, re-keys, re-knocks
+    // under the room's key, and heals its own mates over their pairs. Paced
+    // per writer; the epoch guard absorbs a grant the writer already took.
+    const behindHealAt = new Map(); // pid -> last door-grant (throttle)
+    function healBehindDoor(list) {
+      if (!retainedGrant || !Array.isArray(list) || !list.length) return;
+      const fs = pwFramesOf(retainedGrant);
+      if (!fs) return;
+      const now = Date.now();
+      for (const b of list) {
+        const pid = b && b.p, key = b && b.key;
+        if (!pid || pid === myId || !key) continue;
+        if (typeof bannedSeat !== 'undefined' && bannedSeat.has(pid)) continue; // excluded on purpose — never healed
+        if (typeof isEjected === 'function' && isEjected(pid) === true) continue;
+        if (now - (behindHealAt.get(pid) || 0) < 30000) continue;
+        behindHealAt.set(pid, now);
+        if (behindHealAt.size > 256) for (const [k, t] of behindHealAt) if (now - t > 60000) behindHealAt.delete(k);
+        if (typeof clog === 'function') clog('door-grant ' + String(pid).slice(0, 6) + ' (blob under a key I replaced)');
+        pwLog('door-grant→' + String(pid).slice(0, 6) + ' ep=' + pwEpoch);
+        for (const f of fs) relaySendSealed(pid, f.k, f, key);
+      }
     }
     // DEBUG ONLY: plaintext bytes put on DataChannels, by message kind (mesh
     // frames by type, gossip by what it carries) — dcTally() in the test hooks.
@@ -18509,6 +18576,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // wire must not treat that as the door (mesh-wire entryDelivered).
         dcOpen: (to) => { const p = peers.get(to); return !!(p && p.dc && p.dc.readyState === 'open'); },
         dial: bootDial, // a knocker's entry ask has no channel to its greeter: open one (the bootstrap over the relay)
+        onBehind: healBehindDoor, // door blobs a key I replaced opens: their writers missed the grant (§LOCK door-side heal)
         // Deep-socket drop waits until at least one DataChannel is open (§FWD:
         // an unwired deep newcomer must stay relay-reachable or inbound
         // signaling answers die — the late-join deadlock).
@@ -29501,6 +29569,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (n.length < 12) return false; // "yes", "okay", "can you hear me" legitimately repeat
       const s = trSeen.get(n), src = trSrc(m);
+      // The raw mic files a heard sentence under ME. A paused neighbour's clip
+      // files the same sentence under THEM, and this device is the scribe, so
+      // both lines share a source. One of them has a scribe and the other does
+      // not: that is one utterance, and the earlier stamp wins. Two scribed
+      // lines for two speakers stay (they may have said the same words).
+      if (s && Math.abs((m.at || 0) - s.at) < 8000) {
+        const held = trs.get(s.id);
+        if (held && held.byId !== m.byId && (!!m.scribe !== !!held.scribe)) {
+          if ((m.at || 0) + 300 < s.at) { trs.delete(s.id); trSeen.set(n, { at: m.at || 0, src, id: m.id }); return s; }
+          trDrops++; return true;
+        }
+      }
       if (s && s.src !== src && Math.abs((m.at || 0) - s.at) < 8000) {
         if ((m.at || 0) + 300 < s.at) { trs.delete(s.id); trSeen.set(n, { at: m.at || 0, src, id: m.id }); return s; }
         trDrops++; return true;
@@ -30634,8 +30714,131 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     }
     function speechRunning() { return !!speech; }
     function speechRetryDelay(n) { return Math.min(30000, 1000 * Math.pow(2, Math.max(0, n - 1))); }
-    function startSpeech(input) { // input: the room ear's mix track; none = the raw microphone
-      if (speechGaveUp) return false;
+    // A paused engine writes nothing (ccst 'paused'). The room still hears that
+    // voice. This browser keeps the utterance and, after it ends, plays it to
+    // the one speech session — a second live session would abort the first —
+    // and writes the line under that person. The raw mic keeps writing me.
+    const ccGap = new Map();
+    const ccGapQ = [];
+    const ccGapHold = [];
+    const ccGapLog = [];
+    let ccGapBusy = false;
+    function ccGapNote(m) {
+      ccGapLog.push(String(m));
+      if (ccGapLog.length > 40) ccGapLog.shift();
+      try { window.__ccGapLog = ccGapLog; } catch (e) {}
+    }
+    function ccGapSee(id, speaking) {
+      if (!speaking || id === 'me' || !id) return;
+      const st = (typeof statusOf !== 'undefined' && statusOf.get(id)) || {};
+      if (st.ccst !== 'paused' || st.muted) return;
+      if (typeof modOf === 'function' && modOf(id).mute && modOf(id).mute.on) return;
+      ccGapArm(id);
+    }
+    function ccGapArm(id) {
+      if (ccGap.has(id) || !ensureAc()) return;
+      const src = (typeof wspSource === 'function') ? wspSource(id) : null;
+      if (!src) return;
+      let node;
+      try { node = ac.createScriptProcessor(4096, 1, 1); } catch (e) { ccGapNote('no-proc'); return; }
+      const w = { id: id, src: src, node: node, pre: [], preMs: 0, utt: null, uttStart: 0, lastVoice: 0, rate: ac.sampleRate };
+      node.onaudioprocess = (e) => {
+        // Zero first. This node stays on ac.destination, so a stale arm
+        // that returns early would pass the leftover buffer onward.
+        const out = e.outputBuffer.getChannelData(0);
+        for (let i = 0; i < out.length; i++) out[i] = 0;
+        if (ccGap.get(id) !== w) return;
+        const ch = e.inputBuffer.getChannelData(0);
+        ccGapOnChunk(w, new Float32Array(ch));
+      };
+      try { src.connect(node); node.connect(ac.destination); } catch (e) { return; }
+      ccGap.set(id, w);
+      ccGapNote('arm ' + String(id).slice(0, 6));
+    }
+    function ccGapOnChunk(w, chunk) {
+      const ms = chunk.length / w.rate * 1000;
+      const now = Date.now();
+      const talking = !!(typeof speakingOf !== 'undefined' && speakingOf && speakingOf.get(w.id));
+      if (w.utt) {
+        w.utt.push(chunk);
+        if (talking) w.lastVoice = now;
+        const secs = (now - w.uttStart) / 1000;
+        if (!talking && now - w.lastVoice > 700) {
+          const done = w.utt, at = w.uttStart;
+          w.utt = null;
+          if (secs >= 0.4) ccGapEnqueue(w, done, at);
+        } else if (secs >= 15) {
+          const done = w.utt, at = w.uttStart;
+          w.utt = null;
+          if (secs >= 0.4) ccGapEnqueue(w, done, at);
+        }
+      } else if (talking) {
+        w.utt = [];
+        w.utt.push(chunk);
+        w.uttStart = now;
+        w.lastVoice = now;
+      }
+    }
+    function ccGapEnqueue(w, chunks, at) {
+      const st = (typeof statusOf !== 'undefined' && statusOf.get(w.id)) || {};
+      if (st.ccst !== 'paused') return;
+      ccGapNote('clip ' + String(w.id).slice(0, 6) + ' ' + chunks.length);
+      // The raw mic's finals land on a short delay. Wait so this voice's own
+      // line, if any engine still wrote it, is already the earlier one.
+      setTimeout(() => {
+        ccGapQ.push({ id: w.id, chunks: chunks, at: at, rate: w.rate });
+        while (ccGapQ.length > 4) ccGapQ.shift();
+        ccGapDrain();
+      }, 800);
+    }
+    function ccGapPlay(job) {
+      if (!ensureAc() || !job.chunks || !job.chunks.length) return null;
+      let n = 0;
+      for (const c of job.chunks) n += c.length;
+      if (n < 1000) return null;
+      try {
+        const all = new Float32Array(n);
+        let o = 0;
+        for (const c of job.chunks) { all.set(c, o); o += c.length; }
+        const buf = ac.createBuffer(1, all.length, job.rate || ac.sampleRate);
+        buf.copyToChannel(all, 0);
+        const src = ac.createBufferSource();
+        src.buffer = buf;
+        const dest = ac.createMediaStreamDestination();
+        src.connect(dest);
+        src.start();
+        ccGapHold.push(src);
+        if (ccGapHold.length > 4) ccGapHold.shift();
+        return dest.stream.getAudioTracks()[0] || null;
+      } catch (e) { return null; }
+    }
+    function ccGapDone(rec) {
+      if (!rec || rec._gapDone) return;
+      rec._gapDone = true;
+      ccGapBusy = false;
+      if (speech === rec) { try { stopSpeech(); } catch (e) {} }
+      try { syncSpeech(); } catch (e) {}
+      setTimeout(ccGapDrain, 50);
+    }
+    function ccGapDrain() {
+      if (ccGapBusy || !ccGapQ.length) return;
+      if (typeof ccTrackInput === 'function' && !ccTrackInput()) { ccGapNote('no-track'); return; }
+      const job = ccGapQ.shift();
+      const st = (typeof statusOf !== 'undefined' && statusOf.get(job.id)) || {};
+      if (st.ccst !== 'paused') { ccGapDrain(); return; }
+      const track = ccGapPlay(job);
+      if (!track) { ccGapNote('silent ' + String(job.id).slice(0, 6)); ccGapDrain(); return; }
+      ccGapBusy = true;
+      ccGapNote('play ' + String(job.id).slice(0, 6));
+      if (speechRunning()) { try { stopSpeech(); } catch (e) {} }
+      const ok = startSpeech(track, { id: job.id, at: job.at || Date.now() });
+      if (!ok) { ccGapBusy = false; try { syncSpeech(); } catch (e) {} return; }
+      const rec = speech;
+      const dur = Math.min(20000, Math.round((job.chunks.reduce((s, c) => s + c.length, 0) / (job.rate || 48000)) * 1000) + 2500);
+      setTimeout(() => { if (rec && !rec._gapDone) ccGapDone(rec); }, dur);
+    }
+    function startSpeech(input, cover) { // input: a mix or a paused voice's clip; none = the raw microphone. cover: { id, at } attributes the clip to that person
+      if (speechGaveUp && !(cover && cover.id)) return false;
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SR) { setStatus('This browser cannot write down what people say.'); return false; }
       speechFails = 0;
@@ -30643,6 +30846,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         speech = new SR();
         const rec = speech;
         rec.input = input || null;
+        rec.coverId = cover && cover.id || null;
+        rec.coverAt = cover && cover.at || 0;
         const go = () => { if (rec.input) rec.start(rec.input); else rec.start(); };
         speech.continuous = true;
         speech.interimResults = false;
@@ -30652,6 +30857,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           speechProved = true;
           speechEngineUp();
           try { ccvPublish(); } catch (err) {}
+          if (rec.coverId) {
+            for (let i = e.resultIndex; i < e.results.length; i++) {
+              if (!e.results[i].isFinal) continue;
+              addTranscriptLine(e.results[i][0].transcript, rec.coverAt, rec.coverId);
+            }
+            if (typeof ccGapDone === 'function') ccGapDone(rec);
+            return;
+          }
           if (rec.input) {
             for (let i = e.resultIndex; i < e.results.length; i++) {
               if (!e.results[i].isFinal) continue;
@@ -30673,6 +30886,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         };
         speech.onend = () => {
+          if (rec.coverId) { if (typeof ccGapDone === 'function') ccGapDone(rec); return; }
           if (!(speech === rec && speechKeep(rec))) return;
           if (speechFails > 0) {
             const wait = speechRetryDelay(speechFails);
@@ -30686,6 +30900,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         };
         speech.onerror = (e) => {
           if (speech !== rec) return;
+          if (rec.coverId) { if (typeof ccGapDone === 'function') ccGapDone(rec); return; }
           if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'language-not-supported') {
             stopSpeech();
             speechEngineDown();
@@ -31901,7 +32116,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // used to come back after a reload, including after No blur.
     (function () {
       const bar = document.querySelector('.bar'), toggle = document.getElementById('bartoggle');
+      // LM-44: the More sheet is fixed inside the dock's transform, so it
+      // rides wherever the dock goes. A dock tucked by the idle timer stands
+      // 128px under the screen; a sheet opened over it (an automation or
+      // accessibility click, not a finger: the tucked dock takes no taps)
+      // ran off the bottom and cut Settings and Keys. Opening More wakes
+      // the dock first (set below, once wakeDock exists).
+      let wakeForSheet = null;
       function apply(collapsed) {
+        if (!collapsed && wakeForSheet) wakeForSheet();
         bar.classList.toggle('collapsed', collapsed);
         toggle.setAttribute('aria-expanded', String(!collapsed));
         const service = typeof BROADCAST !== 'undefined' && BROADCAST;
@@ -32116,6 +32339,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (tucked) markTuck(false);
         scheduleIdle();
       };
+      wakeForSheet = wakeDock;
       window.addEventListener('pointerdown', wakeDock, true);
       window.addEventListener('pointermove', wakeDock, true);
       window.addEventListener('keydown', wakeDock, true);
@@ -37280,7 +37504,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           });
         };
         document.querySelectorAll('#feed .tile').forEach(take);
-        document.querySelectorAll('#stadwhole, #stadfaces .stadface, #stadcrowd').forEach(take);
+        document.querySelectorAll('#stadwhole').forEach(take);
         const bar = document.querySelector('.bar');
         const br = bar ? bar.getBoundingClientRect() : null;
         let box = null;

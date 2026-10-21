@@ -5,7 +5,14 @@
  * the Stadium only take space when they have someone in them.
  *   Stage:   true aspect (a shared screen stays 16:9), contain-fit.
  *   Row:     squares, the largest centered square of whatever arrives.
- *   Stadium: smaller squares under the Row.
+ *   Stadium: one composite. With no Stage, Fit gives it a share of the
+ *            screen that follows stadCount: about half when the stadium and
+ *            the row hold the same number, more as the stadium grows, and
+ *            never past about two thirds. A missing count is treated as
+ *            equal to the row. An implied person inside the composite stays
+ *            near a row tile, in Fit and in Scroll. Scroll is a full-width
+ *            square until that cap, then a smaller centered square. Beside
+ *            a Stage the stadium stays the small square.
  * Fit puts everyone on one screen. Scroll keeps faces big and lets the
  * people area scroll.
  */
@@ -150,7 +157,200 @@
     }
   }
 
-  function people(row, stad, box, phone, gallery, gap, avoidLone) {
+  // Squares of `side`, `per` across, short lines centered. Does not go back
+  // through perLine: a side that fills the width lands on n.999 and floors
+  // to one fewer column.
+  function placeRows(ids, box, side, per, y, gap) {
+    const out = [];
+    const n = Math.max(1, per | 0);
+    for (let i = 0; i < ids.length; i += n) {
+      const k = Math.min(n, ids.length - i);
+      const lineW = k * side + (k - 1) * gap;
+      let x = box.x + (box.w - lineW) / 2;
+      for (let j = 0; j < k; j++) {
+        out.push({ id: ids[i + j], tier: 'row', x: x, y: y, w: side, h: side, fit: 'cover' });
+        x += side + gap;
+      }
+      y += side + gap;
+    }
+    return { rects: out, y: ids.length ? y - gap : y };
+  }
+
+  // A forgotten count shares the screen about in half. It does not
+  // postage-stamp, and it does not take the rest of the screen.
+  function faceCount(stadCount, rowN) {
+    return stadCount > 0 ? stadCount | 0 : Math.max(1, rowN);
+  }
+
+  // Equal counts are half. A larger stadium grows toward two thirds.
+  // A smaller one falls toward 0.28.
+  function stadShare(rowN, stadN) {
+    const ratio = stadN / Math.max(1, rowN);
+    let share = ratio >= 1 ? 0.5 + (1 / 6) * (1 - 1 / ratio) : 0.28 + 0.22 * ratio;
+    if (share > 2 / 3) share = 2 / 3;
+    if (share < 0.28) share = 0.28;
+    return share;
+  }
+
+  function gridOf(n) {
+    const cols = Math.max(1, Math.ceil(Math.sqrt(Math.max(1, n))));
+    const rows = Math.max(1, Math.ceil(Math.max(1, n) / cols));
+    return { cols: cols, rows: rows };
+  }
+
+  // Estimated cell if the one video were a grid. The video is not cut.
+  function cellOf(w, h, n) {
+    const g = gridOf(n);
+    return Math.min(w / g.cols, h / g.rows);
+  }
+
+  // Shrink the side that sets the cell, once, so a person in the composite
+  // is not past a row tile. 1.15 keeps a 4% gap from thrashing five and five.
+  function capBox(w, h, faces, rowSide) {
+    const limit = rowSide * 1.15;
+    const g = gridOf(faces);
+    const cw = w / g.cols, ch = h / g.rows;
+    if (Math.min(cw, ch) <= limit + 0.5) return { w: w, h: h };
+    if (cw <= ch) return { w: Math.min(w, limit * g.cols), h: h };
+    return { w: w, h: Math.min(h, limit * g.rows) };
+  }
+
+  // The row keeps a readable band before the stadium takes its share.
+  function minRowBand(n, w, gap) {
+    const floor = 64;
+    let per = Math.floor((w + gap) / (floor + gap));
+    if (!(per >= 1)) per = 1;
+    if (per > n) per = n;
+    const side = Math.min(floor, (w - (per - 1) * gap) / per);
+    const lines = Math.ceil(n / per);
+    return lines * Math.max(1, side) + (lines - 1) * gap;
+  }
+
+  // Squares that fit in maxH. A full last line wins, then a larger face.
+  // If nothing fits, the side shrinks so the line stays inside the band.
+  function packChoice(n, w, maxH, gap) {
+    let best = null;
+    for (let per = 1; per <= n; per++) {
+      const side = (w - (per - 1) * gap) / per;
+      if (!(side > 1)) continue;
+      const lines = Math.ceil(n / per);
+      const rowH = lines * side + (lines - 1) * gap;
+      const fits = rowH <= maxH + 0.5;
+      if (!fits && per !== n) continue;
+      const last = n % per || per;
+      const slack = (w - (last * side + (last - 1) * gap)) / Math.max(1, w);
+      const score = (fits ? 1000 : 0) + (1 - Math.max(0, Math.min(1, slack))) * 400 + side;
+      if (!best || score > best.score) best = { per: per, side: side, slack: slack, last: last, fits: fits, lines: lines, score: score };
+    }
+    if (!best) {
+      const side = Math.max(1, (w - (Math.max(1, n) - 1) * gap) / Math.max(1, n));
+      best = { per: Math.max(1, n), side: side, slack: 0, last: n, fits: false, lines: 1 };
+    }
+    if (!best.fits) {
+      const maxSide = (maxH - (best.lines - 1) * gap) / best.lines;
+      if (maxSide > 1 && maxSide < best.side) best = { per: best.per, side: maxSide, slack: best.slack, last: best.last, fits: true, lines: best.lines };
+    }
+    return best;
+  }
+
+  // A packing the person cap already allows keeps five and five near half.
+  // A line of one face is not that packing. Otherwise the slack-first
+  // packing stands and the stadium shrinks once.
+  function packFor(n, w, maxH, gap, stadW, stadH, faces) {
+    const natural = packChoice(n, w, maxH, gap);
+    if (cellOf(stadW, stadH, faces) <= natural.side * 1.15 + 0.5) return natural;
+    let alt = null;
+    for (let per = 1; per <= n; per++) {
+      const side = (w - (per - 1) * gap) / per;
+      if (!(side > 1)) continue;
+      const lines = Math.ceil(n / per);
+      const rowH = lines * side + (lines - 1) * gap;
+      if (rowH > maxH + 0.5) continue;
+      const last = n % per || per;
+      if (last === 1 && n > 1) continue;
+      const slack = (w - (last * side + (last - 1) * gap)) / Math.max(1, w);
+      if (slack > 0.45) continue;
+      if (cellOf(stadW, stadH, faces) > side * 1.15 + 0.5) continue;
+      const score = (1 - Math.max(0, slack)) * 400 + side;
+      if (!alt || score > alt.score) alt = { per: per, side: side, slack: slack, last: last, fits: true, lines: lines };
+    }
+    return alt || natural;
+  }
+
+  // One composite, and no Stage. Fit's share follows the face count. Scroll
+  // keeps the row size it already had and starts from a full-width square,
+  // then both stop when a person inside the composite would be larger than
+  // a row tile. The row is repacked once into the band that shrink frees.
+  function compositePeople(row, stad, box, phone, gallery, gap, stadCount) {
+    const nr = row.length;
+    const id = stad[0];
+    const faces = faceCount(stadCount, nr);
+    if (gallery === 'scroll') {
+      const k = phone ? 'phone' : 'desk';
+      let s = nr ? Math.min(box.w, Math.max(SCROLL_ROW_MIN[k], fitSide(nr, 0, box.w, box.h, gap))) : 0;
+      if (nr) s = phone && s <= box.h ? Math.min(box.h, snap(box.w, s, gap)) : snap(box.w, s, gap);
+      const a = nr ? flow(row, 'row', box, s, box.y, gap, false) : { rects: [], y: box.y };
+      const y = a.rects.length ? a.y + gap : box.y;
+      let side = box.w;
+      if (nr) {
+        const g = gridOf(faces);
+        const span = Math.max(g.cols, g.rows);
+        const limit = s * 1.15;
+        if (side / span > limit) side = Math.min(box.w, limit * span);
+      }
+      const x = box.x + (box.w - side) / 2;
+      const st = { id: id, tier: 'stad', x: x, y: y, w: side, h: side, fit: 'contain' };
+      const total = (y - box.y) + side;
+      return { rects: a.rects.concat([st]), contentH: Math.max(box.h, total), side: s, stadSide: side, tooSmall: side < 28 };
+    }
+    if (!nr) {
+      const st = { id: id, tier: 'stad', x: box.x, y: box.y, w: box.w, h: box.h, fit: 'contain' };
+      return { rects: [st], contentH: box.h, side: 0, stadSide: Math.min(box.w, box.h), tooSmall: Math.min(box.w, box.h) < 28 };
+    }
+    const share = stadShare(nr, faces);
+    const wide = box.w >= box.h * 1.05;
+    if (!wide) {
+      let stadH = box.h * share;
+      const room = box.h - gap - minRowBand(nr, box.w, gap);
+      if (stadH > room) stadH = Math.max(box.h * 0.28, room);
+      let rowH = Math.max(1, box.h - stadH - gap);
+      let picked = packFor(nr, box.w, rowH, gap, box.w, stadH, faces);
+      let stadW = box.w;
+      const capped = capBox(stadW, stadH, faces, picked.side);
+      const changed = Math.abs(capped.w - stadW) > 0.5 || Math.abs(capped.h - stadH) > 0.5;
+      stadW = capped.w;
+      stadH = capped.h;
+      if (changed) {
+        rowH = Math.max(1, box.h - stadH - gap);
+        picked = packChoice(nr, box.w, rowH, gap);
+      }
+      const rowBox = { x: box.x, y: box.y, w: box.w, h: rowH };
+      const a = placeRows(row, rowBox, picked.side, picked.per, rowBox.y, gap);
+      fillBand(a.rects, rowBox, gap);
+      const st = { id: id, tier: 'stad', x: box.x + (box.w - stadW) / 2, y: box.y + rowH + gap, w: stadW, h: stadH, fit: 'contain' };
+      return { rects: a.rects.concat([st]), contentH: box.h, side: picked.side, stadSide: Math.min(st.w, st.h), tooSmall: Math.min(st.w, st.h) < 28 };
+    }
+    let stadW = Math.min(box.w * share, box.w * 2 / 3);
+    if (box.w - stadW - gap < 72) stadW = Math.max(1, box.w - gap - 72);
+    let colW = box.w - stadW - gap;
+    let stadH = box.h;
+    let picked = packFor(nr, colW, box.h, gap, stadW, stadH, faces);
+    const capped = capBox(stadW, stadH, faces, picked.side);
+    const changed = Math.abs(capped.w - stadW) > 0.5 || Math.abs(capped.h - stadH) > 0.5;
+    stadW = capped.w;
+    stadH = capped.h;
+    colW = box.w - stadW - gap;
+    if (changed) picked = packChoice(nr, colW, box.h, gap);
+    const col = { x: box.x, y: box.y, w: colW, h: box.h };
+    const a = placeRows(row, col, picked.side, picked.per, col.y, gap);
+    fillBand(a.rects, col, gap);
+    const st = { id: id, tier: 'stad', x: box.x + box.w - stadW, y: box.y, w: stadW, h: stadH, fit: 'contain' };
+    return { rects: a.rects.concat([st]), contentH: box.h, side: picked.side, stadSide: Math.min(st.w, st.h), tooSmall: Math.min(st.w, st.h) < 28 };
+  }
+
+  function people(row, stad, box, phone, gallery, gap, avoidLone, stadCount) {
+    // A Stage keeps the small stadium. One composite with no Stage does not.
+    if (stad.length === 1 && !avoidLone) return compositePeople(row, stad, box, phone, gallery, gap, stadCount);
     const nr = row.length, ns = stad.length;
     let s, t;
     if (gallery === 'scroll') {
@@ -238,7 +438,9 @@
     return out;
   }
 
-  // opts: { box:{x,y,w,h}, stage:[{id,aspect,fill}], row:[id], stad:[id], phone, gallery, gap, floor }
+  // opts: { box:{x,y,w,h}, stage:[{id,aspect,fill}], row:[id], stad:[id], phone, gallery, gap, floor, stadCount }
+  // stadCount is how many people are inside the one composite. Omit it and
+  // Fit shares the screen about in half with the row.
   // floor: side by side, the Stage may run down to this y (past box, under
   // the call's buttons, which then wake over it instead of moving it).
   function layout(opts) {
@@ -248,7 +450,7 @@
     const gallery = opts.gallery === 'scroll' ? 'scroll' : 'fit';
     const phone = !!opts.phone;
     if (!stage.length) {
-      const p = people(row, stad, box, phone, gallery, gap);
+      const p = people(row, stad, box, phone, gallery, gap, false, opts.stadCount);
       return { rects: p.rects, contentH: p.contentH, regions: { stage: null, people: box }, side: p.side, stadSide: p.stadSide, tooSmall: p.tooSmall && gallery === 'fit', gallery: gallery };
     }
     // With a Stage: side by side when the screen is wide, stacked when tall.

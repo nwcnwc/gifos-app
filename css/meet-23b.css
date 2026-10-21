@@ -19,9 +19,7 @@ body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] video {
   width: 100%; height: 100%; object-fit: contain; background: #000; }
 /* Row and Stadium tiles are squares (meet-zones) with soft corners. */
 body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-comfy="1"],
-body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-comfy="1"],
-body.comfy .stadface[data-comfy="1"] { border-radius: 12px; overflow: hidden; }
-body.comfy .stadface[data-comfy="1"] { border-radius: 8px; }
+body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-comfy="1"] { border-radius: 12px; overflow: hidden; }
 @media (max-width: 700px), (max-height: 500px) {
   body.comfy:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile[data-comfy="1"],
   body.comfy.has-peers:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) .tile.me[data-comfy="1"] { border-radius: 10px; }
@@ -32,7 +30,7 @@ body.comfy .tile[data-vcrop="1"] > video { object-fit: fill !important; }
 /* The old "you are in the row" dot is a badge; names say who is who. */
 body.comfy .tile[data-tier="row"]::after { display: none !important; }
 /* Speaking: a green frame, drawn above the picture. */
-body.comfy .tile.speaking, body.comfy .tile.me.speaking, body.comfy .stadface.speaking {
+body.comfy .tile.speaking, body.comfy .tile.me.speaking {
   outline: 3px solid #34d672 !important; outline-offset: -3px;
   box-shadow: inset 0 0 0 3px #34d672, inset 0 0 22px rgba(52,214,114,.3) !important; }
 
@@ -48,13 +46,13 @@ body.comfy:not(.meet-awake) .stad-band {
   opacity: 0 !important; pointer-events: none !important; }
 body.comfy .tile > .blurbox, body.comfy .tile > .modbar, body.comfy .tile.menu > .modbar {
   display: none !important; }
-body.comfy .tile .name, body.comfy .stadface .name { opacity: 1 !important; }
+body.comfy .tile .name { opacity: 1 !important; }
 @media (prefers-reduced-motion: reduce) {
   body.comfy .tile > .chips, body.comfy .tile > .botbadge, body.comfy .stad-band { transition: none; }
 }
 
 /* ---- tap a tile: explode + control window -------------------------- */
-body.comfy .tile[data-comfy="1"], body.comfy .stadface[data-comfy="1"],
+body.comfy .tile[data-comfy="1"],
 body.comfy.show-stage #stagefeed > .rowtile[data-comfy="1"] { cursor: pointer; }
 #tilewin-veil { position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 39; background: rgba(6,8,12,.55);
   backdrop-filter: none; }
@@ -178,10 +176,11 @@ body.head-calm .topchip > :not(#txmark):not(#status), body.chrome-away .topchip 
 body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
   top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; display: block !important; }
 body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll { bottom: var(--comfy-clip, 0px) !important; }
-/* A sideways phone: the tile window is a panel on the right, full height. */
+/* A sideways phone: the tile window is a panel on the right, full height.
+   It grows with the preview, and stops at the screen edge. */
 @media (max-height: 500px) and (orientation: landscape) {
   #tilewin { left: auto !important; right: calc(12px + env(safe-area-inset-right, 0px)) !important; top: 8px !important;
-    bottom: 8px !important; width: min(360px, 62vw); max-height: none; }
+    bottom: 8px !important; width: max-content; max-width: calc(100vw - 24px); max-height: none; }
 }
 /* A narrow phone: while the header is awake the mark is its 📝 (still
    labelled Transcribing); the word comes back whenever the call is calm. */
@@ -357,12 +356,23 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   .topchip .status { font-size: clamp(12px, 3.6vw, 17px); }
 }
 
-/* The crop preview is a preview, not a second stage. 72px keeps Person and Pin on the card. */
+/* The crop preview shares the card with a narrow column of controls, so it
+   can be a normal size. The 72px cap left a postage stamp over a full-width
+   Reset. A short landscape card uses the same column and gives the preview
+   the card's height (see the landscape block below). */
 #tilewin { padding: 10px 12px; }
 #tilewin .tw-head { margin-bottom: 6px; }
 #tilewin .tw-sec { margin-top: 6px; padding-top: 6px; }
 #tilewin .tw-help { font-size: 12px; line-height: 1.25; margin: 0 0 4px; }
-#tilewin .tw-pad { max-height: 72px; }
+#tilewin .tw-split { display: flex; gap: 8px; align-items: flex-start; }
+#tilewin .tw-side { width: 112px; flex: 0 0 112px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+#tilewin .tw-side .tw-zoom { margin-top: 0; min-width: 0; }
+#tilewin .tw-side .tw-zoom input[type=range] { width: 1px; min-width: 0; flex: 1 1 0; }
+#tilewin .tw-side .tw-row { margin-top: 0 !important; flex-direction: column; }
+#tilewin .tw-side button.tw-btn { flex: 0 0 auto; width: 100%; min-height: 32px; height: 32px; padding: 4px 6px; border-radius: 10px; font-size: 13px; }
+#tilewin .tw-side .tw-info { margin: 0; width: auto; }
+#tilewin .tw-side .tw-info span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tilewin .tw-pad { max-height: none; margin: 0; }
 @media (max-width: 700px), (max-height: 500px) {
   #tilewin { max-height: calc(100dvh - 16px); }
 }
@@ -493,7 +503,7 @@ body:not(.bc-host) .bar:not(.collapsed) #barmore #rbbtn,
 body:not(.canvote) .bar:not(.collapsed) #barmore #votebtn { display: none; }
 
 /* The picture does not open the sheet. This light corner does. */
-.tile > .tile-open, .stadface > .tile-open, .rowtile > .tile-open {
+.tile > .tile-open, .rowtile > .tile-open {
   position: absolute; top: 6px; right: 6px; z-index: 6; box-sizing: border-box;
   height: 22px; max-height: 28px; width: auto; max-width: 72px; margin: 0; padding: 0 8px;
   border: 0; border-radius: 999px; background: rgba(255,255,255,.28); color: #fff;
@@ -535,19 +545,19 @@ body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appfull {
     padding: 4px 6px; gap: 4px;
   }
   body:not(.has-app):not(.solo-app):not(.app-room) #appbar::before { display: none; }
-  /* The sideways card is the viewport minus 16px. The crop preview and the
-     rows shrink so the card does not scroll. Portrait and a tall desktop
-     already fit and keep the sizes above. */
-  #tilewin { padding: 6px 8px; overflow-x: hidden; overflow-y: auto; }
+  /* The sideways card is as tall as the screen. The preview uses that height
+     and the compact controls stay in the column beside it, so the card does
+     not scroll and the zoom slider keeps its width. Portrait and a tall
+     desktop already fit and keep the sizes above. */
+  #tilewin { padding: 6px 8px; overflow: hidden; }
   #tilewin .tw-head { margin-bottom: 2px; }
   #tilewin .tw-close { width: 28px; height: 28px; font-size: 15px; }
   #tilewin .tw-name { font-size: 15px; }
   #tilewin .tw-sec { margin-top: 2px; padding-top: 2px; }
   #tilewin .tw-help { margin: 0 0 2px; font-size: 11px; line-height: 1.15;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  #tilewin .tw-pad { height: 40px !important; max-height: 40px !important; width: 72px !important; aspect-ratio: auto !important; }
-  #tilewin .tw-zoom { margin-top: 2px; }
-  #tilewin .tw-info { margin: 0 0 4px; }
+  #tilewin .tw-zoom { margin-top: 0; width: 100%; max-width: 100%; }
+  #tilewin .tw-info { margin: 0; }
   #tilewin .tw-face { margin: 2px 0; }
   #tilewin .tw-face-av { width: 56px; height: 56px; font-size: 24px; }
   #tilewin button.tw-btn, #tilewin .modbar button { min-height: 32px; padding: 4px 8px; font-size: 13px; }

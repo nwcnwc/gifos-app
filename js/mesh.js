@@ -3917,6 +3917,17 @@
       if (this.live.has(hk) && mine) since = this.live.get(hk);
       else if (this.holeSince.has(hk)) since = this.holeSince.get(hk);
       else { since = this.TICK; this.holeSince.set(hk, since); }
+      // A RETURN IS NOT A HORIZON (LM-42, 2026-10-20). absence() aged this
+      // stamp by the gap my clock held still through, and the window below
+      // then read the gap as silence I had observed: a seat back from a 110 s
+      // freeze (220 ticks, the whole RING_HOLD) confirmed every live mate
+      // dead on its first tick back, before one probe could be answered,
+      // healed leftward into their cells one by one and founded a second
+      // ring under the room key with the other thawed seat ("2 in this
+      // meeting" beside ten for 4+ minutes). Silence in the gap is not
+      // evidence (absence): the window counts only from the return, and the
+      // probe above runs it (test/mesh/frozen-pair-rejoin.js).
+      if (this.backAt >= 0 && since < this.backAt) since = this.backAt;
       return this.TICK - since > RING_HOLD;
     }
 
