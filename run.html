@@ -16891,7 +16891,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // offer is ordinary formation glare — under load a healthy formation
         // takes >5s, and rebuilding on glare tore down in-flight ICE over and
         // over (cert-sweep-2 03c: a stable member livelocked to p=1).
-        if (sponsorReplyTo.delete(from)) p.altPath = true; // §FWD: answer rides the sponsor path the offer proved
+        // §FWD: the answer rides the path the offer proved. An offer that came
+        // over the relay proves the relay, so a rotation left on from my own
+        // unanswered dials must not send this answer down the sponsor path:
+        // with no friend that reaches the far end, its last resort hands the
+        // answer to a channel that cannot deliver it, and the pair waits for
+        // the next 30 s re-offer (a blocked page's relay anchor, every time).
+        p.altPath = sponsorReplyTo.delete(from);
         learn(from, msg, p, adm);
         p.iceBatchOk = msg.ib === 1; // the sender reads batched ICE and the end mark (see noteIce)
         // Perfect negotiation (glare): both sides may offer when the lower-id
