@@ -3325,7 +3325,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       max-width: none; overflow: visible; text-overflow: clip;
       font-size: 12px; letter-spacing: -0.02em;
     }
-    .bar > #mic { width: auto; min-width: max-content; }
+    /* Mic is 68px on every box, not its word's width. A wider system sans
+       made "Unmute" 72px, End ran past a 411px screen, and Reactions moved
+       into More (LM-44: the sheet scrolled 645 in 625). 64px holds the
+       longest word, "Silenciar". */
+    .bar > #mic { width: 68px; min-width: 68px; padding-left: 2px; padding-right: 2px; }
     /* Full screen width, square bottom corners: a narrower rounded sheet
        let the red Video and End buttons show through the corner cutouts. */
     .bar:not(.collapsed) .barmore {
