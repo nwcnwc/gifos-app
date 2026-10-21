@@ -342,8 +342,7 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 @media (max-width: 700px), (max-height: 500px) {
   .bar:not(.collapsed) .barmore {
     /* Height stays with run.html: a sideways phone caps under the header,
-       and an upright phone caps to two rows below. 100dvh-148px covered
-       the header and put every control on the first screen. */
+       and an upright phone caps to the screen above the dock below. */
     padding: 8px; gap: 4px; overflow-x: hidden; overflow-y: auto;
   }
   .bar:not(.collapsed) .barmore .moregroup h4 { font-size: 12px; }
@@ -372,9 +371,17 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 }
 @media (max-width: 700px) and (orientation: portrait) {
   .topchip .status { font-size: clamp(12px, 3.6vw, 17px); }
-  /* Two rows of the first group stay on screen. Later groups scroll.
-     200px clears the second 64px row and stops before Flip. */
-  .bar:not(.collapsed) .barmore { max-height: 200px; /* dock-first-rows */ }
+  /* The buttons stay 64px, and the whole sheet fits the screen above
+     the dock (bottom 102px). A 200px cap scrolled a 577px sheet at 411x773
+     and 412x839 and hid Settings and Keys (LM-44). vh first for old floors. */
+  .bar:not(.collapsed) .barmore {
+    max-height: calc(100vh - 148px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 148px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+  /* A sheet longer than that (a host's) covered the call to 46px from the
+     top. run.html marks it more-rows: two 64px rows of the first group
+     stay on screen and the later groups scroll (more-calm). */
+  .bar.more-rows:not(.collapsed) .barmore { max-height: 200px; }
 }
 
 /* The crop preview shares the card with a narrow column of controls, so it
