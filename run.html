@@ -13787,8 +13787,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // MAKE BEFORE BREAK: while my current anchor still carries me and
           // the pair the seating now names is not up, keep the anchor and
           // dial the new pair through the pool; the bridge moves once it is up.
+          // "Still carries" tolerates a short outage: a credential renewal
+          // restarts ICE on every pool pair at once, and one sweep reading the
+          // carrying pair down must not hand the anchor to a pair that has
+          // never connected (the drop's rebuild razes the warm transport, the
+          // cold dial can miss, and the room goes silent on a flicker).
           const cur = turnAnchorId != null ? peers.get(turnAnchorId) : null, next = peers.get(br.peer);
-          if (cur && cur.connected && next && !next.connected && directPath === 'blocked' && servers) {
+          const curCarries = cur && (cur.connected || (turnDownAt.has(turnAnchorId) ? now - turnDownAt.get(turnAnchorId) : 0) < 5000);
+          if (curCarries && next && !next.connected && directPath === 'blocked' && servers) {
             if (now - (next.turnPreDialAt || 0) > 10000) { next.turnPreDialAt = now; newPcFor(next); next.lastKick = now + Math.random() * 1500; sendOffer(next.id, false); }
           } else { if (turnAnchorId != null) dropTurnAnchor(now, 0); if (directPath === 'blocked' && servers && !((turnAnchorDead.get(br.peer) || 0) > now)) setTurnAnchor(br.peer, now); }   // a bridge end that just failed keeps its dead hold; the seating's own heal moves the bridge
         }
