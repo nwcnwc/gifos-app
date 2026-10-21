@@ -14386,11 +14386,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // empty), and a pack that names no cells shows nobody's. Cached
     // briefly: layout asks often.
     const vaCellSeen = new Map();
-    // A person's cell frame count only ever rises: the probe reads whichever
-    // video holds the composite (on screen, or its hidden source while the
-    // screen has no frame), and a new layout brings a new video whose own
-    // count starts at 0. Each video's own rise is added; a switch adds none.
+    // A person's frame count in the debug probe only ever rises: it reads
+    // whichever video shows them (a pair's own video, or the composite on
+    // screen or its hidden source while the screen has no frame), and a new
+    // layout brings a new video whose own count starts at 0. Each video's own
+    // rise is added; a switch adds none, and a read with no picture of them
+    // (their cell not found, or blocked) holds the count where it is.
     const vaCellCount = new Map();
+    function vaFramesHeld(id) { const c = vaCellCount.get(id); return c ? c.total : 0; }
     function vaCellFrames(id, v, n) {
       const c = vaCellCount.get(id);
       if (!c) { vaCellCount.set(id, { v, last: n, total: n }); return n; }
@@ -14418,7 +14421,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function vaCellView(id) {
       const now = Date.now(), hit = vaCellSeen.get(id);
       if (hit && now - hit.at < 400) return hit;
-      const rec = { at: now, alive: false, frames: 0 };
+      const rec = { at: now, alive: false, frames: vaFramesHeld(id) };
       try {
         const MV = (typeof GifOS !== 'undefined' && GifOS.meetViews) || null;
         const meta = typeof comfyStadMeta === 'function' ? comfyStadMeta() : null;
@@ -36575,7 +36578,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return !!(w && w.isConnected && w.getBoundingClientRect().width > 0 && Array.isArray(m.ids) && m.ids.indexOf(String(id)) >= 0); } catch (e) { return false; } };
         const rows = [...peers.values()].map((p) => {
           const el = p.vaBlockEl, b = el && el.querySelector('.vabuy');
-          let frames = null; try { frames = p.video && p.video.getVideoPlaybackQuality ? p.video.getVideoPlaybackQuality().totalVideoFrames : null; } catch (e) {}
+          let frames = null; try { frames = p.video && p.video.getVideoPlaybackQuality ? vaCellFrames(p.id, p.video, p.video.getVideoPlaybackQuality().totalVideoFrames || 0) : null; } catch (e) {}
           return { id: p.id, name: rosterNames[p.id] || p.name || null, blocked: !!(p.tile && p.tile.classList.contains('va-blocked')), stadium: inStad(p.id),
             message: !!(el && p.tile.classList.contains('va-blocked') && el.querySelector('p') && el.querySelector('p').textContent.length > 0),
             button: b && !b.hidden ? { kind: b.dataset.kind, price: b.dataset.price } : null, frames, facts: vaTileFacts(p, Date.now()),
@@ -36605,11 +36608,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const blocked = vaRosterBlocked(id);
             const el = blocked ? vaHoldBlock(id) : (vaHoldEls.get(id) || null);
             const b = el && el.querySelector('.vabuy');
-            const view = blocked ? { alive: false, frames: 0 } : vaCellView(id);
+            const view = blocked ? { alive: false, frames: vaFramesHeld(id) } : vaCellView(id);
             rows.push({ id, name: rosterNames[id] || null, blocked, stadium: inStad(id),
               message: !!(blocked && el && el.querySelector('p') && el.querySelector('p').textContent.length > 0),
               button: b && !b.hidden ? { kind: b.dataset.kind, price: b.dataset.price } : null,
-              frames: blocked ? 0 : view.frames,
+              frames: view.frames,
               facts: { isMe: false, camOn: !seatDark(st), pictureLive: !blocked && !!view.alive, freePair: false, voiceCarry: false, inMixOnly: mix },
               pass: (() => { const pb = el && el.querySelector('.vapass'); return pb && !pb.hidden ? { label: pb.textContent, price: pb.dataset.price } : null; })(),
               host: (() => { const hl = el && el.querySelector('.vahost'); return hl && !hl.hidden ? hl.textContent : null; })(),
