@@ -30606,11 +30606,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else bar.removeAttribute('aria-hidden');
         placeDock();
       };
+      // Someone coming in or leaving is not a quiet call: the dock waits a
+      // whole quiet spell with the count still. It tucked on the first
+      // person while the next ones were still loading, before Video was used.
+      const roomCount = () => { try { return participantCount(); } catch (e) { return 0; } };
       const scheduleIdle = () => {
         clearTimeout(idleTimer);
         if (!personalCall()) return;
+        const seen = roomCount();
         idleTimer = setTimeout(() => {
-          if (!personalCall() || dockBusy()) { scheduleIdle(); return; }
+          if (!personalCall() || dockBusy() || roomCount() !== seen) { scheduleIdle(); return; }
           markTuck(true);
         }, idleMs);
       };
