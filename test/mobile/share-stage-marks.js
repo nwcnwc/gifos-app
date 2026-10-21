@@ -51,17 +51,31 @@ function look(page) {
       if (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1) out.push(what + ' cuts its words "' + el.textContent.trim() + '"');
       if (what === 'Stop sharing' && (r.height < 30 || r.width < 30)) out.push('Stop sharing is too small to tap (' + box(r) + ')');
       // Its words must read: compare the text colour with whatever paints
-      // under it (its own background, else the first thing beneath it).
+      // under them (their own background, else the first opaque layer behind
+      // the words). A landscape dock floats in front of the stretched label;
+      // that white pill is not the colour under the words.
       const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number);
       const lum = (c) => { const [r0, g0, b0] = c.slice(0, 3).map((x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * r0 + 0.7152 * g0 + 0.0722 * b0; };
+      const solid = (c) => c.length === 3 || (c.length > 3 && c[3] > 0.5);
       let bg = rgb(cs.backgroundColor);
-      if (!(bg.length > 3 ? bg[3] > 0.5 : bg.length === 3)) {
-        bg = [0, 0, 0];
-        for (const e of document.elementsFromPoint(r.left + r.width / 2, r.top + r.height / 2)) {
+      if (!solid(bg)) {
+        let found = null;
+        const x = r.left + Math.min(r.width / 2, (parseFloat(cs.paddingLeft) || 0) + 12);
+        const stack = document.elementsFromPoint(x, r.top + r.height / 2);
+        const at = stack.indexOf(el);
+        const behind = at >= 0 ? stack.slice(at + 1) : [];
+        for (const e of behind) {
           if (e === el || el.contains(e)) continue;
           const c = rgb(getComputedStyle(e).backgroundColor);
-          if (c.length === 3 || (c.length > 3 && c[3] > 0.5)) { bg = c; break; }
+          if (solid(c)) { found = c; break; }
         }
+        if (!found) {
+          for (let a = el.parentElement; a && !found; a = a.parentElement) {
+            const c = rgb(getComputedStyle(a).backgroundColor);
+            if (solid(c)) found = c;
+          }
+        }
+        bg = found || [0, 0, 0];
       }
       const l1 = lum(rgb(cs.color)), l2 = lum(bg);
       const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);

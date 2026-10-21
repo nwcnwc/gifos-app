@@ -27,6 +27,14 @@ function overlaps(a, b) {
   return a.right > b.left + 1 && a.left < b.right - 1 && a.bottom > b.top + 1 && a.top < b.bottom - 1;
 }
 
+// Same band as meet-views headerBand: upright phone 102, sideways phone 58.
+function headerInset(vw, vh, gtop) {
+  const land = vh < 500 && vw > vh;
+  const phone = vw < 600 || land;
+  const base = phone ? (land ? 58 : 102) : ((vw > 600 && vh > 500) ? 64 : 102);
+  return Math.round(base + (gtop > 0 ? gtop : 0));
+}
+
 (async () => {
   fs.mkdirSync(SHOTS, { recursive: true });
   const browser = await chromium.launch({
@@ -89,6 +97,17 @@ function overlaps(a, b) {
         tiles: tiles,
         vh: window.innerHeight,
         vw: window.innerWidth,
+        gtop: (function () {
+          try {
+            const n = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gtop'));
+            return n > 0 ? n : 0;
+          } catch (e) { return 0; }
+        })(),
+        feedBottom: (function () {
+          const feed = document.getElementById('feed');
+          const fr = feed ? feed.getBoundingClientRect() : null;
+          return fr ? fr.bottom : window.innerHeight;
+        })(),
       };
     });
     const info = await read();
@@ -103,8 +122,8 @@ function overlaps(a, b) {
       if (c.h < 44 || c.w < 44) bad.push('Video is ' + Math.round(c.w) + 'x' + Math.round(c.h));
       if (c.top < -1 || c.bottom > info.vh + 1 || c.left < -1 || c.right > info.vw + 1) bad.push('Video is off screen');
       if (!info.camOff) bad.push('camera is already on');
-      // The dock floats over the tiles while it is showing.
-      if (!info.tiles.some((t) => overlaps(c, t))) bad.push('Video does not float over a face');
+      // Faces stop above Record, so Video stays on screen and off the faces.
+      if (info.tiles.some((t) => overlaps(c, t))) bad.push('Video covers a face');
     }
     if (bad.length) {
       failures.push(phone.name + ': ' + bad.join('; '));
@@ -131,7 +150,8 @@ function overlaps(a, b) {
     if (sig(info.tiles) !== sig(quiet.tiles)) bad.push('tiles moved when the controls tucked');
     let y0 = Infinity, y1 = -Infinity;
     for (const t of quiet.tiles) { y0 = Math.min(y0, t.top); y1 = Math.max(y1, t.bottom); }
-    if (!quiet.tiles.length || y0 > 8 || quiet.vh - y1 > 8) bad.push('tiles leave a band when the controls tuck (' + Math.round(y0) + ' above, ' + Math.round(quiet.vh - y1) + ' below)');
+    const inset = headerInset(quiet.vw, quiet.vh, quiet.gtop);
+    if (!quiet.tiles.length || Math.abs(y0 - inset) > 8 || Math.abs(y1 - quiet.feedBottom) > 8) bad.push('tiles leave a band when the controls tuck (' + Math.round(y0) + ' above, ' + Math.round(quiet.feedBottom - y1) + ' below)');
     if (bad.length) failures.push(phone.name + ': ' + bad.join('; '));
     else console.log('PASS', phone.name);
     await context.close();

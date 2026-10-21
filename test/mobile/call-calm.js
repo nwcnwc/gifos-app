@@ -21,6 +21,14 @@ function overlaps(a, b) {
   return a.right > b.left + 1 && a.left < b.right - 1 && a.bottom > b.top + 1 && a.top < b.bottom - 1;
 }
 
+// Same band as meet-views headerBand: upright phone 102, sideways phone 58.
+function headerInset(vw, vh, gtop) {
+  const land = vh < 500 && vw > vh;
+  const phone = vw < 600 || land;
+  const base = phone ? (land ? 58 : 102) : ((vw > 600 && vh > 500) ? 64 : 102);
+  return Math.round(base + (gtop > 0 ? gtop : 0));
+}
+
 (async () => {
   fs.mkdirSync(SHOTS, { recursive: true });
   const browser = await chromium.launch({
@@ -51,21 +59,30 @@ function overlaps(a, b) {
       const b = el.getBoundingClientRect();
       return { top: b.top, bottom: b.bottom, left: b.left, right: b.right, h: b.height, shown: b.width > 8 && b.height > 8 };
     }).filter((t) => t.shown);
+    const feed = document.getElementById('feed');
+    const fr = feed ? feed.getBoundingClientRect() : null;
+    let gtop = 0;
+    try {
+      const n = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gtop'));
+      if (n > 0) gtop = n;
+    } catch (e) {}
     return {
       fit: box(document.getElementById('fitbtn')),
       tag: box(document.getElementById('gifos-build-float')),
       chip: box(document.querySelector('.topchip')),
       tiles: tiles,
       vw: window.innerWidth, vh: window.innerHeight,
+      gtop: gtop, feedBottom: fr ? fr.bottom : window.innerHeight,
     };
   });
   const bad = [];
   if (!info.fit || info.fit.h < 44) bad.push('Fit is missing');
   if (info.fit && overlaps(info.fit, info.chip)) bad.push('Fit covers the header');
-  // Fit and the build line float over the faces. The line stays faint text.
+  // Faces fill the feed: the header band above, the call chrome below.
   let y0 = Infinity, y1 = -Infinity;
   for (const t of info.tiles) { y0 = Math.min(y0, t.top); y1 = Math.max(y1, t.bottom); }
-  if (info.tiles.length && (y0 > 8 || info.vh - y1 > 8)) bad.push('faces leave a band (' + Math.round(y0) + ' above, ' + Math.round(info.vh - y1) + ' below)');
+  const inset = headerInset(info.vw, info.vh, info.gtop);
+  if (info.tiles.length && (Math.abs(y0 - inset) > 8 || Math.abs(y1 - info.feedBottom) > 8)) bad.push('faces leave a band (' + Math.round(y0) + ' above, ' + Math.round(info.feedBottom - y1) + ' below)');
   if (info.tag && info.fit && overlaps(info.tag, info.fit)) bad.push('build tag covers Fit');
   if (info.tag && info.chip && overlaps(info.tag, info.chip)) bad.push('build tag covers the header');
   if (!info.tag || info.tag.text.indexOf('edge') < 0) bad.push('build tag is gone');
