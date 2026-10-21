@@ -551,7 +551,8 @@
       this.netTested = null; this.netProbeWaitFrom = 0;   // the last door test, for the debug view: [id, reached 0/1, label, the view's reason, ticks since the links opened] per seated ring member it tested (at most the ring)
       this.netProbeAt = -1; this.netProbeIds = null;   // the door test: the tick I asked the view to open links to the ring (and to whom); the decision waits for them, NET_PROBE ticks at most
       this.bcDead = 0; this.bcDeadAt = -1;   // refusals saying my group has no room under its head (its child row is another network's); three of them over NET_DEAD_WAIT ticks make me head a second subnet
-      this.regroupAt = -1;         // first tick an anchored single has directly reached a seated group member: held NET_REGROUP ticks, it rejoins through the door (netRegroup)
+      this.regroupAt = -1;         // first tick this seat could not support its own label first-hand while reaching a seated member of another: held NET_REGROUP ticks, it rejoins through the door (netRegroup)
+      this.splitHead = false;      // I deliberately head a second subnet of my group (three NOROOM refusals under its head): netRegroup leaves me parked — the door would only find the same full group again
       this.ringMixed = false;      // my ring test saw a seat I do not reach (more than one network in this room)
       this.darkLeft = new Map();   // cell -> the peer whose knock at my door said it left that cell (held across a dark link)
       this.roster = []; this.haveRoster = false; this.lastGreeters = [];
@@ -1811,7 +1812,7 @@
     }
     netDecide(ro) {
       const R = this.env.NET; let reached = 0, ringSeated = 0, best = null, bestSeat = null; const seen = new Set();
-      this.glHead = null; this.walkRounds = 0; R.fresh();
+      this.glHead = null; this.walkRounds = 0; this.splitHead = false; R.fresh();   // a fresh door verdict: whether I must head a second subnet is decided again by the refusals that follow it
       const tested = this.netTested = [];
       const test = (v) => { if (v == null || v === this.id || seen.has(v) || !R.seatedLive(v)) return; seen.add(v); ringSeated++; const ok = R.reach(this.id, v); tested.push([v, ok ? 1 : 0, R.labelOf(v), R.o.reachWhy ? R.o.reachWhy(v) : null, this.TICK - this.netProbeWaitFrom]); if (!ok) return; reached++; const l = R.labelOf(v); if (l != null && (best == null || idLess(l, best))) { best = l; bestSeat = v; } };
       for (const e of ro) if (e) test(e.v);
@@ -4369,7 +4370,7 @@
         // scattered away from the funnel and deep sections filled row 1 before
         // row 0 (H7 dense-fill broken; sim hchain E + c-sweep, 2026-07-29). A
         // corpse answers NOTHING, so its mark stands — corpse-avoid untouched.
-        case 'NOROOM': if (this.state === 2) { if ((m.nd | 0) >= SPREAD_MINDEPTH) this.noroomSeen++; if (this.env.NET && netLab(this.glFind) && m.nd === NET_DEAD && this.bcDeadAt < 0) this.bcDeadAt = TICK; if (this.env.NET && netLab(this.glFind) && m.nd === NET_DEAD && ++this.bcDead >= 3 && TICK - this.bcDeadAt >= NET_DEAD_WAIT) { this.glFind = NET_NONE; this.glabel = this.id; this.glHead = null; this.env.NET.splits++; } /* my group has no room under its head (its child row is another network's), three times over NET_DEAD_WAIT ticks: I head a second subnet of my group (one more bridge; a refusal a heal or a move lifts sooner costs none) */ if (this.triedSilent && m.id != null) this.triedSilent.delete(m.id); if (this.triedSilent && this.lastAsked != null) this.triedSilent.delete(this.lastAsked); this.retryAt = TICK; if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t != null) { this.askSeat(t); return; } } this.seatTries = 0; this.join(); } return;
+        case 'NOROOM': if (this.state === 2) { if ((m.nd | 0) >= SPREAD_MINDEPTH) this.noroomSeen++; if (this.env.NET && netLab(this.glFind) && m.nd === NET_DEAD && this.bcDeadAt < 0) this.bcDeadAt = TICK; if (this.env.NET && netLab(this.glFind) && m.nd === NET_DEAD && ++this.bcDead >= 3 && TICK - this.bcDeadAt >= NET_DEAD_WAIT) { this.glFind = NET_NONE; this.glabel = this.id; this.glHead = null; this.splitHead = true; this.env.NET.splits++; } /* my group has no room under its head (its child row is another network's), three times over NET_DEAD_WAIT ticks: I head a second subnet of my group (one more bridge; a refusal a heal or a move lifts sooner costs none) */ if (this.triedSilent && m.id != null) this.triedSilent.delete(m.id); if (this.triedSilent && this.lastAsked != null) this.triedSilent.delete(this.lastAsked); this.retryAt = TICK; if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t != null) { this.askSeat(t); return; } } this.seatTries = 0; this.join(); } return;
         case 'HELLO': {
           // A HELLO is FIRST-HAND: its sender (m.id) is speaking on a link it
           // holds to me, claiming coord m.ck — it sets first-hand liveness.
@@ -5284,27 +5285,40 @@
       else if (!didHeal) { this.tryCompact(); this.netRegroup(); } // Q2: only when not draining/healing this tick — pack the tree upward when settled
       this.wake();
     }
-    // Rule 8's second half: a seat ANCHORED over the pool (its door test
-    // reached nobody) rejoins through the door once it holds a direct path to
-    // a seated, settled member of a group for NET_REGROUP ticks — the door
-    // test then finds the group and seats it in its own rows. A parked single
-    // otherwise keeps a TURN link of its own forever: one label never leaves
-    // the host row, and the room pays one bridge per parked person instead of
-    // one per network (the cost law). Leaf-only, like compaction: vacating
-    // strands nobody.
+    // Rule 8's second half: a seat that cannot SUPPORT ITS OWN LABEL
+    // FIRST-HAND rejoins through the door once the support has been missing
+    // for NET_REGROUP ticks — the door test then re-derives the truth, so no
+    // seat's label is ever rewritten in place. Two shapes qualify: a seat
+    // ANCHORED over the pool (its door test reached nobody: a parked single
+    // keeps a TURN link of its own forever, one bridge per parked person
+    // instead of one per network — the cost law), and a seat that reaches no
+    // seated member of its own label while reaching seated members of
+    // another (one blocked network seated under several labels: each head
+    // concluded alone before their mutual links came up, or a member joined
+    // through a greeter whose gossip still said a label it cannot support).
+    // Stays parked: a seat that reaches a seated member of its own label, a
+    // genuine lone fragment (reaches no seated seat at all), and a
+    // deliberate second-subnet head (splitHead — the door would only find
+    // the same full group that refused it again). Leaf-only, like
+    // compaction: vacating strands nobody.
     netRegroup() {
-      if (!this.env.NET || !this.anchored || !this.hasCoord || this.state !== 3 || this.moving) return;
+      if (!this.env.NET || !this.hasCoord || this.state !== 3 || this.moving) return;
       const R = this.env.NET;
-      let seen = false;
+      let seen = false, own = false;
       for (const s of R.o.seats()) {
         if (!s || s.id === this.id || !s.alive || s.state !== 3 || !s.hasCoord || s.anchored) continue;
-        if (R.reach(this.id, s.id)) { seen = true; break; }
+        if (!R.reach(this.id, s.id)) continue;
+        seen = true;
+        if (this.anchored) break;   // fix 6: any seated member is a group for an anchored single to rejoin
+        if (R.labelOf(s.id) === this.glabel) { own = true; break; }
       }
-      if (!seen) { this.regroupAt = -1; return; }
+      const unsupported = !this.splitHead && (this.anchored || !own);
+      if (!seen || !unsupported) { this.regroupAt = -1; return; }
       if (this.regroupAt < 0) { this.regroupAt = this.TICK; return; }
       if (this.TICK - this.regroupAt < NET_REGROUP) return;
       if (this.hasChildren()) return;   // a parent waits; the heal would churn its row
       this.regroupAt = -1;
+      R.regroups++;
       this.requeue();
     }
     // Q2 — COMPACTION probe. A settled DEEP LEAF (childless: P — only leaves move,
@@ -5424,7 +5438,7 @@
       this.comp = new Map();      // group -> its component (direct reach and live bridges); for the harness fabric and reports
       this.epoch = 0; this.builtAt = -1; this.builtEpoch = -1;
       this.diedAt = new Map();    // seat -> the tick it died (its heir's three missed 100 ms beats are shorter than a tick)
-      this.upgrades = 0; this.merges = 0; this.credLost = 0; this.splits = 0;
+      this.upgrades = 0; this.merges = 0; this.credLost = 0; this.splits = 0; this.regroups = 0;   // regroups: seats that rejoined through the door over an unsupported label (netRegroup); a healthy seating needs none
       this.walkers = 0; this.walkRounds = 0; this.walkAsks = 0; this.walkMaxLevel = 0;
       this.atMap = new Map(); this.atTick = -1; this.atEpoch = -1;
       this.beats = new Map();     // bridge end -> the last beat its heir heard (ms)
