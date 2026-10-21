@@ -188,16 +188,34 @@
     return (sources || []).filter((s) => s && s.owner !== clientId && !(s.owner != null && skip.has(s.owner)));
   }
 
-  // mixGain(held, mutedFor) → a source's gain in a mix the page sends: 0 for
-  // a voice held for everyone, and 0 for a person whose own status says muted
-  // once MUTE_TAIL_MS has passed (their last words still play out). A muted
-  // microphone can still carry a floor of noise one step above zero; mixed
-  // in, that floor keeps the encoder from ever seeing silence, so DTX never
-  // starts. mutedFor is how long (ms) the person has been muted, or null.
+  // mixGain(held, mutedFor, carries) → a source's gain in a mix the page
+  // sends: 0 for a voice held for everyone, and 0 for a person whose own
+  // status says muted once MUTE_TAIL_MS has passed (their last words still
+  // play out). A muted microphone can still carry a floor of noise one step
+  // above zero; mixed in, that floor keeps the encoder from ever seeing
+  // silence, so DTX never starts. mutedFor is how long (ms) the person has
+  // been muted, or null. A source that carries other people's voices
+  // (carries: see carriesMix) is not silenced by its carrier's own mute: the
+  // carrier's muted microphone is already silence in the mix it sends, and
+  // the voices it carries are not muted.
   const MUTE_TAIL_MS = 1000;
-  function mixGain(held, mutedFor) {
+  function mixGain(held, mutedFor, carries) {
     if (held) return 0;
+    if (carries) return 1;
     return mutedFor != null && mutedFor >= MUTE_TAIL_MS ? 0 : 1;
+  }
+
+  // carriesMix(me, o) → does the one audio stream a person sends me carry
+  // other people's voices, not only their microphone? It does when they are
+  // my anchor (my mix-minus), my client with anyone else on its network (its
+  // network's uplink), or hold a TURN link to anyone but me (a bridge end's
+  // feed of the far network to its row). o: { myAnchor, myClient, conns
+  // (their direct pairs), tl (their TURN links, from their status) }.
+  function carriesMix(me, o) {
+    if (!o) return false;
+    if (o.myAnchor) return true;
+    if ((o.tl || []).some((x) => x !== me)) return true;
+    return !!o.myClient && (o.conns || []).some((x) => x !== me);
   }
 
   // mayServe(servedCount, alreadyServing) → may this page become one more
@@ -465,7 +483,7 @@
   const api = {
     ICE_URL, DEFAULT_WORKER, WORKER_KEY, workerBase, POOL, FETCH_TIMEOUT_MS, RETRY_MAX_MS, P0_MS, P1_MS, MAX_SERVED,
     T_AUDIO, turnAudioSdp, turnVoiceParams,
-    reachable, pairStage, poolNeeded, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, MUTE_TAIL_MS, mixGain, mayServe, networkBridge, bridgeComponents,
+    reachable, pairStage, poolNeeded, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, MUTE_TAIL_MS, mixGain, carriesMix, mayServe, networkBridge, bridgeComponents,
     retryDelayMs, parseIce, createCredentials, askIce, freeTicket, TICKET_CREDS,
   };
   const GifOS = (root.GifOS = root.GifOS || {});
