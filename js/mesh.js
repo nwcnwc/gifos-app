@@ -2808,6 +2808,7 @@
         }
       let nd = this.hasCoord ? topo.pcDepth(this.coord.pc) : 0;
       if (netOn && netLab(gl) && gl === this.id) { const ch = R.at(ck(topo.down(this.coord))); if (ch != null && !R.sameGroup(R.labelOf(ch), gl, this)) nd = NET_DEAD; }   // I am this group's head and it has no room under me because my child row is another network's: the seeker counts these (another seat of the group refusing says nothing)
+      else if (netOn && netLab(gl) && this.hasCoord && this.coord.i === 0 && (() => { const o = R.ownerOf(this.id); return o != null && R.labelOf(o) === gl; })() && this.glabel !== gl) nd = NET_DEAD;   // ...and the same when the head handed the FIND down to me: I head its child row under another label (one whose seats the seeker may miss)
       this.noroomWhy = 'deep'; this.emit(mm.nc, { t: 'NOROOM', nd });
     }
     // Column j of this head's row is a densify slot the mover can still leave.
