@@ -30425,12 +30425,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const inCall = !(lob && lob.classList.contains('show'));
       const away = document.body.classList.contains('chrome-away');
       row.hidden = !inCall;
-      const over = inCall ? placeCallState(row) : -1;
-      const cap = inCall ? capCallState(row) : '';
-      // Beside the dock, only the part above the dock's top stacks under
-      // captions and the chat line.
-      const stateH = (!away && inCall && row.offsetHeight) ? (over >= 0 ? over : row.offsetHeight) : 0;
-      document.documentElement.style.setProperty('--stateh', stateH + 'px');
+      const bar = document.querySelector('.bar');
+      // More hides this row (display:none). Captions repaints before the
+      // sheet folds, and a 0 height then parks the caption on Live.
+      const covered = !!(bar && !bar.classList.contains('collapsed'));
+      let over = -1, cap = '', stateH = 0;
+      if (!covered) {
+        over = inCall ? placeCallState(row) : -1;
+        cap = inCall ? capCallState(row) : '';
+        // Beside the dock, only the part above the dock's top stacks under
+        // captions and the chat line.
+        stateH = (!away && inCall && row.offsetHeight) ? (over >= 0 ? over : row.offsetHeight) : 0;
+        document.documentElement.style.setProperty('--stateh', stateH + 'px');
+      }
       if (!inCall) return;
       const recOn = recBtn.classList.contains('on') || (recBtn.textContent || '').indexOf('Stop') === 0;
       rec.classList.toggle('on', recOn);
@@ -30438,6 +30445,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       rec.textContent = recOn ? 'Recording' : 'Record';
       if (typeof paintCcView === 'function') paintCcView();
       try { if (typeof refreshTrBtn === 'function') refreshTrBtn(); } catch (e) {}
+      if (covered) return;
       const key = row.offsetHeight + ':' + (row.hidden ? '0' : '1') + ':' + over + ':' + cap;
       if (key !== callStateBox) {
         callStateBox = key;
@@ -30501,6 +30509,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           try { const rd = document.getElementById('rundown'); if (rd) rd.classList.remove('open'); } catch (e) {}
           try { const ly = document.getElementById('lyrics'); if (ly) ly.classList.remove('open'); } catch (e) {}
         }
+        // The fold is what shows Live again. Measure it after the class
+        // changes, not while More still hides the row.
+        try { paintCallState(); } catch (e) {}
       }
       toggle.onclick = function () {
         const next = !bar.classList.contains('collapsed'); apply(next);
