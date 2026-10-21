@@ -8035,9 +8035,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // guard, and perfect negotiation absorbs a rare double-rebuild
           if (nowHb - basePid - asleep < 12000) { why('fresh'); continue; }
           if (nowHb - (p.meshKickAt || 0) < 30000) { why('throttled'); continue; }
-          // A pair dialled through TURN a few seconds ago is still forming,
-          // however long its far end has been in the room.
-          if (turnForming(p, nowHb)) { why('turnform'); continue; }
           // A paused radio or a frozen tab goes quiet while the data channel
           // is still open. That silence is not a death: closing the pair
           // forces a full re-knock when they return, and the channel would
@@ -17046,20 +17043,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // request is the peer back with no pair. Waiting it out held a returning
     // member off a newcomer until the next re-offer, seconds later.
     const LOST_OFFER_MS = 1000;
-    // A pair built through TURN forms slower than a direct one: the
-    // allocation comes first, then the relayed checks, and every rebuild is
-    // a new server session. The door, a dial request and the starve sweep
-    // leave such a pair this long to connect before they restart it.
-    const TURN_FORM_MS = 10000;
-    function turnForming(p, now) {
-      return !!(p && (p.turnAnchor || p.turnMine) && !p.connected && p.pc && now - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < TURN_FORM_MS
-        && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed');
-    }
     function onDialRequest(p) {
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
       const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer');
       const darkOffer = unanswered && (tlFiredPid.has(p.id) || (p.offerSentPc === p.pc && Date.now() - (p.offerSentAt || 0) >= LOST_OFFER_MS));
-      const forming = !pLive && p.pc && !darkOffer && (Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 || turnForming(p, Date.now())) && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
+      const forming = !pLive && p.pc && !darkOffer && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000 && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed';
       if (typeof clog === 'function') clog('dial-request from ' + String(p.id || '?').slice(0, 6) + ' solo=' + (participantCount() <= 1) + ' live=' + !!pLive
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
         + ' age=' + Math.round((Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
@@ -17120,8 +17108,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (manyDoors) clearDoorRetry(p); // the stretch above owns the pace once several doors are unanswered
       // Under the wire's four-second ask, so that ask is the redial.
       const fewDoorWait = 3500;
-      // A door dialled through TURN gets longer (turnForming).
-      const wait = (p && (p.turnAnchor || p.turnMine)) ? TURN_FORM_MS : (p && p.neverUp === true) ? (manyDoors ? (p.dialWait || 5000) : fewDoorWait) : 5000;
+      // A door dialled through the free audio pool gets longer: the TURN
+      // allocation comes first, and every rebuild is a new session.
+      const wait = (p && p.turnAnchor) ? 10000 : (p && p.neverUp === true) ? (manyDoors ? (p.dialWait || 5000) : fewDoorWait) : 5000;
       if (p && p.pc && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < wait && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed') {
         if (!manyDoors) armDoorRetry(pid, p); // forming: its turn is not yet, but the four-second retry stays armed
         return;
