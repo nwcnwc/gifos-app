@@ -125,8 +125,16 @@
       const b = doc.body;
       const words = !!(o.words && b && !b.classList.contains('has-app')
         && !b.classList.contains('solo-app') && !b.classList.contains('app-room'));
-      if (words) btn.textContent = word;
-      else btn.innerHTML = glyph(on);
+      // Rewrite the contents only when what they show changes. run.html calls
+      // paint() on every body class write, and a press writes one (meet-awake):
+      // replacing the svg under the pointer between pointerdown and mouseup
+      // makes Chromium drop the click, so the button did nothing.
+      const face = (words ? 'w:' + word : 'g:') + (on ? 1 : 0);
+      if (btn.dataset.fsFace !== face) {
+        if (words) btn.textContent = word;
+        else btn.innerHTML = glyph(on);
+        btn.dataset.fsFace = face;
+      }
       btn.title = word;
       btn.setAttribute('aria-label', btn.title);
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
