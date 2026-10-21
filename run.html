@@ -24209,6 +24209,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const stgPath = (f) => ((f && f.meta && Array.isArray(f.meta.vp)) ? f.meta.vp : []).concat(vpId(myId)).slice(-STG_VP_MAX);
     const stgLoopsBack = (key, ann) => typeof key === 'string' && key.indexOf('stg:') === 0 && !!ann && Array.isArray(ann.vp) && ann.vp.indexOf(vpId(myId)) >= 0;
     const mxPath = (v) => (Array.isArray(v) && v.length <= STG_VP_MAX && v.every((x) => typeof x === 'string' && x.length <= 10)) ? v.slice() : undefined;
+    // A STAGE FEED LIVES ONLY WHILE ITS OWNER IS ON THE STAGE. The path guard
+    // above judges a copy by the path its announce names, and announces trail
+    // the claims they describe. When a stager steps down, every seat that held
+    // the feed loses its source at once and takes another seat's re-flood in
+    // the same beat, each on an announce that predates the other's switch: a
+    // ring of two or three seats, nobody fed by the stager, re-encoding the
+    // last voice it held. The ear does not play an off-stage feed, so the ring
+    // is silent until the same person is called up again; then the ring's copy
+    // is the claim every seat already holds, and the room hears the voice from
+    // before the step-down (muted on stage, yet audible) or the ring's silence
+    // (unmuted, unheard) until the path guard catches up, which on a busy
+    // device takes seconds. So the stage set the ear uses gates the whole
+    // lane: a seat holds no claim of an off-stage owner's feed, relays none,
+    // and drops any ship of one at once. A call-up starts from the stager's
+    // own fresh flood with nothing stale to choose.
+    const stgOwnerOf = (k) => (typeof k === 'string' && k.indexOf('stg:') === 0) ? k.slice(4).split('^')[0] : null;
+    const stgOffStage = (k, onStage) => { const o = stgOwnerOf(k); return !!o && !onStage.has(o); };
     // Send a want/idle demand to a redundant feed's announcer, debounced so the
     // message only rides the DC on a state flip — but RE-ASSERTED every few
     // seconds even without one: a demand that raced a closed DC or a transport
@@ -24937,7 +24954,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const keep = structuralSeen.has(rk) && mosLive(cur.via, cur.streamId);
         if (structuralClaimGrace(cur, keep, nowA, MOS_GRACE)) dropMosIn(rk);
       }
-      for (const [rk, arr] of redun) claimRedun(rk, arr);
+      const onStage = new Set(stageIds());
+      for (const [rk, arr] of redun) {
+        if (stgOffStage(rk, onStage)) { dropOffStageClaim(rk); continue; }
+        claimRedun(rk, arr);
+      }
+    }
+    // A stage claim whose owner left the stage set: primary, standby and
+    // failover state go together, so nothing of the old feed is left to win
+    // the next call-up (see stgOffStage).
+    function dropOffStageClaim(rk) {
+      const had = mosIn.has(rk);
+      dropMosIn(rk); dropStandby(rk); mosFb.delete(rk);
+      if (had) repaintRedun(rk, null);
     }
     // A packed mosaic's tile takes the SHAPE of its content: the packer sizes
     // its canvas to the gapless grid (k×1 bar, near-square frame), so the tile
@@ -25618,7 +25647,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // per-stager key); at S1 they FLOOD the row+cross mesh (dedup by streamId,
       // exactly like mesh gossip) so every S1 seat holds every stager; each S1
       // seat composites the strip itself and fans it down the SAME tree as 'sd'.
-      const heldStg = [...mosIn.keys()].filter((k) => k.indexOf('stg:') === 0);
+      const onStageSet = new Set(stagers);
+      const heldStg = [...mosIn.keys()].filter((k) => k.indexOf('stg:') === 0 && !stgOffStage(k, onStageSet)); // relay only an on-stage owner's feed (stgOffStage)
       if (c.pc !== 0 && stripPack) { stripPack.stop(); stripPack = null; } // role-change hygiene: left Section 1
       if (c.pc !== 0) {
         // relay every stage feed I hold (and my own) UP toward Section 1, plus a
@@ -25824,6 +25854,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const [jk, job] of [...mosJobs]) {
         if (wanted.has(jk)) { job.unwantedAt = 0; continue; }
         if (!peers.has(job.to)) { unshipMos(jk, true); continue; }
+        // An off-stage owner's feed is no flicker: the stage set has its own
+        // holdover (stageIds). Lingering, the ship keeps re-encoding what it
+        // last held, and that is how a ring outlives the step-down.
+        if (stgOffStage(job.key, onStageSet)) { unshipMos(jk, true); continue; }
         if (!job.unwantedAt) job.unwantedAt = nowU;
         else if (nowU - job.unwantedAt > MOS_GRACE) unshipMos(jk, true);
       }
