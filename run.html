@@ -10107,7 +10107,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const cs = getComputedStyle(win);
         const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
         const padB = parseFloat(cs.paddingBottom) || 0;
-        const above = Math.max(0, split.getBoundingClientRect().top - win.getBoundingClientRect().top);
+        // The window grows out of the tile with a scale transform for .28 s,
+        // and this runs inside it (rAF, loadedmetadata). A screen-px measure
+        // then reads the head and help lines short and the pad overflows the
+        // card (UI-1052, 353 vs 344). Measure in layout px: undo the scale.
+        const wr = win.getBoundingClientRect();
+        const sy = win.offsetHeight > 0 && wr.height > 0 ? wr.height / win.offsetHeight : 1;
+        const above = Math.max(0, (split.getBoundingClientRect().top - wr.top) / sy);
         // A few pixels of slack: the help line can wrap after this measure, and
         // a pad that ends in the padding makes the card report a scroll.
         const maxH = Math.max(80, Math.floor(win.clientHeight - above - padB - 8));
