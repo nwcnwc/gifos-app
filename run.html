@@ -2824,6 +2824,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     z-index: 7; border-radius: 16px; border: 2px solid #fff; overflow: hidden; cursor: grab; touch-action: none;
     box-shadow: 0 12px 28px rgba(0,0,0,.45); }
   body.comfy .comfy-off { display: none !important; }
+  /* A cross-row face is the stadium's picture, and its grid tile is not in
+     the row. display:none kept that tile at videoWidth 0 for the whole call
+     (Jamal, 2026-10-21). A 2px on-screen tile still decodes, the same way
+     the mosaic decoder does; the row layout skips data-stadpark. */
+  body.comfy .tile[data-stadpark="1"] {
+    position: fixed !important; left: 0 !important; bottom: 0 !important; top: auto !important;
+    width: 2px !important; height: 2px !important; margin: 0 !important;
+    display: block !important; opacity: 0.01 !important; overflow: hidden !important;
+    pointer-events: none !important; z-index: -1 !important;
+  }
+  body.comfy .tile[data-stadpark="1"] > video {
+    width: 2px !important; height: 2px !important; opacity: 0.01 !important;
+  }
   /* A camera on the Stage holds this seat. The picture is only on the Stage:
      no video and no letter here, and the seat stays so nobody shifts into it. */
   body.comfy .tile.seat-held > video { visibility: hidden !important; opacity: 0 !important; }
@@ -9830,7 +9843,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const [pid, p] of peers) {
         if (p && p.held) { shown[pid] = true; continue; }
         if (!p || p.headless || !p.tile) continue;
-        if (p.tile.style.display !== 'none') shown[pid] = true;
+        if (p.tile.style.display !== 'none' && !(p.tile.dataset && p.tile.dataset.stadpark)) shown[pid] = true;
       }
       const out = [], seen = {};
       const push = (id) => {
@@ -9889,7 +9902,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             speaker: !myStatus.bot && !!(speakingOf && speakingOf.get && speakingOf.get('me')), pz: 'peer:me' });
         }
         for (const [pid, p] of peers) {
-          if (!p || !p.tile || p.headless || p.held || p.tile.style.display === 'none') continue;
+          if (!p || !p.tile || p.headless || p.held || p.tile.style.display === 'none' || (p.tile.dataset && p.tile.dataset.stadpark)) continue;
           const st = statusOf.get(pid) || {};
           const si = stg.indexOf(pid);
           const bot = !!st.bot;
@@ -14229,7 +14242,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const cc = net.topo.unck(k);
       return cc.pc === c.pc && cc.r === c.r;
     }
-    const camPeer = (pid) => isRowMate(pid);
+    // Row-mates always get the raw camera. A small room also keeps it on the
+    // cross-row link: that tile is how the other row's face is decoded, and
+    // parking it at replaceTrack(null) left Jamal ended at videoWidth 0
+    // (2026-10-21). Past six people the stadium composite is the picture.
+    const camPeer = (pid) => isRowMate(pid) || participantCount() <= 6;
     // ---- mesh early-probe intake (healing-laws D5) --------------------------
     // Transport death is MY first-hand evidence: when my DataChannel to a peer
     // closes, or its pc lands in a hard state ('closed', or 'failed' persisting
@@ -15942,10 +15959,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           continue;
         }
         const k = coordOfPeer.get(pid);
-        if (!k) { paintDisp(p.tile, ''); continue; } // unknown coord ⇒ show
+        if (!k) { if (p.tile.dataset) delete p.tile.dataset.stadpark; paintDisp(p.tile, ''); continue; } // unknown coord ⇒ show
         const cc = net.topo.unck(k);
         const rowMate = cc.pc === c.pc && cc.r === c.r; // same section + row (≠ me)
-        paintDisp(p.tile, rowMate ? '' : 'none');
+        // A non-row-mate stays a stadium face, not a row tile. Parking the
+        // tile with display:none also stopped its camera from decoding, so
+        // the probe read videoWidth 0 even after the sender was still live.
+        // The 2px tile decodes; the stadium roster treats stadpark as absent.
+        if (rowMate) {
+          if (p.tile.dataset) delete p.tile.dataset.stadpark;
+          paintDisp(p.tile, '');
+        } else {
+          let comfy = false;
+          try { comfy = !!(meTile && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.comfyAllowed(document.body)); } catch (e) {}
+          if (comfy) { if (p.tile.dataset) p.tile.dataset.stadpark = '1'; paintDisp(p.tile, ''); }
+          else { if (p.tile.dataset) delete p.tile.dataset.stadpark; paintDisp(p.tile, 'none'); }
+        }
       }
     }
 
@@ -17791,9 +17820,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Nothing on this pc revives that track. Two samples 4s apart with
         // frames decoded and none shown: rebuild the pair; the far side
         // takes a new fingerprint as a new pc (the NEW-PC RULE).
-        if (p.connected && !document.hidden && p.stream && !p.relayed && p.video && p.video.srcObject === p.stream
-            && !p.video.paused && p.video.readyState === 0 && mediaOk(pid) !== false && now - (p.sinkRebuiltAt || 0) > 30000) {
-          const vtr = p.stream.getVideoTracks()[0];
+        // sinkRebuiltAt does not gate this. The 30s pause used to sit here so a
+        // rebuild could not loop; it also ate the fresh pc's quiet re-seats, and
+        // that pc's tile is bound onto a track that is already flowing (the
+        // same WebKit element that never starts). The rebuild stays once
+        // (p.sinkRebuilt). The holds keep running.
+        if (p.connected && !document.hidden && p.stream && !p.relayed && p.video && (p.video.srcObject === p.stream || p.video._wrapOf === p.stream)
+            && !p.video.paused && p.video.readyState === 0 && mediaOk(pid) !== false) {
+          let vtr = null;
+          if (p.stream.getVideoTracks) for (const t of p.stream.getVideoTracks()) if (t.readyState !== 'ended') vtr = t;
           const rx = vtr && vtr.readyState === 'live' && p.pc.getReceivers().find((r) => r.track === vtr);
           if (rx) {
             const pc0 = p.pc;
@@ -17804,9 +17839,84 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               if (p.pc !== pc0 || t - prev.at < 4000) return;
               p.sinkProbe = { fd, at: t, pc: pc0 };
               if (fd - prev.fd < 3) return;
-              if (p.video.readyState !== 0 || p.video.paused || p.video.srcObject !== p.stream || document.hidden) return;
-              p.sinkRebuiltAt = t; p.sinkProbe = null;
-              if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown: rebuild');
+              if (p.video.readyState !== 0 || p.video.paused || (p.video.srcObject !== p.stream && p.video._wrapOf !== p.stream) || document.hidden) return;
+              // NOT A REBUILD FIRST, AND NEVER A REBUILD LOOP. On Safari/WebKit
+              // this signature is the ELEMENT, not the pc: a player bound to a
+              // track that is already flowing never starts, on this pc and on
+              // every fresh one (hard-bugs-1019-1108 bug 2: a WebKit seat
+              // rebuilt its pair to the stadium's announcer every 30 s, each
+              // rebuild re-delivered the composites onto decoders that could not
+              // start, every face was a letter and the page crashed). So: ask
+              // the sender for a HELD re-seat (vkick hold: it parks the camera,
+              // we re-bind the tile while nothing flows, it resumes — the cure
+              // the mosaic decoders use), twice. Only then the pair is rebuilt,
+              // ONCE: Chromium's dead sink (06c) is cured by one rebuild, and a
+              // fresh pc that shows the same signature proves the pc was never
+              // the problem. The count resets when the tile paints.
+              p.sinkProbe = null;
+              if ((p.sinkKicks || 0) < 2) {
+                if (t - (p.sinkKickAt || 0) < 8000) return;
+                p.sinkKicks = (p.sinkKicks || 0) + 1; p.sinkKickAt = t;
+                if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown: held re-seat ' + p.sinkKicks);
+                visParkSent.set(pid, false);
+                dcSend(p, { k: 'vis', park: false });
+                dcSend(p, { k: 'vkick', hold: 2500 });
+                // A SAME-ELEMENT re-bind during the quiet gap does not start
+                // this tile (measured 2026-10-21: framesDecoded froze for ~2s,
+                // bind count rose, readyState stayed 0 after the resume). The
+                // element is the thing that is stuck. Swap in a new one once
+                // the video track is actually quiet — muted, or no new decoded
+                // frame for 400ms — and play the same stream into it, before
+                // the hold resumes at 2.5s. A swap onto a track that is still
+                // flowing is the failure the park exists to avoid.
+                const st0 = p.stream;
+                const trackNow = () => {
+                  const ts = st0.getVideoTracks ? st0.getVideoTracks() : [];
+                  let live = null;
+                  for (const t of ts) if (t.readyState !== 'ended') live = t;
+                  return live || ts[0] || null;
+                };
+                let swapped = false, lastFd = null, stillSince = 0;
+                const swapQuiet = (why) => {
+                  if (swapped || p.stream !== st0) return;
+                  const old = p.video;
+                  if (!old || !old.parentNode) return;
+                  swapped = true;
+                  const v = document.createElement('video');
+                  v.autoplay = true; v.playsInline = true; v.muted = true;
+                  v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
+                  if (old._aud) v._aud = old._aud;
+                  if (old._gmute != null) v._gmute = old._gmute;
+                  old.parentNode.insertBefore(v, old);
+                  try { old.srcObject = null; } catch (e) {}
+                  old.remove();
+                  p.video = v;
+                  playTileVideo(v, st0);
+                  if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' quiet swap ' + why);
+                };
+                const tr0 = trackNow();
+                const onMute = () => swapQuiet('mute');
+                if (tr0) tr0.addEventListener('mute', onMute);
+                const quietIv = setInterval(() => {
+                  const tr = trackNow();
+                  if (!tr || tr.muted || tr.readyState !== 'live') { swapQuiet('mute'); return; }
+                  const rx = p.pc && p.pc.getReceivers && p.pc.getReceivers().find((r) => r.track === tr);
+                  if (!rx || !rx.getStats) return;
+                  rx.getStats().then((st) => {
+                    if (swapped || p.stream !== st0) return;
+                    let fd = 0; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
+                    const now = Date.now();
+                    if (lastFd === null || fd !== lastFd) { lastFd = fd; stillSince = now; return; }
+                    if (now - stillSince >= 400) swapQuiet('stall');
+                  }).catch(() => {});
+                }, 200);
+                setTimeout(() => { clearInterval(quietIv); if (tr0) tr0.removeEventListener('mute', onMute); }, 2200);
+                return;
+              }
+              if (p.sinkRebuilt) return;
+              p.sinkRebuilt = true; p.sinkRebuiltAt = t;
+              p.sinkKicks = 0; p.sinkKickAt = 0; // the fresh element needs its own quiet re-seats; the rebuild does not repeat
+              if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown after re-seats: rebuild (once)');
               newPcFor(p);
               sendOffer(pid, false);
             }).catch(() => {});
@@ -22487,7 +22597,40 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pid = tile && tile.dataset && tile.dataset.peer;
       if (pid && pid !== myId && typeof mediaOk === 'function' && mediaOk(pid) === false) return;
       try { video.muted = true; } catch (e) {}
-      if (video.srcObject !== stream) video.srcObject = stream;
+      // Chromium paints the peer stream itself. A fresh MediaStream of one
+      // remote track left the packer's drawImage source at videoWidth 0, so
+      // the other row's cell in the stadium stayed black (Jamal, 2026-10-21).
+      // WebKit is the opposite: the peer stream had already held an ended
+      // track, and WebKit will not connect the replacement to an element
+      // still pointing at that same stream. A new MediaStream of the current
+      // live video track is a picture that element can start. Sound stays on
+      // the companion, which plays the peer stream.
+      const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
+      const webkitTile = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg\//.test(ua);
+      if (!webkitTile) {
+        video._wrapOf = null; video._followId = '';
+        if (video.srcObject !== stream) video.srcObject = stream;
+        const pr0 = video.play(); if (pr0 && pr0.catch) pr0.catch(() => {});
+        return;
+      }
+      if (!stream._picWatch) {
+        stream._picWatch = true;
+        stream.addEventListener('addtrack', (ev) => {
+          if (!ev.track || ev.track.kind !== 'video') return;
+          for (const q of peers.values()) if (q.stream === stream && q.video) playTileVideo(q.video, stream);
+        });
+      }
+      let tr = null;
+      if (stream.getVideoTracks) for (const t of stream.getVideoTracks()) if (t.readyState !== 'ended') tr = t;
+      if (tr && video._followId === tr.id && video.srcObject && video._wrapOf === stream) {
+        if (video.paused || video.readyState === 0) { const pr = video.play(); if (pr && pr.catch) pr.catch(() => {}); }
+        return;
+      }
+      const pic = tr ? new MediaStream([tr]) : stream;
+      video._wrapOf = stream;
+      video._followId = tr ? tr.id : '';
+      video.autoplay = true;
+      if (video.srcObject !== pic) video.srcObject = pic;
       const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
     }
     // A mic that was off when its stage sender was built keeps sending
