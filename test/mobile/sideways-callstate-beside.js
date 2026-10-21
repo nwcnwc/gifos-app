@@ -12,6 +12,8 @@
  * 44px, read in full, and are the thing a tap on them hits. The "↓2" hint
  * hangs in the fifth face's corner; a long fifth name ("Fellowship Hall
  * iPad") ran under it, so that name now wraps clear of the hint.
+ * Since Nathan's 2026-10-19 change Captions is in More (Talk): Record stands
+ * beside the dock alone, small, and clear of the header.
  *
  * Gate: NODE_PATH=/home/nathan/gifos-swarm/node_modules node test/mobile/sideways-callstate-beside.js
  */
@@ -70,10 +72,13 @@ function look(page) {
         under: !!vis && [br, ...btns.map(R)].some((c) => meet(vis, c)),
       });
     }
+    const head = ['appinvite', 'apphelp', 'appfull'].map((id) => document.getElementById(id)).filter((h) => h && h.offsetParent).map(R);
+    out.ccOnCall = !!document.getElementById('call-cc');
     for (const b of btns) {
       const r = R(b);
       const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
       out.btns.push({
+        id: b.id, onHead: head.some((h) => meet(r, h)),
         text: b.textContent.trim(), h: Math.round(r.height), w: Math.round(r.width),
         onScreen: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight,
         full: b.scrollWidth <= b.clientWidth + 1,
@@ -125,7 +130,8 @@ function look(page) {
       if (t.whole && !t.nameTop && !t.under) bad.push(dev + ': ' + t.name + '\'s name is covered');
       if (t.nameOnMax) bad.push(dev + ': ' + t.name + '\'s name runs over Full screen');
     }
-    if (a.btns.length !== 2) bad.push(dev + ': ' + a.btns.length + ' Record/Captions buttons shown, want 2');
+    if (a.ccOnCall) bad.push(dev + ': Captions is a button on the call (it lives in More)');
+    if (a.btns.length !== 1 || a.btns[0].id !== 'call-rec') bad.push(dev + ': ' + a.btns.map((b) => b.text).join('/') + ' shown beside the dock, want Record alone');
     for (const b of a.btns) {
       if (!b.onScreen) bad.push(dev + ': ' + b.text + ' is off the screen');
       if (b.h < 44 || b.w < 44) bad.push(dev + ': ' + b.text + ' is ' + b.w + 'x' + b.h);
@@ -133,16 +139,19 @@ function look(page) {
       if (!b.top) bad.push(dev + ': something lies over ' + b.text);
       if (b.onDock) bad.push(dev + ': ' + b.text + ' lies on the dock');
       if (!b.beside) bad.push(dev + ': ' + b.text + ' takes a row above the dock');
+      if (b.onHead) bad.push(dev + ': ' + b.text + ' covers the header');
+      if (b.w > 140) bad.push(dev + ': ' + b.text + ' is a wide pill (' + b.w + 'px)');
     }
-    // Captions still turns captions on from where it now stands.
-    const cc = page.locator('#call-cc');
-    const ccb = await cc.boundingBox();
-    if (ccb) {
-      await page.touchscreen.tap(ccb.x + ccb.width / 2, ccb.y + ccb.height / 2);
+    // Record still opens the record sheet from where it now stands.
+    const rb = await page.locator('#call-rec').boundingBox();
+    if (!rb) bad.push(dev + ': no Record to tap');
+    else {
+      await page.touchscreen.tap(rb.x + rb.width / 2, rb.y + rb.height / 2);
       await page.waitForTimeout(300);
-      const on = await cc.getAttribute('aria-pressed');
-      if (on !== 'true') bad.push(dev + ': a tap on Captions did not turn captions on');
-      await page.touchscreen.tap(ccb.x + ccb.width / 2, ccb.y + ccb.height / 2);
+      const open = await page.evaluate(() => { const el = document.getElementById('rec-options'); return !!el && getComputedStyle(el).display !== 'none'; });
+      if (!open) bad.push(dev + ': a tap on Record did not open the record sheet');
+      const cancel = page.locator('#ro-cancel');
+      if (await cancel.count()) await cancel.tap().catch(() => {});
     }
     await context.close();
   }
@@ -155,5 +164,5 @@ function look(page) {
     console.error('FAIL ' + bad.join('; '));
     process.exit(1);
   }
-  console.log('PASS a sideways phone shows every face with Record and Captions beside the dock');
+  console.log('PASS a sideways phone shows every face with Record beside the dock');
 })().catch((e) => { console.error(e); process.exit(1); });

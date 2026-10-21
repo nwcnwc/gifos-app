@@ -43,8 +43,11 @@ const PEOPLE = [
     if (await skip.count()) await skip.tap().catch(() => {});
     await page.evaluate((people) => window.__gifosVideo.presentPeers(people), PEOPLE);
     await page.waitForTimeout(400);
-    // Captions show only on a screen that turned CC on (a801ad4).
-    await page.locator('#call-cc').tap();
+    // Captions show only on a screen that turned CC on (a801ad4). The switch
+    // is in More (Talk); it folds the sheet.
+    await page.locator('#bartoggle').tap();
+    await page.locator('#ccbtn').scrollIntoViewIfNeeded();
+    await page.locator('#ccbtn').tap();
     await page.waitForTimeout(150);
     await page.evaluate((line) => window.__gifosVideo.addTranscript(line), LINE);
     await page.waitForTimeout(400);
