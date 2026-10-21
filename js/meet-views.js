@@ -96,7 +96,7 @@
 
   // Faces stop where the call's buttons start. A shared screen and an app
   // stay full-bleed. Desktop has no call-state row (it is display:none).
-  function reserveCallChrome(feed, opts, header) {
+  function reserveCallChrome(feed, opts, header, tiles) {
     if (!feed || !feed.style) return 0;
     const doc = feed.ownerDocument || document;
     const body = doc.body;
@@ -104,6 +104,8 @@
     if (skip) { feed.style.bottom = ''; return 0; }
     const view = doc.defaultView || root;
     const vh = +opts.vh || (view && view.innerHeight) || 0;
+    const vw = +opts.vw || (view && view.innerWidth) || 0;
+    if (sidewaysFill(tiles, vw, vh, header, !!opts.phone)) { feed.style.bottom = ''; return 0; }
     const away = body && body.classList && body.classList.contains('chrome-away');
     if (!away) {
       const note = doc.getElementById('chatnote');
@@ -124,6 +126,23 @@
     const reserve = Math.ceil(vh - top);
     feed.style.bottom = reserve + 'px';
     return reserve;
+  }
+
+  // A wide sideways phone (844x390, a Pixel 7 at 915x412) whose faces fit
+  // in one row as tall as the band under the header: the faces fill the
+  // height and the dock, Record and Captions float over them. Stopping at
+  // Record left two square faces over 107px of black. A narrow one (an SE
+  // at 667x375) and a crowd that needs a second row keep the edge.
+  function sidewaysFill(tiles, vw, vh, header, phone) {
+    if (!phone || !(vh < 500) || !(vw > 700) || !(vw > vh)) return false;
+    let n = 0;
+    for (let i = 0; i < (tiles ? tiles.length : 0); i++) {
+      const t = tiles[i];
+      if (t.tier === 'stad' || t.stage || t.share) return false;
+      n++;
+    }
+    const band = vh - header;
+    return n > 0 && n * band + (n - 1) * 4 <= vw - 4;
   }
 
   function placeEl(el, r) {
@@ -546,7 +565,7 @@
     // or the chat preview. That bottom is the shown edge, so a tuck does
     // not resize the faces.
     const header = reserveHeader(feed, opts);
-    const chrome = reserveCallChrome(feed, opts, header);
+    const chrome = reserveCallChrome(feed, opts, header, tiles);
     const cut = header + chrome;
     const box = cut > 0 ? Object.assign({}, box0, { y: 0, h: Math.max(1, box0.h - cut) }) : box0;
     const MZ = GifOS.meetZones;

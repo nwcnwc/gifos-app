@@ -30414,6 +30414,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const word = toggle.querySelector('.docklab');
         if (word) word.textContent = collapsed ? uiText('more', 'More') : uiText('hide', 'Hide');
         try { seatUseRow(); } catch (e) {}
+        // An upright phone shows the whole sheet when it fits above the
+        // dock (a guest's 577px sheet, Settings and Keys included: LM-44).
+        // A host's longer sheet would reach the top of the call, so it
+        // keeps two rows on the first screen and the rest scrolls.
+        if (!collapsed) {
+          const sheet = document.getElementById('barmore');
+          bar.classList.remove('more-rows');
+          const upright = window.matchMedia && matchMedia('(max-width: 700px) and (orientation: portrait)').matches;
+          if (sheet && upright && sheet.scrollHeight > sheet.clientHeight + 2) bar.classList.add('more-rows');
+        }
         // Opening More covers the Run of show / lyrics cards so every
         // dock stand-in on the sheet is fully visible (Pixel 7 host dock).
         if (!collapsed) {
