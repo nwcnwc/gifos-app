@@ -343,6 +343,12 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   .bar:not(.collapsed) #barmore .dockmore {
     min-height: 48px; height: auto; font-size: 12px; padding: 4px; border-radius: 10px;
   }
+  /* Settings text size scales the root. A fixed 12px stayed 12px at 200%. */
+  html.ui-large .bar:not(.collapsed) #barmore .morerow > button,
+  html.ui-large .bar:not(.collapsed) #barmore .dockmore,
+  html.ui-large .bar:not(.collapsed) #barmore .morerow > .iconbtn .docklab.dockword {
+    font-size: 1rem;
+  }
   .bar:not(.collapsed) #barmore .morerow > .iconbtn .docklab.dockword { font-size: 12px; font-weight: 650; }
   .bar:not(.collapsed) .barmore .seg { min-height: 36px; min-width: 36px; font-size: 13px; }
   /* A wrapped alert grew this line over the top row and covered Open.
@@ -525,6 +531,11 @@ body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appfull {
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
   font-size: 13px; font-weight: 600; font-style: normal; line-height: 1.15; letter-spacing: 0;
   text-align: center; white-space: normal; overflow: hidden; cursor: pointer;
+}
+/* A fixed 13px stayed 13px at 200%. 1rem follows the root, and the word keeps its width. */
+html.ui-large body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appinvite {
+  font-size: 1rem; line-height: 1; flex: 1 0 auto; width: auto; min-width: max-content;
+  white-space: nowrap;
 }
 @media (min-width: 701px) and (min-height: 501px) {
   body:not(.has-app):not(.solo-app):not(.app-room) { --osw: 440px; }
