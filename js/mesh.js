@@ -547,6 +547,7 @@
       this.netTested = null; this.netProbeWaitFrom = 0;   // the last door test, for the debug view: [id, reached 0/1, label, the view's reason, ticks since the links opened] per seated ring member it tested (at most the ring)
       this.netProbeAt = -1; this.netProbeIds = null;   // the door test: the tick I asked the view to open links to the ring (and to whom); the decision waits for them, NET_PROBE ticks at most
       this.bcDead = 0; this.bcDeadAt = -1;   // refusals saying my group has no room under its head (its child row is another network's); three of them over NET_DEAD_WAIT ticks make me head a second subnet
+      this.regroupAt = -1;         // first tick an anchored single has directly reached a seated group member: held NET_REGROUP ticks, it rejoins through the door (netRegroup)
       this.ringMixed = false;      // my ring test saw a seat I do not reach (more than one network in this room)
       this.darkLeft = new Map();   // cell -> the peer whose knock at my door said it left that cell (held across a dark link)
       this.roster = []; this.haveRoster = false; this.lastGreeters = [];
@@ -5160,6 +5161,7 @@
         if (TICK >= this.xlinkAt) { this.xlinkAt = TICK + 150 + (this.rng() * 100 | 0); for (const cm of topo.colMates(this.coord)) if (this.occGet(ck(cm)) == null) this.routeTo(cm, 1); }
         if (this.s1CheckAt < 0) this.s1CheckAt = TICK + E3_PERIOD + (this.rng() * E3_PERIOD | 0);
         if (TICK >= this.s1CheckAt) { this.s1CheckAt = TICK + E3_PERIOD + (this.rng() * E3_PERIOD | 0); this.emitRelay(this.genKey); } // E3 re-knock: Section-1 seats ARE the greeter pool
+        this.netRegroup(); // an anchored single parked in a Section-1 host row rejoins its group once it reaches it
         this.wake(); return;
       }
       if (TICK - this.lastPhone >= 8) { this.lastPhone = TICK; this.rollup(); this.phoneHome(); this._gspRefan(); } // § G: ONE fold per node per period (<= C reports in, ONE out), then the beat carries it up
@@ -5236,8 +5238,31 @@
       let ancDead = false;
       if (this.hasCoord) { if (this.coord.i !== 0) ancDead = this.occGet(ck({ pc: this.coord.pc, r: this.coord.r, i: 0 })) == null; else { const anc = this.ownerCoord(); if (anc) ancDead = this.occGet(ck(anc)) == null; } }
       if (!didHeal && TICK - this.lastAck > 80 && (ancDead || TICK - this.lastAck > 220)) this.drainOrReenter();
-      else if (!didHeal) this.tryCompact(); // Q2: only when not draining/healing this tick — pack the tree upward when settled
+      else if (!didHeal) { this.tryCompact(); this.netRegroup(); } // Q2: only when not draining/healing this tick — pack the tree upward when settled
       this.wake();
+    }
+    // Rule 8's second half: a seat ANCHORED over the pool (its door test
+    // reached nobody) rejoins through the door once it holds a direct path to
+    // a seated, settled member of a group for NET_REGROUP ticks — the door
+    // test then finds the group and seats it in its own rows. A parked single
+    // otherwise keeps a TURN link of its own forever: one label never leaves
+    // the host row, and the room pays one bridge per parked person instead of
+    // one per network (the cost law). Leaf-only, like compaction: vacating
+    // strands nobody.
+    netRegroup() {
+      if (!this.env.NET || !this.anchored || !this.hasCoord || this.state !== 3 || this.moving) return;
+      const R = this.env.NET;
+      let seen = false;
+      for (const s of R.o.seats()) {
+        if (!s || s.id === this.id || !s.alive || s.state !== 3 || !s.hasCoord || s.anchored) continue;
+        if (R.reach(this.id, s.id)) { seen = true; break; }
+      }
+      if (!seen) { this.regroupAt = -1; return; }
+      if (this.regroupAt < 0) { this.regroupAt = this.TICK; return; }
+      if (this.TICK - this.regroupAt < NET_REGROUP) return;
+      if (this.hasChildren()) return;   // a parent waits; the heal would churn its row
+      this.regroupAt = -1;
+      this.requeue();
     }
     // Q2 — COMPACTION probe. A settled DEEP LEAF (childless: P — only leaves move,
     // so its departure strands nobody) periodically sends a probe UP its own ALIVE
@@ -5342,6 +5367,7 @@
   const NET_ROUND = 4;       // ticks one walk round costs (a signaling round trip through the door and the mesh)
   const NET_PROBE = 10;      // ticks the door test waits at most for the links it opened to the ring (the view's probe); it decides sooner once the view says every dialled pair has settled (o.probeDone)
   const NET_DEAD_WAIT = 300;    // ticks a labelled seeker is refused by its own head before it heads a second subnet (a dead end lasts; a refusal a heal or a move lifts clears sooner)
+  const NET_REGROUP = 12;       // ticks an anchored single must hold a direct path to a seated group member before it rejoins through the door (a flap rejoins nobody)
   const NET_HEAL_SETTLE = 12;   // ticks a healed bridge-end cell must hold its new seat before the standby hands the bridge back
   const NET_DEAD = 254;      // a NOROOM's nd: the seeker's own group has no room under its head (the head's child row is another network's)
   const netLab = (gl) => gl != null && gl !== NET_NONE && gl !== NET_OFF;
