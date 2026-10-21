@@ -478,10 +478,14 @@
       // reached me UNPROVEN (no channel names it). Ended by one link-proven frame.
       this.unp = new Map(); this.lkAnyAt = -1; this.unpAnyAt = -1;
       // Per owned-link cell, the last tick a channel named its occupant (D6).
-      // noChan: a peer whose channel died and stayed dead — not installed on an
-      // owned link again. darkHold: a cell we refused for that peer, so a heal
-      // does not treat the refusal as an empty chair.
-      this.lkAt = new Map(); this.unpAt = new Map(); this.noChan = new Set(); this.darkHold = new Map();
+      // unpSince: peer -> tick its current unproven streak started. A direct
+      // frame ends it; the next unproven beat starts another. A gap of more
+      // than 16 ticks starts one too. Silent ticks write nothing, so a sever
+      // does not advance it. noChan: a peer whose channel died and stayed
+      // dead — not installed on an owned link again. darkHold: a cell we
+      // refused for that peer, so a heal does not treat the refusal as an
+      // empty chair.
+      this.lkAt = new Map(); this.unpAt = new Map(); this.unpSince = new Map(); this.noChan = new Set(); this.darkHold = new Map();
       this.translost = new Map(); this.tlProbeAt = new Map(); this.probeAck = new Map(); this.tlLog = []; // [k, tick, why] — last 24 forgotten observations (forensics)
       // PRODUCTION EXTENSION (no sim counterpart — the sim's harness reads occ
       // directly every tick; the app samples it). d5Deaths: each probe-
@@ -876,7 +880,7 @@
       const x = m.id; if (x == null || x === this.id) return;
       const mine = this.hasCoord && this.state === 3 && m.coord && this.ownedLinkCell(ck(m.coord)) && this.occGet(ck(m.coord)) === x;   // D6: a beat from the seat I hold at one of my owned links
       if (this.linkIs(m, x)) {
-        this.unp.delete(x); this.noChan.delete(x);
+        this.unp.delete(x); this.noChan.delete(x); this.unpSince.delete(x);   // a direct frame ends the unproven streak
         if (mine) {
           this.lkAnyAt = this.TICK;
           const k = ck(m.coord);
@@ -888,7 +892,15 @@
       }
       if (mine) {
         this.unpAnyAt = this.TICK;
-        if (this.unpAt.size >= 64) this.unpAt.delete(this.unpAt.keys().next().value);
+        const prev = this.unpAt.get(x);
+        if (this.unpAt.size >= 64) {
+          const old = this.unpAt.keys().next().value;
+          this.unpAt.delete(old);
+          if (old !== x) this.unpSince.delete(old);
+        }
+        // First beat of a run, or the previous beat was a gap. Silence never
+        // writes unpAt, so a sever does not keep an old streak alive.
+        if (!this.unpSince.has(x) || prev === undefined || this.TICK - prev > 16) this.unpSince.set(x, this.TICK);
         this.unpAt.set(x, this.TICK);
       }
       if (this.unp.has(x)) return;
@@ -921,9 +933,12 @@
       }
       return proven > 0 && fresh === 0 && this.unpAnyAt >= 0 && this.TICK - this.unpAnyAt <= 16;
     }
-    // One owned link lost its channel; another channel is still up. The higher
-    // id vacates so the chair is really empty. Both refuse to install the peer
-    // on an owned link again (setOcc). A link that never opened is not here.
+    // One owned link's direct proof and its unproven streak have both lasted
+    // DARK_LEAVE, while another channel is still up. The higher id vacates
+    // so the chair is really empty. The streak starts on the first unproven
+    // beat of a run and a direct frame ends it; silent ticks do not count.
+    // Both refuse to install the peer on an owned link again (setOcc). A
+    // link that never opened is not here.
     retireDead() {
       if (!this.hasCoord || this.moving || this.state !== 3) return false;
       const T = this.TICK;
@@ -938,9 +953,11 @@
         const age = T - at;
         const u = this.unpAt.get(x);
         const hearing = u !== undefined && T - u <= 16;
+        const since = this.unpSince.get(x);
+        const streak = since !== undefined && T - since > DARK_LEAVE;
         if (age <= CHAN_UP) recent++;
         if (age <= DARK_LEAVE) fresh++;
-        if (hearing && age > DARK_LEAVE) dead.push(x);
+        if (hearing && age > DARK_LEAVE && streak) dead.push(x);
       }
       if (!fresh || !dead.length) return false;
       let move = false;
@@ -2075,7 +2092,7 @@
       // hole later: the memory holds for one RING_HOLD, whatever seat I pass.
       { const x = this.exRow; if (x) { if (this.TICK - x.at > RING_HOLD) this.exRow = null; else if (x.oc === ck(c)) { this.exRow = null; const dk = ck(topo.down(c)); if (!this.occ.has(dk)) this.setOcc(dk, x.heir); } } }
       this.lkAnyAt = -1; this.unpAnyAt = -1;   // D6: a new seat's channels have not spoken yet
-      this.lkAt = new Map(); this.unpAt = new Map(); this.darkHold = new Map();   // noChan survives: the dead pairing is not installed on the next chair
+      this.lkAt = new Map(); this.unpAt = new Map(); this.unpSince = new Map(); this.darkHold = new Map();   // noChan survives: the dead pairing is not installed on the next chair
       this.drainAt = 0; this.seatTries = 0; this.seatedAt = this.TICK; this.rookSeenAt = this.TICK; this.estAt = this.TICK; this.nbrAt = this.TICK; this.pendY = null; this.challTo = null; this.lateY = null;
       // § G: a seat change re-parents me — new aggregator, new scope, new child
       // row. Every digest relationship starts over, including G4's grace
