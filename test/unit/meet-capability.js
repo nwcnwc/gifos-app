@@ -34,7 +34,31 @@ for (const op of ['raiseHand', 'setMic', 'setCamera', 'speak', 'stopSpeaking', '
 check('the host does not grow a model URL op', dispatch.indexOf('setVoice') < 0 && dispatch.indexOf('converse') < 0 && hostSrc.indexOf('chat/completions') < 0);
 check('the watch tile is watch-only', hostSrc.indexOf('data-gifos-bot-eye') > 0 && hostSrc.indexOf('Watch and listen only') > 0 && hostSrc.indexOf('pointer-events:none') > 0);
 check('the meeting page hides mic and camera in the bot-eye view', /body\.bot-eyes[\s\S]{0,240}#mic/.test(runHtml) && /body\.bot-eyes[\s\S]{0,240}#cam/.test(runHtml));
-check('the bot records its own chat as a chat event', /sendChat\(msg\)[\s\S]{0,700}self:\s*true/.test(runHtml));
+// The body of a method `head {...}` in src, found by brace matching that
+// skips strings and comments. A fixed character window broke the moment
+// sendChat grew (bafc6b1); the whole body is the scope that matters.
+function methodBody(src, head) {
+  const at = src.indexOf(head);
+  if (at < 0) return '';
+  const open = src.indexOf('{', at + head.length - 1);
+  let depth = 0;
+  for (let i = open; i < src.length; i++) {
+    const c = src[i];
+    if (c === '/' && src[i + 1] === '/') { i = src.indexOf('\n', i); if (i < 0) return ''; continue; }
+    if (c === '/' && src[i + 1] === '*') { i = src.indexOf('*/', i + 2) + 1; if (i <= 0) return ''; continue; }
+    if (c === '"' || c === "'" || c === '`') {
+      for (i++; i < src.length && src[i] !== c; i++) if (src[i] === '\\') i++;
+      continue;
+    }
+    if (c === '{') depth++;
+    else if (c === '}' && --depth === 0) return src.slice(open, i + 1);
+  }
+  return '';
+}
+const sendChatBody = methodBody(runHtml, 'sendChat(msg) {');
+check('the bot records its own chat as a chat event',
+  /__gifosMeetEmit\(\{[^}]*type:\s*'chat'[^}]*self:\s*true/.test(sendChatBody),
+  'sendChat body ' + sendChatBody.length + ' chars');
 check('session ops call the meeting buttons', ['raiseHand(msg)', 'setMic(msg)', 'setCamera(msg)', 'speak(msg)', 'watch(msg)'].every((s) => runHtml.indexOf(s) > 0));
 check('the permission sheet grants meeting control with the other abilities', /watch and listen/i.test(perms) && /capabilities\.meet|meet:/.test(perms));
 
