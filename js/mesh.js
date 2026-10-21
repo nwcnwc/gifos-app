@@ -2699,6 +2699,18 @@
             if (!this.cellReserved(ck({ pc: 0, r: t, i: j })) && !(netOn && R.at(ck({ pc: 0, r: t, i: j })) != null && !R.s1Same(this.glabel, t, this))) s1admFree++;
           }
         }
+        // A group's Section-1 row is settling while a chair of it I hold
+        // reserved is still empty in the room's view (its sitter's PLACE is
+        // in flight). The room then counts the row short, so the group's free
+        // rows stay shut to the seeker, and below me is no place for it
+        // either: the deep seat holds no relay socket and the rest of the room
+        // never counted the person seated there. The seeker waits, as the
+        // row-fill gate makes it wait without groups, until the chair settles.
+        if (netOn && netLab(gl)) {
+          let settling = false;
+          for (let t = 0; t < C() && !settling; t++) { if (!R.s1Row(gl, t, this)) continue; for (let j = 0; j < C(); j++) { const k = ck({ pc: 0, r: t, i: j }); if (this.cellReserved(k) && R.cellOccOrSoft(k, this) == null) { settling = true; break; } } }
+          if (settling) { skip.push('w'); s1admFree++; }
+        }
         // Must stay unconditional: falling through to the deep path when home's
         // free cells look unservable fast-tracks silent death past the H1-S1
         // ring-hold (headless-row leg C), and buys nothing — the partitioned
