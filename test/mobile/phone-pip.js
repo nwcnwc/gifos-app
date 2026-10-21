@@ -29,6 +29,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   fs.mkdirSync(SHOTS, { recursive: true });
   const browser = await chromium.launch({
     headless: true,
+    // Element picture-in-picture is absent from the headless shell. The full
+    // Chrome binary is the one this gate names in MEET_CHROME.
+    executablePath: process.env.MEET_CHROME,
     args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
       '--autoplay-policy=no-user-gesture-required', '--disable-gpu'],
   });
@@ -68,7 +71,19 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       away: document.body.classList.contains('away-full'),
     };
   });
-  const wake = async () => { await page.touchscreen.tap(200, 110); await sleep(400); };
+  // An empty tap on a phone hides a dock that is already up, and More
+  // then sits below the screen. A key wakes it and does not hide it.
+  const wake = async () => {
+    const vp = page.viewportSize() || { width: 800, height: 600 };
+    const x = Math.round(vp.width / 2), y = Math.round(vp.height / 3);
+    await page.mouse.move(x, y);
+    await page.mouse.move(x + 3, y + 2);
+    await page.evaluate(() => {
+      if (!document.body.classList.contains('chrome-away')) return;
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift', bubbles: true }));
+    });
+    await page.waitForFunction(() => !document.body.classList.contains('dock-calm') && !document.body.classList.contains('chrome-away'), null, { timeout: 2000 }).catch(() => {});
+  };
   const openMore = async () => {
     await wake();
     if ((await page.locator('#bartoggle').getAttribute('aria-expanded')) !== 'true') await page.locator('#bartoggle').tap({ timeout: 5000 });
