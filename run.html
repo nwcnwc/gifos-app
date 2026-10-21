@@ -19154,10 +19154,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       }
       // The link set follows the seat arithmetic — occupancy gossip settling
-      // can name new neighbours; dial them the tick they appear.
+      // can name new neighbours; dial them the tick they appear. The seating's
+      // bridge and standby partners count: a bridge end and its heir usually
+      // sit in DIFFERENT rows (no owned link between them), and a takeover
+      // that lands while the partner's record is gone can never anchor it
+      // (seatBridge needs the peer record to exist).
+      const seatNamed = (pid) => { if (!netSeated()) return false; const li = netLinkInfo(pid); return !!(li && (li.bridge || li.standby)); };
       for (const pid of rosterIds) {
         if (pid === myId || (devOf[pid] && devOf[pid] === myDevHash)) continue;
-        if (linkTo(pid) && !peers.has(pid)) ensureLink(pid, rosterNames[pid] || null);
+        if ((linkTo(pid) || seatNamed(pid)) && !peers.has(pid)) ensureLink(pid, rosterNames[pid] || null);
       }
       const seatedNow = (() => { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3); })();
       let anyLinkOpen = false; for (const [qid, q] of peers) if (q.dc && q.dc.readyState === 'open' && linkTo(qid)) { anyLinkOpen = true; break; }
@@ -19177,7 +19182,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const theyOutside = !meshKnows(pid);
           const doorShut = p.boot && !p.bootOut && p.dc && p.dc.readyState === 'closed'; // the knocker closed my end of its door
           if (p.boot && p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed' || doorShut)) { dropPeer(pid, !theyOutside || rosterIds.includes(pid)); continue; } // a dead door: gone now, never rebuilt (a knocker redials); a member the roster already holds keeps its status
-          else if (p.turnAnchor || p.turnServe) { p.unlinkedSince = 0; } // a free-pool anchor pair stays while it carries a voice, whatever the seats say
+          else if (p.turnAnchor || p.turnServe || p.turnStandby || seatNamed(pid)) { p.unlinkedSince = 0; } // a free-pool anchor pair stays while it carries a voice, whatever the seats say — and so does a pair the seating names a bridge or its standby: its ends usually sit in different rows (not each other's owned links), BOTH sides must keep it (the far end never sets turnStandby: it is not the relay client), and reaping it at the hand-over razes the warm pair the switch is about to anchor
           // A door I knocked through is mine to close once I am seated: its
           // greeter is seated somewhere my occupancy need not hold (Section 1
           // when I sit deep), so theyOutside says nothing about it. Kept, it
