@@ -29021,10 +29021,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { node = ac.createScriptProcessor(4096, 1, 1); } catch (e) { ccGapNote('no-proc'); return; }
       const w = { id: id, src: src, node: node, pre: [], preMs: 0, utt: null, uttStart: 0, lastVoice: 0, rate: ac.sampleRate };
       node.onaudioprocess = (e) => {
-        if (ccGap.get(id) !== w) return;
-        const ch = e.inputBuffer.getChannelData(0);
+        // Zero first. This node stays on ac.destination, so a stale arm
+        // that returns early would pass the leftover buffer onward.
         const out = e.outputBuffer.getChannelData(0);
         for (let i = 0; i < out.length; i++) out[i] = 0;
+        if (ccGap.get(id) !== w) return;
+        const ch = e.inputBuffer.getChannelData(0);
         ccGapOnChunk(w, new Float32Array(ch));
       };
       try { src.connect(node); node.connect(ac.destination); } catch (e) { return; }
