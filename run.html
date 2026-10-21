@@ -33243,6 +33243,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // began (lateWon); a grant or refusal that comes after one has landed
     // releases its own tracks and only turns its tapped control on.
     let lateWon = 0, lateTimer = 0;
+    // The controls tapped while a late ask is open (cam, mic): a tap on the
+    // other control in that window joins the ask instead of being dropped, and
+    // goes on with it when it lands (a room order still holds it off).
+    let lateWant = null;
     let bootGumPending = null; // knock-first: the boot's own getUserMedia while it is in flight — THE one ask; lateMedia must join it, never race it
     // NO CAMERA IS NOT NO MICROPHONE. A combined camera+mic ask rejects as a
     // whole when the camera is missing, disabled by policy or held by another
@@ -33298,7 +33302,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (myStatus.bot) { setStatus('A bot does not use a camera or speak.'); return; }
       if (BROADCAST && !bcMayPublishAv()) { enforceBroadcastSeat(); return; }
       if (lateRefusal(kind)) { setStatus(lateRefusal(kind)); return; }
-      if (lateAsk) { setStatus('Still asking for the camera and microphone\u2026'); return; }
+      if (lateAsk) { if (lateWant) lateWant.add(kind); setStatus('Still asking for the camera and microphone\u2026'); return; }
       // THE BOOT ASK IS THE ONLY ASK (knock-first, 2026-08-05): the knock no
       // longer waits on getUserMedia, so "page live, localStream still null"
       // is a NORMAL window on every boot — and a cam/mic tap in that window
@@ -33330,6 +33334,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       lateAsk = true;
+      const want = lateWant = new Set([kind]);
       // An app-pinned room is audio-only (0.9.12): never prompt for a camera
       // there — the browser's permission sheet would say "camera" to a person
       // who was promised none, and a granted-but-disabled track is still a
@@ -33358,10 +33363,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // A grant already landed: keep that stream, release this one.
             try { for (const tr of s.getTracks()) tr.stop(); } catch (e) {}
             if (gen === lateGen) lateAsk = false;
-            const held = localStream && (kind === 'cam' ? localStream.getVideoTracks() : localStream.getAudioTracks())[0];
-            if (held && !held.enabled && !lateRefusal(kind)) {
-              held.enabled = true;
-              if (kind === 'mic') myStatus.muted = false; else myStatus.camOff = false;
+            let flipped = false;
+            for (const k of want) {
+              const held = localStream && (k === 'cam' ? localStream.getVideoTracks() : localStream.getAudioTracks())[0];
+              if (held && !held.enabled && !lateRefusal(k)) {
+                held.enabled = true;
+                if (k === 'mic') myStatus.muted = false; else myStatus.camOff = false;
+                flipped = true;
+              }
+            }
+            if (flipped) {
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateMediaSession();
               if (typeof syncSpeech === 'function') syncSpeech();
               setStatus(kind === 'cam' ? 'Camera on.' : 'Mic on.');
@@ -33371,10 +33382,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           lateWon++;
           clearTimeout(lateTimer);
           lateAsk = false;
-          // Quiet-join discipline still holds: only the tapped control goes on,
-          // and not even that one if a room order arrived during the ask.
+          // Quiet-join discipline still holds: only the tapped controls go on
+          // (this tap and any joined while the ask was open), and not one a
+          // room order arrived for during the ask.
           const refused = lateRefusal(kind);
-          for (const tr of s.getTracks()) tr.enabled = !refused && tr.kind === (kind === 'cam' ? 'video' : 'audio');
+          const goesOn = (k) => want.has(k) && !lateRefusal(k);
+          for (const tr of s.getTracks()) tr.enabled = goesOn(tr.kind === 'video' ? 'cam' : 'mic');
           if (!localStream) {
             localStream = s;
             maybeShowFlip();
@@ -33389,6 +33402,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               if (localStream.getTracks().some((t) => t.kind === tr.kind)) { try { tr.stop(); } catch (e) {} }
               else localStream.addTrack(tr);
             }
+            // A joined control whose track was already held goes on as a plain flip.
+            for (const k of want) {
+              const held = k !== kind && (k === 'cam' ? localStream.getVideoTracks() : localStream.getAudioTracks())[0];
+              if (held && !held.enabled && goesOn(k)) held.enabled = true;
+            }
           }
           // The camera goes on only when a video track was actually taken:
           // the audio-only fallback lands the mic (quiet) and says why.
@@ -33399,7 +33417,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const micTr = localStream && localStream.getAudioTracks()[0];
           if (kind === 'mic') myStatus.muted = !!refused || !(micTr && micTr.enabled);
           else myStatus.muted = micTr ? !micTr.enabled : true;
-          myStatus.camOff = kind !== 'cam' || !gotCam || !!refused;
+          myStatus.camOff = !want.has('cam') || !gotCam || !!lateRefusal('cam');
           attachLocalTracks();
           paintControls();
           refreshOutbound();
