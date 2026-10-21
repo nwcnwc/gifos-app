@@ -188,6 +188,18 @@
     return (sources || []).filter((s) => s && s.owner !== clientId && !(s.owner != null && skip.has(s.owner)));
   }
 
+  // mixGain(held, mutedFor) → a source's gain in a mix the page sends: 0 for
+  // a voice held for everyone, and 0 for a person whose own status says muted
+  // once MUTE_TAIL_MS has passed (their last words still play out). A muted
+  // microphone can still carry a floor of noise one step above zero; mixed
+  // in, that floor keeps the encoder from ever seeing silence, so DTX never
+  // starts. mutedFor is how long (ms) the person has been muted, or null.
+  const MUTE_TAIL_MS = 1000;
+  function mixGain(held, mutedFor) {
+    if (held) return 0;
+    return mutedFor != null && mutedFor >= MUTE_TAIL_MS ? 0 : 1;
+  }
+
   // mayServe(servedCount, alreadyServing) → may this page become one more
   // TURN client's anchor? One session per person served, at most MAX_SERVED.
   function mayServe(servedCount, alreadyServing) {
@@ -453,7 +465,7 @@
   const api = {
     ICE_URL, DEFAULT_WORKER, WORKER_KEY, workerBase, POOL, FETCH_TIMEOUT_MS, RETRY_MAX_MS, P0_MS, P1_MS, MAX_SERVED,
     T_AUDIO, turnAudioSdp, turnVoiceParams,
-    reachable, pairStage, poolNeeded, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, mayServe, networkBridge, bridgeComponents,
+    reachable, pairStage, poolNeeded, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, MUTE_TAIL_MS, mixGain, mayServe, networkBridge, bridgeComponents,
     retryDelayMs, parseIce, createCredentials, askIce, freeTicket, TICKET_CREDS,
   };
   const GifOS = (root.GifOS = root.GifOS || {});
