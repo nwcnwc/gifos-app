@@ -7013,6 +7013,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     //   netBeatTarget()          the heir I beat every 100 ms while I end a bridge, or null
     //   netBeatFrom(pid)         a beat from bridge end pid arrived; netPulse() on a 100 ms clock
     let netRoom = null;
+    let netTestDoorAlone = false, netTestRegroupHold = false;   // DEBUG levers: the next door test concludes alone (netDoorAloneForTest); the rejoin law holds (netRegroupHoldForTest)
     function netSeatingKeep() { const s = meshSeat(); if (s && s.env && s.env.NET !== (netRoom || undefined)) s.env.NET = netRoom || undefined; if (netRoom && s && s.hasCoord && s.glabel == null) s.glabel = s.id; }   // a rebuilt seat keeps the room; a seat taken before the view attached heads its own group
     function netSeatingInstall(view) { netRoom = view ? new GifOS.mesh.NetRoom(view) : null; if (netRoom) netBeatStart(); netSeatingKeep(); const s = meshSeat(); if (netRoom && s && s.hasCoord && s.glabel == null) s.glabel = s.id; return netRoom; }   // a seat taken before the view existed heads its own group
     function netLinks() { try { const s = meshSeat(); return s && netRoom ? s.netLinks() : []; } catch (e) { return []; } }
@@ -7143,6 +7144,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         seats: () => { const s = me(); const out = s ? [s] : []; const best = new Map(); for (const [pid, st] of statusOf) if (pid !== myId && pulseSeat(s, pid, st)) { const k = net.topo.ckey(st.seat); const b = best.get(k); if (!b || (st.rx || 0) > (b.st.rx || 0)) best.set(k, { pid, st }); } for (const { pid, st } of best.values()) out.push(rec(pid, st)); for (const r of ringRecs()) if (!best.has(net.topo.ckey(r.coord))) out.push(r); return out; },   // two pulses naming one cell: the newer one holds it (a seat that moved on keeps its old pulse a while)
         seat: (id) => { const s = me(); if (s && id === s.id) return s; const st = statusOf.get(id); if (pulseSeat(s, id, st)) { const k = net.topo.ckey(st.seat); for (const [q, o] of statusOf) if (q !== id && q !== myId && (o && o.rx || 0) > (st.rx || 0) && o.seat && typeof o.seat.pc === 'number' && net.topo.ckey(o.seat) === k && pulseSeat(s, q, o)) return null; return rec(id, st); } return ringRecs().find((r) => r.id === id) || null; },
         probe, probeDone,
+        doorForceAlone: () => { if (!DEBUG_ON || !netTestDoorAlone) return false; netTestDoorAlone = false; return true; },   // one armed door test concludes alone (stands in for links that never came up)
+        regroupHold: () => !!(DEBUG_ON && netTestRegroupHold),   // the rejoin law holds while armed (a guard shows a split room stays split without it)
         reach: (a, b) => {
           if (a === b) return true;
           const relayedBy = (x, y) => { const st = statusOf.get(x); return !!(st && ((Array.isArray(st.rl) && st.rl.includes(y)) || (Array.isArray(st.tl) && st.tl.includes(y)))); };   // st.rl: its relayed pairs; st.tl: its relay-pool pairs (the pool code's own list)
@@ -36942,6 +36945,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // was briefly named; the off-hello rode a torn channel and never did).
       // The far end then serves a peer it demonstrably reaches directly.
       // e2e-net-samegroup-heal.js is the guard.
+      netDoorAloneForTest: (on) => {
+        if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
+        netTestDoorAlone = on === undefined ? true : !!on;
+        return { ok: true, armed: netTestDoorAlone };
+      },
+      netRegroupHoldForTest: (on) => {
+        if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
+        netTestRegroupHold = !!on;
+        return { ok: true };
+      },
       turnHelloForTest: (pid, on) => {
         if (!DEBUG_ON) return { err: 'DEBUG=on not in URL' };
         const p = peers.get(pid); if (!p) return { err: 'no such peer' };

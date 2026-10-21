@@ -1813,6 +1813,7 @@
     netDecide(ro) {
       const R = this.env.NET; let reached = 0, ringSeated = 0, best = null, bestSeat = null; const seen = new Set();
       this.glHead = null; this.walkRounds = 0; this.splitHead = false; R.fresh();   // a fresh door verdict: whether I must head a second subnet is decided again by the refusals that follow it
+      if (R.o.doorForceAlone && R.o.doorForceAlone(this.id)) { this.lastReached = 0; this.glabel = this.id; return NET_NONE; }   // a view's test lever stands in for door links that never came up: this one decision concludes alone; the next runs the real test
       const tested = this.netTested = [];
       const test = (v) => { if (v == null || v === this.id || seen.has(v) || !R.seatedLive(v)) return; seen.add(v); ringSeated++; const ok = R.reach(this.id, v); tested.push([v, ok ? 1 : 0, R.labelOf(v), R.o.reachWhy ? R.o.reachWhy(v) : null, this.TICK - this.netProbeWaitFrom]); if (!ok) return; reached++; const l = R.labelOf(v); if (l != null && (best == null || idLess(l, best))) { best = l; bestSeat = v; } };
       for (const e of ro) if (e) test(e.v);
@@ -5304,6 +5305,7 @@
     netRegroup() {
       if (!this.env.NET || !this.hasCoord || this.state !== 3 || this.moving) return;
       const R = this.env.NET;
+      if (R.o.regroupHold && R.o.regroupHold()) return;   // a view's test lever parks the rejoin law, so a guard can show a split room stays split without it
       let seen = false, own = false;
       for (const s of R.o.seats()) {
         if (!s || s.id === this.id || !s.alive || s.state !== 3 || !s.hasCoord || s.anchored) continue;
