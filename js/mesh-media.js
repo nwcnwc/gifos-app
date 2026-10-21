@@ -996,6 +996,7 @@
       dest, track: () => dest.stream.getAudioTracks()[0] || null,
       has: (key) => srcs.has(key),
       peek: () => [...srcs].map(([k, r]) => [k, r.track ? r.track.id.slice(0, 8) : null, r.track ? (r.track.muted ? 'muted' : r.track.readyState) : null]),   // debug: which track each source reads
+      gainOf: (key) => { const r = srcs.get(key); return r ? r.gain : null; },   // debug: a source's gain node, to meter it
       add(key, stream, gain) {
         if (srcs.has(key) || !stream) return;
         if (attach(key, stream, gain)) { dropWait(key); return; }

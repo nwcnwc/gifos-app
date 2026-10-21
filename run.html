@@ -36476,15 +36476,40 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const sent = (pid, t) => { const q = peers.get(pid); return !!(q && q.mainA && t && q.mainA.track === t); };
           const mid = (pid) => { const q = peers.get(pid); try { const tr = q && q.pc && q.mainA ? q.pc.getTransceivers().find((x) => x.sender === q.mainA) : null; return tr ? tr.mid : null; } catch (e) { return null; } };
           const lvl = (fold) => { try { if (!ac || !fold || !fold.dest) return null; let an = dbgFoldMeters.get(fold); if (!an) { an = ac.createAnalyser(); an.fftSize = 2048; ac.createMediaStreamSource(fold.dest.stream).connect(an); dbgFoldMeters.set(fold, an); } const b = new Float32Array(an.fftSize); an.getFloatTimeDomainData(b); let e = 0; for (const x of b) e += x * x; return Math.round(Math.sqrt(e / b.length) * 1e4) / 1e4; } catch (e) { return null; } };
+          // one source's level after its gain (what it adds to the mix)
+          const srcLvl = (fold, key) => { try { const g = fold.gainOf && fold.gainOf(key); if (!ac || !g) return null; let an = dbgFoldMeters.get(g); if (!an) { an = ac.createAnalyser(); an.fftSize = 2048; g.connect(an); dbgFoldMeters.set(g, an); } const b = new Float32Array(an.fftSize); an.getFloatTimeDomainData(b); let e = 0; for (const x of b) e += x * x; return Number(Math.sqrt(e / b.length).toPrecision(3)); } catch (e) { return null; } };
           const a = turnAnchorId != null ? turnAnchorId : null;
-          return { up: turnUp ? { to: a != null ? nm(a) : null, keys: keys(turnUp.keys), sent: a != null && sent(a, turnUpTrack()), mid: a != null ? mid(a) : null, level: lvl(turnUp.fold), src: turnUp.fold.peek ? turnUp.fold.peek() : null } : null,
-            serve: [...turnMixes].map(([pid, mx]) => ({ to: nm(pid), keys: keys(mx.keys), sent: sent(pid, turnMixTrack(pid)), mid: mid(pid), level: lvl(mx.fold) })),
+          return { ac: ac ? ac.state : null, up: turnUp ? { to: a != null ? nm(a) : null, keys: keys(turnUp.keys), sent: a != null && sent(a, turnUpTrack()), mid: a != null ? mid(a) : null, level: lvl(turnUp.fold), src: turnUp.fold.peek ? turnUp.fold.peek() : null } : null,
+            serve: [...turnMixes].map(([pid, mx]) => ({ to: nm(pid), keys: keys(mx.keys), sent: sent(pid, turnMixTrack(pid)), mid: mid(pid), level: lvl(mx.fold), src: mx.fold.peek ? mx.fold.peek().map((r) => r.concat(srcLvl(mx.fold, r[0]))) : null, track: (() => { const q = peers.get(pid); const t = q && q.mainA && q.mainA.track; return t ? t.id.slice(0, 8) + (t === turnMixTrack(pid) ? ':mix' : t === (localStream && localStream.getAudioTracks()[0]) ? ':mic' + (t.enabled ? '' : '-off') : ':other') : null; })() })),
             feeds: [...bridgeFeeds].map(([pid, fd]) => ({ to: nm(pid), keys: keys(fd.keys), sent: sent(pid, bridgeFeedTrack(pid)), mid: mid(pid), level: lvl(fd.fold), src: fd.fold.peek ? fd.fold.peek() : null })) }; })(),
         pairs: [...peers.values()].map((p) => {
           let urls = [];
           try { for (const sv of (p.pc && p.pc.getConfiguration().iceServers) || []) urls = urls.concat(Array.isArray(sv.urls) ? sv.urls : [sv.urls]); } catch (e) {}
           return { name: rosterNames[p.id] || p.name || null, connected: !!p.connected, relayed: !!p.relayed, turnMine: !!p.turnMine, turnAudio: !!p.turnAudio, anchor: !!p.turnAnchor, serve: !!p.turnServe, iceUrls: urls };
         }),
+      }),
+      // debug: the peak |sample| over `ms` of each mix-minus I serve and of each
+      // of its sources after its gain (polled every 20 ms: no gap between reads)
+      turnMixPeak: async (ms) => {
+        if (!ac) return null;
+        const meter = (node) => { let an = dbgFoldMeters.get(node); if (!an) { an = ac.createAnalyser(); an.fftSize = 2048; if (node.stream) ac.createMediaStreamSource(node.stream).connect(an); else node.connect(an); dbgFoldMeters.set(node, an); } return an; };
+        const rows = [];
+        for (const [pid, mx] of turnMixes) {
+          const r = { to: rosterNames[pid] || String(pid).slice(0, 8), mix: meter(mx.fold.dest), src: [] };
+          for (const s of (mx.fold.peek ? mx.fold.peek() : [])) { const g = mx.fold.gainOf && mx.fold.gainOf(s[0]); if (g) r.src.push([String(s[0]).split(':')[0] + ':' + (s[1] || '-'), meter(g)]); }
+          rows.push(r);
+        }
+        const peak = new Map(); const nz = new Map(); const b = new Float32Array(2048);
+        const read = (an) => { an.getFloatTimeDomainData(b); let m = 0; for (const x of b) { const y = x < 0 ? -x : x; if (y > m) m = y; } peak.set(an, Math.max(peak.get(an) || 0, m)); if (m > 0) nz.set(an, (nz.get(an) || 0) + 1); };
+        const t0 = performance.now(); let reads = 0;
+        while (performance.now() - t0 < ms) { for (const r of rows) { read(r.mix); for (const s of r.src) read(s[1]); } reads++; await new Promise((z) => setTimeout(z, 20)); }
+        const f = (an) => [Number((peak.get(an) || 0).toPrecision(3)), nz.get(an) || 0];
+        return { reads, rows: rows.map((r) => ({ to: r.to, mix: f(r.mix), src: r.src.map((s) => [s[0]].concat(f(s[1]))) })) };
+      },
+      // debug: the audio lines of each free-pool pair's two descriptions
+      turnSdp: () => [...peers.values()].filter((p) => p.turnAudio && p.pc).map((p) => {
+        const aud = (d) => { if (!d || !d.sdp) return null; return d.sdp.split(/\r?\n/).filter((l) => /^m=audio|^a=mid:|^a=fmtp:\d+ .*(useinbandfec|usedtx|stereo|maxaverage)|^a=ptime|^a=maxptime|^a=rtpmap:\d+ (opus|red)/i.test(l)).join(' | '); };
+        return { to: rosterNames[p.id] || String(p.id).slice(0, 8), paid: !!p.turnPaid, local: aud(p.pc.localDescription), remote: aud(p.pc.remoteDescription) };
       }),
       // RTP counters per pair (by screen name), and the candidate types the
       // pair's selected path uses: what crosses each connection, measured.
