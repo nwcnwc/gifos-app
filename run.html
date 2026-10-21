@@ -2279,14 +2279,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       transform: none;
     }
   }
-  /* Live, Record, and Captions sit on the call, above the dock, so a
-     producer does not open More to see them. Live is the only red mark
-     until recording starts. Captions turns blue, not red. */
+  /* Live and Record sit on the call, above the dock, so a producer does
+     not open More to see them. Captions is in More (Talk). Live is the only
+     red mark until recording starts. --cs-cap holds the row under the
+     header (Invite, Help, Full screen) whatever the dock measures
+     (paintCallState). */
   #callstate {
     position: fixed; z-index: 31;
     left: calc(8px + env(safe-area-inset-left, 0px));
     right: calc(8px + env(safe-area-inset-right, 0px));
-    bottom: calc(var(--dockh, 108px) + 8px);
+    bottom: min(calc(var(--dockh, 108px) + 8px), var(--cs-cap, 100vh));
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
     /* The row is full width; sideways its empty part lies over the tiles'
        names. Only its buttons take taps. */
@@ -2317,10 +2319,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #barmore #chatbtn .chatcount { display: none; }
   @media (max-width: 700px), (max-height: 500px) { #lobby.show { overflow-y: auto; -webkit-overflow-scrolling: touch; } }
   /* Sideways, a row above the dock cost the faces 52px of a 320px screen
-     while the room beside the dock sat empty. There Record and Captions
-     stand in a column left of the dock, bottoms level (paintCallState). */
+     while the room beside the dock sat empty. There Record
+     stands left of the dock, bottoms level (paintCallState). */
   #callstate.beside {
-    right: auto; bottom: var(--csb, 14px);
+    right: auto; bottom: min(var(--csb, 14px), var(--cs-cap, 100vh));
     flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 4px;
   }
   /* The dock steps right when the column needs the room (--dockshift). */
@@ -2338,7 +2340,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .bar.dock-raised.sheet-below:not(.collapsed) #barmore { top: 100%; bottom: auto; }
   }
   body.solo-app #callstate { display: none !important; }
-  #call-live, #call-rec, #call-cc {
+  #call-live, #call-rec {
     min-height: 44px; min-width: 44px; padding: 8px 12px; border-radius: 999px;
     font: 700 1rem/1.15 system-ui, sans-serif;
     display: inline-flex; align-items: center; justify-content: center; white-space: nowrap;
@@ -2346,13 +2348,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   #call-live { background: #b61622; color: #fff; }
   #call-live::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff; margin-right: 8px; }
   /* LIVE is the Broadcast skin (one host live on the Stage). A regular
-     meeting does not wear it. Record and Captions stay on the call. */
+     meeting does not wear it. Record stays on the call. */
   body:not(.broadcast) #call-live { display: none !important; }
-  #call-rec, #call-cc {
-    background: rgba(12,14,18,.92); color: #f4f7fb; border: 1.5px solid #c5cad3; cursor: pointer;
+  /* Record is a small, quiet control: a hollow dot and the word, no
+     outline, the tap target still 44px. It turns red only while recording. */
+  #call-rec {
+    background: rgba(255,255,255,.06); color: #c5cad3; border: 0; cursor: pointer;
+    font-weight: 600; font-size: .875rem; padding: 8px 12px 8px 10px; gap: 6px;
   }
-  #call-rec.on { background: #b61622; color: #fff; border-color: transparent; }
-  #call-cc.on { background: #0064c8; color: #fff; border-color: transparent; }
+  #call-rec::before {
+    content: ''; flex: 0 0 auto; width: .625em; height: .625em; border-radius: 50%;
+    border: 2px solid #e5484d; box-sizing: border-box;
+  }
+  #call-rec.on { background: #b61622; color: #fff; }
+  #call-rec.on::before { background: #fff; border-color: #fff; }
   /* On a phone Live is the control a volunteer can see from a stand.
      Sideways, it takes the rest of the one row so the faces keep their
      height. Upright, it is its own band, taller than More. */
@@ -2362,7 +2371,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   @media (max-width: 700px) and (min-height: 520px) {
     #callstate { row-gap: 4px; }
     #call-live { flex: 1 0 100%; min-height: 64px; justify-content: center; padding-left: 12px; }
-    #call-rec, #call-cc { flex: 1 1 0; }
   }
   /* At 200% text the buttons are already large. A 64px floor on top of
      that pushed the faces into a wide strip. Keep the full-width band. */
@@ -3918,7 +3926,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <div id="callstate" hidden>
     <span id="call-live" role="status">Live</span>
     <button type="button" id="call-rec" aria-pressed="false">Record</button>
-    <button type="button" id="call-cc" aria-pressed="false" title="Show or hide captions on this screen">Captions</button>
   </div>
   <div id="chatnote" hidden>
     <button type="button" id="chatpreview"><b id="chatpreview-by"></b><span id="chatpreview-txt"></span></button>
@@ -29358,13 +29365,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!meToo && speechRunning()) stopSpeech();
       ccvPublish();
     }
-    // CC only shows or hides captions on this screen. The More button, the dock
-    // button and the phone's call-state button are one switch.
+    // CC only shows or hides captions on this screen. The More button and the
+    // dock button are one switch.
     function paintCcView() {
       const on = !!ccShow;
       const ccBtn = document.getElementById('ccbtn');
       const ccDock = document.getElementById('ccdock');
-      const cc = document.getElementById('call-cc');
       if (ccBtn) {
         ccBtn.classList.toggle('on', on);
         ccBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -29372,10 +29378,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (ccDock) {
         ccDock.classList.toggle('on', on);
         ccDock.setAttribute('aria-pressed', on ? 'true' : 'false');
-      }
-      if (cc) {
-        cc.classList.toggle('on', on);
-        cc.setAttribute('aria-pressed', on ? 'true' : 'false');
       }
       if (!on) {
         const bar = document.getElementById('livecap');
@@ -30366,7 +30368,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const airRecBtn = document.getElementById('airrec');
     if (airRecBtn) airRecBtn.onclick = () => recBtn.click();
     let callStateBox = '';
-    // A sideways phone puts Record and Captions in a column left of the dock
+    // A sideways phone puts Live and Record in a column left of the dock
     // and steps the dock right if the column needs the room. Live (a
     // broadcast) makes the column taller than the dock, and a dragged dock
     // is where its owner put it; both keep the row, as does a screen too
@@ -30397,17 +30399,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       root.style.setProperty('--csb', Math.max(0, Math.round(barBottom)) + 'px');
       return Math.max(0, row.offsetHeight - barH);
     }
+    // Record never rises into the header (Invite, Help, Full screen, Fit):
+    // the row's bottom stays at least its own height under the header's
+    // lowest edge, whatever the dock measured.
+    function capCallState(row) {
+      let hb = 0;
+      for (const el of document.querySelectorAll('#appbar, .topchip, #fitbtn')) {
+        if (!el.getClientRects().length) continue;
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+        const r = el.getBoundingClientRect();
+        if (r.height < 2 || r.top > window.innerHeight / 2) continue;
+        hb = Math.max(hb, r.bottom);
+      }
+      const cap = Math.max(0, Math.floor(window.innerHeight - hb - row.offsetHeight - 8)) + 'px';
+      const root = document.documentElement;
+      if (root.style.getPropertyValue('--cs-cap') !== cap) root.style.setProperty('--cs-cap', cap);
+      return cap;
+    }
     function paintCallState() {
       const row = document.getElementById('callstate');
       const rec = document.getElementById('call-rec');
-      const cc = document.getElementById('call-cc');
-      const ccBtn = document.getElementById('ccbtn');
       const lob = document.getElementById('lobby');
-      if (!row || !rec || !cc) return;
+      if (!row || !rec) return;
       const inCall = !(lob && lob.classList.contains('show'));
       const away = document.body.classList.contains('chrome-away');
       row.hidden = !inCall;
       const over = inCall ? placeCallState(row) : -1;
+      const cap = inCall ? capCallState(row) : '';
       // Beside the dock, only the part above the dock's top stacks under
       // captions and the chat line.
       const stateH = (!away && inCall && row.offsetHeight) ? (over >= 0 ? over : row.offsetHeight) : 0;
@@ -30418,20 +30437,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       rec.setAttribute('aria-pressed', recOn ? 'true' : 'false');
       rec.textContent = recOn ? 'Recording' : 'Record';
       if (typeof paintCcView === 'function') paintCcView();
-      else if (ccBtn) {
-        const ccOn = !!ccShow;
-        ccBtn.classList.toggle('on', ccOn);
-        cc.setAttribute('aria-pressed', ccOn ? 'true' : 'false');
-      }
       try { if (typeof refreshTrBtn === 'function') refreshTrBtn(); } catch (e) {}
-      const key = row.offsetHeight + ':' + (row.hidden ? '0' : '1') + ':' + over;
+      const key = row.offsetHeight + ':' + (row.hidden ? '0' : '1') + ':' + over + ':' + cap;
       if (key !== callStateBox) {
         callStateBox = key;
         try { layout(); } catch (e) {}
       }
     }
     document.getElementById('call-rec').onclick = () => { try { recBtn.click(); } catch (e) {} };
-    document.getElementById('call-cc').onclick = () => { const b = document.getElementById('ccbtn'); if (b) b.click(); };
     const callStateWatch = new MutationObserver(() => { try { paintCallState(); } catch (e) {} });
     callStateWatch.observe(recBtn, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true, characterData: true });
     const ccWatch = document.getElementById('ccbtn');
@@ -30820,6 +30833,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           document.documentElement.style.setProperty('--dockh', dock + 'px');
           if (dock !== lastDock) {
             lastDock = dock;
+            // Record hangs off the dock: its header cap follows the new height.
+            try { paintCallState(); } catch (e2) {}
             try { layout(); } catch (e2) {}
           }
           const panel = document.getElementById('chatpanel');
