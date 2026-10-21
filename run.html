@@ -12258,6 +12258,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           degOf.set(sender, wantDeg);
           sender.setParameters(prm).catch(() => {});
         }
+        shapeTurnVoice(p);
       }
       updateStatus();
       lastQ = q;
@@ -13551,6 +13552,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let senders = [];
       try { senders = p.pc.getSenders(); } catch (e) {}
       for (const sd of senders) if (sd !== p.mainA && sd.track) sd.replaceTrack(null).catch(() => {});
+    }
+    // The smallest pipe: a free-pool pair's descriptions carry the voice
+    // settings of meetTurn.turnAudioSdp (Opus mono, 16 kbps, DTX, 60 ms) both ways.
+    // The one I send sets the far end's encoder; the one I apply sets mine,
+    // for a far end that did not yet know the pair is on the pool. A direct
+    // pair and a paid Video Anywhere pair are never touched.
+    function turnAudioDesc(p, d) {
+      if (!p || !p.turnAudio || p.turnPaid || !d || typeof d.sdp !== 'string') return d;
+      return { type: d.type, sdp: MT.turnAudioSdp(d.sdp) };
+    }
+    // ...and the pair's voice sender is capped at the 16 kbps target (lifted
+    // again if the pair leaves the pool on the same transport). adapt() runs
+    // it on every connect and sweep.
+    function shapeTurnVoice(p) {
+      const sd = p && p.mainA;
+      if (!sd || typeof sd.getParameters !== 'function') return;
+      let prm = null;
+      try { prm = MT.turnVoiceParams(sd.getParameters(), !!p.turnAudio && !p.turnPaid); } catch (e) { return; }
+      if (prm) sd.setParameters(prm).catch(() => {});
     }
     // Could a friend still carry this pair? (the same test the friend ask uses)
     function friendPathFor(pid, now) {
@@ -15210,6 +15230,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const isSevered = (pid) => (typeof isEjected === 'function' && isEjected(pid) === true) || (DEBUG_ON && window.__severed && (window.__severed.get(pid) || 0) > Date.now());
     const sendSig = (to, msg) => {
       if (isSevered(to)) return;
+      if ((msg.kind === 'offer' || msg.kind === 'answer') && msg.sdp) { const tsd = turnAudioDesc(peers.get(to), msg.sdp); if (tsd !== msg.sdp) msg = Object.assign({}, msg, { sdp: tsd }); } // a free-pool pair's codec settings
       // STATUS gossip — the every-few-seconds pulse that is nearly all of a
       // quiet meeting's traffic — prefers the pair's own DataChannel: the relay
       // is a hibernated Durable Object that is WOKEN AND BILLED for every frame
@@ -16196,7 +16217,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const fresh = noLiveTransport(p);
         if (fresh) { const queued = p.pendingIce; newPcFor(p); p.pendingIce = queued; }
         Promise.resolve(fresh ? null : p.pc.setLocalDescription({ type: 'rollback' }))
-          .then(() => p.pc.setRemoteDescription(m.sdp))
+          .then(() => p.pc.setRemoteDescription(turnAudioDesc(p, m.sdp)))
           .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
           .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
           .then((ans) => p.pc.setLocalDescription(ans))
@@ -16598,7 +16619,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // side recovers from a never-arriving remote offer (see sweeper). The
         // polite peer (lower id) rolls back its local offer and accepts; the
         // impolite peer ignores the remote offer and keeps its own.
-        const accept = () => p.pc.setRemoteDescription(msg.sdp)
+        const accept = () => p.pc.setRemoteDescription(turnAudioDesc(p, msg.sdp))
           .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
           .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
           .then((ans) => p.pc.setLocalDescription(ans))
@@ -16668,7 +16689,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A second copy of an answer we already applied is in 'stable'.
         // Setting it again throws and used to be swallowed as if it landed.
         if (!p.pc || p.pc.signalingState !== 'have-local-offer') { rxStats.answerStale++; return; }
-        p.pc.setRemoteDescription(msg.sdp)
+        p.pc.setRemoteDescription(turnAudioDesc(p, msg.sdp))
           .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
           .catch((e) => { noteNegFail('answer', from, e); if (/extension ID reassignment/i.test(String((e && e.message) || ''))) maybeRebuildNeg(peers.get(from), e); });
       } else if (msg.kind === 'ice') {
@@ -22874,11 +22895,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // and MUST re-offer afterwards, or its rolled-back m-lines are
         // orphaned forever (the browser's negotiationneeded would refire
         // here; our hand-rolled offers need the explicit flag).
-        const applyRoffer = (msg) => p.pc.setRemoteDescription(msg.sdp)
+        const applyRoffer = (msg) => p.pc.setRemoteDescription(turnAudioDesc(p, msg.sdp))
           .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
           .then((a) => p.pc.setLocalDescription(a))
           .then(() => {
-            dcSend(p, { k: 'ranswer', sdp: p.pc.localDescription });
+            dcSend(p, { k: 'ranswer', sdp: turnAudioDesc(p, p.pc.localDescription) });
             if (typeof clog === 'function') clog('ranswer→' + String(p.id).slice(0, 6));
             afterNeg(p, true);
           })
@@ -22977,7 +22998,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } else if (m.k === 'ranswer') {
         if (!p.pc) return;
         const carried = p.connected || (p.dc && p.dc.readyState === 'open');
-        const srd = () => p.pc.setRemoteDescription(m.sdp);
+        const srd = () => p.pc.setRemoteDescription(turnAudioDesc(p, m.sdp));
         // A renegotiation answer that never settles (lost on the wire, or a
         // test harness that swallows it) leaves have-local-offer on a live
         // pair forever and offer-stale rollback races the hung promise (06d:
@@ -24343,7 +24364,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         .then((o) => { if (p.pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return p.pc.setLocalDescription(o); })
         .then(() => {
           endTurn(p); // this offer is the turn's one offer
-          const send = () => { dcSend(p, { k: 'roffer', sdp: p.pc.localDescription }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); };
+          const send = () => { dcSend(p, { k: 'roffer', sdp: turnAudioDesc(p, p.pc.localDescription) }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); };
           // DEBUG lever (e2e-glare-first-offer): hold the wire to this peer
           // (this offer and everything after it, in order). When both ends
           // offer within the hold of each other, as they do the moment a
