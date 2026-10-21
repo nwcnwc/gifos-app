@@ -193,10 +193,19 @@ body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app)
   .topchip #statuscount { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 }
 /* Raised hands: a desktop reads the line in the header row beside Fit
-   (placeHandq); a phone taps the header's "✋ 1" to open it under the header. */
+   (placeHandq); a phone taps the header's "✋ 1" to open it under the header.
+   The count is flex 0 0 auto, so its box ran under that line (gallery, Fit
+   still in the row). The transcribing word yields, and the count stays
+   inside the chip instead of painting across the line. */
 body.desk-ptr.comfy #handq.on, body.desk-ptr.comfy #handq.on.open { display: block !important; left: auto !important;
   top: calc(14px + var(--gtop, 0px)) !important; }
 body.desk-ptr #hdrhand.on { display: none !important; }
+@media (min-width: 701px) and (min-height: 501px) {
+  body.desk-ptr:has(#handq.on) #txmark span { display: none; }
+  body.desk-ptr:has(#handq.on) .topchip #statuscount {
+    flex: 0 1 auto; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  }
+}
 /* The Stage frame: a free rectangle with a corner grip. */
 #tilewin .tw-rect { box-shadow: 0 0 0 9999px rgba(0,0,0,.5); }
 #tilewin .tw-grip { position: absolute; right: -9px; bottom: -9px; width: 18px; height: 18px; border-radius: 50%;
