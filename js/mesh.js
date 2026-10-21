@@ -2337,7 +2337,22 @@
           // seats it. Without this a drained row sent every FIND to the row
           // below — never live in a shrinking room — and newcomers past the
           // frontier searched forever (churn-combos B with spawn>1).
-          if (!liveRow && everSeen && rowHeld[t]) {
+          // THE SEEKER'S OWN CHAIR IS NO CORPSE TO HOLD. A seat that lost its
+          // seat while every goodbye it said was lost (a starved page:
+          // requeue with its frames dropped) is still named at its old cell by
+          // every mate, and knocks again under the same id. Its FIND proves
+          // that claim stale (knock-is-evidence, 03c), but its row read as a
+          // dead-held row and the door check below found the row's hints
+          // LISTED, the seeker's own knock having listed it: the row was held
+          // for a partition that was not there, and the seeker heard NOROOM
+          // until the ring horizon swept the claim (e2e-meet-views under load:
+          // both row-2 seats of a 12-face room lost, 10 seated for 150 s;
+          // test/mesh/seeker-own-claim.js). A row that names the seeker gets
+          // the ordinary admission, limited to the seeker's OWN cell: only
+          // that id can take it, so no partition-hidden seat is overwritten.
+          let ownJ = -1;
+          if (!liveRow && everSeen && rowHeld[t]) for (let j = 0; j < C(); j++) if (this.occGet(ck({ pc: 0, r: t, i: j })) === mm.nc) { ownJ = j; break; }
+          if (!liveRow && everSeen && rowHeld[t] && ownJ < 0) {
             // RESURRECTION (old H7, row-targeted): this row LIVED and is now
             // entirely silent — a whole-row death. Its subtrees drain (anchor
             // dead at lastAck>80, long before the RING_HOLD vertical heal) and
@@ -2417,6 +2432,7 @@
             }
           }
           for (let j = 0; j < C(); j++) {
+            if (ownJ >= 0 && j !== ownJ) continue;   // the seeker's own chair only (above)
             const cell = { pc: 0, r: t, i: j }; const k = ck(cell);
             // Soft / real occupant reserved; phantoms free for rejoin.
             if (this.cellReserved(k)) { skip.push('R' + t + '.' + j); continue; }
