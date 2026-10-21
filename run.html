@@ -5633,8 +5633,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A service keeps Share beside the video tools and Chat in the first
       // group. A meeting seats Chat and Share with Hand while More is open
       // (and on a phone the whole time). seatUseRow does that.
+      // A phone host is the exception: Share stays on the dock, and fitDock
+      // moves Share, then Reactions, then Step off when the row does not fit.
       if (service) {
-        put('sharebtn', 'video', 'bartoggle');
+        let serviceHost = document.body.classList.contains('amadmin');
+        if (!serviceHost) {
+          try {
+            serviceHost = !!localStorage.getItem('gifos_vadm_' + params.get('v') + '.' + (params.get('av') || '').toLowerCase());
+          } catch (e) { serviceHost = false; }
+        }
+        if (phone && serviceHost) {
+          const share = document.getElementById('sharebtn');
+          const toggle = document.getElementById('bartoggle');
+          if (share && toggle && share.parentElement !== bar) bar.insertBefore(share, toggle);
+        } else put('sharebtn', 'video', 'bartoggle');
         const hand = document.getElementById('hand'), use = moreRow('use');
         if (hand && use && hand.parentElement !== bar && hand.parentElement !== use) use.insertBefore(hand, use.firstChild);
         put('chatbtn', 'use', 'ccdock', true);
@@ -5831,13 +5843,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!host) document.body.classList.add('notadmin');
       paintLeave(host ? 'end' : 'watch');
       // Slides and a window are how a host fills the stage. Share sits on the
-      // host dock, the same place a small group already has it. A viewer keeps
-      // it in More until they are allowed to share.
-      if (shareOnDock && moreSheet && bar && !phoneLayout()) {
-        if (host) {
-          const moreBtn = document.getElementById('bartoggle');
-          if (shareOnDock.parentElement !== bar && moreBtn) bar.insertBefore(shareOnDock, moreBtn);
-        } else if (!moreSheet.contains(shareOnDock) && moreRow('video')) moreRow('video').appendChild(shareOnDock);
+      // host dock on every width, including a phone, so fitDock can move it
+      // into More with Reactions and Step off. A viewer keeps it in More
+      // until they are allowed to share. placeDockForWidth already parked a
+      // phone viewer's Share; this puts a wide viewer's back if it wandered.
+      if (shareOnDock && moreSheet && bar && host) {
+        const moreBtn = document.getElementById('bartoggle');
+        if (shareOnDock.parentElement !== bar && moreBtn) bar.insertBefore(shareOnDock, moreBtn);
+      } else if (shareOnDock && moreSheet && bar && !phoneLayout() && !moreSheet.contains(shareOnDock) && moreRow('video')) {
+        moreRow('video').appendChild(shareOnDock);
       }
       if (host && bar) {
         const stage = document.getElementById('stagebtn');
