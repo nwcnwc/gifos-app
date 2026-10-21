@@ -546,11 +546,12 @@
       // FIND carries (NET_NONE: I reached nobody); anchored, I reached nobody
       // and sit in another group's row under its head, my anchor.
       this.glabel = null; this.glFind = NET_OFF; this.anchored = false; this.lastReached = -1; this.netRoster = null;
-      this.glHead = null;          // the coord of the head my walk reached: my FIND names it, so the greeter routes there (no room scan)
+      this.glHead = null; this.glUnder = false;          // the coord of the head my walk reached: my FIND names it, so the greeter routes there (no room scan)
       this.walkRounds = 0; this.walkPending = false;   // the walk's rounds past the ring (one signaling round trip each); the FIND waits them out
       this.netTested = null; this.netProbeWaitFrom = 0;   // the last door test, for the debug view: [id, reached 0/1, label, the view's reason, ticks since the links opened] per seated ring member it tested (at most the ring)
       this.netProbeAt = -1; this.netProbeIds = null;   // the door test: the tick I asked the view to open links to the ring (and to whom); the decision waits for them, NET_PROBE ticks at most
       this.bcDead = 0; this.bcDeadAt = -1;   // refusals saying my group has no room under its head (its child row is another network's); three of them over NET_DEAD_WAIT ticks make me head a second subnet
+      this.crossAt = -1;           // first tick I held an owner or row-mate I cannot reach while reaching its group (netCrossRegroup)
       this.regroupAt = -1;         // first tick an anchored single has directly reached a seated group member: held NET_REGROUP ticks, it rejoins through the door (netRegroup)
       this.ringMixed = false;      // my ring test saw a seat I do not reach (more than one network in this room)
       this.darkLeft = new Map();   // cell -> the peer whose knock at my door said it left that cell (held across a dark link)
@@ -1785,7 +1786,7 @@
       const fm = { t: 'FIND', nc: this.id, ttl: 200, spread: (SPREAD && this.noroomSeen >= 1) };
       if (again) fm.again = 1;
       const dk = this.darkGreeters(target); if (dk.length) fm.dark = dk;
-      if (this.env.NET) { fm.gl = this.glFind; if (this.glHead) fm.glc = this.glHead;   // the FIND names the head the walk reached
+      if (this.env.NET) { fm.gl = this.glFind; if (this.glHead) fm.glc = this.glHead; if (this.glHead && this.glUnder) fm.glx = 1; if (this.netMiss && this.netMiss.length) fm.nr = this.netMiss.slice();   // the seats my door test could not reach: no row of theirs seats me   // the FIND names the head the walk reached
         const ts = this.env.NET.seatOf(target); if (this.ringMixed && ts && ts.hasCoord && ts.coord.pc === 0 && this.env.NET.reach(this.id, target)) this.gateway = target; }   // answers to me travel through a greeter my own test reached (a gateway on another network loses them while no bridge is up)
       this.emit(target, fm); this.wake();
     }
@@ -1809,18 +1810,50 @@
       if (!opened) return false;
       this.netProbeAt = this.TICK; this.netProbeIds = ids; this.walkPending = true; this.retryAt = this.TICK - 20; this.wake(); return true;
     }
+    // WHERE A NEW HEAD OF MY OWN GROUP SITS, reaching its owner directly: in
+    // an empty Section-1 row while the ring has one, else as the head of the
+    // free child row of a seat I reached (that seat is its owner, so the
+    // owner link is direct and costs no bridge). False: no such place.
+    netHeadPlace(reachedSeats, seen) {
+      const R = this.env.NET;
+      let empty = false; for (let t = 0; t < C() && !empty; t++) if (R.rowLabel(0, t, this) == null && R.rowCount(0, t, this) === 0) empty = true;
+      const freeBelow = (v) => { const vs = R.seatOf(v); return !!vs && vs.hasCoord && !vs.anchored && topo.pcDepth(vs.coord.pc) < 11 && R.cellOccOrSoft(ck(topo.down(vs.coord)), null) == null; };
+      let under = null; if (!empty) for (const v of reachedSeats) if (R.seatedLive(v) && freeBelow(v) && (under == null || idLess(v, under))) under = v;
+      // past the ring, level by level as the walk does: the shallowest seat I reach with a free child row (one test round per level)
+      if (!empty && under == null) { let ud = 99; for (const s of R.o.seats()) { if (!R.seatedLive(s.id) || s.id === this.id || seen.has(s.id)) continue; const d = R.depth(s.id); if (d > ud || !freeBelow(s.id) || !R.reach(this.id, s.id)) continue; if (d < ud || idLess(s.id, under)) { ud = d; under = s.id; } } if (under != null) this.walkRounds = ud; }
+      if (!empty && under == null) return false;
+      this.glabel = this.id; this.glHead = null; this.glUnder = false; if (under != null) { this.glHead = R.seatOf(under).coord; this.glUnder = true; } return true;
+    }
     netDecide(ro) {
       const R = this.env.NET; let reached = 0, ringSeated = 0, best = null, bestSeat = null; const seen = new Set();
-      this.glHead = null; this.walkRounds = 0; R.fresh();
+      this.glHead = null; this.glUnder = false; this.walkRounds = 0; R.fresh();
       const tested = this.netTested = [];
-      const test = (v) => { if (v == null || v === this.id || seen.has(v) || !R.seatedLive(v)) return; seen.add(v); ringSeated++; const ok = R.reach(this.id, v); tested.push([v, ok ? 1 : 0, R.labelOf(v), R.o.reachWhy ? R.o.reachWhy(v) : null, this.TICK - this.netProbeWaitFrom]); if (!ok) return; reached++; const l = R.labelOf(v); if (l != null && (best == null || idLess(l, best))) { best = l; bestSeat = v; } };
+      const hit = new Map(), missed = new Set(), miss = this.netMiss = [];   // label -> a seat of it my test reached; labels with a seat my test did not reach
+      const test = (v) => { if (v == null || v === this.id || seen.has(v) || !R.seatedLive(v)) return; seen.add(v); ringSeated++; const ok = R.reach(this.id, v); const l = R.labelOf(v); tested.push([v, ok ? 1 : 0, l, R.o.reachWhy ? R.o.reachWhy(v) : null, this.TICK - this.netProbeWaitFrom]); if (!ok) { if (l != null) missed.add(l); if (miss.length < 32) miss.push(v); return; } reached++; if (l != null && (!hit.has(l) || idLess(v, hit.get(l)))) hit.set(l, v); };
       for (const e of ro) if (e) test(e.v);
       for (let t = 0; t < C(); t++) for (let j = 0; j < C(); j++) test(R.at(ck({ pc: 0, r: t, i: j })));   // the whole ring: one greeter's roster can lag a cell seated this second
+      // A GROUP IS WHOLE OR IT IS NOT MINE. Direct reach is not transitive: a
+      // page behind a symmetric NAT reaches the open internet but not another
+      // symmetric NAT, so a label it reached may hold seats it cannot reach.
+      // Its rows are row-mates' direct links, so I take only a label whose
+      // every tested seat I reached (the lowest such).
+      for (const [l, v] of hit) if (!missed.has(l) && (best == null || idLess(l, best))) { best = l; bestSeat = v; }
+      const cross = best == null && hit.size > 0;   // I reach seats of some group, but no group whole
       this.ringMixed = reached < ringSeated;
       const cands = !!R.o.turn();   // candidates still sitting down or at the door: with a pool (without one, nobody could seat them under me)
-      if (cands) { for (const x of R.softAt(0, this.id)) { if (!R.reach(this.id, x.joiner)) continue; reached++; if (x.label != null && (best == null || idLess(x.label, best))) { best = x.label; bestSeat = null; } } }
+      if (cands) { for (const x of R.softAt(0, this.id)) { if (!R.reach(this.id, x.joiner)) { if (miss.length < 32 && !miss.includes(x.joiner)) miss.push(x.joiner); continue; } reached++; if (x.label != null && (best == null || idLess(x.label, best))) { best = x.label; bestSeat = null; } } }
       if (cands) for (const q of R.knockers(this.id)) { if (!R.reach(this.id, q)) continue; reached++; if (best == null || idLess(q, best)) { best = q; bestSeat = null; } }
       this.lastReached = reached;
+      // A CROSS JOINER heads its own group, reaching its owner directly: in an
+      // empty Section-1 row while the ring has one, else as the head of the
+      // free child row of a seat my test reached (that seat is its owner, so
+      // the owner link is direct and costs no bridge). Friends carry the rest
+      // of the room to it (rule 1, P1). With neither, the lowest label I
+      // reached stands, as before.
+      if (cross && best == null) {
+        if (this.netHeadPlace(hit.values(), seen)) return this.id;
+        for (const [l, v] of hit) if (best == null || idLess(l, best)) { best = l; bestSeat = v; }
+      }
       if (reached) { this.glabel = best; if (bestSeat != null && !R.labelHasS1Row(best, this)) this.glHead = R.seatOf(bestSeat).coord; return best; }   // a head anchored in a Section-1 cell: its group grows in its own child row, so the FIND names it
       const w = R.walk(this.id); this.walkRounds = w ? w.rounds : 0;
       if (w) { this.glabel = w.label; this.glHead = w.head; return w.label; }
@@ -2308,7 +2341,7 @@
       own = !!(own || mm.own);
       this.handed.set(mm.nc, { to, cell, deep: !!deep, at: this.TICK, via: !!via, own });
       const f = { t: 'FIND', nc: mm.nc, ttl: mm.ttl - 1, spread: !!mm.spread }; if (mm.again) f.again = 1; if (own) f.own = 1;
-      if (mm.gl !== undefined) f.gl = mm.gl; if (mm.glc) f.glc = mm.glc;
+      if (mm.gl !== undefined) f.gl = mm.gl; if (mm.glc) f.glc = mm.glc; if (mm.glc && mm.glx) f.glx = 1; if (Array.isArray(mm.nr)) f.nr = mm.nr;
       if (via) this.route(topo.unck(cell), null, f); else this.emit(to, f);   // via: a child-row cell I do not link, reached over my down link and its head's row link
       this.findAck(mm, cell, !!deep);
       if (!deep) this.quietHeadAlso(f, to, cell);
@@ -2366,18 +2399,19 @@
       // before it opens a free one, and the FIND travels to a seat whose
       // child row can seat that group.
       const R = this.env.NET; const netOn = !!R && mm.gl !== undefined && mm.gl !== NET_OFF; const gl = netOn ? mm.gl : NET_OFF;
+      if (netOn) R.noteMiss(mm.nc, mm.nr);
       // A FIND that names the head its walk reached travels to that head's
       // OWNER (the seat that admits into the head's row), or to the head itself
       // when the head is an anchored cell (its group grows in its own child
       // row). A group born below Section 1 never opens a Section-1 row.
       let glcHere = false;
-      if (netOn && mm.glc) { let tgt = mm.glc; if (tgt.i === 0) { const o = topo.up(tgt); if (o) tgt = o; }
+      if (netOn && mm.glc) { let tgt = mm.glc; if (tgt.i === 0 && !mm.glx) { const o = topo.up(tgt); if (o) tgt = o; }   // glx: a cross joiner's FIND names the seat whose child row it heads
         if (!(this.coord.pc === tgt.pc && this.coord.r === tgt.r && this.coord.i === tgt.i)) { if (mm.ttl <= 1) { this.noroomWhy = 'head-ttl'; this.emit(mm.nc, { t: 'NOROOM', nd: topo.pcDepth(this.coord.pc) }); return; } const m = Object.assign({}, mm, { ttl: mm.ttl - 1 }); delete m.routing; this.route(tgt, null, m); this.findAck(mm); return; }
-        mm = Object.assign({}, mm); delete mm.glc; glcHere = true; }   // arrived: from here the FIND descends as any other
+        mm = Object.assign({}, mm); delete mm.glc; delete mm.glx; glcHere = true; }   // arrived: from here the FIND descends as any other
       // A FIND for another group's label is that group's to serve: the ring
       // names its row head and the door carries the FIND there. No row yet and
       // its head still sitting down: the seeker waits (NOROOM, an ordinary retry).
-      if (netOn && netLab(gl) && !glcHere && this.coord.pc === 0 && !R.sameGroup(this.glabel, gl, this)) {
+      if (netOn && netLab(gl) && !glcHere && gl !== mm.nc && this.coord.pc === 0 && !R.sameGroup(this.glabel, gl, this)) {   // a FIND labelled with its own seeker's id is a cross joiner heading its group
         let head = null; for (let t = 0; t < C(); t++) if (R.s1Row(gl, t, this)) { const h = R.cellOccOrSoft(ck({ pc: 0, r: t, i: 0 }), this); if (h != null && R.seatedLive(h)) { head = h; break; } }
         if (head != null && head !== this.id && mm.ttl > 1) { this.handOn(mm, head, ck({ pc: 0, r: 0, i: 0 }), false); return; }
         if (head == null) { this.noroomWhy = 'label-unseated'; this.emit(mm.nc, { t: 'NOROOM', nd: 0 }); return; } }
@@ -4369,7 +4403,7 @@
         // scattered away from the funnel and deep sections filled row 1 before
         // row 0 (H7 dense-fill broken; sim hchain E + c-sweep, 2026-07-29). A
         // corpse answers NOTHING, so its mark stands — corpse-avoid untouched.
-        case 'NOROOM': if (this.state === 2) { if ((m.nd | 0) >= SPREAD_MINDEPTH) this.noroomSeen++; if (this.env.NET && netLab(this.glFind) && m.nd === NET_DEAD && this.bcDeadAt < 0) this.bcDeadAt = TICK; if (this.env.NET && netLab(this.glFind) && m.nd === NET_DEAD && ++this.bcDead >= 3 && TICK - this.bcDeadAt >= NET_DEAD_WAIT) { this.glFind = NET_NONE; this.glabel = this.id; this.glHead = null; this.env.NET.splits++; } /* my group has no room under its head (its child row is another network's), three times over NET_DEAD_WAIT ticks: I head a second subnet of my group (one more bridge; a refusal a heal or a move lifts sooner costs none) */ if (this.triedSilent && m.id != null) this.triedSilent.delete(m.id); if (this.triedSilent && this.lastAsked != null) this.triedSilent.delete(this.lastAsked); this.retryAt = TICK; if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t != null) { this.askSeat(t); return; } } this.seatTries = 0; this.join(); } return;
+        case 'NOROOM': if (this.state === 2) { if ((m.nd | 0) >= SPREAD_MINDEPTH) this.noroomSeen++; if (this.env.NET && netLab(this.glFind) && m.nd === NET_DEAD && this.bcDeadAt < 0) this.bcDeadAt = TICK; if (this.env.NET && netLab(this.glFind) && m.nd === NET_DEAD && ++this.bcDead >= 3 && TICK - this.bcDeadAt >= NET_DEAD_WAIT) { this.env.NET.splits++; this.walkRounds = 0; if (this.netHeadPlace((this.netTested || []).filter((t) => t[1]).map((t) => t[0]), new Set((this.netTested || []).map((t) => t[0])))) this.glFind = this.id; else { this.glFind = NET_NONE; this.glabel = this.id; this.glHead = null; } } /* my group has no room under its head (its child row is another network's), three times over NET_DEAD_WAIT ticks: I head a second subnet of my group, where its owner link is direct when a seat I reached has room (netHeadPlace), else one more bridge; a refusal a heal or a move lifts sooner costs none */ if (this.triedSilent && m.id != null) this.triedSilent.delete(m.id); if (this.triedSilent && this.lastAsked != null) this.triedSilent.delete(this.lastAsked); this.retryAt = TICK; if (this.haveRoster && this.roster.length && ++this.seatTries <= 6) { const t = this.pickRoster(); if (t != null) { this.askSeat(t); return; } } this.seatTries = 0; this.join(); } return;
         case 'HELLO': {
           // A HELLO is FIRST-HAND: its sender (m.id) is speaking on a link it
           // holds to me, claiming coord m.ck — it sets first-hand liveness.
@@ -5078,6 +5112,7 @@
       // The network sim still refreshes a dark link on a tick that continues.
       if (this.retireDead()) { this.wake(); return; }   // one owned link lost its channel; the higher id vacates
       if (this.darkSeat()) { this.dark6 = (this.dark6 || 0) + 1; this.requeue(); this.wake(); return; }   // D6
+      if (this.netCrossRegroup()) { this.wake(); return; }   // every seated seat, Section 1 included: a mixed row is a Section-1 shape too
       if (this.env.NET) this.netDarkLive();
       this.noteTree();   // the tree I sit in, for a later door round (foundDoor)
       // T: transit bookkeeping — a claim window that closes with NO
@@ -5292,6 +5327,35 @@
     // the host row, and the room pays one bridge per parked person instead of
     // one per network (the cost law). Leaf-only, like compaction: vacating
     // strands nobody.
+    // A SEAT ACROSS A TRANSITIVITY BREAK. Direct reach is not transitive (a
+    // symmetric NAT reaches the open internet but not another symmetric NAT),
+    // and two joiners whose door tests ran before each other was seated can
+    // land as owner and seat, or as row-mates, without a direct path: a
+    // relayed owner link is a bridge the room does not need, a row-mate pair
+    // a dark row link. When I reach neither my owner (or a row-mate), yet
+    // reach seated members of its group, its group is mine to reach through
+    // friends, so the link is avoidable: I rejoin through the door, whose
+    // test now sees the seat I miss. A genuine bridge end (my network reaches
+    // none of my owner's group) stays. Of two row-mates the higher id moves;
+    // leaf-only, like compaction.
+    netCrossRegroup() {
+      if (!this.env.NET || !this.hasCoord || this.state !== 3 || this.moving || this.anchored) return false;
+      const R = this.env.NET; const me = this.id; const c = this.coord;
+      const cut = (x) => x != null && x !== me && R.seatedLive(x) && !R.anchoredAt(x) && !R.reach(me, x);
+      const kids = (x) => { const xs = R.seatOf(x); return !!xs && xs.hasCoord && R.at(ck(topo.down(xs.coord))) != null; };
+      const mine = kids(me);
+      let broken = null, mate = false; const o = R.ownerOf(me); if (cut(o)) broken = o;
+      // of two row-mates the one without children moves, else the higher id
+      for (let j = 0; j < C() && broken == null; j++) { if (j === c.i) continue; const x = R.at(ck({ pc: c.pc, r: c.r, i: j })); if (!cut(x)) continue; const kx = kids(x); if ((!mine && kx) || (mine === kx && idLess(x, me))) { broken = x; mate = true; } }
+      let around = false;
+      if (broken != null) { const lab = R.labelOf(broken); for (const s of R.o.seats()) { if (!s || s.id === me || s.id === broken || !R.seatedLive(s.id) || s.anchored || R.labelOf(s.id) !== lab) continue; if (R.reach(me, s.id)) { around = true; break; } } }
+      if (!around) { this.crossAt = -1; return false; }
+      if (this.crossAt < 0) { this.crossAt = this.TICK; return false; }
+      if (this.TICK - this.crossAt < NET_REGROUP) return false;
+      if (!mate && this.hasChildren()) return false;   // a parent waits for its owner link; a mixed row cannot wait (its row-mates have no direct path)
+      this.crossAt = -1; R.crossMoves++;
+      this.requeue(); return true;
+    }
     netRegroup() {
       if (!this.env.NET || !this.anchored || !this.hasCoord || this.state !== 3 || this.moving) return;
       const R = this.env.NET;
@@ -5423,8 +5487,9 @@
       this.bridges = new Map();   // seat pair key -> { a, b, ga, gb, sa, sb, since, switches, lastSwitch, standbySince, standbyHole, holeSeatedAt }
       this.comp = new Map();      // group -> its component (direct reach and live bridges); for the harness fabric and reports
       this.epoch = 0; this.builtAt = -1; this.builtEpoch = -1;
+      this.missOf = new Map();    // seeker -> the seats its door test could not reach (its FIND's nr)
       this.diedAt = new Map();    // seat -> the tick it died (its heir's three missed 100 ms beats are shorter than a tick)
-      this.upgrades = 0; this.merges = 0; this.credLost = 0; this.splits = 0;
+      this.upgrades = 0; this.merges = 0; this.credLost = 0; this.splits = 0; this.crossMoves = 0;   // crossMoves: seats that rejoined over a transitivity break (netCrossRegroup)
       this.walkers = 0; this.walkRounds = 0; this.walkAsks = 0; this.walkMaxLevel = 0;
       this.atMap = new Map(); this.atTick = -1; this.atEpoch = -1;
       this.beats = new Map();     // bridge end -> the last beat its heir heard (ms)
@@ -5509,7 +5574,12 @@
     sameGroup(l1, l2, me) { if (l1 === l2) return true; if (!netLab(l1) || !netLab(l2)) return false; for (let t = 0; t < C(); t++) if (this.rowLabel(0, t, me) === l1 && this.s1Same(l2, t, me)) return true; return false; }
     labelHasS1Row(gl, me) { for (let t = 0; t < C(); t++) if (this.s1Row(gl, t, me)) return true; return false; }
     // ROW PURITY: one label per row (the PLACE carried it); an anchored seat never counts.
+    // THE SEEKER'S OWN MISSES. A FIND carries the seats its door test could
+    // not reach (direct reach is not transitive: a symmetric NAT reaches the
+    // open internet, not another symmetric NAT). No row holding one seats it.
+    noteMiss(nc, nr) { if (nc == null) return; if (!Array.isArray(nr) || !nr.length) { this.missOf.delete(nc); return; } if (this.missOf.size >= 64 && !this.missOf.has(nc)) this.missOf.delete(this.missOf.keys().next().value); this.missOf.set(nc, new Set(nr.slice(0, 32))); }
     rowOk(pc, r, nc, me, ncLabel) {
+      const ms = this.missOf.get(nc); for (let j = 0; j < C(); j++) { const x = this.cellOccOrSoft(ck({ pc, r, i: j }), me); if (x == null || x === nc || this.anchoredAt(x)) continue; if (ms && ms.has(x)) return false; const mx = this.missOf.get(x); if (mx && mx.has(nc)) return false; }   // either side's miss: a joiner still sitting down tested before the other was seated
       const ns = this.seatOf(nc); const gl = ns ? ns.glabel : (ncLabel !== undefined ? ncLabel : null);   // a seeker my view does not know yet: the label its FIND carried
       for (let j = 0; j < C(); j++) { const x = this.cellOccOrSoft(ck({ pc, r, i: j }), me); if (x != null && x !== nc && !this.anchoredAt(x)) { const xs = this.seatOf(x); const d = xs ? null : this.doorRec(x, me); if ((!xs && !d) || !this.sameGroup(xs ? xs.glabel : d.gl, gl, me)) return false; } }
       return true;
@@ -5527,7 +5597,7 @@
         return lab == null && this.rowCount(pc, r, me) === 0;
       }
       if (lab != null && lab !== gl && !(pc === 0 && this.s1Same(gl, r, me))) return false;
-      if (lab == null && pc !== 0 && me && !this.sameGroup(me.glabel, gl, me)) return false;   // a group opens a new row only under a seat of its own: its head then reaches its owner, so no second bridge
+      if (lab == null && pc !== 0 && me && !this.sameGroup(me.glabel, gl, me) && !(gl === nc && this.reach(nc, me.id))) return false;   // a group opens a new row only under a seat of its own: its head then reaches its owner, so no second bridge
       return this.rowOk(pc, r, nc, me, netLab(gl) ? gl : nc);   // the label the PLACE would carry
     }
     // A group opens a free Section-1 row only when every row it holds is full.
@@ -5537,7 +5607,16 @@
     // A greeter they cannot reach, while a Section-1 row they can reach
     // exists, never anchors one in a row of a network they cannot reach,
     // its own included: there the bridge would have two relay clients.
-    rowNotForNewHead(me, t) { if (!me || !me.hasCoord || me.coord.pc !== 0) return false; const rep = this.rowRep(0, t, me); if (rep == null || this.stun(rep)) return false; if (this.stun(me.id)) return t !== me.coord.r; return this.stunRowHead(me) != null; }
+    // ...and while a row whose head has an heir can take it, never beside a
+    // head that has none (the bridge it opens would have no hot standby).
+    rowNotForNewHead(me, t) {
+      if (this.rowNotForNewHead0(me, t)) return true;
+      const lonely = (u) => { const h = this.at(ck({ pc: 0, r: u, i: 0 })); return h != null && this.seatedLive(h) && this.heirOf(h) == null; };
+      if (!me || !me.hasCoord || me.coord.pc !== 0 || !lonely(t)) return false;
+      for (let u = 0; u < C(); u++) { if (u === t || lonely(u) || this.at(ck({ pc: 0, r: u, i: 0 })) == null || this.rowCount(0, u, me) >= C() || this.rowNotForNewHead0(me, u)) continue; return true; }
+      return false;
+    }
+    rowNotForNewHead0(me, t) { if (!me || !me.hasCoord || me.coord.pc !== 0) return false; const rep = this.rowRep(0, t, me); if (rep == null || this.stun(rep)) return false; if (this.stun(me.id)) return t !== me.coord.r; return this.stunRowHead(me) != null; }
     // A seated Section-1 row whose network outsiders reach: its first seat.
     stunRowHead(me) { for (let t = 0; t < C(); t++) { const h = this.rowRep(0, t, me); if (h != null && h !== me.id && this.seatedLive(h) && this.stun(h)) return h; } return null; }
     // BY CONSTRUCTION: the owner of a seat (the seat above a row head; the row
@@ -5563,8 +5642,10 @@
     heirOf(end, notThis) {
       if (!this.seatedLive(end)) return null; const s = this.seatOf(end); const c = s.coord;
       if (c.i === 0 || !this.foreignHead(end)) {
-        for (let d = 1; d < C(); d++) { const x = this.at(ck({ pc: c.pc, r: c.r, i: (c.i + d) % C() })); if (x == null || x === end || x === notThis) continue; const xs = this.seatOf(x); if (xs.glabel !== s.glabel || (xs.anchored && !this.reach(x, end))) continue; return x; }
-        if (c.i === 0) { const up = topo.up(c); if (up) { const p = this.at(ck(up)); if (p != null && p !== end && p !== notThis && this.seatedLive(p)) { const ps = this.seatOf(p); if (ps.glabel === s.glabel && !ps.anchored) return p; } } }
+        for (let d = 1; d < C(); d++) { const x = this.at(ck({ pc: c.pc, r: c.r, i: (c.i + d) % C() })); if (x == null || x === end || x === notThis) continue; const xs = this.seatOf(x); if ((xs.glabel !== s.glabel && (xs.anchored || !this.reach(x, end))) || (xs.anchored && !this.reach(x, end))) continue; return x; }   // a row-mate of another label that reaches me directly is my side too (labels are finer than reach where reach is not transitive)
+        if (c.i === 0) { const up = topo.up(c); if (up) { const p = this.at(ck(up)); if (p != null && p !== end && p !== notThis && this.seatedLive(p)) { const ps = this.seatOf(p); if ((ps.glabel === s.glabel || this.reach(p, end)) && !ps.anchored) return p; } } }   // or another label's seat that reaches me directly
+        if (c.i === 0 && c.pc === 0) for (let d = 1; d < C(); d++) { const x = this.at(ck({ pc: 0, r: (c.r + d) % C(), i: 0 })); if (x == null || x === end || x === notThis || !this.seatedLive(x)) continue; const xs = this.seatOf(x); if (!xs.anchored && this.reach(x, end)) return x; }   // a Section-1 head with no row-mate of its side: the next column-mate head (a rook link) that reaches me directly
+        if (c.i === 0) { const d = this.at(ck(topo.down(c))); if (d != null && d !== end && d !== notThis && this.seatedLive(d)) { const ds = this.seatOf(d); if (!ds.anchored && this.reach(d, end)) return d; } }   // a row head alone in its row: its own child head, when it reaches me directly
         return null;
       }
       const x = this.at(ck(topo.down(c))); if (x != null && x !== notThis && this.seatOf(x).glabel === s.glabel) return x; return null;
@@ -5626,7 +5707,12 @@
       // Section-1 rows: any seated member stands for its row's group; rows whose members reach are one group
       const rowHead = [], rowRep = []; for (let t = 0; t < C(); t++) { rowHead.push(this.at(ck({ pc: 0, r: t, i: 0 }))); rowRep.push(this.rowRep(0, t, null)); }
       const rc = Array.from({ length: C() }, (_, t) => t); const rfind = (x) => { while (rc[x] !== x) { rc[x] = rc[rc[x]]; x = rc[x]; } return x; };
-      for (let a = 0; a < C(); a++) for (let b = a + 1; b < C(); b++) { if (rowRep[a] == null || rowRep[b] == null) continue; if (this.reach(rowRep[a], rowRep[b])) { const x = rfind(a), y = rfind(b); if (x !== y) rc[x] = y; } }
+      // Any member pair, not only the two reps: direct reach is not transitive
+      // (two symmetric-NAT heads miss each other while a row-mate reaches
+      // both), and a friend who reaches both rows carries them without TURN.
+      const rowMem = []; for (let t = 0; t < C(); t++) { const m = []; for (let j = 0; j < C(); j++) { const x = this.at(ck({ pc: 0, r: t, i: j })); if (x != null && !this.anchoredAt(x)) m.push(x); } rowMem.push(m); }
+      const rowsReach = (a, b) => { if (this.reach(rowRep[a], rowRep[b])) return true; for (const x of rowMem[a]) for (const y of rowMem[b]) if (this.reach(x, y)) return true; return false; };
+      for (let a = 0; a < C(); a++) for (let b = a + 1; b < C(); b++) { if (rowRep[a] == null || rowRep[b] == null) continue; if (rowsReach(a, b)) { const x = rfind(a), y = rfind(b); if (x !== y) rc[x] = y; } }
       const rowOf = (q) => (this.seatedLive(q) && this.seatOf(q).coord.pc === 0) ? this.seatOf(q).coord.r : -1;
       const rowOfCell = (k) => { if (k == null) return -1; const c = topo.unck(k); return c.pc === 0 ? c.r : -1; };
       // A kept bridge whose end the view no longer knows (it died) still joins
