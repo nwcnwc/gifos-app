@@ -14386,6 +14386,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // empty), and a pack that names no cells shows nobody's. Cached
     // briefly: layout asks often.
     const vaCellSeen = new Map();
+    // A person's cell frame count only ever rises: the probe reads whichever
+    // video holds the composite (on screen, or its hidden source while the
+    // screen has no frame), and a new layout brings a new video whose own
+    // count starts at 0. Each video's own rise is added; a switch adds none.
+    const vaCellCount = new Map();
+    function vaCellFrames(id, v, n) {
+      const c = vaCellCount.get(id);
+      if (!c) { vaCellCount.set(id, { v, last: n, total: n }); return n; }
+      if (c.v === v) c.total += n >= c.last ? n - c.last : n; // a reload counts again from 0
+      c.v = v; c.last = n;
+      return c.total;
+    }
     function vaCellLively(v, r) {
       const vw = v.videoWidth || 0, vh = v.videoHeight || 0;
       if (!(vw > 2 && vh > 2 && r && r.w >= 2 && r.h >= 2)) return false;
@@ -14415,7 +14427,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const v = shown && shown.videoWidth > 2 ? shown : (meta && meta.video);
         const r = MV && MV.wholeCell && meta && v ? MV.wholeCell(meta.ids, meta.cols, id, v.videoWidth, v.videoHeight) : null;
         if (r) {
-          try { const q = v.getVideoPlaybackQuality(); if (q) rec.frames = q.totalVideoFrames || 0; } catch (e) {}
+          try { const q = v.getVideoPlaybackQuality(); if (q) rec.frames = vaCellFrames(id, v, q.totalVideoFrames || 0); } catch (e) {}
           rec.alive = vaCellLively(v, r);
         }
       } catch (e) {}
