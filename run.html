@@ -14124,7 +14124,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       }
       // 5. Every free-pool pair: audio only, one stream each way.
-      for (const p of peers.values()) { turnFreeHello(p); p.netQuiet = netStandbyQuiet(p); if (p.turnAudio || p.netQuiet) parkTurnSenders(p); }   // a hot standby carries nothing beyond its (silent) voice sender either
+      for (const p of peers.values()) { turnFreeHello(p); p.netQuiet = netStandbyQuiet(p); if (p.turnAudio || p.netQuiet) parkTurnSenders(p); else unparkJobsTo(p); }   // a hot standby carries nothing beyond its (silent) voice sender either; a pair off the pool gets its feeds back
       // 6. The anchor side: one mix-minus per client, on that pair's audio sender.
       syncTurnMixes();
       syncTurnUpMix(); // 7. A network's bridge: its network's voices up to its anchor, on that pair's audio sender
@@ -14331,6 +14331,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (typeof clog === 'function') clog('va pair ' + String(pid).slice(0, 6) + (p.turnPaid ? ' video' : ' voice only'));
       if (p.turnAudio) parkTurnSenders(p);
+      else { const n = unparkJobsTo(p); if (n && typeof clog === 'function') clog('va pair ' + String(pid).slice(0, 6) + ' unparked ' + n); } // the feeds it shipped while on the pool
       refreshOutbound();
       updateStatus();
     }
@@ -16199,6 +16200,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       p.turnAskT = p.turnOkT = p.turnGivenT = null; p.turnOk = p.turnGiven = p.turnWanted = false; p.offeredPend = "";
       p.pc = pc; p.connected = false; p.pendingIce = []; p.dc = null; p.incoming = []; p.deadSince = 0; p.rebuiltAt = Date.now(); p.viaRelay = undefined; // the new transport's path is unobserved until its first stats
       p.offering = null; // an offer still minting belongs to the closed pc (sendOffer drops it)
+      p.makingOffer = false; // ...and so does a renegotiation's (renegotiate: its chain never settles)
       p.offerFp = ''; // no remote offer has landed on this pc yet (onSignal's new-pc rule)
       // A new pc gathers afresh: its first host candidate must leave at once,
       // so the old pc's batch (sawHost, a pending flush) is dropped.
@@ -19395,6 +19397,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const fst = statusOf.get(pid);
       const vtr = p.stream && p.stream.getVideoTracks()[0];
       if (!p.connected || p.relayed) return 'link';
+      if (p.turnAudio || p.netQuiet) return 'voice'; // a free-pool pair (or a quiet standby) carries no picture by design: a tile that painted while the pair was paid is not frozen once the hours run out
       if (document.hidden) return 'hidden';
       if (document.pictureInPictureElement && document.pictureInPictureElement === p.video) return 'pip'; // a floated tile paints in the float, not in the room: no frame count to judge here
       if (!vtr || vtr.readyState !== 'live') return 'track';
@@ -24682,17 +24685,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!iInitiate(p.id) && !p.turnOk && !p.turnLegacy) { p.renegAgain = true; askTurn(p); return; } // OFFER TURNS
       if (iInitiate(p.id) && p.turnGiven) { p.renegAgain = true; return; } // their turn is out: mine waits for their offer
       if (p.makingOffer || p.pc.signalingState !== 'stable') { p.renegAgain = true; return; }
-      p.makingOffer = true;
+      // The mark and the chain belong to this pc. A pc closed mid-offer never
+      // settles its createOffer/setLocalDescription in Chromium, so a rebuild
+      // drops the mark (newPcFor); left set, the new pc never offered and held
+      // then dropped every offer the far end sent (e2e-turn-codec m8after2).
+      const pc = p.pc, mark = {};
+      p.makingOffer = mark;
       // This offer carries every change made so far, so nothing is owed
       // after its answer. Left set, afterNeg re-offered on every answer and
       // a polite side looped rreq → rgo → roffer → ranswer for good (Q78).
       p.renegAgain = false;
-      preferHwVideo(p.pc); // renegotiations add fresh m-lines (folds, stg, relay jobs) — they must inherit the preference
-      p.pc.createOffer()
-        .then((o) => { if (p.pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return p.pc.setLocalDescription(o); })
+      preferHwVideo(pc); // renegotiations add fresh m-lines (folds, stg, relay jobs) — they must inherit the preference
+      pc.createOffer()
+        .then((o) => { if (pc.signalingState !== 'stable') { const e = new Error('raced'); e.name = 'GlareRace'; throw e; } return pc.setLocalDescription(o); })
         .then(() => {
           endTurn(p); // this offer is the turn's one offer
-          const send = () => { dcSend(p, { k: 'roffer', sdp: turnAudioDesc(p, p.pc.localDescription) }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); };
+          const send = () => { dcSend(p, { k: 'roffer', sdp: turnAudioDesc(p, pc.localDescription) }); if (typeof clog === 'function') clog('roffer→' + String(p.id).slice(0, 6)); };
           // DEBUG lever (e2e-glare-first-offer): hold the wire to this peer
           // (this offer and everything after it, in order). When both ends
           // offer within the hold of each other, as they do the moment a
@@ -24702,8 +24710,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (hold > 0 && !p.wireHold) p.wireHold = new Promise((r) => setTimeout(() => { p.wireHold = null; r(); }, hold));
           send();
         })
-        .catch((e) => { if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
-        .finally(() => { p.makingOffer = false; if (p.turnWanted) giveTurn(p); });
+        .catch((e) => { if (p.pc !== pc) return; if (typeof clog === 'function') clog('roffer-FAIL ' + String(p.id).slice(0, 6) + ' ' + (p.pc && p.pc.signalingState) + ' ' + (e && e.name)); p.renegAgain = true; maybeRebuildNeg(p, e); })
+        .finally(() => { if (p.makingOffer === mark) p.makingOffer = false; if (p.turnWanted) giveTurn(p); });
     }
     function startRelayJob(reqP, target) {
       const key = target + '>' + reqP.id;
@@ -25945,6 +25953,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // needKey and fires the keyframe walk itself.
       if (pipeJobs.has(jk) && MPipe) { try { MPipe.pausePipe(jk, !on); } catch (e) {} }
       compKick(job.to);
+    }
+    // A pair that leaves the free pool (Video Anywhere pays it, or a hot
+    // standby is needed again) gets its feeds back. While it was quiet,
+    // parkTurnSenders and addAux set every job sender on it to null, but
+    // the job stayed active, so setJobActive's no-change return never puts
+    // the track back: an active job's sender is reseated here, the parked
+    // (mx-idle) and pinned ones stay parked.
+    function unparkJobsTo(p) {
+      if (!p || !p.pc || p.turnAudio || p.netQuiet) return 0;
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return 0;
+      let n = 0;
+      for (const [jk, job] of mosJobs) {
+        if (job.to !== p.id || !job.active || jobPinned(jk)) continue;
+        for (let i = 0; i < job.senders.length; i++) {
+          const sd = job.senders[i], t = job.trackList[i] || null;
+          if (sd && t && sd.track !== t) { try { sd.replaceTrack(t).catch(() => {}); n++; } catch (e) {} }
+        }
+      }
+      return n;
     }
     function unshipMos(jk, notify) {
       const job = mosJobs.get(jk); if (!job) return;
