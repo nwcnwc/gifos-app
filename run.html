@@ -3458,10 +3458,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     transform: translateY(16px);
   }
   body.chrome-away #callstate > * { pointer-events: none; }
-  /* A full-screen phone page that is away is the browser's float: faces only. */
+  /* A full-screen phone page that is away is the browser's float: faces only.
+     The OS header stays out of that window. On a ~90px float the 58px header
+     band left a 33px chip on a black field (S10, full screen then Home). */
   body.away-full .bar, body.away-full #callstate, body.away-full #livecap, body.away-full #chatnote,
   body.away-full .topchip, body.away-full #fitbtn, body.away-full #gifos-build-float,
   body.away-full #chatpanel, body.away-full #tilewin, body.away-full #roster { visibility: hidden !important; }
+  body.away-full #appbar { display: none !important; }
+  body.away-full.comfy #grid[data-remotes="0"] > .tile {
+    left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important;
+    border-radius: 0 !important;
+  }
   /* The preview was taking more than half of a short phone, so Join a link
      sat below the fold (SE portrait bottom 661 on a 568px screen, and in
      landscape the first action was already off screen). */
@@ -7967,7 +7974,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // apps (Android Chrome, Nathan 2026-10-18). Its float shows the page, so
     // the dock and the call buttons leave it while the page is away.
     function awayFull(on) {
-      document.body.classList.toggle('away-full', !!on && IS_MOBILE && pageFull());
+      const next = !!on && IS_MOBILE && pageFull();
+      if (document.body.classList.contains('away-full') === next) return;
+      document.body.classList.toggle('away-full', next);
+      // The header band is 0 while the browser is floating this page, so the
+      // face is laid out in the float and not in the band it just hid.
+      try { layout(); } catch (e) {}
     }
     async function enterPip(manual) {
       // A tile floated from that page only paints "Playing in
@@ -26684,17 +26696,41 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     let recoverShareTimer = 0;
     const RECOVER_MEDIA_KEY = 'gifos_recover_media';
     const RECOVER_MEDIA_TTL = 120000;
-    function stashRecoverMedia() {
+    function stashRecoverMedia(away) {
       try {
         sessionStorage.setItem(RECOVER_MEDIA_KEY, JSON.stringify({
           v: 1,
           muted: !(myStatus && myStatus.muted === false),
           camOff: !(myStatus && myStatus.camOff === false),
-          sharing: !!(myStatus && myStatus.scr),
+          // A share does not ride a discard: coming back must not re-ask for
+          // the screen. A freeze or update reload (away false) still does.
+          sharing: !away && !!(myStatus && myStatus.scr),
           at: Date.now(),
+          away: !!away,
+          room: away && typeof updateRoomKey === 'function' ? updateRoomKey() : '',
         }));
       } catch (e) {}
     }
+    // Chrome can discard a phone tab in the background and load it again on
+    // the return. freeze fires before the discard; sessionStorage survives.
+    // Nothing was written down, so the meeting came back camera and mic off
+    // (row B). Write the same note a freeze reload writes. Drop it only when
+    // THIS page comes back on its own (it still has the camera). A fresh
+    // load has no stream yet and must keep the note for boot.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        if (typeof localStream !== 'undefined' && localStream && !leaving) stashRecoverMedia(true);
+        return;
+      }
+      if (typeof localStream === 'undefined' || !localStream) return;
+      try {
+        const raw = sessionStorage.getItem(RECOVER_MEDIA_KEY);
+        if (raw && JSON.parse(raw).away === true) sessionStorage.removeItem(RECOVER_MEDIA_KEY);
+      } catch (e) {}
+    });
+    document.addEventListener('freeze', () => {
+      if (typeof localStream !== 'undefined' && localStream && !leaving) stashRecoverMedia(true);
+    });
     function takeRecoverMedia() {
       let raw = null;
       try {
@@ -26706,6 +26742,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       try { o = JSON.parse(raw); } catch (e) { return null; }
       if (!o || o.v !== 1 || typeof o.at !== 'number') return null;
       if (Date.now() - o.at > RECOVER_MEDIA_TTL) return null;
+      if (o.away && typeof updateRoomKey === 'function' && o.room !== updateRoomKey()) return null;
       return o;
     }
     function showResharePrompt() {
