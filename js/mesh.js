@@ -5360,6 +5360,7 @@
       this.atMap = new Map(); this.atTick = -1; this.atEpoch = -1;
       this.beats = new Map();     // bridge end -> the last beat its heir heard (ms)
       this.down = new Set();      // bridge ends whose heir missed three beats: the bridge goes to the standby
+      this.beatDead = new Set();  // ends whose death is ONLY the missed-beat verdict: a resumed beat withdraws it (an announced death never joins this set)
     }
     get TICK() { return this.o.tick(); }
     // A seeker that reaches nobody is anchored to a seated head over a relayed
@@ -5372,16 +5373,20 @@
     // ticks' worth of frames (a status naming a seat arrives mid-tick). A
     // decision made from it reads the view as it is now.
     fresh() { this.atTick = -1; }
-    noteDeath(id) { if (id != null) this.diedAt.set(id, this.TICK); this.epoch++; }
+    noteDeath(id) { if (id != null) { this.diedAt.set(id, this.TICK); this.beatDead.delete(id); } this.epoch++; }
     // HOT STANDBY HEARTBEAT. Each primary end beats its heir every NET_BEAT_MS
     // over their direct link; the page calls beat() when one arrives and
     // pulse() on its clock. Three missed beats (or a closed link) count the end
     // down at once and the standby pair takes the bridge.
-    beat(end, nowMs) { this.beats.set(end, nowMs); if (this.down.delete(end)) this.epoch++; }
+    // A beat is first-hand proof of life: it withdraws the missed-beat verdict
+    // it postdates (down AND the diedAt the pulse set). An ANNOUNCED death
+    // (noteDeath: the goodbye, a ban) is never withdrawn — the leaver's page
+    // is gone and sends no beats; a late buffered beat must not erase it.
+    beat(end, nowMs) { this.beats.set(end, nowMs); let ch = this.down.delete(end); if (this.beatDead.delete(end)) { this.diedAt.delete(end); ch = true; } if (ch) this.epoch++; }
     pulse(nowMs) {
       for (const br of this.bridges.values()) for (const e of [br.a, br.b]) {
         const t = this.beats.get(e);
-        if (t !== undefined && nowMs - t > 3 * NET_BEAT_MS && !this.down.has(e)) { this.down.add(e); this.diedAt.set(e, this.TICK - 1); this.epoch++; }
+        if (t !== undefined && nowMs - t > 3 * NET_BEAT_MS && !this.down.has(e)) { this.down.add(e); if (!this.diedAt.has(e)) { this.diedAt.set(e, this.TICK - 1); this.beatDead.add(e); } this.epoch++; }
       }
     }
     endUp(id) { return this.seatedLive(id) && !this.down.has(id); }
@@ -5558,7 +5563,7 @@
       for (const [key, br] of old) {
         const aUp = this.endUp(br.a), bUp = this.endUp(br.b);
         if (aUp && bUp) {
-          if (br.standbySince === -2 && this.o.credOk(br.a, br.b)) { const kb = Object.assign({}, br); kb.ca = cellOf(br.a) || br.ca; kb.cb = cellOf(br.b) || br.cb; const occ = this.at(br.standbyHole); if (occ == null || occ === br.standbyDead) kb.holeSeatedAt = -1; else if (kb.holeSeatedAt < 0) kb.holeSeatedAt = T; if (occ == null || occ === br.standbyDead || T - kb.holeSeatedAt < NET_HEAL_SETTLE) { next.set(key, kb); s1unite(kb.a, kb.b, kb.ca, kb.cb); } }   // the standby keeps the bridge while the hole is open, or while the end that missed its beats is back in it (no switch back and forth); a new seat in the hole takes it over after NET_HEAL_SETTLE ticks
+          if (br.standbySince === -2 && this.o.credOk(br.a, br.b)) { const kb = Object.assign({}, br); kb.ca = cellOf(br.a) || br.ca; kb.cb = cellOf(br.b) || br.cb; const occ = this.at(br.standbyHole); const held = occ === br.standbyDead && !this.endUp(br.standbyDead); if (occ == null || held) kb.holeSeatedAt = -1; else if (kb.holeSeatedAt < 0) kb.holeSeatedAt = T; if (occ == null || held || T - kb.holeSeatedAt < NET_HEAL_SETTLE) { next.set(key, kb); s1unite(kb.a, kb.b, kb.ca, kb.cb); } }   // the standby keeps the bridge while the hole is open, or while the end it switched over still sits in it counted down. An end BEATING AGAIN in its own seat is a withdrawn verdict: like a new seat, it takes the bridge back after NET_HEAL_SETTLE ticks — one page's false three-missed-beats verdict must not park its view on the standby for good while every other page keeps the primary (the views re-agree)
           continue;
         }
         let dt = -1; for (const e of [br.a, br.b]) { const d = this.diedAt.get(e); if (d !== undefined && d > dt) dt = d; }
