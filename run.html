@@ -13688,7 +13688,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const out = [];
       const mic = localStream && localStream.getAudioTracks()[0];
       if (mic) out.push({ key: 'me:' + mic.id, owner: myId, stream: localStream, gain: 1 });
-      const held = (pid) => { try { const gm = modOf(pid).mute; return !!(gm && gm.on); } catch (e) { return false; } }; // "mute for everyone" holds in the mix too
+      // "mute for everyone" holds in the mix too, and so does a person's own
+      // mute (MT.mixGain: after a short tail, so their last words play out)
+      const now = Date.now();
+      const gainOf = (pid) => { let gm = null; try { gm = modOf(pid).mute; } catch (e) {} const at = turnMutedAt.get(pid); return MT.mixGain(!!(gm && gm.on), at != null ? now - at : null); };
       // A source is one live audio track, and its key names that track: a
       // renegotiation that ends a pair's track and adds a new one to the same
       // stream makes a new key, so every mix drops the ended track (which
@@ -13701,15 +13704,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!q.connected || q.relayed || !q.stream) continue;
         if (typeof mediaOk === 'function' && mediaOk(q.id) === false) continue;
         const t = live(q.stream); if (!t) continue;
-        out.push({ key: 'p:' + q.id + ':' + q.stream.id + ':' + t.id, owner: q.id, stream: new MediaStream([t]), gain: held(q.id) ? 0 : 1 });
+        out.push({ key: 'p:' + q.id + ':' + q.stream.id + ':' + t.id, owner: q.id, stream: new MediaStream([t]), gain: gainOf(q.id) });
       }
       for (const [target, r] of relayVia) {
         if (!r.stream) continue;
         const t = live(r.stream); if (!t) continue;
-        out.push({ key: 'r:' + target + ':' + r.stream.id + ':' + t.id, owner: target, stream: new MediaStream([t]), gain: held(target) ? 0 : 1 });
+        out.push({ key: 'r:' + target + ':' + r.stream.id + ':' + t.id, owner: target, stream: new MediaStream([t]), gain: gainOf(target) });
       }
       if (stageEar && stageEar.fold && stageEar.fold.dest) out.push({ key: 'stage', owner: null, stream: stageEar.fold.dest.stream, gain: 1 });
       return out;
+    }
+    // When each person I hear went muted (their status), and the re-sync of my
+    // mixes when that flips: at once, and once more when the tail has passed.
+    const turnMutedAt = new Map();
+    function turnMuteFlip(pid, muted) {
+      if (muted) { if (!turnMutedAt.has(pid)) turnMutedAt.set(pid, Date.now()); } else turnMutedAt.delete(pid);
+      const sync = () => { if (!turnMixes.size && !turnUp && !bridgeFeeds.size) return; try { syncTurnMixes(); syncTurnUpMix(); syncBridgeFeeds(); } catch (e) {} };
+      sync();
+      if (muted) setTimeout(sync, MT.MUTE_TAIL_MS + 50);
     }
     // One mix-minus per client I anchor (one outgoing track each).
     function syncTurnMixes() {
@@ -16432,6 +16444,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof noteStatusFlags === 'function') noteStatusFlags(cur, st);
       if (!cur && from !== myId) scheduleNewPeerBeat(); // the first status from a person I held none for: answer with my own beat, whatever path carried theirs
       statusOf.set(from, st);
+      if (from !== myId && !!(cur && cur.muted) !== !!st.muted) turnMuteFlip(from, !!st.muted); // my TURN mixes take a muted voice out
       if (DEBUG_ON && (!cur || !!cur.bcend !== !!st.bcend || !!cur.bce !== !!st.bce || !!cur.rec !== !!st.rec || !!cur.stg !== !!st.stg)) { try { (window.__bcTrace = window.__bcTrace || []).push({ t: Date.now(), ev: 'st', from: String(from).slice(0, 8), bcend: st.bcend || 0, bce: st.bce || 0, rec: !!st.rec, stg: st.stg || 0, cam: !st.camOff }); } catch (e) {} }
       try { noteBcEnd(st); } catch (e) {} // a viewer keeps the host's ended word past its seat
       try { applySpotlightBit(from); } catch (e) {}
@@ -36488,14 +36501,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           return { name: rosterNames[p.id] || p.name || null, connected: !!p.connected, relayed: !!p.relayed, turnMine: !!p.turnMine, turnAudio: !!p.turnAudio, anchor: !!p.turnAnchor, serve: !!p.turnServe, iceUrls: urls };
         }),
       }),
-      // debug: the peak |sample| over `ms` of each mix-minus I serve and of each
-      // of its sources after its gain (polled every 20 ms: no gap between reads)
+      // debug: the peak |sample| over `ms` of each mix I send (mix-minus, bridge
+      // feed, uplink) and of each of its sources after its gain (polled every 20 ms: no gap between reads)
       turnMixPeak: async (ms) => {
         if (!ac) return null;
         const meter = (node) => { let an = dbgFoldMeters.get(node); if (!an) { an = ac.createAnalyser(); an.fftSize = 2048; if (node.stream) ac.createMediaStreamSource(node.stream).connect(an); else node.connect(an); dbgFoldMeters.set(node, an); } return an; };
         const rows = [];
-        for (const [pid, mx] of turnMixes) {
-          const r = { to: rosterNames[pid] || String(pid).slice(0, 8), mix: meter(mx.fold.dest), src: [] };
+        const all = [...turnMixes].map(([pid, mx]) => ['serve', pid, mx]).concat([...bridgeFeeds].map(([pid, fd]) => ['feed', pid, fd]), turnUp ? [['up', turnAnchorId, turnUp]] : []);
+        for (const [kind, pid, mx] of all) {
+          const r = { kind, to: rosterNames[pid] || String(pid).slice(0, 8), mix: meter(mx.fold.dest), src: [] };
           for (const s of (mx.fold.peek ? mx.fold.peek() : [])) { const g = mx.fold.gainOf && mx.fold.gainOf(s[0]); if (g) r.src.push([String(s[0]).split(':')[0] + ':' + (s[1] || '-'), meter(g)]); }
           rows.push(r);
         }
@@ -36504,8 +36518,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const t0 = performance.now(); let reads = 0;
         while (performance.now() - t0 < ms) { for (const r of rows) { read(r.mix); for (const s of r.src) read(s[1]); } reads++; await new Promise((z) => setTimeout(z, 20)); }
         const f = (an) => [Number((peak.get(an) || 0).toPrecision(3)), nz.get(an) || 0];
-        return { reads, rows: rows.map((r) => ({ to: r.to, mix: f(r.mix), src: r.src.map((s) => [s[0]].concat(f(s[1]))) })) };
+        return { reads, rows: rows.map((r) => ({ kind: r.kind, to: r.to, mix: f(r.mix), src: r.src.map((s) => [s[0]].concat(f(s[1]))) })) };
       },
+      // debug: what each pair's audio senders carry (mid, track, which mix or the mic)
+      audioSenders: () => [...peers.values()].filter((p) => p.pc).map((p) => {
+        const mic = localStream && localStream.getAudioTracks()[0];
+        const what = (t) => !t ? null : t === turnMixTrack(p.id) ? 'mix' : t === bridgeFeedTrack(p.id) ? 'feed' : t === turnUpTrack() ? 'up' : t === mic ? 'mic' + (t.enabled ? '' : '-off') : 'other';
+        let tr = []; try { tr = p.pc.getTransceivers(); } catch (e) {}
+        return [rosterNames[p.id] || String(p.id).slice(0, 8), tr.filter((x) => x.sender && x.sender.track && x.sender.track.kind === 'audio').map((x) => [x.mid, x.sender.track.id.slice(0, 8), what(x.sender.track), x.sender === p.mainA ? 'mainA' : 'aux'])];
+      }),
       // debug: the audio lines of each free-pool pair's two descriptions
       turnSdp: () => [...peers.values()].filter((p) => p.turnAudio && p.pc).map((p) => {
         const aud = (d) => { if (!d || !d.sdp) return null; return d.sdp.split(/\r?\n/).filter((l) => /^m=audio|^a=mid:|^a=fmtp:\d+ .*(useinbandfec|usedtx|stereo|maxaverage)|^a=ptime|^a=maxptime|^a=rtpmap:\d+ (opus|red)/i.test(l)).join(' | '); };
