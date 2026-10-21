@@ -13597,6 +13597,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (p.unlinkedSince && now - p.unlinkedSince > 30000) return false;
       return true;
     }
+    // rosterAbsent: the roster pass marks a pair absent (the sweeper drops it
+    // after ABSENT_GRACE) when nobody names it and nobody has heard from it.
+    // A door I knock at while still outside is judged by its transport. So
+    // is every pair of a blocked page that reaches nobody directly: a status
+    // needs a channel, and its only channels are TURN pairs that take
+    // seconds to come up, so its heard-from set says nothing about who is
+    // gone. Marked, the seated host's chain door was dropped at 12 s and
+    // skipped as an anchor (the host never asked the pool), and a third
+    // page's dial through TURN to the host was dropped every 12 s, so it
+    // never connected. A departure still comes from the relay (peer-leave).
+    function rosterAbsent(pid, p, ids, seatedHere) {
+      if (!p || p.qa || p.absentSince || ids.has(pid) || linkTo(pid)) return false;
+      if (p.boot && !seatedHere) return false;
+      if (blockedAlone()) return false;
+      return true;
+    }
     // iceFor(p) → the settings for this pair's next transport. The TURN
     // servers are added only where meetTurn.pairUsesTurn allows it.
     function iceFor(p) {
@@ -13777,6 +13793,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       sync();
       if (muted) setTimeout(sync, MT.MUTE_TAIL_MS + 50);
     }
+    // Who a page hears on its own pairs, for the mixes I send it: its
+    // gossiped links minus its TURN pairs (st.tl). Its anchor and the
+    // clients it serves are tree edges, and their voices reach me only
+    // through that page. A spare connected TURN pair carries nothing it
+    // plays (applyBuses mutes it), so counting its far end as heard left
+    // that voice out of every mix: the third page of an all-blocked room
+    // never heard the host.
+    function mixDirectOf(pid) {
+      const tl = (statusOf.get(pid) || {}).tl;
+      return (connsOf.get(pid) || []).filter((x) => x !== myId && !(Array.isArray(tl) && tl.includes(x)));
+    }
     // One mix-minus per client I anchor (one outgoing track each).
     function syncTurnMixes() {
       for (const [pid, mx] of [...turnMixes]) {
@@ -13790,8 +13817,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!src) src = turnHeardSources();
         let mx = turnMixes.get(q.id);
         if (!mx) { mx = { fold: MM.createAudioFold(ac), keys: new Set() }; turnMixes.set(q.id, mx); }
-        const direct = (connsOf.get(q.id) || []).filter((x) => x !== myId);
-        const want = new Map(MT.mixMinus(src, q.id, direct).map((x) => [x.key, x]));
+        const want = new Map(MT.mixMinus(src, q.id, mixDirectOf(q.id)).map((x) => [x.key, x]));
         for (const k of [...mx.keys]) if (!want.has(k)) { mx.fold.remove(k); mx.keys.delete(k); }
         for (const [k, x] of want) {
           if (!mx.keys.has(k)) { mx.fold.add(k, x.stream, x.gain); mx.keys.add(k); }
@@ -13809,7 +13835,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const drop = () => { if (turnUp) { turnUp.fold.clear(); turnUp = null; } };
       if (!a || !a.turnAnchor) { drop(); return; }
       if (!ensureAc()) return;
-      const want = new Map(MT.mixMinus(turnHeardSources(), a.id, (connsOf.get(a.id) || []).filter((x) => x !== myId)).map((x) => [x.key, x]));
+      const want = new Map(MT.mixMinus(turnHeardSources(), a.id, mixDirectOf(a.id)).map((x) => [x.key, x]));
       if (![...want.values()].some((x) => x.owner !== myId)) { drop(); return; }
       if (!turnUp) turnUp = { fold: MM.createAudioFold(ac), keys: new Set() };
       for (const k of [...turnUp.keys]) if (!want.has(k)) { turnUp.fold.remove(k); turnUp.keys.delete(k); }
@@ -17734,7 +17760,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // 'cannot-reach-room' (reachCounts skips an absent pair). A door is
       // judged by its transport, not by the roster.
       const seatedHere = (() => { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3); })();
-      for (const [pid, p] of peers) if (!p.qa && !ids.has(pid) && !linkTo(pid) && !(p.boot && !seatedHere) && !p.absentSince) p.absentSince = Date.now();
+      for (const [pid, p] of peers) if (rosterAbsent(pid, p, ids, seatedHere)) p.absentSince = Date.now();
       for (const pid of Object.keys(rosterNames)) if (!ids.has(pid)) delete rosterNames[pid];
       reconcileGrid();
       updateStatus();
