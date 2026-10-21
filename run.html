@@ -8320,6 +8320,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else visParkSent.delete(pid); // never mark unsent state as delivered
       }
     }
+    // A visible tab never wants a mate's main parked. Re-send the lift to
+    // one mate (idempotent on the far side: no park, nothing changes).
+    function reassertVisLift(pid) {
+      const p = peers.get(pid);
+      if (!p || !p.dc || p.dc.readyState !== 'open' || document.hidden) return;
+      dcSend(p, { k: 'vis', park: false });
+      visParkSent.set(pid, false);
+    }
     document.addEventListener('visibilitychange', () => {
       awayFull(document.hidden);
       if (document.hidden) enterPip(); else exitPip();
@@ -16532,6 +16540,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A share starting or stopping paints this tile now. The sharer list is
       // read live; a coalesced pass would leave the chip behind it.
       if (shareBit) { updateTile(from); if (typeof paintShare === 'function') paintShare(); }
+      // A mate stepping DOWN restores its mains, except toward a viewer whose
+      // park it still holds. A park lift is unacked: one sent into a channel
+      // that could not deliver (back from the background on a waking radio)
+      // kept that main parked through the stage spell, and the tile stayed
+      // frozen after the step-down until the frozen-tile check had seen 3s
+      // of nothing. Say my wish again at the step-down itself.
+      if (cur && cur.stg && !st.stg && from !== myId && typeof reassertVisLift === 'function') reassertVisLift(from);
       // A waiting person's own word holds or releases their tile and voice.
       if (waitBit && st.wt !== undefined && from !== myId && waitingSince() && typeof applyHostOrders === 'function') {
         try { applyHostOrders(); updateTile(from); layout(); updateStatus(); } catch (e) {}
@@ -32377,6 +32392,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const word = toggle.querySelector('.docklab');
         if (word) word.textContent = collapsed ? uiText('more', 'More') : uiText('hide', 'Hide');
         try { seatUseRow(); } catch (e) {}
+        // An upright phone shows the whole sheet when it fits above the
+        // dock (a guest's 577px sheet, Settings and Keys included: LM-44).
+        // A host's longer sheet would reach the top of the call, so it
+        // keeps two rows on the first screen and the rest scrolls.
+        if (!collapsed) {
+          const sheet = document.getElementById('barmore');
+          bar.classList.remove('more-rows');
+          const upright = window.matchMedia && matchMedia('(max-width: 700px) and (orientation: portrait)').matches;
+          if (sheet && upright && sheet.scrollHeight > sheet.clientHeight + 2) bar.classList.add('more-rows');
+        }
         // Opening More covers the Run of show / lyrics cards so every
         // dock stand-in on the sheet is fully visible (Pixel 7 host dock).
         if (!collapsed) {
