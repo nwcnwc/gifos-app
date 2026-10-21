@@ -105,7 +105,6 @@
     const view = doc.defaultView || root;
     const vh = +opts.vh || (view && view.innerHeight) || 0;
     const vw = +opts.vw || (view && view.innerWidth) || 0;
-    if (sidewaysFill(tiles, vw, vh, header, !!opts.phone)) { feed.style.bottom = ''; return 0; }
     const away = body && body.classList && body.classList.contains('chrome-away');
     if (!away) {
       const note = doc.getElementById('chatnote');
@@ -118,6 +117,8 @@
       callChromeTop = top > 0 ? top : 0;
     }
     const top = callChromeTop;
+    // Held top, so a tuck does not flip a sideways phone between the two.
+    if (sidewaysFill(tiles, vw, vh, header, !!opts.phone, top)) { feed.style.bottom = ''; return 0; }
     // Nothing below the header, or a control with no room under it.
     if (!(top >= header + 48) || !(vh > 0) || top >= vh - 8) {
       feed.style.bottom = '';
@@ -128,21 +129,28 @@
     return reserve;
   }
 
-  // A wide sideways phone (844x390, a Pixel 7 at 915x412) whose faces fit
-  // in one row as tall as the band under the header: the faces fill the
-  // height and the dock, Record and Captions float over them. Stopping at
-  // Record left two square faces over 107px of black. A narrow one (an SE
-  // at 667x375) and a crowd that needs a second row keep the edge.
-  function sidewaysFill(tiles, vw, vh, header, phone) {
-    if (!phone || !(vh < 500) || !(vw > 700) || !(vw > vh)) return false;
+  // A sideways phone fills the height, and the dock, Record and Captions
+  // float over the faces, when:
+  // - a wide one (844x390, a Pixel 7 at 915x412) fits every face in one
+  //   row as tall as the band under the header. Stopping at Record left two
+  //   square faces over 107px of black.
+  // - a crowd cannot stand as squares in one row above Record. That edge
+  //   cut seven faces on an SE (568x320) to 77x156 slivers over 106px of
+  //   black, with the dock below them all.
+  // Otherwise the edge costs no face its square and stays: one face on an
+  // SE keeps Video and Mic off it, and so does a narrow phone's small group.
+  function sidewaysFill(tiles, vw, vh, header, phone, top) {
+    if (!phone || !(vh < 500) || !(vw > vh)) return false;
     let n = 0;
     for (let i = 0; i < (tiles ? tiles.length : 0); i++) {
       const t = tiles[i];
       if (t.tier === 'stad' || t.stage || t.share) return false;
       n++;
     }
-    const band = vh - header;
-    return n > 0 && n * band + (n - 1) * 4 <= vw - 4;
+    if (!n) return false;
+    const oneRow = (side) => n * side + (n - 1) * 4 <= vw - 4;
+    if (vw > 700 && oneRow(vh - header)) return true;
+    return top >= header + 48 && top < vh - 8 && !oneRow(top - header);
   }
 
   function placeEl(el, r) {
