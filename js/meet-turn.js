@@ -141,7 +141,9 @@
   // now, else its lowest id: a page joining later never takes the role from
   // a working bridge, and when the bridge leaves the next one takes over on
   // its own, with no message.
-  function networkBridge(f) {
+  // bridgeOf maps every blocked page this view knows to that page's bridge,
+  // so one pass answers every page that shares the view.
+  function bridgeComponents(f) {
     const ids = (f && f.ids) || [];
     const blocked = (id) => !!(f.blocked && f.blocked(id));
     const list = (fn, id) => { const v = fn ? fn(id) : null; return Array.isArray(v) ? v : []; };
@@ -154,19 +156,25 @@
       nbrs.get(a).add(b); nbrs.get(b).add(a);
     }
     const lower = (a, b) => (String(a) < String(b) ? a : b);
-    const seen = new Set(), bridges = new Set();
+    const seen = new Set(), bridges = new Set(), bridgeOf = new Map();
     let bridge = null;
     for (const start of known) {
       if (seen.has(start)) continue;
       const group = [start]; seen.add(start);
-      for (let i = 0; i < group.length; i++) for (const n of nbrs.get(group[i])) if (!seen.has(n)) { seen.add(n); group.push(n); }
+      for (let i = 0; i < group.length; i++) for (const nb of nbrs.get(group[i])) if (!seen.has(nb)) { seen.add(nb); group.push(nb); }
       let low = null, lowLinked = null;
       for (const id of group) { low = low == null ? id : lower(low, id); if (f.holds && f.holds(id)) lowLinked = lowLinked == null ? id : lower(lowLinked, id); }
       const b = lowLinked != null ? lowLinked : low;
       bridges.add(b);
-      if (group.includes(f.me)) bridge = b;
+      for (const id of group) bridgeOf.set(id, b);
+      if (bridge == null && group.includes(f.me)) bridge = b;
     }
-    return { bridge, bridges };
+    return { bridge, bridges, bridgeOf };
+  }
+
+  function networkBridge(f) {
+    const all = bridgeComponents(f);
+    return { bridge: all.bridge, bridges: all.bridges };
   }
 
   // mixMinus(sources, clientId, direct) → the sources an anchor mixes for one
@@ -381,7 +389,7 @@
 
   const api = {
     ICE_URL, DEFAULT_WORKER, WORKER_KEY, workerBase, POOL, FETCH_TIMEOUT_MS, RETRY_MAX_MS, P0_MS, P1_MS, MAX_SERVED,
-    reachable, pairStage, poolNeeded, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, mayServe, networkBridge,
+    reachable, pairStage, poolNeeded, pairUsesTurn, iceServersFor, hasTurnServer, chooseAnchor, mixMinus, mayServe, networkBridge, bridgeComponents,
     retryDelayMs, parseIce, createCredentials, askIce, freeTicket, TICKET_CREDS,
   };
   const GifOS = (root.GifOS = root.GifOS || {});
