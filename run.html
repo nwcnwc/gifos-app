@@ -13576,6 +13576,89 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // A peer dialled this pair through TURN (its relay candidates arrived)
     // or I already anchor it. Only a page that cannot be reached acts on it.
     function turnInvited(p) { return !!(p && (p.turnServe || p.turnStandby || (p.turnInvitedAt && Date.now() - p.turnInvitedAt < 60000))); }   // turnStandby: the seating's standby pair, dialled ahead of time by its relay end
+    // Alone on a blocked network: no direct pair is up. A TURN pair does not
+    // count (it joins two networks, it is not a row). The host of an
+    // all-blocked room is this, from the moment it sits.
+    function blockedAlone() {
+      if (directPath !== 'blocked') return false;
+      for (const q of peers.values()) if (q && q.connected && !netPairRelayed(q)) return false;
+      return true;
+    }
+    const loneDark = new Set();   // blockedLone: peers whose link stayed dark past the direct window
+    const loneSeen = new Map();   // blockedLone: when each linked peer was first seen (a record made anew keeps it)
+    // Lone on a blocked network: blockedAlone, and the room view names no
+    // row mate of my own network (a link to me that is neither dark nor a
+    // bridge or its standby). That is the host of an all-blocked room, the
+    // one page the chain exceptions below are for. A page of a blocked
+    // office whose row mates' pairs are still coming up is NOT lone: its
+    // network reaches it directly in seconds, and the seating names its
+    // bridge. Treating it as lone made every such page ask the pool, anchor
+    // off the bridge, and hold its row links from their rebuild.
+    // A dark link counts only once its peer has had the whole direct window
+    // (meetTurn P0_MS, from when I first saw it, before either of us sat:
+    // a page that sits after its relay pair is up must not start the window
+    // over, or it leaves the chain and drops that pair): the view marks a pair
+    // dark seconds after it was dialled, and a loaded office brings its
+    // direct pairs up later than that.
+    // A link that stayed dark stays out (loneDark): a peer whose pair never
+    // came up is no row mate, and its record made anew (a door knocking
+    // again, a rebuild) reads as pending for seconds. Counted, it turned a
+    // lone page out of the chain for one sweep, and that sweep dropped the
+    // anchor pair that carried it.
+    function blockedLone() {
+      if (!blockedAlone()) return false;
+      const now = Date.now(), p0 = (MT && MT.P0_MS) || 12000;
+      for (const [pid, p] of peers) if (linkTo(pid) && !loneSeen.has(pid)) { if (loneSeen.size > 256) loneSeen.clear(); loneSeen.set(pid, Math.min(now, (p && p.bornAt) || now)); }   // first sight is the record's birth: this runs only once I sit
+      for (const pid of peers.keys()) {
+        if (!linkTo(pid) || loneDark.has(pid)) continue;
+        const li = netLinkInfo(pid);
+        if (!li || li.bridge || li.standby) continue;
+        if (li.dark && now - (loneSeen.get(pid) || now) >= p0) { if (loneDark.size > 256) loneDark.clear(); loneDark.add(pid); continue; }
+        return false;
+      }
+      return true;
+    }
+    // The sweeper's seatedNow is the mesh seat (state 3). netSeated also
+    // needs the room view, which a host can still be waiting on. The chain
+    // is the same in both.
+    function chainSitting() {
+      try {
+        const s = meshSeat();
+        return !!(s && s.hasCoord && s.state === 3);
+      } catch (e) {
+        if (!(e instanceof ReferenceError)) throw e;
+        return false;
+      }
+    }
+    // A seated blocked page that reaches nobody has no link of its own. The
+    // chain's candidate is this failed direct door, and a relay-only dial
+    // leaves the pc in 'new' (it never reaches 'failed'). The 15s grace then
+    // dropped it before a credential could land, and the fresh door started
+    // the direct-path clock over. Kept until an anchor is chosen, on the
+    // same 30s a new anchor gets to connect. Every other door keeps the 15s.
+    function keepChainDoor(p, now) {
+      if (!p || !p.boot || p.turnAnchor || p.turnServe || turnInvited(p)) return false;
+      if (linkTo(p.id)) return false;
+      if (!(directPath === 'blocked' && turnAnchorId == null && (netSeated() || chainSitting()) && blockedLone())) return false;
+      if (p.unlinkedSince && now - p.unlinkedSince > 30000) return false;
+      return true;
+    }
+    // rosterAbsent: the roster pass marks a pair absent (the sweeper drops it
+    // after ABSENT_GRACE) when nobody names it and nobody has heard from it.
+    // A door I knock at while still outside is judged by its transport. So
+    // is every pair of a lone blocked page (blockedLone): a status
+    // needs a channel, and its only channels are TURN pairs that take
+    // seconds to come up, so its heard-from set says nothing about who is
+    // gone. Marked, the seated host's chain door was dropped at 12 s and
+    // skipped as an anchor (the host never asked the pool), and a third
+    // page's dial through TURN to the host was dropped every 12 s, so it
+    // never connected. A departure still comes from the relay (peer-leave).
+    function rosterAbsent(pid, p, ids, seatedHere) {
+      if (!p || p.qa || p.absentSince || ids.has(pid) || linkTo(pid)) return false;
+      if (p.boot && !seatedHere) return false;
+      if (blockedLone()) return false;
+      return true;
+    }
     // iceFor(p) → the settings for this pair's next transport. The TURN
     // servers are added only where meetTurn.pairUsesTurn allows it.
     function iceFor(p) {
@@ -13591,7 +13674,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A one-hour pass: the far end holds one and I can reach it only through the paid pool.
       const passDial = !!paid && vaDialFor(p);
       let use = MT.pairUsesTurn({ mine: directPath, anchor: !!p.turnAnchor || (named && li.turnClient) || passDial, invited: turnInvited(p), haveServers: !!servers });
-      if (netSeated() && !named && !passDial) use = false;
+      if (netSeated() && !named && !passDial) {
+        // Seating names the bridges, and a pair it does not name stays off
+        // the pool (a row-mate must not ask for its own). Two exceptions,
+        // or the host of an all-blocked room never puts TURN on anything:
+        // it sat before any other group existed, so the view names no
+        // bridge, and the chain's one link is the bridge. A dial that
+        // arrived through TURN is the other end of that link (neither end
+        // can be reached, so both are clients).
+        let anyNamed = false;
+        if (typeof netLinks === 'function') { try { for (const l of netLinks()) if (l && (l.bridge || l.standby)) { anyNamed = true; break; } } catch (e) {} }
+        const loneChain = !anyNamed && blockedLone();
+        if (!turnInvited(p) && !loneChain) use = false;
+      }
       p.turnMine = use;
       p.turnPaid = use ? !!paid : vaFarPaid(p);
       p.turnAudio = turnAudioOf(p);
@@ -13748,6 +13843,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       sync();
       if (muted) setTimeout(sync, MT.MUTE_TAIL_MS + 50);
     }
+    // Who a page hears on its own pairs, for the mixes I send it: its
+    // gossiped links minus its TURN pairs (st.tl). Its anchor and the
+    // clients it serves are tree edges, and their voices reach me only
+    // through that page. A spare connected TURN pair carries nothing it
+    // plays (applyBuses mutes it), so counting its far end as heard left
+    // that voice out of every mix: the third page of an all-blocked room
+    // never heard the host.
+    function mixDirectOf(pid) {
+      const tl = (statusOf.get(pid) || {}).tl;
+      return (connsOf.get(pid) || []).filter((x) => x !== myId && !(Array.isArray(tl) && tl.includes(x)));
+    }
     // One mix-minus per client I anchor (one outgoing track each).
     function syncTurnMixes() {
       for (const [pid, mx] of [...turnMixes]) {
@@ -13761,8 +13867,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!src) src = turnHeardSources();
         let mx = turnMixes.get(q.id);
         if (!mx) { mx = { fold: MM.createAudioFold(ac), keys: new Set() }; turnMixes.set(q.id, mx); }
-        const direct = (connsOf.get(q.id) || []).filter((x) => x !== myId);
-        const want = new Map(MT.mixMinus(src, q.id, direct).map((x) => [x.key, x]));
+        const want = new Map(MT.mixMinus(src, q.id, mixDirectOf(q.id)).map((x) => [x.key, x]));
         for (const k of [...mx.keys]) if (!want.has(k)) { mx.fold.remove(k); mx.keys.delete(k); }
         for (const [k, x] of want) {
           if (!mx.keys.has(k)) { mx.fold.add(k, x.stream, x.gain); mx.keys.add(k); }
@@ -13780,7 +13885,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const drop = () => { if (turnUp) { turnUp.fold.clear(); turnUp = null; } };
       if (!a || !a.turnAnchor) { drop(); return; }
       if (!ensureAc()) return;
-      const want = new Map(MT.mixMinus(turnHeardSources(), a.id, (connsOf.get(a.id) || []).filter((x) => x !== myId)).map((x) => [x.key, x]));
+      const want = new Map(MT.mixMinus(turnHeardSources(), a.id, mixDirectOf(a.id)).map((x) => [x.key, x]));
       if (![...want.values()].some((x) => x.owner !== myId)) { drop(); return; }
       if (!turnUp) turnUp = { fold: MM.createAudioFold(ac), keys: new Set() };
       for (const k of [...turnUp.keys]) if (!want.has(k)) { turnUp.fold.remove(k); turnUp.keys.delete(k); }
@@ -13850,7 +13955,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const seatLinks = netSeated() ? netLinks() : null;
       const seatBridge = seatLinks ? seatLinks.find((l) => l.bridge && l.turnClient && peers.has(l.peer)) : null;
       const seatStandby = seatLinks ? seatLinks.filter((l) => l.standby && l.turnClient && peers.has(l.peer)) : [];
-      const net = directPath === 'blocked' ? (seatLinks ? { bridge: (seatBridge || seatStandby.length) ? myId : null, bridges: new Set() } : MT.networkBridge({ me: myId, ids: [myId, ...peers.keys()],
+      // The host sits before anyone else. Its view then names no bridge, and
+      // the chain (one lower bridge; the lowest dials the next) is what
+      // joins it. A page that already has a direct neighbour, or a bridge
+      // the seating named, does not take this path.
+      const chainFallback = !!((seatLinks || chainSitting()) && directPath === 'blocked' && !seatBridge && !seatStandby.length && blockedLone());
+      const net = directPath === 'blocked' ? ((seatLinks && !chainFallback) ? { bridge: (seatBridge || seatStandby.length) ? myId : null, bridges: new Set() } : MT.networkBridge({ me: myId, ids: [myId, ...peers.keys()],
         blocked: (id) => (id === myId ? true : (statusOf.get(id) || {}).np === 'blocked'),
         conns: (id) => (id === myId ? myConns() : connsOf.get(id)),
         turn: (id) => (id === myId ? myTl : (statusOf.get(id) || {}).tl),
@@ -13863,7 +13973,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // by a TURN link of their own: a carry refusal is waited out, not
       // spilled to a per-person credential, so a room of S networks holds
       // S-1 TURN links however many people each network holds.
-      const usePool = isBridge;
+      // Gossip can group this page with someone it has no direct pair to.
+      // It still reaches nobody, so it is the bridge that has to ask.
+      const usePool = isBridge || chainFallback;
+      // The host opened this dial itself, so it never arrived as a knocker's
+      // door. The picker ignores a peer with no link and no door, and the
+      // sweeper then drops it on the 15s grace. Mark it before either runs.
+      if (chainFallback) { for (const [pid, p] of peers) if (p && !p.boot && !linkTo(pid)) p.boot = true; }
       // 1. How long each pair has gone without a working path.
       for (const [pid, p] of peers) {
         if (p.connected || p.relayed) turnDownAt.delete(pid);
@@ -13959,7 +14075,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // 2c. The seating names this page's bridge: its far end is the anchor,
       // whatever the pool rules would have picked; a standby pair is dialled
       // through TURN ahead of time; every other pair stays off the pool.
-      if (seatLinks) {
+      if (seatLinks && !chainFallback) {
         const br = seatBridge;
         for (const p of peers.values()) { const sb = seatStandby.find((l) => l.peer === p.id); if (!!p.turnStandby !== !!sb) { p.turnStandby = !!sb; if (p.turnStandby && !p.connected && !p.turnMine) { newPcFor(p); p.lastKick = now + Math.random() * 1500; sendOffer(p.id, false); } } }
         if (br && turnAnchorId !== br.peer) {
@@ -13992,7 +14108,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             dropTurnAnchor(now, 60000);
           }
         }
-        if (turnAnchorId == null && !seatLinks) {
+        if (turnAnchorId == null && (!seatLinks || chainFallback)) {
           const cands = [];
           for (const [pid, p] of peers) {
             if (!anchorable(pid, p)) continue;
@@ -14009,10 +14125,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // A page whose verdict never reached me (no pulse yet: a door
           // dialled over the relay, before any mesh link) is unknown, not
           // blocked: with no chain to dial, it is the candidate.
+          // A seated host that IS the lowest has nobody who will dial it
+          // (the others do not yet count it as a bridge), so it dials the
+          // next blocked page. That is the same one link the next page
+          // dials back.
           let pool = cands;
           if (!cands.some((c) => c.reachable === true && c.stage === 'turn')) {
             pool = cands.filter((c) => net.bridges.has(c.id) && c.id !== net.bridge && String(c.id) < String(myId));
             if (!pool.length) pool = cands.filter((c) => c.reachable == null);
+            if (chainFallback && !pool.length) pool = cands.filter((c) => c.reachable === false);
           }
           const pick = MT.chooseAnchor(pool, null, now);
           if (pick != null) setTurnAnchor(pick, now);
@@ -16722,7 +16843,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Degree stays bounded: the sender dials only its own owned links, and
         // the sweeper retires any link the arithmetic ends up not wanting.
         const turnPair = !!((peers.get(from) || {}).turnAnchor || (peers.get(from) || {}).turnServe); // a free-pool anchor pair redials whatever the seats say
-        if (!linkTo(from) && meshKnows(from) && !turnPair) { rxStats.offerRejected++; return; }
+        // Alone on a blocked network there is no mesh neighbour to hear
+        // through, so the chain's offer is from someone this seat does not
+        // link to. Refusing it dropped the host out of an all-blocked room.
+        let loneBlocked = false;
+        if (!turnPair && !linkTo(from) && directPath === 'blocked') {
+          loneBlocked = true;
+          for (const q of peers.values()) if (q && q.connected && !netPairRelayed(q)) { loneBlocked = false; break; }
+        }
+        if (!linkTo(from) && meshKnows(from) && !turnPair && !loneBlocked) { rxStats.offerRejected++; return; }
         const p = makePeer(from, msg.name);
         if (!p) return; // banned seat or forger: no pair, no negotiation
         if (p && !linkTo(from) && !meshKnows(from)) {
@@ -16791,7 +16920,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // offer is ordinary formation glare — under load a healthy formation
         // takes >5s, and rebuilding on glare tore down in-flight ICE over and
         // over (cert-sweep-2 03c: a stable member livelocked to p=1).
-        if (sponsorReplyTo.delete(from)) p.altPath = true; // §FWD: answer rides the sponsor path the offer proved
+        // §FWD: the answer rides the path the offer proved. An offer that came
+        // over the relay proves the relay, so a rotation left on from my own
+        // unanswered dials must not send this answer down the sponsor path:
+        // with no friend that reaches the far end, its last resort hands the
+        // answer to a channel that cannot deliver it, and the pair waits for
+        // the next 30 s re-offer (a blocked page's relay anchor, every time).
+        p.altPath = sponsorReplyTo.delete(from);
         learn(from, msg, p, adm);
         p.iceBatchOk = msg.ib === 1; // the sender reads batched ICE and the end mark (see noteIce)
         // Perfect negotiation (glare): both sides may offer when the lower-id
@@ -17046,6 +17181,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // request is the peer back with no pair. Waiting it out held a returning
     // member off a newcomer until the next re-offer, seconds later.
     const LOST_OFFER_MS = 1000;
+    // solo stays true while the joiners are not in the roster yet, and a
+    // pair that has not opened its channel is not live. Both made this
+    // rebuild fire on every dial request. A relay-only pc sits in 'new',
+    // so the rebuild never waited for 'failed', and the TURN allocation
+    // restarted forever. A failed or closed pc may still be rebuilt. A
+    // reachable page, and a blocked page that already has a direct
+    // neighbour, keep the fork rebuild.
+    function dialRebuildHold(p) {
+      if (!p || !p.pc) return false;
+      if (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed') return false;
+      if (p.turnAnchor || p.turnServe || turnInvited(p)) return true;
+      if (directPath === 'blocked' && blockedLone()) return true;
+      return false;
+    }
     function onDialRequest(p) {
       const pLive = p.connected && p.dc && p.dc.readyState === 'open';
       const unanswered = !!(p.pc && p.pc.signalingState === 'have-local-offer');
@@ -17055,6 +17204,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         + ' init=' + iInitiate(p.id) + ' forming=' + !!forming + ' dark=' + !!darkOffer + ' pc=' + (p.pc ? p.pc.connectionState + '/' + p.pc.signalingState : '-')
         + ' age=' + Math.round((Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0)) / 100) / 10 + 's frag=' + Math.round((Date.now() - (p.fragDialAt || 0)) / 100) / 10 + 's');
       if ((participantCount() <= 1 || !pLive) && !forming && iInitiate(p.id) && Date.now() - (p.fragDialAt || 0) > 5000) {
+        if (dialRebuildHold(p)) return;
         p.fragDialAt = Date.now();
         if (!pLive && p.pc) newPcFor(p);
         makePeer(p.id, null); sendOffer(p.id, false);
@@ -17120,7 +17270,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       // A stale transport — an offer never answered, a pair dead since a
       // dark spell — is rebuilt: the door needs a fresh bootstrap, not a
-      // renegotiation of a corpse.
+      // renegotiation of a corpse. Not the chain pc of a blocked page that
+      // reaches nobody: that one is in 'new' until TURN connects, and a
+      // rebuild here is a new allocation.
+      if (dialRebuildHold(p)) return;
       if (p && p.pc) { newPcFor(p); if (p.neverUp === true && manyDoors) p.dialWait = Math.min(DOOR_REDIAL_CAP, (p.dialWait || 5000) * 2); }
       // THE INITIATOR DIALS THE DOOR. A knocker's offer is also a name, and
       // that name is a dial request: the id-order initiator offers back
@@ -17139,7 +17292,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function retireBootPairs() {
       const s = meshSeat();
       if (!s || !s.hasCoord || s.state !== 3) return;
-      for (const [pid, q] of Array.from(peers)) if (q.boot && !linkTo(pid) && (meshKnows(pid) || q.bootOut) && !q.turnAnchor && !q.turnServe) dropPeer(pid, true); // a knocker still outside keeps its door to me; a door I knocked through goes wherever its greeter sits; a free-pool anchor pair keeps carrying its voice
+      for (const [pid, q] of Array.from(peers)) if (q.boot && !linkTo(pid) && (meshKnows(pid) || q.bootOut) && !q.turnAnchor && !q.turnServe && !keepChainDoor(q, Date.now())) dropPeer(pid, true); // a knocker still outside keeps its door to me; a door I knocked through goes wherever its greeter sits; a free-pool anchor pair keeps carrying its voice; a chain door that is not the anchor yet stays too
     }
     function ensureLink(pid, name) {
       if ((typeof isEjected === 'function' && isEjected(pid) === true)) return; // never link to a forger
@@ -17672,7 +17825,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // 'cannot-reach-room' (reachCounts skips an absent pair). A door is
       // judged by its transport, not by the roster.
       const seatedHere = (() => { const s = meshSeat(); return !!(s && s.hasCoord && s.state === 3); })();
-      for (const [pid, p] of peers) if (!p.qa && !ids.has(pid) && !linkTo(pid) && !(p.boot && !seatedHere) && !p.absentSince) p.absentSince = Date.now();
+      for (const [pid, p] of peers) if (rosterAbsent(pid, p, ids, seatedHere)) p.absentSince = Date.now();
       for (const pid of Object.keys(rosterNames)) if (!ids.has(pid)) delete rosterNames[pid];
       reconcileGrid();
       updateStatus();
@@ -19463,8 +19616,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // me — and retired once both are seated with no link between them.
           const theyOutside = !meshKnows(pid);
           const doorShut = p.boot && !p.bootOut && p.dc && p.dc.readyState === 'closed'; // the knocker closed my end of its door
-          if (p.boot && p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed' || doorShut)) { dropPeer(pid, !theyOutside || rosterIds.includes(pid)); continue; } // a dead door: gone now, never rebuilt (a knocker redials); a member the roster already holds keeps its status
-          else if (p.turnAnchor || p.turnServe || p.turnStandby || seatNamed(pid)) { p.unlinkedSince = 0; } // a free-pool anchor pair stays while it carries a voice, whatever the seats say — and so does a pair the seating names a bridge or its standby: its ends usually sit in different rows (not each other's owned links), BOTH sides must keep it (the far end never sets turnStandby: it is not the relay client), and reaping it at the hand-over razes the warm pair the switch is about to anchor
+          const chainKeep = keepChainDoor(p, now);
+          if (p.boot && p.pc && (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed' || doorShut) && !p.turnAnchor && !p.turnServe && !turnInvited(p) && !seatNamed(pid)) {
+            // Dropping a failed door here (this sweep runs before turnSweep)
+            // left a seated host that reaches nobody with nobody to put TURN
+            // on. keepChainDoor holds that one door; once an anchor is
+            // chosen, the other failed doors drop as before. A pair the
+            // seating names is not this door.
+            if (!chainKeep) { dropPeer(pid, !theyOutside || rosterIds.includes(pid)); continue; }
+            if (!p.unlinkedSince) p.unlinkedSince = now;
+          }
+          else if (p.turnAnchor || p.turnServe || turnInvited(p) || seatNamed(pid)) { p.unlinkedSince = 0; } // a free-pool anchor pair stays while it carries a voice, whatever the seats say — and so does a pair the seating names a bridge or its standby: its ends usually sit in different rows (not each other's owned links), BOTH sides must keep it (the far end never sets turnStandby: it is not the relay client), and reaping it at the hand-over razes the warm pair the switch is about to anchor
           // A door I knocked through is mine to close once I am seated: its
           // greeter is seated somewhere my occupancy need not hold (Section 1
           // when I sit deep), so theyOutside says nothing about it. Kept, it
@@ -19478,8 +19640,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // from a dark spell names its neighbours again only once its
             // view re-converges, and its dead pairs with them must be
             // rebuilt meanwhile, not dropped.
-            if (!p.unlinkedSince) p.unlinkedSince = now;
-            if (now - p.unlinkedSince > 15000) { dropPeer(pid, meshKnows(pid)); continue; }
+            if (chainKeep) { if (!p.unlinkedSince) p.unlinkedSince = now; }
+            else {
+              if (!p.unlinkedSince) p.unlinkedSince = now;
+              if (now - p.unlinkedSince > 15000) { dropPeer(pid, meshKnows(pid)); continue; }
+            }
           }
         } else { p.unlinkedSince = 0; p.absentSince = 0; } // a mesh-named neighbour is never absent
         const st = p.pc.connectionState;
