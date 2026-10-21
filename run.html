@@ -15714,7 +15714,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function isRowMate(pid) {
       const c = meshCoord(), s = meshSeat(); if (!c || !s) return true;
       let k = null; for (const [kk, v] of s.occ) if (v === pid) { k = kk; break; }
-      if (!k) return true;
+      // Not one of my owned cells: my occ is bounded to my own neighbourhood,
+      // so a seat across the room is NEVER in it — read its row from its
+      // status pulse before falling back to "treat unknown as a row mate".
+      // The fallback alone kept a bridge end from ever feeding its row during
+      // a standby carry: the warm pair's far end is the OTHER row's heir
+      // (column 1), not my owner, so it is in no occ of mine, the cross-row
+      // test read it as a row mate, and the row went deaf exactly while the
+      // standby carried (it came back only when the bridge handed to my
+      // owner, the one far seat my occ does hold).
+      if (!k) { const st = statusOf.get(pid); if (st && st.seat && typeof st.seat.pc === 'number') return st.seat.pc === c.pc && st.seat.r === c.r; return true; }
       const cc = net.topo.unck(k);
       return cc.pc === c.pc && cc.r === c.r;
     }
