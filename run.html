@@ -16295,6 +16295,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       recSrcDirty = true;
       newPcFor(p);
       adapt();
+      // A blocked picture is explained from the moment the face exists, not
+      // from the next beat: a person who is only heard in the anchor's mix
+      // would otherwise show a dark tile with no message for up to 2 s.
+      try { vaPaintTile(p, Date.now()); } catch (e) {}
       return p;
     }
 
