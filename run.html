@@ -13572,6 +13572,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const q of peers.values()) if (q && q.connected && !netPairRelayed(q)) return false;
       return true;
     }
+    // Lone on a blocked network: blockedAlone, and the room view names no
+    // row mate of my own network (a link to me that is neither dark nor a
+    // bridge or its standby). That is the host of an all-blocked room, the
+    // one page the chain exceptions below are for. A page of a blocked
+    // office whose row mates' pairs are still coming up is NOT lone: its
+    // network reaches it directly in seconds, and the seating names its
+    // bridge. Treating it as lone made every such page ask the pool, anchor
+    // off the bridge, and hold its row links from their rebuild.
+    function blockedLone() {
+      if (!blockedAlone()) return false;
+      for (const pid of peers.keys()) {
+        if (!linkTo(pid)) continue;
+        const li = netLinkInfo(pid);
+        if (li && !li.dark && !li.bridge && !li.standby) return false;
+      }
+      return true;
+    }
     // The sweeper's seatedNow is the mesh seat (state 3). netSeated also
     // needs the room view, which a host can still be waiting on. The chain
     // is the same in both.
@@ -13593,14 +13610,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function keepChainDoor(p, now) {
       if (!p || !p.boot || p.turnAnchor || p.turnServe || turnInvited(p)) return false;
       if (linkTo(p.id)) return false;
-      if (!(directPath === 'blocked' && turnAnchorId == null && (netSeated() || chainSitting()) && blockedAlone())) return false;
+      if (!(directPath === 'blocked' && turnAnchorId == null && (netSeated() || chainSitting()) && blockedLone())) return false;
       if (p.unlinkedSince && now - p.unlinkedSince > 30000) return false;
       return true;
     }
     // rosterAbsent: the roster pass marks a pair absent (the sweeper drops it
     // after ABSENT_GRACE) when nobody names it and nobody has heard from it.
     // A door I knock at while still outside is judged by its transport. So
-    // is every pair of a blocked page that reaches nobody directly: a status
+    // is every pair of a lone blocked page (blockedLone): a status
     // needs a channel, and its only channels are TURN pairs that take
     // seconds to come up, so its heard-from set says nothing about who is
     // gone. Marked, the seated host's chain door was dropped at 12 s and
@@ -13610,7 +13627,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function rosterAbsent(pid, p, ids, seatedHere) {
       if (!p || p.qa || p.absentSince || ids.has(pid) || linkTo(pid)) return false;
       if (p.boot && !seatedHere) return false;
-      if (blockedAlone()) return false;
+      if (blockedLone()) return false;
       return true;
     }
     // iceFor(p) → the settings for this pair's next transport. The TURN
@@ -13638,7 +13655,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // can be reached, so both are clients).
         let anyNamed = false;
         if (typeof netLinks === 'function') { try { for (const l of netLinks()) if (l && (l.bridge || l.standby)) { anyNamed = true; break; } } catch (e) {} }
-        const loneChain = !anyNamed && blockedAlone();
+        const loneChain = !anyNamed && blockedLone();
         if (!turnInvited(p) && !loneChain) use = false;
       }
       p.turnMine = use;
@@ -13909,7 +13926,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // the chain (one lower bridge; the lowest dials the next) is what
       // joins it. A page that already has a direct neighbour, or a bridge
       // the seating named, does not take this path.
-      const chainFallback = !!((seatLinks || chainSitting()) && directPath === 'blocked' && !seatBridge && !seatStandby.length && blockedAlone());
+      const chainFallback = !!((seatLinks || chainSitting()) && directPath === 'blocked' && !seatBridge && !seatStandby.length && blockedLone());
       const net = directPath === 'blocked' ? ((seatLinks && !chainFallback) ? { bridge: (seatBridge || seatStandby.length) ? myId : null, bridges: new Set() } : MT.networkBridge({ me: myId, ids: [myId, ...peers.keys()],
         blocked: (id) => (id === myId ? true : (statusOf.get(id) || {}).np === 'blocked'),
         conns: (id) => (id === myId ? myConns() : connsOf.get(id)),
@@ -17127,7 +17144,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!p || !p.pc) return false;
       if (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed') return false;
       if (p.turnAnchor || p.turnServe || turnInvited(p)) return true;
-      if (directPath === 'blocked' && blockedAlone()) return true;
+      if (directPath === 'blocked' && blockedLone()) return true;
       return false;
     }
     function onDialRequest(p) {
