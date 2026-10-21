@@ -8050,6 +8050,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else visParkSent.delete(pid); // never mark unsent state as delivered
       }
     }
+    // A visible tab never wants a mate's main parked. Re-send the lift to
+    // one mate (idempotent on the far side: no park, nothing changes).
+    function reassertVisLift(pid) {
+      const p = peers.get(pid);
+      if (!p || !p.dc || p.dc.readyState !== 'open' || document.hidden) return;
+      dcSend(p, { k: 'vis', park: false });
+      visParkSent.set(pid, false);
+    }
     document.addEventListener('visibilitychange', () => {
       awayFull(document.hidden);
       if (document.hidden) enterPip(); else exitPip();
@@ -14752,6 +14760,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // A share starting or stopping paints this tile now. The sharer list is
       // read live; a coalesced pass would leave the chip behind it.
       if (shareBit) { updateTile(from); if (typeof paintShare === 'function') paintShare(); }
+      // A mate stepping DOWN restores its mains, except toward a viewer whose
+      // park it still holds. A park lift is unacked: one sent into a channel
+      // that could not deliver (back from the background on a waking radio)
+      // kept that main parked through the stage spell, and the tile stayed
+      // frozen after the step-down until the frozen-tile check had seen 3s
+      // of nothing. Say my wish again at the step-down itself.
+      if (cur && cur.stg && !st.stg && from !== myId && typeof reassertVisLift === 'function') reassertVisLift(from);
       // A waiting person's own word holds or releases their tile and voice.
       if (waitBit && st.wt !== undefined && from !== myId && waitingSince() && typeof applyHostOrders === 'function') {
         try { applyHostOrders(); updateTile(from); layout(); updateStatus(); } catch (e) {}
