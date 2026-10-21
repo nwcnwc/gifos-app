@@ -14020,7 +14020,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
       }
       // 5. Every free-pool pair: audio only, one stream each way.
-      for (const p of peers.values()) { turnFreeHello(p); p.netQuiet = netStandbyQuiet(p); if (p.turnAudio || p.netQuiet) parkTurnSenders(p); }   // a hot standby carries nothing beyond its (silent) voice sender either
+      for (const p of peers.values()) { turnFreeHello(p); p.netQuiet = netStandbyQuiet(p); if (p.turnAudio || p.netQuiet) parkTurnSenders(p); else unparkJobsTo(p); }   // a hot standby carries nothing beyond its (silent) voice sender either; a pair off the pool gets its feeds back
       // 6. The anchor side: one mix-minus per client, on that pair's audio sender.
       syncTurnMixes();
       syncTurnUpMix(); // 7. A network's bridge: its network's voices up to its anchor, on that pair's audio sender
@@ -14227,6 +14227,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       if (typeof clog === 'function') clog('va pair ' + String(pid).slice(0, 6) + (p.turnPaid ? ' video' : ' voice only'));
       if (p.turnAudio) parkTurnSenders(p);
+      else { const n = unparkJobsTo(p); if (n && typeof clog === 'function') clog('va pair ' + String(pid).slice(0, 6) + ' unparked ' + n); } // the feeds it shipped while on the pool
       refreshOutbound();
       updateStatus();
     }
@@ -19266,6 +19267,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const fst = statusOf.get(pid);
       const vtr = p.stream && p.stream.getVideoTracks()[0];
       if (!p.connected || p.relayed) return 'link';
+      if (p.turnAudio || p.netQuiet) return 'voice'; // a free-pool pair (or a quiet standby) carries no picture by design: a tile that painted while the pair was paid is not frozen once the hours run out
       if (document.hidden) return 'hidden';
       if (document.pictureInPictureElement && document.pictureInPictureElement === p.video) return 'pip'; // a floated tile paints in the float, not in the room: no frame count to judge here
       if (!vtr || vtr.readyState !== 'live') return 'track';
@@ -25809,6 +25811,25 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // needKey and fires the keyframe walk itself.
       if (pipeJobs.has(jk) && MPipe) { try { MPipe.pausePipe(jk, !on); } catch (e) {} }
       compKick(job.to);
+    }
+    // A pair that leaves the free pool (Video Anywhere pays it, or a hot
+    // standby is needed again) gets its feeds back. While it was quiet,
+    // parkTurnSenders and addAux set every job sender on it to null, but
+    // the job stayed active, so setJobActive's no-change return never puts
+    // the track back: an active job's sender is reseated here, the parked
+    // (mx-idle) and pinned ones stay parked.
+    function unparkJobsTo(p) {
+      if (!p || !p.pc || p.turnAudio || p.netQuiet) return 0;
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return 0;
+      let n = 0;
+      for (const [jk, job] of mosJobs) {
+        if (job.to !== p.id || !job.active || jobPinned(jk)) continue;
+        for (let i = 0; i < job.senders.length; i++) {
+          const sd = job.senders[i], t = job.trackList[i] || null;
+          if (sd && t && sd.track !== t) { try { sd.replaceTrack(t).catch(() => {}); n++; } catch (e) {} }
+        }
+      }
+      return n;
     }
     function unshipMos(jk, notify) {
       const job = mosJobs.get(jk); if (!job) return;
