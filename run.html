@@ -13669,6 +13669,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         for (const [k, x] of want) { if (!bridgeSelf.keys.has(k)) { bridgeSelf.fold.add(k, x.stream, x.gain); bridgeSelf.keys.add(k); } else if (bridgeSelf.fold.setGain) bridgeSelf.fold.setGain(k, x.gain); }
       }
       const fed = (q) => !!(q && q.connected && !q.turnAudio && !q.turnServe && !q.turnAnchor);
+      if (typeof DEBUG_ON !== 'undefined' && DEBUG_ON) { try { window.__bridgeFeedWhy = { on, ac: !!ac, mates: [...mates].map((m) => { const q = peers.get(m); return String(m).slice(0, 6) + (q ? ':' + (q.connected ? 'c' : '-') + (q.turnAudio ? 'a' : '') + (q.turnServe ? 's' : '') + (q.turnAnchor ? 'A' : '') : ':none'); }), srcs: turnHeardSources().map((x) => x.key.slice(0, 24)), feeds: [...bridgeFeeds.keys()].map((k) => String(k).slice(0, 6)) }; } catch (e) {} }
       for (const [pid, fd] of [...bridgeFeeds]) if (!mates.has(pid) || !fed(peers.get(pid))) { fd.fold.clear(); bridgeFeeds.delete(pid); }
       if (!on || !ensureAc()) return;
       let src = null;
