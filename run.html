@@ -17167,13 +17167,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // rebuild fire on every dial request. A relay-only pc sits in 'new',
     // so the rebuild never waited for 'failed', and the TURN allocation
     // restarted forever. A failed or closed pc may still be rebuilt. A
-    // reachable page, and a blocked page that already has a direct
-    // neighbour, keep the fork rebuild.
+    // reachable page, a blocked page that already has a direct neighbour,
+    // and a blocked page still knocking (an office's row pairs come up
+    // while it knocks, and held, they never did), keep the fork rebuild.
     function dialRebuildHold(p) {
       if (!p || !p.pc) return false;
       if (p.pc.connectionState === 'closed' || p.pc.connectionState === 'failed') return false;
       if (p.turnAnchor || p.turnServe || turnInvited(p)) return true;
-      if (directPath === 'blocked' && blockedLone()) return true;
+      if (directPath === 'blocked' && (netSeated() || chainSitting()) && blockedLone()) return true;
       return false;
     }
     function onDialRequest(p) {
