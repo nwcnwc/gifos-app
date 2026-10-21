@@ -13618,6 +13618,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       dcSend(p, { k: 'turn-anchor', on: on ? 1 : 0 });
       p.turnHelloDc = on ? p.dc : null;
     }
+    // A serve the sweep ended while the pair's ICE was down but its channel
+    // stayed open (a TURN server that stalled, a path that moved to the
+    // grant's other server) comes back when that same transport connects
+    // again. The client said its hello once on that channel and never says
+    // it again there, so ended for good it left the client hearing only my
+    // own voice and nobody hearing the client.
+    function turnServeResume(p) {
+      const dc = p.turnServeLapse; p.turnServeLapse = null;
+      if (!dc || dc !== p.dc || dc.readyState !== 'open' || p.turnServe || !p.connected) return;
+      let n = 0; for (const q of peers.values()) if (q.turnServe) n++;
+      if (!MT.mayServe(n, false)) { dcSend(p, { k: 'turn-anchor-no' }); return; }
+      p.turnServe = true;
+      p.turnAudio = turnAudioOf(p);
+      if (typeof clog === 'function') clog('turn serve resumed ' + String(p.id).slice(0, 6));
+      if (p.turnAudio) parkTurnSenders(p);
+      syncTurnMixes(); refreshOutbound();
+    }
     // Every pair I put the free pool on, anchored or not (a seating bridge I
     // hold dead, a standby, a bridge dialled ahead of a move), tells its far
     // end so on each new channel, before my media: a reachable far end
@@ -13878,7 +13895,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // that client, and its row head mixes those out of its own serve (they
       // hold the far network's voices) — this page's voice then never crosses.
       { let served = false;
-        for (const p of peers.values()) if (p.turnServe && !(p.connected && p.dc && p.dc.readyState === 'open')) { p.turnServe = false; p.turnAudio = !!p.turnMine && !p.turnPaid; served = true; }
+        for (const p of peers.values()) if (p.turnServe && !(p.connected && p.dc && p.dc.readyState === 'open')) { p.turnServeLapse = p.dc && p.dc.readyState === 'open' ? p.dc : null; p.turnServe = false; p.turnAudio = !!p.turnMine && !p.turnPaid; served = true; }
         if (served) { syncTurnMixes(); refreshOutbound(); } }
       // A free-pool role on a pair whose SELECTED path is observed direct is
       // the leftover of a healed split (an off-hello lost on a torn channel,
@@ -13905,7 +13922,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           if (now - p.poolDirectAt < 12000) continue;
           p.poolDirectAt = 0;
           p.poolDirectUntil = now + 120000;   // the proof outlives the redials the stale views still drive
-          p.turnMine = false; p.turnInvitedAt = 0; p.turnStandby = false; p.turnFar = false; p.turnServe = false;
+          p.turnMine = false; p.turnInvitedAt = 0; p.turnStandby = false; p.turnFar = false; p.turnServe = false; p.turnServeLapse = null;
           if (turnAnchorId === pid) dropTurnAnchor(now, 0); // turnMine already off: the direct transport is kept
           else if (p.turnHelloDc) turnHello(p, false);
           p.turnAnchor = false;
@@ -16092,7 +16109,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } catch (e) { if (typeof clog === 'function') clog('newPcFor: mosaic job cleanup failed ' + String(e).slice(0, 60)); }
       // A new transport is a new pool session: the anchored client says so
       // again on the new channel (turnHello), and only then is it served.
-      p.turnServe = false; p.turnHelloDc = null;
+      p.turnServe = false; p.turnHelloDc = null; p.turnServeLapse = null;
       p.turnFar = false; p.turnFreeDc = null;
       p.vaFarPaid = false; // a new transport is a new session: the far end says again whether it is paid
       p.rollbackRebuild = false; // a rebuild owed by the old transport is paid by this one
@@ -16213,6 +16230,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else if (p.connected) { p.deadSince = 0; p.tlFired = false; p.neverUp = false; p.dialWait = 0; restoreDoorTile(p); try { updateTile(p.id); } catch (e) {} try { whoObserve(p.id).catch(() => {}); } catch (e) {} } // the selected path now, not at the next 15 s sweep: the door test reads it (viaRelay)
         updateStatus();
         if (p.connected) { p.altPath = false; p.tlAt = 0; adapt(); } // rotation ends when the pair lands; D5 edge re-arms
+        if (p.connected && p.turnServeLapse) turnServeResume(p);
         // D5: 'closed' out of nowhere (we didn't rebuild it and the peer is
         // still in the room) is a hard transport death — first-hand evidence.
         // 'failed' waits for the sweeper (must persist past the ICE-restart
@@ -22808,6 +22826,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // A person on the free audio pool chose me as their anchor, or let
         // go. One session per person served, up to meetTurn.MAX_SERVED.
         const on = m.on === 1;
+        p.turnServeLapse = null; // the client's own word outranks a serve kept for its return
         if (on && !p.turnServe) {
           let n = 0; for (const q of peers.values()) if (q.turnServe) n++;
           if (!MT.mayServe(n, false)) { dcSend(p, { k: 'turn-anchor-no' }); return; }
