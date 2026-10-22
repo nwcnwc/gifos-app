@@ -59,7 +59,10 @@ async function settled(page, kind) {
   return false;
 }
 
-// A tap (or a mouse move) on empty call space, never on the share or a face.
+// A tap (or a mouse move) on empty call space, never on the share. Under the
+// 16:42 rule (f0390c4) faces fill the screen, so a phone with no empty space
+// left taps the middle of a face instead: a tap on the picture wakes the
+// controls and does not open the face's window (UI-0010, ddd6e19).
 async function wake(page, view) {
   if (!view.phone) { await page.mouse.move(view.width / 2, view.height - 8); await page.mouse.move(view.width / 2 - 20, view.height - 12); return true; }
   const pt = await page.evaluate(() => {
@@ -67,6 +70,12 @@ async function wake(page, view) {
     for (const [x, y] of [[W - 12, H - 60], [W / 2, H - 140], [W - 12, H / 2], [12, H - 12]]) {
       const el = document.elementFromPoint(x, y);
       if (el && (el.id === 'feed' || el === document.body || el === document.documentElement)) return [Math.round(x), Math.round(y)];
+    }
+    for (const t of document.querySelectorAll('#feed .tile[data-comfy="1"]')) {
+      const r = t.getBoundingClientRect();
+      const x = r.left + r.width / 2, y = r.top + r.height / 2;
+      const el = document.elementFromPoint(x, y);
+      if (r.width > 40 && r.height > 40 && el && t.contains(el) && !el.closest('button, a, .tile-open, .name')) return [Math.round(x), Math.round(y)];
     }
     return null;
   });

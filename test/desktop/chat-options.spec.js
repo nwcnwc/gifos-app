@@ -15,7 +15,8 @@ const FF_PREFS = { 'media.navigator.streams.fake': true, 'media.navigator.permis
 
 async function open(browserName, name) {
   const type = pw[browserName];
-  const b = await type.launch(browserName === 'firefox' ? { firefoxUserPrefs: FF_PREFS } : { args: MEDIA_ARGS });
+  // Chromium-only flags: Playwright WebKit refuses --disable-gpu and closes in 2 s.
+  const b = await type.launch(browserName === 'firefox' ? { firefoxUserPrefs: FF_PREFS } : browserName === 'chromium' ? { args: MEDIA_ARGS } : {});
   const ctx = await b.newContext({ viewport: { width: 1280, height: 720 }, ...(browserName === 'chromium' ? { permissions: ['camera', 'microphone'] } : {}) });
   const page = await ctx.newPage();
   await page.addInitScript(([n, r]) => { localStorage.setItem('gifos_name', n); sessionStorage.setItem('gifos_appeared', '1'); if (r) localStorage.setItem('gifos_relay', r); }, [name, process.env.RELAY || '']);

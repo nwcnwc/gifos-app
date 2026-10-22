@@ -88,7 +88,14 @@ for (const [w, hgt] of [[1280, 720], [390, 844]]) {
       delete s.help.right; delete s.full.right; delete s.help.x; delete s.full.x; delete s.help.y; delete s.full.y;
       return s;
     };
-    for (const k of ['room', 'meet']) expect(geom(got[k]), k + ' ' + JSON.stringify(got[k])).toEqual(geom(got.solo));
+    expect(geom(got.room), 'room ' + JSON.stringify(got.room)).toEqual(geom(got.solo));
+    // UI-0010 (Nathan, ddd6e19): in a meeting Help, Invite and Full screen are one
+    // size of word pill; an app's bar brings the glyph back. Same buttons, keys
+    // and words, so only the size differs.
+    const unsized = (h) => { const s = geom(h); delete s.help.w; delete s.help.h; delete s.full.w; delete s.full.h; return s; };
+    expect(unsized(got.meet), 'meet ' + JSON.stringify(got.meet)).toEqual(unsized(got.solo));
+    expect(got.meet.help.w, 'meet pills match').toBeCloseTo(got.meet.full.w, 0);
+    expect(got.meet.help.h, 'meet pills match').toBeCloseTo(got.meet.full.h, 0);
     expect(got.solo.help.title).toBe('How this app works');
     expect(got.room.help.title).toBe('How this app works');
     expect(got.meet.help.title).toBe('How this meeting works');
