@@ -15554,6 +15554,56 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof clog === 'function') clog('door-out ' + String(pid).slice(0, 6));
       const q = peers.get(pid); if (q) { q.boot = true; q.bootOut = true; if (!manyDoors) armDoorRetry(pid, q); } // the door I came in by: retired once a seat's own link is open (retireBootPairs), unless the arithmetic names it
     }
+    // memberDial(pid): the wire's hook for a seated HELLO to a member with no
+    // open channel to me (mesh-wire GREETING_A_MEMBER_I_HAVE_NO_CHANNEL_TO).
+    // A transport death (D5) frees the cell on BOTH sides of a cut pair, and
+    // every dial here is driven by occ (renderFromOcc, ensureLink, linkTo),
+    // so once the cut ends nobody dials the pair again: the seat greets into
+    // silence and the two stay apart for good (bigroom six-room cross-row
+    // sever: Wren's roster lacked Zed 150 s after the cut; Zed sat solo). The
+    // id-order initiator offers, the other side sends a dial request; an
+    // offer to a corpse is never answered (the relay routes only to live
+    // sockets). The pair stays off the grid until a channel opens
+    // (restoreDoorTile), so a dead id never paints a face or moves the count.
+    // A live channel is first-hand proof of life, which is what lifts a
+    // tombstone (notTomb); no third-hand word is taken for it.
+    // Refused: a banned/ejected id, my own device, a member confirmed gone by
+    // anything but a transport death (saidGone: a goodbye is final), a pair
+    // already open or forming, and a link the arithmetic names (ensureLink /
+    // askDial own those). Pace: a member that was my link in the last 10 min
+    // every 4 s (the cut pair), anyone else every 30 s, so a lone seat
+    // greeting a whole door list stays far under the relay's meter.
+    const linkSeenAt = new Map();   // pid -> when the mesh last named it my link
+    const memberDialAt = new Map(); // pid -> last memberDial
+    const MEMBER_DIAL_LINK_MS = 4000, MEMBER_DIAL_OTHER_MS = 30000, LINK_MEMORY_MS = 600000;
+    function memberDial(pid) {
+      if (!pid || pid === myId) return;
+      if (bannedSeat.has(pid) || (typeof isEjected === 'function' && isEjected(pid) === true)) return;
+      if (saidGone.has(pid)) return;
+      if (devOf[pid] && devOf[pid] === myDevHash) return;
+      const s = meshSeat(); if (!s || !s.hasCoord || s.state !== 3) return;
+      const p = peers.get(pid);
+      if (p && (p.connected || (p.dc && p.dc.readyState === 'open') || p.offering)) return;
+      if (p && p.pc && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed' && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000) return; // forming
+      if (linkTo(pid) && notTomb(pid)) return; // a named link: the occ sweep dials it
+      const now = Date.now();
+      const seen = linkSeenAt.get(pid);
+      const lost = seen !== undefined && now - seen < LINK_MEMORY_MS;
+      if (now - (memberDialAt.get(pid) || 0) < (lost ? MEMBER_DIAL_LINK_MS : MEMBER_DIAL_OTHER_MS)) return;
+      memberDialAt.set(pid, now);
+      if (memberDialAt.size > 256) { for (const [k, at] of memberDialAt) if (now - at > 120000) memberDialAt.delete(k); }
+      if (!linkTo(pid)) doorOffGrid.add(pid); // no face until a channel opens
+      if (p && p.tile && p.tile.parentNode && doorOffGrid.has(pid) && p.neverUp === true) p.tile.remove();
+      const init = iInitiate(pid);
+      if (typeof clog === 'function') clog('member-dial ' + String(pid).slice(0, 6) + (lost ? ' lost-link' : '') + (meshGone.has(pid) ? ' tomb' : '') + (init ? ' (dialing)' : ' (requesting dial)'));
+      if (init) {
+        if (p && p.pc) newPcFor(p);
+        const q = makePeer(pid, null);
+        if (q) sendOffer(pid, false);
+      } else {
+        try { relayName(pid); } catch (e) {}
+      }
+    }
     // The bootstrap channel to a greeter has done its work once I am seated
     // and a link the arithmetic names is open: a seat holds its bounded
     // neighbourhood and nothing else. A greeter that IS a neighbour keeps
@@ -15655,10 +15705,16 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     const occFirstSeen = new Map(); // pid -> Date.now() first seen IN occ (knownTotal's join grace)
     let occPrevIds = new Map();   // pid -> ckey, my occ view one mesh tick ago
     let occPrevMyCk = null;       // my own seat then (a move rebuilds occ wholesale)
+    // Ids confirmed gone by anything but a transport death (D5): a goodbye
+    // ('left', 'bye'), a silence reap, a ban, a forger. memberDial never
+    // re-dials them, however long the mesh keeps greeting the id (a door list
+    // can name a leaver for a while). Kept past the tombstone's 60 s.
+    const saidGone = new Set();
     function confirmGone(pid, why) {
       if (!pid || pid === myId || meshGone.has(pid)) return;
       whoGone(pid); // the Who log keeps them, with what is about to be forgotten
       meshGone.set(pid, Date.now());
+      if (why !== 'd5' && typeof saidGone === 'object' && saidGone && typeof saidGone.add === 'function') { saidGone.add(pid); if (saidGone.size > 512) saidGone.delete(saidGone.values().next().value); } // memberDial never re-dials these (typeof: as meshGoneSilent above)
       { const s = meshSeat(); meshGoneTick.set(pid, s && typeof s.TICK === 'number' ? s.TICK : -1); }
       if (typeof meshGoneSilent === 'object' && meshGoneSilent) { if (why === 'vouch-reap') meshGoneSilent.add(pid); else meshGoneSilent.delete(pid); meshGoneNamedAt.delete(pid); } // typeof: as dropStatus below
       occVanish.delete(pid);
@@ -15991,6 +16047,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // instead of within 3 s).
       if (s.hasCoord && s.state === 3 && !seatedBeatSent) { seatedBeatSent = true; try { broadcastStatus(); } catch (e) {} }
       departSweep(s); // D2/D5 event intake FIRST — a freed seat leaves the view this tick
+      if (s.hasCoord && s.state === 3 && typeof s.linkPeers === 'function') { const nowL = Date.now(); for (const v of s.linkPeers()) if (v && v !== myId) linkSeenAt.set(v, nowL); if (linkSeenAt.size > 128) linkSeenAt.delete(linkSeenAt.keys().next().value); } // memberDial's lost-link pace
       const ids = new Set();
       // An occ id is a PARTICIPANT only with a liveness signal: a fresh status
       // (15s — the one rule everywhere) or a live connection. A DEPARTED seat
@@ -17196,6 +17253,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // wire must not treat that as the door (mesh-wire entryDelivered).
         dcOpen: (to) => { const p = peers.get(to); return !!(p && p.dc && p.dc.readyState === 'open'); },
         dial: bootDial, // a knocker's entry ask has no channel to its greeter: open one (the bootstrap over the relay)
+        memberDial: memberDial, // a seated greeting to a member with no channel: re-open the pair a transport death cut (memberDial)
         onBehind: healBehindDoor, // door blobs a key I replaced opens: their writers missed the grant (§LOCK door-side heal)
         // Deep-socket drop waits until at least one DataChannel is open (§FWD:
         // an unwired deep newcomer must stay relay-reachable or inbound
