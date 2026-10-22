@@ -70,6 +70,10 @@ async function oneButton(page, shot) {
   await page.screenshot({ path: 'test/desktop/shots/fsone-' + SHOT + '-' + shot + '.png' });
   expect(await fullControls(page)).toEqual(['appfull']);
   await expect(page.locator('#appfull')).toHaveAttribute('aria-keyshortcuts', 'F');
+  // The header auto-hides with the calm dock (16:42 rule); a slow screenshot
+  // can outlast the calm delay, so reach for the button the way a person
+  // does: the move wakes the header, then the click.
+  await wake(page);
   await page.click('#appfull');
   await openedUp(page);
   await expect(page.locator('#appfull')).toHaveAttribute('aria-pressed', 'true');
@@ -83,6 +87,7 @@ async function meetCase(page, width, height, shot) {
   await seed(page, 3);
   await oneButton(page, shot);
   // The meeting stays laid out as it was: every face is still on the page.
+  await wake(page);
   await page.click('#appfull');
   await openedUp(page);
   expect(await page.evaluate(() => document.querySelectorAll('#feed .tile[data-comfy="1"]').length)).toBeGreaterThanOrEqual(4);
