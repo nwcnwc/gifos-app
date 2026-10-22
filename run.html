@@ -15580,19 +15580,21 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // anything but a transport death (saidGone: a goodbye is final), a pair
     // already open or forming, and a link the arithmetic names (ensureLink /
     // askDial own those). Pace: a member that was my link in the last 10 min
-    // (the cut pair) every 2 s for its first 30 s of trying, then every 10 s,
-    // and no more than 30 dials until a channel opens; anyone else every 30 s.
+    // (the cut pair) every 2 s for its first 90 s of trying, then every 10 s,
+    // and no more than 60 dials until a channel opens; anyone else every 30 s.
     // The seat greets once a beat (4 s and more on a slowed clock), so the
-    // page keeps its own 1 s retry for 12 s after the last greeting: the cut
-    // ends between two greetings, and waiting for the next one put 4-8 s on
-    // every return (0a07b6-room-six: 12.4 s). A page dials at most once every
+    // page keeps its own 1 s retry for 12 s after the last greeting, and for
+    // a lost link until its budget is spent: the cut ends between two
+    // greetings, waiting for the next one put 4-8 s on every return
+    // (0a07b6-room-six: 12.4 s), and a lone seat may stop greeting the lost
+    // link mid-cut altogether (066ba4-room-six: back after 82 s). A page dials at most once every
     // 2 s in all (lost links first), whatever the room size: a lone seat in a
     // big room greets a whole door list.
     const linkSeenAt = new Map();   // pid -> when the mesh last named it my link
     const memberDialAt = new Map(); // pid -> last dial
     const memberWant = new Map();   // pid -> last time the seat greeted it with no channel
     const memberStreak = new Map(); // pid -> { at: first dial of the unanswered streak, n: dials in it }
-    const MEMBER_DIAL_LINK_MS = 2000, MEMBER_DIAL_SLOW_MS = 10000, MEMBER_STREAK_MS = 30000, MEMBER_BUDGET = 30, MEMBER_DIAL_OTHER_MS = 30000, LINK_MEMORY_MS = 600000, MEMBER_WANT_MS = 12000, MEMBER_PAGE_GAP_MS = 2000;
+    const MEMBER_DIAL_LINK_MS = 2000, MEMBER_DIAL_SLOW_MS = 10000, MEMBER_STREAK_MS = 90000, MEMBER_BUDGET = 60, MEMBER_DIAL_OTHER_MS = 30000, LINK_MEMORY_MS = 600000, MEMBER_WANT_MS = 12000, MEMBER_PAGE_GAP_MS = 2000;
     let memberRetryT = 0, memberLastAny = 0;
     function memberDial(pid) {
       if (!pid || pid === myId) return;
@@ -15607,7 +15609,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const now = Date.now();
       const lostOf = (pid) => { const t = linkSeenAt.get(pid); return t !== undefined && now - t < LINK_MEMORY_MS; };
       const due = [];
-      for (const [pid, at] of Array.from(memberWant)) { if (now - at > 180000) memberWant.delete(pid); else if (now - at <= MEMBER_WANT_MS) due.push(pid); }
+      for (const [pid, at] of Array.from(memberWant)) { if (now - at > 180000) memberWant.delete(pid); else if (now - at <= MEMBER_WANT_MS || lostOf(pid)) due.push(pid); } // a lost link stays wanted (its budget ends it): the seat may stop greeting it mid-cut
       due.sort((a, b) => (lostOf(b) - lostOf(a)) || ((memberDialAt.get(a) || 0) - (memberDialAt.get(b) || 0))); // lost links first, then the longest waiting
       for (const pid of due) { if (now - memberLastAny < MEMBER_PAGE_GAP_MS) break; tryMemberDial(pid); }
       if (due.length) memberRetryT = setTimeout(memberRetry, 1000);
