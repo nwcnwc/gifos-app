@@ -17593,6 +17593,39 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     GifOS.meshMedia.workerClock(1000, () => { for (const [pid, p] of peers) { try { frozenTileTick(pid, p); } catch (e) {} } });
+    // A WEBKIT SENDER THAT NEVER ENCODES. Measured 2026-10-21 (gate-1812
+    // diag d1/d5): a WebKit seat's camera track was live and playing on its
+    // own tile, seated on the main sender of two connected mates, and
+    // outbound-rtp framesEncoded stayed 0 for two minutes — after a burst of
+    // replaceTrack swaps while the camera started (a placeholder track, then
+    // the clip). Nothing on the receiving side can see that (no RTP, no
+    // frame, no dead-sink). The sender judges itself: a seated live track
+    // whose encoded count has not moved in 6 s is seated again (null, then
+    // the track), twice on a doubling backoff; then the pair is rebuilt (a
+    // fresh pc seats the camera on fresh senders). Parked, held, staged and
+    // cam-off senders are quiet on purpose and are not judged. The count
+    // resets as soon as frames move. WebKit only (WEBKIT_TILE).
+    function txStallTick(pid, p) {
+      if (!WEBKIT_TILE) return;
+      const s = p.mainV, now = Date.now();
+      if (!s || !s.track || s.track.readyState !== 'live' || !p.connected || p.relayed || p.remoteParkMain || (p.mainHoldUntil && p.mainHoldUntil > now)
+          || myStatus.camOff || stageIds().includes(myId) || !camPeer(pid) || !s.getStats) { p.txProbe = null; return; }
+      const tr = s.track, pc0 = p.pc;
+      s.getStats().then((st) => {
+        let fe = -1; st.forEach((x) => { if (x.type === 'outbound-rtp' && (x.kind === 'video' || x.mediaType === 'video')) fe = Math.max(fe, x.framesEncoded || 0); });
+        if (p.pc !== pc0 || p.mainV !== s || fe < 0) return;
+        const t = Date.now(), q = p.txProbe;
+        if (!q || q.track !== tr || q.sender !== s || fe !== q.fe) { if (q && q.sender === s && fe > q.fe) p.txKicks = 0; p.txProbe = { track: tr, sender: s, fe, at: t }; return; }
+        if (t - q.at < 6000) return;
+        const n = p.txKicks || 0;
+        if (t - (p.txKickAt || 0) < Math.min(60000, 8000 * Math.pow(2, n))) return;
+        p.txKicks = n + 1; p.txKickAt = t; p.txProbe = null;
+        if (typeof clog === 'function') clog('tx-stall ' + String(pid).slice(0, 6) + ' encoded ' + fe + ' frames total, none in ' + Math.round((t - q.at) / 1000) + 's: ' + (n < 2 ? 're-seat ' + (n + 1) : 'rebuild'));
+        if (n < 2) { s.replaceTrack(null).then(() => { if (p.mainV === s && !p.remoteParkMain && !(p.mainHoldUntil && p.mainHoldUntil > Date.now())) return s.replaceTrack(tr); }).catch(() => {}); }
+        else { newPcFor(p); sendOffer(pid, false); }
+      }).catch(() => {});
+    }
+    GifOS.meshMedia.workerClock(2000, () => { for (const [pid, p] of peers) { try { txStallTick(pid, p); } catch (e) {} } });
     let lastRmSig = ''; // row-mate set signature — refreshOutbound on change (became/stopped-being a mate)
     // THE SWEEP RIDES A WORKER CLOCK (2026-10-03). It was a page setInterval,
     // which Chrome throttles to once a minute after five minutes hidden; the
