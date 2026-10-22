@@ -63,7 +63,8 @@ test('every word in the open More sheet is 16px', async ({ page }) => {
   const heads = await page.evaluate(() => [...document.querySelectorAll('#barmore .moregroup h4')]
     .filter((h) => getComputedStyle(h.closest('.moregroup')).display !== 'none')
     .map((h) => ({ t: h.textContent.trim(), caps: getComputedStyle(h).textTransform })));
-  expect(heads.length).toBe(5);
+  // Four groups since 49ea823 (the More sheet fits at 100% zoom as a labeled grid; more-groups.spec.js reads their names).
+  expect(heads.map((h) => h.t)).toEqual(['Meeting', 'Your video', 'Room', 'Settings and help']);
   for (const h of heads) expect(h.caps, h.t).toBe('none');
 });
 
@@ -112,9 +113,8 @@ test('the words in a face\'s control window are 16px', async ({ context }) => {
     await page.waitForSelector('#mic', { state: 'visible' });
     await page.evaluate((n) => window.__gifosVideo.seedGalleryForTest({ count: n, connected: true }), count);
     await page.waitForFunction((n) => document.querySelectorAll('#feed .tile[data-comfy="1"]:not(.me)').length >= n, count);
-    const face = page.locator('#feed .tile:not(.me)').first();
-    const fb = await face.boundingBox();
-    await page.mouse.click(fb.x + fb.width / 2, fb.y + fb.height / 2);
+    // UI-0010 (ddd6e19): the tile's Open button opens its window, a tap on the picture does not.
+    await page.locator('#feed .tile:not(.me)').first().locator(':scope > .tile-open').click();
     await expect(page.locator('#tilewin')).toBeVisible();
     if (count === 4) await page.screenshot({ path: 'test/desktop/shots/tile-words-after-1280.png' });
     const info = await page.evaluate(() => {
