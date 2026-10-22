@@ -20360,6 +20360,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // left guests with no way to share the meeting link.
         if (typeof BROADCAST !== 'undefined' && BROADCAST) show = !document.body.classList.contains('has-app') && (hostAlone || phoneAlone);
         else show = true;
+        // A person held in the waiting room is not in the meeting yet: no
+        // Invite until they are admitted (the line says "In the waiting room").
+        if (show && typeof iAmWaiting === 'function' && iAmWaiting()) show = false;
       }
       btn.style.display = show ? '' : 'none';
       const tip = (ROOM.kind === 'app' || document.body.classList.contains('app-room'))
