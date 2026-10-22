@@ -11017,6 +11017,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // (the 2026-08-01 canvas center-crop was reverted: stacked on the
         // camera pipeline's own cropping it double-zoomed a face; the camera
         // already rotates with the device on every phone).
+        // A WEBKIT SENDER SHIPS ALIGNED FRAMES OF ONE SIZE (WK_H264_BLIND, the
+        // WebKit that sends VP8). Measured 2026-10-22 between two such seats:
+        // a receiver decoding a 261-wide VP8 picture crashed its web process
+        // (4/4; 256-wide 0/4), and an encoder whose canvas changed size after
+        // the first frame never encoded again. So this pipe paints nothing
+        // until the camera's own shape is known (no placeholder-sized first
+        // frame) and rounds the canvas to 16 columns and 2 rows.
+        const wkAlign = typeof WK_H264_BLIND !== 'undefined' && WK_H264_BLIND;
+        if (wkAlign && !(src.videoWidth > 0 && src.videoHeight > 0)) return;
         const sw = src.videoWidth || 640, sh = src.videoHeight || 480;
         // CAP THE LONG SIDE, NOT THE WIDTH (2026-07-31, measured). capW was
         // applied to width alone, which silently assumed a landscape source.
@@ -11047,6 +11056,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const k = side / Math.max(1, r.side);
           w = h = side; ox = -r.sx * k; oy = -r.sy * k; dw = sw * k; dh = sh * k;
         }
+        if (wkAlign) { w = Math.max(16, Math.round(w / 16) * 16); h = Math.max(2, Math.round(h / 2) * 2); }
         if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
         let drew = false;
         try {
@@ -11543,8 +11553,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (cam && localStream && p.pc && !p.headless && (!p.mainV || !p.mainA)) {
           let added = false;
           try {
-            if (!p.mainA && at) { p.mainA = p.pc.addTrack(at, localStream); added = true; }
-            if (!p.mainV && vt) { p.mainV = p.pc.addTrack(vt, localStream); added = true; }
+            if (!p.mainA && at) { p.mainA = typeof addMainTrack === 'function' ? addMainTrack(p.pc, at, localStream) : p.pc.addTrack(at, localStream); added = true; }
+            if (!p.mainV && vt) { p.mainV = typeof addMainTrack === 'function' ? addMainTrack(p.pc, vt, localStream) : p.pc.addTrack(vt, localStream); added = true; }
           } catch (e) {}
           if (added) { if (p.dc && p.dc.readyState === 'open') compKick(p.id); else renegotiate(p); }
         }
@@ -11555,8 +11565,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           // the park must outlive this beat, or the beat seats the camera
           // back before the far side has bound its tile.
           const heldNow = !!(p.mainHoldUntil && p.mainHoldUntil > Date.now());
-          if (!cam || !vt || p.remoteParkMain || (heldNow && !WEBKIT_ENGINE)) { if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {}); }
-          else if (heldNow) { /* a WebKit hold: parked through encodings.active (holdMainVideo); the track stays seated */ }
+          if (!cam || !vt || p.remoteParkMain || heldNow) { if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {}); }
           else if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {});
         }
         if (p.mainA) {
@@ -14311,10 +14320,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let added = false;
       if (localStream && carryCam) {
         const at = mainAudioTrack();
-        if (at) { p.mainA = pc.addTrack(at, localStream); added = true; }
+        if (at) { p.mainA = typeof addMainTrack === 'function' ? addMainTrack(pc, at, localStream) : pc.addTrack(at, localStream); added = true; }
         // Send the blur-canvas track when any blur applies — never the raw camera.
         const vt = sentVideoTrack();
-        if (vt) { p.mainV = pc.addTrack(vt, localStream); added = true; }
+        if (vt) { p.mainV = typeof addMainTrack === 'function' ? addMainTrack(pc, vt, localStream) : pc.addTrack(vt, localStream); added = true; }
         if (stageIds().includes(myId)) {
           if (p.mainA) p.mainA.replaceTrack(null).catch(() => {});
           if (p.mainV) p.mainV.replaceTrack(null).catch(() => {});
@@ -14593,11 +14602,93 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           .concat(caps.codecs.filter((c) => !/h264/i.test(c.mimeType)));
       } catch (e) { return null; }
     })();
+    // A WEBKIT THAT CANNOT ENCODE AN H264 M-LINE IT NEGOTIATED ITSELF.
+    // Measured 2026-10-22 on the Playwright WebKit shell (GStreamer WebRTC),
+    // two WebKit seats and WebKit with Chromium: a WebKit sender whose video
+    // m-line it OFFERED, or whose m-line a peer re-offered with H264 first,
+    // encodes nothing (framesEncoded 0, packetsSent 0 while its media source
+    // counts frames), and no kick, park or rebuild revives it; the same
+    // sender streams VP8, and streams H264 when it only ANSWERED an H264
+    // offer. The sender capabilities show the shape: H264 listed with no
+    // profile (an empty sdpFmtpLine), where every libwebrtc build names one.
+    // Such a seat keeps H264 out of the m-lines it sends on: its offers
+    // prefer every other codec there (WebKit honours codec preferences in
+    // offers, not in answers), and a remote offer is applied with H264
+    // stripped from its sending m-lines (wkStripH264). What it RECEIVES
+    // stays H264 first: a mate's camera arrives at the mate's own blur size,
+    // and this WebKit decodes H264 of any width but crashes on a VP8 picture
+    // whose width is not a multiple of 16 (wkAlign in the blur pipe keeps
+    // this seat's own VP8 aligned).
+    const WK_H264_BLIND = WEBKIT_ENGINE && (() => {
+      try {
+        const caps = RTCRtpSender.getCapabilities && RTCRtpSender.getCapabilities('video');
+        return !!caps && caps.codecs.some((c) => /h264/i.test(c.mimeType) && !c.sdpFmtpLine);
+      } catch (e) { return false; }
+    })();
+    const NO_H264 = (() => {
+      try {
+        const caps = RTCRtpReceiver.getCapabilities && RTCRtpReceiver.getCapabilities('video');
+        return caps ? caps.codecs.filter((c) => !/h264/i.test(c.mimeType)) : null;
+      } catch (e) { return null; }
+    })();
     function preferHwVideo(pc) {
       if (!H264_FIRST) return;
       for (const tr of pc.getTransceivers()) {
-        try { if (tr.receiver.track.kind === 'video' && tr.setCodecPreferences) tr.setCodecPreferences(H264_FIRST); } catch (e) {}
+        try {
+          if (tr.receiver.track.kind !== 'video' || !tr.setCodecPreferences) continue;
+          // Only the m-lines this seat SENDS on lose H264; what a mate sends it
+          // keeps H264 first (a WebKit decoder takes H264 of any width).
+          const sends = tr.direction === 'sendrecv' || tr.direction === 'sendonly';
+          const list = WK_H264_BLIND && sends ? NO_H264 : H264_FIRST;
+          if (list && list.length) tr.setCodecPreferences(list);
+        } catch (e) {}
       }
+    }
+    // A main sender on its own m-line. addTrack may reuse a transceiver the
+    // mate's offer created (their camera's m-line); a WK_H264_BLIND seat must
+    // not share one, or its no-H264 rule would flip the mate's camera to VP8.
+    // Idempotent per track, as addTrack is (a second addTrack of the same
+    // track throws; a second addTransceiver would carry it twice).
+    function addMainTrack(pc, track, stream) {
+      if (WK_H264_BLIND && pc.addTransceiver) {
+        try { for (const tr of pc.getTransceivers()) if (tr.sender && tr.sender.track === track) return tr.sender; } catch (e) {}
+        return pc.addTransceiver(track, { direction: 'sendrecv', streams: [stream] }).sender;
+      }
+      return pc.addTrack(track, stream);
+    }
+    // The remote offer this seat is about to answer, with H264 removed from
+    // every video m-line it sends on (a transceiver whose direction sends),
+    // so the answer, which follows the offer's order, cannot pick it. A
+    // section that would lose every codec is left whole.
+    function wkStripH264(desc, pc) {
+      if (!WK_H264_BLIND || !desc || typeof desc.sdp !== 'string' || !pc) return desc;
+      const mids = new Set();
+      try {
+        for (const tr of pc.getTransceivers()) {
+          if (tr.mid == null || !tr.receiver || !tr.receiver.track || tr.receiver.track.kind !== 'video') continue;
+          if (tr.direction === 'sendrecv' || tr.direction === 'sendonly') mids.add(String(tr.mid));
+        }
+      } catch (e) { return desc; }
+      if (!mids.size) return desc;
+      const nl = desc.sdp.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
+      let changed = false;
+      const out = desc.sdp.split(/(?=^m=)/m).map((sec) => {
+        if (sec.indexOf('m=video') !== 0) return sec;
+        const mm = sec.match(/^a=mid:(\S+)/m);
+        if (!mm || !mids.has(mm[1])) return sec;
+        const lines = sec.split(nl), pts = new Set();
+        for (const l of lines) { const m = l.match(/^a=rtpmap:(\d+) H264\//i); if (m) pts.add(m[1]); }
+        for (const l of lines) { const m = l.match(/^a=fmtp:(\d+) apt=(\d+)/); if (m && pts.has(m[2])) pts.add(m[1]); }
+        if (!pts.size) return sec;
+        const kept = lines.filter((l) => { const m = l.match(/^a=(rtpmap|fmtp|rtcp-fb):(\d+)/); return !(m && pts.has(m[2])); })
+          .map((l) => (l.indexOf('m=video') === 0 ? l.split(' ').filter((w, i) => i < 3 || !pts.has(w)).join(' ') : l));
+        if (kept[0].split(' ').length <= 3) return sec;
+        changed = true;
+        return kept.join(nl);
+      });
+      if (!changed) return desc;
+      if (typeof clog === 'function') clog('wk-h264 stripped from an offer');
+      return { type: desc.type, sdp: out.join('') };
     }
 
     // A GLARE DEADLOCK IS BROKEN BY WHOEVER IS STILL STUCK, not by whoever is
@@ -14643,7 +14734,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const fresh = noLiveTransport(p);
         if (fresh) { const queued = p.pendingIce; newPcFor(p); p.pendingIce = queued; }
         Promise.resolve(fresh ? null : p.pc.setLocalDescription({ type: 'rollback' }))
-          .then(() => p.pc.setRemoteDescription(m.sdp))
+          .then(() => p.pc.setRemoteDescription(typeof wkStripH264 === 'function' ? wkStripH264(m.sdp, p.pc) : m.sdp))
           .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
           .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
           .then((ans) => p.pc.setLocalDescription(ans))
@@ -15050,7 +15141,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // side recovers from a never-arriving remote offer (see sweeper). The
         // polite peer (lower id) rolls back its local offer and accepts; the
         // impolite peer ignores the remote offer and keeps its own.
-        const accept = () => p.pc.setRemoteDescription(msg.sdp)
+        const accept = () => p.pc.setRemoteDescription(typeof wkStripH264 === 'function' ? wkStripH264(msg.sdp, p.pc) : msg.sdp)
           .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
           .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
           .then((ans) => p.pc.setLocalDescription(ans))
@@ -17631,7 +17722,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (t - (p.txKickAt || 0) < Math.min(60000, 8000 * Math.pow(2, n))) return;
         p.txKicks = n + 1; p.txKickAt = t; p.txProbe = null;
         if (typeof clog === 'function') clog('tx-stall ' + String(pid).slice(0, 6) + ' encoded ' + fe + ' frames total, none in ' + Math.round((t - q.at) / 1000) + 's: ' + (n < 2 ? 're-seat ' + (n + 1) : 'rebuild'));
-        if (n < 2) { wkSenderActive(s, false).then(() => new Promise((r) => setTimeout(r, 300))).then(() => { if (p.mainV === s && !p.remoteParkMain && !(p.mainHoldUntil && p.mainHoldUntil > Date.now())) return wkSenderActive(s, true); }).catch(() => {}); }
+        if (n < 2) { s.replaceTrack(null).then(() => new Promise((r) => setTimeout(r, 300))).then(() => { if (p.mainV === s && !p.remoteParkMain && !(p.mainHoldUntil && p.mainHoldUntil > Date.now()) && tr.readyState === 'live') return s.replaceTrack(tr); }).catch(() => {}); }
         else { newPcFor(p); sendOffer(pid, false); }
       }).catch(() => {});
     }
@@ -21329,7 +21420,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // and MUST re-offer afterwards, or its rolled-back m-lines are
         // orphaned forever (the browser's negotiationneeded would refire
         // here; our hand-rolled offers need the explicit flag).
-        const applyRoffer = (msg) => p.pc.setRemoteDescription(msg.sdp)
+        const applyRoffer = (msg) => p.pc.setRemoteDescription(typeof wkStripH264 === 'function' ? wkStripH264(msg.sdp, p.pc) : msg.sdp)
           .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
           .then((a) => p.pc.setLocalDescription(a))
           .then(() => {
@@ -22759,33 +22850,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const sender = p.mainV;
       const seat = () => sender.replaceTrack(vt).catch(() => {});
       if (sender.track !== vt) { seat(); return; }
-      if (WEBKIT_ENGINE) { wkSenderActive(sender, false).then(() => wkSenderActive(sender, true)).catch(() => {}); return; } // never replaceTrack(null) on a WebKit source
       sender.replaceTrack(null).then(seat).catch(() => {});
     }
     // A HELD re-seat (WEBKIT_TILE): park the camera toward this peer for ms,
     // then seat it again through refreshOutbound (which keeps the park while
     // mainHoldUntil stands). Same guards as kickMainVideo: never a parked,
     // staged or cam-off sender, never a non-mate.
-    // A WEBKIT SENDER PARKS THROUGH ITS ENCODING, NEVER replaceTrack(null).
-    // Measured 2026-10-21 (gate-1812 webkit-fix: t2fix/mem1, lonepair-*): a
-    // WebKit seat whose camera and mic come from a media pipeline (a clip's
-    // <video> into a canvas, a WebAudio destination mic) deadlocked its web
-    // process main thread at pair formation — futex wait, CPU frozen, the
-    // pipeline's queue, webaudio and video source threads all blocked — on
-    // 1 join in 6 with that pipeline and 0 in 6 with a plain camera. The one
-    // thing the page does to those sources right then is the post-rollback
-    // kick (replaceTrack(null), then the track). encodings[0].active pauses
-    // and resumes the encoder of ONE sender without touching the source, and
-    // the resume opens a new GOP, so every WebKit park and re-seat goes this
-    // way: the held re-seat, the kick, the stalled-encoder re-seat.
-    function wkSenderActive(sender, on) {
-      try {
-        const prm = sender.getParameters();
-        if (!prm.encodings || !prm.encodings.length) prm.encodings = [{}];
-        prm.encodings[0].active = !!on;
-        return sender.setParameters(prm);
-      } catch (e) { return Promise.reject(e); }
-    }
+    // EVERY ENGINE PARKS AND RE-SEATS THROUGH replaceTrack, WEBKIT INCLUDED.
+    // A WebKit sender parked through encodings[0].active = false never
+    // encodes again after active = true, and a replaceTrack after that does
+    // not revive it either (measured 2026-10-22, two WebKit seats and WebKit
+    // with Chromium: framesEncoded frozen for the rest of the call); a
+    // replaceTrack(null) park resumes on replaceTrack(track) at once. The
+    // pair-formation stalls that once argued against replaceTrack on WebKit
+    // were the audio device open behind every stream bind (wkPicOf).
     function holdMainVideo(p, ms) {
       if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
       if (!p || !p.mainV || p.remoteParkMain || myStatus.camOff || stageIds().includes(myId) || !camPeer(p.id)) return;
@@ -22794,13 +22872,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // The ack rides the channel once the park has taken (replaceTrack or
       // setParameters resolved): the far side binds on it, never on a guess.
       const ack = () => { if (p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'vkick-held', hold: ms }); };
-      if (WEBKIT_ENGINE) wkSenderActive(p.mainV, false).then(ack, ack);
-      else if (p.mainV.track) p.mainV.replaceTrack(null).then(ack, ack); else ack();
-      if (typeof clog === 'function') clog('held re-seat ' + String(p.id).slice(0, 6) + ' park ' + ms + 'ms' + (WEBKIT_ENGINE ? ' (encoding)' : ''));
+      if (p.mainV.track) p.mainV.replaceTrack(null).then(ack, ack); else ack();
+      if (typeof clog === 'function') clog('held re-seat ' + String(p.id).slice(0, 6) + ' park ' + ms + 'ms');
       setTimeout(() => {
         if (p.mainHoldUntil && p.mainHoldUntil > Date.now() + 250) return; // a later hold lengthened the window
         p.mainHoldUntil = 0;
-        if (WEBKIT_ENGINE && p.mainV) wkSenderActive(p.mainV, true).catch(() => {});
         try { refreshOutbound(); } catch (e) {}
       }, ms + 50);
     }
@@ -22817,7 +22893,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const sender = p.mainA;
       const seat = () => sender.replaceTrack(at).catch(() => {});
       if (sender.track !== at) { seat(); return; }
-      if (WEBKIT_ENGINE) return; // the WebKit mic is never re-seated through replaceTrack(null) (wkSenderActive)
       sender.replaceTrack(null).then(seat).catch(() => {});
     }
     // OFFER TURNS. Both ends of a link may offer (a fold sender opens its own
