@@ -1,6 +1,6 @@
 /*
  * LIVE is the Broadcast skin. A regular meeting does not show it.
- * Record and Captions stay on the call.
+ * Record stays on the call (small); Captions is in More (Talk), not on the call.
  *
  * Gate: NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/live-meet.js
  */
@@ -31,21 +31,25 @@ const AV = '0123456789abcdef';
     const cs = getComputedStyle(live);
     const r = live.getBoundingClientRect();
     const rec = document.getElementById('call-rec').getBoundingClientRect();
-    const cc = document.getElementById('call-cc').getBoundingClientRect();
+    const cc = document.getElementById('call-cc');
+    const more = document.getElementById('ccbtn');
     return {
       broadcast: document.body.classList.contains('broadcast'),
       display: cs.display,
       h: r.height,
       recH: rec.height,
-      ccH: cc.height,
+      ccOnCall: !!cc,
+      ccInMore: !!(more && more.closest('#barmore')),
       recText: (document.getElementById('call-rec').innerText || '').trim(),
-      ccText: (document.getElementById('call-cc').innerText || '').trim(),
+      ccText: more ? (more.textContent || '').trim() : '',
     };
   });
   const bad = [];
   if (meet.broadcast) bad.push('a regular room opened as Broadcast');
   if (meet.display !== 'none' || meet.h > 1) bad.push('LIVE is on a regular meeting (' + meet.display + ', ' + Math.round(meet.h) + 'px)');
-  if (meet.recH < 44 || meet.ccH < 44) bad.push('Record or Captions left the call');
+  if (meet.recH < 44) bad.push('Record left the call (or lost its 44px tap target)');
+  if (meet.ccOnCall) bad.push('Captions is still a button on the call');
+  if (!meet.ccInMore) bad.push('Captions is not in More');
   if (meet.recText !== 'Record' || meet.ccText !== 'Captions') bad.push('labels ' + meet.recText + ' / ' + meet.ccText);
   const shot = bad.length ? 'before-live-meet-iphone-se.png' : 'after-live-meet-iphone-se.png';
   await page.screenshot({ path: path.join(SHOTS, shot) });

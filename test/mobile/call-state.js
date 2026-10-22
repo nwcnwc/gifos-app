@@ -1,6 +1,8 @@
 /*
- * Record and Captions sit on the call. A producer does not open More
- * to start a recording or captions. LIVE is not on a regular meeting.
+ * Record sits on the call, a small quiet control. A producer does not open
+ * More to start a recording. Captions is in More (Talk), not on the call.
+ * Neither covers the header (Invite, Help, Full screen). LIVE is not on a
+ * regular meeting.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/call-state.js
  */
@@ -62,6 +64,7 @@ function overlaps(a, b) {
     const info = await page.evaluate(() => {
       const box = (id) => {
         const el = document.getElementById(id);
+        if (!el) return null;
         const b = el.getBoundingClientRect();
         const cs = getComputedStyle(el);
         return {
@@ -83,6 +86,7 @@ function overlaps(a, b) {
         rec: box('call-rec'),
         cc: box('call-cc'),
         status: box('status'),
+        head: ['appinvite', 'apphelp', 'appfull'].map(box).filter((b) => b && !b.hidden && b.h > 2),
         dockTop: document.querySelector('.bar').getBoundingClientRect().top,
         vw: window.innerWidth, vh: window.innerHeight,
       };
@@ -92,29 +96,45 @@ function overlaps(a, b) {
     if (info.state.hidden) bad.push('state hidden');
     if (!info.live.hidden) bad.push('LIVE is on a regular meeting');
     if (info.rec.text !== 'Record') bad.push('record says "' + info.rec.text + '"');
-    if (info.cc.text !== 'Captions') bad.push('captions says "' + info.cc.text + '"');
-    for (const part of [info.rec, info.cc]) {
+    if (info.cc) bad.push('Captions is a button on the call (it lives in More)');
+    // Small: no wide pill, the tap target still 44px. Record's text is 14px
+    // at 100%; at 200% the word alone is twice as wide, so the bound scales.
+    const k = Math.max(1, info.rec.font / 14);
+    if (info.rec.w > 140 * k || info.rec.h > 48 * k) bad.push('Record is a wide pill ' + Math.round(info.rec.w) + 'x' + Math.round(info.rec.h));
+    for (const part of [info.rec]) {
       if (part.h < 44 || part.w < 44) bad.push(part.text + ' is ' + Math.round(part.w) + 'x' + Math.round(part.h));
       if (part.wide || part.tall) bad.push(part.text + ' text does not fit');
       if (part.top < -1 || part.bottom > info.vh + 1 || part.left < -1 || part.right > info.vw + 1) bad.push(part.text + ' off screen');
       if (part.bottom > info.dockTop + 1) bad.push(part.text + ' runs into the dock');
       if (overlaps(part, info.status)) bad.push(part.text + ' covers the header');
+      for (const h of info.head) if (overlaps(part, h)) bad.push(part.text + ' covers ' + h.text);
     }
     if (info.rec.bg === 'rgb(182, 22, 34)') bad.push('Record is red before it starts');
     if (phone.scale && info.rec.font < 24) bad.push('record font ' + info.rec.font + 'px at 200%');
+    if (info.rec.color === 'rgb(255, 255, 255)') bad.push('Record shouts before it starts (white text)');
     if (phone.name === 'iphone-15') await page.screenshot({ path: path.join(SHOTS, 'after-call-state-iphone-15.png') });
     if (!phone.scale) {
-      await page.locator('#call-cc').tap();
+      // Captions: More, Talk. The tap folds the sheet; open it again to
+      // read the selected color there.
+      await page.locator('#bartoggle').tap();
+      await page.locator('#ccbtn').scrollIntoViewIfNeeded();
+      await page.locator('#ccbtn').tap();
       await page.waitForTimeout(100);
+      const folded = await page.evaluate(() => document.querySelector('.bar').classList.contains('collapsed'));
+      await page.locator('#bartoggle').tap();
+      await page.locator('#ccbtn').scrollIntoViewIfNeeded();
       const ccOn = await page.evaluate(() => ({
         more: document.getElementById('ccbtn').classList.contains('on'),
-        chip: document.getElementById('call-cc').classList.contains('on'),
-        text: (document.getElementById('call-cc').innerText || '').trim(),
-        ccBg: getComputedStyle(document.getElementById('call-cc')).backgroundColor,
+        view: window.__gifosVideo.ccViewOn ? window.__gifosVideo.ccViewOn() : null,
+        text: (document.getElementById('ccbtn').innerText || '').trim(),
+        ccBg: getComputedStyle(document.getElementById('ccbtn')).backgroundColor,
       }));
-      if (!ccOn.more || !ccOn.chip) bad.push('Captions on the call did not turn captions on');
+      if (!folded) bad.push('More stayed open after Captions');
+      if (!ccOn.more || ccOn.view !== true) bad.push('Captions in More did not turn captions on');
       if (ccOn.text !== 'Captions') bad.push('captions label changed to "' + ccOn.text + '"');
       if (ccOn.ccBg !== 'rgb(0, 100, 200)') bad.push('Captions on is ' + ccOn.ccBg);
+      await page.locator('#bartoggle').tap();
+      await page.waitForTimeout(150);
       await page.locator('#call-rec').tap();
       await page.waitForTimeout(150);
       const recSheet = await page.evaluate(() => {
@@ -135,8 +155,10 @@ function overlaps(a, b) {
       const recLabel = await page.evaluate(() => ({
         text: (document.getElementById('call-rec').innerText || '').replace(/\s+/g, ' ').trim(),
         on: document.getElementById('call-rec').classList.contains('on'),
+        bg: getComputedStyle(document.getElementById('call-rec')).backgroundColor,
       }));
       if (recLabel.text !== 'Recording' || !recLabel.on) bad.push('recording state says "' + recLabel.text + '"');
+      if (recLabel.bg !== 'rgb(182, 22, 34)') bad.push('Recording is not red (' + recLabel.bg + ')');
     }
     if (bad.length) failures.push(phone.name + ': ' + bad.join('; '));
     else console.log('PASS', phone.name);

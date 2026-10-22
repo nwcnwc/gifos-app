@@ -1,8 +1,10 @@
 /*
  * LIVE belongs to Broadcast. On a regular meeting it is not on screen.
- * Record and Captions stay on the call, including sideways, and the faces
- * stay above that row. Sideways they stand in a column beside the dock
- * (sideways-callstate-beside.js), so there they must clear the dock's side.
+ * Record stays on the call, including sideways. Captions is in More (Talk),
+ * not on the call. Upright, the faces stay above Record. Sideways, Record
+ * stands in a column beside the dock (sideways-callstate-beside.js), so it
+ * must clear the dock's side, and the faces fill the screen under Record
+ * and the dock (sideways-tiles.js).
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/live-stands-out.js
  */
@@ -84,15 +86,19 @@ function overlaps(a, b) {
     if (live && live.h > 1) bad.push('LIVE is on a regular meeting (' + Math.round(live.w) + 'x' + Math.round(live.h) + ')');
     const beside = !!(info.state && info.dock && info.state.right <= info.dock.left + 1);
     if (!phone.band && !beside && info.state && info.state.h > 56) bad.push('sideways state is ' + Math.round(info.state.h) + 'px tall');
-    for (const part of [info.rec, info.cc]) {
-      if (!part) { bad.push('a state control is missing'); continue; }
+    if (info.cc && info.cc.h > 1) bad.push('Captions is a button on the call (it lives in More)');
+    for (const part of [info.rec]) {
+      if (!part) { bad.push('Record is missing from the call'); continue; }
       if (part.h < 44 || part.w < 44) bad.push(part.text + ' is ' + Math.round(part.w) + 'x' + Math.round(part.h));
       if (part.top < -1 || part.bottom > info.vh + 1 || part.left < -1 || part.right > info.vw + 1) bad.push(part.text + ' is off screen');
       if (info.dock && (beside ? overlaps(part, info.dock) : part.bottom > info.dock.top + 1)) bad.push(part.text + ' runs into the dock');
     }
     if (info.rec && info.rec.text !== 'Record') bad.push('record says "' + info.rec.text + '"');
-    if (info.cc && info.cc.text !== 'Captions') bad.push('captions says "' + info.cc.text + '"');
-    if (info.state && info.tiles.some((t) => t.bottom > info.state.top + 1)) bad.push('a face runs under Record');
+    // Upright, the faces stop above Record. Sideways, the 16:42 rule (f0390c4,
+    // sideways-tiles.js): the faces fill the screen and the dock and Record
+    // float over them. Captions is in More, not on the call.
+    if (phone.band && info.state && info.tiles.some((t) => t.bottom > info.state.top + 1)) bad.push('a face runs under Record');
+    if (!phone.band && info.dock && info.tiles.length && !info.tiles.some((t) => t.bottom > info.dock.top + 1)) bad.push('dock sits outside the tiles');
     const shot = (bad.length ? 'before' : 'after') + '-live-stands-out-' + phone.name + '.png';
     if (phone.name === 'iphone-se' || phone.name === 'iphone-se-land') {
       await page.screenshot({ path: path.join(SHOTS, shot) });

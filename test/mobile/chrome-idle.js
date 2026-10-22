@@ -1,5 +1,6 @@
 /*
- * Live, Record, Captions, and the dock tuck away when the call is quiet,
+ * Live, Record, and the dock tuck away when the call is quiet (Captions is
+ * in More, not on the call),
  * and a tap on the call brings them back. They start on screen.
  *
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/chrome-idle.js
@@ -87,7 +88,8 @@ function overlaps(a, b) {
     if (shown.moreOpen) bad.push('More is open');
     if (!shown.leaveHit) bad.push('Hang up is not tappable at the start');
     if (shown.live && shown.live.h > 1) bad.push('LIVE is on a regular meeting');
-    for (const part of [shown.rec, shown.cc, shown.leave]) {
+    if (shown.cc && shown.cc.h > 1) bad.push('Captions is a button on the call (it lives in More)');
+    for (const part of [shown.rec, shown.leave]) {
       if (!part || part.h < 44 || part.w < 44) bad.push((part && part.text) || 'control' + ' is small at the start');
     }
     const stateTop = shown.rec ? shown.rec.top : shown.vh;
@@ -138,7 +140,8 @@ function overlaps(a, b) {
     if (back.build && +back.build.op < 0.2) quiet.push('the edge label did not come back');
     if (back.moreOpen) quiet.push('a tap opened More');
     if (!back.leaveHit) quiet.push('Hang up did not come back');
-    for (const part of [back.rec, back.cc, back.leave]) {
+    if (back.cc && back.cc.h > 1) quiet.push('Captions came back on the call');
+    for (const part of [back.rec, back.leave]) {
       if (!part) { quiet.push('a control is missing'); continue; }
       if (part.h < 44 || part.w < 44) quiet.push(part.text + ' is ' + Math.round(part.w) + 'x' + Math.round(part.h));
       if (part.top < -1 || part.bottom > back.vh + 1 || part.left < -1 || part.right > back.vw + 1) quiet.push(part.text + ' is off screen');
@@ -146,7 +149,6 @@ function overlaps(a, b) {
     }
     if (back.live && back.live.h > 1) quiet.push('LIVE came back on a regular meeting');
     if (back.rec && back.rec.text !== 'Record') quiet.push('Record says "' + back.rec.text + '"');
-    if (back.cc && back.cc.text !== 'Captions') quiet.push('Captions says "' + back.cc.text + '"');
     if (phone.name === 'iphone-15') await page.screenshot({ path: path.join(SHOTS, 'after-chrome-back-iphone-15.png') });
     await page.locator('#bartoggle').tap();
     await page.waitForTimeout(80);
