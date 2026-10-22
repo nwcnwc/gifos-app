@@ -553,6 +553,30 @@ body.comfy .tile > .chips { right: 76px !important; }
     content: '\2197'; font-size: 13px; line-height: 22px;
   }
   body.comfy .tile.slim > .chips { left: 6px !important; right: 32px !important; gap: 2px; }
+  /* A short camera-off tile is about 76px wide. The 32px inset beside Open
+     leaves one 22px icon per line, so Muted and Camera off stack down the
+     initial and into the name. Open stays in the corner. The marks sit in
+     one row under it, across the tile, and the initial keeps the band
+     between that row and a two-line name. */
+  body.comfy .tile.slim.short.cam-off > .chips {
+    top: 26px !important; left: 6px !important; right: 6px !important;
+    flex-wrap: nowrap; align-content: center; gap: 2px;
+  }
+  body.comfy .tile.slim.short.cam-off > .chips :is(span.hand, span.rec, span.lv, span.ico) {
+    width: 16px; height: 16px; min-width: 0; max-width: 16px; flex: 0 0 16px;
+    padding: 0; box-sizing: border-box; overflow: hidden;
+  }
+  body.comfy .tile.slim.short.cam-off > .chips span.ico svg { width: 12px; height: 12px; }
+  body.comfy .tile.slim.short.cam-off > .chips span.tx {
+    height: 18px; min-width: 18px; flex: 0 0 auto; padding: 0 2px; box-sizing: border-box;
+  }
+  body.comfy .tile.slim.short.cam-off > .chips :is(span.hand, span.rec, span.lv, span.tx) b {
+    font-size: 11px; font-weight: normal; line-height: 1;
+  }
+  body.comfy .tile.slim.short.cam-off > .name {
+    box-sizing: border-box; bottom: 3px; padding: 1px 4px;
+    font-size: 12px; line-height: 1.15; max-height: 30px; overflow: hidden;
+  }
 }
 @media (max-width: 700px) and (orientation: portrait) {
   body.comfy .tile.slim:not(.short) > .chips { right: 6px !important; }
