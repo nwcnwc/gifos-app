@@ -87,12 +87,20 @@ test('a host holds, renames, and spotlights from the roster', async ({ page, bro
   await expect(spot).toHaveText('In view');
   const tile = page.locator('.tile', { hasText: 'Avery Client' });
   await expect(tile).toHaveClass(/onstage/);
+  // Spotlit means it takes the Stage: the big picture on the left, ahead of
+  // everyone else. Under the 4:42 PM overlay rule the faces run under the
+  // floating dock, so a 16:9 Stage is centred in the full height and no
+  // longer touches the header (r.top <= 80 only held while a band above the
+  // dock shortened the feed).
   const spotFit = await page.evaluate(() => {
-    const t = Array.from(document.querySelectorAll('.tile')).find((el) => /Avery Client/.test(el.textContent));
+    const tiles = Array.from(document.querySelectorAll('#feed .tile'));
+    const t = tiles.find((el) => /Avery Client/.test(el.textContent));
     const r = t.getBoundingClientRect();
+    const feed = document.getElementById('feed').getBoundingClientRect();
+    const others = tiles.filter((el) => el !== t).map((el) => el.getBoundingClientRect()).filter((o) => o.width > 8);
     return {
       onScreen: r.width > 40 && r.top >= -1 && r.left >= -1 && r.right <= window.innerWidth + 1 && r.bottom <= window.innerHeight + 1,
-      first: r.top <= 80,
+      first: r.left <= feed.left + 8 && r.top >= feed.top - 1 && others.every((o) => r.width * r.height > 2 * o.width * o.height && o.left >= r.right - 1),
     };
   });
   expect(spotFit.onScreen).toBe(true);
