@@ -17957,6 +17957,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               // (8, 16, 32 ... s, 60 s at most); the count resets once the
               // tile paints. The pair is never rebuilt for this signature.
               if (WEBKIT_TILE) {
+                if (p.video.error) {
+                  // The element failed on this picture (wkBindPic's error
+                  // hook logged it): no held re-seat, the sender keeps its
+                  // camera up for the viewers whose player works.
+                  if (p.video._wkErrSeat !== p.video._pic) { p.video._wkErrSeat = p.video._pic; if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' player error ' + p.video.error.code + ': no re-seat'); }
+                  return;
+                }
                 const nSeat = p.wkSeats || 0;
                 if (t - (p.wkSeatAt || 0) < Math.min(60000, 8000 * Math.pow(2, Math.max(0, nSeat - 1)))) return;
                 p.wkSeats = nSeat + 1; p.wkSeatAt = t; p.sinkProbe = null;
@@ -22757,6 +22764,24 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       const pic = new MediaStream([tr]);
       video._wrapOf = stream; video._pic = pic; video._followId = tr.id; video._wkAsks = 0;
+      if (!video._wkErrHook) {
+        // The engine's own player can fail on a picture the page cannot
+        // see into: Jetson WebKit (wk0056 a3j2/a3cb) picks the host's
+        // nvv4l2decoder, which rejects every VP8/H264 caps, and the element
+        // ends in error 4 while inbound-rtp framesDecoded keeps climbing.
+        // That is not a dead sink to re-seat: every held re-seat parks the
+        // sender's camera for ALL its viewers and cures nothing here. Log
+        // the error once per picture; the dead-sink watchdog and wkQuietBind
+        // leave an errored element alone until a new picture is bound (a
+        // new srcObject resets video.error).
+        video._wkErrHook = true;
+        video.addEventListener('error', () => {
+          const e = video.error, s = video._wrapOf;
+          if (!e || video._wkErrPic === video._pic) return;
+          video._wkErrPic = video._pic;
+          if (typeof clog === 'function') clog('wk-tile player error ' + e.code + ' ' + String(s && s.id).slice(0, 8) + ' ' + String(e.message || '').slice(0, 60));
+        });
+      }
       video.srcObject = pic;
       const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
       if (typeof clog === 'function') clog('wk-tile bind ' + why + ' ' + String(stream.id).slice(0, 8) + (tr.muted ? ' quiet' : ' flowing'));
@@ -22767,6 +22792,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // quiet (the sender did not park) binds nothing — a bind on a flowing
     // track is the stall this whole path exists to avoid.
     function wkQuietBind(video, stream, p) {
+      if (video.error && video._wrapOf === stream) return; // the player failed on this picture: a re-seat cannot cure it
       const t = Date.now();
       // One re-seat in flight; a sender that never goes quiet (an old client
       // re-seats at once) is asked again on a doubling backoff, 60 s at most.
