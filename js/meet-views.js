@@ -84,6 +84,13 @@
   // the shown top keeps the faces still (the header band does the same).
   let callChromeTop = 0;
   let callChromeEdge = 0;
+  // The held lines as distances up from the bottom, per screen width. A
+  // tucked page that changes size (back from a float, the URL bar going)
+  // keeps the reserve the dock had at that width, so the first wake finds
+  // the faces already where the shown dock puts them. Holding the absolute
+  // top shrank a solo tile to the float's 55px, then the wake regrew it.
+  const callChromeHeld = new Map();
+  let callChromeLast = null;
 
   function restingTop(el) {
     if (!el || el.hidden) return 0;
@@ -133,6 +140,39 @@
     return false;
   }
 
+  // True when no face in the bottom row stands over Live, Record or the chat
+  // preview: Record is beside a short last row, so that row may sit on the
+  // dock. A full bottom row would run under them.
+  function recordBeside(doc, tileEls) {
+    const marks = [];
+    const state = doc.getElementById('callstate');
+    if (state) {
+      const btns = state.querySelectorAll('button');
+      for (let i = 0; i < btns.length; i++) if (btns[i].offsetParent) marks.push(btns[i].getBoundingClientRect());
+    }
+    const note = doc.getElementById('chatnote');
+    if (note && note.offsetParent) marks.push(note.getBoundingClientRect());
+    let bottom = -Infinity;
+    const rects = [];
+    for (let i = 0; i < tileEls.length; i++) {
+      const el = tileEls[i];
+      if (!el || !el.getBoundingClientRect) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 8 || r.height < 8) continue;
+      rects.push(r);
+      bottom = Math.max(bottom, r.bottom);
+    }
+    for (let i = 0; i < rects.length; i++) {
+      const r = rects[i];
+      if (r.bottom < bottom - 2) continue;
+      for (let j = 0; j < marks.length; j++) {
+        const m = marks[j];
+        if (m.width > 0 && r.left < m.right - 1 && m.left < r.right - 1) return false;
+      }
+    }
+    return true;
+  }
+
   // Faces stop where the call's buttons start. A shared screen and an app
   // stay full-bleed. Desktop has no call-state row (it is display:none).
   function reserveCallChrome(feed, opts, header, tiles) {
@@ -141,6 +181,9 @@
     const body = doc.body;
     const skip = !opts || (body && body.classList && (body.classList.contains('screen-on') || body.classList.contains('has-app')));
     if (skip) { feed.style.bottom = ''; return 0; }
+    // apply() found that stopping above Record cost a face its 96px: the
+    // faces take the whole screen and the controls float over them.
+    if (opts._float) { feed.style.bottom = ''; return 0; }
     const view = doc.defaultView || root;
     const vh = +opts.vh || (view && view.innerHeight) || 0;
     const vw = +opts.vw || (view && view.innerWidth) || 0;
@@ -165,16 +208,29 @@
       const btnTop = dockControlsTop(doc);
       // Sideways, Video sticks up past Record. Stop there.
       if (btnTop > 0 && (edge === 0 || btnTop < edge)) edge = btnTop;
-      // Upright, Record is the row the faces have to touch. Two pixels is
-      // not enough to land on the dock, which stays clear of a four-face grid.
-      else if (d > callChromeTop + 24) edge = Math.min(callChromeTop + 4, d - 4);
+      // Upright, the faces stop at Record's row (see-everyone, chat-preview,
+      // live-stands-out). 4px into it put a full bottom row under Live and
+      // Record. A crowd whose short last row leaves Record beside it gets the
+      // lip below instead.
       // Seven faces leave Record beside the grid. Sit the bottom row on the
       // dock, still above Video, and only when the first pass missed it.
       if (doc.documentElement.dataset.chromeLip === '1' && d > 0) {
-        const lip = d + 2;
+        // 4px, not 2: whole-pixel squares ended 1px into the dock, which
+        // does not count as meeting it (375x553 SE in Safari).
+        const lip = d + 4;
         if (!(btnTop > 0) || lip < btnTop) edge = lip;
       }
       callChromeEdge = edge;
+      if (vh > 0) {
+        callChromeLast = { top: callChromeTop > 0 ? vh - callChromeTop : 0, edge: callChromeEdge > 0 ? vh - callChromeEdge : 0 };
+        callChromeHeld.set(Math.round(vw), callChromeLast);
+      }
+    } else if (vh > 0) {
+      const held = callChromeHeld.get(Math.round(vw)) || callChromeLast;
+      if (held) {
+        callChromeTop = held.top > 0 ? vh - held.top : 0;
+        callChromeEdge = held.edge > 0 ? vh - held.edge : 0;
+      }
     }
     const top = callChromeTop;
     // Held top, so a tuck does not flip a sideways phone between the two.
@@ -664,6 +720,17 @@
       self: opts.self != null ? opts.self : (opts.selfView || 'tile'),
       gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit',
     });
+    // Stopping the faces above Record must not shrink a phone face under the
+    // 96px Fit floor (a 320x460 SE made seven 76x108 slivers). Then the faces
+    // fill the screen and the dock floats over them (Nathan 2026-10-19 16:42).
+    // The held line decides it, so a tuck or a wake gives the same answer.
+    if (!opts._float && opts.phone && chrome > 0 && lay && lay.rects) {
+      for (let i = 0; i < lay.rects.length; i++) {
+        const r = lay.rects[i], t = byId[r.id];
+        if (!t || t.tier === 'stad' || t.stage || t.share) continue;
+        if (Math.min(r.w, r.h) < 96 - 0.5) { opts._float = true; return apply(opts); }
+      }
+    }
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i].me || tiles[i].id === 'me') markSelf(tiles[i].el, lay.self);
     }
@@ -681,7 +748,7 @@
       t.el.dataset.fit = r.fit || 'cover';
       used.push(t.el);
     }
-    if (!opts._lip && opts.phone && used.length && !tilesMeetChrome(feed.ownerDocument || document, used)) {
+    if (!opts._lip && opts.phone && used.length && !tilesMeetChrome(feed.ownerDocument || document, used) && recordBeside(feed.ownerDocument || document, used)) {
       (feed.ownerDocument || document).documentElement.dataset.chromeLip = '1';
       opts._lip = true;
       return apply(opts);
