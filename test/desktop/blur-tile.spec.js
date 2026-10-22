@@ -47,14 +47,10 @@ async function boot(page, size) {
 }
 const tileOf = (page, name) => page.locator('#feed .tile:not(.me)').filter({ has: page.locator('.name', { hasText: name }) });
 async function openWin(page, name, tap) {
-  const b = await tileOf(page, name).boundingBox();
-  if (tap) {
-    // A calm phone's first tap only wakes the screen; then a tap opens.
-    await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
-    await page.waitForTimeout(400);
-    if (!(await page.locator('#tilewin').isVisible())) await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
-  }
-  else await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+  // The picture does not open the sheet. Open does, including on a calm phone.
+  const open = tileOf(page, name).locator('.tile-open');
+  if (tap) await open.tap();
+  else await open.click();
   await expect(page.locator('#tilewin')).toBeVisible();
 }
 const blurBtn = (page) => page.locator('#tilewin .modbar button[data-mod="blur"]');
