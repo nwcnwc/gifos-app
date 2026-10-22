@@ -2849,19 +2849,6 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     z-index: 7; border-radius: 16px; border: 2px solid #fff; overflow: hidden; cursor: grab; touch-action: none;
     box-shadow: 0 12px 28px rgba(0,0,0,.45); }
   body.comfy .comfy-off { display: none !important; }
-  /* A cross-row face is the stadium's picture, and its grid tile is not in
-     the row. display:none kept that tile at videoWidth 0 for the whole call
-     (Jamal, 2026-10-21). A 2px on-screen tile still decodes, the same way
-     the mosaic decoder does; the row layout skips data-stadpark. */
-  body.comfy .tile[data-stadpark="1"] {
-    position: fixed !important; left: 0 !important; bottom: 0 !important; top: auto !important;
-    width: 2px !important; height: 2px !important; margin: 0 !important;
-    display: block !important; opacity: 0.01 !important; overflow: hidden !important;
-    pointer-events: none !important; z-index: -1 !important;
-  }
-  body.comfy .tile[data-stadpark="1"] > video {
-    width: 2px !important; height: 2px !important; opacity: 0.01 !important;
-  }
   /* A camera on the Stage holds this seat. The picture is only on the Stage:
      no video and no letter here, and the seat stays so nobody shifts into it. */
   body.comfy .tile.seat-held > video { visibility: hidden !important; opacity: 0 !important; }
@@ -4641,6 +4628,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   <script src="js/camera-studio.js" defer></script>
   <script src="js/gifos-perms.js" defer></script>
   <script>
+  // THE ENGINE, read before anything else runs (a var, so early callers never
+  // hit a TDZ). WebKit — Safari, and the Playwright WebKit shell under any UA
+  // (meet.js --profile phone wears an Android Chrome UA) — keeps
+  // navigator.vendor 'Apple Computer, Inc.'; Chromium says 'Google Inc.',
+  // Firefox ''. The UA test is the fallback for an engine that hides it.
+  var WEBKIT_ENGINE = (() => { try { const ua = navigator.userAgent || ''; if ((navigator.vendor || '').indexOf('Apple') === 0) return true; return /AppleWebKit/.test(ua) && !/Chrome|Chromium|CriOS|Edg\/|FxiOS|Android/.test(ua); } catch (e) { return false; } })();
   /*
    * GifOS Meeting — a SYSTEM app (first-party page, not a sandboxed GIF app).
    * Sandboxed apps have WebRTC deliberately neutered and no network, and camera
@@ -10113,7 +10106,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const [pid, p] of peers) {
         if (p && p.held) { shown[pid] = true; continue; }
         if (!p || p.headless || !p.tile) continue;
-        if (p.tile.style.display !== 'none' && !(p.tile.dataset && p.tile.dataset.stadpark)) shown[pid] = true;
+        if (p.tile.style.display !== 'none') shown[pid] = true;
       }
       const out = [], seen = {};
       const push = (id) => {
@@ -10172,7 +10165,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             speaker: !myStatus.bot && !!(speakingOf && speakingOf.get && speakingOf.get('me')), pz: 'peer:me' });
         }
         for (const [pid, p] of peers) {
-          if (!p || !p.tile || p.headless || p.held || p.tile.style.display === 'none' || (p.tile.dataset && p.tile.dataset.stadpark)) continue;
+          if (!p || !p.tile || p.headless || p.held || p.tile.style.display === 'none') continue;
           const st = statusOf.get(pid) || {};
           const si = stg.indexOf(pid);
           const bot = !!st.bot;
@@ -11309,6 +11302,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // (the 2026-08-01 canvas center-crop was reverted: stacked on the
         // camera pipeline's own cropping it double-zoomed a face; the camera
         // already rotates with the device on every phone).
+        // A WEBKIT SENDER SHIPS ALIGNED FRAMES OF ONE SIZE (WK_H264_BLIND, the
+        // WebKit that sends VP8). Measured 2026-10-22 between two such seats:
+        // a receiver decoding a 261-wide VP8 picture crashed its web process
+        // (4/4; 256-wide 0/4), and an encoder whose canvas changed size after
+        // the first frame never encoded again. So this pipe paints nothing
+        // until the camera's own shape is known (no placeholder-sized first
+        // frame) and rounds the canvas to 16 columns and 2 rows.
+        const wkAlign = typeof WK_H264_BLIND !== 'undefined' && WK_H264_BLIND;
+        if (wkAlign && !(src.videoWidth > 0 && src.videoHeight > 0)) return;
         const sw = src.videoWidth || 640, sh = src.videoHeight || 480;
         // CAP THE LONG SIDE, NOT THE WIDTH (2026-07-31, measured). capW was
         // applied to width alone, which silently assumed a landscape source.
@@ -11339,6 +11341,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           const k = side / Math.max(1, r.side);
           w = h = side; ox = -r.sx * k; oy = -r.sy * k; dw = sw * k; dh = sh * k;
         }
+        if (wkAlign) { w = Math.max(16, Math.round(w / 16) * 16); h = Math.max(2, Math.round(h / 2) * 2); }
         if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
         let drew = false;
         try {
@@ -11596,7 +11599,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!dark) {
         clearPeerAvatar(t);
         const tr = own && own.getVideoTracks && own.getVideoTracks()[0];
-        if (tr && t.video._wrapOf !== own && t.video.srcObject !== own) playTileVideo(t.video, own);
+        if (tr && !tileHolds(t.video, own)) playTileVideo(t.video, own);
         return;
       }
       const wire = (!gCam && !blockedShare) ? remoteWireTrack({ stream: own }) : null;
@@ -11835,19 +11838,20 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (cam && localStream && p.pc && !p.headless && (!p.mainV || !p.mainA)) {
           let added = false;
           try {
-            if (!p.mainA && at) { p.mainA = p.pc.addTrack(at, localStream); added = true; }
-            if (!p.mainV && vt && !p.turnAudio) { p.mainV = p.pc.addTrack(vt, localStream); added = true; }
+            if (!p.mainA && at) { p.mainA = typeof addMainTrack === 'function' ? addMainTrack(p.pc, at, localStream) : p.pc.addTrack(at, localStream); added = true; }
+            if (!p.mainV && vt && !p.turnAudio) { p.mainV = typeof addMainTrack === 'function' ? addMainTrack(p.pc, vt, localStream) : p.pc.addTrack(vt, localStream); added = true; }
           } catch (e) {}
           if (added) { if (p.dc && p.dc.readyState === 'open') compKick(p.id); else renegotiate(p); }
         }
         if (p.mainV) {
           // remoteParkMain: hidden-viewer dormancy — the far side told us it
           // can't see this feed right now ({k:'vis'}); park the encoder.
-          // mainHoldUntil: a held re-seat a peer asked for (vkick hold) — the
-          // park must outlive this beat, or the beat seats the camera back
-          // before the far side has re-bound its tile.
+          // mainHoldUntil: a held re-seat a peer asked for (holdMainVideo) —
+          // the park must outlive this beat, or the beat seats the camera
+          // back before the far side has bound its tile.
           // turnAudio: a free-pool pair stays voice-only.
-          if (!cam || !vt || p.remoteParkMain || p.turnAudio || (p.mainHoldUntil && p.mainHoldUntil > Date.now())) { if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {}); }
+          const heldNow = !!(p.mainHoldUntil && p.mainHoldUntil > Date.now());
+          if (!cam || !vt || p.remoteParkMain || p.turnAudio || heldNow) { if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {}); }
           else if (p.mainV.track !== vt) p.mainV.replaceTrack(vt).catch(() => {});
         }
         if (p.mainA) {
@@ -15952,7 +15956,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!p) return;
       // a stale claim lets go: their sid changed (reload) → old stream is void
       if (p.stream && p.ownSid && p.stream.id !== p.ownSid) {
-        if (p.video && (p.video.srcObject === p.stream || p.video._wrapOf === p.stream)) { p.video.srcObject = null; p.video._wrapOf = null; p.video._followId = ''; }
+        if (tileHolds(p.video, p.stream)) p.video.srcObject = null;
         p.stream = null;
       }
       if (!p.ownSid) { updateTile(p.id); return; } // wait for gossip to prove identity
@@ -15972,7 +15976,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (own && p.stream !== own) {
         p.stream = own;
         if (!p.relayed) { playTileVideo(p.video, own); meterFor(p.id, own); }
-      } else if (own && !p.relayed && p.video && (p.video.srcObject === own || p.video._wrapOf === own) && (p.video.paused || p.video.readyState === 0)) {
+      } else if (own && !p.relayed && p.video && tileHolds(p.video, own) && (p.video.paused || p.video.readyState === 0)) {
         // The stream was bound while its video track was still muted (no RTP
         // yet). A bare srcObject does not start decoding later — the element
         // stays paused at readyState 0 and videoWidth never leaves 0.
@@ -16083,10 +16087,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       let added = false;
       if (localStream && carryCam) {
         const at = mainAudioTrack();
-        if (at) { p.mainA = pc.addTrack(at, localStream); added = true; }
+        if (at) { p.mainA = typeof addMainTrack === 'function' ? addMainTrack(pc, at, localStream) : pc.addTrack(at, localStream); added = true; }
         // Send the blur-canvas track when any blur applies — never the raw camera.
         const vt = sentVideoTrack();
-        if (vt && !p.turnAudio) { p.mainV = pc.addTrack(vt, localStream); added = true; } // a free-pool pair carries no video
+        if (vt && !p.turnAudio) { p.mainV = typeof addMainTrack === 'function' ? addMainTrack(pc, vt, localStream) : pc.addTrack(vt, localStream); added = true; } // a free-pool pair carries no video
         if (stageIds().includes(myId)) {
           if (p.mainA && !p.turnAudio) p.mainA.replaceTrack(null).catch(() => {}); // a free-pool pair keeps my voice: the Stage feed does not cross it
           if (p.mainV) p.mainV.replaceTrack(null).catch(() => {});
@@ -16214,7 +16218,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             // Replay only a stream the claim already accepted. Unmute is not
             // a second claim: an unverified person's track must stay off the tile.
             if (typeof mediaOk === 'function' && mediaOk(p.id) === false) return;
-            if (!p.stream || p.relayed || p.stream.id !== p.ownSid || !p.video || (p.video.srcObject !== p.stream && p.video._wrapOf !== p.stream)) return;
+            if (!p.stream || p.relayed || p.stream.id !== p.ownSid || !p.video || !tileHolds(p.video, p.stream)) return;
             playTileVideo(p.video, p.stream);
           });
         }
@@ -16381,11 +16385,93 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           .concat(caps.codecs.filter((c) => !/h264/i.test(c.mimeType)));
       } catch (e) { return null; }
     })();
+    // A WEBKIT THAT CANNOT ENCODE AN H264 M-LINE IT NEGOTIATED ITSELF.
+    // Measured 2026-10-22 on the Playwright WebKit shell (GStreamer WebRTC),
+    // two WebKit seats and WebKit with Chromium: a WebKit sender whose video
+    // m-line it OFFERED, or whose m-line a peer re-offered with H264 first,
+    // encodes nothing (framesEncoded 0, packetsSent 0 while its media source
+    // counts frames), and no kick, park or rebuild revives it; the same
+    // sender streams VP8, and streams H264 when it only ANSWERED an H264
+    // offer. The sender capabilities show the shape: H264 listed with no
+    // profile (an empty sdpFmtpLine), where every libwebrtc build names one.
+    // Such a seat keeps H264 out of the m-lines it sends on: its offers
+    // prefer every other codec there (WebKit honours codec preferences in
+    // offers, not in answers), and a remote offer is applied with H264
+    // stripped from its sending m-lines (wkStripH264). What it RECEIVES
+    // stays H264 first: a mate's camera arrives at the mate's own blur size,
+    // and this WebKit decodes H264 of any width but crashes on a VP8 picture
+    // whose width is not a multiple of 16 (wkAlign in the blur pipe keeps
+    // this seat's own VP8 aligned).
+    const WK_H264_BLIND = WEBKIT_ENGINE && (() => {
+      try {
+        const caps = RTCRtpSender.getCapabilities && RTCRtpSender.getCapabilities('video');
+        return !!caps && caps.codecs.some((c) => /h264/i.test(c.mimeType) && !c.sdpFmtpLine);
+      } catch (e) { return false; }
+    })();
+    const NO_H264 = (() => {
+      try {
+        const caps = RTCRtpReceiver.getCapabilities && RTCRtpReceiver.getCapabilities('video');
+        return caps ? caps.codecs.filter((c) => !/h264/i.test(c.mimeType)) : null;
+      } catch (e) { return null; }
+    })();
     function preferHwVideo(pc) {
       if (!H264_FIRST) return;
       for (const tr of pc.getTransceivers()) {
-        try { if (tr.receiver.track.kind === 'video' && tr.setCodecPreferences) tr.setCodecPreferences(H264_FIRST); } catch (e) {}
+        try {
+          if (tr.receiver.track.kind !== 'video' || !tr.setCodecPreferences) continue;
+          // Only the m-lines this seat SENDS on lose H264; what a mate sends it
+          // keeps H264 first (a WebKit decoder takes H264 of any width).
+          const sends = tr.direction === 'sendrecv' || tr.direction === 'sendonly';
+          const list = WK_H264_BLIND && sends ? NO_H264 : H264_FIRST;
+          if (list && list.length) tr.setCodecPreferences(list);
+        } catch (e) {}
       }
+    }
+    // A main sender on its own m-line. addTrack may reuse a transceiver the
+    // mate's offer created (their camera's m-line); a WK_H264_BLIND seat must
+    // not share one, or its no-H264 rule would flip the mate's camera to VP8.
+    // Idempotent per track, as addTrack is (a second addTrack of the same
+    // track throws; a second addTransceiver would carry it twice).
+    function addMainTrack(pc, track, stream) {
+      if (WK_H264_BLIND && pc.addTransceiver) {
+        try { for (const tr of pc.getTransceivers()) if (tr.sender && tr.sender.track === track) return tr.sender; } catch (e) {}
+        return pc.addTransceiver(track, { direction: 'sendrecv', streams: [stream] }).sender;
+      }
+      return pc.addTrack(track, stream);
+    }
+    // The remote offer this seat is about to answer, with H264 removed from
+    // every video m-line it sends on (a transceiver whose direction sends),
+    // so the answer, which follows the offer's order, cannot pick it. A
+    // section that would lose every codec is left whole.
+    function wkStripH264(desc, pc) {
+      if (!WK_H264_BLIND || !desc || typeof desc.sdp !== 'string' || !pc) return desc;
+      const mids = new Set();
+      try {
+        for (const tr of pc.getTransceivers()) {
+          if (tr.mid == null || !tr.receiver || !tr.receiver.track || tr.receiver.track.kind !== 'video') continue;
+          if (tr.direction === 'sendrecv' || tr.direction === 'sendonly') mids.add(String(tr.mid));
+        }
+      } catch (e) { return desc; }
+      if (!mids.size) return desc;
+      const nl = desc.sdp.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
+      let changed = false;
+      const out = desc.sdp.split(/(?=^m=)/m).map((sec) => {
+        if (sec.indexOf('m=video') !== 0) return sec;
+        const mm = sec.match(/^a=mid:(\S+)/m);
+        if (!mm || !mids.has(mm[1])) return sec;
+        const lines = sec.split(nl), pts = new Set();
+        for (const l of lines) { const m = l.match(/^a=rtpmap:(\d+) H264\//i); if (m) pts.add(m[1]); }
+        for (const l of lines) { const m = l.match(/^a=fmtp:(\d+) apt=(\d+)/); if (m && pts.has(m[2])) pts.add(m[1]); }
+        if (!pts.size) return sec;
+        const kept = lines.filter((l) => { const m = l.match(/^a=(rtpmap|fmtp|rtcp-fb):(\d+)/); return !(m && pts.has(m[2])); })
+          .map((l) => (l.indexOf('m=video') === 0 ? l.split(' ').filter((w, i) => i < 3 || !pts.has(w)).join(' ') : l));
+        if (kept[0].split(' ').length <= 3) return sec;
+        changed = true;
+        return kept.join(nl);
+      });
+      if (!changed) return desc;
+      if (typeof clog === 'function') clog('wk-h264 stripped from an offer');
+      return { type: desc.type, sdp: out.join('') };
     }
 
     // A GLARE DEADLOCK IS BROKEN BY WHOEVER IS STILL STUCK, not by whoever is
@@ -16431,7 +16517,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const fresh = noLiveTransport(p);
         if (fresh) { const queued = p.pendingIce; newPcFor(p); p.pendingIce = queued; }
         Promise.resolve(fresh ? null : p.pc.setLocalDescription({ type: 'rollback' }))
-          .then(() => p.pc.setRemoteDescription(turnAudioDesc(p, m.sdp)))
+          .then(() => p.pc.setRemoteDescription(turnAudioDesc(p, wkStripH264(m.sdp, p.pc))))
           .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
           .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
           .then((ans) => p.pc.setLocalDescription(ans))
@@ -16841,7 +16927,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // side recovers from a never-arriving remote offer (see sweeper). The
         // polite peer (lower id) rolls back its local offer and accepts; the
         // impolite peer ignores the remote offer and keeps its own.
-        const accept = () => p.pc.setRemoteDescription(turnAudioDesc(p, msg.sdp))
+        const accept = () => p.pc.setRemoteDescription(turnAudioDesc(p, wkStripH264(msg.sdp, p.pc)))
           .then(() => { for (const c of p.pendingIce.splice(0)) p.pc.addIceCandidate(c).catch(() => {}); })
           .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
           .then((ans) => p.pc.setLocalDescription(ans))
@@ -17762,21 +17848,19 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           continue;
         }
         const k = coordOfPeer.get(pid);
-        if (!k) { if (p.tile.dataset) delete p.tile.dataset.stadpark; paintDisp(p.tile, ''); continue; } // unknown coord ⇒ show
+        if (!k) { paintDisp(p.tile, ''); continue; } // unknown coord ⇒ show
         const cc = net.topo.unck(k);
         const rowMate = cc.pc === c.pc && cc.r === c.r; // same section + row (≠ me)
-        // A non-row-mate stays a stadium face, not a row tile. Parking the
-        // tile with display:none also stopped its camera from decoding, so
-        // the probe read videoWidth 0 even after the sender was still live.
-        // The 2px tile decodes; the stadium roster treats stadpark as absent.
-        if (rowMate) {
-          if (p.tile.dataset) delete p.tile.dataset.stadpark;
-          paintDisp(p.tile, '');
-        } else {
-          let comfy = false;
-          try { comfy = !!(meTile && typeof GifOS !== 'undefined' && GifOS.meetViews && GifOS.meetViews.comfyAllowed(document.body)); } catch (e) {}
-          if (comfy) { if (p.tile.dataset) p.tile.dataset.stadpark = '1'; paintDisp(p.tile, ''); }
-          else { if (p.tile.dataset) delete p.tile.dataset.stadpark; paintDisp(p.tile, 'none'); }
+        paintDisp(p.tile, rowMate ? '' : 'none');
+        // On WebKit a hidden non-mate tile holds NO picture (WEBKIT_TILE): the
+        // far side parks its camera toward a non-mate (camPeer), so the element
+        // would only ever wait on a stream that carries nothing — one WebKit
+        // player per hidden tile, and a dead-sink signature that is nobody's
+        // fault. The picture is bound again the moment the seat is a row-mate.
+        if (WEBKIT_TILE && p.video && p.stream && !p.relayed) {
+          if (!rowMate) { if (p.video.srcObject) { try { p.video.pause(); } catch (e) {} p.video.srcObject = null; } p.video._wkPending = null; p.video._wkReleased = true; }
+          else if (p.video._wkReleased && !p.video.srcObject && mediaOk(pid) !== false) { p.video._wkReleased = false; playTileVideo(p.video, p.stream); }
+          else if (p.video.srcObject) p.video._wkReleased = false;
         }
       }
     }
@@ -19349,7 +19433,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (document.hidden) return 'hidden';
       if (document.pictureInPictureElement && document.pictureInPictureElement === p.video) return 'pip'; // a floated tile paints in the float, not in the room: no frame count to judge here
       if (!vtr || vtr.readyState !== 'live') return 'track';
-      if (!p.video || p.video.srcObject !== p.stream || p.video.paused || p.video.readyState === 0) return 'element';
+      if (!p.video || !tileHolds(p.video, p.stream) || p.video.paused || p.video.readyState === 0) return 'element';
       if (!p.dc || p.dc.readyState !== 'open') return 'dc';
       if (!camPeer(pid) || mediaOk(pid) === false) return 'mate';
       if (!fst || fst.camOff || fst.scr || forcedCamOff(pid)) return 'cam';
@@ -19441,6 +19525,42 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
     }
     GifOS.meshMedia.workerClock(1000, () => { for (const [pid, p] of peers) { try { frozenTileTick(pid, p); } catch (e) {} } });
+    // A WEBKIT SENDER THAT NEVER ENCODES. Measured 2026-10-21 (gate-1812
+    // diag d1/d5): a WebKit seat's camera track was live and playing on its
+    // own tile, seated on the main sender of two connected mates, and
+    // outbound-rtp framesEncoded stayed 0 for two minutes — after a burst of
+    // replaceTrack swaps while the camera started (a placeholder track, then
+    // the clip). Nothing on the receiving side can see that (no RTP, no
+    // frame, no dead-sink). The sender judges itself: a seated live track
+    // whose encoded count has not moved in 6 s is seated again (null, then
+    // the track), twice on a doubling backoff; then the pair is rebuilt (a
+    // fresh pc seats the camera on fresh senders). Parked, held, staged and
+    // cam-off senders are quiet on purpose and are not judged. The count
+    // resets as soon as frames move. WebKit only (WEBKIT_TILE).
+    function txStallTick(pid, p) {
+      if (!WEBKIT_TILE) return;
+      const s = p.mainV, now = Date.now();
+      if (!s || !s.track || s.track.readyState !== 'live' || !p.connected || p.relayed || p.remoteParkMain || (p.mainHoldUntil && p.mainHoldUntil > now)
+          || myStatus.camOff || stageIds().includes(myId) || !camPeer(pid) || !s.getStats) { p.txProbe = null; return; }
+      // The source must be producing: the self view plays the same camera. A
+      // camera still starting (a clip, a slow device) encodes nothing yet.
+      if (!(meTile && meTile.video && meTile.video.readyState >= 2 && meTile.video.videoWidth > 0)) { p.txProbe = null; return; }
+      const tr = s.track, pc0 = p.pc;
+      s.getStats().then((st) => {
+        let fe = -1; st.forEach((x) => { if (x.type === 'outbound-rtp' && (x.kind === 'video' || x.mediaType === 'video')) fe = Math.max(fe, x.framesEncoded || 0); });
+        if (p.pc !== pc0 || p.mainV !== s || fe < 0) return;
+        const t = Date.now(), q = p.txProbe;
+        if (!q || q.track !== tr || q.sender !== s || fe !== q.fe) { if (q && q.sender === s && fe > q.fe) p.txKicks = 0; p.txProbe = { track: tr, sender: s, fe, at: t }; return; }
+        if (t - q.at < 6000) return;
+        const n = p.txKicks || 0;
+        if (t - (p.txKickAt || 0) < Math.min(60000, 8000 * Math.pow(2, n))) return;
+        p.txKicks = n + 1; p.txKickAt = t; p.txProbe = null;
+        if (typeof clog === 'function') clog('tx-stall ' + String(pid).slice(0, 6) + ' encoded ' + fe + ' frames total, none in ' + Math.round((t - q.at) / 1000) + 's: ' + (n < 2 ? 're-seat ' + (n + 1) : 'rebuild'));
+        if (n < 2) { s.replaceTrack(null).then(() => new Promise((r) => setTimeout(r, 300))).then(() => { if (p.mainV === s && !p.remoteParkMain && !(p.mainHoldUntil && p.mainHoldUntil > Date.now()) && tr.readyState === 'live') return s.replaceTrack(tr); }).catch(() => {}); }
+        else { newPcFor(p); sendOffer(pid, false); }
+      }).catch(() => {});
+    }
+    GifOS.meshMedia.workerClock(2000, () => { for (const [pid, p] of peers) { try { txStallTick(pid, p); } catch (e) {} } });
     let lastRmSig = ''; // row-mate set signature — refreshOutbound on change (became/stopped-being a mate)
     // THE SWEEP RIDES A WORKER CLOCK (2026-10-03). It was a page setInterval,
     // which Chrome throttles to once a minute after five minutes hidden; the
@@ -19656,15 +19776,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // Nothing on this pc revives that track. Two samples 4s apart with
         // frames decoded and none shown: rebuild the pair; the far side
         // takes a new fingerprint as a new pc (the NEW-PC RULE).
-        // sinkRebuiltAt does not gate this. The 30s pause used to sit here so a
-        // rebuild could not loop; it also ate the fresh pc's quiet re-seats, and
-        // that pc's tile is bound onto a track that is already flowing (the
-        // same WebKit element that never starts). The rebuild stays once
-        // (p.sinkRebuilt). The holds keep running.
-        if (p.connected && !document.hidden && p.stream && !p.relayed && p.video && (p.video.srcObject === p.stream || p.video._wrapOf === p.stream)
-            && !p.video.paused && p.video.readyState === 0 && mediaOk(pid) !== false) {
-          let vtr = null;
-          if (p.stream.getVideoTracks) for (const t of p.stream.getVideoTracks()) if (t.readyState !== 'ended') vtr = t;
+        if (p.connected && !document.hidden && p.stream && !p.relayed && p.video && tileHolds(p.video, p.stream)
+            && !p.video.paused && p.video.readyState === 0 && mediaOk(pid) !== false && now - (p.sinkRebuiltAt || 0) > 30000) {
+          const vtr = p.stream.getVideoTracks()[0];
           const rx = vtr && vtr.readyState === 'live' && p.pc.getReceivers().find((r) => r.track === vtr);
           if (rx) {
             const pc0 = p.pc;
@@ -19675,89 +19789,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
               if (p.pc !== pc0 || t - prev.at < 4000) return;
               p.sinkProbe = { fd, at: t, pc: pc0 };
               if (fd - prev.fd < 3) return;
-              if (p.video.readyState !== 0 || p.video.paused || (p.video.srcObject !== p.stream && p.video._wrapOf !== p.stream) || document.hidden) return;
-              // NOT A REBUILD FIRST, AND NEVER A REBUILD LOOP. On Safari/WebKit
-              // this signature is the ELEMENT, not the pc: a player bound to a
-              // track that is already flowing never starts, on this pc and on
-              // every fresh one (hard-bugs-1019-1108 bug 2: a WebKit seat
-              // rebuilt its pair to the stadium's announcer every 30 s, each
-              // rebuild re-delivered the composites onto decoders that could not
-              // start, every face was a letter and the page crashed). So: ask
-              // the sender for a HELD re-seat (vkick hold: it parks the camera,
-              // we re-bind the tile while nothing flows, it resumes — the cure
-              // the mosaic decoders use), twice. Only then the pair is rebuilt,
-              // ONCE: Chromium's dead sink (06c) is cured by one rebuild, and a
-              // fresh pc that shows the same signature proves the pc was never
-              // the problem. The count resets when the tile paints.
-              p.sinkProbe = null;
-              if ((p.sinkKicks || 0) < 2) {
-                if (t - (p.sinkKickAt || 0) < 8000) return;
-                p.sinkKicks = (p.sinkKicks || 0) + 1; p.sinkKickAt = t;
-                if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown: held re-seat ' + p.sinkKicks);
-                visParkSent.set(pid, false);
-                dcSend(p, { k: 'vis', park: false });
-                dcSend(p, { k: 'vkick', hold: 2500 });
-                // A SAME-ELEMENT re-bind during the quiet gap does not start
-                // this tile (measured 2026-10-21: framesDecoded froze for ~2s,
-                // bind count rose, readyState stayed 0 after the resume). The
-                // element is the thing that is stuck. Swap in a new one once
-                // the video track is actually quiet — muted, or no new decoded
-                // frame for 400ms — and play the same stream into it, before
-                // the hold resumes at 2.5s. A swap onto a track that is still
-                // flowing is the failure the park exists to avoid.
-                const st0 = p.stream;
-                const trackNow = () => {
-                  const ts = st0.getVideoTracks ? st0.getVideoTracks() : [];
-                  let live = null;
-                  for (const t of ts) if (t.readyState !== 'ended') live = t;
-                  return live || ts[0] || null;
-                };
-                let swapped = false, lastFd = null, stillSince = 0;
-                const swapQuiet = (why) => {
-                  if (swapped || p.stream !== st0) return;
-                  const old = p.video;
-                  if (!old || !old.parentNode) return;
-                  swapped = true;
-                  const v = document.createElement('video');
-                  v.autoplay = true; v.playsInline = true; v.muted = true;
-                  v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
-                  if (old._aud) v._aud = old._aud;
-                  if (old._gmute != null) v._gmute = old._gmute;
-                  old.parentNode.insertBefore(v, old);
-                  try { old.srcObject = null; } catch (e) {}
-                  old.remove();
-                  p.video = v;
-                  playTileVideo(v, st0);
-                  if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' quiet swap ' + why);
-                };
-                const tr0 = trackNow();
-                const onMute = () => swapQuiet('mute');
-                if (tr0) tr0.addEventListener('mute', onMute);
-                const quietIv = setInterval(() => {
-                  const tr = trackNow();
-                  if (!tr || tr.muted || tr.readyState !== 'live') { swapQuiet('mute'); return; }
-                  const rx = p.pc && p.pc.getReceivers && p.pc.getReceivers().find((r) => r.track === tr);
-                  if (!rx || !rx.getStats) return;
-                  rx.getStats().then((st) => {
-                    if (swapped || p.stream !== st0) return;
-                    let fd = 0; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
-                    const now = Date.now();
-                    if (lastFd === null || fd !== lastFd) { lastFd = fd; stillSince = now; return; }
-                    if (now - stillSince >= 400) swapQuiet('stall');
-                  }).catch(() => {});
-                }, 200);
-                setTimeout(() => { clearInterval(quietIv); if (tr0) tr0.removeEventListener('mute', onMute); }, 2200);
+              if (p.video.readyState !== 0 || p.video.paused || !tileHolds(p.video, p.stream) || document.hidden) return;
+              // ON WEBKIT THIS IS THE ELEMENT, NOT THE PC (see WEBKIT_TILE): a
+              // rebuild re-binds the tile on a flowing track, which stalls the
+              // page and never paints. Ask the sender for a held re-seat and
+              // bind in its quiet window instead, on a doubling backoff
+              // (8, 16, 32 ... s, 60 s at most); the count resets once the
+              // tile paints. The pair is never rebuilt for this signature.
+              if (WEBKIT_TILE) {
+                if (p.video.error) {
+                  // The element failed on this picture (wkBindPic's error
+                  // hook logged it): no held re-seat, the sender keeps its
+                  // camera up for the viewers whose player works.
+                  if (p.video._wkErrSeat !== p.video._pic) { p.video._wkErrSeat = p.video._pic; if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' player error ' + p.video.error.code + ': no re-seat'); }
+                  return;
+                }
+                const nSeat = p.wkSeats || 0;
+                if (t - (p.wkSeatAt || 0) < Math.min(60000, 8000 * Math.pow(2, Math.max(0, nSeat - 1)))) return;
+                p.wkSeats = nSeat + 1; p.wkSeatAt = t; p.sinkProbe = null;
+                if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown: held re-seat ' + p.wkSeats);
+                if (p.dc && p.dc.readyState === 'open') { p.video._wkQuietAt = 0; wkQuietBind(p.video, p.stream, p); }
                 return;
               }
-              if (p.sinkRebuilt) return;
-              p.sinkRebuilt = true; p.sinkRebuiltAt = t;
-              p.sinkKicks = 0; p.sinkKickAt = 0; // the fresh element needs its own quiet re-seats; the rebuild does not repeat
-              if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown after re-seats: rebuild (once)');
+              p.sinkRebuiltAt = t; p.sinkProbe = null;
+              if (typeof clog === 'function') clog('dead-sink ' + String(pid).slice(0, 6) + ' decoded ' + (fd - prev.fd) + ' in ' + Math.round((t - prev.at) / 1000) + 's, none shown: rebuild');
               newPcFor(p);
               sendOffer(pid, false);
             }).catch(() => {});
           }
-        } else p.sinkProbe = null;
+        } else { p.sinkProbe = null; if (p.video && p.video.readyState > 0 && p.video.videoWidth > 0) p.wkSeats = 0; }
+        // A WebKit tile whose bind waited for the channel (wkPlayTile): ask now.
+        if (WEBKIT_TILE && p.video && p.stream && p.video._wkPending === p.stream && !p.relayed && p.connected && p.dc && p.dc.readyState === 'open' && mediaOk(pid) !== false) wkQuietBind(p.video, p.stream, p);
         // Direct route recovered → drop any friend-relay for this peer.
         if (p.connected && relayVia.has(pid)) stopRelayFor(pid, true);
         // Our relayer for this peer vanished → fall back and re-elect.
@@ -21759,7 +21821,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             maybeShowFlip();
             const n = meTile.tile.querySelector('.note'); if (n) n.remove();
             meTile.video.style.display = '';
-            meTile.video.srcObject = localStream;
+            wkBindVideo(meTile.video, localStream);
             meterFor('me', localStream);
             updateTile('me');
             // Any pc born between the knock and the grant was built recvonly —
@@ -23086,35 +23148,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // just ended has already re-seated the camera: a second seat on top
         // of that fresh start only stalls it.
         const t = Date.now();
+        // A HELD re-seat ({hold: ms}): the far tile is a WebKit element that
+        // never started on a flowing track (WEBKIT_TILE). Park the camera for
+        // the hold, so the far side can bind while nothing flows, then seat it
+        // again; refreshOutbound keeps the park for the window. A plain vkick
+        // is unchanged.
         const hold = typeof m.hold === 'number' && m.hold >= 500 && m.hold <= 6000 ? m.hold : 0;
-        // A plain reseat waits out a lift that just started the camera (a
-        // second seat on that fresh start only stalls it). A HELD re-seat is
-        // the quiet window the far tile rebinds inside, so that lift must not
-        // swallow it: the unpark and the hold arrive as one pair, and dropping
-        // the hold leaves the tile bound to a flowing track (WebKit stays at
-        // readyState 0 for the rest of the call — the row-mate tile, 2026-10-21).
-        if (t - (p.vkickAt || 0) >= 2000 && (hold || t - (p.visLiftAt || 0) >= 1500)) {
-          p.vkickAt = t;
-          // A HELD re-seat (hold: ms). The far side's tile never started on a
-          // flowing track (its receiver decodes, the element stays at
-          // readyState 0 — a Safari/WebKit player cannot be started on a
-          // track already flowing, measured 2026-10-19). The cure is the one
-          // the mosaic decoders use: park the sender, let the far side re-bind
-          // its tile while nothing flows, resume so the first frame lands in a
-          // settled player. refreshOutbound honours the hold (it would re-seat
-          // the camera on its next beat otherwise), then seats it again. The
-          // hold is set even when the sender is already empty, so a beat
-          // cannot seat the camera back during the window.
-          if (hold && p.mainV) {
-            p.mainHoldUntil = t + hold;
-            if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {});
-            setTimeout(() => {
-              if (p.mainHoldUntil && p.mainHoldUntil > Date.now() + 250) return; // a later hold lengthened the window
-              p.mainHoldUntil = 0;
-              try { refreshOutbound(); } catch (e) {}
-            }, hold + 50);
-          } else kickMainVideo(p);
-        }
+        if (hold) { if (t - (p.vkickAt || 0) >= 2000) { p.vkickAt = t; holdMainVideo(p, hold); } }
+        else if (t - (p.visLiftAt || 0) >= 1500 && t - (p.vkickAt || 0) >= 2000) { p.vkickAt = t; kickMainVideo(p); }
+      } else if (m.k === 'vkick-held') {
+        // The sender parked its camera for my held re-seat (wkQuietBind).
+        if (typeof p.wkHeldAck === 'function') p.wkHeldAck();
       } else if (m.k === 'sga' && typeof m.sid === 'string') {
         // Stage data lane (§11): app-state frame — dedup, deliver, re-fan.
         sgaRecv(p.id, m);
@@ -23271,7 +23315,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // and MUST re-offer afterwards, or its rolled-back m-lines are
         // orphaned forever (the browser's negotiationneeded would refire
         // here; our hand-rolled offers need the explicit flag).
-        const applyRoffer = (msg) => p.pc.setRemoteDescription(turnAudioDesc(p, msg.sdp))
+        const applyRoffer = (msg) => p.pc.setRemoteDescription(turnAudioDesc(p, wkStripH264(msg.sdp, p.pc)))
           .then(() => { preferHwVideo(p.pc); return p.pc.createAnswer(); })
           .then((a) => p.pc.setLocalDescription(a))
           .then(() => {
@@ -24521,41 +24565,191 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const pid = tile && tile.dataset && tile.dataset.peer;
       if (pid && pid !== myId && typeof mediaOk === 'function' && mediaOk(pid) === false) return;
       try { video.muted = true; } catch (e) {}
-      // Chromium paints the peer stream itself. A fresh MediaStream of one
-      // remote track left the packer's drawImage source at videoWidth 0, so
-      // the other row's cell in the stadium stayed black (Jamal, 2026-10-21).
-      // WebKit is the opposite: the peer stream had already held an ended
-      // track, and WebKit will not connect the replacement to an element
-      // still pointing at that same stream. A new MediaStream of the current
-      // live video track is a picture that element can start. Sound stays on
-      // the companion, which plays the peer stream.
-      const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
-      const webkitTile = /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg\//.test(ua);
-      if (!webkitTile) {
-        video._wrapOf = null; video._followId = '';
-        if (video.srcObject !== stream) video.srcObject = stream;
-        const pr0 = video.play(); if (pr0 && pr0.catch) pr0.catch(() => {});
-        return;
-      }
-      if (!stream._picWatch) {
-        stream._picWatch = true;
-        stream.addEventListener('addtrack', (ev) => {
-          if (!ev.track || ev.track.kind !== 'video') return;
-          for (const q of peers.values()) if (q.stream === stream && q.video) playTileVideo(q.video, stream);
+      if (WEBKIT_TILE) { wkPlayTile(video, stream); return; }
+      if (video.srcObject !== stream) video.srcObject = stream;
+      const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
+    }
+    // A WEBKIT TILE IS A PICTURE BOUND WHILE NOTHING FLOWS (Safari and the
+    // Playwright WebKit shell; measured 2026-10-21, out/gate-1812/webkit-fix/t2).
+    // A row-mate's camera arrives in a stream that also carries their mic
+    // track, and that track is usually MUTED at the receiver (a parked or
+    // silent sender: no RTP). WebKit's player waits for every track of a
+    // stream before it starts, so the tile sat at readyState 0 / videoWidth 0
+    // for the whole call while its receiver decoded hundreds of frames; the
+    // dead-sink watchdog then rebuilt the pair every 30 s, every rebuild bound
+    // the element again on a FLOWING track, and that bind stalls WebKit's main
+    // thread for 20-30 s or for good (every HUNG seat in the rowmate gate).
+    // Two rules, both measured in the two-seat harness: (1) the element plays
+    // a video-only MediaStream of the camera track (the companion Audio still
+    // plays the whole stream, so the voice is unchanged); (2) it is bound only
+    // while the track is quiet. When the track already flows, the sender is
+    // asked for a HELD re-seat ({k:'vkick', hold}: park the camera, resume
+    // after the hold) and the bind lands inside that quiet window, so the first
+    // frame reaches a settled player, as on a normal first claim. Chromium and
+    // Firefox keep the plain srcObject = stream path. tileHolds() is how the
+    // rest of the page asks "is this tile showing that stream" either way.
+    // The ENGINE, not the UA string: a WebKit shell can wear an Android Chrome
+    // UA (meet.js --profile phone does), and WebKit keeps navigator.vendor
+    // 'Apple Computer, Inc.' under any UA. Chromium says 'Google Inc.',
+    // Firefox ''. The UA test is the fallback for an engine that hides it.
+    // localStorage gifos_wk_tile=off bypasses the WebKit tile path (a bisect switch for the harness).
+    const WEBKIT_TILE = WEBKIT_ENGINE && (() => { try { return localStorage.getItem('gifos_wk_tile') !== 'off'; } catch (e) { return true; } })();
+    const WK_TILE_HOLD = 3000;    // ms the sender keeps the camera parked for a held re-seat
+    const WK_TILE_BIND_AT = 1200; // ms into the hold when the tile is bound (frames have stopped by then)
+    function tileHolds(video, stream) {
+      return !!video && !!stream && (video.srcObject === stream || (video._wrapOf === stream && !!video._pic && video.srcObject === video._pic));
+    }
+    function liveVideoTrack(stream) {
+      const ts = stream && stream.getVideoTracks ? stream.getVideoTracks() : [];
+      for (const t of ts) if (t.readyState !== 'ended') return t;
+      return ts[0] || null;
+    }
+    // EVERY MUTED <video> ON WEBKIT BINDS A PICTURE, NEVER A STREAM THAT CARRIES
+    // A MIC. Measured 2026-10-22 (gate-1812 webkit-fix/root, alsalog.so, the
+    // Playwright WebKit shell): each bind of a stream with an audio track —
+    // muted element or not — opens the ALSA device on the web process MAIN
+    // thread (snd_pcm_open -> the PipeWire plugin -> pw_thread_loop_stop ->
+    // pthread_join), 41 opens for 40 binds; a video-only stream opens nothing.
+    // On a box where that open fails (no PipeWire session for the process)
+    // the join blocks the page for seconds, and once in ~3 rounds of 40 binds
+    // for good: every "W1 HUNG" of the row-mate gate, every 20-80 s stall at
+    // pair formation (3/3 stack snapshots). A pair forming is a burst of such
+    // binds (companions, decoders, strips, the self view, each new pc), so
+    // on WebKit they all bind the stream's picture, cached on the stream and
+    // following its live video track; the voice rides the one ear (wkEar).
+    function wkPicOf(stream) {
+      if (!stream || typeof stream.getVideoTracks !== 'function') return stream;
+      const tr = liveVideoTrack(stream), tid = tr ? tr.id : '';
+      if (stream._wkPic && stream._wkPicTid === tid) return stream._wkPic;
+      const pic = new MediaStream(tr ? [tr] : []);
+      stream._wkPic = pic; stream._wkPicTid = tid;
+      if (!stream._wkPicFollow) {
+        stream._wkPicFollow = true;
+        stream.addEventListener('addtrack', (ev) => { // the camera track landed after the mic: the picture takes it
+          const t = ev && ev.track; const cur = stream._wkPic;
+          if (t && t.kind === 'video' && cur && !cur.getVideoTracks().length) { try { cur.addTrack(t); stream._wkPicTid = t.id; } catch (e) {} }
         });
       }
-      let tr = null;
-      if (stream.getVideoTracks) for (const t of stream.getVideoTracks()) if (t.readyState !== 'ended') tr = t;
-      if (tr && video._followId === tr.id && video.srcObject && video._wrapOf === stream) {
+      return pic;
+    }
+    // Bind a stream to a muted <video>: the plain stream on Chromium and
+    // Firefox, its picture on WebKit (tileHolds() answers "is it bound").
+    function wkBindVideo(video, stream) {
+      if (!WEBKIT_ENGINE || !stream) { video.srcObject = stream; return; }
+      const pic = wkPicOf(stream);
+      video._wrapOf = stream; video._pic = pic;
+      if (video.srcObject !== pic) video.srcObject = pic;
+    }
+    // Is this muted <video> showing that stream's CURRENT picture: the plain
+    // stream, or (WebKit) the picture of its live video track. A picture
+    // whose track ended (a rebuilt pair hands the same container a new
+    // track) is stale, and the caller binds again.
+    function wkHolds(video, stream) {
+      if (!tileHolds(video, stream)) return false;
+      return !WEBKIT_ENGINE || !video._pic || video._pic === wkPicOf(stream);
+    }
+    function wkBindPic(video, stream, why) {
+      const tr = liveVideoTrack(stream);
+      if (!tr) {
+        // The mic track came first; bind when the camera track lands.
+        if (!stream._wkAddTrack) {
+          stream._wkAddTrack = true;
+          stream.addEventListener('addtrack', () => { for (const q of peers.values()) if (q.stream === stream && q.video && !q.relayed) playTileVideo(q.video, stream); });
+        }
+        return;
+      }
+      if (tileHolds(video, stream) && video._followId === tr.id) {
         if (video.paused || video.readyState === 0) { const pr = video.play(); if (pr && pr.catch) pr.catch(() => {}); }
         return;
       }
-      const pic = tr ? new MediaStream([tr]) : stream;
-      video._wrapOf = stream;
-      video._followId = tr ? tr.id : '';
-      video.autoplay = true;
-      if (video.srcObject !== pic) video.srcObject = pic;
+      const pic = new MediaStream([tr]);
+      video._wrapOf = stream; video._pic = pic; video._followId = tr.id; video._wkAsks = 0;
+      if (!video._wkErrHook) {
+        // The engine's own player can fail on a picture the page cannot
+        // see into: Jetson WebKit (wk0056 a3j2/a3cb) picks the host's
+        // nvv4l2decoder, which rejects every VP8/H264 caps, and the element
+        // ends in error 4 while inbound-rtp framesDecoded keeps climbing.
+        // That is not a dead sink to re-seat: every held re-seat parks the
+        // sender's camera for ALL its viewers and cures nothing here. Log
+        // the error once per picture; the dead-sink watchdog and wkQuietBind
+        // leave an errored element alone until a new picture is bound (a
+        // new srcObject resets video.error).
+        video._wkErrHook = true;
+        video.addEventListener('error', () => {
+          const e = video.error, s = video._wrapOf;
+          if (!e || video._wkErrPic === video._pic) return;
+          video._wkErrPic = video._pic;
+          if (typeof clog === 'function') clog('wk-tile player error ' + e.code + ' ' + String(s && s.id).slice(0, 8) + ' ' + String(e.message || '').slice(0, 60));
+        });
+      }
+      video.srcObject = pic;
       const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
+      if (typeof clog === 'function') clog('wk-tile bind ' + why + ' ' + String(stream.id).slice(0, 8) + (tr.muted ? ' quiet' : ' flowing'));
+    }
+    // Ask the sender for a held re-seat and bind inside the quiet window: from
+    // 0.9 s in, once two inbound-rtp samples 300 ms apart show the same
+    // framesDecoded (or the track reads muted). A window that never goes
+    // quiet (the sender did not park) binds nothing — a bind on a flowing
+    // track is the stall this whole path exists to avoid.
+    function wkQuietBind(video, stream, p) {
+      if (video.error && video._wrapOf === stream) return; // the player failed on this picture: a re-seat cannot cure it
+      const t = Date.now();
+      // One re-seat in flight; a sender that never goes quiet (an old client
+      // re-seats at once) is asked again on a doubling backoff, 60 s at most.
+      const nAsk = video._wkAsks || 0;
+      if (video._wkQuietAt && t - video._wkQuietAt < Math.min(60000, (WK_TILE_HOLD + 500) * Math.pow(2, Math.max(0, nAsk - 1)))) return;
+      video._wkQuietAt = t; video._wkAsks = nAsk + 1; video._wkPending = null;
+      visParkSent.set(p.id, false);
+      dcSend(p, { k: 'vis', park: false });
+      dcSend(p, { k: 'vkick', hold: WK_TILE_HOLD });
+      if (typeof clog === 'function') clog('wk-tile ' + String(p.id).slice(0, 6) + ' held re-seat asked');
+      const tr = liveVideoTrack(stream);
+      let rx = null; try { rx = tr && p.pc && p.pc.getReceivers().find((r) => r.track === tr); } catch (e) {}
+      let last = null, acked = 0;
+      const attempt = () => {
+        if (p.video !== video || p.stream !== stream || p.relayed || p.wkHeldAck !== onAck) return;
+        if (typeof mediaOk === 'function' && mediaOk(p.id) === false) return;
+        const go = () => { p.wkHeldAck = null; video._followId = ''; wkBindPic(video, stream, 'held'); }; // a fresh bind even on the same track
+        if (!tr || tr.readyState !== 'live' || !rx || !rx.getStats) { go(); return; }
+        rx.getStats().then((st) => {
+          let fd = 0; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
+          if (last !== null && fd === last) { go(); return; }
+          last = fd;
+          if (Date.now() - acked > WK_TILE_HOLD - 900) { p.wkHeldAck = null; if (typeof clog === 'function') clog('wk-tile ' + String(p.id).slice(0, 6) + ' never quiet after the ack, no bind'); return; }
+          setTimeout(attempt, 300);
+        }).catch(go);
+      };
+      // The bind waits for the sender's ack (vkick-held): the park has taken
+      // and frames in flight drain in 400 ms; then two inbound-rtp samples
+      // 300 ms apart must agree. No ack within the hold: no bind (an old
+      // sender re-seated at once; the dead-sink backoff asks again later).
+      const onAck = () => { if (acked) return; acked = Date.now(); setTimeout(attempt, 400); };
+      p.wkHeldAck = onAck;
+      setTimeout(() => { if (p.wkHeldAck === onAck && !acked) { p.wkHeldAck = null; if (typeof clog === 'function') clog('wk-tile ' + String(p.id).slice(0, 6) + ' no hold ack, no bind'); } }, WK_TILE_HOLD);
+    }
+    function wkPlayTile(video, stream) {
+      // A hidden tile (a non-mate, reconcileGrid) is never bound: reconcileGrid
+      // binds it when it is shown again.
+      const tileEl = video.closest && video.closest('.tile');
+      if (tileEl && tileEl.style.display === 'none') { video._wkPending = null; return; }
+      const tr = liveVideoTrack(stream);
+      if (tr && tileHolds(video, stream) && video._followId === tr.id) {
+        if (video.paused || video.readyState === 0) { const pr = video.play(); if (pr && pr.catch) pr.catch(() => {}); }
+        return;
+      }
+      let p = null;
+      for (const q of peers.values()) if (q.video === video) { p = q; break; }
+      const flowing = !!tr && tr.readyState === 'live' && !tr.muted;
+      if (!flowing) { video._wkPending = null; wkBindPic(video, stream, 'first'); return; }
+      if (p && !p.relayed && p.stream === stream && p.dc && p.dc.readyState === 'open') { wkQuietBind(video, stream, p); return; }
+      // Flowing and nobody to ask yet (the channel is not open): hold the bind.
+      // The sweep asks once the channel opens; a track that goes quiet first
+      // (the sender parked) is bound on its 'mute'.
+      if (video._wkPending !== stream) {
+        video._wkPending = stream;
+        if (typeof clog === 'function') clog('wk-tile bind pending ' + String(stream.id).slice(0, 8) + ' (flowing, no channel)');
+        if (tr) tr.addEventListener('mute', () => { if (video._wkPending === stream) { video._wkPending = null; wkBindPic(video, stream, 'muted'); } }, { once: true });
+      }
     }
     // A mic that was off when its stage sender was built keeps sending
     // silence after it is switched on. Dropping that track and seating
@@ -24583,6 +24777,34 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const seat = () => sender.replaceTrack(vt).catch(() => {});
       if (sender.track !== vt) { seat(); return; }
       sender.replaceTrack(null).then(seat).catch(() => {});
+    }
+    // A HELD re-seat (WEBKIT_TILE): park the camera toward this peer for ms,
+    // then seat it again through refreshOutbound (which keeps the park while
+    // mainHoldUntil stands). Same guards as kickMainVideo: never a parked,
+    // staged or cam-off sender, never a non-mate.
+    // EVERY ENGINE PARKS AND RE-SEATS THROUGH replaceTrack, WEBKIT INCLUDED.
+    // A WebKit sender parked through encodings[0].active = false never
+    // encodes again after active = true, and a replaceTrack after that does
+    // not revive it either (measured 2026-10-22, two WebKit seats and WebKit
+    // with Chromium: framesEncoded frozen for the rest of the call); a
+    // replaceTrack(null) park resumes on replaceTrack(track) at once. The
+    // pair-formation stalls that once argued against replaceTrack on WebKit
+    // were the audio device open behind every stream bind (wkPicOf).
+    function holdMainVideo(p, ms) {
+      if (typeof outgoingHeld !== 'undefined' && outgoingHeld) return;
+      if (!p || !p.mainV || p.remoteParkMain || myStatus.camOff || stageIds().includes(myId) || !camPeer(p.id)) return;
+      const t = Date.now();
+      p.mainHoldUntil = t + ms;
+      // The ack rides the channel once the park has taken (replaceTrack or
+      // setParameters resolved): the far side binds on it, never on a guess.
+      const ack = () => { if (p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'vkick-held', hold: ms }); };
+      if (p.mainV.track) p.mainV.replaceTrack(null).then(ack, ack); else ack();
+      if (typeof clog === 'function') clog('held re-seat ' + String(p.id).slice(0, 6) + ' park ' + ms + 'ms');
+      setTimeout(() => {
+        if (p.mainHoldUntil && p.mainHoldUntil > Date.now() + 250) return; // a later hold lengthened the window
+        p.mainHoldUntil = 0;
+        try { refreshOutbound(); } catch (e) {}
+      }, ms + 50);
     }
     // The same rollback silences the main AUDIO sender the same way: the mic
     // stays attached and enabled, the link stays sendrecv, and no packet
@@ -24800,6 +25022,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if ((typeof isEjected === 'function' && isEjected(target) === true)) { refuse(); return; }
       if (!tp || !tp.connected || !tp.stream || !reqP.connected || relayJobs.size >= MAX_RELAY_JOBS) { refuse(); return; }
       if (reqP.turnAudio) { refuse(); return; } // a person on the free audio pool hears the room through one mixed stream
+      // A relay re-sends the target's RECEIVED tracks: never on WebKit (see
+      // mosAttach / wkRemoteTrack); the requester hears relay-no and moves on.
+      if (typeof wkRemoteTrack === 'function' && tp.stream.getTracks().some((tr) => wkRemoteTrack(tr))) { refuse(); return; }
       const container = new MediaStream();
       const senders = [];
       // A voice that reached me over the free audio pool goes on as voice only.
@@ -24938,6 +25163,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (stageEar) return;
       if (!ac) return;
       const fold = MM.createAudioFold(ac);
+      // On WebKit the stage fold feeds the ONE ear (wkEar): a second <audio>
+      // bound to the fold's stream is one more audio device open on the web
+      // process main thread, at the moment the share starts (wk0056 fr2: W2
+      // HUNG at phase B dt=2), the same open 7f84dfa took out of every tile.
+      const sink = (typeof WEBKIT_ENGINE !== 'undefined' && WEBKIT_ENGINE && typeof wkStageSink === 'function') ? wkStageSink(fold) : null;
+      if (sink) { stageEar = { fold, el: sink, sids: new Map() }; return; }
       const el = new Audio(); el.autoplay = true;
       el.srcObject = fold.dest.stream;
       stageEar = { fold, el, sids: new Map() };
@@ -25187,7 +25418,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const v = document.createElement('video');
       v.muted = true; v.autoplay = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
       v.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1';
-      v.srcObject = stream; document.body.appendChild(v);
+      if (typeof wkBindVideo === 'function') wkBindVideo(v, stream); else v.srcObject = stream;
+      document.body.appendChild(v);
       const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
       v._mosFlowAt = 0; v._mosRestarts = 0;
       return v;
@@ -25219,44 +25451,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // their counts.
     const MOS_RESTART_HOLD = 2500;   // ms the feed stays parked: re-bind at 1 s, resume at 2.5 s
     const mosHeld = (e) => !!(e && e.el && e.el._mosHold);
-    // THE FEED'S SINKS (2026-10-19, hard-bugs-1019-1108 bug 2b). A mosaic feed
-    // plays in more than its 2x2 decoder: every stadium face plays the
-    // composite stream (meet-views playStream), the Stage strip plays the
-    // sharer's stg feed through a video-only wrapper (stageDirect), a
-    // non-comfy stadium tile plays it plain. On Safari/WebKit each of those
-    // is bound AFTER the feed flows (the faces when the roster lays out, the
-    // strip once the decoder has pixels) and a player bound to a flowing
-    // remote track never starts: the decoder painted while the share stayed
-    // black and every face fell back to initials, all meeting. The park is
-    // the one cure, and it cures any element re-bound while nothing flows,
-    // so the sweep judges and re-binds ALL of a feed's sinks, found by track
-    // identity. A sink is the decoder itself or an element on screen at 16
-    // px or more: the 4x4 .stad-src source never loads on WebKit and is
-    // nobody's picture (meet-views stadFrameSize), so it is not judged.
-    function mosSinks(ent, vt) {
-      const out = [ent.el];
-      let all = null; try { all = document.querySelectorAll('video'); } catch (e) {}
-      if (!all) return out;
-      for (const x of all) {
-        if (x === ent.el || !x.isConnected) continue;
-        const so = x.srcObject; const t = so && so.getVideoTracks ? so.getVideoTracks()[0] : null;
-        if (!t || t !== vt) continue;
-        if (!(x.clientWidth >= 16 && x.clientHeight >= 16)) continue;
-        out.push(x);
-      }
-      return out;
-    }
     function mosDecoderSweep() {
       const now = Date.now();
       const ents = [...mosIn.entries(), ...mosStandby.entries()];
       for (const [rk, ent] of ents) {
         const v = ent && ent.el, st = v && (ent.stream || v.srcObject);
         if (!st || !v.isConnected) continue;
-        const vt = st.getVideoTracks ? st.getVideoTracks()[0] : null;
-        // Every sink is re-bound: the decoder to the ENTRY's stream, each
-        // other sink to the stream it holds (a face shares the entry's, the
-        // strip holds its own wrapper of the same track).
-        const rebind = () => { for (const x of (vt ? mosSinks(ent, vt) : [v])) { const own = x === v ? st : x.srcObject; try { x.srcObject = null; x.srcObject = own; const pr = x.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} } };
+        const rebind = () => { try { v.srcObject = null; if (typeof wkBindVideo === 'function') wkBindVideo(v, st); else v.srcObject = st; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} };
         const dmd = (want) => { if (ent.key && ent.via) { try { demand(ent.via, ent.key, ent.streamId, want); } catch (e) {} } };
         if (v._mosHold) {
           const age = now - v._mosHold;
@@ -25268,16 +25469,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
           continue;
         }
+        const vt = st.getVideoTracks ? st.getVideoTracks()[0] : null;
         if (!vt || vt.readyState !== 'live' || vt.muted) { v._mosFlowAt = 0; continue; } // nothing arriving: nothing to restart
-        const sinks = mosSinks(ent, vt);
-        const dead = sinks.filter((x) => !(x.videoWidth > 0));
-        if (!dead.length) { v._mosFlowAt = 0; continue; }                                    // every sink paints
+        if (v.videoWidth > 0) { v._mosFlowAt = 0; continue; }                                 // it paints
         if (!v._mosFlowAt) { v._mosFlowAt = now; continue; }
         if (v._mosRestarts >= 8 || now - v._mosFlowAt < 1500 * Math.pow(2, v._mosRestarts)) continue;
         v._mosRestarts++; v._mosFlowAt = now;
         if (ent.key && ent.via) { v._mosHold = now; v._mosRebound = false; dmd(false); }
         else rebind();
-        if (window.__mosRestartLog) window.__mosRestartLog.push({ t: now, n: v._mosRestarts, key: rk, sid: String(st.id).slice(0, 8), park: !!v._mosHold, sinks: sinks.length, dead: dead.length });
+        if (window.__mosRestartLog) window.__mosRestartLog.push({ t: now, n: v._mosRestarts, key: rk, sid: String(st.id).slice(0, 8), park: !!v._mosHold });
       }
     }
     setInterval(mosDecoderSweep, 1000);
@@ -25671,6 +25871,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // scaleResolutionDownBy jiggle that never touches capture.
     function mosAttach(job, jk, p, tr) {
       pipeDenyCurrent(jk); // a lapsed deny is not a deny
+      // A WebKit seat never re-sends a track it RECEIVED (wkRemoteTrack): on
+      // this engine addTransceiver(remoteTrack) deadlocks the web process
+      // main thread against its WebRTC signaling thread once the track
+      // flows (wk0056 fr2 and every share-start HUNG of wk0440: the seat
+      // had just shipped the stage copy to three peers). The job declines
+      // (attach-failed, no retry on this pc) and the room's other copies
+      // carry the feed. Local tracks (camera, mic, packers, folds) ship.
+      if (typeof wkRemoteTrack === 'function' && wkRemoteTrack(tr)) {
+        job.attachErr = 'wk-remote';
+        if (!job.wkDeclined) { job.wkDeclined = true; if (typeof clog === 'function') clog('wk-forward declined ' + String(jk).slice(0, 40)); }
+        return null;
+      }
       if (tr.kind === 'video' && pipeEnabled() && !pipeDeny.has(jk) && !pipeJobs.has(jk)) {
         try {
           const rcv = MPipe.receiverForTrack(tr, [...peers.values()].map((q) => q.pc).filter(Boolean));
@@ -26918,7 +27130,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           pri.meta = annMeta(own.ann);
           if (own.st && own.st !== pri.stream) {
             pri.stream = own.st;
-            try { pri.el.srcObject = own.st; const pr = pri.el.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
+            try { wkBindVideo(pri.el, own.st); const pr = pri.el.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
             repaintRedun(rk, pri.stream);
           }
         }
@@ -27119,7 +27331,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const st2 = vp2 && vp2.incoming ? vp2.incoming.find((s) => s.id === cur.streamId && s.id !== vp2.ownSid) : null;
             if (st2 && cur.stream !== st2) {
               cur.stream = st2;
-              try { cur.el.srcObject = st2; const pr = cur.el.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
+              try { wkBindVideo(cur.el, st2); const pr = cur.el.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
             }
           }
           continue;
@@ -27176,7 +27388,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         el.appendChild(v); el.appendChild(lb); stadiumEl.appendChild(el); trackAspect(el, v);
       }
       const v = el.querySelector('video');
-      if (v.srcObject !== stream) { v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); changed = true; }
+      if (!(typeof wkHolds === 'function' ? wkHolds(v, stream) : v.srcObject === stream)) { if (typeof wkBindVideo === 'function') wkBindVideo(v, stream); else v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); changed = true; }
       stadiumEl.classList.add('on');
       const cnt = roomPastSection() ? displayCount() : knownTotal();
       if (!prevSd || prevSd.streamId !== stream.id || prevSd.cnt !== cnt || prevSd.el !== v) changed = true;
@@ -27265,7 +27477,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (window.ResizeObserver) new ResizeObserver(() => requestAnimationFrame(again)).observe(el);
       }
       const v = el.querySelector('video');
-      if (v.srcObject !== stream) { v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); stripChanged = true; }
+      if (!(typeof wkHolds === 'function' ? wkHolds(v, stream) : v.srcObject === stream)) { if (typeof wkBindVideo === 'function') wkBindVideo(v, stream); else v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); stripChanged = true; }
       // NAME THE SHARE. A composited strip carries no attribution of its own —
       // the burned overlay names each face, but a shared screen's pixels are
       // somebody's spreadsheet, with nothing on them to say whose window this
@@ -27470,15 +27682,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // the sharer's frozen camera picture labelled as their screen. The
         // stg feed is the one that carries the screen.
         const sc = srcFor(sid, 'stg:' + sid, true);
-        // A HELD decoder keeps the direct screen (2026-10-19, bug 2b, WebKit):
-        // mosDecoderSweep parks the feed to restart a sink that never
-        // started (this strip, on a player bound after flow), and the
-        // decoder has no pixels while parked. Falling back to the composite
-        // here re-bound the strip to another flowing stream mid-park and
-        // back to the wrapper after the resume, after flow both times, so
-        // the park could never cure it (a4 W1: four restarts, the strip
-        // 0x0 all share). Held: stay on the wrapper the sweep re-binds.
-        if (!sc || !sc.el || !sc.stream || (!sc.el.videoWidth && !sc.el._mosHold)) return null; // no pixels yet — the strip stands, the next sweep switches
+        if (!sc || !sc.el || !sc.stream || !sc.el.videoWidth) return null; // no pixels yet — the strip stands, the next sweep switches
         const vt = sc.stream.getVideoTracks ? sc.stream.getVideoTracks()[0] : null;
         if (!vt || vt.readyState === 'ended') return null;
         if (!stageDirectSt || stageDirectSt.getVideoTracks()[0] !== vt) stageDirectSt = new MediaStream([vt]);
@@ -29467,6 +29671,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Drop the companion. A removed tile used to leave el._aud playing the
     // stream with no picture. Safe to call before blockedAudio exists.
     function releaseAudio(el) {
+      if (el && el._wkVoice && typeof wkEar !== 'undefined' && wkEar) { try { wkEar.fold.remove(wkEarKey(el)); } catch (e) {} el._wkVoice = null; }
       if (!el || !el._aud) return;
       const a = el._aud;
       try { a.pause(); } catch (e) {}
@@ -29523,12 +29728,96 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let pr = null; try { pr = stageEar.el.play(); } catch (e) {}
         if (pr && pr.then) pr.then(() => { if (typeof audioUnblocked === 'function') audioUnblocked(stageEar.el); }).catch((e) => audioBlocked(stageEar.el, e));
       }
+      if (typeof wkEar !== 'undefined' && wkEar && wkEar.el && wkEar.el.srcObject && wkEar.el.paused && !blockedAudio.has(wkEar.el)) {
+        let pr = null; try { pr = wkEar.el.play(); } catch (e) {}
+        if (pr && pr.then) pr.then(() => { if (typeof audioUnblocked === 'function') audioUnblocked(wkEar.el); }).catch((e) => audioBlocked(wkEar.el, e));
+      }
+    }
+    // ONE EAR ON WEBKIT. A companion <audio> per tile is a device open per
+    // voice change on that engine (see wkPicOf: a muted picture plus a mic
+    // stream in any media element opens the ALSA device on the main thread,
+    // and a pair forming re-points every companion once per fresh pc). So on
+    // WebKit every voice is folded into one AudioContext graph (createAudioFold,
+    // the same fold the stage ear rides) and ONE <audio> element bound once to
+    // the fold's stream: one open for the meeting. Per-voice volume and the
+    // group mute drive the fold's gains. Chromium and Firefox keep their
+    // companions. If the context cannot be made the companion path stands.
+    let wkEar = null, wkEarSeq = 0;
+    function wkEarGet() {
+      if (!WEBKIT_ENGINE) return null;
+      if (wkEar) return wkEar;
+      try { ensureAc(); } catch (e) { return null; }
+      if (!ac || !GifOS.meshMedia || typeof GifOS.meshMedia.createAudioFold !== 'function') return null;
+      let fold = null;
+      try { fold = GifOS.meshMedia.createAudioFold(ac); } catch (e) { return null; }
+      const el = new Audio(); el.autoplay = true;
+      el.srcObject = fold.dest.stream;
+      let pr = null; try { pr = el.play(); } catch (e) { audioBlocked(el, e); }
+      if (pr && pr.then) pr.then(() => { if (typeof audioUnblocked === 'function') audioUnblocked(el); }).catch((e) => audioBlocked(el, e));
+      wkEar = { fold, el };
+      return wkEar;
+    }
+    const wkEarKey = (el) => { if (!el._wkKey) el._wkKey = 'wkear' + (++wkEarSeq); return el._wkKey; };
+    // The element's voice in the ear: src (or none) at vol. false = no ear.
+    function wkEarSet(el, src, vol) {
+      const ear = wkEarGet();
+      if (!ear) return false;
+      const key = wkEarKey(el);
+      const g = (el._gmute || !(vol > 0)) ? 0 : vol;
+      if (!src) { if (el._wkVoice) { ear.fold.remove(key); el._wkVoice = null; } return true; }
+      if (el._wkVoice !== src) { if (el._wkVoice) ear.fold.remove(key); el._wkVoice = src; ear.fold.add(key, src, g); }
+      else ear.fold.follow(key, src); // the same container came back with a new track (a rebuilt pair)
+      ear.fold.setGain(key, g);
+      return true;
+    }
+    // The stage ear's output on WebKit: the stage fold's stream is one more
+    // source in the one ear, never an <audio> of its own. The sink wears the
+    // element surface the stage code drives (volume, muted, srcObject,
+    // paused, play) and maps volume/muted onto the ear's gain for the stage
+    // key, so the Stage fader and the waiting-room mute still land; the
+    // analysers read srcObject (the fold's stream) as before.
+    const WK_STAGE_KEY = 'wkstage';
+    function wkStageSink(fold) {
+      const ear = wkEarGet();
+      if (!ear || !fold || !fold.dest || !fold.dest.stream) return null;
+      const sink = { _vol: 1, _muted: false, paused: false, srcObject: fold.dest.stream, play() { return Promise.resolve(); } };
+      const apply = () => { try { ear.fold.setGain(WK_STAGE_KEY, (sink._muted || !(sink._vol > 0)) ? 0 : sink._vol); } catch (e) {} };
+      Object.defineProperty(sink, 'volume', { get: () => sink._vol, set: (v) => { sink._vol = +v; apply(); } });
+      Object.defineProperty(sink, 'muted', { get: () => sink._muted, set: (v) => { sink._muted = !!v; apply(); } });
+      try { ear.fold.remove(WK_STAGE_KEY); ear.fold.add(WK_STAGE_KEY, fold.dest.stream, 1); } catch (e) { return null; }
+      if (!ear.fold.has(WK_STAGE_KEY)) return null; // the graph refused the fold's track: the element path stands
+      return sink;
+    }
+    // Is this track one a pair DELIVERED to me (a receiver's track on one of
+    // my transports)? Only asked on WebKit: such a track must never become a
+    // sender's source there. Measured 2026-10-22 on Playwright WebKit 27.2
+    // (out/wk0440/alsa/rebind5.html): a seat that forwards a received video
+    // track with addTransceiver hangs for good once that track flows, main
+    // thread and WebRTC signaling thread each waiting on the other; a
+    // forward of the still-muted track never carries at all.
+    function wkRemoteTrack(tr) {
+      if (typeof WEBKIT_ENGINE === 'undefined' || !WEBKIT_ENGINE || !tr) return false;
+      for (const q of peers.values()) {
+        const pc = q && q.pc; if (!pc || typeof pc.getReceivers !== 'function') continue;
+        try { for (const r of pc.getReceivers()) if (r.track === tr) return true; } catch (e) {}
+      }
+      return false;
     }
     // voice: the stream whose sound this element's companion plays. A peer's
     // tile with the camera off shows a locally painted avatar (mountPeerAvatar),
     // which has no audio, so the caller hands the peer's own stream.
     function busVolume(el, vol, voice) {
-      const src = voice || el.srcObject;
+      const src = voice || (el._pic && el.srcObject === el._pic && el._wrapOf) || el.srcObject; // a WebKit tile plays a picture-only stream; its voice is the wrapped one
+      if (typeof WEBKIT_ENGINE !== 'undefined' && WEBKIT_ENGINE && typeof wkEarSet === 'function' && wkEarSet(el, src, vol)) {
+        el.muted = true;
+        if (el._aud) { try { el._aud.pause(); el._aud.srcObject = null; } catch (e) {} el._aud = null; }
+        if (!src) return;
+        const heldTile = el.closest && el.closest('[data-peer]');
+        const heldPid = heldTile && heldTile.dataset && heldTile.dataset.peer;
+        const held = heldPid && heldPid !== myId && typeof mediaOk === 'function' && mediaOk(heldPid) === false;
+        if (!held && el.srcObject && (el.paused || el.readyState === 0)) { const pr = el.play(); if (pr && pr.catch) pr.catch(() => {}); }
+        return;
+      }
       if (!src) { if (el._aud) el._aud.srcObject = null; el.volume = vol; return; }
       if (!el._aud) { el._aud = new Audio(); el._aud.autoplay = true; }
       el.muted = true; // the <video> is picture-only, always — sound lives in the companion
@@ -33700,7 +33989,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             maybeShowFlip();
             const n = meTile.tile.querySelector('.note'); if (n) n.remove();
             meTile.video.style.display = '';
-            meTile.video.srcObject = localStream;
+            wkBindVideo(meTile.video, localStream);
             meterFor('me', localStream);
           } else {
             // partial stream (mic-only / cam-only): merge the missing kinds
@@ -36397,7 +36686,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             held.enabled = true;
             myStatus.camOff = false;
             try {
-              if (meTile && meTile.video) { meTile.video.style.display = ''; if (localStream) meTile.video.srcObject = localStream; }
+              if (meTile && meTile.video) { meTile.video.style.display = ''; if (localStream) wkBindVideo(meTile.video, localStream); }
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession();
             } catch (e) {}
             return { camera: true };
@@ -36415,7 +36704,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             myStatus.camOff = false;
             try { attachLocalTracks(); } catch (e) {}
             try {
-              if (meTile && meTile.video) { meTile.video.style.display = ''; meTile.video.srcObject = localStream; const pr = meTile.video.play(); if (pr && pr.catch) pr.catch(() => {}); }
+              if (meTile && meTile.video) { meTile.video.style.display = ''; wkBindVideo(meTile.video, localStream); const pr = meTile.video.play(); if (pr && pr.catch) pr.catch(() => {}); }
               const n = meTile && meTile.tile && meTile.tile.querySelector('.note');
               if (n) n.remove();
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession();
