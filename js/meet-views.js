@@ -38,6 +38,11 @@
   // the notch or the update bar. The band does not follow a wake, so
   // hiding the header does not resize the tiles.
   function headerBand(doc, vw, vh, phone) {
+    // The browser's float of a full-screen phone is the face, edge to edge.
+    // The fixed 58px sideways band on a ~90px window was a black field with
+    // a chip in the lower half.
+    const body = doc && doc.body;
+    if (body && body.classList && body.classList.contains('away-full')) return 0;
     let gtop = 0;
     try {
       const n = parseFloat(getComputedStyle(doc.documentElement).getPropertyValue('--gtop'));
