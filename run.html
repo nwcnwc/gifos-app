@@ -14963,7 +14963,13 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const shareBit = !!(cur && cur.scr) !== !!st.scr;
       const waitBit = !cur || (cur.wt !== st.wt);
       if (typeof noteStatusFlags === 'function') noteStatusFlags(cur, st);
+      // ...and a person back after a silence past any throttled beat is a
+      // newcomer to me in the same way: their page dropped my status while
+      // they were cut off (a sever, a dark spell), and my next beat may be
+      // 12 s out. Without the answer a returner listed the room one beat at a
+      // time (0a07b6-room-six: Ivo saw a slowed row-mate 6 s after the rest).
       if (!cur && from !== myId) scheduleNewPeerBeat(); // the first status from a person I held none for: answer with my own beat, whatever path carried theirs
+      else if (cur && from !== myId && st.rx - (cur.rx || 0) > 30000 && !(typeof saidGone === 'object' && saidGone && saidGone.has(from)) && !(typeof bannedSeat === 'object' && bannedSeat && bannedSeat.has(from))) scheduleNewPeerBeat(); // 30 s: past a pocketed phone's 12-16 s beat; never for a member that said goodbye or was banned
       statusOf.set(from, st);
       if (DEBUG_ON && (!cur || !!cur.bcend !== !!st.bcend || !!cur.bce !== !!st.bce || !!cur.rec !== !!st.rec || !!cur.stg !== !!st.stg)) { try { (window.__bcTrace = window.__bcTrace || []).push({ t: Date.now(), ev: 'st', from: String(from).slice(0, 8), bcend: st.bcend || 0, bce: st.bce || 0, rec: !!st.rec, stg: st.stg || 0, cam: !st.camOff }); } catch (e) {} }
       try { noteBcEnd(st); } catch (e) {} // a viewer keeps the host's ended word past its seat
@@ -15574,27 +15580,60 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // anything but a transport death (saidGone: a goodbye is final), a pair
     // already open or forming, and a link the arithmetic names (ensureLink /
     // askDial own those). Pace: a member that was my link in the last 10 min
-    // every 4 s (the cut pair), anyone else every 30 s, so a lone seat
-    // greeting a whole door list stays far under the relay's meter.
+    // (the cut pair) every 2 s for its first 30 s of trying, then every 10 s,
+    // and no more than 30 dials until a channel opens; anyone else every 30 s.
+    // The seat greets once a beat (4 s and more on a slowed clock), so the
+    // page keeps its own 1 s retry for 12 s after the last greeting: the cut
+    // ends between two greetings, and waiting for the next one put 4-8 s on
+    // every return (0a07b6-room-six: 12.4 s). A page dials at most once every
+    // 2 s in all (lost links first), whatever the room size: a lone seat in a
+    // big room greets a whole door list.
     const linkSeenAt = new Map();   // pid -> when the mesh last named it my link
-    const memberDialAt = new Map(); // pid -> last memberDial
-    const MEMBER_DIAL_LINK_MS = 4000, MEMBER_DIAL_OTHER_MS = 30000, LINK_MEMORY_MS = 600000;
+    const memberDialAt = new Map(); // pid -> last dial
+    const memberWant = new Map();   // pid -> last time the seat greeted it with no channel
+    const memberStreak = new Map(); // pid -> { at: first dial of the unanswered streak, n: dials in it }
+    const MEMBER_DIAL_LINK_MS = 2000, MEMBER_DIAL_SLOW_MS = 10000, MEMBER_STREAK_MS = 30000, MEMBER_BUDGET = 30, MEMBER_DIAL_OTHER_MS = 30000, LINK_MEMORY_MS = 600000, MEMBER_WANT_MS = 12000, MEMBER_PAGE_GAP_MS = 2000;
+    let memberRetryT = 0, memberLastAny = 0;
     function memberDial(pid) {
       if (!pid || pid === myId) return;
-      if (bannedSeat.has(pid) || (typeof isEjected === 'function' && isEjected(pid) === true)) return;
-      if (saidGone.has(pid)) return;
-      if (devOf[pid] && devOf[pid] === myDevHash) return;
+      const prev = memberWant.get(pid);
+      if (prev === undefined || Date.now() - prev > 120000) memberStreak.delete(pid); // not greeted for two minutes (or ever): a new streak
+      memberWant.set(pid, Date.now());
+      if (memberWant.size > 64) memberWant.delete(memberWant.keys().next().value);
+      if (!memberRetryT) memberRetryT = setTimeout(memberRetry, 0);
+    }
+    function memberRetry() {
+      memberRetryT = 0;
+      const now = Date.now();
+      const lostOf = (pid) => { const t = linkSeenAt.get(pid); return t !== undefined && now - t < LINK_MEMORY_MS; };
+      const due = [];
+      for (const [pid, at] of Array.from(memberWant)) { if (now - at > 180000) memberWant.delete(pid); else if (now - at <= MEMBER_WANT_MS) due.push(pid); }
+      due.sort((a, b) => (lostOf(b) - lostOf(a)) || ((memberDialAt.get(a) || 0) - (memberDialAt.get(b) || 0))); // lost links first, then the longest waiting
+      for (const pid of due) { if (now - memberLastAny < MEMBER_PAGE_GAP_MS) break; tryMemberDial(pid); }
+      if (due.length) memberRetryT = setTimeout(memberRetry, 1000);
+    }
+    function tryMemberDial(pid) {
+      if (!pid || pid === myId) return;
+      if (bannedSeat.has(pid) || (typeof isEjected === 'function' && isEjected(pid) === true)) { memberWant.delete(pid); return; }
+      if (saidGone.has(pid)) { memberWant.delete(pid); return; }
+      if (devOf[pid] && devOf[pid] === myDevHash) { memberWant.delete(pid); return; }
       const s = meshSeat(); if (!s || !s.hasCoord || s.state !== 3) return;
       const p = peers.get(pid);
-      if (p && (p.connected || (p.dc && p.dc.readyState === 'open') || p.offering)) return;
-      if (p && p.pc && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed' && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000) return; // forming
-      if (linkTo(pid) && notTomb(pid)) return; // a named link: the occ sweep dials it
+      if (p && (p.connected || (p.dc && p.dc.readyState === 'open'))) { memberWant.delete(pid); memberStreak.delete(pid); return; }
+      if (p && p.offering) return;
+      const darkOffer = !!(p && p.pc && p.pc.signalingState === 'have-local-offer' && p.offerSentPc === p.pc && Date.now() - (p.offerSentAt || 0) >= 1500); // my offer went into the dark (onDialRequest's rule)
+      if (p && p.pc && !darkOffer && p.pc.connectionState !== 'failed' && p.pc.connectionState !== 'closed' && Date.now() - Math.max(p.rebuiltAt || 0, p.bornAt || 0) < 5000) return; // forming
+      if (linkTo(pid) && notTomb(pid)) { memberWant.delete(pid); return; } // a named link: the occ sweep dials it
       const now = Date.now();
       const seen = linkSeenAt.get(pid);
       const lost = seen !== undefined && now - seen < LINK_MEMORY_MS;
-      if (now - (memberDialAt.get(pid) || 0) < (lost ? MEMBER_DIAL_LINK_MS : MEMBER_DIAL_OTHER_MS)) return;
-      memberDialAt.set(pid, now);
-      if (memberDialAt.size > 256) { for (const [k, at] of memberDialAt) if (now - at > 120000) memberDialAt.delete(k); }
+      const st0 = memberStreak.get(pid);
+      if (st0 && st0.n >= MEMBER_BUDGET) return; // spent: a former link that never answers is let go
+      const gap = !lost ? MEMBER_DIAL_OTHER_MS : (st0 && now - st0.at > MEMBER_STREAK_MS ? MEMBER_DIAL_SLOW_MS : MEMBER_DIAL_LINK_MS);
+      if (now - (memberDialAt.get(pid) || 0) < gap) return;
+      memberDialAt.set(pid, now); memberLastAny = now;
+      if (st0) st0.n++; else memberStreak.set(pid, { at: now, n: 1 });
+      if (memberDialAt.size > 256) { for (const [k, at] of memberDialAt) if (now - at > 120000) { memberDialAt.delete(k); memberStreak.delete(k); } }
       if (!linkTo(pid)) doorOffGrid.add(pid); // no face until a channel opens
       if (p && p.tile && p.tile.parentNode && doorOffGrid.has(pid) && p.neverUp === true) p.tile.remove();
       const init = iInitiate(pid);
