@@ -23086,6 +23086,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const refuse = () => dcSend(reqP, { k: 'relay-no', target });
       if ((typeof isEjected === 'function' && isEjected(target) === true)) { refuse(); return; }
       if (!tp || !tp.connected || !tp.stream || !reqP.connected || relayJobs.size >= MAX_RELAY_JOBS) { refuse(); return; }
+      // A relay re-sends the target's RECEIVED tracks: never on WebKit (see
+      // mosAttach / wkRemoteTrack); the requester hears relay-no and moves on.
+      if (typeof wkRemoteTrack === 'function' && tp.stream.getTracks().some((tr) => wkRemoteTrack(tr))) { refuse(); return; }
       const container = new MediaStream();
       const senders = [];
       for (const tr of tp.stream.getTracks()) { try { senders.push(addAux(reqP.pc, tr, container)); } catch (e) {} }
@@ -23213,6 +23216,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (stageEar) return;
       if (!ac) return;
       const fold = MM.createAudioFold(ac);
+      // On WebKit the stage fold feeds the ONE ear (wkEar): a second <audio>
+      // bound to the fold's stream is one more audio device open on the web
+      // process main thread, at the moment the share starts (wk0056 fr2: W2
+      // HUNG at phase B dt=2), the same open 7f84dfa took out of every tile.
+      const sink = (typeof WEBKIT_ENGINE !== 'undefined' && WEBKIT_ENGINE && typeof wkStageSink === 'function') ? wkStageSink(fold) : null;
+      if (sink) { stageEar = { fold, el: sink, sids: new Map() }; return; }
       const el = new Audio(); el.autoplay = true;
       el.srcObject = fold.dest.stream;
       stageEar = { fold, el, sids: new Map() };
@@ -23915,6 +23924,18 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // scaleResolutionDownBy jiggle that never touches capture.
     function mosAttach(job, jk, p, tr) {
       pipeDenyCurrent(jk); // a lapsed deny is not a deny
+      // A WebKit seat never re-sends a track it RECEIVED (wkRemoteTrack): on
+      // this engine addTransceiver(remoteTrack) deadlocks the web process
+      // main thread against its WebRTC signaling thread once the track
+      // flows (wk0056 fr2 and every share-start HUNG of wk0440: the seat
+      // had just shipped the stage copy to three peers). The job declines
+      // (attach-failed, no retry on this pc) and the room's other copies
+      // carry the feed. Local tracks (camera, mic, packers, folds) ship.
+      if (typeof wkRemoteTrack === 'function' && wkRemoteTrack(tr)) {
+        job.attachErr = 'wk-remote';
+        if (!job.wkDeclined) { job.wkDeclined = true; if (typeof clog === 'function') clog('wk-forward declined ' + String(jk).slice(0, 40)); }
+        return null;
+      }
       if (tr.kind === 'video' && pipeEnabled() && !pipeDeny.has(jk) && !pipeJobs.has(jk)) {
         try {
           const rcv = MPipe.receiverForTrack(tr, [...peers.values()].map((q) => q.pc).filter(Boolean));
@@ -27781,6 +27802,39 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       else ear.fold.follow(key, src); // the same container came back with a new track (a rebuilt pair)
       ear.fold.setGain(key, g);
       return true;
+    }
+    // The stage ear's output on WebKit: the stage fold's stream is one more
+    // source in the one ear, never an <audio> of its own. The sink wears the
+    // element surface the stage code drives (volume, muted, srcObject,
+    // paused, play) and maps volume/muted onto the ear's gain for the stage
+    // key, so the Stage fader and the waiting-room mute still land; the
+    // analysers read srcObject (the fold's stream) as before.
+    const WK_STAGE_KEY = 'wkstage';
+    function wkStageSink(fold) {
+      const ear = wkEarGet();
+      if (!ear || !fold || !fold.dest || !fold.dest.stream) return null;
+      const sink = { _vol: 1, _muted: false, paused: false, srcObject: fold.dest.stream, play() { return Promise.resolve(); } };
+      const apply = () => { try { ear.fold.setGain(WK_STAGE_KEY, (sink._muted || !(sink._vol > 0)) ? 0 : sink._vol); } catch (e) {} };
+      Object.defineProperty(sink, 'volume', { get: () => sink._vol, set: (v) => { sink._vol = +v; apply(); } });
+      Object.defineProperty(sink, 'muted', { get: () => sink._muted, set: (v) => { sink._muted = !!v; apply(); } });
+      try { ear.fold.remove(WK_STAGE_KEY); ear.fold.add(WK_STAGE_KEY, fold.dest.stream, 1); } catch (e) { return null; }
+      if (!ear.fold.has(WK_STAGE_KEY)) return null; // the graph refused the fold's track: the element path stands
+      return sink;
+    }
+    // Is this track one a pair DELIVERED to me (a receiver's track on one of
+    // my transports)? Only asked on WebKit: such a track must never become a
+    // sender's source there. Measured 2026-10-22 on Playwright WebKit 27.2
+    // (out/wk0440/alsa/rebind5.html): a seat that forwards a received video
+    // track with addTransceiver hangs for good once that track flows, main
+    // thread and WebRTC signaling thread each waiting on the other; a
+    // forward of the still-muted track never carries at all.
+    function wkRemoteTrack(tr) {
+      if (typeof WEBKIT_ENGINE === 'undefined' || !WEBKIT_ENGINE || !tr) return false;
+      for (const q of peers.values()) {
+        const pc = q && q.pc; if (!pc || typeof pc.getReceivers !== 'function') continue;
+        try { for (const r of pc.getReceivers()) if (r.track === tr) return true; } catch (e) {}
+      }
+      return false;
     }
     // voice: the stream whose sound this element's companion plays. A peer's
     // tile with the camera off shows a locally painted avatar (mountPeerAvatar),
