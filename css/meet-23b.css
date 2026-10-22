@@ -167,10 +167,12 @@ body.comfy.show-stage .tile.me > .chips .stopshare { display: none; }
   padding: 3px 10px; border-radius: 999px; background: rgba(12,14,18,.92); color: #f4f7fb;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.28); font: 700 14px/1.2 system-ui, sans-serif; }
 body.head-calm .topchip, body.chrome-away .topchip { opacity: 1 !important; visibility: visible !important; background: transparent !important; box-shadow: none !important; }
-/* The room line (#status) stays: on a phone it is the tap that opens the
-   full sentence (who tried to reach you). Fading it left the chip's parent
-   taking the tap. */
-body.head-calm .topchip > :not(#txmark):not(#status), body.chrome-away .topchip > :not(#txmark):not(#status) { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
+/* The room line (#status) stays on a phone's quiet (chrome-away): there it
+   is the tap that opens the full sentence (who tried to reach you), and
+   fading it left the chip's parent taking the tap. A desktop's calm
+   (head-calm, pointer devices only) fades the line with the dock and keeps
+   only the transcribing mark; any move brings it back. */
+body.head-calm .topchip > :not(#txmark), body.chrome-away .topchip > :not(#txmark):not(#status) { opacity: 0; pointer-events: none; transition: opacity .8s ease; }
 /* A shared screen is laid out by the zones like any Stage: the feed fills
    the screen (the older phone share band pinned it 76-110px down). */
 body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
@@ -188,6 +190,12 @@ body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app)
   body:not(.head-calm):not(.chrome-away) #txmark span { display: none; }
   body:not(.head-calm):not(.chrome-away) #txmark { padding: 3px 8px; }
 }
+/* fitStatusRest: a wide window's header line that is longer than its room
+   gives up the mark's word first, then leaves the row rather than show a
+   sentence cut in half. */
+body.tx-tight #txmark span { display: none; }
+body.tx-tight #txmark { padding: 3px 8px; }
+.topchip #statusrest.rest-off { display: none !important; }
 /* The people count ends inside its line instead of running under the buttons beside it. */
 @media (max-width: 700px), (max-height: 500px) {
   .topchip #statuscount { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
@@ -207,7 +215,7 @@ body.desk-ptr #hdrhand.on { display: none !important; }
   }
 }
 /* The Stage frame: a free rectangle with a corner grip. */
-#tilewin .tw-rect { box-shadow: 0 0 0 9999px rgba(0,0,0,.5); }
+#tilewin .tw-rect { box-shadow: 0 0 0 9999px rgba(0,0,0,.5); left: 0; top: 0; width: 100%; height: 100%; }
 #tilewin .tw-grip { position: absolute; right: -9px; bottom: -9px; width: 18px; height: 18px; border-radius: 50%;
   background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
 /* Broadcast calm, at every screen size: the host's panels (the stream link,
@@ -587,7 +595,7 @@ html.ui-large body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appinvit
   body:not(.has-app):not(.solo-app):not(.app-room) #appbar #apphelp,
   body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appinvite,
   body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appfull {
-    height: 40px; padding: 4px 8px; font-size: 14px; white-space: nowrap;
+    height: 40px; padding: 4px 8px; font-size: 16px; white-space: nowrap;
   }
 }
 @media (max-height: 500px) and (orientation: landscape) {
