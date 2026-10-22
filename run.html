@@ -15952,8 +15952,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // player per hidden tile, and a dead-sink signature that is nobody's
         // fault. The picture is bound again the moment the seat is a row-mate.
         if (WEBKIT_TILE && p.video && p.stream && !p.relayed) {
-          if (!rowMate) { if (p.video.srcObject) { try { p.video.pause(); } catch (e) {} p.video.srcObject = null; } p.video._wkPending = null; }
-          else if (!tileHolds(p.video, p.stream) && mediaOk(pid) !== false) playTileVideo(p.video, p.stream);
+          if (!rowMate) { if (p.video.srcObject) { try { p.video.pause(); } catch (e) {} p.video.srcObject = null; } p.video._wkPending = null; p.video._wkReleased = true; }
+          else if (p.video._wkReleased && !p.video.srcObject && mediaOk(pid) !== false) { p.video._wkReleased = false; playTileVideo(p.video, p.stream); }
+          else if (p.video.srcObject) p.video._wkReleased = false;
         }
       }
     }
@@ -21132,6 +21133,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const hold = typeof m.hold === 'number' && m.hold >= 500 && m.hold <= 6000 ? m.hold : 0;
         if (hold) { if (t - (p.vkickAt || 0) >= 2000) { p.vkickAt = t; holdMainVideo(p, hold); } }
         else if (t - (p.visLiftAt || 0) >= 1500 && t - (p.vkickAt || 0) >= 2000) { p.vkickAt = t; kickMainVideo(p); }
+      } else if (m.k === 'vkick-held') {
+        // The sender parked its camera for my held re-seat (wkQuietBind).
+        if (typeof p.wkHeldAck === 'function') p.wkHeldAck();
       } else if (m.k === 'sga' && typeof m.sid === 'string') {
         // Stage data lane (§11): app-state frame — dedup, deliver, re-fan.
         sgaRecv(p.id, m);
@@ -22595,21 +22599,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (typeof clog === 'function') clog('wk-tile ' + String(p.id).slice(0, 6) + ' held re-seat asked');
       const tr = liveVideoTrack(stream);
       let rx = null; try { rx = tr && p.pc && p.pc.getReceivers().find((r) => r.track === tr); } catch (e) {}
-      let last = null;
+      let last = null, acked = 0;
       const attempt = () => {
-        if (p.video !== video || p.stream !== stream || p.relayed) return;
+        if (p.video !== video || p.stream !== stream || p.relayed || p.wkHeldAck !== onAck) return;
         if (typeof mediaOk === 'function' && mediaOk(p.id) === false) return;
-        const go = () => { video._followId = ''; wkBindPic(video, stream, 'held'); }; // a fresh bind even on the same track
-        if (!tr || tr.muted || tr.readyState !== 'live' || !rx || !rx.getStats) { go(); return; }
+        const go = () => { p.wkHeldAck = null; video._followId = ''; wkBindPic(video, stream, 'held'); }; // a fresh bind even on the same track
+        if (!tr || tr.readyState !== 'live' || !rx || !rx.getStats) { go(); return; }
         rx.getStats().then((st) => {
           let fd = 0; st.forEach((x) => { if (x.type === 'inbound-rtp' && x.kind === 'video') fd = Math.max(fd, x.framesDecoded || 0); });
           if (last !== null && fd === last) { go(); return; }
           last = fd;
-          if (Date.now() - t > WK_TILE_HOLD - 500) { if (typeof clog === 'function') clog('wk-tile ' + String(p.id).slice(0, 6) + ' never quiet, no bind'); return; }
+          if (Date.now() - acked > WK_TILE_HOLD - 900) { p.wkHeldAck = null; if (typeof clog === 'function') clog('wk-tile ' + String(p.id).slice(0, 6) + ' never quiet after the ack, no bind'); return; }
           setTimeout(attempt, 300);
         }).catch(go);
       };
-      setTimeout(attempt, WK_TILE_BIND_AT - 300);
+      // The bind waits for the sender's ack (vkick-held): the park has taken
+      // and frames in flight drain in 400 ms; then two inbound-rtp samples
+      // 300 ms apart must agree. No ack within the hold: no bind (an old
+      // sender re-seated at once; the dead-sink backoff asks again later).
+      const onAck = () => { if (acked) return; acked = Date.now(); setTimeout(attempt, 400); };
+      p.wkHeldAck = onAck;
+      setTimeout(() => { if (p.wkHeldAck === onAck && !acked) { p.wkHeldAck = null; if (typeof clog === 'function') clog('wk-tile ' + String(p.id).slice(0, 6) + ' no hold ack, no bind'); } }, WK_TILE_HOLD);
     }
     function wkPlayTile(video, stream) {
       // A hidden tile (a non-mate, reconcileGrid) is never bound: reconcileGrid
@@ -22671,7 +22681,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!p || !p.mainV || p.remoteParkMain || myStatus.camOff || stageIds().includes(myId) || !camPeer(p.id)) return;
       const t = Date.now();
       p.mainHoldUntil = t + ms;
-      if (p.mainV.track) p.mainV.replaceTrack(null).catch(() => {});
+      // The ack rides the channel once the park has taken (replaceTrack
+      // resolved): the far side binds on it, never on a guess.
+      const ack = () => { if (p.dc && p.dc.readyState === 'open') dcSend(p, { k: 'vkick-held', hold: ms }); };
+      if (p.mainV.track) p.mainV.replaceTrack(null).then(ack, ack); else ack();
       if (typeof clog === 'function') clog('held re-seat ' + String(p.id).slice(0, 6) + ' park ' + ms + 'ms');
       setTimeout(() => {
         if (p.mainHoldUntil && p.mainHoldUntil > Date.now() + 250) return; // a later hold lengthened the window
