@@ -15946,6 +15946,15 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         const cc = net.topo.unck(k);
         const rowMate = cc.pc === c.pc && cc.r === c.r; // same section + row (≠ me)
         paintDisp(p.tile, rowMate ? '' : 'none');
+        // On WebKit a hidden non-mate tile holds NO picture (WEBKIT_TILE): the
+        // far side parks its camera toward a non-mate (camPeer), so the element
+        // would only ever wait on a stream that carries nothing — one WebKit
+        // player per hidden tile, and a dead-sink signature that is nobody's
+        // fault. The picture is bound again the moment the seat is a row-mate.
+        if (WEBKIT_TILE && p.video && p.stream && !p.relayed) {
+          if (!rowMate) { if (p.video.srcObject) { try { p.video.pause(); } catch (e) {} p.video.srcObject = null; } p.video._wkPending = null; }
+          else if (!tileHolds(p.video, p.stream) && mediaOk(pid) !== false) playTileVideo(p.video, p.stream);
+        }
       }
     }
 
@@ -22563,7 +22572,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         return;
       }
       const pic = new MediaStream([tr]);
-      video._wrapOf = stream; video._pic = pic; video._followId = tr.id;
+      video._wrapOf = stream; video._pic = pic; video._followId = tr.id; video._wkAsks = 0;
       video.srcObject = pic;
       const pr = video.play(); if (pr && pr.catch) pr.catch(() => {});
       if (typeof clog === 'function') clog('wk-tile bind ' + why + ' ' + String(stream.id).slice(0, 8) + (tr.muted ? ' quiet' : ' flowing'));
@@ -22575,8 +22584,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // track is the stall this whole path exists to avoid.
     function wkQuietBind(video, stream, p) {
       const t = Date.now();
-      if (video._wkQuietAt && t - video._wkQuietAt < WK_TILE_HOLD + 500) return; // one re-seat in flight
-      video._wkQuietAt = t; video._wkPending = null;
+      // One re-seat in flight; a sender that never goes quiet (an old client
+      // re-seats at once) is asked again on a doubling backoff, 60 s at most.
+      const nAsk = video._wkAsks || 0;
+      if (video._wkQuietAt && t - video._wkQuietAt < Math.min(60000, (WK_TILE_HOLD + 500) * Math.pow(2, Math.max(0, nAsk - 1)))) return;
+      video._wkQuietAt = t; video._wkAsks = nAsk + 1; video._wkPending = null;
       visParkSent.set(p.id, false);
       dcSend(p, { k: 'vis', park: false });
       dcSend(p, { k: 'vkick', hold: WK_TILE_HOLD });
@@ -22600,6 +22612,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       setTimeout(attempt, WK_TILE_BIND_AT - 300);
     }
     function wkPlayTile(video, stream) {
+      // A hidden tile (a non-mate, reconcileGrid) is never bound: reconcileGrid
+      // binds it when it is shown again.
+      const tileEl = video.closest && video.closest('.tile');
+      if (tileEl && tileEl.style.display === 'none') { video._wkPending = null; return; }
       const tr = liveVideoTrack(stream);
       if (tr && tileHolds(video, stream) && video._followId === tr.id) {
         if (video.paused || video.readyState === 0) { const pr = video.play(); if (pr && pr.catch) pr.catch(() => {}); }
