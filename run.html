@@ -20205,6 +20205,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function bootAppRoom() {
       document.body.classList.add('app-room');
       try { refreshAudioBtn(); } catch (e) {}
+      // A solo app that Invite turns into a room now speaks for the room.
+      try { paintHelpTip(); } catch (e) {}
       return ensureName().then(() => {
         meTile = makeTile('me', myName() + ' ' + uiText('whoYou', '(you)'), true);
         tileNote(meTile, 'This is an app room — no camera, and no video. Talk, if the host turns it on, is voice only.');
