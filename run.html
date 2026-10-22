@@ -20311,11 +20311,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           && (((typeof bcHostStored === 'function' && bcHostStored()) || document.body.classList.contains('amadmin')));
         const hostAlone = !!(hostHere && kind === 'alone');
         const phoneAlone = kind === 'alone' && phoneLayout();
-        // A meeting keeps Invite while an app is shared. Hiding it here
-        // replaced the OS slot with the app bar (Help / Hide / Stop) and
-        // left guests with no way to share the meeting link.
+        // A meeting keeps Invite while an app is shared, and a phone keeps
+        // it beside the count after other people arrive. On a desktop the
+        // alone button leaves once someone else is here. Hiding the slot
+        // while an app is up replaced it with Help / Hide / Stop and left
+        // guests with no way to share the meeting link.
         if (typeof BROADCAST !== 'undefined' && BROADCAST) show = !document.body.classList.contains('has-app') && (hostAlone || phoneAlone);
-        else show = true;
+        else if (document.body.classList.contains('has-app') || phoneLayout()) show = true;
+        else show = kind !== 'meeting';
       }
       btn.style.display = show ? '' : 'none';
       const tip = (ROOM.kind === 'app' || document.body.classList.contains('app-room'))
@@ -20365,9 +20368,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         else inviteFromSolo();
         return;
       }
-      // App room, a meeting (alone or with people), and an app inside a
-      // meeting: the same Invite sheet. showInviteModal keeps "a room you
-      // run" off an app room and off a room that already has a host.
+      // Alone in a meeting, Invite copies the link in one click. The long
+      // sheet stays in More. An app, a broadcast, and a room that already
+      // has other people still open the sheet.
+      const kind = (statusEl && statusEl.dataset && statusEl.dataset.kind) || '';
+      const meetingAlone = kind === 'alone'
+        && !document.body.classList.contains('app-room')
+        && !(typeof BROADCAST !== 'undefined' && BROADCAST);
+      if (meetingAlone) {
+        shareMeetingLink(document.getElementById('appinvite'));
+        return;
+      }
       share.classList.add('show');
       showInviteModal();
     };
