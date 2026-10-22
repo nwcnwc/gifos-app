@@ -16,6 +16,9 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium, devices } = require('playwright');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = process.env.SHOTS || path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
@@ -48,7 +51,7 @@ const PHONES = [
     await page.routeWebSocket(/.*/, (ws) => { nws++; const srv = ws.connectToServer();
       srv.onMessage((m) => { if (hold) held.push([ws, m]); else ws.send(m); }); });
     const release = () => { hold = false; const n = held.length; for (const [w, m] of held.splice(0)) w.send(m); return n; };
-    await page.goto(BASE + '/run.html#v=chat-find-late-' + phone.name + '-' + process.pid, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.goto(BASE + '/run.html#v=' + RUN_ROOM + 'chat-find-late-' + phone.name, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForSelector('#bartoggle', { timeout: 15000 });
     const skip = page.locator('#nmok');
     if (await skip.count()) await skip.tap().catch(() => {});
