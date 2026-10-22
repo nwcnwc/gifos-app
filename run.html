@@ -5791,6 +5791,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (bar) bar.setAttribute('aria-label', 'Meeting controls');
         const curTitle = document.getElementById('paneltitle');
         if (curTitle && curTitle.textContent !== 'Transcript') curTitle.textContent = 'Meeting chat';
+        // A search keeps its sign: the room join repaints this after Find is in use.
+        try { paintChatFind(); } catch (e) {}
         const leave = document.getElementById('leavebtn');
         if (leave) {
           leave.title = 'Leave the meeting. Your camera and microphone stop.';
@@ -5826,6 +5828,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       document.title = 'Broadcast — GifOS';
       const svcTitle = document.getElementById('paneltitle');
       if (svcTitle && svcTitle.textContent !== 'Transcript') svcTitle.textContent = 'Broadcast chat';
+      try { paintChatFind(); } catch (e) {}
       const leaveSvc = document.getElementById('leavebtn');
       if (leaveSvc) {
         leaveSvc.title = 'Leave the broadcast. Your camera and microphone stop.';
