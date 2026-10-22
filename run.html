@@ -12353,7 +12353,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       // You left on purpose: the number is the room without you, frozen at
       // the click, not the tiles this page still has up behind the dialog.
       const shown = (leftUp && leftBehind > 0) ? leftBehind : headerCount();
-      const tail = partial + link + savedLock + extra;
+      // The password and ready-count sentences are longer than the row Fit
+      // leaves, so they were cut off after you left. The count and quality stay.
+      const tail = partial + link + savedLock + (leftUp ? '' : extra);
       const foldNow = roomDig();
       const foldPartial = !!(foldNow && foldNow.part); // a shortfall is not the room size
       let countText = '';
