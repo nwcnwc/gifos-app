@@ -4407,6 +4407,20 @@
           // anyone else's name used to free a live seat at every neighbour and
           // start a left-pack heal into it.
           if (m.id == null || !cellKeyOk(m.ck) || (m.mvd != null && !cellKeyOk(m.mvd)) || !this.provenEv(m, m.id)) return;
+          // D2 RELAY: a section-mate passed the leaver's own signed goodbye on
+          // (byeRelay). It frees the cell in my view and goes one hop further;
+          // it starts no heal (the leaver's links heard it first-hand) and is
+          // no churn near me.
+          if (m.rl === 1) {
+            if (m.mvd != null || !this.hasCoord || this.state !== 3) return;
+            const tenR = this.tenOf.get(m.ck);
+            const okR = (tenR && tenR.id === m.id) ? (m.tn != null && String(m.tn) === tenR.tn) : m.s4live === true;
+            if (!okR || this.occGet(m.ck) !== m.id || m.ck === ck(this.coord)) return;
+            this.linkedBy.delete(m.ck); this.tenOf.delete(m.ck); this.occ.delete(m.ck); this.live.delete(m.ck); this.kidful.delete(m.ck); this.s1seen.delete(m.ck); this.tlForget(m.ck, 'leave'); this.healTry.delete(m.ck); this.digForget(m.ck);
+            { const sit = this.sitting.get(m.ck); if (sit && sit.joiner === m.id) this.clearSoft(m.ck); }
+            this.byeRelay(m);
+            return;
+          }
           this.lastChurn = TICK; // Q2 hysteresis: a departure near me — hold off compaction until quiescent
           // TENANCY (R5): a goodbye frees only the tenancy it was signed for.
           // When a link told me x's tenancy at this cell, the LEAVE must name
@@ -4433,6 +4447,11 @@
           const mvdFrom = mine && m.mvd != null && !!ten && ten.id === m.id && m.tn != null && String(m.tn) === ten.tn && this.linkedBy.get(m.ck) === m.id && this.mvdOk(m.ck, m.mvd, m.id);
           if (mvdFrom) this.carryLinked(m.ck, m.mvd, m.id);
           if (mine) { this.linkedBy.delete(m.ck); this.tenOf.delete(m.ck); this.occ.delete(m.ck); this.live.delete(m.ck); this.kidful.delete(m.ck); this.s1seen.delete(m.ck); this.tlForget(m.ck, 'leave'); this.healTry.delete(m.ck); this.digForget(m.ck); } // freed ⇒ admissible now
+          // D2 RELAY: a goodbye said now, that freed the cell here (or found it
+          // freed a moment ago by the leaver's own 'bye', goodbye()), goes on to
+          // my section-mates. The LEAVE reaches only the leaver's links; a
+          // section-mate in another row held its cell as a hint for good.
+          if (m.mvd == null && m.s4live === true && (mine || (this.occGet(m.ck) == null && this.byeAt.has(m.ck) && TICK - this.byeAt.get(m.ck) <= 20))) this.byeRelay(m);
           // ...unless a claimant was waiting on it (waitClaim, the HELLO branch): it is the cell's hint now
           if (mine) { const w = this.waitClaim.get(m.ck); if (w) { this.waitClaim.delete(m.ck); if (w.id !== m.id && TICK - w.at <= 20) this.hintClaim(m.ck, w.id); } }
           // A, ATTRIBUTABLE (V4): only the LEAVER'S OWN vouch clears — a soft
@@ -4761,6 +4780,29 @@
     // goodbye goes to it too (leave() always did; requeue and reseatViaRoster
     // left it to the head's next ledger beat).
     leaveOwner(seen) { const o = this.ownerCoord(); if (!o) return; const oid = this.occGet(ck(o)); if (oid != null && oid !== this.id && !seen.has(oid)) { seen.add(oid); this.emit(oid, { t: 'LEAVE', ck: ck(this.coord), id: this.id }); } }
+    // D2 RELAY (healing-laws D2): the leaver's own signed LEAVE, passed once
+    // per goodbye to my section-mates (row, cross and Section-1 rook links;
+    // never up or down), only for a cell in my section. Only a seat whose view
+    // it freed passes it on, so it crosses the section once and stops. The
+    // copy carries the leaver's signature unchanged and no `mvd`; `rl` marks
+    // it relayed (a carrier that strips it only makes the copy what a direct
+    // goodbye from the leaver already is).
+    byeRelay(m) {
+      if (!this.hasCoord || this.state !== 3 || m.s4 == null) return;
+      let c; try { c = unck(m.ck); } catch (e) { return; }
+      if (!c || c.pc !== this.coord.pc) return;
+      const key = m.ck + '|' + m.id + '|' + (m.tn == null ? '' : String(m.tn));
+      const R = this.byeRly || (this.byeRly = new Map());
+      if (R.has(key)) return;
+      R.set(key, this.TICK);
+      if (R.size > 256) { for (const [k, at] of R) if (this.TICK - at > 120) R.delete(k); while (R.size > 256) R.delete(R.keys().next().value); }
+      for (const x of this.sectionPeers()) {
+        if (x === m.id || x === m.from) continue;
+        const f = { t: 'LEAVE', ck: m.ck, id: m.id, rl: 1, s4: m.s4 };
+        if (m.tn !== undefined) f.tn = m.tn;
+        this.emit(x, f);
+      }
+    }
     leave() {
       this.alive = false; this.moving = false; this.leaseCk = null; this.leaseUntil = -1;
       if (!this.hasCoord) return; const kk = ck(this.coord); const seen = new Set();

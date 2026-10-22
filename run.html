@@ -33333,7 +33333,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         }
         clearTimeout(cap); go();
       };
-      txm(() => undefined).then(drained, drained);
+      // The farewell gossip is signed before it reaches the queue: hold the
+      // queue until it has been handed over (mesh-wire flushed), then wait
+      // for everything queued behind it.
+      txm(() => (meshNode && typeof meshNode.flushed === 'function' ? meshNode.flushed(FAREWELL_DRAIN_MS - 300) : undefined))
+        .then(() => txm(() => undefined)).then(drained, drained);
     }
     // A host whose service is being kept (Q69) ends it with Leave, but the
     // seat stays: the replay sheet is the last thing open, and while it is,
