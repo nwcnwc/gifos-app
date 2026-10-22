@@ -2221,6 +2221,11 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     min-height: 48px; padding: 12px 16px; border-radius: 999px; background: rgba(12,14,18,.92); color: #f4f7fb;
     font-size: 18px; line-height: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   body.desk-ptr:has(#handq.on) .topchip { max-width: calc(100vw - 14px - var(--hq-room, 140px)); }
+  /* A narrow desktop row (about 960px) has less room than the line needs next
+     to the header chip: the line wraps to two 16px lines inside the header
+     band instead of running over the chip (placeHandq sets the width). */
+  body.desk-ptr.comfy #handq.on.hq-tight { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+    white-space: normal; padding: 4px 14px; font-size: 16px; line-height: 20px; min-height: 48px; border-radius: 16px; }
   /* A shared slide starts below the header row, so the header never covers it. */
   body.desk-ptr.screen-on #feed { padding-top: 70px; }
   /* Phone chrome from qa-meet-mobile: the status sheet, the 44px chip, Fit as a
@@ -18166,6 +18171,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function placeHandq() {
       if (!document.body.classList.contains('desk-ptr') || !handqEl.classList.contains('on')) {
         handqEl.style.right = '';
+        handqEl.style.maxWidth = '';
+        handqEl.classList.remove('hq-tight');
         document.body.style.removeProperty('--hq-room');
         try { placeFit(); } catch (e) {}
         return;
@@ -18178,6 +18185,22 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       const right = Math.max(14, Math.round(window.innerWidth - edge));
       handqEl.style.right = right + 'px';
+      // The header chip's count yields to the line; the rest of the chip
+      // (logo, mark) does not. When the line is wider than what is left of
+      // the row, it wraps (hq-tight) to that width instead of covering the chip.
+      handqEl.classList.remove('hq-tight');
+      handqEl.style.maxWidth = '';
+      const chipEl = document.querySelector('.topchip');
+      const countEl = document.getElementById('statuscount');
+      if (chipEl && chipEl.getClientRects().length) {
+        const cr = chipEl.getBoundingClientRect();
+        const cw = countEl && countEl.getClientRects().length ? countEl.getBoundingClientRect().width : 0;
+        const room = Math.floor(window.innerWidth - right - (cr.right - cw) - 10);
+        if (handqEl.getBoundingClientRect().width > room) {
+          handqEl.classList.add('hq-tight');
+          handqEl.style.maxWidth = Math.max(120, room) + 'px';
+        }
+      }
       document.body.style.setProperty('--hq-room', Math.round(right + handqEl.getBoundingClientRect().width + 10) + 'px');
       try { placeFit(); } catch (e) {}
     }
