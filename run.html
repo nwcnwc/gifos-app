@@ -31297,9 +31297,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (!e.isTrusted || bar.classList.contains('collapsed')) return;
         const btn = e.target && e.target.closest ? e.target.closest('button') : null;
         if (!btn || !moreSheet.contains(btn)) return;
+        // Hiding the sheet blurs a focused control inside it, so remember
+        // that first and put the keyboard back on More.
+        const returnFocus = moreSheet.contains(document.activeElement);
         apply(true);
         try { localStorage.setItem('gifos_meet_bar', '1'); } catch (err) {}
-        if (moreSheet.contains(document.activeElement)) toggle.focus();
+        if (returnFocus) toggle.focus();
       });
       // Publish the bar's own height so the fixed overlays that hang from the
       // top (the chat panel) can start BELOW it instead of on top of it. It has
