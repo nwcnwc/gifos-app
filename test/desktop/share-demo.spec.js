@@ -82,13 +82,18 @@ test('a consultant can put a slide on the stage and stop it', async ({ page, bro
     const sr = stop ? stop.getBoundingClientRect() : null;
     const dock = document.querySelector('.bar').getBoundingClientRect();
     const overlap = (a, b) => !!(a && b && a.width > 8 && a.bottom > b.top + 4 && a.top < b.bottom - 4 && a.right > b.left + 4 && a.left < b.right - 4);
+    const open = document.querySelector('#stagefeed .rowtile > .tile-open');
+    const or = open ? open.getBoundingClientRect() : null;
+    const sb = document.getElementById('sharebtn').getBoundingClientRect();
+    const atDock = document.elementFromPoint(sb.left + sb.width / 2, sb.top + sb.height / 2);
     return {
       vw: v.videoWidth,
       vh: v.videoHeight,
       h: vr.height,
       w: vr.width,
       onScreen: vr.top >= -1 && vr.left >= -1 && vr.right <= window.innerWidth + 1 && vr.bottom <= window.innerHeight + 1,
-      coversDock: overlap(vr, dock),
+      dockOnTop: !!(atDock && atDock.closest('.bar')),
+      stopCoversOpen: overlap(sr, or),
       stop: stop ? stop.textContent.trim() : '',
       stopFont: stop ? parseFloat(getComputedStyle(stop).fontSize) : 0,
       stopOn: !!(sr && sr.top >= -1 && sr.left >= -1 && sr.right <= window.innerWidth + 1 && sr.bottom <= window.innerHeight + 1),
@@ -109,7 +114,11 @@ test('a consultant can put a slide on the stage and stop it', async ({ page, bro
   expect(fit.vw).toBeGreaterThanOrEqual(640);
   expect(fit.h).toBeGreaterThanOrEqual(280);
   expect(fit.onScreen).toBe(true);
-  expect(fit.coversDock).toBe(false);
+  // The 16:42 rule (Nathan 10-19, f0390c4): tiles take the whole screen and the
+  // controls float over them, so the slide runs under the dock and the dock
+  // stays on top. Stop sharing itself stays clear of the dock and of Open (UI-0010).
+  expect(fit.dockOnTop).toBe(true);
+  expect(fit.stopCoversOpen).toBe(false);
   expect(fit.fit).toBe('contain');
   expect(fit.stop).toBe('Stop sharing');
   expect(fit.stopFont).toBeGreaterThanOrEqual(16);
@@ -163,8 +172,8 @@ test('the menu steps aside once the slide is up, and the Stage can stop it', asy
   expect(laid.pe).toBe('auto');
   // Your own tile's control window offers it too.
   await page.mouse.move(300, 300);
-  const me = await page.locator('#feed .tile.me').boundingBox();
-  await page.mouse.click(me.x + me.width / 2, me.y + me.height / 2);
+  // UI-0010 (ddd6e19): the tile's Open button opens its window, a tap on the picture does not.
+  await page.locator('#feed .tile.me > .tile-open').click();
   await expect(page.locator('#tilewin button', { hasText: 'Stop sharing' })).toBeVisible();
   await page.keyboard.press('Escape');
   await page.locator('#stagefeed .stagestop').click();
@@ -172,7 +181,7 @@ test('the menu steps aside once the slide is up, and the Stage can stop it', asy
   await expect(page.locator('body')).not.toHaveClass(/screen-on/);
 });
 
-// Tapping the slide opens its control window. Stopping from the dock (the
+// The slide's Open button opens its control window (UI-0010). Stopping from the dock (the
 // browser's own bar uses the same stop) must take that window with the slide.
 test('stopping a share closes the stage control window', async ({ page, browserName }) => {
   test.skip(browserName === 'webkit', 'WebKit closes the tab if a tile plays a canvas capture');
@@ -184,8 +193,7 @@ test('stopping a share closes the stage control window', async ({ page, browserN
     const v = document.querySelector('#stagefeed video');
     return v ? v.videoWidth : 0;
   })).toBeGreaterThanOrEqual(640);
-  const box = await page.locator('#stagefeed video').boundingBox();
-  await page.mouse.click(box.x + box.width / 2, box.y + Math.min(box.height / 2, box.height - 30));
+  await page.locator('#stagefeed > .rowtile[data-row="sgs"] > .tile-open').click();
   await expect(page.locator('#tilewin-title')).toContainText('Your screen');
   await expect(page.locator('#tilewin button', { hasText: 'Stop sharing' })).toBeVisible();
   await page.evaluate(() => document.getElementById('sharebtn').click());

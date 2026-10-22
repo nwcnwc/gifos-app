@@ -20,6 +20,9 @@ async function boot(page, remotes, size) {
 }
 const rects = (page) => page.evaluate(() => [...document.querySelectorAll('#feed .tile[data-comfy="1"]')]
   .filter((t) => t.getClientRects().length).map((t) => { const r = t.getBoundingClientRect(); return { id: t.dataset.peer, w: r.width, h: r.height, x: r.x, y: r.y }; }));
+// UI-0010 (Nathan, ddd6e19): a tap on the picture does not open the tile's
+// window; the Open button in the tile's upper right does.
+const openTile = (page, id) => page.locator('#feed .tile[data-peer="' + id + '"] > .tile-open').click();
 // Seen: laid out, not hidden, and its effective opacity (with every ancestor's) above 5%.
 const shown = (page, sel) => page.evaluate((s) => [...document.querySelectorAll(s)].some((e) => {
   const cs = getComputedStyle(e);
@@ -29,12 +32,16 @@ const shown = (page, sel) => page.evaluate((s) => [...document.querySelectorAll(
   return op > 0.05;
 }), sel);
 
-test('Row tiles are squares that never overlap, in Fit, for 1 to 8 people', async ({ page }) => {
+// The 16:42 rule (Nathan 10-19, f0390c4 fillBand): Fit lays the Row out as
+// squares, then gives the leftover height to the rows so the tiles fill the
+// screen. Width stays, so a tile is its square or taller, never shorter.
+test('Row tiles are squares or taller, the same size, and never overlap, in Fit, for 1 to 8 people', async ({ page }) => {
   for (const n of [1, 3, 5, 8]) {
     await boot(page, n);
     const rs = await rects(page);
     expect(rs.length).toBe(n + 1);
-    for (const r of rs) expect(Math.abs(r.w - r.h)).toBeLessThan(1.5);
+    for (const r of rs) expect(r.h - r.w, JSON.stringify(r)).toBeGreaterThan(-1.5);
+    for (const r of rs) expect(Math.abs(r.w - rs[0].w) + Math.abs(r.h - rs[0].h), JSON.stringify(r)).toBeLessThan(1.5);
     for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) {
       const a = rs[i], b = rs[j];
       expect(a.x + a.w <= b.x + 0.5 || b.x + b.w <= a.x + 0.5 || a.y + a.h <= b.y + 0.5 || b.y + b.h <= a.y + 0.5).toBe(true);
@@ -55,7 +62,7 @@ test('calm by default: after 3 s only names and the speaking frame show; a move 
   expect(await shown(page, '#feed .tile > .blurbox, #feed .tile .modbar button')).toBe(false);
 });
 
-test('tap a tile: it expands into its control window, and the tile keeps showing the person', async ({ page, browserName }) => {
+test('Open on a tile: it expands into its control window, and the tile keeps showing the person', async ({ page, browserName }) => {
   await boot(page, 3);
   const before = (await rects(page)).find((r) => r.id === 'qa2');
   // What the tile shows: its video, or (camera off) the person's initial.
@@ -69,6 +76,8 @@ test('tap a tile: it expands into its control window, and the tile keeps showing
   expect(was.video || was.initial).toBe(true);
   if (browserName !== 'webkit') expect(was.video).toBe(true);
   await page.mouse.click(before.x + before.w / 2, before.y + before.h / 2);
+  await expect(page.locator('#tilewin')).toBeHidden();
+  await openTile(page, 'qa2');
   await expect(page.locator('#tilewin')).toBeVisible();
   const st = await page.evaluate(() => {
     const t = document.querySelector('.tile[data-peer="qa2"]'); const r = t.getBoundingClientRect();
@@ -99,8 +108,7 @@ test('the meeting always says it is being transcribed, also when calm', async ({
 
 test('a viewer crop is local: it zooms that tile on this screen only and sends nothing', async ({ page, browserName }) => {
   await boot(page, 2);
-  const t = (await rects(page)).find((r) => r.id === 'qa1');
-  await page.mouse.click(t.x + t.w / 2, t.y + t.h / 2);
+  await openTile(page, 'qa1');
   await expect(page.locator('#tilewin')).toBeVisible();
   const hasPad = await page.locator('#tilewin .tw-pad').count();
   if (browserName === 'webkit') { expect(hasPad).toBe(0); return; } // a seeded face has no video there
@@ -122,15 +130,17 @@ test('a viewer crop is local: it zooms that tile on this screen only and sends n
 
 test('Pin puts that person on my own Stage at the true aspect of their video', async ({ page, browserName }) => {
   await boot(page, 3);
-  const t = (await rects(page)).find((r) => r.id === 'qa3');
-  await page.mouse.click(t.x + t.w / 2, t.y + t.h / 2);
+  await openTile(page, 'qa3');
   await page.locator('#tilewin button', { hasText: 'Pin' }).click();
   await expect(page.locator('#tilewin')).toBeHidden();
   const r = await page.evaluate(() => { const e = document.querySelector('.tile[data-peer="qa3"]'); const b = e.getBoundingClientRect(); return { w: b.width, h: b.height, fit: e.dataset.fit }; });
   expect(r.fit).toBe('contain');
   if (browserName !== 'webkit') expect(r.w / r.h).toBeCloseTo(16 / 9, 1);
   const others = (await rects(page)).filter((x) => x.id !== 'qa3');
-  for (const o of others) expect(Math.abs(o.w - o.h)).toBeLessThan(1.5);
+  // The Row keeps its squares beside the Stage; Fit may make them taller (16:42,
+  // f0390c4) but never a sliver under the packer's legal shape (ASPECT_MIN 0.44).
+  for (const o of others) expect(o.h - o.w, JSON.stringify(o)).toBeGreaterThan(-1.5);
+  for (const o of others) expect(o.w / o.h, JSON.stringify(o)).toBeGreaterThanOrEqual(0.44);
 });
 
 test('one Full screen button: the OS header\'s, and it takes the whole page', async ({ page }) => {
