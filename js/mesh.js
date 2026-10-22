@@ -4422,6 +4422,12 @@
             // race to it made links act on a copy (sim: 7 extra drains after a
             // 15% leave at N=160); it only goes on from here.
             if (this.relStake(m.ck)) { this.byeRelay(m); return; }
+            // ...and only a cell of a row I still see standing: its head held
+            // by someone else. When the head is gone in my view the row is
+            // being healed or was wiped (a mass leave), and the hint I hold is
+            // what its healers' ring-hold reads; freeing it there left a wiped
+            // Section-1 row empty for good (C++ churn sweep seed 17, kill 0.4).
+            { const lc = unck(m.ck); const h = this.occGet(ck({ pc: lc.pc, r: lc.r, i: 0 })); if (lc.i === 0 || h == null || h === m.id) { this.byeRelay(m); return; } }
             this.linkedBy.delete(m.ck); this.tenOf.delete(m.ck); this.occ.delete(m.ck); this.live.delete(m.ck); this.kidful.delete(m.ck); this.s1seen.delete(m.ck); this.tlForget(m.ck, 'leave'); this.healTry.delete(m.ck); this.digForget(m.ck);
             { const sit = this.sitting.get(m.ck); if (sit && sit.joiner === m.id) this.clearSoft(m.ck); }
             this.lastChurn = TICK;   // Q2 hysteresis: the hole is new in my view — hold compaction while its healer fills it
