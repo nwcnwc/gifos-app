@@ -207,7 +207,7 @@ body.desk-ptr #hdrhand.on { display: none !important; }
   }
 }
 /* The Stage frame: a free rectangle with a corner grip. */
-#tilewin .tw-rect { box-shadow: 0 0 0 9999px rgba(0,0,0,.5); }
+#tilewin .tw-rect { box-shadow: 0 0 0 9999px rgba(0,0,0,.5); left: 0; top: 0; width: 100%; height: 100%; }
 #tilewin .tw-grip { position: absolute; right: -9px; bottom: -9px; width: 18px; height: 18px; border-radius: 50%;
   background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
 /* Broadcast calm, at every screen size: the host's panels (the stream link,
@@ -587,7 +587,7 @@ html.ui-large body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appinvit
   body:not(.has-app):not(.solo-app):not(.app-room) #appbar #apphelp,
   body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appinvite,
   body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appfull {
-    height: 40px; padding: 4px 8px; font-size: 14px; white-space: nowrap;
+    height: 40px; padding: 4px 8px; font-size: 16px; white-space: nowrap;
   }
 }
 @media (max-height: 500px) and (orientation: landscape) {
