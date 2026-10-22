@@ -12520,6 +12520,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const full = statusRestFull;
       if (restEl.textContent !== full) restEl.textContent = full;
       b.remove('tx-tight');
+      b.remove('status-small');
       restEl.classList.remove('rest-off');
       if (!full || (typeof phoneLayout === 'function' && phoneLayout()) || !restEl.getClientRects().length) return;
       if (b.contains('hq-tight')) { restEl.classList.add('rest-off'); return; }
@@ -12533,6 +12534,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         restEl.textContent = full;
       }
       restEl.classList.add('rest-off');
+      // The count is never cut off: if it and the tap still overflow the
+      // line, the line steps down to 16px.
+      const stEl = document.getElementById('status');
+      const cntEl = document.getElementById('statuscount');
+      const cut = () => (stEl && stEl.scrollWidth > stEl.clientWidth + 1) || (cntEl && cntEl.scrollWidth > cntEl.clientWidth + 1);
+      if (cut()) b.add('status-small');
     }
     let fitRestFrame = 0;
     window.addEventListener('resize', () => {
