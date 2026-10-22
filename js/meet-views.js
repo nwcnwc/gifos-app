@@ -84,6 +84,13 @@
   // the shown top keeps the faces still (the header band does the same).
   let callChromeTop = 0;
   let callChromeEdge = 0;
+  // The held lines as distances up from the bottom, per screen width. A
+  // tucked page that changes size (back from a float, the URL bar going)
+  // keeps the reserve the dock had at that width, so the first wake finds
+  // the faces already where the shown dock puts them. Holding the absolute
+  // top shrank a solo tile to the float's 55px, then the wake regrew it.
+  const callChromeHeld = new Map();
+  let callChromeLast = null;
 
   function restingTop(el) {
     if (!el || el.hidden) return 0;
@@ -174,6 +181,16 @@
         if (!(btnTop > 0) || lip < btnTop) edge = lip;
       }
       callChromeEdge = edge;
+      if (vh > 0) {
+        callChromeLast = { top: callChromeTop > 0 ? vh - callChromeTop : 0, edge: callChromeEdge > 0 ? vh - callChromeEdge : 0 };
+        callChromeHeld.set(Math.round(vw), callChromeLast);
+      }
+    } else if (vh > 0) {
+      const held = callChromeHeld.get(Math.round(vw)) || callChromeLast;
+      if (held) {
+        callChromeTop = held.top > 0 ? vh - held.top : 0;
+        callChromeEdge = held.edge > 0 ? vh - held.edge : 0;
+      }
     }
     const top = callChromeTop;
     // Held top, so a tuck does not flip a sideways phone between the two.
