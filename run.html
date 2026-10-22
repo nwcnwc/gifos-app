@@ -2224,7 +2224,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* A narrow desktop row (about 960px) has less room than the line needs next
      to the header chip: the line wraps to two 16px lines inside the header
      band instead of running over the chip (placeHandq sets the width). */
-  body.desk-ptr.comfy.hq-tight .topchip #statuscount, body.desk-ptr.comfy.hq-tight .topchip #statusrest { display: none !important; }
+  body.desk-ptr.comfy.hq-tight .topchip #statuscount { display: none !important; }
   body.desk-ptr.comfy #handq.on.hq-tight { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
     white-space: normal; padding: 4px 14px; font-size: 16px; line-height: 20px; min-height: 48px; border-radius: 16px; }
   /* A shared slide starts below the header row, so the header never covers it. */
@@ -12464,9 +12464,12 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // An empty count is no button: Tab must not stop on nothing.
         if (countEl.hidden !== !countText) countEl.hidden = !countText;
         if (restEl.textContent !== restText) restEl.textContent = restText;
-        restEl.dataset.full = restText;
-        restEl.dataset.short = (q && q.label && restText.indexOf(' · ' + q.label) === 0) ? restText.slice((' · ' + q.label).length) : '';
-        fitStatusRest();
+        // Fitting the line to its row is layout only: it must never stop the
+        // status line from being written.
+        try {
+          const lead = q && q.label ? ' · ' + q.label : '';
+          fitStatusRest(restText, lead && restText.indexOf(lead) === 0 ? restText.slice(lead.length) : '');
+        } catch (e) {}
       }
       paintBcQuiet(bq);
       if (typeof paintLiveBadge === 'function') paintLiveBadge();
@@ -12495,20 +12498,23 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // the transcribing mark keeps only its icon, then the resolution drops,
     // and then the sentence leaves the row. The whole line stays the
     // header's title and a phone's status sheet.
-    function fitStatusRest() {
+    let statusRestFull = '', statusRestShort = '';
+    function fitStatusRest(fullText, shortText) {
+      if (typeof fullText === 'string') { statusRestFull = fullText; statusRestShort = shortText || ''; }
       const restEl = document.getElementById('statusrest');
       if (!restEl) return;
       const b = document.body.classList;
       const over = () => restEl.scrollWidth > restEl.clientWidth + 1;
-      const full = restEl.dataset.full || '';
+      const full = statusRestFull;
       if (restEl.textContent !== full) restEl.textContent = full;
       b.remove('tx-tight');
       restEl.classList.remove('rest-off');
       if (!full || (typeof phoneLayout === 'function' && phoneLayout()) || !restEl.getClientRects().length) return;
+      if (b.contains('hq-tight')) { restEl.classList.add('rest-off'); return; }
       if (!over()) return;
       b.add('tx-tight');
       if (!over()) return;
-      const short = restEl.dataset.short || '';
+      const short = statusRestShort;
       if (short) {
         restEl.textContent = short;
         if (!over()) return;
@@ -18252,7 +18258,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (chipEl && chipEl.getClientRects().length) {
         const cr = chipEl.getBoundingClientRect();
         const stEl = document.getElementById('status');
-        const fixedRight = stEl && stEl.getClientRects().length ? stEl.getBoundingClientRect().left + 12 : cr.right;
+        // The logo, the mark, and the line's " · …" (it opens the status sheet).
+        const fixedRight = stEl && stEl.getClientRects().length ? stEl.getBoundingClientRect().left + 40 + 12 : cr.right;
         const natural = handqEl.getBoundingClientRect().width;
         if (natural > Math.floor(window.innerWidth - right - cr.right - 10)) {
           const room = Math.floor(window.innerWidth - right - fixedRight - 10);
@@ -18263,6 +18270,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           }
         }
       }
+      try { if (typeof fitStatusRest === 'function') fitStatusRest(); } catch (e) {}
       document.body.style.setProperty('--hq-room', Math.round(right + handqEl.getBoundingClientRect().width + 10) + 'px');
       try { placeFit(); } catch (e) {}
     }

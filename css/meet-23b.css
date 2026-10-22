@@ -195,7 +195,15 @@ body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app)
    sentence cut in half. */
 body.tx-tight #txmark span { display: none; }
 body.tx-tight #txmark { padding: 3px 8px; }
-.topchip #statusrest.rest-off { display: none !important; }
+/* The sentence leaves the row, but its tap stays: the rest shows as " · …"
+   and still opens the full status sheet (#status-full, LM-30 every sheet
+   reachable). The words stay in the element for readers and the title. */
+.topchip #statusrest.rest-off { display: inline-block !important; flex: 0 0 auto !important; font-size: 0 !important;
+  overflow: visible !important; cursor: pointer; }
+.topchip #statusrest.rest-off::after { content: " · …"; font-size: 20px; white-space: pre; }
+/* In the narrowest desktop row the count gives way to that tap (the sheet
+   and the roster both still have the whole count). */
+.topchip #status:has(#statusrest.rest-off) #statuscount { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* The people count ends inside its line instead of running under the buttons beside it. */
 @media (max-width: 700px), (max-height: 500px) {
   .topchip #statuscount { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
