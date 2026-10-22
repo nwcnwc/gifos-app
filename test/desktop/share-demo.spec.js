@@ -1,5 +1,8 @@
 const { test, expect } = require('@playwright/test');
 const { SEAT_VIEWS, seatPage, seatAndWake } = require('../shared/share-seat');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 async function boot(page) {
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -7,7 +10,7 @@ async function boot(page) {
     localStorage.setItem('gifos_name', 'Jordan Lee');
     sessionStorage.setItem('gifos_appeared', '1');
   });
-  await page.goto('/run.html#v=qashare&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.goto('/run.html#v=' + RUN_ROOM + 'qashare&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#leavebtn', { state: 'visible' });
   const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 2, connected: true }));
   expect(seeded && seeded.ok).toBe(true);
