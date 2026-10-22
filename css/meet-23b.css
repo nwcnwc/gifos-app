@@ -247,7 +247,10 @@ body.broadcast.dock-calm #lyrics, body.broadcast.chrome-away #lyrics {
    item on now and the one after it, sitting above Live / Record so neither
    covers the other. The whole list is the same card on a wider screen. */
 @media (max-width: 700px) {
-  body.broadcast #rundown { bottom: calc(118px + var(--stateh, 0px)); max-height: calc(100vh - 240px - var(--stateh, 0px)); gap: 6px; padding: 12px 14px; }
+  /* On the call-state row: the dock's resting top (--dockh), 8px under Live
+     / Record, 8px over them. A fixed 118px left 20px there and ran the card
+     up under the link on an SE (broadcast-23b, 320x568). */
+  body.broadcast #rundown { bottom: calc(var(--dockh, 90px) + 16px + var(--stateh, 0px)); max-height: calc(100vh - 240px - var(--stateh, 0px)); gap: 6px; padding: 12px 14px; }
   body.broadcast #rundown li { display: none; }
   body.broadcast #rundown li.now, body.broadcast #rundown li.now + li { display: flex; }
   body.broadcast #rundown li.now .rdname { font-size: 22px; }
@@ -285,6 +288,11 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
   body.broadcast #rundown li.now { display: flex; }
   body.broadcast #rundown li.now .rdname { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   body.broadcast #rundown-next { padding: 0 16px; }
+  /* Off air the link card is the "send the link" line. Sideways the chip's
+     second row (c5b971f) pushed the link and Run of show band onto Live and
+     Record (SE 568x320, Android 740x360): the sentence leaves the chip there
+     and stays in the status sheet. An alert keeps its row. */
+  body.broadcast.bc-host:has(#bc-link.on:not(.live)) .topchip .status:not(.alert) { display: none; }
 }
 /* The lobby, one design at every size.
    Town hall and Stream to friends are doors like Host this call: one
