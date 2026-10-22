@@ -13,20 +13,48 @@ async function boot(page, width, height, remotes) {
   await page.waitForFunction((n) => document.querySelectorAll('#feed .tile').length >= n + 1, remotes);
 }
 
+// The dock floats over full-screen faces and fades when the call is quiet
+// (Nathan 2026-10-19 16:42), so a name under the awake dock is by design
+// (2026-10-22 13:11). Names are read once the dock has faded.
+async function calm(page) {
+  await page.waitForFunction(() => document.body.classList.contains('dock-calm')
+    && getComputedStyle(document.querySelector('.bar')).opacity === '0', null, { timeout: 10000 });
+}
+
+// Where every face is, to the pixel: the dock fading moves none of them.
+async function geometry(page) {
+  return page.evaluate(() => [...document.querySelectorAll('#feed .tile')].map((el) => {
+    const r = el.getBoundingClientRect();
+    return [r.x, r.y, r.width, r.height].map(Math.round).join(',');
+  }).join(' '));
+}
+
+// A name is covered when it leaves its own face or the window, runs into
+// another face, sits under a dock that still shows, or anything else is
+// painted over its middle.
 async function pack(page) {
   return page.evaluate(() => {
-    const dock = document.querySelector('.bar').getBoundingClientRect();
-    const tiles = [...document.querySelectorAll('#feed .tile')].map((el) => {
+    const bar = document.querySelector('.bar');
+    const dock = bar.getBoundingClientRect();
+    const dockShows = parseFloat(getComputedStyle(bar).opacity) > 0.05 && dock.top < innerHeight;
+    const hit = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left))
+      * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)) > 1;
+    const faces = [...document.querySelectorAll('#feed .tile')].filter((el) => {
       const r = el.getBoundingClientRect();
-      const cs = getComputedStyle(el);
-      if (cs.display === 'none' || r.width < 2 || r.height < 2) return null;
+      return getComputedStyle(el).display !== 'none' && r.width >= 2 && r.height >= 2;
+    });
+    const tiles = faces.map((el) => {
+      const r = el.getBoundingClientRect();
       const name = el.querySelector('.name');
       const nr = name ? name.getBoundingClientRect() : null;
       let covered = false;
       if (nr) {
-        const ix = Math.max(0, Math.min(nr.right, dock.right) - Math.max(nr.left, dock.left));
-        const iy = Math.max(0, Math.min(nr.bottom, dock.bottom) - Math.max(nr.top, dock.top));
-        covered = ix * iy > 1;
+        const inside = nr.left >= r.left - 1 && nr.right <= r.right + 1 && nr.top >= r.top - 1 && nr.bottom <= r.bottom + 1;
+        const onScreen = nr.left >= -1 && nr.top >= -1 && nr.right <= innerWidth + 1 && nr.bottom <= innerHeight + 1;
+        const intoFace = faces.some((o) => o !== el && hit(nr, o.getBoundingClientRect()));
+        const top = document.elementFromPoint((nr.left + nr.right) / 2, (nr.top + nr.bottom) / 2);
+        const onTop = !!top && (top === name || name.contains(top));
+        covered = !inside || !onScreen || intoFace || (dockShows && hit(nr, dock)) || !onTop;
       }
       return {
         x: r.x, y: r.y, w: r.width, h: r.height,
@@ -69,7 +97,7 @@ async function pack(page) {
       overlap: overlap,
       covered: tiles.filter((t) => t.name && t.name.covered).length,
       tileBottom: tiles.reduce((m, t) => Math.max(m, t.bottom), 0),
-      dockTop: dock.top,
+      winH: innerHeight,
       dockH: dock.height,
       shortOff: shortOff,
       skinny: tiles.filter((t) => t.aspect < 0.44 || t.aspect > 2.4).length,
@@ -79,10 +107,14 @@ async function pack(page) {
 
 test('five faces pack evenly and their names clear the dock', async ({ page }) => {
   await boot(page, 1280, 720, 4);
+  const awake = await geometry(page);
+  await calm(page);
+  expect(await geometry(page)).toBe(awake);
   const info = await pack(page);
   expect(info.n).toBe(5);
   expect(info.covered).toBe(0);
-  expect(info.tileBottom).toBeLessThanOrEqual(info.dockTop + 1);
+  // Faces fill the window; the dock floats over them (16:42).
+  expect(info.tileBottom).toBeLessThanOrEqual(info.winH + 1);
   expect(info.fair).toBeGreaterThan(0.98);
   expect(info.overlap).toBeLessThan(4);
   expect(info.shortOff).toBeLessThan(8);
@@ -93,10 +125,13 @@ test('five faces pack evenly and their names clear the dock', async ({ page }) =
 test('seven faces stay even at 1280 and at 900', async ({ page }) => {
   for (const w of [1280, 900]) {
     await boot(page, w, 720, 6);
+    const awake = await geometry(page);
+    await calm(page);
+    expect(await geometry(page), String(w)).toBe(awake);
     const info = await pack(page);
     expect(info.n, String(w)).toBe(7);
     expect(info.covered, String(w)).toBe(0);
-    expect(info.tileBottom, String(w)).toBeLessThanOrEqual(info.dockTop + 1);
+    expect(info.tileBottom, String(w)).toBeLessThanOrEqual(info.winH + 1);
     expect(info.fair, String(w)).toBeGreaterThan(0.98);
     expect(info.overlap, String(w)).toBeLessThan(4);
     expect(info.skinny, String(w)).toBe(0);
@@ -137,6 +172,7 @@ test('faces have a gutter between them and soft corners', async ({ context }) =>
     expect(g.minX, at).toBeLessThanOrEqual(16);
     expect(g.minY, at).toBeLessThanOrEqual(16);
     expect(g.radius, at).toBeGreaterThanOrEqual(8);
+    await calm(page);
     const info = await pack(page);
     expect(info.covered, at).toBe(0);
     expect(info.fair, at).toBeGreaterThan(0.98);
