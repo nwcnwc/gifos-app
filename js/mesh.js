@@ -934,7 +934,8 @@
         const u = this.unpAt.get(x);
         const hearing = u !== undefined && T - u <= 16;
         const since = this.unpSince.get(x);
-        const streak = since !== undefined && T - since > DARK_LEAVE;
+        // No silence between the last proof and the streak: it runs from the proof.
+        const streak = since !== undefined && (T - since > DARK_LEAVE || since - at <= 16);
         if (age <= CHAN_UP) recent++;
         if (age <= DARK_LEAVE) fresh++;
         if (hearing && age > DARK_LEAVE && streak) dead.push(x);
