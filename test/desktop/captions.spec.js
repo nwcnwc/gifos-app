@@ -1,4 +1,7 @@
 const { test, expect } = require('@playwright/test');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 async function boot(page) {
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -12,7 +15,7 @@ async function boot(page) {
     window.SpeechRecognition = SR;
     window.webkitSpeechRecognition = SR;
   });
-  await page.goto('/run.html#v=qacc&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.goto('/run.html#v=' + RUN_ROOM + 'qacc&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#ccdock', { state: 'visible' });
   const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 2, connected: true }));
   expect(seeded && seeded.ok, JSON.stringify(seeded)).toBe(true);
