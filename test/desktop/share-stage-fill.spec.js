@@ -4,7 +4,9 @@ const path = require('path');
 // A share fills the left side (share-seat). A local self-view pin puts your
 // own tile on your own stage; it must not shrink that share into a side box.
 test.use({
-  launchOptions: { args: ['--disable-gpu', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] },
+  // Chromium-only flags: Playwright WebKit refuses --disable-gpu and closes in 2 s.
+  launchOptions: [async ({ browserName }, use) => use(browserName === 'chromium'
+    ? { args: ['--disable-gpu', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] } : {}), { scope: 'worker' }],
 });
 
 const SHOT = process.env.SHOT || 'run';

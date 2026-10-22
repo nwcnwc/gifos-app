@@ -178,6 +178,13 @@ body.head-calm .topchip > :not(#txmark), body.chrome-away .topchip > :not(#txmar
 body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed {
   top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; display: block !important; }
 body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed.comfy-scroll { bottom: var(--comfy-clip, 0px) !important; }
+/* LM-41 on a share: a desktop's header row (room chip, Fit, Invite, Help,
+   Full screen) ends by 62px, and the top-right face's Open sat under Full
+   screen. The share feed starts under that row like the plain feed does
+   (views.headerBand). A phone keeps the full-bleed share. */
+@media (min-width: 701px) and (min-height: 501px) {
+  body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app) #feed { top: calc(64px + var(--gtop, 0px)) !important; }
+}
 /* A sideways phone: the tile window is a panel on the right, full height.
    It grows with the preview, and stops at the screen edge. */
 @media (max-height: 500px) and (orientation: landscape) {
@@ -420,6 +427,11 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 @media (max-width: 700px), (max-height: 500px) {
   #tilewin { max-height: calc(100dvh - 16px); }
 }
+/* A desktop card has room for 16px words on the compact buttons (older-eyes
+   rule). A phone and a short window keep 13px. */
+@media (min-width: 701px) and (min-height: 501px) {
+  #tilewin .tw-side button.tw-btn { font-size: 16px; padding: 4px; }
+}
 
 /* Settings is one card. Desktop: video, stage and name on one row; captions
    beside the mix. Phone: name beside the mix. Every control stays visible,
@@ -539,6 +551,15 @@ body.broadcast #stagefeed .rowtile .rlabel:not(.sharelabel) { display: none; }
 #shortcutsheet ul { columns: 2; column-gap: 16px; }
 #shortcutsheet li { font-size: 14px; line-height: 1.25; margin: 2px 0; }
 #shortcutsheet kbd { font-size: 13px; padding: 1px 4px; }
+/* A desktop has room for 16px words in the key list (older-eyes rule,
+   shortcuts.spec.js) and it still fits at 1024x533. The phone keeps 14px. */
+@media (min-width: 701px) and (min-height: 501px) {
+  #shortcutsheet li { font-size: 16px; }
+  #shortcutsheet kbd { font-size: 15px; }
+}
+/* Open sits in the stage tile's upper right (UI-0010). Stop sharing on the
+   slide starts under it instead of under its corner. */
+#stagefeed .rowtile:not(.mk-bar) > .stagestop { top: 34px; }
 
 /* The compact-button display:flex outranks the older hides. Rebroadcast
    stays a broadcast-host control. Vote stays off unless the room can vote. */
@@ -628,4 +649,27 @@ html.ui-large body:not(.has-app):not(.solo-app):not(.app-room) #appbar #appinvit
   #tilewin .tw-face { margin: 2px 0; }
   #tilewin .tw-face-av { width: 56px; height: 56px; font-size: 24px; }
   #tilewin button.tw-btn, #tilewin .modbar button { min-height: 32px; padding: 4px 8px; font-size: 13px; }
+}
+
+/* Recording during a share or an app sat on the OS header row: Full screen
+   on a desktop (appbar 0-53px), Invite on an upright phone (its row is at
+   58-103px since the header redo). The pill now sits on the left, under the
+   room chip (it ends by 62px), clear of the faces' Open corners on the
+   right, and keeps its own ink on the shared picture. */
+body.screen-on:not(.broadcast) #airbar.on,
+body.comfy.has-app #airbar.on { top: calc(70px + var(--gtop, 0px)); right: auto; left: calc(12px + env(safe-area-inset-left, 0px)); }
+body.screen-on:not(.broadcast) #airbar.on #airrec,
+body.comfy.has-app #airbar.on #airrec { background: rgba(12,14,18,.92); color: #f4f7fb; }
+@media (max-width: 700px) and (orientation: portrait) {
+  body.screen-on:not(.broadcast) #airbar.on,
+  body.comfy.has-app #airbar.on { top: calc(110px + var(--gtop, 0px)); }
+}
+
+/* A meeting app (run-app): the app's own bar is the top 53px of the app
+   pane, and the room chip at 14px sat on the app's name and who runs it.
+   The chip floats just under that bar instead, over the app, still in
+   reach. Recording steps under the chip. A phone keeps its own rows. */
+@media (min-width: 701px) and (min-height: 501px) {
+  body.comfy.has-app:not(.broadcast) .topchip { top: calc(60px + var(--gtop, 0px)); }
+  body.comfy.has-app:not(.broadcast) #airbar.on { top: calc(116px + var(--gtop, 0px)); }
 }
