@@ -148,6 +148,9 @@
     const body = doc.body;
     const skip = !opts || (body && body.classList && (body.classList.contains('screen-on') || body.classList.contains('has-app')));
     if (skip) { feed.style.bottom = ''; return 0; }
+    // apply() found that stopping above Record cost a face its 96px: the
+    // faces take the whole screen and the controls float over them.
+    if (opts._float) { feed.style.bottom = ''; return 0; }
     const view = doc.defaultView || root;
     const vh = +opts.vh || (view && view.innerHeight) || 0;
     const vw = +opts.vw || (view && view.innerWidth) || 0;
@@ -177,7 +180,9 @@
       // Seven faces leave Record beside the grid. Sit the bottom row on the
       // dock, still above Video, and only when the first pass missed it.
       if (doc.documentElement.dataset.chromeLip === '1' && d > 0) {
-        const lip = d + 2;
+        // 4px, not 2: whole-pixel squares ended 1px into the dock, which
+        // does not count as meeting it (375x553 SE in Safari).
+        const lip = d + 4;
         if (!(btnTop > 0) || lip < btnTop) edge = lip;
       }
       callChromeEdge = edge;
@@ -666,6 +671,17 @@
       self: opts.self != null ? opts.self : (opts.selfView || 'tile'),
       gallery: opts.gallery === 'scroll' ? 'scroll' : 'fit',
     });
+    // Stopping the faces above Record must not shrink a phone face under the
+    // 96px Fit floor (a 320x460 SE made seven 76x108 slivers). Then the faces
+    // fill the screen and the dock floats over them (Nathan 2026-10-19 16:42).
+    // The held line decides it, so a tuck or a wake gives the same answer.
+    if (!opts._float && opts.phone && chrome > 0 && lay && lay.rects) {
+      for (let i = 0; i < lay.rects.length; i++) {
+        const r = lay.rects[i], t = byId[r.id];
+        if (!t || t.tier === 'stad' || t.stage || t.share) continue;
+        if (Math.min(r.w, r.h) < 96 - 0.5) { opts._float = true; return apply(opts); }
+      }
+    }
     for (let i = 0; i < tiles.length; i++) {
       if (tiles[i].me || tiles[i].id === 'me') markSelf(tiles[i].el, lay.self);
     }
