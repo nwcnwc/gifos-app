@@ -1419,9 +1419,10 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
       body.amadmin .tile.slim.menu .modbar button { font-size: 13px; padding: 2px 4px; }
     }
-    /* A short camera-off tile (about 100px) drew its two-line name and a
-       three-line "✋ hand raised" over the big initial. The hand is a ✋ chip,
-       and the initial fits the band between the chips and the name. */
+    /* A short camera-off tile (about 76–123px) drew its name and a column of
+       chips over the big initial. The chips are one row under Open (see
+       meet-23b.css) and the name is two lines, so the initial fits the band
+       between them. */
     .tile.slim.short.cam-off .chips { flex-wrap: wrap; align-content: flex-start; gap: 3px; }
     /* A short tile has about 44px beside Full screen, and a slim one about
        93px under it, so "✋ hand raised" beside "⏺ recording this meeting"
@@ -1448,8 +1449,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     .tile.slim.short .chips :is(span.hand, span.rec, span.lv, span.ico) { width: 20px; height: 20px; }
     .tile.slim.short .chips span.lv b.ico-only,
     .tile.slim .chips:has(> span:not(.ico) ~ span:not(.ico)) span.lv b.ico-only { display: inline; }
-    .tile.slim.short.cam-off .avatar { box-sizing: border-box; padding: 30px 0 40px; line-height: 1;
-      font-size: clamp(24px, calc((var(--th, 130px) - 70px) * 1.1), 48px); }
+    .tile.slim.short.cam-off .avatar { box-sizing: border-box; padding: 50px 4px 36px; line-height: 1;
+      font-size: clamp(28px, calc((var(--th, 130px) - 86px) * 0.9), 42px); }
     .tile.slim .name, html body.comfy .tile.slim .name { left: 6px; bottom: 6px; max-width: calc(100% - 12px); padding: 1px 4px; z-index: 5;
       white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
   }
@@ -2117,6 +2118,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     body.comfy.has-app #airbar.on #airrec {
       background: rgba(12,14,18,.92);
       color: #f4f7fb;
+    }
+  }
+  /* Since Invite, Help and Full screen share Fit's row on an upright phone
+     (58px to 102px, see #appbar below), the pill at 62px sat on them again.
+     It steps under that row. Large text keeps those buttons in the top row. */
+  @media (max-width: 700px) and (orientation: portrait) {
+    html:not(.ui-large) body.screen-on:not(.broadcast):not(.has-app):not(.solo-app):not(.app-room) #airbar.on {
+      top: calc(110px + var(--gtop, 0px));
     }
   }
   #airbar.live::before, #airbar.watch::before, #airbar.group::before {
