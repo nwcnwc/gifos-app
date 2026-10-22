@@ -190,6 +190,12 @@ body.comfy.screen-on:not(.has-app):not(.broadcast):not(.app-room):not(.solo-app)
   body:not(.head-calm):not(.chrome-away) #txmark span { display: none; }
   body:not(.head-calm):not(.chrome-away) #txmark { padding: 3px 8px; }
 }
+/* fitStatusRest: a wide window's header line that is longer than its room
+   gives up the mark's word first, then leaves the row rather than show a
+   sentence cut in half. */
+body.tx-tight #txmark span { display: none; }
+body.tx-tight #txmark { padding: 3px 8px; }
+.topchip #statusrest.rest-off { display: none !important; }
 /* The people count ends inside its line instead of running under the buttons beside it. */
 @media (max-width: 700px), (max-height: 500px) {
   .topchip #statuscount { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }

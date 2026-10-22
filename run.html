@@ -2224,6 +2224,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
   /* A narrow desktop row (about 960px) has less room than the line needs next
      to the header chip: the line wraps to two 16px lines inside the header
      band instead of running over the chip (placeHandq sets the width). */
+  body.desk-ptr.comfy.hq-tight .topchip #statuscount, body.desk-ptr.comfy.hq-tight .topchip #statusrest { display: none !important; }
   body.desk-ptr.comfy #handq.on.hq-tight { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
     white-space: normal; padding: 4px 14px; font-size: 16px; line-height: 20px; min-height: 48px; border-radius: 16px; }
   /* A shared slide starts below the header row, so the header never covers it. */
@@ -12463,6 +12464,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         // An empty count is no button: Tab must not stop on nothing.
         if (countEl.hidden !== !countText) countEl.hidden = !countText;
         if (restEl.textContent !== restText) restEl.textContent = restText;
+        restEl.dataset.full = restText;
+        restEl.dataset.short = (q && q.label && restText.indexOf(' · ' + q.label) === 0) ? restText.slice((' · ' + q.label).length) : '';
+        fitStatusRest();
       }
       paintBcQuiet(bq);
       if (typeof paintLiveBadge === 'function') paintLiveBadge();
@@ -12485,6 +12489,37 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       } catch (e) {}
       try { updateStatus(); } catch (e) {}
     }, 5000);
+    // A wide window's header line never shows a sentence cut in half (the
+    // same rule as the You-left line, 97854e1). The OS buttons take the
+    // right of the row (UI-0010), so when the line is longer than the room:
+    // the transcribing mark keeps only its icon, then the resolution drops,
+    // and then the sentence leaves the row. The whole line stays the
+    // header's title and a phone's status sheet.
+    function fitStatusRest() {
+      const restEl = document.getElementById('statusrest');
+      if (!restEl) return;
+      const b = document.body.classList;
+      const over = () => restEl.scrollWidth > restEl.clientWidth + 1;
+      const full = restEl.dataset.full || '';
+      if (restEl.textContent !== full) restEl.textContent = full;
+      b.remove('tx-tight');
+      restEl.classList.remove('rest-off');
+      if (!full || (typeof phoneLayout === 'function' && phoneLayout()) || !restEl.getClientRects().length) return;
+      if (!over()) return;
+      b.add('tx-tight');
+      if (!over()) return;
+      const short = restEl.dataset.short || '';
+      if (short) {
+        restEl.textContent = short;
+        if (!over()) return;
+        restEl.textContent = full;
+      }
+      restEl.classList.add('rest-off');
+    }
+    let fitRestFrame = 0;
+    window.addEventListener('resize', () => {
+      if (!fitRestFrame) fitRestFrame = requestAnimationFrame(() => { fitRestFrame = 0; try { fitStatusRest(); } catch (e) {} });
+    });
     try {
       const hdrMq = window.matchMedia('(max-width: 700px), (max-height: 500px)');
       if (hdrMq.addEventListener) hdrMq.addEventListener('change', () => { try { updateStatus(); } catch (e) {} });
@@ -18192,6 +18227,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         handqEl.style.right = '';
         handqEl.style.maxWidth = '';
         handqEl.classList.remove('hq-tight');
+        document.body.classList.remove('hq-tight');
         document.body.style.removeProperty('--hq-room');
         try { placeFit(); } catch (e) {}
         return;
@@ -18204,20 +18240,27 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       const right = Math.max(14, Math.round(window.innerWidth - edge));
       handqEl.style.right = right + 'px';
-      // The header chip's count yields to the line; the rest of the chip
-      // (logo, mark) does not. When the line is wider than what is left of
-      // the row, it wraps (hq-tight) to that width instead of covering the chip.
+      // The header chip yields to the line (--hq-room) down to its logo and
+      // mark; the count already shrinks to an unreadable sliver there. When
+      // the line is wider than what is left of the row beside the logo and
+      // mark, the count steps out and the line wraps to that width (hq-tight)
+      // instead of covering the chip. People is still in More.
       handqEl.classList.remove('hq-tight');
+      document.body.classList.remove('hq-tight');
       handqEl.style.maxWidth = '';
       const chipEl = document.querySelector('.topchip');
-      const countEl = document.getElementById('statuscount');
       if (chipEl && chipEl.getClientRects().length) {
         const cr = chipEl.getBoundingClientRect();
-        const cw = countEl && countEl.getClientRects().length ? countEl.getBoundingClientRect().width : 0;
-        const room = Math.floor(window.innerWidth - right - (cr.right - cw) - 10);
-        if (handqEl.getBoundingClientRect().width > room) {
-          handqEl.classList.add('hq-tight');
-          handqEl.style.maxWidth = Math.max(120, room) + 'px';
+        const stEl = document.getElementById('status');
+        const fixedRight = stEl && stEl.getClientRects().length ? stEl.getBoundingClientRect().left + 12 : cr.right;
+        const natural = handqEl.getBoundingClientRect().width;
+        if (natural > Math.floor(window.innerWidth - right - cr.right - 10)) {
+          const room = Math.floor(window.innerWidth - right - fixedRight - 10);
+          if (natural > room) {
+            handqEl.classList.add('hq-tight');
+            document.body.classList.add('hq-tight');
+            handqEl.style.maxWidth = Math.max(120, room) + 'px';
+          }
         }
       }
       document.body.style.setProperty('--hq-room', Math.round(right + handqEl.getBoundingClientRect().width + 10) + 'px');
