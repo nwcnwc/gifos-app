@@ -10,12 +10,20 @@ async function boot(page) {
 }
 
 // 0.9.23b: per-person controls live in the tile's control window. A tile
-// takes keyboard focus, Enter opens its window, and Tab walks its controls.
-test('keyboard focus reaches a remote tile and Enter opens its controls', async ({ page }) => {
+// takes keyboard focus, Tab reaches its Open button (UI-0010, ddd6e19: Open
+// is the only control that opens the window), Enter opens it, and Tab walks
+// its controls.
+test('keyboard focus reaches a remote tile and its Open button opens its controls', async ({ page }) => {
   await boot(page);
   const tile = page.locator('#grid .tile:not(.me)').first();
   await expect(tile).toHaveAttribute('tabindex', '0');
   await tile.focus();
+  let onOpen = false;
+  for (let i = 0; i < 6 && !onOpen; i++) {
+    await page.keyboard.press('Tab');
+    onOpen = await tile.evaluate((t) => document.activeElement === t.querySelector(':scope > .tile-open'));
+  }
+  expect(onOpen).toBe(true);
   await page.keyboard.press('Enter');
   await expect(page.locator('#tilewin')).toBeVisible();
   const seen = [];

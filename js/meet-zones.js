@@ -40,7 +40,8 @@
   function choosePer(n, w, side, gap, avoidLone) {
     const fit = Math.max(1, perLine(w, Math.max(1, side), gap));
     const per = Math.min(fit, Math.max(1, n));
-    if (!avoidLone || !(n > 1) || lastCount(n, per) !== 1) return { per: per, side: side };
+    // One across is a column: every line holds one face, none is left alone.
+    if (!avoidLone || !(n > 1) || per === 1 || lastCount(n, per) !== 1) return { per: per, side: side };
     for (let p = per - 1; p >= 2; p--) {
       if (lastCount(n, p) !== 1) return { per: p, side: side };
     }

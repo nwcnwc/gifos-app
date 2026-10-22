@@ -7,11 +7,9 @@ test.use({
   viewport: { width: 390, height: 844 },
   hasTouch: true,
   isMobile: true,
-  // --disable-gpu and the fake-media switches are Chromium flags: WebKit refuses
-  // --disable-gpu and closes in 2 s, before the tray test (which runs there) starts.
+  // Chromium-only flags: Playwright WebKit refuses --disable-gpu and closes in 2 s.
   launchOptions: [async ({ browserName }, use) => use(browserName === 'chromium'
-    ? { args: ['--disable-gpu', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] }
-    : {}), { scope: 'worker' }],
+    ? { args: ['--disable-gpu', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] } : {}), { scope: 'worker' }],
 });
 
 async function boot(page) {

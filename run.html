@@ -19157,7 +19157,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!el) return;
       // An app room keeps its own Help line after the app is on screen.
       // has-app is also true there; it must not replace the room's story.
-      const appRoom = ROOM.kind === 'app' || document.body.classList.contains('app-room');
+      // A solo app (no room yet) is just the app: it says "app" until Invite makes the room.
+      const appRoom = (ROOM.kind === 'app' && !ROOM.solo) || document.body.classList.contains('app-room');
       el.title = appRoom ? (uiLang() === 'en' ? 'How this app room works' : uiText('appHelpTitle', 'How this app room works'))
         : document.body.classList.contains('has-app') ? uiText('appHelpTip', 'How this app works')
         : BROADCAST ? 'How this broadcast works' : 'How this meeting works';
@@ -20213,6 +20214,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     function bootAppRoom() {
       document.body.classList.add('app-room');
       try { refreshAudioBtn(); } catch (e) {}
+      // A solo app that Invite turns into a room now speaks for the room.
+      try { paintHelpTip(); } catch (e) {}
       return ensureName().then(() => {
         meTile = makeTile('me', myName() + ' ' + uiText('whoYou', '(you)'), true);
         tileNote(meTile, 'This is an app room — no camera, and no video. Talk, if the host turns it on, is voice only.');

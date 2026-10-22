@@ -198,9 +198,8 @@
       let top = 0;
       if (a > 0 && b > 0) top = Math.min(a, b);
       else top = a > 0 ? a : b;
-      // No call-state row: the dock is the edge.
-      // A desktop has no call-state row and its faces fill the window
-      // under a floating dock (sideways-tiles: 0.51 slivers when it stopped there).
+      // No call-state row on a phone: the dock is the edge. Desktop has no
+      // such row and stays full-bleed under its floating dock (4:42 PM rule).
       if (!(top > 0) && d > 0 && opts.phone) top = d;
       callChromeTop = top > 0 ? top : 0;
       // Video and Mic are the line a face must not cross. On a sideways
