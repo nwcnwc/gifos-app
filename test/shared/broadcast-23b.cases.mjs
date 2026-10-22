@@ -31,7 +31,7 @@ test('a viewer early for a service reads when it starts, a countdown, Add to cal
   await viewer(page);
   const at = Math.floor(Date.now() / 1000) + 2 * 3600 + 5 * 60;
   await page.evaluate((a) => window.__gifosVideo.setPeerStatusForTest('qa1', { bcat: a, bcvisit: 'https://example.org/church' }), at);
-  await expect.poll(async () => (await card(page)).text, { timeout: 15000 }).toMatch(/^The service starts .+ · in 2 h [0-9]+ min\.$/);
+  await expect.poll(async () => (await card(page)).text, { timeout: 15000 }).toMatch(/^The broadcast starts .+ · in 2 h [0-9]+ min\.$/);
   const c = await card(page);
   expect(c.on).toBe(true);
   expect(c.cal).toBe(true);
