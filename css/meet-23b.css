@@ -648,3 +648,12 @@ body.comfy.has-app #airbar.on #airrec { background: rgba(12,14,18,.92); color: #
   body.screen-on:not(.broadcast) #airbar.on,
   body.comfy.has-app #airbar.on { top: calc(110px + var(--gtop, 0px)); }
 }
+
+/* A meeting app (run-app): the app's own bar is the top 53px of the app
+   pane, and the room chip at 14px sat on the app's name and who runs it.
+   The chip floats just under that bar instead, over the app, still in
+   reach. Recording steps under the chip. A phone keeps its own rows. */
+@media (min-width: 701px) and (min-height: 501px) {
+  body.comfy.has-app:not(.broadcast) .topchip { top: calc(60px + var(--gtop, 0px)); }
+  body.comfy.has-app:not(.broadcast) #airbar.on { top: calc(116px + var(--gtop, 0px)); }
+}

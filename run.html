@@ -19061,7 +19061,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       if (!el) return;
       // An app room keeps its own Help line after the app is on screen.
       // has-app is also true there; it must not replace the room's story.
-      const appRoom = ROOM.kind === 'app' || document.body.classList.contains('app-room');
+      // A solo app (no room yet) is just the app: it says "app" until Invite makes the room.
+      const appRoom = (ROOM.kind === 'app' && !ROOM.solo) || document.body.classList.contains('app-room');
       el.title = appRoom ? (uiLang() === 'en' ? 'How this app room works' : uiText('appHelpTitle', 'How this app room works'))
         : document.body.classList.contains('has-app') ? uiText('appHelpTip', 'How this app works')
         : BROADCAST ? 'How this broadcast works' : 'How this meeting works';

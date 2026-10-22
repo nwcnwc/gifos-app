@@ -97,7 +97,8 @@ for (const [w, hgt] of [[1280, 720], [390, 844]]) {
     expect(got.meet.help.w, 'meet pills match').toBeCloseTo(got.meet.full.w, 0);
     expect(got.meet.help.h, 'meet pills match').toBeCloseTo(got.meet.full.h, 0);
     expect(got.solo.help.title).toBe('How this app works');
-    expect(got.room.help.title).toBe('How this app works');
+    // An app inside a room speaks for the room (8a30dad; gifos e2e-app-room asserts the same words).
+    expect(got.room.help.title).toBe('How this app room works');
     expect(got.meet.help.title).toBe('How this meeting works');
     // A meeting's host also gets Stop app, between the two: Help sits one button further in.
     const moved = (h) => {
