@@ -2120,6 +2120,14 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       color: #f4f7fb;
     }
   }
+  /* Since Invite, Help and Full screen share Fit's row on an upright phone
+     (58px to 102px, see #appbar below), the pill at 62px sat on them again.
+     It steps under that row. Large text keeps those buttons in the top row. */
+  @media (max-width: 700px) and (orientation: portrait) {
+    html:not(.ui-large) body.screen-on:not(.broadcast):not(.has-app):not(.solo-app):not(.app-room) #airbar.on {
+      top: calc(110px + var(--gtop, 0px));
+    }
+  }
   #airbar.live::before, #airbar.watch::before, #airbar.group::before {
     content: ''; width: 12px; height: 12px; border-radius: 50%; flex: none; }
   #airbar.live::before { background: #fff; }
