@@ -14,7 +14,12 @@ async function boot(page) {
   await expect(page.locator('#appinvite')).toBeVisible();
 }
 
-test('alone, Invite copies the link in one click and leaves when someone else is here', async ({ page }) => {
+// The header's Invite is the meeting's (Nathan 2026-10-18 20:02 #3 and
+// 21:19 #1): inside a meeting it always shares the meeting link, alone or
+// with people here, and it opens the meeting's Invite sheet (bafc6b1). The
+// older status-chip button copied in one click and left once someone came;
+// that chip is gone (97dd713). The pill reads at 16px like the other two.
+test('alone, Invite opens the meeting link sheet and stays when someone else is here', async ({ page }) => {
   await boot(page);
   const btn = page.locator('#appinvite');
   await expect(btn).toHaveText('Invite');
@@ -41,18 +46,32 @@ test('alone, Invite copies the link in one click and leaves when someone else is
     navigator.clipboard.writeText = (t) => { window.__copied = String(t); return Promise.resolve(); };
     navigator.share = (p) => { window.__shared = p; return Promise.resolve(); };
   });
+  // Alone: the meeting's sheet, with its link, Copy and Share.
   await page.click('#appinvite');
-  await expect(btn).toHaveText('Copied ✓');
-  await expect(page.locator('#inv-modal')).toBeHidden();
+  await expect(page.locator('#inv-modal')).toBeVisible();
+  await expect(page.locator('#inv-modal h3')).toHaveText('Share this meeting');
   await expect(page.locator('#roster')).toBeHidden();
+  expect(await page.locator('#inv-url').inputValue()).toContain('qaalone');
+  await page.click('#inv-copy');
+  await expect(page.locator('#inv-copy')).toHaveText('Copied ✓');
+  await page.click('#inv-share');
   const sent = await page.evaluate(() => ({ copied: window.__copied, shared: window.__shared && window.__shared.url }));
   expect(sent.copied).toContain('qaalone');
   expect(sent.shared).toContain('qaalone');
+  await page.click('#inv-done');
+  await expect(page.locator('#inv-modal')).toBeHidden();
 
+  // People arrive: the count changes, and Invite stays in the header with
+  // the same meeting link.
   await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 2, connected: false }));
   await expect(page.locator('#statuscount')).toHaveText('3 in this meeting');
-  await expect(btn).toBeHidden();
   await expect(page.locator('#status')).not.toContainText('Just you');
+  await expect(btn).toBeVisible();
+  await expect(btn).toHaveText('Invite');
+  await page.click('#appinvite');
+  await expect(page.locator('#inv-modal')).toBeVisible();
+  await expect(page.locator('#inv-modal h3')).toHaveText('Share this meeting');
+  expect(await page.locator('#inv-url').inputValue()).toContain('qaalone');
 });
 
 test.describe('German alone invite', () => {
