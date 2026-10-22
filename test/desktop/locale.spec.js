@@ -1,9 +1,12 @@
 const { test, expect } = require('@playwright/test');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 async function openJoin(page) {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.addInitScript(() => { localStorage.setItem('gifos_name', 'Avery Chen'); });
-  await page.goto('/run.html#v=qalang&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.goto('/run.html#v=' + RUN_ROOM + 'qalang&debug=on', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#appear-modal')).toBeVisible();
 }
 
@@ -88,7 +91,7 @@ test('the in-call line talks about faces', async ({ page }) => {
     localStorage.setItem('gifos_name', 'Jordan Lee');
     sessionStorage.setItem('gifos_appeared', '1');
   });
-  await page.goto('/run.html#v=qawarm&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.goto('/run.html#v=' + RUN_ROOM + 'qawarm&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#statuscount', { state: 'visible' });
   await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4, connected: false }));
   await expect(page.locator('#statusrest')).toContainText('faces stay soft until a password');

@@ -9,6 +9,9 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium, devices } = require('playwright');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
@@ -22,7 +25,7 @@ const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
   const context = await browser.newContext(Object.assign({}, devices['iPhone SE'], { hasTouch: true }));
   await context.addInitScript(() => { try { localStorage.setItem('gifos_name', 'Nathan'); } catch (e) {} });
   const page = await context.newPage();
-  await page.goto(BASE + '/run.html#v=chat-dense', { waitUntil: 'domcontentloaded', timeout: 20000 });
+  await page.goto(BASE + '/run.html#v=' + RUN_ROOM + 'chat-dense', { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForSelector('#bartoggle', { timeout: 15000 });
   const skip = page.locator('#nmok');
   if (await skip.count()) await skip.tap().catch(() => {});

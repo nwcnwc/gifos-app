@@ -8,6 +8,9 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium, devices } = require('playwright');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8994';
 const PHASE = process.env.PHASE || 'run';
@@ -68,7 +71,7 @@ function boxes(page) {
       } catch (e) {}
     });
     const page = await context.newPage();
-    await page.goto(BASE + '/run.html?desk=dockslots#v=dock-slots-' + phone.name + '&DEBUG=on', { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.goto(BASE + '/run.html?desk=dockslots#v=' + RUN_ROOM + 'dock-slots-' + phone.name + '&DEBUG=on', { waitUntil: 'domcontentloaded', timeout: 20000 });
     await page.waitForSelector('#reactbtn', { timeout: 15000 });
     const skip = page.locator('#nmok');
     if (await skip.count()) await skip.tap().catch(() => {});

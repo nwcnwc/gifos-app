@@ -6,7 +6,10 @@ async function boot(page, width, height, remotes) {
     localStorage.setItem('gifos_name', 'Jordan Lee');
     sessionStorage.setItem('gifos_appeared', '1');
   });
-  await page.goto('/run.html#v=qapack&debug=on', { waitUntil: 'domcontentloaded' });
+  // A room of its own: the page is on the public relay, and a fixed name seats every
+  // gallery-pack running at the same time on another box as a real face here.
+  const room = 'qapack' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  await page.goto('/run.html#v=' + room + '&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#mic', { state: 'visible' });
   const seeded = await page.evaluate((n) => window.__gifosVideo.seedGalleryForTest({ count: n }), remotes);
   expect(seeded && seeded.ok).toBe(true);

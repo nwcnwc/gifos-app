@@ -1,4 +1,7 @@
 const { test, expect } = require('@playwright/test');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 async function boot(page) {
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -6,7 +9,7 @@ async function boot(page) {
     localStorage.setItem('gifos_name', 'Jordan Lee');
     sessionStorage.setItem('gifos_appeared', '1');
   });
-  await page.goto('/run.html#v=qahost&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.goto('/run.html#v=' + RUN_ROOM + 'qahost&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#leavebtn', { state: 'visible' });
   const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 2, connected: true }));
   expect(seeded && seeded.ok).toBe(true);
@@ -113,7 +116,7 @@ test('a guest in an admin room gets no host roster tools', async ({ page }) => {
     localStorage.setItem('gifos_name', 'Jordan Lee');
     sessionStorage.setItem('gifos_appeared', '1');
   });
-  await page.goto('/run.html#v=qahost&av=0123456789abcdef&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.goto('/run.html#v=' + RUN_ROOM + 'qahost&av=0123456789abcdef&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#leavebtn', { state: 'visible' });
   await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 2, connected: false }));
   await page.click('#statuscount');

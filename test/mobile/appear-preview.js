@@ -8,6 +8,9 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium, devices } = require('playwright');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8765';
 const SHOTS = path.join(__dirname, '..', '..', 'qa', 'mobile', 'shots');
@@ -89,7 +92,7 @@ async function boot(browser, device, url, identity) {
   }
 
   {
-    const { context, page } = await boot(browser, phone, '/run.html#v=appear-known', { name: 'Grandma Ruth', avatar: avatar });
+    const { context, page } = await boot(browser, phone, '/run.html#v=' + RUN_ROOM + 'appear-known', { name: 'Grandma Ruth', avatar: avatar });
     const showed = await page.waitForSelector('#nm', { timeout: 3000 }).then(() => true).catch(() => false);
     if (!showed) {
       await page.screenshot({ path: path.join(SHOTS, 'after-appear-name.png') });
@@ -145,7 +148,7 @@ async function boot(browser, device, url, identity) {
   }
 
   {
-    const { context, page } = await boot(browser, phone, '/run.html#v=appear-clear', { name: 'Grandma Ruth', avatar: avatar });
+    const { context, page } = await boot(browser, phone, '/run.html#v=' + RUN_ROOM + 'appear-clear', { name: 'Grandma Ruth', avatar: avatar });
     await page.waitForSelector('#nmcancel', { timeout: 15000 });
     await page.locator('#nmcancel').tap();
     await page.waitForTimeout(100);
@@ -161,7 +164,7 @@ async function boot(browser, device, url, identity) {
   }
 
   {
-    const { context, page } = await boot(browser, phone, '/run.html#v=appear-new', { name: '', avatar: '' });
+    const { context, page } = await boot(browser, phone, '/run.html#v=' + RUN_ROOM + 'appear-new', { name: '', avatar: '' });
     await page.waitForSelector('#nm', { timeout: 15000 });
     const value = await page.locator('#nm').inputValue();
     if (!/^Guest \d+$/.test(value)) failures.push('first visit field is "' + value + '"');

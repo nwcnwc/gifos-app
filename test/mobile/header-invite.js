@@ -6,6 +6,9 @@
  *   NODE_PATH=/tmp/qa-pw/node_modules node test/mobile/header-invite.js
  */
 const { chromium, devices } = require('playwright');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8960';
 
@@ -30,7 +33,7 @@ async function boot(browser, device, opts) {
     } catch (e) {}
   }, opts.scale || null);
   const page = await context.newPage();
-  await page.goto(BASE + '/run.html#v=' + opts.room, { waitUntil: 'domcontentloaded', timeout: 20000 });
+  await page.goto(BASE + '/run.html#v=' + RUN_ROOM + opts.room, { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForSelector('#appinvite', { timeout: 15000 });
   const skip = page.locator('#nmok');
   if (await skip.count()) await skip.tap().catch(() => {});
@@ -124,7 +127,7 @@ async function measure(page) {
       await page.locator('#inv-share').tap();
       await page.waitForTimeout(80);
       const shared = await page.evaluate(() => window.__shared);
-      if (!shared || String(shared.url || '').indexOf('#v=sunday') < 0) bad.push('share sheet did not get the link');
+      if (!shared || String(shared.url || '').indexOf('#v=' + RUN_ROOM + 'sunday') < 0) bad.push('share sheet did not get the link');
       await page.locator('#inv-copy').tap();
       await page.waitForTimeout(120);
       const copied = await page.evaluate(async () => {
@@ -132,7 +135,7 @@ async function measure(page) {
         try { clip = await navigator.clipboard.readText(); } catch (e) { clip = 'ERR ' + e; }
         return { clip: clip, label: document.getElementById('inv-copy').textContent };
       });
-      if (String(copied.clip).indexOf('#v=sunday') < 0) bad.push('copy missed the link (' + copied.clip + ')');
+      if (String(copied.clip).indexOf('#v=' + RUN_ROOM + 'sunday') < 0) bad.push('copy missed the link (' + copied.clip + ')');
       if (copied.label !== 'Copied ✓') bad.push('copy label "' + copied.label + '"');
     }
     if (bad.length) failures.push(phone.name + ': ' + bad.join('; '));
@@ -153,7 +156,7 @@ async function measure(page) {
   if (crowded.btn.w < 44 || crowded.btn.h < 44) bad.push('Invite is ' + Math.round(crowded.btn.w) + 'x' + Math.round(crowded.btn.h) + ' with people here');
   if (!crowded.inHeader) bad.push('Invite leaves the OS header with people here');
   if (overlaps(crowded.btn, crowded.fit)) bad.push('Invite covers Fit with people here');
-  if (crowded.status !== 'sunday · 4 in this meeting') bad.push('header "' + crowded.status + '"');
+  if (crowded.status !== RUN_ROOM + 'sunday · 4 in this meeting') bad.push('header "' + crowded.status + '"');
   if (bad.length) failures.push('with-people: ' + bad.join('; '));
   await context.close();
   await browser.close();
