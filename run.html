@@ -31520,6 +31520,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       }
       function chromeHeld() {
         if (!callOpen() || !phoneCall()) return true;
+        // A service host alone keeps the link and the dock up to invite
+        // people, as the desktop dock does (busy(): alone needs Invite).
+        if (typeof BROADCAST !== 'undefined' && BROADCAST && document.body.classList.contains('bc-host') && participantCount() < 2) return true;
         if (bar && !bar.classList.contains('collapsed')) return true;
         const chat = document.getElementById('chatpanel');
         if (chat && chat.classList.contains('open')) return true;
@@ -31560,13 +31563,17 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (chromeHeld() || document.body.classList.contains('chrome-away')) return;
         chromeTimer = setTimeout(hideChrome, CHROME_IDLE_MS);
       }
-      function syncChrome() {
+      // soft: a watched element changed, not a hand. It may end a hold, but
+      // it does not restart a running quiet: a service host's dock rewrites
+      // its class every 2 s (placeDock), so a phone host never went calm.
+      function syncChrome(soft) {
         if (chromeHeld()) {
           if (chromeTimer) clearTimeout(chromeTimer);
           chromeTimer = 0;
           if (document.body.classList.contains('chrome-away')) showChrome();
           return;
         }
+        if (soft && chromeTimer) return;
         if (!document.body.classList.contains('chrome-away')) armChrome();
       }
       // Waking on pointerdown reflows the header before pointerup. The click
@@ -31620,7 +31627,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       });
       const watchChrome = (el, filter) => {
         if (!el || !window.MutationObserver) return;
-        new MutationObserver(() => { try { syncChrome(); } catch (e) {} }).observe(el, { attributes: true, attributeFilter: filter });
+        new MutationObserver(() => { try { syncChrome(true); } catch (e) {} }).observe(el, { attributes: true, attributeFilter: filter });
       };
       watchChrome(document.getElementById('lobby'), ['class']);
       watchChrome(bar, ['class']);
@@ -31629,6 +31636,9 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       watchChrome(document.getElementById('waitlist'), ['hidden']);
       window.__gifosChrome = { ms: CHROME_IDLE_MS, idle: hideChrome, show: showChrome, safeBottom: safeBottomPx };
       syncChrome();
+      // A hold no watched element reports (a host's first viewer comes in, a
+      // dialog closes) still ends: look once a second, softly.
+      setInterval(() => { try { syncChrome(true); } catch (e) {} }, 1000);
     })();
 
     // A small call is a room, not a product: with 2–4 people on a desktop,
