@@ -84,6 +84,15 @@
   // the shown top keeps the faces still (the header band does the same).
   let callChromeTop = 0;
   let callChromeEdge = 0;
+  // The edge without and with the lip onto the dock. apply() decides the lip
+  // per layout, so a tucked page that lays out again (you step on the stage)
+  // picks from the held pair; holding one edge kept the last layout's lip
+  // and the first wake took it back (wake-keeps-tiles, you on stage).
+  let callChromeEdge0 = 0;
+  let callChromeLipEdge = 0;
+  // The dock and the Live/Record buttons where they rest, for the lip test.
+  // Tucked, they are slid away, so the tucked page reads the held boxes.
+  let callChromeMarks = null;
   // The held lines as distances up from the bottom, per screen width. A
   // tucked page that changes size (back from a float, the URL bar going)
   // keeps the reserve the dock had at that width, so the first wake finds
@@ -120,16 +129,23 @@
     return top;
   }
 
-  function tilesMeetChrome(doc, tileEls) {
-    const meet = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
-    const targets = [];
+  // The dock and the shown Live/Record buttons, as screen boxes.
+  function chromeMarks(doc) {
+    const out = [];
     const bar = doc.querySelector('.bar');
-    if (bar) targets.push(bar.getBoundingClientRect());
+    if (bar) out.push(bar.getBoundingClientRect());
     const state = doc.getElementById('callstate');
     if (state) {
       const btns = state.querySelectorAll('button');
-      for (let i = 0; i < btns.length; i++) if (btns[i].offsetParent) targets.push(btns[i].getBoundingClientRect());
+      for (let i = 0; i < btns.length; i++) if (btns[i].offsetParent) out.push(btns[i].getBoundingClientRect());
     }
+    return out;
+  }
+
+  function tilesMeetChrome(doc, tileEls) {
+    const meet = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+    const away = doc.body && doc.body.classList && doc.body.classList.contains('chrome-away');
+    const targets = away && callChromeMarks ? callChromeMarks : chromeMarks(doc);
     for (let i = 0; i < tileEls.length; i++) {
       const el = tileEls[i];
       if (!el || !el.getBoundingClientRect) continue;
@@ -188,6 +204,7 @@
     const vh = +opts.vh || (view && view.innerHeight) || 0;
     const vw = +opts.vw || (view && view.innerWidth) || 0;
     const away = body && body.classList && body.classList.contains('chrome-away');
+    callChromeMarks = null;
     if (!away) {
       const note = doc.getElementById('chatnote');
       const state = doc.getElementById('callstate');
@@ -214,24 +231,31 @@
       // lip below instead.
       // Seven faces leave Record beside the grid. Sit the bottom row on the
       // dock, still above Video, and only when the first pass missed it.
-      if (doc.documentElement.dataset.chromeLip === '1' && d > 0) {
+      let lipEdge = 0;
+      if (d > 0) {
         // 4px, not 2: whole-pixel squares ended 1px into the dock, which
         // does not count as meeting it (375x553 SE in Safari).
         const lip = d + 4;
-        if (!(btnTop > 0) || lip < btnTop) edge = lip;
+        if (!(btnTop > 0) || lip < btnTop) lipEdge = lip;
       }
-      callChromeEdge = edge;
+      callChromeEdge0 = edge;
+      callChromeLipEdge = lipEdge;
       if (vh > 0) {
-        callChromeLast = { top: callChromeTop > 0 ? vh - callChromeTop : 0, edge: callChromeEdge > 0 ? vh - callChromeEdge : 0 };
+        const marks = chromeMarks(doc).map((r) => ({ left: r.left, right: r.right, top: vh - r.top, bottom: vh - r.bottom }));
+        callChromeLast = { top: callChromeTop > 0 ? vh - callChromeTop : 0, edge: edge > 0 ? vh - edge : 0, lip: lipEdge > 0 ? vh - lipEdge : 0, marks: marks };
         callChromeHeld.set(Math.round(vw), callChromeLast);
       }
     } else if (vh > 0) {
       const held = callChromeHeld.get(Math.round(vw)) || callChromeLast;
       if (held) {
         callChromeTop = held.top > 0 ? vh - held.top : 0;
-        callChromeEdge = held.edge > 0 ? vh - held.edge : 0;
+        callChromeEdge0 = held.edge > 0 ? vh - held.edge : 0;
+        callChromeLipEdge = held.lip > 0 ? vh - held.lip : 0;
+        callChromeMarks = (held.marks || []).map((m) => ({ left: m.left, right: m.right, top: vh - m.top, bottom: vh - m.bottom, width: m.right - m.left, height: m.top - m.bottom }));
       }
     }
+    // The lip is this layout's call (apply's second pass), awake or tucked.
+    callChromeEdge = doc.documentElement.dataset.chromeLip === '1' && callChromeLipEdge > 0 ? callChromeLipEdge : callChromeEdge0;
     const top = callChromeTop;
     // Held top, so a tuck does not flip a sideways phone between the two.
     if (sidewaysFill(tiles, vw, vh, header, !!opts.phone, top)) { feed.style.bottom = ''; return 0; }
