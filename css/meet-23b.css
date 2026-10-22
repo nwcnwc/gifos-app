@@ -696,6 +696,13 @@ body.comfy.has-app #airbar.on #airrec { background: rgba(12,14,18,.92); color: #
   body.screen-on:not(.broadcast) #airbar.on,
   body.comfy.has-app #airbar.on { top: calc(110px + var(--gtop, 0px)); }
 }
+/* An app in a phone meeting starts under the header chip, and its own bar
+   (name, Invite, Help, Stop app, who runs it) runs 66-139px. At 110px the
+   pill sat on Invite and the who line and took their taps. It steps under
+   that bar. */
+@media (max-width: 700px) and (orientation: portrait) {
+  body.comfy.has-app:not(.broadcast) #airbar.on { top: calc(146px + var(--gtop, 0px)); }
+}
 
 /* A meeting app (run-app): the app's own bar is the top 53px of the app
    pane, and the room chip at 14px sat on the app's name and who runs it.
