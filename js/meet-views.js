@@ -83,6 +83,7 @@
   // A tuck hides them and slides the dock, which moves that top. Holding
   // the shown top keeps the faces still (the header band does the same).
   let callChromeTop = 0;
+  let callChromeEdge = 0;
 
   function restingTop(el) {
     if (!el || el.hidden) return 0;
@@ -97,6 +98,39 @@
     try { top = el.getBoundingClientRect().top; }
     finally { if (moved) el.style.transform = prev; }
     return top > 0 ? top : 0;
+  }
+
+
+  function dockControlsTop(doc) {
+    const bar = doc.querySelector('.bar');
+    if (!bar) return 0;
+    let top = 0;
+    const nodes = bar.querySelectorAll('#cam, #mic, #reactbtn, #bartoggle, #leavebtn');
+    for (let i = 0; i < nodes.length; i++) {
+      const t = restingTop(nodes[i]);
+      if (t > 0 && (top === 0 || t < top)) top = t;
+    }
+    return top;
+  }
+
+  function tilesMeetChrome(doc, tileEls) {
+    const meet = (a, b) => a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+    const targets = [];
+    const bar = doc.querySelector('.bar');
+    if (bar) targets.push(bar.getBoundingClientRect());
+    const state = doc.getElementById('callstate');
+    if (state) {
+      const btns = state.querySelectorAll('button');
+      for (let i = 0; i < btns.length; i++) if (btns[i].offsetParent) targets.push(btns[i].getBoundingClientRect());
+    }
+    for (let i = 0; i < tileEls.length; i++) {
+      const el = tileEls[i];
+      if (!el || !el.getBoundingClientRect) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 8 || r.height < 8) continue;
+      for (let j = 0; j < targets.length; j++) if (meet(r, targets[j])) return true;
+    }
+    return false;
   }
 
   // Faces stop where the call's buttons start. A shared screen and an app
@@ -114,12 +148,32 @@
     if (!away) {
       const note = doc.getElementById('chatnote');
       const state = doc.getElementById('callstate');
+      const bar = doc.querySelector('.bar');
       const a = restingTop(note);
       const b = restingTop(state);
+      const d = restingTop(bar);
       let top = 0;
       if (a > 0 && b > 0) top = Math.min(a, b);
       else top = a > 0 ? a : b;
+      // No call-state row: the dock is the edge.
+      if (!(top > 0) && d > 0) top = d;
       callChromeTop = top > 0 ? top : 0;
+      // Video and Mic are the line a face must not cross. On a sideways
+      // phone the dock is taller than Record and sticks up into the feed.
+      let edge = callChromeTop;
+      const btnTop = dockControlsTop(doc);
+      // Sideways, Video sticks up past Record. Stop there.
+      if (btnTop > 0 && (edge === 0 || btnTop < edge)) edge = btnTop;
+      // Upright, Record is the row the faces have to touch. Two pixels is
+      // not enough to land on the dock, which stays clear of a four-face grid.
+      else if (d > callChromeTop + 24) edge = Math.min(callChromeTop + 4, d - 4);
+      // Seven faces leave Record beside the grid. Sit the bottom row on the
+      // dock, still above Video, and only when the first pass missed it.
+      if (doc.documentElement.dataset.chromeLip === '1' && d > 0) {
+        const lip = d + 2;
+        if (!(btnTop > 0) || lip < btnTop) edge = lip;
+      }
+      callChromeEdge = edge;
     }
     const top = callChromeTop;
     // Held top, so a tuck does not flip a sideways phone between the two.
@@ -129,7 +183,8 @@
       feed.style.bottom = '';
       return 0;
     }
-    const reserve = Math.ceil(vh - top);
+    const edge = callChromeEdge > 0 ? callChromeEdge : top;
+    const reserve = Math.ceil(vh - edge);
     feed.style.bottom = reserve + 'px';
     return reserve;
   }
@@ -548,6 +603,7 @@
     opts = opts || {};
     const ML = GifOS.meetLayout;
     const feed = opts.feed;
+    if (!opts._lip && feed && feed.ownerDocument) delete feed.ownerDocument.documentElement.dataset.chromeLip;
     if (!ML || !feed) return null;
     const allFaces = opts.faces || [];
     const tiles = (opts.tiles || []).slice();
@@ -609,6 +665,11 @@
       if (half) t.el.dataset.gutter = '1'; else delete t.el.dataset.gutter;
       t.el.dataset.fit = r.fit || 'cover';
       used.push(t.el);
+    }
+    if (!opts._lip && opts.phone && used.length && !tilesMeetChrome(feed.ownerDocument || document, used)) {
+      (feed.ownerDocument || document).documentElement.dataset.chromeLip = '1';
+      opts._lip = true;
+      return apply(opts);
     }
     const usedSet = new Set(used);
     for (let i = 0; i < tiles.length; i++) {
