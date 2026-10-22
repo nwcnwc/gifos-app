@@ -1,4 +1,7 @@
 const { test, expect } = require('@playwright/test');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
@@ -10,7 +13,7 @@ test('the join step prefills your GifOS name and avatar', async ({ page }) => {
       mime: 'image/png', hash: 'ab'.repeat(32), b64: png,
     }));
   }, PNG);
-  await page.goto('/run.html#v=qaappear&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.goto('/run.html#v=' + RUN_ROOM + 'qaappear&debug=on', { waitUntil: 'domcontentloaded' });
   const card = page.locator('#appear-modal');
   await expect(card).toBeVisible();
   await expect(card).toContainText("This is how you'll appear");
@@ -65,7 +68,7 @@ test('Clear blanks the name and the picture', async ({ page }) => {
       mime: 'image/png', hash: 'ab'.repeat(32), b64: png,
     }));
   }, PNG);
-  await page.goto('/run.html#v=qaappear&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.goto('/run.html#v=' + RUN_ROOM + 'qaappear&debug=on', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('#appear-modal')).toBeVisible();
   await page.click('#nmcancel');
   await expect(page.locator('#appear-modal')).toBeHidden();

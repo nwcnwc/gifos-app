@@ -1,5 +1,8 @@
 const { test, expect } = require('@playwright/test');
 const { SEAT_VIEWS, seatPage, seatAndWake } = require('../shared/share-seat');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 // Playwright's Linux WebKit does WebCrypto with libgcrypt, which aborts the
 // tab on an Ed25519 signature over 64 KB (an app's bytes); Safari does not.
@@ -13,7 +16,7 @@ async function boot(page) {
     localStorage.setItem('gifos_name', 'Jordan Lee');
     sessionStorage.setItem('gifos_appeared', '1');
   });
-  await page.goto('/run.html#v=qaapp&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.goto('/run.html#v=' + RUN_ROOM + 'qaapp&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#mic', { state: 'visible' });
   await page.waitForFunction(() => window.__gifosVideo.canRunApp());
   await page.click('#bartoggle');
@@ -247,7 +250,7 @@ for (const [locale, lang, want] of [
         localStorage.setItem('gifos_name', 'Jordan Lee');
         sessionStorage.setItem('gifos_appeared', '1');
       });
-      await page.goto('/run.html#v=' + room + '&debug=on', { waitUntil: 'domcontentloaded' });
+      await page.goto('/run.html#v=' + RUN_ROOM + room + '&debug=on', { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('#mic', { state: 'visible' });
       await page.waitForFunction(() => window.__gifosVideo.canRunApp());
       await page.click('#bartoggle');
@@ -265,7 +268,7 @@ for (const [locale, lang, want] of [
         localStorage.setItem('gifos_name', 'Avery Chen');
         sessionStorage.setItem('gifos_appeared', '1');
       });
-      await guest.goto('/run.html#v=' + room + '&debug=on', { waitUntil: 'domcontentloaded' });
+      await guest.goto('/run.html#v=' + RUN_ROOM + room + '&debug=on', { waitUntil: 'domcontentloaded' });
       await guest.waitForFunction(() => document.body.classList.contains('has-app'), null, { timeout: 30000 });
       await expect(guest.locator('#appname')).toBeVisible();
       await guest.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));

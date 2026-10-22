@@ -7,6 +7,9 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium, devices } = require('playwright');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:9017';
 const N = Math.max(1, parseInt(process.env.N || '5', 10));
@@ -64,7 +67,7 @@ async function runOnce(browser, profile, i, shot) {
   const fails = [];
   const log = { profile: profile.name, i, steps: {} };
   try {
-    await boot(page, '#v=morefold-' + profile.name + '-' + i + '&DEBUG=on');
+    await boot(page, '#v=' + RUN_ROOM + 'morefold-' + profile.name + '-' + i + '&DEBUG=on');
     await openMore(page);
     log.steps.opened = await page.evaluate(stateJs);
     if (!log.steps.opened.open) fails.push('More did not open');
@@ -117,7 +120,7 @@ async function runOnce(browser, profile, i, shot) {
   });
   const page2 = await context2.newPage();
   try {
-    await boot(page2, '#v=morefold-restore-' + profile.name + '-' + i + '&DEBUG=on');
+    await boot(page2, '#v=' + RUN_ROOM + 'morefold-restore-' + profile.name + '-' + i + '&DEBUG=on');
     log.steps.seededOpen = await page2.evaluate(stateJs);
     if (log.steps.seededOpen.open || log.steps.seededOpen.expanded !== 'false' || !log.steps.seededOpen.collapsed) {
       fails.push('stored open restored More on load');

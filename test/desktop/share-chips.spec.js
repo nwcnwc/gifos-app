@@ -1,4 +1,7 @@
 const { test, expect } = require('@playwright/test');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 // While a desktop presents, the faces shrink to a strip of thumbnails. Every
 // chip on a thumbnail must be read whole: before, the presenter's own
@@ -11,7 +14,7 @@ async function boot(page, width) {
     localStorage.setItem('gifos_name', 'Jordan Lee');
     sessionStorage.setItem('gifos_appeared', '1');
   });
-  await page.goto('/run.html#v=qasharechips&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.goto('/run.html#v=' + RUN_ROOM + 'qasharechips&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#leavebtn', { state: 'visible' });
   // The seed raises the third guest's hand (Priya Shah).
   const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 3, connected: true }));

@@ -12,6 +12,9 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium, devices } = require('playwright');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 const BASE = process.env.MEET_BASE || 'http://127.0.0.1:8984';
 const PHASE = process.env.PHASE || 'run';
@@ -38,7 +41,7 @@ function okBehavior(v) {
     } catch (e) {}
   });
   const page = await context.newPage();
-  const url = BASE + '/run.html#v=overscroll-1018&DEBUG=on';
+  const url = BASE + '/run.html#v=' + RUN_ROOM + 'overscroll-1018&DEBUG=on';
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
   await page.waitForSelector('#leavebtn', { timeout: 15000 });
   const skip = page.locator('#nmok');

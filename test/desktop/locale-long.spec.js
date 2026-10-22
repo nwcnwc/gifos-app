@@ -1,4 +1,7 @@
 const { test, expect } = require('@playwright/test');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 test.describe('German lobby, help, and shortcuts', () => {
   test.use({ locale: 'de-DE' });
@@ -19,7 +22,7 @@ test.describe('German lobby, help, and shortcuts', () => {
       localStorage.setItem('gifos_name', 'Pastor Kim');
       sessionStorage.setItem('gifos_appeared', '1');
     });
-    await page.goto('/run.html#v=qalang2&debug=on', { waitUntil: 'domcontentloaded' });
+    await page.goto('/run.html#v=' + RUN_ROOM + 'qalang2&debug=on', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#mic', { state: 'visible' });
     await page.keyboard.press('?');
     await expect(page.locator('#shortcut-title')).toHaveText('Tastatur');

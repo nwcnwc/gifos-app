@@ -1,4 +1,7 @@
 const { test, expect } = require('@playwright/test');
+// A room of its own per run: these pages use the public relay, where a fixed
+// room seats any copy of this test running at the same time as a stranger.
+const RUN_ROOM = Math.random().toString(36).slice(2, 6).padEnd(4, '0');
 
 async function boot(page, width, height) {
   await page.setViewportSize({ width: width, height: height });
@@ -6,7 +9,7 @@ async function boot(page, width, height) {
     localStorage.setItem('gifos_name', 'Jordan Lee');
     sessionStorage.setItem('gifos_appeared', '1');
   });
-  await page.goto('/run.html#v=qaeyes&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.goto('/run.html#v=' + RUN_ROOM + 'qaeyes&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#mic', { state: 'visible' });
   const seeded = await page.evaluate(() => window.__gifosVideo.seedGalleryForTest({ count: 4 }));
   expect(seeded && seeded.ok).toBe(true);
@@ -109,7 +112,7 @@ test('the words in a face\'s control window are 16px', async ({ context }) => {
       localStorage.setItem('gifos_name', 'Jordan Lee');
       sessionStorage.setItem('gifos_appeared', '1');
     });
-    await page.goto('/run.html#v=qaeyestile' + count + '&debug=on', { waitUntil: 'domcontentloaded' });
+    await page.goto('/run.html#v=' + RUN_ROOM + 'qaeyestile' + count + '&debug=on', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#mic', { state: 'visible' });
     await page.evaluate((n) => window.__gifosVideo.seedGalleryForTest({ count: n, connected: true }), count);
     await page.waitForFunction((n) => document.querySelectorAll('#feed .tile[data-comfy="1"]:not(.me)').length >= n, count);
@@ -152,7 +155,7 @@ test('the hand raised chip on a face is 16px', async ({ context }) => {
       localStorage.setItem('gifos_name', 'Jordan Lee');
       sessionStorage.setItem('gifos_appeared', '1');
     });
-    await page.goto('/run.html#v=qaeyeshand&debug=on', { waitUntil: 'domcontentloaded' });
+    await page.goto('/run.html#v=' + RUN_ROOM + 'qaeyeshand&debug=on', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#mic', { state: 'visible' });
     await page.evaluate((n) => window.__gifosVideo.seedGalleryForTest({ count: n, connected: true }), count);
     await page.waitForFunction((n) => document.querySelectorAll('#feed .tile:not(.me) > .blurbox.on').length >= n, count);
@@ -195,7 +198,7 @@ async function faceMarks(page, count, tag) {
     localStorage.setItem('gifos_name', 'Jordan Lee');
     sessionStorage.setItem('gifos_appeared', '1');
   });
-  await page.goto('/run.html#v=qaeyesmarks' + tag + '&debug=on', { waitUntil: 'domcontentloaded' });
+  await page.goto('/run.html#v=' + RUN_ROOM + 'qaeyesmarks' + tag + '&debug=on', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#mic', { state: 'visible' });
   await page.evaluate((n) => window.__gifosVideo.seedGalleryForTest({ count: n, connected: true }), count);
   await page.waitForFunction((n) => document.querySelectorAll('#feed .tile:not(.me) > .blurbox.on').length >= n, count);
