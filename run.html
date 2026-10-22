@@ -19881,7 +19881,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             maybeShowFlip();
             const n = meTile.tile.querySelector('.note'); if (n) n.remove();
             meTile.video.style.display = '';
-            meTile.video.srcObject = localStream;
+            wkBindVideo(meTile.video, localStream);
             meterFor('me', localStream);
             updateTile('me');
             // Any pc born between the knock and the grant was built recvonly —
@@ -22606,6 +22606,50 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const t of ts) if (t.readyState !== 'ended') return t;
       return ts[0] || null;
     }
+    // EVERY MUTED <video> ON WEBKIT BINDS A PICTURE, NEVER A STREAM THAT CARRIES
+    // A MIC. Measured 2026-10-22 (gate-1812 webkit-fix/root, alsalog.so, the
+    // Playwright WebKit shell): each bind of a stream with an audio track —
+    // muted element or not — opens the ALSA device on the web process MAIN
+    // thread (snd_pcm_open -> the PipeWire plugin -> pw_thread_loop_stop ->
+    // pthread_join), 41 opens for 40 binds; a video-only stream opens nothing.
+    // On a box where that open fails (no PipeWire session for the process)
+    // the join blocks the page for seconds, and once in ~3 rounds of 40 binds
+    // for good: every "W1 HUNG" of the row-mate gate, every 20-80 s stall at
+    // pair formation (3/3 stack snapshots). A pair forming is a burst of such
+    // binds (companions, decoders, strips, the self view, each new pc), so
+    // on WebKit they all bind the stream's picture, cached on the stream and
+    // following its live video track; the voice rides the one ear (wkEar).
+    function wkPicOf(stream) {
+      if (!stream || typeof stream.getVideoTracks !== 'function') return stream;
+      const tr = liveVideoTrack(stream), tid = tr ? tr.id : '';
+      if (stream._wkPic && stream._wkPicTid === tid) return stream._wkPic;
+      const pic = new MediaStream(tr ? [tr] : []);
+      stream._wkPic = pic; stream._wkPicTid = tid;
+      if (!stream._wkPicFollow) {
+        stream._wkPicFollow = true;
+        stream.addEventListener('addtrack', (ev) => { // the camera track landed after the mic: the picture takes it
+          const t = ev && ev.track; const cur = stream._wkPic;
+          if (t && t.kind === 'video' && cur && !cur.getVideoTracks().length) { try { cur.addTrack(t); stream._wkPicTid = t.id; } catch (e) {} }
+        });
+      }
+      return pic;
+    }
+    // Bind a stream to a muted <video>: the plain stream on Chromium and
+    // Firefox, its picture on WebKit (tileHolds() answers "is it bound").
+    function wkBindVideo(video, stream) {
+      if (!WEBKIT_ENGINE || !stream) { video.srcObject = stream; return; }
+      const pic = wkPicOf(stream);
+      video._wrapOf = stream; video._pic = pic;
+      if (video.srcObject !== pic) video.srcObject = pic;
+    }
+    // Is this muted <video> showing that stream's CURRENT picture: the plain
+    // stream, or (WebKit) the picture of its live video track. A picture
+    // whose track ended (a rebuilt pair hands the same container a new
+    // track) is stale, and the caller binds again.
+    function wkHolds(video, stream) {
+      if (!tileHolds(video, stream)) return false;
+      return !WEBKIT_ENGINE || !video._pic || video._pic === wkPicOf(stream);
+    }
     function wkBindPic(video, stream, why) {
       const tr = liveVideoTrack(stream);
       if (!tr) {
@@ -23317,7 +23361,8 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       const v = document.createElement('video');
       v.muted = true; v.autoplay = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', '');
       v.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1';
-      v.srcObject = stream; document.body.appendChild(v);
+      if (typeof wkBindVideo === 'function') wkBindVideo(v, stream); else v.srcObject = stream;
+      document.body.appendChild(v);
       const pr = v.play(); if (pr && pr.catch) pr.catch(() => {});
       v._mosFlowAt = 0; v._mosRestarts = 0;
       return v;
@@ -23355,7 +23400,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
       for (const [rk, ent] of ents) {
         const v = ent && ent.el, st = v && (ent.stream || v.srcObject);
         if (!st || !v.isConnected) continue;
-        const rebind = () => { try { v.srcObject = null; v.srcObject = st; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} };
+        const rebind = () => { try { v.srcObject = null; if (typeof wkBindVideo === 'function') wkBindVideo(v, st); else v.srcObject = st; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} };
         const dmd = (want) => { if (ent.key && ent.via) { try { demand(ent.via, ent.key, ent.streamId, want); } catch (e) {} } };
         if (v._mosHold) {
           const age = now - v._mosHold;
@@ -24996,7 +25041,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
           pri.meta = annMeta(own.ann);
           if (own.st && own.st !== pri.stream) {
             pri.stream = own.st;
-            try { pri.el.srcObject = own.st; const pr = pri.el.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
+            try { wkBindVideo(pri.el, own.st); const pr = pri.el.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
             repaintRedun(rk, pri.stream);
           }
         }
@@ -25197,7 +25242,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             const st2 = vp2 && vp2.incoming ? vp2.incoming.find((s) => s.id === cur.streamId && s.id !== vp2.ownSid) : null;
             if (st2 && cur.stream !== st2) {
               cur.stream = st2;
-              try { cur.el.srcObject = st2; const pr = cur.el.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
+              try { wkBindVideo(cur.el, st2); const pr = cur.el.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
             }
           }
           continue;
@@ -25254,7 +25299,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         el.appendChild(v); el.appendChild(lb); stadiumEl.appendChild(el); trackAspect(el, v);
       }
       const v = el.querySelector('video');
-      if (v.srcObject !== stream) { v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); changed = true; }
+      if (!(typeof wkHolds === 'function' ? wkHolds(v, stream) : v.srcObject === stream)) { if (typeof wkBindVideo === 'function') wkBindVideo(v, stream); else v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); changed = true; }
       stadiumEl.classList.add('on');
       const cnt = roomPastSection() ? displayCount() : knownTotal();
       if (!prevSd || prevSd.streamId !== stream.id || prevSd.cnt !== cnt || prevSd.el !== v) changed = true;
@@ -25343,7 +25388,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         if (window.ResizeObserver) new ResizeObserver(() => requestAnimationFrame(again)).observe(el);
       }
       const v = el.querySelector('video');
-      if (v.srcObject !== stream) { v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); stripChanged = true; }
+      if (!(typeof wkHolds === 'function' ? wkHolds(v, stream) : v.srcObject === stream)) { if (typeof wkBindVideo === 'function') wkBindVideo(v, stream); else v.srcObject = stream; const pr = v.play(); if (pr && pr.catch) pr.catch(() => {}); stripChanged = true; }
       // NAME THE SHARE. A composited strip carries no attribution of its own —
       // the burned overlay names each face, but a shared screen's pixels are
       // somebody's spreadsheet, with nothing on them to say whose window this
@@ -27537,6 +27582,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
     // Drop the companion. A removed tile used to leave el._aud playing the
     // stream with no picture. Safe to call before blockedAudio exists.
     function releaseAudio(el) {
+      if (el && el._wkVoice && typeof wkEar !== 'undefined' && wkEar) { try { wkEar.fold.remove(wkEarKey(el)); } catch (e) {} el._wkVoice = null; }
       if (!el || !el._aud) return;
       const a = el._aud;
       try { a.pause(); } catch (e) {}
@@ -27593,12 +27639,63 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
         let pr = null; try { pr = stageEar.el.play(); } catch (e) {}
         if (pr && pr.then) pr.then(() => { if (typeof audioUnblocked === 'function') audioUnblocked(stageEar.el); }).catch((e) => audioBlocked(stageEar.el, e));
       }
+      if (typeof wkEar !== 'undefined' && wkEar && wkEar.el && wkEar.el.srcObject && wkEar.el.paused && !blockedAudio.has(wkEar.el)) {
+        let pr = null; try { pr = wkEar.el.play(); } catch (e) {}
+        if (pr && pr.then) pr.then(() => { if (typeof audioUnblocked === 'function') audioUnblocked(wkEar.el); }).catch((e) => audioBlocked(wkEar.el, e));
+      }
+    }
+    // ONE EAR ON WEBKIT. A companion <audio> per tile is a device open per
+    // voice change on that engine (see wkPicOf: a muted picture plus a mic
+    // stream in any media element opens the ALSA device on the main thread,
+    // and a pair forming re-points every companion once per fresh pc). So on
+    // WebKit every voice is folded into one AudioContext graph (createAudioFold,
+    // the same fold the stage ear rides) and ONE <audio> element bound once to
+    // the fold's stream: one open for the meeting. Per-voice volume and the
+    // group mute drive the fold's gains. Chromium and Firefox keep their
+    // companions. If the context cannot be made the companion path stands.
+    let wkEar = null, wkEarSeq = 0;
+    function wkEarGet() {
+      if (!WEBKIT_ENGINE) return null;
+      if (wkEar) return wkEar;
+      try { ensureAc(); } catch (e) { return null; }
+      if (!ac || !GifOS.meshMedia || typeof GifOS.meshMedia.createAudioFold !== 'function') return null;
+      let fold = null;
+      try { fold = GifOS.meshMedia.createAudioFold(ac); } catch (e) { return null; }
+      const el = new Audio(); el.autoplay = true;
+      el.srcObject = fold.dest.stream;
+      let pr = null; try { pr = el.play(); } catch (e) { audioBlocked(el, e); }
+      if (pr && pr.then) pr.then(() => { if (typeof audioUnblocked === 'function') audioUnblocked(el); }).catch((e) => audioBlocked(el, e));
+      wkEar = { fold, el };
+      return wkEar;
+    }
+    const wkEarKey = (el) => { if (!el._wkKey) el._wkKey = 'wkear' + (++wkEarSeq); return el._wkKey; };
+    // The element's voice in the ear: src (or none) at vol. false = no ear.
+    function wkEarSet(el, src, vol) {
+      const ear = wkEarGet();
+      if (!ear) return false;
+      const key = wkEarKey(el);
+      const g = (el._gmute || !(vol > 0)) ? 0 : vol;
+      if (!src) { if (el._wkVoice) { ear.fold.remove(key); el._wkVoice = null; } return true; }
+      if (el._wkVoice !== src) { if (el._wkVoice) ear.fold.remove(key); el._wkVoice = src; ear.fold.add(key, src, g); }
+      else ear.fold.follow(key, src); // the same container came back with a new track (a rebuilt pair)
+      ear.fold.setGain(key, g);
+      return true;
     }
     // voice: the stream whose sound this element's companion plays. A peer's
     // tile with the camera off shows a locally painted avatar (mountPeerAvatar),
     // which has no audio, so the caller hands the peer's own stream.
     function busVolume(el, vol, voice) {
       const src = voice || (el._pic && el.srcObject === el._pic && el._wrapOf) || el.srcObject; // a WebKit tile plays a picture-only stream; its voice is the wrapped one
+      if (typeof WEBKIT_ENGINE !== 'undefined' && WEBKIT_ENGINE && typeof wkEarSet === 'function' && wkEarSet(el, src, vol)) {
+        el.muted = true;
+        if (el._aud) { try { el._aud.pause(); el._aud.srcObject = null; } catch (e) {} el._aud = null; }
+        if (!src) return;
+        const heldTile = el.closest && el.closest('[data-peer]');
+        const heldPid = heldTile && heldTile.dataset && heldTile.dataset.peer;
+        const held = heldPid && heldPid !== myId && typeof mediaOk === 'function' && mediaOk(heldPid) === false;
+        if (!held && el.srcObject && (el.paused || el.readyState === 0)) { const pr = el.play(); if (pr && pr.catch) pr.catch(() => {}); }
+        return;
+      }
       if (!src) { if (el._aud) el._aud.srcObject = null; el.volume = vol; return; }
       if (!el._aud) { el._aud = new Audio(); el._aud.autoplay = true; }
       el.muted = true; // the <video> is picture-only, always — sound lives in the companion
@@ -31769,7 +31866,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             maybeShowFlip();
             const n = meTile.tile.querySelector('.note'); if (n) n.remove();
             meTile.video.style.display = '';
-            meTile.video.srcObject = localStream;
+            wkBindVideo(meTile.video, localStream);
             meterFor('me', localStream);
           } else {
             // partial stream (mic-only / cam-only): merge the missing kinds
@@ -34466,7 +34563,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             held.enabled = true;
             myStatus.camOff = false;
             try {
-              if (meTile && meTile.video) { meTile.video.style.display = ''; if (localStream) meTile.video.srcObject = localStream; }
+              if (meTile && meTile.video) { meTile.video.style.display = ''; if (localStream) wkBindVideo(meTile.video, localStream); }
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession();
             } catch (e) {}
             return { camera: true };
@@ -34484,7 +34581,7 @@ requestAnimationFrame(chk);setTimeout(show,1500);})();</script>
             myStatus.camOff = false;
             try { attachLocalTracks(); } catch (e) {}
             try {
-              if (meTile && meTile.video) { meTile.video.style.display = ''; meTile.video.srcObject = localStream; const pr = meTile.video.play(); if (pr && pr.catch) pr.catch(() => {}); }
+              if (meTile && meTile.video) { meTile.video.style.display = ''; wkBindVideo(meTile.video, localStream); const pr = meTile.video.play(); if (pr && pr.catch) pr.catch(() => {}); }
               const n = meTile && meTile.tile && meTile.tile.querySelector('.note');
               if (n) n.remove();
               paintControls(); refreshOutbound(); broadcastStatus(); reactRoomState(); updateTile('me'); updateMediaSession();
